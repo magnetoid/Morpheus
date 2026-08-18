@@ -27,6 +27,8 @@ class DotBooksTheme(MorpheusTheme):
     )
     author = 'Morph Team'
     supports_plugins = ['storefront', 'catalog', 'orders']
+    # base.html calls `{% storefront_head %}` and emits no SEO markup of its own.
+    head_contract = 1
     demo_topic = 'bookstore'
 
     def get_config_schema(self) -> dict:

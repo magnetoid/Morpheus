@@ -355,7 +355,7 @@ def product_list(request):
             # from the STOREFRONT_PAGE_INTRO filter. The filtered variants
             # already have one (a Category/Tag/BookTaxonomyTerm row).
             'page_intro': _intro['body'],
-            'seo_title': f'{plp_name} — dot books',
+            'seo_title': f'{plp_name}',
             'seo_description': (
                 (selected_cat.description if selected_cat and selected_cat.description else '')
                 or (
@@ -1067,7 +1067,7 @@ def search(request):
             'semantic': use_semantic,
             'search_items': search_items,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': f'Search results for {q}' if q else 'Search — dot books',
+            'seo_title': f'Search results for {q}' if q else 'Search',
             'seo_description': f'Results for "{q}" on the dot books shelf.'
             if q
             else 'Search the dot books shelf.',
@@ -1260,7 +1260,7 @@ def category_detail(request, slug):
             'breadcrumb_items': breadcrumb_items,
             'collection_items': collection_items,
             'seo_object': category,
-            'seo_title': f'{category.name} — dot books',
+            'seo_title': f'{category.name}',
             'seo_description': category.description or intro.get('lede', '')[:160],
             'seo_og_type': 'website',
         },
@@ -1356,7 +1356,7 @@ def collection_detail(request, slug):
             'breadcrumb_items': breadcrumb_items,
             'collection_items': collection_items,
             'seo_object': collection,
-            'seo_title': f'{collection.name} — dot books',
+            'seo_title': f'{collection.name}',
             'seo_description': (collection.description or '')[:160],
             'seo_og_type': 'website',
         },
@@ -1451,9 +1451,7 @@ def author_detail(request, slug):
             'bio_page': bio_page,
             'book_term': book_term,
             'seo_title': (
-                book_term.meta_title
-                if book_term and book_term.meta_title
-                else f'{author_name} — dot books'
+                book_term.meta_title if book_term and book_term.meta_title else f'{author_name}'
             ),
             'seo_description': (
                 book_term.meta_description
@@ -1510,7 +1508,7 @@ def staff_picks(request):
             'pick_items': pick_items,
             'breadcrumb_items': breadcrumb_items,
             'seo_object': collection,
-            'seo_title': 'Staff picks — dot books',
+            'seo_title': 'Staff picks',
             'seo_description': description[:160],
             'seo_og_type': 'website',
         },

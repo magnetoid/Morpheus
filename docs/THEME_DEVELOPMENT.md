@@ -207,9 +207,9 @@ Look for the plugin's `templates/<plugin>/` directory to see what's available.
 The dot books `base.html` exposes blocks you'll commonly want:
 
 ```django
-{% block seo %}{% endblock %}     {# emit meta + OG + JSON-LD #}
-{% block head %}{% endblock %}    {# extra <head> content #}
-{% block content %}{% endblock %} {# main column #}
+{% block seo %}{% endblock %}        {# the whole SEO head — see §11 #}
+{% block extra_head %}{% endblock %} {# extra <head> content (preloads, page CSS) #}
+{% block content %}{% endblock %}    {# main column #}
 ```
 
 The convention is: **everything reusable lives in the base; pages use
@@ -268,13 +268,28 @@ the "Context" column is the most useful variable a block can rely on.
 
 | Slot | Page | Renders | Block context |
 |---|---|---|---|
-| `home_above_grid` | Home (`/`) | Top of `{% block content %}`, above the editor's-pick section | home page context |
-| `home_below_grid` | Home (`/`) | Bottom of the home content, below the product grid | home page context |
-| `pdp_below_price` | Product detail (`/products/<slug>/`) | Between the price and the variant picker / add-to-cart | `product` |
+| `global_head` | **Every page** | Last thing in `<head>`, after `{% storefront_head %}` and the theme's own CSS | layout context |
+| `global_below_body` | **Every page** | End of `<body>`, before the cart drawer | layout context |
+| `nav_primary_extra` | **Every page** | Inside the primary nav, after the theme's links (desktop + mobile) | layout context |
+| `footer_extra` | **Every page** | In the footer's "Shop" column | layout context |
+| `footer_legal` | **Every page** | The footer's legal line, next to the copyright | layout context |
+| `home_below_grid` | Home (`/`) | Below the product grid | home page context |
+| `home_after_rails` | Home (`/`) | After the merchandising rails | home page context |
+| `pdp_below_gallery` | Product detail | Under the image gallery | `product` |
+| `pdp_below_price` | Product detail | Between the price and the add-to-cart form | `product` |
 | `pdp_below_form` | Product detail | Directly below the add-to-cart form | `product` |
 | `pdp_above_long_description` | Product detail | Above the long description / detail tabs | `product` |
-| `cart_summary_extra` | Cart (`/cart/`) | In the order-summary panel, below the total, above the checkout button | `cart` |
-| `global_below_body` | **Every page** | End of `<body>` in `base.html`, before the cart drawer | layout context |
+| `pdp_below_long_description` | Product detail | Below the long description | `product` |
+| `cart_summary_extra` | Cart (`/cart/`) | In the order-summary panel, above the checkout button | `cart` |
+| `checkout_extra` | Checkout | In the checkout column | checkout context |
+| `order_receipt_extra` | Order confirmation | Below the receipt | `order` |
+| `account_nav` | Account pages | In the account sidebar nav | `user` |
+| `account_summary_extra` | Account home | In the account summary panel | account context |
+
+`home_above_grid` is deliberately NOT rendered by this theme (its home page
+leads with an editorial hero instead of a grid) — see the reason recorded in
+`core/tests/test_slot_parity.py`, which fails the build if a theme drops a slot
+some app contributes to without recording why.
 
 > Source of truth: `grep -rn '{% storefront_blocks' themes/library/dot_books/`.
 > If you add or move a slot in a theme, update this table in the same commit
@@ -438,27 +453,67 @@ and rarely worth it. Path A is the recommended approach.
 
 ---
 
-## 11. Working with the SEO plugin
+## 11. The `<head>` contract (SEO)
 
-If the [SEO plugin](../plugins/installed/seo/) is active, your `base.html`
-should use the `{% seo_meta %}` tag instead of hand-rolling meta tags:
+**A theme does not do SEO. It makes room for it.** One core tag renders the
+entire head — `<title>`, description, canonical, robots, Open Graph, Twitter,
+hreflang, pagination links, verification metas and the JSON-LD graph:
 
 ```django
-{% load seo %}
+{% load morph %}
 <head>
-  {% block seo %}
-    {% seo_meta object=seo_object|default:None
-                fallback_title=seo_title|default:"My theme"
-                fallback_description=seo_description|default:"…"
-                fallback_image=seo_image|default:"" %}
-  {% endblock %}
-  ...
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% block seo %}{% storefront_head %}{% endblock %}
+  …your css / fonts / scripts…
+  {% storefront_blocks "global_head" %}
 </head>
 ```
 
-This emits `<title>`, `<meta description>`, OG, Twitter Card, canonical,
-robots, and JSON-LD in one tag. See [PLUGIN_DEVELOPMENT.md](PLUGIN_DEVELOPMENT.md)
-for the full SEO surface.
+That is the whole integration. The SEO app resolves *which page this is* on its
+own (product, category, journal post, cart, search…) from the URL and the
+template context, so a theme never needs a per-page variant of this call.
+
+**Fallback copy.** Pass your theme's own wording for pages that have no object
+to describe — normally just the home page:
+
+```django
+{% block seo %}{% storefront_head title="Acme — modern goods" description="…" %}{% endblock %}
+```
+
+A merchant who fills in Settings → SEO (or edits a product's SEO panel)
+overrides it. Everything else — every product, category, collection, vendor,
+author, article — needs no arguments at all.
+
+**Declare the contract in your theme class:**
+
+```python
+class AcmeTheme(MorpheusTheme):
+    head_contract = 1   # I call {% storefront_head %} and emit no SEO markup myself
+```
+
+That opts the theme into `themes/test_head_contract.py`, which renders every
+page kind and asserts exactly one `<title>`, one canonical, one robots meta and
+one JSON-LD block — plus that the page still renders when the SEO app is
+disabled. SEO regressions in a theme are invisible in a browser; this is how
+they get caught.
+
+### Rules
+
+| Do | Don't |
+|---|---|
+| Call `{% storefront_head %}` once, inside `<head>` | Emit your own `<title>`, canonical, robots or `og:*` — they duplicate |
+| Put theme wording in the tag's `title=` / `description=` arguments | Hardcode the shop's name in templates or views (it comes from settings) |
+| Render `{% storefront_blocks "global_head" %}` too | Reverse another app's URL (`{% url 'seo:…' %}`) — it 500s the page when that app is off |
+| Let page templates override `{% block seo %}` only to pass different fallbacks | Override the block to change robots — page kind decides that |
+
+### Legacy themes
+
+The per-tag helpers (`{% seo_meta %}`, `{% seo_product_jsonld %}`,
+`{% seo_breadcrumb_jsonld %}`, …) still work for themes that have not migrated,
+and go silent automatically on a page that called `{% storefront_head %}`, so a
+half-migrated theme never double-emits. They are removed in a later release —
+see [`MIGRATING.md`](MIGRATING.md).
 
 The dot books theme is the canonical example.
 

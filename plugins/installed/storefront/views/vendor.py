@@ -110,7 +110,7 @@ def vendors_directory(request):
             'query': q,
             'breadcrumb_items': breadcrumb_items,
             'page_intro': intro['body'],
-            'seo_title': 'Publishers & makers — dot books',
+            'seo_title': 'Publishers & makers',
             'seo_description': (
                 intro['meta_description']
                 or intro['body']
@@ -195,7 +195,7 @@ def vendor_detail(request, slug):
             'collection_items': collection_items,
             'intro_text': vendor.description or intro_fallback,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': f'{vendor.name} — Publishers · dot books',
+            'seo_title': f'{vendor.name} — Publishers',
             'seo_description': (vendor.description or intro_fallback)[:160],
             'seo_og_type': 'website',
         },

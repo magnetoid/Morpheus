@@ -25,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+from html import escape
 
 from django import template
 from django.template.loader import render_to_string
@@ -89,6 +90,60 @@ def storefront_blocks(context, slot: str) -> str:
                 exc_info=True,
             )
     return mark_safe(''.join(rendered_parts))
+
+
+@register.simple_tag(takes_context=True)
+def storefront_head(context, title: str = '', description: str = '') -> str:
+    """Render the whole SEO head: title, metas, canonical, robots, OG, JSON-LD.
+
+    A theme calls this ONCE inside `<head>` and is done::
+
+        <head>
+          <meta charset="utf-8">
+          {% storefront_head %}
+          ...theme css/js...
+        </head>
+
+    The optional arguments are the *fallbacks* a shell guarantees on its own —
+    `{% storefront_head title=page_title description=page_blurb %}`. When the
+    view or an entity supplies better values, the SEO app replaces them; when no
+    subscriber answers (the seo app is disabled or absent), the fallbacks are
+    what renders, so the page still has a title.
+
+    Themes must not emit their own `<title>`/canonical/robots/OG alongside this
+    tag — that is how a page ends up with two of each.
+    """
+    from django.utils.translation import get_language
+
+    from core.head import build_head
+
+    request = context.get('request')
+    flat = context.flatten()
+    fallback_title = title or flat.get('page_title') or flat.get('seo_title') or ''
+    fallback_description = (
+        description or flat.get('meta_description') or flat.get('seo_description') or ''
+    )
+
+    try:
+        doc = build_head(
+            path=request.get_full_path() if request is not None else '',
+            language=get_language() or '',
+            request=request,
+            context=flat,
+            title=str(fallback_title or ''),
+            description=str(fallback_description or ''),
+        )
+    except Exception as e:  # noqa: BLE001 — a head failure must not 500 the page
+        logger.error('storefront_head: build failed: %s', e, exc_info=True)
+        safe_title = escape(str(fallback_title or ''))
+        return mark_safe(f'<title>{safe_title}</title>' if safe_title else '')
+
+    if request is not None:
+        # Marker read by the legacy `{% seo_* %}` shims (so a half-migrated theme
+        # doesn't emit both) and by the head-injection middleware (so it doesn't
+        # inject a second copy into a template that already called the tag).
+        request._morpheus_head_rendered = True
+    return mark_safe(doc.render())
 
 
 _CURRENCY_SYMBOLS = {

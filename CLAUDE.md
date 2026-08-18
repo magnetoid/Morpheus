@@ -374,6 +374,28 @@ swap → keep the original): a merchant's pricing rule is untrusted input on the
 money path, and a currency swap would breach the single-currency cart invariant.
 Guarded by `core/tests/test_price_filter.py`.
 
+**Landmine — SEO markup written into a template is invisible when it's wrong.**
+As of v0.46 the storefront `<head>` is a *document*, not markup: core seeds
+`HeadDocument` (`core/head.py`), fires `STOREFRONT_HEAD`, and the seo app fills in
+title/description/canonical/robots/OG/Twitter/hreflang/pagination/JSON-LD. A theme
+calls **`{% storefront_head %}` once** and declares `head_contract = 1`; apps
+contribute through `SEO_RESOLVE_PAGE` / `SEO_JSONLD_GRAPH` / `SEO_SITEMAP_SOURCES`
+/ `SEO_ROBOTS_RULES`, never by emitting tags. Entries are **keyed**, so a second
+writer replaces rather than duplicates — which is the whole point: the old
+per-tag arrangement shipped two `og:type` tags on every PDP, two `WebSite` nodes
+on most pages, the brand appended twice on category/collection/journal titles,
+and `/search/` with **no `<title>` at all** (the theme's title lived inside the
+`{% block seo %}` that page overrode to force `noindex`). None of that is visible
+in a browser. Guards: `themes/test_head_contract.py` (one title/canonical/robots/
+JSON-LD per page kind, no hardcoded brand, survives a seo disable) and
+`seo/tests/test_head_parity.py` (a recorded profile of every page type; re-record
+deliberately and review the diff — a shrinking profile is the bug). Corollaries:
+a page title is the **clean page name**, the brand is applied at render from
+settings (ADR 0007) — never append the shop name in a view; and machine endpoints
+(`robots.txt`, `sitemap*.xml`, `llms.txt`, `.well-known/*`) must register with
+`surface='chrome'`, or `i18n_patterns` publishes a second copy of each per
+language (`/fr/robots.txt`). ADR 0036.
+
 **Landmine — a `StorefrontBlock` whose slot no template renders is silent.**
 The plugin is enabled, its tests pass, its block renders fine in isolation — and
 the merchant sees nothing, with no error anywhere. This had happened four times

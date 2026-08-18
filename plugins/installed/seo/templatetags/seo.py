@@ -176,7 +176,7 @@ def seo_title(title: str, *, category: str = '', site_name: str = '') -> str:
 
     if not title:
         # A page that passes no title (e.g. the homepage) reads as the brand —
-        # never "Untitled — Dot Books". Render the site name alone.
+        # never "Untitled — <brand>". Render the site name alone.
         return (site_name or 'Untitled')[:max_len]
 
     try:
@@ -1133,3 +1133,85 @@ def seo_hreflang(context):
             out.append(f'<link rel="alternate" hreflang="{escape(locale)}" href="{href}">')
     out.append(f'<link rel="alternate" hreflang="x-default" href="{escape(canonical)}">')
     return mark_safe('\n'.join(out))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Legacy head tags — kept working, kept quiet
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Every tag below used to emit part of the `<head>` directly. As of v0.46 the
+# head is assembled once, as data, by the `STOREFRONT_HEAD` filter and rendered
+# by core's `{% storefront_head %}` (see core/head.py). The tags stay so that a
+# theme which has NOT migrated keeps its SEO — but they must not fire on a theme
+# that HAS, or the page would carry two titles, two canonicals and two copies of
+# every Open Graph tag. (That duplication was real: the PDP shipped two
+# `og:type` tags because the theme and the page template each emitted one.)
+#
+# The rule is therefore: if the head document already rendered for this request,
+# these are no-ops. They are removed in a later release once no bundled theme
+# calls them — `docs/MIGRATING.md` carries the deprecation.
+#
+# Re-registration (rather than editing 23 bodies) keeps the original functions
+# intact and reviewable; Django's tag library is a dict, so the last
+# registration under a name wins.
+
+_HEAD_OWNED_TAGS = (
+    # (tag name, original already takes the template context)
+    ('seo_meta', True),
+    ('seo_preconnect', False),
+    ('seo_organization_jsonld', False),
+    ('seo_website_jsonld', False),
+    ('seo_verification_metas', False),
+    ('seo_llms_link', False),
+    ('seo_hreflang', True),
+    ('seo_pagination_links', True),
+    ('seo_product_jsonld', False),
+    ('seo_product_og', False),
+    ('seo_product_md_link', False),
+    ('seo_video_jsonld', False),
+    ('seo_book_jsonld', False),
+    ('seo_speakable_jsonld', False),
+    ('seo_faq_jsonld', False),
+    ('seo_qa_jsonld', True),
+    ('seo_collection_jsonld', True),
+    ('seo_breadcrumb_jsonld', False),
+    ('seo_article_jsonld', True),
+    ('seo_article_og', False),
+    ('seo_search_results_jsonld', True),
+    ('seo_person_jsonld', True),
+    ('seo_aboutpage_jsonld', True),
+    ('seo_contactpage_jsonld', True),
+)
+
+
+def _head_already_rendered(context) -> bool:
+    request = context.get('request') if hasattr(context, 'get') else None
+    return bool(getattr(request, '_morpheus_head_rendered', False))
+
+
+def _register_legacy_head_shim(name: str, wants_context: bool) -> None:
+    original = globals()[name]
+
+    if wants_context:
+
+        def shim(context, *args, **kwargs):
+            if _head_already_rendered(context):
+                return ''
+            return original(context, *args, **kwargs)
+    else:
+
+        def shim(context, *args, **kwargs):
+            if _head_already_rendered(context):
+                return ''
+            return original(*args, **kwargs)
+
+    # Copy the identity but NOT `__wrapped__`: Django introspects a tag's
+    # signature through `functools.wraps`' unwrap chain, and would then insist
+    # the original's first parameter be named `context`.
+    shim.__name__ = name
+    shim.__doc__ = original.__doc__
+    register.simple_tag(takes_context=True, name=name)(shim)
+
+
+for _tag_name, _wants_context in _HEAD_OWNED_TAGS:
+    _register_legacy_head_shim(_tag_name, _wants_context)

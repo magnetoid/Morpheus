@@ -1,9 +1,9 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load seo %}{% load caching %}{% load i18n %}
-{% block title %}{% seo_title "Independent bookshop" %}{% endblock %}
-{# The real <title>/meta come from seo_meta (base.html), not block title — give #}
-{# the homepage a descriptive title + description instead of the bare fallback. #}
-{% block seo %}{% seo_meta object=seo_object|default:None fallback_title="Dot Books — an independent bookshop" fallback_description="A quieter shelf for louder books. New and rare titles from independent presses — curated, modern, independent." og_type="website" %}{% endblock %}
+{% comment %}The home page is the one page whose copy is the theme's own: there is no
+product or category to describe it. Everything else resolves centrally, so this block
+passes only the fallbacks — a merchant who fills in Settings → SEO overrides them.{% endcomment %}
+{% block seo %}{% storefront_head title="Dot Books — an independent bookshop" description="A quieter shelf for louder books. New and rare titles from independent presses — curated, modern, independent." %}{% endblock %}
 
 {% block extra_head %}
 {% with hero_products|first as pick %}

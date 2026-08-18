@@ -44,7 +44,7 @@ def _render(request, label, value, products, *, term=None, index_url=None):
         products = hook_registry.filter(
             MorpheusEvents.PRODUCT_LIST_REORDER, value=products, request=request, surface='facet'
         )
-    seo_title = term.meta_title if (term and term.meta_title) else f'{value} — {label} — dot books'
+    seo_title = term.meta_title if (term and term.meta_title) else f'{value} — {label}'
     # Staff admin-bar deep-link: edit this curated taxonomy term in the dashboard.
     active_edit_url = ''
     if (
@@ -217,7 +217,7 @@ def _taxonomy_root(request, *, key, label):
                 }
                 for t in terms
             ],
-            'seo_title': root.meta_title if (root and root.meta_title) else f'{label} — dot books',
+            'seo_title': root.meta_title if (root and root.meta_title) else f'{label}',
             'seo_description': (root.meta_description if root else '')
             or f'Browse books by {label.lower()} at dot books.',
         },
@@ -267,7 +267,7 @@ def _curated_root(request, *, model, key, label, detail_prefix):
                 {'name': t['name'], 'url': t['url'], 'image': t['image'].url if t['image'] else ''}
                 for t in terms
             ],
-            'seo_title': root.meta_title if (root and root.meta_title) else f'{label} — dot books',
+            'seo_title': root.meta_title if (root and root.meta_title) else f'{label}',
             'seo_description': (root.meta_description if root else '')
             or f'Browse books by {label.lower()} at dot books.',
         },

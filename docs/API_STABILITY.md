@@ -42,6 +42,7 @@ Anything that breaks a **STABLE** surface ships with:
 
 | Version | Surface | What broke | Migration |
 |---|---|---|---|
+| **v0.46.0** | Theme authoring — the `<head>` contract | The per-tag SEO helpers (`{% seo_meta %}`, `{% seo_*_jsonld %}`, `{% seo_*_og %}`, `{% seo_verification_metas %}`, `{% seo_llms_link %}`, `{% seo_hreflang %}`, `{% seo_pagination_links %}`, `{% seo_preconnect %}`) are deprecated in favour of one core tag, `{% storefront_head %}`. They still work, and go silent on a page that used the new tag. Discovery files (robots.txt, sitemaps, llms.txt, feeds) are no longer language-prefixed. | [`MIGRATING.md`](MIGRATING.md#v0460--the-head-is-rendered-by-one-core-tag) |
 | **v0.42.0** | App (plugin) authoring — the manifest **filename** and the **import path**, not the manifest *fields* | `plugin.py` → `app.py`; `morpheus.plugin` → `morpheus.app`; `plugin_registry`/`PluginRegistry` → `app_registry`/`AppRegistry`; `MORPHEUS_DEFAULT_PLUGINS` / `MORPHEUS_EXTRA_PLUGINS` / `MORPHEUS_PLUGINS_DIR` → `…_APPS` / `MORPHEUS_APPS_DIR` | [`MIGRATING.md`](MIGRATING.md#v0420--apps-not-plugins) — grep template included |
 
 Notes on v0.42.0, because the row above is narrower than it looks:

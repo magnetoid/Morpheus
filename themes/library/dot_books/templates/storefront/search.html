@@ -2,7 +2,6 @@
 {% load morph %}{% load seo %}{% load caching %}
 {% block title %}Search — dot books{% endblock %}
 
-{% block seo %}{% seo_meta robots="noindex, follow" %}{% endblock %}
 
 {% block extra_head %}
 {% if search_items %}{% seo_search_results_jsonld items=search_items query=query %}{% endif %}

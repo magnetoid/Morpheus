@@ -5,8 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#f6f1e7">
 <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+{% comment %}The entire SEO head — title, description, canonical, robots, Open Graph,
+Twitter, hreflang, pagination, verification metas and the JSON-LD graph — comes from
+one core tag (ADR 0036). The theme supplies fallback copy for a store that has not
+filled in its SEO settings; everything else is resolved per page by the seo app, so
+this template never needs to know what kind of page it is rendering. Do NOT add a
+<title>, canonical or og:* tag alongside this call: they would duplicate.{% endcomment %}
 {% block seo %}
-{% seo_meta object=seo_object|default:None fallback_title=seo_title|default:"dot books." fallback_description=seo_description|default:"A quieter shelf for louder books. Curated, modern, independent." fallback_image=seo_image|default:"" og_type=seo_og_type|default:"website" %}
+{% storefront_head title=seo_title description=seo_description %}
 {% endblock %}
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -616,16 +622,12 @@
 {% gtm_consent_default %}
 {% gtm_head %}
 
-{# SEO: site-wide JSON-LD, search-engine verification metas, LLM hint. #}
-{% seo_organization_jsonld %}
-{% seo_website_jsonld %}
-{% seo_verification_metas %}
-{% seo_llms_link %}
-{% seo_hreflang %}
-{# Journal RSS/Atom autodiscovery arrives via seo's global_head block — a hard {% url 'seo:…' %} here 500'd every page once seo was disabled. #}
+{% comment %}Site-wide JSON-LD, verification metas, hreflang, the OpenSearch link and
+the LLM hint now arrive in the single storefront_head call at the top of this file.
+Journal RSS/Atom autodiscovery still arrives via seo's global_head block — a hard
+url tag for the seo namespace here 500'd every page once seo was disabled.{% endcomment %}
 
 {# PWA manifest + apple-touch-icon are injected by the pwa plugin's storefront block (global_below_body), which also registers the service worker. #}
-<link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="dot books">
 
 {# Speculation Rules API — hover-prerenders PDP/category/vendor links. Skips side-effect-y paths. #}
 <script type="speculationrules">

@@ -632,6 +632,56 @@ def ready(self) -> None:
 
 URLs land at `/discounts/` (no leading slash on the prefix; Django adds it).
 
+### Pages vs machine endpoints (`surface=`)
+
+A route mounted at the root is assumed to be a **page**, which means
+`i18n_patterns` language-prefixes it once the store has more than one language.
+That is right for `/discounts/` and wrong for a file a crawler fetches — a
+sitemap has no French translation, and publishing `/fr/robots.txt` alongside
+`/robots.txt` just duplicates every discovery file per language. Declare it:
+
+```python
+self.register_urls(
+    "plugins.installed.my_app.urls",
+    prefix="",
+    surface="chrome",     # never language-prefixed
+)
+```
+
+Use `surface="chrome"` for `robots.txt`, `sitemap*.xml`, `llms.txt`,
+`/.well-known/*`, feeds and JSON endpoints; leave it unset for customer-facing
+pages.
+
+### Your pages and SEO
+
+You get title, description, canonical, robots, Open Graph and structured data
+for free — but only if the SEO layer can tell what your page *is*. Answer
+`SEO_RESOLVE_PAGE`:
+
+```python
+def ready(self) -> None:
+    self.register_hook(events.SEO_RESOLVE_PAGE, self.on_seo_resolve_page, priority=40)
+
+def on_seo_resolve_page(self, value, request=None, context=None, **kwargs):
+    # First non-None answer wins — return `value` untouched unless the URL is yours.
+    if value is not None or request is None:
+        return value
+    match = getattr(request, "resolver_match", None)
+    if getattr(match, "namespace", "") != self.name:
+        return value
+    from plugins.installed.seo.pages import SeoPage
+    from plugins.installed.seo.pages.types import KIND_LISTING
+
+    return SeoPage(kind=KIND_LISTING, subtype="lookbook", path=request.get_full_path(),
+                   title=(context or {}).get("seo_title", ""), context=context or {})
+```
+
+To add properties to the JSON-LD graph for data you own (a rating, a video, a
+policy), subscribe to `SEO_JSONLD_GRAPH` instead of emitting your own
+`<script type="application/ld+json">` — a page carries one graph, and a second
+block competes with it. Never write `<title>`, a canonical or `og:*` from a
+plugin template (ADR 0036).
+
 ---
 
 ## 9. Hooks and events

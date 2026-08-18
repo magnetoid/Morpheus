@@ -103,7 +103,7 @@ def about(request):
         'storefront/about.html',
         {
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'About — dot books',
+            'seo_title': 'About',
             'seo_description': 'dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world.',
             'seo_og_type': 'website',
         },
@@ -155,7 +155,7 @@ def contact(request):
         {
             'sent': sent,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'Contact — dot books',
+            'seo_title': 'Contact',
             'seo_description': 'Get in touch with dot books. Recommendations, suggestions, and help with orders — we read every message.',
             'seo_og_type': 'website',
         },
@@ -197,7 +197,7 @@ def journal_index(request):
             'post_items': post_items,
             'breadcrumb_items': breadcrumb_items,
             'page_intro': intro['body'],
-            'seo_title': 'Journal — dot books',
+            'seo_title': 'Journal',
             'seo_description': (
                 intro['meta_description']
                 or intro['body']
@@ -245,7 +245,7 @@ def journal_detail(request, slug):
             'entry': entry,
             'seo_object': seo_object,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': f'{entry["title"]} — Journal — dot books',
+            'seo_title': f'{entry["title"]} — Journal',
             'seo_description': entry.get('excerpt', '')[:160],
             'seo_image': entry.get('image', ''),
             'seo_og_type': 'article',
@@ -320,7 +320,7 @@ def shipping(request):
         'storefront/shipping.html',
         {
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'Shipping — dot books',
+            'seo_title': 'Shipping',
             'seo_description': 'How dot books ships your order — tracked, signed-for, free over $40. Domestic + international rates.',
         },
     )
@@ -337,7 +337,7 @@ def returns(request):
         'storefront/returns.html',
         {
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'Returns — dot books',
+            'seo_title': 'Returns',
             'seo_description': "Send a book back inside 30 days. Here's how — and what we cover.",
         },
     )
@@ -393,7 +393,7 @@ def do_not_sell(request):
         {
             'submitted': submitted,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'Do not sell my info — dot books',
+            'seo_title': 'Do not sell my info',
             'seo_description': (
                 "DotBooks doesn't sell personal data. If you'd like to opt out anyway "
                 'under CCPA, this is the page.'

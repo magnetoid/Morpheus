@@ -6,6 +6,25 @@ import strawberry_django
 from plugins.installed.catalog import models
 
 
+def _structured_data_json(obj) -> str:
+    """JSON-LD for one object, asked for rather than imported.
+
+    Catalog used to reach into the seo app's private helpers for this, which is
+    the wrong direction (a disabled or absent SEO app would then break a GraphQL
+    field). Now catalog fires an event and whoever owns structured data answers;
+    with no answer the field is an empty object, which is a valid response.
+    """
+    import json
+
+    from core.hooks import MorpheusEvents, hook_registry
+
+    try:
+        data = hook_registry.filter(MorpheusEvents.SEO_STRUCTURED_DATA_FOR_OBJECT, None, obj=obj)
+        return json.dumps(data, ensure_ascii=False, default=str) if data else '{}'
+    except Exception:  # noqa: BLE001 — a GraphQL field must not 500 over metadata
+        return '{}'
+
+
 @strawberry.type
 class ImageType:
     url: str
@@ -31,22 +50,7 @@ class CategoryType:
 
     @strawberry.field(description='Schema.org JSON-LD structured data for SEO')
     def structured_data(self) -> str:
-        import json
-
-        from plugins.installed.seo.services import _structured_data_for
-
-        try:
-            return json.dumps(
-                _structured_data_for(
-                    self,
-                    title=self.name,
-                    description=self.description,
-                    image=self.image.url if self.image else '',
-                ),
-                ensure_ascii=False,
-            )
-        except Exception:
-            return '{}'
+        return _structured_data_json(self)
 
 
 @strawberry_django.type(models.AttributeGroup)
@@ -391,14 +395,7 @@ class ProductType:
 
     @strawberry.field(description='Schema.org JSON-LD structured data for SEO')
     def structured_data(self) -> str:
-        import json
-
-        from plugins.installed.seo.services import product_jsonld
-
-        try:
-            return json.dumps(product_jsonld(self), ensure_ascii=False)
-        except Exception:
-            return '{}'
+        return _structured_data_json(self)
 
     @strawberry.field(
         description=(

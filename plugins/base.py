@@ -169,8 +169,17 @@ class MorpheusPlugin:
         urlconf: str,
         prefix: str = '',
         namespace: str | None = None,
+        surface: str | None = None,
     ) -> None:
-        """Mount a URLconf module under `prefix` with the given `namespace`."""
+        """Mount a URLconf module under `prefix` with the given `namespace`.
+
+        ``surface`` is ``'storefront'`` (language-prefixed by ``i18n_patterns``
+        when the store has more than one language) or ``'chrome'`` (never
+        prefixed). It defaults to "prefix '' means storefront", which is correct
+        for customer-facing pages — but a machine endpoint mounted at the root
+        (``robots.txt``, ``sitemap.xml``, ``/.well-known/…``) must declare
+        ``surface='chrome'``, or it also answers at ``/fr/robots.txt``.
+        """
         if not isinstance(urlconf, str) or not urlconf:
             raise ValueError('register_urls: urlconf must be a non-empty module path.')
         if self._registry is None:
@@ -182,6 +191,7 @@ class MorpheusPlugin:
             prefix=prefix,
             namespace=namespace or self.name,
             plugin=self.name,
+            surface=surface,
         )
 
     def register_graphql_extension(self, module: str) -> None:

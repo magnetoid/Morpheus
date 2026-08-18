@@ -85,6 +85,15 @@ class MorpheusTheme:
     supports_plugins: list[str] = []  # plugin names this theme styles
     requires_plugins: list[str] = []  # plugins that MUST be active
 
+    # Which version of the `<head>` contract this theme implements.
+    #   0 — legacy: the theme emits its own <title>/canonical/OG, or calls the
+    #       per-tag `{% seo_* %}` helpers. Still works; nothing is enforced.
+    #   1 — the theme calls `{% storefront_head %}` exactly once inside <head>
+    #       and emits NO title/canonical/robots/og:*/JSON-LD of its own.
+    # Declaring 1 opts the theme into the contract test, which is the point:
+    # SEO regressions in a theme are invisible until traffic disappears.
+    head_contract: int = 0
+
     # Topic for the demo_data random product generator. Built-ins:
     # 'bookstore' | 'apparel' | 'general'. Empty falls back to 'general'.
     demo_topic: str = ''

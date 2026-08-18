@@ -1,11 +1,15 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
+{% load morph %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Morpheus Store{% endblock %}</title>
-    <meta name="description" content="{% block meta_description %}Powered by Morpheus AI Commerce Engine{% endblock %}">
-    
+    {% comment %}The fallback storefront gets the same SEO as a designed theme: one
+    call, and the seo app supplies title, description, canonical, robots, Open Graph,
+    hreflang and the JSON-LD graph for whatever page this is. Before v0.46 this
+    template emitted a hardcoded title and nothing else, so a store that had not
+    installed a theme was invisible to search engines.{% endcomment %}
+    {% block seo %}{% storefront_head title=page_title description=meta_description %}{% endblock %}
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -73,6 +77,9 @@
             -webkit-text-fill-color: transparent;
         }
     </style>
+    {% comment %}Plugin-contributed head markup (brand tokens, feed links, PWA
+    manifest). A theme that omits this slot silently drops every one of them.{% endcomment %}
+    {% storefront_blocks "global_head" %}
 </head>
 <body class="bg-dark-bg text-gray-200 font-sans antialiased min-h-screen flex flex-col relative overflow-x-hidden selection:bg-brand-500 selection:text-white">
     
@@ -174,5 +181,6 @@
             </div>
         </div>
     </footer>
+    {% storefront_blocks "global_below_body" %}
 </body>
 </html>

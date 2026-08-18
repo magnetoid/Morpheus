@@ -175,6 +175,33 @@ Routing:
    - /webhooks/<topic>/  → inbound webhooks
 ```
 
+## The storefront `<head>`
+
+The head is data, not markup (ADR 0036). A theme calls one core tag; core seeds
+a document with the shell's fallback copy, fires a filter, and renders whatever
+the subscribers left behind:
+
+```
+theme:  {% storefront_head title=… description=… %}
+          ↓  core/head.py — HeadDocument, keyed entries (a second write REPLACES)
+        hook: STOREFRONT_HEAD (filter)
+          ↓  seo app: resolve the page → SeoPage
+             title (brand from settings) · description · canonical + query-param
+             policy · robots (+ the reason) · Open Graph / Twitter · hreflang
+             (language × market) · pagination · verification metas · discovery
+             links · ONE JSON-LD @graph
+               ↓  hook: SEO_JSONLD_GRAPH — owners enrich the node they own
+                  (reviews → aggregateRating, videos → VideoObject,
+                   returns → MerchantReturnPolicy, book_product → Book)
+          ↓
+        doc.render()   ·   doc.as_dict()  ← the same document, for headless
+```
+
+Apps that own a URL shape answer `SEO_RESOLVE_PAGE` rather than being imported,
+which is why the SEO app depends on `catalog` and nothing else. Machine
+endpoints (`robots.txt`, `sitemap*.xml`, `llms.txt`, `/.well-known/*`) register
+with `surface='chrome'` so they are never language-prefixed.
+
 ## Key reference files when working in this repo
 
 | File | Why you'd open it |

@@ -40,6 +40,46 @@ def _abs(url: str) -> str:
     return site_base_url().rstrip('/') + '/' + url.lstrip('/')
 
 
+# schema.org's ItemAvailability vocabulary, keyed by the product/variant status
+# a merchant actually sets. It lives HERE, next to the feed vocabulary, because
+# the number one way a store loses a rich result is a page whose JSON-LD says
+# InStock while its Merchant Center feed says out of stock — Google reconciles
+# the two and distrusts the mismatch. One source, both consumers.
+SCHEMA_AVAILABILITY = {
+    'in_stock': 'https://schema.org/InStock',
+    'out_of_stock': 'https://schema.org/OutOfStock',
+    'preorder': 'https://schema.org/PreOrder',
+    'backorder': 'https://schema.org/BackOrder',
+    'discontinued': 'https://schema.org/Discontinued',
+    'sold_out': 'https://schema.org/SoldOut',
+    'limited': 'https://schema.org/LimitedAvailability',
+}
+
+
+def availability_to_schema(product) -> str:
+    """A product (model or GraphQL dict) → a schema.org availability URL.
+
+    Falls back to InStock: an active product with no inventory app installed is
+    purchasable, and omitting `availability` costs the merchant-listing rich
+    result outright.
+    """
+    status = ''
+    if isinstance(product, dict):
+        status = str(product.get('availability') or product.get('stock_status') or '')
+    else:
+        status = str(getattr(product, 'stock_status', '') or '')
+        if not status and getattr(product, 'status', '') == 'archived':
+            status = 'discontinued'
+        if not status:
+            in_stock = getattr(product, 'is_in_stock', None)
+            if in_stock is not None and not callable(in_stock):
+                status = 'in_stock' if in_stock else 'out_of_stock'
+    normalised = status.strip().lower().replace(' ', '_').replace('-', '_')
+    if normalised.startswith('https://schema.org/'):
+        return status
+    return SCHEMA_AVAILABILITY.get(normalised, SCHEMA_AVAILABILITY['in_stock'])
+
+
 class FeedMapper:
     """Product → flat feed-item dict, parameterized by channel."""
 

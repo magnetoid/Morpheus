@@ -1,4 +1,14 @@
-from django.urls import path
+"""Machine-facing endpoints: sitemaps, robots, feeds, discovery files.
+
+These are mounted with ``surface='chrome'`` (see ``app.py``), which keeps them
+OUT of ``i18n_patterns``. They used to be mounted as storefront routes, so a
+multi-language store published a second copy of every one of them under each
+language prefix — ``/fr/robots.txt``, ``/fr/sitemap.xml``, ``/fr/llms.txt`` — none
+of which any crawler should ever see. A sitemap is not a page; it has no
+translation.
+"""
+
+from django.urls import path, re_path
 from django.views.decorators.csrf import csrf_exempt
 
 from plugins.installed.seo import views
@@ -24,5 +34,8 @@ urlpatterns = [
     path('journal/feed.xml', views.journal_rss, name='journal_rss'),
     path('journal/atom.xml', views.journal_atom, name='journal_atom'),
     path('img/<str:fmt>/<int:width>/<path:path>', views.image_variant, name='image_variant'),
-    path('<str:key>.txt', views.indexnow_keyfile, name='indexnow_key'),
+    # The IndexNow ownership key. Constrained to the hex shape the protocol
+    # specifies: as a bare `<str:key>.txt` this was a root-level catch-all that
+    # shadowed every other top-level `.txt` route the platform might add.
+    re_path(r'^(?P<key>[A-Fa-f0-9]{8,128})\.txt$', views.indexnow_keyfile, name='indexnow_key'),
 ]

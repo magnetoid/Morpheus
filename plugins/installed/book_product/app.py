@@ -28,6 +28,12 @@ class BookProductPlugin(Plugin):
         # only guarded ImportError and so survived a disable.
         self.register_hook(events.PRODUCT_FORM_CARDS, self.on_product_form_cards, priority=40)
         self.register_hook(events.PRODUCT_FORM_SAVED, self.on_product_form_saved, priority=40)
+        # This app owns a whole family of storefront URLs (/genre/…, /topic/…,
+        # /publisher/…, /series/…, /format/…, the taxonomy index pages) that the
+        # SEO layer would otherwise see as anonymous static pages — no ItemList,
+        # no author entity, no per-term meta. Answering SEO_RESOLVE_PAGE tells it
+        # what they are, without seo importing this app.
+        self.register_hook(events.SEO_RESOLVE_PAGE, self.on_seo_resolve_page, priority=40)
         # Full GraphQL control: bookProduct query + setBookProduct mutation.
         self.register_graphql_extension('plugins.installed.book_product.graphql.queries')
         self.register_graphql_extension('plugins.installed.book_product.graphql.mutations')
@@ -46,6 +52,54 @@ class BookProductPlugin(Plugin):
         )
         # Bulk taxonomy-copy backfill runs on the worker (one LLM call per term).
         self.register_celery_tasks('plugins.installed.book_product.tasks')
+
+    # Every route this app mounts, and what it is in SEO terms. Author landings
+    # are entity pages (they get a Person node); the rest are listings of books
+    # sharing an attribute. The index pages list terms rather than books, but
+    # they are still listings.
+    _SEO_KINDS = {
+        'genre': 'genre',
+        'topic': 'topic',
+        'publisher': 'publisher',
+        'series': 'series',
+        'imprint': 'imprint',
+        'format': 'format',
+        'language': 'language',
+        'author': 'author',
+        'genres': 'genres',
+        'topics': 'topics',
+        'authors': 'authors',
+        'publishers': 'publishers',
+        'series_index': 'series',
+        'imprints': 'imprints',
+    }
+
+    def on_seo_resolve_page(self, value, request=None, context=None, **kwargs):
+        """Claim this app's storefront URLs for the SEO layer.
+
+        Returns the incoming value untouched unless the URL is ours — the filter
+        is first-answer-wins, so a handler that claims too much would silently
+        take another app's pages.
+        """
+        if value is not None or request is None:
+            return value
+        url_name = getattr(getattr(request, 'resolver_match', None), 'url_name', '') or ''
+        namespace = getattr(getattr(request, 'resolver_match', None), 'namespace', '') or ''
+        if namespace != self.name or url_name not in self._SEO_KINDS:
+            return value
+        from plugins.installed.seo.pages import SeoPage  # noqa: PLC0415
+        from plugins.installed.seo.pages.types import KIND_LISTING  # noqa: PLC0415
+
+        ctx = context or {}
+        return SeoPage(
+            kind=KIND_LISTING,
+            subtype=self._SEO_KINDS[url_name],
+            path=request.get_full_path(),
+            title=str(ctx.get('seo_title') or ''),
+            description=str(ctx.get('seo_description') or ''),
+            og_type='profile' if url_name == 'author' else 'website',
+            context=ctx,
+        )
 
     def on_product_form_cards(self, value, product=None, **kwargs):
         """Contribute the 'Book details' card. Shown for every product (any

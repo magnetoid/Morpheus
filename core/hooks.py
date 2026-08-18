@@ -703,10 +703,73 @@ class MorpheusEvents:
     # PRODUCT_CREATED   — kwargs: product=Product.
     # PRODUCT_UPDATED   — kwargs: product=Product.
     # CATEGORY_UPDATED  — kwargs: category=Category.
+    # COLLECTION_UPDATED — kwargs: collection=Collection. Was a free string
+    #                     ('collection.updated') declared module-locally in
+    #                     catalog/signals.py with subscribers wired to the
+    #                     literal; promoted to a constant so both ends name the
+    #                     same thing. The wire name is unchanged.
     PRODUCT_VIEWED = 'product.viewed'
     PRODUCT_CREATED = 'product.created'
     PRODUCT_UPDATED = 'product.updated'
     CATEGORY_UPDATED = 'category.updated'
+    COLLECTION_UPDATED = 'collection.updated'
+
+    # ── Storefront head / SEO (filters) ───────────────────────────────────
+    # The document head is DATA, not markup pasted into a theme. Core fires;
+    # the seo app answers (ADR 0017 — core knows the shape, not the rules).
+    #
+    # STOREFRONT_HEAD — filter, value=core.head.HeadDocument, kwargs:
+    #   request=HttpRequest|None, context=dict|None (the flattened template
+    #   context, when rendered from `{% storefront_head %}`). Core seeds the
+    #   document with the shell's fallback title/description; subscribers add or
+    #   REPLACE keyed entries (canonical, robots, Open Graph, Twitter, hreflang,
+    #   pagination, verification metas, feed links, the JSON-LD @graph). Because
+    #   entries are keyed, a subscriber overriding the shell's title replaces it
+    #   instead of emitting a second `<title>`. No subscriber (seo disabled) →
+    #   the seeded document renders on its own, so the storefront degrades to a
+    #   plain-but-valid head rather than a broken one.
+    STOREFRONT_HEAD = 'storefront.head'  # filter
+    # SEO_RESOLVE_PAGE — filter, value=SeoPage|None, kwargs: request, context.
+    #   "What page is this?" — the first subscriber to return a non-None value
+    #   wins (handlers MUST return the incoming value untouched when it is
+    #   already set). Lets an app that owns a URL shape (book_product's author
+    #   and taxonomy landings, cms pages, marketplace vendor pages) tell the SEO
+    #   layer which object a URL is about, without seo importing it.
+    SEO_RESOLVE_PAGE = 'seo.resolve_page'  # filter
+    # SEO_ENTITY_ADAPTERS — filter, value=list[EntityAdapter], no kwargs.
+    #   Registers the kinds of thing the store publishes. One adapter powers the
+    #   head, sitemaps, feeds, the audit, the dashboard content table and
+    #   IndexNow at once, so an app that adds a public page type registers here
+    #   ONCE rather than in six places (the mechanism that replaces seo's
+    #   hardcoded per-plugin sitemap generators; ADR 0008's intent, inverted).
+    SEO_ENTITY_ADAPTERS = 'seo.entity_adapters'  # filter
+    # SEO_JSONLD_GRAPH — filter, value=dict (a JSON-LD @graph document), kwargs:
+    #   page=SeoPage, request. Every page emits ONE graph with stable @ids;
+    #   owners enrich the node they are authoritative for — reviews adds
+    #   aggregateRating/review, product_videos adds VideoObject, returns_portal
+    #   adds MerchantReturnPolicy, shipping adds OfferShippingDetails,
+    #   loyalty/subscriptions add MemberProgram, book_product adds Book. Nobody
+    #   emits a second `<script type="application/ld+json">`.
+    SEO_JSONLD_GRAPH = 'seo.jsonld_graph'  # filter
+    # SEO_STRUCTURED_DATA_FOR_OBJECT — filter, value=dict|None, kwargs: obj=Any.
+    #   The JSON-LD for a single object, for callers outside a request (the
+    #   GraphQL `structuredData` fields on Product/Category). Exists so catalog's
+    #   schema does not import seo's private helpers.
+    SEO_STRUCTURED_DATA_FOR_OBJECT = 'seo.structured_data_for_object'  # filter
+    # SEO_TEMPLATE_TOKENS — filter, value=dict[str, str], kwargs: obj=Any,
+    #   kind=str. Tokens usable in merchant meta templates ("{name} by {author}
+    #   — {site_name}"). Owners contribute the vocabulary for their own data
+    #   (book_product: {author}, {isbn13}; metafields: {meta:ns.key}).
+    SEO_TEMPLATE_TOKENS = 'seo.template_tokens'  # filter
+    # SEO_ROBOTS_RULES — filter, value=RobotsDocument, no kwargs. Owners
+    #   contribute their own Disallow lines (storefront: /cart/, /checkout/,
+    #   /account/, /search/) instead of seo hardcoding another app's URL shapes.
+    SEO_ROBOTS_RULES = 'seo.robots_rules'  # filter
+    # SEO_SITEMAP_SOURCES — filter, value=list[SitemapSource], no kwargs. Each
+    #   source yields entries (loc, lastmod, images, alternates) for the URLs its
+    #   owner publishes. ADR 0008 says every public page belongs in the sitemap;
+    #   this is how an app satisfies that without editing seo.
+    SEO_SITEMAP_SOURCES = 'seo.sitemap_sources'  # filter
 
     # ── Customers (fire) ──────────────────────────────────────────────────
     # CUSTOMER_REGISTERED  — kwargs: customer=Customer.

@@ -37,10 +37,31 @@ class SeoPlugin(Plugin):
         'cms.page': '/journal/{slug}/',
     }
 
+    # catalog is the one HARD dependency: products, categories and collections
+    # are the entities this app describes. Everything else it used to import
+    # (cms, book_product, markets, metafields, …) now answers a filter instead.
+    requires = ['catalog']
+
     def ready(self) -> None:
+        # The storefront head. Core seeds a fallback title, fires the filter, and
+        # this handler produces the real document — so ANY theme that calls
+        # `{% storefront_head %}` gets complete, correct SEO, and a store with
+        # this app disabled still renders a valid head from the seed.
+        self.register_hook(events.STOREFRONT_HEAD, self.on_storefront_head, priority=50)
+        # The JSON-LD for one object, for callers with no request (GraphQL's
+        # `structuredData` fields) — catalog used to import seo's private
+        # helpers for this.
+        self.register_hook(
+            events.SEO_STRUCTURED_DATA_FOR_OBJECT, self.on_structured_data_for_object, priority=50
+        )
         self.register_graphql_extension('plugins.installed.seo.graphql.queries')
         self.register_graphql_extension('plugins.installed.seo.graphql.mutations')
-        self.register_urls('plugins.installed.seo.urls', prefix='', namespace='seo')
+        # surface='chrome': sitemaps, robots.txt, llms.txt and the feeds are
+        # machine endpoints, not pages — they must never be language-prefixed
+        # (a store with /fr/ was serving /fr/robots.txt as well).
+        self.register_urls(
+            'plugins.installed.seo.urls', prefix='', namespace='seo', surface='chrome'
+        )
         self.register_urls(
             'plugins.installed.seo.urls_dashboard',
             prefix='dashboard/seo/',
@@ -57,6 +78,18 @@ class SeoPlugin(Plugin):
         # CMS pages — wire the post_save signal directly so we don't need
         # a new cms/signals.py + apps.py wiring.
         self._wire_cms_page_signal()
+
+    def on_storefront_head(self, value, request=None, context=None, **kwargs):
+        from plugins.installed.seo.head import on_storefront_head  # noqa: PLC0415
+
+        return on_storefront_head(value, request=request, context=context, **kwargs)
+
+    def on_structured_data_for_object(self, value, obj=None, **kwargs):
+        if value is not None or obj is None:
+            return value
+        from plugins.installed.seo.schema import graph_for_object  # noqa: PLC0415
+
+        return graph_for_object(obj)
 
     def on_brain_signals(self, value, **kwargs):
         """Merge the SEO slice into the Brain snapshot: content-audit scores,

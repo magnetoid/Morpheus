@@ -6,6 +6,69 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.46.0 — the `<head>` is rendered by one core tag
+
+**Who this affects:** anyone maintaining a **theme** outside this repo, and any
+app that emitted `<head>` markup of its own. Merchants, the storefront, the
+REST/GraphQL/MCP surfaces and webhook payloads are unaffected.
+
+### What changed
+
+SEO markup used to be the theme's job: `base.html` called `{% seo_meta %}`, page
+templates called `{% seo_product_jsonld %}`, `{% seo_breadcrumb_jsonld %}` and
+two dozen siblings, and every one of them wrote HTML directly. A theme that
+skipped a call silently shipped a page with no canonical; a theme and a page
+that both made one shipped duplicates (the product page really did emit two
+`og:type` tags).
+
+Now core builds a **head document** and fires `STOREFRONT_HEAD`; the seo app
+fills it in. Themes call one tag:
+
+```django
+{% load morph %}
+{% block seo %}{% storefront_head %}{% endblock %}
+```
+
+and declare `head_contract = 1` on their theme class.
+
+### Do I have to change anything?
+
+**Not immediately.** The old tags still work. On a page that has called
+`{% storefront_head %}` they render nothing (so a half-migrated theme cannot
+double-emit); on a page that has not, they behave exactly as before.
+
+They are **deprecated** and will be removed in a later release. To migrate:
+
+1. Replace the `{% seo_meta … %}` call in `base.html` with `{% storefront_head %}`.
+   Pass your fallback copy as `title=` / `description=` if your home page needs it.
+2. Delete every other `{% seo_*_jsonld %}`, `{% seo_*_og %}`,
+   `{% seo_verification_metas %}`, `{% seo_llms_link %}`, `{% seo_hreflang %}`,
+   `{% seo_pagination_links %}` and `{% seo_preconnect %}` call from your templates —
+   all of that is in the document now.
+3. Delete per-page `{% block seo %}` overrides that existed only to set
+   `robots="noindex, …"`. Indexability is decided per page kind (cart, checkout,
+   account and internal search are handled for you).
+4. Remove any hardcoded shop name from titles: the brand comes from
+   Settings → SEO / Settings → General and is applied at render.
+5. Set `head_contract = 1` and run `manage.py test themes.test_head_contract`.
+
+Tags that are NOT deprecated: `{% seo_title %}` (a string helper),
+`{% seo_responsive_image %}`, `{% seo_meta_panel %}` (dashboard), and
+`{% seo_ai_answer_block %}` (page body, not head).
+
+### Two behaviour changes worth knowing
+
+- **`robots.txt`, `sitemap*.xml`, `llms.txt`, `agents.md`, the feeds and
+  `/.well-known/security.txt` are no longer language-prefixed.** On a
+  multi-language store they used to resolve at `/fr/robots.txt` as well, which
+  published a second copy of every discovery file per language. Only the
+  unprefixed URLs answer now.
+- **The IndexNow key file** is served at `/<key>.txt` only for a key matching
+  the protocol's hex shape. The previous catch-all pattern shadowed any other
+  root-level `.txt` route.
+
+---
+
 ## v0.42.0 — "apps", not "plugins"
 
 **Who this affects:** anyone maintaining an app (plugin) outside this

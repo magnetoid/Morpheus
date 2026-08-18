@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.46.0 — 2026-08-18
+
+**SEO 3.0 phase 1 — the storefront head is a core contract**
+
+- The <head> is now built by core and filled in by the SEO app, not by the theme: a theme calls {% storefront_head %} once and gets title, description, canonical, robots, Open Graph, Twitter, hreflang (language and market), pagination links, verification metas, discovery links and one JSON-LD @graph — on any page, in any theme (ADR 0036).
+- Fixes found by diffing the old output against the new: /search/ rendered with NO <title> at all; the product page emitted og:type twice; WebSite and CollectionPage JSON-LD were emitted twice on most pages; category, collection and journal titles carried the shop name twice; the sitelinks SearchAction and Book ReadAction Google retired were still being emitted.
+- The shop name is out of the templates and views (20 hardcoded suffixes removed) — it comes from settings, so two merchants can run the same theme. The bundled fallback storefront, which previously emitted a hardcoded title and no SEO at all, now gets the same head as a designed theme.
+- robots.txt, sitemaps, llms.txt, agents.md, the feeds and /.well-known/security.txt are no longer language-prefixed (a multi-language store was publishing a second copy of every discovery file per language), and the IndexNow key route no longer shadows every other root-level .txt URL.
+- Apps now contribute SEO instead of being imported by it: new STOREFRONT_HEAD, SEO_RESOLVE_PAGE, SEO_JSONLD_GRAPH, SEO_ENTITY_ADAPTERS, SEO_SITEMAP_SOURCES, SEO_ROBOTS_RULES, SEO_TEMPLATE_TOKENS and SEO_STRUCTURED_DATA_FOR_OBJECT events; catalog -> seo and seo -> catalog leave the boundary baseline (120 pairs).
+- Guarded by a recorded head profile of 15 page types (seo/tests/test_head_parity.py) and a theme head-contract test (themes/test_head_contract.py), both mutation-tested; legacy {% seo_* %} tags still work and go silent on a migrated page — see docs/MIGRATING.md.
+
 ## v0.45.0 — 2026-08-16
 
 **Paid memberships collect a card; every shell surface now vanishes with its plugin**

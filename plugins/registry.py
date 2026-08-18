@@ -467,10 +467,34 @@ class AppRegistry:
             self._graphql_extensions.append(module)
 
     def add_plugin_urls(
-        self, urlconf: str, prefix: str = '', namespace: str = '', plugin: str = ''
+        self,
+        urlconf: str,
+        prefix: str = '',
+        namespace: str = '',
+        plugin: str = '',
+        surface: str | None = None,
     ) -> None:
+        """Record a plugin URLconf mount.
+
+        ``surface`` decides whether the routes get language-prefixed (ADR 0022):
+        ``'storefront'`` → wrapped in ``i18n_patterns``; ``'chrome'`` → never.
+        It defaults to the historical rule "mounted at prefix '' ⇒ storefront",
+        which is right for pages but wrong for machine endpoints mounted at the
+        root: robots.txt, sitemap.xml and llms.txt were resolving at ``/fr/…``
+        too, publishing a second copy of every discovery file per language.
+        """
+        if surface not in ('storefront', 'chrome', None):
+            raise ValueError(
+                f"add_plugin_urls: surface must be 'storefront'|'chrome', got {surface!r}"
+            )
         self._plugin_urls.append(
-            {'urlconf': urlconf, 'prefix': prefix, 'namespace': namespace, 'plugin': plugin}
+            {
+                'urlconf': urlconf,
+                'prefix': prefix,
+                'namespace': namespace,
+                'plugin': plugin,
+                'surface': surface or ('storefront' if prefix == '' else 'chrome'),
+            }
         )
 
     def add_task_module(self, module: str) -> None:
@@ -516,9 +540,13 @@ class AppRegistry:
         ``storefront`` filters by surface so the root urlconf can language-prefix
         only customer-facing pages (Phase 1b localization, ADR 0022):
           * ``None``  → every plugin URL (back-compat).
-          * ``True``  → only storefront entries (registered at prefix '').
-          * ``False`` → only chrome entries (dashboard/, api/, payments/, …),
-            which must stay UNPREFIXED.
+          * ``True``  → only storefront entries.
+          * ``False`` → only chrome entries (dashboard/, api/, payments/, …, and
+            root-mounted machine endpoints like robots.txt), which stay
+            UNPREFIXED.
+
+        The surface comes from the mount's declared ``surface`` (see
+        ``add_plugin_urls``), which defaults to the old prefix-based rule.
         """
         from django.urls import include, path
 
@@ -534,7 +562,10 @@ class AppRegistry:
             owner = entry.get('plugin')
             if owner and not self.is_active(owner):
                 continue
-            is_storefront = entry['prefix'] == ''
+            is_storefront = (
+                entry.get('surface', 'storefront' if entry['prefix'] == '' else 'chrome')
+                == 'storefront'
+            )
             if storefront is True and not is_storefront:
                 continue
             if storefront is False and is_storefront:

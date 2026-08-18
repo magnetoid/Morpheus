@@ -1,0 +1,2187 @@
+{
+  "/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/#webpage",
+        "props": [
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "name",
+          "url"
+        ],
+        "type": "WebPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Dot Books \u2014 an independent bookshop",
+          "url": "http://testserver/"
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "A quieter shelf for louder books. New and rare titles from independent presses \u2014 curated, modern, independent.",
+      "og:description": "A quieter shelf for louder books. New and rare titles from independent presses \u2014 curated, modern, independent.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Dot Books \u2014 an independent bookshop",
+      "og:type": "website",
+      "og:url": "http://testserver/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "A quieter shelf for louder books. New and rare titles from independent presses \u2014 curated, modern, independent.",
+      "twitter:title": "Dot Books \u2014 an independent bookshop"
+    },
+    "path": "/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Dot Books \u2014 an independent bookshop",
+    "title_count": 1
+  },
+  "/about/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/about/#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "name",
+          "url"
+        ],
+        "type": "AboutPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "About",
+          "url": "http://testserver/about/"
+        }
+      },
+      {
+        "id": "http://testserver/about/#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "About",
+          "position": 2
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/about/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world.",
+      "og:description": "dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "About",
+      "og:type": "website",
+      "og:url": "http://testserver/about/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world.",
+      "twitter:title": "About"
+    },
+    "path": "/about/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "About \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/author/ines-parityauthor/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/author/ines-parityauthor/#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "id": "http://testserver/author/ines-parityauthor/#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "mainEntity",
+          "name",
+          "url"
+        ],
+        "type": "CollectionPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Ines Parityauthor",
+          "url": "http://testserver/author/ines-parityauthor/"
+        }
+      },
+      {
+        "id": "http://testserver/author/ines-parityauthor/#itemlist",
+        "props": [
+          "itemListElement",
+          "itemListOrder",
+          "numberOfItems"
+        ],
+        "type": "ItemList",
+        "values": {
+          "numberOfItems": 1
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Head Parity Probe",
+          "position": 1,
+          "url": "http://testserver/products/head-parity-probe/"
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "All books",
+          "position": 2
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Ines Parityauthor",
+          "position": 3
+        }
+      },
+      {
+        "id": "http://testserver/author/ines-parityauthor/#person",
+        "props": [
+          "name",
+          "url"
+        ],
+        "type": "Person",
+        "values": {
+          "name": "Ines Parityauthor",
+          "url": "http://testserver/author/ines-parityauthor/"
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/author/ines-parityauthor/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "Books by Ines Parityauthor, on the dot books shelf.",
+      "og:description": "Books by Ines Parityauthor, on the dot books shelf.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Ines Parityauthor",
+      "og:type": "profile",
+      "og:url": "http://testserver/author/ines-parityauthor/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "Books by Ines Parityauthor, on the dot books shelf.",
+      "twitter:title": "Ines Parityauthor"
+    },
+    "path": "/author/ines-parityauthor/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Ines Parityauthor \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/cart/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/cart/#webpage",
+        "props": [
+          "inLanguage",
+          "isPartOf",
+          "name",
+          "url"
+        ],
+        "type": "WebPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Cart",
+          "url": "http://testserver/cart/"
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/cart/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Cart",
+      "og:type": "website",
+      "og:url": "http://testserver/cart/",
+      "robots": "noindex, nofollow",
+      "twitter:card": "summary_large_image",
+      "twitter:title": "Cart"
+    },
+    "path": "/cart/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Cart \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/category/head-parity-category/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/category/head-parity-category/#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "id": "http://testserver/category/head-parity-category/#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "mainEntity",
+          "name",
+          "url"
+        ],
+        "type": "CollectionPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Parity Category",
+          "url": "http://testserver/category/head-parity-category/"
+        }
+      },
+      {
+        "id": "http://testserver/category/head-parity-category/#itemlist",
+        "props": [
+          "itemListElement",
+          "itemListOrder",
+          "numberOfItems"
+        ],
+        "type": "ItemList",
+        "values": {
+          "numberOfItems": 1
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Head Parity Probe",
+          "position": 1,
+          "url": "http://testserver/products/head-parity-probe/"
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "All books",
+          "position": 2
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Parity Category",
+          "position": 3
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/category/head-parity-category/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "Books that measure themselves.",
+      "og:description": "Books that measure themselves.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Parity Category",
+      "og:type": "website",
+      "og:url": "http://testserver/category/head-parity-category/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "Books that measure themselves.",
+      "twitter:title": "Parity Category"
+    },
+    "path": "/category/head-parity-category/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Parity Category \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/collection/head-parity-collection/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/collection/head-parity-collection/#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "id": "http://testserver/collection/head-parity-collection/#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "mainEntity",
+          "name",
+          "url"
+        ],
+        "type": "CollectionPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Parity Collection",
+          "url": "http://testserver/collection/head-parity-collection/"
+        }
+      },
+      {
+        "id": "http://testserver/collection/head-parity-collection/#itemlist",
+        "props": [
+          "itemListElement",
+          "itemListOrder",
+          "numberOfItems"
+        ],
+        "type": "ItemList",
+        "values": {
+          "numberOfItems": 1
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Head Parity Probe",
+          "position": 1,
+          "url": "http://testserver/products/head-parity-probe/"
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "All books",
+          "position": 2
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Parity Collection",
+          "position": 3
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/collection/head-parity-collection/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "A curated shelf for the parity probe.",
+      "og:description": "A curated shelf for the parity probe.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Parity Collection",
+      "og:type": "website",
+      "og:url": "http://testserver/collection/head-parity-collection/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "A curated shelf for the parity probe.",
+      "twitter:title": "Parity Collection"
+    },
+    "path": "/collection/head-parity-collection/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Parity Collection \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/contact/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/contact/#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "id": "http://testserver/contact/#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "name",
+          "url"
+        ],
+        "type": "ContactPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Contact",
+          "url": "http://testserver/contact/"
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Contact",
+          "position": 2
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/contact/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "Get in touch with dot books. Recommendations, suggestions, and help with orders \u2014 we read every message.",
+      "og:description": "Get in touch with dot books. Recommendations, suggestions, and help with orders \u2014 we read every message.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Contact",
+      "og:type": "website",
+      "og:url": "http://testserver/contact/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "Get in touch with dot books. Recommendations, suggestions, and help with orders \u2014 we read every message.",
+      "twitter:title": "Contact"
+    },
+    "path": "/contact/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Contact \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/journal/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/journal/#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "id": "http://testserver/journal/#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "mainEntity",
+          "name",
+          "url"
+        ],
+        "type": "CollectionPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Journal",
+          "url": "http://testserver/journal/"
+        }
+      },
+      {
+        "id": "http://testserver/journal/#itemlist",
+        "props": [
+          "itemListElement",
+          "itemListOrder",
+          "numberOfItems"
+        ],
+        "type": "ItemList",
+        "values": {
+          "numberOfItems": 4
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Parity journal entry",
+          "position": 1,
+          "url": "http://testserver/journal/head-parity-journal-entry/"
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "The case for the small press, made in numbers",
+          "position": 2,
+          "url": "http://testserver/journal/the-case-for-the-small-press/"
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Why we don't carry books we haven't read",
+          "position": 3,
+          "url": "http://testserver/journal/why-we-dont-carry-books-we-havent-read/"
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "A short note on patience and the long sentence",
+          "position": 4,
+          "url": "http://testserver/journal/a-short-note-on-patience/"
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Journal",
+          "position": 2
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/journal/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "Notes, essays, short pieces from the booksellers. Updated when there's something to say.",
+      "og:description": "Notes, essays, short pieces from the booksellers. Updated when there's something to say.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Journal",
+      "og:type": "website",
+      "og:url": "http://testserver/journal/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "Notes, essays, short pieces from the booksellers. Updated when there's something to say.",
+      "twitter:title": "Journal"
+    },
+    "path": "/journal/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Journal \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/journal/head-parity-journal-entry/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/journal/head-parity-journal-entry/#article",
+        "props": [
+          "articleBody",
+          "author",
+          "dateModified",
+          "datePublished",
+          "description",
+          "headline",
+          "mainEntityOfPage",
+          "url",
+          "wordCount"
+        ],
+        "type": "BlogPosting",
+        "values": {
+          "headline": "Parity journal entry",
+          "url": "http://testserver/journal/head-parity-journal-entry/"
+        }
+      },
+      {
+        "id": "http://testserver/journal/head-parity-journal-entry/#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Journal",
+          "position": 2
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Parity journal entry",
+          "position": 3
+        }
+      },
+      {
+        "props": [
+          "name"
+        ],
+        "type": "Person",
+        "values": {
+          "name": "Morpheus Store staff"
+        }
+      },
+      {
+        "props": [
+          "cssSelector"
+        ],
+        "type": "SpeakableSpecification"
+      },
+      {
+        "id": "http://testserver/journal/head-parity-journal-entry/",
+        "props": [],
+        "type": "WebPage"
+      },
+      {
+        "id": "http://testserver/journal/head-parity-journal-entry/#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "name",
+          "speakable",
+          "url"
+        ],
+        "type": "WebPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Parity journal entry \u2014 Journal",
+          "url": "http://testserver/journal/head-parity-journal-entry/"
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "/journal/head-parity-journal-entry/amp/",
+        "rel": "amphtml"
+      },
+      {
+        "href": "http://testserver/journal/head-parity-journal-entry/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "An entry that exists so the journal detail page has a subject.",
+      "og:description": "An entry that exists so the journal detail page has a subject.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Parity journal entry \u2014 Journal",
+      "og:type": "article",
+      "og:url": "http://testserver/journal/head-parity-journal-entry/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "An entry that exists so the journal detail page has a subject.",
+      "twitter:title": "Parity journal entry \u2014 Journal"
+    },
+    "path": "/journal/head-parity-journal-entry/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Parity journal entry \u2014 Journal \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/products/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/products/#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "id": "http://testserver/products/#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "mainEntity",
+          "name",
+          "url"
+        ],
+        "type": "CollectionPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "All books",
+          "url": "http://testserver/products/"
+        }
+      },
+      {
+        "id": "http://testserver/products/#itemlist",
+        "props": [
+          "itemListElement",
+          "itemListOrder",
+          "numberOfItems"
+        ],
+        "type": "ItemList",
+        "values": {
+          "numberOfItems": 1
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Head Parity Probe",
+          "position": 1,
+          "url": "http://testserver/products/head-parity-probe/"
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "All books",
+          "position": 2
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/products/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "og:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "All books",
+      "og:type": "website",
+      "og:url": "http://testserver/products/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "twitter:title": "All books"
+    },
+    "path": "/products/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "All books \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/products/?q=parity": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/products/?q=parity#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "id": "http://testserver/products/?q=parity#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "mainEntity",
+          "name",
+          "url"
+        ],
+        "type": "CollectionPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Search: parity",
+          "url": "http://testserver/products/?q=parity"
+        }
+      },
+      {
+        "id": "http://testserver/products/?q=parity#itemlist",
+        "props": [
+          "itemListElement",
+          "itemListOrder",
+          "numberOfItems"
+        ],
+        "type": "ItemList",
+        "values": {
+          "numberOfItems": 1
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Head Parity Probe",
+          "position": 1,
+          "url": "http://testserver/products/head-parity-probe/"
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "All books",
+          "position": 2
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/products/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "og:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Search: parity",
+      "og:type": "website",
+      "og:url": "http://testserver/products/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "twitter:title": "Search: parity"
+    },
+    "path": "/products/?q=parity",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Search: parity \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/products/?sort=price": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/products/?sort=price#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "id": "http://testserver/products/?sort=price#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "mainEntity",
+          "name",
+          "url"
+        ],
+        "type": "CollectionPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "All books",
+          "url": "http://testserver/products/?sort=price"
+        }
+      },
+      {
+        "id": "http://testserver/products/?sort=price#itemlist",
+        "props": [
+          "itemListElement",
+          "itemListOrder",
+          "numberOfItems"
+        ],
+        "type": "ItemList",
+        "values": {
+          "numberOfItems": 1
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Head Parity Probe",
+          "position": 1,
+          "url": "http://testserver/products/head-parity-probe/"
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "All books",
+          "position": 2
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/products/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "og:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "All books",
+      "og:type": "website",
+      "og:url": "http://testserver/products/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "twitter:title": "All books"
+    },
+    "path": "/products/?sort=price",
+    "robots_count": 1,
+    "status": 200,
+    "title": "All books \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/products/head-parity-probe/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "https://localhost/products/head-parity-probe/#edition",
+        "props": [
+          "bookFormat",
+          "inLanguage",
+          "potentialAction",
+          "url"
+        ],
+        "type": "Book",
+        "values": {
+          "inLanguage": "en",
+          "url": "https://localhost/products/head-parity-probe/"
+        }
+      },
+      {
+        "id": "https://localhost/products/head-parity-probe/#work",
+        "props": [
+          "author",
+          "name",
+          "url",
+          "workExample"
+        ],
+        "type": "Book",
+        "values": {
+          "name": "Head Parity Probe",
+          "url": "https://localhost/products/head-parity-probe/"
+        }
+      },
+      {
+        "id": "http://testserver/products/head-parity-probe/#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "props": [
+          "name"
+        ],
+        "type": "Country",
+        "values": {
+          "name": "US"
+        }
+      },
+      {
+        "props": [
+          "addressCountry"
+        ],
+        "type": "DefinedRegion"
+      },
+      {
+        "props": [
+          "actionPlatform",
+          "urlTemplate"
+        ],
+        "type": "EntryPoint"
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "All books",
+          "position": 2
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Parity Category",
+          "position": 3
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Head Parity Probe",
+          "position": 4
+        }
+      },
+      {
+        "props": [
+          "applicableCountry",
+          "merchantReturnDays",
+          "returnFees",
+          "returnMethod",
+          "returnPolicyCategory"
+        ],
+        "type": "MerchantReturnPolicy"
+      },
+      {
+        "props": [
+          "currency",
+          "value"
+        ],
+        "type": "MonetaryAmount"
+      },
+      {
+        "props": [
+          "currency",
+          "value"
+        ],
+        "type": "MonetaryAmount"
+      },
+      {
+        "props": [
+          "availability",
+          "hasMerchantReturnPolicy",
+          "itemCondition",
+          "price",
+          "priceCurrency",
+          "priceValidUntil",
+          "shippingDetails",
+          "url"
+        ],
+        "type": "Offer",
+        "values": {
+          "availability": "https://schema.org/InStock",
+          "itemCondition": "https://schema.org/NewCondition",
+          "price": "14.00",
+          "priceCurrency": "USD",
+          "url": "https://localhost/products/head-parity-probe/"
+        }
+      },
+      {
+        "props": [
+          "category",
+          "eligibleRegion",
+          "price",
+          "priceCurrency"
+        ],
+        "type": "Offer",
+        "values": {
+          "price": "14.00",
+          "priceCurrency": "USD"
+        }
+      },
+      {
+        "props": [
+          "deliveryTime",
+          "freeShippingThreshold",
+          "shippingDestination",
+          "shippingRate"
+        ],
+        "type": "OfferShippingDetails"
+      },
+      {
+        "props": [
+          "name"
+        ],
+        "type": "Person",
+        "values": {
+          "name": "Ines Parityauthor"
+        }
+      },
+      {
+        "id": "http://testserver/products/head-parity-probe/#product",
+        "props": [
+          "category",
+          "dateModified",
+          "description",
+          "name",
+          "offers",
+          "sku",
+          "url"
+        ],
+        "type": "Product",
+        "values": {
+          "name": "Head Parity Probe",
+          "sku": "",
+          "url": "https://localhost/products/head-parity-probe/"
+        }
+      },
+      {
+        "props": [
+          "maxValue",
+          "minValue",
+          "unitCode"
+        ],
+        "type": "QuantitativeValue"
+      },
+      {
+        "props": [
+          "maxValue",
+          "minValue",
+          "unitCode"
+        ],
+        "type": "QuantitativeValue"
+      },
+      {
+        "props": [
+          "expectsAcceptanceOf",
+          "target"
+        ],
+        "type": "ReadAction"
+      },
+      {
+        "props": [
+          "handlingTime",
+          "transitTime"
+        ],
+        "type": "ShippingDeliveryTime"
+      },
+      {
+        "props": [
+          "cssSelector"
+        ],
+        "type": "SpeakableSpecification"
+      },
+      {
+        "id": "http://testserver/products/head-parity-probe/#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "name",
+          "speakable",
+          "url"
+        ],
+        "type": "WebPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Head Parity Probe",
+          "url": "http://testserver/products/head-parity-probe/"
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "/md/products/head-parity-probe",
+        "rel": "alternate",
+        "title": "Plain-text product description for LLM crawlers",
+        "type": "text/markdown"
+      },
+      {
+        "href": "http://testserver/products/head-parity-probe/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "A probe product used to snapshot the SEO head.",
+      "og:description": "A probe product used to snapshot the SEO head.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Head Parity Probe",
+      "og:type": "website",
+      "og:url": "http://testserver/products/head-parity-probe/",
+      "product:availability": "in stock",
+      "product:price:amount": "14.00",
+      "product:price:currency": "USD",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "A probe product used to snapshot the SEO head.",
+      "twitter:title": "Head Parity Probe"
+    },
+    "path": "/products/head-parity-probe/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Head Parity Probe \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/search/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/search/#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Search",
+          "position": 2
+        }
+      },
+      {
+        "id": "http://testserver/search/#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "name",
+          "url"
+        ],
+        "type": "SearchResultsPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Search",
+          "url": "http://testserver/search/"
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/search/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "Search the dot books shelf.",
+      "og:description": "Search the dot books shelf.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Search",
+      "og:type": "website",
+      "og:url": "http://testserver/search/",
+      "robots": "noindex, follow",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "Search the dot books shelf.",
+      "twitter:title": "Search"
+    },
+    "path": "/search/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Search \u2014 Morpheus Store",
+    "title_count": 1
+  },
+  "/vendor/head-parity-press/": {
+    "canonical_count": 1,
+    "jsonld": [
+      {
+        "id": "http://testserver/vendor/head-parity-press/#breadcrumb",
+        "props": [
+          "itemListElement"
+        ],
+        "type": "BreadcrumbList"
+      },
+      {
+        "id": "http://testserver/vendor/head-parity-press/#webpage",
+        "props": [
+          "breadcrumb",
+          "description",
+          "inLanguage",
+          "isPartOf",
+          "mainEntity",
+          "name",
+          "url"
+        ],
+        "type": "CollectionPage",
+        "values": {
+          "inLanguage": "en",
+          "name": "Parity Press \u2014 Publishers",
+          "url": "http://testserver/vendor/head-parity-press/"
+        }
+      },
+      {
+        "id": "http://testserver/vendor/head-parity-press/#itemlist",
+        "props": [
+          "itemListElement",
+          "itemListOrder",
+          "numberOfItems"
+        ],
+        "type": "ItemList",
+        "values": {
+          "numberOfItems": 1
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Head Parity Probe",
+          "position": 1,
+          "url": "http://testserver/products/head-parity-probe/"
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Home",
+          "position": 1
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Marketplace",
+          "position": 2
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Publishers",
+          "position": 3
+        }
+      },
+      {
+        "props": [
+          "item",
+          "name",
+          "position"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Parity Press",
+          "position": 4
+        }
+      },
+      {
+        "id": "https://localhost#website",
+        "props": [
+          "url"
+        ],
+        "type": "WebSite",
+        "values": {
+          "url": "https://localhost/"
+        }
+      }
+    ],
+    "links": [
+      {
+        "href": "/journal/atom.xml",
+        "rel": "alternate",
+        "title": "Journal Atom feed",
+        "type": "application/atom+xml"
+      },
+      {
+        "href": "/journal/feed.xml",
+        "rel": "alternate",
+        "title": "Journal feed",
+        "type": "application/rss+xml"
+      },
+      {
+        "href": "/llms.txt",
+        "rel": "alternate",
+        "title": "LLM-friendly site map",
+        "type": "text/plain"
+      },
+      {
+        "href": "http://testserver/vendor/head-parity-press/",
+        "rel": "canonical"
+      },
+      {
+        "href": "/opensearch.xml",
+        "rel": "search",
+        "title": "Morpheus Store",
+        "type": "application/opensearchdescription+xml"
+      }
+    ],
+    "meta": {
+      "description": "A press used by the parity probe.",
+      "og:description": "A press used by the parity probe.",
+      "og:locale": "en",
+      "og:site_name": "Morpheus Store",
+      "og:title": "Parity Press \u2014 Publishers",
+      "og:type": "website",
+      "og:url": "http://testserver/vendor/head-parity-press/",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "A press used by the parity probe.",
+      "twitter:title": "Parity Press \u2014 Publishers"
+    },
+    "path": "/vendor/head-parity-press/",
+    "robots_count": 1,
+    "status": 200,
+    "title": "Parity Press \u2014 Publishers \u2014 Morpheus Store",
+    "title_count": 1
+  }
+}

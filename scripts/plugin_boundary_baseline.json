@@ -162,10 +162,6 @@
       "target": "orders"
     },
     {
-      "importer": "catalog",
-      "target": "seo"
-    },
-    {
       "importer": "channels",
       "target": "analytics"
     },
@@ -380,10 +376,6 @@
     {
       "importer": "seo",
       "target": "book_product"
-    },
-    {
-      "importer": "seo",
-      "target": "catalog"
     },
     {
       "importer": "seo",
