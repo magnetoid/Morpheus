@@ -373,3 +373,30 @@ def _availability_from_stock(product_pk) -> str:
     if any(policy == 'continue' for _vid, policy in tracked):
         return 'backorder'
     return 'out_of_stock'
+
+
+def variant_availability(variant) -> str:
+    """An availability token for ONE variant.
+
+    Same rules as `product_availability`, applied to a single row: a variant
+    with no stock records is untracked rather than empty, and a variant that
+    accepts backorders is buyable even at zero.
+    """
+    from django.db.models import F, Sum
+
+    if variant is None:
+        return ''
+    product = getattr(variant, 'product', None)
+    if product is not None and getattr(product, 'track_inventory', True) is False:
+        return 'in_stock'
+    if str(getattr(product, 'status', '') or '') == 'archived':
+        return 'discontinued'
+    try:
+        qty = StockLevel.objects.filter(variant=variant).aggregate(
+            qty=Sum(F('quantity') - F('reserved_quantity'))
+        )['qty']
+    except Exception:  # noqa: BLE001 — an unmigrated DB must not change the answer
+        return ''
+    if qty is None or qty > 0:
+        return 'in_stock'  # None = untracked, not empty
+    return 'backorder' if getattr(variant, 'inventory_policy', '') == 'continue' else 'out_of_stock'

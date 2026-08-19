@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.49.0 — 2026-08-19
+
+**Products with variants are described as one item**
+
+- A product sold in several versions — print and ebook, hardcover and paperback, several sizes — is now described to Google as one item with choices, each carrying its own price and its own real stock, instead of a single entry that mentioned none of them. This has been written and switched off since v0.30: the code was reachable only from a path your product pages never take.
+- Products on sale now show their previous price, so search results can display the saving. It appears only when the compare-at price is genuinely higher than what you charge — a leftover compare-at price equal to the current one is not a sale and is not advertised as one.
+- Fixed: a product page could lose its entire product markup. Reading a price field that the page had not loaded raised an error the markup builder swallowed, leaving the page valid but with nothing in it describing the product. Money fields are read defensively now, and there is a test for it.
+
 ## v0.48.1 — 2026-08-19
 
 **Availability: untracked stock is not zero stock**

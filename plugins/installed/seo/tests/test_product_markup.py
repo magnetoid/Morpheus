@@ -182,3 +182,163 @@ class RatingClaimTests(TestCase):
 
         self.assertEqual(rating.get('reviewCount'), 1)
         self.assertEqual(rating.get('ratingValue'), 5.0)
+
+
+class VariantMarkupTests(TestCase):
+    """A product sold in several versions is a group, and says so.
+
+    `hasVariant` has existed in this codebase since v0.30 and never ran on a
+    product page — it sat behind an ORM-only guard while the page rendered a
+    dict. Without it, each edition competes with its siblings instead of being
+    presented as one item with choices.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        from plugins.installed.catalog.models import ProductVariant
+
+        cls.product = Product.objects.create(
+            name='Variant Probe',
+            slug='variant-probe',
+            sku='VP-1',
+            status='active',
+            price=Money(Decimal('16.00'), 'USD'),
+        )
+        cls.print_variant = ProductVariant.objects.create(
+            product=cls.product,
+            name='Print',
+            sku='VP-1-P',
+            variant_type='physical',
+            price=Money(Decimal('16.00'), 'USD'),
+        )
+        cls.digital = ProductVariant.objects.create(
+            product=cls.product,
+            name='Digital PDF',
+            sku='VP-1-D',
+            variant_type='digital',
+            price=Money(Decimal('9.00'), 'USD'),
+        )
+
+    def _node(self):
+        return product_jsonld({'slug': 'variant-probe'}, model=self.product)
+
+    def test_a_multi_version_product_is_a_product_group(self):
+        node = self._node()
+        self.assertEqual(node['@type'], 'ProductGroup')
+        self.assertEqual(node['productGroupID'], str(self.product.id))
+        self.assertEqual(len(node['hasVariant']), 2)
+
+    def test_each_variant_carries_its_own_price(self):
+        prices = {v['sku']: v['offers']['price'] for v in self._node()['hasVariant']}
+        self.assertEqual(prices['VP-1-P'], '16.00')
+        self.assertEqual(prices['VP-1-D'], '9.00')
+
+    def test_the_group_says_what_it_varies_by(self):
+        """Print vs digital is a material difference; claiming an axis the
+        variants do not differ on would be worse than claiming none."""
+        self.assertEqual(self._node()['variesBy'], 'https://schema.org/bookFormat')
+
+    def test_a_single_variant_is_not_a_group(self):
+        """A chooser for one option is a chooser the shopper does not have."""
+        self.digital.delete()
+        node = self._node()
+        self.assertEqual(node['@type'], 'Product')
+        self.assertNotIn('hasVariant', node)
+
+    def test_a_variant_out_of_stock_is_not_advertised_as_available(self):
+        """Every member used to be hardcoded InStock, so a group whose only
+        available option was the ebook still offered the hardcover."""
+        from plugins.installed.inventory.models import StockLevel, Warehouse
+
+        self.product.track_inventory = True
+        self.product.save(update_fields=['track_inventory'])
+        warehouse = Warehouse.objects.create(name='Main', code='VMAIN')
+        StockLevel.objects.create(variant=self.print_variant, warehouse=warehouse, quantity=0)
+        StockLevel.objects.create(variant=self.digital, warehouse=warehouse, quantity=5)
+
+        availability = {v['sku']: v['offers']['availability'] for v in self._node()['hasVariant']}
+        self.assertEqual(availability['VP-1-P'], 'https://schema.org/OutOfStock')
+        self.assertEqual(availability['VP-1-D'], 'https://schema.org/InStock')
+
+
+class SalePriceTests(TestCase):
+    """A discount is only a discount if the old price was higher."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.product = Product.objects.create(
+            name='Sale Probe',
+            slug='sale-probe',
+            sku='SL-1',
+            status='active',
+            price=Money(Decimal('10.00'), 'USD'),
+        )
+
+    def test_a_reduced_product_publishes_its_previous_price(self):
+        self.product.compare_at_price = Money(Decimal('18.00'), 'USD')
+        self.product.save(update_fields=['compare_at_price'])
+
+        spec = product_jsonld({'slug': 'sale-probe'}, model=self.product)['offers'][
+            'priceSpecification'
+        ]
+
+        self.assertEqual(spec['priceType'], 'https://schema.org/StrikethroughPrice')
+        self.assertEqual(spec['price'], '18.00')
+
+    def test_a_compare_at_price_that_is_not_higher_is_not_a_sale(self):
+        """A leftover compare-at price equal to the price would advertise a
+        saving of nothing."""
+        self.product.compare_at_price = Money(Decimal('10.00'), 'USD')
+        self.product.save(update_fields=['compare_at_price'])
+
+        offer = product_jsonld({'slug': 'sale-probe'}, model=self.product)['offers']
+
+        self.assertNotIn('priceSpecification', offer)
+
+    def test_no_compare_at_price_means_no_claim(self):
+        offer = product_jsonld({'slug': 'sale-probe'}, model=self.product)['offers']
+        self.assertNotIn('priceSpecification', offer)
+
+
+class DeferredFieldTests(TestCase):
+    """A view that loads a product with `.only()` must not cost it its markup.
+
+    djmoney raises **KeyError** when one of its fields was not selected, and
+    `getattr`'s default only swallows AttributeError. The product page defers
+    `price` and `compare_at_price`, so one unguarded read inside the markup
+    builder raised, the graph's per-node guard caught it, and the page shipped
+    with no Product node at all — a total loss of the product's structured
+    data, with a 200 and nothing in the logs above debug.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.product = Product.objects.create(
+            name='Deferred Probe',
+            slug='deferred-probe',
+            sku='DF-1',
+            status='active',
+            price=Money(Decimal('14.00'), 'USD'),
+            compare_at_price=Money(Decimal('20.00'), 'USD'),
+        )
+
+    def test_a_deferred_money_field_does_not_lose_the_product_node(self):
+        deferred = Product.objects.only('id', 'slug', 'name', 'status').get(pk=self.product.pk)
+
+        node = product_jsonld(
+            {'slug': 'deferred-probe', 'price': {'amount': '14.00', 'currency': 'USD'}},
+            model=deferred,
+        )
+
+        self.assertEqual(node['@type'], 'Product')
+        self.assertEqual(node['offers']['price'], '14.00')
+        # The sale price simply is not known from a row that never loaded it —
+        # absent is correct, raising is not.
+        self.assertNotIn('priceSpecification', node['offers'])
+
+    def test_the_full_row_still_publishes_the_sale(self):
+        node = product_jsonld(
+            {'slug': 'deferred-probe', 'price': {'amount': '14.00', 'currency': 'USD'}},
+            model=self.product,
+        )
+        self.assertEqual(node['offers']['priceSpecification']['price'], '20.00')

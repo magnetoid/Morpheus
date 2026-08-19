@@ -456,6 +456,21 @@ parity profile SHRANK on purpose — the one case where that is not the bug.
 Guarded by `seo/tests/test_offer_claims.py`, which asserts both directions
 (configured → published and matching; unconfigured → absent).
 
+**Landmine — a deferred djmoney field raises `KeyError`, which `getattr`'s
+default does NOT catch, and one unguarded read can cost a whole node.** A view
+that loads a product with `.only()` leaves the unselected columns absent;
+touching one raises `KeyError` out of djmoney, not `AttributeError`, so
+`getattr(product, 'compare_at_price', None)` **raises**. The PDP defers both
+`price` and `compare_at_price`. A single unguarded read inside `product_jsonld`
+therefore raised, the graph's per-node guard caught it, and the product page
+shipped with **no Product node at all** — a total loss of the page's structured
+data, behind a 200 and nothing above debug in the logs. Read money fields
+through `_safe_field` (checks `get_deferred_fields()` first, then catches), and
+remember the general shape: a fail-soft wrapper turns "this raised" into "this
+feature is silently absent", so the guard has to be inside, not outside. This
+has now bitten `price` (v0.46) and `compare_at_price` (v0.49). Guarded by
+`seo/tests/test_product_markup.py::DeferredFieldTests`.
+
 **Landmine — a `StorefrontBlock` whose slot no template renders is silent.**
 The plugin is enabled, its tests pass, its block renders fine in isolation — and
 the merchant sees nothing, with no error anywhere. This had happened four times

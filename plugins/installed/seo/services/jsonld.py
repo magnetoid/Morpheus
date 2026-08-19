@@ -149,6 +149,164 @@ def _availability(rendered, orm) -> str:
     return 'https://schema.org/InStock'
 
 
+def _safe_field(source, name):
+    """Read a field without letting a DEFERRED one take the page down.
+
+    A view that loads a product with `.only()` leaves the unselected columns
+    absent, and djmoney raises **KeyError** when one of its fields is touched —
+    which `getattr`'s default does not catch, because that only covers
+    AttributeError. The product page defers `compare_at_price`, so reading it
+    unguarded raised straight out of the markup builder and the page shipped
+    with no Product node at all.
+    """
+    if source is None:
+        return None
+    if isinstance(source, dict):
+        return source.get(name)
+    deferred = getattr(source, 'get_deferred_fields', None)
+    if callable(deferred) and name in (deferred() or ()):
+        return None
+    try:
+        return getattr(source, name, None)
+    except Exception:  # noqa: BLE001 — a deferred / unsaved instance
+        return None
+
+
+def _compare_at(rendered, orm):
+    """The pre-sale price, from what was rendered first and the row second."""
+    for source in (rendered, orm):
+        value = _safe_field(source, 'compare_at_price')
+        if isinstance(value, dict):
+            value = value.get('amount')
+        amount = getattr(value, 'amount', value)
+        if amount not in (None, ''):
+            return amount
+    return None
+
+
+def _variant_axis(variants) -> list[str]:
+    """What actually differs between these variants.
+
+    `variesBy` tells Google why the group has more than one member. Guessing it
+    would be worse than omitting it, so only axes that genuinely differ across
+    the set are claimed.
+    """
+    axes = []
+    if len({(getattr(v, 'size', '') or '').strip() for v in variants} - {''}) > 1:
+        axes.append('https://schema.org/size')
+    if len({(getattr(v, 'variant_type', '') or '').strip() for v in variants} - {''}) > 1:
+        # Print vs digital vs audiobook is a material difference, and
+        # `bookFormat` is the property a book shop varies on.
+        axes.append('https://schema.org/bookFormat')
+    return axes
+
+
+def _money(value):
+    amount = getattr(value, 'amount', None)
+    return amount if amount is not None else None
+
+
+def _strikethrough(price, compare_at, currency: str) -> dict | None:
+    """The "was" price, when there genuinely is one.
+
+    Google reads a `UnitPriceSpecification` with `priceType=StrikethroughPrice`
+    as the pre-sale price and can show the saving. It is only true when the
+    compare-at price is actually HIGHER than what is being charged — one left
+    equal to or below the price is a leftover, not a sale, and publishing it
+    would advertise a discount that does not exist.
+    """
+    if price is None or compare_at is None:
+        return None
+    try:
+        if float(compare_at) <= float(price):
+            return None
+    except (TypeError, ValueError):
+        return None
+    return {
+        '@type': 'UnitPriceSpecification',
+        'priceType': 'https://schema.org/StrikethroughPrice',
+        'price': f'{float(compare_at):.2f}',
+        'priceCurrency': currency,
+    }
+
+
+def _variant_availability(variant) -> str:
+    """Per-variant stock, from the app that holds it.
+
+    The previous version hardcoded InStock on every member, so a group whose
+    only available option was the digital edition still advertised the
+    hardcover as in stock.
+    """
+    from plugins.feed_mapping import SCHEMA_AVAILABILITY
+
+    try:
+        from plugins.registry import app_registry
+
+        if not app_registry.is_active('inventory'):
+            return SCHEMA_AVAILABILITY['in_stock']
+        from plugins.installed.inventory.services import variant_availability
+
+        token = variant_availability(variant)
+        return SCHEMA_AVAILABILITY.get(token, SCHEMA_AVAILABILITY['in_stock'])
+    except Exception:  # noqa: BLE001
+        return SCHEMA_AVAILABILITY['in_stock']
+
+
+def _apply_variants(out: dict, orm, *, slug: str, currency: str) -> None:
+    """Turn a multi-variant product into a ProductGroup with real offers."""
+    try:
+        variants = list(orm.variants.filter(is_active=True).order_by('sort_order', 'name')[:20])
+    except Exception:  # noqa: BLE001 — an unmigrated variant table
+        return
+    if len(variants) < 2:
+        # One variant is not a group, it is the product. Declaring a
+        # ProductGroup of one asks Google to render a chooser for a choice
+        # the shopper does not have.
+        return
+
+    out['@type'] = (
+        ['ProductGroup', 'Book']
+        if isinstance(out.get('@type'), list) and 'Book' in out['@type']
+        else 'ProductGroup'
+    )
+    out['productGroupID'] = str(getattr(orm, 'id', '') or slug)
+    axes = _variant_axis(variants)
+    if axes:
+        out['variesBy'] = axes if len(axes) > 1 else axes[0]
+
+    parent_price = _money(_safe_field(orm, 'price'))
+    members = []
+    for variant in variants:
+        price = _money(_safe_field(variant, 'price'))
+        price = parent_price if price is None else price
+        if price is None:
+            continue
+        variant_currency = str(getattr(_safe_field(variant, 'price'), 'currency', '') or currency)
+        offer = {
+            '@type': 'Offer',
+            'price': f'{float(price):.2f}',
+            'priceCurrency': variant_currency,
+            'availability': _variant_availability(variant),
+            'itemCondition': 'https://schema.org/NewCondition',
+        }
+        was = _strikethrough(
+            price, _money(_safe_field(variant, 'compare_at_price')), variant_currency
+        )
+        if was:
+            offer['priceSpecification'] = was
+        member = {
+            '@type': 'Product',
+            'sku': variant.sku or '',
+            'name': variant.name or '',
+            'offers': offer,
+        }
+        if (getattr(variant, 'size', '') or '').strip():
+            member['size'] = variant.size.strip()
+        members.append(member)
+    if members:
+        out['hasVariant'] = members
+
+
 def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, model=None) -> dict:
     """Rich Product structured data.
 
@@ -343,6 +501,12 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
             # New goods; Google recommends itemCondition for merchant listings.
             'itemCondition': 'https://schema.org/NewCondition',
         }
+        # The "was" price, when the product is genuinely reduced. Google can
+        # show the saving next to the result, and a compare-at price is the one
+        # piece of pricing the platform already holds and never published.
+        was = _strikethrough(offer_price, _compare_at(product, orm), offer_curr)
+        if was:
+            out['offers']['priceSpecification'] = was
         # priceValidUntil — Google emits a "missing field" warning without it.
         # Roll a year forward from today so the offer never reads as expired.
         try:
@@ -433,48 +597,13 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
             for k, v in (am if isinstance(am, dict) else {}).items()
         ][:25]
 
-    # ProductGroup variants — schema.org's hasVariant unlocks variant
-    # cards in Google AI Shopping. Only emit when variants exist.
+    # ProductGroup — the shape Google wants for a product sold in several
+    # versions: one group node carrying its variants, rather than several
+    # unrelated Product pages competing with each other. This code has existed
+    # since v0.30 and never once ran on a product page: it was guarded on the
+    # ORM, and the page renders a dict.
     if orm is not None:
-        try:
-            variants = (
-                list(getattr(product, 'variants', None).filter(is_active=True)[:20])
-                if getattr(product, 'variants', None)
-                else []
-            )
-            if variants:
-                # Preserve Book subtype if it was added above — emit
-                # ['ProductGroup', 'Book'] so we don't lose the Book
-                # signal AI engines + SERP rich results use.
-                if isinstance(out.get('@type'), list) and 'Book' in out['@type']:
-                    out['@type'] = ['ProductGroup', 'Book']
-                else:
-                    out['@type'] = 'ProductGroup'
-                out['productGroupID'] = str(getattr(product, 'id', '') or slug)
-                out['hasVariant'] = [
-                    {
-                        '@type': 'Product',
-                        'sku': v.sku or '',
-                        'name': v.name or '',
-                        'offers': {
-                            '@type': 'Offer',
-                            'price': str(
-                                getattr(v, 'price', None).amount
-                                if getattr(v, 'price', None)
-                                else (offer_price if price is not None else '')
-                            ),
-                            'priceCurrency': str(
-                                getattr(v, 'price', None).currency
-                                if getattr(v, 'price', None)
-                                else (offer_curr if price is not None else 'USD')
-                            ),
-                            'availability': 'https://schema.org/InStock',
-                        },
-                    }
-                    for v in variants
-                ]
-        except Exception:  # noqa: BLE001
-            pass
+        _apply_variants(out, orm, slug=slug, currency=offer_curr)
 
     # Entity-graph sameAs links via metafield 'seo.same_as' (comma- or
     # newline-separated URLs). March-2026 core update made this the #1

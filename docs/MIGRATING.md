@@ -6,6 +6,34 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.49.0 — products with variants are described as one item
+
+**Who this affects:** nobody has to change anything. This adds markup that was
+missing and fixes a case where it disappeared.
+
+### What changed
+
+A product sold in several versions — print and ebook, or several sizes — is now
+described as a **ProductGroup** carrying its variants, each with its own price
+and its own real stock, rather than a single Product node that mentioned none of
+them. The code for this existed since v0.30 and had never run on a product page:
+it was guarded on the database row while the page renders a GraphQL payload.
+
+Products on sale now publish their **previous price**, so Google can show the
+saving. It is emitted only when the compare-at price is genuinely higher than
+what is being charged — a leftover compare-at price equal to the price is not a
+sale and is not advertised as one.
+
+### A bug worth knowing about
+
+One unguarded read of a deferred money field raised `KeyError` (djmoney's
+behaviour, which `getattr`'s default does not catch), and the graph's per-node
+guard turned that into a product page with **no Product markup at all** — a 200
+with the whole node missing. Money fields are read defensively now. If you build
+JSON-LD of your own from a partially-loaded row, do the same.
+
+---
+
 ## v0.48.0 — product markup states only what is true
 
 **Who this affects:** anyone relying on the shipping, return-policy or
