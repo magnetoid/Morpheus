@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.48.1 — 2026-08-19
+
+**Availability: untracked stock is not zero stock**
+
+- Fixes a regression in v0.48.0. A shop that does not track inventory has no stock records at all, and the new availability check read that emptiness as 'none left' — so every product page declared the item out of stock while its add-to-cart button worked normally. A product is only out of stock when its stock is actually counted and has run out; products with inventory tracking switched off, and variants nobody counts, are purchasable as before.
+
 ## v0.48.0 — 2026-08-19
 
 **Product markup states only what is true**

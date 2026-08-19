@@ -141,6 +141,53 @@ class AvailabilityTests(TestCase):
 
         self.assertEqual(product_availability(self.product), 'in_stock')
 
+    def test_variants_with_no_stock_rows_are_untracked_not_sold_out(self):
+        """The bug this shipped with. A store that has never created a single
+        StockLevel row aggregates to zero for every variant — and the first
+        version read that as sold out, so every product page on a shop with
+        inventory tracking switched off declared OutOfStock while its add-to-cart
+        button worked. Absence of measurement is not a measurement of absence."""
+        from plugins.installed.catalog.models import ProductVariant
+        from plugins.installed.inventory.services import product_availability
+
+        ProductVariant.objects.create(
+            product=self.product, name='Print', sku='ST-1-N', inventory_policy='deny'
+        )
+        self.assertEqual(product_availability(self.product), 'in_stock')
+
+    def test_an_untracked_variant_keeps_the_product_buyable(self):
+        """One counted variant at zero must not bury a sibling nobody counts."""
+        from plugins.installed.catalog.models import ProductVariant
+        from plugins.installed.inventory.models import StockLevel, Warehouse
+        from plugins.installed.inventory.services import product_availability
+
+        counted = ProductVariant.objects.create(
+            product=self.product, name='Counted', sku='ST-1-D', inventory_policy='deny'
+        )
+        ProductVariant.objects.create(
+            product=self.product, name='Untracked', sku='ST-1-E', inventory_policy='deny'
+        )
+        warehouse = Warehouse.objects.create(name='Main', code='MAIN')
+        StockLevel.objects.create(variant=counted, warehouse=warehouse, quantity=0)
+
+        self.assertEqual(product_availability(self.product), 'in_stock')
+
+    def test_a_product_that_does_not_track_inventory_is_always_purchasable(self):
+        """`track_inventory=False` is the merchant saying so in as many words."""
+        from plugins.installed.catalog.models import ProductVariant
+        from plugins.installed.inventory.models import StockLevel, Warehouse
+        from plugins.installed.inventory.services import product_availability
+
+        self.product.track_inventory = False
+        self.product.save(update_fields=['track_inventory'])
+        variant = ProductVariant.objects.create(
+            product=self.product, name='Zeroed', sku='ST-1-F', inventory_policy='deny'
+        )
+        warehouse = Warehouse.objects.create(name='Main', code='MAIN')
+        StockLevel.objects.create(variant=variant, warehouse=warehouse, quantity=0)
+
+        self.assertEqual(product_availability(self.product), 'in_stock')
+
     def test_a_variant_with_zero_stock_is_out_of_stock(self):
         """The check that never ran on a product page: it lived behind an
         ORM-only branch, so the page always said InStock."""

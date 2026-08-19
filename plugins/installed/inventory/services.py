@@ -324,6 +324,9 @@ def product_availability(product) -> str:
         return ''
     if str(getattr(product, 'status', '') or '') == 'archived':
         return 'discontinued'
+    # The merchant said not to count this one. Nothing below can override that.
+    if getattr(product, 'track_inventory', True) is False:
+        return 'in_stock'
     pk = getattr(product, 'pk', None)
     if pk is None:
         return ''
@@ -346,15 +349,27 @@ def _availability_from_stock(product_pk) -> str:
     if not variants:
         # No variants means nothing to track; the product is purchasable.
         return 'in_stock'
-    available = (
+    rows = (
         StockLevel.objects.filter(variant_id__in=[v[0] for v in variants])
         .values('variant_id')
         .annotate(qty=Sum(F('quantity') - F('reserved_quantity')))
     )
-    by_variant = {row['variant_id']: (row['qty'] or 0) for row in available}
-    if any(by_variant.get(vid, 0) > 0 for vid, _policy in variants):
+    by_variant = {row['variant_id']: (row['qty'] or 0) for row in rows}
+
+    # A variant with NO stock rows is UNTRACKED, not depleted. Reading an empty
+    # aggregate as zero is how this function first shipped, and it declared a
+    # whole store out of stock: the shop had no StockLevel rows at all, so every
+    # product summed to nothing and every page said sold out while the add-to-cart
+    # button worked. Absence of measurement is not a measurement of absence.
+    tracked = [(vid, policy) for vid, policy in variants if vid in by_variant]
+    if not tracked:
+        return 'in_stock'
+    if any(by_variant.get(vid, 0) > 0 for vid, _policy in tracked):
+        return 'in_stock'
+    # An untracked sibling is still buyable even when the tracked ones are empty.
+    if len(tracked) < len(variants):
         return 'in_stock'
     # Nothing on hand — but a backorder-friendly variant is still buyable.
-    if any(policy == 'continue' for _vid, policy in variants):
+    if any(policy == 'continue' for _vid, policy in tracked):
         return 'backorder'
     return 'out_of_stock'
