@@ -96,11 +96,19 @@ from .indexnow import (
 
 # Redirects + 404 monitor.
 from .redirects import (
+    export_redirects_csv,
+    import_redirects_csv,
+    invalidate_redirect_cache,
+    normalise_path,
+    normalise_target,
     record_404,
+    record_redirect_hit,
     refresh_404_suggestions,
     resolve_redirect,
     suggest_redirect,
+    validate_redirect,
 )
+from .slug_history import public_path_for, record_slug_change
 
 # Image variants.
 from .images import (
@@ -179,10 +187,19 @@ __all__ = [
     'get_or_create_indexnow_key',
     'ping_indexnow',
     # redirects
+    'export_redirects_csv',
+    'import_redirects_csv',
+    'invalidate_redirect_cache',
+    'normalise_path',
+    'normalise_target',
+    'public_path_for',
     'record_404',
+    'record_redirect_hit',
+    'record_slug_change',
     'refresh_404_suggestions',
     'resolve_redirect',
     'suggest_redirect',
+    'validate_redirect',
     # images
     'ALLOWED_IMAGE_FORMATS',
     'ALLOWED_IMAGE_WIDTHS',

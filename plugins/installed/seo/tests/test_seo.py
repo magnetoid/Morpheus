@@ -174,12 +174,20 @@ class RedirectTests(TestCase):
         self.assertIsNone(resolve_redirect('/no-match/'))
 
     def test_redirect_increments_hit_count(self):
+        """Counting moved OUT of resolve_redirect and into the middleware.
+
+        Resolution is now a pure read against a cached ruleset, so it must not
+        write; the middleware counts the hit once it has decided to serve one.
+        """
+        from plugins.installed.seo.services.redirects import record_redirect_hit
+
         r = Redirect.objects.create(
             from_path='/a/',
             to_path='/b/',
             is_active=True,
         )
-        resolve_redirect('/a/')
+        self.assertEqual(resolve_redirect('/a/'), ('/b/', 301))
+        record_redirect_hit('/a/')
         r.refresh_from_db()
         self.assertEqual(r.hit_count, 1)
         self.assertIsNotNone(r.last_hit_at)

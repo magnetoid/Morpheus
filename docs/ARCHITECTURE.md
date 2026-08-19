@@ -198,9 +198,19 @@ theme:  {% storefront_head title=… description=… %}
 ```
 
 Apps that own a URL shape answer `SEO_RESOLVE_PAGE` rather than being imported,
-which is why the SEO app depends on `catalog` and nothing else. Machine
+which is why the SEO app depends on `catalog` and nothing else. The page
+vocabulary they answer with — `SeoPage` and its kind constants — lives in
+[`core/seo_page.py`](../core/seo_page.py), so an app can describe its own pages
+without importing seo (core knows the shape; the app knows the rules). Machine
 endpoints (`robots.txt`, `sitemap*.xml`, `llms.txt`, `/.well-known/*`) register
 with `surface='chrome'` so they are never language-prefixed.
+
+**Where per-entity SEO lives.** One row per object in `SeoMeta`, one editor for
+every entity type (ADR 0037). The panel reaches the product, category,
+collection and CMS-page forms through `*_FORM_CARDS` contributions, so
+`admin_dashboard` and `cms` know nothing about SEO and the editor disappears
+with the app. `catalog`'s native SEO columns are read as a fallback for one
+release; a value the merchant typed beats one `autofill_meta_for` guessed.
 
 ## Key reference files when working in this repo
 

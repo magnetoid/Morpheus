@@ -61,10 +61,16 @@ def collections_list(request: HttpRequest) -> HttpResponse:
 def collection_new(request: HttpRequest) -> HttpResponse:
     from plugins.installed.admin_dashboard.forms.collections import CollectionForm
 
+    from plugins.installed.admin_dashboard.views_split._shared import (
+        entity_form_cards,
+        fire_entity_form_saved,
+    )
+
     if request.method == 'POST':
         form = CollectionForm(request.POST, files=request.FILES)
         if form.is_valid():
             obj = form.save()
+            fire_entity_form_saved('collection', obj, request)
             messages.success(request, f'Collection “{obj.name}” created.')
             return redirect('admin_dashboard:collection_edit', collection_id=obj.id)
     else:
@@ -74,6 +80,7 @@ def collection_new(request: HttpRequest) -> HttpResponse:
         'admin_dashboard/collection_form.html',
         {
             'form': form,
+            'extra_cards': entity_form_cards('collection', None, request),
             'is_new': True,
             'active_nav': 'collections',
             'breadcrumb_trail': _breadcrumb('New collection'),
@@ -88,11 +95,17 @@ def collection_edit(request: HttpRequest, collection_id: str) -> HttpResponse:
     from plugins.installed.admin_dashboard.forms.collections import CollectionForm
     from plugins.installed.catalog.models import Collection
 
+    from plugins.installed.admin_dashboard.views_split._shared import (
+        entity_form_cards,
+        fire_entity_form_saved,
+    )
+
     collection = get_object_or_404(Collection, pk=collection_id)
     if request.method == 'POST':
         form = CollectionForm(request.POST, files=request.FILES, instance=collection)
         if form.is_valid():
             form.save()
+            fire_entity_form_saved('collection', collection, request)
             messages.success(request, 'Collection saved.')
             return redirect('admin_dashboard:collection_edit', collection_id=collection.id)
     else:
@@ -103,6 +116,7 @@ def collection_edit(request: HttpRequest, collection_id: str) -> HttpResponse:
         {
             'form': form,
             'collection': collection,
+            'extra_cards': entity_form_cards('collection', collection, request),
             'is_new': False,
             'active_nav': 'collections',
             'breadcrumb_trail': _breadcrumb(collection.name[:50]),

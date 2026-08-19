@@ -97,11 +97,17 @@ def category_edit(request: HttpRequest, category_id: str) -> HttpResponse:
     from plugins.installed.admin_dashboard.forms.categories import CategoryForm
     from plugins.installed.catalog.models import Category
 
+    from plugins.installed.admin_dashboard.views_split._shared import (
+        entity_form_cards,
+        fire_entity_form_saved,
+    )
+
     category = get_object_or_404(Category, pk=category_id)
     if request.method == 'POST':
         form = CategoryForm(request.POST, files=request.FILES, instance=category)
         if form.is_valid():
             form.save()
+            fire_entity_form_saved('category', category, request)
             messages.success(request, 'Category saved.')
             return redirect('admin_dashboard:category_edit', category_id=category.id)
     else:
@@ -112,6 +118,7 @@ def category_edit(request: HttpRequest, category_id: str) -> HttpResponse:
         {
             'form': form,
             'category': category,
+            'extra_cards': entity_form_cards('category', category, request),
             'is_new': False,
             'active_nav': 'categories',
             'breadcrumb_trail': [

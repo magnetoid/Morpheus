@@ -31,6 +31,11 @@ class CloudflarePlugin(Plugin):
         self.register_hook(events.PRODUCT_UPDATED, self.on_product_updated, priority=85)
         self.register_hook(events.PRODUCT_CREATED, self.on_product_updated, priority=85)
         self.register_hook(events.CATEGORY_UPDATED, self.on_category_updated, priority=85)
+        # "These URLs changed at the origin" — fired by seo when a meta
+        # override, a redirect or a sitemap is written. Those rewrite cached
+        # HTML without touching the product or category row, so none of the
+        # hooks above sees them and the edge kept serving the old page.
+        self.register_hook(events.EDGE_PURGE_URLS, self.on_edge_purge_urls, priority=85)
 
     def contribute_dashboard_pages(self) -> list:
         return [
@@ -68,10 +73,15 @@ class CloudflarePlugin(Plugin):
                 is_active=True,
                 auto_purge_on_collection_update=True,
             ).select_related('account')
+            slug = getattr(category, 'slug', '')
             for zone in qs:
                 purge_urls(
                     zone=zone,
-                    urls=[f'https://{zone.domain}/c/{getattr(category, "slug", "")}'],
+                    # `/category/<slug>/` — the route the storefront actually
+                    # serves. This purged `/c/<slug>` (no trailing slash, wrong
+                    # prefix), and a Cloudflare file purge is exact-URL, so
+                    # category HTML was never actually dropped from the edge.
+                    urls=[f'https://{zone.domain}/category/{slug}/'],
                     triggered_by=f'category:{getattr(category, "id", "")}',
                 )
             # Tag purge — drops matching GraphQL responses (see
@@ -79,6 +89,27 @@ class CloudflarePlugin(Plugin):
             purge_for_category_update(category)
         except Exception as e:  # noqa: BLE001
             logger.warning('cloudflare: category hook purge failed: %s', e, exc_info=True)
+
+    def on_edge_purge_urls(self, urls=None, reason='', **kwargs):
+        """Purge arbitrary site-relative paths on every auto-purging zone."""
+        paths = [u for u in (urls or []) if u]
+        if not paths:
+            return
+        try:
+            from plugins.installed.cloudflare.models import CloudflareZone
+            from plugins.installed.cloudflare.services import purge_urls
+
+            zones = CloudflareZone.objects.filter(
+                is_active=True, auto_purge_on_product_update=True
+            ).select_related('account')
+            for zone in zones:
+                purge_urls(
+                    zone=zone,
+                    urls=[f'https://{zone.domain}{p}' if p.startswith('/') else p for p in paths],
+                    triggered_by=reason or 'edge.purge_urls',
+                )
+        except Exception as e:  # noqa: BLE001 — a CDN must never fail the write that triggered it
+            logger.warning('cloudflare: edge purge failed: %s', e, exc_info=True)
 
     # Cloudflare config (API token, zones, purge policy) lives on
     # CloudflareAccount + CloudflareZone rows, managed on the Cloudflare

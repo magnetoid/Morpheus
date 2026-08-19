@@ -32,15 +32,20 @@ def _store_default_social_image() -> str:
         return ''
 
 
-def brand_name() -> str:
+def brand_name(settings_row=None) -> str:
     """The merchant's brand for title suffixes — the SAME resolution the
     ``seo_title`` tag uses, so object pages (autofilled titles) and template
     pages agree: SiteSeoSettings.organization_name → core.StoreSettings.store_name
     → settings.STORE_NAME. Fixes products reading 'Morpheus Store' while the rest
     of the site reads the configured brand.
+
+    ``settings_row`` lets a caller that has already loaded the settings pass
+    them in. `resolve_meta` does, which takes a page render from four settings
+    queries down to one.
     """
     try:
-        name = (getattr(site_settings(), 'organization_name', '') or '').strip()
+        row = settings_row if settings_row is not None else site_settings()
+        name = (getattr(row, 'organization_name', '') or '').strip()
         if name:
             return name
     except Exception:  # noqa: BLE001
@@ -57,7 +62,7 @@ def brand_name() -> str:
     return getattr(settings, 'STORE_NAME', '') or ''
 
 
-def format_document_title(page_title: str, *, category: str = '') -> str:
+def format_document_title(page_title: str, *, category: str = '', settings_row=None) -> str:
     """Build the branded ``<title>`` the way Yoast/RankMath do: apply the
     SEO settings ``title_template`` ({title}/{site_name}/{category}) to the
     page name, using ``brand_name()`` for {site_name}.
@@ -67,7 +72,7 @@ def format_document_title(page_title: str, *, category: str = '') -> str:
     double-append the brand) and clamps to ``title_max_length`` (default 60).
     """
     page_title = (page_title or '').strip()
-    brand = brand_name().strip()
+    brand = brand_name(settings_row).strip()
     # Don't double-brand a title that already carries the suffix.
     if brand:
         for sep in (' — ', ' – ', ' | ', ' - '):
@@ -78,7 +83,7 @@ def format_document_title(page_title: str, *, category: str = '') -> str:
     template_str = '{title} — {site_name}'
     max_len = 60
     try:
-        s = site_settings()
+        s = settings_row if settings_row is not None else site_settings()
         template_str = (getattr(s, 'title_template', '') or template_str).strip()
         cap = int(getattr(s, 'title_max_length', 0) or 0)
         if cap > 0:
@@ -127,14 +132,24 @@ def resolve_meta(
             return str(obj.get(name) or default)
         return str(getattr(obj, name, '') or default)
 
-    title = (
-        (meta.title if meta and meta.title else '') or native('meta_title') or fallback_title
-    ).strip()
-    description = strip_html(
-        (meta.description if meta and meta.description else '')
-        or native('meta_description')
-        or fallback_description
-    )
+    # An AUTOFILLED value is a guess the platform made, not a decision anybody
+    # took: `autofill_meta_for` writes SeoMeta.title from the product's name on
+    # creation. Because the row then outranked the native column, a merchant
+    # who typed a meta title into the product form watched the storefront keep
+    # showing the plain product name — their edit stored, resolved, and
+    # discarded, with nothing to show for it. A value the merchant actually
+    # typed beats one we invented, whichever table it happens to live in.
+    autofilled = bool(meta and getattr(meta, 'auto_filled', False))
+
+    def stored(field: str, native_name: str, fallback: str = '') -> str:
+        own = (getattr(meta, field, '') or '') if meta else ''
+        native_value = native(native_name)
+        if autofilled and native_value:
+            return native_value
+        return own or native_value or fallback
+
+    title = stored('title', 'meta_title', fallback_title).strip()
+    description = strip_html(stored('description', 'meta_description', fallback_description))
     # Expand {name}/{author}/{isbn13}/… field + metafield tokens the merchant
     # typed into the title/description (no-op when there are none).
     try:
@@ -157,11 +172,7 @@ def resolve_meta(
             or _store_default_social_image()
         ).strip()
     )
-    canonical = (
-        (meta.canonical_url if meta and meta.canonical_url else '')
-        or native('canonical_url')
-        or canonical_url
-    ).strip()
+    canonical = stored('canonical_url', 'canonical_url', canonical_url).strip()
 
     # Robots: SeoMeta wins; else use the model's noindex/nofollow flags.
     if meta:
@@ -192,14 +203,21 @@ def resolve_meta(
         )
         robots = ', '.join(flags)
 
-    keywords = (meta.keywords if meta and meta.keywords else '') or native('focus_keyword')
+    # The focus keyword is INTERNAL — it feeds the panel's checks and the SEO
+    # score. It is deliberately not emitted as `<meta name="keywords">` any
+    # more: engines have ignored that tag since 2009, and the panel that writes
+    # this field is labelled "internal", so publishing it was leaking the
+    # merchant's own notes onto the page.
+    keywords = stored('focus_keyword', 'focus_keyword') or (
+        meta.keywords if meta and meta.keywords else ''
+    )
     twitter_card = (
         (meta.twitter_card if meta else '') or native('twitter_card') or 'summary_large_image'
     )
-    og_title = (meta.og_title if meta and meta.og_title else '') or native('og_title')
-    og_description = strip_html(
-        (meta.og_description if meta and meta.og_description else '') or native('og_description')
-    )
+    og_title = stored('og_title', 'og_title')
+    og_description = strip_html(stored('og_description', 'og_description'))
+    twitter_title = stored('twitter_title', 'twitter_title')
+    twitter_description = strip_html(stored('twitter_description', 'twitter_description'))
     type_ = meta.og_type if meta and meta.og_type else og_type
 
     structured = _structured_data_for(obj, title=title, description=description, image=og_image)
@@ -214,7 +232,7 @@ def resolve_meta(
     # The document <title> applies the settings title_template (page name +
     # brand) for object pages; brand-as-fallback pages (homepage/static) keep
     # whatever title the template chose, so we never render "brand — brand".
-    document_title = format_document_title(title) if obj is not None else title
+    document_title = format_document_title(title, settings_row=site) if obj is not None else title
 
     return ResolvedMeta(
         title=title,
@@ -225,11 +243,14 @@ def resolve_meta(
         og_image=og_image,
         og_type=type_,
         twitter_card=twitter_card,
+        twitter_title=twitter_title,
+        twitter_description=twitter_description,
         canonical_url=canonical,
         robots=robots,
         keywords=keywords,
+        robots_extra=(meta.robots_extra or {}) if meta else {},
         # Site identity resolved once here — to_html must not query per render.
-        site_name=brand_name(),
+        site_name=brand_name(site),
         twitter_site=(getattr(site, 'twitter_handle', '') or '').strip(),
         structured_data=structured,
         # schema_blocks stores raw editor entries [{type, data}, …]; build the

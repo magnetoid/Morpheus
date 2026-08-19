@@ -87,8 +87,10 @@ class BookProductPlugin(Plugin):
         namespace = getattr(getattr(request, 'resolver_match', None), 'namespace', '') or ''
         if namespace != self.name or url_name not in self._SEO_KINDS:
             return value
-        from plugins.installed.seo.pages import SeoPage  # noqa: PLC0415
-        from plugins.installed.seo.pages.types import KIND_LISTING  # noqa: PLC0415
+        # From CORE, not from the seo app: this app does not depend on seo and
+        # must still describe its own pages when seo is disabled (the filter
+        # simply has no subscriber then).
+        from core.seo_page import KIND_LISTING, SeoPage  # noqa: PLC0415
 
         ctx = context or {}
         return SeoPage(

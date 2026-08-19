@@ -336,24 +336,28 @@ def regenerate_sitemap(triggered_by: str = 'dashboard') -> dict:
 
     base = _site_base_url().rstrip('/')
     paths = ('/sitemap.xml', '/sitemap-index.xml', '/sitemap-images.xml', '/sitemap-news.xml')
-    result = {'counts': {}, 'purged_zones': 0, 'pinged': False, 'ping_status': ''}
+    result = {'counts': {}, 'purged': False, 'pinged': False, 'ping_status': ''}
     try:
         result['counts'] = sitemap_counts()
     except Exception as e:  # noqa: BLE001
         logger.warning('seo.regenerate_sitemap: counts failed: %s', e)
+    # Fire, don't import: this used to reach into the cloudflare app's models
+    # and services directly, which made seo depend on an optional sibling for a
+    # capability it only wants to *request*. Whoever owns the edge subscribes.
     try:
-        from plugins.installed.cloudflare.models import CloudflareZone
-        from plugins.installed.cloudflare.services import purge_urls
+        from morpheus.core import MorpheusEvents, hook_registry
 
-        for zone in CloudflareZone.objects.filter(is_active=True):
-            purge_urls(
-                zone=zone,
-                urls=[f'https://{zone.domain}{p}' for p in paths],
-                triggered_by=triggered_by or 'sitemap-regenerate',
-            )
-            result['purged_zones'] += 1
-    except Exception as e:  # noqa: BLE001 — cloudflare plugin optional
-        logger.debug('seo.regenerate_sitemap: cloudflare purge skipped: %s', e)
+        # A purge is REQUESTED, not counted: seo no longer knows how many CDN
+        # zones exist, and reporting a zone count it cannot see would be a
+        # number the merchant has no way to check.
+        hook_registry.fire(
+            MorpheusEvents.EDGE_PURGE_URLS,
+            urls=list(paths),
+            reason=triggered_by or 'sitemap-regenerate',
+        )
+        result['purged'] = True
+    except Exception as e:  # noqa: BLE001 — a CDN must never fail a regeneration
+        logger.debug('seo.regenerate_sitemap: edge purge skipped: %s', e)
     try:
         ping = ping_indexnow([f'{base}/sitemap-index.xml'])
         result['pinged'] = bool(ping.get('ok'))

@@ -163,7 +163,36 @@ def _page_form_context(request, page, *, creating):
         'page_author': meta.get('author', ''),
         'author_same_as_text': _meta_list_text(meta.get('author_same_as')),
         'citations_text': _meta_list_text(meta.get('citations')),
+        'extra_cards': _page_form_cards(request, page),
     }
+
+
+def _page_form_cards(request, page) -> list[str]:
+    """Cards contributed into the page form (PAGE_FORM_CARDS) — the SEO panel
+    among them. Rendered here so cms never imports the contributing app; a
+    broken card costs its own card, not the editor."""
+    from django.template.loader import render_to_string
+    from morpheus.core import MorpheusEvents, hook_registry
+
+    out: list[str] = []
+    cards = hook_registry.filter(
+        MorpheusEvents.PAGE_FORM_CARDS, value=[], page=page, request=request
+    )
+    for card in sorted(cards or [], key=lambda c: c.get('order', 100)):
+        tpl = card.get('template')
+        if not tpl:
+            continue
+        try:
+            out.append(
+                render_to_string(tpl, {**card.get('context', {}), 'page': page}, request=request)
+            )
+        except Exception:  # noqa: BLE001
+            import logging
+
+            logging.getLogger('morpheus.cms').warning(
+                'cms: page_form_card render failed (%s)', tpl, exc_info=True
+            )
+    return out
 
 
 @staff_member_required
@@ -230,13 +259,17 @@ def page_edit(request, page_id=None):  # noqa: PLR0912, PLR0915 — flat validat
         # Cover image (journal OG/cover) + editorial fields live in metadata.
         page.metadata = _apply_editorial_metadata(dict(page.metadata or {}), request.POST)
         page.save()
-        # Reusable SEO panel: upsert the SeoMeta override + seo.ai_answer.
-        try:
-            from plugins.installed.seo.services.panel import save_object_seo
+        # Let contributors persist their own page-form fields (the SEO panel,
+        # among them). Fired rather than imported: cms does not depend on seo,
+        # and a disabled seo app should simply have no subscriber.
+        from morpheus.core import MorpheusEvents, hook_registry
 
-            save_object_seo(page, request.POST)
-        except Exception:  # noqa: BLE001 — seo plugin optional
-            pass
+        hook_registry.fire(
+            MorpheusEvents.PAGE_FORM_SAVED,
+            page=page,
+            post=request.POST,
+            files=request.FILES,
+        )
         messages.success(request, f'Saved “{page.title}”.')
         return redirect(_PAGES_LIST_URL)
 

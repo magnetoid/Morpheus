@@ -49,9 +49,18 @@ class ResolvedMeta:
     og_image: str = ''
     og_type: str = 'website'
     twitter_card: str = 'summary_large_image'
+    # Twitter's own title/description. Blank is normal and correct — the card
+    # falls back to og:title / og:description — but the merchant can differ them
+    # (a shorter headline for a narrower card), which the native Product columns
+    # already allowed and SeoMeta now owns.
+    twitter_title: str = ''
+    twitter_description: str = ''
     canonical_url: str = ''
     robots: str = 'index, follow'
+    # The FOCUS keyword: internal, drives the panel's checks and the score.
+    # Never rendered as `<meta name="keywords">` — see to_html.
     keywords: str = ''
+    robots_extra: dict = None  # type: ignore[assignment]
     # Site identity, resolved ONCE by resolve_meta (og:site_name / twitter:site).
     # to_html renders from these fields — it must never query the DB itself,
     # since it runs on every storefront <head>.
@@ -70,8 +79,9 @@ class ResolvedMeta:
             parts.append(f'<title>{escape(doc_title)}</title>')
         if self.description:
             parts.append(f'<meta name="description" content="{escape(self.description)}">')
-        if self.keywords:
-            parts.append(f'<meta name="keywords" content="{escape(self.keywords)}">')
+        # No `<meta name="keywords">`: every major engine has ignored it since
+        # 2009, and `keywords` now carries the merchant's INTERNAL focus keyword,
+        # which the panel promises is not published.
         if self.robots:
             # Append AI-snippet directives unless the merchant explicitly
             # set noindex — these unlock full AI Overview snippets +
@@ -148,18 +158,33 @@ def _site_base_url() -> str:
 
 
 def site_settings():
-    """Return SiteSeoSettings singleton, fallback to fresh in-memory if DB empty."""
+    """The site-wide SEO settings row.
+
+    Ordered by pk, deliberately: nothing enforces the singleton and three code
+    paths can each mint a row, so a bare `.first()` on an unordered queryset
+    meant that on a store which ended up with two, *which* settings a request
+    saw was arbitrary.
+
+    Not cached across requests. It is read several times per render, which is
+    worth fixing — but caching a model instance in a shared cache means a row
+    that is later edited, deleted, or rolled back keeps being served, and a
+    settings object that lies is worse than one that costs a query. The repeat
+    reads are removed instead by resolving the row ONCE per `resolve_meta` and
+    passing it down (see meta.py).
+
+    Falls back to an unsaved in-memory instance so a fresh or unmigrated
+    install still renders.
+    """
+    from plugins.installed.seo.models import SiteSeoSettings
+
     try:
-        from plugins.installed.seo.models import SiteSeoSettings
-
-        return SiteSeoSettings.objects.first() or SiteSeoSettings(
-            organization_name='',
-            twitter_card_default='summary_large_image',
-        )
-    except Exception:  # noqa: BLE001
-        from plugins.installed.seo.models import SiteSeoSettings
-
+        row = SiteSeoSettings.objects.order_by('pk').first()
+    except Exception:  # noqa: BLE001 — unmigrated DB during a deploy
         return SiteSeoSettings(organization_name='')
+    return row or SiteSeoSettings(
+        organization_name='',
+        twitter_card_default='summary_large_image',
+    )
 
 
 def _seo_plugin_cfg() -> dict:
@@ -199,13 +224,25 @@ def _jsonld_dump(obj: dict) -> str:
 def ai_answer_for(obj) -> str:
     """Return the merchant's quotable TL;DR / key-answer for ``obj``.
 
-    Stored as a metafield ``namespace='seo', key='ai_answer'`` — the
-    same convention as ``seo.same_as``. This is the concise, factual
-    summary AI engines can lift verbatim into an answer ("AEO answer").
-    Empty string when unset or the metafields plugin is uninstalled.
+    The concise, factual summary an answer engine can lift verbatim.
+
+    Lives on ``SeoMeta.ai_answer`` as of v0.47 — it is per-entity SEO like
+    every other field in the panel, and keeping it in a metafield meant the seo
+    app had to reach into the metafields app to read its own data. The old
+    ``namespace='seo', key='ai_answer'`` metafield is still read as a fallback
+    so nothing written before the move disappears; the panel only writes the
+    column.
     """
     if obj is None:
         return ''
+    try:
+        from plugins.installed.seo.models import SeoMeta
+
+        meta = SeoMeta.for_obj(obj)
+        if meta and meta.ai_answer:
+            return strip_html(meta.ai_answer)
+    except Exception:  # noqa: BLE001 — unmigrated DB during a deploy
+        pass
     try:
         from django.contrib.contenttypes.models import ContentType
         from plugins.installed.metafields.models import Metafield

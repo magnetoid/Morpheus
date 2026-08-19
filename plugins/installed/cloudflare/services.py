@@ -438,7 +438,11 @@ def purge_for_product_update(product) -> list:
         is_active=True,
         auto_purge_on_product_update=True,
     ).select_related('account')
-    paths = [f'/p/{product.slug}', f'/products/{product.slug}']
+    # The routes the storefront actually serves. This used to purge
+    # `/p/<slug>` and `/products/<slug>` — the first is the CMS page route and
+    # the second is missing its trailing slash — and a Cloudflare file purge is
+    # exact-URL, so product HTML had effectively never been purged.
+    paths = [f'/products/{product.slug}/']
     tags = [f'product:{product.slug}']
     if getattr(product, 'id', None):
         tags.append(f'product:{product.id}')

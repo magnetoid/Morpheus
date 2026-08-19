@@ -54,7 +54,7 @@
       <h2 class="font-semibold text-sm">Basics</h2>
       <div>
         <label class="block text-sm font-medium mb-1">Name</label>
-        <input type="text" name="name" class="input" required value="{{ form.name.value|default:'' }}">
+        <input type="text" id="product-name" name="name" class="input" required value="{{ form.name.value|default:'' }}">
         {% if form.name.errors %}<p class="field-error">{{ form.name.errors.0 }}</p>{% endif %}
       </div>
       {# URL slug + live preview chip under the name. #}
@@ -776,155 +776,34 @@
     {# Plugin-contributed product-form cards (PRODUCT_FORM_CARDS) — incl. book_product's Book details; each vanishes when its plugin is disabled. #}
     {% for card in extra_product_cards %}{{ card|safe }}{% endfor %}
 
-    <details class="card" id="product-seo-details" data-pt-show="simple,variable,digital,bundle">
+    {% comment %}
+    Structured data (raw JSON-LD) is the one SEO field still edited here: it is
+    loose-typed and validated by ProductForm.clean_structured_data, and the
+    structured-data work that gives it a proper home is the next phase.
+    Everything else — title, description, focus keyword, canonical, Open Graph,
+    Twitter, robots — is in the SEO card the seo app contributes above
+    (PRODUCT_FORM_CARDS), stored on SeoMeta, and shared with categories,
+    collections and CMS pages.
+    {% endcomment %}
+    <details class="card" id="product-schema-details" data-pt-show="simple,variable,digital,bundle">
       <summary class="card-padded cursor-pointer flex items-center justify-between border-b border-[color:var(--border)]" style="list-style:none;">
         <div>
-          <h2 class="font-semibold text-sm">Search engine optimisation</h2>
-          <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Title, description, social cards, robots, and structured-data overrides.</p>
+          <h2 class="font-semibold text-sm">Structured data</h2>
+          <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Rich-result schema. Product, price and review markup is generated for you.</p>
         </div>
         <i data-lucide="chevron-down" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
       </summary>
-
-      <div class="card-padded space-y-4">
-        {% if seo_defaults %}
-        <p class="text-xs text-[color:var(--text-muted)]" style="margin:0;">
-          <i data-lucide="info" class="inline h-3 w-3"></i>
-          Greyed text shows what the storefront renders by default (from
-          global SEO settings + this product). Type to override per-product.
-        </p>
+      <div class="card-padded space-y-3">
+        {% plugin_enabled "seo" as seo_enabled %}
+        {% if seo_enabled and product.id %}
+        <a href="/dashboard/seo/schema/catalog/product/{{ product.id }}/" class="btn btn-secondary btn-sm">✦ Structured data editor — FAQ, How-to, Event…</a>
+        <p class="text-xs text-[color:var(--text-muted)]">Add rich-result schema with no JSON.</p>
         {% endif %}
-        {# Search snippet — meta_title + meta_description + focus keyword. #}
-        <div class="space-y-3">
-          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Search snippet</h3>
-          <div>
-            <div class="flex items-center justify-between gap-2 mb-1">
-              <label class="block text-sm font-medium">Meta title</label>
-              {% include "admin_dashboard/_seo_token_select.html" with target="seo-meta-title" %}
-            </div>
-            <input type="text" id="seo-meta-title" name="meta_title" class="input" maxlength="200"
-                   value="{{ form.meta_title.value|default:'' }}"
-                   placeholder="{{ seo_defaults.meta_title|default:'Defaults to product name' }}">
-            <p class="text-xs text-[color:var(--text-muted)] mt-1">~60 characters works best in Google. Use <code>{name}</code>, <code>{author}</code>, etc. to pull in fields.</p>
-          </div>
-          <div>
-            <div class="flex items-center justify-between gap-2 mb-1">
-              <label class="block text-sm font-medium">Meta description</label>
-              {% include "admin_dashboard/_seo_token_select.html" with target="seo-meta-desc" %}
-            </div>
-            <textarea id="seo-meta-desc" name="meta_description" rows="2" class="input"
-                      placeholder="{{ seo_defaults.meta_description|default:'~155 characters. Plain text only.' }}">{{ form.meta_description.value|default:'' }}</textarea>
-            <p class="text-xs text-[color:var(--text-muted)] mt-1">~155 characters. Plain text only.</p>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">Focus keyword</label>
-              <input type="text" name="focus_keyword" class="input"
-                     value="{{ form.focus_keyword.value|default:'' }}"
-                     placeholder="e.g. handmade leather wallet">
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Canonical URL</label>
-              <input type="url" name="canonical_url" class="input"
-                     value="{{ form.canonical_url.value|default:'' }}"
-                     placeholder="{{ seo_defaults.canonical_url|default:'Default: /products/…/' }}">
-            </div>
-          </div>
-          {% if seo_tokens %}
-          <script>
-          (function () {
-            document.querySelectorAll('.seo-token-insert').forEach(function (sel) {
-              sel.addEventListener('change', function () {
-                var tok = sel.value;
-                if (!tok) return;
-                var el = document.getElementById(sel.dataset.target);
-                if (el) {
-                  var s = el.selectionStart || 0, e = el.selectionEnd || 0, v = el.value || '';
-                  el.value = v.slice(0, s) + tok + v.slice(e);
-                  var pos = s + tok.length;
-                  el.focus();
-                  try { el.setSelectionRange(pos, pos); } catch (err) { /* number/url inputs */ }
-                  el.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-                sel.value = '';
-              });
-            });
-          })();
-          </script>
-          {% endif %}
-        </div>
-
-        {# Open Graph (Facebook / LinkedIn / Slack). #}
-        <div class="space-y-3 pt-3 border-t border-[color:var(--border)]">
-          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Open Graph</h3>
-          <div>
-            <label class="block text-sm font-medium mb-1">OG title</label>
-            <input type="text" name="og_title" class="input" maxlength="200"
-                   value="{{ form.og_title.value|default:'' }}"
-                   placeholder="{{ seo_defaults.og_title|default:'Falls back to meta title' }}">
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">OG description</label>
-            <textarea name="og_description" rows="2" class="input"
-                      placeholder="{{ seo_defaults.og_description|default:'Falls back to meta description' }}">{{ form.og_description.value|default:'' }}</textarea>
-          </div>
-          <p class="text-xs text-[color:var(--text-muted)]">OG image upload coming next — for now, the product's primary image is used.</p>
-        </div>
-
-        {# Twitter Card. #}
-        <div class="space-y-3 pt-3 border-t border-[color:var(--border)]">
-          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Twitter Card</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">Card type</label>
-              <select name="twitter_card" class="input">
-                {% for value, label in form.fields.twitter_card.choices %}
-                <option value="{{ value }}" {% if form.twitter_card.value == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Twitter title</label>
-              <input type="text" name="twitter_title" class="input" maxlength="200"
-                     value="{{ form.twitter_title.value|default:'' }}"
-                     placeholder="{{ seo_defaults.twitter_title|default:'Falls back to OG / meta title' }}">
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Twitter description</label>
-            <textarea name="twitter_description" rows="2" class="input"
-                      placeholder="{{ seo_defaults.twitter_description|default:'Falls back to OG / meta description' }}">{{ form.twitter_description.value|default:'' }}</textarea>
-          </div>
-        </div>
-
-        {# Crawler controls. #}
-        <div class="space-y-3 pt-3 border-t border-[color:var(--border)]">
-          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Indexing</h3>
-          <div class="flex flex-wrap gap-4">
-            <label class="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" name="noindex" {% if form.noindex.value %}checked{% endif %}> noindex
-              <span class="text-xs text-[color:var(--text-muted)]">— hide from search engines</span>
-            </label>
-            <label class="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" name="nofollow" {% if form.nofollow.value %}checked{% endif %}> nofollow
-              <span class="text-xs text-[color:var(--text-muted)]">— don't follow links</span>
-            </label>
-          </div>
-        </div>
-
-        {# Structured data: visual editor (primary) + raw JSON-LD overrides (advanced). #}
-        <div class="space-y-3 pt-3 border-t border-[color:var(--border)]">
-          <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Structured data</h3>
-          {% plugin_enabled "seo" as seo_enabled %}
-          {% if seo_enabled and product.id %}
-          <a href="/dashboard/seo/schema/catalog/product/{{ product.id }}/" class="btn btn-secondary btn-sm">✦ Structured data editor — FAQ, How-to, Event…</a>
-          <p class="text-xs text-[color:var(--text-muted)]">Add rich-result schema with no JSON. Product/Offer/review schema is generated automatically.</p>
-          {% endif %}
-          <div>
-            <label class="block text-sm font-medium mb-1">Extra JSON-LD (advanced)</label>
-            <textarea name="structured_data" rows="6" class="input font-mono text-xs" placeholder='{"brand": "Acme", "gtin": "0123456789012"}'>{{ form.structured_data.value|default:'' }}</textarea>
-            {% if form.structured_data.errors %}<p class="field-error">{{ form.structured_data.errors.0 }}</p>{% endif %}
-            <p class="text-xs text-[color:var(--text-muted)] mt-1">Merged into the auto-generated Product JSON-LD. Use schema.org property names.</p>
-          </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Extra JSON-LD (advanced)</label>
+          <textarea name="structured_data" rows="6" class="input font-mono text-xs" placeholder='{"brand": "Acme", "gtin": "0123456789012"}'>{{ form.structured_data.value|default:'' }}</textarea>
+          {% if form.structured_data.errors %}<p class="field-error">{{ form.structured_data.errors.0 }}</p>{% endif %}
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Merged into the auto-generated Product JSON-LD. Use schema.org property names.</p>
         </div>
       </div>
     </details>
@@ -985,44 +864,6 @@
     {% if product %}
     {% include "metafields/_inline_editor.html" with object_model="catalog.product" object_id=product.id %}
     {% endif %}
-
-    <div class="card card-padded space-y-2" id="product-seo-snapshot">
-      <div class="flex items-center justify-between">
-        <h2 class="font-semibold text-sm">SEO at a glance</h2>
-        <a href="#product-seo-details"
-           onclick="var d=document.getElementById('product-seo-details'); if(d){d.open=true; d.scrollIntoView({behavior:'smooth', block:'start'});} return false;"
-           class="text-xs text-[color:var(--text-muted)] hover:underline">Open editor</a>
-      </div>
-      <ul class="text-xs space-y-1.5">
-        <li class="flex items-center justify-between gap-2">
-          <span class="text-[color:var(--text-muted)]">Title length</span>
-          <span class="tabular-nums font-medium" data-seo-len="meta_title">—</span>
-        </li>
-        <li class="flex items-center justify-between gap-2">
-          <span class="text-[color:var(--text-muted)]">Description length</span>
-          <span class="tabular-nums font-medium" data-seo-len="meta_description">—</span>
-        </li>
-      </ul>
-      <script>
-      (function () {
-        function refresh(name) {
-          var input = document.querySelector('[name="' + name + '"]');
-          var slot = document.querySelector('[data-seo-len="' + name + '"]');
-          if (!input || !slot) return;
-          var len = (input.value || '').length;
-          var max = name === 'meta_title' ? 60 : 160;
-          slot.textContent = len + ' / ' + max;
-          slot.style.color = len > max ? 'var(--danger)' : (len > 0 ? 'var(--success)' : 'var(--text-muted)');
-        }
-        ['meta_title', 'meta_description'].forEach(function (n) {
-          var el = document.querySelector('[name="' + n + '"]');
-          if (!el) return;
-          el.addEventListener('input', function () { refresh(n); });
-          refresh(n);
-        });
-      })();
-      </script>
-    </div>
 
     {% if product %}
     <div class="card card-padded">

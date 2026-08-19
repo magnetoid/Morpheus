@@ -50,7 +50,14 @@ class SeoMeta(models.Model):
     og_title = models.CharField(max_length=200, blank=True)
     og_description = models.CharField(max_length=320, blank=True)
     og_image = models.URLField(max_length=600, blank=True)
-    og_type = models.CharField(max_length=20, choices=OG_TYPE_CHOICES, default='website')
+    # Blank means "whatever this page kind is" — which is almost always what a
+    # merchant wants. It used to default to a non-blank 'website', and because
+    # `autofill_meta_for` mints a row for every product on creation, EVERY
+    # product page then declared `og:type=website` instead of `product`: the
+    # value outranked the page kind in resolve_meta, and nothing in the panel,
+    # the product form, GraphQL or the agent tools ever wrote the field, so no
+    # merchant had chosen it. Share cards were wrong storewide and nothing said so.
+    og_type = models.CharField(max_length=20, choices=OG_TYPE_CHOICES, blank=True, default='')
     twitter_card = models.CharField(
         max_length=20,
         default='summary_large_image',
@@ -61,7 +68,65 @@ class SeoMeta(models.Model):
     keywords = models.CharField(
         max_length=320,
         blank=True,
-        help_text='Comma-separated. Most engines ignore this; included for completeness.',
+        help_text=(
+            'LEGACY. Was emitted as <meta name="keywords">, which every major '
+            'engine has ignored since 2009 — and the panel that wrote it was '
+            'labelled "internal", so a merchant\'s private focus keyword was '
+            'published on the page. Nothing reads this now; use focus_keyword.'
+        ),
+    )
+    # ── Merchant-owned fields that used to live as native columns on the host
+    # model (catalog.Product had thirteen of them, Category/Collection two).
+    # SeoMeta is the single owner as of v0.47: the native columns are still READ
+    # as a fallback (resolve_meta), but every editor writes here, so one panel
+    # serves products, categories, collections, pages and vendors alike.
+    focus_keyword = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text=(
+            'The query this page is written for. Internal only — it drives the '
+            "panel's checks and the SEO score, and is never emitted as markup."
+        ),
+    )
+    twitter_title = models.CharField(max_length=200, blank=True)
+    twitter_description = models.CharField(max_length=320, blank=True)
+    robots_extra = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            'Advanced robots directives beyond index/follow — any of '
+            'max_snippet (int), max_image_preview ("none"|"standard"|"large"), '
+            'max_video_preview (int), nosnippet (bool), noimageindex (bool), '
+            'unavailable_after (ISO 8601 date). These are also what gates how '
+            'much of the page may appear inside AI Overviews / AI Mode.'
+        ),
+    )
+    sitemap_include = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text=(
+            'Tri-state override: NULL keeps the platform default for this page '
+            'kind, True forces the URL into the sitemap, False keeps it out. A '
+            'noindex page is never included regardless.'
+        ),
+    )
+    ai_answer = models.TextField(
+        blank=True,
+        max_length=600,
+        help_text=(
+            'A quotable, factual TL;DR an answer engine can lift verbatim. '
+            'Powers the on-page key-facts block and disambiguatingDescription. '
+            'Was the seo.ai_answer metafield; read-through fallback remains.'
+        ),
+    )
+    provenance = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            'Per-field origin: {"title": "merchant"|"ai"|"template"|"migrated"}. '
+            'Lets the panel show where a value came from, and lets a bulk '
+            'template or AI pass skip anything the merchant wrote by hand.'
+        ),
     )
     structured_data = models.JSONField(
         default=dict,
@@ -101,14 +166,49 @@ class SeoMeta(models.Model):
 
 
 class Redirect(models.Model):
-    """301/302 alias from one path to another."""
+    """One rule mapping an old path to a new one — or to nothing (410).
 
-    KIND_CHOICES = [(301, 'Permanent (301)'), (302, 'Temporary (302)')]
+    Three match types, and the order they are tried in is the whole design:
+    an **exact** row always beats a **prefix** row, which beats a **regex**
+    row. Without that precedence a broad ``/books/`` prefix rule silently
+    swallows the specific ``/books/dune/`` rule a merchant added afterwards,
+    and the only symptom is a page quietly serving the wrong redirect.
+    """
+
+    KIND_CHOICES = [
+        (301, 'Permanent (301)'),
+        (302, 'Temporary (302)'),
+        (307, 'Temporary, keep method (307)'),
+        (308, 'Permanent, keep method (308)'),
+        # 410 is not a redirect: it tells an engine the URL is gone for good
+        # and to drop it from the index, which is what a deleted product wants
+        # (a 404 leaves it in the index far longer).
+        (410, 'Gone (410) — removed for good'),
+    ]
+    MATCH_EXACT = 'exact'
+    MATCH_PREFIX = 'prefix'
+    MATCH_REGEX = 'regex'
+    MATCH_CHOICES = [
+        (MATCH_EXACT, 'Exact path'),
+        (MATCH_PREFIX, 'Path prefix'),
+        (MATCH_REGEX, 'Regular expression'),
+    ]
+    SOURCE_CHOICES = [
+        ('manual', 'Added by hand'),
+        ('auto_slug', 'Created automatically when a slug changed'),
+        ('import', 'Imported from CSV'),
+        ('404_fix', 'Created from the 404 log'),
+        ('agent', 'Created by an assistant'),
+    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    from_path = models.CharField(max_length=500, unique=True, db_index=True)
-    to_path = models.CharField(max_length=500)
+    from_path = models.CharField(max_length=500, db_index=True)
+    to_path = models.CharField(max_length=500, blank=True)
     status_code = models.PositiveSmallIntegerField(choices=KIND_CHOICES, default=301)
+    match_type = models.CharField(
+        max_length=10, choices=MATCH_CHOICES, default=MATCH_EXACT, db_index=True
+    )
+    source = models.CharField(max_length=16, choices=SOURCE_CHOICES, default='manual')
     is_active = models.BooleanField(default=True, db_index=True)
     note = models.CharField(max_length=200, blank=True)
     hit_count = models.PositiveIntegerField(default=0)
@@ -118,9 +218,77 @@ class Redirect(models.Model):
 
     class Meta:
         ordering = ['from_path']
+        # Was unique on from_path alone, which made an exact rule and a prefix
+        # rule for the same path mutually exclusive for no reason.
+        constraints = [
+            models.UniqueConstraint(
+                fields=['from_path', 'match_type'], name='seo_redirect_unique_rule'
+            )
+        ]
 
     def __str__(self) -> str:
+        if self.status_code == 410:
+            return f'{self.from_path} → gone (410)'
         return f'{self.from_path} → {self.to_path}'
+
+    @property
+    def is_gone(self) -> bool:
+        return self.status_code == 410
+
+    def save(self, *args, **kwargs):
+        """Normalise the paths and collapse the chain before storing.
+
+        This belongs on the model rather than in the dashboard view: rules also
+        arrive from CSV import, the 404 log, an assistant, and the automatic
+        slug watcher, and every one of those paths needs the same treatment. A
+        rule whose `from_path` was never normalised simply never fires.
+
+        Cache invalidation is deliberately NOT here — it hangs off post_save /
+        post_delete (see signals.py), because a `QuerySet.update()` skips this
+        method entirely and a resolver serving a deleted rule is worse than a
+        redundant cache drop.
+        """
+        from plugins.installed.seo.services.redirects import (
+            collapse_chain,
+            normalise_path,
+            normalise_target,
+        )
+
+        # A regex rule's `from_path` IS a pattern — normalising it would eat the
+        # anchors and character classes that make it work.
+        if self.match_type != self.MATCH_REGEX:
+            self.from_path = normalise_path(self.from_path)
+        self.to_path = '' if self.status_code == 410 else normalise_target(self.to_path)
+        if self.to_path and self.match_type == self.MATCH_EXACT:
+            self.to_path = collapse_chain(self.from_path, self.to_path)
+        super().save(*args, **kwargs)
+
+
+class SlugHistory(models.Model):
+    """Every public path an object has ever had.
+
+    A merchant renaming a product renames its URL, and every link and ranking
+    pointing at the old one dies silently — the single most common way an
+    e-commerce site loses traffic to its own dashboard. Recording the old path
+    lets the platform mint the 301 automatically, and keeps a trail so the
+    redirect can be rebuilt if someone deletes it.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.CharField(max_length=64)
+    target = GenericForeignKey('content_type', 'object_id')
+
+    old_path = models.CharField(max_length=500, db_index=True)
+    new_path = models.CharField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['content_type', 'object_id'])]
+
+    def __str__(self) -> str:
+        return f'{self.old_path} → {self.new_path}'
 
 
 class SitemapEntry(models.Model):
@@ -245,6 +413,24 @@ class SiteSeoSettings(models.Model):
     )
     title_max_length = models.PositiveSmallIntegerField(default=60)
     description_max_length = models.PositiveSmallIntegerField(default=155)
+
+    # Redirects
+    auto_redirect_on_slug_change = models.BooleanField(
+        default=True,
+        help_text=(
+            'When a product, category, collection or page is renamed, keep the '
+            'old URL working with a 301 to the new one. Off means renaming a '
+            'page breaks every existing link to it.'
+        ),
+    )
+    block_homepage_redirects = models.BooleanField(
+        default=True,
+        help_text=(
+            'Refuse redirects that point at the homepage. Bulk-redirecting dead '
+            'URLs to "/" reads as a soft 404 to search engines and loses the '
+            'page rather than moving it — leave this on unless you mean it.'
+        ),
+    )
 
     # Robots directives
     noindex_query_params = models.JSONField(

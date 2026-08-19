@@ -131,7 +131,13 @@ class HeadParityTests(TestCase):
             slug=_JOURNAL,
             title='Parity journal entry',
             state='published',
-            publish_at=timezone.now() - timedelta(minutes=1),
+            # Deliberately ancient. The journal index orders by publish date, so
+            # a probe entry dated "a minute ago" lands somewhere in the middle
+            # of the seeded posts depending on when the seed data was created —
+            # and the recorded ItemList order then flips between runs, failing
+            # the snapshot over nothing. Pinning it to the end makes the
+            # position of every entry deterministic.
+            publish_at=timezone.now() - timedelta(days=3650),
             body='<p>An entry that exists so the journal detail page has a subject.</p>',
             metadata={'category': 'journal'},
         )

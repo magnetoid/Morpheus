@@ -17,7 +17,7 @@
   </div>
 </div>
 
-{% if request.GET.regen == 'ok' %}<p class="pill pill-success mb-4">Sitemap regenerated — {{ request.GET.total }} URLs, {{ request.GET.purged }} CDN zone(s) purged, crawler ping {% if request.GET.pinged == '1' %}sent{% else %}skipped{% endif %}.</p>{% endif %}
+{% if request.GET.regen == 'ok' %}<p class="pill pill-success mb-4">Sitemap regenerated — {{ request.GET.total }} URLs{% if request.GET.purged == '1' %}, edge cache purge requested{% endif %}, crawler ping {% if request.GET.pinged == '1' %}sent{% else %}skipped{% endif %}.</p>{% endif %}
 {% if counts.truncated %}
   <div class="pill pill-danger mb-4">Sitemap truncated at {{ counts.total }} entries (cap reached). Split-sitemap rollout pending.</div>
 {% endif %}

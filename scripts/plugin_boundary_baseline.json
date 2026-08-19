@@ -174,10 +174,6 @@
       "target": "crm"
     },
     {
-      "importer": "cms",
-      "target": "seo"
-    },
-    {
       "importer": "customers",
       "target": "orders"
     },
@@ -376,10 +372,6 @@
     {
       "importer": "seo",
       "target": "book_product"
-    },
-    {
-      "importer": "seo",
-      "target": "cloudflare"
     },
     {
       "importer": "seo",

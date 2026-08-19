@@ -882,21 +882,8 @@
         ],
         "type": "ListItem",
         "values": {
-          "name": "Parity journal entry",
-          "position": 1,
-          "url": "http://testserver/journal/head-parity-journal-entry/"
-        }
-      },
-      {
-        "props": [
-          "name",
-          "position",
-          "url"
-        ],
-        "type": "ListItem",
-        "values": {
           "name": "The case for the small press, made in numbers",
-          "position": 2,
+          "position": 1,
           "url": "http://testserver/journal/the-case-for-the-small-press/"
         }
       },
@@ -909,7 +896,7 @@
         "type": "ListItem",
         "values": {
           "name": "Why we don't carry books we haven't read",
-          "position": 3,
+          "position": 2,
           "url": "http://testserver/journal/why-we-dont-carry-books-we-havent-read/"
         }
       },
@@ -922,8 +909,21 @@
         "type": "ListItem",
         "values": {
           "name": "A short note on patience and the long sentence",
-          "position": 4,
+          "position": 3,
           "url": "http://testserver/journal/a-short-note-on-patience/"
+        }
+      },
+      {
+        "props": [
+          "name",
+          "position",
+          "url"
+        ],
+        "type": "ListItem",
+        "values": {
+          "name": "Parity journal entry",
+          "position": 4,
+          "url": "http://testserver/journal/head-parity-journal-entry/"
         }
       },
       {
@@ -1896,7 +1896,7 @@
       "og:locale": "en",
       "og:site_name": "Morpheus Store",
       "og:title": "Head Parity Probe",
-      "og:type": "website",
+      "og:type": "product",
       "og:url": "http://testserver/products/head-parity-probe/",
       "product:availability": "in stock",
       "product:price:amount": "14.00",

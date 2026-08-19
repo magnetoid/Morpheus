@@ -179,6 +179,35 @@ def require_capability(capability: str, *, channel=None):
     return decorator
 
 
+def enforce(request, capability: str):
+    """Imperative form of `require_capability`, for a view that READS with one
+    capability and WRITES with another.
+
+    Several dashboard screens serve a list on GET and a mutation on POST from a
+    single function. Decorating such a view can only express one capability, so
+    it either locks a viewer out of a page they may read or lets them write
+    with a read capability. Use the decorator for the read, and this at the top
+    of the POST branch for the write::
+
+        @staff_member_required
+        @require_capability('seo.read')
+        def redirects_page(request):
+            if request.method == 'POST':
+                if (denied := enforce(request, 'seo.write')) is not None:
+                    return denied
+
+    Returns None when allowed, or the same 403 response the decorator would.
+    """
+    if check(
+        getattr(request, 'user', None),
+        capability,
+        channel=getattr(request, 'channel', None),
+        target=request.path,
+    ):
+        return None
+    return _forbidden(request, capability)
+
+
 def _forbidden(request, capability: str):
     from django.http import HttpResponseForbidden, JsonResponse
 

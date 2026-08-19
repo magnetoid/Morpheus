@@ -1,0 +1,27 @@
+{% comment %}
+  The SEO panel wrapped as a dashboard form card, contributed into the product,
+  category, collection and CMS-page edit forms through the *_FORM_CARDS filters.
+  Collapsed by default: SEO is important but it is not what a merchant opens the
+  form to do, and an expanded 400px panel above the fold buries the fields they
+  came for.
+
+  Disabling the seo app removes the contribution, so this card — and every
+  seo_* input in it — disappears from all four forms at once, which is exactly
+  what makes save_object_seo's "did the panel post?" guard necessary rather
+  than merely defensive.
+{% endcomment %}
+<details class="card" id="entity-seo-details" {% if seo_card_open %}open{% endif %}>
+  <summary class="card-padded cursor-pointer flex items-center justify-between border-b border-[color:var(--border)]" style="list-style:none;">
+    <div>
+      <h2 class="font-semibold text-sm">Search engine optimisation</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
+        Title, description, social cards and indexing — how this page looks in
+        Google and when it is shared.
+      </p>
+    </div>
+    <i data-lucide="chevron-down" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
+  </summary>
+  <div class="card-padded">
+    {% include "seo/_meta_panel.html" %}
+  </div>
+</details>

@@ -170,54 +170,6 @@ def _ordered_categories() -> list:
     return ordered
 
 
-def _seo_field_defaults(product) -> dict:
-    """Resolved SEO values the storefront would render for this product
-    when each field is left blank — surfaced as gray placeholders in
-    the product form so the merchant sees the effective value before
-    deciding to override it.
-
-    Computed from the same fallback chain `seo.services.resolve_meta`
-    uses (product name + store name suffix for the title, stripped
-    short/long description for the meta description), so the placeholder
-    matches what actually ships."""
-    if product is None:
-        return {}
-    import re as _re
-
-    from plugins.registry import app_registry
-
-    # seo is optional: a disabled (still-importable) plugin must not supply
-    # placeholders the storefront no longer renders (ADR 0013).
-    if not app_registry.is_active('seo'):
-        return {}
-    try:
-        from django.conf import settings as _settings
-        from plugins.installed.seo.services import _site_base_url, site_settings
-
-        s = site_settings()
-        store_name = (
-            getattr(s, 'organization_name', '') or getattr(_settings, 'STORE_NAME', '') or ''
-        )
-        name = product.name or ''
-        title_default = (f'{name} — {store_name}'.strip(' —')) if name else ''
-        desc_src = product.short_description or product.description or ''
-        desc_default = _re.sub(r'<[^>]+>', '', desc_src).strip()[:160]
-        base = _site_base_url().rstrip('/')
-        canonical_default = f'{base}/products/{product.slug}/' if product.slug else ''
-        return {
-            'meta_title': title_default,
-            'meta_description': desc_default,
-            'og_title': title_default,
-            'og_description': desc_default,
-            'twitter_title': title_default,
-            'twitter_description': desc_default,
-            'canonical_url': canonical_default,
-            'twitter_card': getattr(s, 'twitter_card_default', '') or 'summary_large_image',
-        }
-    except Exception:  # noqa: BLE001 — seo plugin optional; fall back to static placeholders
-        return {}
-
-
 @staff_member_required
 @require_capability('catalog.write')
 def product_new(request: HttpRequest) -> HttpResponse:
@@ -225,6 +177,11 @@ def product_new(request: HttpRequest) -> HttpResponse:
         form = ProductForm(request.POST, files=request.FILES)
         if form.is_valid():
             product = form.save()
+            _save_product_identifiers(product, request.POST)
+            # Create fires the same hook as edit. It did not, which meant every
+            # contributed card — the SEO panel included — silently discarded
+            # whatever the merchant typed on the *first* save of a new product.
+            _fire_product_form_saved(product, request)
             messages.success(request, f'Product "{product.name}" created.')
             return ajax_or_redirect(
                 request, 'admin_dashboard:product_edit', product_id=product.id, follow=True
@@ -242,7 +199,7 @@ def product_new(request: HttpRequest) -> HttpResponse:
             'product': None,
             'categories': categories,
             'vendors': vendors,
-            'seo_defaults': {},
+            'extra_product_cards': _collect_product_form_cards(None, request),
             'active_nav': 'products',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
@@ -312,20 +269,6 @@ def _identifier_fields(product) -> list[dict]:
         return []
 
 
-def _seo_tokens(product) -> list[dict]:
-    """``[{token, label}]`` for the SEO title/description "Insert field" menu."""
-    from plugins.registry import app_registry
-
-    if not app_registry.is_active('seo'):
-        return []
-    try:
-        from plugins.installed.seo.services.tokens import available_tokens  # noqa: PLC0415
-
-        return available_tokens(product)
-    except Exception:  # noqa: BLE001
-        return []
-
-
 def _collect_product_form_cards(product, request) -> list:
     """Render plugin-contributed product-form cards (PRODUCT_FORM_CARDS filter).
 
@@ -338,7 +281,9 @@ def _collect_product_form_cards(product, request) -> list:
     from morpheus.core import MorpheusEvents, hook_registry
 
     out: list = []
-    cards = hook_registry.filter(MorpheusEvents.PRODUCT_FORM_CARDS, value=[], product=product)
+    cards = hook_registry.filter(
+        MorpheusEvents.PRODUCT_FORM_CARDS, value=[], product=product, request=request
+    )
     for card in sorted(cards or [], key=lambda c: c.get('order', 100)):
         tpl = card.get('template')
         if not tpl:
@@ -352,6 +297,20 @@ def _collect_product_form_cards(product, request) -> list:
         except Exception as e:  # noqa: BLE001 — one bad card can't break the form
             logger.warning('product_form_card render failed (%s): %s', tpl, e, exc_info=True)
     return out
+
+
+def _fire_product_form_saved(product, request) -> None:
+    """Let plugins persist their own product-form fields (their contributed
+    cards). Fired from BOTH create and edit — a card that only got its POST on
+    edit silently lost the merchant's first save."""
+    from morpheus.core import MorpheusEvents, hook_registry
+
+    hook_registry.fire(
+        MorpheusEvents.PRODUCT_FORM_SAVED,
+        product=product,
+        post=request.POST,
+        files=request.FILES,
+    )
 
 
 def _collect_product_list_columns(products, request) -> list:
@@ -400,17 +359,10 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
             form.save()
             _save_product_identifiers(product, request.POST)
             # Let plugins persist their own product-form fields (their contributed
-            # cards, incl. book_product's Book details) — the modular path; the
-            # hook bus isolates a broken handler and a disabled plugin's handler
-            # simply isn't registered.
-            from morpheus.core import MorpheusEvents, hook_registry
-
-            hook_registry.fire(
-                MorpheusEvents.PRODUCT_FORM_SAVED,
-                product=product,
-                post=request.POST,
-                files=request.FILES,
-            )
+            # cards, incl. book_product's Book details and the SEO panel) — the
+            # modular path; the hook bus isolates a broken handler and a disabled
+            # plugin's handler simply isn't registered.
+            _fire_product_form_saved(product, request)
             messages.success(request, 'Product saved.')
             return ajax_or_redirect(request, 'admin_dashboard:product_edit', product_id=product.id)
         if (error_response := ajax_form_errors(request, form)) is not None:
@@ -461,9 +413,7 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
             'videos': videos,
             'front_image': front_image,
             'back_image': back_image,
-            'seo_defaults': _seo_field_defaults(product),
             'identifier_fields': _identifier_fields(product),
-            'seo_tokens': _seo_tokens(product),
             'active_nav': 'products',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},

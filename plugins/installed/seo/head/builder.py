@@ -128,8 +128,9 @@ def _apply_title_and_description(doc, page: SeoPage, meta) -> None:
     description = meta.description or page.description or _store_description()
     doc.meta(description, name='description', source='seo')
     page.description = page.description or description
-    if meta.keywords:
-        doc.meta(meta.keywords, name='keywords', source='seo')
+    # No `<meta name="keywords">`. Engines have ignored it since 2009, and the
+    # field now holds the merchant's INTERNAL focus keyword — the panel says so
+    # in as many words, while the page was publishing it.
 
 
 def _apply_canonical_and_robots(doc, page: SeoPage, meta, request) -> None:
@@ -147,20 +148,74 @@ def _apply_canonical_and_robots(doc, page: SeoPage, meta, request) -> None:
     # An explicit SeoMeta/native robots value is a merchant decision — honour it,
     # but never let it *open up* a page the platform holds back (a cart page with
     # `index, follow` saved on it stays private).
-    robots = page.robots()
     explicit = (meta.robots or '').strip().lower()
-    if explicit and 'noindex' in explicit and 'noindex' not in robots:
+    if 'noindex' in explicit and not page.noindex:
         page.deny_index('merchant set noindex')
-        robots = page.robots()
-    if explicit and 'nofollow' in explicit and 'nofollow' not in robots:
+    if 'nofollow' in explicit:
         page.nofollow = True
-        robots = page.robots()
 
+    _apply_thin_content_rule(page, meta)
+
+    robots = page.robots()
     if 'noindex' not in robots:
-        robots = f'{robots}, {_AI_SNIPPET_DIRECTIVES}'
+        robots = f'{robots}, {_snippet_directives(meta)}'
     doc.meta(robots, name='robots', source='seo')
     if page.reason:
         doc.note(f'noindex: {page.reason}')
+
+
+def _apply_thin_content_rule(page: SeoPage, meta) -> None:
+    """Hold back a product page whose description is too short to rank.
+
+    The merchant sets the word threshold in SEO settings ("Auto-noindex PDPs
+    with descriptions shorter than N words"); 0 — the default — disables it.
+    The knob has existed since v0.2 and, since the head moved off the template
+    tags in v0.46, had NO consumer at all: setting it did nothing, which is
+    exactly the kind of control-shaped-like-a-mechanism this codebase keeps
+    getting bitten by.
+    """
+    if page.kind != KIND_PRODUCT or page.noindex:
+        return
+    from plugins.installed.seo.services import _seo_plugin_cfg
+
+    try:
+        threshold = int((_seo_plugin_cfg() or {}).get('noindex_thin_pdp_below_words') or 0)
+    except (TypeError, ValueError):
+        return
+    if threshold <= 0:
+        return
+    text = (meta.description or page.description or '').strip()
+    words = len(text.split())
+    if words < threshold:
+        page.deny_index(f'thin description: {words} words, minimum {threshold}')
+
+
+def _snippet_directives(meta) -> str:
+    """How much of the page engines — and AI Overviews — may reproduce.
+
+    Defaults to "as much as you like", which is what a store selling things
+    wants. A merchant can tighten it per entity through the panel's advanced
+    robots settings, which is the only lever Google offers over AI Mode input.
+    """
+    extra = getattr(meta, 'robots_extra', None) or {}
+    if not isinstance(extra, dict) or not extra:
+        return _AI_SNIPPET_DIRECTIVES
+    parts: list[str] = []
+    if extra.get('nosnippet'):
+        parts.append('nosnippet')
+    else:
+        snippet = extra.get('max_snippet', -1)
+        parts.append(f'max-snippet:{int(snippet)}')
+        preview = str(extra.get('max_image_preview') or 'large').lower()
+        parts.append(
+            f'max-image-preview:{preview if preview in {"none", "standard", "large"} else "large"}'
+        )
+        parts.append(f'max-video-preview:{int(extra.get("max_video_preview", -1))}')
+    if extra.get('noimageindex'):
+        parts.append('noimageindex')
+    if extra.get('unavailable_after'):
+        parts.append(f'unavailable_after: {extra["unavailable_after"]}')
+    return ', '.join(parts)
 
 
 def _apply_social(doc, page: SeoPage, meta) -> None:
@@ -186,8 +241,8 @@ def _apply_social(doc, page: SeoPage, meta) -> None:
     if meta.twitter_site:
         handle = meta.twitter_site if meta.twitter_site.startswith('@') else f'@{meta.twitter_site}'
         doc.meta(handle, name='twitter:site', source='seo')
-    doc.meta(og_title, name='twitter:title', source='seo')
-    doc.meta(og_description, name='twitter:description', source='seo')
+    doc.meta(meta.twitter_title or og_title, name='twitter:title', source='seo')
+    doc.meta(meta.twitter_description or og_description, name='twitter:description', source='seo')
     doc.meta(meta.og_image, name='twitter:image', source='seo')
 
     # Product pages carry price + availability in Open Graph too: the social

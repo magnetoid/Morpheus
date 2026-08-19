@@ -1,20 +1,35 @@
 {% comment %}
-  Reusable per-object SEO settings panel — rendered by {% seo_meta_panel obj %}
-  (seo/templatetags/seo.py). Every field posts as seo_* and is persisted by
-  seo.services.panel.save_object_seo(obj, request.POST). Self-contained: a
-  scoped IIFE drives the live Google + social previews and the counters, so the
-  panel can drop into any dashboard edit form.
-  Context: seo (values dict), seo_ai_answer, seo_noindex, seo_nofollow,
-  seo_title_max, seo_desc_max, seo_twitter_choices, seo_brand, seo_host.
+  The per-entity SEO panel — the SAME editor for products, categories,
+  collections, CMS pages and journal posts. Contributed into each shell's form
+  through PRODUCT_/CATEGORY_/COLLECTION_/PAGE_FORM_CARDS and persisted by
+  seo.services.panel.save_object_seo(obj, request.POST); every field posts as
+  seo_*, a namespace that cannot collide with the host form's own fields.
+
+  Self-contained: a scoped IIFE drives the live Google + social previews and the
+  counters, so the panel drops into any dashboard edit form. It mirrors the host
+  form's own title/description/cover inputs when told their element ids
+  (seo_host_title_id / seo_host_desc_id / seo_host_image_id), so the preview
+  reflects what the merchant is typing above it even before they override it.
+
+  Context: seo (values dict), seo_ai_answer, seo_robots_extra, seo_provenance,
+  seo_noindex, seo_nofollow, seo_title_max, seo_desc_max, seo_twitter_choices,
+  seo_brand, seo_host, seo_object_path.
 {% endcomment %}
-<div class="seo-panel space-y-4" data-seo-panel>
+<div class="seo-panel space-y-4" data-seo-panel
+     data-host-title="{{ seo_host_title_id|default:'page-title' }}"
+     data-host-desc="{{ seo_host_desc_id|default:'page-excerpt' }}"
+     data-host-image="{{ seo_host_image_id|default:'page-cover' }}">
+  {% comment %}
+  The presence marker save_object_seo gates on lives on seo_title below — a
+  POST without it must never be able to blank a stored override.
+  {% endcomment %}
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     {# ── Live previews ─────────────────────────────────────────────── #}
     <div class="space-y-3 order-last lg:order-first">
       <div>
         <p class="text-xs font-medium text-[color:var(--text-muted)] mb-1">Google result preview</p>
         <div class="rounded-lg border border-[color:var(--border)] p-3 bg-[color:var(--surface)]">
-          <div class="text-xs text-[color:var(--text-muted)] truncate" data-seo-pv-url>{{ seo_host }}</div>
+          <div class="text-xs text-[color:var(--text-muted)] truncate" data-seo-pv-url>{{ seo_host }}{{ seo_object_path }}</div>
           <div class="text-[color:#1a0dab] dark:text-[#8ab4f8] text-base leading-snug truncate" data-seo-pv-title>Title</div>
           <div class="text-xs text-[color:var(--text)] leading-snug mt-0.5 line-clamp-2" data-seo-pv-desc>Meta description preview.</div>
         </div>
@@ -39,10 +54,11 @@
     <div class="space-y-3">
       <div>
         <label class="flex items-center justify-between text-xs font-medium mb-1" for="seo-title">
-          <span>SEO title <span class="text-[color:var(--text-muted)]">(blank = auto from title)</span></span>
+          <span>SEO title <span class="text-[color:var(--text-muted)]">(blank = auto from the name)</span></span>
           <span class="text-[color:var(--text-muted)]" data-seo-count="title">0/{{ seo_title_max }}</span>
         </label>
         <input type="text" id="seo-title" name="seo_title" maxlength="200" class="input" value="{{ seo.title }}" data-seo-field="title">
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Just the page name — your shop name is added automatically.</p>
       </div>
       <div>
         <label class="flex items-center justify-between text-xs font-medium mb-1" for="seo-desc">
@@ -84,13 +100,58 @@
             </div>
             <p class="text-xs text-[color:var(--text-muted)] mt-1">Blank falls back to the cover image, then the site default. 1200×630 recommended.</p>
           </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium mb-1" for="seo-twitter">Twitter card</label>
+              <select id="seo-twitter" name="seo_twitter_card" class="input">
+                {% for value, label in seo_twitter_choices %}
+                <option value="{{ value }}" {% if seo.twitter_card == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1" for="seo-twitter-title">Twitter title <span class="text-[color:var(--text-muted)]">(blank = OG title)</span></label>
+              <input type="text" id="seo-twitter-title" name="seo_twitter_title" maxlength="200" class="input" value="{{ seo.twitter_title }}">
+            </div>
+          </div>
           <div>
-            <label class="block text-xs font-medium mb-1" for="seo-twitter">Twitter card</label>
-            <select id="seo-twitter" name="seo_twitter_card" class="input">
-              {% for value, label in seo_twitter_choices %}
-              <option value="{{ value }}" {% if seo.twitter_card == value %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
+            <label class="block text-xs font-medium mb-1" for="seo-twitter-desc">Twitter description <span class="text-[color:var(--text-muted)]">(blank = OG description)</span></label>
+            <textarea id="seo-twitter-desc" name="seo_twitter_description" rows="2" maxlength="320" class="input">{{ seo.twitter_description }}</textarea>
+          </div>
+        </div>
+      </details>
+
+      <details class="rounded-lg border border-[color:var(--border)] px-3 py-2">
+        <summary class="text-xs font-medium cursor-pointer select-none">Snippet &amp; AI controls</summary>
+        <div class="space-y-3 mt-3">
+          <p class="text-xs text-[color:var(--text-muted)]" style="margin:0;">
+            How much of this page search engines — and AI Overviews / AI Mode —
+            may reproduce. The defaults let them show everything, which is
+            usually what a shop wants.
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium mb-1" for="seo-max-snippet">Max snippet length</label>
+              <input type="number" id="seo-max-snippet" name="seo_max_snippet" class="input" min="-1"
+                     value="{{ seo_robots_extra.max_snippet|default:'-1' }}">
+              <p class="text-xs text-[color:var(--text-muted)] mt-1">Characters. −1 means no limit.</p>
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1" for="seo-max-image">Max image preview</label>
+              <select id="seo-max-image" name="seo_max_image_preview" class="input">
+                {% for value, label in seo_image_preview_choices %}
+                <option value="{{ value }}" {% if seo_robots_extra.max_image_preview == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-5">
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" name="seo_nosnippet" value="1" {% if seo_robots_extra.nosnippet %}checked{% endif %}> No snippet at all
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" name="seo_noimageindex" value="1" {% if seo_robots_extra.noimageindex %}checked{% endif %}> Don't index images
+            </label>
           </div>
         </div>
       </details>
@@ -101,9 +162,16 @@
         <p class="text-xs text-[color:var(--text-muted)] mt-1">Powers the on-page answer block + <code class="font-mono text-[11px]">disambiguatingDescription</code> for AI answer engines.</p>
       </div>
       <div>
-        <label class="block text-xs font-medium mb-1" for="seo-keywords">Focus keyword <span class="text-[color:var(--text-muted)]">(internal; not emitted as meta keywords)</span></label>
-        <input type="text" id="seo-keywords" name="seo_keywords" maxlength="255" class="input" value="{{ seo.keywords }}">
+        <label class="block text-xs font-medium mb-1" for="seo-focus-keyword">Focus keyword <span class="text-[color:var(--text-muted)]">(internal — never published)</span></label>
+        <input type="text" id="seo-focus-keyword" name="seo_focus_keyword" maxlength="120" class="input" value="{{ seo.focus_keyword }}">
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">The search this page is written for. Used by SEO checks and the score.</p>
       </div>
+      {% if seo_schema_editor_url %}
+      <div class="pt-1">
+        <a href="{{ seo_schema_editor_url }}" class="btn btn-secondary btn-sm">✦ Structured data editor — FAQ, How-to, Event…</a>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Add rich-result schema with no JSON. Product, price and review markup is automatic.</p>
+      </div>
+      {% endif %}
     </div>
   </div>
 
@@ -119,13 +187,17 @@
     var ogTitleEl = q('[data-seo-field="ogtitle"]');
     var ogDescEl = q('[data-seo-field="ogdesc"]');
     var ogImgEl = q('[data-seo-field="ogimage"]');
-    var pageTitle = document.getElementById('page-title'); // host form's title, if present
-    var pageDesc = document.getElementById('page-excerpt');
+    // The host form's own inputs, so the preview tracks what is being typed
+    // above the panel. Ids differ per shell, hence the data attributes.
+    var byId = function (key) { return document.getElementById(root.dataset[key] || ''); };
+    var hostTitle = byId('hostTitle');
+    var hostDesc = byId('hostDesc');
+    var hostImage = byId('hostImage');
     function val(el) { return el ? (el.value || '').trim() : ''; }
     function titleWithBrand(t) { return brand && t ? t + ' — ' + brand : (t || brand); }
     function render() {
-      var t = val(titleEl) || val(pageTitle);
-      var d = val(descEl) || val(pageDesc);
+      var t = val(titleEl) || val(hostTitle);
+      var d = val(descEl) || val(hostDesc);
       var ogt = val(ogTitleEl) || t;
       var ogd = val(ogDescEl) || d;
       var img = val(ogImgEl);
@@ -135,22 +207,18 @@
       q('[data-seo-pv-ogdesc]').textContent = ogd || 'Description';
       var imgEl = q('[data-seo-pv-img]');
       var noImg = q('[data-seo-pv-noimg]');
-      // OG image preview falls back to the host form's cover field.
-      var cover = document.getElementById('page-cover');
-      var src = img || (cover ? (cover.value || '').trim() : '');
+      var src = img || val(hostImage);
       if (src) { imgEl.src = src; imgEl.classList.remove('hidden'); if (noImg) noImg.classList.add('hidden'); }
       else { imgEl.classList.add('hidden'); if (noImg) noImg.classList.remove('hidden'); }
-      // counters
       var tc = q('[data-seo-count="title"]');
       var dc = q('[data-seo-count="desc"]');
       if (tc) tc.textContent = val(titleEl).length + '/{{ seo_title_max }}';
       if (dc) dc.textContent = val(descEl).length + '/{{ seo_desc_max }}';
     }
     ['input', 'change'].forEach(function (ev) { root.addEventListener(ev, render); });
-    if (pageTitle) pageTitle.addEventListener('input', render);
-    if (pageDesc) pageDesc.addEventListener('input', render);
-    var coverEl = document.getElementById('page-cover');
-    if (coverEl) coverEl.addEventListener('input', render);
+    [hostTitle, hostDesc, hostImage].forEach(function (el) {
+      if (el) el.addEventListener('input', render);
+    });
     // OG image upload → Media library (same endpoint the cover uses)
     var upBtn = q('[data-seo-og-upload]');
     if (upBtn) upBtn.addEventListener('click', function () {

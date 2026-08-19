@@ -1,7 +1,11 @@
 """Category create/edit form for the admin dashboard.
 
 A ModelForm over ``catalog.Category`` (an MPTT tree node): name, slug,
-parent, description, image (multipart), is_active, sort_order, and SEO.
+parent, description, image (multipart), is_active and sort_order.
+SEO is NOT here: it is edited in the card the seo app contributes through
+CATEGORY_FORM_CARDS and stored on SeoMeta, so every entity in the platform
+shares one editor. The native meta_* columns survive for one release and are
+read as a fallback.
 Slug auto-fills from the name when left blank and is kept unique. The
 ``parent`` choices exclude the node itself and all of its descendants so
 a merchant can't create a cycle.
@@ -26,8 +30,6 @@ class CategoryForm(forms.ModelForm):
             'image',
             'is_active',
             'sort_order',
-            'meta_title',
-            'meta_description',
         ]
 
     def __init__(self, *args, **kwargs):

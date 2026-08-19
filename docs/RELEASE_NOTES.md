@@ -15,6 +15,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.47.0 — 2026-08-19
+
+**Per-entity SEO has one owner and one editor; redirects that actually hold**
+
+- One SEO editor everywhere. Products, categories, collections and journal pages now share the same panel — live Google and social previews, character counters, canonical, indexing, snippet controls — contributed into each form by the SEO app, so it disappears cleanly when the app is off. The product form's separate 13-field SEO block is retired.
+- What you type is what ships. A meta title typed into the product form used to be saved and then ignored: the platform autofills an SEO record from the product's name, and that outranked the field you filled in. A value a human typed now wins over one the platform guessed.
+- Product pages finally say they are products. Every product page declared og:type=website, so Facebook, LinkedIn and Pinterest rendered share cards for a generic page instead of an item with a price. Run 'manage.py seo_backfill_meta' to correct existing records.
+- Redirects grew up: prefix rules that move a whole branch, pattern rules, 410 Gone for pages removed for good, CSV import and export, automatic chain collapsing, and a cached resolver. Renaming a product now keeps its old URL alive with a 301 automatically, so a rename stops costing you the page.
+- Three redirect bugs fixed: a rule could point off-site (an open redirect), a rule stored as /old/ never fired for visitors browsing in another language, and the query string was dropped on the way through — breaking campaign attribution for every link ever shared.
+- Cloudflare was purging URLs this platform does not serve, so product and category pages had effectively never been dropped from the edge. Meta edits, redirects and sitemap regenerations now request a purge too.
+- The SEO dashboard checks permissions. Every page needs 'seo.read' and every change needs 'seo.write' (enforcement stays off until you turn it on). The 404 monitor no longer writes to the database when you merely look at it, and Redirects finally has a sidebar entry.
+- The 'auto-noindex thin product pages' setting works again — it had had no effect since v0.46 — and each page can now set its own snippet and image-preview limits, which is what governs how much of it AI Overviews may reproduce.
+
 ## v0.46.0 — 2026-08-18
 
 **SEO 3.0 phase 1 — the storefront head is a core contract**

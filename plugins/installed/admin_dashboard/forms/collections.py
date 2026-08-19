@@ -1,6 +1,6 @@
 """Collection create/edit form for the admin dashboard.
 
-A ModelForm over ``catalog.Collection`` (metadata + SEO) plus a ``products``
+A ModelForm over ``catalog.Collection`` plus a ``products``
 multi-select. ``Product.collections`` is the M2M (Collection.products is the
 reverse), so products isn't a model field on Collection — we bind it manually
 and ``.set()`` it on save. Slug auto-fills from the name when left blank.
@@ -32,8 +32,6 @@ class CollectionForm(forms.ModelForm):
             'is_active',
             'is_featured',
             'sort_order',
-            'meta_title',
-            'meta_description',
         ]
 
     def __init__(self, *args, **kwargs):

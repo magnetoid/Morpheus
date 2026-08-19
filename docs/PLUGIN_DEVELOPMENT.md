@@ -669,8 +669,9 @@ def on_seo_resolve_page(self, value, request=None, context=None, **kwargs):
     match = getattr(request, "resolver_match", None)
     if getattr(match, "namespace", "") != self.name:
         return value
-    from plugins.installed.seo.pages import SeoPage
-    from plugins.installed.seo.pages.types import KIND_LISTING
+    # From CORE — your app must be able to describe its pages without importing
+    # the seo app, which it does not depend on and which may be disabled.
+    from core.seo_page import KIND_LISTING, SeoPage
 
     return SeoPage(kind=KIND_LISTING, subtype="lookbook", path=request.get_full_path(),
                    title=(context or {}).get("seo_title", ""), context=context or {})
@@ -681,6 +682,41 @@ policy), subscribe to `SEO_JSONLD_GRAPH` instead of emitting your own
 `<script type="application/ld+json">` — a page carries one graph, and a second
 block competes with it. Never write `<title>`, a canonical or `og:*` from a
 plugin template (ADR 0036).
+
+### Adding a card to somebody else's edit form
+
+Products, categories, collections and CMS pages each fire a pair of events: a
+filter that collects cards, and an event fired after the entity is saved. Use
+them instead of editing the shell's template — a card contributed this way
+disappears when your app is disabled, which an edit to `admin_dashboard` does
+not.
+
+| Entity | Filter (`value=list[dict]`) | Fired after save |
+|---|---|---|
+| Product | `PRODUCT_FORM_CARDS` (`product=`) | `PRODUCT_FORM_SAVED` |
+| Category | `CATEGORY_FORM_CARDS` (`category=`) | `CATEGORY_FORM_SAVED` |
+| Collection | `COLLECTION_FORM_CARDS` (`collection=`) | `COLLECTION_FORM_SAVED` |
+| CMS page | `PAGE_FORM_CARDS` (`page=`) | `PAGE_FORM_SAVED` |
+
+Every filter also receives `request=`, which you need if your card re-fills
+itself from POST on a validation re-render. Append
+`{'template': ..., 'context': {...}, 'order': int}`; the save event carries
+`post=` and `files=`.
+
+**Your save handler must key off something the card itself posts**, never off
+the absence of a value:
+
+```python
+def on_product_form_saved(self, product=None, post=None, **kwargs):
+    if not post or 'my_card_field' not in post:
+        return  # the card wasn't rendered — do NOT write blanks
+    ...
+```
+
+Without that check, a POST from a form that never rendered your card writes
+empty values over whatever the merchant had stored. That is how the SEO panel
+would have silently wiped every product's meta description and flipped noindex
+pages back into the index.
 
 ---
 

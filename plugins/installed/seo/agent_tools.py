@@ -80,8 +80,11 @@ def set_meta_tool(
         object_id=str(product.id),
         defaults={
             'title': title[:200],
-            'description': description[:500],
-            'keywords': keywords[:300],
+            # These clamps must match the COLUMN widths, not a guess: 500 into a
+            # CharField(320) is a DataError on Postgres that sqlite silently
+            # truncates, so local tests stayed green while prod raised.
+            'description': description[:320],
+            'focus_keyword': keywords[:120],
         },
     )
     return ToolResult(
@@ -98,7 +101,10 @@ def set_meta_tool(
 @tool(
     name='seo.audit_product',
     description='Run an SEO audit on a single product (by slug). Returns score + issues.',
-    scopes=['seo.read'],
+    # seo.write, not seo.read: this STORES the result (store_audit writes a
+    # SeoAuditResult row), and a tool that writes must not be reachable with a
+    # read scope.
+    scopes=['seo.write'],
     schema={
         'type': 'object',
         'properties': {'slug': {'type': 'string'}},
@@ -149,10 +155,12 @@ def audit_all_tool(*, limit: int = 200) -> ToolResult:
     },
 )
 def list_404s_tool(*, limit: int = 25) -> ToolResult:
+    # Reads only. It used to call refresh_404_suggestions(), which STORES a
+    # suggested_target on every row it can match — a write reachable with a read
+    # scope, and an expensive one (it loads every live slug). Suggestions are
+    # refreshed from the 404 page's own button now.
     from plugins.installed.seo.models import NotFoundLog
-    from plugins.installed.seo.services import refresh_404_suggestions
 
-    refresh_404_suggestions()
     rows = list(
         NotFoundLog.objects.filter(is_resolved=False).order_by('-hit_count')[
             : max(1, min(int(limit or 25), 100))
@@ -438,7 +446,7 @@ def seo_regenerate_sitemap_tool() -> ToolResult:
         output=res,
         display=(
             f'Sitemap regenerated: {counts.get("total", 0)} URLs, '
-            f'{res.get("purged_zones", 0)} CDN zone(s) purged, '
+            f'{"edge cache purge requested, " if res.get("purged") else ""}'
             f'ping {"sent" if res.get("pinged") else "skipped"}.'
         ),
     )

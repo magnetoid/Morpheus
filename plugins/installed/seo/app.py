@@ -67,6 +67,23 @@ class SeoPlugin(Plugin):
             prefix='dashboard/seo/',
             namespace='seo_dashboard',
         )
+        # ONE SEO editor, contributed into all four entity forms. Before this,
+        # a product had thirteen native SEO columns edited through a bespoke
+        # block hardcoded in admin_dashboard while pages used the shared panel —
+        # two editors, two storages, and SeoMeta silently outranking the product
+        # form's own fields. Disabling this app now removes the card everywhere
+        # at once, which is what the disable litmus test asks for.
+        for cards_event, saved_event, kind in (
+            (events.PRODUCT_FORM_CARDS, events.PRODUCT_FORM_SAVED, 'product'),
+            (events.CATEGORY_FORM_CARDS, events.CATEGORY_FORM_SAVED, 'category'),
+            (events.COLLECTION_FORM_CARDS, events.COLLECTION_FORM_SAVED, 'collection'),
+            (events.PAGE_FORM_CARDS, events.PAGE_FORM_SAVED, 'page'),
+        ):
+            self.register_hook(cards_event, self._form_card_handler(kind), priority=60)
+            self.register_hook(saved_event, self._form_saved_handler(kind), priority=60)
+        # The SEO score as a column in the product list, so a merchant can see
+        # which products need attention without opening each one.
+        self.register_hook(events.PRODUCT_LIST_COLUMNS, self.on_product_list_columns, priority=60)
         self.register_hook(events.PRODUCT_CREATED, self.on_product_created, priority=85)
         self.register_hook(events.PRODUCT_UPDATED, self.on_product_updated, priority=85)
         # Categories + Collections — fired from catalog/signals.py post_save.
@@ -78,6 +95,54 @@ class SeoPlugin(Plugin):
         # CMS pages — wire the post_save signal directly so we don't need
         # a new cms/signals.py + apps.py wiring.
         self._wire_cms_page_signal()
+        # Redirect-cache invalidation + automatic slug history. Both have to run
+        # on every write path (dashboard, CSV import, an assistant, the admin),
+        # so they hang off model signals rather than any one view.
+        from plugins.installed.seo import signals  # noqa: PLC0415
+
+        signals.wire()
+
+    # Each shell names its object with its own kwarg (product=, category=,
+    # collection=, page=), so the handler has to know which one to look for.
+    # A closure per kind keeps that one fact in one place instead of four
+    # near-identical methods.
+    def _form_card_handler(self, kind: str):
+        def handler(value, request=None, **kwargs):
+            from plugins.installed.seo.cards import seo_form_card  # noqa: PLC0415
+
+            card = seo_form_card(kind, kwargs.get(kind), request)
+            if card:
+                value.append(card)
+            return value
+
+        handler.__name__ = f'on_{kind}_form_cards'
+        return handler
+
+    def _form_saved_handler(self, kind: str):
+        def handler(post=None, **kwargs):
+            from plugins.installed.seo.services.panel import save_object_seo  # noqa: PLC0415
+
+            obj = kwargs.get(kind)
+            if obj is not None and post is not None:
+                save_object_seo(obj, post)
+
+        handler.__name__ = f'on_{kind}_form_saved'
+        return handler
+
+    def on_product_list_columns(self, value, products=None, request=None, **kwargs):
+        from plugins.installed.seo.cards import annotate_seo_scores  # noqa: PLC0415
+
+        if not products:
+            return value
+        annotate_seo_scores(products)
+        value.append(
+            {
+                'label': 'SEO',
+                'cell_template': 'seo/cards/_score_cell.html',
+                'order': 60,
+            }
+        )
+        return value
 
     def on_storefront_head(self, value, request=None, context=None, **kwargs):
         from plugins.installed.seo.head import on_storefront_head  # noqa: PLC0415
@@ -378,6 +443,18 @@ class SeoPlugin(Plugin):
                 section='seo',
                 order=40,
                 url='/dashboard/seo/not-found/',
+            ),
+            # Redirects had a URL and a full CRUD screen but no nav entry, so
+            # the only way in was a button on another page. A surface nothing
+            # links to is a surface nobody uses.
+            DashboardPage(
+                label='Redirects',
+                slug='redirects',
+                view='plugins.installed.seo.views.redirects_page',
+                icon='corner-up-right',
+                section='seo',
+                order=45,
+                url='/dashboard/seo/redirects/',
             ),
             DashboardPage(
                 label='Keywords',

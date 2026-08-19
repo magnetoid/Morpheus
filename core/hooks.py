@@ -551,6 +551,31 @@ class MorpheusEvents:
     #   column). The subscriber may annotate `products` in place for its cell
     #   template to read; the view pre-renders one cell per product.
     PRODUCT_LIST_COLUMNS = 'product.list_columns'  # filter
+    # CATEGORY_FORM_CARDS / COLLECTION_FORM_CARDS / PAGE_FORM_CARDS — filters,
+    #   value=list[dict], kwargs: category= / collection= / page= (the object, or
+    #   None while creating). CATEGORY_FORM_SAVED / COLLECTION_FORM_SAVED /
+    #   PAGE_FORM_SAVED — fires, kwargs: the same object plus post=QueryDict,
+    #   files=MultiValueDict.
+    #
+    #   The PRODUCT_FORM_CARDS pair, generalised to the other entities a
+    #   merchant edits. Same contract ({'template', 'context', 'order'}), same
+    #   reason: an app that wants a card on the category form must not be
+    #   imported by admin_dashboard, and the card must vanish when the app is
+    #   disabled. seo subscribes to all four with one universal SEO panel, which
+    #   is what finally makes per-entity SEO the *same* editor everywhere
+    #   instead of a bespoke block per content type.
+    #
+    #   Fired by admin_dashboard (categories, collections) and cms (pages) —
+    #   a shell fires, an owner answers. A form that renders no cards must still
+    #   save: a POST without a card's fields is a no-op for that subscriber (see
+    #   the `seo_present` marker convention in seo/services/panel.py, which stops
+    #   a card-less POST from wiping the entity's stored SEO).
+    CATEGORY_FORM_CARDS = 'category.form_cards'  # filter
+    CATEGORY_FORM_SAVED = 'category.form_saved'  # fire
+    COLLECTION_FORM_CARDS = 'collection.form_cards'  # filter
+    COLLECTION_FORM_SAVED = 'collection.form_saved'  # fire
+    PAGE_FORM_CARDS = 'page.form_cards'  # filter
+    PAGE_FORM_SAVED = 'page.form_saved'  # fire
     # EMAIL_TEMPLATE_OVERRIDE — filter, value=(subject, text, html) tuple
     #   starting as (None, None, None), kwargs: key=str, ctx=dict. Lets a
     #   plugin supply merchant-edited copy for a transactional email
@@ -770,6 +795,15 @@ class MorpheusEvents:
     #   owner publishes. ADR 0008 says every public page belongs in the sitemap;
     #   this is how an app satisfies that without editing seo.
     SEO_SITEMAP_SOURCES = 'seo.sitemap_sources'  # filter
+    # EDGE_PURGE_URLS — fire, kwargs: urls=list[str] (absolute paths, e.g.
+    #   ['/products/x/', '/sitemap.xml']), reason=str. "These URLs just changed
+    #   at the origin; drop them from the CDN." Fired by seo when a SeoMeta
+    #   override, a Redirect or a sitemap is written — the changes that alter a
+    #   cached HTML response without touching the product/category rows the
+    #   existing PRODUCT_UPDATED/CATEGORY_UPDATED purges cover. cloudflare
+    #   subscribes. Fail-soft and fire-and-forget: a CDN that refuses a purge
+    #   must never fail the merchant's save.
+    EDGE_PURGE_URLS = 'edge.purge_urls'  # fire
 
     # ── Customers (fire) ──────────────────────────────────────────────────
     # CUSTOMER_REGISTERED  — kwargs: customer=Customer.

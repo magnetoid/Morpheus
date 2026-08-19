@@ -398,3 +398,46 @@ def call_llm(prompt: str, system: str = '', max_tokens: int = 600) -> tuple[str,
     except Exception as e:  # noqa: BLE001
         return ('', f'AI provider error: {e}')
     return (text or '').strip(), ''
+
+
+# ── Contributed cards on the non-product entity forms ────────────────────
+# The product form has had PRODUCT_FORM_CARDS since ADR 0023; categories,
+# collections and CMS pages had nothing, so an app that wanted to add a field
+# to them had no option but an edit inside this shell. These two helpers are
+# the same contract for the other entities: the shell renders whatever is
+# contributed and never learns which app contributed it.
+_ENTITY_EVENTS = {
+    'category': ('CATEGORY_FORM_CARDS', 'CATEGORY_FORM_SAVED'),
+    'collection': ('COLLECTION_FORM_CARDS', 'COLLECTION_FORM_SAVED'),
+}
+
+
+def entity_form_cards(kind: str, obj, request) -> list[str]:
+    """Rendered cards for one entity form. Fail-soft per card — a broken
+    contribution must cost its own card, not the merchant's edit screen."""
+    from django.template.loader import render_to_string
+
+    from morpheus.core import MorpheusEvents, hook_registry
+
+    event = getattr(MorpheusEvents, _ENTITY_EVENTS[kind][0])
+    out: list[str] = []
+    cards = hook_registry.filter(event, value=[], request=request, **{kind: obj})
+    for card in sorted(cards or [], key=lambda c: c.get('order', 100)):
+        tpl = card.get('template')
+        if not tpl:
+            continue
+        try:
+            out.append(
+                render_to_string(tpl, {**card.get('context', {}), kind: obj}, request=request)
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning('%s_form_card render failed (%s): %s', kind, tpl, e, exc_info=True)
+    return out
+
+
+def fire_entity_form_saved(kind: str, obj, request) -> None:
+    """Let contributors persist their own fields after the entity is saved."""
+    from morpheus.core import MorpheusEvents, hook_registry
+
+    event = getattr(MorpheusEvents, _ENTITY_EVENTS[kind][1])
+    hook_registry.fire(event, post=request.POST, files=request.FILES, **{kind: obj})

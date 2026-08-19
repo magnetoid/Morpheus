@@ -396,6 +396,42 @@ settings (ADR 0007) — never append the shop name in a view; and machine endpoi
 `surface='chrome'`, or `i18n_patterns` publishes a second copy of each per
 language (`/fr/robots.txt`). ADR 0036.
 
+**Landmine — when two tables hold the same field, "which row wins" is the wrong
+question; "which value did a human choose" is the right one.** Product SEO lived
+in 13 native `catalog.Product` columns *and* in the generic `SeoMeta` overlay,
+and `SeoMeta` won. But `autofill_meta_for` mints a `SeoMeta` row for **every**
+product on creation, seeded with the product's own **name** — so a merchant who
+typed a meta title into the product form saw the storefront go on rendering the
+plain name. Their edit was stored, resolved, and discarded, and every layer
+looked correct in isolation. `resolve_meta` now checks `SeoMeta.auto_filled`: a
+platform-generated guess loses to a value a human typed, whichever table it sits
+in (`services/meta.py:stored()`, mirrored in `services/panel.py` and
+`manage.py seo_backfill_meta`). **When you consolidate storage, mark what the
+platform generated** — otherwise the merge silently prefers the guess. Two
+corollaries that cost a release each: (1) removing a form's template block
+without removing its `required=False` form fields **blanks the columns on the
+next save**, because the field cleans to `''` and the old save loop assigned it
+unconditionally — the template, the form fields and the save must go in one
+change; (2) an **empty `FileField` is falsy but raises `ValueError` on `.url`**,
+and a fail-soft card collector turns that into a feature that is simply absent,
+with a 200 and nothing in the page to say why. Guarded by
+`seo/tests/test_panel_contributions.py`.
+
+**Landmine — `QuerySet.update()` and `QuerySet.delete()` skip `save()` and
+`post_save`, so anything hung off them silently doesn't run.** The redirect
+resolver reads a compiled ruleset out of the cache; the dashboard edited rows
+with `Redirect.objects.filter(pk=…).update(…)`, which normalised nothing,
+collapsed no chains, and — the part that matters — never dropped the cache, so a
+merchant could edit a rule and watch the old one keep serving. Invalidation
+therefore hangs off `post_save`/`post_delete` in `seo/signals.py` (which *do*
+fire for a queryset delete) and every write path uses an instance `save()`.
+Two more redirect rules worth keeping: a `to_path` is **staff- and
+assistant-writable**, so it must be validated as site-relative before it reaches
+a `Location` header (an open redirect turns the store into a phishing hop), and
+`LocaleMiddleware` leaves the language prefix in `path_info`, so a rule stored as
+`/old/` never fires for `/fr/old/` unless the matcher strips it. Guarded by
+`seo/tests/test_redirects_engine.py`.
+
 **Landmine — a `StorefrontBlock` whose slot no template renders is silent.**
 The plugin is enabled, its tests pass, its block renders fine in isolation — and
 the merchant sees nothing, with no error anywhere. This had happened four times

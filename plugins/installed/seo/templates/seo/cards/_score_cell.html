@@ -1,0 +1,16 @@
+{% comment %}
+  One cell of the SEO column in the dashboard product list (PRODUCT_LIST_COLUMNS).
+  `product.seo_score` is annotated in bulk by cards.annotate_seo_scores, never
+  looked up here — a per-row query would N+1 the whole list.
+  A product that has never been audited shows a dash rather than a zero: "not
+  measured" and "measured as terrible" are different things to a merchant.
+{% endcomment %}
+{% if product.seo_score is None %}
+  <span class="text-xs text-[color:var(--text-subtle)]" title="Not audited yet">—</span>
+{% elif product.seo_score >= 80 %}
+  <span class="pill pill-success" title="SEO score">{{ product.seo_score }}</span>
+{% elif product.seo_score >= 50 %}
+  <span class="pill pill-warning" title="SEO score">{{ product.seo_score }}</span>
+{% else %}
+  <span class="pill pill-danger" title="SEO score — needs attention">{{ product.seo_score }}</span>
+{% endif %}

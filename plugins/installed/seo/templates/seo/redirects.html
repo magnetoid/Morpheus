@@ -4,18 +4,28 @@
 {% block content %}
 <a href="{% url 'seo_dashboard:overview' %}" class="text-sm text-[color:var(--text-muted)]">← SEO</a>
 <div class="flex items-center justify-between mt-2 mb-4">
-  <h1 class="text-xl font-semibold">301 / 302 redirects</h1>
-  <a href="{% url 'seo_dashboard:not_found' %}" class="text-sm text-[color:var(--text-muted)] hover:underline">404 log →</a>
+  <div>
+    <h1 class="text-xl font-semibold">Redirects</h1>
+    <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
+      An exact rule always wins, then the longest matching prefix, then patterns.
+    </p>
+  </div>
+  <span style="display:flex; gap:.75rem; align-items:center;">
+    <a href="?export=csv" class="text-sm text-[color:var(--text-muted)] hover:underline">Export CSV</a>
+    <a href="{% url 'seo_dashboard:not_found' %}" class="text-sm text-[color:var(--text-muted)] hover:underline">404 log →</a>
+  </span>
 </div>
 
 <div class="card mb-6">
   <table class="morph-table">
     <thead>
       <tr>
-        <th>From path</th>
-        <th>To path</th>
+        <th>From</th>
+        <th>To</th>
+        <th>Match</th>
         <th>Code</th>
         <th>Hits</th>
+        <th>Source</th>
         <th>Active</th>
         <th>Actions</th>
       </tr>
@@ -24,9 +34,17 @@
       {% for r in rows %}
         <tr>
           <td><code style="font-size:.85rem;">{{ r.from_path|truncatechars:60 }}</code></td>
-          <td><code style="font-size:.85rem;">{{ r.to_path|truncatechars:60 }}</code></td>
-          <td><span class="pill">{{ r.status_code }}</span></td>
+          <td>
+            {% if r.is_gone %}
+              <span class="text-[color:var(--text-muted)] text-xs">removed for good</span>
+            {% else %}
+              <code style="font-size:.85rem;">{{ r.to_path|truncatechars:60 }}</code>
+            {% endif %}
+          </td>
+          <td><span class="pill pill-neutral">{{ r.get_match_type_display }}</span></td>
+          <td><span class="pill{% if r.is_gone %} pill-warning{% endif %}">{{ r.status_code }}</span></td>
           <td>{{ r.hit_count }}</td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ r.get_source_display }}</td>
           <td>{% if r.is_active %}<span class="pill pill-success">on</span>{% else %}<span class="pill pill-neutral">off</span>{% endif %}</td>
           <td style="white-space:nowrap;">
             <a class="btn-link" href="?edit={{ r.id }}#redirect-form">Edit</a>
@@ -40,15 +58,15 @@
           </td>
         </tr>
       {% empty %}
-        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">No redirects yet — add one below.</td></tr>
+        <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">No rules yet — add one below.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 
-<div class="card card-padded max-w-3xl" id="redirect-form">
+<div class="card card-padded max-w-3xl mb-6" id="redirect-form">
   <div class="flex items-center justify-between mb-3">
-    <h3 class="font-semibold">{% if edit_row %}Edit redirect{% else %}Add redirect{% endif %}</h3>
+    <h3 class="font-semibold">{% if edit_row %}Edit rule{% else %}Add rule{% endif %}</h3>
     {% if edit_row %}<a href="{% url 'seo_dashboard:redirects' %}" class="text-xs text-[color:var(--text-muted)] hover:underline">Cancel</a>{% endif %}
   </div>
   <form method="post" class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -61,18 +79,29 @@
     </div>
     <div>
       <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="to-path">To path</label>
-      <input id="to-path" class="input w-full" name="to_path" required placeholder="/new-url/" value="{{ edit_row.to_path|default:'' }}">
+      <input id="to-path" class="input w-full" name="to_path" placeholder="/new-url/" value="{{ edit_row.to_path|default:'' }}">
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">Leave blank when the code is 410.</p>
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="match-type">Match</label>
+      <select id="match-type" class="input w-full" name="match_type">
+        {% for value, label in match_choices %}
+        <option value="{{ value }}"{% if edit_row.match_type == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">A prefix rule moves a whole branch and keeps the rest of the path.</p>
     </div>
     <div>
       <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="status-code">Status code</label>
       {% with current=edit_row.status_code|default:301 %}
       <select id="status-code" class="input w-full" name="status_code">
-        <option value="301"{% if current == 301 %} selected{% endif %}>301 Permanent</option>
-        <option value="302"{% if current == 302 %} selected{% endif %}>302 Temporary</option>
+        {% for value, label in status_choices %}
+        <option value="{{ value }}"{% if current == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
       </select>
       {% endwith %}
     </div>
-    <div>
+    <div class="md:col-span-2">
       <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="note-input">Note (optional)</label>
       <input id="note-input" class="input w-full" name="note" value="{{ edit_row.note|default:'' }}" maxlength="200">
     </div>
@@ -80,8 +109,22 @@
       <label><input type="checkbox" name="is_active"{% if not edit_row or edit_row.is_active %} checked{% endif %}> Active</label>
     </div>
     <div class="md:col-span-2 mt-2">
-      <button type="submit" class="btn btn-primary">{% if edit_row %}Save changes{% else %}Add redirect{% endif %}</button>
+      <button type="submit" class="btn btn-primary">{% if edit_row %}Save changes{% else %}Add rule{% endif %}</button>
     </div>
+  </form>
+</div>
+
+<div class="card card-padded max-w-3xl">
+  <h3 class="font-semibold mb-1">Import from CSV</h3>
+  <p class="text-xs text-[color:var(--text-muted)] mb-3">
+    Columns: <code>from_path, to_path, status_code, match_type, note</code>. Rows
+    that fail validation are reported and skipped — the rest still import.
+  </p>
+  <form method="post" enctype="multipart/form-data" style="display:flex; gap:.5rem; align-items:center;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="import_csv">
+    <input type="file" name="csv_file" accept=".csv,text/csv" class="input" required>
+    <button type="submit" class="btn">Import</button>
   </form>
 </div>
 {% endblock %}

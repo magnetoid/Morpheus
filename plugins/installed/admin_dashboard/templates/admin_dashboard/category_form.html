@@ -51,17 +51,12 @@
       </div>
     </div>
 
-    <div class="card card-padded space-y-3">
-      <h2 class="font-semibold text-sm">SEO</h2>
-      <div>
-        <label class="block text-sm font-medium mb-1">Meta title</label>
-        {{ form.meta_title }}
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Meta description</label>
-        {{ form.meta_description }}
-      </div>
-    </div>
+    {% comment %}
+    Contributed cards (CATEGORY_FORM_CARDS) — the SEO panel arrives here, the
+    same one the product, collection and page forms get. Each vanishes with
+    its app.
+    {% endcomment %}
+    {% for card in extra_cards %}{{ card|safe }}{% endfor %}
 
     <div class="flex items-center justify-between gap-3">
       <button type="submit" class="btn btn-primary">Save changes</button>

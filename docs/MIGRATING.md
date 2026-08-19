@@ -6,6 +6,81 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.47.0 — per-entity SEO has one owner, and one editor
+
+**Who this affects:** anyone reading or writing `catalog.Product`'s SEO columns
+(or `Category`/`Collection`'s `meta_title` / `meta_description`) from outside
+this repo, and any app that read the `seo.ai_answer` metafield. Storefront
+output, GraphQL, REST, MCP and webhooks are unaffected.
+
+### What changed
+
+A product's SEO lived in **two** places: thirteen native columns on `Product`,
+edited through a block hardcoded in the dashboard's product form, and the
+generic `SeoMeta` overlay, edited through a panel that only CMS pages used.
+`SeoMeta` won at render time — and because `autofill_meta_for` creates a
+`SeoMeta` row for every product on creation, seeded with the product's own
+*name*, a merchant who typed a meta title into the product form watched the
+storefront keep showing the plain name. The edit was stored and ignored.
+
+As of v0.47 **`SeoMeta` is the single owner**, and one panel edits it for
+products, categories, collections and CMS pages alike — contributed into each
+form through `PRODUCT_FORM_CARDS` and the new `CATEGORY_FORM_CARDS`,
+`COLLECTION_FORM_CARDS` and `PAGE_FORM_CARDS`.
+
+### Do I have to change anything?
+
+**Reading: no.** The native columns are still read as a fallback, and
+`resolve_meta` resolves the same way it always did — except that a value a human
+typed now beats one the platform autofilled, whichever table it is in.
+
+**Writing: yes, eventually.** Writing `product.meta_title` still works today but
+is deprecated: the panel writes `SeoMeta`, and once an entity has a merchant-
+edited row the native column is no longer consulted. Write through `SeoMeta`:
+
+```python
+from django.contrib.contenttypes.models import ContentType
+from plugins.installed.seo.models import SeoMeta
+
+SeoMeta.objects.update_or_create(
+    content_type=ContentType.objects.get_for_model(type(product)),
+    object_id=str(product.pk),
+    defaults={'title': 'A title', 'auto_filled': False},
+)
+```
+
+The native columns are removed in a later release. To consolidate existing data
+now:
+
+```bash
+python manage.py seo_backfill_meta --dry-run   # report
+python manage.py seo_backfill_meta             # apply
+```
+
+It only fills blanks (and replaces values the platform autofilled), so it is
+safe to re-run and cannot overwrite a merchant's edit.
+
+### Other changes in this release
+
+- **`seo.ai_answer` metafield → `SeoMeta.ai_answer`.** The metafield is still
+  read as a fallback; the panel writes the column.
+- **`<meta name="keywords">` is no longer emitted.** Engines have ignored it
+  since 2009, and the field now holds the merchant's *internal* focus keyword,
+  which the editor promises is not published.
+- **Product pages declare `og:type=product`** instead of `website`. Nothing had
+  ever written the field; the non-blank default outranked the page kind.
+- **`Redirect` gained `match_type` (exact / prefix / regex), `source`, and 410**,
+  and `from_path` is unique per match type rather than globally. A redirect
+  target must now be site-relative — an absolute URL is refused rather than
+  served as a `Location` header.
+- **`SeoPage` moved to `core.seo_page`.** Import it from there when answering
+  `SEO_RESOLVE_PAGE`; `plugins.installed.seo.pages.types` re-exports it.
+- **Every `/dashboard/seo/…` view now requires `seo.read`, and writing requires
+  `seo.write`.** Enforcement still defaults to log-only, so nothing is denied
+  until a merchant switches rbac to `enforce`.
+
+---
+
 ## v0.46.0 — the `<head>` is rendered by one core tag
 
 **Who this affects:** anyone maintaining a **theme** outside this repo, and any

@@ -15,6 +15,7 @@ import json
 from django.contrib import messages
 from django.utils.http import http_date
 
+from core.authz import enforce, require_capability
 from morpheus.app.views import staff_member_required
 from morpheus.app.views import HttpRequest, HttpResponse, JsonResponse
 from morpheus.app.views import get_object_or_404, redirect, render
@@ -426,6 +427,7 @@ def web_vitals_beacon(request: HttpRequest) -> JsonResponse:
 
 
 @staff_member_required
+@require_capability('seo.read')
 def seo_overview(request):
     from datetime import timedelta
 
@@ -514,11 +516,16 @@ def seo_overview(request):
 
 
 @staff_member_required
+@require_capability('seo.read')
 def seo_settings_page(request):
     from plugins.installed.seo.models import SiteSeoSettings
 
     s = site_settings()
     if request.method == 'POST':
+        # Reading this page needs seo.read (the decorator); changing
+        # anything on it needs seo.write.
+        if (denied := enforce(request, 'seo.write')) is not None:
+            return denied
         # Image optimization moved to /dashboard/settings/caching/ (ADR 0005).
         for field in (
             'organization_name',
@@ -622,15 +629,38 @@ def seo_settings_page(request):
 
 
 @staff_member_required
+@require_capability('seo.read')
 def not_found_log(request):
+    """The 404 monitor.
+
+    Suggesting targets is a WRITE (it stores `suggested_target`) and an
+    expensive one — it loads every active product slug and fuzzy-matches. It
+    used to run on every GET of this page, which meant a read capability could
+    write, and a big catalog paid for it on each visit. It is a button now.
+    """
     from plugins.installed.seo.models import NotFoundLog
 
-    refresh_404_suggestions()
+    if request.method == 'POST':
+        if (denied := enforce(request, 'seo.write')) is not None:
+            return denied
+        n = refresh_404_suggestions()
+        messages.success(request, f'Suggested targets for {n} path(s).')
+        return redirect('seo_dashboard:not_found')
+
     rows = NotFoundLog.objects.filter(is_resolved=False).order_by('-hit_count')[:200]
-    return render(request, 'seo/not_found.html', {'rows': rows, 'active_nav': 'seo'})
+    return render(
+        request,
+        'seo/not_found.html',
+        {
+            'rows': rows,
+            'unsuggested': sum(1 for r in rows if not r.suggested_target),
+            'active_nav': 'seo',
+        },
+    )
 
 
 @staff_member_required
+@require_capability('seo.write')
 def not_found_create_redirect(request, log_id):
     from plugins.installed.seo.models import NotFoundLog, Redirect
 
@@ -653,8 +683,13 @@ def not_found_create_redirect(request, log_id):
 
 
 @staff_member_required
+@require_capability('seo.read')
 def audit_page(request):
     if request.method == 'POST':
+        # Reading this page needs seo.read (the decorator); changing
+        # anything on it needs seo.write.
+        if (denied := enforce(request, 'seo.write')) is not None:
+            return denied
         n = audit_all_products(limit=500)
         # Redirect after POST so a browser refresh doesn't re-trigger
         # the audit, and the merchant sees the refreshed table.
@@ -667,10 +702,15 @@ def audit_page(request):
 
 
 @staff_member_required
+@require_capability('seo.read')
 def keywords_page(request):
     from plugins.installed.seo.models import TrackedKeyword
 
     if request.method == 'POST':
+        # Reading this page needs seo.read (the decorator); changing
+        # anything on it needs seo.write.
+        if (denied := enforce(request, 'seo.write')) is not None:
+            return denied
         kw = (request.POST.get('keyword') or '').strip()
         if kw:
             TrackedKeyword.objects.get_or_create(
@@ -687,6 +727,7 @@ def keywords_page(request):
 
 
 @staff_member_required
+@require_capability('seo.read')
 def bulk_meta(request):
     """Bulk-edit SEO titles + descriptions across products."""
     from django.contrib.contenttypes.models import ContentType
@@ -694,6 +735,10 @@ def bulk_meta(request):
     from plugins.installed.seo.models import SeoMeta
 
     if request.method == 'POST':
+        # Reading this page needs seo.read (the decorator); changing
+        # anything on it needs seo.write.
+        if (denied := enforce(request, 'seo.write')) is not None:
+            return denied
         ct = ContentType.objects.get_for_model(Product)
         n = 0
         for key, val in request.POST.items():
@@ -785,6 +830,7 @@ def bulk_meta(request):
 
 
 @staff_member_required
+@require_capability('seo.read')
 def sitemap_page(request):
     """Sitemap dashboard — single page for every sitemap surface,
     manual entries CRUD, IndexNow status, toggles, and a validate
@@ -822,6 +868,10 @@ def sitemap_page(request):
     flash_kind = 'ok'
 
     if request.method == 'POST':
+        # Reading this page needs seo.read (the decorator); changing
+        # anything on it needs seo.write.
+        if (denied := enforce(request, 'seo.write')) is not None:
+            return denied
         action = (request.POST.get('action') or '').strip()
 
         if action == 'add_entry':
@@ -892,7 +942,7 @@ def sitemap_page(request):
             total = (res.get('counts') or {}).get('total', 0)
             return HttpResponseRedirect(
                 f'/dashboard/seo/sitemap/?regen=ok&total={total}'
-                f'&purged={res.get("purged_zones", 0)}&pinged={int(bool(res.get("pinged")))}'
+                f'&purged={int(bool(res.get("purged")))}&pinged={int(bool(res.get("pinged")))}'
             )
 
         if action == 'ping_url':
@@ -1030,50 +1080,92 @@ def sitemap_page(request):
 
 
 @staff_member_required
-def redirects_page(request):
-    """List + create + edit + delete 301/302 Redirect rules.
+@require_capability('seo.read')
+def redirects_page(request):  # noqa: PLR0912 — flat action dispatch, one branch per button
+    """Create, edit, delete and import the redirect rules.
 
-    Mirrors the look of the bulk_meta page — one filter form, one
-    list table, one inline create/edit form.
+    Every write goes through `Redirect.save()` rather than a queryset update:
+    save() normalises the paths, collapses chains, and — via post_save — drops
+    the resolver's cached ruleset. A `.update()` here skipped all three, so a
+    merchant could edit a rule and watch the old one keep serving.
     """
     from plugins.installed.seo.models import Redirect
+    from plugins.installed.seo.services.redirects import (
+        export_redirects_csv,
+        import_redirects_csv,
+        validate_redirect,
+    )
 
     if request.method == 'POST':
+        # Reading this page needs seo.read (the decorator); changing
+        # anything on it needs seo.write.
+        if (denied := enforce(request, 'seo.write')) is not None:
+            return denied
         action = (request.POST.get('action') or '').strip()
-        if action == 'create':
+
+        if action in {'create', 'edit'}:
             from_path = (request.POST.get('from_path') or '').strip()
             to_path = (request.POST.get('to_path') or '').strip()
-            if from_path and to_path:
-                Redirect.objects.update_or_create(
-                    from_path=from_path,
-                    defaults={
-                        'to_path': to_path,
-                        'status_code': int(request.POST.get('status_code') or 301),
-                        'is_active': request.POST.get('is_active') == 'on',
-                        'note': (request.POST.get('note') or '').strip()[:200],
-                    },
-                )
-                messages.success(request, f'Saved redirect {from_path} → {to_path}.')
-        elif action == 'edit':
+            status_code = int(request.POST.get('status_code') or 301)
+            match_type = (request.POST.get('match_type') or 'exact').strip()
+            if match_type not in {c[0] for c in Redirect.MATCH_CHOICES}:
+                match_type = Redirect.MATCH_EXACT
+            problems = validate_redirect(
+                from_path=from_path,
+                to_path=to_path,
+                status_code=status_code,
+                match_type=match_type,
+            )
+            if problems:
+                for problem in problems:
+                    messages.error(request, problem)
+                return redirect('seo_dashboard:redirects')
             rid = (request.POST.get('id') or '').strip()
-            if rid:
-                Redirect.objects.filter(pk=rid).update(
-                    from_path=(request.POST.get('from_path') or '').strip(),
-                    to_path=(request.POST.get('to_path') or '').strip(),
-                    status_code=int(request.POST.get('status_code') or 301),
-                    is_active=request.POST.get('is_active') == 'on',
-                    note=(request.POST.get('note') or '').strip()[:200],
-                )
-                messages.success(request, 'Redirect updated.')
+            row = Redirect.objects.filter(pk=rid).first() if rid else None
+            row = row or Redirect()
+            row.from_path = from_path
+            row.to_path = to_path
+            row.status_code = status_code
+            row.match_type = match_type
+            row.is_active = request.POST.get('is_active') == 'on'
+            row.note = (request.POST.get('note') or '').strip()[:200]
+            row.save()
+            messages.success(request, f'Saved rule for {row.from_path}.')
+
         elif action == 'delete':
             rid = (request.POST.get('id') or '').strip()
             if rid:
-                Redirect.objects.filter(pk=rid).delete()
+                # Instance delete (not a queryset delete) so post_delete fires
+                # and the resolver stops serving the rule immediately.
+                row = Redirect.objects.filter(pk=rid).first()
+                if row:
+                    row.delete()
                 messages.success(request, 'Redirect deleted.')
+
+        elif action == 'import_csv':
+            upload = request.FILES.get('csv_file')
+            text = upload.read().decode('utf-8', 'replace') if upload else ''
+            if not text.strip():
+                messages.error(request, 'Choose a CSV file to import.')
+            else:
+                result = import_redirects_csv(text)
+                messages.success(
+                    request,
+                    f'Imported {result["created"]} new and updated {result["updated"]} '
+                    f'rule(s); {result["skipped"]} skipped.',
+                )
+                for err in result['errors'][:10]:
+                    messages.warning(request, err)
+
         return redirect('seo_dashboard:redirects')
 
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(export_redirects_csv(), content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="redirects.csv"'
+        return response
+
     edit_id = (request.GET.get('edit') or '').strip()
-    rows = list(Redirect.objects.all().order_by('from_path'))
+    rows = list(Redirect.objects.all().order_by('match_type', 'from_path'))
     edit_row = None
     if edit_id:
         edit_row = next((r for r in rows if str(r.pk) == edit_id), None)
@@ -1083,12 +1175,15 @@ def redirects_page(request):
         {
             'rows': rows,
             'edit_row': edit_row,
+            'status_choices': Redirect.KIND_CHOICES,
+            'match_choices': Redirect.MATCH_CHOICES,
             'active_nav': 'seo',
         },
     )
 
 
 @staff_member_required
+@require_capability('seo.read')
 def seo_inspector(request):
     """Paste-a-slug, see-everything inspector for a single Product /
     Category / Collection / Journal post.
@@ -1328,6 +1423,7 @@ def seo_inspector(request):
 
 
 @staff_member_required
+@require_capability('seo.write')
 def not_found_dismiss(request, pk):
     """Mark a NotFoundLog row resolved without creating a redirect.
 
@@ -1352,6 +1448,7 @@ def not_found_dismiss(request, pk):
 
 
 @staff_member_required
+@require_capability('seo.read')
 def schema_index(request: HttpRequest) -> HttpResponse:
     from django.urls import reverse
 
@@ -1394,6 +1491,7 @@ def schema_index(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('seo.read')
 def schema_editor(request: HttpRequest, app_label: str, model: str, pk: str) -> HttpResponse:
     from django.contrib.contenttypes.models import ContentType
 
@@ -1413,6 +1511,10 @@ def schema_editor(request: HttpRequest, app_label: str, model: str, pk: str) -> 
     meta = SeoMeta.objects.filter(content_type=ct, object_id=str(pk)).first()
 
     if request.method == 'POST':
+        # Reading this page needs seo.read (the decorator); changing
+        # anything on it needs seo.write.
+        if (denied := enforce(request, 'seo.write')) is not None:
+            return denied
         try:
             entries = json.loads(request.POST.get('blocks_json') or '[]')
         except (ValueError, TypeError):

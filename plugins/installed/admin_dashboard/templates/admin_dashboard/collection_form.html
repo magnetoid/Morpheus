@@ -54,17 +54,12 @@
       {{ form.products }}
     </div>
 
-    <div class="card card-padded space-y-3">
-      <h2 class="font-semibold text-sm">SEO</h2>
-      <div>
-        <label class="block text-sm font-medium mb-1">Meta title</label>
-        {{ form.meta_title }}
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Meta description</label>
-        {{ form.meta_description }}
-      </div>
-    </div>
+    {% comment %}
+    Contributed cards (COLLECTION_FORM_CARDS) — the SEO panel arrives here.
+    They MUST stay inside this form: the delete form below is a sibling, and
+    inputs placed after it would submit with the delete instead.
+    {% endcomment %}
+    {% for card in extra_cards %}{{ card|safe }}{% endfor %}
 
     <div class="flex items-center justify-between gap-3">
       <button type="submit" class="btn btn-primary">{% if is_new %}Create collection{% else %}Save changes{% endif %}</button>
