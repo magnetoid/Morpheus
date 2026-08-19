@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.49.1 — 2026-08-19
+
+**Books sold in several editions keep their group markup**
+
+- Fixes a v0.49.0 slip. A book listed in more than one edition carried its variant markup but described itself as a single product, because removing the duplicate book claim from the page erased the group type along with it. Google ignores variant properties on a plain product, so the editions were published and then discarded.
+
 ## v0.49.0 — 2026-08-19
 
 **Products with variants are described as one item**

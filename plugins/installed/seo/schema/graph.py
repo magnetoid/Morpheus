@@ -239,11 +239,18 @@ def _product_nodes(page: SeoPage, url: str) -> list[dict]:
             nodes.append(book)
             # One Book claim per page. `product_jsonld` upgrades a book's @type
             # to ['Product', 'Book'] from its metafields, which is right when
-            # the Product node stands alone — but beside a dedicated Book node
-            # it means two Book-typed nodes describing the same thing, the
-            # duplication this graph exists to end.
+            # the node stands alone — but beside a dedicated Book node it means
+            # two Book-typed nodes describing the same thing, the duplication
+            # this graph exists to end.
+            #
+            # Remove ONLY 'Book'. Flattening the whole list to 'Product' also
+            # erased 'ProductGroup', so a book sold in several editions kept its
+            # hasVariant / variesBy / productGroupID while declaring itself a
+            # plain Product — properties that belong to ProductGroup and which
+            # Google therefore ignores.
             if product and isinstance(product.get('@type'), list):
-                product['@type'] = 'Product'
+                kept = [t for t in product['@type'] if t != 'Book']
+                product['@type'] = kept[0] if len(kept) == 1 else (kept or 'Product')
 
     videos = ctx.get('video_seo')
     if videos:

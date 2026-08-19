@@ -342,3 +342,65 @@ class DeferredFieldTests(TestCase):
             model=self.product,
         )
         self.assertEqual(node['offers']['priceSpecification']['price'], '20.00')
+
+
+class BookVariantTypeTests(TestCase):
+    """A book sold in several editions is still a group.
+
+    Deduplicating the Book claim (the page carries a dedicated Book node)
+    flattened the whole @type list to 'Product', which also erased
+    'ProductGroup' — leaving hasVariant, variesBy and productGroupID on a node
+    that declared itself a plain Product, so Google ignored all three.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        from plugins.installed.book_product.models import BookProduct
+        from plugins.installed.catalog.models import ProductVariant
+
+        cls.product = Product.objects.create(
+            name='Book Group Probe',
+            slug='book-group-probe',
+            sku='BG-1',
+            status='active',
+            price=Money(Decimal('16.00'), 'USD'),
+        )
+        BookProduct.objects.create(product=cls.product, author='Ines Parityauthor')
+        ProductVariant.objects.create(
+            product=cls.product, name='Print', sku='BG-1-P', variant_type='physical'
+        )
+        ProductVariant.objects.create(
+            product=cls.product, name='Digital', sku='BG-1-D', variant_type='digital'
+        )
+
+    def test_a_multi_edition_book_keeps_its_group_type_beside_a_book_node(self):
+        from core.seo_page import KIND_PRODUCT, SeoPage
+        from plugins.installed.seo.schema import build_graph
+
+        page = SeoPage(
+            kind=KIND_PRODUCT,
+            obj=self.product,
+            rendered={'slug': 'book-group-probe', 'price': {'amount': '16.00', 'currency': 'USD'}},
+            path='/products/book-group-probe/',
+            title='Book Group Probe',
+            # `authors` (a list) is what book_jsonld requires to emit a node;
+            # with a bare `author` it returns {} and the dedup never runs.
+            context={
+                'book_jsonld_data': {
+                    'name': 'Book Group Probe',
+                    'authors': ['Ines Parityauthor'],
+                    'path': '/products/book-group-probe/',
+                }
+            },
+        )
+        nodes = (build_graph(page) or {}).get('@graph', [])
+        group = next((n for n in nodes if 'ProductGroup' in str(n.get('@type', ''))), None)
+
+        self.assertIsNotNone(group, 'the multi-edition book lost its ProductGroup type')
+        self.assertIn('hasVariant', group)
+        # The dedup must actually have run: a standalone Book node exists...
+        standalone = [n for n in nodes if n.get('@type') == 'Book']
+        self.assertEqual(len(standalone), 1, 'the Book node was not emitted')
+        # ...and it is the ONLY thing claiming to be a Book.
+        books = [n for n in nodes if 'Book' in str(n.get('@type', ''))]
+        self.assertEqual(len(books), 1)
