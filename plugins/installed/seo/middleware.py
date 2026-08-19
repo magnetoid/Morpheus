@@ -14,6 +14,11 @@ Three things here are not obvious and each one was a bug:
 * **The destination.** `to_path` is merchant- *and assistant*-writable and went
   straight into a `Location` header, which is an open redirect: a rule pointing
   at `https://evil.example` turns the store into a phishing hop.
+
+It also enforces one rule that needs no stored row: `?page=1` is the clean URL
+wearing a second name, so it is 301'd rather than merely canonicalised. That
+belongs here because it applies to every paginated listing any app publishes,
+not just the ones the storefront happens to own.
 """
 
 from __future__ import annotations
@@ -54,7 +59,13 @@ class SeoRedirectMiddleware:
         path = request.path_info or '/'
         if any(path.startswith(prefix) for prefix in self.SKIP_PREFIXES) or not _seo_active():
             return self.get_response(request)
+        # Explicit `is None` rather than `or`: an empty-bodied redirect response
+        # is truthy only because Django's HttpResponse defines neither __bool__
+        # nor __len__, and a redirect rule silently stopping at that detail is
+        # not a thing to leave to chance.
         response = self._redirect_for(request, path)
+        if response is None:
+            response = _page_one_redirect(request)
         return response if response is not None else self._passthrough(request, path)
 
     def _redirect_for(self, request, path: str):
@@ -87,7 +98,7 @@ class SeoRedirectMiddleware:
 
     def _passthrough(self, request, path: str):
         response = self.get_response(request)
-        if response.status_code == 404:
+        if response.status_code == 404 and not _is_pagination_404(request):
             try:
                 from plugins.installed.seo.services import record_404
 
@@ -95,6 +106,38 @@ class SeoRedirectMiddleware:
             except Exception:  # noqa: BLE001, S110 — logging a 404 can't cost the 404
                 pass
         return response
+
+
+def _is_pagination_404(request) -> bool:
+    """A page number past the end is not a broken address.
+
+    `record_404` stores `path_info` with the query string stripped, so a 404
+    caused by `?page=999` would be filed as a broken `/products/` — a URL that
+    answers 200 — and the 404 log offers a one-click "redirect this path
+    somewhere". A merchant acting on that entry would 301 their entire product
+    listing away. The log is for addresses that stopped working; a valid
+    address with an out-of-range page number is not one.
+    """
+    try:
+        from plugins.installed.seo.rules.params import RESERVED_PARAMS
+
+        return any(key.lower() in RESERVED_PARAMS for key in request.GET)
+    except Exception:  # noqa: BLE001 — never let this decide the response
+        return False
+
+
+def _page_one_redirect(request):
+    """301 `?page=1` onto the clean URL.
+
+    `/shop/` and `/shop/?page=1` are the same page under two names. A canonical
+    would tell an engine which one to keep and leave the other being fetched
+    forever; a 301 removes it. Every other page number is a real page and is
+    left alone (see `rules/pagination.py`).
+    """
+    from plugins.installed.seo.rules import page_one_redirect_target
+
+    target = page_one_redirect_target(request)
+    return HttpResponsePermanentRedirect(target) if target else None
 
 
 def _seo_active() -> bool:

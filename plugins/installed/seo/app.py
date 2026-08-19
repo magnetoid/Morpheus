@@ -457,6 +457,15 @@ class SeoPlugin(Plugin):
                 url='/dashboard/seo/redirects/',
             ),
             DashboardPage(
+                label='Index rules',
+                slug='rules',
+                view='plugins.installed.seo.views.index_rules_page',
+                icon='filter',
+                section='seo',
+                order=47,
+                url='/dashboard/seo/rules/',
+            ),
+            DashboardPage(
                 label='Keywords',
                 slug='keywords',
                 view='plugins.installed.seo.views.keywords_page',

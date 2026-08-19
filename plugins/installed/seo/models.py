@@ -291,6 +291,90 @@ class SlugHistory(models.Model):
         return f'{self.old_path} → {self.new_path}'
 
 
+class IndexRule(models.Model):
+    """What a query parameter does to a page's indexability.
+
+    A storefront listing multiplies: `?sort=`, `?genre=`, `?price_min=`,
+    `?utm_source=` and every combination of them is a distinct URL serving
+    substantially the same products. Left alone that is thousands of near-
+    duplicate pages competing with the category they came from, and a crawler
+    spending its budget on permutations instead of products.
+
+    One row per parameter, one of four policies — chosen because they are the
+    four *different* things a merchant can mean, not because a fifth would be
+    tidy:
+
+    * **consolidate** — the canonical drops the parameter, the page stays
+      indexable. The right answer for tracking and for `sort`/`view`: the
+      content is the category, seen sideways.
+    * **noindex** — the page is `noindex, follow` **and self-canonical**. The
+      self-canonical is the part that is easy to get wrong: a page that says
+      "don't index me" while pointing its canonical at another URL is sending
+      two contradictory signals about two different URLs, and Google's
+      documented behaviour is that the noindex may be applied to the canonical
+      target — i.e. the category page itself can drop out. Pick one signal.
+    * **allowlist** — named values are real landing pages (`?genre=fantasy`),
+      self-canonical and indexable; every other value gets the noindex
+      treatment. This is the one that earns a store traffic rather than just
+      protecting it.
+    * **block** — a `Disallow: /*?*param=` line in robots.txt. The only policy
+      that saves crawl budget, because it stops the fetch instead of labelling
+      the result; also the only one whose page-level directives are never seen,
+      which is why it must not also try to noindex.
+
+    `param` may end in `*` to match a family (`utm_*`), so the six UTM
+    parameters plus whatever a campaign tool invents next are one row.
+    """
+
+    POLICY_CONSOLIDATE = 'consolidate'
+    POLICY_NOINDEX = 'noindex'
+    POLICY_ALLOWLIST = 'allowlist'
+    POLICY_BLOCK = 'block'
+    POLICY_CHOICES = [
+        (POLICY_CONSOLIDATE, 'Keep indexable, drop from the canonical'),
+        (POLICY_NOINDEX, 'No-index this page (self-canonical)'),
+        (POLICY_ALLOWLIST, 'Index only the listed values'),
+        (POLICY_BLOCK, 'Block in robots.txt'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    param = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text='Query parameter name. A trailing * matches a family, e.g. utm_*',
+    )
+    policy = models.CharField(max_length=16, choices=POLICY_CHOICES, default=POLICY_CONSOLIDATE)
+    allowed_values = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Values that stay indexable, for the "index only the listed values" policy.',
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['param']
+        verbose_name = 'Index rule'
+
+    def __str__(self) -> str:
+        return f'{self.param} → {self.get_policy_display()}'
+
+    def save(self, *args, **kwargs):
+        """Normalise on the model, not in the view.
+
+        Rules arrive from the dashboard, from the seeding migration and from a
+        shell, and a rule stored as ` UTM_Source ` matches nothing while looking
+        entirely correct in the table.
+        """
+        self.param = (self.param or '').strip().lower()
+        if not isinstance(self.allowed_values, list):
+            self.allowed_values = []
+        self.allowed_values = [str(v).strip() for v in self.allowed_values if str(v).strip()]
+        super().save(*args, **kwargs)
+
+
 class SitemapEntry(models.Model):
     """
     Optional precomputed sitemap entry. Most callers should let the

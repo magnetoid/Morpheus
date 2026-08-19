@@ -6,6 +6,64 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.50.0 — index rules, and pagination that tells the truth
+
+**Who this affects:** anyone whose app publishes a paginated listing, anyone who
+set `SiteSeoSettings.noindex_query_params`, and any theme or app that assumed an
+out-of-range `?page=` renders page 1.
+
+### Out-of-range page numbers now 404
+
+`/products/?page=999` used to answer `200` with page 1's products. It now
+returns `404`, as does a page number that is not a number. This is the fix for a
+live defect: Django's paginator clamps out-of-range numbers, so every integer
+anyone appended became a separate indexable page claiming — via a self-referential
+canonical — to be the original.
+
+If you paginate a listing of your own, use the same shape:
+
+```python
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from django.http import Http404
+
+try:
+    page_obj = Paginator(qs, per_page).page(request.GET.get('page') or 1)
+except (EmptyPage, PageNotAnInteger):
+    raise Http404('No such page of results.') from None
+```
+
+…and **put `page_obj` in your template context**. The canonical now trusts
+`?page=` only when a real paginator is present, so a listing that paginates
+without exposing `page_obj` would canonicalise all of its pages onto page 1.
+(The reverse case is what shipped: a listing with no paginator echoed `?page=`
+into its canonical anyway.) `?page=1` is 301'd to the clean URL, and page 2
+onwards gets `— Page N` appended to its title.
+
+### `noindex_query_params` is superseded
+
+Query-parameter policy now lives in one `IndexRule` row per parameter, edited at
+**SEO → Index rules**, with four policies: consolidate, no-index, index only
+listed values, and block in robots.txt. Your existing
+`SiteSeoSettings.noindex_query_params` list **still applies** — it is read as an
+implicit no-index rule, and any real rule for the same parameter overrides it —
+but the field goes away with the column in a future release. Move your entries
+across when convenient.
+
+One behaviour change comes with it, and it is a fix: a no-indexed parameter page
+is now **canonical to itself**. Previously it was `noindex` *and* canonical to
+the bare category — two contradictory claims about two URLs, and the documented
+risk is that the no-index is applied to the canonical target, i.e. the category.
+
+### robots.txt is contributed, not hardcoded
+
+`/cart/`, `/checkout/` and `/auth/` now come from the `storefront` app through
+the `SEO_ROBOTS_RULES` filter (`value` is a `core.robots.RobotsDocument`; call
+`disallow()` / `allow()` / `sitemap()` and return it). The rendered file is
+unchanged. If your app publishes a private surface, contribute it rather than
+asking for an edit to the seo app.
+
+---
+
 ## v0.49.0 — products with variants are described as one item
 
 **Who this affects:** nobody has to change anything. This adds markup that was

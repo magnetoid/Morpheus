@@ -24,6 +24,7 @@ _READ_URLS = [
     'seo_dashboard:overview',
     'seo_dashboard:not_found',
     'seo_dashboard:redirects',
+    'seo_dashboard:index_rules',
     'seo_dashboard:audit',
     'seo_dashboard:keywords',
     'seo_dashboard:bulk_meta',
@@ -123,6 +124,11 @@ class SeoDashboardBoundaryTests(TestCase):
                 'from_path': '/a/',
                 'to_path': '/b/',
             },
+            'seo_dashboard:index_rules': {
+                'action': 'create',
+                'param': 'sort',
+                'policy': 'noindex',
+            },
             'seo_dashboard:not_found': {},
         }
         for name, payload in posts.items():
@@ -135,10 +141,11 @@ class SeoDashboardBoundaryTests(TestCase):
                     f'{name} accepted a write from a read-only role',
                 )
 
-        from plugins.installed.seo.models import Redirect, TrackedKeyword
+        from plugins.installed.seo.models import IndexRule, Redirect, TrackedKeyword
 
         self.assertFalse(Redirect.objects.exists(), 'a refused POST still wrote a redirect')
         self.assertFalse(TrackedKeyword.objects.exists(), 'a refused POST still wrote a keyword')
+        self.assertFalse(IndexRule.objects.exists(), 'a refused POST still wrote an index rule')
 
     def test_the_404_page_does_not_write_on_a_read(self):
         """Suggesting targets stores `suggested_target`; it used to run on every

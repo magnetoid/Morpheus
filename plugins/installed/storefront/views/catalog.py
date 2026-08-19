@@ -31,6 +31,29 @@ from plugins.registry import app_registry
 from ._queries import PRODUCT_DETAIL_QUERY
 
 
+def _paginate(qs, per_page, request):
+    """Page a listing, and 404 a page number that isn't there.
+
+    Django's paginator clamps an out-of-range number back to page 1 — friendly
+    for a person who typed a URL, expensive for a store. `?page=999` returned
+    200 with page 1's products, under a canonical naming *itself*, so every
+    integer was a separate indexable page claiming to be the original: an
+    unbounded family of duplicates competing with the category they came from,
+    and crawl budget spent on all of them.
+
+    A page that does not exist gets the same answer as any other URL that does
+    not exist. Page 1 of an empty listing is still a page (Django's
+    `allow_empty_first_page`), so an empty category renders normally.
+    """
+    from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator  # noqa: PLC0415
+    from django.http import Http404  # noqa: PLC0415
+
+    try:
+        return Paginator(qs, per_page).page(request.GET.get('page') or 1)
+    except (EmptyPage, PageNotAnInteger):
+        raise Http404('No such page of results.') from None
+
+
 def _surface_reorder(request, surface, products):
     """Merchandising takeover (STOREFRONT_PRODUCTS, reorder-only, fail-soft).
 
@@ -58,7 +81,6 @@ def product_list(request):
     """Product list with merchant-friendly facets: category, tag, price range,
     attribute facets (size/color/brand/...), and sort."""
     from decimal import Decimal, InvalidOperation
-    from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
     from django.db.models import Q
     from plugins.installed.catalog.models import (
         Attribute,
@@ -210,13 +232,10 @@ def product_list(request):
             }
         )
 
-    # Pagination — 60 per page. ?page=N navigates; out-of-range / non-int
-    # quietly falls back to page 1 so a hand-typed URL never 404s the PLP.
-    paginator = Paginator(qs, 60)
-    try:
-        page_obj = paginator.page(request.GET.get('page') or 1)
-    except (EmptyPage, PageNotAnInteger):
-        page_obj = paginator.page(1)
+    # Pagination — 60 per page. ?page=N navigates; a number past the end 404s
+    # rather than silently serving page 1 under its own canonical.
+    page_obj = _paginate(qs, 60, request)
+    paginator = page_obj.paginator
     products = list(page_obj.object_list)
 
     if q:
@@ -1185,8 +1204,6 @@ def category_detail(request, slug):
         'name': ('name',),
     }
     order = sort_map.get(sort, sort_map['for_you'])
-    from django.core.paginator import Paginator  # noqa: PLC0415
-
     qs = (
         Product.objects.filter(status='active')
         .filter(Q(category=category) | Q(additional_categories=category))
@@ -1195,7 +1212,7 @@ def category_detail(request, slug):
         .distinct()
         .order_by(*order)
     )
-    page_obj = Paginator(qs, 24).get_page(request.GET.get('page') or 1)
+    page_obj = _paginate(qs, 24, request)
     products = list(page_obj.object_list)
 
     if sort == 'for_you':
@@ -1287,15 +1304,13 @@ def collection_detail(request, slug):
         'price_desc': ('-price',),
         'name': ('name',),
     }
-    from django.core.paginator import Paginator  # noqa: PLC0415
-
     qs = (
         Product.objects.filter(status='active', collections=collection)
         .select_related('category')
         .prefetch_related('images')
         .order_by(*sort_map.get(sort, sort_map['for_you']))
     )
-    page_obj = Paginator(qs, 24).get_page(request.GET.get('page') or 1)
+    page_obj = _paginate(qs, 24, request)
     products = list(page_obj.object_list)
 
     if sort == 'for_you':

@@ -471,6 +471,30 @@ feature is silently absent", so the guard has to be inside, not outside. This
 has now bitten `price` (v0.46) and `compare_at_price` (v0.49). Guarded by
 `seo/tests/test_product_markup.py::DeferredFieldTests`.
 
+**Landmine — a canonical that echoes a query parameter the view never read
+mints one indexable page per value, forever.** Two independent causes produced
+the identical live symptom on `?page=N`: Django's paginator **clamps** an
+out-of-range number back to page 1 (so every paginated listing served page 1
+under any number past the end), and a listing with **no paginator at all**
+ignored `?page=` entirely while the canonical echoed it anyway. Both answered
+`200` with page 1's products under a canonical naming *itself* — an unbounded
+family of duplicates, one per integer, each claiming to be the original.
+`/shop/?page=999` was doing the second on prod, which is why no view-level fix
+could have reached it: `booking_marketplace` owns that route and never
+paginated. So the rule is at the canonical layer — `?page=` is trusted only when
+a real paginator (`SeoPage.page_obj` with a `.number`) says so — *and* at the
+view layer (`storefront/views/catalog.py:_paginate` 404s out of range; only the
+storefront paginates anywhere in the tree). The corollary is general: **before
+reflecting a request parameter into a canonical, confirm the view acted on it.**
+Also here: never emit `noindex` together with a canonical naming a *different*
+URL — a facet page saying "don't index me" while pointing at its category is two
+claims about two URLs, and the no-index can carry to the target and take the
+category with it. `seo/rules/params.py` keeps no-indexed parameters in their own
+canonical for exactly that reason; policy is one `IndexRule` row per parameter
+(`consolidate` | `noindex` | `allowlist` | `block`, `param*` wildcards), compiled
+and cached, invalidated on write. `page` is reserved and takes no rule.
+Guarded by `seo/tests/test_index_rules.py` + `test_pagination_policy.py`.
+
 **Landmine — a `StorefrontBlock` whose slot no template renders is silent.**
 The plugin is enabled, its tests pass, its block renders fine in isolation — and
 the merchant sees nothing, with no error anywhere. This had happened four times

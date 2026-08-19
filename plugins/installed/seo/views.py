@@ -1184,6 +1184,159 @@ def redirects_page(request):  # noqa: PLR0912 — flat action dispatch, one bran
 
 @staff_member_required
 @require_capability('seo.read')
+def index_rules_page(request):
+    """Decide which query-parameter URLs of a listing deserve to be indexed.
+
+    The table is the policy; the preview box below it is the point. A merchant
+    cannot see a canonical or a robots directive without reading page source of
+    a URL they have to construct by hand, so the rules that shape them have
+    always been invisible — you set one and hoped. Paste a URL, see the decision
+    and the rule that produced it.
+    """
+    from django.db import IntegrityError
+
+    from plugins.installed.seo.models import IndexRule
+    from plugins.installed.seo.rules.params import RECOMMENDED_RULES, captures_reserved
+
+    if request.method == 'POST':
+        if (denied := enforce(request, 'seo.write')) is not None:
+            return denied
+        action = (request.POST.get('action') or '').strip()
+
+        if action in {'create', 'edit'}:
+            param = (request.POST.get('param') or '').strip().lower()
+            policy = (request.POST.get('policy') or IndexRule.POLICY_CONSOLIDATE).strip()
+            if not param:
+                messages.error(request, 'Give the rule a parameter name.')
+            elif captures_reserved(param):
+                # Rejects `page*` and `p*` as well as `page`. The wildcard forms
+                # matter more, not less: a `page*` rule set to "block" would put
+                # `Disallow: /*?*page` in robots.txt and stop crawlers reaching
+                # page 2 of every listing in the shop.
+                messages.error(
+                    request,
+                    f'“{param}” would apply to the page number, which has its own policy: '
+                    'page 2 stays indexable and canonical to itself, and a number past the '
+                    'end is a 404. A rule here could only break that.',
+                )
+            elif policy not in {c[0] for c in IndexRule.POLICY_CHOICES}:
+                messages.error(request, 'Unknown policy.')
+            else:
+                rid = (request.POST.get('id') or '').strip()
+                row = (IndexRule.objects.filter(pk=rid).first() if rid else None) or IndexRule()
+                row.param = param
+                row.policy = policy
+                row.allowed_values = [
+                    v.strip()
+                    for v in (request.POST.get('allowed_values') or '').split(',')
+                    if v.strip()
+                ]
+                row.is_active = request.POST.get('is_active') == 'on'
+                row.note = (request.POST.get('note') or '').strip()[:200]
+                try:
+                    row.save()
+                    messages.success(request, f'Saved the rule for {row.param}.')
+                except IntegrityError:
+                    messages.error(request, f'There is already a rule for “{param}”.')
+
+        elif action == 'delete':
+            rid = (request.POST.get('id') or '').strip()
+            # Instance delete, not a queryset delete: post_delete is what drops
+            # the compiled ruleset, and a rule that keeps being applied after
+            # you removed it is worse than one that never worked.
+            row = IndexRule.objects.filter(pk=rid).first() if rid else None
+            if row:
+                row.delete()
+                messages.success(request, 'Rule deleted.')
+
+        elif action == 'seed':
+            created = 0
+            for param, policy, note in RECOMMENDED_RULES:
+                _, was_created = IndexRule.objects.get_or_create(
+                    param=param, defaults={'policy': policy, 'note': note}
+                )
+                created += int(was_created)
+            messages.success(
+                request,
+                f'Added {created} rule(s). Nothing existing was changed — edit or '
+                'delete any of them.',
+            )
+
+        return redirect('seo_dashboard:index_rules')
+
+    edit_id = (request.GET.get('edit') or '').strip()
+    rows = list(IndexRule.objects.all())
+    probe = (request.GET.get('probe') or '').strip()
+    return render(
+        request,
+        'seo/index_rules.html',
+        {
+            'rows': rows,
+            'edit_row': next((r for r in rows if str(r.pk) == edit_id), None),
+            'policy_choices': IndexRule.POLICY_CHOICES,
+            'probe': probe,
+            'probe_result': _probe_url(probe) if probe else None,
+            'legacy_params': _legacy_noindex_params_for_display(),
+            'can_seed': not rows,
+            'active_nav': 'seo',
+        },
+    )
+
+
+def _probe_url(raw: str):
+    """What the index rules do to one URL's query string.
+
+    Deliberately scoped to the parameters: other things hold a page back too —
+    a cart or checkout page, a product description too short to rank, a robots
+    value the merchant saved on the entity — and reporting "index, follow" for
+    `/cart/?x=1` because no *parameter* objected would be a partial truth
+    presented as the whole answer. The template says which question this
+    answers.
+
+    Takes a path or a full URL so a merchant can paste whatever their browser is
+    showing them.
+    """
+    from urllib.parse import urlsplit
+
+    from plugins.installed.seo.rules import decide_params
+
+    parts = urlsplit(raw.strip())
+    path = parts.path or '/'
+    if not path.startswith('/'):
+        path = f'/{path}'
+    decision = decide_params(parts.query)
+    return {
+        'path': path,
+        'canonical': f'{path}?{decision.query}' if decision.query else path,
+        'noindex_params': list(decision.noindex_params),
+        'dropped': _dropped_params(parts.query, decision.query),
+    }
+
+
+def _dropped_params(before: str, after: str) -> list[str]:
+    from urllib.parse import parse_qsl
+
+    kept = {k for k, _ in parse_qsl(after, keep_blank_values=True)}
+    return sorted({k for k, _ in parse_qsl(before, keep_blank_values=True)} - kept)
+
+
+def _legacy_noindex_params_for_display() -> list[str]:
+    """Parameters still coming from the old settings field, if any.
+
+    Shown so an upgrading merchant can see that their previous configuration is
+    still in force and where it now belongs — rather than discovering it went
+    quiet the release after the better table arrived.
+    """
+    try:
+        return [
+            str(p).strip() for p in (site_settings().noindex_query_params or []) if str(p).strip()
+        ]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+@staff_member_required
+@require_capability('seo.read')
 def seo_inspector(request):
     """Paste-a-slug, see-everything inspector for a single Product /
     Category / Collection / Journal post.

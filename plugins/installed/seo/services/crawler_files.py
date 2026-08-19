@@ -12,9 +12,12 @@ robots.txt uses to emit per-UA blocks.
 
 from __future__ import annotations
 
+import logging
 from urllib.parse import urljoin
 
 from ._helpers import _seo_plugin, _site_base_url, site_settings
+
+logger = logging.getLogger('morpheus.seo')
 
 
 #: 2026 AI/answer-engine crawler catalogue. Each entry: (UA, label,
@@ -75,8 +78,10 @@ def render_robots_txt() -> str:
     crawlers without blocking the retrieval bots that drive AI Overviews
     + ChatGPT/Perplexity citations. Order matters — specific UAs first,
     then the universal ``User-agent: *`` fallback.
+
+    *Which* paths are blocked is no longer decided here: `_robots_document()`
+    fires `SEO_ROBOTS_RULES` and each app contributes the URLs it owns.
     """
-    base = _site_base_url()
     policy = get_ai_crawler_policy()  # {ua_lowercase: True=allow / False=block}
 
     # `ai_crawler_default_allow` decides what happens for AI bots the
@@ -96,13 +101,9 @@ def render_robots_txt() -> str:
         except Exception:  # noqa: BLE001
             pass
 
-    common_disallow = [
-        'Disallow: /admin/',
-        'Disallow: /dashboard/',
-        'Disallow: /auth/',
-        'Disallow: /cart/',
-        'Disallow: /checkout/',
-    ]
+    doc = _robots_document()
+    common_disallow = [f'Disallow: {path}' for path in doc.disallowed]
+    common_allow = [f'Allow: {path}' for path in doc.allowed]
 
     lines: list[str] = []
 
@@ -114,6 +115,7 @@ def render_robots_txt() -> str:
         lines.append(f'User-agent: {ua}')
         if allowed:
             lines.append('Allow: /')
+            lines.extend(common_allow)
             lines.extend(common_disallow)
         else:
             lines.append('Disallow: /')
@@ -124,32 +126,61 @@ def render_robots_txt() -> str:
         [
             'User-agent: *',
             'Allow: /',
+            *common_allow,
             *common_disallow,
             '',
-            # Single sitemap-index entry — discovery doc that lists every
-            # sub-sitemap (main, images, news). Crawlers prefer the index
-            # over a flat per-file list.
-            f'Sitemap: {urljoin(base, "/sitemap-index.xml")}',
         ]
     )
-
-    # Advertise the news sitemap separately when enabled — Google News
-    # specifically looks for a dedicated `Sitemap: …-news.xml` line.
-    news_enabled = False
-    if seo_plugin is not None:
-        try:
-            news_enabled = bool(
-                seo_plugin.get_config_value(
-                    'news_sitemap_enabled',
-                    False,
-                )
-            )
-        except Exception:  # noqa: BLE001
-            pass
-    if news_enabled:
-        lines.append(f'Sitemap: {urljoin(base, "/sitemap-news.xml")}')
+    lines.extend(f'Sitemap: {url}' for url in doc.sitemaps)
 
     return '\n'.join(lines).rstrip() + '\n'
+
+
+def _robots_document():
+    """Seed the document with what seo owns, then let the owners answer.
+
+    seo seeds only the two paths that belong to no plugin (`/admin/` and
+    `/dashboard/` are chrome) plus its own sitemaps and the parameters its
+    index rules mark unfetchable. `/cart/`, `/checkout/`, `/auth/` used to be
+    hardcoded here — four URL shapes belonging to `storefront`, which meant a
+    merchant who moved checkout, or a plugin adding a private surface of its
+    own, had no way to say so except by editing this file.
+    """
+    from core.robots import RobotsDocument
+    from morpheus.core import MorpheusEvents, hook_registry
+
+    doc = RobotsDocument()
+    doc.disallow('/admin/')
+    doc.disallow('/dashboard/')
+
+    # Parameters a merchant policied `block`: the only index rule that saves
+    # crawl budget, because it stops the fetch instead of labelling the result.
+    try:
+        from plugins.installed.seo.rules import blocked_param_patterns
+
+        for pattern in blocked_param_patterns():
+            doc.disallow(pattern)
+    except Exception:  # noqa: BLE001 — an unmigrated table must not empty robots.txt
+        logger.debug('seo: index rules unavailable for robots.txt', exc_info=True)
+
+    base = _site_base_url()
+    # Single sitemap-index entry — a discovery doc listing every sub-sitemap
+    # (main, images, news). Crawlers prefer the index over a flat per-file list.
+    doc.sitemap(urljoin(base, '/sitemap-index.xml'))
+    # Google News specifically looks for a dedicated `Sitemap: …-news.xml` line.
+    seo_plugin = _seo_plugin()
+    if seo_plugin is not None:
+        try:
+            if seo_plugin.get_config_value('news_sitemap_enabled', False):
+                doc.sitemap(urljoin(base, '/sitemap-news.xml'))
+        except Exception:  # noqa: BLE001
+            pass
+
+    try:
+        return hook_registry.filter(MorpheusEvents.SEO_ROBOTS_RULES, doc) or doc
+    except Exception:  # noqa: BLE001 — a broken subscriber costs its lines, not the file
+        logger.warning('seo: SEO_ROBOTS_RULES contribution failed', exc_info=True)
+        return doc
 
 
 def render_llms_txt(*, full: bool = False) -> str:  # noqa: PLR0912, PLR0915 — linear llms.txt section builder

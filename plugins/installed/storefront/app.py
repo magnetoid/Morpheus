@@ -13,10 +13,30 @@ class StorefrontPlugin(Plugin):
     requires = ['catalog', 'orders', 'customers']
 
     def ready(self):
+        from morpheus.core import MorpheusEvents
+
         self.register_urls('plugins.installed.storefront.urls', prefix='')
         # NOTE: order-confirmation email is owned by the core transactional spine
         # (core/emails/handlers.on_order_placed). The storefront used to subscribe
         # ORDER_PLACED to send a second, duplicate copy — removed.
+        self.register_hook(MorpheusEvents.SEO_ROBOTS_RULES, self.on_robots_rules)
+
+    def on_robots_rules(self, value, **kwargs):
+        """The storefront's own private paths, in the storefront's own file.
+
+        These lines lived in the seo app, which owns none of these routes:
+        moving checkout, or adding a private surface here, meant editing another
+        app to keep robots.txt honest. The set is deliberately unchanged from
+        what seo hardcoded — this moves ownership, not policy.
+
+        `/search/` is deliberately NOT among them. Site search is already
+        `noindex, follow` through its page kind, and a `Disallow` would stop a
+        crawler ever *seeing* that directive — freezing any search URL already
+        in an index instead of removing it.
+        """
+        for path in ('/auth/', '/cart/', '/checkout/'):
+            value.disallow(path)
+        return value
 
     def get_config_schema(self):
         return {

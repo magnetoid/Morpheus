@@ -212,6 +212,22 @@ collection and CMS-page forms through `*_FORM_CARDS` contributions, so
 with the app. `catalog`'s native SEO columns are read as a fallback for one
 release; a value the merchant typed beats one `autofill_meta_for` guessed.
 
+**Which URLs of a listing are real pages** (ADR 0038). A category is not one
+URL — it is the category times every sort, filter, page and campaign tag, and a
+crawler can fetch all of them. `seo/rules/` decides, from one `IndexRule` row per
+query parameter, and the same decision feeds the canonical, the robots
+directive, robots.txt and the dashboard's URL preview. Four policies, because
+they are the four different things a merchant can mean: `consolidate` (drop from
+the canonical, stay indexable), `noindex` (**self**-canonical — a page must never
+say "don't index me" while naming another URL as canonical), `allowlist` (named
+values become real landing pages, the rest are held back) and `block` (the only
+one that saves crawl budget, since the fetch never happens). `page` is reserved
+and takes no rule: page 2 is self-canonical and titled for itself, `?page=1`
+301s to the clean URL, and a number past the end is a 404. robots.txt is a
+document too — [`core/robots.py`](../core/robots.py) — so `storefront`
+contributes `/cart/`, `/checkout/` and `/auth/` through `SEO_ROBOTS_RULES`
+instead of seo hardcoding another app's routes.
+
 ## Key reference files when working in this repo
 
 | File | Why you'd open it |

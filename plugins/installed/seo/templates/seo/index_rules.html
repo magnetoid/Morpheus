@@ -1,0 +1,186 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Index rules · SEO · Morpheus{% endblock %}
+
+{% block content %}
+<a href="{% url 'seo_dashboard:overview' %}" class="text-sm text-[color:var(--text-muted)]">← SEO</a>
+<div class="mt-2 mb-4">
+  <h1 class="text-xl font-semibold">Index rules</h1>
+  <p class="text-xs text-[color:var(--text-muted)] mt-0.5 max-w-3xl">
+    A category page is not one URL. It is the category, times every sort order,
+    times every filter, times whatever a campaign link appended — and a search
+    engine can see all of them. These rules decide which of those are real pages.
+  </p>
+</div>
+
+<div class="card mb-6">
+  <table class="morph-table">
+    <thead>
+      <tr>
+        <th>Parameter</th>
+        <th>Policy</th>
+        <th>Indexable values</th>
+        <th>Note</th>
+        <th>Active</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+        <tr>
+          <td><code style="font-size:.85rem;">{{ r.param }}</code></td>
+          <td><span class="pill pill-neutral">{{ r.get_policy_display }}</span></td>
+          <td class="text-xs">
+            {% if r.allowed_values %}<code style="font-size:.8rem;">{{ r.allowed_values|join:", "|truncatechars:60 }}</code>
+            {% else %}<span class="text-[color:var(--text-muted)]">—</span>{% endif %}
+          </td>
+          <td class="text-xs text-[color:var(--text-muted)]">{{ r.note|truncatechars:70 }}</td>
+          <td>{% if r.is_active %}<span class="pill pill-success">on</span>{% else %}<span class="pill pill-neutral">off</span>{% endif %}</td>
+          <td style="white-space:nowrap;">
+            <a class="btn-link" href="?edit={{ r.id }}#rule-form">Edit</a>
+            ·
+            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this rule?');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="id" value="{{ r.id }}">
+              <button type="submit" class="btn-link" style="color:var(--danger);">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">
+          No rules yet. Unlisted parameters are dropped from the canonical, so
+          your store already consolidates rather than duplicates.
+        </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if can_seed %}
+<div class="card card-padded max-w-3xl mb-6">
+  <h3 class="font-semibold mb-1">Start from the usual set</h3>
+  <p class="text-xs text-[color:var(--text-muted)] mb-3">
+    Adds rules for campaign tags, sorting, and the filters that generate the most
+    duplicate pages. They are ordinary rows — edit or delete any of them.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="seed">
+    <button type="submit" class="btn">Add recommended rules</button>
+  </form>
+</div>
+{% endif %}
+
+{% if legacy_params %}
+<div class="card card-padded max-w-3xl mb-6">
+  <h3 class="font-semibold mb-1">Still coming from your old settings</h3>
+  <p class="text-xs text-[color:var(--text-muted)]">
+    <code>{{ legacy_params|join:", " }}</code> — set on the SEO settings page
+    before this table existed, and still no-indexed. Add a rule here for any of
+    them to take control of it; that field goes away in a future release.
+  </p>
+</div>
+{% endif %}
+
+<div class="card card-padded max-w-3xl mb-6" id="rule-form">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="font-semibold">{% if edit_row %}Edit rule{% else %}Add rule{% endif %}</h3>
+    {% if edit_row %}<a href="{% url 'seo_dashboard:index_rules' %}" class="text-xs text-[color:var(--text-muted)] hover:underline">Cancel</a>{% endif %}
+  </div>
+  <form method="post" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="{% if edit_row %}edit{% else %}create{% endif %}">
+    {% if edit_row %}<input type="hidden" name="id" value="{{ edit_row.id }}">{% endif %}
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="param-input">Parameter</label>
+      <input id="param-input" class="input w-full" name="param" required placeholder="sort" value="{{ edit_row.param|default:'' }}">
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">End with <code>*</code> to match a family, e.g. <code>utm_*</code>.</p>
+    </div>
+    <div>
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="policy-select">Policy</label>
+      <select id="policy-select" class="input w-full" name="policy">
+        {% for value, label in policy_choices %}
+        <option value="{{ value }}"{% if edit_row.policy == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="md:col-span-2">
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="values-input">Indexable values</label>
+      <input id="values-input" class="input w-full" name="allowed_values" placeholder="fantasy, crime, poetry"
+             value="{% if edit_row.allowed_values %}{{ edit_row.allowed_values|join:', ' }}{% endif %}">
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">
+        Comma-separated, for the “index only the listed values” policy. Those pages
+        become real landing pages; every other value is held back.
+      </p>
+    </div>
+    <div class="md:col-span-2">
+      <label class="text-xs text-[color:var(--text-muted)] block mb-1" for="rule-note">Note (optional)</label>
+      <input id="rule-note" class="input w-full" name="note" value="{{ edit_row.note|default:'' }}" maxlength="200">
+    </div>
+    <div class="md:col-span-2 flex items-center gap-2">
+      <label><input type="checkbox" name="is_active"{% if not edit_row or edit_row.is_active %} checked{% endif %}> Active</label>
+    </div>
+    <div class="md:col-span-2 mt-2">
+      <button type="submit" class="btn btn-primary">{% if edit_row %}Save changes{% else %}Add rule{% endif %}</button>
+    </div>
+  </form>
+</div>
+
+<div class="card card-padded max-w-3xl mb-6">
+  <h3 class="font-semibold mb-1">What these rules do to a URL</h3>
+  <p class="text-xs text-[color:var(--text-muted)] mb-3">
+    Paste any storefront URL to see the address it would name as its real one,
+    and which parameters decided that.
+  </p>
+  <form method="get" style="display:flex; gap:.5rem; align-items:center;">
+    <input class="input w-full" name="probe" value="{{ probe }}" placeholder="/shop/?genre=crime&amp;sort=price&amp;utm_source=news">
+    <button type="submit" class="btn">Check</button>
+  </form>
+
+  {% if probe_result %}
+  <dl class="mt-4" style="display:grid; grid-template-columns:9rem 1fr; gap:.5rem 1rem; font-size:.85rem;">
+    <dt class="text-[color:var(--text-muted)]">Canonical</dt>
+    <dd><code>{{ probe_result.canonical }}</code></dd>
+    <dt class="text-[color:var(--text-muted)]">Held back by</dt>
+    <dd>
+      {% if probe_result.noindex_params %}
+        <span class="pill pill-warning">kept out of search</span>
+        <code class="ml-1">{{ probe_result.noindex_params|join:", " }}</code>
+      {% else %}
+        <span class="pill pill-success">no parameter objects</span>
+      {% endif %}
+    </dd>
+    <dt class="text-[color:var(--text-muted)]">Dropped</dt>
+    <dd>{% if probe_result.dropped %}<code>{{ probe_result.dropped|join:", " }}</code>{% else %}<span class="text-[color:var(--text-muted)]">nothing</span>{% endif %}</dd>
+  </dl>
+  <p class="text-xs text-[color:var(--text-muted)] mt-3">
+    This answers what the <em>query string</em> does. A page can still be held
+    back for other reasons — a cart or checkout page, a product description too
+    short to rank, or a setting on the page itself.
+  </p>
+  {% if probe_result.noindex_params %}
+  <p class="text-xs text-[color:var(--text-muted)] mt-2">
+    Note the address above keeps the parameters that hold it back. A page that
+    says “don’t index me” while naming a different address as its real one is
+    making two claims about two pages, and the exclusion can carry across.
+  </p>
+  {% endif %}
+  {% endif %}
+</div>
+
+<div class="card card-padded max-w-3xl">
+  <h3 class="font-semibold mb-2">What the policies mean</h3>
+  <dl class="text-xs" style="display:grid; grid-template-columns:14rem 1fr; gap:.6rem 1rem;">
+    <dt><strong>Keep indexable, drop from the canonical</strong></dt>
+    <dd>The page still ranks, under the clean URL. Right for campaign tags and sorting: the same products, arrived at differently.</dd>
+    <dt><strong>No-index this page</strong></dt>
+    <dd>Crawl the links, don’t keep the page. The canonical stays on the URL itself, deliberately.</dd>
+    <dt><strong>Index only the listed values</strong></dt>
+    <dd>Turn the filters worth ranking for into landing pages, and hold back the combinations nobody searches for.</dd>
+    <dt><strong>Block in robots.txt</strong></dt>
+    <dd>The only policy that saves crawl budget, because the page is never fetched. It also means the page’s own directives are never read — so use it for parameters that should simply not be visited.</dd>
+    <dt><strong>page</strong></dt>
+    <dd>Has its own policy and takes no rule: page 2 stays indexable and canonical to itself, <code>?page=1</code> redirects to the clean URL, and a number past the end is a 404.</dd>
+  </dl>
+</div>
+{% endblock %}

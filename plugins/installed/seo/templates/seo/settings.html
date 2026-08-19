@@ -47,6 +47,11 @@
   <label class="block">Noindex query params (comma-separated)
     <input type="text" name="noindex_query_params" value="{{ s.noindex_query_params|join:',' }}" class="input">
   </label>
+  <p class="text-xs text-[color:var(--text-muted)]">
+    Superseded by <a href="{% url 'seo_dashboard:index_rules' %}" class="hover:underline">Index rules</a>,
+    which can also consolidate a parameter, index only chosen values, or block it
+    from being crawled at all. Anything here still applies until you move it across.
+  </p>
   <label class="text-sm"><input type="checkbox" name="enable_sitelinks_search" {% if s.enable_sitelinks_search %}checked{% endif %}> Enable sitelinks search action</label>
 
   <h3 class="font-semibold mt-4">AI / LLM discovery</h3>

@@ -31,11 +31,23 @@ def wire() -> None:
     calling this twice (a re-`ready()`, a runtime plugin re-enable) registers
     each receiver once rather than doubling it.
     """
-    from plugins.installed.seo.models import Redirect
+    from plugins.installed.seo.models import IndexRule, Redirect, SiteSeoSettings
 
     post_save.connect(_on_redirect_saved, sender=Redirect, dispatch_uid='seo.redirect_cache_save')
     post_delete.connect(
         _on_redirect_saved, sender=Redirect, dispatch_uid='seo.redirect_cache_delete'
+    )
+    post_save.connect(
+        _on_index_policy_changed, sender=IndexRule, dispatch_uid='seo.index_rule_save'
+    )
+    post_delete.connect(
+        _on_index_policy_changed, sender=IndexRule, dispatch_uid='seo.index_rule_delete'
+    )
+    # The compiled ruleset also bakes in the legacy `noindex_query_params` list,
+    # so a merchant editing that field on the settings page has to see it take
+    # effect now rather than whenever the cache happens to expire.
+    post_save.connect(
+        _on_index_policy_changed, sender=SiteSeoSettings, dispatch_uid='seo.index_rule_settings'
     )
     _wire_slug_watchers()
 
@@ -44,6 +56,12 @@ def _on_redirect_saved(sender, instance=None, **kwargs):
     from plugins.installed.seo.services.redirects import invalidate_redirect_cache
 
     invalidate_redirect_cache()
+
+
+def _on_index_policy_changed(sender, instance=None, **kwargs):
+    from plugins.installed.seo.rules import invalidate_index_rules_cache
+
+    invalidate_index_rules_cache()
 
 
 # -- slug history ---------------------------------------------------------

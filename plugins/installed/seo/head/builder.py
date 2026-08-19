@@ -116,9 +116,11 @@ def _resolve_meta(page: SeoPage):
 
 
 def _apply_title_and_description(doc, page: SeoPage, meta) -> None:
+    from plugins.installed.seo.rules import paginated_title
     from plugins.installed.seo.services.meta import format_document_title
 
-    clean_title = (meta.title or page.title).strip()
+    # "Page 2" before the brand, so a listing's pages stop sharing one title.
+    clean_title = paginated_title((meta.title or page.title).strip(), page.page_obj)
     title = format_document_title(clean_title) if page.brand_title else clean_title
     if title:
         doc.set_title(title, source='seo')
@@ -134,15 +136,19 @@ def _apply_title_and_description(doc, page: SeoPage, meta) -> None:
 
 
 def _apply_canonical_and_robots(doc, page: SeoPage, meta, request) -> None:
-    canonical, blocked_params = canonical_for(request)
+    canonical, blocked_params = canonical_for(request, page.page_obj)
     if meta.canonical_url:
         canonical = meta.canonical_url  # an explicit merchant override wins
     if canonical:
         doc.link('canonical', canonical, source='seo')
 
     if blocked_params:
-        # A faceted/sorted permutation of a page we already index: keep crawling
-        # the links, stop indexing the duplicate.
+        # A facet value the merchant chose not to index: keep crawling the
+        # links, stop indexing the duplicate. The canonical the engine returned
+        # for this case is *self*-referential — a page that says "don't index
+        # me" while pointing its canonical at the category is making two
+        # contradictory claims about two URLs, and the noindex can travel to
+        # the canonical target and take the category down with it.
         page.deny_index(f'query parameter: {", ".join(blocked_params)}')
 
     # An explicit SeoMeta/native robots value is a merchant decision — honour it,

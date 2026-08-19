@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.50.0 — 2026-08-19
+
+**You decide which URLs of your shop belong in search**
+
+- Page numbers that do not exist now say so. /products/?page=999 answered with your first page of products while telling Google it WAS page 999 — so every number anyone appended became another copy of your shop, competing with itself and spending the crawl budget meant for your products. Out-of-range page numbers now return 'not found', and ?page=1 sends visitors to the clean address instead of serving a second copy of page one.
+- Every page of a listing used to carry the same title. Page 2 onwards now has its own, so a search result can tell them apart — and so can a shopper reading the tab.
+- New: Index rules, under SEO. One rule per link parameter — sorting, filters, campaign tags — saying whether it makes a real page, a page to keep out of search, a landing page for the values you choose, or an address crawlers should not visit at all. Paste any URL to see exactly what your store publishes for it and which rule decided.
+- Filter pages no longer send search engines two contradictory instructions. A page you kept out of search also named your category page as its 'real' address, and the documented consequence is that the exclusion can carry across and take the category with it. A page you hold back is now its own address, and nothing else's.
+- robots.txt is assembled from the apps that own each address. Your cart, checkout and sign-in pages are kept out of search by the storefront itself rather than by a list hardcoded in the SEO app, so an app you install can protect its own private pages without anyone editing another one.
+
 ## v0.49.1 — 2026-08-19
 
 **Books sold in several editions keep their group markup**

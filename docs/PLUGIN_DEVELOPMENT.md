@@ -683,6 +683,19 @@ policy), subscribe to `SEO_JSONLD_GRAPH` instead of emitting your own
 block competes with it. Never write `<title>`, a canonical or `og:*` from a
 plugin template (ADR 0036).
 
+**If your page is a private surface**, say so through `SEO_ROBOTS_RULES` rather
+than asking for an edit to the seo app. `value` is a
+[`core.robots.RobotsDocument`](../core/robots.py) — call `disallow()`,
+`allow()` or `sitemap()` and return it. The lines apply to every crawler group.
+
+**If your page paginates**, two things are required of you. Return `404` for a
+page number past the end (Django's paginator clamps it to page 1, which turns
+every integer into an indexable duplicate of your first page), and put the
+paginator page in your template context as **`page_obj`** — the canonical only
+trusts `?page=` when a real paginator is present, so a listing that hides its
+paginator will canonicalise all of its pages onto page 1 and de-index the rest.
+`?page=1` is redirected to the clean URL for you.
+
 ### Adding a card to somebody else's edit form
 
 Products, categories, collections and CMS pages each fire a pair of events: a
