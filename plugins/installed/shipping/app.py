@@ -32,6 +32,10 @@ class ShippingPlugin(Plugin):
         # Checkout rate options — the storefront asks via this filter instead
         # of importing shipping.services, so rates vanish on disable.
         self.register_hook(events.CHECKOUT_SHIPPING_RATES, self.on_checkout_rates, priority=10)
+        # What this store charges to ship, stated to Google by the app that
+        # knows it. The SEO app used to synthesise this from config nothing
+        # wrote, so every product page advertised free shipping.
+        self.register_hook(events.SEO_JSONLD_GRAPH, self.on_seo_jsonld_graph, priority=50)
         self.register_urls(
             'plugins.installed.shipping.urls_dashboard',
             prefix='dashboard/shipping/',
@@ -64,6 +68,11 @@ class ShippingPlugin(Plugin):
             for r in rates or []
         ]
         return normalized or None
+
+    def on_seo_jsonld_graph(self, value, page=None, request=None, **kwargs):
+        from plugins.installed.shipping.seo_graph import on_seo_jsonld_graph  # noqa: PLC0415
+
+        return on_seo_jsonld_graph(value, page=page, request=request, **kwargs)
 
     def on_cart_breakdown(self, value, cart=None, address=None, shipping_rate_id=None, **kwargs):
         if cart is None or not isinstance(value, dict):

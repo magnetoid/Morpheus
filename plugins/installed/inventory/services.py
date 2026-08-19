@@ -299,3 +299,62 @@ def _qty_from_note(note: str) -> int:
         elif digits:
             break
     return int(digits) if digits else 0
+
+
+# ── Availability, for anything that describes a product to the outside ──
+# Stock lives per variant per warehouse, so "is this product available" has no
+# single row to read — four call sites each rolled their own aggregate, and the
+# shared feed vocabulary read `stock_status` / `is_in_stock`, neither of which
+# exists on catalog.Product. It therefore answered "in stock" for everything,
+# and every product page and channel feed repeated that.
+
+
+def product_availability(product) -> str:
+    """An availability token for ``product`` — the vocabulary key, not a URL.
+
+    One of: in_stock · out_of_stock · backorder · discontinued.
+    Returns '' when this app cannot tell, so the caller keeps its own default
+    rather than inheriting a guess dressed up as an answer.
+
+    A product is in stock when ANY of its variants has stock available, or when
+    a variant is set to accept backorders — that is what the cart will let a
+    shopper do, and markup has to match the cart.
+    """
+    if product is None:
+        return ''
+    if str(getattr(product, 'status', '') or '') == 'archived':
+        return 'discontinued'
+    pk = getattr(product, 'pk', None)
+    if pk is None:
+        return ''
+    try:
+        return _availability_from_stock(pk)
+    except Exception:  # noqa: BLE001 — an unmigrated DB must not change the answer
+        return ''
+
+
+def _availability_from_stock(product_pk) -> str:
+    from django.db.models import F, Sum
+
+    from plugins.installed.catalog.models import ProductVariant
+
+    variants = list(
+        ProductVariant.objects.filter(product_id=product_pk, is_active=True).values_list(
+            'id', 'inventory_policy'
+        )
+    )
+    if not variants:
+        # No variants means nothing to track; the product is purchasable.
+        return 'in_stock'
+    available = (
+        StockLevel.objects.filter(variant_id__in=[v[0] for v in variants])
+        .values('variant_id')
+        .annotate(qty=Sum(F('quantity') - F('reserved_quantity')))
+    )
+    by_variant = {row['variant_id']: (row['qty'] or 0) for row in available}
+    if any(by_variant.get(vid, 0) > 0 for vid, _policy in variants):
+        return 'in_stock'
+    # Nothing on hand — but a backorder-friendly variant is still buyable.
+    if any(policy == 'continue' for _vid, policy in variants):
+        return 'backorder'
+    return 'out_of_stock'

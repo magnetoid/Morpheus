@@ -71,7 +71,16 @@ BASELINE_FINDINGS = (
     'multiple pages: duplicate WebSite / CollectionPage JSON-LD (fixed)',
     'category, collection, journal: brand appended twice (fixed)',
     'pdp: Book ReadAction + WebSite SearchAction, both deprecated by Google (removed)',
-    'plp: ?sort= is indexable — pending the P2 index-rules engine',
+    'plp: ?sort= is indexable — pending the index-rules engine',
+    # v0.48: the profile SHRANK here, deliberately. The Offer used to carry a
+    # complete shippingDetails + hasMerchantReturnPolicy assembled from config
+    # keys no settings screen ever wrote, so every store published the same
+    # invented policy — including free shipping on everything, because the
+    # threshold defaulted to the truthy string '0'. The apps that own the data
+    # contribute it now, and this fixture's store has no shipping rates and no
+    # store country, so it correctly claims neither.
+    'pdp: fabricated free-shipping + return-policy markup (removed; owners contribute it)',
+    "pdp: Product.sku published as '' because the page query never selected it (fixed)",
 )
 
 _PRODUCT = 'head-parity-probe'

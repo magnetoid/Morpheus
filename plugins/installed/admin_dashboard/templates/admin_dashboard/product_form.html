@@ -57,21 +57,53 @@
         <input type="text" id="product-name" name="name" class="input" required value="{{ form.name.value|default:'' }}">
         {% if form.name.errors %}<p class="field-error">{{ form.name.errors.0 }}</p>{% endif %}
       </div>
-      {# URL slug + live preview chip under the name. #}
+      {% comment %}
+      The product's public URL, edited in place. The domain is the one from
+      settings, not a "your-site" placeholder — a merchant needs to see where
+      the page will actually live. Only the slug is editable, so this is one
+      line rather than a preview plus a separate field repeating it.
+      {% endcomment %}
       <div>
-        <label class="block text-sm font-medium mb-1" for="product-slug-input">URL slug</label>
-        <div class="flex items-center gap-1 text-sm text-[color:var(--text-muted)]" style="margin-bottom:.3rem;">
-          <span>https://your-site/products/</span><strong id="product-slug-preview" style="color:var(--text);">{{ form.slug.value|default:'(auto-from-name)' }}</strong><span>/</span>
+        <label class="block text-sm font-medium mb-1" for="product-slug-input">Product URL</label>
+        <div class="input flex items-center gap-0 text-sm" style="cursor:text; overflow-x:auto; white-space:nowrap;"
+             onclick="var i=document.getElementById('product-slug-input'); if(event.target!==i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}">
+          <span class="text-[color:var(--text-muted)]">{{ storefront_base|default:'' }}/products/</span>
+          <input id="product-slug-input" type="text" name="slug"
+                 value="{{ form.slug.value|default:'' }}" placeholder="auto-from-name"
+                 pattern="[a-z0-9\-]+" size="1" autocomplete="off" spellcheck="false"
+                 style="border:0; outline:0; padding:0; margin:0; background:transparent; color:var(--text); font:inherit; min-width:8ch;"
+                 aria-label="URL slug">
+          <span class="text-[color:var(--text-muted)]">/</span>
         </div>
-        <input id="product-slug-input" type="text" name="slug" class="input"
-               value="{{ form.slug.value|default:'' }}" placeholder="auto-from-name"
-               pattern="[a-z0-9\-]+"
-               oninput="(function(el){var p=document.getElementById('product-slug-preview');if(p)p.textContent=el.value.toLowerCase().replace(/[^a-z0-9-]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'') || '(auto-from-name)';})(this)">
         {% if form.slug.errors %}<p class="field-error">{{ form.slug.errors.0 }}</p>{% endif %}
-        <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">
-          Lowercase letters, digits, and hyphens. Leave blank to use the product name. Renaming the product never changes an existing slug.
-        </p>
       </div>
+      <script>
+      (function () {
+        var input = document.getElementById('product-slug-input');
+        if (!input) return;
+        // Grow the field with its content so the URL reads as one string rather
+        // than a text box sitting inside a sentence.
+        function resize() {
+          input.size = Math.max((input.value || input.placeholder || '').length, 8);
+        }
+        input.addEventListener('input', function () {
+          var clean = input.value.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+            .replace(/-+/g, '-').replace(/^-/, '');
+          if (clean !== input.value) {
+            var at = input.selectionStart;
+            input.value = clean;
+            try { input.setSelectionRange(at, at); } catch (e) { /* nothing to restore */ }
+          }
+          resize();
+        });
+        // A trailing hyphen is legal while typing but not when leaving the field.
+        input.addEventListener('blur', function () {
+          input.value = input.value.replace(/-$/, '');
+          resize();
+        });
+        resize();
+      })();
+      </script>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">SKU</label>

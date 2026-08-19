@@ -217,10 +217,15 @@ def _product_nodes(page: SeoPage, url: str) -> list[dict]:
     ctx = page.context
     nodes: list[dict] = []
 
-    # The rendered payload first: it is what the shopper sees, and the view's
-    # model row has `price` deferred.
+    # BOTH, and the distinction is load-bearing. The rendered payload is what
+    # the shopper sees, so price and availability come from it (the view's model
+    # row has `price` deferred). The model row is the only way to reach the
+    # things a merchant listing is judged on — the image gallery, GTIN/ISBN
+    # identifiers, aggregateRating, reviews, the Book subtype — and passing only
+    # the dict is why none of them appeared on a single product page.
     subject = page.rendered or page.obj
-    product = _safe(product_jsonld, subject, extra=ctx.get('product_seo_extra'))
+    model = page.obj if page.rendered is not None else None
+    product = _safe(product_jsonld, subject, extra=ctx.get('product_seo_extra'), model=model)
     if product:
         product = _strip_context(product)
         product['@id'] = f'{url}#product'
@@ -232,6 +237,13 @@ def _product_nodes(page: SeoPage, url: str) -> list[dict]:
         book = _strip_context(_safe(book_jsonld, book_data))
         if book:
             nodes.append(book)
+            # One Book claim per page. `product_jsonld` upgrades a book's @type
+            # to ['Product', 'Book'] from its metafields, which is right when
+            # the Product node stands alone — but beside a dedicated Book node
+            # it means two Book-typed nodes describing the same thing, the
+            # duplication this graph exists to end.
+            if product and isinstance(product.get('@type'), list):
+                product['@type'] = 'Product'
 
     videos = ctx.get('video_seo')
     if videos:

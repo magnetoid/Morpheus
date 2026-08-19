@@ -1637,12 +1637,6 @@
       },
       {
         "props": [
-          "addressCountry"
-        ],
-        "type": "DefinedRegion"
-      },
-      {
-        "props": [
           "actionPlatform",
           "urlTemplate"
         ],
@@ -1698,37 +1692,11 @@
       },
       {
         "props": [
-          "applicableCountry",
-          "merchantReturnDays",
-          "returnFees",
-          "returnMethod",
-          "returnPolicyCategory"
-        ],
-        "type": "MerchantReturnPolicy"
-      },
-      {
-        "props": [
-          "currency",
-          "value"
-        ],
-        "type": "MonetaryAmount"
-      },
-      {
-        "props": [
-          "currency",
-          "value"
-        ],
-        "type": "MonetaryAmount"
-      },
-      {
-        "props": [
           "availability",
-          "hasMerchantReturnPolicy",
           "itemCondition",
           "price",
           "priceCurrency",
           "priceValidUntil",
-          "shippingDetails",
           "url"
         ],
         "type": "Offer",
@@ -1755,12 +1723,12 @@
       },
       {
         "props": [
-          "deliveryTime",
-          "freeShippingThreshold",
-          "shippingDestination",
-          "shippingRate"
+          "name"
         ],
-        "type": "OfferShippingDetails"
+        "type": "Person",
+        "values": {
+          "name": "Ines Parityauthor"
+        }
       },
       {
         "props": [
@@ -1774,9 +1742,12 @@
       {
         "id": "http://testserver/products/head-parity-probe/#product",
         "props": [
+          "author",
+          "bookFormat",
           "category",
           "dateModified",
           "description",
+          "inLanguage",
           "name",
           "offers",
           "sku",
@@ -1784,26 +1755,11 @@
         ],
         "type": "Product",
         "values": {
+          "inLanguage": "en",
           "name": "Head Parity Probe",
-          "sku": "",
+          "sku": "HPP-1",
           "url": "https://localhost/products/head-parity-probe/"
         }
-      },
-      {
-        "props": [
-          "maxValue",
-          "minValue",
-          "unitCode"
-        ],
-        "type": "QuantitativeValue"
-      },
-      {
-        "props": [
-          "maxValue",
-          "minValue",
-          "unitCode"
-        ],
-        "type": "QuantitativeValue"
       },
       {
         "props": [
@@ -1811,13 +1767,6 @@
           "target"
         ],
         "type": "ReadAction"
-      },
-      {
-        "props": [
-          "handlingTime",
-          "transitTime"
-        ],
-        "type": "ShippingDeliveryTime"
       },
       {
         "props": [

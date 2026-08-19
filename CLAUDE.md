@@ -432,6 +432,30 @@ a `Location` header (an open redirect turns the store into a phishing hop), and
 `/old/` never fires for `/fr/old/` unless the matcher strips it. Guarded by
 `seo/tests/test_redirects_engine.py`.
 
+**Landmine — structured data is a PUBLIC CLAIM, and defaulting one is lying at
+scale.** The Product offer used to carry a full `shippingDetails` +
+`hasMerchantReturnPolicy` assembled inside `seo/services/jsonld.py` from
+`PluginConfig` keys that **no settings screen ever wrote** (`shipping_fee_amount`,
+`free_shipping_over`, `handling_days_*`, `transit_days_*`, `return_days` — none
+were in `get_config_schema`). Every store therefore published the same invented
+policy, and because the free-shipping threshold defaulted to the truthy string
+`'0'`, **every product page on every store advertised free shipping on
+everything** while the cart charged whatever the shipping app said. Two more of
+the same shape: `availability` was computed by a stock query behind an ORM-only
+branch, so the PDP — which renders a GraphQL dict — declared `InStock` for
+sold-out items; and `aggregateRating` aggregated *all* reviews while the `Review`
+nodes filtered to approved, advertising a rating built from reviews the page does
+not show. The rule: **a property whose value you cannot source from the app that
+owns it must be OMITTED, not defaulted.** A missing recommended property costs a
+Search Console warning; an invented one is a Merchant Center policy violation and
+a promise checkout will break. Shipping and returns are contributed by their
+owners now (`shipping/seo_graph.py`, `returns_portal/seo_graph.py` on
+`SEO_JSONLD_GRAPH`), availability comes from `inventory.product_availability`
+through the one shared vocabulary in `plugins/feed_mapping.py`, and the head
+parity profile SHRANK on purpose — the one case where that is not the bug.
+Guarded by `seo/tests/test_offer_claims.py`, which asserts both directions
+(configured → published and matching; unconfigured → absent).
+
 **Landmine — a `StorefrontBlock` whose slot no template renders is silent.**
 The plugin is enabled, its tests pass, its block renders fine in isolation — and
 the merchant sees nothing, with no error anywhere. This had happened four times

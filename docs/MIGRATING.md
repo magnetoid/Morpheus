@@ -6,6 +6,64 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.48.0 — product markup states only what is true
+
+**Who this affects:** anyone relying on the shipping, return-policy or
+availability values in the storefront's Product JSON-LD, and any app reading
+`plugins.feed_mapping.availability_to_schema`. Storefront HTML, GraphQL, REST
+and webhooks are unaffected.
+
+### What changed
+
+The Product offer used to carry a complete shipping and return policy that the
+SEO app assembled from configuration keys **nothing ever wrote** — they were not
+in any settings schema and had no writer anywhere in the tree. Every store
+published the same invented policy, and because the free-shipping threshold
+defaulted to the truthy string `'0'`, every product page advertised **free
+shipping on everything**, whatever the shipping app actually charged.
+
+Those properties now come from the apps that own the data:
+
+| Property | Comes from |
+|---|---|
+| `offers.shippingDetails` | `shipping` — the cheapest active `ShippingRate` per zone, with its real price, destination countries and transit estimate |
+| `offers.hasMerchantReturnPolicy` | `returns_portal` — its configured return window, with the store's country from Settings → General |
+| `offers.availability` | `inventory` — real stock per variant, including backorder policy |
+
+Both subscribe to `SEO_JSONLD_GRAPH`. **If an owner has no data, the property is
+omitted rather than defaulted.** A missing recommended property costs a warning
+in Search Console; an invented one is a Merchant Center policy violation.
+
+### Do I have to change anything?
+
+**Only if you were depending on those values being present.** They now appear
+when — and only when — they are configured:
+
+* Configure shipping zones and rates to publish `shippingDetails`.
+* Set the store country (Settings → General) to publish a return policy.
+* Install/enable `inventory` for real availability; without it a product is
+  reported purchasable, as before.
+
+### Other changes in this release
+
+- **Product pages carry their full markup again.** The page renders a GraphQL
+  payload, and the markup builder skipped every database-only enrichment when
+  handed one — so GTIN/ISBN identifiers, the image gallery, `aggregateRating`,
+  individual reviews and the Book subtype were absent from every product page,
+  and `sku` was published as `""`. It now reads the rendered payload for price
+  and stock and the database row for the rest.
+- **`aggregateRating` counts approved reviews only.** It aggregated every row
+  while the `Review` nodes filtered, so the rating included reviews the page
+  never showed.
+- **`SeoMeta.sitemap_include` does something.** It shipped in v0.47.0 with no
+  reader. The sitemap now honours it, and excludes `noindex` pages regardless.
+- **`plugins.feed_mapping.availability_to_schema` consults `inventory`.** It
+  previously read `stock_status` / `is_in_stock` off `catalog.Product`, which has
+  neither, so it answered "in stock" for the entire catalogue — in the channel
+  feeds as well as the markup.
+
+---
+
 ## v0.47.0 — per-entity SEO has one owner, and one editor
 
 **Who this affects:** anyone reading or writing `catalog.Product`'s SEO columns

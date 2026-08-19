@@ -56,6 +56,31 @@ SCHEMA_AVAILABILITY = {
 }
 
 
+def _availability_from_inventory(product) -> str:
+    """The inventory app's answer, or '' when it is not installed / cannot tell.
+
+    A dict cannot be queried, but it usually carries the id of the row it came
+    from, so the payload a page rendered can still get a real answer.
+    """
+    try:
+        from plugins.registry import app_registry
+
+        if not app_registry.is_active('inventory'):
+            return ''
+        from plugins.installed.inventory.services import product_availability
+
+        if isinstance(product, dict):
+            pk = product.get('id') or product.get('pk')
+            if not pk:
+                return ''
+            from plugins.installed.catalog.models import Product
+
+            product = Product.objects.filter(pk=pk).only('id', 'status').first()
+        return product_availability(product)
+    except Exception:  # noqa: BLE001 — availability must never break a feed
+        return ''
+
+
 def availability_to_schema(product) -> str:
     """A product (model or GraphQL dict) → a schema.org availability URL.
 
@@ -74,6 +99,13 @@ def availability_to_schema(product) -> str:
             in_stock = getattr(product, 'is_in_stock', None)
             if in_stock is not None and not callable(in_stock):
                 status = 'in_stock' if in_stock else 'out_of_stock'
+    if not status:
+        # Ask the app that actually holds the stock. `stock_status` and
+        # `is_in_stock` above are read off catalog.Product, which has NEITHER —
+        # so every product fell through to the in-stock default and every feed,
+        # Open Graph tag and JSON-LD offer said "in stock" for the whole
+        # catalogue, sold-out items included.
+        status = _availability_from_inventory(product)
     normalised = status.strip().lower().replace(' ', '_').replace('-', '_')
     if normalised.startswith('https://schema.org/'):
         return status

@@ -153,6 +153,15 @@
               <input type="checkbox" name="seo_noimageindex" value="1" {% if seo_robots_extra.noimageindex %}checked{% endif %}> Don't index images
             </label>
           </div>
+          <div>
+            <label class="block text-xs font-medium mb-1" for="seo-sitemap">Include in the sitemap</label>
+            <select id="seo-sitemap" name="seo_sitemap_include" class="input">
+              {% for value, label in seo_sitemap_choices %}
+              <option value="{{ value }}" {% if seo.sitemap_include == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <p class="text-xs text-[color:var(--text-muted)] mt-1">A page set to noindex is never listed, whichever option you pick.</p>
+          </div>
         </div>
       </details>
 

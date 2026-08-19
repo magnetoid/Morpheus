@@ -121,6 +121,20 @@ def products_list(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _storefront_base() -> str:
+    """The site's public root, as configured in settings — not a placeholder.
+
+    The product form used to print a literal "https://your-site/products/…",
+    which tells a merchant nothing about where their page will actually live.
+    """
+    try:
+        from morpheus.core import site_base_url
+
+        return site_base_url().rstrip('/')
+    except Exception:  # noqa: BLE001 — never break the form over a URL label
+        return ''
+
+
 def _product_form_choices():
     """Categories (tree-ordered) + vendors for the product form selects."""
     categories: list[Any] = []
@@ -200,6 +214,7 @@ def product_new(request: HttpRequest) -> HttpResponse:
             'categories': categories,
             'vendors': vendors,
             'extra_product_cards': _collect_product_form_cards(None, request),
+            'storefront_base': _storefront_base(),
             'active_nav': 'products',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
@@ -398,12 +413,14 @@ def product_edit(request: HttpRequest, product_id: str) -> HttpResponse:
     # contributed via PRODUCT_FORM_CARDS so each disappears when its plugin is
     # disabled (ADR 0023).
     extra_product_cards = _collect_product_form_cards(product, request)
+    storefront_base = _storefront_base()
 
     return render(
         request,
         'admin_dashboard/product_form.html',
         {
             'extra_product_cards': extra_product_cards,
+            'storefront_base': storefront_base,
             'form': form,
             'product': product,
             'categories': categories,

@@ -6,7 +6,7 @@ llms.txt, PWA manifest) live in ``crawler_files`` instead.
 """
 # Legacy sitemap module: lazy (in-function) imports + fail-soft builders are the
 # established pattern here.
-# ruff: noqa: PLC0415, S110, SIM105, SIM113, PLR1730, UP035
+# ruff: noqa: PLC0415, S110, SIM105, SIM113, PLR1730, UP035, PLR0912
 
 from __future__ import annotations
 
@@ -156,6 +156,39 @@ def _iter_cms_page_entries(base: str) -> Iterable[dict]:
         logger.debug('seo: sitemap cms pages skipped: %s', e)
 
 
+def _seo_overrides(model) -> dict:
+    """`{object_id: (sitemap_include, robots)}` for one model, in ONE query.
+
+    A sitemap that lists a noindex URL asks Google to crawl a page it is then
+    told to drop — wasted crawl budget, and a "Discovered but not indexed"
+    entry that looks like a problem. The merchant's own per-page choice
+    (`SeoMeta.sitemap_include`) overrides both ways.
+    """
+    try:
+        from django.contrib.contenttypes.models import ContentType
+
+        from plugins.installed.seo.models import SeoMeta
+
+        ct = ContentType.objects.get_for_model(model)
+        return {
+            str(object_id): (include, robots or '')
+            for object_id, include, robots in SeoMeta.objects.filter(content_type=ct).values_list(
+                'object_id', 'sitemap_include', 'robots'
+            )
+        }
+    except Exception as e:  # noqa: BLE001 — an unmigrated DB lists everything
+        logger.debug('seo: sitemap overrides unavailable: %s', e)
+        return {}
+
+
+def _in_sitemap(overrides: dict, obj) -> bool:
+    """Whether this object's URL belongs in the sitemap."""
+    include, robots = overrides.get(str(obj.pk), (None, ''))
+    if include is not None:
+        return bool(include)
+    return 'noindex' not in (robots or '').lower()
+
+
 def iter_sitemap_entries() -> Iterable[dict]:
     """Yield entries that should appear in the sitemap. Pulls from:
 
@@ -174,7 +207,10 @@ def iter_sitemap_entries() -> Iterable[dict]:
     try:
         from plugins.installed.catalog.models import Category, Collection, Product, Vendor
 
+        product_seo = _seo_overrides(Product)
         for p in Product.objects.filter(status='active').only('slug', 'updated_at'):
+            if not _in_sitemap(product_seo, p):
+                continue
             yield {
                 'loc': urljoin(base, f'/products/{p.slug}/'),
                 'lastmod': p.updated_at.isoformat() if p.updated_at else '',
@@ -182,14 +218,20 @@ def iter_sitemap_entries() -> Iterable[dict]:
                 'priority': '0.8',
                 'md_alternate': urljoin(base, f'/md/products/{p.slug}'),
             }
+        category_seo = _seo_overrides(Category)
         for c in Category.objects.filter(is_active=True).only('slug', 'updated_at'):
+            if not _in_sitemap(category_seo, c):
+                continue
             yield {
                 'loc': urljoin(base, f'/category/{c.slug}/'),
                 'lastmod': c.updated_at.isoformat() if c.updated_at else '',
                 'changefreq': 'weekly',
                 'priority': '0.6',
             }
+        collection_seo = _seo_overrides(Collection)
         for col in Collection.objects.filter(is_active=True).only('slug', 'updated_at'):
+            if not _in_sitemap(collection_seo, col):
+                continue
             yield {
                 'loc': urljoin(base, f'/collection/{col.slug}/'),
                 'lastmod': col.updated_at.isoformat() if col.updated_at else '',

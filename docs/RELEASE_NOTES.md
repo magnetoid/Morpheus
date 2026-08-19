@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.48.0 — 2026-08-19
+
+**Product markup states only what is true**
+
+- Every product page was advertising free shipping. The shipping and return policy in your product markup was assembled by the SEO app from settings that no screen ever wrote — so every store published the same invented policy, and because the free-shipping threshold defaulted to a value that read as 'yes', every product claimed free delivery whatever your shipping rates said. Both now come from the apps that hold the data, and are simply left out when you have not configured them.
+- Out-of-stock products were telling Google they were in stock. The stock check ran on a code path the product page never took, so the markup said 'in stock' for the whole catalogue. Availability now comes from your real inventory — including backorders — and matches what your channel feeds send.
+- Star ratings counted reviews the page does not show. The rating aggregate included unapproved reviews while the review snippets filtered them out, so a product could advertise a rating built partly from reviews nobody can read.
+- Product pages carry their full markup again. The page renders through GraphQL, and the markup builder skipped everything only the database can supply — so ISBN/GTIN identifiers, the image gallery, ratings, reviews and the book details were missing from every product page, and the SKU was published empty.
+- The product form now shows your real domain and edits the URL in place: one line reading https://your-store.com/products/your-slug, click the slug to change it. The separate slug box and the duplicated URL beneath it are gone.
+- 'Include in the sitemap' works. The per-page control shipped last release without being connected to anything; the sitemap now honours it, and pages you have set to noindex are kept out automatically rather than being submitted for crawling and then discarded.
+
 ## v0.47.0 — 2026-08-19
 
 **Per-entity SEO has one owner and one editor; redirects that actually hold**

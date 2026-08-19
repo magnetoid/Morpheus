@@ -92,6 +92,22 @@ def _robots_extra_from_post(post) -> dict:
     return extra
 
 
+def _sitemap_choice(value) -> str:
+    """The stored tri-state as a form value. NULL means "platform default"."""
+    if value is None:
+        return ''
+    return 'yes' if value else 'no'
+
+
+def _sitemap_from_post(post):
+    choice = (post.get('seo_sitemap_include') or '').strip().lower()
+    if choice == 'yes':
+        return True
+    if choice == 'no':
+        return False
+    return None
+
+
 def _native(obj, field: str) -> str:
     if obj is None or not field:
         return ''
@@ -123,6 +139,8 @@ _BLANK_VALUES = {
     'twitter_title': '',
     'twitter_description': '',
     'focus_keyword': '',
+    # '' = follow the platform default, 'yes' = always list, 'no' = never list.
+    'sitemap_include': '',
 }
 
 
@@ -150,6 +168,7 @@ def _stored_values(obj) -> tuple[dict, str, dict, dict]:
             robots_extra = sm.robots_extra or {}
             provenance = sm.provenance or {}
             autofilled = bool(sm.auto_filled)
+            vals['sitemap_include'] = _sitemap_choice(sm.sitemap_include)
     except Exception:  # noqa: BLE001 — seo plugin optional
         pass
 
@@ -210,6 +229,7 @@ def panel_context(obj, request=None) -> dict:
             vals['twitter_title'] = p.get('seo_twitter_title', '')
             vals['twitter_description'] = p.get('seo_twitter_description', '')
             vals['focus_keyword'] = p.get('seo_focus_keyword', '')
+            vals['sitemap_include'] = p.get('seo_sitemap_include', '')
             vals['robots'] = _robots_from_post(p)
             robots_extra = _robots_extra_from_post(p)
             ai_answer = p.get('seo_ai_answer', '')
@@ -246,6 +266,11 @@ def panel_context(obj, request=None) -> dict:
         'seo_twitter_choices': [
             ('summary_large_image', 'Summary (large image)'),
             ('summary', 'Summary'),
+        ],
+        'seo_sitemap_choices': [
+            ('', 'Default for this page type'),
+            ('yes', 'Always list it'),
+            ('no', 'Keep it out'),
         ],
         'seo_image_preview_choices': [
             ('large', 'Large (recommended)'),
@@ -316,6 +341,7 @@ def save_object_seo(obj, post) -> None:
         'ai_answer': field('ai_answer', 'seo_ai_answer'),
         'robots': robots,
         'robots_extra': _robots_extra_from_post(post),
+        'sitemap_include': _sitemap_from_post(post),
         'auto_filled': False,
     }
     _text_fields = (
@@ -338,7 +364,13 @@ def save_object_seo(obj, post) -> None:
         ct = ContentType.objects.get_for_model(type(obj))
         qs = SeoMeta.objects.filter(content_type=ct, object_id=str(obj.pk))
         text_set = any(fields[k] for k in _text_fields)
-        if not (text_set or robots != 'index, follow' or fields['robots_extra'] or qs.exists()):
+        if not (
+            text_set
+            or robots != 'index, follow'
+            or fields['robots_extra']
+            or fields['sitemap_include'] is not None
+            or qs.exists()
+        ):
             return
         # Whatever the merchant just typed is theirs — record that, so a later
         # bulk template or AI pass can leave hand-written values alone.

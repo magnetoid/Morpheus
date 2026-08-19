@@ -31,6 +31,21 @@ class ReturnsPortalPlugin(Plugin):
     has_models = True
     requires = ['orders', 'loyalty_points', 'customers', 'consent']
 
+    def ready(self) -> None:
+        from morpheus.core import events  # noqa: PLC0415
+
+        # The return window, stated to Google by the app that owns it. The SEO
+        # app used to publish a complete policy — 30 days, free, by mail, US —
+        # assembled from constants in its own source, on every store.
+        self.register_hook(events.SEO_JSONLD_GRAPH, self.on_seo_jsonld_graph, priority=50)
+
+    def on_seo_jsonld_graph(self, value, page=None, request=None, **kwargs):
+        from plugins.installed.returns_portal.seo_graph import (  # noqa: PLC0415
+            on_seo_jsonld_graph,
+        )
+
+        return on_seo_jsonld_graph(value, page=page, request=request, **kwargs)
+
     def contribute_storefront_blocks(self) -> list:
         return [
             StorefrontBlock(

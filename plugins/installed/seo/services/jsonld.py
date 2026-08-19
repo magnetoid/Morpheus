@@ -17,7 +17,6 @@ from __future__ import annotations
 import contextlib
 
 from ._helpers import (
-    _return_window_days,
     _seo_plugin,
     _seo_plugin_cfg,
     _site_base_url,
@@ -128,18 +127,55 @@ def breadcrumb_jsonld(items: list[dict]) -> dict:
     }
 
 
-def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) -> dict:
+def _availability(rendered, orm) -> str:
+    """The schema.org availability URL for a product.
+
+    Reads the RENDERED payload first — that is what the shopper is looking at —
+    and only falls back to the ORM row. The stock query that used to live here
+    ran solely on the ORM path, so a product page (which renders a dict)
+    advertised InStock unconditionally, out-of-stock items included.
+    """
+    from plugins.feed_mapping import availability_to_schema
+
+    for candidate in (rendered, orm):
+        if candidate is None:
+            continue
+        try:
+            value = availability_to_schema(candidate)
+        except Exception:  # noqa: BLE001, S112 — try the next source
+            continue
+        if value:
+            return value
+    return 'https://schema.org/InStock'
+
+
+def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, model=None) -> dict:
     """Rich Product structured data.
 
-    `product` may be a Django model instance (SSR path) OR a dict (when
-    fed by GraphQL via a template tag). Accessor helper normalises both.
+    `product` may be a Django model instance (SSR path) OR a dict — the product
+    page renders a GraphQL payload, and that payload is what the shopper sees,
+    so price and availability must come from it.
+
+    `model` is that same product as a Django row, when the caller has one. It
+    matters more than it looks: everything Google most wants on a merchant
+    listing — the image gallery, GTIN/ISBN/MPN identifiers, aggregateRating,
+    individual reviews, the Book subtype, a real stock check — can only be read
+    through the ORM, and the product page passed a dict. So every one of those
+    was silently absent from every product page on the site, while the same
+    function produced a complete node when called from anywhere else.
+
+    Values still come from `product` first (it is what was rendered); `model`
+    only supplies what a dict cannot carry.
 
     `extra` carries enrichments the caller assembled from SAFE sources (the
-    PDP view) — image / aggregateRating / brand / review — so they render even
-    on the dict path, where the ORM-only blocks below are skipped. Never reads
-    a deferred field; it's pre-resolved plain data.
+    PDP view) — image / aggregateRating / brand / review. Never reads a
+    deferred field; it's pre-resolved plain data.
     """
     base = base_url or _site_base_url()
+    # The ORM row to read enrichments from, or None when we genuinely only have
+    # a dict. Guarding on this rather than `not isinstance(product, dict)` is
+    # the whole fix.
+    orm = model if isinstance(product, dict) else product
 
     def _abs(u: str) -> str:
         # Google requires absolute image URLs; model .url is site-relative.
@@ -148,16 +184,31 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
             return u
         return base.rstrip('/') + '/' + u.lstrip('/')
 
-    def g(name, default=None):
-        if isinstance(product, dict):
-            return product.get(name, default)
+    def _read(source, name, default=None):
+        if source is None:
+            return default
+        if isinstance(source, dict):
+            return source.get(name, default)
         # getattr's default only catches AttributeError; a djmoney/deferred
         # field raises KeyError when the instance was loaded with .only()/
         # .defer() and that field wasn't selected — guard so JSON-LD never 500s.
         try:
-            return getattr(product, name, default)
+            return getattr(source, name, default)
         except Exception:  # noqa: BLE001
             return default
+
+    def g(name, default=None):
+        """A field, from what was rendered first and the database second.
+
+        The GraphQL query behind a product page selects only what the template
+        draws, so `sku` — which nothing displays — came through empty and the
+        page published `sku: ""`. Falling back to the row fills those in
+        without ever overriding a value the page actually showed.
+        """
+        value = _read(product, name, None)
+        if value in (None, ''):
+            value = _read(orm, name, None)
+        return default if value in (None, '') else value
 
     slug = g('slug') or ''
     if not slug:
@@ -180,8 +231,8 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
     # Emitted as schema.org `disambiguatingDescription`: a short, factual
     # restatement that AI answer engines (ChatGPT / Perplexity / AI
     # Overviews) can lift verbatim and attribute. ORM-only.
-    if not isinstance(product, dict):
-        answer = ai_answer_for(product)
+    if orm is not None:
+        answer = ai_answer_for(orm)
         if answer:
             out['disambiguatingDescription'] = answer[:600]
 
@@ -191,11 +242,11 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
     # rich results want Book over generic Product. Guarded so a missing
     # metafields plugin doesn't break JSON-LD rendering.
     book_mf: dict = {}
-    if not isinstance(product, dict):
+    if orm is not None:
         try:
             from plugins.installed.book_product.compat import book_attrs
 
-            book_mf = book_attrs(product)
+            book_mf = book_attrs(orm)
         except Exception:  # noqa: BLE001
             book_mf = {}
         if book_mf:
@@ -242,9 +293,9 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
     # keeps its single primary URL. Falls back to the old single-image
     # behaviour when no gallery rows exist.
     images: list[str] = []
-    if not isinstance(product, dict):
+    if orm is not None:
         try:
-            for pi in product.images.order_by('-is_primary', 'sort_order')[:8]:
+            for pi in orm.images.order_by('-is_primary', 'sort_order')[:8]:
                 u = _abs(getattr(getattr(pi, 'image', None), 'url', '') or '')
                 if u and u not in images:
                     images.append(u)
@@ -272,23 +323,11 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
     offer_curr = 'USD'
     price = g('price')
     if price is not None:
-        avail = 'https://schema.org/InStock'
-        # Stock check is ORM-only; skip silently for dicts.
-        try:
-            if not isinstance(product, dict):
-                from plugins.installed.inventory.models import StockLevel
-                from django.db.models import Sum, F
-
-                stock = (
-                    StockLevel.objects.filter(variant__product=product).aggregate(
-                        qty=Sum(F('quantity') - F('reserved_quantity'))
-                    )['qty']
-                    or 0
-                )
-                if stock <= 0:
-                    avail = 'https://schema.org/OutOfStock'
-        except Exception:  # noqa: BLE001
-            pass
+        # ONE availability vocabulary for the whole platform: the same helper
+        # the channel feeds and the Open Graph tags use. Markup that disagrees
+        # with the feed is a Merchant Center mismatch, and markup that
+        # disagrees with the page is the thing Google explicitly forbids.
+        avail = _availability(product, orm)
         if isinstance(price, dict):
             offer_price = str(price.get('amount', ''))
             offer_curr = str(price.get('currency', 'USD'))
@@ -316,87 +355,34 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
             ).isoformat()
         except Exception:  # noqa: BLE001
             pass
-        # MerchantReturnPolicy + OfferShippingDetails — 2026 Required
-        # for Merchant free listings + AI shopping comparisons. Values
-        # live in the SEO plugin's PluginConfig JSON so no migration.
-        commerce_cfg = _seo_plugin_cfg()
-        # Prefer an explicit SEO return_days override; otherwise use the real
-        # return window configured in the returns_portal plugin (its policy), so
-        # the merchant listing carries a return policy without a duplicate setting.
-        return_days = int(commerce_cfg.get('return_days') or 0) or _return_window_days()
-        ship_fee = commerce_cfg.get('shipping_fee_amount') or '0'
-        free_over = commerce_cfg.get('free_shipping_over') or '0'
-        country = (commerce_cfg.get('shipping_country') or 'US').upper()
-        # Handling + transit windows are merchant-tunable via the SEO
-        # plugin config — defaults match the hard-coded values they
-        # replaced (0-1d handling, 2-5d transit). Coerced to int so a
-        # stray string in the config JSON doesn't break rendering.
-        try:
-            handling_min = int(commerce_cfg.get('handling_days_min', 0) or 0)
-        except (TypeError, ValueError):
-            handling_min = 0
-        try:
-            handling_max = int(commerce_cfg.get('handling_days_max', 1) or 0)
-        except (TypeError, ValueError):
-            handling_max = 1
-        try:
-            transit_min = int(commerce_cfg.get('transit_days_min', 2) or 0)
-        except (TypeError, ValueError):
-            transit_min = 2
-        try:
-            transit_max = int(commerce_cfg.get('transit_days_max', 5) or 0)
-        except (TypeError, ValueError):
-            transit_max = 5
-        if return_days:
-            out['offers']['hasMerchantReturnPolicy'] = {
-                '@type': 'MerchantReturnPolicy',
-                'applicableCountry': country,
-                'returnPolicyCategory': 'https://schema.org/MerchantReturnFiniteReturnWindow',
-                'merchantReturnDays': return_days,
-                'returnMethod': 'https://schema.org/ReturnByMail',
-                'returnFees': 'https://schema.org/FreeReturn',
-            }
-        out['offers']['shippingDetails'] = {
-            '@type': 'OfferShippingDetails',
-            'shippingDestination': {
-                '@type': 'DefinedRegion',
-                'addressCountry': country,
-            },
-            'shippingRate': {
-                '@type': 'MonetaryAmount',
-                'value': str(ship_fee),
-                'currency': offer_curr,
-            },
-            'deliveryTime': {
-                '@type': 'ShippingDeliveryTime',
-                'handlingTime': {
-                    '@type': 'QuantitativeValue',
-                    'minValue': handling_min,
-                    'maxValue': handling_max,
-                    'unitCode': 'DAY',
-                },
-                'transitTime': {
-                    '@type': 'QuantitativeValue',
-                    'minValue': transit_min,
-                    'maxValue': transit_max,
-                    'unitCode': 'DAY',
-                },
-            },
-        }
-        if free_over:
-            out['offers']['shippingDetails']['freeShippingThreshold'] = {
-                '@type': 'MonetaryAmount',
-                'value': str(free_over),
-                'currency': offer_curr,
-            }
+        # Shipping and returns are NOT written here any more, and their absence
+        # is deliberate. This block used to synthesise both from plugin-config
+        # keys that no settings screen ever wrote, so every store on the
+        # platform published the same invented policy — and because the
+        # free-shipping threshold defaulted to the truthy string '0', every
+        # product page claimed FREE SHIPPING on everything, whatever the
+        # shipping app actually charged. Structured data that contradicts the
+        # site is a Merchant Center policy violation, and this contradicted the
+        # cart.
+        #
+        # The apps that own the data answer SEO_JSONLD_GRAPH instead
+        # (shipping/seo_graph.py, returns_portal/seo_graph.py). When neither is
+        # installed or configured the properties are simply absent: a missing
+        # recommended property costs a warning, an invented one costs trust.
 
     # Aggregate rating + Review nodes — ORM only, and only while the
     # merchant keeps "Product reviews" structured data switched on.
-    if not isinstance(product, dict) and getattr(site_settings(), 'jsonld_reviews', True):
+    if orm is not None and getattr(site_settings(), 'jsonld_reviews', True):
         try:
             from django.db.models import Avg, Count
 
-            agg = product.reviews.aggregate(avg=Avg('rating'), n=Count('id'))
+            # APPROVED reviews only. The aggregate counted every row while the
+            # Review nodes just below filtered to approved, so a page could
+            # advertise a rating built partly from reviews it does not show —
+            # and Google's review policy is explicit that markup must reflect
+            # what is on the page. catalog.Product already exposes the correct
+            # aggregate for exactly this reason.
+            agg = orm.reviews.filter(is_approved=True).aggregate(avg=Avg('rating'), n=Count('id'))
             if agg['n']:
                 out['aggregateRating'] = {
                     '@type': 'AggregateRating',
@@ -414,7 +400,7 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
         # missing reviews plugin / model doesn't break rendering.
         try:
             review_nodes: list[dict] = []
-            for r in product.reviews.filter(is_approved=True)[:5]:
+            for r in orm.reviews.filter(is_approved=True)[:5]:
                 body = (getattr(r, 'body', None) or getattr(r, 'content', None) or '').strip()
                 if not body:
                     continue
@@ -449,7 +435,7 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
 
     # ProductGroup variants — schema.org's hasVariant unlocks variant
     # cards in Google AI Shopping. Only emit when variants exist.
-    if not isinstance(product, dict):
+    if orm is not None:
         try:
             variants = (
                 list(getattr(product, 'variants', None).filter(is_active=True)[:20])
@@ -493,15 +479,15 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
     # Entity-graph sameAs links via metafield 'seo.same_as' (comma- or
     # newline-separated URLs). March-2026 core update made this the #1
     # leverage point for AI engines.
-    if not isinstance(product, dict):
+    if orm is not None:
         try:
             from django.contrib.contenttypes.models import ContentType
             from plugins.installed.metafields.models import Metafield
 
-            ct = ContentType.objects.get_for_model(type(product))
+            ct = ContentType.objects.get_for_model(type(orm))
             m = Metafield.objects.filter(
                 content_type=ct,
-                object_id=product.pk,
+                object_id=orm.pk,
                 namespace='seo',
                 key='same_as',
             ).first()
@@ -515,12 +501,12 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
     # GTIN / brand via 'book' metafield namespace (used by dotbooks)
     # AND via ProductVariant.barcode (Phase 1 of variant Shopify
     # parity — every variant carries an optional UPC / EAN / ISBN).
-    if not isinstance(product, dict):
+    if orm is not None:
         candidate_barcode = ''
         try:
             from plugins.installed.book_product.compat import book_attrs
 
-            book_meta = book_attrs(product)
+            book_meta = book_attrs(orm)
             if book_meta.get('isbn'):
                 candidate_barcode = str(book_meta['isbn']).strip()
             if book_meta.get('publisher'):
@@ -532,7 +518,7 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
         # Variant-level barcode wins when present — closer to source.
         try:
             first_variant_barcode = (
-                product.variants.exclude(barcode='').values_list('barcode', flat=True).first()
+                orm.variants.exclude(barcode='').values_list('barcode', flat=True).first()
             )
             if first_variant_barcode:
                 candidate_barcode = str(first_variant_barcode).strip()
@@ -584,7 +570,7 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None) ->
         try:
             from plugins.installed.metafields.identifiers import product_identifiers
 
-            for code in product_identifiers(product):
+            for code in product_identifiers(orm):
                 if code['jsonld']:
                     out[code['jsonld']] = code['value']
         except Exception:  # noqa: BLE001

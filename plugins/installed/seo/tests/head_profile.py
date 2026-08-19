@@ -279,10 +279,35 @@ def diff_profiles(before: dict, after: dict) -> list[str]:
 
 
 def _group_by_type(nodes: list[dict]) -> dict[str, tuple[set[str], set[tuple[str, object]]]]:
+    """Index nodes by type, counting a MULTI-typed node under each of its types.
+
+    `@type` is legitimately a list — a book is `['Product', 'Book']`, and both
+    claims are true. Treating the list as one opaque key made the diff report
+    "Product lost" the moment a Product gained a subtype, which is the opposite
+    of what happened and exactly the kind of false alarm that gets a guard
+    ignored.
+    """
     grouped: dict[str, tuple[set[str], set[tuple[str, object]]]] = {}
     for node in nodes:
-        node_type = str(node['type'])
-        props, values = grouped.setdefault(node_type, (set(), set()))
-        props.update(node.get('props', []))
-        values.update((k, v) for k, v in (node.get('values') or {}).items())
+        for node_type in _type_names(node.get('type')):
+            props, values = grouped.setdefault(node_type, (set(), set()))
+            props.update(node.get('props', []))
+            values.update((k, v) for k, v in (node.get('values') or {}).items())
     return grouped
+
+
+def _type_names(value) -> list[str]:
+    if isinstance(value, (list, tuple)):
+        return [str(v) for v in value if v]
+    text = str(value or '')
+    # A recorded profile stores the list's repr, so parse it back.
+    if text.startswith('[') and text.endswith(']'):
+        try:
+            import ast
+
+            parsed = ast.literal_eval(text)
+            if isinstance(parsed, (list, tuple)):
+                return [str(v) for v in parsed if v]
+        except (ValueError, SyntaxError):
+            pass
+    return [text] if text else []
