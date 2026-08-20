@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.54.0 — 2026-08-20
+
+**SEO templates: one pattern titles every page of a kind**
+
+- New Dashboard -> SEO -> Templates: write one pattern - {name} - buy online | {site_name} - and it titles every product (or category page, journal post, CMS page) at render time. Nothing is written onto rows, so editing the pattern re-titles everything it covers on the next page load, and deleting it puts the old titles straight back. That render-time design also made a 'bulk apply' step unnecessary.
+- Precedence keeps the v0.47 lesson honest: a title the merchant typed always beats a fill-empty-fields pattern - and a pattern beats the autofill guess the platform mints for every product, which is exactly the class of value the lesson says must lose to a human decision. 'Override everything' mode is the deliberate inversion, for re-branding titles typed before the pattern existed.
+- Grammar, kept small: {tokens} from the page's fields and metafields plus {site_name}/{sep}; alternatives {author|"Anonymous"}; filters truncate:N/title/lower/upper; and bracket blocks [ by {author}] that vanish whole when nothing inside resolves, so separators never dangle. A pattern in which no token resolves declines entirely rather than publishing boilerplate. Patterns can be scoped to one category by slug; scoped beats global.
+- The engine resolves the PDP's GraphQL dict as well as ORM objects (the surface that matters most), fires SEO_TEMPLATE_TOKENS so apps can contribute their own vocabulary (the event finally has its producer), and compiles to a cache invalidated on save - including the dashboard's own edit path, which uses update() and therefore drops the cache by hand.
+
 ## v0.53.0 — 2026-08-20
 
 **Full-screen feedback capture with console log; plugin routes resolve before discovery**

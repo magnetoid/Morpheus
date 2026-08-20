@@ -1,0 +1,126 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}SEO templates{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1.25rem;">
+  <h1 style="margin:0; font-size:1.35rem; font-weight:650;">Title &amp; description templates</h1>
+  <p style="margin:.35rem 0 0; font-size:.85rem; color: var(--text-subtle); max-width: 62ch;">
+    One pattern titles every page of a kind. Nothing is written onto products —
+    a pattern applies at render, so editing it re-titles everything it covers,
+    and deleting it puts the old titles straight back. A title you typed on a
+    product yourself always wins over a “fill empty fields” pattern.
+  </p>
+</div>
+
+{% if preview %}
+<div class="card card-padded" style="margin-bottom:1rem; border-left: 3px solid var(--accent, #2563eb);">
+  <h2 style="margin:0 0 .4rem; font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color: var(--text-subtle);">Preview — nothing saved</h2>
+  <p style="margin:0 0 .3rem; font-size:.8rem; color: var(--text-subtle);">Pattern <code>{{ preview.template }}</code> against “{{ preview.sample }}”:</p>
+  {% if preview.declined %}
+  <p style="margin:0; font-size:.9rem;">— the pattern declined (no token resolved), so the page would keep its current title.</p>
+  {% else %}
+  <p style="margin:0; font-size:1.05rem; font-weight:600;">{{ preview.rendered }}</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if rows %}
+<div class="card" style="padding:0; overflow:hidden; margin-bottom:1.25rem;">
+  <table class="morph-table" style="width:100%;">
+    <thead>
+      <tr><th>Kind</th><th>Field</th><th>Scope</th><th>Pattern</th><th>Mode</th><th>Active</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.get_kind_display }}</td>
+        <td style="font-size:.85rem;">{{ row.get_field_display }}</td>
+        <td style="font-size:.85rem;">{{ row.scope|default:"all" }}</td>
+        <td><code style="font-size:.8rem;">{{ row.template }}</code>
+          {% if row.note %}<span style="display:block; font-size:.72rem; color: var(--text-subtle);">{{ row.note }}</span>{% endif %}
+        </td>
+        <td style="font-size:.8rem;">{{ row.get_mode_display }}</td>
+        <td>{% if row.is_active %}<span class="pill pill-info">on</span>{% else %}<span class="pill">off</span>{% endif %}</td>
+        <td style="text-align:right;">
+          <form method="post" style="display:inline;" onsubmit="return confirm('Remove this pattern? Pages fall back to their own titles.');">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="{{ row.pk }}">
+            <button type="submit" class="btn btn-ghost text-xs">Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card card-padded" style="margin-bottom:1.25rem;">
+  <p style="margin:0; font-size:.9rem; color: var(--text-subtle);">
+    No patterns yet. A good first one for a bookshop:
+    <code>{{ "{name}" }} — buy online | {{ "{site_name}" }}</code> on Products, “fill empty fields only”.
+  </p>
+</div>
+{% endif %}
+
+<div class="card card-padded" style="margin-bottom:1.25rem;">
+  <h2 style="margin:0 0 .75rem; font-size:.95rem; font-weight:600;">Add a pattern</h2>
+  <form method="post" style="display:grid; gap:.75rem; max-width: 720px;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:.75rem;">
+      <label style="font-size:.8rem;">Kind
+        <select name="kind" style="width:100%; margin-top:.25rem; padding:.45rem .55rem; border:1px solid var(--border); border-radius:8px; background: var(--surface); color: var(--text);">
+          {% for value, label in kind_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label style="font-size:.8rem;">Field
+        <select name="field" style="width:100%; margin-top:.25rem; padding:.45rem .55rem; border:1px solid var(--border); border-radius:8px; background: var(--surface); color: var(--text);">
+          {% for value, label in field_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label style="font-size:.8rem;">Mode
+        <select name="mode" style="width:100%; margin-top:.25rem; padding:.45rem .55rem; border:1px solid var(--border); border-radius:8px; background: var(--surface); color: var(--text);">
+          {% for value, label in mode_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label style="font-size:.8rem;">Category scope <span style="color: var(--text-subtle);">(slug, optional)</span>
+        <input name="scope" placeholder="fiction" style="width:100%; margin-top:.25rem; padding:.45rem .55rem; border:1px solid var(--border); border-radius:8px; background: var(--surface); color: var(--text);">
+      </label>
+    </div>
+    <label style="font-size:.8rem;">Pattern
+      <input name="template" required placeholder='{name} — buy online | {site_name}' style="width:100%; margin-top:.25rem; padding:.55rem .65rem; border:1px solid var(--border); border-radius:8px; background: var(--surface); color: var(--text); font-family: ui-monospace, monospace;">
+    </label>
+    <label style="font-size:.8rem;">Note <span style="color: var(--text-subtle);">(optional, for your team)</span>
+      <input name="note" style="width:100%; margin-top:.25rem; padding:.45rem .55rem; border:1px solid var(--border); border-radius:8px; background: var(--surface); color: var(--text);">
+    </label>
+    <input type="hidden" name="priority" value="100">
+    <input type="hidden" name="is_active" value="1">
+    <div style="display:flex; gap:.5rem;">
+      <button type="submit" class="btn btn-primary">Save pattern</button>
+      <button type="submit" class="btn btn-ghost" formaction="" name="action" value="preview">Preview on a real product</button>
+    </div>
+  </form>
+</div>
+
+<div class="card card-padded">
+  <h2 style="margin:0 0 .5rem; font-size:.95rem; font-weight:600;">What the tokens mean</h2>
+  {% comment %}Literal braces in display text need the verbatim tag or the
+  page 500s (the email-template-editor landmine). NB never NAME that tag with
+  its braces inside a comment — verbatim is special to the LEXER, so the
+  mention swallows the endcomment and the page 500s anyway.{% endcomment %}
+  {% verbatim %}
+  <dl style="margin:0; display:grid; grid-template-columns: minmax(190px, auto) 1fr; gap:.4rem 1.25rem; font-size:.85rem;">
+    <dt><code>{name} {sku} {category} {price}</code></dt><dd style="margin:0;">the page's own fields; bare metafield keys work too (<code>{author}</code>, <code>{isbn13}</code>)</dd>
+    <dt><code>{site_name} {sep}</code></dt><dd style="margin:0;">the shop name from Settings, and a — separator</dd>
+    <dt><code>{author|"Anonymous"}</code></dt><dd style="margin:0;">alternatives — first non-empty wins; quotes make a literal</dd>
+    <dt><code>{name|truncate:40|title}</code></dt><dd style="margin:0;">filters: <code>truncate:N</code>, <code>title</code>, <code>lower</code>, <code>upper</code></dd>
+    <dt><code>[ by {author}]</code></dt><dd style="margin:0;">bracket block vanishes whole when nothing inside it resolves — separators never dangle</dd>
+  </dl>
+  {% endverbatim %}
+  <p style="margin:.75rem 0 0; font-size:.78rem; color: var(--text-subtle); max-width: 64ch;">
+    A pattern in which not a single token resolves declines entirely — the page
+    keeps the title it already had rather than publishing bare separators.
+  </p>
+</div>
+{% endblock %}

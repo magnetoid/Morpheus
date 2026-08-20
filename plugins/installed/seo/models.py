@@ -375,6 +375,74 @@ class IndexRule(models.Model):
         super().save(*args, **kwargs)
 
 
+class SeoTemplate(models.Model):
+    """One title/description pattern for a whole page kind.
+
+    A resolution layer, not a bulk write: nothing is stamped onto rows, so
+    editing the pattern re-titles every page it covers on the next render and
+    deleting it restores exactly what resolution produced before. A merchant's
+    own typed value always beats an ``empty_only`` template (the P1 lesson);
+    ``all`` mode is the deliberate opposite — "brand every product title like
+    this, including the ones typed before the pattern existed".
+
+    ``scope`` narrows a rule to one category (by slug — matches both ORM
+    products and the PDP's GraphQL dict); empty means every page of the kind.
+    Lowest ``priority`` wins; scoped rules beat global at equal priority.
+    Grammar + compiled cache: ``services/templating.py``.
+    """
+
+    KIND_CHOICES = [
+        ('product', 'Products'),
+        ('listing', 'Category & collection pages'),
+        ('article', 'Journal posts'),
+        ('page', 'CMS pages'),
+        ('static', 'Static pages'),
+    ]
+    FIELD_CHOICES = [('title', 'Meta title'), ('description', 'Meta description')]
+    MODE_EMPTY_ONLY = 'empty_only'
+    MODE_ALL = 'all'
+    MODE_CHOICES = [
+        (MODE_EMPTY_ONLY, 'Fill empty fields only'),
+        (MODE_ALL, 'Override everything of this kind'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, db_index=True)
+    field = models.CharField(max_length=20, choices=FIELD_CHOICES, default='title')
+    scope = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        help_text='Category slug to narrow this rule to; empty = every page of the kind.',
+    )
+    template = models.TextField(
+        help_text='Pattern with {tokens} — e.g. {name} — buy online | {site_name}'
+    )
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES, default=MODE_EMPTY_ONLY)
+    priority = models.PositiveIntegerField(default=100, help_text='Lower wins.')
+    is_active = models.BooleanField(default=True)
+    note = models.CharField(max_length=300, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['kind', 'field', 'priority', 'created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['kind', 'field', 'scope'], name='seo_template_one_per_scope'
+            )
+        ]
+
+    def __str__(self) -> str:
+        where = self.scope or 'all'
+        return f'{self.get_kind_display()} {self.field} ({where})'
+
+    def save(self, *args, **kwargs):
+        self.scope = (self.scope or '').strip().lower()
+        self.template = (self.template or '').strip()
+        super().save(*args, **kwargs)
+
+
 class SitemapEntry(models.Model):
     """
     Optional precomputed sitemap entry. Most callers should let the

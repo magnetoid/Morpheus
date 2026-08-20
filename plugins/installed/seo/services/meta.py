@@ -104,6 +104,28 @@ def format_document_title(page_title: str, *, category: str = '', settings_row=N
     return out[:max_len]
 
 
+def _template_layer(
+    page_kind: str, obj, meta, autofilled: bool, native, title: str, description: str
+) -> tuple[str, str]:
+    """The SeoTemplate layer: fills what the merchant left empty (or, in `all`
+    mode, deliberately overrides). An AUTOFILLED SeoMeta value is a platform
+    guess, not a merchant decision — autofill_meta_for mints one for EVERY
+    product, seeded with its name — so for `empty_only` purposes a guess counts
+    as empty: the merchant's pattern beats the platform's guess, and if the
+    pattern declines, the guess stands. Fail-soft: a broken pattern returns
+    the inputs untouched (inside apply_templates)."""
+    from plugins.installed.seo.services.templating import apply_templates
+
+    def _is_guess(field: str, native_name: str) -> bool:
+        own = (getattr(meta, field, '') or '') if meta else ''
+        return bool(autofilled and own and not native(native_name))
+
+    t_in = '' if _is_guess('title', 'meta_title') else title
+    d_in = '' if _is_guess('description', 'meta_description') else description
+    t_out, d_out = apply_templates(page_kind, obj, t_in, d_in)
+    return (t_out or title), (d_out or description)
+
+
 def resolve_meta(
     *,
     obj: Any | None = None,
@@ -112,13 +134,19 @@ def resolve_meta(
     fallback_image: str = '',
     canonical_url: str = '',
     og_type: str = 'website',
+    page_kind: str = '',
 ) -> ResolvedMeta:
     """Merge per-object SeoMeta + native model SEO fields + fallbacks.
 
     Priority order (highest first):
       1. SeoMeta row (generic-FK overrides — admin can set anything)
       2. Native model SEO fields (Product.og_title, focus_keyword, …)
-      3. Provided fallbacks (whatever the caller passed)
+      3. Matching SeoTemplate pattern (only when the caller names `page_kind`
+         — the head builder does; panels/previews resolve without templates)
+      4. Provided fallbacks (whatever the caller passed)
+
+    An ``all``-mode template deliberately inverts 1–2 for its field: that mode
+    exists to re-brand values typed before the pattern did.
     """
     from plugins.installed.seo.models import SeoMeta
 
@@ -148,8 +176,14 @@ def resolve_meta(
             return native_value
         return own or native_value or fallback
 
-    title = stored('title', 'meta_title', fallback_title).strip()
-    description = strip_html(stored('description', 'meta_description', fallback_description))
+    title = stored('title', 'meta_title', '').strip()
+    description = strip_html(stored('description', 'meta_description', ''))
+    if page_kind:
+        title, description = _template_layer(
+            page_kind, obj, meta, autofilled, native, title, description
+        )
+    title = (title or fallback_title).strip()
+    description = strip_html(description or fallback_description)
     # Expand {name}/{author}/{isbn13}/… field + metafield tokens the merchant
     # typed into the title/description (no-op when there are none).
     try:

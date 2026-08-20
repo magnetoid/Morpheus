@@ -16,6 +16,7 @@ urlpatterns = [
     path('not-found/<uuid:pk>/dismiss/', views.not_found_dismiss, name='not_found_dismiss'),
     path('redirects/', views.redirects_page, name='redirects'),
     path('rules/', views.index_rules_page, name='index_rules'),
+    path('templates/', views.templates_page, name='templates'),
     path('audit/', views.audit_page, name='audit'),
     path('keywords/', views.keywords_page, name='keywords'),
     path('bulk-meta/', views.bulk_meta, name='bulk_meta'),

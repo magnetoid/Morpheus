@@ -466,6 +466,15 @@ class SeoPlugin(Plugin):
                 url='/dashboard/seo/rules/',
             ),
             DashboardPage(
+                label='Templates',
+                slug='templates',
+                view='plugins.installed.seo.views.templates_page',
+                icon='braces',
+                section='seo',
+                order=48,
+                url='/dashboard/seo/templates/',
+            ),
+            DashboardPage(
                 label='Keywords',
                 slug='keywords',
                 view='plugins.installed.seo.views.keywords_page',

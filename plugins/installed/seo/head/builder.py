@@ -112,6 +112,7 @@ def _resolve_meta(page: SeoPage):
         fallback_description=page.description,
         fallback_image=page.image,
         og_type=page.og_type,
+        page_kind=page.kind,
     )
 
 

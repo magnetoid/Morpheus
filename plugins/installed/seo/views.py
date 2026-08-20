@@ -1710,3 +1710,93 @@ def schema_editor(request: HttpRequest, app_label: str, model: str, pk: str) -> 
             ],
         },
     )
+
+
+@staff_member_required
+@require_capability('seo.read')
+def templates_page(request):
+    """Title/description patterns per page kind — Dashboard → SEO → Templates.
+
+    Templates are a resolution layer (services/templating.py): nothing is
+    written onto products, so the preview below IS the feature — what renders
+    is what ships, and deleting a pattern restores the previous titles.
+    """
+    from plugins.installed.seo.models import SeoTemplate
+    from plugins.installed.seo.services.templating import render_template
+
+    preview = None
+    if request.method == 'POST':
+        if (denied := enforce(request, 'seo.write')) is not None:
+            return denied
+        action = request.POST.get('action') or ''
+        if action == 'delete':
+            SeoTemplate.objects.filter(pk=request.POST.get('id') or None).delete()
+            messages.success(request, 'Pattern removed — pages fall back to their own titles.')
+            return redirect('seo_dashboard:templates')
+        if action in ('create', 'edit'):
+            template_text = (request.POST.get('template') or '').strip()
+            kind = request.POST.get('kind') or 'product'
+            if not template_text or '{' not in template_text:
+                messages.error(request, 'A pattern needs at least one {token}.')
+                return redirect('seo_dashboard:templates')
+            fields = {
+                'kind': kind,
+                'field': request.POST.get('field') or 'title',
+                'scope': (request.POST.get('scope') or '').strip().lower(),
+                'template': template_text,
+                'mode': request.POST.get('mode') or SeoTemplate.MODE_EMPTY_ONLY,
+                'priority': int(request.POST.get('priority') or 100),
+                'note': (request.POST.get('note') or '').strip()[:300],
+                'is_active': bool(request.POST.get('is_active')),
+            }
+            if action == 'edit' and request.POST.get('id'):
+                SeoTemplate.objects.filter(pk=request.POST['id']).update(**fields)
+                # QuerySet.update() skips save()/post_save — drop the compiled
+                # cache by hand or the edit serves stale until the TTL lapses
+                # (the redirects landmine, same shape).
+                from plugins.installed.seo.services.templating import invalidate_templates
+
+                invalidate_templates()
+            else:
+                try:
+                    SeoTemplate.objects.create(**fields)
+                except Exception:  # noqa: BLE001 — unique (kind, field, scope)
+                    messages.error(
+                        request, 'A pattern for that kind, field and scope already exists.'
+                    )
+                    return redirect('seo_dashboard:templates')
+            messages.success(request, 'Pattern saved — live on the next page render.')
+            return redirect('seo_dashboard:templates')
+        if action == 'preview':
+            # Render the submitted pattern against a real product WITHOUT
+            # saving anything — the merchant sees exactly what would publish.
+            sample = None
+            try:
+                from plugins.installed.catalog.models import Product
+
+                slug = (request.POST.get('sample') or '').strip()
+                qs = Product.objects.filter(status='active')
+                sample = (qs.filter(slug=slug).first() if slug else None) or qs.first()
+            except Exception:  # noqa: BLE001 — preview must not 500 the page
+                sample = None
+            rendered = render_template(request.POST.get('template') or '', sample, 'product')
+            preview = {
+                'template': request.POST.get('template') or '',
+                'rendered': rendered,
+                'sample': getattr(sample, 'name', '') or '(no active product to sample)',
+                'declined': not rendered,
+            }
+
+    rows = SeoTemplate.objects.all()
+    return render(
+        request,
+        'seo/templates_page.html',
+        {
+            'rows': rows,
+            'preview': preview,
+            'kind_choices': SeoTemplate.KIND_CHOICES,
+            'field_choices': SeoTemplate.FIELD_CHOICES,
+            'mode_choices': SeoTemplate.MODE_CHOICES,
+            'active_nav': 'seo',
+        },
+    )

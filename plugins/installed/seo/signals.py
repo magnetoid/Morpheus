@@ -49,6 +49,12 @@ def wire() -> None:
     post_save.connect(
         _on_index_policy_changed, sender=SiteSeoSettings, dispatch_uid='seo.index_rule_settings'
     )
+    from plugins.installed.seo.models import SeoTemplate
+
+    post_save.connect(_on_template_changed, sender=SeoTemplate, dispatch_uid='seo.template_save')
+    post_delete.connect(
+        _on_template_changed, sender=SeoTemplate, dispatch_uid='seo.template_delete'
+    )
     _wire_slug_watchers()
 
 
@@ -114,3 +120,11 @@ def _on_slug_maybe_changed(sender, instance=None, **kwargs):
         record_slug_change(instance, old_slug=previous, new_slug=new_slug)
     except Exception as e:  # noqa: BLE001 — never fail a merchant's save over this
         logger.warning('seo: slug history failed for %s: %s', instance, e, exc_info=True)
+
+
+def _on_template_changed(sender, instance=None, **kwargs):
+    """A pattern edit must re-title its pages on the NEXT render, not when the
+    compiled-cache TTL happens to lapse."""
+    from plugins.installed.seo.services.templating import invalidate_templates
+
+    invalidate_templates()
