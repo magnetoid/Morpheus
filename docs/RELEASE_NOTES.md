@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.52.4 — 2026-08-20
+
+**Refactor pass over v0.51-v0.52.3: one owner per mechanism**
+
+- Four-angle review (reuse / simplification / efficiency / altitude) of everything shipped since v0.51.0, applied: 17 mechanisms consolidated.
+- One owner of recent client errors: core's error-capture.js now retains its shipped payloads in window.morphClientErrors (same dedup, same cap), and the feedback modal reads that instead of running a second listener pipeline - tickets now also include errors fired before the modal's own script loaded, and their entries match what /api/errors/client/ ingested.
+- Feedback queue uses the shared dashboard machinery it sat next to: paginate_and_sort (page links keep an active ?status= filter, the per-page selector works, the footer hides on single pages), the index_tabs strip with per-status counts, dashboard_trail (restores the root crumb and fixes a detail-page crumb that pointed at a URL that does not exist), Morph.csrf, core_version, and {% url %} instead of a hardcoded path.
+- Dashboard sticky bars are one .dash-sticky-bar class instead of three inline copies, and the pinned header now consumes --dash-topbar-h - the token and the bar height can no longer drift apart.
+- Theme geometry moved to the theme: dot_books declares its measured 158px PDP chrome on its own :root; product_gallery only reads the variable. The old escape hatch was unusable - the plugin's element-scoped declaration would have beaten any theme override. Also: .sr-only is a theme-base utility now, hero thumbnails stop requesting an image width the pipeline never serves, and a handful of dead CSS/guards from the hero rewrite are gone.
+
 ## v0.52.3 — 2026-08-20
 
 **Sticky offset only where the scrollport is the window**

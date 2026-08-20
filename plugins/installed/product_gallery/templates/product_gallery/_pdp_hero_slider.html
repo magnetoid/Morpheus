@@ -129,16 +129,15 @@ Backward compatible with single-image / no-image products:
        cap the WIDTH: reserve everything that is not the cover, then divide the
        remainder by 3/2 to get the widest cover that still fits.
 
-       --pdp-hero-offset is how far down the page the gallery starts, and it is
-       NOT merely the sticky topbar: on dot_books it measures 158px (topbar 65 +
-       section padding 40 + breadcrumb 53). Reserving only the topbar
-       under-reserves by ~93px and the thumbnail strip still clips — that was the
-       first cut of this fix. Measure the real offset before changing it. A theme
-       whose product page carries different chrome above the gallery overrides
-       --pdp-hero-offset; being wrong there only makes the cover a little small
-       or a little tall, never broken. */
-    --pdp-hero-offset: 158px;
-    --pdp-hero-reserve: calc(var(--pdp-hero-offset) + 124px);
+       --pdp-hero-offset is how far down the page the gallery starts — theme
+       chrome (topbar + page padding + breadcrumb), which the THEME owns and
+       declares on its own :root (dot_books: 158px, measured, in its base.html).
+       The plugin only supplies the mechanism plus this conservative fallback;
+       an unset or stale value makes the cover a little small or a little tall,
+       never broken. NB the var must NOT be declared on this element — a local
+       declaration would beat any theme :root override, which was the original
+       (broken) escape hatch. */
+    --pdp-hero-reserve: calc(var(--pdp-hero-offset, 158px) + 124px);
     max-width: min(640px, calc((100svh - var(--pdp-hero-reserve)) / 1.5));
   }
   .pdp-hero__track {

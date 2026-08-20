@@ -54,9 +54,9 @@ space it already has. No JS measures anything.
         >
           {% if pick.primaryImage and pick.primaryImage.url %}
             {% if forloop.first %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="300,400,600,800" sizes="(min-width: 900px) 340px, 62vw" priority=True %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 340px, 62vw" priority=True %}
             {% else %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="300,400,600,800" sizes="(min-width: 900px) 340px, 62vw" %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 340px, 62vw" %}
             {% endif %}
           {% elif PRODUCT_PLACEHOLDER_IMAGE %}
             <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ pick.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
@@ -82,7 +82,7 @@ space it already has. No JS measures anything.
             so the copy centres against the cover as one block. Hoisted out, it
             anchors to the top of a stage sized to the LONGEST title in the set
             and strands itself a couple of hundred pixels above its own heading.{% endcomment %}
-            <p class="eyebrow window__eyebrow" style="--d: 0ms;">Editor's picks</p>
+            <p class="eyebrow">Editor's picks</p>
             <h2 class="display display-l window__title" style="--d: 60ms;">
               {{ pick.name }}<span class="text-accent">.</span>
             </h2>
@@ -122,7 +122,7 @@ space it already has. No JS measures anything.
       >
         <span class="window__pick-cover">
           {% if pick.primaryImage and pick.primaryImage.url %}
-            {% seo_responsive_image pick.primaryImage.url alt="" widths="120,200" sizes="76px" %}
+            {% seo_responsive_image pick.primaryImage.url alt="" widths="200" sizes="76px" %}
           {% elif PRODUCT_PLACEHOLDER_IMAGE %}
             <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="" loading="lazy" decoding="async">
           {% endif %}
@@ -142,16 +142,6 @@ space it already has. No JS measures anything.
      ends just above the fold so the shelf underneath peeks and invites a scroll. */
   .window {
     padding: clamp(2rem, 3.5vw, 3rem) 0 clamp(1.5rem, 3vw, 2.5rem);
-  }
-  /* `.sr-only` is NOT a global utility in this theme — every page that uses it
-     carries its own copy (product_detail.html, checkout.html, and the hero
-     block this replaced). Deleting the old hero would therefore have taken the
-     definition with it and rendered each book's full title VISIBLY inside its
-     picker. It travels with the markup that needs it. */
-  .window .sr-only {
-    position: absolute; width: 1px; height: 1px;
-    padding: 0; margin: -1px; overflow: hidden;
-    clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
   }
   .window__shell {
     display: grid;
@@ -197,18 +187,9 @@ space it already has. No JS measures anything.
     height: 100%;
     object-fit: cover;
   }
-  /* Layout only — base.html owns the "missing cover becomes a title page"
-     typography for every cover on the site, and this element is wired into it
-     alongside .book .cover-wrap. Don't restate font/colour here or the shared
-     treatment loses (same specificity, and this block renders later). */
-  .window__cover .placeholder {
-    display: flex;
-    width: 100%;
-    height: 100%;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--serif);
-  }
+  /* Missing-cover "title page" treatment: base.html owns it for every cover
+     on the site, and `.window__cover .placeholder` is wired into those shared
+     selector groups — nothing to restate here. */
   @media (hover: hover) {
     .window__cover.is-active:hover {
       transform: translateY(-3px);
@@ -233,7 +214,6 @@ space it already has. No JS measures anything.
     grid-area: 1 / 1;
     display: grid;
     gap: 1rem;
-    align-content: center;
     opacity: 0;
     pointer-events: none;
   }
@@ -383,7 +363,6 @@ space it already has. No JS measures anything.
     .window__cover,
     .window__panel,
     .window__panel > *,
-    .window__pick,
     .window__pick-cover {
       transition-duration: 1ms !important;
       transition-delay: 0ms !important;
@@ -399,11 +378,11 @@ space it already has. No JS measures anything.
       var covers = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-media]'));
       var panels = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-copy]'));
       var picks = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-pick]'));
-      var count = Math.min(covers.length, panels.length);
+      var count = covers.length;
       var current = 0;
 
       // A single pick renders fully from the markup — nothing to drive.
-      if (count < 2 || picks.length !== count) return;
+      if (count < 2) return;
 
       function show(idx, moveFocus) {
         idx = (idx + count) % count;

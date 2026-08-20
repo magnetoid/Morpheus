@@ -7,6 +7,11 @@
  *
  * Dedup: a 5-second rolling window swallows identical (message+source+line)
  * tuples so a fast-firing loop can't DDoS the ingest. Per-page cap of 25.
+ *
+ * Read surface: `window.morphClientErrors` keeps the shipped payloads (same
+ * dedup, same cap) so a consumer can attach "what errors fired on this page"
+ * without installing a second capture pipeline — the feedback modal pins it
+ * to tickets. One owner of "recent client errors"; don't add more listeners.
  */
 (function () {
   if (window.__morphErrorCapture) return;  // idempotent
@@ -18,6 +23,7 @@
 
   var sent = 0;
   var recent = {};
+  var buffer = (window.morphClientErrors = []);
 
   function browserTag() {
     var ua = navigator.userAgent || '';
@@ -46,6 +52,9 @@
     payload.page = location.href;
     payload.browser = browserTag();
     payload.ts = new Date().toISOString();
+
+    buffer.push(payload);
+    if (buffer.length > MAX_PER_PAGE) buffer.shift();
 
     try {
       var body = JSON.stringify(payload);

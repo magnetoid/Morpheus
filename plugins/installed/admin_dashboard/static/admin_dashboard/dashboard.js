@@ -589,6 +589,10 @@
         || document.cookie.match(/csrftoken=([^;]+)/)?.[1]
         || '';
   }
+  // Public: the one CSRF-token accessor for dashboard JS. Plugin scripts
+  // (feedback.js) call this instead of growing their own cookie parsers —
+  // this copy also carries the hidden-input fallback the parsers lacked.
+  Morph.csrf = _csrf;
 
   function _setBtnState(btn, state) {
     if (!btn) return;

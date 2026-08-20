@@ -24,6 +24,10 @@ class FeedbackPlugin(Plugin):
     name = 'feedback'
     label = 'Feedback'
     version = '1.0.0'
+    # Declared: views import admin_dashboard's paginate_and_sort, and every
+    # surface here (pages, modal, menu entry) renders inside its shell — the
+    # app is meaningless without it. Declaring keeps the boundary ratchet green.
+    requires = ['admin_dashboard']
     description = (
         'Staff bug reports with a screen capture, the recent JavaScript errors '
         'and page context attached, collected as tickets under Settings.'

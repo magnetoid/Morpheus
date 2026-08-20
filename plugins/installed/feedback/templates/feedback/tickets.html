@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load morph_dashboard %}
 {% block title %}Feedback{% endblock %}
 
 {% block content %}
@@ -14,30 +15,25 @@
   {% endif %}
 </div>
 
-<div style="display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:1rem;">
-  <a href="?" class="pill{% if not status %} pill-info{% endif %}">All</a>
-  {% for value, label in status_choices %}
-  <a href="?status={{ value }}" class="pill{% if status == value %} pill-info{% endif %}">{{ label }}</a>
-  {% endfor %}
-</div>
+{% index_tabs param="status" choices=tab_choices counts=status_counts %}
 
 {% if tickets %}
-<div class="card" style="padding:0; overflow:hidden;">
+<div class="card" style="padding:0; overflow:hidden; margin-top:1rem;">
   <table class="morph-table" style="width:100%;">
     <thead>
       <tr>
-        <th style="text-align:left;">Report</th>
-        <th style="text-align:left;">From</th>
-        <th style="text-align:left;">Status</th>
-        <th style="text-align:left;">Evidence</th>
-        <th style="text-align:left;">When</th>
+        <th>Report</th>
+        <th>From</th>
+        <th>Status</th>
+        <th>Evidence</th>
+        <th>When</th>
       </tr>
     </thead>
     <tbody>
       {% for ticket in tickets %}
       <tr>
         <td>
-          <a href="/dashboard/apps/feedback/tickets/{{ ticket.pk }}/" style="font-weight:550;">{{ ticket.summary }}</a>
+          <a href="{% url 'feedback:detail' ticket.pk %}" style="font-weight:550;">{{ ticket.summary }}</a>
           {% if ticket.page_url %}
           <span style="display:block; font-size:.72rem; color: var(--text-subtle);">{{ ticket.page_url }}</span>
           {% endif %}
@@ -57,6 +53,8 @@
 </div>
 {% include "admin_dashboard/_pagination.html" %}
 {% else %}
-{% include "admin_dashboard/_empty_state.html" with icon="message-square-warning" title="No feedback yet" hint="Staff can send a report from the account menu — it arrives here with a screen capture and the page's errors." %}
+<div style="margin-top:1rem;">
+{% include "admin_dashboard/_empty_state.html" with icon="message-square-warning" title="No feedback yet" hint="Staff can send a report from the account menu — it arrives here with a screen capture and the page's errors." search=status %}
+</div>
 {% endif %}
 {% endblock %}

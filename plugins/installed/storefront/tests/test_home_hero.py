@@ -6,7 +6,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from django.http import HttpResponse
-from django.test import Client, RequestFactory, TestCase
+from django.test import RequestFactory, TestCase
 
 from plugins.installed.storefront.views.home import home
 
@@ -30,9 +30,20 @@ def _hero_product(name: str, slug: str) -> dict:
     }
 
 
+def _two_pick_home() -> dict:
+    """The mocked Home query response the rendered-hero tests share."""
+    return {
+        'featuredProducts': [
+            _hero_product('The Last Archive', 'the-last-archive'),
+            _hero_product('A Room With Margins', 'a-room-with-margins'),
+        ],
+        'collections': [],
+        'categories': [],
+    }
+
+
 class HomeHeroTests(TestCase):
     def setUp(self):
-        self.client = Client()
         self.factory = RequestFactory()
 
     @patch('plugins.installed.storefront.views.home.render')
@@ -55,14 +66,7 @@ class HomeHeroTests(TestCase):
     )
     @patch('plugins.installed.storefront.views.home.internal_graphql')
     def test_homepage_renders_multi_slide_hero(self, mocked_graphql, _rank_for_visitor):
-        mocked_graphql.return_value = {
-            'featuredProducts': [
-                _hero_product('The Last Archive', 'the-last-archive'),
-                _hero_product('A Room With Margins', 'a-room-with-margins'),
-            ],
-            'collections': [],
-            'categories': [],
-        }
+        mocked_graphql.return_value = _two_pick_home()
 
         response = self.client.get('/')
 
@@ -91,14 +95,7 @@ class HomeHeroTests(TestCase):
         scramble forced a JS font fitter plus a reserved tallest-title box to
         absorb the jitter it caused. Both are gone; this fails if either returns.
         """
-        mocked_graphql.return_value = {
-            'featuredProducts': [
-                _hero_product('The Last Archive', 'the-last-archive'),
-                _hero_product('A Room With Margins', 'a-room-with-margins'),
-            ],
-            'collections': [],
-            'categories': [],
-        }
+        mocked_graphql.return_value = _two_pick_home()
 
         body = self.client.get('/').content.decode()
 

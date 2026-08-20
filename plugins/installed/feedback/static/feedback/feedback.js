@@ -7,6 +7,12 @@
  * user can decline. Capture is therefore best-effort in every direction, and
  * the REASON it is missing is sent with the ticket: a report that quietly lost
  * its screenshot is indistinguishable from one where sharing was refused.
+ *
+ * Errors come from `window.morphClientErrors` — the buffer core's
+ * error-capture.js (loaded in <head> on every dashboard page) retains for
+ * exactly this. One capture pipeline: the ticket's list matches what
+ * /api/errors/client/ ingested, including errors fired before this deferred
+ * script ran. CSRF comes from Morph.csrf (dashboard.js, always loaded first).
  */
 (function () {
   'use strict';
@@ -17,60 +23,28 @@
   var messageEl = document.getElementById('feedback-message');
   var captureEl = document.getElementById('feedback-capture');
   var errorEl = modal.querySelector('[data-feedback-error]');
-  var previewWrap = modal.querySelector('[data-feedback-preview]');
-  var previewImg = previewWrap ? previewWrap.querySelector('img') : null;
   var sendBtn = modal.querySelector('[data-feedback-send]');
   var lastFocused = null;
-
-  // Ring buffer of JS errors seen on THIS page view. core/error-capture.js ships
-  // them to the server independently; this copy is what gets pinned to the
-  // ticket, so the report is readable without cross-referencing by timestamp.
-  var jsErrors = [];
-  function remember(entry) {
-    jsErrors.push(entry);
-    if (jsErrors.length > 25) jsErrors.shift();
-  }
-  window.addEventListener('error', function (e) {
-    remember({
-      type: 'error',
-      message: String(e.message || ''),
-      source: String(e.filename || '') + ':' + (e.lineno || 0),
-      stack: e.error && e.error.stack ? String(e.error.stack).slice(0, 2000) : '',
-      at: new Date().toISOString(),
-    });
-  });
-  window.addEventListener('unhandledrejection', function (e) {
-    var r = e.reason;
-    remember({
-      type: 'unhandledrejection',
-      message: r && r.message ? String(r.message) : String(r),
-      stack: r && r.stack ? String(r.stack).slice(0, 2000) : '',
-      at: new Date().toISOString(),
-    });
-  });
 
   function open() {
     lastFocused = document.activeElement;
     modal.hidden = false;
-    if (errorEl) errorEl.style.display = 'none';
-    if (messageEl) messageEl.focus();
+    errorEl.style.display = 'none';
+    messageEl.focus();
   }
 
   function close() {
     modal.hidden = true;
-    if (previewWrap) previewWrap.style.display = 'none';
-    if (previewImg) previewImg.removeAttribute('src');
     if (lastFocused && lastFocused.focus) lastFocused.focus();
   }
 
   document.addEventListener('click', function (e) {
-    var opener = e.target.closest ? e.target.closest('[data-feedback-open]') : null;
-    if (opener) {
+    if (e.target.closest('[data-feedback-open]')) {
       e.preventDefault();
       open();
       return;
     }
-    if (e.target.closest && e.target.closest('[data-feedback-close]')) {
+    if (e.target.closest('[data-feedback-close]')) {
       e.preventDefault();
       close();
       return;
@@ -125,13 +99,7 @@
       });
   }
 
-  function csrfToken() {
-    var m = document.cookie.match(/(^|;\s*)csrftoken=([^;]*)/);
-    return m ? decodeURIComponent(m[2]) : '';
-  }
-
   function fail(msg) {
-    if (!errorEl) return;
     errorEl.textContent = msg;
     errorEl.style.display = 'block';
   }
@@ -145,28 +113,24 @@
     }
     sendBtn.disabled = true;
     var original = sendBtn.textContent;
-    sendBtn.textContent = captureEl && captureEl.checked ? 'Capturing…' : 'Sending…';
+    sendBtn.textContent = captureEl.checked ? 'Capturing…' : 'Sending…';
 
-    var shot = captureEl && captureEl.checked
+    var shot = captureEl.checked
       ? captureScreen()
       : Promise.resolve({ reason: 'skipped' });
 
     shot
       .then(function (result) {
-        if (result.dataUrl && previewImg && previewWrap) {
-          previewImg.src = result.dataUrl;
-          previewWrap.style.display = 'block';
-        }
         sendBtn.textContent = 'Sending…';
         return fetch('/dashboard/apps/feedback/tickets/submit/', {
           method: 'POST',
           credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.Morph.csrf() },
           body: JSON.stringify({
             message: message,
             screenshot: result.dataUrl || '',
             screenshot_skipped_reason: result.reason || '',
-            client_errors: jsErrors,
+            client_errors: (window.morphClientErrors || []).slice(-25),
             page_url: window.location.href,
             page_title: document.title,
             viewport: window.innerWidth + 'x' + window.innerHeight,
@@ -183,9 +147,8 @@
           return;
         }
         messageEl.value = '';
-        jsErrors.length = 0;
         close();
-        if (window.Morph && window.Morph.toast) {
+        if (window.Morph.toast) {
           window.Morph.toast('Thanks — your feedback is now a ticket.');
         }
       })

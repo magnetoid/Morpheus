@@ -492,6 +492,18 @@
   /* Sentence-case headers (12.5px / 500 / muted) — the uppercase micro-label
      treatment is the dated pattern; Polaris/Linear/Stripe all moved to
      sentence case. Numbers columns should add .num for right-alignment. */
+  /* Page-level sticky bar (filter/bulk rows on list pages). One definition so
+     a new list page can't drift back to `top: 0` — the exact bug class the
+     v0.52.2/.3 pair paid for. z-30 deliberately sits below the pinned header
+     (z-40) and the sidebar (z-50). ONLY for elements whose sticky scrollport
+     is the window; see the morph-table rule below for the exception. */
+  .dash-sticky-bar {
+    position: sticky;
+    top: var(--dash-topbar-h);
+    z-index: 30;
+    background: var(--surface);
+    border-color: var(--border-strong);
+  }
   /* `top: 0`, NOT --dash-topbar-h: a table lives inside `.card.overflow-hidden`,
      which `:has(table.morph-table)` gives `overflow-x: auto` — that makes the
      CARD the sticky scrollport, not the window. Offsetting by the topbar height
@@ -1155,7 +1167,7 @@
   notification bell and the account menu with it. `sticky` (not `fixed`) keeps it
   in the flow so it still occupies its 3rem and nothing slides underneath; z-30
   sits above page content but below the sidebar (z-50) and its mobile overlay.{% endcomment %}
-  <header class="sticky top-0 z-40 h-12 flex items-center gap-2 px-3 lg:px-4 border-b border-[color:var(--border)] bg-[color:var(--bg)]" hx-boost="false">
+  <header class="sticky top-0 z-40 flex items-center gap-2 px-3 lg:px-4 border-b border-[color:var(--border)] bg-[color:var(--bg)]" style="height: var(--dash-topbar-h);" hx-boost="false">
     <button id="sidebar-open" class="lg:hidden btn btn-ghost p-1.5" aria-label="Open menu"><i data-lucide="menu" class="h-4 w-4"></i></button>
     <button id="sidebar-toggle" class="hidden lg:inline-flex btn btn-ghost p-1.5" aria-label="Collapse menu" title="Toggle sidebar (⌘\)"><i data-lucide="panel-left" class="h-4 w-4"></i></button>
     <button id="palette-open" class="relative flex-1 max-w-xl text-left input input-search"

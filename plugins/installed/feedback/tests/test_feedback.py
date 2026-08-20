@@ -2,23 +2,18 @@
 
 from __future__ import annotations
 
-import base64
 import json
 
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import TestCase
 
 from plugins.installed.feedback.models import FeedbackTicket
 
 SUBMIT = '/dashboard/apps/feedback/tickets/submit/'
 LIST = '/dashboard/apps/feedback/tickets/'
 
-# 1x1 red PNG.
-PNG = base64.b64encode(
-    base64.b64decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-    )
-).decode()
+# 1x1 red PNG, already canonical base64.
+PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
 
 def _staff(email='staff@example.com'):
@@ -28,7 +23,6 @@ def _staff(email='staff@example.com'):
 
 class SubmitTests(TestCase):
     def setUp(self):
-        self.client = Client()
         self.user = _staff()
 
     def _post(self, **payload):
@@ -88,7 +82,6 @@ class SubmitTests(TestCase):
 
 class QueueTests(TestCase):
     def setUp(self):
-        self.client = Client()
         self.user = _staff()
         self.ticket = FeedbackTicket.objects.create(message='Broken thing', user=self.user)
 
@@ -116,7 +109,6 @@ class ContributionTests(TestCase):
     """The shell must carry the entry and the modal WITHOUT importing this app."""
 
     def setUp(self):
-        self.client = Client()
         self.client.force_login(_staff())
 
     def test_dropdown_entry_and_modal_render_in_the_shell(self):

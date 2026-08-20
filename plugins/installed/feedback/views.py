@@ -7,18 +7,26 @@ import binascii
 import json
 import logging
 
-from django.contrib.admin.views.decorators import staff_member_required
 from django.core.files.base import ContentFile
-from django.core.paginator import Paginator
-from django.http import Http404, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.db.models import Count
 
 from core.authz import enforce, require_capability
+from core.versioning import core_version
+from morpheus.app import dashboard_trail
+from morpheus.app.views import (
+    JsonResponse,
+    get_object_or_404,
+    redirect,
+    render,
+    require_POST,
+    staff_member_required,
+)
 
 from .models import FeedbackTicket
 
 logger = logging.getLogger(__name__)
+
+LIST_URL = '/dashboard/apps/feedback/tickets/'
 
 # A screenshot arrives base64 in the JSON body. DATA_UPLOAD_MAX_MEMORY_SIZE is
 # 2.5MB by default, so the client already downscales + JPEG-encodes; this is the
@@ -56,7 +64,7 @@ def _recent_server_errors(limit: int = 10) -> list[dict]:
     try:
         from core.errors.models import ErrorEvent  # noqa: PLC0415
 
-        rows = ErrorEvent.objects.order_by('-id')[:limit]
+        rows = ErrorEvent.objects.order_by('-created_at')[:limit]
         return [
             {
                 'kind': r.kind,
@@ -107,7 +115,7 @@ def submit(request):
         user_agent=(request.META.get('HTTP_USER_AGENT') or '')[:500],
         client_errors=errors,
         context={
-            'version': _version(),
+            'version': core_version(),
             'request_id': getattr(request, 'request_id', '') or '',
             'server_errors': _recent_server_errors(),
         },
@@ -119,36 +127,35 @@ def submit(request):
     return JsonResponse({'ok': True, 'id': str(ticket.pk)})
 
 
-def _version() -> str:
-    try:
-        from django.conf import settings  # noqa: PLC0415
-
-        return getattr(settings, 'MORPHEUS_VERSION', '') or ''
-    except Exception:  # noqa: BLE001
-        return ''
-
-
 @staff_member_required
 @require_capability('system.read')
 def ticket_list(request):
-    qs = FeedbackTicket.objects.select_related('user')
+    # Sibling-plugin import, declared in the manifest's `requires` — this is
+    # what feeds `_pagination.html` its full contract (per_page, page-size
+    # choices, qs_without_page) so page links keep an active ?status= filter.
+    from plugins.installed.admin_dashboard.views_split._shared import (  # noqa: PLC0415
+        paginate_and_sort,
+    )
+
+    qs = FeedbackTicket.objects.all()
     status = request.GET.get('status') or ''
     if status in dict(FeedbackTicket.STATUS_CHOICES):
         qs = qs.filter(status=status)
-    page = Paginator(qs, 25).get_page(request.GET.get('page'))
+    page, paging_ctx = paginate_and_sort(request, qs, default_sort='-created_at')
+
+    # One GROUP BY powers both the per-tab counts and the "N open" pill.
+    status_counts = dict(FeedbackTicket.objects.values_list('status').annotate(n=Count('pk')))
     return render(
         request,
         'feedback/tickets.html',
         {
-            'page_obj': page,
+            **paging_ctx,
             'tickets': page.object_list,
             'status': status,
-            'status_choices': FeedbackTicket.STATUS_CHOICES,
-            'open_count': FeedbackTicket.objects.filter(status=FeedbackTicket.STATUS_OPEN).count(),
-            'breadcrumb_trail': [
-                {'label': 'Settings', 'url': '/dashboard/settings/'},
-                {'label': 'Feedback', 'url': ''},
-            ],
+            'tab_choices': [('', 'All'), *FeedbackTicket.STATUS_CHOICES],
+            'status_counts': status_counts,
+            'open_count': status_counts.get(FeedbackTicket.STATUS_OPEN, 0),
+            'breadcrumb_trail': dashboard_trail('Settings', '/dashboard/settings/', 'Feedback'),
         },
     )
 
@@ -156,14 +163,15 @@ def ticket_list(request):
 @staff_member_required
 @require_capability('system.read')
 def ticket_detail(request, pk):
-    ticket = get_object_or_404(FeedbackTicket.objects.select_related('user'), pk=pk)
+    ticket = get_object_or_404(FeedbackTicket, pk=pk)
     if request.method == 'POST':
         enforce(request, 'system.write')
         new_status = request.POST.get('status') or ''
-        if new_status not in dict(FeedbackTicket.STATUS_CHOICES):
-            raise Http404('Unknown status.')
-        ticket.status = new_status
-        ticket.save(update_fields=['status', 'updated_at'])
+        # Anything outside the vocabulary falls back silently (same shape as
+        # paginate_and_sort's ?sort= handling) — only a tampered form sends it.
+        if new_status in dict(FeedbackTicket.STATUS_CHOICES):
+            ticket.status = new_status
+            ticket.save(update_fields=['status', 'updated_at'])
         return redirect(request.path)
     return render(
         request,
@@ -171,10 +179,11 @@ def ticket_detail(request, pk):
         {
             'ticket': ticket,
             'status_choices': FeedbackTicket.STATUS_CHOICES,
-            'breadcrumb_trail': [
-                {'label': 'Settings', 'url': '/dashboard/settings/'},
-                {'label': 'Feedback', 'url': '/dashboard/settings/feedback/'},
-                {'label': ticket.summary[:40], 'url': ''},
-            ],
+            'breadcrumb_trail': dashboard_trail(
+                'Settings',
+                '/dashboard/settings/',
+                {'label': 'Feedback', 'url': LIST_URL},
+                ticket.summary[:40],
+            ),
         },
     )
