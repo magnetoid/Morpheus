@@ -42,7 +42,7 @@
         <td><span class="pill">{{ ticket.get_status_display }}</span></td>
         <td style="font-size:.78rem; color: var(--text-subtle);">
           {% if ticket.screenshot %}<span title="Screen capture attached">Screen</span>{% endif %}
-          {% if ticket.client_errors %}<span title="JavaScript errors attached">· {{ ticket.client_errors|length }} JS</span>{% endif %}
+          {% if ticket.client_errors %}<span title="JavaScript errors attached">{% if ticket.screenshot %}· {% endif %}{{ ticket.client_errors|length }} JS</span>{% endif %}
           {% if not ticket.screenshot and not ticket.client_errors %}—{% endif %}
         </td>
         <td style="font-size:.8rem; color: var(--text-subtle);">{{ ticket.created_at|date:"M j, Y H:i" }}</td>
