@@ -278,7 +278,10 @@
       }
       .variant-modal__media {
         display: flex; flex-direction: column; gap: .55rem;
-        position: sticky; top: var(--dash-topbar-h);
+        /* `top: 0` — this sticks inside the variant MODAL, which scrolls
+           itself; the page topbar is irrelevant here, and offsetting by it
+           would push the media column down inside the dialog for nothing. */
+        position: sticky; top: 0;
       }
       .variant-modal__thumb {
         position: relative;

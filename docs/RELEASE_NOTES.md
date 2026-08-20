@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.52.3 — 2026-08-20
+
+**Sticky offset only where the scrollport is the window**
+
+- Fixes a regression from v0.52.2: dashboard table rows were invisible. Table headers live inside .card.overflow-hidden, which :has(table.morph-table) gives overflow-x:auto - that makes the CARD the sticky scrollport, not the window, so offsetting them by the topbar height pushed each header 48px down inside its own card and straight over the first row (measured: card top 219, row top 258, header top 267). The Feedback queue showed 'Showing 1-1 of 1' with no visible row.
+- The rule: only sticky elements whose scrollport is the window take the topbar offset. Table headers and the variant modal's media column are back to top:0; the page-level filter bars on products, orders and customers keep var(--dash-topbar-h), verified by walking each element's ancestors to find its real scrollport.
+
 ## v0.52.2 — 2026-08-20
 
 **Dashboard top bar stays put; sticky elements work again**

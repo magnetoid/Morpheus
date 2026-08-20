@@ -492,7 +492,14 @@
   /* Sentence-case headers (12.5px / 500 / muted) — the uppercase micro-label
      treatment is the dated pattern; Polaris/Linear/Stripe all moved to
      sentence case. Numbers columns should add .num for right-alignment. */
-  table.morph-table th { text-align:left; font-size:.78rem; text-transform:none; letter-spacing:0; font-weight:500; color: var(--text-muted); padding:.6rem .9rem; background: var(--surface-2); border-bottom:1px solid var(--border); position: sticky; top: var(--dash-topbar-h); z-index: 1; }
+  /* `top: 0`, NOT --dash-topbar-h: a table lives inside `.card.overflow-hidden`,
+     which `:has(table.morph-table)` gives `overflow-x: auto` — that makes the
+     CARD the sticky scrollport, not the window. Offsetting by the topbar height
+     therefore pushes the header 48px DOWN inside its own card, straight over the
+     first row (measured: card top 219, row top 258, th top 267 — the header
+     covering the row it labels). Only page-level sticky bars, whose scrollport
+     is the window, take the topbar offset. */
+  table.morph-table th { text-align:left; font-size:.78rem; text-transform:none; letter-spacing:0; font-weight:500; color: var(--text-muted); padding:.6rem .9rem; background: var(--surface-2); border-bottom:1px solid var(--border); position: sticky; top: 0; z-index: 1; }
   table.morph-table th.num, table.morph-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
   table.morph-table td { padding:.75rem .9rem; font-size:.875rem; border-bottom:1px solid var(--border); vertical-align: middle; transition: background var(--motion-fast) var(--ease-out); }
   table.morph-table tbody tr:hover td { background: var(--surface-2); }
