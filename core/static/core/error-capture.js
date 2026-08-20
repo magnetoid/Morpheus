@@ -3,15 +3,18 @@
  * Installed once via base templates. Hooks:
  *   window.onerror           — synchronous script errors
  *   unhandledrejection       — promise rejections
- *   console.error  (wrapped) — explicit console.error calls in app code
+ *   console.*      (wrapped) — buffered locally, never shipped
  *
  * Dedup: a 5-second rolling window swallows identical (message+source+line)
  * tuples so a fast-firing loop can't DDoS the ingest. Per-page cap of 25.
  *
- * Read surface: `window.morphClientErrors` keeps the shipped payloads (same
- * dedup, same cap) so a consumer can attach "what errors fired on this page"
- * without installing a second capture pipeline — the feedback modal pins it
- * to tickets. One owner of "recent client errors"; don't add more listeners.
+ * Read surfaces (one owner of "what happened in this browser session" —
+ * consumers read these, they do NOT install their own listeners/wrappers):
+ *   `window.morphClientErrors` — the shipped error payloads (same dedup/cap).
+ *   `window.morphConsoleLog`   — the last 50 console lines (log/info/warn/
+ *                                error/debug), message-only, 500 chars each.
+ * The feedback modal pins both to tickets, including everything fired before
+ * its own deferred script loaded — this file runs in <head>.
  */
 (function () {
   if (window.__morphErrorCapture) return;  // idempotent
@@ -108,5 +111,41 @@
       source: '', lineno: 0, colno: 0,
       level: 'error',
     });
+  });
+
+  // ── Console ring buffer ───────────────────────────────────────────────────
+  // The last N console lines, buffered for local consumers (feedback tickets)
+  // and NEVER shipped — a shop's console chatter is diagnostic context, not an
+  // error stream. Wrapping delegates to the original, so DevTools output is
+  // untouched and a throwing argument can't break app code mid-log.
+  var CONSOLE_MAX = 50;
+  var consoleBuf = (window.morphConsoleLog = []);
+
+  function stringifyArg(a) {
+    if (typeof a === 'string') return a;
+    if (a instanceof Error) return a.name + ': ' + a.message;
+    try {
+      return JSON.stringify(a);
+    } catch (e) {
+      return String(a);
+    }
+  }
+
+  ['log', 'info', 'warn', 'error', 'debug'].forEach(function (level) {
+    var original = console[level];
+    if (typeof original !== 'function') return;
+    console[level] = function () {
+      try {
+        var parts = [];
+        for (var i = 0; i < arguments.length; i++) parts.push(stringifyArg(arguments[i]));
+        consoleBuf.push({
+          level: level,
+          message: parts.join(' ').slice(0, 500),
+          ts: new Date().toISOString(),
+        });
+        if (consoleBuf.length > CONSOLE_MAX) consoleBuf.shift();
+      } catch (e) { /* never break a console call */ }
+      return original.apply(console, arguments);
+    };
   });
 })();

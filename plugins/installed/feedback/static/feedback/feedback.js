@@ -58,13 +58,16 @@
 
   /* Grab one frame of the shared surface and downscale it. A raw PNG of a
    * 1440x900 screen is several MB, past DATA_UPLOAD_MAX_MEMORY_SIZE, so cap the
-   * width and encode JPEG. Resolves {dataUrl} or {reason}. */
+   * width and encode JPEG. `displaySurface: 'monitor'` preselects "Entire
+   * screen" in the browser's picker so a report shows everything the reporter
+   * saw, not just the current tab — the user can still choose a window or tab
+   * there. Resolves {dataUrl} or {reason}. */
   function captureScreen() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
       return Promise.resolve({ reason: 'unsupported' });
     }
     return navigator.mediaDevices
-      .getDisplayMedia({ video: { displaySurface: 'browser' }, audio: false })
+      .getDisplayMedia({ video: { displaySurface: 'monitor' }, audio: false })
       .then(function (stream) {
         var video = document.createElement('video');
         video.srcObject = stream;
@@ -131,6 +134,7 @@
             screenshot: result.dataUrl || '',
             screenshot_skipped_reason: result.reason || '',
             client_errors: (window.morphClientErrors || []).slice(-25),
+            console_log: (window.morphConsoleLog || []).slice(-50),
             page_url: window.location.href,
             page_title: document.title,
             viewport: window.innerWidth + 'x' + window.innerHeight,

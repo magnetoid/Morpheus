@@ -108,4 +108,12 @@
   <p style="margin:0; font-size:.85rem; color: var(--text-subtle);">No errors were logged around this report.</p>
   {% endif %}
 </div>
+
+{% if ticket.context.console_log %}
+<div class="card card-padded" style="margin-top:1rem;">
+  <h2 class="fb-section-title">Console at report time</h2>
+  <pre class="fb-pre" style="margin:0;">{% for line in ticket.context.console_log %}[{{ line.level }}] {{ line.message }}
+{% endfor %}</pre>
+</div>
+{% endif %}
 {% endblock %}

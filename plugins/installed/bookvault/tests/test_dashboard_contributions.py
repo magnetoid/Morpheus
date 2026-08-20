@@ -34,9 +34,16 @@ def _product(slug: str) -> Product:
 
 class ListColumnContributionTests(TestCase):
     def _columns(self, products):
-        return hook_registry.filter(
+        """Bookvault's OWN contributions to the shared accumulator.
+
+        PRODUCT_LIST_COLUMNS is contributed to by several plugins (seo ships a
+        score column at priority 60), so asserting the whole list is empty or
+        has length 1 breaks the moment a sibling contributes — these tests only
+        ever owned bookvault's column, so filter to it."""
+        cols = hook_registry.filter(
             MorpheusEvents.PRODUCT_LIST_COLUMNS, value=[], products=products, request=None
         )
+        return [c for c in cols if c.get('cell_template') == 'bookvault/_product_list_cell.html']
 
     def test_unauthed_contributes_nothing(self):
         self.assertEqual(self._columns([_product('quiet')]), [])

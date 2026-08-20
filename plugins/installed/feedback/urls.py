@@ -1,14 +1,9 @@
 """Feedback routes.
 
-**Both routes must be four segments deep.** admin_dashboard's app-discovery
-router owns `dashboard/apps/<str:plugin>/<str:slug>/`, and it is registered
-first, so any three-segment sibling here is swallowed by that converter and
-answers 404: `dashboard/apps/feedback/submit/` resolved as
-(plugin=feedback, slug=submit), found no DashboardPage by that slug, and 404'd
-while the four-segment detail route resolved fine. Nesting under `tickets/`
-clears the converter and keeps the paths readable.
-
-Literal before converter, per the same rule.
+Nested under `tickets/` for readability — since v0.53.0 plugin mounts resolve
+BEFORE the shell's app-discovery router (most-specific prefix first), so the
+nesting is no longer load-bearing; these are simply this app's public paths
+(the JS and tests point at them). Literal before converter.
 """
 
 from __future__ import annotations

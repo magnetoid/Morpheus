@@ -741,11 +741,14 @@ def on_user_menu(self, value, **kwargs):
     return value
 ```
 
-**Mind the app-discovery router when you add routes.** It owns
-`dashboard/apps/<str:plugin>/<str:slug>/` and registers first, so a
-*three-segment* route of your own is swallowed by that converter and answers
-404 while deeper ones resolve normally. Nest extra routes one level further
-(`tickets/submit/`, not `submit/`).
+**Your routes resolve before the app-discovery router.** Plugin URL mounts are
+included most-specific-prefix first, so anything you register under
+`dashboard/apps/<name>/` wins over the shell's
+`apps/<str:plugin>/<slug:slug>/` discovery route — which acts as a *fallback*
+for DashboardPage slugs you did not mount yourself. (Before v0.53.0 the order
+was reversed and a one-segment route of your own was silently swallowed;
+bookvault shipped dead endpoints that way. Guarded by
+`core/tests/test_registry_url_ordering.py`.)
 
 **Your save handler must key off something the card itself posts**, never off
 the absence of a value:

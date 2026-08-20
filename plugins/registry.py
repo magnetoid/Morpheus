@@ -550,8 +550,25 @@ class AppRegistry:
         """
         from django.urls import include, path
 
+        # Deeper prefixes mount FIRST (stable sort — ties keep registration
+        # order, so the documented first-registrant-wins rule still holds for
+        # equal prefixes). Without this, a shallow include swallows every
+        # sibling mounted under its subtree: admin_dashboard's `dashboard/`
+        # urlconf carries the `apps/<str:plugin>/<slug:slug>/` app-discovery
+        # router and registered before the plugins it routes FOR, so a plugin's
+        # own `dashboard/apps/<name>/<route>/` mount was unreachable whenever
+        # <route> wasn't one of its DashboardPage slugs — bookvault's
+        # connect/disconnect shipped dead this way, and feedback had to nest
+        # its routes a segment deeper to dodge it. Depth-first mounting makes
+        # the discovery router what it was meant to be: a fallback. (Known,
+        # intended flip: demo_data's own `settings/` route now beats the
+        # legacy plugin-settings 301 that shadowed it.)
+        def _depth(entry) -> int:
+            prefix = entry.get('prefix') or ''
+            return len([seg for seg in prefix.split('/') if seg])
+
         patterns = []
-        for entry in self._plugin_urls:
+        for entry in sorted(self._plugin_urls, key=_depth, reverse=True):
             # Skip routes owned by a disabled plugin so its endpoints stop
             # resolving on disable — register_urls mounts stay in _plugin_urls
             # across a deactivate (like ready()-wired hooks), so without this an

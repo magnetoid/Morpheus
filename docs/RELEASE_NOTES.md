@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.53.0 — 2026-08-20
+
+**Full-screen feedback capture with console log; plugin routes resolve before discovery**
+
+- Feedback reports now tell the whole story: the screen-capture picker preselects the entire screen instead of the current tab (you can still choose a window or tab), and each ticket carries the last 50 console lines alongside the JS errors, server errors, page, browser and version. The console buffer lives in core's error-capture script, which runs in the page head - so a ticket includes chatter from before the feedback modal ever loaded.
+- Plugin URL mounts now resolve most-specific-prefix first, making the dashboard's app-discovery router the fallback it was meant to be. Before this, anything a plugin mounted one segment deep under dashboard/apps/<name>/ was silently swallowed by the discovery route - bookvault's Connect and Disconnect buttons have been dead since they shipped, with every test green. They work again. One intended flip: a plugin's own settings/ route now beats the legacy plugin-settings redirect that shadowed it.
+- Also: the README says plainly that the repository is private and how to ask for access, so its opening git clone no longer fails silently for readers; and the bookvault contribution tests no longer assert exclusive ownership of the shared product-list-columns accumulator (they broke the day seo's score column shipped and CI's billing outage hid it).
+
 ## v0.52.4 — 2026-08-20
 
 **Refactor pass over v0.51-v0.52.3: one owner per mechanism**

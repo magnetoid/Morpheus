@@ -79,6 +79,22 @@ class SubmitTests(TestCase):
         ticket = FeedbackTicket.objects.get()
         self.assertEqual(ticket.client_errors[0]['message'], 'x is not a function')
 
+    def test_console_log_is_attached_and_sanitised(self):
+        self.client.force_login(self.user)
+        self._post(
+            console_log=[
+                {'level': 'warn', 'message': 'cart total recomputed', 'ts': '2026-08-20T10:00:00Z'},
+                {'level': 'x' * 99, 'message': 'y' * 9000, 'extra_key': 'dropped'},
+                'not-a-dict-line',
+            ]
+        )
+        log = FeedbackTicket.objects.get().context['console_log']
+        self.assertEqual(len(log), 2)  # the non-dict line is dropped
+        self.assertEqual(log[0]['message'], 'cart total recomputed')
+        self.assertEqual(len(log[1]['level']), 10)  # capped
+        self.assertEqual(len(log[1]['message']), 500)  # capped
+        self.assertNotIn('extra_key', log[1])  # only the known keys survive
+
 
 class QueueTests(TestCase):
     def setUp(self):

@@ -34,6 +34,7 @@ LIST_URL = '/dashboard/apps/feedback/tickets/'
 MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024
 MAX_MESSAGE_CHARS = 5000
 MAX_CLIENT_ERRORS = 25
+MAX_CONSOLE_LINES = 50
 
 
 def _decode_screenshot(data_url: str) -> tuple[ContentFile | None, str]:
@@ -103,6 +104,17 @@ def submit(request):
     errors = payload.get('client_errors')
     errors = errors[:MAX_CLIENT_ERRORS] if isinstance(errors, list) else []
 
+    console_log = payload.get('console_log')
+    console_log = [
+        {
+            'level': str(line.get('level', ''))[:10],
+            'message': str(line.get('message', ''))[:500],
+            'ts': str(line.get('ts', ''))[:40],
+        }
+        for line in (console_log[:MAX_CONSOLE_LINES] if isinstance(console_log, list) else [])
+        if isinstance(line, dict)
+    ]
+
     user = request.user
     ticket = FeedbackTicket(
         user=user,
@@ -118,6 +130,7 @@ def submit(request):
             'version': core_version(),
             'request_id': getattr(request, 'request_id', '') or '',
             'server_errors': _recent_server_errors(),
+            'console_log': console_log,
         },
     )
     if shot:
