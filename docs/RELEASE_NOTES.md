@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.52.2 — 2026-08-20
+
+**Dashboard top bar stays put; sticky elements work again**
+
+- The dashboard top bar no longer scrolls away. <body> is min-h-screen flex, so nothing bounds <main>'s height and the window is the real scroller - the sidebar is fixed and stayed put while the header had no positioning at all and scrolled off, taking search, notifications and the account menu with it.
+- Every position:sticky element inside the dashboard content was silently dead. <main> carried overflow-y-auto but never actually scrolled (measured scrollHeight == clientHeight), which made it the scrollport for its sticky descendants - a scrollport that never moves. Table headers and the products/orders/customers/product-form filter bars therefore stuck to nothing. Removing that one class makes all five work.
+- Sticky offsets now key off a shared --dash-topbar-h token instead of each hardcoding top:0, so they park under the pinned bar rather than sliding beneath it.
+
 ## v0.52.1 — 2026-08-20
 
 **Product gallery: reserve the real chrome above it**
