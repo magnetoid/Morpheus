@@ -622,6 +622,20 @@ class MorpheusEvents:
     #   orders and ai_assistant contribute their step (the email step
     #   stays in home.py — it reads core settings, no plugin owns it).
     DASHBOARD_SETUP_STEPS = 'dashboard.setup_steps'  # filter
+    # DASHBOARD_USER_MENU — filter, value=list[dict] ({label, url, icon,
+    #   order, attrs}), kwargs: request. Items in the dashboard's top-right
+    #   account dropdown. A plugin that wants a place there appends ITS OWN
+    #   entry instead of the shell hardcoding a link to it; `order` sorts,
+    #   `attrs` is a dict of extra HTML attributes (e.g. a data-* hook the
+    #   plugin's own script binds to). Fired by admin_dashboard's context
+    #   processor; feedback subscribes.
+    DASHBOARD_USER_MENU = 'dashboard.user_menu'  # filter
+    # DASHBOARD_BODY_END — filter, value=list[str] of template paths,
+    #   kwargs: request. Rendered at the end of the dashboard <body> — the
+    #   shell's equivalent of the storefront's `global_below_body` slot, and
+    #   the only way an app can ship a dialog/overlay into every dashboard
+    #   page without the shell importing it. feedback subscribes (its modal).
+    DASHBOARD_BODY_END = 'dashboard.body_end'  # filter
     # CHANNELS_OVERVIEW — filter, value=list[dict], no kwargs. The unified
     #   sales-channels dashboard (channels plugin). Each commerce-channel
     #   plugin (google_shopping, meta_commerce, tiktok_commerce, …) appends

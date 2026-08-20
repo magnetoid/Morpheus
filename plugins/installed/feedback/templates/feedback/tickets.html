@@ -1,0 +1,62 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Feedback{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1.25rem;">
+  <div>
+    <h1 style="margin:0; font-size:1.35rem; font-weight:650;">Feedback</h1>
+    <p style="margin:.35rem 0 0; font-size:.85rem; color: var(--text-subtle);">
+      Reports from staff, with the page, the browser and any errors attached.
+    </p>
+  </div>
+  {% if open_count %}
+  <span class="pill pill-info">{{ open_count }} open</span>
+  {% endif %}
+</div>
+
+<div style="display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:1rem;">
+  <a href="?" class="pill{% if not status %} pill-info{% endif %}">All</a>
+  {% for value, label in status_choices %}
+  <a href="?status={{ value }}" class="pill{% if status == value %} pill-info{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if tickets %}
+<div class="card" style="padding:0; overflow:hidden;">
+  <table class="morph-table" style="width:100%;">
+    <thead>
+      <tr>
+        <th style="text-align:left;">Report</th>
+        <th style="text-align:left;">From</th>
+        <th style="text-align:left;">Status</th>
+        <th style="text-align:left;">Evidence</th>
+        <th style="text-align:left;">When</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ticket in tickets %}
+      <tr>
+        <td>
+          <a href="/dashboard/apps/feedback/tickets/{{ ticket.pk }}/" style="font-weight:550;">{{ ticket.summary }}</a>
+          {% if ticket.page_url %}
+          <span style="display:block; font-size:.72rem; color: var(--text-subtle);">{{ ticket.page_url }}</span>
+          {% endif %}
+        </td>
+        <td style="font-size:.85rem;">{{ ticket.reporter_label|default:"—" }}</td>
+        <td><span class="pill">{{ ticket.get_status_display }}</span></td>
+        <td style="font-size:.78rem; color: var(--text-subtle);">
+          {% if ticket.screenshot %}<span title="Screen capture attached">Screen</span>{% endif %}
+          {% if ticket.client_errors %}<span title="JavaScript errors attached">· {{ ticket.client_errors|length }} JS</span>{% endif %}
+          {% if not ticket.screenshot and not ticket.client_errors %}—{% endif %}
+        </td>
+        <td style="font-size:.8rem; color: var(--text-subtle);">{{ ticket.created_at|date:"M j, Y H:i" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include "admin_dashboard/_pagination.html" %}
+{% else %}
+{% include "admin_dashboard/_empty_state.html" with icon="message-square-warning" title="No feedback yet" hint="Staff can send a report from the account menu — it arrives here with a screen capture and the page's errors." %}
+{% endif %}
+{% endblock %}

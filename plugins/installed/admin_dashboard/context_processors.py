@@ -164,3 +164,29 @@ def dashboard_breadcrumbs(request) -> dict:
         return {'auto_breadcrumb_trail': trail if len(trail) > 1 else []}
     except Exception:  # noqa: BLE001 — breadcrumbs must never break a render
         return {}
+
+
+def dashboard_shell(request) -> dict:
+    """Contributed shell surfaces: account-dropdown items and body-end templates.
+
+    The shell must not hardcode a link to an optional app (ADR 0023) — it fires,
+    apps answer, and the hook bus drops handlers whose plugin is inactive, so a
+    contributed item disappears on disable for free. Fail-soft in both
+    directions: a broken subscriber must never take out every dashboard page.
+    """
+    path = getattr(request, 'path', '') or ''
+    if not path.startswith('/dashboard/'):
+        return {}
+    try:
+        from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+        items = hook_registry.filter(MorpheusEvents.DASHBOARD_USER_MENU, value=[], request=request)
+        items = [i for i in (items or []) if isinstance(i, dict) and i.get('label')]
+        items.sort(key=lambda i: i.get('order', 100))
+        body_end = hook_registry.filter(
+            MorpheusEvents.DASHBOARD_BODY_END, value=[], request=request
+        )
+        body_end = [t for t in (body_end or []) if isinstance(t, str) and t]
+        return {'dashboard_user_menu': items, 'dashboard_body_end': body_end}
+    except Exception:  # noqa: BLE001 — a bad subscriber must not 500 the shell
+        return {}

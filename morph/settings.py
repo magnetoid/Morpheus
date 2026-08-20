@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.51.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.52.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -86,6 +86,7 @@ MORPHEUS_DEFAULT_APPS = [
     'plugins.installed.importers',
     'plugins.installed.observability',
     'plugins.installed.release_notes',
+    'plugins.installed.feedback',
     'plugins.installed.morpheus_brain',
     'plugins.installed.environments',
     'plugins.installed.affiliates',
@@ -368,6 +369,7 @@ TEMPLATES = [
                 'plugins.installed.book_product.context_processors.nav_topics',
                 'plugins.installed.cms.context_processors.nav_menus',
                 'plugins.installed.admin_dashboard.context_processors.dashboard_breadcrumbs',
+                'plugins.installed.admin_dashboard.context_processors.dashboard_shell',
                 'themes.context_processors.theme_context',
                 'plugins.context_processors.plugin_context',
                 'plugins.installed.markets.services.market_context',

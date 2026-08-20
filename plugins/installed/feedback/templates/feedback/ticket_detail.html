@@ -1,0 +1,88 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Feedback · {{ ticket.summary }}{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1.25rem;">
+  <div>
+    <h1 style="margin:0; font-size:1.25rem; font-weight:650;">{{ ticket.summary }}</h1>
+    <p style="margin:.35rem 0 0; font-size:.82rem; color: var(--text-subtle);">
+      {{ ticket.reporter_label|default:"Unknown reporter" }} · {{ ticket.created_at|date:"M j, Y H:i" }}
+    </p>
+  </div>
+  <form method="post" style="display:flex; gap:.4rem; align-items:center;">
+    {% csrf_token %}
+    <select name="status" style="padding:.45rem .6rem; border:1px solid var(--border); border-radius:8px; background: var(--surface); color: var(--text); font-size:.85rem;">
+      {% for value, label in status_choices %}
+      <option value="{{ value }}"{% if ticket.status == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary" style="font-size:.85rem;">Update</button>
+  </form>
+</div>
+
+<div class="card" style="padding:1rem; margin-bottom:1rem;">
+  <h2 style="margin:0 0 .5rem; font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color: var(--text-subtle);">Report</h2>
+  <p style="margin:0; white-space:pre-wrap;">{{ ticket.message }}</p>
+</div>
+
+<div class="card" style="padding:1rem; margin-bottom:1rem;">
+  <h2 style="margin:0 0 .6rem; font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color: var(--text-subtle);">Screen</h2>
+  {% if ticket.screenshot %}
+  <a href="{{ ticket.screenshot.url }}" target="_blank" rel="noopener">
+    <img src="{{ ticket.screenshot.url }}" alt="Screen as the reporter saw it"
+         style="width:100%; border:1px solid var(--border); border-radius:8px;">
+  </a>
+  {% else %}
+  {% comment %}Say WHY there is no image — "declined" and "we lost it" look identical otherwise.{% endcomment %}
+  <p style="margin:0; font-size:.85rem; color: var(--text-subtle);">
+    {% if ticket.screenshot_skipped_reason == 'declined' %}The reporter declined to share their screen.
+    {% elif ticket.screenshot_skipped_reason == 'skipped' %}The reporter chose not to include a capture.
+    {% elif ticket.screenshot_skipped_reason == 'unsupported' %}Their browser does not support screen capture.
+    {% elif ticket.screenshot_skipped_reason == 'too_large' %}The capture was too large to store.
+    {% elif ticket.screenshot_skipped_reason == 'failed' %}The capture failed.
+    {% else %}No capture attached.{% endif %}
+  </p>
+  {% endif %}
+</div>
+
+<div class="card" style="padding:1rem; margin-bottom:1rem;">
+  <h2 style="margin:0 0 .6rem; font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color: var(--text-subtle);">Where</h2>
+  <dl style="margin:0; display:grid; grid-template-columns: 8rem 1fr; gap:.35rem 1rem; font-size:.85rem;">
+    <dt style="color: var(--text-subtle);">Page</dt>
+    <dd style="margin:0;">{{ ticket.page_title|default:"—" }}</dd>
+    <dt style="color: var(--text-subtle);">URL</dt>
+    <dd style="margin:0; word-break:break-all;">{{ ticket.page_url|default:"—" }}</dd>
+    <dt style="color: var(--text-subtle);">Viewport</dt>
+    <dd style="margin:0;">{{ ticket.viewport|default:"—" }}</dd>
+    <dt style="color: var(--text-subtle);">Browser</dt>
+    <dd style="margin:0; word-break:break-all;">{{ ticket.user_agent|default:"—" }}</dd>
+    <dt style="color: var(--text-subtle);">Version</dt>
+    <dd style="margin:0;">{{ ticket.context.version|default:"—" }}</dd>
+    <dt style="color: var(--text-subtle);">Request id</dt>
+    <dd style="margin:0;">{{ ticket.context.request_id|default:"—" }}</dd>
+  </dl>
+</div>
+
+<div class="card" style="padding:1rem;">
+  <h2 style="margin:0 0 .6rem; font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color: var(--text-subtle);">Errors at report time</h2>
+  {% if ticket.client_errors %}
+  <p style="margin:0 0 .4rem; font-size:.78rem; color: var(--text-subtle);">Browser</p>
+  {% for err in ticket.client_errors %}
+  <pre style="margin:0 0 .5rem; padding:.6rem .7rem; background: var(--surface-2); border-radius:6px; font-size:.75rem; overflow-x:auto; white-space:pre-wrap;">{{ err.type }}: {{ err.message }}{% if err.source %}
+{{ err.source }}{% endif %}{% if err.stack %}
+{{ err.stack }}{% endif %}</pre>
+  {% endfor %}
+  {% endif %}
+
+  {% if ticket.context.server_errors %}
+  <p style="margin:.6rem 0 .4rem; font-size:.78rem; color: var(--text-subtle);">Server</p>
+  {% for err in ticket.context.server_errors %}
+  <pre style="margin:0 0 .5rem; padding:.6rem .7rem; background: var(--surface-2); border-radius:6px; font-size:.75rem; overflow-x:auto; white-space:pre-wrap;">[{{ err.level }}] {{ err.exception_class }}: {{ err.message }}</pre>
+  {% endfor %}
+  {% endif %}
+
+  {% if not ticket.client_errors and not ticket.context.server_errors %}
+  <p style="margin:0; font-size:.85rem; color: var(--text-subtle);">No errors were logged around this report.</p>
+  {% endif %}
+</div>
+{% endblock %}

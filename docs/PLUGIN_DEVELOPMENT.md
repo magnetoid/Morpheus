@@ -716,6 +716,37 @@ itself from POST on a validation re-render. Append
 `{'template': ..., 'context': {...}, 'order': int}`; the save event carries
 `post=` and `files=`.
 
+### Adding to the dashboard shell itself
+
+Two filters cover the parts of the shell that are not a page. Both receive
+`request=` and both are gated on your app being active, so what you contribute
+disappears on disable — an edit to `admin_dashboard` would not.
+
+| Filter | `value` | Renders |
+|---|---|---|
+| `DASHBOARD_USER_MENU` | `list[dict]` | Entries in the top-right account dropdown |
+| `DASHBOARD_BODY_END` | `list[str]` | Template paths included at the end of `<body>` |
+
+A menu entry is `{'label', 'url', 'icon', 'order', 'attrs'}` — `order` sorts,
+and `attrs` is a dict of extra HTML attributes, which is how you hang a
+`data-*` hook your own script binds to. `DASHBOARD_BODY_END` is the shell's
+equivalent of the storefront's `global_below_body` slot: it is the only way to
+ship a dialog or overlay into every dashboard page without the shell importing
+you. The `feedback` app uses both — one entry, one modal.
+
+```python
+def on_user_menu(self, value, **kwargs):
+    value.append({'label': 'Send feedback', 'url': '#', 'icon': 'message-square-warning',
+                  'order': 50, 'attrs': {'data-feedback-open': '1'}})
+    return value
+```
+
+**Mind the app-discovery router when you add routes.** It owns
+`dashboard/apps/<str:plugin>/<str:slug>/` and registers first, so a
+*three-segment* route of your own is swallowed by that converter and answers
+404 while deeper ones resolve normally. Nest extra routes one level further
+(`tickets/submit/`, not `submit/`).
+
 **Your save handler must key off something the card itself posts**, never off
 the absence of a value:
 

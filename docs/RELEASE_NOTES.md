@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.52.0 — 2026-08-20
+
+**Feedback tickets, and the product gallery fits the screen**
+
+- New Feedback app: a 'Send feedback' entry in the dashboard account menu opens a modal that takes your message, offers to capture the screen, and attaches the JavaScript errors the page already logged. Each report becomes a ticket under Settings -> Feedback with the page, viewport, browser, version and request id alongside it.
+- Screen capture uses the browser's native getDisplayMedia, so it adds no dependencies. It is best-effort by design and the ticket records WHY an image is missing (declined / unsupported / too large / failed) - a report that quietly lost its screenshot would otherwise look identical to one where sharing was refused.
+- Two new shell contribution points: DASHBOARD_USER_MENU (account-dropdown entries) and DASHBOARD_BODY_END (templates at the end of the dashboard body - the shell's equivalent of the storefront's global_below_body slot). Both are hook-gated, so a contributed entry or modal disappears when its app is disabled.
+- Product page: the gallery no longer runs off the bottom of the screen. The slide is aspect-ratio 2/3, so its height came entirely from the column width and nothing bounded it against the viewport - at 1440x900 the cover rendered 763px tall and the thumbnail strip fell below the fold. The width is now capped so the cover plus its thumbnails fit one screen (871px -> 819px at that size).
+
 ## v0.51.0 — 2026-08-20
 
 **Homepage hero rebuilt as the bookshop window**

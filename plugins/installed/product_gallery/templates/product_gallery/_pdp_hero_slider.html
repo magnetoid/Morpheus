@@ -119,8 +119,18 @@ Backward compatible with single-image / no-image products:
   .pdp-hero {
     position: relative;
     width: 100%;
-    max-width: 640px;
     margin: 0 auto;
+    /* Keep the whole gallery inside one screen.
+       `.pdp-hero__slide` is `aspect-ratio: 2/3`, so its height is derived
+       ENTIRELY from the column width — nothing here was bounded by viewport
+       height, and at 1440x900 the cover rendered 763px tall with the thumbnail
+       strip landing below the fold (763 + 16 gap + 92 thumbs = 871 against 835
+       available). Capping the height directly would fight the aspect-ratio, so
+       cap the WIDTH: reserve the sticky topbar and the thumb strip, then divide
+       the remainder by 3/2 to get the widest cover that still fits.
+       A theme with a different header sets --topbar-h. */
+    --pdp-hero-reserve: calc(var(--topbar-h, 65px) + 124px);
+    max-width: min(640px, calc((100svh - var(--pdp-hero-reserve)) / 1.5));
   }
   .pdp-hero__track {
     display: grid;

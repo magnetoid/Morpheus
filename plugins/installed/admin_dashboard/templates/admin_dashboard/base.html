@@ -1201,6 +1201,12 @@
         <a href="{% url 'admin_dashboard:settings' %}" class="nav-link" style="font-size:.85rem;"><i data-lucide="settings" class="h-4 w-4"></i> Store settings</a>
         {% plugin_enabled "release_notes" as release_notes_on %}{% if release_notes_on %}<a href="/dashboard/apps/release_notes/about/" class="nav-link" style="font-size:.85rem;"><i data-lucide="info" class="h-4 w-4"></i> About Morpheus OS</a>{% endif %}
         {% if release_notes_on %}<a href="/dashboard/apps/release_notes/version/" class="nav-link" style="font-size:.85rem;"><i data-lucide="git-commit-horizontal" class="h-4 w-4"></i> Version &amp; updates <span class="pill pill-info" style="font-size:.62rem; margin-left:auto;">{{ MORPHEUS_VERSION|default:"v0.1.0" }}</span></a>{% endif %}
+        {% comment %}Contributed entries (DASHBOARD_USER_MENU). An app appends its
+        own item rather than the shell hardcoding a link to it; the hook bus drops
+        handlers whose plugin is inactive, so these vanish on disable.{% endcomment %}
+        {% for item in dashboard_user_menu %}
+        <a href="{{ item.url }}" class="nav-link" style="font-size:.85rem;"{% for k, v in item.attrs.items %} {{ k }}="{{ v }}"{% endfor %}><i data-lucide="{{ item.icon|default:'circle' }}" class="h-4 w-4"></i> {{ item.label }}</a>
+        {% endfor %}
 
         {% comment %}Theme picker — three explicit choices that flip data-theme on <html>. JS at the bottom of base.html (the theme-mode block) tags the active one with .is-active.{% endcomment %}
         <div style="margin-top: .35rem; padding-top: .35rem; border-top: 1px solid var(--border);">
@@ -1725,5 +1731,9 @@ window.morphToast = function (text, opts) {
   });
 })();
 </script>
+{% comment %}Contributed body-end templates (DASHBOARD_BODY_END) — the shell's
+equivalent of the storefront's `global_below_body` slot. This is how an app ships
+a dialog or overlay into every dashboard page without the shell importing it.{% endcomment %}
+{% for tpl in dashboard_body_end %}{% include tpl %}{% endfor %}
 </body>
 </html>
