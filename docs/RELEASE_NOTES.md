@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.52.1 — 2026-08-20
+
+**Product gallery: reserve the real chrome above it**
+
+- Follow-up to v0.52.0: the gallery cap reserved only the sticky topbar (65px), but the gallery actually starts 158px down the page (topbar + section padding + breadcrumb), so it still overflowed by 77px and the thumbnail strip stayed clipped. Reserving the measured offset fits it: 412x726, thumbnails visible, 16px clear at 1440x900.
+
 ## v0.52.0 — 2026-08-20
 
 **Feedback tickets, and the product gallery fits the screen**
