@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.51.0 — 2026-08-20
+
+**Homepage hero rebuilt as the bookshop window**
+
+- The homepage hero is rebuilt: one book stands face-out and still, and the other editor's picks stand beside it on a hairline shelf as real covers instead of four anonymous dots — every featured book is now visible on landing and one click away.
+- Removed the per-letter decode scramble. It rendered the hero's headline AND the book title as coloured gibberish for about a second on load and again on every 5.6s auto-advance, so the shop's front page was illegible a meaningful share of the time.
+- Removed the auto-advance timer and the second competing display headline. Motion is now one crossfade plus a short staggered rise; the slider only moves when a shopper asks it to.
+- The hero no longer fills the viewport: 835px to 733px at a 900px viewport, so 102px of the shelf below is visible on landing instead of nothing.
+- Deleted the machinery the scramble needed to look stable: the JS title fitter, the reserved tallest-title box, contain:layout, the top-anchored grid and the :has() sale-row collapse. The copy is a constant-height stage with centred panels, so the shelf never moves between books and no JS measures anything. Hero section 774 lines to 403; its script 250 lines to 45.
+- The homepage now has an h1. It had none at all — the marketing sentence that was removed had been the page's top heading.
+- Hero covers are wired into the theme's shared spine/edge-light and missing-cover title-page treatments rather than carrying their own copies.
+
 ## v0.50.0 — 2026-08-19
 
 **You decide which URLs of your shop belong in search**

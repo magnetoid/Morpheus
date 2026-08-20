@@ -68,6 +68,42 @@ class HomeHeroTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-home-hero')
-        self.assertContains(response, 'data-home-hero-dot', count=2)
+        # One picker per book: the rail shows every pick as its own cover, so a
+        # count below the number of hero products means a book is unreachable.
+        # Counted on the picker→panel link, which appears once per button and
+        # nowhere else — `data-home-hero-pick` also occurs in the script's own
+        # selector, so counting the bare attribute is off by one.
+        self.assertContains(response, 'aria-controls="hero-panel-', count=2)
         self.assertContains(response, 'The Last Archive')
         self.assertContains(response, 'A Room With Margins')
+
+    @patch(
+        'plugins.installed.personalisation.services.rank_for_visitor',
+        side_effect=lambda request, products, surface: products,
+    )
+    @patch('plugins.installed.storefront.views.home.internal_graphql')
+    def test_hero_drops_the_marketing_headline_and_decode_gimmick(
+        self, mocked_graphql, _rank_for_visitor
+    ):
+        """The hero is the book, not an effect.
+
+        Two display headlines competed in one column, and the per-letter decode
+        scramble forced a JS font fitter plus a reserved tallest-title box to
+        absorb the jitter it caused. Both are gone; this fails if either returns.
+        """
+        mocked_graphql.return_value = {
+            'featuredProducts': [
+                _hero_product('The Last Archive', 'the-last-archive'),
+                _hero_product('A Room With Margins', 'a-room-with-margins'),
+            ],
+            'collections': [],
+            'categories': [],
+        }
+
+        body = self.client.get('/').content.decode()
+
+        self.assertNotIn('data-decode', body)
+        self.assertNotIn('A moving shelf of the books', body)
+        self.assertNotIn('fitHeroTitle', body)
+        # The page had no h1 at all once the marketing h2 came out.
+        self.assertEqual(body.count('<h1'), 1)

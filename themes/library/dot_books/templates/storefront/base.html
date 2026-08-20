@@ -555,7 +555,8 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
      edge with a highlight beside it, so covers read as physical objects
      instead of flat rectangles. Pointer-transparent overlay. */
   .book .cover-wrap::after,
-  .hero-feature__cover::after,
+  .window__cover::after,
+  .window__pick-cover::after,
   .pdp-hero__slide::after {
     content: ''; position: absolute; inset: 0; pointer-events: none;
     border-radius: inherit;
@@ -568,13 +569,15 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
 
   /* Missing covers become set title pages instead of apologies: a double
      hairline frame, the title in Fraunces, and the brand period beneath. */
-  .book .cover-wrap .placeholder {
+  .book .cover-wrap .placeholder,
+  .window__cover .placeholder {
     flex-direction: column; gap: .35rem; padding: 1.1rem; text-align: center;
     font-style: normal; font-weight: 500; font-size: 1.15rem; line-height: 1.3;
     letter-spacing: -.01em; color: var(--ink-2);
     outline: 1px solid var(--rule); outline-offset: -8px;
   }
-  .book .cover-wrap .placeholder::after {
+  .book .cover-wrap .placeholder::after,
+  .window__cover .placeholder::after {
     content: '.'; color: var(--accent); font-family: var(--serif);
     font-size: 2.2rem; line-height: .3; font-weight: 700;
   }

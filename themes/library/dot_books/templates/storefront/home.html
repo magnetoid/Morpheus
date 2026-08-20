@@ -19,775 +19,434 @@ recommendations still render lower via the home_after_rails / home_below_grid sl
 {% endcomment %}
 
 {% if hero_products %}
-<!-- Editor's pick -->
-<section id="editors-pick" class="hero-feature" data-home-hero aria-roledescription="carousel" aria-label="Featured books">
-  <div class="wrap">
-    <div class="hero-feature__shell">
-      <div class="hero-feature__copy">
-        <div class="hero-feature__topline">
-          <p class="eyebrow">Editor's picks</p>
-          {% if hero_products|length > 1 %}
-          <p class="hero-feature__count" aria-live="polite">
-            <span data-home-hero-current>1</span>
-            <span aria-hidden="true">/</span>
-            <span>{{ hero_products|length }}</span>
-          </p>
-          {% endif %}
-        </div>
-        {# Headline re-decodes with EVERY slide change (data-decode) — the whole copy column resets in letterpress rhythm per book. #}
-        <h2 class="display display-l hero-feature__headline">
-          <span data-decode>A moving shelf of the books we want in your hands</span><span class="text-accent">.</span>
-        </h2>
+{% comment %}
+Editor's picks — "the bookshop window". One book stands face-out and still;
+the rest of the window's display sits beside it on a hairline shelf, as real
+covers rather than abstract dots, so a shopper sees the whole selection at a
+glance and every pick is one click away. Choosing a cover promotes it.
 
-        <div class="hero-feature__copy-stage">
+Deliberately NOT here, and not to be re-added: an auto-advancing timer (three
+of four books were only ever seen by a visitor who waited), a second display
+headline above the book title (two competing headlines in one column), and the
+per-letter decode scramble — that effect forced `contain: layout`, a JS font
+fitter, a reserved tallest-title box and a top-anchored grid just to absorb the
+jitter it caused. The copy stack is bottom-anchored instead, so the price and
+buttons share one baseline on every slide and a long title grows upward into
+space it already has. No JS measures anything.
+{% endcomment %}
+<section id="editors-pick" class="window" data-home-hero aria-label="Editor's picks">
+  <div class="wrap">
+    {% comment %}The home page has no other h1 — the hero used to open with an h2
+    and nothing above it. The shop name is the page's heading; the visible
+    hierarchy starts at the book title.{% endcomment %}
+    <h1 class="sr-only">Dot Books — an independent bookshop</h1>
+
+    <div class="window__shell">
+      <div class="window__stage">
+        {% for pick in hero_products %}
+        <a
+          href="/products/{{ pick.slug }}/"
+          class="window__cover{% if forloop.first %} is-active{% endif %}"
+          data-home-hero-media
+          data-index="{{ forloop.counter0 }}"
+          aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
+          tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+        >
+          {% if pick.primaryImage and pick.primaryImage.url %}
+            {% if forloop.first %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="300,400,600,800" sizes="(min-width: 900px) 340px, 62vw" priority=True %}
+            {% else %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="300,400,600,800" sizes="(min-width: 900px) 340px, 62vw" %}
+            {% endif %}
+          {% elif PRODUCT_PLACEHOLDER_IMAGE %}
+            <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ pick.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
+          {% else %}
+            <span class="placeholder">{{ pick.name }}</span>
+          {% endif %}
+        </a>
+        {% endfor %}
+      </div>
+
+      <div class="window__copy">
+        <div class="window__copy-stage">
           {% for pick in hero_products %}
           <article
-            class="hero-feature__copy-panel{% if forloop.first %} is-active{% endif %}"
+            class="window__panel{% if forloop.first %} is-active{% endif %}"
+            id="hero-panel-{{ forloop.counter0 }}"
             data-home-hero-copy
             data-index="{{ forloop.counter0 }}"
+            {% if hero_products|length > 1 %}role="tabpanel"{% endif %}
             aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
           >
-            <div class="hero-feature__copy-stack">
-              {% comment %}The sale row is rendered on EVERY slide, empty when the book isn't discounted: it used to appear only on discounted slides, which shoved that slide's title, price and buttons down while its neighbours sat higher — the copy visibly jumped as the slider advanced. CSS collapses the row entirely when no book in the set is discounted, so nothing is reserved for nothing.{% endcomment %}
-              <p class="meta hero-feature__copy-item hero-feature__sale-row" style="--hero-delay: 40ms;">
-                {% if pick.isOnSale %}<span class="hero-feature__pill">-{{ pick.discountPercentage }}%</span>{% endif %}
-              </p>
-              <h3 class="display display-xl hero-feature__title hero-feature__copy-item" style="--hero-delay: 150ms;">
-                <em>{{ pick.name }}</em><span class="text-accent">.</span>
-              </h3>
-              <p class="hero-feature__price hero-feature__copy-item" style="--hero-delay: 250ms;">
-                {% if pick.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{{ pick.price|money }}
-              </p>
-              <div class="hero-feature__actions hero-feature__copy-item" style="--hero-delay: 320ms;">
-                <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop now</a>
-                <a href="/products/" class="btn btn-ghost">Browse the shelf</a>
-              </div>
+            {% comment %}The eyebrow rides INSIDE the panel, repeated per book,
+            so the copy centres against the cover as one block. Hoisted out, it
+            anchors to the top of a stage sized to the LONGEST title in the set
+            and strands itself a couple of hundred pixels above its own heading.{% endcomment %}
+            <p class="eyebrow window__eyebrow" style="--d: 0ms;">Editor's picks</p>
+            <h2 class="display display-l window__title" style="--d: 60ms;">
+              {{ pick.name }}<span class="text-accent">.</span>
+            </h2>
+            <p class="window__meta" style="--d: 120ms;">
+              {% if pick.category %}
+              <span class="window__cat">{{ pick.category.name }}</span>
+              <span class="window__sep" aria-hidden="true">·</span>
+              {% endif %}
+              <span class="window__price">{% if pick.priceStartsFrom %}<span class="window__from">{% translate "From" %}</span> {% endif %}{{ pick.price|money }}</span>
+              {% if pick.isOnSale %}<span class="window__save">&minus;{{ pick.discountPercentage }}%</span>{% endif %}
+            </p>
+            <div class="window__actions" style="--d: 180ms;">
+              <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop now</a>
+              <a href="/products/" class="btn btn-ghost">Browse the shelf</a>
             </div>
           </article>
           {% endfor %}
         </div>
-
-        {% if hero_products|length > 1 %}
-        <div class="hero-feature__controls">
-          <div class="hero-feature__nav-buttons">
-            <button type="button" class="hero-feature__nav-btn" data-home-hero-prev aria-label="Previous featured book">
-              <span aria-hidden="true">←</span>
-            </button>
-            <button type="button" class="hero-feature__nav-btn" data-home-hero-next aria-label="Next featured book">
-              <span aria-hidden="true">→</span>
-            </button>
-          </div>
-          <div class="hero-feature__dots" role="tablist" aria-label="Choose a featured book">
-            {% for pick in hero_products %}
-            <button
-              type="button"
-              class="hero-feature__dot{% if forloop.first %} is-active{% endif %}"
-              data-home-hero-dot
-              data-index="{{ forloop.counter0 }}"
-              role="tab"
-              aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
-              aria-label="Show {{ pick.name }}"
-            >
-              <span class="sr-only">{{ pick.name }}</span>
-            </button>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-      </div>
-
-      <div class="hero-feature__media">
-        <div class="hero-feature__media-stage">
-          {% for pick in hero_products %}
-          <a
-            href="/products/{{ pick.slug }}/"
-            class="hero-feature__media-panel book{% if forloop.first %} is-active{% endif %}"
-            data-home-hero-media
-            data-index="{{ forloop.counter0 }}"
-            aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
-            tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
-          >
-            <div class="cover-wrap hero-feature__cover">
-              {% if pick.primaryImage and pick.primaryImage.url %}
-                {% if forloop.first %}
-                  {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800,1200" sizes="(min-width: 900px) 420px, 90vw" priority=True %}
-                {% else %}
-                  {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800,1200" sizes="(min-width: 900px) 420px, 90vw" %}
-                {% endif %}
-              {% elif PRODUCT_PLACEHOLDER_IMAGE %}
-                <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ pick.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
-              {% else %}
-                <div class="placeholder">{{ pick.name }}</div>
-              {% endif %}
-              <span class="hero-feature__ribbon">Editor's pick</span>
-            </div>
-          </a>
-          {% endfor %}
-        </div>
       </div>
     </div>
+
+    {% if hero_products|length > 1 %}
+    {% comment %}The window's other books, standing on a hairline shelf. This
+    replaces the four anonymous dots: the rail is the navigator AND the rest of
+    the merchandising, so nothing in the set is hidden behind a control.{% endcomment %}
+    <div class="window__rail" role="tablist" aria-label="Choose a featured book">
+      {% for pick in hero_products %}
+      <button
+        type="button"
+        class="window__pick{% if forloop.first %} is-active{% endif %}"
+        data-home-hero-pick
+        data-index="{{ forloop.counter0 }}"
+        role="tab"
+        aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+        aria-controls="hero-panel-{{ forloop.counter0 }}"
+        tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+      >
+        <span class="window__pick-cover">
+          {% if pick.primaryImage and pick.primaryImage.url %}
+            {% seo_responsive_image pick.primaryImage.url alt="" widths="120,200" sizes="76px" %}
+          {% elif PRODUCT_PLACEHOLDER_IMAGE %}
+            <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="" loading="lazy" decoding="async">
+          {% endif %}
+        </span>
+        <span class="sr-only">{{ pick.name }}</span>
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
 </section>
 
 <style>
-  .hero-feature {
-    /* Full-height hero: fill the viewport below the 64px + 1px sticky topbar,
-       and vertically centre the shell within it for a poised, editorial stage. */
-    min-height: calc(100svh - 65px);
-    display: flex;
-    align-items: center;
-    padding: clamp(2rem, 4vw, 3.5rem) 0;
+  /* ── Editor's picks: the bookshop window ─────────────────────────────────
+     Height is padding-driven, not `100svh`: the hero used to fill the viewport
+     and push every product below the fold on a shop's front page. The rail now
+     ends just above the fold so the shelf underneath peeks and invites a scroll. */
+  .window {
+    padding: clamp(2rem, 3.5vw, 3rem) 0 clamp(1.5rem, 3vw, 2.5rem);
   }
-  .hero-feature > .wrap { width: 100%; }
-  .hero-feature__shell {
+  /* `.sr-only` is NOT a global utility in this theme — every page that uses it
+     carries its own copy (product_detail.html, checkout.html, and the hero
+     block this replaced). Deleting the old hero would therefore have taken the
+     definition with it and rendered each book's full title VISIBLY inside its
+     picker. It travels with the markup that needs it. */
+  .window .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+  .window__shell {
     display: grid;
-    gap: 2.5rem;
-    /* Top-anchor both columns: the decode scramble makes the copy column's
-       height jitter per-frame, and centering would drag the book cover with
-       it. Anchoring to the top keeps the image dead still while letters settle. */
-    align-items: start;
-  }
-  .hero-feature__copy {
-    min-width: 0;
-  }
-  .hero-feature__topline,
-  .hero-feature__controls {
-    display: flex;
+    gap: clamp(1.75rem, 4vw, 3.5rem);
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
   }
-  .hero-feature__count {
-    margin: 0;
-    color: var(--muted);
-    font-size: .8rem;
-    font-variant-numeric: tabular-nums;
+  @media (min-width: 900px) {
+    .window__shell { grid-template-columns: minmax(0, auto) minmax(0, 1fr); }
   }
-  .hero-feature__headline {
-    max-width: 14ch;
-    margin: 1rem 0 0;
-    text-wrap: balance; /* even rag across the 3-4 lines the long line breaks into */
-    contain: layout;    /* isolate the per-letter decode rewrites, like the title */
-  }
-  .hero-feature__intro {
-    max-width: 56ch;
-    margin: 1rem 0 0;
-    color: var(--ink-2);
-  }
-  .hero-feature__copy-stage,
-  .hero-feature__media-stage {
-    display: grid;
-    margin-top: 1.75rem;
-  }
-  .hero-feature__copy-panel,
-  .hero-feature__media-panel {
+
+  /* ── The book, face-out ─────────────────────────────────────────────────── */
+  .window__stage { display: grid; }
+  .window__cover {
     grid-area: 1 / 1;
-  }
-  .hero-feature__copy-panel {
+    display: block;
+    position: relative;
+    width: min(62vw, 260px);
+    aspect-ratio: 2 / 3;
+    margin-inline: auto;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--paper-2);
+    box-shadow: 0 2px 10px -6px rgba(14, 14, 14, 0.22);
     opacity: 0;
     pointer-events: none;
-    transform: translate3d(0, 8px, 0);
+    transform: scale(0.985);
     transition:
       opacity var(--motion-slow) var(--ease-out),
-      transform var(--motion-slow) var(--ease-out);
+      transform var(--motion-slow) var(--ease-out),
+      box-shadow var(--motion-med) var(--ease-out);
   }
-  .hero-feature__copy-panel.is-active {
+  @media (min-width: 900px) {
+    .window__cover { width: clamp(240px, 24vw, 320px); margin-inline: 0; }
+  }
+  .window__cover.is-active {
     opacity: 1;
     pointer-events: auto;
-    transform: translate3d(0, 0, 0);
+    transform: none;
   }
-  .hero-feature__copy-stack {
-    display: grid;
-    gap: 1rem;
-    align-content: start;
+  .window__cover img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
-  .hero-feature__copy-item {
-    margin: 0;
-    opacity: 0;
-    transform: translate3d(0, 16px, 0);
-    transition:
-      opacity 420ms var(--ease-out),
-      transform 420ms var(--ease-out);
-    will-change: opacity, transform;
-  }
-  .hero-feature__copy-panel.is-active .hero-feature__copy-item {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-    transition-delay: var(--hero-delay, 0ms);
-  }
-  /* Category line reads as a proper eyebrow: caps, tracked out, quiet. */
-  /* Hold the sale row's height on every slide so one discounted book can't
-     shift the copy under it out of step with its neighbours. If nothing in the
-     set is discounted there's nothing to align, so collapse it rather than
-     reserve dead space above every title. */
-  .hero-feature__sale-row {
-    min-height: 1.75rem;
-  }
-  .hero-feature__copy-stage:not(:has(.hero-feature__pill)) .hero-feature__sale-row {
-    display: none;
-  }
-  .hero-feature__copy-stack > .meta {
-    text-transform: uppercase;
-    letter-spacing: .14em;
-    font-size: .72rem;
-  }
-  .hero-feature__title {
-    margin: 0;
-    /* Use the whole copy column; a JS fitter (fitHeroTitle) then shrinks the
-       font so ANY title — one word or ten — settles into ≤3 tidy lines without
-       overflowing or dwindling to nothing. --hero-title-max is the ceiling for
-       short titles; the fitter only ever scales down from it. */
-    max-width: 100%;
-    text-wrap: balance;
-    overflow-wrap: break-word; /* a single very long word still breaks cleanly */
-    --hero-title-max: clamp(2.3rem, 3.2vw + 1.1rem, 4.2rem);
-    font-size: var(--hero-title-size, var(--hero-title-max));
-    line-height: 1.04;
-    /* Isolate the per-letter scramble's rewrites from the surrounding layout. */
-    contain: layout;
-  }
-  /* Decode letters (letterpress settle). .dw wraps each word so line breaks
-     stay at word boundaries while letters animate individually. Searching
-     letters sit in muted accent ink; on lock they pop into place. */
-  .dw { display: inline-block; }
-  .dl { display: inline-block; }
-  .dl--x { opacity: .45; color: var(--accent-ink); }
-  .dl--pop { animation: dl-pop 200ms var(--ease-out); }
-  @keyframes dl-pop {
-    0%   { transform: translateY(.08em) scale(1.14); opacity: .6; }
-    60%  { transform: translateY(-.02em) scale(1.02); opacity: 1; }
-    100% { transform: none; opacity: 1; }
-  }
-  .hero-feature__price {
-    font-family: var(--serif);
-    font-size: clamp(1.2rem, 1.2vw + 1rem, 1.5rem);
-    font-variant-numeric: tabular-nums; /* digits hold width as slides change */
-  }
-  .hero-feature__actions {
+  /* Layout only — base.html owns the "missing cover becomes a title page"
+     typography for every cover on the site, and this element is wired into it
+     alongside .book .cover-wrap. Don't restate font/colour here or the shared
+     treatment loses (same specificity, and this block renders later). */
+  .window__cover .placeholder {
     display: flex;
-    gap: .75rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  .hero-feature__pill {
-    display: inline-flex;
-    align-items: center;
-    gap: .25rem;
-    margin-left: .5rem;
-    padding: .2rem .5rem;
-    border-radius: 999px;
-    background: rgba(230, 57, 70, 0.1);
-    color: var(--accent-ink);
-    font-size: .7rem;
-    font-weight: 700;
-  }
-  .hero-feature__nav-buttons,
-  .hero-feature__dots {
-    display: flex;
-    align-items: center;
-    gap: .6rem;
-  }
-  .hero-feature__nav-btn {
-    border: 1px solid var(--rule);
-    background: rgba(255, 255, 255, 0.5);
-    color: var(--ink);
-  }
-  .hero-feature__nav-btn {
-    width: 2.6rem;
-    height: 2.6rem;
-    border-radius: 999px;
-    display: inline-flex;
+    width: 100%;
+    height: 100%;
     align-items: center;
     justify-content: center;
+    font-family: var(--serif);
+  }
+  @media (hover: hover) {
+    .window__cover.is-active:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 20px 38px -20px rgba(14, 14, 14, 0.42);
+    }
+  }
+
+  /* ── Copy ────────────────────────────────────────────────────────────────
+     Every panel is stacked in one grid cell, so the stage's height is the
+     LONGEST title's — constant no matter which book is showing, which is what
+     keeps the shelf below from moving as you click through. Each panel then
+     centres inside that constant box, so a short title sits balanced against
+     the cover instead of stranding its slack in one place. This is what
+     replaced the JS title fitter and the reserved tallest-title box:
+     geometry, not measurement. */
+  .window__copy { min-width: 0; }
+  .window__copy-stage {
+    display: grid;
+    align-items: center;
+  }
+  .window__panel {
+    grid-area: 1 / 1;
+    display: grid;
+    gap: 1rem;
+    align-content: center;
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* No transition on the panel itself: every panel occupies the SAME grid cell,
+     so cross-fading two of them ghosts the outgoing title over the incoming one.
+     The panel cuts; only its three lines animate, which reads as the entrance. */
+  .window__panel.is-active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* One quiet, staggered rise for the three lines — the whole motion budget. */
+  .window__panel > * {
+    margin: 0;
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
     transition:
-      transform var(--motion-fast) var(--ease-out),
-      border-color var(--motion-fast) var(--ease-out),
-      background var(--motion-fast) var(--ease-out);
+      opacity 380ms var(--ease-out),
+      transform 380ms var(--ease-out);
   }
-  .hero-feature__nav-btn:hover {
-    border-color: var(--ink);
-    background: rgba(255, 255, 255, 0.9);
+  .window__panel.is-active > * {
+    opacity: 1;
+    transform: none;
+    transition-delay: var(--d, 0ms);
   }
-  /* The visible dot stays .8rem; the button is a 24px+ hit area around it
-     (WCAG 2.2 target-size — the axe gate fails anything smaller). */
-  .hero-feature__dot {
-    width: 1.5rem;
-    height: 1.5rem;
+  .window__title {
+    /* One constant size on every slide (the old fitter shrank long titles, so
+       the composition changed shape as the slider advanced), capped to a
+       readable measure — the same `ch` idiom the theme's other headlines use.
+       Without it a title runs the full ~950px of the copy column at desktop. */
+    max-width: 18ch;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  .window__meta {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .window__cat {
+    font-family: var(--sans);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .window__sep { color: var(--rule); }
+  .window__price {
+    font-family: var(--serif);
+    font-size: clamp(1.15rem, 1.1vw + 0.95rem, 1.45rem);
+    font-variant-numeric: tabular-nums; /* digits hold width between slides */
+  }
+  .window__from { color: var(--muted); font-size: 0.85em; }
+  .window__save {
+    font-family: var(--sans);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--accent-ink);
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+  }
+  .window__actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  /* ── The shelf ───────────────────────────────────────────────────────────
+     The window's other books stand on a hairline rule; the chosen one lifts off
+     it and marks its place with an accent rule. */
+  .window__rail {
+    display: flex;
+    align-items: flex-end;
+    gap: clamp(0.6rem, 1.5vw, 1.05rem);
+    margin-top: clamp(1.5rem, 3vw, 2.25rem);
+    padding-bottom: 0.9rem;
+    /* Shelf, not underline: `fit-content` stops the rule running the full page
+       width under four small covers, where it also collided with the section's
+       own <hr> 50px below. The padding lets it run just past the last book. */
+    width: fit-content;
+    max-width: 100%;
+    padding-right: clamp(1.25rem, 3vw, 2.5rem);
+    border-bottom: 1px solid var(--rule);
+  }
+  .window__pick {
+    position: relative;
+    width: clamp(52px, 7vw, 76px);
     padding: 0;
     border: 0;
     background: transparent;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    cursor: pointer;
   }
-  .hero-feature__dot::before {
-    content: '';
-    width: .8rem;
-    height: .8rem;
-    border-radius: 999px;
-    border: 1px solid var(--rule);
-    background: rgba(255, 255, 255, 0.5);
-    transition:
-      transform var(--motion-fast) var(--ease-out),
-      opacity var(--motion-fast) var(--ease-out),
-      background var(--motion-fast) var(--ease-out),
-      border-color var(--motion-fast) var(--ease-out);
-  }
-  .hero-feature__dot:hover::before {
-    border-color: var(--ink);
-    background: rgba(255, 255, 255, 0.9);
-  }
-  .hero-feature__dot.is-active::before {
-    background: var(--ink);
-    border-color: var(--ink);
-    transform: scale(1.15);
-  }
-  .hero-feature__media {
-    min-width: 0;
-  }
-  .hero-feature__media-stage {
-    position: relative;
-    max-width: min(100%, 420px);
-    margin: 0 auto;
-  }
-  /* ── Cover shadow ─────────────────────────────────────────────────────
-     ONE fixed light for the whole slider: high and to the RIGHT. Every
-     slide therefore throws its shadow down-LEFT, into the open flank the
-     layout leaves us (the right column hugs the viewport, the bottom sits
-     at the fold).
-
-     The previous pass gave each slide its own direction — slide 4 threw the
-     shadow UP-left, which puts the sun underneath the book — and tinted each
-     one differently (violet, green, rust). A light that teleports between
-     slides, in a colour that changes with it, is what read as fake.
-
-     Slides still differ, but along the one axis that stays physical:
-     ELEVATION (--hero-elev) — how high the book floats. A higher float
-     throws further, blurs wider, and lands fainter, exactly as a real
-     penumbra does. One number per slide; everything else derives.
-
-     Built in two layers, the way a soft shadow actually resolves:
-       · contact — short throw, tight blur, darkest: anchors the object
-                   (box-shadow on .cover-wrap, below)
-       · cast    — long throw, wide blur, faint: the penumbra (this ::before)
-
-     Geometry note: the cover is OPAQUE and fills the panel, so a mass centred
-     behind it is invisible — the gradient's dense core is placed to straddle
-     the cover's LEFT EDGE, where it can actually be seen. */
-  .hero-feature__media-panel {
-    --hero-elev: 1;
-  }
-  .hero-feature__media-panel:nth-child(1) { --hero-elev: 0.8; }
-  .hero-feature__media-panel:nth-child(2) { --hero-elev: 1.35; }
-  .hero-feature__media-panel:nth-child(3) { --hero-elev: 0.95; }
-  .hero-feature__media-panel:nth-child(4) { --hero-elev: 1.6; }
-  .hero-feature__media-panel:nth-child(5) { --hero-elev: 1.15; }
-
-  /* The cast shadow is the BOOK'S SILHOUETTE — same box, same corners — not a
-     round blob. A rounded smudge beside a rectangular object never resolves as
-     that object's shadow; it reads as dirt on the page. It's simply the cover
-     again: thrown down-left, spread slightly (penumbra widens with distance),
-     and blurred. */
-  .hero-feature__media-panel::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: 10px;
-    background: rgba(14, 14, 14, calc(0.4 / var(--hero-elev)));
-    filter: blur(calc(13px * var(--hero-elev) + 5px));
-    transform: translate3d(calc(-15px * var(--hero-elev)), calc(21px * var(--hero-elev)), 0)
-      scale(calc(1 + 0.025 * var(--hero-elev)));
-    pointer-events: none;
-    /* Hidden at rest: the settle below is what reveals it, and it must not
-       flash in at full strength before the book it belongs to arrives. */
-    opacity: 0;
-    will-change: opacity, transform;
-  }
-  /* The shadow doesn't blink on. It starts tucked under the book and slides out
-     down-left as it fades — the book reading as though it were rising into its
-     float, the shadow separating and softening beneath it. Re-runs per slide
-     (the rule only applies while .is-active is set), then SETTLES and stops: a
-     shadow that keeps wandering was the other half of "not real". */
-  .hero-feature__media-panel.is-active::before {
-    animation: hero-shadow-settle 1600ms cubic-bezier(0.16, 0.7, 0.3, 1) both;
-  }
-  @keyframes hero-shadow-settle {
-    from {
-      opacity: 0;
-      transform: translate3d(calc(-4px * var(--hero-elev)), calc(6px * var(--hero-elev)), 0)
-        scale(0.985);
-    }
-    to {
-      opacity: 1;
-      transform: translate3d(calc(-15px * var(--hero-elev)), calc(21px * var(--hero-elev)), 0)
-        scale(calc(1 + 0.025 * var(--hero-elev)));
-    }
-  }
-  .hero-feature__media-panel {
-    position: relative;
-    z-index: 1;
+  .window__pick-cover {
     display: block;
-    opacity: 0;
-    pointer-events: none;
-    transform: translate3d(0, 10px, 0) scale(0.985);
-    /* Slow, graceful crossfade for the book cover (was 540ms). */
-    transition:
-      opacity 1000ms var(--ease-out),
-      transform 900ms var(--ease-out);
-    will-change: opacity, transform;
-  }
-  .hero-feature__media-panel.is-active {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  .hero-feature__cover {
-    position: relative;
+    position: relative; /* anchors base.html's shared spine/edge-light ::after */
     aspect-ratio: 2 / 3;
+    border-radius: 3px;
     overflow: hidden;
+    background: var(--paper-2);
+    box-shadow: 0 1px 5px -3px rgba(14, 14, 14, 0.25);
+    opacity: 0.62;
+    filter: saturate(0.6);
+    transition:
+      opacity var(--motion-med) var(--ease-out),
+      filter var(--motion-med) var(--ease-out),
+      transform var(--motion-med) var(--ease-out),
+      box-shadow var(--motion-med) var(--ease-out);
   }
-  /* Contact shadow — the near half of the same light. Two stacked shadows
-     (tight+dark, then wider+softer) approximate a penumbra far better than a
-     single blur can, and both offset LEFT-and-down to match the cast layer's
-     light. Scales with --hero-elev so a floating book's contact loosens.
-
-     Lives on a .cover-wrap descendant selector because the hero cover carries
-     BOTH classes ("cover-wrap hero-feature__cover"): the grid-card rule
-     `.book .cover-wrap` (0,2,0) silently beat `.hero-feature__cover` (0,1,0),
-     which is how v0.13.1's "minimal" grid shadow erased the hero shadow
-     outright. Same specificity, declared later, so this wins. */
-  .hero-feature__media-panel .cover-wrap {
-    border-radius: 8px;
-    box-shadow:
-      calc(-1px * var(--hero-elev)) calc(2px * var(--hero-elev))
-        calc(5px * var(--hero-elev)) -1px rgba(14, 14, 14, 0.32),
-      calc(-5px * var(--hero-elev)) calc(10px * var(--hero-elev))
-        calc(22px * var(--hero-elev)) -9px rgba(14, 14, 14, 0.26);
-  }
-  .hero-feature__cover img,
-  .hero-feature__cover picture {
+  .window__pick-cover img {
+    display: block;
     width: 100%;
     height: 100%;
-  }
-  .hero-feature__cover img {
     object-fit: cover;
   }
-  .hero-feature__ribbon {
+  /* The COVER lifts off the shelf, not the button. Lifting the button would
+     carry its ::after accent rule up with it, floating the marker above the
+     shelf rule it is supposed to sit on. */
+  .window__pick.is-active .window__pick-cover {
+    opacity: 1;
+    filter: none;
+    transform: translateY(-6px);
+    box-shadow: 0 12px 22px -14px rgba(14, 14, 14, 0.5);
+  }
+  .window__pick.is-active::after {
+    content: '';
     position: absolute;
-    top: 1rem;
-    right: 1rem;
-    z-index: 1;
+    left: 0;
+    right: 0;
+    bottom: -0.9rem; /* sits ON the shelf rule */
+    height: 2px;
+    background: var(--accent-ink);
   }
-  .hero-feature__media-panel.is-active .hero-feature__cover img {
-    transform: scale(1.01);
+  @media (hover: hover) {
+    .window__pick:hover .window__pick-cover { opacity: 0.85; filter: none; }
   }
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+  .window__pick:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 4px;
+    border-radius: 3px;
   }
-  @media (min-width: 900px) {
-    .hero-feature__shell {
-      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
-      gap: 5rem;
-    }
-  }
-  @media (max-width: 699px) {
-    .hero-feature__controls {
-      align-items: flex-start;
-    }
-    .hero-feature__dots {
-      width: 100%;
-      flex-wrap: wrap;
-    }
-  }
+
   @media (prefers-reduced-motion: reduce) {
-    .dl--pop { animation: none !important; }
-    /* No settle drift — but the shadow still has to EXIST. It rests at
-       opacity:0 and is revealed by the settle animation, so cancelling the
-       animation without restoring opacity would delete every hero shadow for
-       reduced-motion users. Only opacity is restored: the base rule's
-       transform IS the resting offset, and clearing it would park the shadow
-       exactly behind the book, where it can't be seen. */
-    .hero-feature__media-panel::before { animation: none !important; }
-    .hero-feature__media-panel.is-active::before { opacity: 1; }
-    .hero-feature__copy-panel,
-    .hero-feature__copy-item,
-    .hero-feature__media-panel,
-    .hero-feature__nav-btn,
-    .hero-feature__dot,
-    .hero-feature__dot::before,
-    .hero-feature__media-panel.is-active .hero-feature__cover img {
-      transition: none !important;
-      transform: none !important;
+    .window__cover,
+    .window__panel,
+    .window__panel > *,
+    .window__pick,
+    .window__pick-cover {
+      transition-duration: 1ms !important;
+      transition-delay: 0ms !important;
     }
+    .window__pick.is-active .window__pick-cover,
+    .window__cover.is-active:hover { transform: none; }
   }
 </style>
 
 <script>
   (function () {
     document.querySelectorAll('[data-home-hero]').forEach(function (root) {
-      var copyPanels = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-copy]'));
-      var mediaPanels = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-media]'));
-      var dots = Array.prototype.slice.call(root.querySelectorAll('.hero-feature__dot'));
-      var prev = root.querySelector('[data-home-hero-prev]');
-      var next = root.querySelector('[data-home-hero-next]');
-      var currentLabel = root.querySelector('[data-home-hero-current]');
-      var prefersReduced =
-        window.matchMedia &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var timer = null;
-      var count = Math.min(copyPanels.length, mediaPanels.length);
+      var covers = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-media]'));
+      var panels = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-copy]'));
+      var picks = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-pick]'));
+      var count = Math.min(covers.length, panels.length);
       var current = 0;
 
-      if (!count) return;
+      // A single pick renders fully from the markup — nothing to drive.
+      if (count < 2 || picks.length !== count) return;
 
-      function setActive(nodes, idx, extra) {
-        nodes.forEach(function (node, nodeIndex) {
-          var active = nodeIndex === idx;
+      function show(idx, moveFocus) {
+        idx = (idx + count) % count;
+        covers.forEach(function (node, i) {
+          var active = i === idx;
           node.classList.toggle('is-active', active);
           node.setAttribute('aria-hidden', active ? 'false' : 'true');
-          if (extra) extra(node, active);
-        });
-      }
-
-      // Per-letter "decode" scramble, letterpress edition — each letter renders
-      // as its own span, cycles through glyphs in muted ink while "searching",
-      // then LOCKS with a tiny settle pop (.dl--pop), like type slugs snapping
-      // into a composing stick. Words wrap as units (.dw), so line breaks stay
-      // at word boundaries. Only textContent is ever written (never innerHTML),
-      // and the element is restored to one plain text node when done.
-      var SCRAMBLE_CHARS = 'abcdefghijklmnopqrstuvwxyz!<>-_/[]{}=+*?#';
-      function randChar() {
-        return SCRAMBLE_CHARS.charAt(Math.floor(Math.random() * SCRAMBLE_CHARS.length));
-      }
-      function makeScramble(el) {
-        var raf = null;
-        var settleTimer = null;
-        return function (newText) {
-          if (raf) cancelAnimationFrame(raf);
-          if (settleTimer) window.clearTimeout(settleTimer);
-          // Decorative gibberish must not reach screen readers mid-animation;
-          // the settled plain text is re-exposed on completion (~1s).
-          el.setAttribute('aria-hidden', 'true');
-          // Build word wrappers + letter spans via DOM APIs (no innerHTML).
-          el.textContent = '';
-          var letters = [];
-          var words = newText.split(' ');
-          for (var wi = 0; wi < words.length; wi++) {
-            var word = words[wi];
-            var w = document.createElement('span');
-            w.className = 'dw';
-            for (var ci = 0; ci < word.length; ci++) {
-              var l = document.createElement('span');
-              l.className = 'dl dl--x';
-              l.textContent = randChar();
-              var start = Math.floor(Math.random() * 20);
-              letters.push({
-                node: l,
-                to: word.charAt(ci),
-                start: start,
-                end: start + 10 + Math.floor(Math.random() * 26),
-                settled: false,
-              });
-              w.appendChild(l);
-            }
-            el.appendChild(w);
-            if (wi < words.length - 1) el.appendChild(document.createTextNode(' '));
-          }
-          var frame = 0;
-          function tick() {
-            var done = 0;
-            for (var i = 0; i < letters.length; i++) {
-              var q = letters[i];
-              if (q.settled) {
-                done++;
-              } else if (frame >= q.end) {
-                q.settled = true;
-                done++;
-                q.node.textContent = q.to;
-                q.node.classList.remove('dl--x');
-                q.node.classList.add('dl--pop');
-              } else if (frame >= q.start && Math.random() < 0.32) {
-                q.node.textContent = randChar();
-              }
-            }
-            if (done === letters.length) {
-              raf = null;
-              // Let the last pop play out, then collapse back to plain text
-              // (clean DOM for selection/copy) and re-expose to assistive tech.
-              settleTimer = window.setTimeout(function () {
-                el.textContent = newText;
-                el.removeAttribute('aria-hidden');
-              }, 220);
-              return;
-            }
-            frame++;
-            raf = requestAnimationFrame(tick);
-          }
-          tick();
-        };
-      }
-      function scramblePanel(panel) {
-        if (!panel) return;
-        [
-          panel.querySelector('.hero-feature__title em'),
-        ].forEach(function (el) {
-          if (!el) return;
-          // Cache the true final text once (before any scramble mutates it) so
-          // rapid navigation mid-animation always resolves to the real text.
-          if (el._finalText == null) el._finalText = (el.textContent || '').trim();
-          if (!el._run) el._run = makeScramble(el);
-          el._run(el._finalText);
-        });
-      }
-
-      // The section headline joins the per-slide rhythm: it re-decodes on
-      // every change, same letterpress treatment as the title/description.
-      var headline = root.querySelector('[data-decode]');
-      function scrambleHeadline() {
-        if (!headline) return;
-        if (headline._finalText == null) headline._finalText = (headline.textContent || '').trim();
-        if (!headline._run) headline._run = makeScramble(headline);
-        headline._run(headline._finalText);
-      }
-
-      function show(idx) {
-        idx = (idx + count) % count;
-        setActive(copyPanels, idx);
-        if (!prefersReduced) {
-          scramblePanel(copyPanels[idx]);
-          scrambleHeadline();
-        }
-        setActive(mediaPanels, idx, function (node, active) {
           node.tabIndex = active ? 0 : -1;
         });
-        dots.forEach(function (dot, dotIndex) {
-          var active = dotIndex === idx;
-          dot.classList.toggle('is-active', active);
-          dot.setAttribute('aria-selected', active ? 'true' : 'false');
+        panels.forEach(function (node, i) {
+          var active = i === idx;
+          node.classList.toggle('is-active', active);
+          node.setAttribute('aria-hidden', active ? 'false' : 'true');
         });
-        if (currentLabel) currentLabel.textContent = String(idx + 1);
+        // Roving tabindex: the rail is one tab stop, arrows move within it.
+        picks.forEach(function (node, i) {
+          var active = i === idx;
+          node.classList.toggle('is-active', active);
+          node.setAttribute('aria-selected', active ? 'true' : 'false');
+          node.tabIndex = active ? 0 : -1;
+        });
         current = idx;
+        if (moveFocus) picks[idx].focus();
       }
 
-      function stopAuto() {
-        if (timer) {
-          window.clearTimeout(timer);
-          timer = null;
-        }
-      }
-
-      function startAuto() {
-        stopAuto();
-        if (prefersReduced || count < 2 || document.hidden) return;
-        timer = window.setTimeout(function () {
-          show(current + 1);
-          startAuto();
-        }, 5600);
-      }
-
-      if (prev) {
-        prev.addEventListener('click', function () {
-          show(current - 1);
-          startAuto();
-        });
-      }
-      if (next) {
-        next.addEventListener('click', function () {
-          show(current + 1);
-          startAuto();
-        });
-      }
-      dots.forEach(function (dot) {
-        dot.addEventListener('click', function () {
-          show(parseInt(dot.getAttribute('data-index') || '0', 10));
-          startAuto();
+      picks.forEach(function (pick) {
+        pick.addEventListener('click', function () {
+          show(parseInt(pick.getAttribute('data-index') || '0', 10));
         });
       });
 
       root.addEventListener('keydown', function (event) {
-        if (event.key === 'ArrowLeft') {
-          event.preventDefault();
-          show(current - 1);
-          startAuto();
-        }
-        if (event.key === 'ArrowRight') {
-          event.preventDefault();
-          show(current + 1);
-          startAuto();
-        }
-      });
-
-      root.addEventListener('mouseenter', stopAuto);
-      root.addEventListener('mouseleave', startAuto);
-      root.addEventListener('focusin', stopAuto);
-      root.addEventListener('focusout', function (event) {
-        if (root.contains(event.relatedTarget)) return;
-        startAuto();
-      });
-      document.addEventListener('visibilitychange', function () {
-        if (document.hidden) stopAuto();
-        else startAuto();
-      });
-
-      // Auto-fit every hero title: start from the CSS ceiling (--hero-title-max)
-      // and shrink the font (via --hero-title-size) until the title settles into
-      // at most 3 lines. Makes long and short book names both read cleanly and
-      // professionally without hand-tuning per title. All panels are rendered
-      // (grid-stacked), so inactive titles measure correctly too.
-      var titles = Array.prototype.slice.call(root.querySelectorAll('.hero-feature__title'));
-      function fitHeroTitle(el) {
-        if (!el) return;
-        el.style.setProperty('--hero-title-size', 'var(--hero-title-max)');
-        var cs = window.getComputedStyle(el);
-        var lh = parseFloat(cs.lineHeight);
-        var size = parseFloat(cs.fontSize);
-        if (!lh || isNaN(lh)) lh = size * 1.04;
-        var maxH = lh * 3 + 1;
-        var guard = 0;
-        while (el.scrollHeight > maxH && size > 20 && guard < 60) {
-          size -= 2;
-          el.style.setProperty('--hero-title-size', size + 'px');
-          guard++;
-        }
-      }
-      // Reserve the TALLEST title's box on every slide. Titles run one to three
-      // lines ("Jane Eyre" vs "The Extraordinary Adventures of Arsène Lupin,
-      // Gentleman-Burglar"), and the price + buttons sit directly beneath them
-      // in the same stack — so without this they land at a different height on
-      // each slide and visibly jump as the slider advances. Reserving the max
-      // makes every slide share one geometry, and the staggered fade-in reads as
-      // choreography instead of a reflow.
-      function fitHeroTitles() {
-        titles.forEach(function (el) { el.style.minHeight = ''; });
-        titles.forEach(fitHeroTitle);
-        var tallest = 0;
-        titles.forEach(function (el) { tallest = Math.max(tallest, el.scrollHeight); });
-        if (tallest) {
-          titles.forEach(function (el) { el.style.minHeight = tallest + 'px'; });
-        }
-      }
-      fitHeroTitles();
-      // Re-fit after webfonts finish (metrics shift once Fraunces loads).
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitHeroTitles);
-      var fitRaf = null;
-      window.addEventListener('resize', function () {
-        if (fitRaf) cancelAnimationFrame(fitRaf);
-        fitRaf = requestAnimationFrame(fitHeroTitles);
+        var key = event.key;
+        if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Home' && key !== 'End') return;
+        if (picks.indexOf(document.activeElement) === -1) return;
+        event.preventDefault();
+        if (key === 'ArrowLeft') show(current - 1, true);
+        else if (key === 'ArrowRight') show(current + 1, true);
+        else if (key === 'Home') show(0, true);
+        else show(count - 1, true);
       });
 
       show(0);
-      startAuto();
     });
   })();
 </script>
