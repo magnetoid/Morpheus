@@ -109,37 +109,53 @@ additions only), scope vocabulary single-sourced in `agent_mcp/scopes.py`,
    default off-whitelist. Guarded by `test_graphql_orders_sort.py`.
 3. **`journalEntries(limit:)` capped** at 100 (was uncapped → cheap DoS).
 
-## Deferred (follow-up release — each needs its own design + tests)
-2. **Response-cache vary-tuple + event coverage.** The key hashes query+vars
-   only — blind to market/currency/language/channel (first EUR/`/fr/` visitor
-   poisons the entry for 5 min) — and invalidation binds only PRODUCT_UPDATED/
-   CATEGORY_UPDATED (price/stock/seo/cms/collection/delete leave stale payloads).
-   Also swap `GraphQLCacheMiddleware` after the rate limiter (a cache HIT
-   currently bypasses metering) and replace the `'cart' in query` leak-guard with
-   an explicit cacheable-root-field allowlist.
-3. **Eight divergent GraphQL auth patterns → one seam.** raise / silent-`[]` /
-   payload-error / inline is_staff / queryset-scoping / none. `core/authz.py`
-   (the capability seam) has zero GraphQL callers, so dashboard capability
-   revocation does not touch this surface. Unify — ideally onto capabilities so
-   GraphQL and the dashboard revoke together.
-4. **N+1 on product lists.** `.filter()`/`.count()` on prefetched relations
-   discards the prefetch cache (variants/collections/reviews/price/structuredData);
-   `products(first:100){…}` ≈ 400 extra queries. Switch to
-   `Prefetch(..., queryset=…filter(…))` + iterate `.all()`, add an
-   `assertNumQueries` regression on `products(first:50)`.
-5. **MCP tool-argument schema validation.** Nothing validates `arguments`
-   against `tool.schema` over MCP; unknown args are silently dropped, out-of-range
-   values reach the ORM. Validate before `invoke`, return `-32602`.
-6. **MCP scope semantics: OR vs AND.** `has_any` passes on one required scope;
-   the in-process runtime requires all. Reconcile (a tool with two scopes should
-   mean both) — a behaviour change, needs a sweep of multi-scope tools.
-7. **Smaller GraphQL items.** `order_by` passthrough → whitelist (FieldError DoS);
-   `semanticSearch` unauthenticated LLM-spend amplifier → auth + rate limit;
-   uncapped list resolvers (cms/agent_core/environments/localization/observability)
-   → `first`/`limit` caps; disabled-plugin GraphQL fields stay live (schema cached
-   at boot, not invalidated on toggle); dead `TAG_MAP` CF-purge rows.
-8. **MCP discovery unmetered.** `initialize`/`tools/list`/`resources/list` run a
-   DB query with no rate limit and no auth — free admin-tool enumeration + a cheap
-   DB-amplification vector. Apply the IP bucket to all methods.
-9. **`docs/MCP_SERVER.md` remaining drift** beyond the corrections shipped:
-   re-audit the per-tool "Approval? no" table against the enforced gate.
+## Shipped in v0.57.0 (MCP + GraphQL robustness batch)
+
+4. **Product-list N+1 — FIXED (the safe subset).** `ProductType.collections`,
+   `.price`, `.priceStartsFrom` did `.filter()`/`.count()` on relations already
+   in `_PRODUCT_PREFETCH`, discarding the prefetch cache and re-querying per
+   product. Now Python-filter over `.all()` — identical semantics, no re-query,
+   no pessimization. Guarded by `catalog/tests/test_graphql_n_plus_one.py`
+   (query count stays flat as N grows). `reviews` (not prefetched) + its
+   `customer.full_name` left as-is: an unconditional reviews prefetch would
+   pessimize the common product-list path that doesn't request reviews — better
+   solved by strawberry-django field-based optimization (deferred).
+5. **MCP tool-argument validation — FIXED.** `_validate_tool_args` (dependency
+   -free JSON-Schema subset: required/type/enum/min-max/length) runs before
+   `invoke`, returns `-32602`. Tool.invoke drops unknown args silently, so an
+   out-of-range/wrong-typed value used to reach the ORM as a default-valued
+   success. Unknown-arg rejection deliberately omitted (schemas are often
+   under-specified). Guarded by `agent_mcp/tests/test_arg_validation.py`.
+8. **MCP discovery metered — FIXED.** `initialize`/`tools/list`/`resources/list`/
+   `ping` now go through `_enforce_discovery_rate_limit` (240/min per token-or-IP
+   bucket) in `_dispatch` — was free admin-tool enumeration + DB-amplification.
+
+## Still deferred
+
+2. **Response-cache vary-tuple + event coverage (its own release — risk).** The
+   key hashes query+vars only — blind to market/currency/language/channel (first
+   EUR/`/fr/` visitor poisons the entry for 5 min) — and invalidation binds only
+   PRODUCT_UPDATED/CATEGORY_UPDATED (price/stock/seo/cms/collection/delete leave
+   stale payloads). Also swap `GraphQLCacheMiddleware` after the rate limiter (a
+   HIT bypasses metering) and replace the `'cart' in query` leak-guard with an
+   explicit cacheable-root-field allowlist. Held back deliberately: getting the
+   key or invalidation wrong serves stale/wrong data — needs dedicated cache-vary
+   tests, not a batch.
+3. **Eight divergent GraphQL auth patterns → one seam (design-heavy).** raise /
+   silent-`[]` / payload-error / inline is_staff / queryset-scoping / none.
+   `core/authz.py` (the capability seam) has zero GraphQL callers, so dashboard
+   capability revocation doesn't touch this surface. Unify onto capabilities so
+   GraphQL and the dashboard revoke together — touches every plugin's GraphQL
+   extension; a dedicated refactor.
+6. **MCP scope semantics: OR vs AND (behaviour change).** `has_any` passes on one
+   required scope; the in-process runtime requires all. Reconciling (two scopes =
+   both) needs a sweep of every multi-scope tool to confirm intent first.
+7. **`semanticSearch` cost guard.** Unauthenticated embedding call per query.
+   Requiring auth would break public storefront search; the right fix is a
+   per-IP cost/rate guard for that one expensive field — a small design decision.
+   (`order_by`, list caps, journal cap already shipped in v0.56.0.)
+9. **`docs/MCP_SERVER.md` per-tool "Approval? no" table** — re-audit against the
+   enforced gate (the endpoint/health/tool-name drift is already corrected).
+   Dead `TAG_MAP` CF-purge rows: cosmetic (unmatched rows never fire); pruning
+   the wrong one breaks edge-purging, so left until the live schema field names
+   are introspected.

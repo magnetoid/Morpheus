@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.57.0 — 2026-08-21
+
+**MCP + GraphQL robustness (arg validation, discovery metering, product-list N+1)**
+
+- MCP tool-argument validation: a dependency-free JSON-Schema-subset check (required/type/enum/min-max/length) now runs before Tool.invoke and returns -32602. Invoke silently drops args the handler doesn't name, so an out-of-range or wrong-typed value used to reach the ORM as a default-valued 'success'.
+- MCP discovery metering: initialize/tools/list/resources/list/ping now go through a per-token-or-IP rate limit (240/min) — they previously ran a DB query on every call with no cap (free admin-tool enumeration + DB-amplification).
+- Product-list N+1: ProductType.collections/price/priceStartsFrom filtered already-prefetched relations with .filter()/.count(), discarding the prefetch cache and re-querying per product. Now Python-filter over .all() (identical semantics). Guarded by an assertNumQueries-style flat-count test.
+
 ## v0.56.0 — 2026-08-21
 
 **Cart-mutation IDOR fix + GraphQL query hardening**

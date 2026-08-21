@@ -281,6 +281,93 @@ def _enforce_rate_limit(tool_name: str) -> None:
         )
 
 
+_JSON_TYPES = {
+    'string': str,
+    'integer': int,
+    'number': (int, float),
+    'boolean': bool,
+    'array': list,
+    'object': dict,
+}
+
+
+def _validate_one_arg(name: str, val, spec: dict) -> str:  # noqa: PLR0911
+    """Validate a single argument against its property spec. '' when valid."""
+    t = spec.get('type')
+    py = _JSON_TYPES.get(t)
+    if py is not None:
+        # bool is a subclass of int — a boolean is not a valid number.
+        if t in ('integer', 'number') and isinstance(val, bool):
+            return f'argument {name!r} must be {t}'
+        if not isinstance(val, py):
+            return f'argument {name!r} must be {t}'
+    if 'enum' in spec and val not in spec['enum']:
+        return f'argument {name!r} must be one of {spec["enum"]}'
+    if isinstance(val, (int, float)) and not isinstance(val, bool):
+        if 'minimum' in spec and val < spec['minimum']:
+            return f'argument {name!r} must be >= {spec["minimum"]}'
+        if 'maximum' in spec and val > spec['maximum']:
+            return f'argument {name!r} must be <= {spec["maximum"]}'
+    if isinstance(val, str):
+        if 'minLength' in spec and len(val) < spec['minLength']:
+            return f'argument {name!r} is too short'
+        if 'maxLength' in spec and len(val) > spec['maxLength']:
+            return f'argument {name!r} is too long'
+    return ''
+
+
+def _validate_tool_args(tool, args: dict) -> str:
+    """Validate `args` against `tool.schema` (a JSON-Schema subset). Returns an
+    error string, or '' when valid. Dependency-free (no jsonschema): required,
+    type, enum, minimum/maximum, minLength/maxLength — enough to stop a bad
+    value reaching the ORM. Tool.invoke silently DROPS args the handler doesn't
+    name, so without this a typo'd/out-of-range arg reads as a default-valued
+    success. Unknown-arg rejection is deliberately NOT done (many schemas are
+    under-specified; rejecting would break a legitimately-typed call)."""
+    schema = getattr(tool, 'schema', None)
+    if not isinstance(schema, dict):
+        return ''
+    for name in schema.get('required') or []:
+        if name not in args:
+            return f'missing required argument: {name!r}'
+    for name, spec in (schema.get('properties') or {}).items():
+        if name in args and isinstance(spec, dict):
+            err = _validate_one_arg(name, args[name], spec)
+            if err:
+                return err
+    return ''
+
+
+_DISCOVERY_METHODS = frozenset({'initialize', 'tools/list', 'resources/list', 'ping'})
+_MCP_DISCOVERY_RATE_PER_MINUTE = 240
+
+
+def _enforce_discovery_rate_limit(method: str) -> None:
+    """Rate-limit the UNAUTHENTICATED discovery methods (initialize / tools/list
+    / resources/list / ping). These ran a DB query on every call with no cap —
+    free enumeration of the admin tool inventory and a cheap DB-amplification
+    vector. Keyed on the same rl_client bucket (token hash, else client IP);
+    fail-open on a cache outage like the tool-call limiter."""
+    try:
+        from django.core.cache import cache
+
+        client = getattr(_request_state, 'rl_client', '') or 'anon'
+        key = f'mcp:disc:{client}:{int(time.time() // 60)}'
+        try:
+            count = cache.incr(key)
+        except ValueError:
+            cache.set(key, 1, timeout=120)
+            count = 1
+    except Exception as e:  # noqa: BLE001 — availability over strictness
+        logger.debug('mcp: discovery rate limit fail-open: %s', e)
+        return
+    if count > _MCP_DISCOVERY_RATE_PER_MINUTE:
+        raise _RpcError(
+            _E_RATE,
+            f'rate limited: {_MCP_DISCOVERY_RATE_PER_MINUTE} discovery calls/minute; retry shortly',
+        )
+
+
 def _handle_tools_call(params: dict, authed: bool) -> dict:
     if not authed:
         raise _RpcError(_E_AUTH, 'authentication required for tools/call')
@@ -354,6 +441,13 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
             'this token under Dashboard → Settings → Developer → MCP tokens '
             '(approved tools) to enable it.',
         )
+
+    # Argument validation against the tool's declared schema. Tool.invoke drops
+    # unknown/typo'd args silently, so an out-of-range or wrong-typed value would
+    # otherwise reach the handler (and the ORM) as a default-valued "success".
+    arg_error = _validate_tool_args(tool, args)
+    if arg_error:
+        raise _RpcError(_E_PARAMS, arg_error)
 
     # OpenTelemetry span wrap — agent traffic now shows in the same
     # APM dashboards as human requests, attributed by tool name +
@@ -623,6 +717,10 @@ def _dispatch(message: dict, authed: bool) -> dict:
     if handler is None:
         return _error_envelope(msg_id, _E_METHOD, f'method not found: {method}')
     try:
+        # tools/call and resources/read carry their own per-execution limiter;
+        # meter the otherwise-unmetered discovery methods here.
+        if method in _DISCOVERY_METHODS:
+            _enforce_discovery_rate_limit(method)
         result = handler(params, authed)
     except _RpcError as e:
         return _error_envelope(msg_id, e.code, e.message, e.data)

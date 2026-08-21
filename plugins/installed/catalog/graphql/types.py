@@ -270,8 +270,12 @@ class ProductType:
         description="Curated Collections this product is featured in (flat merchandising sets — the 'tables' it's laid out on). Distinct from category."
     )
     def collections(self) -> list[CollectionType]:
-        # Real Collection M2M (active only). Model instances → CollectionType.
-        return list(self.collections.filter(is_active=True)) if hasattr(self, 'collections') else []
+        # Real Collection M2M (active only). Filter in PYTHON over the prefetched
+        # `.all()` — `.filter()` on a prefetched relation ignores the prefetch
+        # cache and re-queries per product (N+1 across a product list).
+        if not hasattr(self, 'collections'):
+            return []
+        return [c for c in self.collections.all() if c.is_active]
 
     is_on_sale: bool = strawberry.field(description='Whether the product is currently on sale')
     discount_percentage: int = strawberry.field(description='Discount percentage if on sale')
@@ -368,7 +372,9 @@ class ProductType:
     def price(self) -> MoneyType:
         if getattr(self, 'product_type', '') == 'variable':
             cheapest = None
-            for v in self.variants.filter(is_active=True):
+            # Python-filter the prefetched variants — `.filter()` here re-queries
+            # per product (N+1 down a product list); `.all()` uses the cache.
+            for v in (x for x in self.variants.all() if x.is_active):
                 ep = v.effective_price
                 if ep is None:
                     continue
@@ -389,7 +395,8 @@ class ProductType:
     def price_starts_from(self) -> bool:
         if getattr(self, 'product_type', '') != 'variable':
             return False
-        return self.variants.filter(is_active=True).count() > 1
+        # Count in Python over the prefetched variants (see .price above).
+        return sum(1 for v in self.variants.all() if v.is_active) > 1
 
     @strawberry.field(description='Compare at price (original price before discount)')
     def compare_at_price(self) -> MoneyType | None:
