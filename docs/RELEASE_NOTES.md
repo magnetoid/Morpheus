@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.54.1 — 2026-08-21
+
+**SEO title patterns now actually apply on live product pages**
+
+- Fix: the SeoTemplate token reader read model fields unguarded; on the PDP (loaded with .only()) a deferred djmoney column raises KeyError through getattr's default, and the fail-soft wrapper turned that into 'pattern silently absent' on every live product page — the v0.46/v0.49 deferred-field landmine, third bite.
+- Token reads now skip deferred columns outright and guard each read; a broken column costs one empty token, never the render. Regression test loads the product with .only() the way the live view does.
+- The apply_templates fail-soft now logs (debug) instead of swallowing silently.
+
 ## v0.54.0 — 2026-08-20
 
 **SEO templates: one pattern titles every page of a kind**

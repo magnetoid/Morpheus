@@ -64,6 +64,18 @@ class GrammarTests(TestCase):
         pdp = {'name': 'Peter Pan', 'category': {'name': 'Fiction', 'slug': 'fiction'}}
         self.assertEqual(render_template('{name} — {category}', pdp), 'Peter Pan — Fiction')
 
+    def test_deferred_money_fields_do_not_kill_the_render(self):
+        """The PDP loads products with .only(), and a deferred djmoney column
+        raises KeyError straight THROUGH getattr's default (the v0.46/v0.49
+        landmine, third bite — unguarded it cost the whole pattern on every
+        live PDP while every ORM-loaded test stayed green). One unreadable
+        column must cost one empty token, never the render."""
+        deferred = Product.objects.only('id', 'name', 'slug').get(pk=self.product.pk)
+        self.assertEqual(
+            render_template('{name} — buy online', deferred, 'product'),
+            'The Last Archive — buy online',
+        )
+
 
 class ResolutionTests(TestCase):
     def setUp(self):

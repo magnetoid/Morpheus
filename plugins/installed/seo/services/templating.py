@@ -125,13 +125,32 @@ def _token_values(obj, kind: str) -> dict:
     elif obj is not None:
         from plugins.installed.seo.services.tokens import _FIELD_TOKENS, _metafields
 
+        # A deferred djmoney column raises KeyError straight THROUGH getattr's
+        # default (the v0.46/v0.49 landmine, third bite): the PDP loads
+        # products with .only(), so `price` here killed the whole render on
+        # every live product page while ORM-loaded tests stayed green. Skip
+        # deferred names outright (no refresh query either) and guard each
+        # read — a broken column is one empty token, never the render.
+        try:
+            deferred = set(obj.get_deferred_fields())
+        except Exception:  # noqa: BLE001 — non-model duck objects have no deferral
+            deferred = set()
         for key, _label in _FIELD_TOKENS:
-            raw = getattr(obj, key, '')
-            if key == 'category':
-                raw = getattr(getattr(obj, 'category', None), 'name', '')
+            if key in deferred or f'{key}_id' in deferred:
+                values[key] = ''
+                continue
+            try:
+                raw = getattr(obj, key, '')
+                if key == 'category':
+                    raw = getattr(getattr(obj, 'category', None), 'name', '')
+            except Exception:  # noqa: BLE001 — unreadable field = empty token
+                raw = ''
             values[key] = str(raw or '')
-        for mk, mv in (_metafields(obj) or {}).items():
-            values.setdefault(mk.split('.')[-1], str(mv or ''))
+        try:
+            for mk, mv in (_metafields(obj) or {}).items():
+                values.setdefault(mk.split('.')[-1], str(mv or ''))
+        except Exception:  # noqa: BLE001 — metafield trouble must not break a render
+            logger.debug('seo: metafield tokens failed', exc_info=True)
     try:
         from morpheus.core import MorpheusEvents, hook_registry
 
@@ -248,4 +267,8 @@ def apply_templates(kind: str, obj, title: str, description: str) -> tuple[str, 
                 break  # first matching rule decides; priority ordered them
         return out['title'], out['description']
     except Exception:  # noqa: BLE001 — templating must never break meta resolution
+        # Fail-soft turns "this raised" into "this feature is silently
+        # absent" — leave at least a trace (this hid the deferred-price
+        # crash for a whole release cycle... of about an hour).
+        logger.debug('seo: apply_templates failed; pattern skipped', exc_info=True)
         return title, description

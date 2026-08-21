@@ -468,8 +468,12 @@ data, behind a 200 and nothing above debug in the logs. Read money fields
 through `_safe_field` (checks `get_deferred_fields()` first, then catches), and
 remember the general shape: a fail-soft wrapper turns "this raised" into "this
 feature is silently absent", so the guard has to be inside, not outside. This
-has now bitten `price` (v0.46) and `compare_at_price` (v0.49). Guarded by
-`seo/tests/test_product_markup.py::DeferredFieldTests`.
+has now bitten `price` (v0.46), `compare_at_price` (v0.49), and the
+SeoTemplate token reader (v0.54.1 — the pattern silently skipped every live
+PDP while every ORM-loaded test stayed green, because only the real view uses
+`.only()`; test the deferred load). Guarded by
+`seo/tests/test_product_markup.py::DeferredFieldTests` +
+`test_templates_engine.py::GrammarTests::test_deferred_money_fields…`.
 
 **Landmine — a canonical that echoes a query parameter the view never read
 mints one indexable page per value, forever.** Two independent causes produced
