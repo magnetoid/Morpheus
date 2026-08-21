@@ -95,6 +95,61 @@ AVAILABLE_SCOPES: dict[str, tuple[str, str]] = {
         'Content · write',
         'AI content generation (product descriptions, etc.).',
     ),
+    # CMS (pages, blocks, form submissions)
+    'cms.read': ('CMS · read', 'View pages, blocks, and form submissions.'),
+    'cms.write': ('CMS · write', 'Create, update, delete pages and content blocks.'),
+    # SEO
+    'seo.read': ('SEO · read', 'Read meta, audits, 404 logs, redirects.'),
+    'seo.write': (
+        'SEO · write',
+        'Set meta, apply templates + internal/external links, create redirects, regenerate sitemaps.',
+    ),
+    # CRM (leads, deals, support, tasks)
+    'crm.read': ('CRM · read', 'View leads, deals, support threads, tasks, customer timelines.'),
+    'crm.write': (
+        'CRM · write',
+        'Create leads, advance deals, log interactions, reply to support.',
+    ),
+    # Marketing surfaces
+    'promotions.read': ('Promotions · read', 'List promotions and discount rules.'),
+    'promotions.write': ('Promotions · write', 'Create + edit promotions and discounts.'),
+    'gift_cards.read': ('Gift cards · read', 'Look up gift-card balances.'),
+    'gift_cards.write': (
+        'Gift cards · write',
+        'Issue + adjust gift cards. Destructive — mints tender.',
+    ),
+    # Merchandising
+    'wishlist.read': ('Wishlist · read', 'View wishlist summaries.'),
+    'wishlist.write': ('Wishlist · write', 'Add items to wishlists.'),
+    # Tax + shipping configuration
+    'tax.read': ('Tax · read', 'View tax rates.'),
+    'tax.write': ('Tax · write', 'Set tax rates. Affects money charged.'),
+    'shipping.read': ('Shipping · read', 'View shipping zones + rates.'),
+    'shipping.write': (
+        'Shipping · write',
+        'Add + edit shipping zones and rates. Affects money charged.',
+    ),
+    # B2B
+    'b2b.read': ('B2B · read', 'View B2B quotes + accounts.'),
+    'b2b.write': ('B2B · write', 'Set net terms, manage B2B quotes.'),
+    # Affiliates
+    'affiliates.read': ('Affiliates · read', 'List affiliates + pending payouts.'),
+    'affiliates.write': (
+        'Affiliates · write',
+        'Create affiliates, mark payouts paid. Destructive — affects money owed.',
+    ),
+    # System — the broad cross-domain scopes. `system.write` is powerful
+    # (it covers plugins.enable/disable and metafields writes); grant it only
+    # to fully-trusted automation.
+    'system.read': (
+        'System · read (broad)',
+        'Cross-domain reads: customer lookups, analytics, metafields, page lists, misc admin reads.',
+    ),
+    'system.write': (
+        'System · write (broad, sensitive)',
+        'Cross-domain writes including enabling/disabling plugins and setting metafields. '
+        'High blast radius — grant only to fully-trusted automation.',
+    ),
     # Agentic Commerce Protocol (ACP) — consumed by the agentic_checkout plugin.
     # NOTE: unlike every other scope, acp.checkout is NOT granted by the
     # wildcard. The agentic_checkout surface is payment-adjacent, so its auth
@@ -145,16 +200,21 @@ def token_scopes(entry: Any, surface: str) -> set[str]:
     access.
     """
     if not isinstance(entry, dict):
-        # Legacy raw-string token — full access.
+        # Legacy raw-string token — full access (documented back-compat).
         return {WILDCARD}
     key = f'{surface}_scopes'
     if key not in entry:
+        # A dict entry that has never had scopes set on this surface: an
+        # unconfigured token inherits wildcard for back-compat (the merchant
+        # sets scopes explicitly in the dashboard). A configured-but-MALFORMED
+        # value, by contrast, denies — see below.
         return {WILDCARD}
     val = entry.get(key)
-    if val is None:
-        return {WILDCARD}
-    if not isinstance(val, (list, tuple, set)):
-        return {WILDCARD}
+    if val is None or not isinstance(val, (list, tuple, set)):
+        # The key is PRESENT but null/garbage (hand-edited config, a bare
+        # string, an int). Fail CLOSED — a malformed scope list must never
+        # read as "full access". An empty list also means "no scopes".
+        return set()
     return {str(s).strip() for s in val if s}
 
 

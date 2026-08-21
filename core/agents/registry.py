@@ -46,24 +46,39 @@ class AgentRegistry:
         if plugin:
             self._agent_owners[agent.name] = plugin
 
-    def register_tool(self, tool: Tool, *, plugin: str = '') -> None:
+    def register_tool(self, tool: Tool, *, plugin: str = '', replace: bool = False) -> None:
         if not tool.name:
             logger.warning('agent_registry: refusing nameless tool from plugin=%s', plugin)
             return
         if tool.name in self._tools:
             prior_owner = self._tool_owners.get(tool.name, '')
-            if prior_owner and plugin and prior_owner != plugin:
-                # A different plugin already owns this name — a true collision.
-                # Last-writer-wins by load order makes the served tool
-                # non-deterministic; one-concept-one-owner is violated.
-                logger.warning(
-                    'agent_registry: tool name COLLISION %r — %s overwriting %s '
-                    '(winner depends on plugin load order; rename one)',
+            if prior_owner and plugin and prior_owner != plugin and not replace:
+                # A different plugin already owns this name. FIRST OWNER WINS:
+                # last-writer-wins made the served tool depend on plugin load
+                # order, and once silently swapped an approval-gated tool for
+                # an ungated twin (inventory.adjust_stock, fixed v0.55.0).
+                # Refuse the overwrite; under DEBUG/tests refuse LOUDLY so a
+                # new duplicate can never ship. A test that deliberately swaps
+                # a tool passes replace=True (and restores the prior value).
+                logger.error(
+                    'agent_registry: tool name COLLISION %r — %s refused; first owner %s keeps it '
+                    '(one concept = one owner; rename the newcomer)',
                     tool.name,
                     plugin,
                     prior_owner,
                 )
                 self._collisions.append((tool.name, prior_owner, plugin))
+                from django.conf import settings
+
+                if settings.DEBUG or getattr(settings, '_RUNNING_TESTS', False):
+                    from django.core.exceptions import ImproperlyConfigured
+
+                    raise ImproperlyConfigured(
+                        f'agent tool name collision: {tool.name!r} is owned by '
+                        f'{prior_owner!r}; {plugin!r} must rename its tool '
+                        f'(one concept = one owner)'
+                    )
+                return
             else:
                 # Same plugin re-registering (e.g. reactivation) — benign.
                 logger.debug(

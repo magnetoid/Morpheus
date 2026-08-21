@@ -11,16 +11,19 @@ token issued from the dashboard.
 
 ```
 # MCP cluster (JSON-RPC 2.0 per /mcp/v1/ legacy + per-audience servers)
-POST /mcp/v1/                    Legacy curated reads (no auth required)
+POST /mcp/v1/                    Legacy curated reads. initialize/tools/list are
+#                                open; tools/call requires a Bearer token.
 POST /mcp/storefront/v1/         Public catalog reads
 POST /mcp/cart/v1/               Storefront reads + cart.create/add_item/get
 POST /mcp/checkout/v1/           + checkout.get_session/set_buyer (quote)
 #   ^ cart/checkout tools need agentic_checkout enabled; tools/call needs a
 #     Bearer token. Completion stays on the /acp/ REST money path.
-POST /mcp/admin/v1/              Linda's full catalog — writes too (Bearer auth)
+POST /mcp/admin/v1/              Linda's full catalog — writes too (Bearer auth
+#                                required at the transport). requires_approval
+#                                writes need the token's approved_tools grant.
 
-GET  /mcp/admin/v1/health/       Liveness probe
-GET  /mcp/admin/v1/manifest.json ChatGPT-style plugin manifest
+GET  /mcp/v1/health/             Liveness probe (mounted on /mcp/v1/, not /admin/)
+GET  /mcp/v1/manifest.json       ChatGPT-style plugin manifest
 
 # GraphQL
 POST /graphql/                   Typed schema, Bearer or session auth
@@ -65,6 +68,12 @@ _save_entries(entries)
 print(new['token'])
 "
 ```
+
+> A token created without an `mcp_scopes`/`graphql_scopes` key inherits the
+> **wildcard** (full access) for back-compat. Scope it down in the dashboard
+> (Settings → Developer tools → API tokens → permissions) or add explicit
+> `mcp_scopes`/`graphql_scopes` lists to the entry above. A present-but-empty
+> list (`[]`) grants nothing.
 
 ### How Bearer auth flows server-side
 
@@ -138,8 +147,8 @@ using the returned `id`").
 
 | Tool / Mutation | Purpose |
 |---|---|
-| `inventory.set_stock` / `setStock` | Absolute quantity per variant |
-| `inventory.adjust_stock` / `adjustStock` | Delta (refuses negative result) |
+| `inventory.set_stock` / `setStock` | Absolute quantity per variant (approval-gated) |
+| `inventory.adjust_stock` / `adjustStock` | Delta by `variant_sku`/`warehouse_code`, refuses negative result (approval-gated) |
 
 ### Orders
 
@@ -171,7 +180,8 @@ GraphQL; the merchant grants `i18n.read`/`i18n.write` when minting the token.
 
 ## Read surface
 
-Read tools available on the curated `/mcp/v1/` (no auth):
+Read tools available on the curated `/mcp/v1/` (discovery is open; `tools/call`
+requires a Bearer token):
 
 | Tool | Purpose |
 |---|---|

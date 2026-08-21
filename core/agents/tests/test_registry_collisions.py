@@ -20,12 +20,24 @@ def _tool(name: str) -> Tool:
 
 
 class RegisterToolCollisionTests(SimpleTestCase):
-    def test_cross_plugin_collision_is_recorded(self):
+    def test_cross_plugin_collision_is_refused_and_recorded(self):
+        from django.core.exceptions import ImproperlyConfigured
+
         r = AgentRegistry()
         r.register_tool(_tool('x.do'), plugin='alpha')
-        r.register_tool(_tool('x.do'), plugin='beta')
+        # FIRST OWNER WINS (v0.55.0): the second plugin is refused, and under
+        # tests the refusal RAISES so a duplicate can never ship silently
+        # (last-writer-wins once served an ungated inventory.adjust_stock).
+        with self.assertRaises(ImproperlyConfigured):
+            r.register_tool(_tool('x.do'), plugin='beta')
         self.assertEqual(r.collisions(), [('x.do', 'alpha', 'beta')])
-        # last-writer still wins (behaviour unchanged) — we only made it visible.
+        self.assertEqual(r.get_tool('x.do').plugin, 'alpha')
+
+    def test_deliberate_replace_is_allowed(self):
+        # A test that swaps a tool passes replace=True (and restores after).
+        r = AgentRegistry()
+        r.register_tool(_tool('x.do'), plugin='alpha')
+        r.register_tool(_tool('x.do'), plugin='beta', replace=True)
         self.assertEqual(r.get_tool('x.do').plugin, 'beta')
 
     def test_same_plugin_reregister_is_not_a_collision(self):
@@ -43,15 +55,17 @@ class RegisterToolCollisionTests(SimpleTestCase):
 
 
 class LiveRegistryCollisionBaselineTests(TestCase):
-    """CI guard against NEW collisions in the actually-loaded plugin set.
+    """CI guard: ZERO collisions in the actually-loaded plugin set.
 
-    Known-and-tolerated duplicate families (agent_core's parallel analytics/
-    inventory tools) are baselined; a NEW clash — or cart.add_item reappearing,
-    which the cart.add_by_slug rename resolved — fails. Shrinks as the duplicate
-    families are consolidated (docs/plans/kernel-hardening-eval + MCP follow-up).
+    The old baseline tolerated three duplicate families (agent_core's parallel
+    analytics/inventory tools) — one of which silently served an ungated
+    `inventory.adjust_stock` in place of the approval-gated original. All
+    consolidated in v0.55.0; the baseline is empty and must stay empty
+    (register_tool now refuses cross-plugin overwrites and raises under
+    DEBUG/tests, so a new duplicate fails at registration, not here).
     """
 
-    _KNOWN = {'analytics.summary', 'analytics.top_products', 'inventory.adjust_stock'}
+    _KNOWN: set[str] = set()
 
     def test_no_new_tool_name_collisions(self):
         names = {c[0] for c in agent_registry.collisions()}

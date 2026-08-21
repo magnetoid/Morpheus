@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import strawberry
 
-from api.graphql_permissions import has_scope, require_authenticated
+from api.graphql_permissions import current_customer, has_scope, require_authenticated
 
 
 @strawberry.type
@@ -40,12 +40,19 @@ class MarketplaceQueryExtension:
         from plugins.installed.marketplace.models import VendorOrder
 
         require_authenticated(info)
-        if not (has_scope(info, 'vendor:self') or has_scope(info, 'admin:marketplace')):
+        is_admin = has_scope(info, 'admin:marketplace')
+        if not (has_scope(info, 'vendor:self') or is_admin):
             return []
         first = max(1, min(int(first), 100))
-        qs = VendorOrder.objects.select_related('parent_order', 'vendor').order_by('-created_at')[
-            :first
-        ]
+        qs = VendorOrder.objects.select_related('parent_order', 'vendor').order_by('-created_at')
+        if not is_admin:
+            # `myVendorOrders` — the caller's OWN vendors only. Without this a
+            # vendor:self token read every vendor's gross/commission/net (IDOR).
+            me = current_customer(info)
+            if me is None:  # never filter on owner=None (matches NULL-owner rows)
+                return []
+            qs = qs.filter(vendor__owner=me)
+        qs = qs[:first]
         return [
             VendorOrderType(
                 id=str(v.id),
@@ -65,10 +72,18 @@ class MarketplaceQueryExtension:
         from plugins.installed.marketplace.models import VendorPayout
 
         require_authenticated(info)
-        if not (has_scope(info, 'vendor:self') or has_scope(info, 'admin:marketplace')):
+        is_admin = has_scope(info, 'admin:marketplace')
+        if not (has_scope(info, 'vendor:self') or is_admin):
             return []
         first = max(1, min(int(first), 100))
-        qs = VendorPayout.objects.select_related('vendor').order_by('-requested_at')[:first]
+        qs = VendorPayout.objects.select_related('vendor').order_by('-requested_at')
+        if not is_admin:
+            # The caller's OWN payout history only (IDOR — see myVendorOrders).
+            me = current_customer(info)
+            if me is None:
+                return []
+            qs = qs.filter(vendor__owner=me)
+        qs = qs[:first]
         return [
             VendorPayoutType(
                 id=str(p.id),

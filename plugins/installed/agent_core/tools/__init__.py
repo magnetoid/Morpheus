@@ -15,7 +15,6 @@ import logging
 
 from plugins.installed.agent_core.tools.analytics import (
     revenue_summary_tool,
-    top_products_tool,
 )
 from plugins.installed.agent_core.tools.cart import (
     add_to_cart_tool,
@@ -48,7 +47,6 @@ from plugins.installed.agent_core.tools.content import (
     fill_missing_content_tool,
 )
 from plugins.installed.agent_core.tools.inventory import (
-    adjust_stock_tool,
     set_stock_tool,
 )
 from plugins.installed.agent_core.tools.orders import (
@@ -116,7 +114,6 @@ def all_builtin_tools() -> list:
         update_category_tool,
         archive_category_tool,
         set_stock_tool,
-        adjust_stock_tool,
         add_to_cart_tool,
         get_cart_summary_tool,
         list_recent_orders_tool,
@@ -125,7 +122,6 @@ def all_builtin_tools() -> list:
         mark_order_shipped_tool,
         mark_order_refunded_tool,
         revenue_summary_tool,
-        top_products_tool,
         draft_product_description_tool,
         fill_missing_content_tool,
         *_diagnostics_tools(),

@@ -23,7 +23,7 @@ from core.utils.cache import SmartCacheInvalidator
 
 class CacheKeyContractTests(SimpleTestCase):
     def _graphql_key(self) -> str:
-        """Build a key exactly as api/cache.py does."""
+        """Build a key exactly as api/middleware.py (the REAL writer) does."""
         import hashlib
 
         hash_key = hashlib.sha256(b'{ products { id } }|{}').hexdigest()
@@ -39,16 +39,22 @@ class CacheKeyContractTests(SimpleTestCase):
         )
 
     def test_the_key_format_has_not_moved(self):
-        """If api/cache.py changes its prefix, this fails and points here."""
+        """Guard the REAL writer. The cache is written by the GraphQL cache
+        MIDDLEWARE (api/middleware.py); the old api/cache.py SchemaExtension
+        was never wired into api/schema.py's extensions list — dead code that
+        this test used to read, so a middleware key change would have gone
+        uncaught while every product-edit purge matched zero keys."""
         import pathlib
 
         from django.conf import settings
 
-        src = (pathlib.Path(settings.BASE_DIR) / 'api' / 'cache.py').read_text(encoding='utf-8')
+        src = (pathlib.Path(settings.BASE_DIR) / 'api' / 'middleware.py').read_text(
+            encoding='utf-8'
+        )
         self.assertIn(
             "f'graphql:query:{hash_key}'",
             src,
-            'api/cache.py changed its key format — update '
+            'api/middleware.py changed its key format — update '
             'SmartCacheInvalidator._QUERY_CACHE_PATTERNS to match.',
         )
 

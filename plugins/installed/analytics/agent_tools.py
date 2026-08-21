@@ -1,9 +1,11 @@
-"""Analytics agent tools — replaces the older stubs in agent_core/tools/analytics.py.
+"""Analytics agent tools — the ROLLUP view (sessions, funnels, sources).
 
-These are richer, multi-dimensional. The old `analytics.revenue_summary` and
-`analytics.top_products` agent tools query the live `Order` table — keep them.
-The new ones below query the analytics rollups so they're cheap and cover
-funnels / sources / agent activity that orders can't see.
+The Order-table view lives in the orders plugin (`analytics.summary` /
+`analytics.top_products` aggregate Order/OrderItem there — orders owns those
+names). The tools below query the analytics rollups, so they're cheap and
+cover traffic/funnels/agent activity that orders can't see; their names say
+so (`traffic_summary`, `top_viewed_products`) after v0.55.0 retired the
+load-order-dependent name collisions.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from morpheus.core import ToolResult, tool
 
 
 @tool(
-    name='analytics.summary',
+    name='analytics.traffic_summary',
     description='Headline numbers for the last N days (sessions, pageviews, orders, revenue, conversion funnel).',
     scopes=['analytics.read'],
     schema={
@@ -129,7 +131,7 @@ def analytics_agent_costs_tool(*, days: int = 30) -> ToolResult:
 
 
 @tool(
-    name='analytics.top_products',
+    name='analytics.top_viewed_products',
     description='Top viewed products from the analytics rollups (last N days).',
     scopes=['analytics.read'],
     schema={

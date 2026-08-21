@@ -139,7 +139,9 @@ class RoutineStagedRunTests(TestCase):
         name = products_update_status_tool.name
         prior_tool = agent_registry.get_tool(name)
         prior_owner = agent_registry._tool_owners.get(name)
-        agent_registry.register_tool(products_update_status_tool, plugin='__hygiene_test')
+        agent_registry.register_tool(
+            products_update_status_tool, plugin='__hygiene_test', replace=True
+        )
         try:
             with patch(
                 'plugins.installed.agent_core.services.get_llm_provider', return_value=provider
@@ -147,7 +149,7 @@ class RoutineStagedRunTests(TestCase):
                 out = scheduler.fire(bg)
         finally:
             if prior_tool is not None:
-                agent_registry.register_tool(prior_tool, plugin=prior_owner)
+                agent_registry.register_tool(prior_tool, plugin=prior_owner, replace=True)
             else:
                 agent_registry.drop_plugin('__hygiene_test')
 

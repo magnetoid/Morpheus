@@ -163,12 +163,12 @@ class AgentToolTests(TestCase):
     def test_tools_registered(self):
         names = {t.name for t in agent_registry.platform_tools()}
         for required in (
-            'analytics.summary',
+            'analytics.traffic_summary',
             'analytics.funnel',
             'analytics.realtime',
             'analytics.search_trends',
             'analytics.agent_costs',
-            'analytics.top_products',
+            'analytics.top_viewed_products',
         ):
             self.assertIn(required, names)
 

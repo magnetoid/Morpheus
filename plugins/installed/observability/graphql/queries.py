@@ -49,7 +49,9 @@ class ObservabilityQueryExtension:
         if channel_id is not None:
             qs = qs.filter(channel_id=str(channel_id))
         else:
-            qs = qs.filter(channel__isnull=True) | qs
+            # `| qs` OR'd back the UNFILTERED queryset, making this a no-op that
+            # leaked every channel's metrics. Global scope = channel-less rows.
+            qs = qs.filter(channel__isnull=True)
 
         return MetricSeries(
             metric=metric,

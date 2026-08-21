@@ -143,13 +143,19 @@ class ProductVariantType:
         description='Price of the variant. Falls back to Product.price when the variant has no override (Shopify-parity behaviour).'
     )
     def price(self) -> MoneyType | None:
+        # Route through the price seam like ProductType.price + the charged leg
+        # (orders/services._resolve_unit_price): a merchant pricing rule must
+        # move the variant picker too, or the shopper is quoted one price on the
+        # PDP headline and another in the variant selector (displayed≠charged).
+        parent = getattr(self, 'product', None)
         own = self.price
         if own:
-            return MoneyType(amount=str(own.amount), currency=str(own.currency))
-        parent = getattr(self, 'product', None)
+            adj = apply_price_filter(own, product=parent)
+            return MoneyType(amount=str(adj.amount), currency=str(adj.currency))
         parent_price = getattr(parent, 'price', None) if parent else None
         if parent_price:
-            return MoneyType(amount=str(parent_price.amount), currency=str(parent_price.currency))
+            adj = apply_price_filter(parent_price, product=parent)
+            return MoneyType(amount=str(adj.amount), currency=str(adj.currency))
         return None
 
     @strawberry.field(
@@ -409,12 +415,15 @@ class ProductType:
 
         primary = self.primary_image
         primary_image_url = primary.image.url if primary and primary.image else ''
+        # Agent feed must quote the SAME price seam as the PDP + checkout, or an
+        # AI buyer is told one price and charged another (displayed≠charged).
+        _priced = apply_price_filter(self.price, product=self) if self.price else None
         return AgentProductMetadata(
             id=str(self.id),
             sku=self.sku or '',
             name=self.name,
-            currency=str(self.price.currency) if self.price else 'USD',
-            price_amount=str(self.price.amount) if self.price else '0.00',
+            currency=str(_priced.currency) if _priced else 'USD',
+            price_amount=str(_priced.amount) if _priced else '0.00',
             in_stock=any(v.is_active for v in self.variants.all()) or self.product_type == 'simple',
             requires_shipping=bool(self.requires_shipping),
             is_digital=self.product_type == 'digital',

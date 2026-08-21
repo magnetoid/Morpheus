@@ -284,6 +284,42 @@ denies). **Never gate a new write tool on an argument alone** — add
 audited, so a blocked injection leaves a trace. Guarded by
 `core/assistant/tests/test_enforcement.py`.
 
+**Landmine — two plugins registering the same agent-tool NAME let load order
+decide which one runs, and the loser might be the one with `requires_approval`.**
+`agent_registry` was last-writer-wins on a name clash (warn + overwrite), so
+`inventory.adjust_stock` resolved to agent_core's UNGATED twin instead of the
+inventory plugin's `requires_approval=True` original — the MCP/Linda approval
+gate silently never fired on stock writes. Tool **names are a STABLE API surface**
+(API_STABILITY) and are single-owner: `register_tool` is now first-owner-wins and
+RAISES under DEBUG/tests on a cross-plugin duplicate (a deliberate test swap passes
+`replace=True`); the collision baseline is empty and must stay empty. When two
+plugins want the same concept, one renames — `analytics.summary`/`top_products`
+(order-derived) stay with **orders**; the analytics plugin's rollup pair is
+`analytics.traffic_summary`/`analytics.top_viewed_products`. Guarded by
+`core/agents/tests/test_registry_collisions.py`. (v0.55.0)
+
+**Landmine — in the MCP scope layer, ABSENCE means wildcard, so every fail-open
+default reads as full access.** `token_scopes()` treats a missing `mcp_scopes`
+key as `{'*'}` (back-compat for unconfigured/legacy tokens). That one decision
+turns three ordinary bugs into privilege escalations: (1) the token dashboard's
+`_load_entries` dropped `mcp_scopes`/`approved_tools` on the normalise-and-resave
+round-trip, so *creating or revoking any token* silently promoted every other
+token to wildcard; (2) a malformed value (a hand-edited bare string, an int) hit
+the same wildcard branch; (3) `apply_bearer_user` stashed scopes *after* fallible
+work, so a half-failed resolution fell through to a wildcard default. Rules:
+preserve the whole entry dict across a save; a present-but-garbage scope value
+fails **closed** (`set()`), only a truly absent key inherits wildcard; stash
+deny-first the moment a token is presented (but leave a *no-token* request
+untouched, so session-staff keep the is_staff fallback). And a scope a tool
+declares but that is **missing from `AVAILABLE_SCOPES`** can't be granted in the
+dashboard, so the token falls back to wildcard — a subset test
+(`test_scopes.py::ScopeVocabularyTests`) now asserts `{tool scopes} ⊆ vocabulary`.
+Mirror rule on the GraphQL side: a Bearer token resolves to a shared
+`is_staff=True` service user, so `has_scope` must authorize a token against its
+OWN stashed scope set and never fall through to the is_staff shortcut (that
+shortcut is for genuine session-staff, who carry no token). (v0.55.0,
+`docs/plans/mcp-graphql-hardening-2026-08.md`.)
+
 **Landmine — a `migrations/` dir without `__init__.py` is invisible to Django,
 and ONLY production notices.** Five plugins (brand_kit, lookbook, media_3d,
 rails, smart_shipping) shipped a `0001_initial.py` in a non-package directory:

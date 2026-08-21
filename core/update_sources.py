@@ -166,7 +166,7 @@ class GitHubReleaseSource(UpdateSource):
                 **({'Authorization': f'Bearer {self.token}'} if self.token else {}),
             },
         )
-        with urllib.request.urlopen(req, timeout=_TIMEOUT, context=_ssl_context()) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=_TIMEOUT, context=_ssl_context()) as resp:  # noqa: S310  # nosec B310 — fixed https host (line 158)
             return json.loads(resp.read().decode('utf-8'))
 
     def latest(self) -> ReleaseInfo | None:
@@ -255,7 +255,7 @@ class SignedManifestSource(UpdateSource):
             req = urllib.request.Request(  # noqa: S310 — https enforced above
                 self.url, headers={'User-Agent': _USER_AGENT, 'Accept': 'application/json'}
             )
-            with urllib.request.urlopen(  # noqa: S310
+            with urllib.request.urlopen(  # noqa: S310  # nosec B310 — https enforced at line 245
                 req, timeout=_TIMEOUT, context=_ssl_context()
             ) as resp:
                 doc = json.loads(resp.read().decode('utf-8'))

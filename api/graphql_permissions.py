@@ -69,6 +69,22 @@ def has_scope(info: strawberry.Info, scope: str) -> bool:
     if caps and (scope in caps.get('scopes', []) or 'admin' in caps.get('scopes', [])):
         return True
 
+    # A Bearer MCP/agent token resolves to a SHARED is_staff=True service user
+    # (agent_mcp.auth._service_user), so the is_staff fallback below would grant
+    # EVERY scope to ANY valid token — a token minted with only catalog.read
+    # would pass admin:seo, read:orders, cms.write, … The token stashes its own
+    # per-surface scope set; when that is present, authorize against it ALONE
+    # and never fall through to is_staff. Absence of the attribute means no
+    # token was applied → a genuine session-authenticated staff user, who keeps
+    # the is_staff fallback (they hold the same power in the dashboard).
+    tok_scopes = getattr(request, '_morph_token_scopes_graphql', None)
+    if tok_scopes is not None:
+        # has_any honours the wildcard (legacy/unconfigured tokens) and denies
+        # a scoped token that lacks this scope.
+        from plugins.installed.agent_mcp.scopes import has_any
+
+        return has_any(tok_scopes, [scope])
+
     user = getattr(request, 'user', None)
     if user is not None and getattr(user, 'is_authenticated', False):  # noqa: SIM102
         if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):

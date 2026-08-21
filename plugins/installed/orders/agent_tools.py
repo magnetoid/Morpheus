@@ -572,7 +572,10 @@ def approve_return_tool(*, rma_number: str, refund_amount: float | None = None) 
 # ── Analytics (order-derived) ───────────────────────────────────────────────
 # analytics.summary / analytics.top_products were migrated here from
 # core/assistant/tools/ecommerce.py: they aggregate the Order / OrderItem models,
-# so the orders plugin is their correct home. Tool names unchanged.
+# so the orders plugin is their correct home. Since v0.55.0 orders is the SOLE
+# owner of both names (agent_core's weaker top_products twin was deleted; the
+# analytics plugin's rollup-based pair is analytics.traffic_summary /
+# analytics.top_viewed_products).
 
 
 @tool(

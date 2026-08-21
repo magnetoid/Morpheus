@@ -40,41 +40,7 @@ def revenue_summary_tool(*, days: int = 30) -> ToolResult:
     )
 
 
-@tool(
-    name='analytics.top_products',
-    description='Best-selling products in the last `days` days.',
-    scopes=['analytics.read'],
-    schema={
-        'type': 'object',
-        'properties': {
-            'days': {'type': 'integer', 'minimum': 1, 'maximum': 365, 'default': 30},
-            'limit': {'type': 'integer', 'minimum': 1, 'maximum': 25, 'default': 10},
-        },
-    },
-)
-def top_products_tool(*, days: int = 30, limit: int = 10) -> ToolResult:
-    from django.db.models import Sum
-    from django.utils import timezone
-
-    from plugins.installed.orders.models import OrderItem
-
-    days = max(1, min(int(days or 30), 365))
-    limit = max(1, min(int(limit or 10), 25))
-    since = timezone.now() - timedelta(days=days)
-    # Order's timestamp field is `placed_at`, not `created_at`. The previous
-    # filter raised FieldError on every call — fixed 2026-05-23.
-    rows = (
-        OrderItem.objects.filter(order__placed_at__gte=since, product__isnull=False)
-        .values('product__name', 'product__slug')
-        .annotate(units=Sum('quantity'))
-        .order_by('-units')[:limit]
-    )
-    return ToolResult(
-        output={
-            'days': days,
-            'products': [
-                {'name': r['product__name'], 'slug': r['product__slug'], 'units': r['units']}
-                for r in rows
-            ],
-        }
-    )
+# NB `analytics.top_products` used to have a weaker twin here (units-only,
+# subset of orders'). Deleted v0.55.0: the orders plugin owns that name —
+# it aggregates Order/OrderItem, and last-writer-wins registration made the
+# served implementation depend on plugin load order.

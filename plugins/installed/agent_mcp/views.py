@@ -299,6 +299,23 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
     if tool is None:
         raise _RpcError(_E_METHOD, f'tool not exposed: {name}')
 
+    # Kill switch parity. The merchant's "pause agents" switch aborts Linda and
+    # the Workers (core/agents/runtime.py) but did NOT reach this Bearer path,
+    # so a token could still drive writes while the merchant had pulled the
+    # cord. Refuse execution of protected (write/destructive) tools when paused;
+    # reads and buyer-facing cart/checkout flows stay up (the switch stops
+    # autonomous ACTIONS, not shopping).
+    if getattr(tool, 'requires_approval', False):
+        try:
+            from core.agents.guardrails import agents_paused
+
+            paused = agents_paused()
+        except Exception:  # noqa: BLE001 — guardrail lookup must never 500 the call
+            paused = False
+        if paused:
+            _audit_denied(name, 'agents_paused')
+            raise _RpcError(_E_AUTH, 'agents are paused (merchant kill switch)')
+
     # Scope enforcement. The presented token's `mcp_scopes` were stashed
     # on a thread-local during rpc_endpoint(); legacy / wildcard tokens
     # always pass. Tools without declared scopes are treated as public
@@ -544,13 +561,10 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
     from plugins.installed.agent_mcp.auth import apply_bearer_user
 
     apply_bearer_user(request)
-    from plugins.installed.agent_mcp.scopes import WILDCARD
-
-    _request_state.scopes = getattr(
-        request,
-        '_morph_token_scopes_mcp',
-        {WILDCARD},
-    )
+    # Deny by default: if apply_bearer_user did not stash a scope set (it always
+    # does now, even on failure), treat the caller as unscoped rather than
+    # wildcard. An authed token with no scopes is handled per-tool below.
+    _request_state.scopes = getattr(request, '_morph_token_scopes_mcp', set())
     # Governance context for this call (see _handle_tools_call): who the token
     # is (audit), what it's pre-approved for, and its rate-limit identity —
     # a token-hash bucket when a Bearer token is present, else the client IP.
@@ -587,7 +601,10 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
             resp['Mcp-Session-Id'] = session_id
         return resp
     finally:
-        _request_state.scopes = {WILDCARD}
+        # Reset thread-local state to DENY between requests (worker threads are
+        # reused): a stale wildcard here would fail open for the next caller if
+        # anything read scopes before apply_bearer_user ran.
+        _request_state.scopes = set()
         _request_state.token_present = False
         _request_state.token_label = ''
         _request_state.approved_tools = set()

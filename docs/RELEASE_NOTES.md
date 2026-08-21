@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.55.0 — 2026-08-21
+
+**MCP + GraphQL authorization hardening**
+
+- Agent-tool ownership: deleted duplicate agent_core tools that let plugin load order decide the winner — inventory.adjust_stock resolved to an UNGATED twin, so the approval gate silently never fired on stock writes. register_tool is now first-owner-wins and refuses cross-plugin duplicates. Orders owns analytics.summary/top_products; the analytics rollup pair renamed to analytics.traffic_summary/top_viewed_products. inventory.set_stock gained approval parity.
+- MCP scopes fail closed: the token dashboard no longer wipes other tokens' scopes/approvals on save (a create/revoke used to silently promote every token to wildcard); a malformed scope value denies instead of reading as wildcard; bearer resolution stashes deny-first. 22 tool scopes missing from the vocabulary (incl. system.write → plugins.enable/disable) are added so tokens can actually be scoped. The merchant kill switch now reaches the MCP write path.
+- GraphQL authorization: a Bearer token resolved to a shared is_staff service user, so any valid token passed EVERY scope (admin:seo, read:orders, …); has_scope now authorizes a token against its own scope set. Fixed vendor-financials IDOR on myVendorOrders/myVendorPayouts and a metricSeries filter that leaked all channels.
+- Cache + price: the invalidation guard tested dead code (api/cache.py, never wired) instead of the real writer — repointed and deleted the dead file. Variant price and the agent product feed now pass through the price seam like the PDP + checkout (displayed=charged).
+- Repo is public; pre-existing bandit B310 false-positives in the update system marked (https already enforced).
+
 ## v0.54.1 — 2026-08-21
 
 **SEO title patterns now actually apply on live product pages**

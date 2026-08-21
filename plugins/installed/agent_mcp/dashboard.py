@@ -59,7 +59,17 @@ def _approval_tool_names() -> list[str]:
 
 
 def _load_entries() -> list[dict]:
-    """Return the stored entries, normalised to dict shape."""
+    """Return the stored entries, PRESERVING every stored key.
+
+    CRITICAL: these entries are round-tripped back through ``_save_entries``
+    by every mutating action, so any key dropped here is ERASED from storage.
+    Dropping ``mcp_scopes`` / ``graphql_scopes`` / ``approved_tools`` is not
+    cosmetic: ``token_scopes`` reads a *missing* ``mcp_scopes`` key as the
+    wildcard, so a normalisation that omitted it silently promoted every
+    previously-scoped token to full access on the next create/revoke, and
+    wiped every per-token approval grant. Keep the whole dict; only fill in
+    the display fields the template needs.
+    """
     from plugins.models import PluginConfig
 
     cfg = PluginConfig.objects.filter(plugin_name='agent_mcp').first()
@@ -67,17 +77,15 @@ def _load_entries() -> list[dict]:
     raw = (cfg.config if cfg else {}) or {}
     for k in raw.get('public_keys') or []:
         if isinstance(k, dict):
-            entries.append(
-                {
-                    'id': str(k.get('id') or ''),
-                    'label': str(k.get('label') or ''),
-                    'token': str(k.get('token') or ''),
-                    'created_at': str(k.get('created_at') or ''),
-                    'last_used_at': str(k.get('last_used_at') or ''),
-                }
-            )
+            entry = dict(k)  # preserve scopes/approved_tools/rate_limit/etc.
+            entry['id'] = str(k.get('id') or '')
+            entry['label'] = str(k.get('label') or '')
+            entry['token'] = str(k.get('token') or '')
+            entry['created_at'] = str(k.get('created_at') or '')
+            entry['last_used_at'] = str(k.get('last_used_at') or '')
+            entries.append(entry)
         else:
-            # Legacy raw-string entry.
+            # Legacy raw-string entry — no metadata to preserve.
             entries.append(
                 {
                     'id': '',

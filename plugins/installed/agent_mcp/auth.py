@@ -119,7 +119,19 @@ def apply_bearer_user(request: HttpRequest) -> bool:
     """
     token = _present_token(request)
     if not token:
+        # No Bearer token: leave the request UNTOUCHED. A session-authenticated
+        # staff user (the dashboard's own GraphQL/console path) must keep the
+        # downstream is_staff fallback — stashing empty sets here would deny it.
         return False
+    # A token WAS presented. From here every exit denies: stash EMPTY scope
+    # sets before any fallible work, so a half-completed resolution (an invalid
+    # token, a raised _service_user, a DB blip) can never fall through to a
+    # WILDCARD default downstream. Only a fully successful resolution widens.
+    request._morph_token_scopes_mcp = set()
+    request._morph_token_scopes_graphql = set()
+    request._morph_token_approved_tools = set()
+    request._morph_token_rate_limit = None
+
     # Re-use the same source-of-truth reader as the MCP server.
     from plugins.installed.agent_mcp.views import _api_keys
 

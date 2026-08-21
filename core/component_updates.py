@@ -109,7 +109,7 @@ def fetch_artifact(
         req = urllib.request.Request(url, headers={'User-Agent': _USER_AGENT})  # noqa: S310
         with (
             os.fdopen(fd, 'wb') as out,
-            urllib.request.urlopen(  # noqa: S310 — https enforced above
+            urllib.request.urlopen(  # noqa: S310  # nosec B310 — https enforced at line 98
                 req, timeout=_FETCH_TIMEOUT, context=_ssl_context()
             ) as resp,
         ):
