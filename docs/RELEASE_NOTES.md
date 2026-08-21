@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.56.0 — 2026-08-21
+
+**Cart-mutation IDOR fix + GraphQL query hardening**
+
+- SECURITY (cart IDOR): every cart mutation looked a cart/item up by caller-supplied id and mutated it with NO ownership check — any anonymous caller could empty, re-price, strip the gift card off, or check out any cart whose id they named. One ownership seam (orders/graphql/_ownership.py) now gates all eight mutations, the cart query, and shipping's shippingRates: a non-owning session gets the same NOT_FOUND as a missing cart (no enumeration oracle) and the cart is left untouched; read:carts tokens remain the agent escape hatch.
+- addToCart now IGNORES the caller-supplied session_key (it let anyone add to — and read back — another visitor's cart); the session is derived from the request cookie, minting one when absent so anonymous carts get a real owner. CartType.sessionKey returns '' (was the session-hijack primitive). Both fields kept for API stability, deprecated.
+- orders(order_by:) whitelists the sort key (a raw string reached .order_by() → FieldError 500 / relation-span leak); journalEntries(limit:) capped at 100 (was uncapped).
+
 ## v0.55.0 — 2026-08-21
 
 **MCP + GraphQL authorization hardening**

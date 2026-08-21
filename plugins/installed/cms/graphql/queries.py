@@ -108,6 +108,7 @@ class CmsQueryExtension:
         require_scope(info, 'cms.read')
         from plugins.installed.cms.services import list_journal_entries
 
+        limit = max(1, min(int(limit), 100))  # cap: an uncapped limit is a cheap DoS
         return [_journal_entry_type(entry) for entry in list_journal_entries(limit=limit)]
 
     @strawberry.field(description='Get one published journal entry by slug (or null).')

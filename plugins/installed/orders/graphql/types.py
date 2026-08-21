@@ -139,8 +139,15 @@ class CartItemType:
 @strawberry_django.type(models.Cart)
 class CartType:
     id: strawberry.ID = strawberry.field(description='Cart identifier')
-    session_key: str = strawberry.field(description='Session key for anonymous carts')
     items: list[CartItemType] = strawberry.field(description='Items in the cart')
+
+    @strawberry.field(
+        description="Deprecated: always empty. Exposing a cart's session key "
+        'handed out the session-hijack primitive (worse when a read:carts token '
+        "read another visitor's cart). Kept for schema compatibility."
+    )
+    def session_key(self) -> str:
+        return ''
 
     @strawberry.field
     def item_count(self) -> int:

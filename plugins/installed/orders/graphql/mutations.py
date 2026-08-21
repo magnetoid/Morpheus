@@ -6,6 +6,7 @@ import strawberry
 
 from api.graphql_permissions import is_staff as _is_staff
 from core.graphql.types import ErrorType
+from plugins.installed.orders.graphql._ownership import load_owned_cart, load_owned_item
 from plugins.installed.orders.graphql.inputs import AddressInput
 from plugins.installed.orders.graphql.types import CartType
 from plugins.installed.orders.services import CartService
@@ -20,7 +21,11 @@ class AddToCartInput:
     variant_id: str | None = strawberry.field(
         default=None, description='UUID of variant (optional)'
     )
-    session_key: str = strawberry.field(default='', description='Anonymous session key')
+    session_key: str = strawberry.field(
+        default='',
+        description='Deprecated + ignored: the cart is bound to your own session cookie. '
+        'Kept for backward compatibility; supplying it has no effect.',
+    )
 
 
 @strawberry.input
@@ -89,15 +94,10 @@ class OrderPayload:
 @strawberry.type
 class OrdersMutationExtension:
     @strawberry.mutation(description='Select a shipping rate for a cart (stores it on the cart).')
-    def set_shipping_rate(self, input: SetShippingRateInput) -> CartPayload:
-        from plugins.installed.orders.models import Cart
-
-        try:
-            cart = Cart.objects.get(pk=input.cart_id)
-        except Cart.DoesNotExist:
-            return CartPayload(
-                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')]
-            )
+    def set_shipping_rate(self, info: strawberry.Info, input: SetShippingRateInput) -> CartPayload:
+        cart, err = load_owned_cart(info, input.cart_id)
+        if err:
+            return CartPayload(cart=None, errors=[err])
 
         cart.metadata = dict(cart.metadata or {})
         cart.metadata['shipping_rate_id'] = (input.shipping_rate_id or '').strip()
@@ -114,9 +114,15 @@ class OrdersMutationExtension:
             )
             customer = getattr(request, 'user', None) if request else None
             customer = customer if (customer and customer.is_authenticated) else None
-            session_key = input.session_key or (
-                request.session.session_key if request and hasattr(request, 'session') else ''
-            )
+            # `input.session_key` is IGNORED (a caller-supplied key let anyone
+            # add to — and read back — another visitor's cart). The session is
+            # derived from the request cookie; mint one when absent so the
+            # anonymous cart gets a real owner instead of the shared ''-key cart.
+            session_key = ''
+            if request is not None and hasattr(request, 'session'):
+                if not request.session.session_key:
+                    request.session.create()
+                session_key = request.session.session_key or ''
 
             cart = CartService.get_or_create_cart(session_key=session_key, customer=customer)
             currency = ''
@@ -142,51 +148,36 @@ class OrdersMutationExtension:
             )
 
     @strawberry.mutation(description='Update the quantity of a single line item.')
-    def update_cart_item(self, input: UpdateCartItemInput) -> CartPayload:
-        from plugins.installed.orders.models import CartItem
-
+    def update_cart_item(self, info: strawberry.Info, input: UpdateCartItemInput) -> CartPayload:
+        item, err = load_owned_item(info, input.item_id)
+        if err:
+            return CartPayload(cart=None, errors=[err])
         try:
-            item = CartItem.objects.select_related('cart').get(pk=input.item_id)
             qty = max(0, int(input.quantity))
+            cart = item.cart
             if qty == 0:
-                cart = item.cart
                 item.delete()
             else:
                 item.quantity = qty
                 item.save(update_fields=['quantity'])
-                cart = item.cart
             return CartPayload(cart=cart, errors=[])
-        except CartItem.DoesNotExist:
-            return CartPayload(
-                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart item not found.')]
-            )
         except Exception as e:  # noqa: BLE001
             return CartPayload(cart=None, errors=[ErrorType(code='UPDATE_ERROR', message=str(e))])
 
     @strawberry.mutation(description='Remove a single line item from a cart.')
-    def remove_cart_item(self, input: RemoveCartItemInput) -> CartPayload:
-        from plugins.installed.orders.models import CartItem
-
-        try:
-            item = CartItem.objects.select_related('cart').get(pk=input.item_id)
-            cart = item.cart
-            item.delete()
-            return CartPayload(cart=cart, errors=[])
-        except CartItem.DoesNotExist:
-            return CartPayload(
-                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart item not found.')]
-            )
+    def remove_cart_item(self, info: strawberry.Info, input: RemoveCartItemInput) -> CartPayload:
+        item, err = load_owned_item(info, input.item_id)
+        if err:
+            return CartPayload(cart=None, errors=[err])
+        cart = item.cart
+        item.delete()
+        return CartPayload(cart=cart, errors=[])
 
     @strawberry.mutation(description='Apply a coupon code to a cart.')
-    def apply_coupon(self, input: ApplyCouponInput) -> CartPayload:
-        from plugins.installed.orders.models import Cart
-
-        try:
-            cart = Cart.objects.get(pk=input.cart_id)
-        except Cart.DoesNotExist:
-            return CartPayload(
-                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')]
-            )
+    def apply_coupon(self, info: strawberry.Info, input: ApplyCouponInput) -> CartPayload:
+        cart, err = load_owned_cart(info, input.cart_id)
+        if err:
+            return CartPayload(cart=None, errors=[err])
 
         try:
             from plugins.installed.marketing.models import Coupon
@@ -210,15 +201,10 @@ class OrdersMutationExtension:
         return CartPayload(cart=cart, errors=[])
 
     @strawberry.mutation(description='Remove the applied coupon from a cart.')
-    def remove_coupon(self, input: ApplyCouponInput) -> CartPayload:
-        from plugins.installed.orders.models import Cart
-
-        try:
-            cart = Cart.objects.get(pk=input.cart_id)
-        except Cart.DoesNotExist:
-            return CartPayload(
-                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')]
-            )
+    def remove_coupon(self, info: strawberry.Info, input: ApplyCouponInput) -> CartPayload:
+        cart, err = load_owned_cart(info, input.cart_id)
+        if err:
+            return CartPayload(cart=None, errors=[err])
         if cart.coupon_id is not None:
             cart.coupon = None
             cart.save(update_fields=['coupon', 'updated_at'])
@@ -227,15 +213,10 @@ class OrdersMutationExtension:
     @strawberry.mutation(
         description='Apply a gift card to a cart. Discount is applied at order time.'
     )
-    def apply_gift_card(self, input: ApplyGiftCardInput) -> CartPayload:  # noqa: PLR0911
-        from plugins.installed.orders.models import Cart
-
-        try:
-            cart = Cart.objects.get(pk=input.cart_id)
-        except Cart.DoesNotExist:
-            return CartPayload(
-                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')]
-            )
+    def apply_gift_card(self, info: strawberry.Info, input: ApplyGiftCardInput) -> CartPayload:  # noqa: PLR0911
+        cart, err = load_owned_cart(info, input.cart_id)
+        if err:
+            return CartPayload(cart=None, errors=[err])
 
         code = (input.code or '').strip().upper()
         if not code:
@@ -290,16 +271,11 @@ class OrdersMutationExtension:
         return CartPayload(cart=cart, errors=[])
 
     @strawberry.mutation(description='Remove the applied gift card from a cart.')
-    def remove_gift_card(self, input: ApplyGiftCardInput) -> CartPayload:
+    def remove_gift_card(self, info: strawberry.Info, input: ApplyGiftCardInput) -> CartPayload:
         # `input.code` is ignored; we just need the cart_id.
-        from plugins.installed.orders.models import Cart
-
-        try:
-            cart = Cart.objects.get(pk=input.cart_id)
-        except Cart.DoesNotExist:
-            return CartPayload(
-                cart=None, errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')]
-            )
+        cart, err = load_owned_cart(info, input.cart_id)
+        if err:
+            return CartPayload(cart=None, errors=[err])
         cart.gift_card = None
         cart.save(update_fields=['gift_card', 'updated_at'])
         return CartPayload(cart=cart, errors=[])
@@ -310,17 +286,18 @@ class OrdersMutationExtension:
     def complete_order(self, info: strawberry.Info, input: CompleteOrderInput) -> OrderPayload:
         from django.db import transaction
 
-        from plugins.installed.orders.models import Cart
         from plugins.installed.orders.services import OrderService
 
-        try:
-            cart = Cart.objects.prefetch_related(
-                'items',
-                'items__product',
-                'items__variant',
-            ).get(pk=input.cart_id)
-        except Cart.DoesNotExist:
-            return OrderPayload(errors=[ErrorType(code='NOT_FOUND', message='Cart not found.')])
+        # Ownership FIRST: completing someone else's cart would mint an order
+        # against their reserved stock with the attacker's address/email.
+        cart, err = load_owned_cart(info, input.cart_id)
+        if err:
+            return OrderPayload(errors=[err])
+        cart = (
+            type(cart)
+            .objects.prefetch_related('items', 'items__product', 'items__variant')
+            .get(pk=cart.pk)
+        )
 
         if not cart.items.exists():
             return OrderPayload(errors=[ErrorType(code='EMPTY_CART', message='Cart is empty.')])

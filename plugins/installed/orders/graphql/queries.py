@@ -29,6 +29,20 @@ _CART_PREFETCH = (
     'items__product',
     'items__variant',
 )
+# Allowed sort keys for the `orders` query — a raw caller string would otherwise
+# reach .order_by() and FieldError (500) or span a relation (info leak / DoS).
+_ORDER_SORTS = frozenset(
+    {
+        'placed_at',
+        '-placed_at',
+        'created_at',
+        '-created_at',
+        'total',
+        '-total',
+        'status',
+        '-status',
+    }
+)
 
 
 def _scoped_orders_qs(info: strawberry.Info):
@@ -67,20 +81,13 @@ def _resolve_cart(info: strawberry.Info, id=None):
             cart = qs.get(id=id)
         except Cart.DoesNotExist:
             return None
-        # Carts are session-scoped: only the owning session/user may read them.
-        if cart.customer_id is not None:
-            user = getattr(request, 'user', None) if request else None
-            if (  # noqa: SIM102
-                not user
-                or not getattr(user, 'is_authenticated', False)
-                or user.pk != cart.customer_id
-            ):  # noqa: SIM102
-                if not has_scope(info, 'read:carts'):
-                    raise PermissionDenied('Not allowed to read this cart')
-        elif request is not None and getattr(request, 'session', None) is not None:
-            if cart.session_key and cart.session_key != request.session.session_key:  # noqa: SIM102
-                if not has_scope(info, 'read:carts'):
-                    raise PermissionDenied('Not allowed to read this cart')
+        # Carts are session-scoped: only the owning session/user (or a
+        # read:carts token) may read them. ONE predicate, shared with every
+        # cart mutation, so read and write ownership can never drift.
+        from plugins.installed.orders.graphql._ownership import may_access_cart
+
+        if not may_access_cart(info, cart):
+            raise PermissionDenied('Not allowed to read this cart')
         return cart
 
     if request is not None and getattr(request, 'session', None) is not None:
@@ -111,6 +118,10 @@ class OrdersQueryExtension:
         order_by: str = '-placed_at',
     ) -> list[OrderType]:
         first = max(1, min(first, 100))
+        # Whitelist the sort key: a raw caller string reaches Django's
+        # .order_by(), where an unknown field is a FieldError (500) and a
+        # relation span (e.g. "customer__password") is an info leak / DoS.
+        order_by = order_by if order_by in _ORDER_SORTS else '-placed_at'
         qs = _scoped_orders_qs(info).order_by(order_by)
         return list(qs[:first])
 

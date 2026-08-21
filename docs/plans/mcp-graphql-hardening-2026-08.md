@@ -88,19 +88,28 @@ additions only), scope vocabulary single-sourced in `agent_mcp/scopes.py`,
 
 ---
 
-## Deferred (follow-up release — each needs its own design + tests)
+## Shipped in v0.56.0
 
-1. **Cart mutation IDOR (GraphQL, CRITICAL-adjacent).** `setShippingRate`,
-   `updateCartItem`, `removeCartItem`, `applyCoupon`/`removeCoupon`,
-   `applyGiftCard`/`removeGiftCard`, `completeOrder` look up carts by
-   caller-supplied id with no ownership check; `addToCart` accepts a
-   `session_key` input and `CartType` returns it. Fix is a cross-cutting
-   ownership contract: thread `info` through all cart mutations + shipping's
-   copied block, route every lookup through one `_resolve_cart(info, id)` that
-   checks session/customer ownership, and drop `session_key` from the input and
-   `CartType`. High checkout-regression risk → own release + boundary tests.
-   *Interim:* these operate on cart ids which are UUIDs (not enumerable), which
-   limits but does not close the exposure.
+1. **Cart mutation IDOR — FIXED.** One ownership seam
+   `orders/graphql/_ownership.py` (`may_access_cart` + `load_owned_cart` +
+   `load_owned_item`), shared by `queries._resolve_cart`, all eight cart
+   mutations (setShippingRate/updateCartItem/removeCartItem/applyCoupon/
+   removeCoupon/applyGiftCard/removeGiftCard/completeOrder), and shipping's
+   `shippingRates` (deduped onto the same predicate — shipping already declares
+   `requires=['orders']`). A non-owning session gets the SAME `NOT_FOUND` as a
+   missing cart (no enumeration oracle) and the cart is left untouched;
+   `read:carts` tokens remain the agent escape hatch. `addToCart` now IGNORES
+   the caller-supplied `session_key` (derives from the request cookie, minting a
+   session when absent so the anon cart is properly owned — also closes the
+   shared `''`-key cart bug); `CartType.sessionKey` returns `''`. Both
+   `session_key` fields kept for API stability (deprecated, neutralized). 9
+   boundary tests (`orders/tests/test_graphql_cart_ownership.py`).
+2. **`orders(order_by:)` sort-key whitelist** — a raw string reached
+   `.order_by()` (FieldError 500 / relation-span leak); now falls back to the
+   default off-whitelist. Guarded by `test_graphql_orders_sort.py`.
+3. **`journalEntries(limit:)` capped** at 100 (was uncapped → cheap DoS).
+
+## Deferred (follow-up release — each needs its own design + tests)
 2. **Response-cache vary-tuple + event coverage.** The key hashes query+vars
    only — blind to market/currency/language/channel (first EUR/`/fr/` visitor
    poisons the entry for 5 min) — and invalidation binds only PRODUCT_UPDATED/

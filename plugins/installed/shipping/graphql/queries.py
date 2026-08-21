@@ -1,6 +1,6 @@
 import strawberry
 
-from api.graphql_permissions import PermissionDenied, has_scope
+from api.graphql_permissions import PermissionDenied
 from core.graphql.types import MoneyType
 from plugins.installed.orders.graphql.inputs import AddressInput
 
@@ -26,14 +26,10 @@ class ShippingQueryExtension:
         cart_id: strawberry.ID,
         address: 'AddressInput',
     ) -> list[ShippingRateQuoteType]:
+        from plugins.installed.orders.graphql._ownership import may_access_cart
         from plugins.installed.orders.models import Cart
         from plugins.installed.shipping.services import list_available_rates
 
-        request = (
-            info.context.get('request')
-            if isinstance(info.context, dict)
-            else getattr(info.context, 'request', None)
-        )
         cart = (
             Cart.objects.prefetch_related('items', 'items__product', 'items__variant')
             .filter(id=cart_id)
@@ -42,19 +38,10 @@ class ShippingQueryExtension:
         if cart is None:
             return []
 
-        if cart.customer_id is not None:
-            user = getattr(request, 'user', None) if request else None
-            if (  # noqa: SIM102
-                not user
-                or not getattr(user, 'is_authenticated', False)
-                or user.pk != cart.customer_id
-            ):  # noqa: SIM102
-                if not has_scope(info, 'read:carts'):
-                    raise PermissionDenied('Not allowed to read this cart')
-        elif request is not None and getattr(request, 'session', None) is not None:
-            if cart.session_key and cart.session_key != request.session.session_key:  # noqa: SIM102
-                if not has_scope(info, 'read:carts'):
-                    raise PermissionDenied('Not allowed to read this cart')
+        # Same ownership seam the orders plugin uses — never a second copy that
+        # can drift looser (shipping declares requires=['orders']).
+        if not may_access_cart(info, cart):
+            raise PermissionDenied('Not allowed to read this cart')
 
         addr = {
             'country': address.country or '',
