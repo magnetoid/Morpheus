@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import fnmatch
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 
 from core.utils.cache import SmartCacheInvalidator
 
@@ -65,3 +65,35 @@ class CacheKeyContractTests(SimpleTestCase):
         cache.set('graphql:query:abc', 'stale', 60)
         SmartCacheInvalidator._clear_query_caches('test')
         self.assertIsNone(cache.get('graphql:query:abc'))
+
+
+class InvalidationEventCoverageTests(TestCase):
+    """Every catalog-changing event must bust the query cache — not just
+    PRODUCT_UPDATED/CATEGORY_UPDATED (a new product, a collection edit, or a
+    stock-out left the API serving a stale list until the TTL lapsed)."""
+
+    def _assert_busts(self, event, **payload):
+        from django.core.cache import cache
+
+        from core.hooks import hook_registry
+
+        cache.set('graphql:query:probe', 'stale', 60)
+        hook_registry.fire(event, **payload)
+        self.assertIsNone(
+            cache.get('graphql:query:probe'), f'{event} did not invalidate the query cache'
+        )
+
+    def test_product_created_busts(self):
+        from core.hooks import MorpheusEvents
+
+        self._assert_busts(MorpheusEvents.PRODUCT_CREATED, product=None)
+
+    def test_collection_updated_busts(self):
+        from core.hooks import MorpheusEvents
+
+        self._assert_busts(MorpheusEvents.COLLECTION_UPDATED, collection=None)
+
+    def test_stock_out_busts(self):
+        from core.hooks import MorpheusEvents
+
+        self._assert_busts(MorpheusEvents.PRODUCT_OUT_OF_STOCK, stock_level=None)

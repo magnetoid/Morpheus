@@ -218,17 +218,30 @@ def token_scopes(entry: Any, surface: str) -> set[str]:
     return {str(s).strip() for s in val if s}
 
 
-def has_any(granted: Iterable[str], required: Iterable[str]) -> bool:
-    """True iff the granted set contains the wildcard OR at least one
-    of the required scopes. ``required=[]`` is interpreted as a public
-    op — no scope check needed."""
+def has_scopes(granted: Iterable[str], required: Iterable[str]) -> bool:
+    """True iff the granted set contains the wildcard, or EVERY required scope.
+
+    ALL, not any. A tool that declares two scopes means both — which is what
+    ``Tool``'s own docstring says and what the in-process runtime enforces
+    (``core/agents/policies.enforce_policy``). The MCP edge used to pass on ONE
+    match, so a token holding just ``system.write`` could call the self-coding
+    tools (``code.apply_proposal`` et al, ``scopes=['system.write','selfdev']``)
+    WITHOUT the ``selfdev`` scope that exists to gate them — the ADR 0014
+    "selfdev is Linda-only" non-negotiable, bypassed. ``required=[]`` is a
+    public op (no scope check).
+    """
     granted_set = set(granted)
     if WILDCARD in granted_set:
         return True
     needed = [r for r in required if r]
     if not needed:
         return True
-    return any(r in granted_set for r in needed)
+    return granted_set.issuperset(needed)
+
+
+# Back-compat alias. The old name promised ANY-match semantics it no longer has;
+# kept so out-of-tree callers keep working, but prefer `has_scopes`.
+has_any = has_scopes
 
 
 def find_entry_for_token(token: str) -> dict | None:

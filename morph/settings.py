@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.57.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.58.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -321,9 +321,13 @@ MIDDLEWARE = [
     'plugins.installed.agent_mcp.middleware.TrustedAgentMiddleware',
     'plugins.installed.ai_assistant.middleware.AIContextMiddleware',
     'api.permissions.AgentAuthMiddleware',
-    'api.middleware.GraphQLCacheMiddleware',  # Enterprise: GraphQL Query Caching
     'api.rate_limit.RateLimitMiddleware',
     'core.ratelimit.RateLimitMiddleware',
+    # GraphQL cache runs AFTER the rate limiters (request phase is top-down), so
+    # a cache HIT is still metered — before this it short-circuited the limiter.
+    # Stays below MarketMiddleware/Auth so request.market + request.user are set
+    # for the vary-key and the anon-only gate.
+    'api.middleware.GraphQLCacheMiddleware',  # Enterprise: GraphQL Query Caching
     'plugins.installed.environments.middleware.EnvironmentMiddleware',
     'plugins.installed.seo.middleware.SeoRedirectMiddleware',
     # Maintenance mode — must run AFTER AuthenticationMiddleware (it lets staff

@@ -130,6 +130,37 @@ additions only), scope vocabulary single-sourced in `agent_mcp/scopes.py`,
    `ping` now go through `_enforce_discovery_rate_limit` (240/min per token-or-IP
    bucket) in `_dispatch` — was free admin-tool enumeration + DB-amplification.
 
+## Shipped in v0.58.0 (cache correctness + scope semantics)
+
+2. **Response-cache correctness — FIXED.** The key now folds in the per-visitor
+   vary axes (market / display currency / language), so an anonymous EUR or
+   `/fr/` visitor's response can no longer be replayed to the next USD/`/en/`
+   guest. The `'cart' in query` substring guard is replaced by a PARSE-BASED,
+   deny-by-default allowlist of public catalog root fields
+   (`product/products/collections/categories/bookProduct`) — inherently
+   excluding mutations, introspection, the cart family, scope-gated CMS/SEO
+   fields and anything added later. `GraphQLCacheMiddleware` moved BELOW the
+   rate limiters so a cache HIT is still metered. Invalidation now binds
+   PRODUCT_CREATED / COLLECTION_UPDATED / PRODUCT_OUT_OF_STOCK / PRODUCT_LOW_STOCK
+   as well as the original two (one generic kwargs handler; `fire()` passes only
+   kwargs). Guarded by `api/tests_graphql_cache.py` (currency/market/language
+   each vary the key; non-allowlisted field not cached) +
+   `core/tests/test_cache_invalidation.py::InvalidationEventCoverageTests`.
+6. **MCP scope semantics: ALL, not any — FIXED.** `has_any` passed on ONE
+   match, so a token holding just `system.write` could invoke the self-coding
+   tools (`code.apply_proposal` et al, `scopes=['system.write','selfdev']`)
+   WITHOUT `selfdev` — the ADR 0014 "selfdev is Linda-only" gate, bypassed.
+   Renamed `has_scopes` (superset check; wildcard and `required=[]` unchanged),
+   `has_any` kept as a back-compat alias. Only 1 platform tool + the 5 selfdev
+   tools declare multiple scopes, so the blast radius is exactly the intended
+   tightening.
+7. **`semanticSearch` cost guard — FIXED.** The field is public (storefront
+   search) and each miss computes an embedding, so an unauthenticated caller
+   could drive provider spend at request rate. Requiring auth would break
+   storefront search; instead the EXPENSIVE path is budgeted per client
+   (30/min, token-or-IP bucket) and degrades to keyword search — no embed call,
+   no spend, no error. Fail-open on cache outage.
+
 ## Still deferred
 
 2. **Response-cache vary-tuple + event coverage (its own release — risk).** The
@@ -141,7 +172,12 @@ additions only), scope vocabulary single-sourced in `agent_mcp/scopes.py`,
    explicit cacheable-root-field allowlist. Held back deliberately: getting the
    key or invalidation wrong serves stale/wrong data — needs dedicated cache-vary
    tests, not a batch.
-3. **Eight divergent GraphQL auth patterns → one seam (design-heavy).** raise /
+3. **Eight divergent GraphQL auth patterns → one seam** — FOLDED INTO THE
+   ROADMAP. The security-relevant half (a Bearer token inheriting blanket
+   is_staff) was closed in v0.55.0; what remains is consistency + wiring
+   GraphQL to `core/authz.py` capabilities, which is precisely roadmap
+   Milestone 1.2 "System-Wide RBAC Enforcement". Doing it there avoids two
+   half-migrations of the same surface. Original finding: raise /
    silent-`[]` / payload-error / inline is_staff / queryset-scoping / none.
    `core/authz.py` (the capability seam) has zero GraphQL callers, so dashboard
    capability revocation doesn't touch this surface. Unify onto capabilities so

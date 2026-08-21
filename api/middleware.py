@@ -7,6 +7,61 @@ from django.http import JsonResponse
 
 logger = logging.getLogger('morpheus.api.cache')
 
+# Deny-by-default allowlist of root Query fields safe to share across anonymous
+# visitors. ONLY public, non-personalized catalog reads — a query whose every
+# top-level field is in here is cacheable; anything else (cart/cartTotals,
+# scope-gated cmsPage, the personalized semanticSearch, or a field added later)
+# falls through uncached. Fails safe: a renamed field drops out of the set and
+# simply stops being cached, never leaks.
+_CACHEABLE_ROOT_FIELDS = frozenset(
+    {'product', 'products', 'collections', 'categories', 'bookProduct'}
+)
+
+
+def _cacheable_query(query: str) -> bool:
+    """True iff `query` is a pure query whose top-level fields are all public
+    catalog reads. Parse-based (not substring) so it can't be fooled, and
+    fail-closed: any parse error or non-query operation → not cacheable."""
+    try:
+        from graphql import parse
+        from graphql.language.ast import FieldNode, OperationDefinitionNode
+
+        document = parse(query)
+    except Exception:  # noqa: BLE001 — unparseable → let Strawberry report it, don't cache
+        return False
+    saw_operation = False
+    for definition in document.definitions:
+        if not isinstance(definition, OperationDefinitionNode):
+            continue
+        saw_operation = True
+        if definition.operation.value != 'query':
+            return False  # mutation / subscription
+        for selection in definition.selection_set.selections:
+            if not isinstance(selection, FieldNode):
+                return False  # a fragment spread at the root — can't verify cheaply
+            if selection.name.value not in _CACHEABLE_ROOT_FIELDS:
+                return False
+    return saw_operation
+
+
+def _vary_key(request) -> dict:
+    """The per-visitor axes an anonymous storefront response varies on. Folded
+    into the cache key so an EUR/`/fr/` visitor's response is never served to a
+    USD/`/en/` one (a shared query+variables-only key poisoned across visitors)."""
+    market = getattr(request, 'market', None)
+    market_key = str(getattr(market, 'pk', '') or getattr(market, 'code', '') or '')
+    currency = ''
+    session = getattr(request, 'session', None)
+    if session is not None:
+        currency = str(session.get('display_currency') or '')
+    try:
+        from django.utils.translation import get_language
+
+        lang = get_language() or ''
+    except Exception:  # noqa: BLE001
+        lang = ''
+    return {'market': market_key, 'currency': currency, 'lang': lang}
+
 
 class GraphQLCacheMiddleware:
     """
@@ -43,26 +98,21 @@ class GraphQLCacheMiddleware:
             body = json.loads(request.body)
             query = body.get('query', '')
 
-            # Never cache mutations or introspection queries
-            if not query or 'mutation' in query.strip().lower()[:20] or '__schema' in query:
-                return self.get_response(request)
-
-            # Never cache SESSION-SCOPED queries. The `cart`/`cartTotals`
-            # resolvers fall back to request.session['cart_id'] when no id arg is
-            # given, and `shippingRates` takes a cartId — all resolve to the
-            # caller's own cart. With a key of only query+variables, an anonymous
-            # `query { cart {...} }` (zero variables) hashes identically for every
-            # guest, so one guest's cart (items + gift-card codes) would be served
-            # to the next. Any query referencing a cart is per-session — skip it;
-            # catalog/product queries (the hot path this cache exists for) don't
-            # mention a cart and stay cached + shared.
-            if 'cart' in query.lower():
+            # Deny-by-default: cache ONLY a pure query whose every top-level field
+            # is a public catalog read (_CACHEABLE_ROOT_FIELDS). This replaces the
+            # old `'cart' in query` substring guard — which was both too broad and
+            # too narrow — and inherently excludes mutations, introspection, the
+            # session-scoped cart/cartTotals/shippingRates family, and any
+            # personalized or future field.
+            if not query or not _cacheable_query(query):
                 return self.get_response(request)
 
             variables = body.get('variables', {})
 
-            # Create a unique SHA-256 hash for this specific query + variables combination
-            cache_data = {'query': query, 'variables': variables}
+            # Key on query+variables AND the per-visitor vary axes (market /
+            # currency / language) — without them an anonymous EUR/`/fr/`
+            # visitor's response would be replayed to the next USD/`/en/` guest.
+            cache_data = {'query': query, 'variables': variables, 'vary': _vary_key(request)}
             hash_key = hashlib.sha256(
                 json.dumps(cache_data, sort_keys=True).encode('utf-8')
             ).hexdigest()

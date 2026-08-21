@@ -18,7 +18,8 @@ from django.test import RequestFactory, TestCase, override_settings
 
 from api.middleware import GraphQLCacheMiddleware
 
-_QUERY = {'query': 'query Q { shop { name } }', 'variables': {}}
+# A public, allowlisted catalog read (the kind this cache exists for).
+_QUERY = {'query': 'query Q { products { id name } }', 'variables': {}}
 
 
 @override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}})
@@ -91,3 +92,40 @@ class GraphQLCacheIsolationTests(TestCase):
         self._post()  # primes the anonymous entry
         self._post(auth_header='Bearer sk-agent-token')
         self.assertEqual(self.calls, 2)  # not served from the shared entry
+
+    def test_non_catalog_query_is_not_cached(self):
+        # Deny-by-default: a field not on the public catalog allowlist (here a
+        # personalized one) must never be cached, even for anonymous callers.
+        self._post_query('query { semanticSearch(query: "x") { results } }')
+        self._post_query('query { semanticSearch(query: "x") { results } }')
+        self.assertEqual(self.calls, 2)
+
+    def _post_varying(self, *, currency='', market_pk='', lang='en'):
+        request = self.factory.post(
+            '/graphql/', data=json.dumps(_QUERY), content_type='application/json'
+        )
+        request.user = AnonymousUser()
+        request.session = {'display_currency': currency} if currency else {}
+        if market_pk:
+            request.market = type('M', (), {'pk': market_pk})()
+        from django.utils import translation
+
+        with translation.override(lang):
+            return self.mw(request)
+
+    def test_currency_varies_the_cache_key(self):
+        # The whole bug: two anonymous guests differing only in display currency
+        # must NOT share a cache entry (one would be shown the other's prices).
+        self._post_varying(currency='USD')
+        self._post_varying(currency='EUR')
+        self.assertEqual(self.calls, 2, 'USD and EUR guests shared a cache entry')
+        # …but two USD guests DO share (the cache still works within an axis).
+        self._post_varying(currency='USD')
+        self.assertEqual(self.calls, 2)
+
+    def test_market_and_language_vary_the_cache_key(self):
+        self._post_varying(market_pk='1', lang='en')
+        self._post_varying(market_pk='2', lang='en')
+        self.assertEqual(self.calls, 2, 'different markets shared a cache entry')
+        self._post_varying(market_pk='1', lang='fr')
+        self.assertEqual(self.calls, 3, 'different languages shared a cache entry')

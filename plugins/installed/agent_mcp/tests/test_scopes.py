@@ -117,3 +117,41 @@ class DashboardEntryPreservationTests(TestCase):
         # And the new token, having no mcp_scopes, is the wildcard-inheriting
         # unconfigured case — NOT a silent downgrade of token 'a'.
         self.assertNotIn('mcp_scopes', reloaded['b'])
+
+
+class ScopeSemanticsTests(TestCase):
+    """A tool declaring two scopes means BOTH (v0.58.0).
+
+    The MCP edge used to pass on ONE match, so a token holding just
+    `system.write` could call the self-coding tools
+    (scopes=['system.write','selfdev']) without `selfdev` — the ADR 0014
+    "selfdev is Linda-only" gate, bypassed. Now aligned with the in-process
+    runtime (policies.enforce_policy) and Tool's own docstring.
+    """
+
+    def test_all_required_scopes_must_be_held(self):
+        from plugins.installed.agent_mcp.scopes import has_scopes
+
+        self.assertTrue(has_scopes({'system.write', 'selfdev'}, ['system.write', 'selfdev']))
+        self.assertFalse(
+            has_scopes({'system.write'}, ['system.write', 'selfdev']),
+            'a partial match must NOT satisfy a multi-scope tool (selfdev bypass)',
+        )
+        self.assertFalse(has_scopes({'selfdev'}, ['system.write', 'selfdev']))
+
+    def test_single_scope_behaviour_is_unchanged(self):
+        from plugins.installed.agent_mcp.scopes import has_scopes
+
+        self.assertTrue(has_scopes({'catalog.read'}, ['catalog.read']))
+        self.assertFalse(has_scopes({'orders.read'}, ['catalog.read']))
+
+    def test_wildcard_and_public_ops_still_pass(self):
+        from plugins.installed.agent_mcp.scopes import has_scopes
+
+        self.assertTrue(has_scopes({'*'}, ['system.write', 'selfdev']))
+        self.assertTrue(has_scopes(set(), []))  # no declared scopes = public op
+
+    def test_legacy_alias_shares_the_new_semantics(self):
+        from plugins.installed.agent_mcp.scopes import has_any
+
+        self.assertFalse(has_any({'system.write'}, ['system.write', 'selfdev']))

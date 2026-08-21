@@ -29,6 +29,41 @@ class AgentIntentSummaryType:
     created_at: str
 
 
+_SEMANTIC_SEARCH_PER_MINUTE = 30
+
+
+def _embedding_budget_exhausted(info) -> bool:
+    """Per-client budget for the embedding path (fixed 60s window).
+
+    Keyed on the token bucket when present, else the client IP. Fail-OPEN on a
+    cache outage: search availability beats spend control, and the provider
+    call is itself bounded by the model's own limits.
+    """
+    request = None
+    ctx = getattr(info, 'context', None)
+    if isinstance(ctx, dict):
+        request = ctx.get('request')
+    elif ctx is not None:
+        request = getattr(ctx, 'request', None)
+    if request is None:
+        return False
+    client = request.META.get('HTTP_CF_CONNECTING_IP') or request.META.get('REMOTE_ADDR') or 'anon'
+    try:
+        import time
+
+        from django.core.cache import cache
+
+        key = f'ai:semsearch:{client}:{int(time.time() // 60)}'
+        try:
+            count = cache.incr(key)
+        except ValueError:
+            cache.set(key, 1, timeout=120)
+            count = 1
+    except Exception:  # noqa: BLE001 — availability over strictness
+        return False
+    return count > _SEMANTIC_SEARCH_PER_MINUTE
+
+
 @strawberry.type
 class AIAssistantQueryExtension:
     @strawberry.field(description='Embedding-backed semantic product search with safe fallback.')
@@ -45,6 +80,20 @@ class AIAssistantQueryExtension:
         if not query:
             return SemanticSearchResult(
                 products=[], explanation='Empty query.', used_embedding=False
+            )
+
+        # Cost guard. This field is PUBLIC (storefront search), and each miss
+        # computes an embedding — i.e. an unauthenticated caller could drive
+        # provider spend at request rate. Requiring auth would break storefront
+        # search, so instead budget the EXPENSIVE path per client: over budget,
+        # degrade to keyword search (no embed call, no spend) rather than error.
+        if _embedding_budget_exhausted(info):
+            from plugins.installed.ai_assistant.services.search import _keyword_fallback
+
+            return SemanticSearchResult(
+                products=_keyword_fallback(query, first),
+                explanation=f"Showing keyword matches for '{query}'.",
+                used_embedding=False,
             )
 
         products, used_embedding = run_search(query, limit=first)

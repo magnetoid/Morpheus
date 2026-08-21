@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.58.0 — 2026-08-21
+
+**GraphQL cache correctness + agent scope semantics**
+
+- Response-cache correctness: the cache key now folds in the per-visitor vary axes (market, display currency, language) — an anonymous EUR or /fr/ visitor's response could previously be replayed to the next USD/en guest for the full 5-minute TTL. The 'cart' substring guard is replaced by a parse-based, deny-by-default allowlist of public catalog root fields, which inherently excludes mutations, introspection, the cart family, scope-gated CMS/SEO fields, and anything added later.
+- The GraphQL cache middleware now runs BELOW the rate limiters, so a cache HIT is still metered (it previously short-circuited the limiter). Invalidation binds PRODUCT_CREATED / COLLECTION_UPDATED / PRODUCT_OUT_OF_STOCK / PRODUCT_LOW_STOCK in addition to the original two, so a new product, a collection edit, or a stock-out no longer leaves a stale list until the TTL lapses.
+- SECURITY — agent scope semantics are now ALL, not any. A tool declaring two scopes means both; the MCP edge passed on ONE match, so a token holding just system.write could invoke the self-coding tools (code.apply_proposal, scopes=['system.write','selfdev']) WITHOUT the selfdev scope that gates them. Now aligned with the in-process runtime and Tool's own docstring.
+- semanticSearch cost guard: the field is public storefront search and each miss computes an embedding, so an unauthenticated caller could drive provider spend at request rate. The expensive path is now budgeted per client and degrades to keyword search — no embed call, no spend, no error.
+
 ## v0.57.0 — 2026-08-21
 
 **MCP + GraphQL robustness (arg validation, discovery metering, product-list N+1)**

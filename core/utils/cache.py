@@ -48,22 +48,27 @@ class SmartCacheInvalidator:
 
     @staticmethod
     def bind_events():
-        # When a product updates, clear product queries
-        hook_registry.register(
-            MorpheusEvents.PRODUCT_UPDATED, SmartCacheInvalidator._clear_product_cache, priority=10
-        )
-        hook_registry.register(
+        # Clearing is NECESSARILY broad (the key is a query hash — see below), so
+        # bind every event that changes what a cached catalog query would show:
+        # a product create/update, a category/collection update, and the
+        # stock-state transitions that flip availability in `products`/`product`.
+        for event in (
+            MorpheusEvents.PRODUCT_CREATED,
+            MorpheusEvents.PRODUCT_UPDATED,
             MorpheusEvents.CATEGORY_UPDATED,
-            SmartCacheInvalidator._clear_category_cache,
-            priority=10,
-        )
+            MorpheusEvents.COLLECTION_UPDATED,
+            MorpheusEvents.PRODUCT_OUT_OF_STOCK,
+            MorpheusEvents.PRODUCT_LOW_STOCK,
+        ):
+            hook_registry.register(event, SmartCacheInvalidator._clear_catalog_cache, priority=10)
         logger.info('SmartCacheInvalidator bound to Morpheus Event Bus.')
 
-    # The GraphQL response cache keys every entry `graphql:query:<hash>` — see
-    # api/cache.py. The hash is of the query text + variables, so the key says
+    # The GraphQL response cache keys every entry `graphql:query:<hash>` — the
+    # writer is api/middleware.py:GraphQLCacheMiddleware. The hash is of the
+    # query text + variables (+ the per-visitor vary axes), so the key says
     # nothing about which entities the response touched: there is no way to
     # invalidate "just the product queries". These patterns must therefore match
-    # what api/cache.py actually writes, and clearing is necessarily broad.
+    # what the middleware actually writes, and clearing is necessarily broad.
     #
     # They previously deleted `gql:*product*` / `rest:*product*` — prefixes
     # nothing has ever written. Every delete matched zero keys, so a product
@@ -82,9 +87,11 @@ class SmartCacheInvalidator:
         logger.info('Invalidated query caches (%s)', reason)
 
     @staticmethod
-    def _clear_product_cache(product, **kwargs):
-        SmartCacheInvalidator._clear_query_caches(f'product {getattr(product, "name", "?")}')
-
-    @staticmethod
-    def _clear_category_cache(category, **kwargs):
-        SmartCacheInvalidator._clear_query_caches(f'category {getattr(category, "name", "?")}')
+    def _clear_catalog_cache(**kwargs):
+        # Bound to product/category/collection/stock events (fire() passes only
+        # kwargs). Clearing is broad regardless of which entity changed, so one
+        # handler serves them all; name the entity for the log when we can.
+        entity = kwargs.get('product') or kwargs.get('category') or kwargs.get('stock_level')
+        SmartCacheInvalidator._clear_query_caches(
+            f'catalog change: {getattr(entity, "name", None) or type(entity).__name__ if entity else "?"}'
+        )
