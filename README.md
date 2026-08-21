@@ -295,10 +295,6 @@ The full, dated list of what shipped and when is in [`docs/RELEASE_NOTES.md`](do
 
 ## 🚀 Quick start
 
-> **Access:** the repository is private while Morpheus is in active build-out —
-> the clone below works once you've been added as a collaborator. Not on the
-> list yet? Ask [@magnetoid](https://github.com/magnetoid) for an invite.
-
 ### Option A — Docker (the full stack: Postgres, Redis, worker, beat)
 
 ```bash

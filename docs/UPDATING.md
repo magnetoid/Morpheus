@@ -61,7 +61,7 @@ giving up, so a container install can finally *ask* whether an update exists:
 
 ```bash
 MORPHEUS_UPDATE_REPO=magnetoid/morpheus   # owner/repo
-MORPHEUS_UPDATE_TOKEN=…                   # only while the repo is private
+MORPHEUS_UPDATE_TOKEN=…                   # optional now the repo is public (raises the GitHub API rate limit)
 ```
 
 This is **check only** — applying is still git-based and still gated by
@@ -220,8 +220,9 @@ distributed installs.
 
 This is the shape the open-core product needs. **Mostly implemented as of
 v0.44.0** — signing, verification, per-component check and per-component apply
-exist; **hosting** does not (nothing is published at `morpheus.direct` yet, and
-the repository is private). What is built and what is not is marked inline
+exist; **hosting** does not (nothing is published at `morpheus.direct` yet —
+though the repository is public since 2026-08-21, so anonymous clients can
+reach the GitHub releases). What is built and what is not is marked inline
 below.
 
 **Built:** `core/signing.py` (Ed25519 sign/verify with a canonical JSON form),
