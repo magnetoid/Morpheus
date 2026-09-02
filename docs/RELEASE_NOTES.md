@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.60.0 — 2026-09-02
+
+**GraphQL wired to the RBAC capability seam**
+
+- has_scope() granted on is_staff alone, so a role revoked in the dashboard still had full GraphQL access — the surface consulted core/authz.py nowhere. Session-authenticated staff now route through a scope-to-capability map (admin:seo -> seo.write, read:orders -> orders.read, ...), which is what finally makes a dashboard role change reach the API. This closes the deferred 'eight divergent GraphQL auth patterns' item from the API audit.
+- Three deliberate safety properties. check() is used, never has_capability(): check() is mode-aware, so under the default 'log' mode a failed check still returns True while recording the would-be denial — this changes NO behaviour today and starts denying only when a merchant flips enforcement (has_capability would have denied immediately, i.e. a lockout). An unmapped scope keeps the previous is_staff fallback, so adding a resolver can never accidentally deny. Bearer tokens are untouched — a token is judged by its own scopes; vendor:self is deliberately unmapped because it describes a customer-owned relation, not a staff capability.
+
 ## v0.59.0 — 2026-09-02
 
 **System-wide RBAC capability coverage (roadmap Milestone 1.2)**

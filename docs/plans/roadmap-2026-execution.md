@@ -115,3 +115,49 @@ warnings from a full week of real traffic and confirm they are empty.
 **Remaining in P1:** GraphQL resolvers consult `core/authz.py` nowhere — they are
 gated by MCP token scopes instead. Wiring them to the same capability vocabulary
 is what absorbs the deferred "eight divergent GraphQL auth patterns" item.
+
+### P1b — GraphQL wired to the capability seam (v0.60.0)
+
+`has_scope` granted on `is_staff` alone, so a role revoked in the dashboard still
+had full GraphQL access — the surface consulted `core/authz.py` nowhere. Session
+staff now route through a scope→capability map (`admin:seo` → `seo.write`,
+`read:orders` → `orders.read`, …). Three safety properties, all deliberate:
+
+* **`check()`, never `has_capability()`.** `check()` is mode-aware; under `log`
+  a failed check still returns True while recording the would-be denial, so this
+  changes NO behaviour today. `has_capability()` returns the raw answer and would
+  have denied immediately — a lockout.
+* **Unmapped scopes keep the `is_staff` fallback**, so adding a resolver can
+  never accidentally deny by forgetting the table.
+* **Token callers are untouched** — a Bearer token is judged by its own scopes.
+  `vendor:self` is deliberately unmapped: it describes a customer-owned relation,
+  not a staff capability.
+
+This is what closes the deferred "eight divergent GraphQL auth patterns" item.
+
+### ⚠️ Measured blocker for the `enforce` flip (live, 2026-09-02)
+
+Verified against production, not assumed:
+
+| | |
+|---|---|
+| `enforcement_mode` | `log` |
+| Superuser bypass | works |
+| `staff@dotbooks.store` (non-superuser staff) | `has_capability('system.write')` = **False** |
+| `RoleBinding` rows | **0** |
+
+**Flipping to `enforce` today would lock `staff@dotbooks.store` out of most of the
+dashboard.** `check()` returns True for them only because `log` mode is masking
+the failure. The fix is one row — bind that account to the `admin` role, which
+grants exactly the access it already has via `is_staff`, so it is status-quo
+preserving rather than an escalation:
+
+```python
+from django.contrib.auth import get_user_model
+from plugins.installed.rbac.services import grant
+
+grant(get_user_model().objects.get(email='staff@dotbooks.store'), 'admin')
+```
+
+Order of operations: provision bindings → run a week of real traffic → confirm
+the `authz: would deny (log-only)` warnings are empty → only then flip.

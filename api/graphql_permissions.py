@@ -55,7 +55,33 @@ def is_staff(info: strawberry.Info) -> bool:
     return bool(user and getattr(user, 'is_staff', False))
 
 
-def has_scope(info: strawberry.Info, scope: str) -> bool:
+# GraphQL scope → RBAC capability. The two vocabularies grew separately: scopes
+# gate API tokens, capabilities gate dashboard roles. Mapping them is what makes
+# a role change in the dashboard reach the GraphQL surface at all. A scope with
+# no entry keeps the previous is_staff behaviour, so adding a resolver can never
+# accidentally deny; `vendor:self` is deliberately absent (it describes a
+# customer-owned relation, not a staff capability).
+_CAPABILITY_FOR_SCOPE = {
+    'admin:seo': 'seo.write',
+    'cms.read': 'cms.read',
+    'cms.write': 'cms.write',
+    'catalog.read': 'catalog.read',
+    'catalog.write': 'catalog.write',
+    'read:orders': 'orders.read',
+    'read:carts': 'orders.read',
+    'read:metrics': 'analytics.read',
+    'read:environments': 'system.read',
+    'read:functions': 'system.read',
+    'write:functions': 'system.write',
+    'i18n.read': 'system.read',
+    'i18n.write': 'system.write',
+    'admin:cloudflare': 'system.write',
+    'admin:marketplace': 'system.write',
+    'admin:affiliates': 'affiliates.write',
+}
+
+
+def has_scope(info: strawberry.Info, scope: str) -> bool:  # noqa: PLR0911
     """True when the caller has the given scope, or admin/staff equivalence."""
     request = get_request(info)
     if not request:
@@ -88,6 +114,22 @@ def has_scope(info: strawberry.Info, scope: str) -> bool:
     user = getattr(request, 'user', None)
     if user is not None and getattr(user, 'is_authenticated', False):  # noqa: SIM102
         if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
+            # Session-authenticated staff. Route through the RBAC capability seam
+            # rather than granting on is_staff alone, so a merchant's role
+            # revocation actually reaches the API — GraphQL consulted
+            # core/authz.py NOWHERE before this, which meant a role stripped in
+            # the dashboard still had full GraphQL access.
+            #
+            # `check()` is MODE-AWARE and that is the whole point: under the
+            # default `log` mode a failed check still returns True while
+            # recording the would-be denial, so this changes NO behaviour today
+            # and starts denying only when the merchant flips enforcement.
+            # (`has_capability()` would deny immediately — never use it here.)
+            capability = _CAPABILITY_FOR_SCOPE.get(scope)
+            if capability:
+                from core.authz import check
+
+                return check(user, capability, target=f'graphql:{scope}')
             return True
     return False
 

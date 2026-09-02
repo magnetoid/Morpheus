@@ -114,3 +114,43 @@ class VendorOrderIsolationTests(TestCase):
 
         rows = MarketplaceQueryExtension().my_vendor_orders(_Info(req))
         self.assertEqual([r.vendor_name for r in rows], ['Vendor A'])
+
+
+class CapabilitySeamTests(TestCase):
+    """Session staff are authorized through the RBAC capability seam.
+
+    GraphQL consulted core/authz.py NOWHERE before v0.59.0, so a role revoked in
+    the dashboard still had full GraphQL access. The seam is MODE-AWARE: under
+    the default `log` mode a failed check still returns True (recording the
+    would-be denial), so wiring it changes no behaviour until a merchant flips
+    enforcement.
+    """
+
+    def test_mapped_scope_routes_through_check(self):
+        from unittest.mock import patch
+
+        info = _Info(_req(staff=True))
+        with patch('core.authz.check', return_value=True) as mock_check:
+            self.assertTrue(has_scope(info, 'admin:seo'))
+        mock_check.assert_called_once()
+        # mapped to the seo.write capability, not the raw scope string
+        self.assertEqual(mock_check.call_args[0][1], 'seo.write')
+
+    def test_enforce_mode_denial_propagates(self):
+        from unittest.mock import patch
+
+        info = _Info(_req(staff=True))
+        with patch('core.authz.check', return_value=False):
+            self.assertFalse(has_scope(info, 'admin:seo'))
+
+    def test_unmapped_scope_keeps_is_staff_fallback(self):
+        # An unmapped scope must never accidentally deny — adding a resolver
+        # should not require touching the mapping table to keep working.
+        info = _Info(_req(staff=True))
+        self.assertTrue(has_scope(info, 'some:brand-new-scope'))
+
+    def test_token_callers_are_unaffected_by_the_seam(self):
+        # A Bearer token is judged by its own scopes, never the capability seam.
+        info = _Info(_req(staff=True, graphql_scopes={'catalog.read'}))
+        self.assertTrue(has_scope(info, 'catalog.read'))
+        self.assertFalse(has_scope(info, 'admin:seo'))
