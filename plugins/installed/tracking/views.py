@@ -36,6 +36,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from core.authz import require_capability
 from morpheus.app.views import staff_member_required
 from plugins.installed.tracking.models import (
     DEFAULT_CONSENT_DEFAULT,
@@ -74,6 +75,7 @@ def _stats() -> dict:
 
 
 @staff_member_required
+@require_capability('system.read')
 def overview(request):
     s = TrackingSettings.get_solo()
     stats = _stats()
@@ -96,6 +98,7 @@ def overview(request):
 
 
 @staff_member_required
+@require_capability('system.write')
 def settings_page(request):
     """Comprehensive control center. Tab strip across the top; each
     tab is its own POST endpoint via the ``action`` hidden field so
@@ -228,6 +231,7 @@ def settings_page(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def event_log(request):
     qs = GA4EventLog.objects.all().order_by('-fired_at')
     name = (request.GET.get('event') or '').strip()
@@ -250,6 +254,7 @@ def event_log(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def event_detail(request, event_id):
     row = get_object_or_404(GA4EventLog, pk=event_id)
     return render(
@@ -312,6 +317,7 @@ _TEST_EVENT_TEMPLATES = {
 
 
 @staff_member_required
+@require_capability('system.read')
 def test_purchase(request):
     """Back-compat shim around test_event for the legacy 'send test
     purchase' button. Always fires the `purchase` template."""
@@ -319,6 +325,7 @@ def test_purchase(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def test_event(request, event_name: str = 'purchase'):
     """Fire one synthetic GA4 event so the merchant can verify the
     integration end-to-end without placing a real order. Per-event
@@ -356,6 +363,7 @@ def test_event(request, event_name: str = 'purchase'):
 
 
 @staff_member_required
+@require_capability('system.write')
 def connection_check(request):  # noqa: ARG001 — staff-required GET
     """Probe the GA4 Measurement Protocol *debug* endpoint with the
     configured measurement_id + api_secret. Returns JSON describing
@@ -436,6 +444,7 @@ def connection_check(request):  # noqa: ARG001 — staff-required GET
 
 
 @staff_member_required
+@require_capability('system.read')
 def gtm_container_export(request):
     """Serve a pre-built GTM container JSON ready for the merchant to
     import into their workspace."""

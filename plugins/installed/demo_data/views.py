@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from core.authz import require_capability
 from morpheus.app.views import messages, render, staff_member_required
 
 
 @staff_member_required
+@require_capability('system.write')
 def demo_data_index(request):
     """Settings page for the demo_data plugin.
 

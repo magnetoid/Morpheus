@@ -9,6 +9,8 @@ from django.db.models import Count, Sum
 from django.shortcuts import render
 from django.utils import timezone
 
+from core.authz import require_capability
+
 _SEGMENT_ORDER = ['champions', 'loyal', 'potential', 'new', 'at_risk', 'lost']
 _SEGMENT_LABEL = {
     'champions': 'Champions',
@@ -29,6 +31,7 @@ _SEGMENT_TONE = {
 
 
 @staff_member_required
+@require_capability('crm.read')
 def segments_dashboard(request):
     from plugins.installed.customers.models import CustomerSegment, SegmentMigration
 

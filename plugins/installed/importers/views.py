@@ -5,12 +5,14 @@ from __future__ import annotations
 import io
 import logging
 
+from core.authz import require_capability
 from morpheus.app.views import HttpResponse, render, staff_member_required
 
 logger = logging.getLogger('morpheus.importers.views')
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def csv_index(request):
     if request.method == 'POST' and request.FILES.get('csv'):
         from plugins.installed.importers.adapters.csv_products import CsvProductImporter
@@ -28,6 +30,7 @@ def csv_index(request):
 
 
 @staff_member_required
+@require_capability('catalog.read')
 def csv_export(request):
     from plugins.installed.importers.adapters.csv_products import export_products_csv
 
@@ -38,6 +41,7 @@ def csv_export(request):
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def shopify_index(request):
     """One-click Shopify migration: shop + admin API token → import.
 

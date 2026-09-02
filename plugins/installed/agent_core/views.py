@@ -15,6 +15,7 @@ from queue import Empty, Queue
 from threading import Thread
 from typing import Any
 
+from core.authz import require_capability
 from morpheus.app.views import (
     HttpResponseBadRequest,
     JsonResponse,
@@ -224,6 +225,7 @@ def list_agents_view(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def runs_dashboard_view(request):
     from plugins.installed.agent_core.models import AgentRun
 
@@ -245,6 +247,7 @@ def runs_dashboard_view(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def run_detail_view(request, run_id: str):
     from plugins.installed.agent_core.models import AgentRun
 
@@ -261,6 +264,7 @@ def run_detail_view(request, run_id: str):
 
 
 @staff_member_required
+@require_capability('system.read')
 def merchant_ops_chat_view(request):
     """The Merchant Ops chat console (admin only)."""
     active_provider = ''
@@ -286,6 +290,7 @@ def merchant_ops_chat_view(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def observability_view(request):
     """Aggregate per-agent stats over the last N days."""
     from datetime import timedelta
@@ -394,6 +399,7 @@ def observability_view(request):
 
 
 @staff_member_required
+@require_capability('system.write')
 def background_agents_view(request):
     from django.utils import timezone
 
@@ -437,6 +443,7 @@ def background_agents_view(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def background_agent_action_view(request, bg_id: str, action: str):
     from django.utils import timezone
 
@@ -471,6 +478,7 @@ def background_agent_action_view(request, bg_id: str, action: str):
 
 
 @staff_member_required
+@require_capability('system.read')
 def selfdev_list_view(request):
     from core.assistant.apply import apply_enabled
     from core.assistant.models import CodeProposal
@@ -498,6 +506,7 @@ def selfdev_list_view(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def selfdev_detail_view(request, proposal_id: str):
     from core.assistant.apply import apply_enabled, preflight
     from core.assistant.models import CodeProposal
@@ -575,6 +584,7 @@ _SELFDEV_OWNER_ONLY = {'approve', 'reject', 'apply', 'revert'}
 
 
 @staff_member_required
+@require_capability('system.read')
 def selfdev_action_view(request, proposal_id: str, action: str):
     """POST-only dispatch over the gated core functions. Owner-only actions
     require a superuser (mirrors CodeProposal.approve's own check)."""
@@ -606,6 +616,7 @@ _MEMORY_SCOPES = ['merchant', 'customer-segment', 'seasonal']
 
 
 @staff_member_required
+@require_capability('system.read')
 def memory_list_view(request):
     from core.assistant.models import LindaMemory
 
@@ -633,6 +644,7 @@ def memory_list_view(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def memory_action_view(request):
     """POST-only create/edit/delete of LindaMemory rows. Superuser-only — editing
     Linda's remembered facts changes how she behaves."""

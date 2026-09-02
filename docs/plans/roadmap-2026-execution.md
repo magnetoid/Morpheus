@@ -77,3 +77,41 @@ P1 is the through-line: it is the roadmap's own Phase 1 milestone, it unblocks
 B2B impersonation (P3), it satisfies the UCP risk-mitigation clause ("strictly
 scope API access for external AI models"), and it absorbs an outstanding API-
 audit item. Everything else is additive feature work that can follow.
+
+---
+
+## P1 progress log
+
+**Batch 1+2 (v0.59.0):** capability coverage **43 → 250** gated views (~13% →
+~77% of the staff surface), across 64 files. `marketing.read`/`marketing.write`
+added to the `admin` + `marketing_manager` role templates **in the same change**
+as the views demanding them — mandatory, not cosmetic: a capability no role can
+hold denies EVERYONE the moment `enforcement_mode` flips (CLAUDE.md landmine,
+guarded by `core/tests/test_authz.py::CapabilityVocabularyTests`).
+
+Two corrections made during the sweep, both worth keeping in mind for the
+remaining batches:
+
+1. **Name-based read/write classification under-gates.** Classifying by view
+   name put 65 *mutating* views behind a `.read` capability — e.g.
+   `tax/dashboard.py:regions`, a "flat region+rate dispatch view" that handles
+   POST. A read-only role could have written once enforcement flipped. Re-scanned
+   by actual POST handling; 54 upgraded to `.write`.
+2. **There is a better pattern already in the tree — don't flatten it.**
+   `seo/views.py` gates the *page* on `.read` and calls
+   `enforce(request, '<domain>.write')` inside the POST branch, so a reader can
+   open the page but not mutate it. That is strictly better than gating the whole
+   page on `.write`. Those 13 views were detected (they already call `enforce`)
+   and deliberately left alone. **Prefer this pattern** when revisiting a view;
+   the blunt page-level `.write` gate is the safe default, not the ideal.
+
+**Before flipping `enforcement_mode` to `enforce`** (a separate, deliberate
+decision — NOT part of this batch): superusers bypass (`core/authz.py:81`) and
+the seam falls back to `is_staff` when rbac is absent (`:99`), so the exposure is
+narrow but real — **staff who are not superusers and hold no RoleBinding would be
+denied**. Provision bindings first, then read the `authz: would deny (log-only)`
+warnings from a full week of real traffic and confirm they are empty.
+
+**Remaining in P1:** GraphQL resolvers consult `core/authz.py` nowhere — they are
+gated by MCP token scopes instead. Wiring them to the same capability vocabulary
+is what absorbs the deferred "eight divergent GraphQL auth patterns" item.

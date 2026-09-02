@@ -16,6 +16,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 
+from core.authz import require_capability
 from morpheus.app import dashboard_trail
 
 logger = logging.getLogger('morpheus.b2b')
@@ -26,6 +27,7 @@ def _trail(*items):
 
 
 @staff_member_required
+@require_capability('b2b.write')
 def pricelists(request):
     """List PriceLists + form to create a new one."""
     from plugins.installed.b2b.models import PriceList  # noqa: PLC0415
@@ -114,6 +116,7 @@ def _handle_item_post(request, pricelist) -> None:
 
 
 @staff_member_required
+@require_capability('b2b.write')
 def pricelist_detail(request, pricelist_id):
     """Show items on a price list + form to add / edit / delete rows."""
     from plugins.installed.b2b.models import PriceList  # noqa: PLC0415

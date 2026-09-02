@@ -16,6 +16,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
+from core.authz import require_capability
 from plugins.installed.agent_core.compliance import build_ai_act_report
 
 
@@ -30,6 +31,7 @@ def _window(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def ai_act_report_view(request):
     since, until, days = _window(request)
     report = build_ai_act_report(since=since, until=until)

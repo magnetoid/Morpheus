@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from core.authz import require_capability
 from morpheus.app.views import render, staff_member_required
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def ads_dashboard(request):
     from plugins.installed.amazon_ads.services.ads_api import (
         create_campaign,

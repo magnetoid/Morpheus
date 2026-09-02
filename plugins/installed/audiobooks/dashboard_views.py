@@ -6,11 +6,13 @@ from __future__ import annotations
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
+from core.authz import require_capability
 from morpheus.app.views import staff_member_required
 
 
 @require_POST
 @staff_member_required
+@require_capability('catalog.write')
 def generate_audiobook_view(request, audiobook_id):
     """Enqueue ElevenLabs narration generation for an audiobook edition.
     Returns JSON so the product-form button can update without a reload."""

@@ -9,6 +9,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.authz import require_capability
 from morpheus.app import dashboard_trail
 
 _FIELDS = ('eyebrow', 'heading', 'body', 'image_url', 'layout')
@@ -19,6 +20,7 @@ def _trail(*items):
 
 
 @staff_member_required
+@require_capability('cms.write')
 def stories_index(request):
     from plugins.installed.catalog.models import Product
     from plugins.installed.product_stories.models import ProductStoryBlock
@@ -43,6 +45,7 @@ def stories_index(request):
 
 
 @staff_member_required
+@require_capability('cms.write')
 def stories_product(request, slug):
     from plugins.installed.catalog.models import Product
     from plugins.installed.product_stories.models import ProductStoryBlock

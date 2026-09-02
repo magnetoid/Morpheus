@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
+from core.authz import require_capability
 from morpheus.app.views import staff_member_required
 from plugins.installed.notifications_center.models import Notification
 
@@ -18,6 +19,7 @@ logger = logging.getLogger('morpheus.notifications_center.views')
 
 
 @staff_member_required
+@require_capability('system.read')
 def notifications_list(request: HttpRequest) -> HttpResponse:
     qs = Notification.objects.filter(user=request.user)
     show = (request.GET.get('show') or 'all').strip()
@@ -56,6 +58,7 @@ def notifications_list(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.read')
 @require_http_methods(['POST'])
 def mark_read(request: HttpRequest, notification_id) -> HttpResponse:
     n = get_object_or_404(Notification, pk=notification_id, user=request.user)
@@ -69,6 +72,7 @@ def mark_read(request: HttpRequest, notification_id) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.read')
 @require_http_methods(['POST'])
 def mark_all_read(request: HttpRequest) -> HttpResponse:
     Notification.objects.filter(
@@ -80,6 +84,7 @@ def mark_all_read(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 @csrf_protect
 @require_http_methods(['GET', 'POST'])
 def api_latest(request: HttpRequest) -> JsonResponse:

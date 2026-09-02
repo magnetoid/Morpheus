@@ -12,6 +12,7 @@ is fail-soft — a disabled or absent plugin simply contributes nothing.
 
 from __future__ import annotations
 
+from core.authz import require_capability
 from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
@@ -195,6 +196,7 @@ def _entity_hits(q: str) -> list[dict]:  # noqa: PLR0912 — one fail-soft block
 
 
 @staff_member_required
+@require_capability('system.read')
 def palette_search(request: HttpRequest) -> HttpResponse:
     """JSON endpoint backing the Cmd+K palette. See module docstring."""
     from django.http import JsonResponse  # noqa: PLC0415

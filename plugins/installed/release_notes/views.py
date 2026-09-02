@@ -18,6 +18,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 from django.utils.safestring import mark_safe
 
+from core.authz import require_capability
+
 _HEADING = re.compile(r'^##\s+(.*)$', re.MULTILINE)
 _VERSION = re.compile(r'(v[\w.\-]+)\s*[—\-–(]*\s*([\d]{4}-[\d]{2}-[\d]{2})?')
 _LINK = re.compile(r'\[([^\]]+)\]\((https?://[^)\s]+)\)')
@@ -111,6 +113,7 @@ def parse_releases(raw: str) -> list[dict]:
 
 
 @staff_member_required
+@require_capability('system.read')
 def version_updates(request):
     version = getattr(settings, 'MORPHEUS_VERSION', 'v0.1.0')
     path = _release_notes_path()
@@ -132,6 +135,7 @@ def version_updates(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def about(request):
     """About Morpheus — platform narrative + a live catalogue of every installed
     app, read straight from the plugin registry so the list never drifts."""

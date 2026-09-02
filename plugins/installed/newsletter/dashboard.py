@@ -13,8 +13,11 @@ from django.db.models import Count
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.authz import require_capability
+
 
 @staff_member_required
+@require_capability('marketing.read')
 def subscribers_view(request):
     from plugins.installed.newsletter.models import NewsletterSubscriber
 
@@ -50,6 +53,7 @@ def subscribers_view(request):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def popups_view(request):
     from plugins.installed.newsletter.models import SignupPopup
 
@@ -81,6 +85,7 @@ def popups_view(request):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def popup_edit_view(request, popup_id: str):
     from plugins.installed.newsletter.models import SignupPopup
 
@@ -124,6 +129,7 @@ def popup_edit_view(request, popup_id: str):
 
 
 @staff_member_required
+@require_capability('marketing.read')
 def campaigns_view(request):
     """Send surface for marketing's EmailCampaigns (Phase 3).
 
@@ -145,6 +151,7 @@ def campaigns_view(request):
 
 
 @staff_member_required
+@require_capability('marketing.read')
 def campaign_send_view(request, campaign_id: str):
     """POST — queue a full send of one campaign to all confirmed subscribers."""
     if request.method != 'POST':
@@ -162,6 +169,7 @@ def campaign_send_view(request, campaign_id: str):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def campaign_test_view(request, campaign_id: str):
     """POST — send one test copy to the given (or the staff member's) address."""
     if request.method != 'POST':

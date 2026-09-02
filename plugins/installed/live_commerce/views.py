@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
+from core.authz import require_capability
 from plugins.installed.live_commerce import services
 from plugins.installed.live_commerce.models import LiveEvent, LiveEventProduct
 
@@ -16,6 +17,7 @@ _LIST_URL = '/dashboard/live/'
 
 
 @staff_member_required
+@require_capability('cms.read')
 def index(request: HttpRequest) -> HttpResponse:
     events = LiveEvent.objects.all()
     return render(
@@ -26,6 +28,7 @@ def index(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('cms.write')
 def edit_event(request: HttpRequest, event_id=None) -> HttpResponse:
     event = get_object_or_404(LiveEvent, pk=event_id) if event_id else None
     if request.method == 'POST' and _save_from_post(request, event):
@@ -44,6 +47,7 @@ def edit_event(request: HttpRequest, event_id=None) -> HttpResponse:
 
 @require_POST
 @staff_member_required
+@require_capability('cms.read')
 def delete_event(request: HttpRequest, event_id) -> HttpResponse:
     get_object_or_404(LiveEvent, pk=event_id).delete()
     messages.success(request, 'Live event deleted.')
@@ -52,6 +56,7 @@ def delete_event(request: HttpRequest, event_id) -> HttpResponse:
 
 @require_POST
 @staff_member_required
+@require_capability('cms.write')
 def set_status(request: HttpRequest, event_id) -> HttpResponse:
     event = get_object_or_404(LiveEvent, pk=event_id)
     status = (request.POST.get('status') or '').strip()

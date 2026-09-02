@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import secrets
 
+from core.authz import require_capability
 from morpheus.app.views import get_object_or_404, redirect, render, staff_member_required
 
 
 @staff_member_required
+@require_capability('system.read')
 def endpoints_list(request):
     from core.models import WebhookEndpoint
 
@@ -23,6 +25,7 @@ def endpoints_list(request):
 
 
 @staff_member_required
+@require_capability('system.write')
 def endpoint_create(request):
     from core.models import WebhookEndpoint
 
@@ -41,6 +44,7 @@ def endpoint_create(request):
 
 
 @staff_member_required
+@require_capability('system.write')
 def endpoint_edit(request, endpoint_id):
     from core.models import WebhookEndpoint
 
@@ -60,6 +64,7 @@ def endpoint_edit(request, endpoint_id):
 
 
 @staff_member_required
+@require_capability('system.write')
 def endpoint_delete(request, endpoint_id):
     from core.models import WebhookEndpoint
 
@@ -70,6 +75,7 @@ def endpoint_delete(request, endpoint_id):
 
 
 @staff_member_required
+@require_capability('system.read')
 def deliveries_list(request):
     from plugins.installed.webhooks_ui.models import WebhookDelivery
 
@@ -85,6 +91,7 @@ def deliveries_list(request):
 
 
 @staff_member_required
+@require_capability('system.write')
 def delivery_replay(request, delivery_id):
     """Re-enqueue a failed / DLQ'd delivery in-place — resets attempts to 0
     and re-runs through the retry chain. POST-only."""

@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.http import HttpResponse
 from django.shortcuts import redirect
 
+from core.authz import require_capability
 from morpheus.app.views import render, staff_member_required
 
 _OAUTH_CALLBACK_PATH = '/dashboard/apps/google_shopping/oauth-callback/'
@@ -31,6 +32,7 @@ def google_merchant_feed(request):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def dashboard(request):
     """Feed status + coverage report + submit URL."""
     from morpheus.core import site_base_url
@@ -95,6 +97,7 @@ def _connect_state() -> dict:
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def ads_dashboard(request):
     """Google Ads campaign reporting + management."""
     from plugins.installed.google_shopping.services.ads_api import (
@@ -151,6 +154,7 @@ def ads_dashboard(request):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def oauth_start(request):
     """Kick off the Google consent flow (Content API + Ads)."""
     import secrets
@@ -166,6 +170,7 @@ def oauth_start(request):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def oauth_callback(request):
     """Google redirects here with ?code=… — exchange it for a refresh token.
 

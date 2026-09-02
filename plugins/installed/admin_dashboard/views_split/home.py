@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import contextlib
 
+from core.authz import require_capability
 from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
@@ -35,6 +36,7 @@ def _safe_block(label: str):
 
 
 @staff_member_required
+@require_capability('system.read')
 def dashboard_home(request: HttpRequest) -> HttpResponse:
     """Dashboard home. Every tile's data is contributed by its owning
     plugin through filters (see core/hooks.py + docs/plans/
@@ -156,6 +158,7 @@ def _setup_guide_dismissed() -> bool:
 
 
 @staff_member_required
+@require_capability('system.write')
 def setup_dismiss(request: HttpRequest) -> HttpResponse:
     """Skip the first-run 'Set up your store' checklist for good."""
     if request.method != 'POST':

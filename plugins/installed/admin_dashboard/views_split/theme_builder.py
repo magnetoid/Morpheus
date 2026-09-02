@@ -22,6 +22,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
+from core.authz import require_capability
 from morpheus.app.views import staff_member_required
 
 logger = logging.getLogger('morpheus.admin.theme_builder')
@@ -59,6 +60,7 @@ def _serialize_row(row) -> dict:
 
 
 @staff_member_required
+@require_capability('system.write')
 def builder(request: HttpRequest, page_id) -> HttpResponse:
     _require_cms()
     from plugins.installed.cms.models import Page
@@ -84,6 +86,7 @@ def builder(request: HttpRequest, page_id) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 @csrf_protect
 @require_http_methods(['POST'])
 def api_add(request: HttpRequest, page_id) -> JsonResponse:
@@ -110,6 +113,7 @@ def api_add(request: HttpRequest, page_id) -> JsonResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 @csrf_protect
 @require_http_methods(['POST'])
 def api_reorder(request: HttpRequest, page_id) -> JsonResponse:
@@ -138,6 +142,7 @@ def api_reorder(request: HttpRequest, page_id) -> JsonResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 @csrf_protect
 @require_http_methods(['POST'])
 def api_update(request: HttpRequest, page_id, row_id) -> JsonResponse:
@@ -162,6 +167,7 @@ def api_update(request: HttpRequest, page_id, row_id) -> JsonResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 @csrf_protect
 @require_http_methods(['POST'])
 def api_delete(request: HttpRequest, page_id, row_id) -> JsonResponse:

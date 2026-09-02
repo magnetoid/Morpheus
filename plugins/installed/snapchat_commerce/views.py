@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.core.cache import cache
 from django.http import HttpResponse
 
+from core.authz import require_capability
 from morpheus.app.views import render, staff_member_required
 
 FEED_CACHE_KEY = 'snapchat_commerce:feed:v1'
@@ -27,6 +28,7 @@ def snapchat_catalog_feed(request):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def dashboard(request):
     from core.utils.site import site_base_url
     from plugins.installed.snapchat_commerce.models import SnapchatSyncLog
@@ -62,6 +64,7 @@ def dashboard(request):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def ads_dashboard(request):
     from plugins.installed.snapchat_commerce.services.ads_api import (
         campaign_report,

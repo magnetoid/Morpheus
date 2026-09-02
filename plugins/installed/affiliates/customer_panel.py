@@ -33,6 +33,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from core.authz import require_capability
+
 logger = logging.getLogger('morpheus.affiliates')
 
 
@@ -79,6 +81,7 @@ def affiliate_panel(value, customer=None, request=None, **kwargs):
 
 
 @staff_member_required
+@require_capability('affiliates.write')
 @require_POST
 def toggle_affiliate(request, customer_id):
     """Staff-only: approve or suspend a customer as an affiliate.

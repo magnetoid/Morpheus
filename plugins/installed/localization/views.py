@@ -10,8 +10,11 @@ from __future__ import annotations
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 
+from core.authz import require_capability
+
 
 @staff_member_required
+@require_capability('system.read')
 def translations_index(request):
     """Top-level table of translatable rows + their per-language status."""
     rows: list[dict] = []
@@ -60,6 +63,7 @@ def translations_index(request):
 
 
 @staff_member_required
+@require_capability('system.write')
 def languages_index(request):
     """Pick which target languages the store ships to. POST persists."""
     enabled: list[str] = []

@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from core.authz import require_capability
+
 
 def _msg_json(m):
     return {'id': str(m.id), 'sender': m.sender, 'body': m.body, 'at': m.created_at.isoformat()}
@@ -67,6 +69,7 @@ def chat_poll(request):
 
 
 @staff_member_required
+@require_capability('crm.read')
 def chat_inbox(request):
     from plugins.installed.crm.models import ChatThread
 
@@ -97,6 +100,7 @@ def chat_inbox(request):
 
 
 @staff_member_required
+@require_capability('crm.write')
 def chat_thread(request, thread_id):
     from plugins.installed.crm.chat import post_staff_reply
     from plugins.installed.crm.models import ChatThread

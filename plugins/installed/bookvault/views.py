@@ -29,10 +29,13 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from core.authz import require_capability
+
 logger = logging.getLogger('morpheus.bookvault')
 
 
 @staff_member_required
+@require_capability('catalog.read')
 def overview(request: HttpRequest) -> HttpResponse:
     """Status card + product-link audit + reauth button."""
     from plugins.installed.bookvault.models import (
@@ -77,6 +80,7 @@ def overview(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 @require_http_methods(['POST'])
 def disconnect(request: HttpRequest) -> HttpResponseRedirect:
     """Tell BV to clean up + clear local credentials. Equivalent to
@@ -97,6 +101,7 @@ def disconnect(request: HttpRequest) -> HttpResponseRedirect:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 @require_http_methods(['POST'])
 def connect(request: HttpRequest) -> HttpResponseRedirect:
     """Mint a fresh BV token. Falls through to the overview page with
@@ -123,6 +128,7 @@ def connect(request: HttpRequest) -> HttpResponseRedirect:
 
 
 @staff_member_required
+@require_capability('catalog.read')
 @require_http_methods(['POST'])
 def resend_order(request: HttpRequest, order_id) -> HttpResponseRedirect:
     """Manual "Resend Order To Bookvault" — mirrors the WP plugin's
@@ -145,6 +151,7 @@ def resend_order(request: HttpRequest, order_id) -> HttpResponseRedirect:
 
 
 @staff_member_required
+@require_capability('catalog.read')
 @require_http_methods(['POST'])
 def bulk_link_products(request: HttpRequest) -> HttpResponseRedirect:
     """302 to BV's hosted Bulk Products linker with the selected

@@ -5,8 +5,11 @@ from __future__ import annotations
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 
+from core.authz import require_capability
+
 
 @staff_member_required
+@require_capability('analytics.read')
 def nps_dashboard(request):
     from plugins.installed.post_purchase import analytics
 

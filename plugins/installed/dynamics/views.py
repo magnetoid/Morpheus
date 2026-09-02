@@ -16,6 +16,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.authz import require_capability
 from morpheus.app import dashboard_trail
 
 from .models import (
@@ -34,6 +35,7 @@ def _trail(*items):
 
 
 @staff_member_required
+@require_capability('marketing.read')
 def index(request):
     """Merchandising console: surfaces takeover table + carousel blocks."""
     blocks = list(DynamicBlock.objects.prefetch_related('categories').all())
@@ -58,6 +60,7 @@ def index(request):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def take_control(request, surface):
     """One click: bind a smart-strategy block to a theme surface."""
     valid = dict(SURFACE_CHOICES)
@@ -83,6 +86,7 @@ def take_control(request, surface):
 
 
 @staff_member_required
+@require_capability('marketing.read')
 def preview_block(request, block_id):
     """Live preview: the block's picks with per-product score explanations.
 
@@ -122,6 +126,7 @@ def preview_block(request, block_id):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def edit_block(request, block_id=None):
     """Create (block_id is None) or edit a DynamicBlock."""
     from plugins.installed.catalog.models import Category
@@ -164,6 +169,7 @@ def edit_block(request, block_id=None):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def delete_block(request, block_id):
     block = get_object_or_404(DynamicBlock, pk=block_id)
     if request.method == 'POST':
@@ -291,6 +297,7 @@ def _apply_option_fields(block, request) -> None:
 
 
 @staff_member_required
+@require_capability('marketing.read')
 def proposals(request):
     """Human-checkpoint review queue for the nightly merchandiser autopilot."""
     from .models import MerchandisingProposal
@@ -312,6 +319,7 @@ def proposals(request):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def proposal_action(request, proposal_id):
     """Approve (apply the low-risk config action) or dismiss one proposal."""
     from . import autopilot

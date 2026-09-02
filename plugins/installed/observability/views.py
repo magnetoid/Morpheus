@@ -11,6 +11,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Q
 from django.shortcuts import render
 
+from core.authz import require_capability
+
 _AI_PREFIXES = ('agents.', 'selfdev.', 'ai.')
 _SECURITY_PREFIXES = ('rbac.', 'auth.', 'login', 'mfa.', 'token.', 'consent.')
 
@@ -23,6 +25,7 @@ def _prefix_q(prefixes):
 
 
 @staff_member_required
+@require_capability('system.read')
 def audit_log_view(request):
     from core.audit.models import AuditEvent
 

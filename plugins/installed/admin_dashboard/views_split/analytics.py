@@ -19,6 +19,7 @@ from django.db.models.functions import (
     TruncDate,
 )
 
+from core.authz import require_capability
 from morpheus.app.views import HttpRequest, HttpResponse, render, staff_member_required
 from plugins.installed.admin_dashboard.views_split._shared import (
     DATE_PRESETS,
@@ -31,6 +32,7 @@ from plugins.installed.admin_dashboard.views_split._shared import (
 
 
 @staff_member_required
+@require_capability('analytics.read')
 def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0912, PLR0915
     date_range = _resolve_date_range(request)
 

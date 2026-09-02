@@ -24,7 +24,11 @@ from morpheus.app.views import (
 from plugins.installed.admin_dashboard.views_split._shared import logger
 
 
+from core.authz import require_capability
+
+
 @staff_member_required
+@require_capability('catalog.read')
 def categories_list(request: HttpRequest) -> HttpResponse:
     search = request.GET.get('q', '').strip()[:80]
     show_inactive = request.GET.get('inactive') == '1'
@@ -91,6 +95,7 @@ def categories_list(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def category_edit(request: HttpRequest, category_id: str) -> HttpResponse:
     from django.shortcuts import get_object_or_404
 

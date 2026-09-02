@@ -7,6 +7,7 @@ from decimal import Decimal
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 
+from core.authz import require_capability
 from plugins.installed.analytics.services_attribution import MODELS
 
 _MODEL_LABELS = {
@@ -19,6 +20,7 @@ _MODEL_LABELS = {
 
 
 @staff_member_required
+@require_capability('analytics.read')
 def attribution_view(request):
     from plugins.installed.analytics.services_attribution import roas_by_channel
 

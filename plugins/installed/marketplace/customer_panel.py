@@ -32,6 +32,8 @@ from django.urls import reverse
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
+from core.authz import require_capability
+
 logger = logging.getLogger('morpheus.marketplace')
 
 
@@ -70,6 +72,7 @@ def vendor_panel(value, customer=None, request=None, **kwargs):
 
 
 @staff_member_required
+@require_capability('system.write')
 @require_POST
 def toggle_vendor(request, customer_id):
     """Staff-only: turn a customer ON/OFF as a marketplace vendor.

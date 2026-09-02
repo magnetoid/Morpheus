@@ -11,12 +11,14 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from djmoney.money import Money
 
+from core.authz import require_capability
 from plugins.installed.gift_cards.forms import IssueGiftCardForm
 
 logger = logging.getLogger('morpheus.gift_cards.dashboard')
 
 
 @staff_member_required
+@require_capability('gift_cards.read')
 def gift_cards_list(request: HttpRequest) -> HttpResponse:
     from plugins.installed.gift_cards.models import GiftCard
 
@@ -41,6 +43,7 @@ def gift_cards_list(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('gift_cards.write')
 def gift_card_new(request: HttpRequest) -> HttpResponse:
     from plugins.installed.gift_cards.services import issue
 
@@ -77,6 +80,7 @@ def gift_card_new(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('gift_cards.write')
 def gift_card_detail(request: HttpRequest, card_id) -> HttpResponse:
     from plugins.installed.gift_cards.models import GiftCard, GiftCardLedger
 

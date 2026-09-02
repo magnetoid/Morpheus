@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import logging
 
+from core.authz import require_capability
 from morpheus.app.views import HttpRequest, HttpResponse, render, staff_member_required
 
 logger = logging.getLogger('morpheus.advanced_ecommerce')
 
 
 @staff_member_required
+@require_capability('inventory.read')
 def low_stock_view(request: HttpRequest) -> HttpResponse:
     """List variants whose available stock is below the configured threshold."""
     from plugins.installed.inventory.models import StockLevel

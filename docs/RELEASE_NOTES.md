@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.59.0 — 2026-09-02
+
+**System-wide RBAC capability coverage (roadmap Milestone 1.2)**
+
+- Capability coverage expands from 43 to 250 gated views (~13% to ~77% of the staff surface) across 64 files — the roadmap's Phase 1 milestone, and the prerequisite its own risk-mitigation section names for scoping external AI access. NOTHING DENIES YET: enforcement_mode stays 'log', which records what would be denied without denying it, and is what makes a sweep this size safe to land at once.
+- marketing.read / marketing.write added to the admin + marketing_manager role templates in the SAME change as the views that demand them. This is mandatory, not cosmetic: a capability no role can hold denies EVERYONE once enforcement flips. Guarded by core/tests/test_authz.py::CapabilityVocabularyTests, which passes on all 250.
+- Two corrections made mid-sweep. (1) Classifying read-vs-write by view NAME under-gated 65 mutating views behind a .read capability — e.g. tax/dashboard.py:regions, a POST-handling dispatch view; re-scanned by actual POST handling and upgraded 54 to .write. (2) seo/views.py already uses a BETTER pattern — page gated on .read, enforce(request, '<domain>.write') inside the POST branch, so a reader can open the page but not mutate it. Those 13 views were detected and deliberately left alone rather than flattened into the cruder page-level gate.
+- Before flipping enforcement_mode to 'enforce' (a separate, deliberate decision): superusers bypass and the seam falls back to is_staff when rbac is absent, so exposure is narrow but real — staff who are not superusers and hold no RoleBinding would be denied. Provision bindings, then confirm a week of 'would deny (log-only)' warnings is empty.
+
 ## v0.58.0 — 2026-08-21
 
 **GraphQL cache correctness + agent scope semantics**

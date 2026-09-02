@@ -13,6 +13,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from core.authz import require_capability
+
 _FILTER_CHOICES = (
     ('all', 'All'),
     ('approved', 'Approved'),
@@ -22,6 +24,7 @@ _FILTER_CHOICES = (
 
 
 @staff_member_required
+@require_capability('cms.read')
 def reviews_list(request):
     """List + filter reviews. Default to 'all' so newcomers see everything."""
     from plugins.installed.catalog.models import Review
@@ -57,6 +60,7 @@ def reviews_list(request):
 
 
 @staff_member_required
+@require_capability('cms.write')
 @require_POST
 def review_action(request, review_id):
     """Approve / hide / unhide a single review. POST-only."""
@@ -79,6 +83,7 @@ def review_action(request, review_id):
 
 
 @staff_member_required
+@require_capability('cms.write')
 @require_POST
 def review_respond(request, review_id):
     """Add a public merchant reply. Stored as a metafield on the Review

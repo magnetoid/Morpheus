@@ -5,6 +5,7 @@
 # ruff: noqa: PLC0415, PLR0912, PLR0915, S110
 from __future__ import annotations
 
+from core.authz import require_capability
 from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
@@ -76,6 +77,7 @@ def _build_panel_fields(plugin_instance, schema: dict) -> list[dict]:
 
 
 @staff_member_required
+@require_capability('system.write')
 def settings_view(request: HttpRequest) -> HttpResponse:
     """Settings hub — Shopify-style category index.
 
@@ -148,6 +150,7 @@ def _core_form_for(category: str):
 
 
 @staff_member_required
+@require_capability('system.write')
 def settings_ai_probe(request: HttpRequest) -> HttpResponse:
     """JSON endpoint backing the "Fetch models" + "Test connection" buttons.
 
@@ -202,6 +205,7 @@ def settings_ai_probe(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 def settings_ai_disconnect(request: HttpRequest) -> HttpResponse:
     """Disconnect a provider — clears its api_key/base_url/model so it leaves
     the connected list and returns to the "Add AI" picker. If it was the active
@@ -367,6 +371,7 @@ _AI_PROVIDERS = [
 
 
 @staff_member_required
+@require_capability('system.write')
 def settings_caching(request: HttpRequest) -> HttpResponse:
     """Unified caching dashboard — Django cache backend status, Redis
     stats, storefront page-cache TTL, and Cloudflare zone summary.
@@ -993,6 +998,7 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # noqa: PLR0911 — dispatcher: ai/caching/plugin-fallback/core-form(ajax±)/render branches
     """Render every plugin SettingsPanel that belongs to one category.
 
@@ -1235,6 +1241,7 @@ def _email_template_defs():
 
 
 @staff_member_required
+@require_capability('system.read')
 def email_templates_list(request: HttpRequest) -> HttpResponse:
     """Central email-templates list — core + every plugin's contributed
     templates, grouped by the owning app (the WooCommerce Settings → Emails
@@ -1274,6 +1281,7 @@ def email_templates_list(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 def email_template_edit(request: HttpRequest, key: str) -> HttpResponse:
     """Edit one template. Reset = delete the row → falls back to filesystem default."""
     from django.http import Http404

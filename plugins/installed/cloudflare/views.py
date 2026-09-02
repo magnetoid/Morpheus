@@ -17,6 +17,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 
+from core.authz import require_capability
 from morpheus.app import dashboard_trail
 
 logger = logging.getLogger('morpheus.cloudflare')
@@ -75,6 +76,7 @@ def _trail(*items):
 
 
 @staff_member_required
+@require_capability('system.write')
 def overview(request):
     """Account list + last-purge feed. Entry point for the CF surface."""
     from plugins.installed.cloudflare.models import (
@@ -125,6 +127,7 @@ def overview(request):
 
 
 @staff_member_required
+@require_capability('system.write')
 def account_sync(request, account_id):
     """Pull zones for one account from the CF API and upsert into our DB."""
     from plugins.installed.cloudflare.models import CloudflareAccount
@@ -149,6 +152,7 @@ def account_sync(request, account_id):
 
 
 @staff_member_required
+@require_capability('system.read')
 def zones_list(request):
     """List every zone known to Morpheus across all accounts."""
     from plugins.installed.cloudflare.models import CloudflareZone
@@ -168,6 +172,7 @@ def zones_list(request):
 
 
 @staff_member_required
+@require_capability('system.write')
 def zone_detail(request, zone_id):
     """Per-zone dashboard: settings + recent purges + analytics summary."""
     from plugins.installed.cloudflare.models import CloudflareZone
@@ -327,6 +332,7 @@ def zone_detail(request, zone_id):
 
 
 @staff_member_required
+@require_capability('system.write')
 def purge_form(request, zone_id):
     """Manual cache-purge UI: URL list, host list, or purge everything."""
     from plugins.installed.cloudflare.models import CloudflareZone
@@ -413,6 +419,7 @@ def purge_form(request, zone_id):
 
 
 @staff_member_required
+@require_capability('system.read')
 def analytics(request, zone_id):
     """Full analytics page for a zone (configurable window)."""
     from plugins.installed.cloudflare.models import CloudflareZone
@@ -468,6 +475,7 @@ def analytics(request, zone_id):
 
 
 @staff_member_required
+@require_capability('system.read')
 def invalidations_log(request):
     """Cross-zone purge audit log."""
     from plugins.installed.cloudflare.models import CacheInvalidation
@@ -485,6 +493,7 @@ def invalidations_log(request):
 
 
 @staff_member_required
+@require_capability('system.write')
 def dns_records(request, zone_id):
     """DNS records for a zone — list + add + delete.
 
@@ -547,6 +556,7 @@ def dns_records(request, zone_id):
 
 
 @staff_member_required
+@require_capability('system.read')
 def firewall_events(request, zone_id):
     """Recent WAF / firewall events (blocks, challenges, JS challenges).
 

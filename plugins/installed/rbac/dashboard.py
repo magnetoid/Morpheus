@@ -5,8 +5,11 @@ from __future__ import annotations
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 
+from core.authz import require_capability
+
 
 @staff_member_required
+@require_capability('system.write')
 def roles_page(request):
     from plugins.installed.rbac.models import Role, RoleBinding
 

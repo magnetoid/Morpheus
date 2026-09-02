@@ -47,6 +47,8 @@ _DEFAULT_TEMPLATES = {
         'gift_cards.write',
         'affiliates.read',
         'affiliates.write',
+        'marketing.read',
+        'marketing.write',
         'system.read',
         'system.write',
     ],
@@ -59,6 +61,11 @@ _DEFAULT_TEMPLATES = {
         'crm.write',
         'seo.read',
         'seo.write',
+        # Campaigns, coupons + the AI email writer. Added in the SAME change as
+        # the views that demand it: a capability no role can hold denies
+        # EVERYONE once enforcement_mode flips to `enforce`.
+        'marketing.read',
+        'marketing.write',
     ],
     'inventory_manager': [
         'catalog.read',

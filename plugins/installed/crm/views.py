@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from core.authz import require_capability
 from morpheus.app.views import render, staff_member_required
 
 
 @staff_member_required
+@require_capability('crm.read')
 def crm_home(request):
     from plugins.installed.crm.models import CrmTask, Deal, Interaction, Lead
 
@@ -34,6 +36,7 @@ def crm_home(request):
 
 
 @staff_member_required
+@require_capability('crm.read')
 def leads_list(request):
     from plugins.installed.crm.models import Lead
 
@@ -42,6 +45,7 @@ def leads_list(request):
 
 
 @staff_member_required
+@require_capability('crm.read')
 def pipeline_board(request):
     from plugins.installed.crm.models import Deal, Pipeline
 
@@ -67,6 +71,7 @@ def pipeline_board(request):
 
 
 @staff_member_required
+@require_capability('crm.read')
 def tasks_list(request):
     from plugins.installed.crm.models import CrmTask
 
@@ -78,6 +83,7 @@ def tasks_list(request):
 
 
 @staff_member_required
+@require_capability('crm.write')
 def inbox_list(request):
     """Latest messages across every connected mail account."""
     from morpheus.app.views import redirect
@@ -130,6 +136,7 @@ def inbox_list(request):
 
 
 @staff_member_required
+@require_capability('crm.write')
 def inbox_message(request, message_id):
     """Single-message view + reply form."""
     from morpheus.app.views import HttpResponseRedirect, get_object_or_404
@@ -186,6 +193,7 @@ def inbox_message(request, message_id):
 
 
 @staff_member_required
+@require_capability('crm.write')
 def inbox_compose(request):
     """Compose a new outbound email."""
     from morpheus.app.views import HttpResponseRedirect
@@ -227,6 +235,7 @@ def inbox_compose(request):
 
 
 @staff_member_required
+@require_capability('crm.write')
 def inbox_accounts(request):
     """List + create/edit MailAccount records."""
     from morpheus.app.views import HttpResponseRedirect

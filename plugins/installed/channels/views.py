@@ -9,6 +9,7 @@ import logging
 
 from django.core.cache import cache
 
+from core.authz import require_capability
 from morpheus.app.views import render, staff_member_required
 from plugins.installed.channels.tasks import METRICS_CACHE_KEY
 
@@ -63,6 +64,7 @@ def _merge_metrics(rows: list[dict]) -> bool:
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def overview(request):
     msg = ''
     if request.method == 'POST':
@@ -115,6 +117,7 @@ def _sum(rows: list[dict], key: str) -> float:
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def attribution_view(request):
     """Cross-channel attribution: blended MER + platform-claimed vs last-touch
     revenue per channel. Reads the daily-cached ads metrics + analytics."""

@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.core.cache import cache
 from django.http import HttpResponse
 
+from core.authz import require_capability
 from morpheus.app.views import render, staff_member_required
 
 FEED_CACHE_KEY = 'microsoft_commerce:feed:v1'
@@ -27,6 +28,7 @@ def microsoft_catalog_feed(request):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def dashboard(request):
     from morpheus.core import site_base_url
     from plugins.installed.microsoft_commerce.models import MicrosoftSyncLog
@@ -57,6 +59,7 @@ def dashboard(request):
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def ads_dashboard(request):
     """Microsoft Advertising campaign management + performance metrics (SOAP).
 

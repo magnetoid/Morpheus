@@ -8,6 +8,7 @@ import logging
 
 from django.http import HttpResponse
 
+from core.authz import require_capability
 from morpheus.app.views import (
     HttpResponseBadRequest,
     JsonResponse,
@@ -172,6 +173,7 @@ def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (si
 
 
 @staff_member_required
+@require_capability('analytics.read')
 def export_data(request):
     """Export analytics data in CSV/JSON format."""
     import csv
@@ -211,6 +213,7 @@ def export_data(request):
 
 
 @staff_member_required
+@require_capability('analytics.read')
 def overview(request):
     from plugins.installed.analytics.services import (  # noqa: PLC0415
         agent_activity,
@@ -237,6 +240,7 @@ def overview(request):
 
 
 @staff_member_required
+@require_capability('analytics.read')
 def realtime(request):
     from plugins.installed.analytics.services import real_time  # noqa: PLC0415
 
@@ -251,6 +255,7 @@ def realtime(request):
 
 
 @staff_member_required
+@require_capability('analytics.read')
 def funnel_view(request):
     """Default funnel: pageview → product.viewed → cart.add → checkout.started → order.placed.
 
@@ -290,6 +295,7 @@ def funnel_view(request):
 
 
 @staff_member_required
+@require_capability('analytics.read')
 def cohort_view(request):
     """Weekly cohort retention table — % of customers signing up in
     week W who placed an order in week W+N, for N = 0..11.
@@ -323,6 +329,7 @@ def cohort_view(request):
 
 
 @staff_member_required
+@require_capability('analytics.read')
 def realtime_json(request):
     """JSON feed for the realtime dashboard's auto-refresh."""
     from plugins.installed.analytics.services import real_time  # noqa: PLC0415

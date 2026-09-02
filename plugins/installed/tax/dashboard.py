@@ -15,6 +15,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 
+from core.authz import require_capability
 from morpheus.app import dashboard_trail
 
 logger = logging.getLogger('morpheus.tax')
@@ -33,6 +34,7 @@ def _norm_region(raw: str) -> str:
 
 
 @staff_member_required
+@require_capability('tax.write')
 def regions(request):  # noqa: PLR0912, PLR0915 — flat region+rate dispatch view
     """Unified Tax settings — regions + rates on ONE page (ADR 0003: no
     duplicate settings surfaces; the merge lives in the owning plugin). Kept at
@@ -214,6 +216,7 @@ def _delete_rate(request, rate_id: str) -> None:
 
 
 @staff_member_required
+@require_capability('tax.read')
 def rates(request):
     """Back-compat redirect: rates merged into the unified Tax page (ADR 0003)."""
     region = (request.GET.get('region') or '').strip()

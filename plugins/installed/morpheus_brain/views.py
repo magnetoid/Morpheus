@@ -11,8 +11,11 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import redirect, render
 
+from core.authz import require_capability
+
 
 @staff_member_required
+@require_capability('system.write')
 def brain(request):
     from core.brain import analyst, signals
 

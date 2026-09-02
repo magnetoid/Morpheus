@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from core.authz import require_capability
 from morpheus.app.views import (
     Http404,
     HttpRequest,
@@ -35,6 +36,7 @@ def _require_marketing() -> None:
 
 
 @staff_member_required
+@require_capability('marketing.read')
 def marketing_view(request: HttpRequest) -> HttpResponse:
     _require_marketing()
     coupons: list[Any] = []
@@ -58,6 +60,7 @@ def marketing_view(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def coupon_new(request: HttpRequest) -> HttpResponse:
     _require_marketing()
     if request.method == 'POST':
@@ -84,6 +87,7 @@ def coupon_new(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def coupon_edit(request: HttpRequest, coupon_id: str) -> HttpResponse:
     _require_marketing()
     from plugins.installed.marketing.models import Coupon
@@ -111,6 +115,7 @@ def coupon_edit(request: HttpRequest, coupon_id: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('marketing.write')
 def coupon_delete(request: HttpRequest, coupon_id: str) -> HttpResponse:
     _require_marketing()
     from plugins.installed.marketing.models import Coupon

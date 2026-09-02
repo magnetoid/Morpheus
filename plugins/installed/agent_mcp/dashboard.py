@@ -36,6 +36,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
+from core.authz import require_capability
+
 logger = logging.getLogger('morpheus.agent_mcp.dashboard')
 
 _TOKEN_PREFIX = 'mph_'
@@ -142,6 +144,7 @@ def _scope_list_from_form(post, prefix: str) -> list[str]:
 
 
 @staff_member_required
+@require_capability('system.write')
 @require_http_methods(['GET', 'POST'])
 def tokens_view(request):  # noqa: PLR0912, PLR0915
     """List + create + revoke MCP admin tokens."""

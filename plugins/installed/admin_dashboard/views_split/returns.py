@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from core.authz import require_capability
 from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
@@ -12,6 +13,7 @@ from morpheus.app.views import (
 
 
 @staff_member_required
+@require_capability('orders.read')
 def returns_list(request: HttpRequest) -> HttpResponse:
     from plugins.installed.orders.refunds import ReturnRequest
 
@@ -37,6 +39,7 @@ def returns_list(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('orders.write')
 def return_detail(request: HttpRequest, rma_id) -> HttpResponse:
     from morpheus.app.views import HttpResponseRedirect
     from plugins.installed.orders.models import OrderItem

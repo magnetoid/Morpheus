@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
+from core.authz import require_capability
 from morpheus.app.views import (
     get_object_or_404,
     messages,
@@ -20,12 +21,14 @@ def _editable(draft) -> bool:
 
 
 @staff_member_required
+@require_capability('orders.read')
 def index(request):
     drafts = DraftOrder.objects.select_related('customer', 'channel').order_by('-created_at')[:200]
     return render(request, 'draft_orders/index.html', {'drafts': drafts})
 
 
 @staff_member_required
+@require_capability('orders.read')
 def detail(request, number: str):
     draft = get_object_or_404(DraftOrder, number=number)
     # Variants for the "add line" picker. Limit to active products to avoid
@@ -53,6 +56,7 @@ def detail(request, number: str):
 
 
 @staff_member_required
+@require_capability('orders.write')
 def line_add(request, number: str):
     draft = get_object_or_404(DraftOrder, number=number)
     if request.method != 'POST':
@@ -115,6 +119,7 @@ def line_add(request, number: str):
 
 
 @staff_member_required
+@require_capability('orders.write')
 def line_delete(request, number: str, line_id: str):
     draft = get_object_or_404(DraftOrder, number=number)
     if request.method != 'POST':
@@ -130,6 +135,7 @@ def line_delete(request, number: str, line_id: str):
 
 
 @staff_member_required
+@require_capability('orders.write')
 def cancel(request, number: str):
     draft = get_object_or_404(DraftOrder, number=number)
     if request.method == 'POST' and _editable(draft):
@@ -140,6 +146,7 @@ def cancel(request, number: str):
 
 
 @staff_member_required
+@require_capability('orders.write')
 def convert(request, number: str):
     draft = get_object_or_404(DraftOrder, number=number)
     if request.method == 'POST':

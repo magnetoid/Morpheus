@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from core.authz import require_capability
 from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
@@ -13,6 +14,7 @@ from morpheus.app.views import (
 
 
 @staff_member_required
+@require_capability('analytics.read')
 def ai_insights(request: HttpRequest) -> HttpResponse:
     from plugins.registry import app_registry
 

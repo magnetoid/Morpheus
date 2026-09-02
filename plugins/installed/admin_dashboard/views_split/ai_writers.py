@@ -19,6 +19,7 @@ import json
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 
+from core.authz import require_capability
 from morpheus.app.views import staff_member_required
 from plugins.installed.admin_dashboard.views_split._shared import call_llm, logger
 
@@ -34,6 +35,7 @@ def _json_body(request: HttpRequest) -> dict:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 @require_POST
 def ai_draft_description(request: HttpRequest) -> HttpResponse:
     """Draft a product description from a name + optional category + style."""
@@ -67,6 +69,7 @@ def ai_draft_description(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 @require_POST
 def ai_rewrite_description(request: HttpRequest) -> HttpResponse:
     """Rewrite an existing product description — clearer, more concrete, concise —
@@ -94,6 +97,7 @@ def ai_rewrite_description(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('marketing.write')
 @require_POST
 def ai_rewrite_email(request: HttpRequest) -> HttpResponse:
     """Rewrite an email subject + body in a target tone, preserving any

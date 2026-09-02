@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.text import slugify
 
+from core.authz import require_capability
 from morpheus.app import dashboard_trail
 
 
@@ -121,6 +122,7 @@ def _affiliates_handle_post(request):
 
 
 @staff_member_required
+@require_capability('affiliates.write')
 def affiliates_list(request):
     """List of affiliates ordered by lifetime payout, with bulk + per-row actions."""
     from plugins.installed.affiliates.models import Affiliate  # noqa: PLC0415
@@ -257,6 +259,7 @@ def _payouts_handle_post(request):
 
 
 @staff_member_required
+@require_capability('affiliates.write')
 def payouts_list(request):
     from plugins.installed.affiliates.models import AffiliatePayout  # noqa: PLC0415
 
@@ -292,6 +295,7 @@ def payouts_list(request):
 
 
 @staff_member_required
+@require_capability('affiliates.write')
 def programs_list(request):
     """Manage AffiliateProgram rows — commission tiers."""
     from plugins.installed.affiliates.models import AffiliateProgram  # noqa: PLC0415
@@ -401,6 +405,7 @@ def _links_csv_response(qs):
 
 
 @staff_member_required
+@require_capability('affiliates.read')
 def links_list(request):
     """Top affiliate links by clicks / conversions, filterable + CSV export."""
     from plugins.installed.affiliates.models import (  # noqa: PLC0415
@@ -484,6 +489,7 @@ def _conversions_csv_response(qs):
 
 
 @staff_member_required
+@require_capability('affiliates.write')
 def conversions_list(request):
     """Attributed orders — which affiliate earned which conversion."""
     from plugins.installed.affiliates.models import AffiliateConversion  # noqa: PLC0415
@@ -536,6 +542,7 @@ def conversions_list(request):
 
 
 @staff_member_required
+@require_capability('affiliates.read')
 def analytics(request):
     """KPI summary + trend table + top performers."""
     from plugins.installed.affiliates.models import (  # noqa: PLC0415
@@ -658,6 +665,7 @@ def analytics(request):
 
 
 @staff_member_required
+@require_capability('affiliates.write')
 def affiliate_detail(request, affiliate_id):
     """Per-affiliate drill-in: 30d KPIs + top links + recent conversions + edit form."""
     from django.contrib.contenttypes.models import ContentType  # noqa: PLC0415
@@ -949,6 +957,7 @@ def _save_program(request, program, *, is_new):
 
 
 @staff_member_required
+@require_capability('affiliates.write')
 def program_detail(request, program_id):
     """Per-program drill-in + edit form. `program_id is None` ⇒ create mode."""
     import json  # noqa: PLC0415
@@ -997,6 +1006,7 @@ def program_detail(request, program_id):
 
 
 @staff_member_required
+@require_capability('affiliates.write')
 def creatives_list(request):
     """Merchant management of affiliate marketing creatives — upload images +
     swipe copy that affiliates grab from /affiliates/me/creatives/."""

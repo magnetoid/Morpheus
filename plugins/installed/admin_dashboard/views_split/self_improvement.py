@@ -16,10 +16,13 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from core.authz import require_capability
+
 logger = logging.getLogger('morpheus.admin.self_improvement')
 
 
 @staff_member_required
+@require_capability('system.read')
 def overview(request: HttpRequest) -> HttpResponse:
     """Main /dashboard/system/self-improvement/ page."""
     from core.self_improvement.models import (  # noqa: PLC0415
@@ -93,6 +96,7 @@ def overview(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 @require_POST
 def approve(request: HttpRequest, recommendation_id: int) -> HttpResponse:
     from core.self_improvement.models import SiRecommendation  # noqa: PLC0415
@@ -148,6 +152,7 @@ def _suppress_recommendation(rec, *, reason: str, created_by, expires_at=None):
 
 
 @staff_member_required
+@require_capability('system.write')
 @require_POST
 def reject(request: HttpRequest, recommendation_id: int) -> HttpResponse:
     """Reject + write si_suppression rows so the same signal doesn't come back."""
@@ -169,6 +174,7 @@ def reject(request: HttpRequest, recommendation_id: int) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 @require_POST
 def snooze(request: HttpRequest, recommendation_id: int) -> HttpResponse:
     """Suppress for 30 days, then revisit."""

@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.authz import require_capability
 from morpheus.app.views import staff_member_required
 from plugins.installed.workflows.engine import run_workflow
 from plugins.installed.workflows.models import (
@@ -22,6 +23,7 @@ logger = logging.getLogger('morpheus.workflows.views')
 
 
 @staff_member_required
+@require_capability('system.read')
 def index(request: HttpRequest) -> HttpResponse:
     workflows = list(Workflow.objects.all())
     return render(
@@ -35,6 +37,7 @@ def index(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 def workflow_form(request: HttpRequest, workflow_id=None) -> HttpResponse:
     wf = get_object_or_404(Workflow, pk=workflow_id) if workflow_id else None
 
@@ -107,6 +110,7 @@ def workflow_form(request: HttpRequest, workflow_id=None) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.read')
 def runs(request: HttpRequest, workflow_id) -> HttpResponse:
     wf = get_object_or_404(Workflow, pk=workflow_id)
     rows = list(WorkflowRun.objects.filter(workflow=wf).order_by('-created_at')[:100])
@@ -122,6 +126,7 @@ def runs(request: HttpRequest, workflow_id) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 def dry_run_view(request: HttpRequest, workflow_id) -> HttpResponse:
     """Dry-run a workflow against a sample payload pasted into the form.
 
@@ -160,6 +165,7 @@ def dry_run_view(request: HttpRequest, workflow_id) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.write')
 def delete(request: HttpRequest, workflow_id) -> HttpResponse:
     wf = get_object_or_404(Workflow, pk=workflow_id)
     if request.method == 'POST':

@@ -6,6 +6,8 @@ from django.apps import apps
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 
+from core.authz import require_capability
+
 
 def _safe_list(model_path, *, order_by='-created_at', limit=200):
     try:
@@ -16,6 +18,7 @@ def _safe_list(model_path, *, order_by='-created_at', limit=200):
 
 
 @staff_member_required
+@require_capability('marketing.read')
 def coupons_list(request):
     rows = _safe_list('marketing.Coupon')
     return render(
@@ -31,6 +34,7 @@ def coupons_list(request):
 
 
 @staff_member_required
+@require_capability('marketing.read')
 def campaigns_list(request):
     rows = _safe_list('marketing.EmailCampaign')
     return render(

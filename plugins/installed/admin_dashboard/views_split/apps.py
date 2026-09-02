@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from core.authz import require_capability
 from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
@@ -16,6 +17,7 @@ from plugins.installed.admin_dashboard.views_split._shared import (
 
 
 @staff_member_required
+@require_capability('system.write')
 def apps_view(request: HttpRequest) -> HttpResponse:
     from plugins.registry import app_registry
 
@@ -75,6 +77,7 @@ def apps_view(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('system.read')
 def apps_store_view(request: HttpRequest) -> HttpResponse:
     """Browse + install surface for community apps.
 

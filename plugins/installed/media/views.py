@@ -23,6 +23,7 @@ from django.views.decorators.http import require_http_methods
 
 from morpheus.app.views import staff_member_required
 from plugins.installed.media.models import MediaAsset
+from core.authz import require_capability
 
 logger = logging.getLogger('morpheus.media.views')
 
@@ -501,6 +502,7 @@ def _build_tabs(view: str) -> list[dict]:
 
 
 @staff_member_required
+@require_capability('cms.read')
 def library(request: HttpRequest) -> HttpResponse:
     """Browse the asset library — single page with tabs across every type."""
     view = (request.GET.get('view') or 'all').strip().lower() or 'all'
@@ -546,6 +548,7 @@ def library(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('cms.write')
 @require_http_methods(['POST'])
 def upload(request: HttpRequest) -> HttpResponse:
     """Multipart upload — single or multi-file."""
@@ -569,6 +572,7 @@ def upload(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('cms.write')
 @csrf_protect
 @require_http_methods(['POST'])
 def api_upload(request: HttpRequest) -> JsonResponse:
@@ -601,6 +605,7 @@ def api_upload(request: HttpRequest) -> JsonResponse:
 
 
 @staff_member_required
+@require_capability('cms.write')
 @require_http_methods(['POST'])
 def delete(request: HttpRequest, asset_id) -> HttpResponse:
     asset = get_object_or_404(MediaAsset, pk=asset_id)
@@ -612,6 +617,7 @@ def delete(request: HttpRequest, asset_id) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('cms.write')
 def edit_meta(request: HttpRequest, asset_id) -> HttpResponse:
     """Edit title / alt text / description / tags. The file itself is
     replaced via re-upload.
@@ -657,6 +663,7 @@ def edit_meta(request: HttpRequest, asset_id) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('cms.read')
 def picker_modal(request: HttpRequest) -> HttpResponse:
     """Embeddable picker — used in iframes / dialogs in other forms.
 

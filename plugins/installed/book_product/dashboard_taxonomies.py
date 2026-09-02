@@ -16,6 +16,8 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils.text import slugify
 
+from core.authz import require_capability
+
 _TAXONOMIES = [
     ('author', 'Authors', '/author/'),
     ('publisher', 'Publishers', '/publisher/'),
@@ -112,6 +114,7 @@ _ROOT_LABELS = {**_LABELS, **{k: plural for k, _singular, plural, *_ in _CURATED
 
 
 @staff_member_required
+@require_capability('catalog.read')
 def taxonomies_list(request: HttpRequest) -> HttpResponse:
     from plugins.installed.book_product.compat import distinct_values, product_ids_for
     from plugins.installed.book_product.models import BookTaxonomyTerm
@@ -158,6 +161,7 @@ def taxonomies_list(request: HttpRequest) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def taxonomy_edit(request: HttpRequest, taxonomy: str, slug: str) -> HttpResponse:
     from plugins.installed.book_product.compat import resolve_slug
     from plugins.installed.book_product.models import BookTaxonomy, BookTaxonomyTerm
@@ -206,6 +210,7 @@ def taxonomy_edit(request: HttpRequest, taxonomy: str, slug: str) -> HttpRespons
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def taxonomy_root_edit(request: HttpRequest, taxonomy: str) -> HttpResponse:
     """Edit the landing page for a whole taxonomy kind (e.g. /authors/,
     /genres/) — its intro blurb, SEO, and hero image. The BookTaxonomyRoot row
@@ -263,6 +268,7 @@ def _curated_breadcrumb(label, extra):
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def curated_add(request: HttpRequest, kind: str) -> HttpResponse:
     """Create a curated Genre/Topic (curated taxonomies need a create path that
     auto-discovered authors/publishers don't)."""
@@ -282,6 +288,7 @@ def curated_add(request: HttpRequest, kind: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def curated_edit(request: HttpRequest, kind: str, slug: str) -> HttpResponse:
     """Edit a Genre/Topic landing page — name, intro, SEO, image. Same UX as a
     book-taxonomy term, but writes the model row directly (it carries its own SEO)."""
@@ -325,6 +332,7 @@ def curated_edit(request: HttpRequest, kind: str, slug: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def curated_backfill(request: HttpRequest, kind: str) -> HttpResponse:
     """Queue the bulk copy backfill for a curated kind (Genres/Topics).
 
@@ -377,6 +385,7 @@ def curated_backfill(request: HttpRequest, kind: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def curated_delete(request: HttpRequest, kind: str, slug: str) -> HttpResponse:
     model = _curated_model(kind)
     if model is not None and request.method == 'POST':
@@ -386,6 +395,7 @@ def curated_delete(request: HttpRequest, kind: str, slug: str) -> HttpResponse:
 
 
 @staff_member_required
+@require_capability('catalog.write')
 def taxonomy_generate(request: HttpRequest, taxonomy: str, slug: str = '') -> HttpResponse:
     """AI-generate the intro + SEO for a taxonomy page — a term when `slug` is
     given, otherwise the root/index page. Returns JSON

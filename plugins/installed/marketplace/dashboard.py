@@ -16,6 +16,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.text import slugify
 
+from core.authz import require_capability
 from morpheus.app import dashboard_trail
 
 logger = logging.getLogger('morpheus.marketplace')
@@ -68,6 +69,7 @@ def _vendor_commission_percent(vendor) -> Decimal:
 
 
 @staff_member_required
+@require_capability('system.read')
 def vendors_list(request):
     from plugins.installed.catalog.models import Vendor  # noqa: PLC0415
     from plugins.installed.marketplace.models import VendorOrder  # noqa: PLC0415
@@ -107,6 +109,7 @@ def vendors_list(request):
 
 
 @staff_member_required
+@require_capability('system.write')
 def applications_list(request):
     """Approve / reject incoming vendor applications. On approval,
     materialise a catalog.Vendor row and link it back via vendor_fk
@@ -234,6 +237,7 @@ def _top_skus_from_snapshots(vorders) -> list[tuple[str, int]]:
 
 
 @staff_member_required
+@require_capability('system.write')
 def vendor_detail(request, vendor_id):
     """Per-vendor analytics + commission override editor."""
     from django.contrib.contenttypes.models import ContentType  # noqa: PLC0415
@@ -313,6 +317,7 @@ def vendor_detail(request, vendor_id):
 
 
 @staff_member_required
+@require_capability('system.read')
 def vendor_orders(request):
     from plugins.installed.marketplace.models import VendorOrder  # noqa: PLC0415
 
@@ -415,6 +420,7 @@ def _payouts_csv_response(qs):
 
 
 @staff_member_required
+@require_capability('system.write')
 def payouts(request):
     from plugins.installed.marketplace.models import VendorPayout  # noqa: PLC0415
 
@@ -454,6 +460,7 @@ def payouts(request):
 
 
 @staff_member_required
+@require_capability('system.write')
 def payout_accounts(request):
     """Manage VendorPayoutAccount rows — how each vendor gets paid."""
     from plugins.installed.marketplace.models import VendorPayoutAccount  # noqa: PLC0415
@@ -488,6 +495,7 @@ def payout_accounts(request):
 
 
 @staff_member_required
+@require_capability('system.read')
 def reports(request):
     """Vendor performance — GMV per vendor, recent activity, sparkline."""
     from plugins.installed.catalog.models import Vendor  # noqa: PLC0415

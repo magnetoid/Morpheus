@@ -15,6 +15,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 
+from core.authz import require_capability
 from morpheus.app import dashboard_trail
 
 logger = logging.getLogger('morpheus.shipping')
@@ -119,6 +120,7 @@ def _save_config(request) -> None:
 
 
 @staff_member_required
+@require_capability('shipping.write')
 def zones(request):
     """Unified Shipping settings — zones + rates on ONE page (ADR 0003: no
     duplicate settings surfaces; the merge lives in the owning plugin). Kept at
@@ -264,6 +266,7 @@ def _delete_rate(request, rate_id: str) -> None:
 
 
 @staff_member_required
+@require_capability('shipping.read')
 def rates(request):
     """Back-compat redirect: rates merged into the unified Shipping page
     (ADR 0003 — one settings surface per domain)."""

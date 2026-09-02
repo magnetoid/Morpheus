@@ -21,7 +21,11 @@ from morpheus.app.views import (
 )
 
 
+from core.authz import require_capability
+
+
 @staff_member_required
+@require_capability('catalog.write')
 def tag_descriptions(request: HttpRequest) -> HttpResponse:
     from django.utils.text import slugify
     from taggit.models import Tag
