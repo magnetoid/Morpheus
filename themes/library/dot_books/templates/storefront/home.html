@@ -26,13 +26,18 @@ covers rather than abstract dots, so a shopper sees the whole selection at a
 glance and every pick is one click away. Choosing a cover promotes it.
 
 Deliberately NOT here, and not to be re-added: an auto-advancing timer (three
-of four books were only ever seen by a visitor who waited), a second display
-headline above the book title (two competing headlines in one column), and the
+of four books were only ever seen by a visitor who waited), TWO display
+headlines competing in one column, and the
 per-letter decode scramble — that effect forced `contain: layout`, a JS font
 fitter, a reserved tallest-title box and a top-anchored grid just to absorb the
-jitter it caused. The copy stack is bottom-anchored instead, so the price and
-buttons share one baseline on every slide and a long title grows upward into
-space it already has. No JS measures anything.
+jitter it caused. No JS measures anything.
+
+v0.61.1: the shop's ORIGINAL editorial opening — "The book that moved this
+month." — is restored as the column's single display headline (merchant
+preference; it was the very first hero's voice). To keep the one-headline rule,
+the per-book title is DEMOTED to a serif italic line (`.window__book`, the same
+treatment the first hero gave it), so the stage's height now varies by a line
+of body-scale serif rather than a display headline.
 {% endcomment %}
 <section id="editors-pick" class="window" data-home-hero aria-label="Editor's picks">
   <div class="wrap">
@@ -68,6 +73,10 @@ space it already has. No JS measures anything.
       </div>
 
       <div class="window__copy">
+        <header class="window__lead">
+          <p class="eyebrow">Editor's pick</p>
+          <h2 class="display display-l window__headline">The book that<br>moved this month<span class="text-accent">.</span></h2>
+        </header>
         <div class="window__copy-stage">
           {% for pick in hero_products %}
           <article
@@ -78,14 +87,7 @@ space it already has. No JS measures anything.
             {% if hero_products|length > 1 %}role="tabpanel"{% endif %}
             aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
           >
-            {% comment %}The eyebrow rides INSIDE the panel, repeated per book,
-            so the copy centres against the cover as one block. Hoisted out, it
-            anchors to the top of a stage sized to the LONGEST title in the set
-            and strands itself a couple of hundred pixels above its own heading.{% endcomment %}
-            <p class="eyebrow">Editor's picks</p>
-            <h2 class="display display-l window__title" style="--d: 60ms;">
-              {{ pick.name }}<span class="text-accent">.</span>
-            </h2>
+            <h3 class="window__book" style="--d: 60ms;"><em>{{ pick.name }}</em></h3>
             <p class="window__meta" style="--d: 120ms;">
               {% if pick.category %}
               <span class="window__cat">{{ pick.category.name }}</span>
@@ -238,13 +240,22 @@ space it already has. No JS measures anything.
     transform: none;
     transition-delay: var(--d, 0ms);
   }
-  .window__title {
-    /* One constant size on every slide (the old fitter shrank long titles, so
-       the composition changed shape as the slider advanced), capped to a
-       readable measure — the same `ch` idiom the theme's other headlines use.
-       Without it a title runs the full ~950px of the copy column at desktop. */
-    max-width: 18ch;
-    text-wrap: balance;
+  /* The restored editorial lead — static, so it never moves between books. */
+  .window__lead {
+    display: grid;
+    gap: 0.9rem;
+    margin-bottom: clamp(1.4rem, 2.5vw, 2rem);
+  }
+  .window__lead > * { margin: 0; }
+  .window__book {
+    /* The first hero's treatment of the book title: serif, italic, body-scale.
+       One constant size on every slide, capped to a readable measure — the
+       same `ch` idiom the theme's other headlines use. */
+    font-family: var(--serif);
+    font-size: clamp(1.35rem, 1vw + 1.1rem, 1.65rem);
+    line-height: 1.2;
+    font-weight: 400;
+    max-width: 34ch;
     overflow-wrap: break-word;
   }
   .window__meta {

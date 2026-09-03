@@ -80,6 +80,12 @@ class HomeHeroTests(TestCase):
         self.assertContains(response, 'aria-controls="hero-panel-', count=2)
         self.assertContains(response, 'The Last Archive')
         self.assertContains(response, 'A Room With Margins')
+        # The restored editorial opening (the shop's first hero) leads the copy
+        # column as the SINGLE display headline; the book title is the serif
+        # line beneath it, never a second display headline.
+        self.assertContains(response, 'The book that<br>moved this month')
+        self.assertContains(response, 'window__book')
+        self.assertNotContains(response, 'window__title')
 
     @patch(
         'plugins.installed.personalisation.services.rank_for_visitor',

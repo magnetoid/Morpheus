@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.61.1 — 2026-09-03
+
+**Homepage hero: the original editorial opening returns**
+
+- "The book that moved this month." — the shop's first hero headline — leads the bookshop window again as its single display headline
+- the selected book's title is demoted to the first hero's serif italic line, so two headlines never compete in one column
+- the four-cover shelf, no-autoplay behaviour and geometry-not-measurement layout of v0.51.0 are unchanged
+
 ## v0.61.0 — 2026-09-03
 
 **Outbound SSRF gate for server-initiated fetches**
