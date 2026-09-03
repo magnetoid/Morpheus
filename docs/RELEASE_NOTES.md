@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.61.0 — 2026-09-03
+
+**Outbound SSRF gate for server-initiated fetches**
+
+- SECURITY: webhook delivery POSTed to a stored endpoint URL with no SSRF guard and no validation at creation. A staff user — or any agent holding system.write — could register a webhook pointing at http://169.254.169.254/ (cloud instance credentials) or an internal admin port, and Morpheus would POST event payloads to it from inside the network, with retries. Both sinks (webhooks_ui delivery and core.tasks) are now gated.
+- The SSRF check is promoted to core/net.py as a reusable seam and catalog now delegates to it instead of keeping its own copy — two copies of a security check drift, and the looser copy becomes the hole. It resolves the host and requires EVERY returned address to be public; literal metadata IPs are blocked belt-and-braces.
+- A transient DNS failure is deliberately distinguished from an unsafe host (UnresolvableHostError, a subclass so plain catches still work). Conflating them would let a brief resolver outage permanently fail every queued webhook instead of retrying it; allowing the retry concedes nothing, since an unresolvable host cannot be connected to and the full check reruns if it starts resolving. The catalog download path stays strict via a non-raising wrapper — a one-shot synchronous agent fetch should fail fast, not retry.
+- Known limit, stated in the module: getaddrinfo resolves, then requests resolves again on connect, so DNS rebinding (TOCTOU) remains theoretically open — closing it needs a pinned-IP transport adapter. What is guaranteed is that a host resolving unsafe at check time is refused.
+
 ## v0.60.0 — 2026-09-02
 
 **GraphQL wired to the RBAC capability seam**

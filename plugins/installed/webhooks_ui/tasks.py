@@ -17,6 +17,33 @@ _BACKOFF_SECONDS = (1, 2, 4, 8, 16, 30)
 _MAX_ATTEMPTS = len(_BACKOFF_SECONDS) + 1  # 7 — last attempt before DLQ
 
 
+def _refuse_unsafe_endpoint(d) -> bool:
+    """SSRF gate before the socket opens. True when the delivery was refused.
+
+    The endpoint URL is merchant-supplied (and reachable by any agent holding
+    system.write), so without this a webhook pointed at 169.254.169.254 or an
+    internal admin port would be POSTed to from inside the network, with
+    retries. http:// is tolerated — legacy receivers exist — but the ADDRESS
+    check is not optional, because that is the part protecting the network.
+    """
+    from core.net import UnresolvableHostError, UnsafeUrlError, check_outbound_url
+
+    try:
+        check_outbound_url(d.endpoint.url, field='endpoint.url', require_https=False)
+    except UnresolvableHostError:
+        # DNS did not answer. Fall through and let `requests` fail normally so
+        # the existing retry/backoff path handles it — marking a delivery dead
+        # because the resolver blipped would lose real events.
+        return False
+    except UnsafeUrlError as e:
+        logger.warning('webhook refused by egress gate: %s -> %s', d.id, e)
+        d.status = 'failed'
+        d.response_body = f'refused: {e}'
+        d.save(update_fields=['status', 'response_body'])
+        return True
+    return False
+
+
 @app.task(name='webhooks_ui.deliver', acks_late=True, time_limit=20, soft_time_limit=10)
 def deliver_webhook(delivery_id: str) -> None:
     """Single delivery attempt. Schedules itself again on transient failure;
@@ -60,6 +87,9 @@ def deliver_webhook(delivery_id: str) -> None:
     success = False
     try:
         import requests
+
+        if _refuse_unsafe_endpoint(d):
+            return
 
         resp = requests.post(d.endpoint.url, data=body, headers=headers, timeout=10)
         d.response_status = resp.status_code

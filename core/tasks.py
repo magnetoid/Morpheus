@@ -67,6 +67,18 @@ def dispatch_webhook(
             'sha256=' + hmac.new(secret.encode('utf-8'), body, hashlib.sha256).hexdigest()
         )
 
+    # Same egress gate as the webhooks_ui deliverer — this task takes a URL
+    # from the caller, so it is an SSRF sink too.
+    from core.net import UnresolvableHostError, UnsafeUrlError, check_outbound_url
+
+    try:
+        check_outbound_url(url, field='webhook url', require_https=False)
+    except UnresolvableHostError:
+        pass  # transient: let requests fail and the task's retry path handle it
+    except UnsafeUrlError as e:
+        logger.warning('Webhook refused by egress gate: %s -> %s (%s)', event_name, url, e)
+        return
+
     try:
         response = requests.post(url, data=body, headers=headers, timeout=10)
     except SoftTimeLimitExceeded:

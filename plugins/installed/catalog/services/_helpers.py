@@ -15,10 +15,8 @@ import from the package root (``catalog.services``), never from
 from __future__ import annotations
 
 import io
-import ipaddress
 import logging
 import re
-import socket
 from decimal import Decimal, InvalidOperation
 from pathlib import PurePosixPath
 from typing import Any
@@ -83,63 +81,16 @@ class PublishError(Exception):
 
 
 def _is_safe_remote_host(host: str) -> bool:
-    """Return True iff `host` resolves only to public, routable addresses.
-
-    Defends against SSRF. Resolves the host with `getaddrinfo` and checks
-    EVERY returned A/AAAA record — a single forward lookup can return
-    multiple addresses, and an attacker controlling DNS can also rebind
-    between resolution and connection (TOCTOU). We can't fully prevent
-    rebinding without pinning the resolved IP into `requests`, but we
-    can refuse the request when any returned address is unsafe.
-
-    Rejected ranges:
-      - loopback (127.0.0.0/8, ::1)
-      - private (10/8, 172.16/12, 192.168/16, etc.)
-      - link-local (169.254/16) — covers AWS IMDS
-      - reserved
-      - multicast
-      - the literal AWS IMDS address as a belt-and-suspenders check
+    """Delegates to the core egress gate. This check used to live here in full;
+    it moved to `core/net.py` when webhook delivery needed the same guard —
+    two copies of a security check drift, and the looser copy becomes the hole.
     """
-    if not host:
-        return False
-    # Literal IP supplied? Parse it directly and reject if non-public.
-    try:
-        ip = ipaddress.ip_address(host)
-        return _is_public_ip(ip)
-    except ValueError:
-        pass  # not a literal — fall through to DNS resolution.
+    from core.net import resolves_safely
 
-    try:
-        infos = socket.getaddrinfo(host, None)
-    except (socket.gaierror, OSError, UnicodeError):
-        # Resolution failure → refuse rather than silently allow.
-        return False
-
-    seen_any = False
-    for info in infos:
-        sockaddr = info[4]
-        addr = sockaddr[0]
-        try:
-            ip = ipaddress.ip_address(addr)
-        except ValueError:
-            return False
-        if not _is_public_ip(ip):
-            return False
-        seen_any = True
-    return seen_any
-
-
-def _is_public_ip(ip: ipaddress._BaseAddress) -> bool:
-    if str(ip) in _BLOCKED_LITERAL_IPS:
-        return False
-    return not (
-        ip.is_private
-        or ip.is_loopback
-        or ip.is_link_local
-        or ip.is_reserved
-        or ip.is_multicast
-        or ip.is_unspecified
-    )
+    # `resolves_safely` (not `is_safe_remote_host`) on purpose: this is a
+    # one-shot synchronous download, so an unresolvable host should fail the
+    # call with a clear message rather than raise the transient-retry variant.
+    return resolves_safely(host)
 
 
 def _validate_https_url(url: str, *, field: str) -> None:
