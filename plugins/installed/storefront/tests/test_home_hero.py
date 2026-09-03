@@ -72,20 +72,22 @@ class HomeHeroTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-home-hero')
-        # One picker per book: the rail shows every pick as its own cover, so a
-        # count below the number of hero products means a book is unreachable.
-        # Counted on the picker→panel link, which appears once per button and
-        # nowhere else — `data-home-hero-pick` also occurs in the script's own
-        # selector, so counting the bare attribute is off by one.
+        # One dot per book: a count below the number of hero products means a
+        # book is unreachable. Counted on the dot→panel link, which appears once
+        # per button and nowhere else — `data-home-hero-pick` also occurs in the
+        # script's own selector, so counting the bare attribute is off by one.
         self.assertContains(response, 'aria-controls="hero-panel-', count=2)
         self.assertContains(response, 'The Last Archive')
         self.assertContains(response, 'A Room With Margins')
         # The restored editorial opening (the shop's first hero) leads the copy
-        # column as the SINGLE display headline; the book title is the serif
-        # line beneath it, never a second display headline.
+        # column; the book title beneath it is the display-xl line of the
+        # remembered "two big texts" composition.
         self.assertContains(response, 'The book that<br>moved this month')
         self.assertContains(response, 'window__book')
         self.assertNotContains(response, 'window__title')
+        # Navigation is dot bullets (one per book), not the small-cover rail.
+        self.assertContains(response, 'window__dot')
+        self.assertNotContains(response, 'window__pick')
 
     @patch(
         'plugins.installed.personalisation.services.rank_for_visitor',

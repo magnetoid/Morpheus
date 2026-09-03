@@ -32,12 +32,15 @@ per-letter decode scramble — that effect forced `contain: layout`, a JS font
 fitter, a reserved tallest-title box and a top-anchored grid just to absorb the
 jitter it caused. No JS measures anything.
 
-v0.61.1: the shop's ORIGINAL editorial opening — "The book that moved this
-month." — is restored as the column's single display headline (merchant
-preference; it was the very first hero's voice). To keep the one-headline rule,
-the per-book title is DEMOTED to a serif italic line (`.window__book`, the same
-treatment the first hero gave it), so the stage's height now varies by a line
-of body-scale serif rather than a display headline.
+v0.61.1 restored the shop's ORIGINAL editorial opening — "The book that
+moved this month." — as the column's lead (merchant preference; it was the
+very first hero's voice). v0.61.2 restores the rest of the remembered
+composition: copy on the LEFT, one large cover on the RIGHT, and dot
+navigation under the copy in place of the small-cover rail — the "two big
+texts" arrangement, with the book title back at display-xl as the dominant
+line. What stays deleted stays deleted: no autoplay, no decode, no JS
+measurement — the stacked-panel stage still gives every slide the same
+geometry, so the dots and cover never move between books.
 {% endcomment %}
 <section id="editors-pick" class="window" data-home-hero aria-label="Editor's picks">
   <div class="wrap">
@@ -47,6 +50,58 @@ of body-scale serif rather than a display headline.
     <h1 class="sr-only">Dot Books — an independent bookshop</h1>
 
     <div class="window__shell">
+      <div class="window__copy">
+        <header class="window__lead">
+          <p class="eyebrow">Editor's pick</p>
+          <h2 class="display display-l window__headline">The book that<br>moved this month<span class="text-accent">.</span></h2>
+        </header>
+        <div class="window__copy-stage">
+          {% for pick in hero_products %}
+          <article
+            class="window__panel{% if forloop.first %} is-active{% endif %}"
+            id="hero-panel-{{ forloop.counter0 }}"
+            data-home-hero-copy
+            data-index="{{ forloop.counter0 }}"
+            {% if hero_products|length > 1 %}role="tabpanel"{% endif %}
+            aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
+          >
+            <h3 class="display display-xl window__book" style="--d: 60ms;"><em>{{ pick.name }}</em><span class="text-accent">.</span></h3>
+            <p class="window__meta" style="--d: 120ms;">
+              {% if pick.category %}
+              <span class="window__cat">{{ pick.category.name }}</span>
+              <span class="window__sep" aria-hidden="true">·</span>
+              {% endif %}
+              <span class="window__price">{% if pick.priceStartsFrom %}<span class="window__from">{% translate "From" %}</span> {% endif %}{{ pick.price|money }}</span>
+              {% if pick.isOnSale %}<span class="window__save">&minus;{{ pick.discountPercentage }}%</span>{% endif %}
+            </p>
+            <div class="window__actions" style="--d: 180ms;">
+              <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop now</a>
+              <a href="/products/" class="btn btn-ghost">Browse the shelf</a>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+
+        {% if hero_products|length > 1 %}
+        <div class="window__dots" role="tablist" aria-label="Choose a featured book">
+          {% for pick in hero_products %}
+          <button
+            type="button"
+            class="window__dot{% if forloop.first %} is-active{% endif %}"
+            data-home-hero-pick
+            data-index="{{ forloop.counter0 }}"
+            role="tab"
+            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+            aria-controls="hero-panel-{{ forloop.counter0 }}"
+            tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+          >
+            <span class="sr-only">{{ pick.name }}</span>
+          </button>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
       <div class="window__stage">
         {% for pick in hero_products %}
         <a
@@ -71,69 +126,7 @@ of body-scale serif rather than a display headline.
         </a>
         {% endfor %}
       </div>
-
-      <div class="window__copy">
-        <header class="window__lead">
-          <p class="eyebrow">Editor's pick</p>
-          <h2 class="display display-l window__headline">The book that<br>moved this month<span class="text-accent">.</span></h2>
-        </header>
-        <div class="window__copy-stage">
-          {% for pick in hero_products %}
-          <article
-            class="window__panel{% if forloop.first %} is-active{% endif %}"
-            id="hero-panel-{{ forloop.counter0 }}"
-            data-home-hero-copy
-            data-index="{{ forloop.counter0 }}"
-            {% if hero_products|length > 1 %}role="tabpanel"{% endif %}
-            aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
-          >
-            <h3 class="window__book" style="--d: 60ms;"><em>{{ pick.name }}</em></h3>
-            <p class="window__meta" style="--d: 120ms;">
-              {% if pick.category %}
-              <span class="window__cat">{{ pick.category.name }}</span>
-              <span class="window__sep" aria-hidden="true">·</span>
-              {% endif %}
-              <span class="window__price">{% if pick.priceStartsFrom %}<span class="window__from">{% translate "From" %}</span> {% endif %}{{ pick.price|money }}</span>
-              {% if pick.isOnSale %}<span class="window__save">&minus;{{ pick.discountPercentage }}%</span>{% endif %}
-            </p>
-            <div class="window__actions" style="--d: 180ms;">
-              <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop now</a>
-              <a href="/products/" class="btn btn-ghost">Browse the shelf</a>
-            </div>
-          </article>
-          {% endfor %}
-        </div>
-      </div>
     </div>
-
-    {% if hero_products|length > 1 %}
-    {% comment %}The window's other books, standing on a hairline shelf. This
-    replaces the four anonymous dots: the rail is the navigator AND the rest of
-    the merchandising, so nothing in the set is hidden behind a control.{% endcomment %}
-    <div class="window__rail" role="tablist" aria-label="Choose a featured book">
-      {% for pick in hero_products %}
-      <button
-        type="button"
-        class="window__pick{% if forloop.first %} is-active{% endif %}"
-        data-home-hero-pick
-        data-index="{{ forloop.counter0 }}"
-        role="tab"
-        aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
-        aria-controls="hero-panel-{{ forloop.counter0 }}"
-        tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
-      >
-        <span class="window__pick-cover">
-          {% if pick.primaryImage and pick.primaryImage.url %}
-            {% seo_responsive_image pick.primaryImage.url alt="" widths="200" sizes="76px" %}
-          {% elif PRODUCT_PLACEHOLDER_IMAGE %}
-            <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="" loading="lazy" decoding="async">
-          {% endif %}
-        </span>
-        <span class="sr-only">{{ pick.name }}</span>
-      </button>
-      {% endfor %}
-    </div>
-    {% endif %}
   </div>
 </section>
 
@@ -151,7 +144,9 @@ of body-scale serif rather than a display headline.
     align-items: center;
   }
   @media (min-width: 900px) {
-    .window__shell { grid-template-columns: minmax(0, auto) minmax(0, 1fr); }
+    /* Copy left, the book right — the remembered editorial composition. The
+       cover column is auto (it sizes to the cover), the copy takes the rest. */
+    .window__shell { grid-template-columns: minmax(0, 1fr) minmax(0, auto); }
   }
 
   /* ── The book, face-out ─────────────────────────────────────────────────── */
@@ -176,7 +171,7 @@ of body-scale serif rather than a display headline.
       box-shadow var(--motion-med) var(--ease-out);
   }
   @media (min-width: 900px) {
-    .window__cover { width: clamp(240px, 24vw, 320px); margin-inline: 0; }
+    .window__cover { width: clamp(260px, 27vw, 380px); margin-inline: 0; }
   }
   .window__cover.is-active {
     opacity: 1;
@@ -248,14 +243,12 @@ of body-scale serif rather than a display headline.
   }
   .window__lead > * { margin: 0; }
   .window__book {
-    /* The first hero's treatment of the book title: serif, italic, body-scale.
-       One constant size on every slide, capped to a readable measure — the
-       same `ch` idiom the theme's other headlines use. */
-    font-family: var(--serif);
-    font-size: clamp(1.35rem, 1vw + 1.1rem, 1.65rem);
-    line-height: 1.2;
-    font-weight: 400;
-    max-width: 34ch;
+    /* `display display-xl` carries family and size — the "two big texts" era's
+       treatment, the book title as the dominant line. This caps the measure so
+       a long title wraps into the stacked stage instead of running the column;
+       stage height = tallest title, constant across slides, no JS fitter. */
+    max-width: 12ch;
+    text-wrap: balance;
     overflow-wrap: break-word;
   }
   .window__meta {
@@ -296,89 +289,57 @@ of body-scale serif rather than a display headline.
     gap: 0.75rem;
   }
 
-  /* ── The shelf ───────────────────────────────────────────────────────────
-     The window's other books stand on a hairline rule; the chosen one lifts off
-     it and marks its place with an accent rule. */
-  .window__rail {
+  /* ── Dot navigation ──────────────────────────────────────────────────────
+     The remembered slider's bullets, sitting under the copy. Each button is a
+     2.25rem hit area (the a11y lesson the old hero dots learned the hard way)
+     drawing a small dot; the active one stretches into an accent dash. */
+  .window__dots {
     display: flex;
-    align-items: flex-end;
-    gap: clamp(0.6rem, 1.5vw, 1.05rem);
-    margin-top: clamp(1.5rem, 3vw, 2.25rem);
-    padding-bottom: 0.9rem;
-    /* Shelf, not underline: `fit-content` stops the rule running the full page
-       width under four small covers, where it also collided with the section's
-       own <hr> 50px below. The padding lets it run just past the last book. */
-    width: fit-content;
-    max-width: 100%;
-    padding-right: clamp(1.25rem, 3vw, 2.5rem);
-    border-bottom: 1px solid var(--rule);
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: clamp(1.25rem, 2.5vw, 1.75rem);
   }
-  .window__pick {
-    position: relative;
-    width: clamp(52px, 7vw, 76px);
+  .window__dot {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
     padding: 0;
     border: 0;
     background: transparent;
     cursor: pointer;
   }
-  .window__pick-cover {
-    display: block;
-    position: relative; /* anchors base.html's shared spine/edge-light ::after */
-    aspect-ratio: 2 / 3;
-    border-radius: 3px;
-    overflow: hidden;
-    background: var(--paper-2);
-    box-shadow: 0 1px 5px -3px rgba(14, 14, 14, 0.25);
-    opacity: 0.62;
-    filter: saturate(0.6);
-    transition:
-      opacity var(--motion-med) var(--ease-out),
-      filter var(--motion-med) var(--ease-out),
-      transform var(--motion-med) var(--ease-out),
-      box-shadow var(--motion-med) var(--ease-out);
-  }
-  .window__pick-cover img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  /* The COVER lifts off the shelf, not the button. Lifting the button would
-     carry its ::after accent rule up with it, floating the marker above the
-     shelf rule it is supposed to sit on. */
-  .window__pick.is-active .window__pick-cover {
-    opacity: 1;
-    filter: none;
-    transform: translateY(-6px);
-    box-shadow: 0 12px 22px -14px rgba(14, 14, 14, 0.5);
-  }
-  .window__pick.is-active::after {
+  .window__dot::after {
     content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -0.9rem; /* sits ON the shelf rule */
-    height: 2px;
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: var(--rule);
+    transition:
+      background var(--motion-med) var(--ease-out),
+      width var(--motion-med) var(--ease-out);
+  }
+  .window__dot.is-active::after {
+    width: 26px;
     background: var(--accent-ink);
   }
   @media (hover: hover) {
-    .window__pick:hover .window__pick-cover { opacity: 0.85; filter: none; }
+    .window__dot:not(.is-active):hover::after { background: var(--muted); }
   }
-  .window__pick:focus-visible {
+  .window__dot:focus-visible {
     outline: 2px solid var(--ink);
-    outline-offset: 4px;
-    border-radius: 3px;
+    outline-offset: 2px;
+    border-radius: 999px;
   }
 
   @media (prefers-reduced-motion: reduce) {
     .window__cover,
     .window__panel,
     .window__panel > *,
-    .window__pick-cover {
+    .window__dot::after {
       transition-duration: 1ms !important;
       transition-delay: 0ms !important;
     }
-    .window__pick.is-active .window__pick-cover,
     .window__cover.is-active:hover { transform: none; }
   }
 </style>

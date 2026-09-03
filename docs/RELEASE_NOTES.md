@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.61.2 — 2026-09-03
+
+**Homepage hero: the remembered editorial composition**
+
+- copy on the left, one large cover on the right, dot navigation under the copy — the small-cover rail is gone
+- the book title returns to display-xl as the dominant line (the "two big texts" arrangement), with "The book that moved this month." leading above it
+- still no autoplay, no decode effect, no JS measurement — the constant-geometry panel stage is unchanged
+
 ## v0.61.1 — 2026-09-03
 
 **Homepage hero: the original editorial opening returns**
