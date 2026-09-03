@@ -14,7 +14,7 @@
 [![Agentic](https://img.shields.io/badge/agentic-MCP%20%2F%20ACP%20%2F%20UCP-7c3aed.svg)](#-agentic-commerce-be-transactable-by-ai)
 [![Stack](https://img.shields.io/badge/django%206-postgres%20%C2%B7%20celery%20%C2%B7%20graphql-092e20.svg)](#-tech-stack)
 
-**[▶ See it live](https://dotbooks.store)  ·  [🚀 Run your own](#-quick-start)  ·  [🧠 Architecture](#-architecture-a-small-kernel-a-deep-ecosystem)  ·  [🤖 Agentic surface](#-agentic-commerce-be-transactable-by-ai)  ·  [📚 Docs](#-documentation)**
+**[▶ See it live](https://dotbooks.store)  ·  [🚀 Run your own](#-quick-start)  ·  [🧠 Architecture](#%EF%B8%8F-architecture-a-small-kernel-a-deep-ecosystem)  ·  [🤖 Agentic surface](#-agentic-commerce-be-transactable-by-ai)  ·  [🗺 Roadmap](#-roadmap)  ·  [📚 Docs](#-documentation)**
 
 </div>
 
@@ -66,13 +66,15 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 ## Table of contents
 
 - [Why Morpheus](#-why-morpheus)
+- [By the numbers](#-by-the-numbers)
 - [Meet Linda — the AI operator](#-meet-linda--the-ai-operator)
 - [Agentic commerce: be transactable by AI](#-agentic-commerce-be-transactable-by-ai)
 - [Found by search, and by answer engines](#-found-by-search-and-by-answer-engines)
-- [Architecture: a small kernel, a deep ecosystem](#-architecture-a-small-kernel-a-deep-ecosystem)
+- [Architecture: a small kernel, a deep ecosystem](#%EF%B8%8F-architecture-a-small-kernel-a-deep-ecosystem)
 - [Everything is an app](#-everything-is-an-app)
-- [The self-improvement loop](#-the-self-improvement-loop)
+- [The self-improvement loop](#%EF%B8%8F-the-self-improvement-loop)
 - [Safety, security & compliance](#-safety-security--compliance)
+- [Roadmap](#-roadmap)
 - [What this is not (yet)](#-what-this-is-not-yet)
 - [Tech stack](#-tech-stack)
 - [Quick start](#-quick-start)
@@ -101,6 +103,28 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 - Merchants who want capability at the level of a hosted platform without paying a share of every order to get it.
 - Teams who want an AI staff member with real guardrails rather than a chat window bolted to an admin panel.
 - Builders who can see where commerce is heading and would rather own the surface an agent talks to than rent it.
+
+---
+
+## 📊 By the numbers
+
+Measured at **v0.61.0 (September 2026)**. Counts drift with every release — each row names its source of truth, and that source wins over this table.
+
+| Metric | Value | Source of truth |
+|---|---|---|
+| Toggleable apps shipped by default | **108** | `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` |
+| Typed events on the hooks bus | **89** | `MorpheusEvents` in `core/hooks.py` |
+| Agent tools in the typed registry | **184** | `core/agents/registry.py` at boot |
+| MCP token scopes | **38** | `plugins/installed/agent_mcp/scopes.py` |
+| RBAC capabilities | **32** · gating **~250 views** | `plugins/installed/rbac/models.py` · `@require_capability` sites |
+| Production releases since v0.1.0 (2026-06-20) | **150 in 75 days** | `docs/RELEASE_NOTES.md` |
+| Tests | **~3,000** | `grep -rc "def test_"` |
+| Python | **~220k lines** | the tree |
+| Architecture decision records | **37** | `.torsor/architecture/decisions/` |
+| `core/` imports from apps | **0 — enforced** | `scripts/check_core_boundary.py` (empty allowlist) |
+| Reference store in production | **1** | [dotbooks.store](https://dotbooks.store) |
+
+That release cadence is the practical proof of the architecture: every merge to `main` deploys straight to a live store, and the boundary ratchets, disable-safety suites, and real-Postgres migration gates are what make shipping twice a day survivable.
 
 ---
 
@@ -134,6 +158,7 @@ The rest of the governance, all enforced in `core/` and read from one place:
 | **Staged writes** | An agent can record a proposal for review instead of executing |
 | **Merchant guardrails** | Kill switch, daily run and spend caps, per-action price and refund ceilings |
 | **Budgets & deadlines** | One execution kernel owns them, so no tool can opt out |
+| **Network egress** | Server-initiated fetches pass an SSRF gate — cloud metadata endpoints, loopback, and private ranges are refused at the socket level |
 | **Audit** | Every executed call *and every denial* writes a row — the EU AI Act evidence substrate |
 
 See [`docs/SKILLS.md`](docs/SKILLS.md) and [`AI_VISION.md`](AI_VISION.md).
@@ -153,7 +178,7 @@ An external agent should be able to discover, browse, cart, and check out — wh
   | `POST /mcp/checkout/v1/` | checkout build + quote *(the charge stays off MCP by design)* |
   | `POST /mcp/admin/v1/` | the operator's admin catalog (Bearer + scopes) |
 
-  Discovery is anonymous. **Executing** anything requires a Bearer token, per-token scopes, rate limits, a per-token approval grant for protected writes, and an audit row.
+  Discovery is anonymous but metered. **Executing** anything requires a Bearer token, per-token scopes, JSON-Schema validation of every argument, rate limits, a per-token approval grant for protected writes, and an audit row. A malformed or hand-edited scope value fails **closed** — never open.
 
 - **ACP checkout** (`/acp/…`) — a conformant Agentic Commerce Protocol session: multi-item carts, live tax and shipping quotes, refusal to charge when the quote has drifted, idempotent completion under a row lock. It reuses the canonical order and money path, so there is exactly **one** implementation of totals — no chance of MCP and ACP disagreeing about what a cart costs.
 
@@ -175,6 +200,7 @@ What that buys you, concretely:
 
 - **Structured data that is a claim, not a decoration.** A property that cannot be sourced from the app that owns it is **omitted, never defaulted** — because inventing a shipping policy is a Merchant Center violation and a promise checkout will break. Shipping comes from your shipping rates, returns from your returns policy, availability from real inventory. A product sold in several editions is published as a `ProductGroup` with per-variant price and stock.
 - **An index-rules engine.** One rule per query parameter, deciding whether `?sort=`, `?genre=` or a campaign tag makes a real page, a page to keep out of search, a landing page for values you choose, or an address crawlers should never fetch. Paste any URL into the dashboard and see exactly what your store publishes for it, and which rule decided.
+- **Title & description templates** with a real token grammar — scoped per kind, applied only where a human hasn't typed something better. A value a merchant typed always beats a value the platform guessed, whichever table it sits in.
 - **Pagination that tells the truth.** Page 2 is a page and says so; `?page=1` redirects to the clean address; a page number past the end is a 404 rather than a silent duplicate of page one.
 - **AI-crawler control** — a per-bot matrix separating training crawlers from retrieval crawlers, so you can stay citable in AI answers without feeding a training run.
 
@@ -224,7 +250,7 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/PLUGIN_DEVELOPMENT.md`](doc
 
 ## 🧩 Everything is an app
 
-Every shipped capability is a toggleable app. The count moves with most releases, so the source of truth is `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` rather than a number in this file — at the time of writing it is a little over a hundred. A sampling by domain:
+Every shipped capability is a toggleable app. The count moves with most releases, so the source of truth is `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` rather than a number in this file — 108 at v0.61.0. A sampling by domain:
 
 > **Apps and plugins are the same thing.** "App" is the word the product uses — in the dashboard, in these docs, and at every seam you touch as an author (`app.py`, `morpheus.app`, `app_registry`). Two things still read "plugin" on purpose: the directory `plugins/installed/` and the base class `MorpheusPlugin`, because renaming them would rewrite roughly two thousand import paths for no user-visible gain. Upgrading an out-of-tree app: [`docs/MIGRATING.md`](docs/MIGRATING.md).
 
@@ -259,8 +285,11 @@ Underneath it, **hooks are the enforcement layer**: rules in a Markdown file are
 ## 🔒 Safety, security & compliance
 
 - **Safety boundary** — `core/safety.py` is the single source of truth for what AI may touch, read by the self-improvement loop, the MCP server, CI hooks, and pre-commit. An app may *add* protection in its own manifest but never remove it.
+- **Authorization is one seam.** Staff go through RBAC capabilities (`core/authz.py`, 250 gated views and the GraphQL surface on the same vocabulary); agents go through per-token scopes. A role revoked in the dashboard reaches the API, because the API asks the same question. The seam fails *open* on absence by design: an authorization layer that locked every merchant out of their own dashboard when its answerer was missing would be a worse bug than the one it prevents. Denial is opt-in per store (`off` → `log` → `enforce`), so you audit what *would* be denied before anything is.
+- **Token scopes fail closed.** A missing scope key on a legacy token inherits wildcard for back-compat — but a present-and-malformed value, a half-failed token resolution, or a dashboard round-trip can never silently promote a token to full access. A Bearer token is judged by its **own** scope set, never by the staff service user it resolves to.
+- **SSRF egress gate** — `core/net.py` screens every server-initiated fetch (webhook deliveries, media downloads): cloud metadata endpoints, loopback, and private ranges are refused; DNS failures are treated as transient so a resolver blip can't permanently kill a queued webhook.
+- **Tool names are a stable API.** The agent-tool registry is first-owner-wins and raises on a cross-app name collision under tests — so a gated write tool can never be silently shadowed by an ungated twin.
 - **Staff MFA & SSO** — second factor and SSO ship as apps, with a guard ensuring no new sign-in path can quietly bypass MFA.
-- **RBAC** — role capabilities for staff, per-token scopes for agents. The seam fails *open* on absence by design: an authorisation layer that locked every merchant out of their own dashboard when its answerer was missing would be a worse bug than the one it prevents.
 - **GDPR & consent** — data-subject flows and consent-gated analytics.
 - **EU AI Act** — Article 50 disclosure for synthetic content, plus a dated evidence export of the decision and approval trail.
 - **Supply chain** — hash-pinned `requirements.lock.txt`, `pip-audit` and `bandit` in CI, Dependabot on.
@@ -270,13 +299,62 @@ See [`SECURITY.md`](SECURITY.md) · [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md).
 
 ---
 
+## 🗺 Roadmap
+
+Two documents drive the plan, and they deliberately disagree: [`docs/product_roadmap_2026.md`](docs/product_roadmap_2026.md) is the **strategy** (benchmarked against Shopify Plus, Adobe Commerce, BigCommerce, VTEX and the agentic-commerce shift), and [`docs/plans/roadmap-2026-execution.md`](docs/plans/roadmap-2026-execution.md) is the **fact-checked execution plan** — what actually exists in the tree, what is genuinely missing, and the build order. Where they conflict, the fact-check wins; more than one "6–8 week Q3 build" in the strategy document turned out to already be shipping.
+
+### Shipped — the story so far (2026)
+
+| Arc | Releases | What landed |
+|---|---|---|
+| **Bootstrap** | v0.1–v0.15 · June–July | Store-in-a-sentence provisioning, dashboard, catalog → cart → checkout → fulfilment, the dot_books theme, live production store |
+| **Agent governance (Horizon 1)** | v0.22–v0.32 · July | Consent kernel, agent auth hardening, EU AI Act Art. 50 disclosure, `agents.md`, real MCP cart/checkout, AI-Act evidence export, merchant guardrails (kill switch, spend caps, price/refund ceilings) |
+| **Boundary ratchet to zero** | v0.27 · July | `core/` imports **nothing** from apps — allowlist empty, enforced empty ever since |
+| **Three-SDK split** | v0.33–v0.34 · July | `morpheus.{app, core, theme}` doors; all 108 apps / 382 files migrated in one release |
+| **Money-path correctness** | v0.36–v0.40 · Aug | Tender re-credit on refunds, one price seam for displayed *and* charged prices, evidence-based entitlements, stock-reservation expiry |
+| **Platform trust** | v0.41–v0.45 · Aug | Dead-switch repair (maintenance mode, brand tokens, store identity), apps unification, the RBAC seam, the Ed25519-signed update channel, the disable-safety sweep |
+| **SEO 3.0** | v0.46–v0.54 · Aug | Theme-agnostic head document, `SeoMeta` single ownership, redirects 3.0 (auto-301 slug history, 410, regex), title/description template grammar, index-rules engine, 2026-grade structured data |
+| **Security hardening campaign** | v0.55–v0.61 · Aug–Sep | Five reachable holes closed: any-Bearer-token-was-admin, MCP scopes failing open, cart IDOR, the selfdev self-coding bypass, webhook SSRF to cloud metadata. Plus: first-owner-wins tool registry, discovery metering + argument validation, cache vary-keys, RBAC coverage 43 → 250 views, GraphQL wired to the capability seam, the outbound SSRF gate |
+
+The full dated record — all 150 entries — is [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md); every deploy is required by CI to add one.
+
+### Now — Q3 2026
+
+| Work | Status | Notes |
+|---|---|---|
+| **RBAC `enforce` flip readiness** | in progress | Coverage and GraphQL wiring are done; what remains is operational — provision role bindings, run a week of `log`-mode traffic, confirm zero would-deny warnings, then flip. Deliberately a human decision. |
+| **Agent execution boundaries, remainder** | next up | The SSRF egress gate shipped; still open: a per-run wall-clock at the runtime level, an agent/read-only database role in `core/db_router.py`, and process/container isolation for the sandbox |
+| **SEO 3.0 phase 3** | specified | Audit engine, an issues queue with one-click fixes, the rebuilt SEO dashboard IA |
+
+### Next — Q4 2026
+
+| Work | Why it's next |
+|---|---|
+| **B2B procurement depth** | The largest genuinely-absent roadmap item. Price lists, quotes with a 7-state lifecycle, and net terms already ship; missing are buyer-initiated **RFQ intake**, **multi-level approval chains**, **requisition lists**, **company/buyer hierarchy**, and **sales-rep impersonation** — the last is security-sensitive by nature, which is exactly why it waited for the RBAC work to land first |
+| **AI merchandising bulk-content UI** | The Thompson-sampling bandit and the AI merchandiser autopilot already ship; the gap is narrow — a dashboard bulk-action surface over the existing bulk catalog services, and the bandit → layout-suggestion linkage |
+| **SEO engines** | Search Console (OAuth), Bing Webmaster, IndexNow submission, CrUX/PSI — the in-app search-performance data the dashboard is already shaped for |
+| **Web Bot Auth (RFC 9421)** | Signed-agent verification beyond the Cloudflare-verified path |
+
+### Later — 2027
+
+| Work | Honest current state |
+|---|---|
+| **Dynamic pricing & predictive inventory** | Today: a deterministic rules engine on the price seam and a 28-day moving-average stockout forecast. The 180-day horizon needs seasonality, which needs historical depth — genuinely a later phase, not a sprint |
+| **Headless reference storefront (Next.js)** | The GraphQL surface is documented ([`docs/HEADLESS.md`](docs/HEADLESS.md)); the reference app serves developer adoption rather than merchants, so it queues behind merchant-facing work |
+| **SEO 3.0 phases 5–7** | Site crawler, the staged-AI content layer, and ownership cleanups (image pipeline → media) |
+
+> **A note on how this roadmap is maintained.** It was fact-checked against the tree before a line of it was built — which found that the UCP integration estimated at 6–8 weeks already shipped, and that two of three named debt blockers were already resolved. Roadmaps here are treated like code: wrong premises get patched in the same commit as the work that disproved them.
+
+---
+
 ## 🧾 What this is not (yet)
 
 A README that only lists wins is a sales page. Here is the honest edge of the thing, because you will find it anyway on day two:
 
 - **This is a 0.x project.** It runs a real store in production and ships most weeks, but the version number means what it says.
-- **Some surfaces are deeper than others.** Core commerce, the agent layer and SEO have had the most attention. Search Console integration, the site crawler and bulk AI content tooling are specified and not yet built.
+- **Some surfaces are deeper than others.** Core commerce, the agent layer, security, and SEO have had the most attention. Search Console integration, the site crawler and bulk AI content tooling are specified and not yet built.
 - **A few screens are still ahead of their data.** Keyword tracking, for instance, has a page but nothing yet writes positions into it — it is waiting on the Search Console work.
+- **RBAC ships in log mode by default.** The capability checks run everywhere and record what they *would* deny; flipping a store to `enforce` is a deliberate per-store step after its role bindings exist. That default is honest, not timid — an enforcement flip with no bindings provisioned would lock out every non-superuser on day one.
 - **It is opinionated to the point of being bossy.** One AI worker, not many. Everything is an app. Core imports nothing. If you disagree with those, you will be fighting the grain of the codebase rather than riding it.
 
 The full, dated list of what shipped and when is in [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md), and the breaking changes are in [`docs/MIGRATING.md`](docs/MIGRATING.md). Both are maintained because a deploy without a changelog entry fails CI.
@@ -331,13 +409,15 @@ morph/
 ├── core/                      # the kernel: auth, hooks, agent runtime, safety, self-improvement
 │   ├── agents/                # agent runtime, tool registry, guardrails, approvals
 │   ├── assistant/             # Linda's conversational runtime
+│   ├── authz.py               # the RBAC capability seam (core fires, the rbac app answers)
 │   ├── hooks.py               # the fire/filter event bus (all cross-app coupling goes here)
+│   ├── net.py                 # the SSRF egress gate for server-initiated fetches
 │   └── safety.py              # single source of truth for what AI may touch
 ├── morph/                     # Django project: settings, root urls, MORPHEUS_DEFAULT_APPS
 ├── morpheus/                  # the three SDK doors: {app, core, theme}
 ├── plugins/installed/<name>/  # every feature — app.py, apps.py, models, migrations, templates
 ├── themes/                    # storefront themes (contribution-driven; e.g. dot_books)
-├── api/                       # GraphQL view + hardening
+├── api/                       # GraphQL view + hardening (permissions, response cache, vary keys)
 ├── scripts/                   # CI ratchets (core boundary, app boundary, API stability, release)
 ├── docs/                      # architecture, app development, MCP, API, compliance, runbooks
 └── docker-compose.yml         # the full local stack
@@ -394,6 +474,7 @@ Guides: [`docs/deploy-coolify.md`](docs/deploy-coolify.md) · [`docs/deploy-ples
 |---|---|
 | System architecture & request lifecycle | [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | Product charter & principles | [`CHARTER.md`](CHARTER.md) · [`AI_VISION.md`](AI_VISION.md) |
+| Roadmap — strategy & fact-checked execution | [`docs/product_roadmap_2026.md`](docs/product_roadmap_2026.md) · [`docs/plans/roadmap-2026-execution.md`](docs/plans/roadmap-2026-execution.md) |
 | Building an app | [`docs/PLUGIN_DEVELOPMENT.md`](docs/PLUGIN_DEVELOPMENT.md) |
 | Building a theme | [`docs/THEME_DEVELOPMENT.md`](docs/THEME_DEVELOPMENT.md) · [`docs/THEME_EXTENSIONS.md`](docs/THEME_EXTENSIONS.md) |
 | Public API (GraphQL / REST) | [`docs/MORPHEUS_API.md`](docs/MORPHEUS_API.md) · [`docs/API_STABILITY.md`](docs/API_STABILITY.md) |
