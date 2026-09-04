@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.61.3 — 2026-09-04
+
+**Homepage hero: the book sits closer to its title**
+
+- the gap between the copy and the cover is tightened, and both columns are content-sized so a short title no longer leaves a gulf across to a right-pinned cover
+- on a phone the book leads again — v0.61.2's DOM reorder had pushed the cover below the dots
+
 ## v0.61.2 — 2026-09-03
 
 **Homepage hero: the remembered editorial composition**

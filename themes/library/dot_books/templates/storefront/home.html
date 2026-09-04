@@ -140,17 +140,33 @@ geometry, so the dots and cover never move between books.
   }
   .window__shell {
     display: grid;
-    gap: clamp(1.75rem, 4vw, 3.5rem);
+    /* Deliberately tight: the book and its title read as one composition, not
+       two columns sharing a page. */
+    gap: clamp(1rem, 2vw, 1.75rem);
     align-items: center;
   }
   @media (min-width: 900px) {
-    /* Copy left, the book right — the remembered editorial composition. The
-       cover column is auto (it sizes to the cover), the copy takes the rest. */
-    .window__shell { grid-template-columns: minmax(0, 1fr) minmax(0, auto); }
+    /* Copy left, the book right — the remembered editorial composition.
+       Both columns are content-sized so the book sits just past the end of the
+       copy: `1fr` for the copy pinned the cover to the far right edge, and a
+       short title ("Dune.") then left a gulf the gap alone could not close. */
+    .window__shell {
+      grid-template-columns: minmax(0, max-content) minmax(0, auto);
+      justify-content: start;
+    }
+    /* The copy column still needs a floor, or a one-word title collapses the
+       column and drags the book under the headline. */
+    .window__copy { min-width: min(32rem, 100%); }
   }
 
-  /* ── The book, face-out ─────────────────────────────────────────────────── */
-  .window__stage { display: grid; }
+  /* ── The book, face-out ───────────────────────────────────────────────────
+     Order -1 puts the cover above the copy on a phone (the copy column comes
+     first in the DOM for desktop reading order, which would otherwise bury the
+     book under the dots); the desktop rule below restores source order. */
+  .window__stage { display: grid; order: -1; }
+  @media (min-width: 900px) {
+    .window__stage { order: 0; }
+  }
   .window__cover {
     grid-area: 1 / 1;
     display: block;
