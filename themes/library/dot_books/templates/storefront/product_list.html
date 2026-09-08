@@ -42,6 +42,7 @@
     {% if selected_author %}{% book_term_lede 'author' selected_author as author_lede %}{% endif %}
     {% if selected_publisher %}{% book_term_lede 'publisher' selected_publisher as publisher_lede %}{% endif %}
     <p class="lede">{% if selected_author %}{% firstof author_lede %}{% if not author_lede %}Every title we shelf by {{ selected_author }}.{% endif %}{% elif selected_publisher %}{% firstof publisher_lede %}{% if not publisher_lede %}From {{ selected_publisher }} — only the editions we'd hand a friend.{% endif %}{% elif selected_tag %}{% if selected_tag_obj.description %}{{ selected_tag_obj.description|linebreaksbr }}{% else %}Every book on the shelf we've tagged &ldquo;{{ selected_tag }}&rdquo;.{% endif %}{% elif selected_category_obj.description %}{{ selected_category_obj.description|linebreaksbr }}{% elif page_intro %}{{ page_intro|linebreaksbr }}{% else %}Independent, modern, hand-curated. Filter by genre or publisher. The shelf rotates every Tuesday.{% endif %}</p>
+    {% if page_obj %}<p class="meta plp-count">{{ page_obj.paginator.count }} book{{ page_obj.paginator.count|pluralize }}</p>{% endif %}
 
     {# Active filter chips — clickable to remove. Shown when any filter is active. #}
     {% if selected_author or selected_publisher or selected_category or selected_tag or search_query %}
@@ -61,27 +62,31 @@
     </style>
     {% endif %}
 
-    <form method="get" style="display:flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 2rem; align-items: center;">
+    <form method="get" class="plp-toolbar" style="display:flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 2rem; align-items: center;">
       <div style="position: relative; flex: 1; min-width: 240px; max-width: 480px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--muted);"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
         <input name="q" value="{{ search_query }}" placeholder="Search by title or author"
                style="width:100%; height: 44px; padding: 0 1rem 0 2.6rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
       </div>
-      <select name="category" aria-label="Filter by genre" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
+      {% if categories|length > 1 %}
+      <select name="category" aria-label="Filter by genre" onchange="this.form.requestSubmit()" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
         <option value="">All genres</option>
         {% for c in categories %}
         <option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{{ c.name }}</option>
         {% endfor %}
       </select>
-      {% if available_authors %}
-      <select name="author" aria-label="Filter by author" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
-        <option value="">All authors</option>
-        {% for a in available_authors %}
-        <option value="{{ a }}" {% if a == selected_author %}selected{% endif %}>{{ a }}</option>
-        {% endfor %}
-      </select>
       {% endif %}
-      <select name="sort" aria-label="Sort products" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
+      {% if available_authors %}
+      <label class="sr-only" for="plp-author">Filter by author</label>
+      <input id="plp-author" name="author" list="plp-author-list" value="{{ selected_author }}" placeholder="Author…" autocomplete="off"
+             style="height: 44px; width: min(100%, 220px); padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
+      <datalist id="plp-author-list">
+        {% for a in available_authors %}
+        <option value="{{ a }}"></option>
+        {% endfor %}
+      </datalist>
+      {% endif %}
+      <select name="sort" aria-label="Sort products" onchange="this.form.requestSubmit()" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
         <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Newest</option>
         <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Price ↑</option>
         <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Price ↓</option>
@@ -91,6 +96,16 @@
       {% for f in facets %}{% for v in f.selected %}<input type="hidden" name="attr_{{ f.attr.slug }}" value="{{ v }}">{% endfor %}{% endfor %}
       <button class="btn btn-primary" style="height: 44px;">Apply</button>
     </form>
+    <style>
+      .plp-count { margin: 0.75rem 0 0; }
+      .plp-toolbar {
+        position: sticky; top: 64px; z-index: 20;
+        background: color-mix(in srgb, var(--paper) 92%, transparent);
+        backdrop-filter: blur(10px);
+        padding: 0.75rem 0;
+        margin-left: -0.25rem; margin-right: -0.25rem; padding-left: 0.25rem; padding-right: 0.25rem;
+      }
+    </style>
 
     {% if facets %}
     <div style="display:flex; flex-wrap:wrap; gap:1.5rem; margin-top:1.5rem; padding:1rem 1.25rem; border:1px solid var(--rule); border-radius:6px; background:var(--paper);">

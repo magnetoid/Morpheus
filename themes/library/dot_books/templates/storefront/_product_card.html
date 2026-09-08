@@ -1,9 +1,8 @@
 {% load morph %}{% load caching %}{% load i18n %}{% load seo %}{% load book_extras %}{% load pricing %}
 {% comment %}
-Shared product card. Cover + title link to the PDP; an inline Add-to-cart
-form (the global cart-drawer JS in _cart_drawer.html intercepts any
-/cart/add/<id>/ form → AJAX add + fly-to-cart + drawer); and a Quick view
-button that opens the shared modal (#quick-view in base.html).
+Shared product card. One hit-link wraps cover + title (no duplicate PDP
+links). Add-to-cart sits outside the link so the global cart-drawer JS in
+_cart_drawer.html can intercept /cart/add/<id>/ → AJAX add + fly-to-cart.
 
 Shape-agnostic: works for ORM products (primary_image / display_price /
 price_starts_from / is_on_sale) and GraphQL dicts (primaryImage / price /
@@ -13,9 +12,10 @@ shape raises (a |default chain across shapes does). product.id is a raw
 UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
 {% endcomment %}
 {% firstof product.primary_image.image.url product.primaryImage.url as img %}
+{% firstof product.author_name product.author as card_author %}
 {# Price: apply |money to the raw Money/dict directly, never via firstof-as (it stringifies to "$8.00", so |money would double the symbol → "$$8.00"). #}
 <div class="book" data-product-card>
-  <a href="/products/{{ product.slug }}/" class="book__cover" aria-label="{{ product.name }}">
+  <a href="/products/{{ product.slug }}/" class="book__hit">
     <div class="cover-wrap">
       {% if product.primary_image.image %}
         {% seo_responsive_image product.primary_image.image alt=product.name widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
@@ -30,12 +30,10 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
       {% endif %}
       {% if product.is_on_sale or product.isOnSale %}<span class="ribbon">{% firstof product.discount_percentage product.discountPercentage %}% off</span>{% endif %}
     </div>
+    <p class="title">{{ product.name }}</p>
+    {% if card_author %}<p class="author">{{ card_author }}</p>{% endif %}
   </a>
   <div class="book__body">
-    <a href="/products/{{ product.slug }}/" class="book__titlelink">
-      <p class="title">{{ product.name }}</p>
-      {% if product.author_name %}<p class="author">{{ product.author_name }}</p>{% endif %}
-    </a>
     {% comment %}if/elif, NOT firstof-as — firstof-as stores an escaped string that
        then escapes again on output (visible &lt;p&gt; / &amp;#x27; on cards).
        first_sentence also normalises entities/markup to plain text.{% endcomment %}

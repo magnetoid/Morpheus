@@ -100,6 +100,9 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
      Cheap, no JS frame cost. */
   img.ko-fade-img { opacity: 0; transition: opacity 400ms var(--ease-out); }
   img.ko-fade-img.is-loaded { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    img.ko-fade-img { opacity: 1; }
+  }
   /* Subtle press feedback on every button-like control. ~30ms press, GPU. */
   .btn:active, button:not(.ck-input):active { transform: scale(0.97); transition: transform 80ms var(--ease-out); }
   /* Friendly micro-lift on primary CTAs (hover only; press above still wins). */
@@ -327,14 +330,17 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   .btn-link:hover::after { transform: translateX(3px); }
 
   /* Sections */
-  section { padding: 5rem 0; }
+  section { padding: 3.75rem 0; }
   section.tight { padding: 3.5rem 0; }
   hr.rule { border: 0; border-top: 1px solid var(--rule); margin: 0; }
 
   /* Book card */
-  .book { display: flex; flex-direction: column; gap: 1rem; }
-  .book .cover-wrap { aspect-ratio: 2 / 3; background: var(--paper-2); border-radius: 4px; overflow: hidden; position: relative; box-shadow: 0 2px 8px -5px rgba(14,14,14,0.16); transition: transform .25s, box-shadow .25s; }
-  .book:hover .cover-wrap { transform: translateY(-4px); box-shadow: 0 18px 36px -16px rgba(14,14,14,0.35); }
+  .book { display: flex; flex-direction: column; gap: 0.85rem; }
+  .book__hit { display: flex; flex-direction: column; gap: 0.85rem; color: inherit; text-decoration: none; }
+  .book__hit:hover { color: inherit; }
+  .book__hit:hover .title { color: var(--accent-ink); }
+  .book .cover-wrap { aspect-ratio: 2 / 3; background: var(--paper-2); border-radius: 4px; overflow: hidden; position: relative; box-shadow: 0 1px 0 rgba(14,14,14,0.06), 0 10px 28px -16px rgba(14,14,14,0.45); outline: 1px solid rgba(14,14,14,0.06); outline-offset: -1px; transition: transform .25s, box-shadow .25s; }
+  .book:hover .cover-wrap { transform: translateY(-4px); box-shadow: 0 1px 0 rgba(14,14,14,0.08), 0 22px 40px -18px rgba(14,14,14,0.5); }
   .book .cover-wrap img { width: 100%; height: 100%; object-fit: cover; }
   .book .cover-wrap .placeholder,
   .window__cover .placeholder { width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:var(--serif);font-size:1.1rem;font-style:italic; }
@@ -355,13 +361,12 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   .book .price .compare { color: var(--muted); text-decoration: line-through; margin-left: 0.35rem; font-weight: 400; }
   /* Shared card actions (Add to cart) — used by _product_card.html. */
   .book__cover, .book__titlelink { display: block; color: inherit; text-decoration: none; }
-  /* body fills the card and pins actions to the bottom, so Add-to-cart buttons
-     align across a row even when titles/excerpts wrap to different heights. */
   .book__body { display: flex; flex-direction: column; flex: 1; }
-  .book__actions { display: grid; gap: 0.4rem; margin-top: auto; padding-top: 0.7rem; }
+  .book__actions { display: grid; gap: 0.4rem; margin-top: auto; padding-top: 0.55rem; }
   .book__actions .btn { width: 100%; justify-content: center; }
   .book__add { margin: 0; }
   .btn-sm { padding: 0.5rem 0.9rem; font-size: 0.8rem; }
+  .grid-books--rail .book__excerpt { display: none; }
 
   /* Grids */
   .grid-books { display: grid; gap: 2.25rem 1.6rem; grid-template-columns: repeat(2, 1fr); }
@@ -386,8 +391,8 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
     padding: 0.5rem 0.25rem 1.25rem;  /* room for the card lift-shadow + snap edge */
     margin: 0 -0.25rem;
     /* fade the trailing edge to hint there's more to scroll */
-    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 93%, transparent 100%);
-            mask-image: linear-gradient(90deg, #000 0, #000 93%, transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 96%, transparent 100%);
+            mask-image: linear-gradient(90deg, #000 0, #000 96%, transparent 100%);
   }
   .grid-books--rail::-webkit-scrollbar { display: none; }
   .grid-books--rail > .book {
@@ -1157,14 +1162,15 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
 <script>
 (function () {
   function tagFade(img) {
-    if (img.classList.contains('ko-fade-img')) return;
-    img.classList.add('ko-fade-img');
+    if (img.classList.contains('is-loaded') || img.classList.contains('ko-fade-img')) return;
+    // Already decoded (cache / eager) — never hide the cover for a paint frame.
     if (img.complete && img.naturalWidth > 0) {
       img.classList.add('is-loaded');
-    } else {
-      img.addEventListener('load', function () { img.classList.add('is-loaded'); }, {once: true});
-      img.addEventListener('error', function () { img.classList.add('is-loaded'); }, {once: true});
+      return;
     }
+    img.classList.add('ko-fade-img');
+    img.addEventListener('load', function () { img.classList.add('is-loaded'); }, {once: true});
+    img.addEventListener('error', function () { img.classList.add('is-loaded'); }, {once: true});
   }
   document.querySelectorAll('img[loading="lazy"]').forEach(tagFade);
   // Catch images added dynamically (e.g. cart drawer, infinite scroll later).

@@ -20,7 +20,7 @@ from themes.base import MorpheusTheme
 class DotBooksTheme(MorpheusTheme):
     name = 'dot_books'
     label = 'dot books — modern bookstore'
-    version = '1.0.0'
+    version = '1.1.0'
     description = (
         'Editorial, type-forward bookstore theme for "dot books". Cream paper, '
         'ink black, a single red dot.'

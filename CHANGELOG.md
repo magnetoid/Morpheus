@@ -4,6 +4,13 @@ All notable changes to Morpheus. Loose [Keep a Changelog](https://keepachangelog
 
 ## [Unreleased]
 
+### Theme — dot_books UI/UX (v1.1.0)
+
+- Product cards: one PDP hit-link (cover + title), stronger physical cover, rail excerpts hidden so the shelf scans as books not blurbs.
+- Covers no longer start at `opacity: 0` when already decoded — blank cream rectangles on the homepage rails.
+- PLP: searchable author field instead of a 200-option `<select>`, sticky filter bar, book count, hide the genre dropdown when there is only one.
+- Collection rails match the homepage sliders; `btn-link` arrows no longer double up.
+
 ### Staff identity, agentic checkout + hardening (2026-06-25)
 
 #### Added

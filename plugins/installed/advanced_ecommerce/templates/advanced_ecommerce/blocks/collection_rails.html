@@ -13,12 +13,16 @@
         <h2 class="display display-m" style="margin-top: 0.6rem;">{{ rail.collection.name }}<span class="text-accent">.</span></h2>
         {% if rail.collection.description %}<p class="meta" style="margin-top: 0.5rem; max-width: 50ch;">{{ rail.collection.description }}</p>{% endif %}
       </div>
-      <a href="/collection/{{ rail.collection.slug }}/" class="btn-link">{% translate "Browse all" %} →</a>
+      <a href="/collection/{{ rail.collection.slug }}/" class="btn-link">{% translate "Browse all" %}</a>
     </div>
-    <div class="grid-books">
-      {% for product in rail.products %}
-      {% include "storefront/_product_card.html" with product=product %}
-      {% endfor %}
+    <div class="book-rail-wrap">
+      <button class="book-rail-nav book-rail-nav--prev" type="button" aria-label="Scroll left" data-rail-prev>&larr;</button>
+      <div class="grid-books grid-books--rail" data-book-rail>
+        {% for product in rail.products %}
+        {% include "storefront/_product_card.html" with product=product %}
+        {% endfor %}
+      </div>
+      <button class="book-rail-nav book-rail-nav--next" type="button" aria-label="Scroll right" data-rail-next>&rarr;</button>
     </div>
   </div>
 </section>
