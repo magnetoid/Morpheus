@@ -60,6 +60,20 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY --chown=morpheus:morpheus . /app
 
+# Optional isolated Janus venv for Linda (subprocess — own sys.path).
+# Build with: --build-arg LINDA_JANUS=1
+ARG LINDA_JANUS=0
+RUN if [ "$LINDA_JANUS" = "1" ]; then \
+      apt-get update \
+      && apt-get install -y --no-install-recommends git \
+      && python -m venv /opt/janus \
+      && /opt/janus/bin/pip install --upgrade pip \
+      && /opt/janus/bin/pip install --no-cache-dir \
+           "janus-agent @ git+https://github.com/magnetoid/janus.git@main" \
+      && ln -sf /opt/janus/bin/janus /usr/local/bin/janus \
+      && rm -rf /var/lib/apt/lists/* ; \
+    fi
+
 # Ensure the entrypoint is executable inside the image even if the host bit was lost.
 RUN chmod +x /app/scripts/docker-entrypoint.sh
 

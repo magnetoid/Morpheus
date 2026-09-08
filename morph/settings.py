@@ -654,6 +654,14 @@ ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 OLLAMA_BASE_URL = config('OLLAMA_BASE_URL', default='http://localhost:11434')
 AI_EMBEDDING_MODEL = config('AI_EMBEDDING_MODEL', default='text-embedding-3-small')
 
+# Linda (staff assistant) — Janus is the engine, Linda is the name.
+# 'janus' runs magnetoid/janus in a subprocess; 'legacy' is the in-process loop.
+LINDA_ENGINE = config('LINDA_ENGINE', default='janus')
+JANUS_BIN = config('JANUS_BIN', default='')
+JANUS_ENGINE_ROOT = config('JANUS_ENGINE_ROOT', default='')
+LINDA_MCP_TOKEN = config('LINDA_MCP_TOKEN', default='')
+LINDA_MCP_URL = config('LINDA_MCP_URL', default='')
+
 # Tests must NEVER hit a real LLM/embeddings API. A developer's `.env` usually
 # has a real OPENAI_API_KEY, and AI tasks run eagerly (CELERY_TASK_ALWAYS_EAGER)
 # from product/order hooks during tests — without this they'd POST to
@@ -663,6 +671,7 @@ if _RUNNING_TESTS:
     AI_PROVIDER = ''
     OPENAI_API_KEY = ''
     ANTHROPIC_API_KEY = ''
+    LINDA_ENGINE = 'legacy'
 
 # ── Email ──────────────────────────────────────────────────────────────────────
 # Always use the Morpheus Custom backend so admins can configure via dashboard

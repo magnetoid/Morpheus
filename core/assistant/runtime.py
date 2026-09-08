@@ -301,6 +301,7 @@ class Assistant:
         token_budget: int | None = None,
     ) -> None:
         self.provider = provider or get_default_provider()
+        self._provider_overridden = provider is not None
         # Lazy-resolve tools the first time they're needed so a broken
         # tool import doesn't take the Assistant down at construct time.
         self._tools = tools
@@ -323,6 +324,89 @@ class Assistant:
                 logger.warning('assistant: tool resolution failed: %s', e)
                 self._tools = []
         return self._tools
+
+    def _should_use_janus(self) -> bool:
+        """Janus is the default engine; tests that inject a provider stay on the legacy loop."""
+        if self._provider_overridden:
+            return False
+        try:
+            from django.conf import settings
+
+            engine = str(getattr(settings, 'LINDA_ENGINE', 'janus') or 'janus').lower()
+        except Exception:  # noqa: BLE001
+            engine = 'janus'
+        if engine != 'janus':
+            return False
+        try:
+            from core.assistant.janus_engine import janus_available
+
+            return janus_available()
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _stream_via_janus(self, *, message: str, conversation_key: str, context, started: float):
+        """One turn on the Janus engine; the merchant-facing name stays Linda."""
+        from core.assistant.janus_engine import run_janus_turn
+        from core.assistant.prompts import build_system_prompt
+
+        prefix_bits = []
+        if context and isinstance(context, dict):
+            page_url = (context.get('page_url') or '')[:512]
+            page_title = (context.get('page_title') or '')[:200]
+            if page_url or page_title:
+                prefix_bits.append(f'The merchant opened Linda from: {page_title} {page_url}'.strip())
+            mode = str(context.get('mode') or '').strip()
+            if mode:
+                prefix_bits.append(f'Active tool palette: {mode}')
+        mem = _format_recent_memories(message)
+        if mem:
+            prefix_bits.append(mem)
+        know = _format_knowledge(message)
+        if know:
+            prefix_bits.append(know)
+        system = build_system_prompt()
+        if prefix_bits:
+            system = system + '\n\n' + '\n'.join(prefix_bits)
+        system += (
+            '\n\nIDENTITY: You are Linda. Janus is your engine, never your name. '
+            'Do not mention Janus, Magnetoid, or the underlying agent framework '
+            'unless the merchant asks how you work.'
+        )
+
+        yield {'type': 'assistant_text', 'text': ''}
+        payload = run_janus_turn(
+            message=message,
+            conversation_key=conversation_key,
+            system_prompt=system,
+            context=context if isinstance(context, dict) else None,
+        )
+        duration = payload.get('duration_ms') or int((time.monotonic() - started) * 1000)
+        if payload.get('error'):
+            friendly = _friendly_provider_error(str(payload['error']))
+            self.store.append(
+                conversation_key=conversation_key,
+                message=StoredMessage(role='assistant', content=friendly),
+            )
+            yield {
+                'type': 'error',
+                'result': AssistantRunResult(
+                    text=friendly,
+                    state='failed',
+                    error=str(payload['error'])[:500],
+                    duration_ms=duration,
+                ),
+            }
+            return
+        text = payload.get('text') or ''
+        self.store.append(
+            conversation_key=conversation_key,
+            message=StoredMessage(role='assistant', content=text[:50_000]),
+        )
+        yield {'type': 'assistant_text', 'text': text}
+        yield {
+            'type': 'final',
+            'result': AssistantRunResult(text=text, state='completed', duration_ms=duration),
+        }
 
     def run(
         self,
@@ -417,6 +501,15 @@ class Assistant:
                     duration_ms=int((time.monotonic() - started) * 1000),
                 ),
             }
+            return
+
+        if self._should_use_janus():
+            yield from self._stream_via_janus(
+                message=message,
+                conversation_key=conversation_key,
+                context=context,
+                started=started,
+            )
             return
 
         msgs = _to_llm_messages(history, message, context=context)
