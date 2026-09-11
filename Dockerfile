@@ -62,14 +62,18 @@ COPY --chown=morpheus:morpheus . /app
 
 # Optional isolated Janus venv for Linda (subprocess — own sys.path).
 # Build with: --build-arg LINDA_JANUS=1
+# Pinned to a commit, not a branch: `@main` makes the image non-reproducible and
+# silently pulls whatever the engine repo landed since the last build — into a
+# subprocess that holds MCP credentials. Bump JANUS_REF deliberately.
 ARG LINDA_JANUS=0
+ARG JANUS_REF=bcea97457f9cbbdf53a7356bd8431dcb5570b66d
 RUN if [ "$LINDA_JANUS" = "1" ]; then \
       apt-get update \
       && apt-get install -y --no-install-recommends git \
       && python -m venv /opt/janus \
       && /opt/janus/bin/pip install --upgrade pip \
       && /opt/janus/bin/pip install --no-cache-dir \
-           "janus-agent @ git+https://github.com/magnetoid/janus.git@main" \
+           "janus-agent @ git+https://github.com/magnetoid/janus.git@${JANUS_REF}" \
       && ln -sf /opt/janus/bin/janus /usr/local/bin/janus \
       && rm -rf /var/lib/apt/lists/* ; \
     fi

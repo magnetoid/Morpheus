@@ -158,6 +158,31 @@ def _format_knowledge(query: str = '') -> str:
     return '\n'.join(lines) if len(lines) > 1 else ''
 
 
+def _format_janus_history(history: list[StoredMessage], *, limit: int = 12) -> str:
+    """Render recent stored turns as a plain transcript for the Janus prompt.
+
+    The legacy loop hands history to the provider as structured messages. The
+    Janus engine takes a single system prompt plus one user message, so the
+    conversation has to travel as text or not at all — and "not at all" is what
+    shipped first: Linda restarted from nothing whenever the subprocess's own
+    session file was missing, which is after every deploy.
+    """
+    if not history:
+        return ''
+    lines: list[str] = []
+    for h in history[-limit:]:
+        if h.role == 'tool':
+            output = json.dumps(h.tool_output, default=str)[:600]
+            lines.append(f'[tool {h.tool_name or "unknown"} result] {output}')
+        elif h.role in ('user', 'assistant'):
+            speaker = 'Merchant' if h.role == 'user' else 'Linda'
+            lines.append(f'{speaker}: {(h.content or "")[:2000]}')
+    if not lines:
+        return ''
+    body = '\n'.join(lines)
+    return f'Earlier in this conversation (most recent last):\n{body}'
+
+
 def _page_context_system(context: dict[str, Any] | None) -> str:
     """Compose the one-line system prefix carrying the URL+title of the
     dashboard page Linda was opened from.
@@ -325,17 +350,51 @@ class Assistant:
                 self._tools = []
         return self._tools
 
-    def _should_use_janus(self) -> bool:
-        """Janus is the default engine; tests that inject a provider stay on the legacy loop."""
+    def _janus_mode(self, context):
+        """Resolve the EFFECTIVE mode for a turn, server-side.
+
+        ``context['mode']`` is a client-supplied slug — a request, never a
+        grant (core audit S5/H1). The legacy loop resolves it and then filters
+        the tool catalogue by the mode's scopes; this mirrors the resolution so
+        the Janus path can decide whether it is allowed to run at all.
+        """
+        from core.assistant.modes import get_mode, resolve_mode
+
+        ctx = context if isinstance(context, dict) else {}
+        slug = str(ctx.get('mode') or '').strip().lower()
+        user = ctx.get('user')
+        return resolve_mode(slug, user) if user is not None else get_mode(slug)
+
+    def _should_use_janus(self, context=None) -> bool:
+        """Janus is OPT-IN; tests that inject a provider stay on the legacy loop.
+
+        The engine runs out-of-process and reaches its tools over MCP, so a
+        Janus turn passes through none of ``_gate_reason`` (scope → budget →
+        deadline → kernel consent) and none of ``_audit_write_tool``. Until the
+        MCP edge enforces that same stack, the default stays ``legacy`` — see
+        ``LINDA_ENGINE`` in ``morph/settings.py``.
+        """
         if self._provider_overridden:
             return False
         try:
             from django.conf import settings
 
-            engine = str(getattr(settings, 'LINDA_ENGINE', 'janus') or 'janus').lower()
+            engine = str(getattr(settings, 'LINDA_ENGINE', 'legacy') or 'legacy').lower()
         except Exception:  # noqa: BLE001
-            engine = 'janus'
+            engine = 'legacy'
         if engine != 'janus':
+            return False
+        # The mode chip is an enforcement boundary, not a label: the legacy loop
+        # narrows Linda's tool catalogue to the mode's scopes. No such filter
+        # exists on the MCP side, so a RESTRICTED mode (sales/support/ops) falls
+        # back to the in-process loop rather than silently receiving the
+        # wildcard palette. Wildcard modes (general/dev) lose nothing by
+        # running on Janus.
+        try:
+            if '*' not in self._janus_mode(context).scopes:
+                return False
+        except Exception:  # noqa: BLE001 — an unresolvable mode is not a wildcard
+            logger.warning('assistant: mode resolution failed; staying on legacy', exc_info=True)
             return False
         try:
             from core.assistant.janus_engine import janus_available
@@ -344,7 +403,9 @@ class Assistant:
         except Exception:  # noqa: BLE001
             return False
 
-    def _stream_via_janus(self, *, message: str, conversation_key: str, context, started: float):
+    def _stream_via_janus(
+        self, *, message: str, conversation_key: str, context, started: float, history=None
+    ):
         """One turn on the Janus engine; the merchant-facing name stays Linda."""
         from core.assistant.janus_engine import run_janus_turn
         from core.assistant.prompts import build_system_prompt
@@ -354,10 +415,20 @@ class Assistant:
             page_url = (context.get('page_url') or '')[:512]
             page_title = (context.get('page_title') or '')[:200]
             if page_url or page_title:
-                prefix_bits.append(f'The merchant opened Linda from: {page_title} {page_url}'.strip())
-            mode = str(context.get('mode') or '').strip()
-            if mode:
-                prefix_bits.append(f'Active tool palette: {mode}')
+                prefix_bits.append(
+                    f'The merchant opened Linda from: {page_title} {page_url}'.strip()
+                )
+        # The RESOLVED mode, never the raw client slug.
+        try:
+            prefix_bits.append(f'Active tool palette: {self._janus_mode(context).slug}')
+        except Exception:  # noqa: BLE001
+            logger.debug('assistant: mode label unavailable', exc_info=True)
+        # Morpheus owns the transcript; Janus keeps its own session state in a
+        # container-local file that every deploy wipes. Replay recent history
+        # into the prompt so continuity does not depend on that file surviving.
+        transcript = _format_janus_history(history or [])
+        if transcript:
+            prefix_bits.append(transcript)
         mem = _format_recent_memories(message)
         if mem:
             prefix_bits.append(mem)
@@ -386,6 +457,13 @@ class Assistant:
             self.store.append(
                 conversation_key=conversation_key,
                 message=StoredMessage(role='assistant', content=friendly),
+            )
+            # Same telemetry the legacy loop emits on a provider failure —
+            # without it the self-improvement loop never sees a Janus turn fail.
+            self._emit_failure_signal(
+                reason='janus_engine_error',
+                conversation_key=conversation_key,
+                detail=str(payload['error']),
             )
             yield {
                 'type': 'error',
@@ -503,12 +581,18 @@ class Assistant:
             }
             return
 
-        if self._should_use_janus():
+        # NOTE: a Janus turn reports no token counts (the subprocess returns text
+        # on stdout, not usage), so `spend_cap_daily` cannot see it. The
+        # model-independent `max_agent_runs_daily` cap is the only backstop on
+        # this path — the same gap `core/agents/pricing.py` has for an unpriced
+        # model.
+        if self._should_use_janus(context):
             yield from self._stream_via_janus(
                 message=message,
                 conversation_key=conversation_key,
                 context=context,
                 started=started,
+                history=history,
             )
             return
 
