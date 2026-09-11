@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.62.0 — 2026-09-11
+
+**Linda's Janus subprocess engine, gated and opt-in**
+
+- Linda can run her turn on an out-of-process Janus engine (LINDA_ENGINE=janus). Default stays 'legacy': a subprocess reaches its tools over MCP, so it bypasses the in-process scope/budget/deadline/consent stack and the write audit.
+- The engine subprocess no longer inherits the platform environment — it gets an allowlist, so DATABASE_URL, SECRET_KEY and payment keys stay in the parent.
+- Auto-approve (Janus yolo mode) is off unless LINDA_JANUS_AUTO_APPROVE is set; on, it would make core/safety.py's FORBIDDEN_PATHS unenforceable for that process.
+- A scope-restricted conversation mode (sales/support/ops) falls back to the in-process loop instead of silently receiving the wildcard tool palette.
+- Fixed: inverted trailing-slash handling that broke every MCP tool call, a write-once config that pinned a rotated token, a hardcoded loopback port, discarded conversation history, a crash-after-partial-output reported as success, and a JSON envelope parsed from only the first 200 characters.
+- Turn timeout now defaults to 55s (under GUNICORN_TIMEOUT) and failures emit a self-improvement signal. Janus image build pinned to a commit instead of @main.
+
 ## v0.61.3 — 2026-09-04
 
 **Homepage hero: the book sits closer to its title**

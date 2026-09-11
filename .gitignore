@@ -68,3 +68,6 @@ logs.json
 # Generated README artifacts (markdown → HTML → PDF; regenerable)
 README.pdf
 README.html
+
+# Linda's isolated Janus home (per-conversation sessions + config)
+.linda-janus/

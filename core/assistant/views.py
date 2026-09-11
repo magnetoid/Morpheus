@@ -195,6 +195,10 @@ def assistant_stream(request):
                 conversation_key=conv_key,
                 context={
                     'user': user,
+                    # The Janus engine derives its MCP callback URL from the
+                    # request when no LINDA_MCP_URL is configured; without this
+                    # it falls back to a hardcoded loopback host.
+                    'request': request,
                     # Same page-scoped affordance as the JSON invoke
                     # path: the widget sends the URL + title of the
                     # page it was opened from so Linda can answer

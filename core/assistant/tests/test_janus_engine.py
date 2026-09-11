@@ -1,0 +1,285 @@
+"""Janus engine adapter for Linda — no live Janus process in the suite.
+
+`morph/settings.py` forces ``LINDA_ENGINE='legacy'`` under tests so no other
+test spawns a subprocess. That makes it easy to leave the Janus path with zero
+coverage, which is exactly what happened first: every test here must therefore
+``override_settings`` the engine ON rather than assert the suite-wide default.
+"""
+
+from __future__ import annotations
+
+import subprocess
+import types
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest import mock
+
+from django.test import SimpleTestCase, override_settings
+
+import core.assistant.janus_engine as eng
+from core.assistant._mock_provider import MockAssistantProvider
+from core.assistant.janus_engine import (
+    _child_env,
+    _ensure_config,
+    _mcp_url,
+    janus_available,
+    run_janus_turn,
+    turn_timeout_s,
+)
+from core.assistant.runtime import Assistant
+
+
+def _staff(**kw):
+    return types.SimpleNamespace(
+        is_staff=kw.get('is_staff', True),
+        is_superuser=kw.get('is_superuser', False),
+        pk=1,
+    )
+
+
+class JanusDiscoveryTests(SimpleTestCase):
+    def test_missing_binary_is_unavailable(self):
+        # `janus` may genuinely be on this machine's PATH, so neutralise the
+        # PATH lookup too — otherwise the assertion is environment-dependent
+        # and the test degrades into asserting nothing.
+        with (
+            override_settings(JANUS_BIN='', JANUS_ENGINE_ROOT='/no/such/janus'),
+            mock.patch.object(eng.shutil, 'which', return_value=None),
+            mock.patch.object(eng, 'engine_root', return_value=None),
+        ):
+            self.assertFalse(janus_available())
+
+    def test_explicit_bin_wins(self):
+        with override_settings(JANUS_BIN='/opt/janus/bin/janus'):
+            self.assertEqual(eng.janus_cmd(), ['/opt/janus/bin/janus'])
+
+
+class McpUrlTests(SimpleTestCase):
+    """The MCP endpoint is a POST with a JSON-RPC body; Django's APPEND_SLASH
+    redirect drops that body, so the trailing slash is load-bearing."""
+
+    @override_settings(LINDA_MCP_URL='https://shop.example/mcp/admin/v1')
+    def test_missing_slash_is_added(self):
+        self.assertEqual(_mcp_url(None), 'https://shop.example/mcp/admin/v1/')
+
+    @override_settings(LINDA_MCP_URL='https://shop.example/mcp/admin/v1/')
+    def test_present_slash_is_preserved(self):
+        self.assertEqual(_mcp_url(None), 'https://shop.example/mcp/admin/v1/')
+
+    @override_settings(LINDA_MCP_URL='')
+    def test_request_is_preferred_over_loopback(self):
+        request = types.SimpleNamespace(build_absolute_uri=lambda p: f'https://shop.example{p}')
+        self.assertEqual(_mcp_url({'request': request}), 'https://shop.example/mcp/admin/v1/')
+
+    @override_settings(LINDA_MCP_URL='')
+    def test_loopback_fallback_honours_port(self):
+        with mock.patch.dict(eng.os.environ, {'PORT': '9001'}, clear=False):
+            self.assertEqual(_mcp_url(None), 'http://127.0.0.1:9001/mcp/admin/v1/')
+
+
+class ConfigRotationTests(SimpleTestCase):
+    def test_rotated_token_is_rewritten(self):
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _ensure_config(home, mcp_url='https://s/mcp/', mcp_token='old-token')
+            _ensure_config(home, mcp_url='https://s/mcp/', mcp_token='new-token')
+            body = (home / 'config.yaml').read_text(encoding='utf-8')
+        self.assertIn('new-token', body)
+        self.assertNotIn('old-token', body)
+
+    def test_unchanged_config_is_left_alone(self):
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            cfg = _ensure_config(home, mcp_url='https://s/mcp/', mcp_token='t')
+            first = cfg.read_text(encoding='utf-8')
+            cfg2 = _ensure_config(home, mcp_url='https://s/mcp/', mcp_token='t')
+            self.assertEqual(first, cfg2.read_text(encoding='utf-8'))
+            self.assertEqual(cfg.stat().st_mode & 0o777, 0o600)
+
+
+class ChildEnvTests(SimpleTestCase):
+    """The subprocess runs its own tool loop; it gets an allowlist, never the
+    parent's environment."""
+
+    def test_platform_secrets_are_withheld(self):
+        fake = {
+            'PATH': '/usr/bin',
+            'DATABASE_URL': 'postgres://user:pw@db/morph',
+            'SECRET_KEY': 'django-secret',
+            'STRIPE_SECRET_KEY': 'sk_live_x',
+            'AWS_SECRET_ACCESS_KEY': 'aws',
+            'OPENAI_API_KEY': 'sk-openai',
+        }
+        with mock.patch.dict(eng.os.environ, fake, clear=True):
+            env = _child_env({})
+        self.assertEqual(env['PATH'], '/usr/bin')
+        self.assertEqual(env['OPENAI_API_KEY'], 'sk-openai')
+        for leaked in ('DATABASE_URL', 'SECRET_KEY', 'STRIPE_SECRET_KEY', 'AWS_SECRET_ACCESS_KEY'):
+            self.assertNotIn(leaked, env)
+
+    def test_reserved_janus_vars_are_not_inherited(self):
+        with mock.patch.dict(
+            eng.os.environ,
+            {'PATH': '/usr/bin', 'JANUS_YOLO_MODE': '1', 'JANUS_MODEL': 'x'},
+            clear=True,
+        ):
+            env = _child_env({'JANUS_YOLO_MODE': '0'})
+        self.assertEqual(env['JANUS_YOLO_MODE'], '0')
+        self.assertEqual(env['JANUS_MODEL'], 'x')
+
+
+class _FakeProc:
+    def __init__(self, *, stdout='', stderr='', returncode=0):
+        self.stdout = stdout
+        self.stderr = stderr
+        self.returncode = returncode
+
+
+class TurnTests(SimpleTestCase):
+    def _run(self, proc, **kw):
+        with (
+            TemporaryDirectory() as tmp,
+            mock.patch.object(eng, 'janus_cmd', return_value=['/bin/true']),
+            mock.patch.object(eng, 'linda_janus_home', return_value=Path(tmp)),
+            mock.patch.object(eng, 'engine_root', return_value=None),
+            mock.patch.object(eng.subprocess, 'run', return_value=proc) as spawn,
+        ):
+            out = run_janus_turn(
+                message='hi',
+                conversation_key='t',
+                system_prompt='You are Linda.',
+                **kw,
+            )
+        return out, spawn
+
+    def test_unavailable_returns_error_payload(self):
+        with mock.patch.object(eng, 'janus_cmd', return_value=None):
+            out = run_janus_turn(message='hi', conversation_key='t', system_prompt='You are Linda.')
+        self.assertEqual(out['error'], 'janus_unavailable')
+        self.assertEqual(out['text'], '')
+
+    def test_auto_approve_is_off_by_default(self):
+        _, spawn = self._run(_FakeProc(stdout='ok'))
+        self.assertEqual(spawn.call_args.kwargs['env']['JANUS_YOLO_MODE'], '0')
+
+    @override_settings(LINDA_JANUS_AUTO_APPROVE=True)
+    def test_auto_approve_is_opt_in(self):
+        _, spawn = self._run(_FakeProc(stdout='ok'))
+        self.assertEqual(spawn.call_args.kwargs['env']['JANUS_YOLO_MODE'], '1')
+
+    def test_crash_after_partial_output_is_an_error(self):
+        out, _ = self._run(
+            _FakeProc(stdout='Here is the first half of my ans', stderr='boom', returncode=1)
+        )
+        self.assertEqual(out['text'], '')
+        self.assertIn('boom', out['error'])
+        self.assertIn('partial output', out['error'])
+
+    def test_long_json_envelope_is_unwrapped(self):
+        answer = 'x' * 900
+        payload = '{"padding": "%s", "final_response": "done"}' % ('p' * 400)
+        out, _ = self._run(_FakeProc(stdout=payload))
+        self.assertEqual(out['text'], 'done')
+        self.assertNotIn('padding', out['text'])
+        self.assertNotIn(answer, out['text'])
+
+    def test_plain_text_passes_through(self):
+        out, _ = self._run(_FakeProc(stdout='  Two copies are in stock.  '))
+        self.assertEqual(out['text'], 'Two copies are in stock.')
+        self.assertEqual(out['error'], '')
+
+    def test_timeout_is_reported_not_raised(self):
+        with (
+            TemporaryDirectory() as tmp,
+            mock.patch.object(eng, 'janus_cmd', return_value=['/bin/true']),
+            mock.patch.object(eng, 'linda_janus_home', return_value=Path(tmp)),
+            mock.patch.object(
+                eng.subprocess,
+                'run',
+                side_effect=subprocess.TimeoutExpired(cmd='janus', timeout=55),
+            ),
+        ):
+            out = run_janus_turn(message='hi', conversation_key='t', system_prompt='p')
+        self.assertIn('timed out', out['error'])
+        self.assertEqual(out['text'], '')
+
+    def test_default_timeout_stays_under_the_worker_timeout(self):
+        # gunicorn runs with --timeout 60 (scripts/docker-entrypoint.sh). A
+        # longer adapter budget just gets the worker killed mid-turn.
+        self.assertLess(turn_timeout_s(), 60)
+
+
+class AssistantJanusRoutingTests(SimpleTestCase):
+    """Routing decisions on the engine that production would actually run."""
+
+    def _assistant(self):
+        return Assistant(tools=[])
+
+    def test_injected_provider_stays_on_legacy_loop(self):
+        a = Assistant(provider=MockAssistantProvider(), tools=[])
+        with override_settings(LINDA_ENGINE='janus'):
+            self.assertFalse(a._should_use_janus({'user': _staff()}))
+
+    @override_settings(LINDA_ENGINE='legacy')
+    def test_legacy_engine_setting_wins(self):
+        with mock.patch.object(eng, 'janus_available', return_value=True):
+            self.assertFalse(self._assistant()._should_use_janus({'user': _staff()}))
+
+    def test_default_setting_is_legacy(self):
+        # The suite pins LINDA_ENGINE, so assert the shipped default directly.
+        import re
+
+        src = Path('morph/settings.py').read_text(encoding='utf-8')
+        m = re.search(r"^LINDA_ENGINE = config\('LINDA_ENGINE', default='(\w+)'\)", src, re.M)
+        self.assertIsNotNone(m, 'LINDA_ENGINE default declaration moved')
+        self.assertEqual(m.group(1), 'legacy')
+
+    @override_settings(LINDA_ENGINE='janus')
+    def test_wildcard_mode_routes_to_janus(self):
+        with mock.patch.object(eng, 'janus_available', return_value=True):
+            ok = self._assistant()._should_use_janus({'user': _staff(), 'mode': 'general'})
+        self.assertTrue(ok)
+
+    @override_settings(LINDA_ENGINE='janus')
+    def test_restricted_mode_falls_back_to_legacy(self):
+        # `sales` is a scope-restricted palette. Janus reaches its tools over
+        # MCP, where filter_tools_by_mode does not apply — running it there
+        # would silently hand a restricted conversation the wildcard palette.
+        with mock.patch.object(eng, 'janus_available', return_value=True):
+            a = self._assistant()
+            self.assertFalse(a._should_use_janus({'user': _staff(), 'mode': 'sales'}))
+            self.assertFalse(a._should_use_janus({'user': _staff(), 'mode': 'support'}))
+            self.assertFalse(a._should_use_janus({'user': _staff(), 'mode': 'ops'}))
+
+    @override_settings(LINDA_ENGINE='janus')
+    def test_unavailable_binary_falls_back_to_legacy(self):
+        with mock.patch.object(eng, 'janus_available', return_value=False):
+            self.assertFalse(self._assistant()._should_use_janus({'user': _staff()}))
+
+    def test_identity_stays_linda(self):
+        from core.assistant.prompts import LINDA_BASE_PROMPT
+
+        self.assertIn('You are Linda', LINDA_BASE_PROMPT)
+        self.assertIn('never needs the name of your engine', LINDA_BASE_PROMPT)
+
+
+class JanusHistoryTests(SimpleTestCase):
+    def test_history_is_replayed_into_the_prompt(self):
+        # Janus keeps its own session state in a container-local file that every
+        # deploy wipes, so the transcript has to travel in the prompt.
+        from core.assistant.persistence import StoredMessage
+        from core.assistant.runtime import _format_janus_history
+
+        out = _format_janus_history(
+            [
+                StoredMessage(role='user', content='how many copies of Dune?'),
+                StoredMessage(role='assistant', content='Four in stock.'),
+            ]
+        )
+        self.assertIn('how many copies of Dune?', out)
+        self.assertIn('Four in stock.', out)
+
+    def test_empty_history_adds_nothing(self):
+        from core.assistant.runtime import _format_janus_history
+
+        self.assertEqual(_format_janus_history([]), '')

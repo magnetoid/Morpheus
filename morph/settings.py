@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.61.3')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.62.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -654,6 +654,29 @@ ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 OLLAMA_BASE_URL = config('OLLAMA_BASE_URL', default='http://localhost:11434')
 AI_EMBEDDING_MODEL = config('AI_EMBEDDING_MODEL', default='text-embedding-3-small')
 
+# Linda (staff assistant) — Janus is the engine, Linda is the name.
+# 'janus' runs magnetoid/janus in a subprocess; 'legacy' is the in-process loop.
+#
+# Default is 'legacy' ON PURPOSE. The Janus subprocess reaches its tools over
+# MCP, so a Janus turn passes through NONE of the in-process enforcement in
+# core/assistant/runtime.py — scope, token budget, deadline, the kernel consent
+# gate (core/assistant/consent.py) and the write audit. The MCP edge checks a
+# standing token's scopes, which is not the same thing as per-action human
+# consent. Flip this to 'janus' only once that stack is enforced at the MCP
+# boundary; see core/assistant/janus_engine.py's module docstring.
+LINDA_ENGINE = config('LINDA_ENGINE', default='legacy')
+JANUS_BIN = config('JANUS_BIN', default='')
+JANUS_ENGINE_ROOT = config('JANUS_ENGINE_ROOT', default='')
+# Auto-approve every tool call the Janus subprocess makes (its "yolo" mode).
+# OFF by default: the subprocess runs as `morpheus` with write access to /app,
+# so auto-approval makes core/safety.py's FORBIDDEN_PATHS unenforceable there.
+LINDA_JANUS_AUTO_APPROVE = config('LINDA_JANUS_AUTO_APPROVE', default=False, cast=bool)
+# Must stay under GUNICORN_TIMEOUT (default 60s): the adapter blocks inside the
+# SSE generator, so a longer budget here just gets the worker killed instead.
+LINDA_JANUS_TIMEOUT_S = config('LINDA_JANUS_TIMEOUT_S', default=55, cast=int)
+LINDA_MCP_TOKEN = config('LINDA_MCP_TOKEN', default='')
+LINDA_MCP_URL = config('LINDA_MCP_URL', default='')
+
 # Tests must NEVER hit a real LLM/embeddings API. A developer's `.env` usually
 # has a real OPENAI_API_KEY, and AI tasks run eagerly (CELERY_TASK_ALWAYS_EAGER)
 # from product/order hooks during tests — without this they'd POST to
@@ -663,6 +686,7 @@ if _RUNNING_TESTS:
     AI_PROVIDER = ''
     OPENAI_API_KEY = ''
     ANTHROPIC_API_KEY = ''
+    LINDA_ENGINE = 'legacy'
 
 # ── Email ──────────────────────────────────────────────────────────────────────
 # Always use the Morpheus Custom backend so admins can configure via dashboard

@@ -284,6 +284,31 @@ denies). **Never gate a new write tool on an argument alone** — add
 audited, so a blocked injection leaves a trace. Guarded by
 `core/assistant/tests/test_enforcement.py`.
 
+**Landmine — moving the agent loop OUT of process moves it out of every gate,
+and the switch reads like a performance choice.** Linda's enforcement stack —
+scope → budget → deadline → kernel consent (`_gate_reason`) plus
+`_audit_write_tool` — lives in `core/assistant/runtime.py` and only runs for
+tools Linda dispatches **herself**. An engine that runs its own loop in a
+subprocess (`core/assistant/janus_engine.py`) reaches Morpheus over MCP instead,
+where the only check is a standing token's scopes — which is authentication, not
+per-action human consent, so the S1 hole reopens wholesale and no write is
+audited. `LINDA_ENGINE` therefore defaults to **`legacy`**; flipping it to
+`janus` is a deliberate act, and the right end state is the same chain enforced
+at the MCP boundary. Three corollaries that each shipped as their own bug:
+(1) the subprocess gets an env **allowlist** (`_child_env`), never
+`os.environ.copy()` — a child that can execute shell commands must not hold
+`DATABASE_URL`/`SECRET_KEY`/payment keys; (2) an engine's auto-approve/"yolo"
+flag defaults **off**, or `core/safety.py`'s `FORBIDDEN_PATHS` is unenforceable
+for that process; (3) the **mode chip is an enforcement boundary** — the
+in-process loop narrows the tool catalogue by the resolved mode's scopes and MCP
+does not, so a restricted mode (`sales`/`support`/`ops`) falls back to the legacy
+loop rather than silently receiving the wildcard palette. Also: the adapter
+blocks inside the SSE generator, so its timeout must stay **under**
+`GUNICORN_TIMEOUT` (60s), and a non-zero exit is a failure even when stdout
+carried partial text — reporting that as a completed turn hides the crash from
+the merchant and from the self-improvement loop. Guarded by
+`core/assistant/tests/test_janus_engine.py`.
+
 **Landmine — two plugins registering the same agent-tool NAME let load order
 decide which one runs, and the loser might be the one with `requires_approval`.**
 `agent_registry` was last-writer-wins on a name clash (warn + overwrite), so
