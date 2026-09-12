@@ -1,0 +1,110 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% block title %}Payment — Supernatural Shop{% endblock %}
+
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 560px;">
+    <p class="eyebrow">Checkout · Payment</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">
+      Almost there<span class="text-accent">.</span>
+    </h1>
+
+    {% if not stripe_publishable_key %}
+    <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem; background: var(--paper);">
+      <p style="font-weight:600;">Payment isn't configured yet.</p>
+      <p class="meta">The merchant needs to add a Stripe public key in
+        <code>STRIPE_PUBLIC_KEY</code> to accept card payments. Your order
+        was placed (#{{ order_number }}) but is still unpaid — the merchant
+        will reach out to complete it.</p>
+      <p style="margin-top: 1rem;"><a href="/account/orders/{{ order_number }}/" style="text-decoration: underline;">View order status &rarr;</a></p>
+    </div>
+    {% else %}
+    {% comment %}
+      Express Checkout Element — renders Apple Pay / Google Pay / Link
+      wallet buttons in a row at the top. Stripe only shows the ones the
+      customer's browser + merchant account support; falls back to nothing
+      (the div stays empty) when no wallet is available.
+    {% endcomment %}
+    <div id="express-checkout-element" style="margin-bottom: 1.25rem;"></div>
+    <div id="payment-element" style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem; background: var(--paper);"></div>
+    <div id="payment-message" style="margin-top: .75rem; color: var(--accent); font-size: .9rem;"></div>
+    <button id="submit-payment" class="btn btn-primary"
+            style="margin-top: 1.25rem; height: 52px; padding: 0 2rem;">
+      <span id="submit-spinner" hidden style="display:inline-block; margin-right:.5rem;">…</span>
+      Pay now
+    </button>
+    <p class="meta" style="margin-top: 1rem;">
+      Order <code>#{{ order_number }}</code> · we never see your card. Stripe
+      handles encryption, 3-D Secure, and authorisation.
+    </p>
+
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
+    (function () {
+      var stripe = Stripe('{{ stripe_publishable_key|escapejs }}');
+      var elements = stripe.elements({
+        clientSecret: '{{ client_secret|escapejs }}',
+        appearance: {
+          theme: 'stripe',
+          variables: {
+            colorPrimary: '#0e0e0e',
+            fontFamily: 'system-ui, sans-serif',
+            borderRadius: '8px',
+          },
+        },
+      });
+      var paymentElement = elements.create('payment');
+      paymentElement.mount('#payment-element');
+
+      // Express Checkout (Apple Pay / Google Pay / Link). When the
+      // customer taps a wallet button, Stripe handles the auth sheet
+      // and fires `confirm` — we just call confirmPayment with the same
+      // elements + return_url. If no wallet is available the element
+      // silently renders nothing.
+      var expressCheckoutElement = elements.create('expressCheckout');
+      expressCheckoutElement.mount('#express-checkout-element');
+      expressCheckoutElement.on('confirm', async function () {
+        var msgEl = document.getElementById('payment-message');
+        var result = await stripe.confirmPayment({
+          elements: elements,
+          confirmParams: {
+            return_url: '{{ return_url|escapejs }}',
+          },
+        });
+        if (result.error) {
+          msgEl.textContent = result.error.message || 'Payment failed — please try again.';
+          msgEl.style.color = '#b00020';
+        }
+      });
+
+      var submitBtn = document.getElementById('submit-payment');
+      var spinner = document.getElementById('submit-spinner');
+      var msg = document.getElementById('payment-message');
+
+      submitBtn.addEventListener('click', async function () {
+        submitBtn.disabled = true;
+        spinner.hidden = false;
+        msg.textContent = '';
+        var result = await stripe.confirmPayment({
+          elements: elements,
+          confirmParams: {
+            return_url: '{{ return_url|escapejs }}',
+          },
+        });
+        // confirmPayment only returns control here when there's an
+        // immediate error (validation or auth fail). On success, the
+        // browser is already navigating to return_url.
+        if (result.error) {
+          msg.textContent = result.error.message || 'Payment failed — please try again.';
+          msg.style.color = '#b00020';
+          submitBtn.disabled = false;
+          spinner.hidden = true;
+        }
+      });
+    })();
+    </script>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% block title %}Delete my account — Supernatural Shop{% endblock %}
+
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 720px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.5rem;">
+      <a href="/" style="color: var(--muted);">Home</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <a href="/account/" style="color: var(--muted);">Account</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Delete account</span>
+    </nav>
+
+    <p class="eyebrow">Privacy</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">Delete my account<span class="text-accent">.</span></h1>
+
+    <p class="lede" style="margin-bottom: 2rem;">
+      You can leave any time. We'll keep what we're legally required to keep (order history for accounting), anonymise what we can, and delete the rest.
+    </p>
+
+    <div style="padding: 2rem; border: 1px solid var(--rule); border-radius: 8px; margin: 2rem 0; background: #fdf3f2;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">What gets deleted</h2>
+      <ul style="color: var(--ink-2); margin: 0 0 1.5rem; padding-left: 1.25rem;">
+        <li style="margin-bottom: .35rem;">Your profile (name, email, password)</li>
+        <li style="margin-bottom: .35rem;">Saved addresses</li>
+        <li style="margin-bottom: .35rem;">Wishlist + saved payment methods</li>
+        <li style="margin-bottom: .35rem;">Account preferences + login history</li>
+      </ul>
+
+      <h2 class="display display-m" style="margin: 1.5rem 0 1rem;">What gets anonymised (kept for legal/fiscal)</h2>
+      <ul style="color: var(--ink-2); margin: 0 0 1.5rem; padding-left: 1.25rem;">
+        <li style="margin-bottom: .35rem;">Order numbers + totals (for accounting; tax law requires we keep these)</li>
+        <li style="margin-bottom: .35rem;">Reviews you wrote (visible publicly as "Deleted user" — the content stays for other readers)</li>
+        <li style="margin-bottom: .35rem;">Customer name + ship-to address inside past Orders → "[redacted]"</li>
+      </ul>
+
+      <form method="post" style="margin-top: 2rem;">
+        {% csrf_token %}
+        <label style="display: block; font-weight: 600; margin-bottom: .5rem;">
+          Type your email to confirm: <code>{{ request.user.email }}</code>
+        </label>
+        <input type="email" name="confirm_email" required class="input"
+               placeholder="{{ request.user.email }}"
+               style="width: 100%; padding: .8rem 1rem; border: 1px solid var(--rule); border-radius: 6px; background: white; font-family: var(--sans); margin-bottom: 1.25rem;">
+        <button type="submit" class="btn" style="background: #c52d2d; color: white; padding: .8rem 2rem;">
+          Permanently delete my account
+        </button>
+        <p style="font-size: .8rem; color: var(--muted); margin: 1rem 0 0;">
+          This cannot be undone. You'll be logged out and redirected home.
+        </p>
+      </form>
+    </div>
+
+    <p style="font-size: .85rem; color: var(--muted); margin-top: 2rem;">
+      Not ready? <a href="/account/data-export/" style="color: var(--accent-ink); text-decoration: underline;">Download my data first →</a>
+    </p>
+
+  </div>
+</section>
+{% endblock %}

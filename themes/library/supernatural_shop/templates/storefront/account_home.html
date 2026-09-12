@@ -1,0 +1,72 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}
+{% block title %}Account — Supernatural Shop{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="eyebrow">Your account</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
+      Hello{% if user.first_name %}, {{ user.first_name }}{% endif %}<span class="text-accent">.</span>
+    </h1>
+    <p class="lede" style="margin-bottom: 2rem;">
+      Logged in as {{ user.email }}.
+    </p>
+
+    <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;" class="account-grid">
+      <a href="/account/orders/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Order history{% if summary.orders_count %} <span style="color:var(--muted); font-weight:400;">({{ summary.orders_count }})</span>{% endif %}</p>
+        <p class="meta" style="margin-top: .35rem;">Past orders, status, receipts.</p>
+      </a>
+      <a href="/account/addresses/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Addresses</p>
+        <p class="meta" style="margin-top: .35rem;">Saved shipping &amp; billing addresses.</p>
+      </a>
+      <a href="/account/returns/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Returns{% if summary.pending_returns %} <span style="color:var(--muted); font-weight:400;">({{ summary.pending_returns }} open)</span>{% endif %}</p>
+        <p class="meta" style="margin-top: .35rem;">Open and past return requests.</p>
+      </a>
+      {% if summary.store_credit_balance or summary.gift_card_count %}
+      <a href="/account/credits/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Store credit &amp; gift cards</p>
+        <p class="meta" style="margin-top: .35rem;">
+          {% if summary.store_credit_balance %}Credit: {{ summary.store_credit_balance|money }}{% endif %}{% if summary.store_credit_balance and summary.gift_card_count %} · {% endif %}{% if summary.gift_card_count %}{{ summary.gift_card_count }} gift card{{ summary.gift_card_count|pluralize }}{% endif %}.
+        </p>
+      </a>
+      {% endif %}
+      {# Downloads tile now contributed by digital_products via the account_nav slot below. #}
+      <a href="/wishlist/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Wishlist</p>
+        <p class="meta" style="margin-top: .35rem;">Saved titles you'd come back to.</p>
+      </a>
+      {% comment %}
+        Plugin-contributed account links. Each enabled plugin renders its
+        own account tile here via StorefrontBlock(slot='account_nav'); a
+        disabled plugin contributes nothing, so its tile vanishes. The
+        loyalty "Reader points" tile lives here now (loyalty_points plugin).
+      {% endcomment %}
+      {% storefront_blocks "account_nav" %}
+      <a href="/account/profile/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Profile</p>
+        <p class="meta" style="margin-top: .35rem;">Name, email, contact preferences.</p>
+      </a>
+      <a href="/products/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Keep browsing</p>
+        <p class="meta" style="margin-top: .35rem;">Pick up where you left off on the shelf.</p>
+      </a>
+      <a href="/auth/logout/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+        <p class="title">Sign out</p>
+      </a>
+    </div>
+    {% comment %}
+      Full-width account surfaces below the tile grid — referrals' invite
+      panel, returns_portal's status strip. Distinct from `account_nav`,
+      which contributes a TILE inside the grid above.
+    {% endcomment %}
+    {% storefront_blocks "account_summary_extra" %}
+  </div>
+</section>
+<style>
+@media (min-width: 700px) { .account-grid { grid-template-columns: 1fr 1fr !important; } }
+</style>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% block title %}Return {{ rma.rma_number }} — Supernatural Shop{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+
+    <p class="meta">
+      <a href="/account/returns/" style="color: var(--muted);">← All returns</a>
+    </p>
+
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin: .5rem 0 1.5rem;">
+      <div>
+        <h1 class="display display-l" style="margin: 0;">{{ rma.rma_number }}<span class="text-accent">.</span></h1>
+        <p class="meta" style="margin-top: .35rem;">
+          For order
+          <a href="/account/orders/{{ order.order_number }}/" style="color: var(--ink);">#{{ order.order_number }}</a>
+          · requested {{ rma.created_at|date:"M j, Y" }}
+        </p>
+      </div>
+      {% if rma.state == 'rejected' %}
+      <span style="display:inline-flex; align-items:center; padding:.3rem .65rem; border-radius:999px;
+                   background: #fde7e9; color: #b3261e; font-size:.75rem; font-weight:600;">Rejected</span>
+      {% elif rma.state == 'cancelled' %}
+      <span style="display:inline-flex; align-items:center; padding:.3rem .65rem; border-radius:999px;
+                   background: #f3f3f3; color: #6b6b6b; font-size:.75rem; font-weight:600;">Cancelled</span>
+      {% endif %}
+    </div>
+
+    {# State stepper — Shopify-style four-stage rail. #}
+    <div style="border:1px solid var(--rule); border-radius:6px; padding:1.5rem 1.5rem 1rem; margin-bottom:1.75rem;
+                background: var(--paper);">
+      <ol style="list-style:none; margin:0; padding:0; display:grid; grid-template-columns: repeat({{ status_steps|length }}, 1fr); gap:.65rem; position:relative;">
+        {% for s in status_steps %}
+        <li style="text-align:center; position:relative;">
+          <div style="display:inline-flex; width:28px; height:28px; border-radius:999px; align-items:center; justify-content:center;
+                      background: {% if s.done %}#1f7a4d{% elif s.current %}#0e0e0e{% else %}#efe7d6{% endif %};
+                      color: {% if s.done or s.current %}#fff{% else %}#62625c{% endif %};
+                      font-size:.75rem; font-weight:600; margin-bottom:.4rem;">
+            {% if s.done %}✓{% else %}{{ forloop.counter }}{% endif %}
+          </div>
+          <p style="font-size:.78rem; font-weight: {% if s.current %}600{% else %}500{% endif %};
+                    color: {% if s.current %}var(--ink){% else %}var(--muted){% endif %}; margin:0;">
+            {{ s.label }}
+          </p>
+          {% if not forloop.last %}
+          <span style="position:absolute; top:13px; right:-50%; width:100%; height:2px;
+                       background: {% if s.done %}#1f7a4d{% else %}var(--rule){% endif %}; z-index:-1;"></span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+
+    {# Items being returned. #}
+    <h2 style="font-family: var(--serif); font-size: 1.25rem; margin: 0 0 .75rem;">Items</h2>
+    <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem;">
+      {% for line in line_items %}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:.6rem 0;
+                  {% if not forloop.last %}border-bottom: 1px solid var(--rule);{% endif %}">
+        <div>
+          <p style="font-family: var(--serif); margin:0;">{{ line.name }}</p>
+          {% if line.sku %}<p class="meta" style="margin-top:.15rem;">{{ line.sku }}</p>{% endif %}
+        </div>
+        <div style="text-align:right;">
+          <p style="margin:0;">{{ line.quantity }} × {{ line.unit_price }}</p>
+        </div>
+      </div>
+      {% empty %}
+      <p class="meta" style="margin:0;">No item details on file.</p>
+      {% endfor %}
+    </div>
+
+    {# Reason / customer note / staff note (only if present). #}
+    {% if rma.customer_note or rma.staff_note %}
+    <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+      <p class="meta" style="margin: 0 0 .35rem;">Reason</p>
+      <p style="margin: 0 0 1rem;">{{ rma.get_reason_display }}</p>
+      {% if rma.customer_note %}
+      <p class="meta" style="margin: 0 0 .35rem;">Your note</p>
+      <p style="margin: 0 0 1rem; white-space:pre-line;">{{ rma.customer_note }}</p>
+      {% endif %}
+      {% if rma.staff_note %}
+      <p class="meta" style="margin: 0 0 .35rem;">Update from us</p>
+      <p style="margin: 0; white-space:pre-line;">{{ rma.staff_note }}</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# Refund block when terminal + refunded. #}
+    {% if rma.state == 'refunded' %}
+    <div style="border: 1px solid #1f7a4d; background: #d6f3e3; color: #1f7a4d;
+                border-radius: 6px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+      <p style="margin: 0 0 .35rem; font-weight: 600;">Refunded {{ rma.refund_amount|default:"" }}</p>
+      <p style="margin: 0; font-size: .85rem;">
+        {% if rma.refund %}Processed via your original payment method.{% else %}Issued as store credit on your account.{% endif %}
+      </p>
+    </div>
+    {% endif %}
+
+    <div style="display:flex; gap:.75rem; align-items:center;">
+      <a href="/account/orders/{{ order.order_number }}/" class="btn">Back to order</a>
+      <a href="/account/returns/" class="btn btn-ghost">All returns</a>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
