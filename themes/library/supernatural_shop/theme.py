@@ -1,8 +1,13 @@
-"""Supernatural Shop — dark storefront theme for supernatural-shop.com.
+"""
+Supernatural Shop — editorial storefront, same bones as dot_books.
 
-Morpheus requires snake_case theme names. Activate with
-`MORPHEUS_ACTIVE_THEME=supernatural_shop`. The public brand is
-Supernatural Shop.
+Design notes
+------------
+- Night paper (#0c0a09) and bone type. Not cream, not a red-dot bookstore.
+- One brass accent (#c9a227) on the wordmark period and primary CTA.
+- Display in Cormorant Garamond. Body in Outfit.
+- Same layout contract as dot_books (topbar, window hero, cards, PDP).
+- Activate only via instance env. Do not commit MORPHEUS_ACTIVE_THEME.
 """
 
 from __future__ import annotations
@@ -15,8 +20,8 @@ class SupernaturalShopTheme(MorpheusTheme):
     label = 'Supernatural Shop'
     version = '0.1.0'
     description = (
-        'Dark gold storefront for supernatural-shop.com. Night paper, '
-        'warm type, a single brass accent.'
+        'Dark editorial shop theme. Night paper, bone type, a single brass mark. '
+        'Built on the dot_books storefront contract.'
     )
     author = 'Morph Team'
     supports_plugins = ['storefront', 'catalog', 'orders']
@@ -33,7 +38,13 @@ class SupernaturalShopTheme(MorpheusTheme):
             },
             'fonts': {'display': 'Cormorant Garamond', 'body': 'Outfit'},
             'radii': {'sm': '4px', 'md': '8px', 'lg': '16px'},
-            'spacing': {'xs': '4px', 'sm': '8px', 'md': '16px', 'lg': '24px', 'xl': '48px'},
+            'spacing': {
+                'xs': '4px',
+                'sm': '8px',
+                'md': '16px',
+                'lg': '24px',
+                'xl': '48px',
+            },
         }
 
     def get_config_schema(self) -> dict:
@@ -47,7 +58,7 @@ class SupernaturalShopTheme(MorpheusTheme):
                 },
                 'tagline': {
                     'type': 'string',
-                    'default': 'Objects with a pulse.',
+                    'default': 'objects with a pulse',
                     'title': 'Tagline (single line)',
                 },
                 'accent_color': {
@@ -57,7 +68,7 @@ class SupernaturalShopTheme(MorpheusTheme):
                 },
                 'newsletter_pitch': {
                     'type': 'string',
-                    'default': 'Rare drops, no noise.',
+                    'default': 'Rare drops. No noise.',
                     'title': 'Newsletter pitch',
                 },
             },

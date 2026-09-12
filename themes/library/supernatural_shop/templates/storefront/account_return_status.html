@@ -35,7 +35,7 @@
         {% for s in status_steps %}
         <li style="text-align:center; position:relative;">
           <div style="display:inline-flex; width:28px; height:28px; border-radius:999px; align-items:center; justify-content:center;
-                      background: {% if s.done %}#1f7a4d{% elif s.current %}#0e0e0e{% else %}#efe7d6{% endif %};
+                      background: {% if s.done %}#1f7a4d{% elif s.current %}#0e0e0e{% else %}#2c241c{% endif %};
                       color: {% if s.done or s.current %}#fff{% else %}#62625c{% endif %};
                       font-size:.75rem; font-weight:600; margin-bottom:.4rem;">
             {% if s.done %}✓{% else %}{{ forloop.counter }}{% endif %}

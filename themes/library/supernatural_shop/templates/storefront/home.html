@@ -3,7 +3,7 @@
 {% comment %}The home page is the one page whose copy is the theme's own: there is no
 product or category to describe it. Everything else resolves centrally, so this block
 passes only the fallbacks — a merchant who fills in Settings → SEO overrides them.{% endcomment %}
-{% block seo %}{% storefront_head title="Dot Books — an independent bookshop" description="A quieter shelf for louder books. New and rare titles from independent presses — curated, modern, independent." %}{% endblock %}
+{% block seo %}{% storefront_head title="Supernatural Shop — a curated shop" description="A quieter shelf for louder books. A quieter shop for louder objects — curated, modern, independent." %}{% endblock %}
 
 {% block extra_head %}
 {% with hero_products|first as pick %}
@@ -20,7 +20,7 @@ recommendations still render lower via the home_after_rails / home_below_grid sl
 
 {% if hero_products %}
 {% comment %}
-Editor's picks — "the bookshop window". One book stands face-out and still;
+This weeks — "the shop window". One piece stands face-out and still;
 the rest of the window's display sits beside it on a hairline shelf, as real
 covers rather than abstract dots, so a shopper sees the whole selection at a
 glance and every pick is one click away. Choosing a cover promotes it.
@@ -42,18 +42,18 @@ line. What stays deleted stays deleted: no autoplay, no decode, no JS
 measurement — the stacked-panel stage still gives every slide the same
 geometry, so the dots and cover never move between books.
 {% endcomment %}
-<section id="editors-pick" class="window" data-home-hero aria-label="Editor's picks">
+<section id="editors-pick" class="window" data-home-hero aria-label="This weeks">
   <div class="wrap">
     {% comment %}The home page has no other h1 — the hero used to open with an h2
     and nothing above it. The shop name is the page's heading; the visible
     hierarchy starts at the book title.{% endcomment %}
-    <h1 class="sr-only">Dot Books — an independent bookshop</h1>
+    <h1 class="sr-only">Supernatural Shop — a curated shop</h1>
 
     <div class="window__shell">
       <div class="window__copy">
         <header class="window__lead">
-          <p class="eyebrow">Editor's pick</p>
-          <h2 class="display display-l window__headline">The book that<br>moved this month<span class="text-accent">.</span></h2>
+          <p class="eyebrow">This week</p>
+          <h2 class="display display-l window__headline">Chosen<br>this week<span class="text-accent">.</span></h2>
         </header>
         <div class="window__copy-stage">
           {% for pick in hero_products %}
@@ -76,7 +76,7 @@ geometry, so the dots and cover never move between books.
             </p>
             <div class="window__actions" style="--d: 180ms;">
               <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop now</a>
-              <a href="/products/" class="btn btn-ghost">Browse the shelf</a>
+              <a href="/products/" class="btn btn-ghost">Browse the shop</a>
             </div>
           </article>
           {% endfor %}
@@ -131,7 +131,7 @@ geometry, so the dots and cover never move between books.
 </section>
 
 <style>
-  /* ── Editor's picks: the bookshop window ─────────────────────────────────
+  /* ── This weeks: the shop window ─────────────────────────────────
      Height is padding-driven, not `100svh`: the hero used to fill the viewport
      and push every product below the fold on a shop's front page. The rail now
      ends just above the fold so the shelf underneath peeks and invites a scroll. */
