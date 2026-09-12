@@ -1,0 +1,127 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% block title %}{% if address %}Edit{% else %}New{% endif %} address — Supernatural Shop{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 600px;">
+    <p class="meta"><a href="{% url 'storefront:account_addresses' %}" style="color: var(--muted);">← Addresses</a></p>
+    <h1 class="display display-l" style="margin: .5rem 0 2rem;">
+      {% if address %}Edit address{% else %}New address{% endif %}<span class="text-accent">.</span>
+    </h1>
+
+    <form method="post" style="display: grid; gap: 1rem;">
+      {% csrf_token %}
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label class="meta" style="display:block; margin-bottom: .35rem;">First name</label>
+          <input type="text" name="first_name" required value="{{ address.first_name|default:'' }}" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+        </div>
+        <div>
+          <label class="meta" style="display:block; margin-bottom: .35rem;">Last name</label>
+          <input type="text" name="last_name" required value="{{ address.last_name|default:'' }}" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+        </div>
+      </div>
+      <div>
+        <label class="meta" style="display:block; margin-bottom: .35rem;">Company (optional)</label>
+        <input type="text" name="company" value="{{ address.company|default:'' }}" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+      </div>
+      <div>
+        <label class="meta" style="display:block; margin-bottom: .35rem;">Address line 1</label>
+        <input id="addr-line1" type="text" name="address_line1" required value="{{ address.address_line1|default:'' }}" autocomplete="address-line1" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+      </div>
+      <div>
+        <label class="meta" style="display:block; margin-bottom: .35rem;">Address line 2 (optional)</label>
+        <input type="text" name="address_line2" value="{{ address.address_line2|default:'' }}" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+      </div>
+      <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+        <div>
+          <label class="meta" style="display:block; margin-bottom: .35rem;">City</label>
+          <input id="addr-city" type="text" name="city" required value="{{ address.city|default:'' }}" autocomplete="address-level2" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+        </div>
+        <div>
+          <label class="meta" style="display:block; margin-bottom: .35rem;">State / region</label>
+          <input id="addr-state" type="text" name="state" value="{{ address.state|default:'' }}" autocomplete="address-level1" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+        </div>
+        <div>
+          <label class="meta" style="display:block; margin-bottom: .35rem;">Postal code</label>
+          <input id="addr-zip" type="text" name="postal_code" required value="{{ address.postal_code|default:'' }}" autocomplete="postal-code" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label class="meta" style="display:block; margin-bottom: .35rem;">Country (2-letter)</label>
+          <input id="addr-country" type="text" name="country" required maxlength="2" value="{{ address.country|default:'US' }}" autocomplete="country" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); text-transform: uppercase;">
+        </div>
+        <div>
+          <label class="meta" style="display:block; margin-bottom: .35rem;">Phone (optional)</label>
+          <input type="tel" name="phone" value="{{ address.phone|default:'' }}" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+        </div>
+      </div>
+      <div>
+        <label class="meta" style="display:block; margin-bottom: .35rem;">Address type</label>
+        <select name="address_type" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+          <option value="shipping" {% if address.address_type == "shipping" %}selected{% endif %}>Shipping</option>
+          <option value="billing" {% if address.address_type == "billing" %}selected{% endif %}>Billing</option>
+        </select>
+      </div>
+      <label class="meta" style="display:flex; align-items:center; gap: .5rem;">
+        <input type="checkbox" name="is_default" {% if address.is_default %}checked{% endif %}>
+        Make this my default {% if address.address_type == "billing" %}billing{% else %}shipping{% endif %} address
+      </label>
+      <div><button type="submit" class="btn btn-primary">Save address</button></div>
+    </form>
+  </div>
+</section>
+
+{% if GOOGLE_PLACES_API_KEY %}
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_PLACES_API_KEY }}&libraries=places"></script>
+<script>
+  // Google Places autocomplete — fills empty city/state/postal/country
+  // when a place is selected. Never overwrites manually-typed values.
+  (function () {
+    function init() {
+      if (!window.google || !google.maps || !google.maps.places) return;
+      var addr1 = document.getElementById('addr-line1');
+      if (!addr1) return;
+      var ac = new google.maps.places.Autocomplete(addr1, {
+        types: ['address'],
+        fields: ['address_components']
+      });
+      ac.addListener('place_changed', function () {
+        var place = ac.getPlace();
+        if (!place || !place.address_components) return;
+        var get = function (type, short) {
+          for (var i = 0; i < place.address_components.length; i++) {
+            var c = place.address_components[i];
+            if (c.types.indexOf(type) !== -1) return short ? c.short_name : c.long_name;
+          }
+          return '';
+        };
+        var streetNumber = get('street_number', false);
+        var route = get('route', false);
+        var street = (streetNumber + ' ' + route).trim();
+        var city = get('locality', false) || get('postal_town', false) || get('sublocality', false);
+        var state = get('administrative_area_level_1', true);
+        var postal = get('postal_code', false);
+        var country = get('country', true);
+        var setIfEmpty = function (id, val) {
+          var el = document.getElementById(id);
+          if (el && !el.value && val) el.value = val;
+        };
+        if (street) addr1.value = street;
+        setIfEmpty('addr-city', city);
+        setIfEmpty('addr-state', state);
+        setIfEmpty('addr-zip', postal);
+        setIfEmpty('addr-country', country);
+      });
+    }
+    var tries = 0;
+    var t = setInterval(function () {
+      if (window.google && google.maps && google.maps.places) { clearInterval(t); init(); }
+      else if (++tries > 40) clearInterval(t);
+    }, 100);
+  })();
+</script>
+{% endif %}
+{% endblock %}

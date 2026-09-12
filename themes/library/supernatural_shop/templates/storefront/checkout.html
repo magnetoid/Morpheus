@@ -1,0 +1,315 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}
+{% block title %}Checkout — Supernatural Shop{% endblock %}
+
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 1240px;">
+    <p class="eyebrow">Checkout · 1 of 3</p>
+    <h1 class="display display-l" style="margin: 1rem 0 2rem;">Where should it go<span class="text-accent">?</span></h1>
+
+    <div id="checkout-errors" role="alert" aria-live="assertive" aria-atomic="true"
+         class="ck-error-summary"{% if not error %} hidden{% endif %}>
+      {% if error %}<p style="margin:0;"><strong>Please fix the following:</strong></p><p style="margin:.3rem 0 0;">{{ error }}</p>{% endif %}
+    </div>
+
+    <form method="post" id="checkout-form" style="display:grid; gap: 3rem; grid-template-columns: 1fr;" class="checkout-grid" novalidate>
+      {% csrf_token %}
+      <div class="stack-6">
+        <fieldset class="ck-fieldset">
+          <legend class="eyebrow ck-legend">Contact</legend>
+          <div class="ck-field">
+            <label for="ck-email">Email <span class="ck-req" aria-hidden="true">*</span></label>
+            <input id="ck-email" type="email" name="email"
+                   value="{{ form.email|default:'' }}"
+                   placeholder="you@example.com"
+                   autocomplete="email"
+                   inputmode="email"
+                   spellcheck="false"
+                   autocapitalize="off"
+                   required
+                   class="ck-input">
+            <p class="ck-hint">Order confirmation + tracking sent here.</p>
+          </div>
+        </fieldset>
+
+        {% if no_shipping_required %}
+        <fieldset class="ck-fieldset" style="background: var(--paper-2); border-radius: 4px; padding: 1.25rem;">
+          <legend class="eyebrow ck-legend">Digital delivery</legend>
+          <p style="margin: .25rem 0 0; font-size: .92rem;">
+            This cart contains only digital or virtual items — we'll send your downloads to the email above. No shipping address needed.
+          </p>
+        </fieldset>
+        {% else %}
+        <fieldset class="ck-fieldset">
+          <legend class="eyebrow ck-legend">Shipping address</legend>
+          <div class="ck-grid-2">
+            <div class="ck-field">
+              <label for="ck-first">First name</label>
+              <input id="ck-first" name="first_name" value="{{ form.first_name|default:'' }}"
+                     autocomplete="given-name" class="ck-input">
+            </div>
+            <div class="ck-field">
+              <label for="ck-last">Last name</label>
+              <input id="ck-last" name="last_name" value="{{ form.last_name|default:'' }}"
+                     autocomplete="family-name" class="ck-input">
+            </div>
+          </div>
+          <div class="ck-field">
+            <label for="ck-addr1">Street address <span class="ck-req" aria-hidden="true">*</span></label>
+            <input id="ck-addr1" name="address_line1" value="{{ form.address_line1|default:'' }}"
+                   autocomplete="address-line1" required class="ck-input">
+          </div>
+          <div class="ck-field">
+            <label for="ck-addr2">Apartment, suite, etc. <span class="ck-opt">(optional)</span></label>
+            <input id="ck-addr2" name="address_line2" value="{{ form.address_line2|default:'' }}"
+                   autocomplete="address-line2" class="ck-input">
+          </div>
+          <div class="ck-grid-3">
+            <div class="ck-field">
+              <label for="ck-city">City <span class="ck-req" aria-hidden="true">*</span></label>
+              <input id="ck-city" name="city" value="{{ form.city|default:'' }}"
+                     autocomplete="address-level2" required class="ck-input">
+            </div>
+            <div class="ck-field">
+              <label for="ck-state">State / Region</label>
+              <input id="ck-state" name="state" value="{{ form.state|default:'' }}"
+                     autocomplete="address-level1" class="ck-input">
+            </div>
+            <div class="ck-field">
+              <label for="ck-zip">Postal code</label>
+              <input id="ck-zip" name="postal_code" value="{{ form.postal_code|default:'' }}"
+                     autocomplete="postal-code" inputmode="numeric" class="ck-input">
+            </div>
+          </div>
+          <div class="ck-grid-2">
+            <div class="ck-field">
+              <label for="ck-country">Country <span class="ck-req" aria-hidden="true">*</span></label>
+              <input id="ck-country" name="country" value="{{ form.country|default:'US' }}"
+                     autocomplete="country" maxlength="2"
+                     pattern="[A-Za-z]{2}"
+                     style="text-transform: uppercase;"
+                     required class="ck-input">
+              <p class="ck-hint">Two-letter ISO code (e.g. <code>US</code>, <code>DE</code>, <code>GB</code>).</p>
+            </div>
+            <div class="ck-field">
+              <label for="ck-phone">Phone <span class="ck-opt">(optional)</span></label>
+              <input id="ck-phone" name="phone" type="tel" value="{{ form.phone|default:'' }}"
+                     autocomplete="tel" inputmode="tel" class="ck-input">
+            </div>
+          </div>
+        </fieldset>
+        {% endif %}
+
+        <button type="submit" id="ck-submit" class="btn btn-primary ck-submit" aria-busy="false">
+          <span class="ck-submit-label">
+            {% if no_shipping_required %}Continue to payment &rarr;{% else %}Continue to shipping &rarr;{% endif %}
+          </span>
+        </button>
+      </div>
+
+      <aside style="border: 1px solid var(--rule); border-radius: 4px; padding: 2rem; background: var(--paper-2);" aria-label="Order summary">
+        <p class="eyebrow">Your order</p>
+        {% if cart.items %}
+        <div style="margin: 1rem 0;">
+          {% for it in cart.items %}
+          <div style="display:flex; justify-content:space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--rule); font-size: .9rem;">
+            <span>{{ it.product.name }} <span style="color:var(--muted);">× {{ it.quantity }}</span></span>
+            <span>{{ it.totalPrice|money }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <hr class="rule" style="margin: 1rem 0;">
+        <div style="display:flex; justify-content:space-between; font-weight:600;">
+          <span>Subtotal</span>
+          <span>{{ cart.subtotal|money }}</span>
+        </div>
+
+        {# Gift card row — applied chip if present, input form if not. #}
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule);">
+          {% if cart.giftCard %}
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:.5rem; font-size:.9rem;">
+            <span><strong>Gift card</strong> <code style="font-size:.85em;">{{ cart.giftCard.code }}</code></span>
+            <form method="post" action="/checkout/gift-card/remove/" style="margin:0;">{% csrf_token %}<button class="btn btn-ghost text-xs" style="padding:.2rem .4rem;">Remove</button></form>
+          </div>
+          <p class="meta" style="margin-top:.3rem;">Balance: {{ cart.giftCard.balance }} {{ cart.giftCard.currency }}. Applied at order time.</p>
+          {% else %}
+          <details>
+            <summary style="cursor:pointer; font-size:.9rem; color:var(--ink-2);">Have a gift card?</summary>
+            <form method="post" action="/checkout/gift-card/apply/" style="display:flex; gap:.5rem; margin-top:.65rem;">
+              {% csrf_token %}
+              <label for="ck-gc" class="sr-only">Gift card code</label>
+              <input id="ck-gc" name="code" placeholder="Enter code" class="ck-input" style="flex:1; height:40px;" maxlength="24" required>
+              <button class="btn btn-secondary" style="height:40px; padding:0 1.2rem;">Apply</button>
+            </form>
+          </details>
+          {% endif %}
+        </div>
+        {% else %}
+        <p class="meta" style="margin: 1rem 0 0;">Your cart is empty. <a href="/products/" style="text-decoration:underline;">Browse books</a>.</p>
+        {% endif %}
+      </aside>
+    </form>
+  </div>
+</section>
+
+{% comment %}
+Plugin-contributed checkout surfaces — trust badges, shipping upgrades,
+referral prompts, quiz nudges. Contributed via StorefrontBlock(slot=
+'checkout_extra'), so a disabled plugin drops its block automatically.
+{% endcomment %}
+{% storefront_blocks "checkout_extra" %}
+
+<style>
+  /* Form layout — visible labels above inputs (WCAG 2.2 AA pattern;
+     placeholder-as-label is an anti-pattern that disappears on type). */
+  .ck-fieldset { border: 0; padding: 0; margin: 0; }
+  .ck-legend { margin-bottom: 1rem; }
+  .ck-field { display: block; margin-top: 0.85rem; }
+  .ck-field:first-child { margin-top: 0; }
+  .ck-field > label {
+    display: block;
+    font-size: 0.82rem; font-weight: 500;
+    color: var(--ink-2);
+    margin-bottom: 0.35rem;
+  }
+  .ck-req { color: var(--accent); margin-left: 0.1em; font-weight: 700; }
+  .ck-opt { color: var(--muted); font-weight: 400; font-size: 0.78rem; margin-left: 0.25em; }
+  .ck-hint { color: var(--muted); font-size: 0.78rem; margin: 0.3rem 0 0; }
+  .ck-grid-2 { display: grid; gap: 0.75rem; grid-template-columns: 1fr 1fr; margin-top: 0.85rem; }
+  .ck-grid-3 { display: grid; gap: 0.75rem; grid-template-columns: 2fr 1fr 1fr; margin-top: 0.85rem; }
+  .ck-grid-2 > .ck-field, .ck-grid-3 > .ck-field { margin-top: 0; }
+  /* Inputs — 48px tall (target-size AA), 2px focus ring, 3:1 contrast. */
+  .ck-input {
+    width: 100%; height: 48px; padding: 0 1rem;
+    border: 1px solid var(--rule); border-radius: 999px;
+    background: var(--paper); color: var(--ink);
+    font-family: var(--sans); font-size: 0.95rem;
+  }
+  .ck-input:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+    border-color: var(--ink);
+  }
+  .ck-input[aria-invalid="true"] {
+    border-color: var(--accent);
+    background: #fff5f5;
+  }
+  /* Submit — busy state replaces label and dims. */
+  .ck-submit { height: 52px; padding: 0 2rem; align-self: flex-start; min-width: 16rem; }
+  .ck-submit[aria-busy="true"] { opacity: 0.7; cursor: progress; }
+  .ck-submit[aria-busy="true"] .ck-submit-label::after { content: "…"; }
+  /* Error summary box. */
+  .ck-error-summary {
+    background: #fff5f5;
+    border: 1px solid var(--accent);
+    border-left-width: 4px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  /* Screen-reader-only utility (used by gift card label). */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0;
+    margin: -1px; overflow: hidden; clip: rect(0,0,0,0);
+    white-space: nowrap; border: 0;
+  }
+  /* Two-column desktop layout. */
+  @media (min-width: 900px) {
+    .checkout-grid { grid-template-columns: 1.4fr 0.6fr !important; gap: 4rem !important; align-items: start; }
+  }
+</style>
+
+<script>
+  // Submit busy state — flips aria-busy + disabled while the POST is
+  // in flight. Per 2026 a11y guidance the button stays focusable
+  // (aria-busy + visual change), so screen-reader status is announced.
+  (function () {
+    var form = document.getElementById('checkout-form');
+    var btn = document.getElementById('ck-submit');
+    if (!form || !btn) return;
+    form.addEventListener('submit', function () {
+      btn.setAttribute('aria-busy', 'true');
+      btn.disabled = true;
+      // Re-enable defensively in case the network stalls.
+      setTimeout(function () {
+        btn.setAttribute('aria-busy', 'false');
+        btn.disabled = false;
+      }, 15000);
+    });
+    // Move focus to the error summary when one is rendered server-side.
+    var summary = document.getElementById('checkout-errors');
+    if (summary && !summary.hasAttribute('hidden')) {
+      summary.setAttribute('tabindex', '-1');
+      summary.focus();
+    }
+  })();
+</script>
+
+{% if GOOGLE_PLACES_API_KEY %}
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_PLACES_API_KEY }}&libraries=places"></script>
+<script>
+  // Google Places autocomplete — fills city/state/postal/country from a
+  // selected place, but only when those fields are still empty (never
+  // clobbers manual input). No-ops cleanly if the script fails to load.
+  (function () {
+    function init() {
+      if (!window.google || !google.maps || !google.maps.places) return;
+      var addr1 = document.getElementById('ck-addr1');
+      if (!addr1) return;
+      var ac = new google.maps.places.Autocomplete(addr1, {
+        types: ['address'],
+        fields: ['address_components']
+      });
+      ac.addListener('place_changed', function () {
+        var place = ac.getPlace();
+        if (!place || !place.address_components) return;
+        var get = function (type, short) {
+          for (var i = 0; i < place.address_components.length; i++) {
+            var c = place.address_components[i];
+            if (c.types.indexOf(type) !== -1) return short ? c.short_name : c.long_name;
+          }
+          return '';
+        };
+        var streetNumber = get('street_number', false);
+        var route = get('route', false);
+        var street = (streetNumber + ' ' + route).trim();
+        var city = get('locality', false) || get('postal_town', false) || get('sublocality', false);
+        var state = get('administrative_area_level_1', true);
+        var postal = get('postal_code', false);
+        var country = get('country', true);
+        var setIfEmpty = function (id, val) {
+          var el = document.getElementById(id);
+          if (el && !el.value && val) el.value = val;
+        };
+        // Street address: only overwrite if the user just picked a suggestion
+        // (the picker replaces what's there by design — but we already have
+        // the parsed parts, so re-populate cleanly).
+        if (street) addr1.value = street;
+        setIfEmpty('ck-city', city);
+        setIfEmpty('ck-state', state);
+        setIfEmpty('ck-zip', postal);
+        setIfEmpty('ck-country', country);
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () {
+        // Script may still be loading — poll briefly.
+        var tries = 0;
+        var t = setInterval(function () {
+          if (window.google && google.maps && google.maps.places) { clearInterval(t); init(); }
+          else if (++tries > 40) clearInterval(t);
+        }, 100);
+      });
+    } else {
+      var tries = 0;
+      var t = setInterval(function () {
+        if (window.google && google.maps && google.maps.places) { clearInterval(t); init(); }
+        else if (++tries > 40) clearInterval(t);
+      }, 100);
+    }
+  })();
+</script>
+{% endif %}
+{% endblock %}

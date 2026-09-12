@@ -1,0 +1,581 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load caching %}{% load i18n %}
+{% comment %}The home page is the one page whose copy is the theme's own: there is no
+product or category to describe it. Everything else resolves centrally, so this block
+passes only the fallbacks — a merchant who fills in Settings → SEO overrides them.{% endcomment %}
+{% block seo %}{% storefront_head title="Dot Books — an independent bookshop" description="A quieter shelf for louder books. New and rare titles from independent presses — curated, modern, independent." %}{% endblock %}
+
+{% block extra_head %}
+{% with hero_products|first as pick %}
+{% if pick.primaryImage and pick.primaryImage.url %}{% caching_preload_lcp pick.primaryImage.url %}{% endif %}
+{% endwith %}
+{% endblock %}
+
+{% block content %}
+{% comment %}
+The home_above_grid slot (a dynamics "Recommended for you" block) used to sit
+ABOVE the hero — removed so the editor's-picks hero leads the page. Personalised
+recommendations still render lower via the home_after_rails / home_below_grid slots.
+{% endcomment %}
+
+{% if hero_products %}
+{% comment %}
+Editor's picks — "the bookshop window". One book stands face-out and still;
+the rest of the window's display sits beside it on a hairline shelf, as real
+covers rather than abstract dots, so a shopper sees the whole selection at a
+glance and every pick is one click away. Choosing a cover promotes it.
+
+Deliberately NOT here, and not to be re-added: an auto-advancing timer (three
+of four books were only ever seen by a visitor who waited), TWO display
+headlines competing in one column, and the
+per-letter decode scramble — that effect forced `contain: layout`, a JS font
+fitter, a reserved tallest-title box and a top-anchored grid just to absorb the
+jitter it caused. No JS measures anything.
+
+v0.61.1 restored the shop's ORIGINAL editorial opening — "The book that
+moved this month." — as the column's lead (merchant preference; it was the
+very first hero's voice). v0.61.2 restores the rest of the remembered
+composition: copy on the LEFT, one large cover on the RIGHT, and dot
+navigation under the copy in place of the small-cover rail — the "two big
+texts" arrangement, with the book title back at display-xl as the dominant
+line. What stays deleted stays deleted: no autoplay, no decode, no JS
+measurement — the stacked-panel stage still gives every slide the same
+geometry, so the dots and cover never move between books.
+{% endcomment %}
+<section id="editors-pick" class="window" data-home-hero aria-label="Editor's picks">
+  <div class="wrap">
+    {% comment %}The home page has no other h1 — the hero used to open with an h2
+    and nothing above it. The shop name is the page's heading; the visible
+    hierarchy starts at the book title.{% endcomment %}
+    <h1 class="sr-only">Dot Books — an independent bookshop</h1>
+
+    <div class="window__shell">
+      <div class="window__copy">
+        <header class="window__lead">
+          <p class="eyebrow">Editor's pick</p>
+          <h2 class="display display-l window__headline">The book that<br>moved this month<span class="text-accent">.</span></h2>
+        </header>
+        <div class="window__copy-stage">
+          {% for pick in hero_products %}
+          <article
+            class="window__panel{% if forloop.first %} is-active{% endif %}"
+            id="hero-panel-{{ forloop.counter0 }}"
+            data-home-hero-copy
+            data-index="{{ forloop.counter0 }}"
+            {% if hero_products|length > 1 %}role="tabpanel"{% endif %}
+            aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
+          >
+            <h3 class="display display-xl window__book" style="--d: 60ms;"><em>{{ pick.name }}</em><span class="text-accent">.</span></h3>
+            <p class="window__meta" style="--d: 120ms;">
+              {% if pick.category %}
+              <span class="window__cat">{{ pick.category.name }}</span>
+              <span class="window__sep" aria-hidden="true">·</span>
+              {% endif %}
+              <span class="window__price">{% if pick.priceStartsFrom %}<span class="window__from">{% translate "From" %}</span> {% endif %}{{ pick.price|money }}</span>
+              {% if pick.isOnSale %}<span class="window__save">&minus;{{ pick.discountPercentage }}%</span>{% endif %}
+            </p>
+            <div class="window__actions" style="--d: 180ms;">
+              <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop now</a>
+              <a href="/products/" class="btn btn-ghost">Browse the shelf</a>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+
+        {% if hero_products|length > 1 %}
+        <div class="window__dots" role="tablist" aria-label="Choose a featured book">
+          {% for pick in hero_products %}
+          <button
+            type="button"
+            class="window__dot{% if forloop.first %} is-active{% endif %}"
+            data-home-hero-pick
+            data-index="{{ forloop.counter0 }}"
+            role="tab"
+            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+            aria-controls="hero-panel-{{ forloop.counter0 }}"
+            tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+          >
+            <span class="sr-only">{{ pick.name }}</span>
+          </button>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="window__stage">
+        {% for pick in hero_products %}
+        <a
+          href="/products/{{ pick.slug }}/"
+          class="window__cover{% if forloop.first %} is-active{% endif %}"
+          data-home-hero-media
+          data-index="{{ forloop.counter0 }}"
+          aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
+          tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+        >
+          {% if pick.primaryImage and pick.primaryImage.url %}
+            {% if forloop.first %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 340px, 62vw" priority=True %}
+            {% else %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 340px, 62vw" %}
+            {% endif %}
+          {% elif PRODUCT_PLACEHOLDER_IMAGE %}
+            <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ pick.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
+          {% else %}
+            <span class="placeholder">{{ pick.name }}</span>
+          {% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ── Editor's picks: the bookshop window ─────────────────────────────────
+     Height is padding-driven, not `100svh`: the hero used to fill the viewport
+     and push every product below the fold on a shop's front page. The rail now
+     ends just above the fold so the shelf underneath peeks and invites a scroll. */
+  .window {
+    padding: clamp(2rem, 3.5vw, 3rem) 0 clamp(1.5rem, 3vw, 2.5rem);
+  }
+  .window__shell {
+    display: grid;
+    /* Deliberately tight: the book and its title read as one composition, not
+       two columns sharing a page. */
+    gap: clamp(1rem, 2vw, 1.75rem);
+    align-items: center;
+  }
+  @media (min-width: 900px) {
+    /* Copy left, the book right — the remembered editorial composition.
+       Both columns are content-sized so the book sits just past the end of the
+       copy: `1fr` for the copy pinned the cover to the far right edge, and a
+       short title ("Dune.") then left a gulf the gap alone could not close. */
+    .window__shell {
+      grid-template-columns: minmax(0, max-content) minmax(0, auto);
+      justify-content: start;
+    }
+    /* The copy column still needs a floor, or a one-word title collapses the
+       column and drags the book under the headline. */
+    .window__copy { min-width: min(32rem, 100%); }
+  }
+
+  /* ── The book, face-out ───────────────────────────────────────────────────
+     Order -1 puts the cover above the copy on a phone (the copy column comes
+     first in the DOM for desktop reading order, which would otherwise bury the
+     book under the dots); the desktop rule below restores source order. */
+  .window__stage { display: grid; order: -1; }
+  @media (min-width: 900px) {
+    .window__stage { order: 0; }
+  }
+  .window__cover {
+    grid-area: 1 / 1;
+    display: block;
+    position: relative;
+    width: min(62vw, 260px);
+    aspect-ratio: 2 / 3;
+    margin-inline: auto;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--paper-2);
+    box-shadow: 0 2px 10px -6px rgba(14, 14, 14, 0.22);
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.985);
+    transition:
+      opacity var(--motion-slow) var(--ease-out),
+      transform var(--motion-slow) var(--ease-out),
+      box-shadow var(--motion-med) var(--ease-out);
+  }
+  @media (min-width: 900px) {
+    .window__cover { width: clamp(260px, 27vw, 380px); margin-inline: 0; }
+  }
+  .window__cover.is-active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+  .window__cover img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  /* Missing-cover "title page" treatment: base.html owns it for every cover
+     on the site, and `.window__cover .placeholder` is wired into those shared
+     selector groups — nothing to restate here. */
+  @media (hover: hover) {
+    .window__cover.is-active:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 20px 38px -20px rgba(14, 14, 14, 0.42);
+    }
+  }
+
+  /* ── Copy ────────────────────────────────────────────────────────────────
+     Every panel is stacked in one grid cell, so the stage's height is the
+     LONGEST title's — constant no matter which book is showing, which is what
+     keeps the shelf below from moving as you click through. Each panel then
+     centres inside that constant box, so a short title sits balanced against
+     the cover instead of stranding its slack in one place. This is what
+     replaced the JS title fitter and the reserved tallest-title box:
+     geometry, not measurement. */
+  .window__copy { min-width: 0; }
+  .window__copy-stage {
+    display: grid;
+    align-items: center;
+  }
+  .window__panel {
+    grid-area: 1 / 1;
+    display: grid;
+    gap: 1rem;
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* No transition on the panel itself: every panel occupies the SAME grid cell,
+     so cross-fading two of them ghosts the outgoing title over the incoming one.
+     The panel cuts; only its three lines animate, which reads as the entrance. */
+  .window__panel.is-active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* One quiet, staggered rise for the three lines — the whole motion budget. */
+  .window__panel > * {
+    margin: 0;
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+    transition:
+      opacity 380ms var(--ease-out),
+      transform 380ms var(--ease-out);
+  }
+  .window__panel.is-active > * {
+    opacity: 1;
+    transform: none;
+    transition-delay: var(--d, 0ms);
+  }
+  /* The restored editorial lead — static, so it never moves between books. */
+  .window__lead {
+    display: grid;
+    gap: 0.9rem;
+    margin-bottom: clamp(1.4rem, 2.5vw, 2rem);
+  }
+  .window__lead > * { margin: 0; }
+  .window__book {
+    /* `display display-xl` carries family and size — the "two big texts" era's
+       treatment, the book title as the dominant line. This caps the measure so
+       a long title wraps into the stacked stage instead of running the column;
+       stage height = tallest title, constant across slides, no JS fitter. */
+    max-width: 12ch;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  .window__meta {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .window__cat {
+    font-family: var(--sans);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .window__sep { color: var(--rule); }
+  .window__price {
+    font-family: var(--serif);
+    font-size: clamp(1.15rem, 1.1vw + 0.95rem, 1.45rem);
+    font-variant-numeric: tabular-nums; /* digits hold width between slides */
+  }
+  .window__from { color: var(--muted); font-size: 0.85em; }
+  .window__save {
+    font-family: var(--sans);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--accent-ink);
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+  }
+  .window__actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  /* ── Dot navigation ──────────────────────────────────────────────────────
+     The remembered slider's bullets, sitting under the copy. Each button is a
+     2.25rem hit area (the a11y lesson the old hero dots learned the hard way)
+     drawing a small dot; the active one stretches into an accent dash. */
+  .window__dots {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: clamp(1.25rem, 2.5vw, 1.75rem);
+  }
+  .window__dot {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  .window__dot::after {
+    content: '';
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: var(--rule);
+    transition:
+      background var(--motion-med) var(--ease-out),
+      width var(--motion-med) var(--ease-out);
+  }
+  .window__dot.is-active::after {
+    width: 26px;
+    background: var(--accent-ink);
+  }
+  @media (hover: hover) {
+    .window__dot:not(.is-active):hover::after { background: var(--muted); }
+  }
+  .window__dot:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+    border-radius: 999px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .window__cover,
+    .window__panel,
+    .window__panel > *,
+    .window__dot::after {
+      transition-duration: 1ms !important;
+      transition-delay: 0ms !important;
+    }
+    .window__cover.is-active:hover { transform: none; }
+  }
+</style>
+
+<script>
+  (function () {
+    document.querySelectorAll('[data-home-hero]').forEach(function (root) {
+      var covers = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-media]'));
+      var panels = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-copy]'));
+      var picks = Array.prototype.slice.call(root.querySelectorAll('[data-home-hero-pick]'));
+      var count = covers.length;
+      var current = 0;
+
+      // A single pick renders fully from the markup — nothing to drive.
+      if (count < 2) return;
+
+      function show(idx, moveFocus) {
+        idx = (idx + count) % count;
+        covers.forEach(function (node, i) {
+          var active = i === idx;
+          node.classList.toggle('is-active', active);
+          node.setAttribute('aria-hidden', active ? 'false' : 'true');
+          node.tabIndex = active ? 0 : -1;
+        });
+        panels.forEach(function (node, i) {
+          var active = i === idx;
+          node.classList.toggle('is-active', active);
+          node.setAttribute('aria-hidden', active ? 'false' : 'true');
+        });
+        // Roving tabindex: the rail is one tab stop, arrows move within it.
+        picks.forEach(function (node, i) {
+          var active = i === idx;
+          node.classList.toggle('is-active', active);
+          node.setAttribute('aria-selected', active ? 'true' : 'false');
+          node.tabIndex = active ? 0 : -1;
+        });
+        current = idx;
+        if (moveFocus) picks[idx].focus();
+      }
+
+      picks.forEach(function (pick) {
+        pick.addEventListener('click', function () {
+          show(parseInt(pick.getAttribute('data-index') || '0', 10));
+        });
+      });
+
+      root.addEventListener('keydown', function (event) {
+        var key = event.key;
+        if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Home' && key !== 'End') return;
+        if (picks.indexOf(document.activeElement) === -1) return;
+        event.preventDefault();
+        if (key === 'ArrowLeft') show(current - 1, true);
+        else if (key === 'ArrowRight') show(current + 1, true);
+        else if (key === 'Home') show(0, true);
+        else show(count - 1, true);
+      });
+
+      show(0);
+    });
+  })();
+</script>
+{% endif %}
+
+<hr class="rule">
+
+<!-- Curated row 1 -->
+<section>
+  <div class="wrap">
+    <div style="display:flex; align-items:end; justify-content:space-between; margin-bottom: 2.5rem; gap: 1rem;" data-reveal>
+      <div>
+        <p class="eyebrow">Now on the shelf</p>
+        <h2 class="display display-m" style="margin-top: 0.6rem;">New &amp; notable<span class="text-accent">.</span></h2>
+      </div>
+      <a href="/products/?featured=true" class="btn-link">See all</a>
+    </div>
+    <div class="book-rail-wrap" data-reveal>
+      <button class="book-rail-nav book-rail-nav--prev" type="button" aria-label="Scroll left" data-rail-prev>&larr;</button>
+      <div class="grid-books grid-books--rail" data-book-rail>
+        {% for product in featured_products %}
+        {% include "storefront/_product_card.html" with product=product %}
+        {% empty %}
+        <div style="padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px; flex: 1 1 100%;">
+          <p class="lede" style="margin: 0 auto;">The shelf is being restocked. Check back tomorrow.</p>
+        </div>
+        {% endfor %}
+      </div>
+      <button class="book-rail-nav book-rail-nav--next" type="button" aria-label="Scroll right" data-rail-next>&rarr;</button>
+    </div>
+  </div>
+</section>
+
+<!-- Staff picks rail (Curated row 2) -->
+{% if staff_picks %}
+<section>
+  <div class="wrap">
+    <div style="display:flex; align-items:end; justify-content:space-between; margin-bottom: 2.5rem; gap: 1rem;" data-reveal>
+      <div>
+        <p class="eyebrow">From the editor</p>
+        <h2 class="display display-m" style="margin-top: 0.6rem;">Staff picks<span class="text-accent">.</span></h2>
+        {% if staff_picks_collection.description %}<p class="meta" style="margin-top: 0.5rem; max-width: 50ch;">{{ staff_picks_collection.description }}</p>{% endif %}
+      </div>
+      <a href="/staff-picks/" class="btn-link">All picks</a>
+    </div>
+    <div class="book-rail-wrap" data-reveal>
+      <button class="book-rail-nav book-rail-nav--prev" type="button" aria-label="Scroll left" data-rail-prev>&larr;</button>
+      <div class="grid-books grid-books--rail" data-book-rail>
+        {% for product in staff_picks %}
+        {% include "storefront/_product_card.html" with product=product %}
+        {% endfor %}
+      </div>
+      <button class="book-rail-nav book-rail-nav--next" type="button" aria-label="Scroll right" data-rail-next>&rarr;</button>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# Plugin-contributed shoppable rails (e.g. advanced_ecommerce featured-collection sliders). #}
+{% storefront_blocks "home_after_rails" %}
+
+<!-- Genre index — the shop's contents page. Prefers the curated genres
+     (nav_genres, the same list the mega-menu shows, via book_product's
+     context processor) and falls back to top-level categories. Hidden when
+     there are fewer than 3 entries — one lonely chip reads as broken. -->
+{% if nav_genres|length >= 3 %}
+<section class="tight">
+  <div class="wrap">
+    <div data-reveal>
+      <p class="eyebrow">Find your section</p>
+      <h2 class="display display-m" style="margin-top: 0.6rem;">Browse the shelves<span class="text-accent">.</span></h2>
+    </div>
+    <div class="genre-index" data-reveal>
+      {% for g in nav_genres %}
+      <a class="genre-index__item" href="/genre/{{ g.slug }}/">
+        <span>{{ g.name }}</span>
+        <span class="genre-index__arrow" aria-hidden="true">→</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% elif categories|length >= 3 %}
+<section class="tight">
+  <div class="wrap">
+    <div data-reveal>
+      <p class="eyebrow">Find your section</p>
+      <h2 class="display display-m" style="margin-top: 0.6rem;">Browse the shelves<span class="text-accent">.</span></h2>
+    </div>
+    <div class="genre-index" data-reveal>
+      {% for c in categories %}
+      <a class="genre-index__item" href="/category/{{ c.slug }}/">
+        <span>{{ c.name }}</span>
+        <span class="genre-index__arrow" aria-hidden="true">→</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- Manifesto block — placed after the shoppable rails so product density leads. -->
+<section style="background: var(--paper-2); padding: 6rem 0;">
+  <div class="wrap" style="text-align: center;">
+    <p class="eyebrow" data-reveal>A note from us</p>
+    <h2 class="display display-l" style="margin: 1.5rem auto; max-width: 22ch;">
+      We don't sell books that need a marketing budget to be worth reading<span class="text-accent">.</span>
+    </h2>
+    <p class="lede" style="margin: 0 auto;" data-reveal>
+      Every title here was read by at least one of us before it made it onto the shelf. That's both a constraint and a promise. If we put it in front of you, it earned the spot.
+    </p>
+    <div style="margin-top: 2rem; display:flex; gap: 1.5rem; justify-content:center; flex-wrap: wrap;" data-reveal>
+      <a href="/about/" class="btn-link">Read the manifesto</a>
+      <a href="/vendors/" class="btn-link">Meet the publishers</a>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- Journal teaser -->
+<section class="tight">
+  <div class="wrap">
+    <div style="display:grid; grid-template-columns: 1fr; gap: 2rem; align-items: end;">
+      <div>
+        <p class="eyebrow">From the journal</p>
+        <h2 class="display display-m" style="margin-top: 0.6rem;">On rereading the shelf<span class="text-accent">.</span></h2>
+      </div>
+      <a href="/journal/" class="btn-link">All entries</a>
+    </div>
+
+    <div style="display:grid; gap: 2rem; grid-template-columns: 1fr; margin-top: 2rem;" class="journal-grid">
+      {% comment %}Real entries — published CMS journal pages, falling back to the seeded editorial set (journal_teasers, set in views/home.py). Same links as /journal/.{% endcomment %}
+      {% for entry in journal_teasers %}
+      <article class="journal-card" data-reveal {% if forloop.counter == 2 %}style="--reveal-delay: 90ms;"{% elif forloop.counter == 3 %}style="--reveal-delay: 180ms;"{% endif %}>
+        <p class="meta">{{ entry.date_label }}</p>
+        <h3 style="font-family: var(--serif); font-size: 1.6rem; font-weight: 500; line-height: 1.2; margin: 0.6rem 0;">
+          <a href="/journal/{{ entry.slug }}/">{{ entry.title }}</a>
+        </h3>
+        <p style="color: var(--ink-2); line-height: 1.55;">{{ entry.excerpt }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<style>
+@media (min-width: 900px) { .journal-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 2.5rem !important; } }
+/* Journal teaser cards — the grey top rule "inks in" with accent red on
+   hover, sweeping left to right like a pen stroke; the headline follows. */
+.journal-card { position: relative; border-top: 1px solid var(--rule); padding-top: 1.25rem; }
+.journal-card::before {
+  content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
+  background: var(--accent);
+  transform: scaleX(0); transform-origin: 0 50%;
+  transition: transform var(--motion-slow) var(--ease-out);
+}
+.journal-card:hover::before { transform: scaleX(1); }
+.journal-card h3 a { transition: color var(--motion-fast) var(--ease-out); }
+.journal-card:hover h3 a { color: var(--accent-ink); }
+</style>
+
+{% storefront_blocks "home_below_grid" %}
+
+{% endblock %}

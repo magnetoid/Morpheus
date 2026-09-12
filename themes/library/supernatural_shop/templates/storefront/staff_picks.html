@@ -1,0 +1,52 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% load seo %}
+{% load caching %}
+{% load i18n %}
+{% block title %}{% seo_title "Staff picks" %}{% endblock %}
+
+{% block extra_head %}
+{% seo_collection_jsonld items=pick_items name="Staff picks" description="A small rotating shelf of titles the Supernatural Shop staff would hand a friend without hesitation." %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem;">
+      {% for item in breadcrumb_items %}
+        {% if forloop.last %}
+          <span aria-current="page">{{ item.name }}</span>
+        {% else %}
+          <a href="{{ item.url }}" style="color: var(--muted);">{{ item.name }}</a>
+          <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
+    <p class="eyebrow">Editor's notebook</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
+      Staff picks<span class="text-accent">.</span>
+    </h1>
+    <p class="lede">
+      {% if collection.description %}{{ collection.description }}{% else %}A small rotating shelf of titles we'd hand a friend without hesitation. Updated when there's a reason — never on a schedule.{% endif %}
+    </p>
+  </div>
+</section>
+
+<section style="padding-top: 1.5rem; padding-bottom: 5rem;">
+  <div class="wrap">
+    {% if products %}
+    <div class="grid-books">
+      {% for p in products %}
+      {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 6rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
+      <p class="display display-m" style="margin: 0 0 1rem;">No picks live yet<span class="text-accent">.</span></p>
+      <p class="lede" style="margin: 0 auto;">The editor is still drafting. Check the <a href="{% url 'storefront:product_list' %}" style="border-bottom: 1px dotted var(--rule);">full shelf</a> for what's currently in.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

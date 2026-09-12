@@ -1,0 +1,7 @@
+/* supernatural_shop — palette lives in base.html :root. This file is the
+   namespaced static hook the Theme SDK expects. */
+:root {
+  --bg: #0c0a09;
+  --fg: #f4efe6;
+  --accent: #c9a227;
+}

@@ -1,0 +1,71 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}
+{% block title %}Order #{{ order.order_number }} — Supernatural Shop{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="meta" style="margin-bottom: 1rem;">
+      <a href="/account/" style="color: var(--muted);">Account</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      <a href="/account/orders/" style="color: var(--muted);">Orders</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      #{{ order.order_number }}
+    </p>
+    <h1 class="display display-l" style="margin: .5rem 0 1rem;">Order #{{ order.order_number }}<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 2rem;">
+      Placed {{ order.created_at|date:"F j, Y" }} · status: <strong>{{ order.get_status_display }}</strong>
+    </p>
+
+    {% if order.status == 'cancelled' %}
+    <p role="status" style="margin: -1rem 0 2rem; padding: .85rem 1.1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper-2); color: var(--ink-2); font-family: var(--sans); font-size: .92rem;">
+      This order has been cancelled. Any payment is refunded to your original payment method — you'll get a separate confirmation email once it clears.
+    </p>
+    {% endif %}
+
+    <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.5rem;">
+      <h2 class="eyebrow" style="margin-bottom: 1rem;">Items</h2>
+      {% for item in order.items.all %}
+      <div style="display: flex; justify-content: space-between; padding: .75rem 0; border-bottom: 1px solid var(--rule);">
+        <div>
+          <p style="font-family: var(--serif); font-size: 1.05rem;">
+            {% if item.product %}{{ item.product.name }}{% else %}{{ item.product_name }}{% endif %}
+          </p>
+          <p class="meta">{{ item.quantity }} × {{ item.unit_price|money }}</p>
+        </div>
+        <div>
+          <p style="font-family: var(--serif); font-weight: 600;">{{ item.total_price|money }}</p>
+        </div>
+      </div>
+      {% endfor %}
+
+      <div style="display:flex; justify-content: space-between; padding-top: 1rem; margin-top: .5rem;">
+        <p style="font-family: var(--serif); font-size: 1.15rem;">Total</p>
+        <p style="font-family: var(--serif); font-size: 1.5rem; font-weight: 600;">{{ order.total|money }}</p>
+      </div>
+    </div>
+
+    <div style="margin-top: 2rem; display:flex; gap: .75rem; align-items: center; flex-wrap: wrap;">
+      <a href="/account/orders/{{ order.order_number }}/return/" class="btn btn-ghost">Request a return</a>
+      <a href="/account/orders/" class="btn-link">All orders</a>
+    </div>
+
+    {% if can_cancel %}
+    {% comment %}JS-free confirm: the summary is the trigger, expanding to the
+    real (refund-issuing) button so a stray click can't cancel an order.{% endcomment %}
+    <details style="margin-top: 1.25rem;">
+      <summary class="btn btn-ghost" style="cursor: pointer; list-style: none;">Cancel this order</summary>
+      <div style="margin-top: 1rem; padding: 1.1rem 1.25rem; border: 1px solid var(--rule); border-radius: 6px; max-width: 34rem;">
+        <p style="font-family: var(--sans); font-size: .92rem; color: var(--ink-2); margin: 0 0 1rem;">
+          You can cancel before your order is dispatched — this is your right of withdrawal. If you've already paid, we'll refund the full amount to your original payment method.
+        </p>
+        <form method="post" action="/account/orders/{{ order.order_number }}/cancel/">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary">Confirm cancellation</button>
+        </form>
+      </div>
+    </details>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

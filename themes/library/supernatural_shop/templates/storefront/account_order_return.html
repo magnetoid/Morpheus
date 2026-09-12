@@ -1,0 +1,49 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% block title %}Return order #{{ order.order_number }} — Supernatural Shop{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 600px;">
+    <p class="meta">
+      <a href="/account/orders/{{ order.order_number }}/" style="color: var(--muted);">← Order #{{ order.order_number }}</a>
+    </p>
+    <h1 class="display display-l" style="margin: .5rem 0 1.5rem;">Request a return<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 2rem;">Pick the items + quantities you'd like to send back.</p>
+
+    <form method="post" style="display: grid; gap: 1rem;">
+      {% csrf_token %}
+      <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1rem;">
+        {% for item in order.items.all %}
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: .65rem 0; border-bottom: 1px solid var(--rule);">
+          <div>
+            <p style="font-family: var(--serif);">{% if item.product %}{{ item.product.name }}{% else %}{{ item.product_name }}{% endif %}</p>
+            <p class="meta">Ordered: {{ item.quantity }}</p>
+          </div>
+          <div>
+            <input type="number" name="qty_{{ item.id }}" min="0" max="{{ item.quantity }}" value="0" style="width: 80px; height: 36px; padding: 0 .5rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div>
+        <label class="meta" style="display:block; margin-bottom: .35rem;">Reason</label>
+        <select name="reason" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
+          <option value="defective">Defective</option>
+          <option value="wrong_item">Wrong item</option>
+          <option value="not_as_described">Not as described</option>
+          <option value="changed_mind">Changed my mind</option>
+          <option value="damaged_in_transit">Damaged in transit</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="meta" style="display:block; margin-bottom: .35rem;">Note (optional)</label>
+        <textarea name="note" rows="4" style="width:100%; padding: .75rem 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); resize: vertical;"></textarea>
+      </div>
+      <div><button type="submit" class="btn btn-primary">Submit return request</button></div>
+    </form>
+  </div>
+</section>
+{% endblock %}

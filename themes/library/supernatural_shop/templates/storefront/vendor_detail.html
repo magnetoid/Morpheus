@@ -1,0 +1,101 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load caching %}{% load i18n %}
+{% block title %}{{ vendor.name }} — Publishers · Supernatural Shop{% endblock %}
+
+{% block extra_head %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% if collection_items %}{% seo_collection_jsonld items=collection_items name=vendor.name description=intro_text|truncatechars:200 %}{% endif %}
+{% endblock %}
+
+{% block content %}
+<section style="padding: 3rem 0 2.5rem;">
+  <div class="wrap">
+    <p class="meta" style="margin-bottom: 1.5rem;">
+      <a href="/" style="color: var(--muted);">Home</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      <a href="/marketplace/" style="color: var(--muted);">Marketplace</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      <a href="/vendors/" style="color: var(--muted);">Publishers</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      {{ vendor.name }}
+    </p>
+
+    <div class="vendor-hero">
+      {% if vendor.logo %}
+      <img src="{{ vendor.logo.url }}" alt="{{ vendor.name }} logo"
+           loading="eager" decoding="async" fetchpriority="high"
+           class="vendor-hero__logo">
+      {% else %}
+      <div class="vendor-hero__monogram" aria-hidden="true">
+        {{ vendor.name|slice:":1" }}
+      </div>
+      {% endif %}
+      <div class="vendor-hero__meta">
+        <p class="eyebrow">Publisher</p>
+        <h1 class="display display-l" style="margin: 1rem 0 .75rem;">{{ vendor.name }}<span class="text-accent">.</span></h1>
+        <div class="vendor-hero__stats">
+          <span><strong class="tabular-nums">{{ product_count }}</strong> title{{ product_count|pluralize }}</span>
+          {% if category_count %}<span>across <strong class="tabular-nums">{{ category_count }}</strong> categor{{ category_count|pluralize:"y,ies" }}</span>{% endif %}
+          {% if books_sold %}<span><strong class="tabular-nums">{{ books_sold }}+</strong> sold</span>{% endif %}
+          {% if vendor.created_at %}<span>Since {{ vendor.created_at|date:"F Y" }}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <p class="lede vendor-hero__lede">{{ intro_text }}</p>
+  </div>
+</section>
+
+{% if products %}
+<section style="padding: 0 0 5rem;">
+  <div class="wrap">
+    <hr class="rule">
+    <p class="eyebrow" style="margin: 2.5rem 0 1.5rem;">On the shelf</p>
+
+    <div class="vendor-products">
+      {% for p in products %}
+      {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<style>
+.vendor-hero {
+  display: flex; gap: 2rem; align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.vendor-hero__logo {
+  width: 120px; height: 120px; flex-shrink: 0;
+  border-radius: 12px;
+  object-fit: contain;
+  background: var(--paper);
+  padding: 12px;
+  border: 1px solid var(--rule);
+}
+.vendor-hero__monogram {
+  width: 120px; height: 120px; flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--ink); color: var(--paper);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 3.5rem; font-weight: 500;
+}
+.vendor-hero__meta { min-width: 0; flex: 1; }
+.vendor-hero__stats {
+  display: flex; gap: 1.5rem; flex-wrap: wrap;
+  font-size: .9rem; color: var(--muted);
+}
+.vendor-hero__stats strong { color: var(--ink); font-weight: 500; }
+.vendor-hero__lede { max-width: 70ch; margin: 0; }
+
+.vendor-products {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem 1.5rem;
+}
+@media (min-width: 640px)  { .vendor-products { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1000px) { .vendor-products { grid-template-columns: repeat(4, 1fr); } }
+</style>
+{% endblock %}

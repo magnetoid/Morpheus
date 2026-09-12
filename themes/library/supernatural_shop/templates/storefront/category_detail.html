@@ -1,0 +1,68 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% load seo %}
+{% load caching %}
+{% load i18n %}
+{% block title %}{{ category.name }} — Supernatural Shop{% endblock %}
+{% block extra_head %}
+  {% seo_breadcrumb_jsonld items=breadcrumb_items %}
+  {% seo_collection_jsonld items=collection_items name=category.name description=category.description %}
+{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem;">
+      {% for item in breadcrumb_items %}
+        {% if forloop.last %}
+          <span aria-current="page">{{ item.name }}</span>
+        {% else %}
+          <a href="{{ item.url }}" style="color: var(--muted);">{{ item.name }}</a>
+          <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
+    <p class="eyebrow">{{ intro_eyebrow|default:"On the shelf" }}</p>
+    <h1 class="display display-xl" style="margin: 1rem 0 1rem;">
+      {{ category.name }}<span class="text-accent">.</span>
+    </h1>
+    {% if intro_lede %}<p class="lede">{{ intro_lede|linebreaksbr }}</p>{% endif %}
+  </div>
+</section>
+
+<section style="padding-top: 1.5rem; padding-bottom: 5rem;">
+  <div class="wrap">
+    {% if products %}
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:2rem; flex-wrap:wrap;">
+      <p class="meta" style="margin:0;">{{ page_obj.paginator.count }} book{{ page_obj.paginator.count|pluralize }}</p>
+      <form method="get" style="display:flex; align-items:center; gap:0.5rem; margin:0;">
+        <label for="sort" class="meta" style="margin:0;">{% translate "Sort" %}</label>
+        <select name="sort" id="sort" onchange="this.form.submit()"
+                style="font-size:0.85rem; padding:0.45rem 0.7rem; border:1px solid var(--rule); border-radius:999px; background:var(--paper); color:var(--ink); cursor:pointer;">
+          {% for value, label in sort_options %}
+          <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+    <div class="grid-books">
+      {% for p in products %}
+      {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Pages" style="display:flex; gap:0.75rem; justify-content:center; align-items:center; margin-top:3rem; flex-wrap:wrap;">
+      {% if page_obj.has_previous %}<a href="?sort={{ sort }}&amp;page={{ page_obj.previous_page_number }}" class="btn btn-ghost">← Prev</a>{% endif %}
+      <span class="meta" style="margin:0;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}<a href="?sort={{ sort }}&amp;page={{ page_obj.next_page_number }}" class="btn btn-ghost">Next →</a>{% endif %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <div style="text-align: center; padding: 5rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
+      <p class="display display-m" style="margin: 0 0 1rem;">Nothing on this shelf yet<span class="text-accent">.</span></p>
+      <p class="lede" style="margin: 0 auto;">We're between issues for {{ category.name|lower }}. Try the <a href="/products/" style="border-bottom: 1px dotted var(--rule);">full catalog</a> in the meantime.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
