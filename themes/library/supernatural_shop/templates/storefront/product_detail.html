@@ -32,16 +32,11 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
     <p class="meta" style="margin-bottom: 1.25rem;">
       <a href="/" style="color: var(--muted);">Home</a>
       <span style="margin: 0 0.5rem;">/</span>
-      <a href="/products/" style="color: var(--muted);">All books</a>
-      {% with genre=product.book.genres.first %}
-      {% if genre %}
-      <span style="margin: 0 0.5rem;">/</span>
-      <a href="/genre/{{ genre.slug }}/" style="color: var(--muted);">{{ genre.name }}</a>
-      {% elif product.category %}
+      <a href="/products/" style="color: var(--muted);">Shop</a>
+      {% if product.category %}
       <span style="margin: 0 0.5rem;">/</span>
       <a href="/category/{{ product.category.slug }}/" style="color: var(--muted);">{{ product.category.name }}</a>
       {% endif %}
-      {% endwith %}
     </p>
 
     <div style="display:grid; gap: 3.5rem; grid-template-columns: 1fr;" class="pdp-grid">
@@ -60,7 +55,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 
       <!-- Details -->
       <div>
-        {% with genre=product.book.genres.first %}<p class="eyebrow">{% firstof genre.name product.category.name "Independent press" %}</p>{% endwith %}
+        <p class="eyebrow">{% firstof product.category.name "Shop" %}</p>
         <h1 class="display display-l" style="margin: 1rem 0 0.75rem;">{{ product.name }}<span class="text-accent">.</span></h1>
 
         {% if review_summary %}
@@ -182,7 +177,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
             </span>
             <div>
               <strong>Always read first</strong>
-              <p>Every book on the shelf has been read by at least one of us</p>
+              <p>Every bottle is one we would use ourselves</p>
             </div>
           </div>
         </div>

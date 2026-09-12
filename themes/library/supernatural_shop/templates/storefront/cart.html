@@ -25,9 +25,9 @@
               <td style="padding: 1.25rem 0;">
                 <div style="display:flex; gap: 1rem; align-items: flex-start;">
                   {% if item.product.primaryImage %}
-                  <div class="cover-wrap" style="width: 64px; aspect-ratio: 2/3; flex-shrink: 0;"><img src="{{ item.product.primaryImage.url }}" alt="" loading="{% caching_img_loading_attr %}" decoding="async"></div>
+                  <div class="cover-wrap" style="width: 64px; aspect-ratio: 1/1; flex-shrink: 0;"><img src="{{ item.product.primaryImage.url }}" alt="" loading="{% caching_img_loading_attr %}" decoding="async"></div>
                   {% elif PRODUCT_PLACEHOLDER_IMAGE %}
-                  <div class="cover-wrap" style="width: 64px; aspect-ratio: 2/3; flex-shrink: 0;"><img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="" loading="{% caching_img_loading_attr %}" decoding="async"></div>
+                  <div class="cover-wrap" style="width: 64px; aspect-ratio: 1/1; flex-shrink: 0;"><img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="" loading="{% caching_img_loading_attr %}" decoding="async"></div>
                   {% endif %}
                   <div>
                     <p style="font-family: var(--serif); font-size: 1.05rem; font-weight: 500;">{{ item.product.name }}</p>

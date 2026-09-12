@@ -18,7 +18,7 @@ from themes.base import MorpheusTheme
 class SupernaturalShopTheme(MorpheusTheme):
     name = 'supernatural_shop'
     label = 'Supernatural Shop'
-    version = '0.1.0'
+    version = '0.1.1'
     description = (
         'Dark editorial shop theme. Night paper, bone type, a single brass mark. '
         'Built on the dot_books storefront contract.'

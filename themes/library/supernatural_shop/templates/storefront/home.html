@@ -3,7 +3,7 @@
 {% comment %}The home page is the one page whose copy is the theme's own: there is no
 product or category to describe it. Everything else resolves centrally, so this block
 passes only the fallbacks — a merchant who fills in Settings → SEO overrides them.{% endcomment %}
-{% block seo %}{% storefront_head title="Supernatural Shop — a curated shop" description="A quieter shelf for louder books. A quieter shop for louder objects — curated, modern, independent." %}{% endblock %}
+{% block seo %}{% storefront_head title="Supernatural Shop — a curated shop" description="Oils, hydrosols, and ritual goods — curated, modern, independent." %}{% endblock %}
 
 {% block extra_head %}
 {% with hero_products|first as pick %}
@@ -171,8 +171,8 @@ geometry, so the dots and cover never move between books.
     grid-area: 1 / 1;
     display: block;
     position: relative;
-    width: min(62vw, 260px);
-    aspect-ratio: 2 / 3;
+    width: min(42vw, 160px);
+    aspect-ratio: 1 / 1;
     margin-inline: auto;
     border-radius: 4px;
     overflow: hidden;
@@ -187,7 +187,7 @@ geometry, so the dots and cover never move between books.
       box-shadow var(--motion-med) var(--ease-out);
   }
   @media (min-width: 900px) {
-    .window__cover { width: clamp(260px, 27vw, 380px); margin-inline: 0; }
+    .window__cover { width: clamp(160px, 16vw, 200px); margin-inline: 0; }
   }
   .window__cover.is-active {
     opacity: 1;
@@ -426,7 +426,7 @@ geometry, so the dots and cover never move between books.
   <div class="wrap">
     <div style="display:flex; align-items:end; justify-content:space-between; margin-bottom: 2.5rem; gap: 1rem;" data-reveal>
       <div>
-        <p class="eyebrow">Now on the shelf</p>
+        <p class="eyebrow">Just in</p>
         <h2 class="display display-m" style="margin-top: 0.6rem;">New &amp; notable<span class="text-accent">.</span></h2>
       </div>
       <a href="/products/?featured=true" class="btn-link">See all</a>
@@ -484,7 +484,7 @@ geometry, so the dots and cover never move between books.
   <div class="wrap">
     <div data-reveal>
       <p class="eyebrow">Find your section</p>
-      <h2 class="display display-m" style="margin-top: 0.6rem;">Browse the shelves<span class="text-accent">.</span></h2>
+      <h2 class="display display-m" style="margin-top: 0.6rem;">Browse the shop<span class="text-accent">.</span></h2>
     </div>
     <div class="genre-index" data-reveal>
       {% for g in nav_genres %}
@@ -501,7 +501,7 @@ geometry, so the dots and cover never move between books.
   <div class="wrap">
     <div data-reveal>
       <p class="eyebrow">Find your section</p>
-      <h2 class="display display-m" style="margin-top: 0.6rem;">Browse the shelves<span class="text-accent">.</span></h2>
+      <h2 class="display display-m" style="margin-top: 0.6rem;">Browse the shop<span class="text-accent">.</span></h2>
     </div>
     <div class="genre-index" data-reveal>
       {% for c in categories %}
@@ -520,10 +520,10 @@ geometry, so the dots and cover never move between books.
   <div class="wrap" style="text-align: center;">
     <p class="eyebrow" data-reveal>A note from us</p>
     <h2 class="display display-l" style="margin: 1.5rem auto; max-width: 22ch;">
-      We don't sell books that need a marketing budget to be worth reading<span class="text-accent">.</span>
+      We don't sell oils we wouldn't use ourselves<span class="text-accent">.</span>
     </h2>
     <p class="lede" style="margin: 0 auto;" data-reveal>
-      Every title here was read by at least one of us before it made it onto the shelf. That's both a constraint and a promise. If we put it in front of you, it earned the spot.
+      Every bottle here is chosen for the workbench — not the bookshelf. If we put it in front of you, it earned the spot.
     </p>
     <div style="margin-top: 2rem; display:flex; gap: 1.5rem; justify-content:center; flex-wrap: wrap;" data-reveal>
       <a href="/about/" class="btn-link">Read the manifesto</a>
@@ -540,7 +540,7 @@ geometry, so the dots and cover never move between books.
     <div style="display:grid; grid-template-columns: 1fr; gap: 2rem; align-items: end;">
       <div>
         <p class="eyebrow">From the journal</p>
-        <h2 class="display display-m" style="margin-top: 0.6rem;">On rereading the shelf<span class="text-accent">.</span></h2>
+        <h2 class="display display-m" style="margin-top: 0.6rem;">From the journal<span class="text-accent">.</span></h2>
       </div>
       <a href="/journal/" class="btn-link">All entries</a>
     </div>

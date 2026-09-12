@@ -3,7 +3,7 @@
 {% block title %}Journal — Supernatural Shop{% endblock %}
 
 {% block extra_head %}
-{% seo_collection_jsonld items=post_items name="Journal" description="Editorial notes from Supernatural Shop — essays and short pieces from the booksellers." %}
+{% seo_collection_jsonld items=post_items name="Journal" description="Editorial notes from Supernatural Shop — oils, hydrosols, and the work of making scent." %}
 {% seo_breadcrumb_jsonld items=breadcrumb_items %}
 {% endblock %}
 
@@ -12,12 +12,12 @@
   <div class="wrap" style="max-width: 720px;">
     <p class="eyebrow">From the journal</p>
     <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
-      Reading the shelf<span class="text-accent">.</span>
+      Reading the bench<span class="text-accent">.</span>
     </h1>
     {% comment %}page_intro is merchant-edited copy (CMS → Blocks, key journal_intro), supplied by the view via the STOREFRONT_PAGE_INTRO filter. House copy stands in until one is written.{% endcomment %}
     <p class="lede">
-      {% if page_intro %}{{ page_intro|linebreaksbr }}{% else %}Notes, essays, short pieces from the booksellers. Updated when there's
-      something to say — never on a schedule.{% endif %}
+      {% if page_intro %}{{ page_intro|linebreaksbr }}{% else %}Notes on oils, hydrosols, and the work of making scent.
+      Updated when there's something to say — never on a schedule.{% endif %}
     </p>
   </div>
 </section>
