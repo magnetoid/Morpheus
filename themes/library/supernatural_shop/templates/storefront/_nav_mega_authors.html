@@ -1,0 +1,29 @@
+{% load seo %}{% comment %}Authors mega-menu panel. Params: label (default "Authors"). Reads nav_authors + nav_featured_books from context.{% endcomment %}
+{% if nav_authors %}
+<div class="nav-mega">
+  <a href="/products/" class="nav-mega__trigger" aria-haspopup="true">{{ label|default:"Authors" }}
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="nav-mega__chev"><path d="m6 9 6 6 6-6"/></svg>
+  </a>
+  <div class="nav-mega__panel">
+    <div class="nav-mega__authors">
+      {% for a in nav_authors %}
+      <a href="/author/{{ a.slug }}/">{{ a.name }}</a>
+      {% endfor %}
+    </div>
+    {% if nav_featured_books %}
+    <div class="nav-mega__books">
+      <div class="nav-mega__books-h">Featured books</div>
+      <div class="nav-mega__covers">
+        {% for b in nav_featured_books %}
+        <a class="nav-mega__cover" href="/products/{{ b.slug }}/" title="{{ b.name }}">
+          {% seo_responsive_image b.image alt=b.name widths="200,400" sizes="120px" %}
+          <span>{{ b.name }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    <a href="/products/" class="nav-mega__all">Browse all books &rarr;</a>
+  </div>
+</div>
+{% endif %}

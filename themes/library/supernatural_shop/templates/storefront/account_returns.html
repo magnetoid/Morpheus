@@ -1,0 +1,53 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% block title %}Returns — Supernatural Shop{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="meta"><a href="/account/" style="color: var(--muted);">Account</a> / Returns</p>
+    <h1 class="display display-l" style="margin: .5rem 0 2rem;">Returns<span class="text-accent">.</span></h1>
+
+    {% if returns %}
+    <div style="display: grid; gap: 1rem;">
+      {% for r in returns %}
+      <a href="/account/returns/{{ r.id }}/"
+         style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1.5rem;
+                color: var(--ink); display:block; transition: border-color .15s, box-shadow .15s;"
+         onmouseover="this.style.borderColor='var(--ink)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,.06)';"
+         onmouseout="this.style.borderColor='var(--rule)'; this.style.boxShadow='none';">
+        <div style="display:flex; justify-content:space-between; gap:1rem; align-items:center;">
+          <div>
+            <p style="font-family: var(--serif); font-size: 1.1rem; margin:0;">{{ r.rma_number }}</p>
+            <p class="meta" style="margin-top: .25rem;">
+              Order #{{ r.order.order_number }} · {{ r.created_at|date:"M j, Y" }} · {{ r.get_reason_display }}
+            </p>
+          </div>
+          {% if r.state == 'refunded' %}
+          <span style="display:inline-flex; padding:.25rem .55rem; border-radius:999px;
+                       background:#d6f3e3; color:#1f7a4d; font-size:.72rem; font-weight:600;">Refunded</span>
+          {% elif r.state == 'received' or r.state == 'approved' %}
+          <span style="display:inline-flex; padding:.25rem .55rem; border-radius:999px;
+                       background:#dbeafe; color:#1d4ed8; font-size:.72rem; font-weight:600;">{{ r.get_state_display }}</span>
+          {% elif r.state == 'requested' %}
+          <span style="display:inline-flex; padding:.25rem .55rem; border-radius:999px;
+                       background:#ffeacc; color:#b86e00; font-size:.72rem; font-weight:600;">Requested</span>
+          {% elif r.state == 'rejected' or r.state == 'cancelled' %}
+          <span style="display:inline-flex; padding:.25rem .55rem; border-radius:999px;
+                       background:#fde7e9; color:#b3261e; font-size:.72rem; font-weight:600;">{{ r.get_state_display }}</span>
+          {% else %}
+          <span class="meta">{{ r.get_state_display }}</span>
+          {% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px;">
+      <p class="lede" style="margin: 0 auto 1rem;">No returns yet.</p>
+      <a href="/account/orders/" class="btn btn-primary">View orders</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

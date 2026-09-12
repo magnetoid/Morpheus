@@ -1,0 +1,235 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}
+{% block title %}Checkout — Supernatural Shop{% endblock %}
+
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 1080px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 3rem;">
+
+    <div>
+      <p class="eyebrow">Checkout</p>
+      <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">
+        One page<span class="text-accent">.</span>
+      </h1>
+
+      {% if error %}
+      <p role="alert" style="color: var(--accent); margin-bottom: 1rem;">{{ error }}</p>
+      {% endif %}
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {# ── Contact ─────────────────────────────────────────────── #}
+        <fieldset style="border: 0; padding: 0; margin: 0 0 2rem;">
+          <legend style="font-family: var(--serif); font-size: 1.3rem; margin-bottom: 1rem;">Contact</legend>
+          <label for="ck-email" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Email</label>
+          <input id="ck-email" name="email" type="email" required value="{{ form.email|default:'' }}"
+                 autocomplete="email"
+                 style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+        </fieldset>
+
+        {% if not no_shipping_required %}
+        {# ── Shipping address ────────────────────────────────────── #}
+        <fieldset style="border: 0; padding: 0; margin: 0 0 2rem;">
+          <legend style="font-family: var(--serif); font-size: 1.3rem; margin-bottom: 1rem;">Shipping address</legend>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <label for="ck-first" style="display:block; font-size:.85rem; margin-bottom:.25rem;">First name</label>
+              <input id="ck-first" name="first_name" value="{{ form.first_name|default:'' }}" autocomplete="given-name"
+                     style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+            </div>
+            <div>
+              <label for="ck-last" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Last name</label>
+              <input id="ck-last" name="last_name" value="{{ form.last_name|default:'' }}" autocomplete="family-name"
+                     style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+            </div>
+          </div>
+          <div style="margin-top:1rem;">
+            <label for="ck-addr1" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Street address</label>
+            <input id="ck-addr1" name="address_line1" required value="{{ form.address_line1|default:'' }}"
+                   autocomplete="address-line1"
+                   style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+          </div>
+          <div style="margin-top:1rem;">
+            <label for="ck-addr2" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Apt / suite (optional)</label>
+            <input id="ck-addr2" name="address_line2" value="{{ form.address_line2|default:'' }}"
+                   autocomplete="address-line2"
+                   style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+          </div>
+          <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem; margin-top:1rem;">
+            <div>
+              <label for="ck-city" style="display:block; font-size:.85rem; margin-bottom:.25rem;">City</label>
+              <input id="ck-city" name="city" required value="{{ form.city|default:'' }}" autocomplete="address-level2"
+                     style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+            </div>
+            <div>
+              <label for="ck-state" style="display:block; font-size:.85rem; margin-bottom:.25rem;">State / region</label>
+              <input id="ck-state" name="state" value="{{ form.state|default:'' }}" autocomplete="address-level1"
+                     style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+            </div>
+            <div>
+              <label for="ck-zip" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Postal code</label>
+              <input id="ck-zip" name="postal_code" value="{{ form.postal_code|default:'' }}" autocomplete="postal-code"
+                     style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top:1rem;">
+            <div>
+              <label for="ck-country" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Country</label>
+              <input id="ck-country" name="country" required value="{{ form.country|default:'' }}" autocomplete="country-name"
+                     style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+            </div>
+            <div>
+              <label for="ck-phone" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Phone (optional)</label>
+              <input id="ck-phone" name="phone" value="{{ form.phone|default:'' }}" autocomplete="tel"
+                     style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+            </div>
+          </div>
+        </fieldset>
+
+        {# ── Shipping method ────────────────────────────────────── #}
+        {% if rates %}
+        <fieldset style="border: 0; padding: 0; margin: 0 0 2rem;">
+          <legend style="font-family: var(--serif); font-size: 1.3rem; margin-bottom: 1rem;">Shipping method</legend>
+          {% for r in rates %}
+          <label style="display:flex; align-items:center; gap:.75rem; padding:.75rem; border:1px solid var(--rule); border-radius:6px; margin-bottom:.5rem; cursor:pointer;">
+            <input type="radio" name="shipping_rate_id" value="{{ r.id }}"
+                   {% if r.id|stringformat:'s' == selected_rate_id or forloop.first and not selected_rate_id %}checked{% endif %}>
+            <span style="flex:1;">{{ r.label }}</span>
+            <span class="meta">{{ r|money }}</span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        {% endif %}
+        {% endif %} {# no_shipping_required #}
+
+        {% if payment_methods %}
+        {% comment %}
+        Payment method picker — one radio per enabled gateway. The server
+        re-validates the chosen slug against enabled_gateways(); an
+        empty/unknown/disabled slug falls back to the default (Stripe), so
+        this never lets a shopper pick a disabled gateway.
+        {% endcomment %}
+        <fieldset style="border: 0; padding: 0; margin: 0 0 2rem;">
+          <legend style="font-family: var(--serif); font-size: 1.3rem; margin-bottom: 1rem;">Payment method</legend>
+          {% for m in payment_methods %}
+          <label style="display:flex; align-items:flex-start; gap:.75rem; padding:.75rem; border:1px solid var(--rule); border-radius:6px; margin-bottom:.5rem; cursor:pointer;">
+            <input type="radio" name="payment_method" value="{{ m.slug }}" style="margin-top:.25rem;"
+                   {% if m.slug == selected_payment_method %}checked{% endif %}>
+            <span style="flex:1;">
+              <span style="display:block;">{{ m.label }}</span>
+              <span class="meta">{{ m.capability }}</span>
+              {% if m.instructions %}
+              <span class="meta" style="display:block; margin-top:.35rem;">{{ m.instructions }}</span>
+              {% endif %}
+            </span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        {% endif %}
+
+        {% if user.is_authenticated %}
+        <label style="display:flex; align-items:center; gap:.5rem; margin-bottom:1.25rem;">
+          <input type="checkbox" name="save_info" value="1" checked> Save this info for next time
+        </label>
+        {% endif %}
+
+        {% if show_withdrawal_waiver %}
+        <label style="display:flex; align-items:flex-start; gap:.6rem; margin-bottom:2rem; padding:.85rem 1rem; border:1px solid var(--rule); border-radius:8px; font-size:.88rem; line-height:1.4;">
+          <input type="checkbox" name="digital_withdrawal_waiver" value="1" required style="margin-top:.2rem;">
+          <span>{{ withdrawal_waiver_text }}</span>
+        </label>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary"
+                style="height: 56px; padding: 0 2.5rem; font-size: 1rem;">
+          Continue to payment
+        </button>
+        <p class="meta" style="margin-top: 1rem;">
+          You'll enter card details on the next step. We don't store cards;
+          Stripe handles encryption + 3-D Secure.
+        </p>
+      </form>
+    </div>
+
+    {# ── Order summary ──────────────────────────────────────────── #}
+    <aside aria-label="Order summary"
+           style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.5rem; background: var(--paper); align-self:start; position:sticky; top:1rem;">
+      <h2 style="font-family: var(--serif); font-size: 1.15rem; margin: 0 0 1rem;">Order summary</h2>
+      {% for item in cart.items %}
+      <div style="display:flex; gap:1rem; padding:.65rem 0; border-bottom:1px solid var(--rule);">
+        <div style="flex:1;">
+          <p style="font-family: var(--serif); font-size: .98rem;">{{ item.product.name }}</p>
+          <p class="meta">{{ item.quantity }} × {{ item.unitPrice|money }}</p>
+        </div>
+        <p style="font-family: var(--serif); font-weight: 600;">{{ item.totalPrice|money }}</p>
+      </div>
+      {% endfor %}
+
+      {# Promo code — real coupon engine; totals rows use the order-finalize breakdown. #}
+      {% if cart.coupon %}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding-top:.75rem;">
+        <p class="meta">Code <strong>{{ cart.coupon.code }}</strong> applied</p>
+        <form method="post" action="{% url 'storefront:checkout_remove_coupon' %}" style="margin:0;">
+          {% csrf_token %}
+          <button type="submit" class="btn-link" style="background:none; border:0; padding:0; font-size:.8rem; color:var(--muted); cursor:pointer;">Remove</button>
+        </form>
+      </div>
+      {% else %}
+      <form method="post" action="{% url 'storefront:checkout_apply_coupon' %}"
+            style="display:flex; gap:.5rem; padding-top:.75rem;">
+        {% csrf_token %}
+        <input type="text" name="code" placeholder="Promo code" autocomplete="off"
+               style="flex:1; min-width:0; border:1px solid var(--rule); border-radius:4px; padding:.45rem .6rem; font-size:.9rem; background:var(--paper);">
+        <button type="submit" class="btn btn-ghost" style="white-space:nowrap;">Apply</button>
+      </form>
+      {% if request.GET.coupon == 'invalid' %}
+      <p class="meta" style="color:var(--accent-ink); margin-top:.35rem;">That code isn't valid or has expired.</p>
+      {% endif %}
+      {% endif %}
+
+      <div style="display:flex; justify-content:space-between; padding-top: 1rem;">
+        <p>Subtotal</p>
+        <p>{{ cart.subtotal|money }}</p>
+      </div>
+      {% if cart.coupon and totals.discount %}
+      <div style="display:flex; justify-content:space-between;">
+        <p>Discount</p>
+        <p>−{{ totals.discount|money }}</p>
+      </div>
+      {% endif %}
+      {% if totals.shipping %}
+      <div style="display:flex; justify-content:space-between;">
+        <p>Shipping</p>
+        <p>{{ totals.shipping|money }}</p>
+      </div>
+      {% endif %}
+      {% if totals.tax %}
+      <div style="display:flex; justify-content:space-between;">
+        <p>Tax</p>
+        <p>{{ totals.tax|money }}</p>
+      </div>
+      {% endif %}
+      <div style="display:flex; justify-content:space-between; padding-top: .75rem; margin-top: .75rem; border-top: 1px solid var(--rule);">
+        <p style="font-family: var(--serif); font-size: 1.1rem;">Total</p>
+        <p style="font-family: var(--serif); font-size: 1.4rem; font-weight: 600;">{% if totals.total %}{{ totals.total|money }}{% else %}{{ cart.subtotal|money }}{% endif %}</p>
+      </div>
+    </aside>
+
+  </div>
+</section>
+
+{% comment %}
+Plugin-contributed checkout surfaces (trust badges, shipping upgrades,
+referral prompts). Same slot as the multi-step checkout so a contribution
+renders in whichever flow the merchant has active.
+{% endcomment %}
+{% storefront_blocks "checkout_extra" %}
+
+<style>
+  @media (max-width: 720px) {
+    section .wrap { grid-template-columns: 1fr !important; }
+    section aside { position: static !important; }
+  }
+</style>
+{% endblock %}

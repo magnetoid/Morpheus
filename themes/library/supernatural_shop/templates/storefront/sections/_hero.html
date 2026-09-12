@@ -1,0 +1,10 @@
+<section style="padding: 6rem 0; {% if settings.image_url %}background: linear-gradient(rgba(14,14,14,.55), rgba(14,14,14,.55)), url('{{ settings.image_url }}') center/cover; color: var(--paper);{% endif %}">
+  <div class="wrap" style="max-width: 820px; text-align: center;">
+    {% if settings.eyebrow %}<p class="eyebrow" style="margin-bottom: 1rem;">{{ settings.eyebrow }}</p>{% endif %}
+    <h1 class="display display-xl" style="margin: 0 0 1rem;">{{ settings.heading }}</h1>
+    {% if settings.subheading %}<p class="lede" style="margin: 0 auto 2rem;">{{ settings.subheading }}</p>{% endif %}
+    {% if settings.cta_label and settings.cta_url %}
+    <a href="{{ settings.cta_url }}" class="btn btn-primary">{{ settings.cta_label }} →</a>
+    {% endif %}
+  </div>
+</section>

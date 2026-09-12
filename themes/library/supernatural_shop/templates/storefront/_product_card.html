@@ -1,0 +1,54 @@
+{% load morph %}{% load caching %}{% load i18n %}{% load seo %}{% load book_extras %}{% load pricing %}
+{% comment %}
+Shared product card. One hit-link wraps cover + title (no duplicate PDP
+links). Add-to-cart sits outside the link so the global cart-drawer JS in
+_cart_drawer.html can intercept /cart/add/<id>/ → AJAX add + fly-to-cart.
+
+Shape-agnostic: works for ORM products (primary_image / display_price /
+price_starts_from / is_on_sale) and GraphQL dicts (primaryImage / price /
+priceStartsFrom / isOnSale). We resolve cross-shape values with {% firstof %}
+and select with {% if %} — both ignore missing-attr lookups, so neither
+shape raises (a |default chain across shapes does). product.id is a raw
+UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
+{% endcomment %}
+{% firstof product.primary_image.image.url product.primaryImage.url as img %}
+{% firstof product.author_name product.author as card_author %}
+{# Price: apply |money to the raw Money/dict directly, never via firstof-as (it stringifies to "$8.00", so |money would double the symbol → "$$8.00"). #}
+<div class="book" data-product-card>
+  <a href="/products/{{ product.slug }}/" class="book__hit">
+    <div class="cover-wrap">
+      {% if product.primary_image.image %}
+        {% seo_responsive_image product.primary_image.image alt=product.name widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
+      {% elif img %}
+        {% comment %}GraphQL dict shape — img is a raw /media/ URL string. Route it
+           through the same responsive proxy; the raw originals are multi-MB PNGs.{% endcomment %}
+        {% seo_responsive_image img alt=product.name widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
+      {% elif PRODUCT_PLACEHOLDER_IMAGE %}
+        <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ product.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
+      {% else %}
+        <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
+      {% endif %}
+      {% if product.is_on_sale or product.isOnSale %}<span class="ribbon">{% firstof product.discount_percentage product.discountPercentage %}% off</span>{% endif %}
+    </div>
+    <p class="title">{{ product.name }}</p>
+    {% if card_author %}<p class="author">{{ card_author }}</p>{% endif %}
+  </a>
+  <div class="book__body">
+    {% comment %}if/elif, NOT firstof-as — firstof-as stores an escaped string that
+       then escapes again on output (visible &lt;p&gt; / &amp;#x27; on cards).
+       first_sentence also normalises entities/markup to plain text.{% endcomment %}
+    {% if product.short_description %}<p class="book__excerpt">{{ product.short_description|first_sentence }}</p>
+    {% elif product.shortDescription %}<p class="book__excerpt">{{ product.shortDescription|first_sentence }}</p>{% endif %}
+    {% comment %}Price goes through the PRODUCT_CALCULATE_PRICE seam (storefront_price)
+       so the shelf can never quote a different number than the PDP and cart.{% endcomment %}
+    {% storefront_price product as card_price %}
+    <p class="price">{% if product.price_starts_from or product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{% if card_price %}{{ card_price|money }}{% endif %}</p>
+    <div class="book__actions">
+      <form method="post" action="/cart/add/{{ product.id }}/" class="book__add">
+        {% csrf_token %}
+        <input type="hidden" name="quantity" value="1">
+        <button type="submit" class="btn btn-primary btn-sm">{% translate "Add to cart" %}</button>
+      </form>
+    </div>
+  </div>
+</div>

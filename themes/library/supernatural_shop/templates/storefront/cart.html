@@ -1,0 +1,101 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load caching %}{% load seo %}{% load experiments %}
+{% block title %}Your cart — Supernatural Shop{% endblock %}
+
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 1240px;">
+    <p class="eyebrow">Cart</p>
+    <h1 class="display display-l" style="margin: 1rem 0 2.5rem;">Your shelf, queued for shipping<span class="text-accent">.</span></h1>
+
+    {% if cart.items %}
+    <div style="display:grid; gap: 3rem; grid-template-columns: 1fr;" class="cart-grid">
+      <div>
+        <table style="width:100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--rule);">
+              <th style="text-align:left; padding: 1rem 0; font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); font-weight: 600;">Book</th>
+              <th style="text-align:right; padding: 1rem 0; font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); font-weight: 600;">Qty</th>
+              <th style="text-align:right; padding: 1rem 0; font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); font-weight: 600;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in cart.items %}
+            <tr style="border-bottom: 1px solid var(--rule);">
+              <td style="padding: 1.25rem 0;">
+                <div style="display:flex; gap: 1rem; align-items: flex-start;">
+                  {% if item.product.primaryImage %}
+                  <div class="cover-wrap" style="width: 64px; aspect-ratio: 2/3; flex-shrink: 0;"><img src="{{ item.product.primaryImage.url }}" alt="" loading="{% caching_img_loading_attr %}" decoding="async"></div>
+                  {% elif PRODUCT_PLACEHOLDER_IMAGE %}
+                  <div class="cover-wrap" style="width: 64px; aspect-ratio: 2/3; flex-shrink: 0;"><img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="" loading="{% caching_img_loading_attr %}" decoding="async"></div>
+                  {% endif %}
+                  <div>
+                    <p style="font-family: var(--serif); font-size: 1.05rem; font-weight: 500;">{{ item.product.name }}</p>
+                    {% if item.variant %}<p class="meta">{{ item.variant.name }}</p>{% endif %}
+                    <form method="post" action="{% url 'storefront:cart_remove' item.id %}" style="margin-top: 0.5rem;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn-link" style="background:none; border:0; padding:0; font-size: 0.8rem; color: var(--muted); cursor: pointer;">Remove</button>
+                    </form>
+                  </div>
+                </div>
+              </td>
+              <td style="text-align:right; padding: 1.25rem 0;">
+                <form method="post" action="{% url 'storefront:cart_update' item.id %}"
+                      style="display:inline-flex; align-items:center; gap:.5rem; border:1px solid var(--rule); border-radius:999px; padding:.15rem .35rem;">
+                  {% csrf_token %}
+                  <button type="submit" name="quantity" value="{{ item.quantity|add:'-1' }}"
+                          aria-label="Decrease quantity of {{ item.product.name }}"
+                          style="background:none; border:0; cursor:pointer; width:1.6rem; height:1.6rem; color:var(--ink); font-size:1rem; line-height:1;">−</button>
+                  <span style="min-width:1.4rem; text-align:center; font-variant-numeric:tabular-nums;">{{ item.quantity }}</span>
+                  <button type="submit" name="quantity" value="{{ item.quantity|add:'1' }}"
+                          aria-label="Increase quantity of {{ item.product.name }}"
+                          style="background:none; border:0; cursor:pointer; width:1.6rem; height:1.6rem; color:var(--ink); font-size:1rem; line-height:1;">+</button>
+                </form>
+              </td>
+              <td style="text-align:right; padding: 1.25rem 0; font-weight: 600;">{{ item.totalPrice|money }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <a href="/products/" class="btn-link" style="margin-top: 1.5rem;">Keep browsing</a>
+      </div>
+
+      <aside style="border: 1px solid var(--rule); border-radius: 4px; padding: 2rem; background: var(--paper-2);">
+        <p class="eyebrow">Order summary</p>
+        <div style="margin-top: 1.5rem;">
+          <div style="display:flex; justify-content:space-between; padding: 0.5rem 0; color: var(--ink-2);">
+            <span>Subtotal</span><span>{{ cart.subtotal|money }}</span>
+          </div>
+          {% if cart.coupon and totals.discount %}
+          <div style="display:flex; justify-content:space-between; padding: 0.5rem 0; color: var(--ink-2);">
+            <span>Discount <span class="meta">({{ cart.coupon.code }})</span></span><span>−{{ totals.discount|money }}</span>
+          </div>
+          {% endif %}
+          <div style="display:flex; justify-content:space-between; padding: 0.5rem 0; color: var(--muted); font-size: 0.9rem;">
+            <span>Shipping</span><span>Calculated at checkout</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding: 1rem 0; border-top: 1px solid var(--rule); font-family: var(--serif); font-size: 1.25rem; font-weight: 600; margin-top: 1rem;">
+            <span>Total</span><span>{% if totals.total %}{{ totals.total|money }}{% else %}{{ cart.subtotal|money }}{% endif %}</span>
+          </div>
+        </div>
+        {% storefront_blocks "cart_summary_extra" %}
+        {# Single short flow: one-page checkout (address + shipping + payment picker on one screen). #}
+        <a href="/checkout/quick/"
+           class="btn btn-primary"
+           style="width:100%; justify-content: center; margin-top: 1.25rem;">Checkout</a>
+        <p class="meta" style="text-align:center; margin-top: 1rem;">Free shipping over $40<span class="text-accent">.</span></p>
+      </aside>
+    </div>
+    <style>@media (min-width: 900px) { .cart-grid { grid-template-columns: 1.4fr 0.6fr !important; gap: 4rem !important; align-items: start; } }</style>
+
+    {% else %}
+    <div style="text-align: center; padding: 6rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
+      <p class="display display-m" style="margin: 0 0 1rem;">Your shelf is bare<span class="text-accent">.</span></p>
+      <p class="lede" style="margin: 0 auto 2rem;">Nothing to ship yet. Browse the shelf and pick a book or two.</p>
+      <a href="/products/" class="btn btn-primary">Browse the shelf</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

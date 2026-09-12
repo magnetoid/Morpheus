@@ -1,0 +1,183 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% load i18n %}{% load seo %}{% load tracking %}{% load book_extras %}
+{% block title %}{% if selected_author %}Books by {{ selected_author }}{% elif selected_publisher %}{{ selected_publisher }} titles{% elif selected_category_obj %}{{ selected_category_obj.name }}{% elif selected_tag %}{{ selected_tag_obj.name|default:selected_tag }}{% elif search_query %}Search: {{ search_query }}{% else %}All books{% endif %} — Supernatural Shop{% endblock %}
+
+{% block extra_head %}
+{% seo_collection_jsonld items=plp_items name=plp_name description=seo_description %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% seo_pagination_links page_obj=page_obj %}
+{% dl_view_item_list products list_id=selected_category|default:'all' list_name=plp_name %}
+{% endblock %}
+
+{% block content %}
+<section style="padding: 3rem 0 2rem;">
+  <div class="wrap">
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem;">
+      {% for item in breadcrumb_items %}
+        {% if forloop.last %}
+          <span aria-current="page">{{ item.name }}</span>
+        {% else %}
+          <a href="{{ item.url }}" style="color: var(--muted);">{{ item.name }}</a>
+          <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
+    {% comment %}Kind eyebrow — same vocabulary as every other shelf page
+       (Category / Genre / Author / Publisher / Tag / Collection), so filtered
+       views read as first-class shelf pages.{% endcomment %}
+    <p class="eyebrow">{% if selected_author %}Author{% elif selected_publisher %}Publisher{% elif selected_category_obj %}Genre{% elif selected_tag %}Tag{% elif search_query %}Search{% else %}The shelf{% endif %}</p>
+    <h1 class="display display-l" style="margin: 1rem 0;">
+      {% if selected_author %}Books by {{ selected_author }}<span class="text-accent">.</span>
+      {% elif selected_publisher %}{{ selected_publisher }} titles<span class="text-accent">.</span>
+      {% elif selected_category_obj %}{{ selected_category_obj.name }}<span class="text-accent">.</span>
+      {% elif selected_tag %}{{ selected_tag_obj.name|default:selected_tag }}<span class="text-accent">.</span>
+      {% elif search_query %}Results for "<em>{{ search_query }}</em>"<span class="text-accent">.</span>
+      {% else %}Every book on the shelf<span class="text-accent">.</span>{% endif %}
+    </h1>
+    {% comment %}Ledes prefer the dashboard-editable description for the term
+       (authors + publishers: Products → Book taxonomies; tags: Tag descriptions;
+       categories + collections on their own pages), falling back to house
+       copy.{% endcomment %}
+    {% if selected_author %}{% book_term_lede 'author' selected_author as author_lede %}{% endif %}
+    {% if selected_publisher %}{% book_term_lede 'publisher' selected_publisher as publisher_lede %}{% endif %}
+    <p class="lede">{% if selected_author %}{% firstof author_lede %}{% if not author_lede %}Every title we shelf by {{ selected_author }}.{% endif %}{% elif selected_publisher %}{% firstof publisher_lede %}{% if not publisher_lede %}From {{ selected_publisher }} — only the editions we'd hand a friend.{% endif %}{% elif selected_tag %}{% if selected_tag_obj.description %}{{ selected_tag_obj.description|linebreaksbr }}{% else %}Every book on the shelf we've tagged &ldquo;{{ selected_tag }}&rdquo;.{% endif %}{% elif selected_category_obj.description %}{{ selected_category_obj.description|linebreaksbr }}{% elif page_intro %}{{ page_intro|linebreaksbr }}{% else %}Independent, modern, hand-curated. Filter by genre or publisher. The shelf rotates every Tuesday.{% endif %}</p>
+    {% if page_obj %}<p class="meta plp-count">{{ page_obj.paginator.count }} book{{ page_obj.paginator.count|pluralize }}</p>{% endif %}
+
+    {# Active filter chips — clickable to remove. Shown when any filter is active. #}
+    {% if selected_author or selected_publisher or selected_category or selected_tag or search_query %}
+    <div style="display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1.25rem;">
+      {% if search_query %}<a href="?{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Search: {{ search_query }} ✕</a>{% endif %}
+      {% if selected_author %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Author: {{ selected_author }} ✕</a>{% endif %}
+      {% if selected_publisher %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Publisher: {{ selected_publisher }} ✕</a>{% endif %}
+      {% if selected_category %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Genre: {{ selected_category_obj.name|default:selected_category }} ✕</a>{% endif %}
+      {% if selected_tag %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}" class="chip">Tag: {{ selected_tag }} ✕</a>{% endif %}
+      <a href="/products/" class="chip chip-clear">Clear all</a>
+    </div>
+    <style>
+      .chip { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .8rem; border:1px solid var(--rule); border-radius:999px; background:var(--paper); font-size:.8rem; color:var(--ink-2); transition:border-color .15s, color .15s, transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
+      .chip:hover { border-color:var(--ink); color:var(--ink); transform: translateY(-1px); box-shadow: 0 4px 10px -6px rgba(14,14,14,.3); }
+      .chip-clear { color:var(--accent); border-style:dashed; }
+      .chip-clear:hover { color:var(--accent-ink); border-color:var(--accent-ink); }
+    </style>
+    {% endif %}
+
+    <form method="get" class="plp-toolbar" style="display:flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 2rem; align-items: center;">
+      <div style="position: relative; flex: 1; min-width: 240px; max-width: 480px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--muted);"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input name="q" value="{{ search_query }}" placeholder="Search by title or author"
+               style="width:100%; height: 44px; padding: 0 1rem 0 2.6rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
+      </div>
+      {% if categories|length > 1 %}
+      <select name="category" aria-label="Filter by genre" onchange="this.form.requestSubmit()" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
+        <option value="">All genres</option>
+        {% for c in categories %}
+        <option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+      {% endif %}
+      {% if available_authors %}
+      <label class="sr-only" for="plp-author">Filter by author</label>
+      <input id="plp-author" name="author" list="plp-author-list" value="{{ selected_author }}" placeholder="Author…" autocomplete="off"
+             style="height: 44px; width: min(100%, 220px); padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
+      <datalist id="plp-author-list">
+        {% for a in available_authors %}
+        <option value="{{ a }}"></option>
+        {% endfor %}
+      </datalist>
+      {% endif %}
+      <select name="sort" aria-label="Sort products" onchange="this.form.requestSubmit()" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
+        <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Newest</option>
+        <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Price ↑</option>
+        <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Price ↓</option>
+        <option value="name" {% if selected_sort == 'name' %}selected{% endif %}>Name</option>
+      </select>
+      {# Carry over active facet selections so the search button doesn't drop them #}
+      {% for f in facets %}{% for v in f.selected %}<input type="hidden" name="attr_{{ f.attr.slug }}" value="{{ v }}">{% endfor %}{% endfor %}
+      <button class="btn btn-primary" style="height: 44px;">Apply</button>
+    </form>
+    <style>
+      .plp-count { margin: 0.75rem 0 0; }
+      .plp-toolbar {
+        position: sticky; top: 64px; z-index: 20;
+        background: color-mix(in srgb, var(--paper) 92%, transparent);
+        backdrop-filter: blur(10px);
+        padding: 0.75rem 0;
+        margin-left: -0.25rem; margin-right: -0.25rem; padding-left: 0.25rem; padding-right: 0.25rem;
+      }
+    </style>
+
+    {% if facets %}
+    <div style="display:flex; flex-wrap:wrap; gap:1.5rem; margin-top:1.5rem; padding:1rem 1.25rem; border:1px solid var(--rule); border-radius:6px; background:var(--paper);">
+      {% for f in facets %}
+      <details style="min-width:180px;" {% if f.selected %}open{% endif %}>
+        <summary style="cursor:pointer; font-weight:600; font-size:.85rem; padding:.25rem 0;">
+          {{ f.attr.name }}{% if f.selected %} <span style="color:var(--muted); font-weight:400;">({{ f.selected|length }})</span>{% endif %}
+        </summary>
+        <div style="margin-top:.5rem; display:flex; flex-direction:column; gap:.4rem;">
+          {% for v in f.values %}
+          <label style="display:flex; align-items:center; gap:.5rem; font-size:.85rem; cursor:pointer;">
+            <input type="checkbox" form="facet-form" name="attr_{{ f.attr.slug }}" value="{{ v.slug }}" {% if v.slug in f.selected %}checked{% endif %} onchange="this.form.submit()">
+            {% if f.attr.input_type == 'color' and v.value %}<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background:{{ v.value }}; border:1px solid var(--rule);"></span>{% endif %}
+            <span>{{ v.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+    <form id="facet-form" method="get">
+      {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+      {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+      {% if selected_sort %}<input type="hidden" name="sort" value="{{ selected_sort }}">{% endif %}
+    </form>
+    {% endif %}
+  </div>
+</section>
+
+<section style="padding-top: 1.5rem;">
+  <div class="wrap">
+    {% if products %}
+    <div class="grid-books">
+      {% for p in products %}
+      {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+
+    {% if page_obj and page_obj.paginator.num_pages > 1 %}
+    {% with qsep=paginator_base_qs|yesno:"&," %}
+    <nav class="plp-pagination" aria-label="Page navigation" style="display:flex; justify-content:center; align-items:center; gap:0.5rem; margin: 3rem 0 0; padding: 1.5rem 0 0; border-top: 1px solid var(--rule); flex-wrap: wrap;">
+      {% if page_obj.has_previous %}
+        <a class="btn" href="?{{ paginator_base_qs }}{% if paginator_base_qs %}&{% endif %}page={{ page_obj.previous_page_number }}" rel="prev">&larr; Previous</a>
+      {% else %}
+        <span class="btn" aria-disabled="true" style="opacity:.4; cursor:not-allowed;">&larr; Previous</span>
+      {% endif %}
+
+      <span class="text-meta" style="padding: 0 1rem;">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        &middot; {{ page_obj.paginator.count }} book{{ page_obj.paginator.count|pluralize }}
+      </span>
+
+      {% if page_obj.has_next %}
+        <a class="btn" href="?{{ paginator_base_qs }}{% if paginator_base_qs %}&{% endif %}page={{ page_obj.next_page_number }}" rel="next">Next &rarr;</a>
+      {% else %}
+        <span class="btn" aria-disabled="true" style="opacity:.4; cursor:not-allowed;">Next &rarr;</span>
+      {% endif %}
+    </nav>
+    {% endwith %}
+    {% endif %}
+
+    {% else %}
+    <div class="empty-shelf">
+      <div class="glyph" aria-hidden="true">❦</div>
+      <h2>Nothing here yet.</h2>
+      <p>Either we sold out or we're between issues. Try the full shelf for what's in stock right now.</p>
+      <div class="actions">
+        <a href="/products/" class="btn btn-primary">Browse all books</a>
+        <a href="/" class="btn">Back home</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
