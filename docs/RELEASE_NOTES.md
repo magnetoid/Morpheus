@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.63.0 — 2026-09-13
+
+**Janus is the store agent; Linda is brand**
+
+- Janus Agent is always installed from magnetoid/janus@main and is the default store engine. Linda remains the merchant-facing name.
+- Each conversation home loads bundled daily-ops skills: orders, catalog, content/SEO, and store operator.
+- Tests still force the in-process loop. Restricted modes and YOLO stay fenced.
+
 ## v0.62.0 — 2026-09-11
 
 **Linda's Janus subprocess engine, gated and opt-in**
