@@ -64,6 +64,9 @@ COPY --chown=morpheus:morpheus . /app
 # isolated venv so Django and Janus do not share `plugins/` / `tools/` on
 # sys.path. ARG LINDA_JANUS is ignored (kept so old Coolify build-args still
 # parse). Default JANUS_REF=main = latest magnetoid/janus; pin a SHA to freeze.
+# The [mcp] extra is load-bearing: without the `mcp` package Janus's MCP client
+# silently does nothing and Linda has no store tools at all (shipped that way in
+# v0.63.0). The import check fails the build instead of the merchant's chat.
 ARG LINDA_JANUS=1
 ARG JANUS_REF=main
 RUN apt-get update \
@@ -71,7 +74,8 @@ RUN apt-get update \
  && python -m venv /opt/janus \
  && /opt/janus/bin/pip install --upgrade pip \
  && /opt/janus/bin/pip install --no-cache-dir \
-      "janus-agent @ git+https://github.com/magnetoid/janus.git@${JANUS_REF}" \
+      "janus-agent[mcp] @ git+https://github.com/magnetoid/janus.git@${JANUS_REF}" \
+ && /opt/janus/bin/python -c "import mcp" \
  && ln -sf /opt/janus/bin/janus /usr/local/bin/janus \
  && apt-get purge -y git \
  && apt-get autoremove -y \

@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.63.1 — 2026-09-13
+
+**Linda on Janus: store-only tools, working follow-ups, correct provider**
+
+- Janus turns are restricted to the store's tools and skills. Before this, every turn loaded Janus's default toolset — shell, file writes, code execution, browser — running as the user that owns the app.
+- Follow-up messages work. Janus's continue flag only resumed sessions tagged for its own CLI, so every second message in a conversation failed; turns now resume by stored session id and start fresh if that session is gone.
+- Janus uses the store's configured AI provider and model. It previously guessed from environment keys, sent turns to OpenRouter with the wrong key, and never saw a key saved in the dashboard.
+- Janus is installed with its MCP client, without which it had no store tools at all; the image build now fails if that client is missing.
+- Replies are clean text (quiet mode), and Janus always runs in the conversation's own home so it never picks up an engine checkout's developer instructions.
+
 ## v0.63.0 — 2026-09-13
 
 **Janus is the store agent; Linda is brand**

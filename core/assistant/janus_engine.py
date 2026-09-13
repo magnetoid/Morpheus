@@ -32,6 +32,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -46,6 +47,25 @@ logger = logging.getLogger('morpheus.assistant.janus')
 # generator, so an adapter timeout above the worker timeout means gunicorn kills
 # the worker before we ever return a friendly error.
 _DEFAULT_TIMEOUT_S = 55
+
+# The MCP server name in the generated config, and the ONLY toolsets a turn may
+# use. Without an explicit ``-t``, ``janus chat`` loads its default ``janus-cli``
+# toolset — 56 tools including terminal, write_file/patch, execute_code, web and
+# browser — running as the same OS user that owns /app and can read the web
+# process's environment through /proc. So the env allowlist below is not the
+# boundary; this list is. ``skills`` is list/view/manage of skill documents under
+# JANUS_HOME only (no execution), and is what injects the bundled ecommerce
+# skills into the prompt.
+MCP_SERVER_NAME = 'morpheus_admin'
+TURN_TOOLSETS = (MCP_SERVER_NAME, 'skills')
+
+# Janus prints ``session_id: <id>`` to stderr in quiet mode. Stored per
+# conversation and passed back with ``--resume``: a bare ``--continue`` looks up
+# the newest session whose source is ``cli``, never ``linda``, so it failed every
+# follow-up message. Validated before it reaches argv.
+_SESSION_FILE = 'janus_session_id'
+_SESSION_ID_RE = re.compile(r'^[A-Za-z0-9_.:-]{1,128}$')
+_SESSION_LINE_RE = re.compile(r'^session_id:\s*(\S+)\s*$', re.M)
 
 # Base environment handed to the subprocess. Everything not listed here (and not
 # matching the inference-key allowlist below) is withheld — see the module
@@ -215,7 +235,7 @@ def _config_text(mcp_url: str, mcp_token: str) -> str:
         auth = f'\n        Authorization: "Bearer {mcp_token}"' if mcp_token else ''
         mcp_block = f"""
 mcp_servers:
-  morpheus_admin:
+  {MCP_SERVER_NAME}:
     url: "{mcp_url}"
     headers:{auth or ' {}'}
     timeout: 60
@@ -281,6 +301,65 @@ def _mcp_token() -> str:
     return (getattr(s, 'LINDA_MCP_TOKEN', '') if s else '') or os.environ.get('LINDA_MCP_TOKEN', '')
 
 
+# Morpheus provider name → (Janus ``--provider`` id, API-key env var, base-URL env
+# var), from janus_cli/auth.py's ProviderConfig table. Janus's ``auto`` routes to
+# OpenRouter whenever OPENAI_API_KEY is set, and it never sees a key that lives
+# in the dashboard rather than the environment. Production had both at once: the
+# active provider was DeepSeek with its key in the dashboard, so every turn went
+# to the wrong provider with the wrong key.
+_JANUS_PROVIDERS = {
+    'openai': ('openai-api', 'OPENAI_API_KEY', 'OPENAI_BASE_URL'),
+    'anthropic': ('anthropic', 'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL'),
+    'gemini': ('gemini', 'GEMINI_API_KEY', 'GEMINI_BASE_URL'),
+    'deepseek': ('deepseek', 'DEEPSEEK_API_KEY', 'DEEPSEEK_BASE_URL'),
+    'grok': ('xai', 'XAI_API_KEY', 'XAI_BASE_URL'),
+}
+
+
+def _provider_wiring() -> tuple[list[str], dict[str, str]]:
+    """CLI args + env that pin Janus to Morpheus's active LLM provider."""
+    try:
+        from core.agents.provider_registry import get_active_provider_name, get_provider_config
+
+        name = get_active_provider_name()
+        cfg = get_provider_config(name)
+    except Exception:  # noqa: BLE001 — fall back to Janus's own resolution
+        logger.warning('janus: provider config unavailable; Janus will auto-select', exc_info=True)
+        return [], {}
+    spec = _JANUS_PROVIDERS.get(name)
+    if spec is None or not cfg.api_key:
+        logger.warning('janus: no provider mapping for %r; Janus will auto-select', name)
+        return [], {}
+    janus_id, key_var, base_var = spec
+    args = ['--provider', janus_id]
+    if cfg.model:
+        args += ['-m', cfg.model]
+    env = {key_var: cfg.api_key}
+    if cfg.base_url:
+        env[base_var] = cfg.base_url
+    return args, env
+
+
+def _stored_session_id(conv_home: Path) -> str:
+    try:
+        sid = (conv_home / _SESSION_FILE).read_text(encoding='utf-8').strip()
+    except OSError:
+        return ''
+    return sid if _SESSION_ID_RE.match(sid) else ''
+
+
+def _remember_session_id(conv_home: Path, stderr: str) -> None:
+    match = _SESSION_LINE_RE.search(stderr)
+    if match and _SESSION_ID_RE.match(match.group(1)):
+        with contextlib.suppress(OSError):
+            (conv_home / _SESSION_FILE).write_text(match.group(1), encoding='utf-8')
+
+
+def _forget_session_id(conv_home: Path) -> None:
+    with contextlib.suppress(OSError):
+        (conv_home / _SESSION_FILE).unlink()
+
+
 def run_janus_turn(
     *,
     message: str,
@@ -302,8 +381,10 @@ def run_janus_turn(
     conv_home.mkdir(parents=True, exist_ok=True)
     _ensure_config(conv_home, mcp_url=_mcp_url(context), mcp_token=_mcp_token())
 
+    provider_args, provider_env = _provider_wiring()
     env = _child_env(
         {
+            **provider_env,
             'JANUS_HOME': str(conv_home),
             'JANUS_EPHEMERAL_SYSTEM_PROMPT': system_prompt[:80_000],
             # The dashboard already collected the merchant's message, so there is
@@ -313,33 +394,59 @@ def run_janus_turn(
         }
     )
 
-    argv = [*cmd, 'chat', '-q', message[:10_000], '--source', 'linda']
-    if (conv_home / 'state.db').is_file():
-        argv.append('--continue')
+    # -Q: stdout is the answer only (no banner, query echo or screen escapes).
+    # -t: see TURN_TOOLSETS — never let the default toolset load.
+    base_argv = [
+        *cmd,
+        'chat',
+        '-Q',
+        '-q',
+        message[:10_000],
+        '--source',
+        'linda',
+        '-t',
+        ','.join(TURN_TOOLSETS),
+        *provider_args,
+    ]
+    resume_id = _stored_session_id(conv_home)
+    # Always the conversation's own home. Janus auto-injects AGENTS.md / SOUL.md
+    # from its working directory, so running inside an engine source checkout
+    # would feed that project's developer instructions to the store agent.
+    cwd = str(conv_home)
+    for _attempt in (0, 1):
+        remaining = max(1, timeout - int(time.monotonic() - started))
+        argv = [*base_argv, '--resume', resume_id] if resume_id else base_argv
+        try:
+            proc = subprocess.run(  # noqa: S603 — cmd is resolved from settings/PATH
+                argv,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=remaining,
+                cwd=cwd,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning('janus engine timed out after %ss key=%s', timeout, conversation_key)
+            return {
+                'text': '',
+                'error': f'janus timed out after {timeout}s',
+                'duration_ms': timeout * 1000,
+            }
+        except OSError as e:
+            logger.warning('janus engine spawn failed: %s', e)
+            return {'text': '', 'error': f'janus spawn failed: {e}', 'duration_ms': 0}
+        if proc.returncode != 0 and resume_id and 'Session not found' in (proc.stderr or ''):
+            # The stored id outlived its state.db. Janus exits before any model
+            # call on this path, so starting a fresh session costs nothing.
+            _forget_session_id(conv_home)
+            resume_id = ''
+            continue
+        break
 
-    try:
-        proc = subprocess.run(  # noqa: S603 — cmd is resolved from settings/PATH
-            argv,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            cwd=str(engine_root() or home),
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
-        logger.warning('janus engine timed out after %ss key=%s', timeout, conversation_key)
-        return {
-            'text': '',
-            'error': f'janus timed out after {timeout}s',
-            'duration_ms': timeout * 1000,
-        }
-    except OSError as e:
-        logger.warning('janus engine spawn failed: %s', e)
-        return {'text': '', 'error': f'janus spawn failed: {e}', 'duration_ms': 0}
-
+    _remember_session_id(conv_home, proc.stderr or '')
     text = (proc.stdout or '').strip()
-    err = (proc.stderr or '').strip()
+    err = _SESSION_LINE_RE.sub('', proc.stderr or '').strip()
     duration = int((time.monotonic() - started) * 1000)
     if proc.returncode != 0:
         # A crash AFTER partial output is still a crash. Returning the partial

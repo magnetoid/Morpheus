@@ -301,7 +301,18 @@ or `core/safety.py`'s `FORBIDDEN_PATHS` is unenforceable; the child gets an env
 must stay **under** `GUNICORN_TIMEOUT` (60s), and a non-zero exit is a failure
 even when stdout carried partial text. Bundled ecommerce skills live in
 `core/assistant/janus_skills/` and are wired via `skills.external_dirs` in the
-per-conversation Janus home. Guarded by `core/assistant/tests/test_janus_engine.py`.
+per-conversation Janus home. **Four CLI traps shipped live in v0.63.0 and each
+looked fine in tests** (v0.63.1): (1) without `-t`, `janus chat` loads its
+default 56-tool `janus-cli` set — terminal, `write_file`, `execute_code`, browser
+— as the user that owns `/app` and can read the web process's env via `/proc`,
+so `TURN_TOOLSETS` (store MCP server + `skills`) is the real boundary, not the
+env allowlist; (2) bare `--continue` resumes the newest `cli`-sourced session,
+never `linda`, so every follow-up exited 1 — store the stderr `session_id:` and
+`--resume` it; (3) `janus-agent` without the `[mcp]` extra has a silently inert
+MCP client, so the store had zero tools; (4) provider `auto` routes to OpenRouter
+whenever `OPENAI_API_KEY` exists and never sees a dashboard-stored key — pin
+`--provider`/`-m` from `core.agents.provider_registry` (`_provider_wiring`).
+Guarded by `core/assistant/tests/test_janus_engine.py`.
 
 **Landmine — two plugins registering the same agent-tool NAME let load order
 decide which one runs, and the loser might be the one with `requires_approval`.**
