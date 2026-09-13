@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from django.urls import path
 
-from core.assistant import views, views_proposals
+from core.assistant import views, views_proposals, views_settings
 
 app_name = 'assistant'
 
 urlpatterns = [
     path('', views.assistant_page, name='page'),
+    path('settings/', views_settings.assistant_settings, name='settings'),
     path('invoke/', views.assistant_invoke, name='invoke'),
     path('stream/', views.assistant_stream, name='stream'),
     path('history/', views.assistant_history, name='history'),

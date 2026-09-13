@@ -377,9 +377,9 @@ class Assistant:
         if self._provider_overridden:
             return False
         try:
-            from django.conf import settings
+            from core.assistant.janus_config import resolved_engine
 
-            engine = str(getattr(settings, 'LINDA_ENGINE', 'janus') or 'janus').lower()
+            engine = resolved_engine()
         except Exception:  # noqa: BLE001
             engine = 'janus'
         if engine != 'janus':

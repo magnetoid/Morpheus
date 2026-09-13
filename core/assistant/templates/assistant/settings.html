@@ -1,0 +1,133 @@
+{% extends "admin_dashboard/base.html" %}
+{% load static %}
+{% block title %}Linda · Settings · Morpheus{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  <div class="flex items-start gap-3">
+    <img src="{% static 'assistant/linda-avatar.jpg' %}" alt=""
+         style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+    <div class="min-w-0">
+      <h1 class="text-xl font-semibold tracking-tight">Linda</h1>
+      <p class="text-sm text-[color:var(--text-muted)] mt-0.5">Store assistant. Brand is Linda. Janus is the agent.</p>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Brand</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Merchant-facing identity. Not the engine.</p>
+    </div>
+    <div class="card-padded flex items-center gap-3">
+      <img src="{% static 'assistant/linda-avatar.jpg' %}" alt="Linda"
+           style="width:48px;height:48px;border-radius:50%;object-fit:cover;">
+      <div>
+        <p class="font-medium">Linda</p>
+        <p class="text-xs text-[color:var(--text-muted)]">Name and face on chat, nav, and the storefront helper.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <h2 class="font-semibold">Janus</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Engine, model, tools, and daily jobs.</p>
+      </div>
+      {% if status.live %}
+      <span class="pill pill-info">live</span>
+      {% elif status.engine == 'janus' and not status.binary_ok %}
+      <span class="pill pill-neutral">binary missing — fallback</span>
+      {% else %}
+      <span class="pill pill-neutral">{{ status.engine }}</span>
+      {% endif %}
+    </div>
+    <div class="card-padded grid grid-cols-2 sm:grid-cols-4 gap-4 border-b border-[color:var(--border)] text-sm">
+      <div>
+        <p class="kpi__label">Engine</p>
+        <p class="font-medium mt-0.5"><code class="font-mono text-xs">{{ status.engine }}</code></p>
+      </div>
+      <div>
+        <p class="kpi__label">Model</p>
+        <p class="font-medium mt-0.5"><code class="font-mono text-xs">{{ status.model }}</code></p>
+      </div>
+      <div>
+        <p class="kpi__label">MCP tools</p>
+        <p class="font-medium mt-0.5">{% if status.mcp_configured %}configured{% else %}missing token/url{% endif %}</p>
+      </div>
+      <div>
+        <p class="kpi__label">Skills</p>
+        <p class="font-medium mt-0.5">{{ status.skills|length }}</p>
+      </div>
+    </div>
+    {% if status.skills %}
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Bundled ecommerce skills</p>
+      <p class="text-xs font-mono text-[color:var(--text-muted)]">{{ status.skills|join:", " }}</p>
+    </div>
+    {% endif %}
+
+    <form method="post" class="space-y-0">
+      {% csrf_token %}
+      <div class="card-padded space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]" for="engine">Engine</label>
+            <select name="engine" id="engine" class="input">
+              <option value="" {% if not row.engine %}selected{% endif %}>Server default</option>
+              <option value="janus" {% if row.engine == 'janus' %}selected{% endif %}>Janus</option>
+              <option value="legacy" {% if row.engine == 'legacy' %}selected{% endif %}>In-process fallback</option>
+            </select>
+          </div>
+          <div class="space-y-1">
+            <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]" for="model">Model</label>
+            <input type="text" name="model" id="model" class="input" value="{{ row.model }}" placeholder="auto">
+            <p class="text-xs text-[color:var(--text-muted)]">Blank keeps JANUS_INFERENCE_MODEL / auto.</p>
+          </div>
+          <div class="space-y-1">
+            <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]" for="timeout_s">Turn timeout (seconds)</label>
+            <input type="number" name="timeout_s" id="timeout_s" class="input" min="5" max="55"
+                   value="{% if row.timeout_s %}{{ row.timeout_s }}{% endif %}" placeholder="55">
+            <p class="text-xs text-[color:var(--text-muted)]">Must stay under gunicorn (60s).</p>
+          </div>
+          <div class="space-y-1">
+            <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]" for="mcp_url">MCP URL</label>
+            <input type="url" name="mcp_url" id="mcp_url" class="input" value="{{ row.mcp_url }}" placeholder="https://shop.example/mcp/admin/v1/">
+          </div>
+        </div>
+        <div class="space-y-1">
+          <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]" for="mcp_token">MCP token</label>
+          <input type="password" name="mcp_token" id="mcp_token" class="input" autocomplete="new-password"
+                 placeholder="{% if has_mcp_token %}••••••• (unchanged){% else %}Bearer token for /mcp/admin/v1/{% endif %}">
+        </div>
+        <label class="flex items-start gap-3 text-sm">
+          <input type="checkbox" name="auto_approve" class="mt-0.5 shrink-0" {% if row.auto_approve %}checked{% endif %}>
+          <span>
+            <span class="font-medium">Auto-approve tool calls</span>
+            <span class="block text-xs text-[color:var(--text-muted)] mt-0.5">Janus yolo mode. Off unless you want writes without a prompt. Dangerous on a live shop.</span>
+          </span>
+        </label>
+        <label class="flex items-start gap-3 text-sm">
+          <input type="checkbox" name="ai_daily_briefing" class="mt-0.5 shrink-0" {% if store and store.ai_daily_briefing %}checked{% endif %}>
+          <span>
+            <span class="font-medium">Daily briefing</span>
+            <span class="block text-xs text-[color:var(--text-muted)] mt-0.5">Each morning Janus reviews the last 24h and posts actions on the home (as Linda).</span>
+          </span>
+        </label>
+        <label class="flex items-start gap-3 text-sm">
+          <input type="checkbox" name="ai_page_help" class="mt-0.5 shrink-0" {% if store and store.ai_page_help %}checked{% endif %}>
+          <span>
+            <span class="font-medium">Page help</span>
+            <span class="block text-xs text-[color:var(--text-muted)] mt-0.5">Explain the current dashboard page. Still shown as Linda.</span>
+          </span>
+        </label>
+      </div>
+      <div class="card-padded border-t border-[color:var(--border)] flex justify-end">
+        <button class="btn btn-primary" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Save Janus settings</button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

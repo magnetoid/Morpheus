@@ -926,7 +926,7 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
         (
             'enable_autonomous_operator',
             'Autonomous operator',
-            'Allow Linda to run multi-step background jobs on her own. Writes still pass her confirm/approval gates.',
+            'Allow Janus to run multi-step background jobs. Writes still pass confirm/approval gates. Configured under Linda → Settings.',
             False,
         ),
         (

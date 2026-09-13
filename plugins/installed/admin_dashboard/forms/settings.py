@@ -53,19 +53,6 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
         help_text='Default social/share (Open Graph) image for pages with no image of their '
         'own. 1200×630 recommended. A per-page or SEO URL override still wins.',
     )
-    ai_page_help = forms.BooleanField(
-        required=False,
-        label='AI-assisted tips & help',
-        help_text='Show Linda on every dashboard page to explain what you are '
-        'looking at and advise what to do. Uses your configured AI provider.',
-    )
-    ai_daily_briefing = forms.BooleanField(
-        required=False,
-        label="Linda's daily briefing",
-        help_text='Every morning Linda reviews the last 24 hours (sales, '
-        'errors, stock, reviews) and posts a briefing with suggested actions '
-        'on the dashboard home. Uses your configured AI provider.',
-    )
     gdpr_enabled = forms.BooleanField(
         required=False,
         label='GDPR / ePrivacy features',
@@ -90,8 +77,6 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
                     'support_phone',
                     'product_placeholder_image',
                     'default_social_image',
-                    'ai_page_help',
-                    'ai_daily_briefing',
                     'gdpr_enabled',
                 )
             }

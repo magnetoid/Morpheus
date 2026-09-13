@@ -476,3 +476,51 @@ class OpsProposal(models.Model):
             self.apply_error = '; '.join(problems) or 'no changes to apply'
         self.save(update_fields=['status', 'applied_at', 'apply_error', 'updated_at'])
         return {'applied': applied, 'skipped': skipped, 'errors': errors}
+
+
+class JanusSettings(models.Model):
+    """Dashboard overlay for the store agent engine. Linda is brand only.
+
+    Empty / default-inherit fields fall through to Django/env
+    (``LINDA_ENGINE``, ``LINDA_JANUS_*``, ``LINDA_MCP_*``). One row.
+    """
+
+    ENGINE_CHOICES = (
+        ('', 'Use server default'),
+        ('janus', 'Janus (store agent)'),
+        ('legacy', 'In-process fallback'),
+    )
+
+    engine = models.CharField(max_length=16, blank=True, choices=ENGINE_CHOICES, default='')
+    model = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text='Janus model id. Blank uses JANUS_INFERENCE_MODEL / auto.',
+    )
+    auto_approve = models.BooleanField(
+        default=False,
+        help_text='Let Janus run tool calls without a prompt (yolo). Off by default.',
+    )
+    timeout_s = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text='Seconds per turn. Blank uses server default (55, under gunicorn).',
+    )
+    mcp_url = models.CharField(max_length=400, blank=True)
+    mcp_token = models.CharField(max_length=400, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Janus settings'
+        verbose_name_plural = 'Janus settings'
+
+    def __str__(self) -> str:
+        return 'Janus settings'
+
+    @classmethod
+    def load(cls) -> JanusSettings:
+        try:
+            obj = cls.objects.first()
+        except Exception:  # noqa: BLE001 — table missing pre-migrate
+            return cls()
+        return obj if obj is not None else cls()

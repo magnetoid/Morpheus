@@ -45,7 +45,6 @@ logger = logging.getLogger('morpheus.assistant.janus')
 # scripts/docker-entrypoint.sh). This is a BLOCKING call inside the SSE
 # generator, so an adapter timeout above the worker timeout means gunicorn kills
 # the worker before we ever return a friendly error.
-_DEFAULT_TIMEOUT_S = 55
 
 # Base environment handed to the subprocess. Everything not listed here (and not
 # matching the inference-key allowlist below) is withheld — see the module
@@ -133,23 +132,15 @@ def janus_available() -> bool:
 
 
 def auto_approve_enabled() -> bool:
-    """Whether the subprocess may execute tool calls without a prompt.
+    from core.assistant.janus_config import resolved_auto_approve
 
-    Default **False**: yolo mode inside Janus bypasses the safety boundary
-    entirely (see the module docstring), so turning it on is an explicit,
-    per-deployment decision.
-    """
-    s = _settings()
-    return bool(getattr(s, 'LINDA_JANUS_AUTO_APPROVE', False) if s else False)
+    return resolved_auto_approve()
 
 
 def turn_timeout_s() -> int:
-    s = _settings()
-    raw = getattr(s, 'LINDA_JANUS_TIMEOUT_S', _DEFAULT_TIMEOUT_S) if s else _DEFAULT_TIMEOUT_S
-    try:
-        return max(5, int(raw))
-    except (TypeError, ValueError):
-        return _DEFAULT_TIMEOUT_S
+    from core.assistant.janus_config import resolved_timeout_s
+
+    return resolved_timeout_s()
 
 
 def linda_janus_home() -> Path:
@@ -229,9 +220,11 @@ skills:
   external_dirs:
     - "{quoted}"
 """
+    from core.assistant.janus_config import resolved_model
+
     return f"""# Auto-generated store agent home. Merchant-facing name is Linda.
 model:
-  default: {os.environ.get('JANUS_INFERENCE_MODEL') or 'auto'}
+  default: {resolved_model()}
 agent:
   max_turns: 90
 {mcp_block}{skills_block}
@@ -260,13 +253,15 @@ def _ensure_config(home: Path, *, mcp_url: str = '', mcp_token: str = '') -> Pat
 
 
 def _mcp_url(context: dict[str, Any] | None) -> str:
-    s = _settings()
-    explicit = (getattr(s, 'LINDA_MCP_URL', '') if s else '') or os.environ.get('LINDA_MCP_URL', '')
+    from core.assistant.janus_config import resolved_mcp_url
+
+    explicit = resolved_mcp_url()
     if explicit:
-        # Exactly one trailing slash. The MCP endpoint is a POST with a JSON-RPC
-        # body, and Django's APPEND_SLASH redirect DROPS that body — so a URL
-        # missing the slash fails every tool call.
-        return explicit.rstrip('/') + '/'
+        return explicit
+    s = _settings()
+    env_url = (getattr(s, 'LINDA_MCP_URL', '') if s else '') or os.environ.get('LINDA_MCP_URL', '')
+    if env_url:
+        return env_url.rstrip('/') + '/'
     request = (context or {}).get('request')
     if request is not None:
         try:
@@ -277,8 +272,9 @@ def _mcp_url(context: dict[str, Any] | None) -> str:
 
 
 def _mcp_token() -> str:
-    s = _settings()
-    return (getattr(s, 'LINDA_MCP_TOKEN', '') if s else '') or os.environ.get('LINDA_MCP_TOKEN', '')
+    from core.assistant.janus_config import resolved_mcp_token
+
+    return resolved_mcp_token()
 
 
 def run_janus_turn(
