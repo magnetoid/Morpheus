@@ -22,6 +22,8 @@ from core.assistant.janus_engine import (
     _child_env,
     _ensure_config,
     _mcp_url,
+    bundled_skill_names,
+    bundled_skills_dir,
     janus_available,
     run_janus_turn,
     turn_timeout_s,
@@ -95,6 +97,16 @@ class ConfigRotationTests(SimpleTestCase):
             cfg2 = _ensure_config(home, mcp_url='https://s/mcp/', mcp_token='t')
             self.assertEqual(first, cfg2.read_text(encoding='utf-8'))
             self.assertEqual(cfg.stat().st_mode & 0o777, 0o600)
+
+    def test_config_points_at_bundled_ecommerce_skills(self):
+        with TemporaryDirectory() as tmp:
+            cfg = _ensure_config(Path(tmp), mcp_url='https://s/mcp/', mcp_token='t')
+            body = cfg.read_text(encoding='utf-8')
+        skills = bundled_skills_dir()
+        self.assertTrue(skills.is_dir(), f'missing bundled skills at {skills}')
+        self.assertIn('external_dirs', body)
+        self.assertIn(str(skills).replace('\\', '/'), body)
+        self.assertIn('morpheus_admin', body)
 
 
 class ChildEnvTests(SimpleTestCase):
@@ -225,14 +237,14 @@ class AssistantJanusRoutingTests(SimpleTestCase):
         with mock.patch.object(eng, 'janus_available', return_value=True):
             self.assertFalse(self._assistant()._should_use_janus({'user': _staff()}))
 
-    def test_default_setting_is_legacy(self):
-        # The suite pins LINDA_ENGINE, so assert the shipped default directly.
+    def test_default_setting_is_janus(self):
+        # The suite pins LINDA_ENGINE=legacy, so assert the shipped default directly.
         import re
 
         src = Path('morph/settings.py').read_text(encoding='utf-8')
         m = re.search(r"^LINDA_ENGINE = config\('LINDA_ENGINE', default='(\w+)'\)", src, re.M)
         self.assertIsNotNone(m, 'LINDA_ENGINE default declaration moved')
-        self.assertEqual(m.group(1), 'legacy')
+        self.assertEqual(m.group(1), 'janus')
 
     @override_settings(LINDA_ENGINE='janus')
     def test_wildcard_mode_routes_to_janus(self):
@@ -261,6 +273,35 @@ class AssistantJanusRoutingTests(SimpleTestCase):
 
         self.assertIn('You are Linda', LINDA_BASE_PROMPT)
         self.assertIn('never needs the name of your engine', LINDA_BASE_PROMPT)
+
+
+class BundledEcommerceSkillsTests(SimpleTestCase):
+    """Janus store homes must ship Morpheus daily-ops skills out of the box."""
+
+    _REQUIRED = (
+        'morpheus-store-operator',
+        'morpheus-orders',
+        'morpheus-catalog',
+        'morpheus-content-seo',
+    )
+
+    def test_required_skills_are_present(self):
+        names = bundled_skill_names()
+        for name in self._REQUIRED:
+            self.assertIn(name, names)
+
+    def test_each_skill_has_valid_frontmatter(self):
+        root = bundled_skills_dir()
+        for skill_md in sorted(root.rglob('SKILL.md')):
+            text = skill_md.read_text(encoding='utf-8')
+            self.assertTrue(text.startswith('---'), skill_md)
+            rest = text[3:]
+            close = rest.find('\n---')
+            self.assertGreater(close, 0, skill_md)
+            fm = rest[:close]
+            self.assertIn('name:', fm)
+            self.assertIn('description:', fm)
+            self.assertLessEqual(len(text), 100_000, skill_md)
 
 
 class JanusHistoryTests(SimpleTestCase):

@@ -60,23 +60,22 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY --chown=morpheus:morpheus . /app
 
-# Optional isolated Janus venv for Linda (subprocess — own sys.path).
-# Build with: --build-arg LINDA_JANUS=1
-# Pinned to a commit, not a branch: `@main` makes the image non-reproducible and
-# silently pulls whatever the engine repo landed since the last build — into a
-# subprocess that holds MCP credentials. Bump JANUS_REF deliberately.
-ARG LINDA_JANUS=0
-ARG JANUS_REF=bcea97457f9cbbdf53a7356bd8431dcb5570b66d
-RUN if [ "$LINDA_JANUS" = "1" ]; then \
-      apt-get update \
-      && apt-get install -y --no-install-recommends git \
-      && python -m venv /opt/janus \
-      && /opt/janus/bin/pip install --upgrade pip \
-      && /opt/janus/bin/pip install --no-cache-dir \
-           "janus-agent @ git+https://github.com/magnetoid/janus.git@${JANUS_REF}" \
-      && ln -sf /opt/janus/bin/janus /usr/local/bin/janus \
-      && rm -rf /var/lib/apt/lists/* ; \
-    fi
+# Janus is the store agent (Linda is brand only). Always install into an
+# isolated venv so Django and Janus do not share `plugins/` / `tools/` on
+# sys.path. ARG LINDA_JANUS is ignored (kept so old Coolify build-args still
+# parse). Default JANUS_REF=main = latest magnetoid/janus; pin a SHA to freeze.
+ARG LINDA_JANUS=1
+ARG JANUS_REF=main
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git \
+ && python -m venv /opt/janus \
+ && /opt/janus/bin/pip install --upgrade pip \
+ && /opt/janus/bin/pip install --no-cache-dir \
+      "janus-agent @ git+https://github.com/magnetoid/janus.git@${JANUS_REF}" \
+ && ln -sf /opt/janus/bin/janus /usr/local/bin/janus \
+ && apt-get purge -y git \
+ && apt-get autoremove -y \
+ && rm -rf /var/lib/apt/lists/*
 
 # Ensure the entrypoint is executable inside the image even if the host bit was lost.
 RUN chmod +x /app/scripts/docker-entrypoint.sh

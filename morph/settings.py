@@ -654,17 +654,17 @@ ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 OLLAMA_BASE_URL = config('OLLAMA_BASE_URL', default='http://localhost:11434')
 AI_EMBEDDING_MODEL = config('AI_EMBEDDING_MODEL', default='text-embedding-3-small')
 
-# Linda (staff assistant) — Janus is the engine, Linda is the name.
-# 'janus' runs magnetoid/janus in a subprocess; 'legacy' is the in-process loop.
+# Store agent: Janus (magnetoid/janus) is the agent + engine. Linda is brand.
+# 'janus' runs the subprocess; 'legacy' is the in-process Django loop (fallback
+# when the binary is missing, tests, or a restricted mode chip).
 #
-# Default is 'legacy' ON PURPOSE. The Janus subprocess reaches its tools over
-# MCP, so a Janus turn passes through NONE of the in-process enforcement in
-# core/assistant/runtime.py — scope, token budget, deadline, the kernel consent
-# gate (core/assistant/consent.py) and the write audit. The MCP edge checks a
-# standing token's scopes, which is not the same thing as per-action human
-# consent. Flip this to 'janus' only once that stack is enforced at the MCP
-# boundary; see core/assistant/janus_engine.py's module docstring.
-LINDA_ENGINE = config('LINDA_ENGINE', default='legacy')
+# Default is 'janus'. A Janus turn reaches tools over MCP, so it does not pass
+# through in-process runtime.py gates (scope → budget → deadline → kernel
+# consent) or the write audit. MCP checks a standing token's scopes — not
+# per-action human consent. Restricted modes (sales/support/ops) still fall
+# back to the legacy loop. YOLO stays off unless LINDA_JANUS_AUTO_APPROVE.
+# See core/assistant/janus_engine.py.
+LINDA_ENGINE = config('LINDA_ENGINE', default='janus')
 JANUS_BIN = config('JANUS_BIN', default='')
 JANUS_ENGINE_ROOT = config('JANUS_ENGINE_ROOT', default='')
 # Auto-approve every tool call the Janus subprocess makes (its "yolo" mode).

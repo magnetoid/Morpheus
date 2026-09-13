@@ -1,8 +1,9 @@
-"""Linda's engine: Janus (magnetoid/janus), isolated from Django.
+"""Store agent engine: Janus (magnetoid/janus), isolated from Django.
 
-Morpheus and Janus both ship top-level packages named ``plugins`` / ``tools``,
-so Janus MUST run in a subprocess (own venv / own sys.path). The merchant still
-talks to **Linda** — Janus is the loop, not the name.
+Janus **is** the agent. Linda is the merchant-facing brand only. Morpheus and
+Janus both ship top-level packages named ``plugins`` / ``tools``, so Janus MUST
+run in a subprocess (own venv / own sys.path). Each conversation home is seeded
+with bundled Morpheus ecommerce skills (``core/assistant/janus_skills``).
 
 Discovery order for the binary:
   1. ``settings.JANUS_BIN`` / ``JANUS_BIN``
@@ -158,6 +159,22 @@ def linda_janus_home() -> Path:
     return home
 
 
+def bundled_skills_dir() -> Path:
+    """Repo-shipped Morpheus ecommerce skills (not the operator ``~/.janus``)."""
+    s = _settings()
+    if s is not None:
+        return Path(s.BASE_DIR) / 'core' / 'assistant' / 'janus_skills'
+    return Path(__file__).resolve().parent / 'janus_skills'
+
+
+def bundled_skill_names() -> list[str]:
+    root = bundled_skills_dir()
+    if not root.is_dir():
+        return []
+    names = {p.parent.name for p in root.rglob('SKILL.md') if p.is_file()}
+    return sorted(names)
+
+
 def _session_id(conversation_key: str) -> str:
     digest = hashlib.sha256(conversation_key.encode()).hexdigest()[:12]
     return f'linda-{digest}'
@@ -203,17 +220,26 @@ mcp_servers:
     headers:{auth or ' {}'}
     timeout: 60
 """
-    return f"""# Auto-generated for Linda. Janus is the engine; the merchant sees Linda.
+    skills_block = ''
+    skills_dir = bundled_skills_dir()
+    if skills_dir.is_dir():
+        quoted = str(skills_dir).replace('\\', '/')
+        skills_block = f"""
+skills:
+  external_dirs:
+    - "{quoted}"
+"""
+    return f"""# Auto-generated store agent home. Merchant-facing name is Linda.
 model:
   default: {os.environ.get('JANUS_INFERENCE_MODEL') or 'auto'}
 agent:
   max_turns: 90
-{mcp_block}
+{mcp_block}{skills_block}
 """
 
 
 def _ensure_config(home: Path, *, mcp_url: str = '', mcp_token: str = '') -> Path:
-    """Write (or REWRITE) the Linda-scoped Janus config.
+    """Write (or REWRITE) the store-agent Janus config.
 
     Rewriting matters: this file is per-conversation, so a write-once version
     pins whatever token and URL existed when the conversation started. A rotated
@@ -263,7 +289,7 @@ def run_janus_turn(
     timeout_s: int | None = None,
     context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Run one Linda turn on Janus. Returns {text, error, duration_ms}."""
+    """Run one store-agent turn on Janus. Returns {text, error, duration_ms}."""
     cmd = janus_cmd()
     if not cmd:
         return {'text': '', 'error': 'janus_unavailable', 'duration_ms': 0}

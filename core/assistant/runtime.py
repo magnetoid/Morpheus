@@ -366,22 +366,22 @@ class Assistant:
         return resolve_mode(slug, user) if user is not None else get_mode(slug)
 
     def _should_use_janus(self, context=None) -> bool:
-        """Janus is OPT-IN; tests that inject a provider stay on the legacy loop.
+        """Janus is the default store agent; tests that inject a provider stay legacy.
 
         The engine runs out-of-process and reaches its tools over MCP, so a
         Janus turn passes through none of ``_gate_reason`` (scope → budget →
-        deadline → kernel consent) and none of ``_audit_write_tool``. Until the
-        MCP edge enforces that same stack, the default stays ``legacy`` — see
-        ``LINDA_ENGINE`` in ``morph/settings.py``.
+        deadline → kernel consent) and none of ``_audit_write_tool``. Restricted
+        modes still fall back to the in-process loop. Tests force
+        ``LINDA_ENGINE='legacy'``. See ``LINDA_ENGINE`` in ``morph/settings.py``.
         """
         if self._provider_overridden:
             return False
         try:
             from django.conf import settings
 
-            engine = str(getattr(settings, 'LINDA_ENGINE', 'legacy') or 'legacy').lower()
+            engine = str(getattr(settings, 'LINDA_ENGINE', 'janus') or 'janus').lower()
         except Exception:  # noqa: BLE001
-            engine = 'legacy'
+            engine = 'janus'
         if engine != 'janus':
             return False
         # The mode chip is an enforcement boundary, not a label: the legacy loop
@@ -406,7 +406,7 @@ class Assistant:
     def _stream_via_janus(
         self, *, message: str, conversation_key: str, context, started: float, history=None
     ):
-        """One turn on the Janus engine; the merchant-facing name stays Linda."""
+        """One turn on Janus; the merchant-facing name stays Linda."""
         from core.assistant.janus_engine import run_janus_turn
         from core.assistant.prompts import build_system_prompt
 
