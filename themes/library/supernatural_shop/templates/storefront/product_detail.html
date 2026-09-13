@@ -1,15 +1,9 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}{% load book_extras %}
+{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}
 
 {% block extra_head %}
 {% if hero_image.url %}{% caching_preload_lcp hero_image.url %}{% endif %}
-{% comment %}hreflang alternates — one per language edition of this work
-(BookProduct.translation_of graph). Only renders when 2+ editions exist.{% endcomment %}
-{% book_language_editions product as lang_alternates %}
-{% for e in lang_alternates %}<link rel="alternate" hreflang="{{ e.language }}" href="{{ request.scheme }}://{{ request.get_host }}/products/{{ e.slug }}/">
-{% endfor %}
 {% seo_product_jsonld product product_seo_extra %}
-{% if book_jsonld_data %}{% seo_book_jsonld book_jsonld_data %}{% endif %}
 {% if video_seo %}{% seo_video_jsonld video_seo %}{% endif %}
 {% seo_product_og product %}
 {% seo_product_md_link product.slug %}
@@ -82,7 +76,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
         {% if product.variants %}
         {# Variant picker: card shows name+size+badge+price+desc, selecting one swaps the price + hidden variant_id sent to /cart/add/. #}
         <div class="pdp-variants-wrap" data-pdp-variant-picker style="margin: 1.5rem 0;">
-          <p class="eyebrow" style="margin-bottom: 0.75rem;" id="pdp-variants-label">Choose an edition</p>
+          <p class="eyebrow" style="margin-bottom: 0.75rem;" id="pdp-variants-label">Choose a size</p>
           <div class="pdp-variants" role="radiogroup" aria-labelledby="pdp-variants-label">
             {% for v in product.variants %}{% if v.isActive %}
             <button type="button"
@@ -99,7 +93,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
                     data-variant-desc="{{ v.shortDescription|default:''|escape }}">
               {% if v.imageUrl %}<span class="pdp-variant__thumb"><img src="{{ v.imageUrl }}" alt="" loading="lazy"></span>{% endif %}
               <span class="pdp-variant__badge pdp-variant__badge--{{ v.variantType|default:'physical' }}">
-                {% if v.variantType == 'digital' %}Digital{% elif v.variantType == 'audiobook' %}Audiobook{% elif v.variantType == 'virtual' %}Access{% else %}Print{% endif %}
+                {% if v.variantType == 'digital' %}Digital{% elif v.variantType == 'virtual' %}Access{% else %}Bottle{% endif %}
               </span>
               {% if v.isOnSale and v.discountPercentage %}
                 <span class="pdp-variant__sale-pill" title="On sale">−{{ v.discountPercentage }}%</span>
@@ -136,7 +130,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
               style="margin: 1rem 0 1.25rem; padding: 1rem 1.1rem; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 10px;">
           {% csrf_token %}
           <p class="eyebrow" style="margin-bottom: .35rem;">Out of stock</p>
-          <p class="lede" style="font-size: .95rem; margin: 0 0 .75rem;">Drop your email — we'll write the moment this title is back on the shelf.</p>
+          <p class="lede" style="font-size: .95rem; margin: 0 0 .75rem;">Drop your email — we'll write the moment this is back in stock.</p>
           <div style="display:flex; gap:.5rem; align-items:center; flex-wrap: wrap;">
             <label for="bis-email" class="sr-only">Email address</label>
             <input id="bis-email" type="email" name="email" required

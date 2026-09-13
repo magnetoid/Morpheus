@@ -3,7 +3,7 @@
 {% block title %}{% seo_title "About" %}{% endblock %}
 
 {% block extra_head %}
-{% seo_aboutpage_jsonld name="About Supernatural Shop" description="Supernatural Shop is a curated shop, run by readers, for readers. We stock titles from independent presses around the world." %}
+{% seo_aboutpage_jsonld name="About Supernatural Shop" description="Supernatural Shop is a curated shop for essential oils, hydrosols, and ritual goods." %}
 {% seo_breadcrumb_jsonld items=breadcrumb_items %}
 {% endblock %}
 
@@ -12,32 +12,29 @@
   <div class="wrap" style="max-width: 720px;">
     <p class="eyebrow">A note from us</p>
     <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
-      A quieter shelf<br>for louder books<span class="text-accent">.</span>
+      Oils for the workbench,<br>not the bookshelf<span class="text-accent">.</span>
     </h1>
     <p class="lede" style="margin-bottom: 2rem;">
-      Supernatural Shop is a curated shop, run by readers, for readers. We
-      stock titles from independent presses around the world. We don't carry
-      books we haven't read. We don't take placements from publishers. The
-      shelf is small on purpose.
+      Supernatural Shop is a curated shop for essential oils, hydrosols, and
+      ritual goods. We don't sell bottles we wouldn't use ourselves. The
+      catalog is small on purpose.
     </p>
 
     <hr class="rule" style="margin: 2.5rem 0;">
 
-    <h2 class="display display-m" style="margin-bottom: 1rem;">How the shelf works<span class="text-accent">.</span></h2>
+    <h2 class="display display-m" style="margin-bottom: 1rem;">How the shop works<span class="text-accent">.</span></h2>
     <div style="font-size: 1rem; line-height: 1.7; color: var(--ink-2); max-width: 60ch;">
       <p style="margin-bottom: 1rem;">
-        Every title here was read by at least one of us before it made it
-        onto the shelf. That's both a constraint and a promise. The shelf
-        will always be small. Promise: if it's here, it earned the spot.
+        Every bottle here is chosen for the workbench. That's both a constraint
+        and a promise. The shop will always be small. If it's here, it earned
+        the spot.
       </p>
       <p style="margin-bottom: 1rem;">
-        We pay attention to small presses. We pay attention to translators.
-        We pay attention to the books that don't have a marketing budget
-        but have an editor who fought for them. Those are usually the
-        books worth keeping.
+        We pay attention to how an oil is distilled, how a hydrosol is kept,
+        and whether a blend is something we would actually put on skin.
       </p>
       <p>
-        Free shipping on orders over $40. Always read first.
+        Free shipping on orders over $40.
       </p>
     </div>
 
@@ -46,7 +43,7 @@
     <h2 class="display display-m" style="margin-bottom: 1rem;">Find us<span class="text-accent">.</span></h2>
     <p class="lede">
       Drop a line at <a href="{% url 'storefront:contact' %}" class="btn-link" style="display:inline-flex;">contact</a>
-      or browse the <a href="{% url 'storefront:product_list' %}" class="btn-link" style="display:inline-flex;">shelf</a>.
+      or browse the <a href="{% url 'storefront:product_list' %}" class="btn-link" style="display:inline-flex;">shop</a>.
     </p>
   </div>
 </section>

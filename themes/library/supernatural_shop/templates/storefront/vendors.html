@@ -1,6 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load seo %}{% load caching %}{% load i18n %}
-{% block title %}Publishers — Supernatural Shop{% endblock %}
+{% block title %}Makers — Supernatural Shop{% endblock %}
 
 {% block extra_head %}
 {% seo_breadcrumb_jsonld items=breadcrumb_items %}
@@ -20,16 +20,14 @@
       {% endfor %}
     </nav>
     <p class="eyebrow">The makers</p>
-    <h1 class="display display-l" style="margin: 1rem 0 1rem;">Publishers we work with<span class="text-accent">.</span></h1>
+    <h1 class="display display-l" style="margin: 1rem 0 1rem;">Makers we work with<span class="text-accent">.</span></h1>
     {% comment %}page_intro is merchant-edited copy (CMS → Blocks, key vendors_intro), supplied by the view via the STOREFRONT_PAGE_INTRO filter. House copy stands in until one is written.{% endcomment %}
     <p class="lede" style="max-width: 60ch; margin-bottom: 1.75rem;">
-      {% if page_intro %}{{ page_intro|linebreaksbr }}{% else %}Every book on the shelf came from one of these presses — independent publishers,
-      university imprints, antiquarians, and small bookshops. Click into one to see
-      their full list with us.{% endif %}
+      {% if page_intro %}{{ page_intro|linebreaksbr }}{% else %}Independent makers whose oils, hydrosols, and ritual goods sit on this bench. Click into one to see their list.{% endif %}
     </p>
-    <form method="get" action="" class="vendor-search" role="search" aria-label="Search publishers">
+    <form method="get" action="" class="vendor-search" role="search" aria-label="Search makers">
       <input type="search" name="q" value="{{ query|default:'' }}"
-             placeholder="Search publishers" aria-label="Search publishers">
+             placeholder="Search makers" aria-label="Search makers">
       <button type="submit">Search</button>
       {% if query %}<a href="/vendors/" class="vendor-search__clear" aria-label="Clear search">Clear</a>{% endif %}
     </form>
@@ -61,7 +59,7 @@
           <div class="vendor-card__meta">
             <h2 class="vendor-card__name">{{ v.obj.name }}</h2>
             <p class="vendor-card__count">
-              {{ v.product_count }} title{{ v.product_count|pluralize }} on the shelf
+              {{ v.product_count }} product{{ v.product_count|pluralize }}
               {% if v.obj.created_at %} &middot; Since {{ v.obj.created_at|date:"F Y" }}{% endif %}
             </p>
           </div>
@@ -91,7 +89,7 @@
 <section style="padding: 1rem 0 5rem;">
   <div class="wrap">
     <p class="meta" style="text-align:center; padding: 3rem 0;">
-      No publishers listed yet — once books are on the shelf, their makers appear here.
+      No makers listed yet.
     </p>
   </div>
 </section>
@@ -100,9 +98,9 @@
 <section style="padding: 1rem 0 4rem;">
   <div class="wrap">
     <div style="border-top: 1px solid var(--rule); padding-top: 2rem; max-width: 60ch;">
-      <p class="eyebrow">Recommend the shelf</p>
+      <p class="eyebrow">Recommend the shop</p>
       <p class="lede" style="margin: .5rem 0 1rem;">
-        Write about books? Earn a commission on every order you send our way.
+        Write about oils? Earn a commission on every order you send our way.
       </p>
       <a href="/affiliates/apply/" class="btn-link">Join our affiliate program</a>
     </div>

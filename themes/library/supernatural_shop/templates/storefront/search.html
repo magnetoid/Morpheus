@@ -23,7 +23,7 @@
              style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--muted);">
           <circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path>
         </svg>
-        <input name="q" value="{{ query }}" placeholder="Title, author, keyword…"
+        <input name="q" value="{{ query }}" placeholder="Oil, blend, plant…"
                autofocus
                style="width:100%; height: 44px; padding: 0 1rem 0 2.6rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
       </div>
@@ -43,19 +43,19 @@
     {% if not query %}
     <div style="margin-top: 2.5rem; max-width: 620px;">
       <p class="eyebrow" style="margin-bottom: .5rem;">Not sure what to search?</p>
-      <h2 style="font-family: var(--serif); font-weight: 500; font-size: 1.5rem; margin: 0 0 1rem;">Just describe what you're in the mood for.</h2>
+      <h2 style="font-family: var(--serif); font-weight: 500; font-size: 1.5rem; margin: 0 0 1rem;">Describe the work on the bench.</h2>
       <form method="get" action="/search/">
         <input type="hidden" name="mode" value="semantic">
-        <label for="mood-q" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Describe what you want to read</label>
+        <label for="mood-q" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Describe what you want</label>
         <textarea id="mood-q" name="q" rows="2"
-                  placeholder="e.g. “a short novel that feels big”, or “like Normal People but hopeful”"
+                  placeholder="e.g. “a citrus oil for evening”, or “a hydrosol for skin”"
                   style="width:100%; padding: .85rem 1.1rem; border: 1px solid var(--rule); border-radius: 12px; background: var(--paper); font-family: var(--sans); font-size: 1rem; resize: vertical;"></textarea>
-        <button class="btn btn-primary" style="margin-top: .75rem;">Find me a book</button>
+        <button class="btn btn-primary" style="margin-top: .75rem;">Find it</button>
       </form>
       <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-top: 1rem;">
-        <a href="/search/?mode=semantic&q=a+cozy+mystery+for+a+rainy+weekend" style="font-size:.82rem; color: var(--ink-2); padding: .4rem .8rem; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;">“a cozy mystery for a rainy weekend”</a>
-        <a href="/search/?mode=semantic&q=short+books+that+feel+enormous" style="font-size:.82rem; color: var(--ink-2); padding: .4rem .8rem; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;">“short books that feel enormous”</a>
-        <a href="/search/?mode=semantic&q=non-fiction+that+reads+like+a+thriller" style="font-size:.82rem; color: var(--ink-2); padding: .4rem .8rem; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;">“non-fiction that reads like a thriller”</a>
+        <a href="/search/?mode=semantic&q=citrus+oil+for+diffusion" style="font-size:.82rem; color: var(--ink-2); padding: .4rem .8rem; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;">“citrus oil for diffusion”</a>
+        <a href="/search/?mode=semantic&q=a+quiet+hydrosol+for+skin" style="font-size:.82rem; color: var(--ink-2); padding: .4rem .8rem; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;">“a quiet hydrosol for skin”</a>
+        <a href="/search/?mode=semantic&q=resin+for+the+censer" style="font-size:.82rem; color: var(--ink-2); padding: .4rem .8rem; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;">“resin for the censer”</a>
       </div>
     </div>
     {% endif %}
@@ -73,7 +73,7 @@
     {% elif query %}
     <div style="text-align: center; padding: 5rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
       <p class="display display-m" style="margin: 0 0 1rem;">Nothing found<span class="text-accent">.</span></p>
-      <p class="lede" style="margin: 0 auto;">Try a different keyword, or browse the <a href="/products/" style="text-decoration: underline;">whole shelf</a>.</p>
+      <p class="lede" style="margin: 0 auto;">Try a different keyword, or browse the <a href="/products/" style="text-decoration: underline;">shop</a>.</p>
     </div>
     {% endif %}
   </div>

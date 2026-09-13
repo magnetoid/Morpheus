@@ -339,11 +339,11 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   .book__hit { display: flex; flex-direction: column; gap: 0.85rem; color: inherit; text-decoration: none; }
   .book__hit:hover { color: inherit; }
   .book__hit:hover .title { color: var(--accent-ink); }
-  .book .cover-wrap { aspect-ratio: 1 / 1; max-width: 180px; background: var(--paper-2); border-radius: 4px; overflow: hidden; position: relative; box-shadow: 0 1px 0 rgba(0,0,0,0.06), 0 10px 28px -16px rgba(0,0,0,0.45); outline: 1px solid rgba(0,0,0,0.06); outline-offset: -1px; transition: transform .25s, box-shadow .25s; }
-  .pdp-hero__slide { aspect-ratio: 1 / 1 !important; max-width: 360px; }
+  .book .cover-wrap { aspect-ratio: 1 / 1; width: 120px; max-width: 100%; background: var(--paper-2); border-radius: 4px; overflow: hidden; position: relative; box-shadow: 0 1px 0 rgba(0,0,0,0.06), 0 8px 20px -14px rgba(0,0,0,0.45); outline: 1px solid rgba(0,0,0,0.06); outline-offset: -1px; transition: transform .25s, box-shadow .25s; }
+  .pdp-hero__slide { aspect-ratio: 1 / 1 !important; max-width: 220px; }
   .pdp-hero__thumbs img, .pdp-hero__thumb { aspect-ratio: 1 / 1 !important; }
   .book:hover .cover-wrap { transform: translateY(-4px); box-shadow: 0 1px 0 rgba(0,0,0,0.08), 0 22px 40px -18px rgba(0,0,0,0.5); }
-  .book .cover-wrap img { width: 100%; height: 100%; object-fit: cover; }
+  .book .cover-wrap img { width: 100%; height: 100%; object-fit: contain; background: var(--paper-2); }
   .book .cover-wrap .placeholder,
   .window__cover .placeholder { width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:var(--serif);font-size:1.1rem;font-style:italic; }
   /* Visually-hidden utility — text for assistive tech only (picker labels,
@@ -711,17 +711,15 @@ defaults.
       {% comment %}Menu-driven (dashboard → CMS → Menus, key "header"). Falls back to the built-in nav when no header menu is configured.{% endcomment %}
       {% if header_menu and header_menu.items %}
         {% for item in header_menu.items %}
-          {% if item.kind == 'mega_categories' %}{% include "storefront/_nav_mega_genres.html" with label=item.label %}
-          {% elif item.kind == 'mega_topics' %}{% include "storefront/_nav_mega_topics.html" with label=item.label %}
-          {% elif item.kind == 'mega_authors' %}{% include "storefront/_nav_mega_authors.html" with label=item.label %}
+          {% if item.kind == 'mega_categories' %}<a href="/products/">Shop</a>
+          {% elif item.kind == 'mega_topics' %}<a href="/category/wellness/">Wellness</a>
+          {% elif item.kind == 'mega_authors' %}<a href="/category/aromatherapy-blends/">Aromatherapy</a>
           {% else %}<a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
         {% endfor %}
       {% else %}
         <a href="/products/">Shop</a>
-        {% include "storefront/_nav_mega_genres.html" with label="Genres" %}
-        {% include "storefront/_nav_mega_topics.html" with label="Topics" %}
-        {% include "storefront/_nav_mega_authors.html" with label="Authors" %}
-        <a href="/staff-picks/">Staff picks</a>
+        <a href="/category/aromatherapy-blends/">Aromatherapy</a>
+        <a href="/category/wellness/">Wellness</a>
         <a href="/journal/">Journal</a>
       {% endif %}
       {% storefront_blocks "nav_primary_extra" %}
@@ -974,23 +972,20 @@ defaults.
     {% comment %}Menu-driven (dashboard → CMS → Menus, key "mobile"). Mega kinds collapse to a single link in the drawer. Falls back to the built-in drawer when no mobile menu is configured.{% endcomment %}
     {% if mobile_menu and mobile_menu.items %}
       {% for item in mobile_menu.items %}
-        {% if item.kind == 'mega_categories' %}<a href="{{ item.url|default:'/genres/' }}">{{ item.label|default:"Genres" }}</a>
-        {% elif item.kind == 'mega_topics' %}<a href="{{ item.url|default:'/topics/' }}">{{ item.label|default:"Topics" }}</a>
-        {% elif item.kind == 'mega_authors' %}<a href="{{ item.url|default:'/products/' }}">{{ item.label|default:"Authors" }}</a>
+        {% if item.kind == 'mega_categories' %}<a href="{{ item.url|default:'/products/' }}">{{ item.label|default:"Shop" }}</a>
+        {% elif item.kind == 'mega_topics' %}<a href="{{ item.url|default:'/journal/' }}">{{ item.label|default:"Journal" }}</a>
+        {% elif item.kind == 'mega_authors' %}<a href="{{ item.url|default:'/category/aromatherapy-blends/' }}">{{ item.label|default:"Aromatherapy" }}</a>
         {% else %}<a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
       {% endfor %}
       <a href="/account/">Account</a>
     {% else %}
       <a href="/products/">Shop</a>
       <a href="/products/?featured=true">New &amp; notable</a>
-      {% for g in nav_genres %}
-      <a href="/genre/{{ g.slug }}/">{{ g.name }}</a>
-      {% empty %}
-      <a href="/genres/">Genres</a>
-      {% endfor %}
-      <a href="/topics/">Topics</a>
-      <a href="/staff-picks/">Staff picks</a>
+      <a href="/category/aromatherapy-blends/">Aromatherapy</a>
+      <a href="/category/wellness/">Wellness</a>
+      <a href="/category/arcana/">Arcana</a>
       <a href="/journal/">Journal</a>
+      <a href="/staff-picks/">Staff picks</a>
       {% storefront_blocks "nav_primary_extra" %}
       <a href="/account/">Account</a>
     {% endif %}
@@ -1060,7 +1055,6 @@ defaults.
     <div class="col">
       <h2>Explore</h2>
       <a href="/journal/">Journal</a>
-      <a href="/stories/">Stories</a>
       <a href="/staff-picks/">Staff picks</a>
       <a href="/about/">About</a>
       {% storefront_blocks "footer_extra" %}
@@ -1068,7 +1062,7 @@ defaults.
     <div class="col">
       <h2>Sell</h2>
       <a href="/marketplace/">Marketplace</a>
-      <a href="/vendors/">Publishers</a>
+      <a href="/vendors/">Makers</a>
       <a href="/vendor/apply/">Sell with us</a>
       <a href="/affiliates/apply/">Become an affiliate</a>
     </div>

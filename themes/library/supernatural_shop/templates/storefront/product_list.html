@@ -1,6 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}
-{% load i18n %}{% load seo %}{% load tracking %}{% load book_extras %}
+{% load i18n %}{% load seo %}{% load tracking %}
 {% block title %}{% if selected_author %}{{ selected_author }}{% elif selected_publisher %}{{ selected_publisher }}{% elif selected_category_obj %}{{ selected_category_obj.name }}{% elif selected_tag %}{{ selected_tag_obj.name|default:selected_tag }}{% elif search_query %}Search: {{ search_query }}{% else %}Shop{% endif %} — Supernatural Shop{% endblock %}
 
 {% block extra_head %}
@@ -28,7 +28,7 @@
        views read as first-class shelf pages.{% endcomment %}
     <p class="eyebrow">{% if selected_author %}Maker{% elif selected_publisher %}Maker{% elif selected_category_obj %}Category{% elif selected_tag %}Tag{% elif search_query %}Search{% else %}The shop{% endif %}</p>
     <h1 class="display display-l" style="margin: 1rem 0;">
-      {% if selected_author %}Books by {{ selected_author }}<span class="text-accent">.</span>
+      {% if selected_author %}{{ selected_author }}<span class="text-accent">.</span>
       {% elif selected_publisher %}{{ selected_publisher }} titles<span class="text-accent">.</span>
       {% elif selected_category_obj %}{{ selected_category_obj.name }}<span class="text-accent">.</span>
       {% elif selected_tag %}{{ selected_tag_obj.name|default:selected_tag }}<span class="text-accent">.</span>
@@ -39,9 +39,7 @@
        (authors + publishers: Products → Book taxonomies; tags: Tag descriptions;
        categories + collections on their own pages), falling back to house
        copy.{% endcomment %}
-    {% if selected_author %}{% book_term_lede 'author' selected_author as author_lede %}{% endif %}
-    {% if selected_publisher %}{% book_term_lede 'publisher' selected_publisher as publisher_lede %}{% endif %}
-    <p class="lede">{% if selected_author %}{% firstof author_lede %}{% if not author_lede %}Every title we shelf by {{ selected_author }}.{% endif %}{% elif selected_publisher %}{% firstof publisher_lede %}{% if not publisher_lede %}From {{ selected_publisher }} — only the editions we'd hand a friend.{% endif %}{% elif selected_tag %}{% if selected_tag_obj.description %}{{ selected_tag_obj.description|linebreaksbr }}{% else %}Every book on the shelf we've tagged &ldquo;{{ selected_tag }}&rdquo;.{% endif %}{% elif selected_category_obj.description %}{{ selected_category_obj.description|linebreaksbr }}{% elif page_intro %}{{ page_intro|linebreaksbr }}{% else %}Independent, modern, hand-curated. Filter by genre or publisher. The shelf rotates every Tuesday.{% endif %}</p>
+    <p class="lede">{% if selected_author %}{% if not author_lede %}Products from {{ selected_author }}.{% endif %}{% elif selected_publisher %}{% if not publisher_lede %}From {{ selected_publisher }}.{% endif %}{% elif selected_tag %}{% if selected_tag_obj.description %}{{ selected_tag_obj.description|linebreaksbr }}{% else %}Everything tagged &ldquo;{{ selected_tag }}&rdquo;.{% endif %}{% elif selected_category_obj.description %}{{ selected_category_obj.description|linebreaksbr }}{% elif page_intro %}{{ page_intro|linebreaksbr }}{% else %}Essential oils, hydrosols, and ritual goods. Filter by category. The bench rotates when something earns a spot.{% endif %}</p>
     {% if page_obj %}<p class="meta plp-count">{{ page_obj.paginator.count }} product{{ page_obj.paginator.count|pluralize }}</p>{% endif %}
 
     {# Active filter chips — clickable to remove. Shown when any filter is active. #}
@@ -69,8 +67,8 @@
                style="width:100%; height: 44px; padding: 0 1rem 0 2.6rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
       </div>
       {% if categories|length > 1 %}
-      <select name="category" aria-label="Filter by genre" onchange="this.form.requestSubmit()" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
-        <option value="">All genres</option>
+      <select name="category" aria-label="Filter by category" onchange="this.form.requestSubmit()" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
+        <option value="">All categories</option>
         {% for c in categories %}
         <option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{{ c.name }}</option>
         {% endfor %}
@@ -171,9 +169,9 @@
     <div class="empty-shelf">
       <div class="glyph" aria-hidden="true">❦</div>
       <h2>Nothing here yet.</h2>
-      <p>Either we sold out or we're between issues. Try the full shelf for what's in stock right now.</p>
+      <p>Sold out, or we haven't listed this yet. Browse the shop for what's in stock.</p>
       <div class="actions">
-        <a href="/products/" class="btn btn-primary">Browse all books</a>
+        <a href="/products/" class="btn btn-primary">Browse the shop</a>
         <a href="/" class="btn">Back home</a>
       </div>
     </div>
