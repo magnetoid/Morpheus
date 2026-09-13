@@ -3,7 +3,7 @@ Supernatural Shop — editorial storefront, same bones as dot_books.
 
 Design notes
 ------------
-- Night paper (#0c0a09) and bone type. Not cream, not a red-dot bookstore.
+- Light linen paper (#faf7f2) and dark ink. Not Dot Books cream/red.
 - One brass accent (#c9a227) on the wordmark period and primary CTA.
 - Display in Cormorant Garamond. Body in Outfit.
 - Same layout contract as dot_books (topbar, window hero, cards, PDP).
@@ -18,9 +18,9 @@ from themes.base import MorpheusTheme
 class SupernaturalShopTheme(MorpheusTheme):
     name = 'supernatural_shop'
     label = 'Supernatural Shop'
-    version = '0.1.2'
+    version = '0.1.3'
     description = (
-        'Dark editorial shop theme. Night paper, bone type, a single brass mark. '
+        'Light editorial shop theme. Linen paper, dark ink, a single brass mark. '
         'Built on the dot_books storefront contract.'
     )
     author = 'Morph Team'
@@ -32,8 +32,8 @@ class SupernaturalShopTheme(MorpheusTheme):
     def get_design_tokens(self) -> dict:
         return {
             'colors': {
-                'background': '#0c0a09',
-                'foreground': '#f4efe6',
+                'background': '#faf7f2',
+                'foreground': '#1c1612',
                 'accent': '#c9a227',
             },
             'fonts': {'display': 'Cormorant Garamond', 'body': 'Outfit'},
