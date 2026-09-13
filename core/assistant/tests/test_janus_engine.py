@@ -221,6 +221,137 @@ class TurnTests(SimpleTestCase):
         self.assertLess(turn_timeout_s(), 60)
 
 
+class TurnInvocationTests(SimpleTestCase):
+    """How a turn is launched. Each of these shipped broken in v0.63.0."""
+
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.home = Path(self._tmp.name)
+
+    def _turn(self, *procs):
+        with (
+            mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
+            mock.patch.object(eng, 'linda_janus_home', return_value=self.home),
+            mock.patch.object(eng, 'engine_root', return_value=None),
+            mock.patch.object(eng.subprocess, 'run', side_effect=list(procs)) as spawn,
+        ):
+            out = run_janus_turn(message='hi', conversation_key='conv-1', system_prompt='p')
+        return out, [c.args[0] for c in spawn.call_args_list]
+
+    def test_default_toolset_never_loads(self):
+        # Without -t, `janus chat` loads 56 tools including terminal,
+        # write_file and execute_code, running as the user that owns /app.
+        _, calls = self._turn(_FakeProc(stdout='ok'))
+        argv = calls[0]
+        self.assertIn('-t', argv)
+        toolsets = argv[argv.index('-t') + 1].split(',')
+        self.assertEqual(toolsets, list(eng.TURN_TOOLSETS))
+        for forbidden in ('terminal', 'file', 'code_execution', 'web', 'browser', 'janus-cli'):
+            self.assertNotIn(forbidden, toolsets)
+
+    def test_toolset_names_the_configured_mcp_server(self):
+        self.assertEqual(eng.TURN_TOOLSETS[0], eng.MCP_SERVER_NAME)
+        self.assertIn(f'  {eng.MCP_SERVER_NAME}:', eng._config_text('https://s/mcp/', ''))
+
+    def test_runs_in_the_conversation_home_not_the_engine_checkout(self):
+        with (
+            mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
+            mock.patch.object(eng, 'linda_janus_home', return_value=self.home),
+            mock.patch.object(eng, 'engine_root', return_value=Path('/src/janus-agent')),
+            mock.patch.object(eng.subprocess, 'run', return_value=_FakeProc(stdout='ok')) as spawn,
+        ):
+            run_janus_turn(message='hi', conversation_key='conv-1', system_prompt='p')
+        cwd = spawn.call_args.kwargs['cwd']
+        self.assertTrue(cwd.startswith(str(self.home)))
+        self.assertNotIn('janus-agent', cwd)
+
+    def test_quiet_mode_is_used(self):
+        _, calls = self._turn(_FakeProc(stdout='ok'))
+        self.assertIn('-Q', calls[0])
+
+    def test_follow_up_resumes_by_session_id_not_continue(self):
+        # A bare --continue looks for the newest `cli` session, never `linda`,
+        # so every second message in a conversation exited 1.
+        sid = '20260913_010203_abc123'
+        self._turn(_FakeProc(stdout='first', stderr=f'\nsession_id: {sid}\n'))
+        out, calls = self._turn(_FakeProc(stdout='second', stderr=f'\nsession_id: {sid}\n'))
+        argv = calls[0]
+        self.assertNotIn('--continue', argv)
+        self.assertEqual(argv[argv.index('--resume') + 1], sid)
+        self.assertEqual(out['text'], 'second')
+
+    def test_stale_session_falls_back_to_a_fresh_one(self):
+        self._turn(_FakeProc(stdout='first', stderr='session_id: 20260913_010203_abc123'))
+        out, calls = self._turn(
+            _FakeProc(stderr='Session not found: 20260913_010203_abc123', returncode=1),
+            _FakeProc(stdout='fresh', stderr='session_id: 20260913_020304_def456'),
+        )
+        self.assertEqual(len(calls), 2)
+        self.assertIn('--resume', calls[0])
+        self.assertNotIn('--resume', calls[1])
+        self.assertEqual(out['text'], 'fresh')
+        self.assertEqual(out['error'], '')
+
+    def test_malformed_session_id_never_reaches_argv(self):
+        self._turn(_FakeProc(stdout='first', stderr='session_id: ;touch${IFS}/tmp/x'))
+        _, calls = self._turn(_FakeProc(stdout='second'))
+        self.assertNotIn('--resume', calls[0])
+
+    def test_session_line_is_not_reported_as_the_error(self):
+        out, _ = self._turn(
+            _FakeProc(stderr='provider exploded\nsession_id: 20260913_010203_abc123', returncode=1)
+        )
+        self.assertIn('provider exploded', out['error'])
+        self.assertNotIn('session_id', out['error'])
+
+
+class ProviderWiringTests(SimpleTestCase):
+    """Janus's `auto` picks OpenRouter whenever OPENAI_API_KEY is set and never
+    sees a dashboard-stored key, so the turn must pin Morpheus's provider."""
+
+    def _wire(self, name, **cfg):
+        from core.agents.provider_registry import ProviderConfig
+
+        conf = ProviderConfig(
+            provider=name,
+            api_key=cfg.get('api_key', 'sk-test'),
+            base_url=cfg.get('base_url', ''),
+            model=cfg.get('model', ''),
+            embedding_model='',
+        )
+        with (
+            mock.patch('core.agents.provider_registry.get_active_provider_name', return_value=name),
+            mock.patch('core.agents.provider_registry.get_provider_config', return_value=conf),
+        ):
+            return eng._provider_wiring()
+
+    def test_dashboard_deepseek_key_reaches_janus(self):
+        args, env = self._wire(
+            'deepseek', model='deepseek-v4-pro', base_url='https://api.deepseek.com/v1'
+        )
+        self.assertEqual(args, ['--provider', 'deepseek', '-m', 'deepseek-v4-pro'])
+        self.assertEqual(env['DEEPSEEK_API_KEY'], 'sk-test')
+        self.assertEqual(env['DEEPSEEK_BASE_URL'], 'https://api.deepseek.com/v1')
+
+    def test_openai_maps_to_the_direct_api_not_openrouter(self):
+        args, _ = self._wire('openai', model='gpt-4o-mini')
+        self.assertEqual(args[:2], ['--provider', 'openai-api'])
+
+    def test_unmapped_provider_leaves_janus_to_resolve(self):
+        self.assertEqual(self._wire('hermes'), ([], {}))
+
+    def test_missing_key_leaves_janus_to_resolve(self):
+        self.assertEqual(self._wire('deepseek', api_key=''), ([], {}))
+
+    def test_provider_key_overrides_an_inherited_one(self):
+        with mock.patch.dict(
+            eng.os.environ, {'PATH': '/usr/bin', 'DEEPSEEK_API_KEY': 'stale'}, clear=True
+        ):
+            env = _child_env({'DEEPSEEK_API_KEY': 'from-dashboard'})
+        self.assertEqual(env['DEEPSEEK_API_KEY'], 'from-dashboard')
+
+
 class AssistantJanusRoutingTests(SimpleTestCase):
     """Routing decisions on the engine that production would actually run."""
 
