@@ -15,6 +15,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.64.0 — 2026-09-14
+
+**Linda can use the store's tools again, with your approval on every change**
+
+- Linda's Janus engine can now read and act on the store. Each chat turn carries a short-lived signed identity for the staff member and conversation, so the store's tool server knows who is asking.
+- Every change Linda proposes still needs your own yes in the chat. Approval is bound to the exact change, works once, and 'no' or 'but not that one' always wins.
+- Fixed: a request that already contained an approving word, such as 'set the price to 20, ok?', could approve its own retry before you ever saw the proposal. Approval now only counts from a message you send after Linda asks.
+- The Sales, Support and Operations modes now run on Janus too, and still limit which tools Linda can see and use.
+- Every change Linda attempts, allowed or refused, is recorded in the audit log under your name.
+- Linda stops starting new turns once the daily run or spend limit in Agent guardrails is reached.
+- Removed the static Linda MCP token setting; nothing replaces it and nothing needs configuring.
+- Linda's first reply no longer starts with a Janus security-scanner warning, and Janus reaches the store's tools inside the server instead of through the public internet.
+
 ## v0.63.1 — 2026-09-13
 
 **Linda on Janus: store-only tools, working follow-ups, correct provider**

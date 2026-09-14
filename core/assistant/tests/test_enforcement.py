@@ -183,6 +183,78 @@ class HumanConsentGateTests(SimpleTestCase):
         self.assertIn('approval_required', reason or '')
 
 
+class ConsentOrderingTests(SimpleTestCase):
+    """Consent is spent only by a human message sent AFTER the proposal.
+
+    Without the ordering check, "change the setting, ok?" approves itself: the
+    first attempt is refused and recorded, and a retry in the same turn finds the
+    turn's own "ok" waiting. The human never saw the proposal.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.key = dict(conversation_key='conv-order', tool_name='settings.set', args={'k': 1})
+
+    def test_message_older_than_the_proposal_is_not_consent(self):
+        sent = time.time()
+        consent.request(**self.key)
+        self.assertFalse(consent.consume(**self.key, human_message='ok', human_message_at=sent))
+
+    def test_message_after_the_proposal_is_consent(self):
+        consent.request(**self.key)
+        later = time.time() + 1
+        self.assertTrue(consent.consume(**self.key, human_message='yes', human_message_at=later))
+
+    def test_entry_written_before_proposal_times_existed_fails_closed(self):
+        from core.agents.approval import args_fingerprint
+
+        fp = args_fingerprint('settings.set', {'k': 1})
+        cache.set(consent._key('conv-order', fp), 'pending', 60)
+        self.assertFalse(
+            consent.consume(**self.key, human_message='yes', human_message_at=time.time())
+        )
+
+
+class InTurnSelfApprovalTests(TestCase):
+    """End to end through the loop: a retry cannot spend the turn's own "ok"."""
+
+    def setUp(self):
+        cache.clear()
+
+    def test_retry_inside_one_turn_cannot_approve_itself(self):
+        from core.agents.llm import LLMResponse, LLMToolCall
+
+        calls = []
+        tool = Tool(
+            name='settings.set',
+            description='settings.set',
+            handler=lambda **kw: calls.append(kw) or {'ok': True},
+            schema={'type': 'object', 'properties': {}},
+            scopes=['system.write'],
+            requires_approval=True,
+        )
+
+        class _Retrying:
+            name = model = 'scripted'
+
+            def __init__(self):
+                call = LLMToolCall(id='c1', name='settings.set', arguments={'value': '20'})
+                retry = LLMToolCall(id='c2', name='settings.set', arguments={'value': '20'})
+                self._r = [
+                    LLMResponse(tool_calls=[call]),
+                    LLMResponse(tool_calls=[retry]),
+                    LLMResponse(text='asked'),
+                ]
+
+            def respond(self, **_kw):
+                return self._r.pop(0)
+
+        Assistant(provider=_Retrying(), tools=[tool], store=_Store()).run(
+            message='set the value to 20, ok?', conversation_key='conv-self-approve'
+        )
+        self.assertEqual(calls, [])
+
+
 class RefusalAuditTests(TestCase):
     """A blocked write must leave a trace outside the chat transcript."""
 

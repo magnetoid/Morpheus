@@ -20,7 +20,9 @@ POST /mcp/checkout/v1/           + checkout.get_session/set_buyer (quote)
 #     Bearer token. Completion stays on the /acp/ REST money path.
 POST /mcp/admin/v1/              Linda's full catalog — writes too (Bearer auth
 #                                required at the transport). requires_approval
-#                                writes need the token's approved_tools grant.
+#                                writes need the token's approved_tools grant —
+#                                except Linda turn tokens (see below), which need
+#                                the merchant's own "yes" in the conversation.
 
 GET  /mcp/v1/health/             Liveness probe (mounted on /mcp/v1/, not /admin/)
 GET  /mcp/v1/manifest.json       ChatGPT-style plugin manifest
@@ -89,6 +91,29 @@ When the request hits either `/mcp/admin/v1/` or `/graphql/`:
 
 If the token is missing / wrong, the request falls through to
 Django's session middleware — useful for browser-based admins.
+
+### Linda turn tokens (Janus engine)
+
+Linda's engine calls `/mcp/admin/v1/` with a short-lived signed **turn token**
+(`Authorization: Bearer lt1.…`), minted per chat turn by
+`core/assistant/turn_identity.py`. It is not an API key: it never appears in
+`public_keys`, cannot be issued from the dashboard, and is rejected everywhere
+else, including `/graphql/`. It names one staff user, one conversation and the
+conversation's mode, and expires shortly after the turn's timeout.
+
+A call under a turn token runs as the real staff user, not `mcp-service`, and
+passes the same gates as Linda's in-process loop (`core/assistant/gates.py`):
+
+- **Scope** — Linda's scope profile, not the token's scopes.
+- **Mode** — `tools/list` and `tools/call` see only the mode's tools; the user's
+  entitlement to that mode is re-checked on every call.
+- **Consent** — a `requires_approval` tool is refused with an `isError` result
+  starting `approval_required:` until the merchant's own next message in that
+  conversation is an affirmative reply. The grant is single-use and bound to the
+  exact arguments. `approved_tools` plays no part.
+- **Audit** — every write attempt, refused or executed, records
+  `assistant.tool_write` with the merchant as actor, alongside the usual
+  `agents.decision` row. Tool calls are also stored in the conversation history.
 
 ## Write surface (catalog, inventory, orders)
 

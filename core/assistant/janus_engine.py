@@ -40,6 +40,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from core.assistant.turn_identity import ENV_VAR as TURN_TOKEN_ENV
+
 logger = logging.getLogger('morpheus.assistant.janus')
 
 # Must stay UNDER the gunicorn worker timeout (GUNICORN_TIMEOUT, default 60s in
@@ -229,15 +231,22 @@ def _child_env(overrides: dict[str, str]) -> dict[str, str]:
     return env
 
 
-def _config_text(mcp_url: str, mcp_token: str) -> str:
+def _config_text(mcp_url: str, headers: dict[str, str] | None = None) -> str:
     mcp_block = ''
     if mcp_url:
-        auth = f'\n        Authorization: "Bearer {mcp_token}"' if mcp_token else ''
+        # JSON strings are valid YAML scalars, so values need no hand-escaping.
+        extra = ''.join(
+            f'\n      {name}: {json.dumps(value)}'
+            for name, value in sorted((headers or {}).items())
+        )
+        # The credential is the per-turn token from the environment, resolved by
+        # Janus at connect time. Nothing secret is written to this file.
         mcp_block = f"""
 mcp_servers:
   {MCP_SERVER_NAME}:
-    url: "{mcp_url}"
-    headers:{auth or ' {}'}
+    url: {json.dumps(mcp_url)}
+    headers:
+      Authorization: "Bearer ${{{TURN_TOKEN_ENV}}}"{extra}
     timeout: 60
 """
     skills_block = ''
@@ -250,6 +259,8 @@ skills:
     - "{quoted}"
 """
     return f"""# Auto-generated store agent home. Merchant-facing name is Linda.
+security:
+  tirith_enabled: false
 model:
   default: {os.environ.get('JANUS_INFERENCE_MODEL') or 'auto'}
 agent:
@@ -258,7 +269,9 @@ agent:
 """
 
 
-def _ensure_config(home: Path, *, mcp_url: str = '', mcp_token: str = '') -> Path:
+def _ensure_config(
+    home: Path, *, mcp_url: str = '', mcp_headers: dict[str, str] | None = None
+) -> Path:
     """Write (or REWRITE) the store-agent Janus config.
 
     Rewriting matters: this file is per-conversation, so a write-once version
@@ -267,7 +280,7 @@ def _ensure_config(home: Path, *, mcp_url: str = '', mcp_token: str = '') -> Pat
     would sit on disk in one copy per conversation.
     """
     cfg_path = home / 'config.yaml'
-    desired = _config_text(mcp_url, mcp_token)
+    desired = _config_text(mcp_url, mcp_headers)
     try:
         current = cfg_path.read_text(encoding='utf-8')
     except OSError:
@@ -279,26 +292,51 @@ def _ensure_config(home: Path, *, mcp_url: str = '', mcp_token: str = '') -> Pat
     return cfg_path
 
 
-def _mcp_url(context: dict[str, Any] | None) -> str:
+def _default_host() -> str:
+    """The first concrete host the deployment serves (no wildcards or loopback)."""
+    s = _settings()
+    for entry in getattr(s, 'ALLOWED_HOSTS', None) or []:
+        host = str(entry).strip()
+        concrete = host and host != '*' and not host.startswith('.')
+        if concrete and host not in ('localhost', '127.0.0.1'):
+            return host
+    return ''
+
+
+def _mcp_endpoint(context: dict[str, Any] | None) -> tuple[str, dict[str, str]]:
+    """Where the subprocess reaches the store's MCP server, and the headers it needs.
+
+    Janus runs in the same container as the web server, so it calls loopback
+    instead of the public URL: no round trip out through Cloudflare and back
+    (measured on prod: 0.03s against 0.25s per call). Loopback alone fails,
+    though. ``SECURE_SSL_REDIRECT`` answers plain http with a 301, a redirect
+    drops the JSON-RPC body, and ``127.0.0.1`` is not in ``ALLOWED_HOSTS``. So the
+    call names the store's real host and the https scheme the proxy chain would
+    otherwise have set.
+    """
     s = _settings()
     explicit = (getattr(s, 'LINDA_MCP_URL', '') if s else '') or os.environ.get('LINDA_MCP_URL', '')
     if explicit:
         # Exactly one trailing slash. The MCP endpoint is a POST with a JSON-RPC
         # body, and Django's APPEND_SLASH redirect DROPS that body — so a URL
         # missing the slash fails every tool call.
-        return explicit.rstrip('/') + '/'
+        return explicit.rstrip('/') + '/', {}
+    host, secure = '', False
     request = (context or {}).get('request')
     if request is not None:
         try:
-            return request.build_absolute_uri('/mcp/admin/v1/')
-        except Exception:  # noqa: BLE001
-            logger.debug('janus: could not build MCP url from request', exc_info=True)
-    return f'http://127.0.0.1:{os.environ.get("PORT") or "8000"}/mcp/admin/v1/'
-
-
-def _mcp_token() -> str:
-    s = _settings()
-    return (getattr(s, 'LINDA_MCP_TOKEN', '') if s else '') or os.environ.get('LINDA_MCP_TOKEN', '')
+            host, secure = request.get_host(), request.is_secure()
+        except Exception:  # noqa: BLE001 — fall back to the configured host
+            logger.debug('janus: could not read host from request', exc_info=True)
+    if not host:
+        host = _default_host()
+        secure = bool(getattr(s, 'SECURE_SSL_REDIRECT', False)) if s else False
+    headers: dict[str, str] = {}
+    if host:
+        headers['Host'] = host
+    if secure:
+        headers['X-Forwarded-Proto'] = 'https'
+    return f'http://127.0.0.1:{os.environ.get("PORT") or "8000"}/mcp/admin/v1/', headers
 
 
 # Morpheus provider name → (Janus ``--provider`` id, API-key env var, base-URL env
@@ -367,8 +405,13 @@ def run_janus_turn(
     system_prompt: str,
     timeout_s: int | None = None,
     context: dict[str, Any] | None = None,
+    turn_token: str = '',
 ) -> dict[str, Any]:
-    """Run one store-agent turn on Janus. Returns {text, error, duration_ms}."""
+    """Run one store-agent turn on Janus. Returns {text, error, duration_ms}.
+
+    ``turn_token`` is the signed identity from :mod:`core.assistant.turn_identity`.
+    Without one the MCP edge refuses every call, so the turn has no store tools.
+    """
     cmd = janus_cmd()
     if not cmd:
         return {'text': '', 'error': 'janus_unavailable', 'duration_ms': 0}
@@ -379,12 +422,14 @@ def run_janus_turn(
     sid = _session_id(conversation_key)
     conv_home = home / 'conv' / sid
     conv_home.mkdir(parents=True, exist_ok=True)
-    _ensure_config(conv_home, mcp_url=_mcp_url(context), mcp_token=_mcp_token())
+    mcp_url, mcp_headers = _mcp_endpoint(context)
+    _ensure_config(conv_home, mcp_url=mcp_url, mcp_headers=mcp_headers)
 
     provider_args, provider_env = _provider_wiring()
     env = _child_env(
         {
             **provider_env,
+            TURN_TOKEN_ENV: turn_token,
             'JANUS_HOME': str(conv_home),
             'JANUS_EPHEMERAL_SYSTEM_PROMPT': system_prompt[:80_000],
             # The dashboard already collected the merchant's message, so there is

@@ -68,6 +68,19 @@ Verified live on v0.63.1 (2026-09-14): MCP client present; provider pinned to
 
 ## Phase 1 — Per-turn identity and gates at the MCP edge
 
+**Status: implemented on `feat/janus-full-replacement`, pending release as v0.64.0.**
+Landed as `core/assistant/turn_identity.py`, `core/assistant/gates.py` (the loop now
+delegates to it), `plugins/installed/agent_mcp/linda_turn.py`, and the edge wiring in
+`agent_mcp/views.py`. `LINDA_MCP_TOKEN` removed. Restricted modes now run on Janus.
+Daily run/spend caps now refuse a new Linda turn (Linda turns themselves are not
+counted — they create no `AgentRun`). Deviation from the list below: deadline stays
+token expiry only; the in-process monotonic deadline is a no-op at the edge.
+Also found and fixed while re-homing consent: a retry inside one turn could spend
+that turn's own affirmative word ("…, ok?"). Consent now requires a human message
+sent after the proposal, on both paths. Loopback MCP URL with `Host` +
+`X-Forwarded-Proto` headers (plain loopback 301s on prod; public URL works but
+round-trips Cloudflare).
+
 1. **Turn token (core).** Mint a short-lived signed token per turn:
    `user_id`, `conversation_key`, resolved mode slug, turn nonce, expiry
    (turn timeout + margin). `django.core.signing` with a dedicated salt. Passed to
