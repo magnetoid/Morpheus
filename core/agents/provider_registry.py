@@ -1,8 +1,8 @@
 """Provider-config registry — the kernel's source of truth for LLM provider
 settings, decoupled from any plugin.
 
-`core/agents/llm.py` and `core/assistant/consensus.py` resolve api keys, base
-URLs, and model names through :func:`get_provider_config` /
+`core/agents/llm.py` and the Janus engine (`core/assistant/janus_engine.py`)
+resolve api keys, base URLs, and model names through :func:`get_provider_config` /
 :func:`get_active_provider_name`. By **default** these read only environment
 variables / Django settings, so the agent kernel boots and runs even when the
 ``ai_assistant`` plugin is absent or disabled.

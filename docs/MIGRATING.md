@@ -6,6 +6,42 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.65.0 — Janus is Linda's only engine
+
+Linda's in-process agent loop is gone. Every chat turn runs on Janus, which calls
+the store's tools through `/mcp/admin/v1/` with a signed per-turn identity
+(`docs/MCP_SERVER.md`, "Linda turn tokens"). Remove anything that relied on the
+surfaces below.
+
+### Removed HTTP endpoints
+
+| Removed | Use instead |
+|---|---|
+| `GET /api/agent-tools/openai.json`, `GET /api/agent-tools/anthropic.json` | `tools/list` on an MCP server under `/mcp/*/v1/`, which returns each tool's JSON schema |
+| `GET/POST /api/mcp/tools/list`, `POST /api/mcp/tools/call` | The MCP servers under `/mcp/*/v1/` with a Bearer token from Dashboard → Apps → MCP tokens |
+| `POST /dashboard/assistant/invoke/` | `POST /dashboard/assistant/stream/` (same body; server-sent events, the last one carries the result) |
+| `/dashboard/agents/selfdev/` and its actions | None. The self-coding loop was removed. |
+| `POST /dashboard/assistant/proposals/<id>/action/` (code proposals) | None. The staged-changes inbox at `/dashboard/assistant/proposals/` is unchanged. |
+
+### Removed Python and commands
+
+- `core.assistant.run_assistant`, the runtime's `AssistantMessage` dataclass, and
+  `Assistant(provider=, tools=, max_steps=, scopes=, token_budget=)`. `Assistant()`
+  now takes only `store=`. Drive a turn with `Assistant().stream(...)`.
+- `core.assistant.consensus`, `codegen`, `apply`, `flywheel`, `evals`, and
+  `core.schema_introspector`.
+- Agent tools `code.draft_tool`, `code.list_proposals`, `code.evaluate_proposal`,
+  `code.apply_proposal`. `run_python` stays.
+- `manage.py run_assistant_evals`, `manage.py selfdev_approve`, and the
+  `assistant-tool-gap-flywheel` beat task.
+- Settings `LINDA_ENGINE` and `LINDA_MCP_TOKEN`. There is no engine switch and no
+  static Linda credential.
+
+### Kept on purpose
+
+`CodeProposal` rows and their table are untouched; the model is marked retired and
+nothing reads it. Dropping the table is a separate, deliberate change.
+
 ## v0.50.0 — index rules, and pagination that tells the truth
 
 **Who this affects:** anyone whose app publishes a paginated listing, anyone who

@@ -38,7 +38,7 @@ class AIAssistantPlugin(Plugin):
 
     def ready(self):
         # Enrich the kernel's provider-config registry with dashboard-saved
-        # settings. Core (core/agents/llm.py, core/assistant/consensus.py)
+        # settings. Core (core/agents/llm.py, core/assistant/janus_engine.py)
         # resolves providers through this registry and falls back to an
         # env-only default when this plugin is absent — so the dependency
         # points plugin→core, never the reverse.
@@ -76,8 +76,6 @@ class AIAssistantPlugin(Plugin):
         self.register_graphql_extension('plugins.installed.ai_assistant.graphql.queries')
         self.register_graphql_extension('plugins.installed.ai_assistant.graphql.mutations')
 
-        # REST/Webhook/Manifest URLs
-        self.register_urls('plugins.installed.ai_assistant.urls', prefix='api/')
         # Pulse refresh/dismiss — same /dashboard/pulse/... paths the
         # dashboard used to own; they 404 when this plugin is disabled.
         self.register_urls(

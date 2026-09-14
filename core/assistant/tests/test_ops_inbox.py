@@ -105,14 +105,6 @@ class OpsInboxPageTests(TestCase):
         self.assertContains(response, pending.title)
         self.assertContains(response, 'Rejected proposal title')
 
-    def test_code_proposals_stay_superuser_only(self):
-        from core.assistant.models import CodeProposal
-
-        CodeProposal.objects.create(name='secret-tool', source='print(1)')
-        self.client.force_login(self.staff)
-        response = self.client.get(self.url)
-        self.assertNotContains(response, 'secret-tool')
-
 
 class OpsProposalActionTests(TestCase):
     def setUp(self):

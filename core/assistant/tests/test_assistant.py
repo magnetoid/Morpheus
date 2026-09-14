@@ -7,13 +7,11 @@ from __future__ import annotations
 from django.test import TestCase
 
 from core.assistant import Assistant, get_default_tools
-from core.assistant._mock_provider import MockAssistantProvider
 
 
 class AssistantBootTests(TestCase):
     def test_assistant_constructs_without_plugins(self):
-        a = Assistant(provider=MockAssistantProvider())
-        self.assertEqual(a.name, 'assistant')
+        self.assertIsNotNone(Assistant().store)
 
     def test_default_tools_loaded(self):
         names = {t.name for t in get_default_tools()}
@@ -32,75 +30,41 @@ class AssistantBootTests(TestCase):
             self.assertIn(required, names)
 
 
-class AssistantRunTests(TestCase):
-    def test_run_returns_completed_with_mock_provider(self):
-        a = Assistant(provider=MockAssistantProvider(), tools=[])
-        result = a.run(message='hi', conversation_key='test:1')
-        self.assertEqual(result.state, 'completed')
-        self.assertIn('hi', result.text)
+class AssistantTurnTests(TestCase):
+    """One turn on the Janus engine, with the engine mocked (no model call)."""
 
-    def test_provider_failure_marks_failed(self):
-        class _Boom:
-            def respond(self, **kw):
-                raise RuntimeError('provider down')
+    def _turn(self, payload, key):
+        from unittest import mock
 
-        a = Assistant(provider=_Boom(), tools=[])
-        result = a.run(message='hi', conversation_key='test:2')
-        self.assertEqual(result.state, 'failed')
-        self.assertIn('provider down', result.error)
+        with (
+            mock.patch('core.assistant.janus_engine.janus_available', return_value=True),
+            mock.patch('core.assistant.janus_engine.run_janus_turn', return_value=payload),
+        ):
+            events = list(Assistant().stream(message='hi', conversation_key=key))
+        return events[-1]
 
-    def test_degraded_sentinel_becomes_friendly_error_not_an_answer(self):
-        # Regression (prod, 2026-07-12): the fallback router returns
-        # "[All AI providers degraded. Last error: …]" as response TEXT, and
-        # Linda shipped it into the chat verbatim as a completed answer. It
-        # must fail the turn with the friendly provider-error copy instead.
-        from core.agents.llm import LLMResponse
+    def test_completed_turn_is_stored(self):
+        from core.assistant.persistence import get_default_store
 
-        class _Degraded:
-            def respond(self, **kw):
-                return LLMResponse(
-                    text='[All AI providers degraded. Last error: anthropic: '
-                    'Could not resolve authentication method. Expected one of '
-                    'api_key, auth_token, or credentials to be set.]',
-                    model='fallback_router_failed',
-                )
+        final = self._turn({'text': 'hello', 'error': '', 'duration_ms': 5}, 'test:turn')
+        self.assertEqual((final['type'], final['result'].state), ('final', 'completed'))
+        rows = get_default_store().history(conversation_key='test:turn')
+        self.assertEqual(
+            [(r.role, r.content) for r in rows], [('user', 'hi'), ('assistant', 'hello')]
+        )
 
-        a = Assistant(provider=_Degraded(), tools=[])
-        result = a.run(message='can you send emails?', conversation_key='test:degraded')
-        self.assertEqual(result.state, 'failed')
-        self.assertNotIn('[All AI providers degraded', result.text)
-        self.assertIn('/dashboard/settings/ai/', result.text)
-        # The persisted assistant message is the friendly copy too — history
-        # replays must not resurface the raw sentinel.
-        history = a.store.history(conversation_key='test:degraded', limit=10)
-        stored = [m.content for m in history if m.role == 'assistant']
-        self.assertTrue(stored and '[All AI providers degraded' not in stored[-1])
+    def test_engine_error_becomes_a_friendly_failed_turn(self):
+        final = self._turn({'text': '', 'error': 'janus exit 1', 'duration_ms': 5}, 'test:err')
+        self.assertEqual((final['type'], final['result'].state), ('error', 'failed'))
+        self.assertEqual(final['result'].error, 'janus exit 1')
 
-    def test_history_persists(self):
-        a = Assistant(provider=MockAssistantProvider(), tools=[])
-        a.run(message='first', conversation_key='test:hist')
-        a.run(message='second', conversation_key='test:hist')
-        history = a.store.history(conversation_key='test:hist', limit=10)
-        roles = [m.role for m in history]
-        self.assertIn('user', roles)
-        self.assertIn('assistant', roles)
-        self.assertEqual(roles.count('user'), 2)
+    def test_missing_engine_is_reported_not_raised(self):
+        from unittest import mock
 
-
-class _RecordingProvider:
-    """Records the message list passed to each respond() call."""
-
-    name = 'rec'
-    model = 'rec'
-
-    def __init__(self):
-        self.calls: list = []
-
-    def respond(self, *, messages, tools=None, temperature=0.3, max_tokens=1024):
-        from core.assistant._mock_provider import _Resp
-
-        self.calls.append(list(messages))
-        return _Resp(text='ok')
+        with mock.patch('core.assistant.janus_engine.janus_available', return_value=False):
+            final = list(Assistant().stream(message='hi', conversation_key='test:none'))[-1]
+        self.assertEqual(final['result'].error, 'janus_unavailable')
+        self.assertIn("isn't installed", final['result'].text)
 
 
 class ToolMigrationTests(TestCase):
@@ -167,46 +131,6 @@ class ToolMigrationTests(TestCase):
         result = tool.invoke({'limit': 5})
         self.assertIn('orders', result.output)
         self.assertIsInstance(result.output['orders'], list)
-
-
-class HistoryCompactionTests(TestCase):
-    def test_summarize_history_returns_provider_text(self):
-        a = Assistant(provider=MockAssistantProvider(), tools=[])
-        out = a._summarize_history('user: hi\nassistant: hello')
-        self.assertIn('Got:', out)  # MockAssistantProvider echoes the transcript
-
-    def test_long_history_is_compacted_before_the_provider_call(self):
-        from core.assistant.persistence import StoredMessage
-
-        prov = _RecordingProvider()
-        a = Assistant(provider=prov, tools=[])
-        key = 'test:compact'
-        # Seed a history that comfortably exceeds the ~6000-token soft limit
-        # (10 messages × ~3000 chars ≈ 7.5k tokens).
-        for i in range(10):
-            a.store.append(
-                conversation_key=key,
-                message=StoredMessage(
-                    role='user' if i % 2 == 0 else 'assistant', content='x' * 3000
-                ),
-            )
-        a.run(message='now', conversation_key=key)
-
-        # The actual turn call (the one carrying the recent 'now' message) must
-        # be compacted: a rolling-summary system message replaces the old middle.
-        turn_calls = [
-            ms for ms in prov.calls if any(getattr(m, 'content', '') == 'now' for m in ms)
-        ]
-        self.assertTrue(turn_calls, 'no turn call recorded')
-        turn = turn_calls[-1]
-        self.assertTrue(
-            any(
-                'Summary of earlier conversation' in (getattr(m, 'content', '') or '') for m in turn
-            ),
-            'expected a rolling summary in the compacted turn',
-        )
-        # And it is shorter than the raw history would have been (10 + system + user).
-        self.assertLess(len(turn), 12)
 
 
 class FilesystemToolTests(TestCase):

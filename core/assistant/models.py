@@ -239,11 +239,13 @@ class AssistantBriefing(models.Model):
 
 
 class CodeProposal(models.Model):
-    """A piece of code Linda DRAFTED for herself (uplift Phase 4 — self-written
-    modules). It is statically scanned but NEVER executed and NEVER written to
-    the repo by drafting — it sits as a proposal for human review. Turning a
-    proposal into live code (file write + branch/PR) is a separate, gated,
-    default-OFF step (requires MORPHEUS_SELF_UPDATE_ENABLED + a hard-gate).
+    """RETIRED in v0.65.0 — nothing reads or writes this model any more.
+
+    Linda's self-coding loop (draft → scan → consensus → apply to a branch) was
+    removed when Janus replaced her in-process engine. The model stays only so its
+    table and history survive: deleting it generates a migration that drops the
+    table on the next deploy, which is a data-loss decision for the owner, not a
+    side effect of a cleanup. Drop it deliberately in its own change.
     """
 
     STATUS_CHOICES = [

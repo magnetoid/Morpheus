@@ -90,83 +90,13 @@ def assistant_page(request):
 @staff_member_required
 @csrf_protect
 @require_http_methods(['POST'])
-def assistant_invoke(request):
-    """POST {message: str} → JSON RunResult. Always responds — never 500s."""
-    try:
-        body = (
-            json.loads(request.body or b'{}')
-            if request.content_type == 'application/json'
-            else dict(request.POST.items())
-        )
-    except json.JSONDecodeError:
-        return HttpResponseBadRequest('Invalid JSON.')
-    message = (body.get('message') or '').strip()
-    if not message:
-        return HttpResponseBadRequest('Missing `message`.')
-
-    try:
-        result = Assistant().run(
-            message=message[:10_000],
-            conversation_key=_conversation_key(request),
-            context={
-                'request': request,
-                'user': getattr(request, 'user', None),
-                # Page-scoped affordance: the floating widget on each
-                # dashboard page sends the URL + title it was opened
-                # from so Linda can answer about "this page" without
-                # needing the merchant to re-paste a slug or order
-                # number. The Assistant runtime threads these into
-                # the system prompt prefix.
-                'page_url': (body.get('page_url') or '')[:512],
-                'page_title': (body.get('page_title') or '')[:200],
-                # Mode picker — selects which subset of tools Linda
-                # is allowed to dispatch this turn (core/assistant/
-                # modes.py). Falls back to "general" (wildcard).
-                'mode': (body.get('mode') or '')[:32],
-            },
-        )
-    except Exception as e:  # noqa: BLE001 — last-resort safety net
-        logger.error('assistant: run crashed: %s', e, exc_info=True)
-        return JsonResponse(
-            {
-                'state': 'failed',
-                'text': '',
-                'error': str(e),
-                'tool_calls': 0,
-            },
-            status=200,
-        )
-
-    return JsonResponse(
-        {
-            'state': result.state,
-            'text': result.text,
-            'error': result.error,
-            'tool_calls': result.tool_call_count,
-            'duration_ms': result.duration_ms,
-            'tokens': {
-                'prompt': result.prompt_tokens,
-                'completion': result.completion_tokens,
-            },
-        }
-    )
-
-
-@staff_member_required
-@csrf_protect
-@require_http_methods(['POST'])
 def assistant_stream(request):
     """POST {message: str} → text/event-stream of run events.
 
     Yields newline-terminated SSE blocks. Each event:
 
-      data: {"type": "tool_call_started", "name": "...", "arguments": {...}}\\n\\n
-      data: {"type": "tool_call_finished", "name": "...", "output": ..., "error": "..."}\\n\\n
       data: {"type": "assistant_text", "text": "..."}\\n\\n
       data: {"type": "final", "text": "...", "state": "completed", ...}\\n\\n
-
-    Falls through to the JSON variant when the client doesn't request
-    SSE — same Linda runtime under the hood.
     """
     try:
         body = (
@@ -199,10 +129,9 @@ def assistant_stream(request):
                     # request when no LINDA_MCP_URL is configured; without this
                     # it falls back to a hardcoded loopback host.
                     'request': request,
-                    # Same page-scoped affordance as the JSON invoke
-                    # path: the widget sends the URL + title of the
-                    # page it was opened from so Linda can answer
-                    # about "this product / this order / this page".
+                    # The widget sends the URL + title of the page it was
+                    # opened from so Linda can answer about "this product /
+                    # this order / this page".
                     'page_url': page_url,
                     'page_title': page_title,
                     'mode': mode,

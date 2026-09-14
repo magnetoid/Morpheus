@@ -19,7 +19,7 @@ Why hardcoded:
 Public surface:
 
     from core.assistant import (
-        Assistant, run_assistant, AssistantMessage,
+        Assistant, AssistantRunResult,
         get_default_provider, get_default_tools,
     )
 """
@@ -31,21 +31,14 @@ from core.assistant.persistence import (
     get_default_store,
 )
 from core.assistant.providers import get_default_provider
-from core.assistant.runtime import (
-    Assistant,
-    AssistantMessage,
-    AssistantRunResult,
-    run_assistant,
-)
+from core.assistant.runtime import Assistant, AssistantRunResult
 from core.assistant.tools import get_default_tools
 
 __all__ = [
     'Assistant',
-    'AssistantMessage',
     'AssistantRunResult',
     'AssistantStore',
     'get_default_provider',
     'get_default_store',
     'get_default_tools',
-    'run_assistant',
 ]

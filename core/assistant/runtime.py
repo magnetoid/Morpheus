@@ -1,9 +1,15 @@
 """
-Assistant runtime — the chat + tool-use loop.
+Linda's turn runtime. Janus is the engine; Linda is the name the merchant sees.
 
-Self-contained: doesn't import from `plugins.*` or any plugin code at
-module-load time. Tools are looked up lazily so a broken plugin tool
-doesn't break the Assistant's import.
+One call to :meth:`Assistant.stream` is one chat turn: store the merchant's
+message, apply the merchant's guardrails, run the turn on Janus
+(:mod:`core.assistant.janus_engine`), store the reply. Janus runs its own tool
+loop in a subprocess and reaches the store's tools over MCP. Every tool call it
+makes is gated at that edge — Linda's scope profile, the conversation's mode,
+human consent, write audit — by :mod:`core.assistant.gates`, keyed to this turn
+by a signed token from :mod:`core.assistant.turn_identity`.
+
+Self-contained: nothing here imports ``plugins.*``.
 """
 
 from __future__ import annotations
@@ -11,36 +17,13 @@ from __future__ import annotations
 import json
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
-from core.assistant import gates
-from core.assistant.gates import LINDA_SCOPES
 from core.assistant.persistence import StoredMessage, get_default_store
 from core.assistant.prompts import build_system_prompt
-from core.assistant.providers import get_default_provider
 
 logger = logging.getLogger('morpheus.assistant')
-
-
-_RETRIABLE_NEEDLES = (
-    '429',
-    'rate limit',
-    'rate-limit',
-    'overloaded',
-    'temporarily',
-    '502',
-    '503',
-    '504',
-    'timeout',
-    'timed out',
-    'connection reset',
-)
-
-
-def _is_retriable(msg: str) -> bool:
-    m = (msg or '').lower()
-    return any(n in m for n in _RETRIABLE_NEEDLES)
 
 
 def _friendly_provider_error(raw: str) -> str:  # noqa: PLR0911
@@ -90,15 +73,6 @@ def _friendly_provider_error(raw: str) -> str:  # noqa: PLR0911
             '/dashboard/settings/ai/.'
         )
     return f'AI provider error — please try again. ({raw[:140]})'
-
-
-@dataclass(slots=True)
-class AssistantMessage:
-    role: str  # 'user' | 'assistant' | 'system' | 'tool'
-    content: str = ''
-    tool_call_id: str = ''
-    tool_calls: list = field(default_factory=list)
-    name: str = ''
 
 
 @dataclass(slots=True)
@@ -185,174 +159,18 @@ def _format_janus_history(history: list[StoredMessage], *, limit: int = 12) -> s
     return f'Earlier in this conversation (most recent last):\n{body}'
 
 
-def _page_context_system(context: dict[str, Any] | None) -> str:
-    """Compose the one-line system prefix carrying the URL+title of the
-    dashboard page Linda was opened from.
-
-    Empty when no page context is provided (CLI / API callers / older
-    widget). Kept tiny so it costs near-zero tokens and never derails
-    Linda when irrelevant.
-    """
-    if not context:
-        return ''
-    url = (context.get('page_url') or '').strip()
-    title = (context.get('page_title') or '').strip()
-    if not url and not title:
-        return ''
-    parts = ['You are running in a floating widget on a Morpheus dashboard page.']
-    if title:
-        parts.append(f'The merchant is viewing: "{title}".')
-    if url:
-        parts.append(f'Page URL: {url}.')
-    parts.append(
-        'When the merchant says "this", "this product", "this order", "here", '
-        'they mean the row or object on the page above. Prefer to answer in '
-        'context of that page; offer to open another dashboard page when a '
-        'different surface is the right answer.'
-    )
-    return ' '.join(parts)
-
-
-def _to_llm_messages(
-    history: list[StoredMessage],
-    user_message: str,
-    *,
-    context: dict[str, Any] | None = None,
-) -> list[Any]:
-    """Convert stored history + new user msg → LLMMessage objects from agents.llm.
-
-    We import lazily so the Assistant survives an agents-kernel import failure;
-    we fall back to plain dicts if the agents kernel isn't available.
-    """
-    try:
-        from core.agents.llm import LLMMessage
-    except Exception:  # noqa: BLE001
-
-        @dataclass
-        class LLMMessage:
-            role: str
-            content: str = ''
-            tool_call_id: str | None = None
-            tool_calls: list = field(default_factory=list)
-            name: str | None = None
-
-    msgs = [LLMMessage(role='system', content=build_system_prompt())]
-    # Inject remembered facts (top of turn) so Linda recalls preferences
-    # across sessions without an explicit memory.recall call.
-    memo = _format_recent_memories(user_message)
-    if memo:
-        msgs.append(LLMMessage(role='system', content=memo))
-    # Inject retrieved unstructured knowledge (RAG) for the current message.
-    # No-op unless a plugin registered a retriever (ai_assistant); additive.
-    know = _format_knowledge(user_message)
-    if know:
-        msgs.append(LLMMessage(role='system', content=know))
-    # Inject the page context (URL + title) if the caller supplied one
-    # so Linda can answer about "this product / order / page".
-    page_ctx = _page_context_system(context)
-    if page_ctx:
-        msgs.append(LLMMessage(role='system', content=page_ctx))
-    for h in history:
-        if h.role == 'tool':
-            # Replayed tool results can NOT be sent as role='tool': the
-            # OpenAI-compatible contract requires a `tool` message to directly
-            # follow the assistant message carrying its matching tool_calls,
-            # and the store never persisted tool_call ids (assistant replies
-            # are stored as plain text). Strict providers (DeepSeek & co.)
-            # hard-400 the dangling pair — "Messages with role 'tool' must be
-            # a response to a preceding message with 'tool_calls'" — which
-            # cascaded into "All AI providers degraded". Fold them into an
-            # assistant-visible text record instead: same recall value,
-            # always contract-valid.
-            output = json.dumps(h.tool_output, default=str)[:8000]
-            msgs.append(
-                LLMMessage(
-                    role='assistant',
-                    content=f'[tool {h.tool_name or "unknown"} result] {output}',
-                )
-            )
-        else:
-            msgs.append(LLMMessage(role=h.role, content=h.content))
-    msgs.append(LLMMessage(role='user', content=user_message))
-    return msgs
-
-
-def _compact(msgs: list[Any], summarizer) -> list[Any]:
-    """Keep Linda's message list under a soft token budget by replacing the
-    oldest turns with a rolling summary. No-op for short conversations; falls
-    back to the uncompacted list if the agents kernel isn't importable (same
-    defensive posture as ``_to_llm_messages``)."""
-    try:
-        from core.agents.compaction import compact
-    except Exception:  # noqa: BLE001
-        return msgs
-    return compact(msgs, summarizer=summarizer)
-
-
 class Assistant:
-    """Linda — the hardcoded staff AI assistant.
+    """Linda — the staff AI assistant. Call :meth:`stream` to run one turn."""
 
-    Construct with optional overrides; call `.run(message, key=...)` to chat.
-    """
-
-    name = 'assistant'
-    label = 'Linda AI Assistant'
-    max_steps = 8
-
-    #: Scope profile — the union her built-in catalogue needs, and no more.
-    #: The Worker has always been scope-checked (`enforce_policy`); Linda was
-    #: not, so ANY registry tool a plugin contributed was callable by her
-    #: regardless of what it demanded. Holding an explicit set means a
-    #: contributed tool wanting `orders.write`/`rbac.*` is denied until it is
-    #: deliberately granted, while nothing in today's catalogue breaks.
-    scopes: list[str] = list(LINDA_SCOPES)
-
-    #: Token cap for one turn; 0 = unlimited (the guardrails convention). The
-    #: merchant-facing daily caps live in `core.agents.guardrails`.
-    token_budget: int = 0
-
-    def __init__(
-        self,
-        *,
-        provider=None,
-        tools=None,
-        store=None,
-        max_steps: int | None = None,
-        scopes: list[str] | None = None,
-        token_budget: int | None = None,
-    ) -> None:
-        self.provider = provider or get_default_provider()
-        self._provider_overridden = provider is not None
-        # Lazy-resolve tools the first time they're needed so a broken
-        # tool import doesn't take the Assistant down at construct time.
-        self._tools = tools
+    def __init__(self, *, store=None) -> None:
         self.store = store or get_default_store()
-        if max_steps is not None:
-            self.max_steps = max_steps
-        if scopes is not None:
-            self.scopes = list(scopes)
-        if token_budget is not None:
-            self.token_budget = token_budget
 
-    @property
-    def tools(self) -> list:
-        if self._tools is None:
-            from core.assistant.tools import get_default_tools
+    @staticmethod
+    def _mode(context):
+        """The EFFECTIVE mode for a turn, resolved server-side.
 
-            try:
-                self._tools = get_default_tools()
-            except Exception as e:  # noqa: BLE001
-                logger.warning('assistant: tool resolution failed: %s', e)
-                self._tools = []
-        return self._tools
-
-    def _janus_mode(self, context):
-        """Resolve the EFFECTIVE mode for a turn, server-side.
-
-        ``context['mode']`` is a client-supplied slug — a request, never a
-        grant (core audit S5/H1). The legacy loop resolves it and then filters
-        the tool catalogue by the mode's scopes; this mirrors the resolution so
-        the Janus path can decide whether it is allowed to run at all.
+        ``context['mode']`` is a client-supplied slug — a request, never a grant
+        (core audit S5/H1). The MCP edge re-resolves it on every tool call.
         """
         from core.assistant.modes import get_mode, resolve_mode
 
@@ -360,32 +178,6 @@ class Assistant:
         slug = str(ctx.get('mode') or '').strip().lower()
         user = ctx.get('user')
         return resolve_mode(slug, user) if user is not None else get_mode(slug)
-
-    def _should_use_janus(self, context=None) -> bool:
-        """Janus is the default store agent; tests that inject a provider stay legacy.
-
-        The engine runs out-of-process and reaches its tools over MCP. Each turn
-        carries a signed turn token (``core/assistant/turn_identity.py``), and the
-        MCP edge runs the same gate chain as ``_gate_reason`` — scope, consent,
-        mode filter, write audit — against the real staff user and conversation.
-        Tests force ``LINDA_ENGINE='legacy'``.
-        """
-        if self._provider_overridden:
-            return False
-        try:
-            from django.conf import settings
-
-            engine = str(getattr(settings, 'LINDA_ENGINE', 'janus') or 'janus').lower()
-        except Exception:  # noqa: BLE001
-            engine = 'janus'
-        if engine != 'janus':
-            return False
-        try:
-            from core.assistant.janus_engine import janus_available
-
-            return janus_available()
-        except Exception:  # noqa: BLE001
-            return False
 
     def _mint_turn_token(self, context, conversation_key: str) -> str:
         """A signed identity for this turn, or '' when there is no staff user.
@@ -404,144 +196,59 @@ class Assistant:
         return mint(
             user=user,
             conversation_key=conversation_key,
-            mode_slug=self._janus_mode(context).slug,
+            mode_slug=self._mode(context).slug,
             ttl_s=turn_timeout_s() + 30,
         )
 
-    def _stream_via_janus(
-        self, *, message: str, conversation_key: str, context, started: float, history=None
-    ):
-        """One turn on Janus; the merchant-facing name stays Linda."""
-        from core.assistant.janus_engine import run_janus_turn
-        from core.assistant.prompts import build_system_prompt
-
-        prefix_bits = []
-        if context and isinstance(context, dict):
+    def _system_prompt(self, *, message: str, context, history) -> str:
+        bits = []
+        if isinstance(context, dict):
             page_url = (context.get('page_url') or '')[:512]
             page_title = (context.get('page_title') or '')[:200]
             if page_url or page_title:
-                prefix_bits.append(
-                    f'The merchant opened Linda from: {page_title} {page_url}'.strip()
-                )
+                bits.append(f'The merchant opened Linda from: {page_title} {page_url}'.strip())
         # The RESOLVED mode, never the raw client slug.
         try:
-            prefix_bits.append(f'Active tool palette: {self._janus_mode(context).slug}')
+            bits.append(f'Active tool palette: {self._mode(context).slug}')
         except Exception:  # noqa: BLE001
             logger.debug('assistant: mode label unavailable', exc_info=True)
         # Morpheus owns the transcript; Janus keeps its own session state in a
-        # container-local file that every deploy wipes. Replay recent history
-        # into the prompt so continuity does not depend on that file surviving.
-        transcript = _format_janus_history(history or [])
-        if transcript:
-            prefix_bits.append(transcript)
-        mem = _format_recent_memories(message)
-        if mem:
-            prefix_bits.append(mem)
-        know = _format_knowledge(message)
-        if know:
-            prefix_bits.append(know)
+        # home that a redeploy wipes. Replay recent history into the prompt so
+        # continuity does not depend on that state surviving.
+        for part in (
+            _format_janus_history(history or []),
+            _format_recent_memories(message),
+            _format_knowledge(message),
+        ):
+            if part:
+                bits.append(part)
         system = build_system_prompt()
-        if prefix_bits:
-            system = system + '\n\n' + '\n'.join(prefix_bits)
-        system += (
+        if bits:
+            system = system + '\n\n' + '\n'.join(bits)
+        return system + (
             '\n\nIDENTITY: You are Linda. Janus is your engine, never your name. '
             'Do not mention Janus, Magnetoid, or the underlying agent framework '
             'unless the merchant asks how you work.'
         )
 
-        yield {'type': 'assistant_text', 'text': ''}
-        payload = run_janus_turn(
-            message=message,
-            conversation_key=conversation_key,
-            system_prompt=system,
-            context=context if isinstance(context, dict) else None,
-            turn_token=self._mint_turn_token(context, conversation_key),
-        )
-        duration = payload.get('duration_ms') or int((time.monotonic() - started) * 1000)
-        if payload.get('error'):
-            friendly = _friendly_provider_error(str(payload['error']))
-            self.store.append(
-                conversation_key=conversation_key,
-                message=StoredMessage(role='assistant', content=friendly),
-            )
-            # Same telemetry the legacy loop emits on a provider failure —
-            # without it the self-improvement loop never sees a Janus turn fail.
-            self._emit_failure_signal(
-                reason='janus_engine_error',
-                conversation_key=conversation_key,
-                detail=str(payload['error']),
-            )
-            yield {
-                'type': 'error',
-                'result': AssistantRunResult(
-                    text=friendly,
-                    state='failed',
-                    error=str(payload['error'])[:500],
-                    duration_ms=duration,
-                ),
-            }
-            return
-        text = payload.get('text') or ''
+    def _finish(self, *, conversation_key: str, text: str, started: float, error: str = ''):
+        """Store Linda's reply and build the closing event."""
         self.store.append(
             conversation_key=conversation_key,
             message=StoredMessage(role='assistant', content=text[:50_000]),
         )
-        yield {'type': 'assistant_text', 'text': text}
-        yield {
+        duration = int((time.monotonic() - started) * 1000)
+        if error:
+            result = AssistantRunResult(
+                text=text, state='failed', error=error[:500], duration_ms=duration
+            )
+            return {'type': 'error', 'result': result}
+        return {
             'type': 'final',
             'result': AssistantRunResult(text=text, state='completed', duration_ms=duration),
         }
 
-    def run(
-        self,
-        *,
-        message: str,
-        conversation_key: str,
-        context: dict[str, Any] | None = None,
-    ) -> AssistantRunResult:
-        """Run one user turn; persist the exchange; return the result.
-
-        Implemented as a thin consumer of :meth:`stream` so the JSON
-        endpoint keeps working without duplicating loop logic.
-        """
-        result = AssistantRunResult(text='', state='failed', error='no_events')
-        for event in self.stream(
-            message=message, conversation_key=conversation_key, context=context
-        ):
-            kind = event.get('type')
-            if kind == 'final' or kind == 'error':  # noqa: PLR1714
-                result = event['result']
-        return result
-
-    def _summarize_history(self, transcript: str) -> str:
-        """Provider-backed summarizer for context compaction. A terse, low-cost
-        call; on any failure `compact` falls back to truncation. Mirrors the
-        agent runtime's summarizer so Linda and agents compact the same way."""
-        try:
-            from core.agents.llm import LLMMessage
-
-            resp = self.provider.respond(
-                messages=[
-                    LLMMessage(
-                        role='system',
-                        content=(
-                            'Summarize the following assistant conversation in a few '
-                            'sentences. Preserve facts established, decisions made, and '
-                            'tasks still pending. Be concise.'
-                        ),
-                    ),
-                    LLMMessage(role='user', content=transcript[:12000]),
-                ],
-                tools=None,
-                temperature=0.0,
-                max_tokens=300,
-            )
-            return resp.text or ''
-        except Exception as e:  # noqa: BLE001 — compaction must never break a turn
-            logger.warning('assistant: history summarization failed: %s', e)
-            return ''
-
-    def stream(  # noqa: PLR0915, PLR0912
+    def stream(
         self,
         *,
         message: str,
@@ -551,32 +258,24 @@ class Assistant:
         """Generator that yields events as the turn progresses.
 
         Event types (each is a dict):
-          * ``{type: 'tool_call_started', name, arguments}``
-          * ``{type: 'tool_call_finished', name, output, error?}``
-          * ``{type: 'assistant_text', text}`` — interim assistant text
-            (per-step, not per-token; provider-side streaming arrives later).
+          * ``{type: 'assistant_text', text}``
           * ``{type: 'final', result: AssistantRunResult}``
           * ``{type: 'error', result: AssistantRunResult}``
         """
         started = time.monotonic()
         history = self.store.history(conversation_key=conversation_key, limit=30)
-        # Consent is spent only by a human message sent after the proposal, so a
-        # retry inside this turn can never be approved by this turn's own words.
-        human_message_at = time.time()
         self.store.append(
             conversation_key=conversation_key,
             message=StoredMessage(role='user', content=message[:50_000]),
         )
 
-        # Merchant kill switch — Linda is a chat surface, so a paused agent
-        # layer declines gracefully (never a stack trace). A deliberate pause is
-        # not an outage, so no _emit_failure_signal. Config is read cross-process
-        # fresh (see core.agents.guardrails); default is NOT paused.
+        # Merchant kill switch and daily caps — a deliberate limit, not an outage,
+        # so no failure signal. Config is read cross-process fresh (see
+        # core.agents.guardrails); default is NOT paused. The caps count the
+        # Worker's AgentRun rows, so a Linda turn does not itself add to the
+        # tally; it is still refused once the store is over the limit.
         from core.agents.guardrails import agents_paused, run_start_block_reason
 
-        # Daily run/spend caps from Agent guardrails. They count the Worker's
-        # AgentRun rows, so a Linda turn does not itself add to the tally; it is
-        # still refused once the store has hit the limit the merchant set.
         paused = agents_paused()
         cap_reason = None if paused else run_start_block_reason()
         if paused or cap_reason:
@@ -585,276 +284,46 @@ class Assistant:
                 if cap_reason is None
                 else "The assistant has reached today's limit set in Agent guardrails."
             )
-            self.store.append(
-                conversation_key=conversation_key,
-                message=StoredMessage(role='assistant', content=friendly),
-            )
-            yield {
-                'type': 'final',
-                'result': AssistantRunResult(
-                    text=friendly,
-                    state='completed',
-                    duration_ms=int((time.monotonic() - started) * 1000),
-                ),
-            }
+            yield self._finish(conversation_key=conversation_key, text=friendly, started=started)
             return
 
-        # NOTE: a Janus turn reports no token counts (the subprocess returns text
-        # on stdout, not usage), so its own spend never reaches `spend_cap_daily`.
-        # The caps checked above still stop new turns once the store is over them.
-        if self._should_use_janus(context):
-            yield from self._stream_via_janus(
-                message=message,
+        from core.assistant.janus_engine import janus_available, run_janus_turn
+
+        if not janus_available():
+            self._emit_failure_signal(reason='janus_unavailable', conversation_key=conversation_key)
+            yield self._finish(
                 conversation_key=conversation_key,
-                context=context,
+                text="Linda's engine isn't installed on this server, so she can't answer yet.",
                 started=started,
-                history=history,
+                error='janus_unavailable',
             )
             return
 
-        msgs = _to_llm_messages(history, message, context=context)
-        # Tool-palette scoping (core/assistant/modes.py). The merchant
-        # picks a mode per conversation from the chat header chip; it
-        # arrives in `context['mode']`. Filter Linda's tool catalogue
-        # by the mode's scope whitelist BEFORE passing it to the LLM,
-        # so she can't pick a refund tool during a "sales" convo.
-        # Unknown / missing mode → general (wildcard) — full access.
-        from core.assistant.modes import filter_tools_by_mode, get_mode, resolve_mode
-
-        mode_slug = ''
-        user = None
-        if context and isinstance(context, dict):
-            mode_slug = str(context.get('mode') or '').strip().lower()
-            user = context.get('user')
-        # A real client request always carries the acting user (the assistant
-        # views set request.user) → resolve the EFFECTIVE mode server-side: the
-        # client slug is a request, never a grant, so a non-engineer can't select
-        # `dev` (diagnostics) and an unknown slug can't escalate to the wildcard
-        # (core audit S5/H1). No acting user = a trusted internal/system call →
-        # honour the requested mode.
-        active_mode = resolve_mode(mode_slug, user) if user is not None else get_mode(mode_slug)
-        tools = filter_tools_by_mode(self.tools, active_mode.slug)
-        # Both spellings: canonical dotted name + provider-safe api_name
-        # (dots→__) — models echo back the api_name from the tool schema.
-        tools_by_name = {t.name: t for t in tools}
-        tools_by_name.update({t.api_name: t for t in tools})
-        logger.info(
-            'assistant: mode=%s tool_count=%d/%d conversation=%s',
-            active_mode.slug,
-            len(tools),
-            len(self.tools),
-            conversation_key,
-        )
-
-        prompt_tokens = 0
-        completion_tokens = 0
-        tool_calls = 0
-        consecutive_tool_errors = 0  # Phase 1b: trip a replan nudge at 2 in a row
-
-        for _step in range(max(1, self.max_steps)):
-            # Context compaction — keep `msgs` under a soft token budget by
-            # summarizing the oldest turns (tool outputs accumulate across steps
-            # within a turn, and history is only count-capped, not token-capped).
-            # No-op for short conversations.
-            msgs = _compact(msgs, self._summarize_history)
-
-            resp = None
-            err: str = ''
-            for attempt in (0, 1):  # one retry for transient errors
-                try:
-                    resp = self.provider.respond(
-                        messages=msgs,
-                        tools=tools or None,
-                        temperature=0.2,
-                        max_tokens=1500,
-                    )
-                    err = ''
-                    break
-                except Exception as e:  # noqa: BLE001
-                    err = str(e)
-                    logger.warning(
-                        'assistant: provider attempt %d failed: %s',
-                        attempt + 1,
-                        err,
-                    )
-                    if attempt == 0 and _is_retriable(err):
-                        time.sleep(1.0)
-                        continue
-                    break
-
-            if resp is None:
-                friendly = _friendly_provider_error(err)
-                self.store.append(
-                    conversation_key=conversation_key,
-                    message=StoredMessage(role='assistant', content=friendly),
-                )
-                self._emit_failure_signal(
-                    reason='provider_error', conversation_key=conversation_key, detail=err
-                )
-                yield {
-                    'type': 'error',
-                    'result': AssistantRunResult(
-                        text=friendly,
-                        state='failed',
-                        error=err,
-                        prompt_tokens=prompt_tokens,
-                        completion_tokens=completion_tokens,
-                        tool_call_count=tool_calls,
-                        duration_ms=int((time.monotonic() - started) * 1000),
-                    ),
-                }
-                return
-
-            prompt_tokens += getattr(resp, 'prompt_tokens', 0) or 0
-            completion_tokens += getattr(resp, 'completion_tokens', 0) or 0
-
-            # A degraded sentinel is an outage marker, not an answer. The
-            # breaker/fallback-router return it as response TEXT (so agent
-            # transcripts stay consistent), which means it arrives here
-            # looking like a normal completion — without this check the raw
-            # "[All AI providers degraded. Last error: …]" string (stack
-            # trace included) ships straight into the chat. Route it through
-            # the same friendly-error path as a raised provider exception.
-            try:
-                from core.agents.llm import is_degraded_response
-            except Exception:  # noqa: BLE001 — kernel import must never break Linda
-                is_degraded_response = lambda _t: False  # noqa: E731
-            if is_degraded_response(getattr(resp, 'text', '')):
-                friendly = _friendly_provider_error(resp.text)
-                self.store.append(
-                    conversation_key=conversation_key,
-                    message=StoredMessage(role='assistant', content=friendly),
-                )
-                self._emit_failure_signal(
-                    reason='provider_degraded',
-                    conversation_key=conversation_key,
-                    detail=resp.text[:500],
-                )
-                yield {
-                    'type': 'error',
-                    'result': AssistantRunResult(
-                        text=friendly,
-                        state='failed',
-                        error=resp.text[:500],
-                        prompt_tokens=prompt_tokens,
-                        completion_tokens=completion_tokens,
-                        tool_call_count=tool_calls,
-                        duration_ms=int((time.monotonic() - started) * 1000),
-                    ),
-                }
-                return
-
-            if not getattr(resp, 'tool_calls', None):
-                final = resp.text or ''
-                self.store.append(
-                    conversation_key=conversation_key,
-                    message=StoredMessage(
-                        role='assistant',
-                        content=final[:50_000],
-                        prompt_tokens=prompt_tokens,
-                        completion_tokens=completion_tokens,
-                        model=getattr(resp, 'model', '') or '',
-                    ),
-                )
-                yield {
-                    'type': 'final',
-                    'result': AssistantRunResult(
-                        text=final,
-                        state='completed',
-                        prompt_tokens=prompt_tokens,
-                        completion_tokens=completion_tokens,
-                        tool_call_count=tool_calls,
-                        duration_ms=int((time.monotonic() - started) * 1000),
-                    ),
-                }
-                return
-
-            # Interim assistant text (when a model says something before its
-            # tool call — pre-tool reasoning).
-            if (resp.text or '').strip():
-                yield {'type': 'assistant_text', 'text': resp.text}
-
-            # Append the assistant turn (tool-calling), then dispatch each tool.
-            try:
-                from core.agents.llm import LLMMessage
-            except Exception:  # noqa: BLE001 — already handled above
-                LLMMessage = type(msgs[0])
-            msgs.append(
-                LLMMessage(
-                    role='assistant',
-                    content=resp.text or '',
-                    tool_calls=resp.tool_calls,
-                )
-            )
-            for tc in resp.tool_calls:
-                tool_calls += 1
-                tc_name = getattr(tc, 'name', '') or (
-                    tc.get('name') if isinstance(tc, dict) else ''
-                )
-                tc_args = getattr(tc, 'arguments', None) or (
-                    tc.get('arguments') if isinstance(tc, dict) else {}
-                )
-                yield {
-                    'type': 'tool_call_started',
-                    'name': tc_name,
-                    'arguments': tc_args or {},
-                }
-                tool_output, tool_error = self._dispatch_tool(
-                    tc=tc,
-                    tools_by_name=tools_by_name,
-                    msgs=msgs,
-                    conversation_key=conversation_key,
-                    context=context,
-                    human_message=message,
-                    human_message_at=human_message_at,
-                    spent_tokens=prompt_tokens + completion_tokens,
-                )
-                yield {
-                    'type': 'tool_call_finished',
-                    'name': tc_name,
-                    'output': tool_output,
-                    'error': tool_error,
-                }
-                # Phase 1b: if tools keep failing, nudge the model to step back and
-                # replan instead of grinding through identical retries to max_steps.
-                if tool_error:
-                    consecutive_tool_errors += 1
-                    if consecutive_tool_errors >= 2:
-                        from core.agents.llm import LLMMessage as _ReplanMsg
-
-                        msgs.append(
-                            _ReplanMsg(
-                                role='system',
-                                content=(
-                                    'Two tool calls failed in a row. Stop and restate the '
-                                    'goal in one sentence, then choose a DIFFERENT tool or '
-                                    'approach — or ask the user for the missing detail '
-                                    'rather than retrying the same call.'
-                                ),
-                            )
-                        )
-                        consecutive_tool_errors = 0
-                else:
-                    consecutive_tool_errors = 0
-
-        # Loop exhausted.
-        self.store.append(
+        yield {'type': 'assistant_text', 'text': ''}
+        # A Janus turn reports no token usage (the subprocess returns text on
+        # stdout), so its own spend never reaches `spend_cap_daily`.
+        payload = run_janus_turn(
+            message=message,
             conversation_key=conversation_key,
-            message=StoredMessage(role='assistant', content='(stopped: max steps)'),
+            system_prompt=self._system_prompt(message=message, context=context, history=history),
+            context=context if isinstance(context, dict) else None,
+            turn_token=self._mint_turn_token(context, conversation_key),
         )
-        self._emit_failure_signal(reason='max_steps_exceeded', conversation_key=conversation_key)
-        yield {
-            'type': 'error',
-            'result': AssistantRunResult(
-                text='',
-                state='failed',
-                error='max_steps_exceeded',
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                tool_call_count=tool_calls,
-                duration_ms=int((time.monotonic() - started) * 1000),
-            ),
-        }
+        if payload.get('error'):
+            error = str(payload['error'])
+            self._emit_failure_signal(
+                reason='janus_engine_error', conversation_key=conversation_key, detail=error
+            )
+            yield self._finish(
+                conversation_key=conversation_key,
+                text=_friendly_provider_error(error),
+                started=started,
+                error=error,
+            )
+            return
+        text = payload.get('text') or ''
+        yield {'type': 'assistant_text', 'text': text}
+        yield self._finish(conversation_key=conversation_key, text=text, started=started)
 
     def _emit_failure_signal(self, *, reason, conversation_key, detail=''):
         """Phase 1d: record a Linda failure as a self-improvement signal so the
@@ -875,220 +344,3 @@ class Assistant:
             )
         except Exception:  # noqa: BLE001 — telemetry is best-effort
             logger.debug('assistant: failure-signal emit skipped', exc_info=True)
-
-    def _repair_tool_args(self, tool, args, err):
-        """One bounded LLM re-ask to correct malformed tool arguments — returns a
-        corrected args dict, or None if repair fails (Phase 1b self-correction).
-
-        A TypeError means the model sent wrong/missing kwargs; rather than just
-        echoing the raw Python error back, give it the tool's JSON schema and the
-        error and let it fix the arguments before we surface a failure.
-        """
-        try:
-            from core.agents.llm import LLMMessage
-            from core.llm_parsing import parse_llm_json
-
-            schema = getattr(tool, 'schema', {}) or {}
-            resp = self.provider.respond(
-                messages=[
-                    LLMMessage(
-                        role='user',
-                        content=(
-                            f'The arguments for tool `{getattr(tool, "name", "")}` were '
-                            f'invalid: {err}\nJSON schema: {json.dumps(schema)}\n'
-                            f'You sent: {json.dumps(args, default=str)}\n'
-                            'Reply with ONLY the corrected JSON arguments object, no prose.'
-                        ),
-                    )
-                ],
-                temperature=0.0,
-                max_tokens=400,
-            )
-            parsed = parse_llm_json(getattr(resp, 'text', '') or '')
-            return parsed if isinstance(parsed, dict) else None
-        except Exception:  # noqa: BLE001 — repair is best-effort, never fatal
-            return None
-
-    def _gate_reason(
-        self,
-        *,
-        tool,
-        tool_name,
-        args,
-        context,
-        conversation_key,
-        human_message,
-        spent_tokens,
-        human_message_at: float | None = None,
-    ) -> str | None:
-        """Return a refusal reason, or ``None`` to let the call through.
-
-        The chain lives in :mod:`core.assistant.gates` so the MCP edge runs the
-        identical code for a Janus turn.
-        """
-        return gates.gate_reason(
-            tool=tool,
-            tool_name=tool_name,
-            args=args,
-            scopes=self.scopes,
-            context=context,
-            conversation_key=conversation_key,
-            human_message=human_message,
-            spent_tokens=spent_tokens,
-            token_budget=self.token_budget,
-            human_message_at=human_message_at,
-        )
-
-    def _dispatch_tool(
-        self,
-        *,
-        tc,
-        tools_by_name,
-        msgs,
-        conversation_key,
-        context,
-        human_message: str = '',
-        spent_tokens: int = 0,
-        human_message_at: float | None = None,
-    ):
-        """Invoke a single tool call, persist the result, append to LLM context.
-        Returns ``(output, error_message)`` so :meth:`stream` can echo the
-        outcome out to the SSE client.
-
-        Guarded by the same enforcement stack as the Worker
-        (:class:`core.agents.runtime.AgentRuntime`) — scope, budget, deadline,
-        approval. Linda ran ungated until now: her only write-path handling was
-        the POST-HOC audit below, and her dangerous tools trusted an
-        LLM-supplied ``confirmed=True`` argument that injected content could
-        induce. See :mod:`core.assistant.consent`.
-        """
-        tool_name = getattr(tc, 'name', '')
-        args = getattr(tc, 'arguments', {}) or {}
-        tool = tools_by_name.get(tool_name)
-        try:
-            from core.agents.llm import LLMMessage
-        except Exception:  # noqa: BLE001
-            LLMMessage = type(msgs[0])
-
-        def _refuse(reason: str):
-            """Hand a refusal back to the model as a tool result (never an
-            exception): the LLM can explain it or pick another path, and the
-            transcript records why."""
-            payload = {'error': reason}
-            msgs.append(
-                LLMMessage(
-                    role='tool',
-                    tool_call_id=getattr(tc, 'id', ''),
-                    name=tool_name,
-                    content=json.dumps(payload),
-                )
-            )
-            self.store.append(
-                conversation_key=conversation_key,
-                message=StoredMessage(
-                    role='tool', tool_name=tool_name, tool_args=args, tool_output=payload
-                ),
-            )
-            return payload, reason
-
-        if tool is None:
-            return _refuse(f'unknown tool: {tool_name}')
-
-        gate = self._gate_reason(
-            tool=tool,
-            tool_name=tool_name,
-            args=args,
-            context=context,
-            conversation_key=conversation_key,
-            human_message=human_message,
-            spent_tokens=spent_tokens,
-            human_message_at=human_message_at,
-        )
-        if gate:
-            # Audit the ATTEMPT. A refused write is more interesting to a
-            # merchant auditing "what did the AI try to change?" than a
-            # successful one — without this, a blocked injection leaves no
-            # trace outside the transcript.
-            self._audit_write_tool(
-                tool=tool,
-                args=args,
-                payload={'refused': gate},
-                error_msg=gate,
-                conversation_key=conversation_key,
-                context=context,
-            )
-            return _refuse(gate)
-
-        error_msg = ''
-        try:
-            result = tool.invoke(args, agent=self, context=context or {})
-            output = result.output if hasattr(result, 'output') else result
-        except Exception as e:  # noqa: BLE001 — never let a tool failure kill the run
-            # Tool.invoke wraps a bad-arguments TypeError as ToolError("TypeError:
-            # ... argument ..."). On that specific case, make ONE bounded LLM repair
-            # attempt before surfacing the error (Phase 1b self-correction).
-            # Intentional validation ToolErrors ("query required") pass straight
-            # through to the model via the error result, as before.
-            msg = str(e)
-            repaired = False
-            if 'TypeError' in msg and 'argument' in msg:
-                fixed = self._repair_tool_args(tool, args, e)
-                if isinstance(fixed, dict) and fixed != args:
-                    try:
-                        result = tool.invoke(fixed, agent=self, context=context or {})
-                        output = result.output if hasattr(result, 'output') else result
-                        args = fixed
-                        repaired = True
-                    except Exception:  # noqa: BLE001 — repair failed; fall through
-                        repaired = False
-            if not repaired:
-                output = {'error': f'{type(e).__name__}: {e}'}
-                error_msg = output['error']
-        payload = output if isinstance(output, (dict, list, str, int, float, bool)) else str(output)
-        msgs.append(
-            LLMMessage(
-                role='tool',
-                tool_call_id=getattr(tc, 'id', ''),
-                name=tool_name,
-                content=json.dumps(payload, default=str)[:8000],
-            )
-        )
-        self.store.append(
-            conversation_key=conversation_key,
-            message=StoredMessage(
-                role='tool', tool_name=tool_name, tool_args=args, tool_output=payload
-            ),
-        )
-        self._audit_write_tool(
-            tool=tool,
-            args=args,
-            payload=payload,
-            error_msg=error_msg,
-            conversation_key=conversation_key,
-            context=context,
-        )
-        return payload, error_msg
-
-    def _audit_write_tool(
-        self, *, tool, args, payload, error_msg, conversation_key, context
-    ) -> None:
-        """Record write-tool invocations to core.audit (see :mod:`core.assistant.gates`)."""
-        gates.audit_write_tool(
-            tool=tool,
-            args=args,
-            payload=payload,
-            error_msg=error_msg,
-            conversation_key=conversation_key,
-            user=(context or {}).get('user'),
-        )
-
-
-def run_assistant(
-    *, message: str, conversation_key: str = 'default', context: dict[str, Any] | None = None
-) -> AssistantRunResult:
-    """Module-level convenience: run a single turn against the default Assistant."""
-    return Assistant().run(
-        message=message,
-        conversation_key=conversation_key,
-        context=context,
-    )

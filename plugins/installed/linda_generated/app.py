@@ -1,9 +1,11 @@
 """Linda Generated — landing zone for Linda's gated, self-authored tools.
 
-Code arrives here ONLY via the apply pipeline (core/assistant/apply.py, ADR 0014):
+Code arrived here ONLY via the apply pipeline (core/assistant/apply.py, ADR 0014):
 owner-approved → statically scanned → written to a selfdev/* branch → reviewed →
-merged → deployed. The plugin owns this directory so the disable test holds:
-toggle it off and every tool Linda generated disappears.
+merged → deployed. That pipeline was removed in v0.65.0, when Janus replaced
+Linda's in-process engine, so nothing adds tools here any more; the app still
+loads any already merged. The plugin owns this directory so the disable test
+holds: toggle it off and every tool Linda generated disappears.
 """
 
 from __future__ import annotations

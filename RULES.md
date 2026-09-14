@@ -18,7 +18,7 @@ Morpheus wins by being infinitely scalable, horizontally extensible via a rigoro
 - Can an agent call this via a single GraphQL operation?
 - Is the response fully structured and machine-parseable?
 - Does the GraphQL schema have `descriptions` on every type and argument? (This acts as the agent's prompt/documentation).
-- We maintain `core/schema_introspector.py` to auto-generate OpenAPI and MCP manifests directly from the live GraphQL schema.
+- Agents reach the store through the MCP servers in the `agent_mcp` app (`/mcp/*/v1/`) and the GraphQL schema; see `docs/MCP_SERVER.md`.
 
 ### LAW 1 — Everything Is a Plugin
 **The core contains nothing but the engine. All commerce logic is a plugin.**

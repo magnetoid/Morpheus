@@ -34,17 +34,6 @@ def _run(agent_name='w', **kw):
     return AgentRun.objects.create(agent_name=agent_name, user_message='x', **kw)
 
 
-class _NoProvider:
-    """A provider that fails loudly if it is ever asked to respond — proves the
-    kill switch short-circuits before any model call."""
-
-    name = 'noprov'
-    model = 'noprov-1'
-
-    def respond(self, **_kw):
-        raise AssertionError('provider called while agents are paused')
-
-
 class GuardrailConfigTests(TestCase):
     def test_all_off_by_default(self):
         self.assertFalse(guardrails.agents_paused())
@@ -139,12 +128,17 @@ class KillSwitchRuntimeTests(TestCase):
 class KillSwitchLindaTests(TestCase):
     def test_linda_declines_gracefully_when_paused(self):
         _set_guardrail(agents_paused=True)
+        from unittest import mock
+
         from core.assistant.runtime import Assistant
 
-        res = Assistant(provider=_NoProvider(), tools=[]).run(
-            message='hi', conversation_key='t:paused'
-        )
+        with mock.patch(
+            'core.assistant.janus_engine.run_janus_turn',
+            side_effect=AssertionError('engine started while agents are paused'),
+        ):
+            events = list(Assistant().stream(message='hi', conversation_key='t:paused'))
+        res = events[-1]['result']
         # Graceful decline — a completed turn with a friendly line, never a
-        # failure (a deliberate pause is not an outage) and never a provider call.
+        # failure (a deliberate pause is not an outage) and never an engine run.
         self.assertEqual(res.state, 'completed')
         self.assertIn('paused', res.text.lower())

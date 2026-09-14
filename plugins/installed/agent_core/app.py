@@ -290,20 +290,6 @@ class AgentCorePlugin(Plugin):
                 nav='main',
                 url='/dashboard/apps/agent_core/compliance/',
             ),
-            # Self-development: the owner window over Linda's draft→scan→
-            # consensus→apply loop. Surfaced (nav='main') so the owner can
-            # find proposals; the dangerous apply path stays behind the
-            # MORPHEUS_SELF_UPDATE_ENABLED env switch regardless.
-            DashboardPage(
-                label='Self-development',
-                slug='selfdev',
-                view='plugins.installed.agent_core.views.selfdev_list_view',
-                icon='git-branch',
-                section='ai',
-                order=50,
-                nav='main',
-                url='/dashboard/agents/selfdev/',
-            ),
             # Linda memory editor: the owner curates the cross-session facts
             # Linda reads at the top of every turn. Read = staff; edits =
             # superuser (they shape Linda's behaviour).

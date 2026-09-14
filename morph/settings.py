@@ -654,17 +654,10 @@ ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 OLLAMA_BASE_URL = config('OLLAMA_BASE_URL', default='http://localhost:11434')
 AI_EMBEDDING_MODEL = config('AI_EMBEDDING_MODEL', default='text-embedding-3-small')
 
-# Store agent: Janus (magnetoid/janus) is the agent + engine. Linda is brand.
-# 'janus' runs the subprocess; 'legacy' is the in-process Django loop (fallback
-# when the binary is missing, tests, or a restricted mode chip).
-#
-# Default is 'janus'. A Janus turn reaches tools over MCP, so it does not pass
-# through in-process runtime.py gates (scope → budget → deadline → kernel
-# consent) or the write audit. MCP checks a standing token's scopes — not
-# per-action human consent. Restricted modes (sales/support/ops) still fall
-# back to the legacy loop. YOLO stays off unless LINDA_JANUS_AUTO_APPROVE.
-# See core/assistant/janus_engine.py.
-LINDA_ENGINE = config('LINDA_ENGINE', default='janus')
+# Store agent: Janus (magnetoid/janus) is the only engine. Linda is the brand.
+# Janus runs as a subprocess per turn and reaches the store's tools over MCP,
+# where core/assistant/gates.py enforces scope, mode, human consent and write
+# audit for each call (see core/assistant/janus_engine.py, turn_identity.py).
 JANUS_BIN = config('JANUS_BIN', default='')
 JANUS_ENGINE_ROOT = config('JANUS_ENGINE_ROOT', default='')
 # Auto-approve every tool call the Janus subprocess makes (its "yolo" mode).
@@ -692,7 +685,9 @@ if _RUNNING_TESTS:
     AI_PROVIDER = ''
     OPENAI_API_KEY = ''
     ANTHROPIC_API_KEY = ''
-    LINDA_ENGINE = 'legacy'
+    # No test may spawn a real Janus (a model call). A missing binary makes every
+    # unmocked turn a reported spawn failure; tests that need a turn mock it.
+    JANUS_BIN = '/nonexistent/janus-disabled-under-tests'
 
 # ── Email ──────────────────────────────────────────────────────────────────────
 # Always use the Morpheus Custom backend so admins can configure via dashboard

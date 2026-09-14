@@ -187,7 +187,6 @@
       <div class="font-medium text-sm mb-2">Engine recommendations <span class="text-[color:var(--text-muted)]">({{ code.rec_total|default:0 }})</span></div>
       {% if code.recommendations %}<ul class="space-y-2 text-sm">{% for r in code.recommendations %}<li><div class="flex items-center justify-between gap-2"><span>{{ r.title }} <code class="text-xs text-[color:var(--text-muted)]">{{ r.class_name }}</code></span><span class="pill pill-info text-xs">impact {{ r.impact }}</span></div>{% if r.rationale %}<div class="text-xs text-[color:var(--text-muted)]">{{ r.rationale }}</div>{% endif %}</li>{% endfor %}</ul>{% else %}<div class="text-sm text-[color:var(--text-muted)]">No open recommendations{% if code.drift_count %} · {{ code.drift_count }} tracked customization{{ code.drift_count|pluralize }}{% endif %}.</div>{% endif %}
     </div>
-    {% if code.proposals %}<div class="card card-padded"><div class="font-medium text-sm mb-2">Linda code proposals</div><ul class="space-y-1 text-sm">{% for p in code.proposals %}<li class="flex justify-between gap-2"><span>{{ p.name }}</span>{% if p.passed %}<span class="pill pill-success text-xs">scan ok</span>{% else %}<span class="pill pill-warn text-xs">{{ p.findings }} finding{{ p.findings|pluralize }}</span>{% endif %}</li>{% endfor %}</ul></div>{% endif %}
   </section>
 
   {# ── Errors ──────────────────────────────────────────────────────── #}

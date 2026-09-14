@@ -1,6 +1,7 @@
 """Landing zone for Linda's gated, self-authored tool modules (ADR 0014, Phase 4).
 
-A module arrives here ONLY through the apply engine (core/assistant/apply.py):
+A module arrived here ONLY through the apply engine (core/assistant/apply.py,
+removed in v0.65.0):
 owner-approved → scanned → written to a selfdev/* branch → reviewed → merged →
 deployed. ``load_generated_tools()`` imports every module here on boot so its
 ``@tool`` decorator runs. Wiring the registered tools into Linda's catalog is

@@ -8,7 +8,7 @@ merchant off the page they're on without consent).
 
 This is the architectural complement to the floating widget on every
 Ops Console page: chat → page navigation, page context already flows
-back into chat (see runtime._page_context_system). The two surfaces
+back into chat (see Assistant._system_prompt). The two surfaces
 are now bridged in both directions.
 
 Examples Linda should reach for:

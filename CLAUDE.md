@@ -713,7 +713,7 @@ ai_assistant via `register_urls` — `home.py` imports no sibling plugin.
 `plugins.installed.*`):** *fixed* — `core/emails` (cms's EmailTemplate
 arrives via the `EMAIL_TEMPLATE_OVERRIDE` filter; site base URL moved to
 `core/utils/site.py`), and the provider-config coupling
-(`core/agents/llm.py` + `core/assistant/consensus.py` resolve through
+(`core/agents/llm.py` resolves through
 `core/agents/provider_registry.py`; ai_assistant's `ready()` registers the
 dashboard-aware resolver); `core/brain/signals.py` (the Brain aggregator no
 longer imports seo/catalog/ai_assistant/morpheus_brain — each plugin pushes its
