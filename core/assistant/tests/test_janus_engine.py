@@ -144,6 +144,40 @@ class ConfigTests(SimpleTestCase):
         self.assertIn('morpheus_admin', body)
 
 
+class JanusHomeTests(SimpleTestCase):
+    """v0.63.0 put homes under BASE_DIR. In the image /app is root-owned, so every
+    real turn raised PermissionError until v0.64.1 — invisible to tests that
+    patched the home to a temp dir."""
+
+    @override_settings(LINDA_JANUS_HOME='')
+    def test_default_home_is_private_and_outside_the_app_tree(self):
+        from django.conf import settings
+
+        with (
+            TemporaryDirectory() as tmp,
+            mock.patch.object(eng.tempfile, 'gettempdir', return_value=tmp),
+        ):
+            home = eng.linda_janus_home()
+            self.assertEqual(home, Path(tmp) / 'linda-janus')
+            self.assertEqual(home.stat().st_mode & 0o777, 0o700)
+        self.assertFalse(str(home).startswith(str(settings.BASE_DIR)))
+
+    def test_configured_home_is_used(self):
+        with TemporaryDirectory() as tmp, override_settings(LINDA_JANUS_HOME=f'{tmp}/volume'):
+            self.assertEqual(eng.linda_janus_home(), Path(tmp) / 'volume')
+
+    def test_unwritable_home_is_a_reported_failure_not_a_crash(self):
+        with (
+            mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
+            mock.patch.object(
+                eng, 'linda_janus_home', side_effect=PermissionError('/app/.linda-janus')
+            ),
+        ):
+            out = run_janus_turn(message='hi', conversation_key='c', system_prompt='p')
+        self.assertIn('janus home unavailable', out['error'])
+        self.assertEqual(out['text'], '')
+
+
 class ChildEnvTests(SimpleTestCase):
     """The subprocess runs its own tool loop; it gets an allowlist, never the
     parent's environment."""
@@ -300,6 +334,22 @@ class TurnInvocationTests(SimpleTestCase):
         cwd = spawn.call_args.kwargs['cwd']
         self.assertTrue(cwd.startswith(str(self.home)))
         self.assertNotIn('janus-agent', cwd)
+
+    def test_home_env_points_at_the_conversation_home(self):
+        # The inherited HOME (/app in the image) is not writable.
+        with (
+            mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
+            mock.patch.object(eng, 'linda_janus_home', return_value=self.home),
+            mock.patch.object(eng.subprocess, 'run', return_value=_FakeProc(stdout='ok')) as spawn,
+        ):
+            run_janus_turn(message='hi', conversation_key='conv-1', system_prompt='p')
+        env = spawn.call_args.kwargs['env']
+        self.assertEqual(env['HOME'], env['JANUS_HOME'])
+        self.assertTrue(env['HOME'].startswith(str(self.home)))
+
+    def test_tool_iterations_fit_the_turn_timeout(self):
+        self.assertIn(f'max_turns: {eng.MAX_TOOL_TURNS}', eng._config_text('https://s/mcp/'))
+        self.assertLessEqual(eng.MAX_TOOL_TURNS, 10)
 
     def test_quiet_mode_is_used(self):
         _, calls = self._turn(_FakeProc(stdout='ok'))

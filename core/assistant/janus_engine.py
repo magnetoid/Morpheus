@@ -36,6 +36,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -60,6 +61,12 @@ _DEFAULT_TIMEOUT_S = 55
 # skills into the prompt.
 MCP_SERVER_NAME = 'morpheus_admin'
 TURN_TOOLSETS = (MCP_SERVER_NAME, 'skills')
+
+# Tool-calling iterations per message. Janus defaults to 90, but a turn must end
+# inside the 55s timeout and each iteration measured ~7s on prod (DeepSeek plus
+# an MCP call), so a curious model explored seven tools and timed out without
+# answering. 8 matches the in-process loop's ``max_steps``.
+MAX_TOOL_TURNS = 8
 
 # Janus prints ``session_id: <id>`` to stderr in quiet mode. Stored per
 # conversation and passed back with ``--resume``: a bare ``--continue`` looks up
@@ -175,9 +182,24 @@ def turn_timeout_s() -> int:
 
 
 def linda_janus_home() -> Path:
+    """Where conversation homes live: ``LINDA_JANUS_HOME``, else a private temp dir.
+
+    Never under the app tree: in the production image ``/app`` is owned by root
+    and not writable by the app user, so ``BASE_DIR/.linda-janus`` raised
+    PermissionError on every real turn from v0.63.0 to v0.64.1. And never under
+    ``/app/media`` — the one writable mount — because media is publicly served and
+    each home holds the conversation's ``state.db``. The temp dir is wiped on
+    redeploy, like the old location; a persistent volume is set through the
+    setting.
+    """
     s = _settings()
-    home = (Path(s.BASE_DIR) if s is not None else Path.home()) / '.linda-janus'
-    home.mkdir(parents=True, exist_ok=True)
+    configured = (getattr(s, 'LINDA_JANUS_HOME', '') if s else '') or os.environ.get(
+        'LINDA_JANUS_HOME', ''
+    )
+    home = (
+        Path(configured).expanduser() if configured else Path(tempfile.gettempdir()) / 'linda-janus'
+    )
+    home.mkdir(mode=0o700, parents=True, exist_ok=True)
     return home
 
 
@@ -264,7 +286,7 @@ security:
 model:
   default: {os.environ.get('JANUS_INFERENCE_MODEL') or 'auto'}
 agent:
-  max_turns: 90
+  max_turns: {MAX_TOOL_TURNS}
 {mcp_block}{skills_block}
 """
 
@@ -418,10 +440,14 @@ def run_janus_turn(
 
     timeout = turn_timeout_s() if timeout_s is None else max(5, int(timeout_s))
     started = time.monotonic()
-    home = linda_janus_home()
-    sid = _session_id(conversation_key)
-    conv_home = home / 'conv' / sid
-    conv_home.mkdir(parents=True, exist_ok=True)
+    try:
+        conv_home = linda_janus_home() / 'conv' / _session_id(conversation_key)
+        conv_home.mkdir(mode=0o700, parents=True, exist_ok=True)
+    except OSError as e:
+        # Reported like any engine failure, so the merchant gets the friendly
+        # error and the self-improvement loop gets a signal, not a stack trace.
+        logger.warning('janus engine home unavailable: %s', e)
+        return {'text': '', 'error': f'janus home unavailable: {e}', 'duration_ms': 0}
     mcp_url, mcp_headers = _mcp_endpoint(context)
     _ensure_config(conv_home, mcp_url=mcp_url, mcp_headers=mcp_headers)
 
@@ -431,6 +457,9 @@ def run_janus_turn(
             **provider_env,
             TURN_TOKEN_ENV: turn_token,
             'JANUS_HOME': str(conv_home),
+            # The inherited HOME (/app in the image) is not writable, and anything
+            # that caches under ~ should land in this conversation's private home.
+            'HOME': str(conv_home),
             'JANUS_EPHEMERAL_SYSTEM_PROMPT': system_prompt[:80_000],
             # The dashboard already collected the merchant's message, so there is
             # no TTY to prompt on. That is a reason not to STALL, not a reason to

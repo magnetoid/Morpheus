@@ -66,6 +66,22 @@ Verified live on v0.63.1 (2026-09-14): MCP client present; provider pinned to
 `deepseek` / `deepseek-v4-pro`; a two-turn smoke recalled context through
 `--resume`; 5–7s per turn.
 
+## v0.64.1 hotfix (found verifying v0.64.0 live, 2026-09-14)
+
+Every real Janus turn since v0.63.0 raised PermissionError: homes lived under
+`/app/.linda-janus` and `/app` is root-owned in the image. Earlier prod smokes
+patched the home, so they never exercised it. With a writable home, v0.64.0 was
+verified live: a read turn called `products.search` through the MCP edge with a
+turn token and answered in 16s. A consent probe ("activate the dot_books theme")
+explored seven tools and hit the 55s timeout before calling `theme.activate`.
+Fix: `LINDA_JANUS_HOME` / private temp dir, `HOME` pinned, `MAX_TOOL_TURNS = 8`.
+Pre-existing tool bugs seen in that run (not fixed yet): `settings.list` raises
+`AttributeError: 'PluginConfig' object has no attribute 'config_data'`;
+`plugins.describe` accepts a call with no `name` and raises `TypeError`.
+Also: sales mode lists 1 tool — its scopes (`catalog.read`, `orders.read`, …) do not
+intersect Linda's profile, which uses `system.read`; same as the old loop. Phase 2's
+scope settings should address it.
+
 ## Phase 1 — Per-turn identity and gates at the MCP edge
 
 **Status: implemented on `feat/janus-full-replacement`, pending release as v0.64.0.**
