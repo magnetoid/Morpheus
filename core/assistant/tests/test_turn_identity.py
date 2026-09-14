@@ -84,7 +84,7 @@ class MintForTurnTests(SimpleTestCase):
     def test_no_staff_user_means_no_token(self):
         from core.assistant.runtime import Assistant
 
-        a = Assistant(tools=[])
+        a = Assistant()
         self.assertEqual(a._mint_turn_token({}, 'c'), '')
         self.assertEqual(
             a._mint_turn_token({'user': types.SimpleNamespace(pk=1, is_staff=False)}, 'c'), ''
@@ -94,7 +94,7 @@ class MintForTurnTests(SimpleTestCase):
         from core.assistant.runtime import Assistant
 
         staff = types.SimpleNamespace(pk=3, is_staff=True, is_superuser=False)
-        token = Assistant(tools=[])._mint_turn_token({'user': staff, 'mode': 'dev'}, 'user:3')
+        token = Assistant()._mint_turn_token({'user': staff, 'mode': 'dev'}, 'user:3')
         identity = ti.verify(token)
         self.assertEqual(identity.conversation_key, 'user:3')
         # `dev` is superuser-only, so a staff member's request resolves to general.

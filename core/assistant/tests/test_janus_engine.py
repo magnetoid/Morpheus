@@ -1,9 +1,8 @@
 """Janus engine adapter for Linda — no live Janus process in the suite.
 
-`morph/settings.py` forces ``LINDA_ENGINE='legacy'`` under tests so no other
-test spawns a subprocess. That makes it easy to leave the Janus path with zero
-coverage, which is exactly what happened first: every test here must therefore
-``override_settings`` the engine ON rather than assert the suite-wide default.
+`morph/settings.py` points ``JANUS_BIN`` at a missing path under tests, so an
+unmocked turn is a reported spawn failure, never a model call. Tests that need a
+turn mock ``subprocess.run`` or ``run_janus_turn``.
 """
 
 from __future__ import annotations
@@ -17,7 +16,6 @@ from unittest import mock
 from django.test import SimpleTestCase, override_settings
 
 import core.assistant.janus_engine as eng
-from core.assistant._mock_provider import MockAssistantProvider
 from core.assistant.janus_engine import (
     _child_env,
     _ensure_config,
@@ -27,7 +25,6 @@ from core.assistant.janus_engine import (
     run_janus_turn,
     turn_timeout_s,
 )
-from core.assistant.runtime import Assistant
 
 
 def _staff(**kw):
@@ -437,50 +434,18 @@ class ProviderWiringTests(SimpleTestCase):
         self.assertEqual(env['DEEPSEEK_API_KEY'], 'from-dashboard')
 
 
-class AssistantJanusRoutingTests(SimpleTestCase):
-    """Routing decisions on the engine that production would actually run."""
+class AssistantEngineTests(SimpleTestCase):
+    """Janus is the only engine."""
 
-    def _assistant(self):
-        return Assistant(tools=[])
+    def test_tests_can_never_spawn_a_real_engine(self):
+        from django.conf import settings
 
-    def test_injected_provider_stays_on_legacy_loop(self):
-        a = Assistant(provider=MockAssistantProvider(), tools=[])
-        with override_settings(LINDA_ENGINE='janus'):
-            self.assertFalse(a._should_use_janus({'user': _staff()}))
+        self.assertFalse(Path(settings.JANUS_BIN).exists())
 
-    @override_settings(LINDA_ENGINE='legacy')
-    def test_legacy_engine_setting_wins(self):
-        with mock.patch.object(eng, 'janus_available', return_value=True):
-            self.assertFalse(self._assistant()._should_use_janus({'user': _staff()}))
+    def test_no_engine_switch_remains(self):
+        from django.conf import settings
 
-    def test_default_setting_is_janus(self):
-        # The suite pins LINDA_ENGINE=legacy, so assert the shipped default directly.
-        import re
-
-        src = Path('morph/settings.py').read_text(encoding='utf-8')
-        m = re.search(r"^LINDA_ENGINE = config\('LINDA_ENGINE', default='(\w+)'\)", src, re.M)
-        self.assertIsNotNone(m, 'LINDA_ENGINE default declaration moved')
-        self.assertEqual(m.group(1), 'janus')
-
-    @override_settings(LINDA_ENGINE='janus')
-    def test_wildcard_mode_routes_to_janus(self):
-        with mock.patch.object(eng, 'janus_available', return_value=True):
-            ok = self._assistant()._should_use_janus({'user': _staff(), 'mode': 'general'})
-        self.assertTrue(ok)
-
-    @override_settings(LINDA_ENGINE='janus')
-    def test_restricted_mode_runs_on_janus(self):
-        # The MCP edge filters tools by the turn's mode (linda_turn.mode_tools),
-        # so a restricted palette no longer needs the in-process loop.
-        with mock.patch.object(eng, 'janus_available', return_value=True):
-            a = self._assistant()
-            for mode in ('sales', 'support', 'ops'):
-                self.assertTrue(a._should_use_janus({'user': _staff(), 'mode': mode}))
-
-    @override_settings(LINDA_ENGINE='janus')
-    def test_unavailable_binary_falls_back_to_legacy(self):
-        with mock.patch.object(eng, 'janus_available', return_value=False):
-            self.assertFalse(self._assistant()._should_use_janus({'user': _staff()}))
+        self.assertFalse(hasattr(settings, 'LINDA_ENGINE'))
 
     def test_identity_stays_linda(self):
         from core.assistant.prompts import LINDA_BASE_PROMPT

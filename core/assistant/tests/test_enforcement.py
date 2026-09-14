@@ -2,10 +2,15 @@
 
 Linda dispatched tools with NO gate until v0.36: her only write-path handling
 was a post-hoc audit row, and her dangerous tools (`settings.set`,
-`plugins.toggle`, `updates.apply`, `code.apply_proposal`) trusted an
-LLM-supplied ``confirmed=True`` argument. Since the model writes that argument,
-content Linda merely *reads* — a product description, a log line, a customer
-note — could induce it. These tests pin the kernel-side gate that replaced it.
+`plugins.toggle`, `updates.apply`) trusted an LLM-supplied ``confirmed=True``
+argument. Since the model writes that argument, content Linda merely *reads* — a
+product description, a log line, a customer note — could induce it. These tests
+pin the kernel-side gate that replaced it.
+
+The chain lives in ``core/assistant/gates.py``. Since v0.65.0 its only caller is
+the MCP edge a Janus turn goes through (``agent_mcp/linda_turn.py``), which has
+end-to-end tests in ``agent_mcp/tests/test_linda_turn.py``; these pin the chain
+itself.
 """
 
 from __future__ import annotations
@@ -13,11 +18,11 @@ from __future__ import annotations
 import time
 
 from django.core.cache import cache
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase
 
 from core.agents.tools import Tool
-from core.assistant import consent
-from core.assistant.runtime import Assistant
+from core.assistant import consent, gates
+from core.assistant.gates import LINDA_SCOPES
 
 
 def _tool(name, *, scopes=None, requires_approval=False, supports_staging=False):
@@ -32,84 +37,45 @@ def _tool(name, *, scopes=None, requires_approval=False, supports_staging=False)
     )
 
 
-class _Assistant(Assistant):
-    """Assistant with the provider/store stubbed — we only exercise the gate."""
-
-    def __init__(self, **kw):
-        super().__init__(provider=object(), tools=[], store=_Store(), **kw)
-
-
-class _Store:
-    def append(self, **kw):
-        pass
-
-    def history(self, **kw):
-        return []
+def _gate(tool, *, args=None, context=None, conversation_key='k', human_message='', **kw):
+    return gates.gate_reason(
+        tool=tool,
+        tool_name=tool.name,
+        args={} if args is None else args,
+        scopes=LINDA_SCOPES,
+        context={} if context is None else context,
+        conversation_key=conversation_key,
+        human_message=human_message,
+        **kw,
+    )
 
 
 class ScopeGateTests(SimpleTestCase):
-    def _gate(self, tool, **kw):
-        return _Assistant()._gate_reason(
-            tool=tool,
-            tool_name=tool.name,
-            args={},
-            context={},
-            conversation_key='k',
-            human_message='',
-            spent_tokens=0,
-            **kw,
-        )
-
     def test_tool_within_profile_allowed(self):
-        self.assertIsNone(self._gate(_tool('db.count', scopes=['system.read'])))
+        self.assertIsNone(_gate(_tool('db.count', scopes=['system.read'])))
 
     def test_tool_outside_profile_denied(self):
         # A plugin-contributed tool demanding a scope Linda does not hold was
         # previously callable by her — nothing checked.
-        reason = self._gate(_tool('orders.refund', scopes=['orders.write']))
+        reason = _gate(_tool('orders.refund', scopes=['orders.write']))
         self.assertIn('orders.write', reason or '')
 
     def test_unscoped_tool_allowed(self):
-        self.assertIsNone(self._gate(_tool('capabilities', scopes=[])))
+        self.assertIsNone(_gate(_tool('capabilities', scopes=[])))
 
 
 class BudgetAndDeadlineTests(SimpleTestCase):
     def test_budget_exceeded_blocks(self):
-        a = _Assistant(token_budget=100)
-        reason = a._gate_reason(
-            tool=_tool('db.count', scopes=['system.read']),
-            tool_name='db.count',
-            args={},
-            context={},
-            conversation_key='k',
-            human_message='',
-            spent_tokens=500,
-        )
-        self.assertEqual(reason, 'budget_exceeded')
+        tool = _tool('db.count', scopes=['system.read'])
+        self.assertEqual(_gate(tool, spent_tokens=500, token_budget=100), 'budget_exceeded')
 
     def test_zero_budget_is_unlimited(self):
-        a = _Assistant(token_budget=0)
-        reason = a._gate_reason(
-            tool=_tool('db.count', scopes=['system.read']),
-            tool_name='db.count',
-            args={},
-            context={},
-            conversation_key='k',
-            human_message='',
-            spent_tokens=10_000_000,
-        )
-        self.assertIsNone(reason)
+        tool = _tool('db.count', scopes=['system.read'])
+        self.assertIsNone(_gate(tool, spent_tokens=10_000_000, token_budget=0))
 
     def test_past_deadline_blocks(self):
-        reason = _Assistant()._gate_reason(
-            tool=_tool('db.count', scopes=['system.read']),
-            tool_name='db.count',
-            args={},
-            context={'deadline': time.monotonic() - 1},
-            conversation_key='k',
-            human_message='',
-            spent_tokens=0,
-        )
+        tool = _tool('db.count', scopes=['system.read'])
+        reason = _gate(tool, context={'deadline': time.monotonic() - 1})
         self.assertEqual(reason, 'deadline_exceeded')
 
 
@@ -122,14 +88,12 @@ class HumanConsentGateTests(SimpleTestCase):
         self.args = {'plugin': 'storefront', 'key': 'x', 'value': '1', 'confirmed': True}
 
     def _gate(self, *, human_message, args=None, context=None):
-        return _Assistant()._gate_reason(
-            tool=self.tool,
-            tool_name=self.tool.name,
+        return _gate(
+            self.tool,
             args=self.args if args is None else args,
-            context=context or {},
+            context=context,
             conversation_key='conv-1',
             human_message=human_message,
-            spent_tokens=0,
         )
 
     def test_llm_supplied_confirmed_flag_is_not_consent(self):
@@ -162,19 +126,10 @@ class HumanConsentGateTests(SimpleTestCase):
             requires_approval=True,
             supports_staging=True,
         )
-        a = _Assistant()
-        common = {
-            'tool': staging,
-            'tool_name': staging.name,
-            'args': {},
-            'conversation_key': 'c',
-            'human_message': '',
-            'spent_tokens': 0,
-        }
         # Staged: the OpsProposal it records IS the sign-off.
-        self.assertIsNone(a._gate_reason(context={'staged': True}, **common))
+        self.assertIsNone(_gate(staging, context={'staged': True}, conversation_key='c'))
         # Not staged: still gated.
-        self.assertIn('approval_required', a._gate_reason(context={}, **common) or '')
+        self.assertIn('approval_required', _gate(staging, conversation_key='c') or '')
 
     def test_non_staging_tool_still_gated_under_staged_context(self):
         # The S1 landmine: a blanket staged exemption lets a tool with no
@@ -214,77 +169,39 @@ class ConsentOrderingTests(SimpleTestCase):
             consent.consume(**self.key, human_message='yes', human_message_at=time.time())
         )
 
+    def test_gate_passes_the_message_time_through(self):
+        tool = _tool('settings.set', scopes=['system.write'], requires_approval=True)
+        sent = time.time()
+        _gate(
+            tool,
+            args={'k': 2},
+            conversation_key='conv-order',
+            human_message='ok',
+            human_message_at=sent,
+        )
+        reason = _gate(
+            tool,
+            args={'k': 2},
+            conversation_key='conv-order',
+            human_message='ok',
+            human_message_at=sent,
+        )
+        self.assertIn('approval_required', reason or '')
 
-class InTurnSelfApprovalTests(TestCase):
-    """End to end through the loop: a retry cannot spend the turn's own "ok"."""
 
-    def setUp(self):
-        cache.clear()
+class WriteAuditTests(SimpleTestCase):
+    """Which calls count as writes for `assistant.tool_write`."""
 
-    def test_retry_inside_one_turn_cannot_approve_itself(self):
-        from core.agents.llm import LLMResponse, LLMToolCall
-
-        calls = []
-        tool = Tool(
-            name='settings.set',
-            description='settings.set',
-            handler=lambda **kw: calls.append(kw) or {'ok': True},
-            schema={'type': 'object', 'properties': {}},
-            scopes=['system.write'],
-            requires_approval=True,
+    def test_write_scopes_and_approval_tools_are_writes(self):
+        self.assertTrue(gates.is_write_tool(_tool('x', scopes=['orders.write'])))
+        self.assertTrue(gates.is_write_tool(_tool('x', scopes=['selfdev'])))
+        self.assertTrue(
+            gates.is_write_tool(_tool('x', scopes=['system.read'], requires_approval=True))
         )
 
-        class _Retrying:
-            name = model = 'scripted'
-
-            def __init__(self):
-                call = LLMToolCall(id='c1', name='settings.set', arguments={'value': '20'})
-                retry = LLMToolCall(id='c2', name='settings.set', arguments={'value': '20'})
-                self._r = [
-                    LLMResponse(tool_calls=[call]),
-                    LLMResponse(tool_calls=[retry]),
-                    LLMResponse(text='asked'),
-                ]
-
-            def respond(self, **_kw):
-                return self._r.pop(0)
-
-        Assistant(provider=_Retrying(), tools=[tool], store=_Store()).run(
-            message='set the value to 20, ok?', conversation_key='conv-self-approve'
-        )
-        self.assertEqual(calls, [])
-
-
-class RefusalAuditTests(TestCase):
-    """A blocked write must leave a trace outside the chat transcript."""
-
-    def test_refused_write_is_audited_with_reason(self):
-        from core.agents.llm import LLMResponse, LLMToolCall
-        from core.audit.models import AuditEvent
-
-        class _Scripted:
-            name = model = 'scripted'
-
-            def __init__(self):
-                self._r = [
-                    LLMResponse(
-                        tool_calls=[LLMToolCall(id='c1', name='test.mutate', arguments={})]
-                    ),
-                    LLMResponse(text='done'),
-                ]
-
-            def respond(self, **_kw):
-                return self._r.pop(0)
-
-        # A scope Linda does not hold → refused before invocation.
-        tool = _tool('test.mutate', scopes=['orders.write'])
-        Assistant(provider=_Scripted(), tools=[tool], store=_Store()).run(
-            message='mutate it', conversation_key='test:refusal-audit'
-        )
-        ev = AuditEvent.objects.filter(
-            event_type='assistant.tool_write', target='test.mutate'
-        ).latest('created_at')
-        self.assertIn('orders.write', ev.metadata.get('error', ''))
+    def test_reads_are_not(self):
+        self.assertFalse(gates.is_write_tool(_tool('x', scopes=['orders.read'])))
+        self.assertFalse(gates.is_write_tool(_tool('x')))
 
 
 class AffirmativeParsingTests(SimpleTestCase):

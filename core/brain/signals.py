@@ -112,18 +112,6 @@ def code_signal() -> dict:
         from core.self_improvement.models import SiCustomization
 
         out['drift_count'] = SiCustomization.objects.count()
-    with suppress(Exception):
-        from core.assistant.models import CodeProposal
-
-        out['proposals'] = [
-            {
-                'name': p.name,
-                'status': p.status,
-                'passed': p.passed,
-                'findings': len(p.findings or []),
-            }
-            for p in CodeProposal.objects.filter(status='draft').order_by('-created_at')[:10]
-        ]
     return out
 
 

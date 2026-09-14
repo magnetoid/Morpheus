@@ -225,7 +225,7 @@ def has_scopes(granted: Iterable[str], required: Iterable[str]) -> bool:
     ``Tool``'s own docstring says and what the in-process runtime enforces
     (``core/agents/policies.enforce_policy``). The MCP edge used to pass on ONE
     match, so a token holding just ``system.write`` could call the self-coding
-    tools (``code.apply_proposal`` et al, ``scopes=['system.write','selfdev']``)
+    tools (``skills.distill`` et al, ``scopes=['system.write','selfdev']``)
     WITHOUT the ``selfdev`` scope that exists to gate them — the ADR 0014
     "selfdev is Linda-only" non-negotiable, bypassed. ``required=[]`` is a
     public op (no scope check).

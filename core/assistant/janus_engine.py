@@ -41,6 +41,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from core.assistant import janus_settings
 from core.assistant.turn_identity import ENV_VAR as TURN_TOKEN_ENV
 
 logger = logging.getLogger('morpheus.assistant.janus')
@@ -173,12 +174,14 @@ def auto_approve_enabled() -> bool:
 
 
 def turn_timeout_s() -> int:
+    """Settings → AI → Janus, else ``LINDA_JANUS_TIMEOUT_S``; never above 55s."""
     s = _settings()
     raw = getattr(s, 'LINDA_JANUS_TIMEOUT_S', _DEFAULT_TIMEOUT_S) if s else _DEFAULT_TIMEOUT_S
     try:
-        return max(5, int(raw))
+        base = max(5, int(raw))
     except (TypeError, ValueError):
-        return _DEFAULT_TIMEOUT_S
+        base = _DEFAULT_TIMEOUT_S
+    return janus_settings.turn_timeout_s(min(base, janus_settings.MAX_TURN_TIMEOUT_S))
 
 
 def linda_janus_home() -> Path:
@@ -273,7 +276,7 @@ mcp_servers:
 """
     skills_block = ''
     skills_dir = bundled_skills_dir()
-    if skills_dir.is_dir():
+    if skills_dir.is_dir() and janus_settings.bundled_skills_enabled():
         quoted = str(skills_dir).replace('\\', '/')
         skills_block = f"""
 skills:
@@ -286,7 +289,7 @@ security:
 model:
   default: {os.environ.get('JANUS_INFERENCE_MODEL') or 'auto'}
 agent:
-  max_turns: {MAX_TOOL_TURNS}
+  max_turns: {janus_settings.max_tool_turns(MAX_TOOL_TURNS)}
 {mcp_block}{skills_block}
 """
 
@@ -376,27 +379,48 @@ _JANUS_PROVIDERS = {
 }
 
 
-def _provider_wiring() -> tuple[list[str], dict[str, str]]:
-    """CLI args + env that pin Janus to Morpheus's active LLM provider."""
-    try:
-        from core.agents.provider_registry import get_active_provider_name, get_provider_config
+def pinnable_providers() -> tuple[str, ...]:
+    """Morpheus provider names Janus can be pinned to (Settings → AI → Janus)."""
+    return tuple(_JANUS_PROVIDERS)
 
-        name = get_active_provider_name()
-        cfg = get_provider_config(name)
-    except Exception:  # noqa: BLE001 — fall back to Janus's own resolution
-        logger.warning('janus: provider config unavailable; Janus will auto-select', exc_info=True)
-        return [], {}
+
+def _provider_wiring() -> tuple[list[str], dict[str, str]]:
+    """CLI args + env that pin Janus to its provider.
+
+    The provider pinned on Settings → AI → Janus when the merchant chose one,
+    otherwise the store's active AI provider.
+    """
+    custom = janus_settings.custom_provider()
+    if custom is not None:
+        name, model, api_key, base_url = (
+            custom['provider'],
+            custom['model'],
+            custom['api_key'],
+            custom['base_url'],
+        )
+    else:
+        try:
+            from core.agents.provider_registry import get_active_provider_name, get_provider_config
+
+            name = get_active_provider_name()
+            cfg = get_provider_config(name)
+        except Exception:  # noqa: BLE001 — fall back to Janus's own resolution
+            logger.warning(
+                'janus: provider config unavailable; Janus will auto-select', exc_info=True
+            )
+            return [], {}
+        model, api_key, base_url = cfg.model, cfg.api_key, cfg.base_url
     spec = _JANUS_PROVIDERS.get(name)
-    if spec is None or not cfg.api_key:
+    if spec is None or not api_key:
         logger.warning('janus: no provider mapping for %r; Janus will auto-select', name)
         return [], {}
     janus_id, key_var, base_var = spec
     args = ['--provider', janus_id]
-    if cfg.model:
-        args += ['-m', cfg.model]
-    env = {key_var: cfg.api_key}
-    if cfg.base_url:
-        env[base_var] = cfg.base_url
+    if model:
+        args += ['-m', model]
+    env = {key_var: api_key}
+    if base_url:
+        env[base_var] = base_url
     return args, env
 
 

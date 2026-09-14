@@ -19,13 +19,6 @@ urlpatterns = [
         name='background_action',
     ),
     # Self-development approval dashboard (Linda's draft→apply loop).
-    path('selfdev/', views.selfdev_list_view, name='selfdev'),
-    path('selfdev/<uuid:proposal_id>/', views.selfdev_detail_view, name='selfdev_detail'),
-    path(
-        'selfdev/<uuid:proposal_id>/<str:action>/',
-        views.selfdev_action_view,
-        name='selfdev_action',
-    ),
     # Linda memory editor (owner curates Linda's cross-session facts).
     path('memory/', views.memory_list_view, name='memory'),
     path('memory/action/', views.memory_action_view, name='memory_action'),

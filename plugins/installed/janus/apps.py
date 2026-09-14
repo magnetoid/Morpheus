@@ -1,0 +1,8 @@
+from django.apps import AppConfig
+
+
+class JanusConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'plugins.installed.janus'
+    label = 'janus'
+    verbose_name = 'Janus'

@@ -54,13 +54,7 @@ def get_default_tools() -> list:
         updates_apply_tool,
         updates_status_tool,
     )
-    from core.assistant.tools.code import (
-        code_apply_proposal_tool,
-        code_draft_tool,
-        code_evaluate_proposal_tool,
-        code_list_proposals_tool,
-        run_python_tool,
-    )
+    from core.assistant.tools.code import run_python_tool
     from core.assistant.tools.health import platform_circuit_breakers_tool
     from core.assistant.tools.memory import (
         memory_forget_tool,
@@ -93,14 +87,6 @@ def get_default_tools() -> list:
         skills_record_outcome_tool,
         # Code — compose tools in a sandboxed Python script (read/safe tools only).
         run_python_tool,
-        # Self-development — draft a NEW tool's source (scanned; review-only, not live),
-        # multi-model consensus review, and proposal listing. Linda-only (selfdev scope).
-        code_draft_tool,
-        code_evaluate_proposal_tool,
-        code_list_proposals_tool,
-        # Phase 4 apply (ADR 0014) — owner-approved proposal → code on a branch.
-        # DORMANT: inert unless MORPHEUS_SELF_UPDATE_ENABLED + owner approval.
-        code_apply_proposal_tool,
         # Write operations — gated by confirmed=True; LLM must ask user first.
         # (orders + products write tools migrated to their owning plugins —
         # registry-sourced via _migrated_names below.)

@@ -10,17 +10,11 @@ app_name = 'assistant'
 
 urlpatterns = [
     path('', views.assistant_page, name='page'),
-    path('invoke/', views.assistant_invoke, name='invoke'),
     path('stream/', views.assistant_stream, name='stream'),
     path('history/', views.assistant_history, name='history'),
     path('page-help/', views.assistant_page_help, name='page_help'),
-    # Self-coding approval queue (superuser-only, ADR 0014 human gate).
+    # Staged-changes inbox (staff, staged-changes design §3).
     path('proposals/', views_proposals.proposals_page, name='proposals'),
-    path(
-        'proposals/<uuid:pk>/action/',
-        views_proposals.proposal_action,
-        name='proposal_action',
-    ),
     # Ops-proposal inbox actions (staff, staged-changes design §3).
     path(
         'proposals/ops/<uuid:proposal_id>/action/',
