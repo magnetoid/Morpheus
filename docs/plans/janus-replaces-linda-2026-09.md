@@ -1,8 +1,10 @@
 # Janus fully replaces Linda's engine (brand stays Linda)
 
-Status: **in progress** — hotfix v0.63.1 shipped 2026-09-13. Owner decisions
-recorded 2026-09-13. Update this file as phases land; it is the load-bearing
-plan across sessions.
+Status: **Phases 1–3 SHIPPED and verified live** (v0.63.1 → v0.65.0, 2026-09-14).
+**Phases 4–6 remain** and need an owner decision on a Coolify persistent volume
+(4, 6) and on who signs Janus release artifacts (6). Pending polish (duplicate
+breadcrumb on the Janus page) is on branch `fix/janus-page-polish`; ship it with
+the next release. Update this file as phases land.
 
 ## Goal
 
@@ -84,7 +86,7 @@ scope settings should address it.
 
 ## Phase 1 — Per-turn identity and gates at the MCP edge
 
-**Status: implemented on `feat/janus-full-replacement`, pending release as v0.64.0.**
+**Status: SHIPPED v0.64.0/v0.64.1, verified live.**
 Landed as `core/assistant/turn_identity.py`, `core/assistant/gates.py` (the loop now
 delegates to it), `plugins/installed/agent_mcp/linda_turn.py`, and the edge wiring in
 `agent_mcp/views.py`. `LINDA_MCP_TOKEN` removed. Restricted modes now run on Janus.
@@ -121,7 +123,7 @@ reads orders; a refund is refused until the merchant says yes in the next messag
 
 ## Phase 2 — Janus settings page
 
-**Status: implemented on `feat/janus-settings-and-cleanup`, pending release v0.65.0.**
+**Status: SHIPPED v0.65.0, verified live 2026-09-14** (page renders for staff, engine installed, version shown, listed in the Settings sidebar).
 Protected, catalogue-hidden `janus` app with one page at Settings → AI → Janus
 (`/dashboard/apps/janus/engine/`): engine status, on/off, store-provider or pinned
 provider (write-only key), tool-step cap, time limit, standing instructions,
@@ -156,7 +158,7 @@ Rule from CLAUDE.md: every field ships with its consumer in the same change.
 ## Phase 3 — Remove old Linda code and API pages
 
 Blocked on Phase 1. **Owner approved deleting all of A–D (2026-09-14).**
-**Status: done on `feat/janus-settings-and-cleanup` (v0.65.0).** `CodeProposal` kept
+**Status: SHIPPED v0.65.0, verified live** — removed endpoints return 404; staged-changes inbox 200; a real turn on the rewritten runtime called `products.search`. `CodeProposal` kept
 as a retired model so its table is not dropped by a generated migration; drop it
 deliberately.
 
@@ -183,6 +185,8 @@ dangling URL reversals and imports; compile changed templates.
 - Check `state.db` concurrency under parallel turns (Janus 4f311d03 "state.db resilience").
 
 ## Phase 5 — Track upstream Janus
+
+Partly done in v0.65.0: the Janus page shows the installed version (`janus --version`, cached 10 min).
 
 - Record installed Janus version and git ref at image build (build arg → env).
 - Show both on Settings → Version & updates and the Janus page.
