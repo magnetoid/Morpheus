@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.64.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.64.1')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -677,6 +677,11 @@ LINDA_JANUS_TIMEOUT_S = config('LINDA_JANUS_TIMEOUT_S', default=55, cast=int)
 # No LINDA_MCP_TOKEN: each Janus turn carries a signed per-turn identity instead
 # (core/assistant/turn_identity.py). A standing token was the consent hole.
 LINDA_MCP_URL = config('LINDA_MCP_URL', default='')
+# Where Janus conversation homes live. Empty = a private dir under the system temp
+# dir (wiped on redeploy). Never under /app: it is not writable by the app user in
+# the image, and /app/media is publicly served. Point at a persistent volume to
+# keep sessions across deploys.
+LINDA_JANUS_HOME = config('LINDA_JANUS_HOME', default='')
 
 # Tests must NEVER hit a real LLM/embeddings API. A developer's `.env` usually
 # has a real OPENAI_API_KEY, and AI tasks run eagerly (CELERY_TASK_ALWAYS_EAGER)

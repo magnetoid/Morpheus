@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.64.1 — 2026-09-14
+
+**Linda answers again**
+
+- Fixed: every Linda message failed with a permission error since v0.63.0. Linda kept her working files inside the app folder, which the server can't write to. They now live in a private temporary folder, or wherever LINDA_JANUS_HOME points.
+- Linda now stops after 8 tool steps per message and answers, instead of exploring until the 55-second limit cut her off.
+
 ## v0.64.0 — 2026-09-14
 
 **Linda can use the store's tools again, with your approval on every change**

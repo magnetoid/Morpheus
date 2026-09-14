@@ -321,6 +321,14 @@ never `linda`, so every follow-up exited 1 — store the stderr `session_id:` an
 MCP client, so the store had zero tools; (4) provider `auto` routes to OpenRouter
 whenever `OPENAI_API_KEY` exists and never sees a dashboard-stored key — pin
 `--provider`/`-m` from `core.agents.provider_registry` (`_provider_wiring`).
+A fifth hid longer (v0.64.1): conversation homes lived under `BASE_DIR`, and `/app`
+is root-owned in the image, so **every real turn raised PermissionError** — while
+the prod smoke passed, because it patched the home to a temp dir. Homes now default
+to a private temp dir or `LINDA_JANUS_HOME` (never `/app/media`: publicly served,
+and a home holds `state.db`). **A smoke test that patches the path under test proves
+nothing about that path; smoke the unpatched call.** Also: `HOME` is set to the
+conversation home, and `MAX_TOOL_TURNS` caps iterations (~7s each on prod) so a
+turn answers inside the timeout instead of exploring until it is killed.
 Guarded by `core/assistant/tests/test_janus_engine.py`, `test_turn_identity.py`
 and `agent_mcp/tests/test_linda_turn.py`.
 
