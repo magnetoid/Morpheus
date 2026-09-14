@@ -222,6 +222,11 @@ class Assistant:
         ):
             if part:
                 bits.append(part)
+        from core.assistant import janus_settings
+
+        extra = janus_settings.extra_instructions()
+        if extra:
+            bits.append(f'MERCHANT INSTRUCTIONS (from Settings → AI → Janus):\n{extra}')
         system = build_system_prompt()
         if bits:
             system = system + '\n\n' + '\n'.join(bits)
@@ -287,7 +292,17 @@ class Assistant:
             yield self._finish(conversation_key=conversation_key, text=friendly, started=started)
             return
 
+        from core.assistant import janus_settings
         from core.assistant.janus_engine import janus_available, run_janus_turn
+
+        if not janus_settings.engine_enabled():
+            # A merchant's choice, not an outage: no failure signal.
+            yield self._finish(
+                conversation_key=conversation_key,
+                text='Linda is turned off in Settings → AI → Janus.',
+                started=started,
+            )
+            return
 
         if not janus_available():
             self._emit_failure_signal(reason='janus_unavailable', conversation_key=conversation_key)

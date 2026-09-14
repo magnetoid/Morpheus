@@ -304,7 +304,13 @@ naming the human. **Never re-add a static Linda MCP token** — its
 `approved_tools` grant is the standing-consent hole. A turn token authenticates
 nothing but that endpoint: `apply_bearer_user` (GraphQL) treats it as invalid.
 When you change a gate, change `gates.py`; a second copy drifts and the looser one
-wins. Remaining fences: tests force `'legacy'` and must never spawn a real model;
+wins. Merchant knobs (on/off, pinned provider, tool-step cap, turn time limit,
+standing instructions, bundled skills) live on Settings → AI → Janus — the protected
+`janus` app — and core reads them only through `core/assistant/janus_settings.py`
+(cross-process fresh, clamped, fail-soft to defaults); the timeout never exceeds
+55s whatever is stored. The page's slug is `engine`, not `settings`:
+`/dashboard/apps/<app>/settings/` is the legacy settings deep link and silently
+wins the route. Remaining fences: tests force `'legacy'` and must never spawn a real model;
 YOLO/`LINDA_JANUS_AUTO_APPROVE` stays **off**; the child gets an env
 **allowlist** (`_child_env`), never `os.environ.copy()`. The adapter timeout
 must stay **under** `GUNICORN_TIMEOUT` (60s), and a non-zero exit is a failure

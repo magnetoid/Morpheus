@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.65.0 — 2026-09-14
+
+**Janus settings page, and Linda runs only on Janus**
+
+- New page: Settings → AI → Janus. Turn Linda on or off, use the store's AI provider or pin one just for Linda, cap tool steps and the time per message, add standing instructions, switch the built-in store skills on or off, and run a connection test. Changes are recorded in the audit log.
+- Linda now runs only on Janus. The old built-in assistant loop is gone, along with its fallback and the LINDA_ENGINE and LINDA_MCP_TOKEN settings.
+- Removed Linda's self-coding features: the Self-development page, code proposals and their review, and the weekly tool-drafting job. The staged-changes inbox is unchanged.
+- Removed old API endpoints: /api/agent-tools/openai.json, /api/agent-tools/anthropic.json, /api/mcp/tools/list, /api/mcp/tools/call, and /dashboard/assistant/invoke/. Use the MCP servers under /mcp/ instead; see MIGRATING.md.
+
 ## v0.64.1 — 2026-09-14
 
 **Linda answers again**

@@ -1,0 +1,170 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Janus · Settings · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+
+  <div class="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
+    <a href="{% url 'admin_dashboard:settings' %}" class="hover:underline">Settings</a>
+    <i data-lucide="chevron-right" class="h-3 w-3"></i>
+    <span class="font-medium text-[color:var(--text)]">Janus</span>
+  </div>
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Janus</h1>
+    <p class="text-sm text-[color:var(--text-muted)] mt-1">
+      Janus is the engine behind Linda. Your team still chats with Linda; these settings decide
+      whether she runs, which model she uses, how long she may work on a message, and the
+      standing instructions she follows.
+    </p>
+  </div>
+
+  {# ── Engine status ─────────────────────────────────────────────────────── #}
+  <div class="card card-padded space-y-3" data-janus-status>
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+      <h2 class="font-semibold">Engine</h2>
+      {% if status.installed %}
+        <span class="pill pill-success">Installed</span>
+      {% else %}
+        <span class="pill pill-warn">Not installed</span>
+      {% endif %}
+    </div>
+    <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+      <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Version</dt><dd>{{ status.version|default:"—" }}</dd></div>
+      <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Model</dt><dd>{{ status.provider }}</dd></div>
+      <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Tools Linda can use</dt><dd><code class="text-xs">{{ status.toolsets }}</code></dd></div>
+      <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Working files</dt><dd><code class="text-xs">{{ status.home }}</code></dd></div>
+    </dl>
+  </div>
+
+  {# ── Settings form ─────────────────────────────────────────────────────── #}
+  <form method="post" class="card card-padded space-y-6" data-janus-form>
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save">
+
+    <section class="space-y-2">
+      <h2 class="font-semibold">Linda</h2>
+      <label class="inline-flex items-center gap-2">
+        <input type="checkbox" name="enabled" {% if form.enabled.value %}checked{% endif %}>
+        <span class="text-sm">Linda answers messages</span>
+      </label>
+      <p class="text-xs text-[color:var(--text-muted)]">Turn this off to pause Linda for everyone. Messages get a short note instead of an answer.</p>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pt-4 border-t border-[color:var(--border)]">
+      <h2 class="font-semibold md:col-span-2">Model</h2>
+      <div class="space-y-1.5 md:col-span-2">
+        <label for="f-model_source" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Where Janus gets its model</label>
+        <select id="f-model_source" name="model_source" class="input">
+          {% for value, label in form.fields.model_source.choices %}
+          <option value="{{ value }}" {% if form.model_source.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {{ form.model_source.errors }}
+      </div>
+      <div class="space-y-1.5">
+        <label for="f-provider" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Provider</label>
+        <select id="f-provider" name="provider" class="input">
+          {% for value, label in form.fields.provider.choices %}
+          <option value="{{ value }}" {% if form.provider.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {{ form.provider.errors }}
+      </div>
+      <div class="space-y-1.5">
+        <label for="f-model" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Model</label>
+        <input id="f-model" name="model" type="text" class="input" value="{{ form.model.value|default:'' }}" placeholder="deepseek-v4-pro">
+        {{ form.model.errors }}
+      </div>
+      <div class="space-y-1.5">
+        <label for="f-base_url" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Base URL (optional)</label>
+        <input id="f-base_url" name="base_url" type="text" class="input" value="{{ form.base_url.value|default:'' }}" placeholder="Provider default">
+        {{ form.base_url.errors }}
+      </div>
+      <div class="space-y-1.5">
+        <label for="f-api_key" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">API key</label>
+        <input id="f-api_key" name="api_key" type="password" autocomplete="new-password" class="input"
+               placeholder="{% if has_stored_key %}Saved — leave blank to keep it{% else %}Paste a key{% endif %}">
+        {% if has_stored_key %}
+        <label class="inline-flex items-center gap-2 text-xs"><input type="checkbox" name="clear_api_key"> Remove the saved key</label>
+        {% endif %}
+        {{ form.api_key.errors }}
+      </div>
+      <p class="text-xs text-[color:var(--text-muted)] md:col-span-2">
+        Provider, model and key apply only when you pin a provider. Otherwise Janus uses the store's AI provider from Settings → AI.
+      </p>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pt-4 border-t border-[color:var(--border)]">
+      <h2 class="font-semibold md:col-span-2">Limits</h2>
+      <div class="space-y-1.5">
+        <label for="f-max_tool_turns" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Tool steps per message</label>
+        <input id="f-max_tool_turns" name="max_tool_turns" type="number" min="1" max="10" class="input" value="{{ form.max_tool_turns.value }}">
+        <p class="text-xs text-[color:var(--text-muted)]">1 to 10. Each step takes a few seconds; more steps risk hitting the time limit.</p>
+        {{ form.max_tool_turns.errors }}
+      </div>
+      <div class="space-y-1.5">
+        <label for="f-turn_timeout_s" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Time limit per message (seconds)</label>
+        <input id="f-turn_timeout_s" name="turn_timeout_s" type="number" min="10" max="55" class="input" value="{{ form.turn_timeout_s.value }}">
+        <p class="text-xs text-[color:var(--text-muted)]">10 to 55. The server stops any request at 60 seconds.</p>
+        {{ form.turn_timeout_s.errors }}
+      </div>
+    </section>
+
+    <section class="space-y-3 pt-4 border-t border-[color:var(--border)]">
+      <h2 class="font-semibold">Behaviour</h2>
+      <div class="space-y-1.5">
+        <label for="f-extra_instructions" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Standing instructions</label>
+        <textarea id="f-extra_instructions" name="extra_instructions" rows="6" maxlength="4000" class="input" placeholder="For example: answer in British English, and always state prices with VAT.">{{ form.extra_instructions.value|default:'' }}</textarea>
+        <p class="text-xs text-[color:var(--text-muted)]">Added to every conversation. Up to 4,000 characters.</p>
+        {{ form.extra_instructions.errors }}
+      </div>
+      <label class="inline-flex items-center gap-2">
+        <input type="checkbox" name="bundled_skills" {% if form.bundled_skills.value %}checked{% endif %}>
+        <span class="text-sm">Use the built-in store skills (orders, catalog, content and SEO, store operations)</span>
+      </label>
+    </section>
+
+    <div class="pt-3 border-t border-[color:var(--border)] flex justify-end">
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+
+  {# ── Connection test ───────────────────────────────────────────────────── #}
+  <div class="card card-padded space-y-3">
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <h2 class="font-semibold">Test Janus</h2>
+        <p class="text-xs text-[color:var(--text-muted)]">Sends one short message with no store tools, using the saved settings. Takes a few seconds.</p>
+      </div>
+      <form method="post" class="m-0">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="test">
+        <button type="submit" class="btn btn-secondary">Run test</button>
+      </form>
+    </div>
+    {% if test_result %}
+    <div class="text-sm" data-janus-test-result>
+      {% if test_result.ok %}
+        <span class="pill pill-success">Answered in {{ test_result.seconds }}s</span>
+        <span class="ml-2">{{ test_result.text }}</span>
+      {% else %}
+        <span class="pill pill-warn">Failed after {{ test_result.seconds }}s</span>
+        <code class="block text-xs mt-2 whitespace-pre-wrap">{{ test_result.error }}</code>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Locked on purpose ─────────────────────────────────────────────────── #}
+  <div class="card card-padded space-y-2">
+    <h2 class="font-semibold">Always on, not configurable here</h2>
+    <ul class="text-sm space-y-1.5 text-[color:var(--text-muted)]">
+      <li><strong class="text-[color:var(--text)]">Your approval for changes.</strong> Linda asks before any change that needs approval, and only your own reply in the chat approves it.</li>
+      <li><strong class="text-[color:var(--text)]">No shell, file, code or browser access.</strong> Janus reaches the store only through its tools, which check the conversation's mode and record every change in the audit log.</li>
+      <li><strong class="text-[color:var(--text)]">Auto-approve {% if status.auto_approve %}is ON for this server{% else %}is off{% endif %}.</strong> It can only be changed by whoever runs the server, never from the dashboard or by Linda.</li>
+    </ul>
+  </div>
+
+</div>
+{% endblock %}

@@ -121,6 +121,17 @@ reads orders; a refund is refused until the merchant says yes in the next messag
 
 ## Phase 2 — Janus settings page
 
+**Status: implemented on `feat/janus-settings-and-cleanup`, pending release v0.65.0.**
+Protected, catalogue-hidden `janus` app with one page at Settings → AI → Janus
+(`/dashboard/apps/janus/engine/`): engine status, on/off, store-provider or pinned
+provider (write-only key), tool-step cap, time limit, standing instructions,
+bundled skills, and a connection test. Core reads it via
+`core/assistant/janus_settings.py`. Dropped from the list below: per-skill toggles
+(Janus's `external_dirs` is a directory, not a list of skills) and a "store data
+Linda may read" scope picker — the catalogue's read tools declare `system.read`,
+not the mode scopes, so it would have changed nothing. Settings changes are
+audited as `janus.settings_changed` (key names only).
+
 Owner: overlap audit first (`ai_assistant` owns provider settings, `agent_core`
 owns guardrails, `agent_mcp` owns tokens). Default plan: a protected, system
 `janus` app owning the page, config schema and update UI; the engine in core reads
@@ -145,6 +156,9 @@ Rule from CLAUDE.md: every field ships with its consumer in the same change.
 ## Phase 3 — Remove old Linda code and API pages
 
 Blocked on Phase 1. **Owner approved deleting all of A–D (2026-09-14).**
+**Status: done on `feat/janus-settings-and-cleanup` (v0.65.0).** `CodeProposal` kept
+as a retired model so its table is not dropped by a generated migration; drop it
+deliberately.
 
 | Group | What | Notes |
 |---|---|---|

@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.64.1')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.65.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -128,6 +128,7 @@ MORPHEUS_DEFAULT_APPS = [
     'plugins.installed.notifications_center',
     'plugins.installed.workflows',
     'plugins.installed.agent_mcp',
+    'plugins.installed.janus',
     'plugins.installed.reviews',
     'plugins.installed.loyalty_points',
     'plugins.installed.lumina',
