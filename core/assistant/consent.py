@@ -16,7 +16,14 @@ asking the user"; nothing enforced it.
 3. The human answers **in their own turn** — a ``role='user'`` message, which is
    the one thing injected content can never become.
 4. Next attempt with the **same fingerprint** → the kernel checks the human's
-   latest message is affirmative → allow **once**, then consume the grant.
+   latest message is affirmative **and was sent after the proposal** → allow
+   **once**, then consume the grant.
+
+The ordering check matters. Without it, "set the price to 20, ok?" is spent by
+its own "ok": the first attempt is refused and recorded, and an immediate retry
+in the same turn finds an affirmative human message waiting. The human never saw
+the proposal. An agent that retries a refused call inside one turn — Janus does —
+would approve itself.
 
 Grants are single-use and fingerprint-bound, so an approval given for a benign
 call can't be spent on a different one (same invariant as
@@ -30,6 +37,7 @@ lost entry fails **closed** (re-ask the human) rather than open.
 from __future__ import annotations
 
 import re
+import time
 
 from django.core.cache import cache
 
@@ -85,23 +93,34 @@ def request(*, conversation_key: str, tool_name: str, args: dict | None) -> str:
     re-proposal of the same call just refreshes the TTL.
     """
     fp = args_fingerprint(tool_name, args)
-    cache.set(_key(conversation_key, fp), 'pending', CONSENT_TTL_SECONDS)
+    cache.set(_key(conversation_key, fp), {'proposed_at': time.time()}, CONSENT_TTL_SECONDS)
     return fp
 
 
 def consume(
-    *, conversation_key: str, tool_name: str, args: dict | None, human_message: str
+    *,
+    conversation_key: str,
+    tool_name: str,
+    args: dict | None,
+    human_message: str,
+    human_message_at: float | None = None,
 ) -> bool:
     """Spend a pending consent for this exact call, if the human just said yes.
 
-    Both conditions must hold: a consent was *proposed* for this fingerprint
-    (so the human saw what they were agreeing to), and the human's current turn
-    is affirmative. Single-use — the entry is deleted on success so a single
+    All must hold: a consent was *proposed* for this fingerprint, the human's
+    message was sent *after* that proposal (so they saw what they were agreeing
+    to), and it is affirmative. Single-use — the entry is deleted on success so a single
     "yes" can't authorise a repeated action.
     """
     fp = args_fingerprint(tool_name, args)
     key = _key(conversation_key, fp)
-    if cache.get(key) != 'pending':
+    entry = cache.get(key)
+    # A pre-v0.64 plain 'pending' entry has no proposal time: fail closed, re-ask.
+    if not isinstance(entry, dict):
+        return False
+    # ``human_message_at`` (epoch seconds) must postdate the proposal. Callers
+    # that cannot supply it pass None and skip only this check.
+    if human_message_at is not None and human_message_at <= float(entry.get('proposed_at') or 0):
         return False
     if not is_affirmative(human_message):
         return False

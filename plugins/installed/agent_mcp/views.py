@@ -151,6 +151,13 @@ def _is_authed(request: HttpRequest) -> bool:
     if not auth.lower().startswith('bearer '):
         return False
     presented = auth.split(' ', 1)[1].strip()
+    from core.assistant.turn_identity import is_turn_token
+
+    if is_turn_token(presented):
+        # One Linda turn (see linda_turn.py). Never an entry in public_keys.
+        from plugins.installed.agent_mcp.linda_turn import turn_for_request
+
+        return turn_for_request(request) is not None
     return presented in _api_keys() if presented else False
 
 
@@ -181,6 +188,11 @@ def _handle_initialize(params: dict, authed: bool) -> dict:
 
 def _handle_tools_list(params: dict, authed: bool) -> dict:
     tools = _public_tools()
+    turn = getattr(_request_state, 'linda_turn', None)
+    if turn is not None:
+        from plugins.installed.agent_mcp.linda_turn import listed_tools
+
+        tools = listed_tools(tools, turn)
     out = []
     for t in tools:
         entry = {
@@ -368,6 +380,31 @@ def _enforce_discovery_rate_limit(method: str) -> None:
         )
 
 
+def _exposed_tool(name: str, turn):
+    """Resolve a tool the active cluster exposes — narrowed to the mode for a Linda turn."""
+    candidates = _public_tools()
+    if turn is not None:
+        from plugins.installed.agent_mcp.linda_turn import mode_tools
+
+        candidates = mode_tools(candidates, turn)
+    tool = next((t for t in candidates if t.name == name), None)
+    if tool is None:
+        raise _RpcError(_E_METHOD, f'tool not exposed: {name}')
+    return tool
+
+
+def _call_for_turn(tool, name: str, args: dict, turn) -> dict:
+    """A Linda turn: Linda's scope profile, the mode, and HUMAN consent from the
+    conversation decide — never this request's token scopes or approved_tools."""
+    from plugins.installed.agent_mcp.linda_turn import call_tool
+
+    _enforce_rate_limit(name)
+    arg_error = _validate_tool_args(tool, args)
+    if arg_error:
+        raise _RpcError(_E_PARAMS, arg_error)
+    return call_tool(tool, name, args, turn, audit_call=_audit_call, audit_denied=_audit_denied)
+
+
 def _handle_tools_call(params: dict, authed: bool) -> dict:
     if not authed:
         raise _RpcError(_E_AUTH, 'authentication required for tools/call')
@@ -382,9 +419,8 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
     # `name not in _PUBLIC_TOOL_NAMES` pre-check here used to reject every
     # admin write BEFORE scope/approval/rate governance could run — the admin
     # server could list Linda's write tools but never execute one.
-    tool = next((t for t in _public_tools() if t.name == name), None)
-    if tool is None:
-        raise _RpcError(_E_METHOD, f'tool not exposed: {name}')
+    turn = getattr(_request_state, 'linda_turn', None)
+    tool = _exposed_tool(name, turn)
 
     # Kill switch parity. The merchant's "pause agents" switch aborts Linda and
     # the Workers (core/agents/runtime.py) but did NOT reach this Bearer path,
@@ -402,6 +438,9 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
         if paused:
             _audit_denied(name, 'agents_paused')
             raise _RpcError(_E_AUTH, 'agents are paused (merchant kill switch)')
+
+    if turn is not None:
+        return _call_for_turn(tool, name, args, turn)
 
     # Scope enforcement. The presented token's `mcp_scopes` were stashed
     # on a thread-local during rpc_endpoint(); legacy / wildcard tokens
@@ -628,6 +667,17 @@ def _active_token_scopes() -> set[str]:
 
 @csrf_exempt
 @require_http_methods(['POST', 'GET'])
+def _stash_linda_turn(request: HttpRequest) -> None:
+    """Carry a verified Linda turn into the handlers; attribute its audit rows."""
+    from plugins.installed.agent_mcp.linda_turn import turn_for_request
+
+    turn = turn_for_request(request)
+    _request_state.linda_turn = turn
+    if turn is not None:
+        _request_state.token_label = f'linda:user-{turn.user.pk}'
+        _request_state.approved_tools = set()
+
+
 def rpc_endpoint(request: HttpRequest) -> HttpResponse:
     """Single JSON-RPC 2.0 entry point.
 
@@ -670,6 +720,7 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
     _request_state.approved_tools = getattr(request, '_morph_token_approved_tools', set())
     _request_state.rate_limit = getattr(request, '_morph_token_rate_limit', None)
     _request_state.request_id = getattr(request, 'request_id', '') or ''
+    _stash_linda_turn(request)
     if _tok:
         _request_state.rl_client = f'tok:{hashlib.sha256(_tok.encode()).hexdigest()[:16]}'
     else:
@@ -705,6 +756,7 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
         _request_state.rate_limit = None
         _request_state.rl_client = ''
         _request_state.request_id = ''
+        _request_state.linda_turn = None
 
 
 def _dispatch(message: dict, authed: bool) -> dict:

@@ -279,24 +279,33 @@ is recorded against `sha256(tool + canonical args)`; it is spent only when the
 **human's own next message** (a `role='user'` turn — the one thing injected
 content can never be) reads affirmative, and the grant is single-use and
 argument-bound. Negation always beats affirmation ("yes, but not that one"
-denies). **Never gate a new write tool on an argument alone** — add
+denies). **The human message must also postdate the proposal** (v0.64.0): without
+that, "set the price to 20, ok?" approved itself — the first attempt is refused
+and recorded, and a retry in the same turn found the turn's own "ok" waiting.
+Every caller passes `human_message_at`; the edge reads it from the stored message. **Never gate a new write tool on an argument alone** — add
 `requires_approval=True` and let the kernel gate it. Refused attempts are
 audited, so a blocked injection leaves a trace. Guarded by
 `core/assistant/tests/test_enforcement.py`.
 
 **Landmine — moving the agent loop OUT of process moves it out of every gate,
-and the switch reads like a performance choice.** The store agent's enforcement
-stack — scope → budget → deadline → kernel consent (`_gate_reason`) plus
-`_audit_write_tool` — lives in `core/assistant/runtime.py` and only runs for
-tools the **legacy** in-process loop dispatches. Janus (the default agent +
-engine; Linda is brand only) runs its own loop in a subprocess
-(`core/assistant/janus_engine.py`) and reaches Morpheus over MCP, where the
-only check is a standing token's scopes — authentication, not per-action human
-consent. `LINDA_ENGINE` therefore defaults to **`janus`**, with these remaining
-fences: tests force `'legacy'` and must never spawn a real model; restricted
-mode chips (`sales`/`support`/`ops`) fall back to the in-process loop because
-MCP does not narrow the catalogue; YOLO/`LINDA_JANUS_AUTO_APPROVE` stays **off**
-or `core/safety.py`'s `FORBIDDEN_PATHS` is unenforceable; the child gets an env
+and the switch reads like a performance choice.** Janus (the store agent; Linda
+is brand only) runs its own loop in a subprocess (`core/assistant/janus_engine.py`)
+and reaches the store's tools over MCP, so the in-process gates never see its
+calls. A standing MCP token is authentication, not per-action human consent, and
+the edge could not tell which merchant or conversation a call belonged to. Since
+v0.64.0 each turn carries a **signed turn token** (`core/assistant/turn_identity.py`,
+prefix `lt1.`, env `LINDA_TURN_TOKEN`, referenced from the config as
+`${LINDA_TURN_TOKEN}` so nothing secret is on disk), and `/mcp/admin/v1/` runs
+**the same gate chain** as the loop (`core/assistant/gates.py`) via
+`agent_mcp/linda_turn.py`: Linda's scope profile (never the token's), the mode
+re-resolved against the user on every call, consent spent only by the
+conversation's latest `role='user'` message, and an `assistant.tool_write` audit
+naming the human. **Never re-add a static Linda MCP token** — its
+`approved_tools` grant is the standing-consent hole. A turn token authenticates
+nothing but that endpoint: `apply_bearer_user` (GraphQL) treats it as invalid.
+When you change a gate, change `gates.py`; a second copy drifts and the looser one
+wins. Remaining fences: tests force `'legacy'` and must never spawn a real model;
+YOLO/`LINDA_JANUS_AUTO_APPROVE` stays **off**; the child gets an env
 **allowlist** (`_child_env`), never `os.environ.copy()`. The adapter timeout
 must stay **under** `GUNICORN_TIMEOUT` (60s), and a non-zero exit is a failure
 even when stdout carried partial text. Bundled ecommerce skills live in
@@ -312,7 +321,8 @@ never `linda`, so every follow-up exited 1 — store the stderr `session_id:` an
 MCP client, so the store had zero tools; (4) provider `auto` routes to OpenRouter
 whenever `OPENAI_API_KEY` exists and never sees a dashboard-stored key — pin
 `--provider`/`-m` from `core.agents.provider_registry` (`_provider_wiring`).
-Guarded by `core/assistant/tests/test_janus_engine.py`.
+Guarded by `core/assistant/tests/test_janus_engine.py`, `test_turn_identity.py`
+and `agent_mcp/tests/test_linda_turn.py`.
 
 **Landmine — two plugins registering the same agent-tool NAME let load order
 decide which one runs, and the loser might be the one with `requires_approval`.**

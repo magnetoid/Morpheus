@@ -21,7 +21,6 @@ from core.assistant._mock_provider import MockAssistantProvider
 from core.assistant.janus_engine import (
     _child_env,
     _ensure_config,
-    _mcp_url,
     bundled_skill_names,
     bundled_skills_dir,
     janus_available,
@@ -56,51 +55,87 @@ class JanusDiscoveryTests(SimpleTestCase):
             self.assertEqual(eng.janus_cmd(), ['/opt/janus/bin/janus'])
 
 
-class McpUrlTests(SimpleTestCase):
-    """The MCP endpoint is a POST with a JSON-RPC body; Django's APPEND_SLASH
-    redirect drops that body, so the trailing slash is load-bearing."""
+class McpEndpointTests(SimpleTestCase):
+    """How the subprocess reaches the store's MCP server.
+
+    Measured on prod: plain http loopback gets a 301 to https, which drops the
+    JSON-RPC body; loopback naming the real host and https scheme answers in
+    0.03s; the public URL answers in 0.25s after a round trip through Cloudflare.
+    """
 
     @override_settings(LINDA_MCP_URL='https://shop.example/mcp/admin/v1')
-    def test_missing_slash_is_added(self):
-        self.assertEqual(_mcp_url(None), 'https://shop.example/mcp/admin/v1/')
+    def test_explicit_url_gets_exactly_one_slash_and_no_extra_headers(self):
+        self.assertEqual(eng._mcp_endpoint(None), ('https://shop.example/mcp/admin/v1/', {}))
 
     @override_settings(LINDA_MCP_URL='https://shop.example/mcp/admin/v1/')
-    def test_present_slash_is_preserved(self):
-        self.assertEqual(_mcp_url(None), 'https://shop.example/mcp/admin/v1/')
+    def test_explicit_url_slash_is_preserved(self):
+        self.assertEqual(eng._mcp_endpoint(None)[0], 'https://shop.example/mcp/admin/v1/')
 
     @override_settings(LINDA_MCP_URL='')
-    def test_request_is_preferred_over_loopback(self):
-        request = types.SimpleNamespace(build_absolute_uri=lambda p: f'https://shop.example{p}')
-        self.assertEqual(_mcp_url({'request': request}), 'https://shop.example/mcp/admin/v1/')
-
-    @override_settings(LINDA_MCP_URL='')
-    def test_loopback_fallback_honours_port(self):
+    def test_request_host_and_scheme_ride_on_loopback(self):
+        request = types.SimpleNamespace(get_host=lambda: 'shop.example', is_secure=lambda: True)
         with mock.patch.dict(eng.os.environ, {'PORT': '9001'}, clear=False):
-            self.assertEqual(_mcp_url(None), 'http://127.0.0.1:9001/mcp/admin/v1/')
+            url, headers = eng._mcp_endpoint({'request': request})
+        self.assertEqual(url, 'http://127.0.0.1:9001/mcp/admin/v1/')
+        self.assertEqual(headers, {'Host': 'shop.example', 'X-Forwarded-Proto': 'https'})
+
+    @override_settings(
+        LINDA_MCP_URL='',
+        ALLOWED_HOSTS=['.internal', 'localhost', 'shop.example'],
+        SECURE_SSL_REDIRECT=True,
+    )
+    def test_without_a_request_the_configured_host_is_used(self):
+        _, headers = eng._mcp_endpoint(None)
+        self.assertEqual(headers, {'Host': 'shop.example', 'X-Forwarded-Proto': 'https'})
+
+    @override_settings(LINDA_MCP_URL='', ALLOWED_HOSTS=['localhost'], SECURE_SSL_REDIRECT=False)
+    def test_local_dev_needs_no_extra_headers(self):
+        self.assertEqual(eng._mcp_endpoint(None)[1], {})
+
+    def test_headers_are_written_as_quoted_yaml(self):
+        body = eng._config_text('http://127.0.0.1:8000/mcp/admin/v1/', {'Host': 'shop.example'})
+        self.assertIn('      Host: "shop.example"', body)
 
 
-class ConfigRotationTests(SimpleTestCase):
-    def test_rotated_token_is_rewritten(self):
+class ConfigTests(SimpleTestCase):
+    """The per-conversation config Janus reads. It must never hold a credential."""
+
+    def test_no_credential_is_written_to_disk(self):
+        # The MCP header references the per-turn token in the environment, so a
+        # conversation home on disk (or on a volume, later) holds nothing reusable.
+        with TemporaryDirectory() as tmp:
+            body = _ensure_config(Path(tmp), mcp_url='https://s/mcp/').read_text(encoding='utf-8')
+        self.assertIn('Authorization: "Bearer ${LINDA_TURN_TOKEN}"', body)
+        self.assertNotIn('lt1.', body)
+
+    def test_changed_url_is_rewritten(self):
         with TemporaryDirectory() as tmp:
             home = Path(tmp)
-            _ensure_config(home, mcp_url='https://s/mcp/', mcp_token='old-token')
-            _ensure_config(home, mcp_url='https://s/mcp/', mcp_token='new-token')
+            _ensure_config(home, mcp_url='https://old.example/mcp/')
+            _ensure_config(home, mcp_url='https://new.example/mcp/')
             body = (home / 'config.yaml').read_text(encoding='utf-8')
-        self.assertIn('new-token', body)
-        self.assertNotIn('old-token', body)
+        self.assertIn('new.example', body)
+        self.assertNotIn('old.example', body)
 
     def test_unchanged_config_is_left_alone(self):
         with TemporaryDirectory() as tmp:
             home = Path(tmp)
-            cfg = _ensure_config(home, mcp_url='https://s/mcp/', mcp_token='t')
+            cfg = _ensure_config(home, mcp_url='https://s/mcp/')
             first = cfg.read_text(encoding='utf-8')
-            cfg2 = _ensure_config(home, mcp_url='https://s/mcp/', mcp_token='t')
+            cfg2 = _ensure_config(home, mcp_url='https://s/mcp/')
             self.assertEqual(first, cfg2.read_text(encoding='utf-8'))
             self.assertEqual(cfg.stat().st_mode & 0o777, 0o600)
 
+    def test_terminal_scanner_is_off(self):
+        # tirith only scans terminal commands, which a turn cannot run. Left on,
+        # it printed a warning into the merchant's first reply (live, v0.63.1)
+        # and started a binary download on every turn.
+        body = eng._config_text('https://s/mcp/')
+        self.assertIn('security:\n  tirith_enabled: false', body)
+
     def test_config_points_at_bundled_ecommerce_skills(self):
         with TemporaryDirectory() as tmp:
-            cfg = _ensure_config(Path(tmp), mcp_url='https://s/mcp/', mcp_token='t')
+            cfg = _ensure_config(Path(tmp), mcp_url='https://s/mcp/')
             body = cfg.read_text(encoding='utf-8')
         skills = bundled_skills_dir()
         self.assertTrue(skills.is_dir(), f'missing bundled skills at {skills}')
@@ -252,7 +287,7 @@ class TurnInvocationTests(SimpleTestCase):
 
     def test_toolset_names_the_configured_mcp_server(self):
         self.assertEqual(eng.TURN_TOOLSETS[0], eng.MCP_SERVER_NAME)
-        self.assertIn(f'  {eng.MCP_SERVER_NAME}:', eng._config_text('https://s/mcp/', ''))
+        self.assertIn(f'  {eng.MCP_SERVER_NAME}:', eng._config_text('https://s/mcp/'))
 
     def test_runs_in_the_conversation_home_not_the_engine_checkout(self):
         with (
@@ -384,15 +419,13 @@ class AssistantJanusRoutingTests(SimpleTestCase):
         self.assertTrue(ok)
 
     @override_settings(LINDA_ENGINE='janus')
-    def test_restricted_mode_falls_back_to_legacy(self):
-        # `sales` is a scope-restricted palette. Janus reaches its tools over
-        # MCP, where filter_tools_by_mode does not apply — running it there
-        # would silently hand a restricted conversation the wildcard palette.
+    def test_restricted_mode_runs_on_janus(self):
+        # The MCP edge filters tools by the turn's mode (linda_turn.mode_tools),
+        # so a restricted palette no longer needs the in-process loop.
         with mock.patch.object(eng, 'janus_available', return_value=True):
             a = self._assistant()
-            self.assertFalse(a._should_use_janus({'user': _staff(), 'mode': 'sales'}))
-            self.assertFalse(a._should_use_janus({'user': _staff(), 'mode': 'support'}))
-            self.assertFalse(a._should_use_janus({'user': _staff(), 'mode': 'ops'}))
+            for mode in ('sales', 'support', 'ops'):
+                self.assertTrue(a._should_use_janus({'user': _staff(), 'mode': mode}))
 
     @override_settings(LINDA_ENGINE='janus')
     def test_unavailable_binary_falls_back_to_legacy(self):

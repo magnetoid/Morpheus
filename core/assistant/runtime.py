@@ -14,6 +14,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from core.assistant import gates
+from core.assistant.gates import LINDA_SCOPES
 from core.assistant.persistence import StoredMessage, get_default_store
 from core.assistant.prompts import build_system_prompt
 from core.assistant.providers import get_default_provider
@@ -303,13 +305,7 @@ class Assistant:
     #: regardless of what it demanded. Holding an explicit set means a
     #: contributed tool wanting `orders.write`/`rbac.*` is denied until it is
     #: deliberately granted, while nothing in today's catalogue breaks.
-    scopes: list[str] = [
-        'system.read',
-        'system.write',
-        'selfdev',
-        'customers.write',
-        'diagnostics.read',
-    ]
+    scopes: list[str] = list(LINDA_SCOPES)
 
     #: Token cap for one turn; 0 = unlimited (the guardrails convention). The
     #: merchant-facing daily caps live in `core.agents.guardrails`.
@@ -368,11 +364,11 @@ class Assistant:
     def _should_use_janus(self, context=None) -> bool:
         """Janus is the default store agent; tests that inject a provider stay legacy.
 
-        The engine runs out-of-process and reaches its tools over MCP, so a
-        Janus turn passes through none of ``_gate_reason`` (scope → budget →
-        deadline → kernel consent) and none of ``_audit_write_tool``. Restricted
-        modes still fall back to the in-process loop. Tests force
-        ``LINDA_ENGINE='legacy'``. See ``LINDA_ENGINE`` in ``morph/settings.py``.
+        The engine runs out-of-process and reaches its tools over MCP. Each turn
+        carries a signed turn token (``core/assistant/turn_identity.py``), and the
+        MCP edge runs the same gate chain as ``_gate_reason`` — scope, consent,
+        mode filter, write audit — against the real staff user and conversation.
+        Tests force ``LINDA_ENGINE='legacy'``.
         """
         if self._provider_overridden:
             return False
@@ -384,24 +380,33 @@ class Assistant:
             engine = 'janus'
         if engine != 'janus':
             return False
-        # The mode chip is an enforcement boundary, not a label: the legacy loop
-        # narrows Linda's tool catalogue to the mode's scopes. No such filter
-        # exists on the MCP side, so a RESTRICTED mode (sales/support/ops) falls
-        # back to the in-process loop rather than silently receiving the
-        # wildcard palette. Wildcard modes (general/dev) lose nothing by
-        # running on Janus.
-        try:
-            if '*' not in self._janus_mode(context).scopes:
-                return False
-        except Exception:  # noqa: BLE001 — an unresolvable mode is not a wildcard
-            logger.warning('assistant: mode resolution failed; staying on legacy', exc_info=True)
-            return False
         try:
             from core.assistant.janus_engine import janus_available
 
             return janus_available()
         except Exception:  # noqa: BLE001
             return False
+
+    def _mint_turn_token(self, context, conversation_key: str) -> str:
+        """A signed identity for this turn, or '' when there is no staff user.
+
+        No token means the MCP edge answers 401 and Janus has no store tools —
+        the right outcome for a call with nobody to consent or be audited.
+        """
+        user = (context or {}).get('user') if isinstance(context, dict) else None
+        if user is None or not getattr(user, 'is_staff', False) or not getattr(user, 'pk', None):
+            return ''
+        from core.assistant.janus_engine import turn_timeout_s
+        from core.assistant.turn_identity import mint
+
+        # Margin past the subprocess timeout: a tool call issued in the turn's
+        # final seconds must not be refused while the turn is still legitimate.
+        return mint(
+            user=user,
+            conversation_key=conversation_key,
+            mode_slug=self._janus_mode(context).slug,
+            ttl_s=turn_timeout_s() + 30,
+        )
 
     def _stream_via_janus(
         self, *, message: str, conversation_key: str, context, started: float, history=None
@@ -450,6 +455,7 @@ class Assistant:
             conversation_key=conversation_key,
             system_prompt=system,
             context=context if isinstance(context, dict) else None,
+            turn_token=self._mint_turn_token(context, conversation_key),
         )
         duration = payload.get('duration_ms') or int((time.monotonic() - started) * 1000)
         if payload.get('error'):
@@ -554,6 +560,9 @@ class Assistant:
         """
         started = time.monotonic()
         history = self.store.history(conversation_key=conversation_key, limit=30)
+        # Consent is spent only by a human message sent after the proposal, so a
+        # retry inside this turn can never be approved by this turn's own words.
+        human_message_at = time.time()
         self.store.append(
             conversation_key=conversation_key,
             message=StoredMessage(role='user', content=message[:50_000]),
@@ -563,10 +572,19 @@ class Assistant:
         # layer declines gracefully (never a stack trace). A deliberate pause is
         # not an outage, so no _emit_failure_signal. Config is read cross-process
         # fresh (see core.agents.guardrails); default is NOT paused.
-        from core.agents.guardrails import agents_paused
+        from core.agents.guardrails import agents_paused, run_start_block_reason
 
-        if agents_paused():
-            friendly = 'The assistant is paused right now. Please try again in a little while.'
+        # Daily run/spend caps from Agent guardrails. They count the Worker's
+        # AgentRun rows, so a Linda turn does not itself add to the tally; it is
+        # still refused once the store has hit the limit the merchant set.
+        paused = agents_paused()
+        cap_reason = None if paused else run_start_block_reason()
+        if paused or cap_reason:
+            friendly = (
+                'The assistant is paused right now. Please try again in a little while.'
+                if cap_reason is None
+                else "The assistant has reached today's limit set in Agent guardrails."
+            )
             self.store.append(
                 conversation_key=conversation_key,
                 message=StoredMessage(role='assistant', content=friendly),
@@ -582,10 +600,8 @@ class Assistant:
             return
 
         # NOTE: a Janus turn reports no token counts (the subprocess returns text
-        # on stdout, not usage), so `spend_cap_daily` cannot see it. The
-        # model-independent `max_agent_runs_daily` cap is the only backstop on
-        # this path — the same gap `core/agents/pricing.py` has for an unpriced
-        # model.
+        # on stdout, not usage), so its own spend never reaches `spend_cap_daily`.
+        # The caps checked above still stop new turns once the store is over them.
         if self._should_use_janus(context):
             yield from self._stream_via_janus(
                 message=message,
@@ -790,6 +806,7 @@ class Assistant:
                     conversation_key=conversation_key,
                     context=context,
                     human_message=message,
+                    human_message_at=human_message_at,
                     spent_tokens=prompt_tokens + completion_tokens,
                 )
                 yield {
@@ -892,63 +909,35 @@ class Assistant:
         except Exception:  # noqa: BLE001 — repair is best-effort, never fatal
             return None
 
-    def _gate_reason(  # noqa: PLR0911 — flat guard chain, mirrors AgentRuntime
-        self, *, tool, tool_name, args, context, conversation_key, human_message, spent_tokens
+    def _gate_reason(
+        self,
+        *,
+        tool,
+        tool_name,
+        args,
+        context,
+        conversation_key,
+        human_message,
+        spent_tokens,
+        human_message_at: float | None = None,
     ) -> str | None:
         """Return a refusal reason, or ``None`` to let the call through.
 
-        The same enforcement stack the Worker has always run: scope → budget →
-        deadline → approval.
+        The chain lives in :mod:`core.assistant.gates` so the MCP edge runs the
+        identical code for a Janus turn.
         """
-        # Scope: an under-scoped caller never reaches an over-scoped tool.
-        try:
-            from core.agents.policies import ScopeDenied, enforce_policy
-
-            enforce_policy(scopes=self.scopes, required=list(getattr(tool, 'scopes', None) or []))
-        except ScopeDenied as e:
-            return str(e)
-        except Exception:  # noqa: BLE001 — a broken policy import must not open the gate
-            logger.warning('assistant: scope check unavailable', exc_info=True)
-            return 'scope_check_unavailable'
-
-        # Token budget (0 = unlimited) and the cooperative wall-clock deadline —
-        # a timed-out turn stops issuing NEW tool calls instead of running on as
-        # a zombie (the reason AgentRuntime polls `context['deadline']`).
-        try:
-            from core.agents.policies import BudgetExceeded, enforce_budget
-            from core.agents.runtime import _deadline_exceeded
-
-            enforce_budget(spent=spent_tokens, cap=self.token_budget or None)
-            if _deadline_exceeded(context or {}):
-                return 'deadline_exceeded'
-        except BudgetExceeded:
-            return 'budget_exceeded'
-        except Exception:  # noqa: BLE001 — budget/deadline are advisory, not a gate
-            logger.debug('assistant: budget/deadline check skipped', exc_info=True)
-
-        # Approval — kernel-verified HUMAN consent. Staged mode is exempt only
-        # for tools that actually stage (`supports_staging`): such a tool records
-        # an OpsProposal for review instead of executing, and that proposal IS
-        # the sign-off. A tool with no staging path must still pass the gate, or
-        # the exemption reopens the S1 hole for the staged path.
-        _staged = isinstance(context, dict) and context.get('staged')
-        _staged_exempt = _staged and getattr(tool, 'supports_staging', False)
-        if getattr(tool, 'requires_approval', False) and not _staged_exempt:
-            from core.assistant import consent
-
-            if not consent.consume(
-                conversation_key=conversation_key,
-                tool_name=tool_name,
-                args=args,
-                human_message=human_message,
-            ):
-                consent.request(conversation_key=conversation_key, tool_name=tool_name, args=args)
-                return (
-                    'approval_required: tell the user exactly what this will do and ask them '
-                    'to confirm. Do NOT re-call until they have answered — their own reply is '
-                    'what authorises it, not a `confirmed` argument.'
-                )
-        return None
+        return gates.gate_reason(
+            tool=tool,
+            tool_name=tool_name,
+            args=args,
+            scopes=self.scopes,
+            context=context,
+            conversation_key=conversation_key,
+            human_message=human_message,
+            spent_tokens=spent_tokens,
+            token_budget=self.token_budget,
+            human_message_at=human_message_at,
+        )
 
     def _dispatch_tool(
         self,
@@ -960,6 +949,7 @@ class Assistant:
         context,
         human_message: str = '',
         spent_tokens: int = 0,
+        human_message_at: float | None = None,
     ):
         """Invoke a single tool call, persist the result, append to LLM context.
         Returns ``(output, error_message)`` so :meth:`stream` can echo the
@@ -1012,6 +1002,7 @@ class Assistant:
             conversation_key=conversation_key,
             human_message=human_message,
             spent_tokens=spent_tokens,
+            human_message_at=human_message_at,
         )
         if gate:
             # Audit the ATTEMPT. A refused write is more interesting to a
@@ -1081,37 +1072,15 @@ class Assistant:
     def _audit_write_tool(
         self, *, tool, args, payload, error_msg, conversation_key, context
     ) -> None:
-        """Record write-tool invocations to core.audit (fail-soft).
-
-        Chat transcripts are Linda's only record otherwise — a merchant
-        auditing "what did the AI change?" must be able to answer from the
-        audit log, not by re-reading conversations. Read tools are skipped
-        (volume, no state change).
-        """
-        try:
-            is_write = bool(getattr(tool, 'requires_approval', False)) or any(
-                'write' in s or s in ('orders.cancel', 'selfdev')
-                for s in (getattr(tool, 'scopes', None) or [])
-            )
-            if not is_write:
-                return
-            from core.audit.services import record
-
-            user = (context or {}).get('user')
-            record(
-                event_type='assistant.tool_write',
-                actor=user if getattr(user, 'pk', None) else None,
-                target=getattr(tool, 'name', ''),
-                severity='warning' if error_msg else 'info',
-                metadata={
-                    'args': json.dumps(args, default=str)[:2000],
-                    'output_head': json.dumps(payload, default=str)[:500],
-                    'error': (error_msg or '')[:300],
-                    'conversation': conversation_key,
-                },
-            )
-        except Exception:  # noqa: BLE001 — auditing must never break the turn
-            logger.debug('assistant: write-tool audit skipped', exc_info=True)
+        """Record write-tool invocations to core.audit (see :mod:`core.assistant.gates`)."""
+        gates.audit_write_tool(
+            tool=tool,
+            args=args,
+            payload=payload,
+            error_msg=error_msg,
+            conversation_key=conversation_key,
+            user=(context or {}).get('user'),
+        )
 
 
 def run_assistant(

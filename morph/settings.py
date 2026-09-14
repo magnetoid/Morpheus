@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.63.1')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.64.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -674,7 +674,8 @@ LINDA_JANUS_AUTO_APPROVE = config('LINDA_JANUS_AUTO_APPROVE', default=False, cas
 # Must stay under GUNICORN_TIMEOUT (default 60s): the adapter blocks inside the
 # SSE generator, so a longer budget here just gets the worker killed instead.
 LINDA_JANUS_TIMEOUT_S = config('LINDA_JANUS_TIMEOUT_S', default=55, cast=int)
-LINDA_MCP_TOKEN = config('LINDA_MCP_TOKEN', default='')
+# No LINDA_MCP_TOKEN: each Janus turn carries a signed per-turn identity instead
+# (core/assistant/turn_identity.py). A standing token was the consent hole.
 LINDA_MCP_URL = config('LINDA_MCP_URL', default='')
 
 # Tests must NEVER hit a real LLM/embeddings API. A developer's `.env` usually
