@@ -4,12 +4,7 @@
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-4">
 
-  <div class="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
-    <a href="{% url 'admin_dashboard:settings' %}" class="hover:underline">Settings</a>
-    <i data-lucide="chevron-right" class="h-3 w-3"></i>
-    <span class="font-medium text-[color:var(--text)]">Janus</span>
-  </div>
-
+  {# Breadcrumb comes from the base layout (the view passes breadcrumb_trail). #}
   <div>
     <h1 class="text-xl font-semibold tracking-tight">Janus</h1>
     <p class="text-sm text-[color:var(--text-muted)] mt-1">
@@ -39,8 +34,8 @@
 
   {# ── Settings form ─────────────────────────────────────────────────────── #}
   <form method="post" class="card card-padded space-y-6" data-janus-form>
-    {% csrf_token %}
-    <input type="hidden" name="action" value="save">
+    {# In a [hidden] wrapper so the card's space-y spacing skips them. #}
+    <div hidden>{% csrf_token %}<input type="hidden" name="action" value="save"></div>
 
     <section class="space-y-2">
       <h2 class="font-semibold">Linda</h2>
