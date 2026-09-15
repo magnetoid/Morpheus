@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.66.1 — 2026-09-15
+
+**Deleted notes are fully forgotten**
+
+- Deleting a note on Settings → AI → Janus now also removes it from Linda's memory journal, so she can no longer recall it.
+- Linda's notes about one team member are no longer written to the store-wide memory journal, where colleagues' conversations could find them.
+
 ## v0.66.0 — 2026-09-15
 
 **Linda keeps what she learns**

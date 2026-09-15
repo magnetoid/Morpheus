@@ -185,7 +185,9 @@ database is the one store all of those share.
   `(scope, path)`. `USER.md` is scoped per staff member; everything else is shared.
 - Each turn: `hydrate` the conversation home from the DB → run Janus → `harvest`
   the diff (in a `finally`). `core/assistant/janus_learning.py`.
-- Kept: `memories/MEMORY.md`, `memories/USER.md`, `memories/daily/*.md` (newest 90),
+- Kept: `memories/MEMORY.md`, `memories/USER.md`, `memories/daily/*.md` (newest 90;
+  store-note entries only — v0.66.1, after the live smoke showed USER entries and
+  deleted notes lingering in the shared journal),
   agent-written skills (text files only), `learning/lessons.json`.
 - Not kept: `state.db` (Morpheus stores the transcript and replays history),
   bundled skills, scripts, anything over 100k chars, beyond 400 files.
