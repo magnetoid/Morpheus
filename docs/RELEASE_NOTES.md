@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.68.0 — 2026-09-15
+
+**See Linda work**
+
+- While Linda works you now see what she is doing: each store lookup or change appears in the chat as it happens, with a running "Linda is working" timer.
+- Linda can take up to two minutes on a message by default (up to about three, in Settings → AI → Janus), so bigger questions finish instead of timing out.
+- Long conversations stay quick and affordable: Linda no longer re-reads the whole history twice, and starts a fresh working session after a long pause or many messages, with a short recap.
+- Each reply now records the AI tokens it used, so the conversation cost panel shows Linda's spend and the daily spend cap in Agent guardrails includes it.
+- Sales summaries now state the currency instead of guessing it.
+
 ## v0.67.0 — 2026-09-15
 
 **Linda can do the job**
