@@ -1,7 +1,7 @@
 # Linda agent quality — make her do the job, in time, visibly
 
-Status: **Step 1 SHIPPED v0.67.0 and verified live** (11/11 tasks answered, 0 timeouts — see
-"After Step 1"). **Step 2 built for v0.68.0.** Update as steps land.
+Status: **Steps 1–2 SHIPPED and verified live** (v0.67.0, v0.68.0, fixes v0.68.1–v0.68.2,
+2026-09-15). Final eval on v0.68.2: 11/11 answered, 6–41s. See "Final state".
 
 Owner request (2026-09-15): "check again this agentic ai … and improve".
 
@@ -43,6 +43,30 @@ conversations in the last 30 days, so this eval is the evidence.
 Answers no longer name tools. Remaining quality nits: a visible self-correction in
 the apps answer ("Disabled (5)… wait, 4"); revenue shown as € in one answer and $ in
 another (analytics.summary returns no currency).
+
+## Final state (live on prod v0.68.2, same eval)
+
+11/11 answered: 12s, 13s, 10s, 16s, 19s, 41s (SEO sample of 8, full audit offered), 17s,
+13s, 14s (sales mode), 14s (price change: old → new, waited), 6s (declined; unchanged).
+
+Verified through the public URL with a temporary staff session: progress every 5s and tool
+cards stream through Cloudflare/nginx; a 120s turn held the connection and ended with the
+friendly time-limit message; replies record tokens and cost (a 3-turn test conversation:
+367k tokens, $0.21).
+
+Found and fixed while verifying:
+- v0.68.1 — Janus's background review thread swaps stdout/stderr process-wide, so every
+  10th message or tool step the reply was lost ("no reply"). Nudges off + state.db recovery.
+- v0.68.2 — order lines carry variant SKUs that `products.get` could not resolve.
+
+Still open:
+- "Top 3 customers by orders" — no tool aggregates customers by order count; at low effort
+  Linda now says so instead of combining searches.
+- Work over many records still meets the step/time limit (10 steps, 120s by default);
+  the merchant can raise both, or Linda offers a background job.
+- Found by Linda, outside this plan: nightly backups fail every night (`/app/backups` not
+  writable) since at least 2026-08-13; `self_improvement.scan_seo_daily` raises FieldError.
+- Upstream Janus: `agent/background_review.py` should not redirect process-wide streams.
 
 ## Root causes
 
