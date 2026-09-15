@@ -33,6 +33,7 @@ _VALID = {
     'extra_instructions': '',
     'bundled_skills': 'on',
     'learning': 'on',
+    'reasoning_effort': 'low',
 }
 
 
@@ -202,6 +203,13 @@ class JanusSettingConsumerTests(TestCase):
     def test_bundled_skills_toggle_reaches_the_engine_config(self):
         _set(bundled_skills=False)
         self.assertNotIn('external_dirs', eng._config_text('https://s/mcp/'))
+
+    def test_thinking_effort_reaches_the_engine_config(self):
+        self.assertIn('reasoning_effort: low', eng._config_text('https://s/mcp/'))
+        _set(reasoning_effort='high')
+        self.assertIn('reasoning_effort: high', eng._config_text('https://s/mcp/'))
+        _set(reasoning_effort='xhigh; rm -rf')
+        self.assertIn('reasoning_effort: low', eng._config_text('https://s/mcp/'))
 
     def test_learning_toggle_reaches_the_engine(self):
         self.assertIn('memory', eng.turn_toolsets())

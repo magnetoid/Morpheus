@@ -49,6 +49,13 @@ class JanusSettingsForm(forms.Form):
     )
     bundled_skills = forms.BooleanField(required=False)
     learning = forms.BooleanField(required=False)
+    reasoning_effort = forms.ChoiceField(
+        choices=[
+            ('low', 'Quick — best for everyday questions'),
+            ('medium', 'Balanced'),
+            ('high', 'Thorough — slower, for tricky analysis'),
+        ]
+    )
 
     def __init__(self, *args, has_stored_key: bool = False, **kwargs):
         super().__init__(*args, **kwargs)

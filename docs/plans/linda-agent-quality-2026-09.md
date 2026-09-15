@@ -1,6 +1,8 @@
 # Linda agent quality — make her do the job, in time, visibly
 
-Status: **planned 2026-09-15.** Step 1 → v0.67.0, Step 2 → v0.68.0. Update as steps land.
+Status: **Step 1 built for v0.67.0** (catalogue, consent, prompt, skills, tool bugs, plus the cheap engine
+wins pulled forward: reasoning effort, no bundled Janus skills, SOUL.md, one retry, junk replies).
+Step 2 → v0.68.0. Update as steps land.
 
 Owner request (2026-09-15): "check again this agentic ai … and improve".
 

@@ -46,6 +46,11 @@ class JanusPlugin(Plugin):
                 'extra_instructions': {'type': 'string', 'default': ''},
                 'bundled_skills': {'type': 'boolean', 'default': True},
                 'learning': {'type': 'boolean', 'default': True},
+                'reasoning_effort': {
+                    'type': 'string',
+                    'enum': ['low', 'medium', 'high'],
+                    'default': 'low',
+                },
             },
         }
 

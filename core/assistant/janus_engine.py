@@ -285,6 +285,12 @@ mcp_servers:
     headers:
       Authorization: "Bearer ${{{TURN_TOKEN_ENV}}}"{extra}
     timeout: 60
+    # Reads in one step run together instead of one after another.
+    supports_parallel_tool_calls: true
+    # Morpheus serves tools only; the resource and prompt helpers are dead weight.
+    tools:
+      resources: false
+      prompts: false
 """
     external = ''
     skills_dir = bundled_skills_dir()
@@ -298,6 +304,9 @@ mcp_servers:
     # curator: moves skills into skills/.archive, which is not kept, so a
     #   learned skill would silently disappear.
     # memory: off together with learning, so no stale notes are loaded.
+    # reasoning_effort: the provider default for a reasoning model is "high".
+    # api_max_retries: Janus retries 3x with backoff, which spends the whole turn
+    #   budget on a provider that is down.
     return f"""# Auto-generated store agent home. Merchant-facing name is Linda.
 security:
   tirith_enabled: false
@@ -305,6 +314,8 @@ model:
   default: {os.environ.get('JANUS_INFERENCE_MODEL') or 'auto'}
 agent:
   max_turns: {janus_settings.max_tool_turns(MAX_TOOL_TURNS)}
+  reasoning_effort: {janus_settings.reasoning_effort()}
+  api_max_retries: 1
 {mcp_block}
 skills:
   guard_agent_created: true
@@ -315,6 +326,31 @@ memory:
   memory_enabled: {learning}
   user_profile_enabled: {learning}
 """
+
+
+# Janus reads its identity from SOUL.md in the home and seeds its own ("You are
+# Janus Agent…") when the file is missing.
+_SOUL = (
+    'You are Linda, the AI assistant a merchant uses to run their online store. '
+    'You work only for this store. You never mention the engine or framework that runs you.\n'
+)
+# Stops Janus copying its ~70 general-purpose skills into the home.
+_NO_BUNDLED_SKILLS = '.no-bundled-skills'
+
+
+def _prepare_home(home: Path) -> None:
+    """Linda's identity, and no general-purpose Janus skills in her prompt."""
+    from core.assistant import janus_learning
+
+    with contextlib.suppress(OSError):
+        soul = home / 'SOUL.md'
+        if not soul.is_file() or soul.read_text(encoding='utf-8') != _SOUL:
+            soul.write_text(_SOUL, encoding='utf-8')
+        (home / _NO_BUNDLED_SKILLS).touch(exist_ok=True)
+    try:
+        janus_learning.remove_bundled_skills(home)
+    except Exception:  # noqa: BLE001 — a leftover skill costs tokens, not the turn
+        logger.debug('janus: bundled skill cleanup skipped', exc_info=True)
 
 
 def _ensure_config(
@@ -467,6 +503,16 @@ def _forget_session_id(conv_home: Path) -> None:
         (conv_home / _SESSION_FILE).unlink()
 
 
+# Status lines Janus prints to stdout even under -Q, which would otherwise be
+# glued onto the answer.
+_NOTICE_PREFIXES = ('⚠️  Reached maximum iterations', '❌ All API retries exhausted')
+
+
+def _strip_notices(stdout: str) -> str:
+    lines = [ln for ln in stdout.splitlines() if not ln.lstrip().startswith(_NOTICE_PREFIXES)]
+    return '\n'.join(lines).strip()
+
+
 def run_janus_turn(
     *,
     message: str,
@@ -497,6 +543,7 @@ def run_janus_turn(
         return {'text': '', 'error': f'janus home unavailable: {e}', 'duration_ms': 0}
     mcp_url, mcp_headers = _mcp_endpoint(context)
     _ensure_config(conv_home, mcp_url=mcp_url, mcp_headers=mcp_headers)
+    _prepare_home(conv_home)
 
     from core.assistant import janus_learning
 
@@ -594,7 +641,7 @@ def _spawn(
         break
 
     _remember_session_id(conv_home, proc.stderr or '')
-    text = (proc.stdout or '').strip()
+    text = _strip_notices(proc.stdout or '')
     err = _SESSION_LINE_RE.sub('', proc.stderr or '').strip()
     duration = int((time.monotonic() - started) * 1000)
     if proc.returncode != 0:
@@ -611,6 +658,11 @@ def _spawn(
         if text:
             reason = f'{reason} (crashed after {len(text)} chars of partial output)'
         return {'text': '', 'error': reason, 'duration_ms': duration}
+    if not text or text == '(empty)':
+        # Janus exits 0 with nothing to say when the model returned only hidden
+        # reasoning, or every provider retry failed; the merchant must not get a
+        # blank bubble recorded as Linda's answer.
+        return {'text': '', 'error': 'janus returned no reply', 'duration_ms': duration}
     if text.startswith('{'):
         # Parse the WHOLE envelope — sniffing for the key in a fixed-size head
         # means a longer envelope renders raw JSON to the merchant as Linda's

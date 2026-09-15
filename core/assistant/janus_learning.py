@@ -169,6 +169,31 @@ def _learned_skill_dirs(home: Path) -> list[Path]:
     return found
 
 
+def remove_bundled_skills(home: Path) -> None:
+    """Delete the general-purpose skills Janus copied into a home, and its manifest.
+
+    Janus seeds ~70 of its own skills (GitHub, notes apps, ML tooling) into every
+    home and indexes them into the prompt with a rule to load one first. None is
+    store work. The ``.no-bundled-skills`` marker stops new copies; this clears a
+    home seeded before the marker existed. Learned skills are untouched.
+    """
+    import shutil
+
+    manifest = home / _BUNDLED_MANIFEST
+    bundled = _bundled_skill_names(home)
+    if not bundled:
+        return
+    for skill_md_path in list(_walk_files(home / SKILLS_DIR)):
+        if skill_md_path.name != 'SKILL.md' or not skill_md_path.exists():
+            continue
+        skill_dir = skill_md_path.parent
+        text = _read_text(skill_md_path) or ''
+        if skill_dir.name in bundled or _skill_name(text, skill_dir.name) in bundled:
+            shutil.rmtree(skill_dir, ignore_errors=True)
+    with contextlib.suppress(OSError):
+        manifest.unlink()
+
+
 def scan(home: Path) -> dict[str, str]:
     """The learned files in a Janus home: relative path → text."""
     candidates = [home / rel for rel in (MEMORY_FILE, USER_FILE, LESSONS_FILE)]

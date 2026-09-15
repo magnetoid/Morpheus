@@ -36,6 +36,15 @@ def _friendly_provider_error(raw: str) -> str:  # noqa: PLR0911
     text = (raw or '').lower()
     if not text:
         return "Sorry — I couldn't reach the AI provider just now. Try again in a moment."
+    # The engine's own outcomes first: 'generate' contains 'rate', so these once
+    # read as a provider rate limit.
+    if 'janus timed out' in text:
+        return (
+            'That took longer than I can spend on one message, so I stopped. Try a '
+            'narrower question, or ask me to do it one step at a time.'
+        )
+    if 'janus returned no reply' in text:
+        return "I couldn't put an answer together that time. Please try again, or rephrase."
     if '429' in text or 'rate' in text:
         return (
             "I hit the provider's rate limit (the free model is "

@@ -389,6 +389,63 @@ class TurnInvocationTests(SimpleTestCase):
         self.assertNotIn('session_id', out['error'])
 
 
+class EngineHygieneTests(SimpleTestCase):
+    """What the merchant sees must be Linda's answer, from Linda's prompt."""
+
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.home = Path(self._tmp.name)
+
+    def _turn(self, proc):
+        with (
+            mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
+            mock.patch.object(eng, 'linda_janus_home', return_value=self.home),
+            mock.patch.object(eng.subprocess, 'run', return_value=proc),
+        ):
+            return run_janus_turn(message='hi', conversation_key='conv-1', system_prompt='p')
+
+    def test_step_limit_notice_is_not_part_of_the_answer(self):
+        out = self._turn(
+            _FakeProc(
+                stdout='⚠️  Reached maximum iterations (8). Requesting summary...\nStock is fine.'
+            )
+        )
+        self.assertEqual(out['text'], 'Stock is fine.')
+
+    def test_an_empty_reply_is_a_failure_not_a_blank_answer(self):
+        for stdout in ('', '(empty)', '❌ All API retries exhausted with no successful response.'):
+            out = self._turn(_FakeProc(stdout=stdout))
+            self.assertEqual(out['error'], 'janus returned no reply', stdout)
+
+    def test_home_carries_lindas_identity_and_no_general_janus_skills(self):
+        home = self.home / 'conv' / eng._session_id('conv-1')
+        bundled = home / 'skills' / 'github' / 'github-pr'
+        learned = home / 'skills' / 'ops' / 'restock'
+        for skill_dir, name in ((bundled, 'github-pr'), (learned, 'restock')):
+            skill_dir.mkdir(parents=True)
+            (skill_dir / 'SKILL.md').write_text(f'---\nname: {name}\n---\nx\n', encoding='utf-8')
+        (home / 'skills' / '.bundled_manifest').write_text('github-pr:abc\n', encoding='utf-8')
+        self._turn(_FakeProc(stdout='ok'))
+        self.assertIn('You are Linda', (home / 'SOUL.md').read_text(encoding='utf-8'))
+        self.assertTrue((home / '.no-bundled-skills').exists())
+        self.assertFalse(bundled.exists())
+        self.assertTrue(learned.exists())
+
+    def test_config_keeps_turns_fast(self):
+        body = eng._config_text('https://s/mcp/')
+        self.assertIn('api_max_retries: 1', body)
+        self.assertIn('supports_parallel_tool_calls: true', body)
+        self.assertIn('resources: false', body)
+
+    def test_engine_failures_read_as_what_happened(self):
+        from core.assistant.runtime import _friendly_provider_error
+
+        self.assertIn('took longer', _friendly_provider_error('janus timed out after 55s'))
+        # 'generate' contains 'rate'; this once read as a provider rate limit.
+        self.assertNotIn('rate limit', _friendly_provider_error('janus returned no reply'))
+
+
 class ProviderWiringTests(SimpleTestCase):
     """Janus's `auto` picks OpenRouter whenever OPENAI_API_KEY is set and never
     sees a dashboard-stored key, so the turn must pin Morpheus's provider."""

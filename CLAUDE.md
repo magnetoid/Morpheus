@@ -334,7 +334,14 @@ to a private temp dir or `LINDA_JANUS_HOME` (never `/app/media`: publicly served
 and a home holds `state.db`). **A smoke test that patches the path under test proves
 nothing about that path; smoke the unpatched call.** Also: `HOME` is set to the
 conversation home, and `MAX_TOOL_TURNS` caps iterations (~7s each on prod) so a
-turn answers inside the timeout instead of exploring until it is killed.
+turn answers inside the timeout instead of exploring until it is killed. Each home
+also gets Linda's `SOUL.md` (Janus seeds "You are Janus Agent" otherwise) and a
+`.no-bundled-skills` marker (Janus copies ~70 general-purpose skills into every
+home and its prompt says she MUST load a relevant one first); the config pins
+`agent.reasoning_effort` (merchant setting, default `low` — a reasoning model's
+provider default is `high`) and `api_max_retries: 1`. Janus prints status lines to
+stdout even under `-Q` and exits 0 on an empty reply, so `_strip_notices` removes
+them and an empty or `(empty)` answer is a failure, not a blank bubble.
 Guarded by `core/assistant/tests/test_janus_engine.py`, `test_turn_identity.py`
 and `agent_mcp/tests/test_linda_turn.py`.
 
