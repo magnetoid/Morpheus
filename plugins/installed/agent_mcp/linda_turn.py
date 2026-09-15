@@ -72,11 +72,18 @@ def _resolve(request) -> LindaTurn | None:
     return LindaTurn(user=user, conversation_key=identity.conversation_key, mode_slug=mode.slug)
 
 
+# Janus keeps what Linda learns in its own memory (core/assistant/janus_learning.py).
+# A second write path into LindaMemory would split what she learns across two
+# stores. memory.recall stays: those rows are still injected as remembered facts.
+ENGINE_OWNED_TOOLS = frozenset({'memory.remember', 'memory.forget'})
+
+
 def mode_tools(tools: list, turn: LindaTurn) -> list:
     """The catalogue a turn's mode allows. Anything else is 'not exposed'."""
     from core.assistant.modes import filter_tools_by_mode
 
-    return filter_tools_by_mode(tools, turn.mode_slug)
+    allowed = filter_tools_by_mode(tools, turn.mode_slug)
+    return [t for t in allowed if t.name not in ENGINE_OWNED_TOOLS]
 
 
 def listed_tools(tools: list, turn: LindaTurn) -> list:

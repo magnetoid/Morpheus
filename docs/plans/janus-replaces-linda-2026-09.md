@@ -1,8 +1,11 @@
 # Janus fully replaces Linda's engine (brand stays Linda)
 
-Status: **in progress** — hotfix v0.63.1 shipped 2026-09-13. Owner decisions
-recorded 2026-09-13. Update this file as phases land; it is the load-bearing
-plan across sessions.
+Status: **Phases 1–3 SHIPPED and verified live** (v0.63.1 → v0.65.0, 2026-09-14).
+**Phase 4 built without a volume** (owner, 2026-09-15: "leave all learnings in
+Janus, but no Coolify persistent storage — it must work on Coolify and without
+it"): learnings live in the database. **Phases 5–6 remain**; Phase 6 needs a
+signing decision and, with no volume, a new install location (see below).
+Update this file as phases land.
 
 ## Goal
 
@@ -54,7 +57,8 @@ Its `requires_approval` check is a standing per-token `approved_tools` grant.
 
 - **v0.64.0 — Phase 1** (+ tirith fix below). Makes store tools live with consent.
 - **v0.65.0 — Phases 2 + 3** (settings app, deletions). Breaking: removed API endpoints.
-- **Later — Phases 4–6** (need a Coolify volume; infra change confirmed at the time).
+- **v0.66.0 — Phase 4** (learnings in the database, no volume) + page polish.
+- **Later — Phases 5–6.**
 
 Carry into v0.64.0: first reply of every conversation on prod starts with Janus's
 "tirith security scanner enabled but not available" warning (verified live on
@@ -84,7 +88,7 @@ scope settings should address it.
 
 ## Phase 1 — Per-turn identity and gates at the MCP edge
 
-**Status: implemented on `feat/janus-full-replacement`, pending release as v0.64.0.**
+**Status: SHIPPED v0.64.0/v0.64.1, verified live.**
 Landed as `core/assistant/turn_identity.py`, `core/assistant/gates.py` (the loop now
 delegates to it), `plugins/installed/agent_mcp/linda_turn.py`, and the edge wiring in
 `agent_mcp/views.py`. `LINDA_MCP_TOKEN` removed. Restricted modes now run on Janus.
@@ -121,7 +125,7 @@ reads orders; a refund is refused until the merchant says yes in the next messag
 
 ## Phase 2 — Janus settings page
 
-**Status: implemented on `feat/janus-settings-and-cleanup`, pending release v0.65.0.**
+**Status: SHIPPED v0.65.0, verified live 2026-09-14** (page renders for staff, engine installed, version shown, listed in the Settings sidebar).
 Protected, catalogue-hidden `janus` app with one page at Settings → AI → Janus
 (`/dashboard/apps/janus/engine/`): engine status, on/off, store-provider or pinned
 provider (write-only key), tool-step cap, time limit, standing instructions,
@@ -156,7 +160,7 @@ Rule from CLAUDE.md: every field ships with its consumer in the same change.
 ## Phase 3 — Remove old Linda code and API pages
 
 Blocked on Phase 1. **Owner approved deleting all of A–D (2026-09-14).**
-**Status: done on `feat/janus-settings-and-cleanup` (v0.65.0).** `CodeProposal` kept
+**Status: SHIPPED v0.65.0, verified live** — removed endpoints return 404; staged-changes inbox 200; a real turn on the rewritten runtime called `products.search`. `CodeProposal` kept
 as a retired model so its table is not dropped by a generated migration; drop it
 deliberately.
 
@@ -173,16 +177,36 @@ dangling URL reversals and imports; compile changed templates.
 
 ## Phase 4 — Janus keeps what it learns
 
-- One shared persistent Janus home on a Coolify volume (not per conversation);
-  sessions separated by `--resume` ids in one `state.db`.
-- Enable `skills` write + memory toolsets there (confined to the volume).
-- Risk: prompt-injected content persisted as a skill. Mitigation: learned skills
-  listed on the settings page with review/disable/delete; optional
-  approve-before-use.
-- Drop the history replay in the prompt once resume is reliable across deploys.
-- Check `state.db` concurrency under parallel turns (Janus 4f311d03 "state.db resilience").
+**Status: BUILT for v0.66.0.** No disk volume: Morpheus is open source and must run
+the same on Coolify, plain Docker or bare metal, with one or many containers. The
+database is the one store all of those share.
+
+- `JanusLearning` rows (`core/assistant/models.py`), one per learned file, keyed by
+  `(scope, path)`. `USER.md` is scoped per staff member; everything else is shared.
+- Each turn: `hydrate` the conversation home from the DB → run Janus → `harvest`
+  the diff (in a `finally`). `core/assistant/janus_learning.py`.
+- Kept: `memories/MEMORY.md`, `memories/USER.md`, `memories/daily/*.md` (newest 90),
+  agent-written skills (text files only), `learning/lessons.json`.
+- Not kept: `state.db` (Morpheus stores the transcript and replays history),
+  bundled skills, scripts, anything over 100k chars, beyond 400 files.
+- Harvest merges per kind so concurrent conversations never erase each other.
+- Toolsets while learning is on: `morpheus_admin,skills,memory`. Config pins
+  `skills.guard_agent_created: true`, `inline_shell: false`, `curator.enabled: false`,
+  and `memory.memory_enabled` follows the switch.
+- Settings → AI → Janus: "Linda keeps what she learns" switch, and a review card
+  listing store notes, the viewer's own notes, skills and lessons, each deletable
+  and audited (`janus.learning_forgotten`). Harvests audit `janus.learned`.
+- Linda turns no longer see `memory.remember`/`memory.forget` over MCP.
+- Known limit: Janus's end-of-turn self-review runs in a daemon thread that `-Q`
+  exits past, so learning happens through explicit `memory`/`skill_manage` calls
+  during the turn, not the background review. A memory snapshot is frozen per Janus
+  session, so a note learned elsewhere reaches an ongoing conversation only when
+  its session restarts (e.g. after a redeploy).
+- Session search across past conversations stays off (needs a shared `state.db`).
 
 ## Phase 5 — Track upstream Janus
+
+Partly done in v0.65.0: the Janus page shows the installed version (`janus --version`, cached 10 min).
 
 - Record installed Janus version and git ref at image build (build arg → env).
 - Show both on Settings → Version & updates and the Janus page.
@@ -191,8 +215,11 @@ dangling URL reversals and imports; compile changed templates.
 
 ## Phase 6 — Update Janus in-app
 
-- Persistent writable venv on the volume; `JANUS_BIN` points at it; the image's
-  `/opt/janus` stays as fallback.
+- No volume (owner, 2026-09-15). A venv installed at runtime lives only as long
+  as the container, so the approved engine version must be recorded in the
+  database and re-installed into a temp venv at boot (or the update triggers an
+  image rebuild where the host supports one). `JANUS_BIN` points at the verified
+  venv; the image's `/opt/janus` stays as fallback.
 - Verified channel: signed manifest entry (`kind: engine`) with version + sha256 of
   a wheel. Download → verify → install into a new venv dir → `janus --version`
   smoke → atomic symlink swap → rollback on failure. Gated by `system.write` and

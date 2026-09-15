@@ -238,6 +238,47 @@ class AssistantBriefing(models.Model):
         return f'AssistantBriefing({self.date}/{self.status})'
 
 
+class JanusLearning(models.Model):
+    """One file of what Janus, Linda's engine, has learned.
+
+    Janus keeps what it learns as files in its home directory, and a home is a
+    temp dir that every redeploy wipes. These rows are the durable copy, so the
+    learning survives on any host without a disk volume. The sync logic lives in
+    ``core/assistant/janus_learning.py``.
+    """
+
+    KIND_CHOICES = [
+        ('memory', 'Memory notes'),
+        ('journal', 'Memory journal'),
+        ('skill', 'Skill file'),
+        ('lesson', 'Lessons'),
+    ]
+
+    # '' is the whole store; 'user:<pk>' is one staff member (only USER.md, what
+    # Janus knows about the person it is talking to).
+    scope = models.CharField(max_length=64, blank=True, default='', db_index=True)
+    # Relative to the Janus home, e.g. 'memories/MEMORY.md'.
+    path = models.CharField(max_length=255)
+    kind = models.CharField(max_length=16, choices=KIND_CHOICES, db_index=True)
+    content = models.TextField()
+    # The conversation whose turn last wrote this file.
+    conversation_key = models.CharField(max_length=120, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'assistant'
+        ordering = ['scope', 'path']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['scope', 'path'], name='assistant_janus_learning_scope_path'
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f'JanusLearning({self.scope or "store"}:{self.path})'
+
+
 class CodeProposal(models.Model):
     """RETIRED in v0.65.0 — nothing reads or writes this model any more.
 

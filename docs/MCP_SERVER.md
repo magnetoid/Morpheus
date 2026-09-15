@@ -114,6 +114,9 @@ passes the same gates as Linda's in-process loop (`core/assistant/gates.py`):
 - **Audit** — every write attempt, refused or executed, records
   `assistant.tool_write` with the merchant as actor, alongside the usual
   `agents.decision` row. Tool calls are also stored in the conversation history.
+- **Memory** — `memory.remember` and `memory.forget` are not exposed to a turn.
+  Linda learns through Janus's own memory, which Morpheus keeps in the database
+  (`core/assistant/janus_learning.py`); `memory.recall` is still available.
 
 ## Write surface (catalog, inventory, orders)
 

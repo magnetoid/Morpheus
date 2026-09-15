@@ -67,6 +67,11 @@ def bundled_skills_enabled() -> bool:
     return bool(_read('bundled_skills', True))
 
 
+def learning_enabled() -> bool:
+    """Whether Janus keeps what it learns (core/assistant/janus_learning.py)."""
+    return bool(_read('learning', True))
+
+
 def custom_provider() -> dict[str, str] | None:
     """The merchant's pinned provider for Janus, or None to use the store's AI provider."""
     if _read('model_source', 'store') != 'custom':

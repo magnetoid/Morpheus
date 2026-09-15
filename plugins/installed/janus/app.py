@@ -19,7 +19,7 @@ class JanusPlugin(Plugin):
     description = (
         'Settings for Janus, the engine behind Linda: switch Linda on or off, choose '
         'the model, cap tool steps and turn time, add standing instructions, toggle '
-        'the bundled store skills, and test the connection.'
+        'the bundled store skills, review what Linda has learned, and test the connection.'
     )
     has_models = False
     # The only place Linda can be switched back on or re-pinned to a provider.
@@ -45,6 +45,7 @@ class JanusPlugin(Plugin):
                 'turn_timeout_s': {'type': 'integer', 'minimum': 10, 'maximum': 55},
                 'extra_instructions': {'type': 'string', 'default': ''},
                 'bundled_skills': {'type': 'boolean', 'default': True},
+                'learning': {'type': 'boolean', 'default': True},
             },
         }
 

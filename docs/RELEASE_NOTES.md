@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.66.0 — 2026-09-15
+
+**Linda keeps what she learns**
+
+- What Linda learns while she works — notes about the store, notes about each team member, skills she writes and lessons from past work — is now kept in the store's database and used in every conversation. It survives redeploys on any host, with no disk volume or Coolify storage needed.
+- Settings → AI → Janus has a new switch, "Linda keeps what she learns", and a "What Linda has learned" card where you can review and delete any note, skill or lessons. Each team member sees only Linda's notes about themselves. Deletions are recorded in the audit log.
+- Learned notes can guide Linda but never approve anything: every store change still needs your own yes in the chat. Skills she writes are scanned before they are saved.
+- Linda saves memories only through her engine's own memory now; the separate memory.remember and memory.forget tools are no longer offered to her. Existing remembered facts still reach her.
+- The Janus settings page no longer shows its breadcrumb twice.
+
 ## v0.65.0 — 2026-09-14
 
 **Janus settings page, and Linda runs only on Janus**

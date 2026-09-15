@@ -133,6 +133,16 @@ class LindaTurnEdgeTests(TestCase):
         self.assertIn('not exposed', resp['error']['message'])
         self.assertEqual(self.read.calls, [])
 
+    def test_linda_learns_through_janus_not_a_second_memory_store(self):
+        remember = _FakeTool('memory.remember', scopes=['system.write'])
+        tools = [self.read, remember]
+        with mock.patch('plugins.installed.agent_mcp.views._public_tools', return_value=tools):
+            names = {t['name'] for t in self._post('tools/list').json()['result']['tools']}
+            resp = self._call('memory.remember', {'sku': 'x'})
+        self.assertNotIn('memory.remember', names)
+        self.assertIn('not exposed', resp['error']['message'])
+        self.assertEqual(remember.calls, [])
+
     def test_out_of_profile_tool_is_refused_even_if_called_directly(self):
         resp = self._call('orders.refund', {'sku': 'A1'})
         self.assertTrue(resp['result']['isError'])

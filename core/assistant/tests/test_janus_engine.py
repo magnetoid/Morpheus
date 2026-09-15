@@ -312,7 +312,8 @@ class TurnInvocationTests(SimpleTestCase):
         argv = calls[0]
         self.assertIn('-t', argv)
         toolsets = argv[argv.index('-t') + 1].split(',')
-        self.assertEqual(toolsets, list(eng.TURN_TOOLSETS))
+        self.assertEqual(toolsets, list(eng.turn_toolsets()))
+        self.assertEqual(set(toolsets) - set(eng.TURN_TOOLSETS), set(eng.LEARNING_TOOLSETS))
         for forbidden in ('terminal', 'file', 'code_execution', 'web', 'browser', 'janus-cli'):
             self.assertNotIn(forbidden, toolsets)
 

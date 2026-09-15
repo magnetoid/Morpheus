@@ -4,12 +4,7 @@
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-4">
 
-  <div class="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
-    <a href="{% url 'admin_dashboard:settings' %}" class="hover:underline">Settings</a>
-    <i data-lucide="chevron-right" class="h-3 w-3"></i>
-    <span class="font-medium text-[color:var(--text)]">Janus</span>
-  </div>
-
+  {# Breadcrumb comes from the base layout (the view passes breadcrumb_trail). #}
   <div>
     <h1 class="text-xl font-semibold tracking-tight">Janus</h1>
     <p class="text-sm text-[color:var(--text-muted)] mt-1">
@@ -39,8 +34,8 @@
 
   {# ── Settings form ─────────────────────────────────────────────────────── #}
   <form method="post" class="card card-padded space-y-6" data-janus-form>
-    {% csrf_token %}
-    <input type="hidden" name="action" value="save">
+    {# In a [hidden] wrapper so the card's space-y spacing skips them. #}
+    <div hidden>{% csrf_token %}<input type="hidden" name="action" value="save"></div>
 
     <section class="space-y-2">
       <h2 class="font-semibold">Linda</h2>
@@ -123,12 +118,78 @@
         <input type="checkbox" name="bundled_skills" {% if form.bundled_skills.value %}checked{% endif %}>
         <span class="text-sm">Use the built-in store skills (orders, catalog, content and SEO, store operations)</span>
       </label>
+      <div>
+        <label class="inline-flex items-center gap-2">
+          <input type="checkbox" name="learning" {% if form.learning.value %}checked{% endif %}>
+          <span class="text-sm">Linda keeps what she learns</span>
+        </label>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Notes, skills and lessons she saves are kept in the store's database and used in every conversation. Turn this off and she starts each conversation fresh; what she already learned stays below until you delete it.</p>
+      </div>
     </section>
 
     <div class="pt-3 border-t border-[color:var(--border)] flex justify-end">
       <button type="submit" class="btn btn-primary">Save</button>
     </div>
   </form>
+
+  {# ── What Linda has learned ────────────────────────────────────────────── #}
+  <div class="card card-padded space-y-4" data-janus-learned>
+    <div>
+      <h2 class="font-semibold">What Linda has learned</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">Saved by Linda while she works. Delete anything that is wrong or out of date. Nothing here can approve a change; she still asks you first.</p>
+    </div>
+
+    <section class="space-y-2">
+      <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Notes about the store</h3>
+      {% for note in learned.notes.store %}
+      <div class="flex items-start justify-between gap-3 text-sm">
+        <p class="whitespace-pre-wrap">{{ note.text }}</p>
+        <form method="post" class="m-0 shrink-0">{% csrf_token %}<input type="hidden" name="action" value="forget_note"><input type="hidden" name="which" value="store"><input type="hidden" name="note" value="{{ note.id }}"><button type="submit" class="btn btn-secondary btn-sm">Delete</button></form>
+      </div>
+      {% empty %}
+      <p class="text-sm text-[color:var(--text-muted)]">None yet.</p>
+      {% endfor %}
+    </section>
+
+    <section class="space-y-2 pt-3 border-t border-[color:var(--border)]">
+      <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Notes about you</h3>
+      <p class="text-xs text-[color:var(--text-muted)]">Each team member sees only Linda's notes about themselves.</p>
+      {% for note in learned.notes.user %}
+      <div class="flex items-start justify-between gap-3 text-sm">
+        <p class="whitespace-pre-wrap">{{ note.text }}</p>
+        <form method="post" class="m-0 shrink-0">{% csrf_token %}<input type="hidden" name="action" value="forget_note"><input type="hidden" name="which" value="user"><input type="hidden" name="note" value="{{ note.id }}"><button type="submit" class="btn btn-secondary btn-sm">Delete</button></form>
+      </div>
+      {% empty %}
+      <p class="text-sm text-[color:var(--text-muted)]">None yet.</p>
+      {% endfor %}
+    </section>
+
+    <section class="space-y-2 pt-3 border-t border-[color:var(--border)]">
+      <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Skills she wrote</h3>
+      {% for skill in learned.skills %}
+      <div class="flex items-start justify-between gap-3 text-sm">
+        <div>
+          <p class="font-medium">{{ skill.name }}</p>
+          {% if skill.description %}<p class="text-xs text-[color:var(--text-muted)]">{{ skill.description }}</p>{% endif %}
+          <p class="text-xs text-[color:var(--text-muted)]">{{ skill.files }} file{{ skill.files|pluralize }} · updated {{ skill.updated_at|timesince }} ago</p>
+        </div>
+        <form method="post" class="m-0 shrink-0">{% csrf_token %}<input type="hidden" name="action" value="delete_skill"><input type="hidden" name="skill" value="{{ skill.dir }}"><button type="submit" class="btn btn-secondary btn-sm">Delete</button></form>
+      </div>
+      {% empty %}
+      <p class="text-sm text-[color:var(--text-muted)]">None yet.</p>
+      {% endfor %}
+    </section>
+
+    <section class="flex items-center justify-between gap-3 pt-3 border-t border-[color:var(--border)]">
+      <div>
+        <h3 class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Lessons</h3>
+        <p class="text-sm">{{ learned.lessons }} lesson{{ learned.lessons|pluralize }} from past work</p>
+      </div>
+      {% if learned.lessons %}
+      <form method="post" class="m-0">{% csrf_token %}<input type="hidden" name="action" value="clear_lessons"><button type="submit" class="btn btn-secondary btn-sm">Delete all</button></form>
+      {% endif %}
+    </section>
+  </div>
 
   {# ── Connection test ───────────────────────────────────────────────────── #}
   <div class="card card-padded space-y-3">
