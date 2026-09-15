@@ -159,6 +159,9 @@ def _run_test(user) -> dict:
         conversation_key=f'janus-settings-test:{user.pk}:{uuid.uuid4().hex[:8]}',
         system_prompt='You are a connection check for a store assistant. Reply with exactly: ok',
         turn_token='',
+        # This page does not stream, so the request must finish before a proxy
+        # gives up on a silent connection.
+        timeout_s=45,
     )
     return {
         'ok': not out.get('error'),

@@ -76,6 +76,23 @@ class OrdersRefundGateTests(TestCase):
             )
 
 
+class AnalyticsCurrencyTests(TestCase):
+    def test_summary_and_top_products_name_the_currency(self):
+        from djmoney.money import Money
+
+        from plugins.installed.orders.agent_tools import (
+            analytics_summary_tool,
+            analytics_top_products_tool,
+        )
+        from plugins.installed.orders.models import Order
+
+        Order.objects.create(email='a@example.com', subtotal=Money(9, 'EUR'), total=Money(9, 'EUR'))
+        self.assertEqual(analytics_summary_tool.invoke({}).output['currency'], 'EUR')
+        self.assertIn('currency', analytics_top_products_tool.invoke({}).output)
+        Order.objects.create(email='b@example.com', subtotal=Money(5, 'USD'), total=Money(5, 'USD'))
+        self.assertTrue(analytics_summary_tool.invoke({}).output['currency'].startswith('mixed'))
+
+
 class OrdersSearchTotalTests(TestCase):
     """orders.search must report the real match total, not the page size — the
     same undercount bug catalog fixed for products.search."""

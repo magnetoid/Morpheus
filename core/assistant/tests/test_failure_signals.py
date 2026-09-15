@@ -14,8 +14,10 @@ def _turn(key, *, available=True, payload=None):
     with (
         mock.patch('core.assistant.janus_engine.janus_available', return_value=available),
         mock.patch(
-            'core.assistant.janus_engine.run_janus_turn',
-            return_value=payload or {'text': '', 'error': 'janus exit 1', 'duration_ms': 1},
+            'core.assistant.janus_engine.iter_janus_turn',
+            side_effect=lambda **kw: iter(
+                [payload or {'text': '', 'error': 'janus exit 1', 'duration_ms': 1}]
+            ),
         ),
     ):
         list(Assistant().stream(message='hi', conversation_key=key))

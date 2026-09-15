@@ -38,7 +38,10 @@ class AssistantTurnTests(TestCase):
 
         with (
             mock.patch('core.assistant.janus_engine.janus_available', return_value=True),
-            mock.patch('core.assistant.janus_engine.run_janus_turn', return_value=payload),
+            mock.patch(
+                'core.assistant.janus_engine.iter_janus_turn',
+                side_effect=lambda **kw: iter([payload]),
+            ),
         ):
             events = list(Assistant().stream(message='hi', conversation_key=key))
         return events[-1]
@@ -65,6 +68,93 @@ class AssistantTurnTests(TestCase):
             final = list(Assistant().stream(message='hi', conversation_key='test:none'))[-1]
         self.assertEqual(final['result'].error, 'janus_unavailable')
         self.assertIn("isn't installed", final['result'].text)
+
+
+class AssistantStreamTests(TestCase):
+    """What the chat receives while a turn runs, and what the reply records."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        self.user = get_user_model().objects.create_user(
+            username='ana', email='a@x.com', password='x', is_staff=True
+        )
+
+    def _stream(self, fake, key='t:stream', **context):
+        from unittest import mock
+
+        with (
+            mock.patch('core.assistant.janus_engine.janus_available', return_value=True),
+            mock.patch('core.assistant.janus_engine.iter_janus_turn', side_effect=fake),
+        ):
+            return list(
+                Assistant().stream(
+                    message='hi', conversation_key=key, context={'user': self.user, **context}
+                )
+            )
+
+    def test_tool_calls_reach_the_chat_while_the_turn_runs(self):
+        from core.assistant.persistence import StoredMessage, get_default_store
+
+        def fake(**kw):
+            yield None
+            get_default_store().append(
+                conversation_key='t:stream',
+                message=StoredMessage(
+                    role='tool',
+                    tool_name='orders.search',
+                    tool_args={'q': 'x'},
+                    tool_output={'total': 3},
+                ),
+            )
+            yield None
+            yield {'text': 'Three orders.', 'error': '', 'duration_ms': 5}
+
+        events = self._stream(fake)
+        types = [e['type'] for e in events]
+        self.assertEqual(types[0], 'progress')
+        self.assertNotIn({'type': 'assistant_text', 'text': ''}, events)
+        started = next(e for e in events if e['type'] == 'tool_call_started')
+        finished = next(e for e in events if e['type'] == 'tool_call_finished')
+        self.assertEqual((started['name'], finished['output']), ('orders.search', {'total': 3}))
+        self.assertEqual(events[-1]['result'].tool_call_count, 1)
+
+    def test_the_reply_records_tokens_and_counts_toward_the_spend_cap(self):
+        from core.agents.guardrails import daily_spend_usd
+        from core.assistant.models import AssistantConversation
+
+        usage = {
+            'input_tokens': 9000,
+            'cache_read_tokens': 1000,
+            'output_tokens': 400,
+            'model': 'deepseek-v4-pro',
+        }
+
+        def fake(**kw):
+            yield {'text': 'ok', 'error': '', 'duration_ms': 5, 'usage': usage}
+
+        before = daily_spend_usd()
+        final = self._stream(fake)[-1]['result']
+        self.assertEqual((final.prompt_tokens, final.completion_tokens), (10000, 400))
+        summary = AssistantConversation.objects.get(key='t:stream').cost_summary()
+        self.assertEqual(summary['total_tokens'], 10400)
+        self.assertGreater(daily_spend_usd(), before)
+
+    def test_the_system_prompt_stays_the_same_between_messages(self):
+        # Janus puts it ahead of the transcript; a prompt that changes every
+        # message makes the provider re-read the whole conversation uncached.
+        seen = []
+
+        def fake(**kw):
+            seen.append(kw)
+            yield {'text': 'ok', 'error': '', 'duration_ms': 5}
+
+        self._stream(fake, page_url='/dashboard/orders/', page_title='Orders')
+        self._stream(fake, page_url='/dashboard/products/', page_title='Products')
+        self.assertEqual(seen[0]['system_prompt'], seen[1]['system_prompt'])
+        self.assertIn('/dashboard/orders/', seen[0]['turn_context'])
+        self.assertIn('/dashboard/products/', seen[1]['turn_context'])
+        self.assertIn('hi', seen[1]['history'])  # the first message, for a fresh session
 
 
 class ToolMigrationTests(TestCase):

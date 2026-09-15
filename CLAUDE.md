@@ -312,9 +312,21 @@ standing instructions, bundled skills) live on Settings → AI → Janus — the
 `/dashboard/apps/<app>/settings/` is the legacy settings deep link and silently
 wins the route. Remaining fences: tests force `'legacy'` and must never spawn a real model;
 YOLO/`LINDA_JANUS_AUTO_APPROVE` stays **off**; the child gets an env
-**allowlist** (`_child_env`), never `os.environ.copy()`. The adapter timeout
-must stay **under** `GUNICORN_TIMEOUT` (60s), and a non-zero exit is a failure
-even when stdout carried partial text. Bundled ecommerce skills live in
+**allowlist** (`_child_env`), never `os.environ.copy()`. A non-zero exit is a failure even when stdout carried
+partial text. **The turn limit may exceed `GUNICORN_TIMEOUT` (60s) only because the
+chat streams** (v0.68.0): the subprocess waits in a thread (`iter_janus_turn`) while
+the SSE generator sends `progress` every 5s and tool events from the rows the MCP
+edge stores — gthread workers heartbeat on their main loop, and the steady bytes
+hold Cloudflare/nginx. A caller that does not stream (the settings page's connection
+test) must pass a short `timeout_s`. Everything that touches the database (settings,
+hydrate, harvest) stays on the request's thread: the worker thread has its own
+connection and cannot see the request's. Also from v0.68.0: the system prompt is
+stable per conversation (Janus places it ahead of the transcript, so a per-message
+prompt defeats the prompt cache) — page, memories and knowledge travel with the
+message; the history recap is sent only when a fresh Janus session starts
+(`--resume` already carries the transcript), and sessions rotate after
+`SESSION_MAX_TURNS` or `SESSION_IDLE_S` so context stays bounded; token use is read
+from the session row in the home's `state.db` and counts toward `spend_cap_daily`. Bundled ecommerce skills live in
 `core/assistant/janus_skills/` and are wired via `skills.external_dirs` in the
 per-conversation Janus home. **Four CLI traps shipped live in v0.63.0 and each
 looked fine in tests** (v0.63.1): (1) without `-t`, `janus chat` loads its

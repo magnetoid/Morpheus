@@ -107,7 +107,9 @@ def _format_recent_memories(query: str = '') -> str:
     try:
         from core.assistant.tools.memory import get_recent_memories
 
-        rows = get_recent_memories(limit=50, query=query)
+        # Ten: they ride along with every message, and a long list of loosely
+        # related facts costs more attention than it earns.
+        rows = get_recent_memories(limit=10, query=query)
     except Exception:  # noqa: BLE001
         return ''
     if not rows:
@@ -144,28 +146,63 @@ def _format_knowledge(query: str = '') -> str:
 
 
 def _format_janus_history(history: list[StoredMessage], *, limit: int = 12) -> str:
-    """Render recent stored turns as a plain transcript for the Janus prompt.
+    """A plain recap of recent turns for a fresh Janus session.
 
-    The legacy loop hands history to the provider as structured messages. The
-    Janus engine takes a single system prompt plus one user message, so the
-    conversation has to travel as text or not at all — and "not at all" is what
-    shipped first: Linda restarted from nothing whenever the subprocess's own
-    session file was missing, which is after every deploy.
+    Sent only when Janus starts a new session (after a redeploy, a long idle, or
+    a long conversation): a resumed session already holds the transcript, and
+    sending both doubled the context. Tool rows are left out; they crowded the
+    merchant's own earlier questions out of the recap.
     """
-    if not history:
-        return ''
-    lines: list[str] = []
-    for h in history[-limit:]:
-        if h.role == 'tool':
-            output = json.dumps(h.tool_output, default=str)[:600]
-            lines.append(f'[tool {h.tool_name or "unknown"} result] {output}')
-        elif h.role in ('user', 'assistant'):
-            speaker = 'Merchant' if h.role == 'user' else 'Linda'
-            lines.append(f'{speaker}: {(h.content or "")[:2000]}')
+    lines = [
+        f'{"Merchant" if h.role == "user" else "Linda"}: {(h.content or "")[:2000]}'
+        for h in (history or [])
+        if h.role in ('user', 'assistant') and (h.content or '').strip()
+    ][-limit:]
     if not lines:
         return ''
-    body = '\n'.join(lines)
-    return f'Earlier in this conversation (most recent last):\n{body}'
+    return 'Earlier in this conversation (most recent last):\n' + '\n'.join(lines)
+
+
+# Seconds between progress events while a turn runs. They keep Cloudflare and
+# nginx from closing a quiet stream, and tell the merchant Linda is still working.
+PROGRESS_EVERY_S = 5.0
+_TOOL_PREVIEW_CHARS = 4000
+
+
+def _tool_events(conversation_key: str, since, seen: set) -> list[dict]:
+    """Chat events for the tool calls the MCP edge recorded for this turn so far."""
+    try:
+        from core.assistant.models import AssistantMessage
+
+        rows = list(
+            AssistantMessage.objects.filter(
+                conversation__key=conversation_key, role='tool', created_at__gte=since
+            )
+            .exclude(pk__in=seen)
+            .order_by('created_at')[:20]
+        )
+    except Exception:  # noqa: BLE001 — progress is best-effort
+        logger.debug('assistant: tool progress unavailable', exc_info=True)
+        return []
+    events: list[dict] = []
+    for row in rows:
+        seen.add(row.pk)
+        output = row.tool_output
+        error = output.get('error') if isinstance(output, dict) else ''
+        text = json.dumps(output, default=str)
+        preview = output if len(text) <= _TOOL_PREVIEW_CHARS else text[:_TOOL_PREVIEW_CHARS] + '…'
+        events.append(
+            {'type': 'tool_call_started', 'name': row.tool_name, 'arguments': row.tool_args or {}}
+        )
+        events.append(
+            {
+                'type': 'tool_call_finished',
+                'name': row.tool_name,
+                'output': preview,
+                'error': str(error or '')[:500],
+            }
+        )
+    return events
 
 
 class Assistant:
@@ -209,28 +246,14 @@ class Assistant:
             ttl_s=turn_timeout_s() + 30,
         )
 
-    def _system_prompt(self, *, message: str, context, history) -> str:
+    def _system_prompt(self, *, context) -> str:
+        """What stays the same from message to message, so the provider can cache it."""
         bits = []
-        if isinstance(context, dict):
-            page_url = (context.get('page_url') or '')[:512]
-            page_title = (context.get('page_title') or '')[:200]
-            if page_url or page_title:
-                bits.append(f'The merchant opened Linda from: {page_title} {page_url}'.strip())
         # The RESOLVED mode, never the raw client slug.
         try:
             bits.append(f'Active tool palette: {self._mode(context).slug}')
         except Exception:  # noqa: BLE001
             logger.debug('assistant: mode label unavailable', exc_info=True)
-        # Morpheus owns the transcript; Janus keeps its own session state in a
-        # home that a redeploy wipes. Replay recent history into the prompt so
-        # continuity does not depend on that state surviving.
-        for part in (
-            _format_janus_history(history or []),
-            _format_recent_memories(message),
-            _format_knowledge(message),
-        ):
-            if part:
-                bits.append(part)
         from core.assistant import janus_settings
 
         extra = janus_settings.extra_instructions()
@@ -245,22 +268,57 @@ class Assistant:
             'unless the merchant asks how you work.'
         )
 
-    def _finish(self, *, conversation_key: str, text: str, started: float, error: str = ''):
-        """Store Linda's reply and build the closing event."""
+    def _turn_context(self, *, message: str, context) -> str:
+        """What belongs to this message only: the page it came from, and what the
+        store remembers or knows that is relevant to it."""
+        bits = []
+        if isinstance(context, dict):
+            page_url = (context.get('page_url') or '')[:512]
+            page_title = (context.get('page_title') or '')[:200]
+            if page_url or page_title:
+                bits.append(f'The merchant opened Linda from: {page_title} {page_url}'.strip())
+        for part in (_format_recent_memories(message), _format_knowledge(message)):
+            if part:
+                bits.append(part)
+        return '\n\n'.join(bits)
+
+    def _finish(
+        self,
+        *,
+        conversation_key: str,
+        text: str,
+        started: float,
+        error: str = '',
+        usage: dict | None = None,
+        tool_calls: int = 0,
+    ):
+        """Store Linda's reply, with what the turn cost, and build the closing event."""
+        usage = usage or {}
+        prompt_tokens = sum(
+            int(usage.get(k) or 0)
+            for k in ('input_tokens', 'cache_read_tokens', 'cache_write_tokens')
+        )
+        completion_tokens = int(usage.get('output_tokens') or 0)
         self.store.append(
             conversation_key=conversation_key,
-            message=StoredMessage(role='assistant', content=text[:50_000]),
+            message=StoredMessage(
+                role='assistant',
+                content=text[:50_000],
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                model=str(usage.get('model') or '')[:100],
+            ),
         )
-        duration = int((time.monotonic() - started) * 1000)
-        if error:
-            result = AssistantRunResult(
-                text=text, state='failed', error=error[:500], duration_ms=duration
-            )
-            return {'type': 'error', 'result': result}
-        return {
-            'type': 'final',
-            'result': AssistantRunResult(text=text, state='completed', duration_ms=duration),
-        }
+        result = AssistantRunResult(
+            text=text,
+            state='failed' if error else 'completed',
+            error=error[:500],
+            tool_call_count=tool_calls,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            duration_ms=int((time.monotonic() - started) * 1000),
+        )
+        return {'type': 'error' if error else 'final', 'result': result}
 
     def stream(
         self,
@@ -272,6 +330,9 @@ class Assistant:
         """Generator that yields events as the turn progresses.
 
         Event types (each is a dict):
+          * ``{type: 'progress', elapsed_s}`` — every few seconds while Linda works
+          * ``{type: 'tool_call_started', name, arguments}`` and
+            ``{type: 'tool_call_finished', name, output, error}`` — as tools run
           * ``{type: 'assistant_text', text}``
           * ``{type: 'final', result: AssistantRunResult}``
           * ``{type: 'error', result: AssistantRunResult}``
@@ -285,9 +346,8 @@ class Assistant:
 
         # Merchant kill switch and daily caps — a deliberate limit, not an outage,
         # so no failure signal. Config is read cross-process fresh (see
-        # core.agents.guardrails); default is NOT paused. The caps count the
-        # Worker's AgentRun rows, so a Linda turn does not itself add to the
-        # tally; it is still refused once the store is over the limit.
+        # core.agents.guardrails); default is NOT paused. The run cap counts the
+        # Worker's runs; the spend cap also counts Linda's recorded token use.
         from core.agents.guardrails import agents_paused, run_start_block_reason
 
         paused = agents_paused()
@@ -302,7 +362,7 @@ class Assistant:
             return
 
         from core.assistant import janus_settings
-        from core.assistant.janus_engine import janus_available, run_janus_turn
+        from core.assistant.janus_engine import iter_janus_turn, janus_available
 
         if not janus_settings.engine_enabled():
             # A merchant's choice, not an outage: no failure signal.
@@ -323,16 +383,32 @@ class Assistant:
             )
             return
 
-        yield {'type': 'assistant_text', 'text': ''}
-        # A Janus turn reports no token usage (the subprocess returns text on
-        # stdout), so its own spend never reaches `spend_cap_daily`.
-        payload = run_janus_turn(
+        from django.utils import timezone
+
+        yield {'type': 'progress', 'elapsed_s': 0}
+        since, seen, tool_calls = timezone.now(), set(), 0
+        last_progress = time.monotonic()
+        payload: dict[str, Any] = {}
+        for item in iter_janus_turn(
             message=message,
             conversation_key=conversation_key,
-            system_prompt=self._system_prompt(message=message, context=context, history=history),
+            system_prompt=self._system_prompt(context=context),
+            turn_context=self._turn_context(message=message, context=context),
+            history=_format_janus_history(history),
             context=context if isinstance(context, dict) else None,
             turn_token=self._mint_turn_token(context, conversation_key),
-        )
+        ):
+            for event in _tool_events(conversation_key, since, seen):
+                tool_calls += event['type'] == 'tool_call_finished'
+                yield event
+            if item is not None:
+                payload = item
+                break
+            if time.monotonic() - last_progress >= PROGRESS_EVERY_S:
+                last_progress = time.monotonic()
+                yield {'type': 'progress', 'elapsed_s': int(last_progress - started)}
+
+        usage = payload.get('usage') or {}
         if payload.get('error'):
             error = str(payload['error'])
             self._emit_failure_signal(
@@ -343,11 +419,19 @@ class Assistant:
                 text=_friendly_provider_error(error),
                 started=started,
                 error=error,
+                usage=usage,
+                tool_calls=tool_calls,
             )
             return
         text = payload.get('text') or ''
         yield {'type': 'assistant_text', 'text': text}
-        yield self._finish(conversation_key=conversation_key, text=text, started=started)
+        yield self._finish(
+            conversation_key=conversation_key,
+            text=text,
+            started=started,
+            usage=usage,
+            tool_calls=tool_calls,
+        )
 
     def _emit_failure_signal(self, *, reason, conversation_key, detail=''):
         """Phase 1d: record a Linda failure as a self-improvement signal so the

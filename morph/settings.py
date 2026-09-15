@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.67.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.68.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -665,9 +665,10 @@ JANUS_ENGINE_ROOT = config('JANUS_ENGINE_ROOT', default='')
 # OFF by default: the subprocess runs as `morpheus` with write access to /app,
 # so auto-approval makes core/safety.py's FORBIDDEN_PATHS unenforceable there.
 LINDA_JANUS_AUTO_APPROVE = config('LINDA_JANUS_AUTO_APPROVE', default=False, cast=bool)
-# Must stay under GUNICORN_TIMEOUT (default 60s): the adapter blocks inside the
-# SSE generator, so a longer budget here just gets the worker killed instead.
-LINDA_JANUS_TIMEOUT_S = config('LINDA_JANUS_TIMEOUT_S', default=55, cast=int)
+# Seconds per Linda message. The chat streams progress while the turn runs, so
+# this may exceed GUNICORN_TIMEOUT under gthread workers; capped at 170s by
+# core/assistant/janus_settings.py. Settings → AI → Janus overrides it.
+LINDA_JANUS_TIMEOUT_S = config('LINDA_JANUS_TIMEOUT_S', default=120, cast=int)
 # No LINDA_MCP_TOKEN: each Janus turn carries a signed per-turn identity instead
 # (core/assistant/turn_identity.py). A standing token was the consent hole.
 LINDA_MCP_URL = config('LINDA_MCP_URL', default='')

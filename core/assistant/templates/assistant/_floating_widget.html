@@ -314,7 +314,14 @@
             try {
               var ev = JSON.parse(raw);
             } catch (_) { return; }
-            if (ev.type === 'tool_call_started') {
+            if (ev.type === 'progress') {
+              // Sent every few seconds while Linda works.
+              showThinking();
+              var th = log.querySelector('.morph-thinking');
+              var label = th && th.querySelector('span');
+              if (label && ev.elapsed_s) label.textContent = 'Linda is working · ' + ev.elapsed_s + 's';
+              if (th) { log.appendChild(th); log.scrollTop = log.scrollHeight; }
+            } else if (ev.type === 'tool_call_started') {
               hideThinking();
               pendingCards[ev.name] = pushToolCard(ev.name, ev.arguments);
             } else if (ev.type === 'tool_call_finished') {

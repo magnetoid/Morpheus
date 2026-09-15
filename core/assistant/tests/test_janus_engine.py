@@ -281,10 +281,10 @@ class TurnTests(SimpleTestCase):
         self.assertIn('timed out', out['error'])
         self.assertEqual(out['text'], '')
 
-    def test_default_timeout_stays_under_the_worker_timeout(self):
-        # gunicorn runs with --timeout 60 (scripts/docker-entrypoint.sh). A
-        # longer adapter budget just gets the worker killed mid-turn.
-        self.assertLess(turn_timeout_s(), 60)
+    def test_default_timeout_stays_within_the_cap(self):
+        from core.assistant import janus_settings
+
+        self.assertLessEqual(turn_timeout_s(), janus_settings.MAX_TURN_TIMEOUT_S)
 
 
 class TurnInvocationTests(SimpleTestCase):
@@ -446,6 +446,123 @@ class EngineHygieneTests(SimpleTestCase):
         self.assertNotIn('rate limit', _friendly_provider_error('janus returned no reply'))
 
 
+class SessionAndProgressTests(SimpleTestCase):
+    """A turn resends only what it must, reports what it cost, and shows it is alive."""
+
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.home = Path(self._tmp.name)
+        self.conv = self.home / 'conv' / eng._session_id('conv-1')
+
+    def _run(self, *procs, **kwargs):
+        with (
+            mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
+            mock.patch.object(eng, 'linda_janus_home', return_value=self.home),
+            mock.patch.object(
+                eng.subprocess,
+                'run',
+                side_effect=procs[0] if callable(procs[0]) else list(procs),
+            ) as spawn,
+        ):
+            out = run_janus_turn(
+                message='hi', conversation_key='conv-1', system_prompt='p', **kwargs
+            )
+        return out, [c.args[0] for c in spawn.call_args_list], spawn
+
+    @staticmethod
+    def _message(argv):
+        return argv[argv.index('-q') + 1]
+
+    def test_recap_goes_only_to_a_fresh_session(self):
+        kw = {'history': 'Merchant: what sold yesterday?', 'turn_context': 'Page: Orders'}
+        _, calls, _ = self._run(_FakeProc(stdout='a', stderr='session_id: s1'), **kw)
+        first = self._message(calls[0])
+        self.assertIn('what sold yesterday?', first)
+        self.assertIn('Page: Orders', first)
+        self.assertTrue(first.endswith("[The merchant's message]\nhi"))
+        _, calls, _ = self._run(_FakeProc(stdout='b', stderr='session_id: s1'), **kw)
+        self.assertIn('--resume', calls[0])
+        self.assertNotIn('what sold yesterday?', self._message(calls[0]))
+        self.assertIn('Page: Orders', self._message(calls[0]))
+
+    def test_a_bare_message_is_sent_as_is(self):
+        _, calls, spawn = self._run(_FakeProc(stdout='a'))
+        self.assertEqual(self._message(calls[0]), 'hi')
+        self.assertEqual(spawn.call_args.kwargs['env']['JANUS_EPHEMERAL_SYSTEM_PROMPT'], 'p')
+
+    def test_a_long_or_idle_conversation_starts_a_fresh_session(self):
+        import json as _json
+        import time as _time
+
+        for meta in (
+            {'id': 's1', 'turns': eng.SESSION_MAX_TURNS, 'last_at': _time.time()},
+            {'id': 's1', 'turns': 1, 'last_at': _time.time() - eng.SESSION_IDLE_S - 1},
+        ):
+            self.conv.mkdir(parents=True, exist_ok=True)
+            (self.conv / 'janus_session.json').write_text(_json.dumps(meta), encoding='utf-8')
+            _, calls, _ = self._run(_FakeProc(stdout='a'), history='Merchant: earlier')
+            self.assertNotIn('--resume', calls[0])
+            self.assertIn('earlier', self._message(calls[0]))
+
+    def test_a_lost_session_retries_with_the_recap(self):
+        self._run(_FakeProc(stdout='a', stderr='session_id: s1'))
+        _, calls, _ = self._run(
+            _FakeProc(stderr='Session not found: s1', returncode=1),
+            _FakeProc(stdout='fresh', stderr='session_id: s2'),
+            history='Merchant: earlier',
+        )
+        self.assertNotIn('earlier', self._message(calls[0]))
+        self.assertIn('earlier', self._message(calls[1]))
+
+    def _janus_writes_usage(self, sid, input_tokens, output_tokens):
+        import sqlite3
+
+        def fake(argv, **kwargs):
+            home = Path(kwargs['env']['JANUS_HOME'])
+            with sqlite3.connect(home / 'state.db') as db:
+                db.execute(
+                    'CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, model TEXT, '
+                    'input_tokens INT, output_tokens INT, cache_read_tokens INT, '
+                    'cache_write_tokens INT, reasoning_tokens INT, api_call_count INT, '
+                    'estimated_cost_usd REAL)'
+                )
+                db.execute(
+                    'INSERT OR REPLACE INTO sessions VALUES (?, ?, ?, ?, 0, 0, 0, 1, 0.01)',
+                    (sid, 'deepseek-v4-pro', input_tokens, output_tokens),
+                )
+            return _FakeProc(stdout='ok', stderr=f'session_id: {sid}')
+
+        return fake
+
+    def test_turn_usage_is_what_this_turn_added(self):
+        out, _, _ = self._run(self._janus_writes_usage('s1', 1000, 50))
+        self.assertEqual((out['usage']['input_tokens'], out['usage']['output_tokens']), (1000, 50))
+        self.assertEqual(out['usage']['model'], 'deepseek-v4-pro')
+        out, _, _ = self._run(self._janus_writes_usage('s1', 2600, 90))
+        self.assertEqual((out['usage']['input_tokens'], out['usage']['output_tokens']), (1600, 40))
+
+    def test_the_turn_ticks_while_janus_works(self):
+        import time as _time
+
+        def slow(argv, **kwargs):
+            _time.sleep(0.3)
+            return _FakeProc(stdout='done')
+
+        with (
+            mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
+            mock.patch.object(eng, 'linda_janus_home', return_value=self.home),
+            mock.patch.object(eng.subprocess, 'run', side_effect=slow),
+        ):
+            items = list(
+                eng.iter_janus_turn(
+                    message='hi', conversation_key='conv-1', system_prompt='p', tick_s=0.05
+                )
+            )
+        self.assertGreaterEqual(items.count(None), 2)
+        self.assertEqual(items[-1]['text'], 'done')
+
+
 class ProviderWiringTests(SimpleTestCase):
     """Janus's `auto` picks OpenRouter whenever OPENAI_API_KEY is set and never
     sees a dashboard-stored key, so the turn must pin Morpheus's provider."""
@@ -542,20 +659,22 @@ class BundledEcommerceSkillsTests(SimpleTestCase):
 
 
 class JanusHistoryTests(SimpleTestCase):
-    def test_history_is_replayed_into_the_prompt(self):
-        # Janus keeps its own session state in a container-local file that every
-        # deploy wipes, so the transcript has to travel in the prompt.
+    def test_history_recap_keeps_the_conversation_not_tool_output(self):
+        # A fresh Janus session (after a deploy wipes its state) needs a recap.
+        # Tool rows once crowded the merchant's own questions out of it.
         from core.assistant.persistence import StoredMessage
         from core.assistant.runtime import _format_janus_history
 
         out = _format_janus_history(
             [
                 StoredMessage(role='user', content='how many copies of Dune?'),
+                StoredMessage(role='tool', tool_name='products.get', tool_output={'x': 'y' * 500}),
                 StoredMessage(role='assistant', content='Four in stock.'),
             ]
         )
         self.assertIn('how many copies of Dune?', out)
         self.assertIn('Four in stock.', out)
+        self.assertNotIn('products.get', out)
 
     def test_empty_history_adds_nothing(self):
         from core.assistant.runtime import _format_janus_history

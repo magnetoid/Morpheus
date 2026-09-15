@@ -113,12 +113,30 @@ def daily_spend_usd(exclude_id=None) -> float:
 
     from core.agents.pricing import estimate_cost
 
-    rows = (
+    rows = list(
         _runs_today(exclude_id)
         .values('model')
         .annotate(pt=Sum('prompt_tokens'), ct=Sum('completion_tokens'))
     )
+    rows += _assistant_usage_today()
     return sum(estimate_cost(r['model'] or '', r['pt'] or 0, r['ct'] or 0) for r in rows)
+
+
+def _assistant_usage_today() -> list[dict]:
+    """Linda's token use today, recorded on her replies (her turns are not AgentRuns)."""
+    try:
+        from django.db.models import Sum
+
+        from core.assistant.models import AssistantMessage
+
+        return list(
+            AssistantMessage.objects.filter(role='assistant', created_at__gte=today_start())
+            .exclude(model='')
+            .values('model')
+            .annotate(pt=Sum('prompt_tokens'), ct=Sum('completion_tokens'))
+        )
+    except Exception:  # noqa: BLE001 — a missing table must not lift the Worker's cap
+        return []
 
 
 def run_start_block_reason(exclude_id=None) -> str | None:

@@ -104,14 +104,14 @@
       </div>
       <div class="space-y-1.5">
         <label for="f-max_tool_turns" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Tool steps per message</label>
-        <input id="f-max_tool_turns" name="max_tool_turns" type="number" min="1" max="10" class="input" value="{{ form.max_tool_turns.value }}">
-        <p class="text-xs text-[color:var(--text-muted)]">1 to 10. Each step takes a few seconds; more steps risk hitting the time limit.</p>
+        <input id="f-max_tool_turns" name="max_tool_turns" type="number" min="1" max="20" class="input" value="{{ form.max_tool_turns.value }}">
+        <p class="text-xs text-[color:var(--text-muted)]">1 to 20. Each step takes a few seconds; more steps need a longer time limit.</p>
         {{ form.max_tool_turns.errors }}
       </div>
       <div class="space-y-1.5">
         <label for="f-turn_timeout_s" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Time limit per message (seconds)</label>
-        <input id="f-turn_timeout_s" name="turn_timeout_s" type="number" min="10" max="55" class="input" value="{{ form.turn_timeout_s.value }}">
-        <p class="text-xs text-[color:var(--text-muted)]">10 to 55. The server stops any request at 60 seconds.</p>
+        <input id="f-turn_timeout_s" name="turn_timeout_s" type="number" min="10" max="170" class="input" value="{{ form.turn_timeout_s.value }}">
+        <p class="text-xs text-[color:var(--text-muted)]">10 to 170. The chat shows Linda's progress while she works.</p>
         {{ form.turn_timeout_s.errors }}
       </div>
     </section>
