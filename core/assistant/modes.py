@@ -54,6 +54,8 @@ MODES: tuple[AssistantMode, ...] = (
         label='Sales',
         description='Read-only browsing + cart help. Linda can search catalogs, look up products, and add to a customer cart — never edits a product or order.',
         scopes=(
+            # The store's core read tools (orders, products, customers) declare it.
+            'system.read',
             'catalog.read',
             'analytics.read',
             'cart.read',
@@ -68,6 +70,8 @@ MODES: tuple[AssistantMode, ...] = (
         label='Support',
         description='Order lifecycle for customer service — fulfill, ship, cancel, refund. Cannot touch the catalog or inventory.',
         scopes=(
+            # The store's core read tools (orders, products, customers) declare it.
+            'system.read',
             'orders.read',
             'orders.write',
             'orders.cancel',
@@ -81,6 +85,8 @@ MODES: tuple[AssistantMode, ...] = (
         label='Operations',
         description='Day-to-day store operations — edit products, manage inventory, draft copy. No destructive deletes.',
         scopes=(
+            # The store's core read tools (orders, products, customers) declare it.
+            'system.read',
             'catalog.read',
             'catalog.write',
             'inventory.read',

@@ -35,6 +35,7 @@ _SETTINGS_KEYS = (
     'extra_instructions',
     'bundled_skills',
     'learning',
+    'reasoning_effort',
 )
 _REVIEW_ACTIONS = ('forget_note', 'delete_skill', 'clear_lessons')
 _VERSION_CACHE_KEY = 'janus:installed-version'
@@ -87,6 +88,7 @@ def _initial(config: dict) -> dict:
         'extra_instructions': config.get('extra_instructions', ''),
         'bundled_skills': config.get('bundled_skills', True),
         'learning': config.get('learning', True),
+        'reasoning_effort': config.get('reasoning_effort', 'low'),
     }
 
 

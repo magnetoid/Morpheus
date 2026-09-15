@@ -187,12 +187,13 @@ def _handle_initialize(params: dict, authed: bool) -> dict:
 
 
 def _handle_tools_list(params: dict, authed: bool) -> dict:
-    tools = _public_tools()
     turn = getattr(_request_state, 'linda_turn', None)
     if turn is not None:
-        from plugins.installed.agent_mcp.linda_turn import listed_tools
+        from plugins.installed.agent_mcp.linda_turn import catalogue
 
-        tools = listed_tools(tools, turn)
+        tools = catalogue(turn)
+    else:
+        tools = _public_tools()
     out = []
     for t in tools:
         entry = {
@@ -373,7 +374,8 @@ def _enforce_discovery_rate_limit(method: str) -> None:
     except Exception as e:  # noqa: BLE001 — availability over strictness
         logger.debug('mcp: discovery rate limit fail-open: %s', e)
         return
-    if count > _MCP_DISCOVERY_RATE_PER_MINUTE:
+    # django-redis with IGNORE_EXCEPTIONS returns None when Redis is down.
+    if count is not None and count > _MCP_DISCOVERY_RATE_PER_MINUTE:
         raise _RpcError(
             _E_RATE,
             f'rate limited: {_MCP_DISCOVERY_RATE_PER_MINUTE} discovery calls/minute; retry shortly',
@@ -381,12 +383,13 @@ def _enforce_discovery_rate_limit(method: str) -> None:
 
 
 def _exposed_tool(name: str, turn):
-    """Resolve a tool the active cluster exposes — narrowed to the mode for a Linda turn."""
-    candidates = _public_tools()
+    """Resolve a tool the active cluster exposes, or Linda's catalogue for a turn."""
     if turn is not None:
-        from plugins.installed.agent_mcp.linda_turn import mode_tools
+        from plugins.installed.agent_mcp.linda_turn import catalogue
 
-        candidates = mode_tools(candidates, turn)
+        candidates = catalogue(turn)
+    else:
+        candidates = _public_tools()
     tool = next((t for t in candidates if t.name == name), None)
     if tool is None:
         raise _RpcError(_E_METHOD, f'tool not exposed: {name}')
@@ -428,7 +431,12 @@ def _handle_tools_call(params: dict, authed: bool) -> dict:
     # cord. Refuse execution of protected (write/destructive) tools when paused;
     # reads and buyer-facing cart/checkout flows stay up (the switch stops
     # autonomous ACTIONS, not shopping).
-    if getattr(tool, 'requires_approval', False):
+    protected = getattr(tool, 'requires_approval', False)
+    if turn is not None:
+        from plugins.installed.agent_mcp.linda_turn import needs_consent
+
+        protected = needs_consent(tool)
+    if protected:
         try:
             from core.agents.guardrails import agents_paused
 
@@ -665,8 +673,6 @@ def _active_token_scopes() -> set[str]:
     return getattr(_request_state, 'scopes', {WILDCARD})
 
 
-@csrf_exempt
-@require_http_methods(['POST', 'GET'])
 def _stash_linda_turn(request: HttpRequest) -> None:
     """Carry a verified Linda turn into the handlers; attribute its audit rows."""
     from plugins.installed.agent_mcp.linda_turn import turn_for_request
@@ -678,6 +684,8 @@ def _stash_linda_turn(request: HttpRequest) -> None:
         _request_state.approved_tools = set()
 
 
+@csrf_exempt
+@require_http_methods(['POST', 'GET'])
 def rpc_endpoint(request: HttpRequest) -> HttpResponse:
     """Single JSON-RPC 2.0 entry point.
 

@@ -67,6 +67,17 @@ def bundled_skills_enabled() -> bool:
     return bool(_read('bundled_skills', True))
 
 
+#: Janus ``agent.reasoning_effort`` values offered to the merchant. The provider's
+#: own default for a reasoning model is "high", which measured ~7s per tool step.
+REASONING_EFFORTS = ('low', 'medium', 'high')
+DEFAULT_REASONING_EFFORT = 'low'
+
+
+def reasoning_effort() -> str:
+    value = str(_read('reasoning_effort', DEFAULT_REASONING_EFFORT) or '')
+    return value if value in REASONING_EFFORTS else DEFAULT_REASONING_EFFORT
+
+
 def learning_enabled() -> bool:
     """Whether Janus keeps what it learns (core/assistant/janus_learning.py)."""
     return bool(_read('learning', True))

@@ -334,7 +334,14 @@ to a private temp dir or `LINDA_JANUS_HOME` (never `/app/media`: publicly served
 and a home holds `state.db`). **A smoke test that patches the path under test proves
 nothing about that path; smoke the unpatched call.** Also: `HOME` is set to the
 conversation home, and `MAX_TOOL_TURNS` caps iterations (~7s each on prod) so a
-turn answers inside the timeout instead of exploring until it is killed.
+turn answers inside the timeout instead of exploring until it is killed. Each home
+also gets Linda's `SOUL.md` (Janus seeds "You are Janus Agent" otherwise) and a
+`.no-bundled-skills` marker (Janus copies ~70 general-purpose skills into every
+home and its prompt says she MUST load a relevant one first); the config pins
+`agent.reasoning_effort` (merchant setting, default `low` — a reasoning model's
+provider default is `high`) and `api_max_retries: 1`. Janus prints status lines to
+stdout even under `-Q` and exits 0 on an empty reply, so `_strip_notices` removes
+them and an empty or `(empty)` answer is a failure, not a blank bubble.
 Guarded by `core/assistant/tests/test_janus_engine.py`, `test_turn_identity.py`
 and `agent_mcp/tests/test_linda_turn.py`.
 
@@ -361,10 +368,29 @@ journal too (`recall_memory` searches the journal; v0.66.0 shipped without both)
 `skills.guard_agent_created: true` (Janus's `auto` default leaves the skill scanner
 **off** under `janus chat -q`), `inline_shell: false`, and `curator.enabled: false`
 (it archives skills into a dot-dir that isn't kept). Linda's MCP turns no longer
-see `memory.remember`/`memory.forget`: a second write path would split what she
-learns. Learned content can steer but never authorize — store writes still need the
+see `memory.remember`/`memory.forget`/`memory.recall`: a second store would split
+what she learns. Learned content can steer but never authorize — store writes still need the
 merchant's own "yes" at the edge — and the merchant reviews and deletes it on
 Settings → AI → Janus. Guarded by `core/assistant/tests/test_janus_learning.py`.
+
+**Landmine — an agent that can't find the right tool doesn't say so; it explores
+until it times out.** Linda's hand-picked tool list hid inventory, SEO and catalog
+writes (and her scope profile hid the rest) while exposing `db.*`, `run_python` and
+`platform.capabilities`; Sales/Support/Ops listed one tool because modes filtered
+on scopes the read tools don't declare. Live, 5 of 11 everyday questions timed
+out while she browsed internals — and an SEO question quietly spawned a background
+Worker that burned 133k tokens. Now a turn's catalogue is every registered tool
+inside `gates.LINDA_SCOPES` (store domains) minus shopper tools, duplicates and
+internals (Developer mode only) — `agent_mcp/linda_turn.py:catalogue`. Widening
+the catalogue exposed Worker tools that write **without** `requires_approval`
+(their flags assume the Worker's own approval queue), so at the edge **every
+write needs the merchant's yes** (`needs_consent`: approval flag, any write scope,
+plus `delegate.spawn_workers` / `meta.sync_audience`). Also: the consent
+fingerprint ignores the model's own `confirmed`/`hard_gate_ack`/`echo` (a yes then a
+`confirmed=True` retry used to be refused again), and the prompt and skills may
+name only tools in the catalogue. Guarded by
+`agent_mcp/tests/test_linda_turn.py::LindaCatalogueTests` (coverage per mode,
+handler-required ⊆ schema `required`, prompt/skill references resolve).
 
 **Landmine — two plugins registering the same agent-tool NAME let load order
 decide which one runs, and the loser might be the one with `requires_approval`.**

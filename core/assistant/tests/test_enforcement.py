@@ -57,8 +57,13 @@ class ScopeGateTests(SimpleTestCase):
     def test_tool_outside_profile_denied(self):
         # A plugin-contributed tool demanding a scope Linda does not hold was
         # previously callable by her — nothing checked.
-        reason = _gate(_tool('orders.refund', scopes=['orders.write']))
-        self.assertIn('orders.write', reason or '')
+        reason = _gate(_tool('payouts.send', scopes=['payments.write']))
+        self.assertIn('payments.write', reason or '')
+
+    def test_consent_override_gates_a_tool_without_its_own_flag(self):
+        tool = _tool('catalog.update_product', scopes=['catalog.write'])
+        self.assertIsNone(_gate(tool))
+        self.assertIn('approval_required', _gate(tool, needs_consent=True) or '')
 
     def test_unscoped_tool_allowed(self):
         self.assertIsNone(_gate(_tool('capabilities', scopes=[])))

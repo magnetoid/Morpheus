@@ -52,10 +52,12 @@ class LindaTurnEdgeTests(TestCase):
         )
         self.read = _FakeTool('stock.lookup', scopes=['system.read'])
         self.write = _FakeTool('settings.set', scopes=['system.write'], requires_approval=True)
-        self.out_of_profile = _FakeTool('orders.refund', scopes=['orders.write'])
+        self.out_of_profile = _FakeTool('payouts.send', scopes=['payments.write'])
         self.public = _FakeTool('help.topics')
-        tools = [self.read, self.write, self.out_of_profile, self.public]
-        patcher = mock.patch('plugins.installed.agent_mcp.views._public_tools', return_value=tools)
+        self.tools = [self.read, self.write, self.out_of_profile, self.public]
+        patcher = mock.patch(
+            'plugins.installed.agent_mcp.linda_turn._all_tools', side_effect=lambda: self.tools
+        )
         patcher.start()
         self.addCleanup(patcher.stop)
         self.c = Client()
@@ -122,32 +124,43 @@ class LindaTurnEdgeTests(TestCase):
     def test_listing_hides_tools_outside_lindas_scope_profile(self):
         names = {t['name'] for t in self._post('tools/list').json()['result']['tools']}
         self.assertIn('stock.lookup', names)
-        self.assertNotIn('orders.refund', names)
+        self.assertNotIn('payouts.send', names)
 
     def test_restricted_mode_narrows_the_catalogue(self):
         token = self._token(mode='sales')
         names = {t['name'] for t in self._post('tools/list', token=token).json()['result']['tools']}
-        self.assertNotIn('stock.lookup', names)  # system.read is not a sales scope
+        self.assertIn('stock.lookup', names)  # sales reads the store
+        self.assertNotIn('settings.set', names)  # but changes nothing
         self.assertIn('help.topics', names)  # unscoped tools stay reachable
-        resp = self._call('stock.lookup', token=token)
+        resp = self._call('settings.set', {'sku': 'x'}, token=token)
         self.assertIn('not exposed', resp['error']['message'])
-        self.assertEqual(self.read.calls, [])
+        self.assertEqual(self.write.calls, [])
 
     def test_linda_learns_through_janus_not_a_second_memory_store(self):
         remember = _FakeTool('memory.remember', scopes=['system.write'])
-        tools = [self.read, remember]
-        with mock.patch('plugins.installed.agent_mcp.views._public_tools', return_value=tools):
-            names = {t['name'] for t in self._post('tools/list').json()['result']['tools']}
-            resp = self._call('memory.remember', {'sku': 'x'})
+        self.tools.append(remember)
+        names = {t['name'] for t in self._post('tools/list').json()['result']['tools']}
+        resp = self._call('memory.remember', {'sku': 'x'})
         self.assertNotIn('memory.remember', names)
         self.assertIn('not exposed', resp['error']['message'])
         self.assertEqual(remember.calls, [])
 
     def test_out_of_profile_tool_is_refused_even_if_called_directly(self):
-        resp = self._call('orders.refund', {'sku': 'A1'})
-        self.assertTrue(resp['result']['isError'])
-        self.assertIn('Missing required scopes', self._text(resp)['error'])
+        resp = self._call('payouts.send', {'sku': 'A1'})
+        self.assertIn('not exposed', resp['error']['message'])
         self.assertEqual(self.out_of_profile.calls, [])
+
+    def test_platform_internals_and_shopper_tools_are_not_lindas(self):
+        internals = _FakeTool('run_python', scopes=['system.read'])
+        cart = _FakeTool('cart.add_item', scopes=['cart.write'])
+        self.tools += [internals, cart]
+        names = {t['name'] for t in self._post('tools/list').json()['result']['tools']}
+        self.assertNotIn('run_python', names)
+        self.assertNotIn('cart.add_item', names)
+        self.user.is_superuser = True
+        self.user.save(update_fields=['is_superuser'])
+        dev = self._post('tools/list', token=self._token(mode='dev')).json()['result']['tools']
+        self.assertIn('run_python', {t['name'] for t in dev})
 
     # ── reads ──────────────────────────────────────────────────────────────
     def test_read_tool_runs_as_the_merchant_and_lands_in_the_conversation(self):
@@ -216,6 +229,62 @@ class LindaTurnEdgeTests(TestCase):
         self.assertTrue(resp['result']['isError'])
         self.assertEqual(self.write.calls, [])
 
+    def test_a_write_without_its_own_approval_flag_still_needs_a_yes(self):
+        # Many Worker tools write without requires_approval; in a chat, whatever
+        # Linda read could steer her into calling one.
+        update = _FakeTool('catalog.update_product', scopes=['catalog.write'])
+        self.tools.append(update)
+        first = self._call('catalog.update_product', {'sku': 'NB-BLUE'})
+        self.assertIn('approval_required', self._text(first)['error'])
+        self.assertEqual(update.calls, [])
+        self._say('yes')
+        self.assertFalse(
+            self._call('catalog.update_product', {'sku': 'NB-BLUE'})['result']['isError']
+        )
+        self.assertEqual(len(update.calls), 1)
+
+    def test_spending_and_data_sharing_tools_need_a_yes(self):
+        spawn = _FakeTool('delegate.spawn_workers', scopes=['system.write'])
+        audience = _FakeTool('meta.sync_audience', scopes=['analytics.read'])
+        self.tools += [spawn, audience]
+        for name in ('delegate.spawn_workers', 'meta.sync_audience'):
+            self.assertIn('approval_required', self._text(self._call(name, {'sku': 'x'}))['error'])
+        self.assertEqual((spawn.calls, audience.calls), ([], []))
+
+    def test_a_self_reporting_audit_runs_without_asking(self):
+        audit = _FakeTool('seo.audit_product', scopes=['seo.write'])
+        self.tools.append(audit)
+        self.assertFalse(self._call('seo.audit_product', {'sku': 'x'})['result']['isError'])
+        self.assertEqual(len(audit.calls), 1)
+
+    def test_yes_then_a_retry_with_confirmed_spends_the_consent(self):
+        # The model adds confirmed=True when it retries. That flag is its own
+        # claim, not part of what the merchant approved.
+        self._call('settings.set', {'sku': 'NB-BLUE'})
+        self._say('yes please')
+        retry = self._call('settings.set', {'sku': 'NB-BLUE', 'confirmed': True})
+        self.assertFalse(retry['result']['isError'])
+        self.assertEqual(len(self.write.calls), 1)
+
+    def test_kill_switch_stops_every_write_linda_could_make(self):
+        update = _FakeTool('catalog.update_product', scopes=['catalog.write'])
+        self.tools.append(update)
+        with mock.patch('core.agents.guardrails.agents_paused', return_value=True):
+            resp = self._call('catalog.update_product', {'sku': 'x'})
+        self.assertIn('paused', resp['error']['message'])
+
+    def test_an_oversized_result_is_cut_with_a_hint(self):
+        from plugins.installed.agent_mcp import linda_turn
+
+        huge = _FakeTool('stock.dump', scopes=['system.read'])
+        huge.invoke = lambda args, agent=None, context=None: types.SimpleNamespace(
+            output={'rows': 'x' * (linda_turn.MAX_RESULT_CHARS * 2)}
+        )
+        self.tools.append(huge)
+        text = self._call('stock.dump')['result']['content'][0]['text']
+        self.assertLess(len(text), linda_turn.MAX_RESULT_CHARS + 200)
+        self.assertIn('Narrow the call', text)
+
     # ── audit ──────────────────────────────────────────────────────────────
     def test_refused_write_is_audited_with_the_human_as_actor(self):
         self._call('settings.set', {'sku': 'NB-BLUE'})
@@ -232,3 +301,108 @@ class LindaTurnEdgeTests(TestCase):
         self._call('settings.set', args)
         rows = AuditEvent.objects.filter(event_type='assistant.tool_write', actor=self.user)
         self.assertEqual(rows.filter(severity='info').count(), 1)
+
+
+class LindaCatalogueTests(TestCase):
+    """The real registry: Linda can reach the store work merchants ask for."""
+
+    def _names(self, mode: str, *, superuser: bool = False) -> set[str]:
+        from plugins.installed.agent_mcp.linda_turn import LindaTurn, catalogue
+
+        user = types.SimpleNamespace(is_staff=True, is_superuser=superuser, pk=1)
+        return {
+            t.name for t in catalogue(LindaTurn(user=user, conversation_key=CONV, mode_slug=mode))
+        }
+
+    def test_general_mode_covers_everyday_store_work(self):
+        names = self._names('general')
+        for needed in (
+            'orders.search',
+            'orders.refund',
+            'products.update_price',
+            'inventory.low_stock_report',
+            'inventory.adjust_stock',
+            'seo.audit_product',
+            'plugins.list',
+            'analytics.summary',
+            'customers.search',
+            'catalog.update_product',
+        ):
+            self.assertIn(needed, names)
+        for internal in ('run_python', 'db.list_models', 'platform.capabilities', 'cart.add_item'):
+            self.assertNotIn(internal, names)
+
+    def test_every_mode_has_tools_to_work_with(self):
+        for mode in ('general', 'sales', 'support', 'ops'):
+            self.assertGreater(len(self._names(mode)), 10, mode)
+        self.assertIn('orders.search', self._names('sales'))
+        self.assertIn('inventory.adjust_stock', self._names('ops'))
+
+    def test_prompt_and_skills_name_only_tools_linda_has(self):
+        # They once taught tools that did not exist (recent_orders, cache.clear)
+        # or that Linda could not call, and she spent her steps looking for them.
+        import re
+
+        from core.assistant.janus_engine import bundled_skills_dir
+        from core.assistant.prompts import LINDA_BASE_PROMPT
+
+        names = self._names('general')
+        texts = {'prompt': LINDA_BASE_PROMPT}
+        texts.update(
+            {str(p): p.read_text(encoding='utf-8') for p in bundled_skills_dir().rglob('SKILL.md')}
+        )
+        missing = set()
+        for source, text in texts.items():
+            for ref in re.findall(r'`([^`]+)`', text):
+                if re.fullmatch(r'[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*', ref) and ref not in names:
+                    missing.add((source.rsplit('/', 2)[-2] if '/' in source else source, ref))
+        self.assertEqual(sorted(missing), [])
+
+    def test_every_tool_declares_the_arguments_its_handler_requires(self):
+        # A missing `required` lets a call through validation and crashes the
+        # handler with a TypeError the model cannot learn from (plugins.describe).
+        import inspect
+
+        from plugins.installed.agent_mcp.linda_turn import _all_tools
+
+        gaps = []
+        for tool in _all_tools():
+            params = inspect.signature(tool.handler).parameters.values()
+            needed = {
+                p.name
+                for p in params
+                if p.default is inspect.Parameter.empty
+                and p.kind in (p.KEYWORD_ONLY, p.POSITIONAL_OR_KEYWORD)
+                and p.name not in ('self', 'agent', 'context')
+            }
+            declared = set((tool.schema or {}).get('required') or [])
+            if needed - declared:
+                gaps.append((tool.name, sorted(needed - declared)))
+        self.assertEqual(gaps, [])
+
+    def test_settings_list_reads_the_stored_config(self):
+        from core.assistant.tools.ecommerce import settings_list_tool
+        from plugins.models import PluginConfig
+
+        PluginConfig.objects.update_or_create(
+            plugin_name='seo', defaults={'config': {'title': 'Shop', 'api_key': 'sk-12345678'}}
+        )
+        out = settings_list_tool.handler().output
+        self.assertEqual(out['plugins']['seo']['config']['title'], 'Shop')
+        self.assertNotIn('sk-12345678', json.dumps(out))
+
+
+class LegacyEndpointTests(TestCase):
+    def test_tools_list_survives_a_cache_outage(self):
+        with mock.patch('django.core.cache.cache.incr', return_value=None):
+            resp = Client().post(
+                '/mcp/v1/', data=_rpc('tools/list'), content_type='application/json'
+            )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('tools', resp.json()['result'])
+
+    def test_external_clients_are_not_refused_by_csrf(self):
+        # Claude Desktop / Cursor post JSON-RPC with no CSRF token.
+        client = Client(enforce_csrf_checks=True)
+        resp = client.post('/mcp/v1/', data=_rpc('tools/list'), content_type='application/json')
+        self.assertNotEqual(resp.status_code, 403)

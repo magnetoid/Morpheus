@@ -1,11 +1,10 @@
 ---
 name: morpheus-catalog
 description: >-
-  Use when the merchant asks about products, variants, prices, stock, images,
-  or categories on a Morpheus shop. Tools: products.search/count/get,
-  products.update_status/update_price, inventory.low_stock_report/adjust_stock/
-  set_stock, catalog.create_product and image helpers.
-version: 1.0.0
+  Products, variants, prices, stock, images and categories on a Morpheus store:
+  finding a product, what is low on stock, price and status changes, restocking,
+  and adding a product.
+version: 2.0.0
 author: Morpheus OS
 license: MIT
 metadata:
@@ -16,89 +15,49 @@ metadata:
 
 # Morpheus catalog
 
-Run the catalog and stock for this shop. Merchant-facing name stays **Linda**.
-
-## When to Use
-
-- Find a SKU, change price/status, restock, add a product/image/category
-- "what's low", "hide this", "put it on sale"
-
-Do not use for order fulfillment (that's `morpheus-orders`).
-
 ## Read
 
 | Tool | Use |
 |---|---|
-| `products.search` / `catalog.find_products` | Name, SKU, status |
-| `products.count` | How many — never guess |
-| `products.get` / `catalog.get_product` | One product by slug/SKU |
-| `inventory.low_stock_report` | Daily stockout risk |
-| `inventory.stockout_forecast` | If present |
-| `catalog.stats` / `catalog.list_categories` | Shape of the catalog |
+| `products.search` | By name, SKU or status |
+| `products.get` | One product by id, SKU or slug, with variants and stock |
+| `products.count` / `catalog.stats` | How many; the shape of the catalogue |
+| `catalog.semantic_search` | "Something like…" searches |
+| `catalog.list_categories` | Categories |
+| `inventory.low_stock_report` | Below a threshold, now |
+| `inventory.stockout_forecast` | What will run out soon |
 
-Cite the tool. If a product 500s on the storefront, check theme tags
-(`book_extras`) and leftover book SKUs before blaming the row.
+## Stock
 
-## Daily stock
+1. `inventory.low_stock_report`.
+2. Propose `inventory.adjust_stock` for "+12" style changes, or
+   `inventory.set_stock` for an absolute count. Stock never goes negative; if the
+   tool refuses, report it.
 
-1. `inventory.low_stock_report`
-2. For each critical SKU, `products.get` + current quantity
-3. Propose restock via `inventory.adjust_stock` (delta) or `inventory.set_stock`
-   (absolute). Both are approval-gated. Prefer adjust when they say "+12".
+## Changes (each needs the merchant's yes; say old → new)
 
-Refuse to drive stock negative. `inventory.adjust_stock` already refuses a
-negative result — surface that error instead of retrying.
+| Tool | Does |
+|---|---|
+| `products.update_price` | Price, optionally one variant |
+| `catalog.schedule_price_change` | A price that starts later |
+| `products.update_status` | Draft, active or archived |
+| `catalog.update_product` | Other product fields |
+| `catalog.create_product` / `catalog.create_variant` | New product or variant |
+| `catalog.add_product_image` / `catalog.set_primary_image` | Images |
+| `catalog.archive_product` / `catalog.restore_product` | Hide or bring back |
+| `catalog.delete_product` | Permanent — prefer archiving |
 
-## Writes
+## New physical product
 
-| Tool | Purpose | Gate |
-|---|---|---|
-| `products.update_status` | draft / active / archived | confirm |
-| `products.update_price` | Price / compare-at | confirm |
-| `inventory.adjust_stock` / `adjustStock` | Delta by SKU | **hard-gate** |
-| `inventory.set_stock` / `setStock` | Absolute qty | **hard-gate** |
-| `catalog.create_product` / `createProduct` | New product | confirm |
-| `catalog.update_product` / `updateProduct` | Fields | confirm |
-| `catalog.add_product_image` / `addProductImage` | Attach image URL | confirm |
-| `catalog.set_primary_image` | Promote image | confirm |
-| `catalog.create_variant` / `update_variant` | Variant + SKU | confirm |
-| `catalog.archive_product` | Hide | confirm |
-| `catalog.delete_product` | Hard delete | **hard-gate** |
-| `catalog.publish_digital_product` | PDF book publish | confirm |
+1. `catalog.create_product` (name, price).
+2. `catalog.add_product_image`.
+3. `inventory.set_stock`.
+4. `products.update_status` → active.
 
-Tell them the slug, SKU, old → new price/qty before calling with
-`confirmed=True`.
+Digital (PDF) products: `catalog.publish_digital_product`.
 
-Pricing changes can be safety-blocked (`pricing_change`). If the tool errors
-with a safety/block message, stop and explain.
+## Pitfalls
 
-## New product recipe (physical)
-
-1. `catalog.create_product` (name + price)
-2. `catalog.add_product_image` (`isPrimary: true`)
-3. `inventory.set_stock` (after confirm)
-4. `products.update_status` → `active`
-
-Digital/PDF shops: `catalog.publish_digital_product` then verify the PDP.
-
-## Images
-
-Catalog Image defaults (W×H) only max-resize — they do not crop. Storefront
-crop is theme CSS (`dot_books` 2/3, many general shops 1/1 contain). Don't
-promise a crop by changing dashboard W=H.
-
-## Common Pitfalls
-
-1. Updating price without saying the old amount.
-2. Disabling `product_gallery` while the theme still includes the gallery
-   partial — PDP 500s.
-3. `{% load book_extras %}` on a shop that disabled `book_product` — PDP 500s.
-4. Treating GraphQL `updateProduct` SEO fields as the live page — live SEO is
-   `SeoMeta` (see `morpheus-content-seo`).
-5. Mixing this instance's SKUs with another Coolify shop.
-
-## Verification Checklist
-
-- [ ] Product identified by slug or SKU from a tool
-- [ ] Stock/price writes quoted old → new
-- [ ] Hard-gated stock/delete waited for a second yes
+1. A price change without stating the old price.
+2. A price change blocked by a store safety limit: explain it; don't retry.
+3. Image size settings resize but never crop; the crop comes from the theme.

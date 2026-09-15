@@ -92,6 +92,16 @@
 
     <section class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pt-4 border-t border-[color:var(--border)]">
       <h2 class="font-semibold md:col-span-2">Limits</h2>
+      <div class="space-y-1.5 md:col-span-2">
+        <label for="f-reasoning_effort" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">How hard Linda thinks</label>
+        <select id="f-reasoning_effort" name="reasoning_effort" class="input">
+          {% for value, label in form.fields.reasoning_effort.choices %}
+          <option value="{{ value }}" {% if form.reasoning_effort.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <p class="text-xs text-[color:var(--text-muted)]">More thinking makes each step slower, so fewer steps fit in the time limit. Applies to models that reason, such as DeepSeek.</p>
+        {{ form.reasoning_effort.errors }}
+      </div>
       <div class="space-y-1.5">
         <label for="f-max_tool_turns" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Tool steps per message</label>
         <input id="f-max_tool_turns" name="max_tool_turns" type="number" min="1" max="10" class="input" value="{{ form.max_tool_turns.value }}">

@@ -66,8 +66,20 @@ _AFFIRMATIVE = re.compile(
 )
 
 
+# Arguments the model sets to attest it asked. They carry no consent, so they
+# are not part of what the merchant approves: "yes" to refunding order #1234
+# must match the retry that adds `confirmed=True`, or the merchant is asked again.
+_SELF_ATTESTED = frozenset({'confirmed', 'hard_gate_ack', 'echo'})
+
+
 def _key(conversation_key: str, fingerprint: str) -> str:
     return f'{_CACHE_PREFIX}{conversation_key}:{fingerprint}'
+
+
+def _fingerprint(tool_name: str, args: dict | None) -> str:
+    return args_fingerprint(
+        tool_name, {k: v for k, v in (args or {}).items() if k not in _SELF_ATTESTED}
+    )
 
 
 def is_affirmative(message: str) -> bool:
@@ -92,7 +104,7 @@ def request(*, conversation_key: str, tool_name: str, args: dict | None) -> str:
     Returns the fingerprint (useful for tests and audit). Idempotent — a
     re-proposal of the same call just refreshes the TTL.
     """
-    fp = args_fingerprint(tool_name, args)
+    fp = _fingerprint(tool_name, args)
     cache.set(_key(conversation_key, fp), {'proposed_at': time.time()}, CONSENT_TTL_SECONDS)
     return fp
 
@@ -112,7 +124,7 @@ def consume(
     to), and it is affirmative. Single-use — the entry is deleted on success so a single
     "yes" can't authorise a repeated action.
     """
-    fp = args_fingerprint(tool_name, args)
+    fp = _fingerprint(tool_name, args)
     key = _key(conversation_key, fp)
     entry = cache.get(key)
     # A pre-v0.64 plain 'pending' entry has no proposal time: fail closed, re-ask.

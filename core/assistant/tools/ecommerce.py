@@ -60,7 +60,7 @@ def settings_list_tool() -> ToolResult:
     out: dict[str, Any] = {}
     SECRET_KEYS = ('api_key', 'secret', 'password', 'token', 'webhook_secret')
     for cfg in PluginConfig.objects.all():
-        data = dict(cfg.config_data or {})
+        data = dict(cfg.config or {})
         # Redact anything that looks like a secret.
         for k in list(data.keys()):
             lk = k.lower()
