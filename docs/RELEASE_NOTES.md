@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.67.0 — 2026-09-15
+
+**Linda can do the job**
+
+- Linda can now reach the store tools merchants actually ask about — stock and restocking, SEO checks, order fulfilment and shipping, product edits, returns, promotions, reviews, apps and more — in every mode. Sales, Support and Operations modes were limited to a single tool before.
+- Every change Linda makes now waits for your own yes in the chat, including changes that previously ran without asking. Saying yes once is enough; she no longer asks twice.
+- Linda answers faster: she thinks at a quicker level by default (Settings → AI → Janus → How hard Linda thinks), no longer carries dozens of unrelated built-in skills, and no longer browses platform internals looking for tools.
+- Clearer answers: Linda leads with the answer, stops naming internal tools, and says plainly when something took too long instead of reporting an AI provider error.
+- Fixed: store settings and app descriptions could not be read; tool discovery failed while the cache was down; external MCP clients were refused by a security check since v0.64.0.
+
 ## v0.66.1 — 2026-09-15
 
 **Deleted notes are fully forgotten**
