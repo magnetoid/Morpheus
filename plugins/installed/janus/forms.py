@@ -48,6 +48,7 @@ class JanusSettingsForm(forms.Form):
         widget=forms.Textarea(attrs={'rows': 6}),
     )
     bundled_skills = forms.BooleanField(required=False)
+    learning = forms.BooleanField(required=False)
 
     def __init__(self, *args, has_stored_key: bool = False, **kwargs):
         super().__init__(*args, **kwargs)

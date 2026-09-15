@@ -32,6 +32,7 @@ _VALID = {
     'turn_timeout_s': '55',
     'extra_instructions': '',
     'bundled_skills': 'on',
+    'learning': 'on',
 }
 
 
@@ -87,9 +88,11 @@ class JanusPageSaveTests(TestCase):
             turn_timeout_s='30',
             extra_instructions='Prices include VAT.',
             bundled_skills='',
+            learning='',
         )
         self.assertEqual(response.status_code, 302)
         stored = _stored()
+        self.assertFalse(stored['learning'])
         self.assertEqual(stored['max_tool_turns'], 4)
         self.assertEqual(stored['turn_timeout_s'], 30)
         self.assertEqual(stored['extra_instructions'], 'Prices include VAT.')
@@ -200,6 +203,12 @@ class JanusSettingConsumerTests(TestCase):
         _set(bundled_skills=False)
         self.assertNotIn('external_dirs', eng._config_text('https://s/mcp/'))
 
+    def test_learning_toggle_reaches_the_engine(self):
+        self.assertIn('memory', eng.turn_toolsets())
+        _set(learning=False)
+        self.assertNotIn('memory', eng.turn_toolsets())
+        self.assertIn('memory_enabled: false', eng._config_text('https://s/mcp/'))
+
     def test_time_limit_reaches_the_engine(self):
         _set(turn_timeout_s=20)
         self.assertEqual(eng.turn_timeout_s(), 20)
@@ -221,3 +230,85 @@ class JanusSettingConsumerTests(TestCase):
     def test_unknown_provider_is_never_pinned(self):
         _set(model_source='custom', provider='evil', model='x', api_key='k')
         self.assertIsNone(janus_settings.custom_provider())
+
+
+class JanusLearningReviewTests(TestCase):
+    """The merchant can see and delete everything Linda learned."""
+
+    def setUp(self):
+        from core.assistant import janus_learning as jl
+        from core.assistant.models import JanusLearning
+
+        users = get_user_model()
+        self.staff = users.objects.create_user(
+            username='owner', email='owner@example.com', password='x', is_staff=True
+        )
+        self.colleague = users.objects.create_user(
+            username='colleague', email='c@example.com', password='x', is_staff=True
+        )
+        self.jl = jl
+        self.rows = JanusLearning.objects
+        self.rows.create(
+            path=jl.MEMORY_FILE,
+            kind='memory',
+            content=f'Ships from Belgrade{jl.ENTRY_DELIMITER}Closed Sundays',
+        )
+        self.rows.create(
+            scope=jl.user_scope(self.colleague),
+            path=jl.USER_FILE,
+            kind='memory',
+            content='Colleague likes emoji',
+        )
+        self.rows.create(
+            path='skills/ops/restock/SKILL.md',
+            kind='skill',
+            content='---\nname: restock\ndescription: Reorder low stock\n---\nSteps.\n',
+        )
+        self.rows.create(
+            path=jl.LESSONS_FILE, kind='lesson', content='[{"id": "a", "lesson": "x"}]'
+        )
+        self.client.force_login(self.staff)
+
+    def test_page_lists_what_linda_learned(self):
+        page = self.client.get(URL)
+        self.assertContains(page, 'data-janus-learned')
+        self.assertContains(page, 'Ships from Belgrade')
+        self.assertContains(page, 'restock')
+        self.assertContains(page, 'Reorder low stock')
+        self.assertContains(page, '1 lesson from past work')
+
+    def test_notes_about_a_colleague_are_not_shown(self):
+        self.assertNotContains(self.client.get(URL), 'Colleague likes emoji')
+
+    def test_deleting_a_note_removes_only_that_note_and_is_audited(self):
+        from core.audit.models import AuditEvent
+
+        note = next(n for n in self.jl.notes()['store'] if n['text'] == 'Closed Sundays')
+        response = self.client.post(
+            URL, {'action': 'forget_note', 'which': 'store', 'note': note['id']}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.rows.get(path=self.jl.MEMORY_FILE).content, 'Ships from Belgrade')
+        event = AuditEvent.objects.get(event_type='janus.learning_forgotten')
+        self.assertEqual(event.actor, self.staff)
+
+    def test_a_colleagues_note_cannot_be_deleted_from_here(self):
+        self.client.post(
+            URL,
+            {
+                'action': 'forget_note',
+                'which': 'user',
+                'note': self.jl.note_id('Colleague likes emoji'),
+            },
+        )
+        self.assertTrue(self.rows.filter(path=self.jl.USER_FILE).exists())
+
+    def test_deleting_a_skill_and_lessons(self):
+        self.client.post(URL, {'action': 'delete_skill', 'skill': 'skills/ops/restock'})
+        self.assertFalse(self.rows.filter(kind='skill').exists())
+        self.client.post(URL, {'action': 'clear_lessons'})
+        self.assertFalse(self.rows.filter(kind='lesson').exists())
+
+    def test_an_unknown_skill_path_deletes_nothing(self):
+        self.client.post(URL, {'action': 'delete_skill', 'skill': 'skills'})
+        self.assertTrue(self.rows.filter(kind='skill').exists())

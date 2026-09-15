@@ -62,6 +62,10 @@ _DEFAULT_TIMEOUT_S = 55
 # skills into the prompt.
 MCP_SERVER_NAME = 'morpheus_admin'
 TURN_TOOLSETS = (MCP_SERVER_NAME, 'skills')
+# Added while learning is on: ``memory`` is Janus's notes, recall and agreement
+# tools, all confined to JANUS_HOME. What they write outlives the home through
+# core/assistant/janus_learning.py.
+LEARNING_TOOLSETS = ('memory',)
 
 # Tool-calling iterations per message. Janus defaults to 90, but a turn must end
 # inside the 55s timeout and each iteration measured ~7s on prod (DeepSeek plus
@@ -173,6 +177,13 @@ def auto_approve_enabled() -> bool:
     return bool(getattr(s, 'LINDA_JANUS_AUTO_APPROVE', False) if s else False)
 
 
+def turn_toolsets() -> tuple[str, ...]:
+    """The toolsets a turn loads: the base set, plus memory while learning is on."""
+    if janus_settings.learning_enabled():
+        return TURN_TOOLSETS + LEARNING_TOOLSETS
+    return TURN_TOOLSETS
+
+
 def turn_timeout_s() -> int:
     """Settings → AI → Janus, else ``LINDA_JANUS_TIMEOUT_S``; never above 55s."""
     s = _settings()
@@ -192,8 +203,9 @@ def linda_janus_home() -> Path:
     PermissionError on every real turn from v0.63.0 to v0.64.1. And never under
     ``/app/media`` — the one writable mount — because media is publicly served and
     each home holds the conversation's ``state.db``. The temp dir is wiped on
-    redeploy, like the old location; a persistent volume is set through the
-    setting.
+    redeploy, and nothing in it has to survive: what Janus learns is kept in the
+    database (:mod:`core.assistant.janus_learning`), so no deployment needs a
+    disk volume.
     """
     s = _settings()
     configured = (getattr(s, 'LINDA_JANUS_HOME', '') if s else '') or os.environ.get(
@@ -274,15 +286,18 @@ mcp_servers:
       Authorization: "Bearer ${{{TURN_TOKEN_ENV}}}"{extra}
     timeout: 60
 """
-    skills_block = ''
+    external = ''
     skills_dir = bundled_skills_dir()
     if skills_dir.is_dir() and janus_settings.bundled_skills_enabled():
         quoted = str(skills_dir).replace('\\', '/')
-        skills_block = f"""
-skills:
-  external_dirs:
-    - "{quoted}"
-"""
+        external = f'\n  external_dirs:\n    - "{quoted}"'
+    learning = 'true' if janus_settings.learning_enabled() else 'false'
+    # guard_agent_created: Janus scans a skill the agent writes only when this
+    #   resolves on, and its "auto" default is OFF under `janus chat -q`.
+    # inline_shell: a skill could otherwise run shell snippets when it loads.
+    # curator: moves skills into skills/.archive, which is not kept, so a
+    #   learned skill would silently disappear.
+    # memory: off together with learning, so no stale notes are loaded.
     return f"""# Auto-generated store agent home. Merchant-facing name is Linda.
 security:
   tirith_enabled: false
@@ -290,7 +305,15 @@ model:
   default: {os.environ.get('JANUS_INFERENCE_MODEL') or 'auto'}
 agent:
   max_turns: {janus_settings.max_tool_turns(MAX_TOOL_TURNS)}
-{mcp_block}{skills_block}
+{mcp_block}
+skills:
+  guard_agent_created: true
+  inline_shell: false{external}
+curator:
+  enabled: false
+memory:
+  memory_enabled: {learning}
+  user_profile_enabled: {learning}
 """
 
 
@@ -475,6 +498,15 @@ def run_janus_turn(
     mcp_url, mcp_headers = _mcp_endpoint(context)
     _ensure_config(conv_home, mcp_url=mcp_url, mcp_headers=mcp_headers)
 
+    from core.assistant import janus_learning
+
+    user = (context or {}).get('user')
+    snapshot = None
+    if janus_settings.learning_enabled():
+        snapshot = janus_learning.hydrate(conv_home, user=user)
+    else:
+        janus_learning.clear(conv_home)
+
     provider_args, provider_env = _provider_wiring()
     env = _child_env(
         {
@@ -503,9 +535,28 @@ def run_janus_turn(
         '--source',
         'linda',
         '-t',
-        ','.join(TURN_TOOLSETS),
+        ','.join(turn_toolsets()),
         *provider_args,
     ]
+    try:
+        return _spawn(base_argv, env, conv_home, timeout, started, conversation_key)
+    finally:
+        # Also after a timeout or crash: a note saved before the failure is
+        # still something Janus learned.
+        if snapshot is not None:
+            janus_learning.harvest(
+                conv_home, snapshot, conversation_key=conversation_key, user=user
+            )
+
+
+def _spawn(
+    base_argv: list[str],
+    env: dict[str, str],
+    conv_home: Path,
+    timeout: int,
+    started: float,
+    conversation_key: str,
+) -> dict[str, Any]:
     resume_id = _stored_session_id(conv_home)
     # Always the conversation's own home. Janus auto-injects AGENTS.md / SOUL.md
     # from its working directory, so running inside an engine source checkout

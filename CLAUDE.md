@@ -264,7 +264,7 @@ approval** (the S1 hole; a blanket `context['staged']` exemption once reopened i
 `catalog.delete_product`/`orders.mark_refunded`). Conversely, a `requires_approval`
 tool that *does* stage but forgets the flag just double-gates (fails safe, but breaks
 the staged-routine UX). Guarded by `core/agents/tests/test_staged_gate.py`.
-**Linda enforces the same contract** — `core/assistant/runtime.py:_gate_reason`
+**Linda enforces the same contract** — `core/assistant/gates.py:gate_reason`
 mirrors the Worker's chain (scope → budget → deadline → approval), so the
 `supports_staging` rule above applies identically to her.
 
@@ -337,6 +337,31 @@ conversation home, and `MAX_TOOL_TURNS` caps iterations (~7s each on prod) so a
 turn answers inside the timeout instead of exploring until it is killed.
 Guarded by `core/assistant/tests/test_janus_engine.py`, `test_turn_identity.py`
 and `agent_mcp/tests/test_linda_turn.py`.
+
+**Landmine — what Janus learns lives in files a redeploy deletes, and "add a disk
+volume" only fixes it on one host.** Janus writes its memory notes, the skills it
+authors and its lessons under `JANUS_HOME`, a temp dir per container. Morpheus is
+open source and must behave the same with or without Coolify, so the durable copy
+is the database (`JanusLearning`, `core/assistant/janus_learning.py`): each turn
+**hydrates** the home from the DB, runs, then **harvests** only the diff — in a
+`finally`, so a note saved before a timeout is kept. Four rules: (1) harvest
+**merges**, because two conversations learn at once — notes entry by entry,
+lessons by id, the daily journal by appended text, other files turn-wins and
+delete-only-if-unchanged; a whole-file write would erase the other conversation;
+(2) a hydrated `MEMORY.md` must be exactly `"\n§\n".join(entries)` — Janus treats
+any file that doesn't round-trip as externally edited, backs it up, and **refuses
+every later memory write**; (3) only agent-written text documents are kept —
+bundled skills (`skills/.bundled_manifest`), dot-dirs, symlinks, scripts and
+`state.db` never are, and more than `MAX_NEW_FILES_PER_TURN` new files in one turn
+means the home was misread, so those skill files are dropped; (4) `USER.md` is
+per staff member (`scope='user:<pk>'`), never shared. The generated config sets
+`skills.guard_agent_created: true` (Janus's `auto` default leaves the skill scanner
+**off** under `janus chat -q`), `inline_shell: false`, and `curator.enabled: false`
+(it archives skills into a dot-dir that isn't kept). Linda's MCP turns no longer
+see `memory.remember`/`memory.forget`: a second write path would split what she
+learns. Learned content can steer but never authorize — store writes still need the
+merchant's own "yes" at the edge — and the merchant reviews and deletes it on
+Settings → AI → Janus. Guarded by `core/assistant/tests/test_janus_learning.py`.
 
 **Landmine — two plugins registering the same agent-tool NAME let load order
 decide which one runs, and the loser might be the one with `requires_approval`.**

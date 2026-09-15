@@ -34,7 +34,9 @@ _SETTINGS_KEYS = (
     'turn_timeout_s',
     'extra_instructions',
     'bundled_skills',
+    'learning',
 )
+_REVIEW_ACTIONS = ('forget_note', 'delete_skill', 'clear_lessons')
 _VERSION_CACHE_KEY = 'janus:installed-version'
 
 
@@ -84,6 +86,7 @@ def _initial(config: dict) -> dict:
         'turn_timeout_s': config.get('turn_timeout_s', eng.turn_timeout_s()),
         'extra_instructions': config.get('extra_instructions', ''),
         'bundled_skills': config.get('bundled_skills', True),
+        'learning': config.get('learning', True),
     }
 
 
@@ -140,7 +143,7 @@ def _status() -> dict:
         'version': _installed_version(cmd, home) if installed and home else '',
         'home': home_text,
         'provider': provider,
-        'toolsets': ', '.join(eng.TURN_TOOLSETS),
+        'toolsets': ', '.join(eng.turn_toolsets()),
         'auto_approve': eng.auto_approve_enabled(),
     }
 
@@ -178,6 +181,36 @@ def _audit(user, changed: list[str]) -> None:
         logger.debug('janus: settings audit skipped', exc_info=True)
 
 
+def _review(request, action: str) -> None:
+    """Delete one piece of what Linda has learned. Each deletion is audited."""
+    from core.assistant import janus_learning
+
+    if action == 'forget_note':
+        done = janus_learning.forget_note(
+            which=request.POST.get('which', ''),
+            entry_id=request.POST.get('note', ''),
+            user=request.user,
+        )
+    elif action == 'delete_skill':
+        done = bool(janus_learning.delete_skill(request.POST.get('skill', ''), user=request.user))
+    else:
+        done = janus_learning.clear_lessons(user=request.user)
+    if done:
+        messages.success(request, 'Deleted. Linda will not use it from her next message.')
+    else:
+        messages.error(request, 'Nothing to delete — it may already be gone.')
+
+
+def _learned(user) -> dict:
+    from core.assistant import janus_learning
+
+    return {
+        'notes': janus_learning.notes(user=user),
+        'skills': janus_learning.skills(),
+        'lessons': janus_learning.lesson_count(),
+    }
+
+
 @staff_member_required
 @require_capability('system.write')
 @require_http_methods(['GET', 'POST'])
@@ -186,6 +219,9 @@ def settings_view(request):
     has_stored_key = bool(config.get('api_key'))
     test_result = None
 
+    if request.method == 'POST' and request.POST.get('action') in _REVIEW_ACTIONS:
+        _review(request, request.POST['action'])
+        return redirect(request.path)
     if request.method == 'POST' and request.POST.get('action') == 'test':
         test_result = _run_test(request.user)
         form = JanusSettingsForm(initial=_initial(config), has_stored_key=has_stored_key)
@@ -214,6 +250,7 @@ def settings_view(request):
             'form': form,
             'has_stored_key': has_stored_key,
             'status': _status(),
+            'learned': _learned(request.user),
             'test_result': test_result,
             'active_nav': 'settings',
             'breadcrumb_trail': [
