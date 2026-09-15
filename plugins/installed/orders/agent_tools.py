@@ -578,6 +578,15 @@ def approve_return_tool(*, rma_number: str, refund_amount: float | None = None) 
 # analytics.top_viewed_products).
 
 
+def _currency_label(currencies: list[str]) -> str:
+    """One currency code, or a warning when the summed orders mix currencies."""
+    if len(currencies) == 1:
+        return currencies[0]
+    if currencies:
+        return f'mixed ({", ".join(currencies)}): totals add different currencies'
+    return ''
+
+
 @tool(
     name='analytics.summary',
     description=(
@@ -610,6 +619,7 @@ def analytics_summary_tool(*, days_back: int = 7) -> ToolResult:
     prev_count = prev.count()
     prev_rev = prev.aggregate(t=Sum('total'))['t'] or Decimal('0')
     aov = (cur_rev / cur_count) if cur_count else Decimal('0')
+    currencies = sorted(set((cur | prev).values_list('total_currency', flat=True)))
     User = get_user_model()
     new_customers = User.objects.filter(date_joined__gte=since).count()
 
@@ -632,6 +642,9 @@ def analytics_summary_tool(*, days_back: int = 7) -> ToolResult:
             'revenue_prev': str(prev_rev),
             'revenue_pct_change': pct(cur_rev, prev_rev),
             'avg_order_value': str(aov),
+            # Amounts above carry no symbol; without this the model guessed one
+            # ($ in one answer, € in the next).
+            'currency': _currency_label(currencies),
             'new_customers': new_customers,
         }
     )
@@ -679,7 +692,19 @@ def analytics_top_products_tool(
         }
         for r in qs
     ]
+    currencies = sorted(
+        set(
+            OrderItem.objects.filter(order__placed_at__gte=since).values_list(
+                'total_price_currency', flat=True
+            )
+        )
+    )
     return ToolResult(
-        output={'window_days': days, 'sort': by, 'products': rows},
+        output={
+            'window_days': days,
+            'sort': by,
+            'currency': _currency_label(currencies),
+            'products': rows,
+        },
         display=f'top {len(rows)} by {by}',
     )

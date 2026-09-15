@@ -1,8 +1,7 @@
 # Linda agent quality — make her do the job, in time, visibly
 
-Status: **Step 1 built for v0.67.0** (catalogue, consent, prompt, skills, tool bugs, plus the cheap engine
-wins pulled forward: reasoning effort, no bundled Janus skills, SOUL.md, one retry, junk replies).
-Step 2 → v0.68.0. Update as steps land.
+Status: **Step 1 SHIPPED v0.67.0 and verified live** (11/11 tasks answered, 0 timeouts — see
+"After Step 1"). **Step 2 built for v0.68.0.** Update as steps land.
 
 Owner request (2026-09-15): "check again this agentic ai … and improve".
 
@@ -25,6 +24,25 @@ Owner request (2026-09-15): "check again this agentic ai … and improve".
 
 5 of 11 turns failed; the merchant saw "AI provider error" for each. No real merchant
 conversations in the last 30 days, so this eval is the evidence.
+
+## After Step 1 (live on prod v0.67.0, same eval, 2026-09-15)
+
+| Task | v0.66.1 | v0.67.0 |
+|---|---|---|
+| Orders + revenue last 7 days | 13s | 13s |
+| Top 5 products + follow-up stock | 19s / 11s | 16s / 11s |
+| Low / out of stock | timeout | **13s** — `inventory.low_stock_report` + forecast |
+| Top 3 customers | 42s | **20s** |
+| SEO problems | timeout (spawned Worker) | **35s** — asked before `seo.audit_all`, sampled 11 products |
+| Anything broken? | 39s | 31s — found failing nightly backups + a crashing SEO scan job |
+| Installed / disabled apps | timeout | **14s** — `plugins.list` |
+| Sales mode weekly summary | timeout | **16s** |
+| Change a price | timeout | **16s** — old → new, waited for yes |
+| Decline the change | 11s | 6.5s, unchanged ✓ |
+
+Answers no longer name tools. Remaining quality nits: a visible self-correction in
+the apps answer ("Disabled (5)… wait, 4"); revenue shown as € in one answer and $ in
+another (analytics.summary returns no currency).
 
 ## Root causes
 

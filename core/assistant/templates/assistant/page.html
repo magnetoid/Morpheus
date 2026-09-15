@@ -611,7 +611,15 @@
             if (!line) return;
             var ev;
             try { ev = JSON.parse(line.slice(6)); } catch (_) { return; }
-            if (ev.type === 'tool_call_started') {
+            if (ev.type === 'progress') {
+              // Sent every few seconds while Linda works: keep the indicator
+              // below the newest tool card and show how long it has been.
+              var th = showThinking();
+              var label = th.querySelector('span');
+              if (label && ev.elapsed_s) label.textContent = 'Linda is working · ' + ev.elapsed_s + 's';
+              log.appendChild(th);
+              log.scrollTop = log.scrollHeight;
+            } else if (ev.type === 'tool_call_started') {
               hideThinking();
               var t = document.createElement('details');
               t.className = 'linda-tool';

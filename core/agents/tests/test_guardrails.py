@@ -133,7 +133,7 @@ class KillSwitchLindaTests(TestCase):
         from core.assistant.runtime import Assistant
 
         with mock.patch(
-            'core.assistant.janus_engine.run_janus_turn',
+            'core.assistant.janus_engine.iter_janus_turn',
             side_effect=AssertionError('engine started while agents are paused'),
         ):
             events = list(Assistant().stream(message='hi', conversation_key='t:paused'))

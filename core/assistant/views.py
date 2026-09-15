@@ -95,6 +95,9 @@ def assistant_stream(request):
 
     Yields newline-terminated SSE blocks. Each event:
 
+      data: {"type": "progress", "elapsed_s": 5}\\n\\n          (every few seconds)
+      data: {"type": "tool_call_started", "name": "...", "arguments": {...}}\\n\\n
+      data: {"type": "tool_call_finished", "name": "...", "output": ..., "error": ""}\\n\\n
       data: {"type": "assistant_text", "text": "..."}\\n\\n
       data: {"type": "final", "text": "...", "state": "completed", ...}\\n\\n
     """

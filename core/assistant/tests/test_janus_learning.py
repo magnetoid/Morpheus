@@ -391,6 +391,33 @@ class EngineLearningTests(TestCase):
         self.assertIn('timed out', out['error'])
         self.assertEqual(JanusLearning.objects.get(path=jl.MEMORY_FILE).content, 'saved in time')
 
+    def test_an_abandoned_turn_does_not_store_half_written_learning(self):
+        import threading
+
+        release = threading.Event()
+
+        def slow(argv, **kwargs):
+            _put(Path(kwargs['env']['JANUS_HOME']), jl.MEMORY_FILE, 'half written')
+            release.wait(5)
+            return mock.Mock(stdout='ok', stderr='', returncode=0)
+
+        with (
+            override_settings(LINDA_JANUS_HOME=str(self.tmp)),
+            mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
+            mock.patch.object(eng.subprocess, 'run', side_effect=slow),
+        ):
+            turn = eng.iter_janus_turn(
+                message='hi',
+                conversation_key='c1',
+                system_prompt='p',
+                context={'user': self.user},
+                tick_s=0.02,
+            )
+            self.assertIsNone(next(turn))
+            turn.close()  # the browser went away
+            release.set()
+        self.assertFalse(JanusLearning.objects.exists())
+
     def test_learning_switched_off_keeps_nothing_and_loads_nothing(self):
         self._turn(_FakeJanus({jl.MEMORY_FILE: 'old note'}), key='c1', home=self.tmp)
         PluginConfig.objects.update_or_create(

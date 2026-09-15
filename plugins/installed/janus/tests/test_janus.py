@@ -100,7 +100,7 @@ class JanusPageSaveTests(TestCase):
         self.assertFalse(stored['bundled_skills'])
 
     def test_limits_are_enforced(self):
-        self.assertEqual(self._post(turn_timeout_s='120').status_code, 200)
+        self.assertEqual(self._post(turn_timeout_s='999').status_code, 200)
         self.assertEqual(self._post(max_tool_turns='50').status_code, 200)
         self.assertNotIn('turn_timeout_s', _stored())
 
@@ -179,7 +179,7 @@ class JanusSettingConsumerTests(TestCase):
 
     def test_switched_off_linda_declines_without_starting_the_engine(self):
         _set(enabled=False)
-        with mock.patch.object(eng, 'run_janus_turn', side_effect=AssertionError('engine ran')):
+        with mock.patch.object(eng, 'iter_janus_turn', side_effect=AssertionError('engine ran')):
             events = list(Assistant().stream(message='hi', conversation_key='t:off'))
         result = events[-1]['result']
         self.assertEqual(result.state, 'completed')
@@ -187,7 +187,7 @@ class JanusSettingConsumerTests(TestCase):
 
     def test_standing_instructions_reach_the_prompt(self):
         _set(extra_instructions='Always quote prices with VAT.')
-        prompt = Assistant()._system_prompt(message='hi', context={}, history=[])
+        prompt = Assistant()._system_prompt(context={})
         self.assertIn('Always quote prices with VAT.', prompt)
 
     def test_tool_step_cap_reaches_the_engine_config(self):

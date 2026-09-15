@@ -18,11 +18,12 @@ from typing import Any
 
 APP = 'janus'
 
-#: Hard bounds. The timeout cap is load-bearing: the turn blocks a gunicorn
-#: worker whose own timeout is 60s (scripts/docker-entrypoint.sh).
-MAX_TURN_TIMEOUT_S = 55
+#: Hard bounds. The timeout cap stays under three minutes: the chat streams
+#: progress while a turn runs (core/assistant/janus_engine.py), but a merchant
+#: waiting longer than that for one answer should split the job.
+MAX_TURN_TIMEOUT_S = 170
 MIN_TURN_TIMEOUT_S = 10
-MAX_TOOL_TURNS = 10
+MAX_TOOL_TURNS = 20
 MAX_EXTRA_INSTRUCTIONS = 4000
 
 
