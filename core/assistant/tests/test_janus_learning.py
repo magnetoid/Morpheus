@@ -36,6 +36,16 @@ def _put(home: Path, rel: str, text: str) -> None:
     path.write_text(text, encoding='utf-8')
 
 
+JOURNAL = 'memories/daily/2026-09-15.md'
+HEAD = '# Memory journal — 2026-09-15\n\n'
+
+
+def _entry(note: str, *, scope: str = 'MEMORY', event: str = 'added') -> str:
+    """One journal line as tools/memory_tool.py:append_daily_snapshot writes it."""
+    body = note.strip().replace('\n', '\n  ')
+    return f'- `09:30` **{scope}** {event}: {body}\n'
+
+
 def _skill(name: str, description: str = 'Does a thing') -> str:
     return f'---\nname: {name}\ndescription: {description}\n---\n\nSteps for {name}.\n'
 
@@ -78,10 +88,19 @@ class MergeTests(SimpleTestCase):
             jl.merge(jl.LESSONS_FILE, '[]', '{broken', '[{"id": "a"}]'), '[{"id": "a"}]'
         )
 
-    def test_journal_merges_by_appended_text(self):
-        path = 'memories/daily/2026-09-15.md'
-        merged = jl.merge(path, 'one\n', 'one\nmine\n', 'one\ntheirs\n')
-        self.assertEqual(merged, 'one\ntheirs\nmine\n')
+    def test_journal_merges_by_appended_entries(self):
+        base = f'{HEAD}{_entry("one")}'
+        merged = jl.merge(JOURNAL, base, base + _entry('mine'), base + _entry('theirs'))
+        self.assertEqual(merged, f'{HEAD}{_entry("one")}{_entry("theirs")}{_entry("mine")}')
+
+    def test_journal_never_keeps_entries_about_a_person(self):
+        # The journal is shared by the store; notes about one staff member are not.
+        turn = f'{HEAD}{_entry("Ana prefers short answers", scope="USER")}{_entry("Ships from Belgrade")}'
+        self.assertEqual(
+            jl.merge(JOURNAL, None, turn, None), f'{HEAD}{_entry("Ships from Belgrade")}'
+        )
+        only_user = f'{HEAD}{_entry("Ana prefers short answers", scope="USER")}'
+        self.assertIsNone(jl.merge(JOURNAL, None, only_user, None))
 
     def test_skill_file_changed_in_the_turn_wins(self):
         self.assertEqual(jl.merge('skills/a/SKILL.md', 'v1', 'v2', 'v1'), 'v2')
@@ -269,6 +288,34 @@ class SyncTests(TestCase):
         drop = next(n for n in jl.notes()['store'] if n['text'] == 'drop')
         self.assertTrue(jl.forget_note(which='store', entry_id=drop['id']))
         self.assertEqual(JanusLearning.objects.get(path=jl.MEMORY_FILE).content, 'keep')
+
+    def test_a_deleted_note_is_also_gone_from_the_journal(self):
+        # recall_memory searches the journal, so a note left there is not forgotten.
+        drop = 'Supplier code is\nKX-44'
+        self._learn(
+            {
+                jl.MEMORY_FILE: f'keep{D}{drop}',
+                JOURNAL: f'{HEAD}{_entry("keep")}{_entry(drop)}{_entry(drop, event="revised")}',
+            }
+        )
+        note = next(n for n in jl.notes()['store'] if n['text'] == drop)
+        jl.forget_note(which='store', entry_id=note['id'])
+        self.assertEqual(JanusLearning.objects.get(path=JOURNAL).content, f'{HEAD}{_entry("keep")}')
+        keep = jl.notes()['store'][0]
+        jl.forget_note(which='store', entry_id=keep['id'])
+        self.assertFalse(JanusLearning.objects.filter(kind='journal').exists())
+
+    def test_a_persons_journal_entry_never_reaches_a_colleague(self):
+        self._learn(
+            {
+                jl.USER_FILE: 'Ana is on leave in October',
+                JOURNAL: f'{HEAD}{_entry("Ana is on leave in October", scope="USER")}',
+            },
+            user=self.ana,
+        )
+        bo_home = self._fresh_home()
+        jl.hydrate(bo_home, user=self.bo)
+        self.assertEqual(jl.scan(bo_home), {})
 
     def test_review_lists_skills_with_their_description(self):
         self._learn(

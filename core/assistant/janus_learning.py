@@ -62,6 +62,9 @@ USER_FILE = 'memories/USER.md'
 LESSONS_FILE = 'learning/lessons.json'
 SKILLS_DIR = 'skills'
 _JOURNAL_RE = re.compile(r'^memories/daily/\d{4}-\d{2}-\d{2}\.md$')
+# One journal entry, as tools/memory_tool.py:append_daily_snapshot writes it:
+# "- `HH:MM` **MEMORY** added: <note, continuation lines indented>".
+_JOURNAL_ENTRY_RE = re.compile(r'^- `[^`]*` \*\*(MEMORY|USER)\*\* \w+: (.*)$', re.S)
 _BUNDLED_MANIFEST = 'skills/.bundled_manifest'
 _SKILL_NAME_RE = re.compile(r'^name:\s*["\']?([^"\'\n]+?)["\']?\s*$', re.M)
 
@@ -302,12 +305,43 @@ def _merge_lessons(base: str | None, turn: str | None, current: str | None) -> s
     return json.dumps(records, indent=2, ensure_ascii=False) + '\n' if records else None
 
 
+def _journal_blocks(text: str) -> list[str]:
+    """A journal split into its heading and one block per entry (with continuation lines)."""
+    blocks: list[str] = []
+    for line in text.splitlines(keepends=True):
+        if not blocks or line.startswith('- `'):
+            blocks.append(line)
+        else:
+            blocks[-1] += line
+    return blocks
+
+
+def _store_entries(text: str) -> str:
+    """Only the journal entries about the store notes.
+
+    Janus journals changes to USER.md too, and the journal is shared by the whole
+    store, so an entry about one staff member would reach everyone's
+    ``recall_memory``. Their notes are kept in their own USER.md only.
+    """
+    return ''.join(
+        b
+        for b in _journal_blocks(text)
+        if (m := _JOURNAL_ENTRY_RE.match(b)) and m.group(1) == 'MEMORY'
+    )
+
+
 def _merge_journal(base: str | None, turn: str | None, current: str | None) -> str | None:
     if turn is None:
         return current  # Janus only appends; a vanished journal is not a deletion.
     base = base or ''
     appended = turn[len(base) :] if turn.startswith(base) else turn
-    return (current or '') + appended
+    entries = _store_entries(appended)
+    if not entries:
+        return current
+    if current is None:
+        heading = _journal_blocks(turn)[0]
+        return ('' if _JOURNAL_ENTRY_RE.match(heading) else heading) + entries
+    return current + entries
 
 
 def merge(path: str, base: str | None, turn: str | None, current: str | None) -> str | None:
@@ -462,8 +496,32 @@ def forget_note(*, which: str, entry_id: str, user: Any = None) -> bool:
             row.save(update_fields=['content', 'updated_at'])
         else:
             row.delete()
+        if which == 'store':
+            forgotten = next(e for e in entries if note_id(e) == entry_id)
+            _scrub_journal(forgotten)
     _audit('janus.learning_forgotten', user, {'what': f'{which} note'})
     return True
+
+
+def _scrub_journal(entry: str) -> None:
+    """Remove a deleted note from the journal, or ``recall_memory`` would still find it."""
+    from core.assistant.models import JanusLearning
+
+    body = entry.strip().replace('\n', '\n  ')  # how Janus journals a multi-line note
+    for row in JanusLearning.objects.select_for_update().filter(scope='', kind='journal'):
+        blocks = _journal_blocks(row.content)
+        kept = [
+            b
+            for b in blocks
+            if not ((m := _JOURNAL_ENTRY_RE.match(b)) and m.group(2).rstrip('\n') == body)
+        ]
+        if len(kept) == len(blocks):
+            continue
+        if any(_JOURNAL_ENTRY_RE.match(b) for b in kept):
+            row.content = ''.join(kept)
+            row.save(update_fields=['content', 'updated_at'])
+        else:
+            row.delete()
 
 
 def skills() -> list[dict]:

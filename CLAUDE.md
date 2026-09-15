@@ -354,7 +354,10 @@ every later memory write**; (3) only agent-written text documents are kept —
 bundled skills (`skills/.bundled_manifest`), dot-dirs, symlinks, scripts and
 `state.db` never are, and more than `MAX_NEW_FILES_PER_TURN` new files in one turn
 means the home was misread, so those skill files are dropped; (4) `USER.md` is
-per staff member (`scope='user:<pk>'`), never shared. The generated config sets
+per staff member (`scope='user:<pk>'`), never shared — and Janus also journals
+USER changes into the shared `memories/daily/*.md`, so harvest keeps only
+`**MEMORY**` journal entries, and deleting a note on the page scrubs it from the
+journal too (`recall_memory` searches the journal; v0.66.0 shipped without both). The generated config sets
 `skills.guard_agent_created: true` (Janus's `auto` default leaves the skill scanner
 **off** under `janus chat -q`), `inline_shell: false`, and `curator.enabled: false`
 (it archives skills into a dot-dir that isn't kept). Linda's MCP turns no longer
