@@ -143,6 +143,7 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
         {
             'name': i.product_name,
             'sku': i.sku,
+            'product_id': str(i.product_id or ''),
             'quantity': i.quantity,
             'unit_price': _money_str(i.unit_price),
             'total_price': _money_str(i.total_price),

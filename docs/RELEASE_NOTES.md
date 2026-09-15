@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.68.2 — 2026-09-15
+
+**Linda follows orders to their products**
+
+- Fixed: when Linda looked at the products in an order, she often could not find them, because order lines use each variant's SKU. She now finds the product from either SKU, and order details include each line's product.
+
 ## v0.68.1 — 2026-09-15
 
 **Linda's longer answers are no longer lost**
