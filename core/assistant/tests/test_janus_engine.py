@@ -542,6 +542,46 @@ class SessionAndProgressTests(SimpleTestCase):
         out, _, _ = self._run(self._janus_writes_usage('s1', 2600, 90))
         self.assertEqual((out['usage']['input_tokens'], out['usage']['output_tokens']), (1600, 40))
 
+    def test_janus_background_review_is_off(self):
+        # Its thread swaps stdout/stderr process-wide; the reply printed meanwhile
+        # was lost and the merchant got "no reply" (live, v0.68.0).
+        body = eng._config_text('https://s/mcp/')
+        self.assertIn('nudge_interval: 0', body)
+        self.assertIn('creation_nudge_interval: 0', body)
+
+    def test_a_reply_lost_from_stdout_is_recovered_from_state_db(self):
+        import sqlite3
+        import time as _time
+
+        def silent(argv, **kwargs):
+            home = Path(kwargs['env']['JANUS_HOME'])
+            now = _time.time()
+            with sqlite3.connect(home / 'state.db') as db:
+                db.execute(
+                    'CREATE TABLE sessions (id TEXT PRIMARY KEY, source TEXT, started_at REAL, model TEXT, '
+                    'input_tokens INT, output_tokens INT, cache_read_tokens INT, cache_write_tokens INT, '
+                    'reasoning_tokens INT, api_call_count INT, estimated_cost_usd REAL)'
+                )
+                db.execute(
+                    'CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, '
+                    'role TEXT, content TEXT, timestamp REAL)'
+                )
+                db.execute(
+                    "INSERT INTO sessions VALUES ('s9', 'linda', ?, 'deepseek-v4-pro', 500, 20, 0, 0, 0, 3, 0)",
+                    (now,),
+                )
+                db.execute(
+                    "INSERT INTO messages (session_id, role, content, timestamp) VALUES ('s9', 'assistant', ?, ?)",
+                    ('Three products need better titles.', now),
+                )
+            return _FakeProc(stdout='', stderr='')
+
+        out, _, _ = self._run(silent)
+        self.assertEqual(out['error'], '')
+        self.assertEqual(out['text'], 'Three products need better titles.')
+        self.assertEqual(out['usage']['output_tokens'], 20)
+        self.assertEqual(eng._stored_session_id(self.conv), 's9')
+
     def test_the_turn_ticks_while_janus_works(self):
         import time as _time
 

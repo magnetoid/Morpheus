@@ -316,6 +316,12 @@ mcp_servers:
     # curator: moves skills into skills/.archive, which is not kept, so a
     #   learned skill would silently disappear.
     # memory: off together with learning, so no stale notes are loaded.
+    # nudge_interval / creation_nudge_interval 0: Janus's background review (a
+    #   thread started every 10 messages or tool steps) silences itself with
+    #   contextlib.redirect_stdout/stderr, which swaps the streams for the whole
+    #   process, so the reply and session id printed meanwhile went to /dev/null
+    #   and the merchant got "no reply" (live, v0.68.0). Linda learns through
+    #   explicit memory and skill calls instead.
     # reasoning_effort: the provider default for a reasoning model is "high".
     # api_max_retries: Janus retries 3x with backoff, which spends the whole turn
     #   budget on a provider that is down.
@@ -331,12 +337,14 @@ agent:
 {mcp_block}
 skills:
   guard_agent_created: true
-  inline_shell: false{external}
+  inline_shell: false
+  creation_nudge_interval: 0{external}
 curator:
   enabled: false
 memory:
   memory_enabled: {learning}
   user_profile_enabled: {learning}
+  nudge_interval: 0
 """
 
 
@@ -567,6 +575,28 @@ def _session_usage(conv_home: Path, session_id: str) -> dict[str, Any]:
     return {'model': row[0] or '', **{k: row[i + 1] or 0 for i, k in enumerate(_USAGE_COLUMNS)}}
 
 
+def _recover_reply(conv_home: Path, resume_id: str, since: float) -> tuple[str, str]:
+    """The session and last assistant reply this turn wrote to state.db, if any."""
+    db = conv_home / 'state.db'
+    if not db.is_file():
+        return '', ''
+    try:
+        with contextlib.closing(sqlite3.connect(f'file:{db}?mode=ro', uri=True, timeout=2)) as conn:
+            row = conn.execute(
+                'SELECT m.session_id, m.content FROM messages m JOIN sessions s ON s.id = m.session_id '
+                "WHERE s.source = 'linda' AND m.role = 'assistant' AND m.timestamp >= ? "
+                "AND COALESCE(m.content, '') != '' AND (s.id = ? OR s.started_at >= ?) "
+                'ORDER BY m.id DESC LIMIT 1',
+                (since, resume_id, since),
+            ).fetchone()
+    except sqlite3.Error:
+        logger.debug('janus: reply recovery failed', exc_info=True)
+        return '', ''
+    if not row or not _SESSION_ID_RE.match(str(row[0] or '')):
+        return '', ''
+    return str(row[0]), _strip_notices(str(row[1]))
+
+
 def _turn_usage(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
     """What this turn added to a session's totals (the row accumulates across resumes)."""
     if not after:
@@ -698,6 +728,12 @@ def _wait_ticking(run, tick_s: float):
         except Exception as e:  # noqa: BLE001 — reported as a failed turn, never lost
             logger.exception('janus engine turn crashed')
             box['payload'] = {'text': '', 'error': f'janus turn crashed: {e}', 'duration_ms': 0}
+        finally:
+            # An ERROR log is recorded to the database by core.brain's handler,
+            # which opens a connection on this thread; close it or it leaks.
+            from django.db import connections
+
+            connections.close_all()
 
     worker = threading.Thread(target=work, name='janus-turn', daemon=True)
     worker.start()
@@ -756,6 +792,7 @@ def _spawn(
     # from its working directory, so running inside an engine source checkout
     # would feed that project's developer instructions to the store agent.
     cwd = str(conv_home)
+    spawned_at = time.time()
     for _attempt in (0, 1):
         remaining = max(1, timeout - int(time.monotonic() - started))
         try:
@@ -787,37 +824,42 @@ def _spawn(
             continue
         break
 
-    session = _remember_session_id(conv_home, proc.stderr or '')
+    text = _strip_notices(proc.stdout or '')
+    stderr = proc.stderr or ''
+    if proc.returncode == 0 and not text and not _SESSION_LINE_RE.search(stderr):
+        # Janus exited cleanly but printed neither the reply nor its session id:
+        # something swapped its output streams. The reply is still in state.db.
+        recovered_sid, text = _recover_reply(conv_home, resume_id, spawned_at)
+        if recovered_sid:
+            logger.warning('janus: reply recovered from state.db key=%s', conversation_key)
+            stderr = f'{stderr}\nsession_id: {recovered_sid}'
+    session = _remember_session_id(conv_home, stderr)
     if session != resume_id:
         usage_before = {}
     usage = _turn_usage(usage_before, _session_usage(conv_home, session))
-    text = _strip_notices(proc.stdout or '')
-    err = _SESSION_LINE_RE.sub('', proc.stderr or '').strip()
     duration = int((time.monotonic() - started) * 1000)
-    if proc.returncode != 0:
+    result = _turn_result(proc.returncode, text, _SESSION_LINE_RE.sub('', stderr).strip())
+    return {**result, 'duration_ms': duration, 'usage': usage}
+
+
+def _turn_result(returncode: int, text: str, err: str) -> dict[str, str]:
+    """The reply or the failure, from what the Janus process returned."""
+    if returncode != 0:
         # A crash AFTER partial output is still a crash. Returning the partial
         # text as a completed turn hides the failure from the merchant, from the
         # transcript, and from the self-improvement loop.
         logger.warning(
-            'janus engine rc=%s stdout_head=%s stderr=%s',
-            proc.returncode,
-            text[:200],
-            err[:400],
+            'janus engine rc=%s stdout_head=%s stderr=%s', returncode, text[:200], err[:400]
         )
-        reason = err[:500] or f'janus exit {proc.returncode}'
+        reason = err[:500] or f'janus exit {returncode}'
         if text:
             reason = f'{reason} (crashed after {len(text)} chars of partial output)'
-        return {'text': '', 'error': reason, 'duration_ms': duration, 'usage': usage}
+        return {'text': '', 'error': reason}
     if not text or text == '(empty)':
         # Janus exits 0 with nothing to say when the model returned only hidden
         # reasoning, or every provider retry failed; the merchant must not get a
         # blank bubble recorded as Linda's answer.
-        return {
-            'text': '',
-            'error': 'janus returned no reply',
-            'duration_ms': duration,
-            'usage': usage,
-        }
+        return {'text': '', 'error': 'janus returned no reply'}
     if text.startswith('{'):
         # Parse the WHOLE envelope — sniffing for the key in a fixed-size head
         # means a longer envelope renders raw JSON to the merchant as Linda's
@@ -829,4 +871,4 @@ def _spawn(
         else:
             if isinstance(payload, dict):
                 text = str(payload.get('final_response') or payload.get('text') or text)
-    return {'text': text, 'error': '', 'duration_ms': duration, 'usage': usage}
+    return {'text': text, 'error': ''}

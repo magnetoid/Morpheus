@@ -353,7 +353,13 @@ home and its prompt says she MUST load a relevant one first); the config pins
 `agent.reasoning_effort` (merchant setting, default `low` — a reasoning model's
 provider default is `high`) and `api_max_retries: 1`. Janus prints status lines to
 stdout even under `-Q` and exits 0 on an empty reply, so `_strip_notices` removes
-them and an empty or `(empty)` answer is a failure, not a blank bubble.
+them and an empty or `(empty)` answer is a failure, not a blank bubble. **Janus's
+background review thread silences itself with `contextlib.redirect_stdout/stderr`,
+which swaps the streams for the whole process**: every 10th message or tool step
+the reply and `session_id` went to /dev/null and the merchant got "no reply"
+(v0.68.0, live). The config sets `memory.nudge_interval` and
+`skills.creation_nudge_interval` to 0, and a clean exit with no output recovers the
+reply from the home's `state.db` (`_recover_reply`).
 Guarded by `core/assistant/tests/test_janus_engine.py`, `test_turn_identity.py`
 and `agent_mcp/tests/test_linda_turn.py`.
 
