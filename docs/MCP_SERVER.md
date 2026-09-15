@@ -104,19 +104,28 @@ conversation's mode, and expires shortly after the turn's timeout.
 A call under a turn token runs as the real staff user, not `mcp-service`, and
 passes the same gates as Linda's in-process loop (`core/assistant/gates.py`):
 
-- **Scope** — Linda's scope profile, not the token's scopes.
+- **Catalogue** — a turn does not see the cluster's list. It sees every
+  registered tool inside Linda's scope profile (`gates.LINDA_SCOPES`, the store
+  domains), minus shopper cart/checkout/wishlist tools, duplicates, and platform
+  internals (`db.*`, `fs.*`, `run_python`, `platform.capabilities`, …), which only
+  Developer mode adds back (`agent_mcp/linda_turn.py:catalogue`).
 - **Mode** — `tools/list` and `tools/call` see only the mode's tools; the user's
   entitlement to that mode is re-checked on every call.
-- **Consent** — a `requires_approval` tool is refused with an `isError` result
-  starting `approval_required:` until the merchant's own next message in that
-  conversation is an affirmative reply. The grant is single-use and bound to the
-  exact arguments. `approved_tools` plays no part.
+- **Consent** — every write is refused with an `isError` result starting
+  `approval_required:` until the merchant's own next message in that conversation
+  is an affirmative reply: any tool with `requires_approval`, any write-scoped
+  tool, plus `delegate.spawn_workers` and `meta.sync_audience`
+  (`linda_turn.needs_consent`). The grant is single-use and bound to the exact
+  arguments, ignoring the model's own `confirmed` / `hard_gate_ack` / `echo`.
+  `approved_tools` plays no part. The merchant kill switch stops the same set.
+- **Result size** — a tool result over 20,000 characters is cut, with a hint to
+  narrow the call.
 - **Audit** — every write attempt, refused or executed, records
   `assistant.tool_write` with the merchant as actor, alongside the usual
   `agents.decision` row. Tool calls are also stored in the conversation history.
-- **Memory** — `memory.remember` and `memory.forget` are not exposed to a turn.
-  Linda learns through Janus's own memory, which Morpheus keeps in the database
-  (`core/assistant/janus_learning.py`); `memory.recall` is still available.
+- **Memory** — `memory.remember`, `memory.forget` and `memory.recall` are not
+  exposed to a turn. Linda learns and recalls through Janus's own memory, which
+  Morpheus keeps in the database (`core/assistant/janus_learning.py`).
 
 ## Write surface (catalog, inventory, orders)
 

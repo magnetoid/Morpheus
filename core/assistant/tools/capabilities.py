@@ -64,6 +64,11 @@ def capabilities_tool() -> ToolResult:
         'no commands yet.'
     ),
     scopes=['diagnostics.read'],
+    schema={
+        'type': 'object',
+        'properties': {'name': {'type': 'string', 'description': 'App name, e.g. "seo".'}},
+        'required': ['name'],
+    },
 )
 def plugins_describe_tool(*, name: str) -> ToolResult:
     from django.apps import apps

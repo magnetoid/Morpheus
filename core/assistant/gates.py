@@ -19,16 +19,45 @@ import logging
 
 logger = logging.getLogger('morpheus.assistant.gates')
 
-#: Linda's scope profile — the union her built-in catalogue needs, and no more.
-#: A contributed tool wanting `orders.write`/`rbac.*` is denied until it is
-#: deliberately granted. Shared by the in-process loop and the MCP edge so a
-#: Janus turn can never hold a wider profile than Linda did.
+#: Linda's scope profile — the store domains a merchant's assistant works in.
+#: A contributed tool wanting a scope outside it (a shopper's cart, a new domain)
+#: is denied until it is deliberately added here. Every write inside it still
+#: needs the merchant's own yes at the MCP edge (``linda_turn.needs_consent``).
 LINDA_SCOPES: tuple[str, ...] = (
     'system.read',
     'system.write',
-    'selfdev',
-    'customers.write',
     'diagnostics.read',
+    'catalog.read',
+    'catalog.write',
+    'inventory.read',
+    'inventory.write',
+    'orders.read',
+    'orders.write',
+    'orders.cancel',
+    'customers.read',
+    'customers.write',
+    'crm.read',
+    'crm.write',
+    'analytics.read',
+    'seo.read',
+    'seo.write',
+    'content.write',
+    'cms.read',
+    'cms.write',
+    'promotions.read',
+    'promotions.write',
+    'gift_cards.read',
+    'gift_cards.write',
+    'shipping.read',
+    'shipping.write',
+    'tax.read',
+    'tax.write',
+    'affiliates.read',
+    'affiliates.write',
+    'b2b.read',
+    'b2b.write',
+    'i18n.read',
+    'i18n.write',
 )
 
 
@@ -44,8 +73,13 @@ def gate_reason(  # noqa: PLR0911 — flat guard chain, mirrors AgentRuntime
     spent_tokens: int = 0,
     token_budget: int = 0,
     human_message_at: float | None = None,
+    needs_consent: bool | None = None,
 ) -> str | None:
-    """Return a refusal reason, or ``None`` to let the call through."""
+    """Return a refusal reason, or ``None`` to let the call through.
+
+    ``needs_consent`` overrides the tool's own ``requires_approval`` flag. The MCP
+    edge sets it for Linda, who needs the merchant's yes for every write.
+    """
     # Scope: an under-scoped caller never reaches an over-scoped tool.
     try:
         from core.agents.policies import ScopeDenied, enforce_policy
@@ -79,7 +113,9 @@ def gate_reason(  # noqa: PLR0911 — flat guard chain, mirrors AgentRuntime
     # exemption reopens the S1 hole for the staged path.
     staged = isinstance(context, dict) and context.get('staged')
     staged_exempt = staged and getattr(tool, 'supports_staging', False)
-    if getattr(tool, 'requires_approval', False) and not staged_exempt:
+    if needs_consent is None:
+        needs_consent = bool(getattr(tool, 'requires_approval', False))
+    if needs_consent and not staged_exempt:
         from core.assistant import consent
 
         if not consent.consume(
@@ -105,7 +141,16 @@ def is_write_tool(tool) -> bool:
     )
 
 
-def audit_write_tool(*, tool, args, payload, error_msg: str, conversation_key: str, user) -> None:
+def audit_write_tool(
+    *,
+    tool,
+    args,
+    payload,
+    error_msg: str,
+    conversation_key: str,
+    user,
+    is_write: bool | None = None,
+) -> None:
     """Record a write-tool attempt to core.audit (fail-soft). Reads are skipped.
 
     A merchant auditing "what did the AI change?" must be able to answer from the
@@ -113,7 +158,7 @@ def audit_write_tool(*, tool, args, payload, error_msg: str, conversation_key: s
     interesting than a successful one, so callers audit refusals too.
     """
     try:
-        if not is_write_tool(tool):
+        if not (is_write_tool(tool) if is_write is None else is_write):
             return
         from core.audit.services import record
 
