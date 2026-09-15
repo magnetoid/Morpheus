@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.68.1 — 2026-09-15
+
+**Linda's longer answers are no longer lost**
+
+- Fixed: after about ten steps of work, or every tenth message in a conversation, Linda could finish her answer but show "I couldn't put an answer together" instead. Her answer now always arrives.
+
 ## v0.68.0 — 2026-09-15
 
 **See Linda work**
