@@ -7,8 +7,12 @@ from decimal import Decimal
 from django.test import TestCase
 from djmoney.money import Money
 
-from plugins.installed.catalog.agent_tools import products_count_tool, products_search_tool
-from plugins.installed.catalog.models import Product
+from plugins.installed.catalog.agent_tools import (
+    products_count_tool,
+    products_get_tool,
+    products_search_tool,
+)
+from plugins.installed.catalog.models import Product, ProductVariant
 
 
 def _make(n, status='active', prefix='book'):
@@ -42,3 +46,19 @@ class ProductCountToolsTests(TestCase):
         self.assertEqual(products_count_tool.invoke({'status': 'active'}).output['total'], 25)
         self.assertEqual(products_count_tool.invoke({'status': 'draft'}).output['total'], 3)
         self.assertEqual(products_count_tool.invoke({}).output['total'], 28)
+
+
+class ProductGetByVariantSkuTests(TestCase):
+    def test_a_variant_sku_from_an_order_line_finds_its_product(self):
+        product = Product.objects.create(
+            name='Emma',
+            slug='emma',
+            sku='PG-158',
+            status='active',
+            price=Money(Decimal('8'), 'USD'),
+        )
+        ProductVariant.objects.create(
+            product=product, name='Digital', sku='emma-digital', price=Money(Decimal('8'), 'USD')
+        )
+        out = products_get_tool.invoke({'sku': 'emma-digital'}).output
+        self.assertEqual(out['slug'], 'emma')

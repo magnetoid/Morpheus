@@ -93,6 +93,33 @@ class AnalyticsCurrencyTests(TestCase):
         self.assertTrue(analytics_summary_tool.invoke({}).output['currency'].startswith('mixed'))
 
 
+class OrdersGetLineProductTests(TestCase):
+    def test_order_lines_name_their_product(self):
+        from djmoney.money import Money
+
+        from plugins.installed.catalog.models import Product
+        from plugins.installed.orders.agent_tools import orders_get_tool
+        from plugins.installed.orders.models import Order, OrderItem
+
+        product = Product.objects.create(
+            name='Emma', slug='emma', sku='PG-158', price=Money(8, 'USD')
+        )
+        order = Order.objects.create(
+            email='a@example.com', subtotal=Money(8, 'USD'), total=Money(8, 'USD')
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=product,
+            product_name='Emma',
+            sku='emma-digital',
+            quantity=1,
+            unit_price=Money(8, 'USD'),
+            total_price=Money(8, 'USD'),
+        )
+        out = orders_get_tool.invoke({'order_number': order.order_number}).output
+        self.assertEqual(out['items'][0]['product_id'], str(product.pk))
+
+
 class OrdersSearchTotalTests(TestCase):
     """orders.search must report the real match total, not the page size — the
     same undercount bug catalog fixed for products.search."""

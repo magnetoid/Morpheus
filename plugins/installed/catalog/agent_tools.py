@@ -193,7 +193,9 @@ def products_get_tool(*, id: str = '', sku: str = '', slug: str = '') -> ToolRes
         if id:
             p = qs.filter(pk=id).first()
         if p is None and sku:
-            p = qs.filter(sku=sku).first()
+            # Order lines carry the variant's SKU; resolve it to its product, or an
+            # agent following an order to its products finds nothing.
+            p = qs.filter(sku=sku).first() or qs.filter(variants__sku=sku).first()
         if p is None and slug:
             p = qs.filter(slug=slug).first()
     except Exception as e:  # noqa: BLE001
