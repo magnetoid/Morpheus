@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.68.3 — 2026-09-16
+
+**The nightly SEO scan runs again**
+
+- The daily SEO scan has failed on every run since 1 June: it looked for a description column that content pages have never had, so the scan died before it could check a single page. It now completes and finds 8 pages that need a description.
+- Products are no longer reported as missing an Open Graph title — a blank one renders from the page title, so there was nothing to fix. That rule alone was 648 of 861 products of phantom SEO debt.
+- A description saved in the SEO panel now counts: a product or page described there is no longer reported as missing one.
+
 ## v0.68.2 — 2026-09-15
 
 **Linda follows orders to their products**

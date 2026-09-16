@@ -618,6 +618,23 @@ parity profile SHRANK on purpose — the one case where that is not the bug.
 Guarded by `seo/tests/test_offer_claims.py`, which asserts both directions
 (configured → published and matching; unconfigured → absent).
 
+**Landmine — an SEO gap is what the page RENDERS empty, never what one column
+holds; and a collector nothing ever calls fails silently for months.**
+`seo_gap` scanned columns instead of the resolved head, and got it wrong three
+ways: it filtered `cms.Page` on a `meta_description` column the model has never
+had (it has `excerpt` + a `metadata` JSON blob), so **107 of 107 nightly runs
+raised FieldError from 2026-06-01 to v0.68.3** — after emitting the earlier gap
+classes, so the job just showed red and the page gaps were never collected; it
+reported a blank `Product.og_title` as debt though `og:title` renders from the
+title when blank (`_helpers.py:to_html`), which is 648 of 861 live products of
+permanent debt **no healer can repair**; and it read only the native description
+column while `resolve_meta` prefers the `SeoMeta` overlay. Two rules: derive a
+gap from the same fallback chain the `<head>` uses
+(`seo/pages/resolve.py:_description_from_object`), and **call `run()` in a
+test** — nothing ever had, which is the only reason a three-month-dead nightly
+job stayed invisible. Guarded by
+`core/self_improvement/tests/test_collectors.py::SeoGapCollectorTests`.
+
 **Landmine — a deferred djmoney field raises `KeyError`, which `getattr`'s
 default does NOT catch, and one unguarded read can cost a whole node.** A view
 that loads a product with `.only()` leaves the unselected columns absent;

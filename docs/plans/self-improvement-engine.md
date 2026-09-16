@@ -98,7 +98,7 @@ core/
       web_vital.py          # New /api/_vitals/ endpoint + storefront beacon
       cart_abandon.py       # CART_ABANDONED hook subscriber
       zero_search.py        # SEARCH_PERFORMED hook, filter result_count=0
-      seo_gap.py            # Daily DB scan (Product/Page missing meta/alt/OG)
+      seo_gap.py            # Daily DB scan (missing product/page description, image alt)
       dep_scan.py           # pip-audit + osv-scanner --call-analysis nightly
       lighthouse.py         # Nightly LH-CI run against top sitemap URLs
       dead_link.py          # Weekly sitemap + internal link walk
@@ -274,7 +274,7 @@ per environment. Matches the existing `core.settings` pattern.
 | 5 | Web Vitals | New `/api/_vitals/` + storefront beacon | Real-time | `web_vital` |
 | 6 | `CART_ABANDONED` hook | Subscribe | Real-time | `cart_abandon` |
 | 7 | `SEARCH_PERFORMED` w/ result_count=0 | Subscribe | Real-time | `zero_search` |
-| 8 | SEO gap audit | `Product`/`cms.Page` query for missing meta/alt/OG | Daily 03:30 | `seo_gap` |
+| 8 | SEO gap audit | `Product`/`cms.Page` with no description anywhere (native column OR `SeoMeta` overlay), images with no alt | Daily 03:30 | `seo_gap` |
 | 9 | CVE / dep advisories | `pip-audit` + `osv-scanner --call-analysis=python` | Daily 02:00 | `cve` / `dep` |
 | 10 | Lighthouse-CI | Top 10 URLs sitemap-driven | Daily 03:00 | `lighthouse` |
 | 11 | Dead-link scan | Sitemap + internal links walk | Weekly Sun 04:00 | `dead_link` |
