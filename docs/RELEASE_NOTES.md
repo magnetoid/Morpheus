@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.68.4 — 2026-09-17
+
+**The book fills the shop window**
+
+- The featured book now runs the full height of the homepage slider, flush to the right margin, with a proper drop shadow — it used to float mid-page at a third of the height.
+- The slider is half as tall (1334px to 663px), so the shelf below it is visible on landing. A single 120-character book title had been setting the height for all four books.
+- Long titles now step down the type scale instead of running to nine lines; the copy and the book share the same top and bottom edge.
+
 ## v0.68.3 — 2026-09-16
 
 **The nightly SEO scan runs again**

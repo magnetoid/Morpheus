@@ -112,3 +112,59 @@ class HomeHeroTests(TestCase):
         self.assertNotIn('fitHeroTitle', body)
         # The page had no h1 at all once the marketing h2 came out.
         self.assertEqual(body.count('<h1'), 1)
+
+    @patch(
+        'plugins.installed.personalisation.services.rank_for_visitor',
+        side_effect=lambda request, products, surface: products,
+    )
+    @patch('plugins.installed.storefront.views.home.internal_graphql')
+    def test_long_titles_step_down_the_display_scale(self, mocked_graphql, _rank_for_visitor):
+        """One title must not set the height of the whole hero.
+
+        Every panel shares one grid cell, so the stage is as tall as the LONGEST
+        title. Live, a 91-character public-domain title at display-xl measured
+        892px, which made the section 1334px — half a viewport of dead space for
+        the other three books, and the cover adrift in the middle of it. The size
+        band is chosen from the title's own length in the template (no JS fitter,
+        which is what this hero deleted).
+        """
+        long_title = (
+            'Christmas: Its Origin and Associations: Together with Its '
+            'Historical Events and Festive Celebrations'
+        )
+        mocked_graphql.return_value = {
+            'featuredProducts': [
+                _hero_product(long_title, 'christmas'),
+                _hero_product('Dune', 'dune'),
+            ],
+            'collections': [],
+            'categories': [],
+        }
+
+        body = self.client.get('/').content.decode()
+
+        self.assertGreater(len(long_title), 90)
+        self.assertIn('window__book window__book--xs', body)
+        # The short title keeps the treatment display-xl was designed for.
+        self.assertIn('window__book display-xl', body)
+
+    @patch(
+        'plugins.installed.personalisation.services.rank_for_visitor',
+        side_effect=lambda request, products, surface: products,
+    )
+    @patch('plugins.installed.storefront.views.home.internal_graphql')
+    def test_cover_column_is_a_definite_track(self, mocked_graphql, _rank_for_visitor):
+        """The book fills the hero top to bottom, flush to the right margin.
+
+        A `max-content` column sized by a stretched, aspect-ratio'd cover is
+        circular, so the track width is derived from the shell's own height
+        variable. Losing either half puts the cover back to floating at its own
+        size, short of the margin.
+        """
+        mocked_graphql.return_value = _two_pick_home()
+
+        body = self.client.get('/').content.decode()
+
+        self.assertIn('--window-h:', body)
+        self.assertIn('calc(var(--window-h) * 2 / 3)', body)
+        self.assertNotIn('justify-content: start;', body)

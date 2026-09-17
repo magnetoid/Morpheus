@@ -65,7 +65,18 @@ geometry, so the dots and cover never move between books.
             {% if hero_products|length > 1 %}role="tabpanel"{% endif %}
             aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
           >
-            <h3 class="display display-xl window__book" style="--d: 60ms;"><em>{{ pick.name }}</em><span class="text-accent">.</span></h3>
+            {% comment %}The title's size band is chosen from its own length, in
+            the template — these are public-domain books and a title can run 120
+            characters ("Christmas: Its Origin and Associations: Together with…").
+            At display-xl that one title was 892px tall and set the height of the
+            whole stacked stage, so every OTHER book showed against ~700px of
+            dead space. Server-side banding keeps the display-xl treatment for the
+            short titles it was designed for and steps long ones down the existing
+            scale — no JS fitter, the thing this hero deleted.{% endcomment %}
+            <h3
+              class="display window__book {% if pick.name|length > 90 %}window__book--xs{% elif pick.name|length > 55 %}display-m{% elif pick.name|length > 26 %}display-l{% else %}display-xl{% endif %}"
+              style="--d: 60ms;"
+            ><em>{{ pick.name }}</em><span class="text-accent">.</span></h3>
             <p class="window__meta" style="--d: 120ms;">
               {% if pick.category %}
               <span class="window__cat">{{ pick.category.name }}</span>
@@ -114,9 +125,9 @@ geometry, so the dots and cover never move between books.
         >
           {% if pick.primaryImage and pick.primaryImage.url %}
             {% if forloop.first %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 340px, 62vw" priority=True %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 420px, 62vw" priority=True %}
             {% else %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 340px, 62vw" %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 420px, 62vw" %}
             {% endif %}
           {% elif PRODUCT_PLACEHOLDER_IMAGE %}
             <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ pick.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
@@ -140,23 +151,30 @@ geometry, so the dots and cover never move between books.
   }
   .window__shell {
     display: grid;
-    /* Deliberately tight: the book and its title read as one composition, not
-       two columns sharing a page. */
-    gap: clamp(1rem, 2vw, 1.75rem);
+    gap: clamp(1.5rem, 3vw, 2rem);
     align-items: center;
   }
   @media (min-width: 900px) {
-    /* Copy left, the book right — the remembered editorial composition.
-       Both columns are content-sized so the book sits just past the end of the
-       copy: `1fr` for the copy pinned the cover to the far right edge, and a
-       short title ("Dune.") then left a gulf the gap alone could not close. */
+    /* Copy left, the book right, and the BOOK sets the height: one shared top
+       and bottom edge rather than two columns floating at their own sizes.
+       `--window-h` drives both, so the cover column is a definite track (a
+       `max-content` book column sized by a stretched, aspect-ratio'd cover is
+       circular, and the old content-sized pair left the cover stranded ~270px
+       shy of the right margin — the book read as adrift in the middle). */
     .window__shell {
-      grid-template-columns: minmax(0, max-content) minmax(0, auto);
-      justify-content: start;
+      --window-h: clamp(30rem, 62vh, 40rem);
+      grid-template-columns: minmax(0, 1fr) calc(var(--window-h) * 2 / 3);
+      gap: clamp(2.5rem, 5vw, 5rem);
+      min-height: var(--window-h);
+      align-items: stretch;
     }
-    /* The copy column still needs a floor, or a one-word title collapses the
-       column and drags the book under the headline. */
-    .window__copy { min-width: min(32rem, 100%); }
+    /* Lead at the top edge, dots at the bottom, and the middle row takes ALL
+       the slack so the title block centres against the cover. Putting the slack
+       in one row is what keeps a short title from stranding the eyebrow. */
+    .window__copy {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
   }
 
   /* ── The book, face-out ───────────────────────────────────────────────────
@@ -165,7 +183,7 @@ geometry, so the dots and cover never move between books.
      book under the dots); the desktop rule below restores source order. */
   .window__stage { display: grid; order: -1; }
   @media (min-width: 900px) {
-    .window__stage { order: 0; }
+    .window__stage { order: 0; height: 100%; }
   }
   .window__cover {
     grid-area: 1 / 1;
@@ -177,7 +195,14 @@ geometry, so the dots and cover never move between books.
     border-radius: 4px;
     overflow: hidden;
     background: var(--paper-2);
-    box-shadow: 0 2px 10px -6px rgba(14, 14, 14, 0.22);
+    /* Three layers, all from one direction: a tight contact shadow where the
+       book meets the page, then the spread that lifts it off. A single
+       hairline blur (what this was) reads as a flat rectangle — the shared
+       spine/edge-light in base.html can only do so much on its own. */
+    box-shadow:
+      0 1px 2px rgba(14, 14, 14, 0.18),
+      0 12px 24px -12px rgba(14, 14, 14, 0.32),
+      0 34px 60px -30px rgba(14, 14, 14, 0.42);
     opacity: 0;
     pointer-events: none;
     transform: scale(0.985);
@@ -187,7 +212,14 @@ geometry, so the dots and cover never move between books.
       box-shadow var(--motion-med) var(--ease-out);
   }
   @media (min-width: 900px) {
-    .window__cover { width: clamp(260px, 27vw, 380px); margin-inline: 0; }
+    /* Fills its track top to bottom; `aspect-ratio: auto` yields to the two
+       definite sides, so the frame follows the shell if the copy runs taller. */
+    .window__cover {
+      width: 100%;
+      height: 100%;
+      aspect-ratio: auto;
+      margin-inline: 0;
+    }
   }
   .window__cover.is-active {
     opacity: 1;
@@ -205,8 +237,11 @@ geometry, so the dots and cover never move between books.
      selector groups — nothing to restate here. */
   @media (hover: hover) {
     .window__cover.is-active:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 20px 38px -20px rgba(14, 14, 14, 0.42);
+      transform: translateY(-4px);
+      box-shadow:
+        0 2px 4px rgba(14, 14, 14, 0.2),
+        0 18px 34px -14px rgba(14, 14, 14, 0.38),
+        0 48px 80px -34px rgba(14, 14, 14, 0.5);
     }
   }
 
@@ -226,7 +261,10 @@ geometry, so the dots and cover never move between books.
   .window__panel {
     grid-area: 1 / 1;
     display: grid;
-    gap: 1rem;
+    /* Title → meta → buttons on one rising scale, so the three lines read as
+       one block against the full-height cover. */
+    gap: clamp(0.9rem, 1.6vw, 1.5rem);
+    align-content: center;
     opacity: 0;
     pointer-events: none;
   }
@@ -259,13 +297,20 @@ geometry, so the dots and cover never move between books.
   }
   .window__lead > * { margin: 0; }
   .window__book {
-    /* `display display-xl` carries family and size — the "two big texts" era's
-       treatment, the book title as the dominant line. This caps the measure so
-       a long title wraps into the stacked stage instead of running the column;
-       stage height = tallest title, constant across slides, no JS fitter. */
-    max-width: 12ch;
+    /* `display` carries family; the size comes from the band class the template
+       picks by title length. The measure narrows as the type grows, so every
+       band wraps to roughly the same number of lines and the stage height stays
+       level between books — geometry, not a JS fitter. */
     text-wrap: balance;
     overflow-wrap: break-word;
+  }
+  .window__book.display-xl { max-width: 12ch; }
+  .window__book.display-l { max-width: 15ch; }
+  .window__book.display-m { max-width: 22ch; }
+  .window__book--xs {
+    font-size: clamp(1.45rem, 2.4vw, 1.9rem);
+    line-height: 1.14;
+    max-width: 32ch;
   }
   .window__meta {
     display: flex;
