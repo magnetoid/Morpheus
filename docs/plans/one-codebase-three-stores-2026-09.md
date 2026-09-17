@@ -50,23 +50,25 @@ One commit (`4704212e`) carries the whole fork: 272 files, +36,590/−753.
 **No new apps.** Every app Montenegro touched already exists upstream — which is why
 this is a merge and not a port.
 
-### The one hard part: `booking_marketplace`
+### `booking_marketplace` is Montenegro's product, not a shared app
 
-Same app label, two live databases, two incompatible migration histories:
+The owner settled this (2026-09-18): the booking marketplace was built **for Montenegro
+Experience**; the other two stores are not meant to have it. The vendor marketplace that
+dot_books uses is the separate `marketplace` app. The live row counts agree:
 
-| | models | migrations |
+| app | dotbooks | Montenegro |
 |---|---|---|
-| Morpheus | 9 | `0001_initial`, `0002_reconcile_prod_schema` |
-| Montenegro | **15** | `0001` … `0014` (incl. a merge migration) |
+| `marketplace` (vendor: `VendorOrder`, `VendorPayoutAccount`) | **3 rows — in use** | 0 |
+| `booking_marketplace` | **0 rows — empty shell** | **1,263 rows** (142 services, 100 properties, 288 room types, 559 reviews, 26 places, 12 events, 15 bookings) |
 
-Montenegro's is a **superset**, not a rival implementation: the same nine models plus a
-stays-and-events engine (`Property`, `RoomType`, `StayBooking`, `StayEnquiry`, `Event`).
-That is much better than the fork doc feared — but the migration graphs still cannot
-simply be merged, because each production database has applied a different one.
+**So there is nothing to reconcile.** Montenegro's version — a superset: the same nine
+models plus the stays/events engine, and 12 template tags to upstream's 5 — becomes the
+canonical one, and the stores that never used it stop installing it. No migration runs
+against any live database, so the data risk that dominated the earlier draft is gone.
 
-There is precedent in this repo for exactly this: `0002_reconcile_prod_schema` already
-reconciled a divergent booking_marketplace schema on prod by introspection, idempotently,
-with zero SQL by hand (v0.35.1). That is the shape to reuse.
+dotbooks does still *serve* four routes from it — `/shop/`, `/places/`, `/bookings/`,
+`/regions/` all return 200 — but on zero data, so they are empty shells. Nothing on the
+homepage links to `/shop/`, and it appears zero times in the sitemap.
 
 ## Plan
 
@@ -121,21 +123,40 @@ or (b) Montenegro-specific → must arrive as a *contribution* (hook, `Storefron
 `DashboardPage`) rather than an edit to a shared file, per the plugin contract. Anything
 that cannot be expressed as a contribution is called out rather than smuggled in.
 
-### Phase 4 — reconcile `booking_marketplace` (the risky one)
+### Phase 4 — make `booking_marketplace` a Montenegro-only app
 
-Ship Montenegro's superset models upstream, plus an **idempotent, introspection-driven
-reconcile migration** so each database converges from wherever it is:
+Now that it is one store's product, this needs **no migration on any live database**:
 
-* dotbooks: gains the five stays/events tables (unused, and its app can leave them empty)
-* Montenegro: already has them; the migration must no-op
+1. Replace Morpheus's 9-model version with Montenegro's 15-model one (models, migrations
+   `0001`–`0014`, services, views, the 12 template tags, dashboard, templates).
+2. **Remove it from `MORPHEUS_DEFAULT_APPS`.**
+3. Montenegro's Coolify environment adds it back with
+   `MORPHEUS_EXTRA_APPS=plugins.installed.booking_marketplace`
+   (`morph/settings.py:225` — a comma-separated env var merged into `ALL_MORPHEUS_APPS`;
+   it also still reads the old `MORPHEUS_EXTRA_PLUGINS` name).
 
-Non-negotiable: rehearse against restored copies of **both** production databases on real
-Postgres. A green sqlite run proves nothing here (CLAUDE.md), and this app has already
-503'd production twice through migration divergence.
+Why this is safe rather than clever:
 
-Open question to settle before starting: whether the stays/events engine belongs in
-`booking_marketplace` at all, or should be split into its own app now that it is being
-made platform code.
+* **Montenegro's database is untouched.** It has already applied migrations `0001`–`0014`
+  under these exact names, so `migrate` is a no-op there.
+* **dotbooks' database is untouched.** The app simply leaves `INSTALLED_APPS`; its empty
+  tables and its `django_migrations` rows stay behind, inert — Django ignores migration
+  rows for apps it no longer installs. Optional cleanup later, not a prerequisite.
+* **Nothing imports it.** `grep` across `core/`, `plugins/installed/`, `themes/` and
+  `api/` finds no importer outside the app itself, so removing it from the default set
+  cannot break a sibling.
+
+Two loose ends to handle in the same change:
+
+* dotbooks loses `/shop/`, `/places/`, `/bookings/`, `/regions/`. Nothing links to them
+  and they carry no data, but `/shop/` has been crawled — add `seo` `Redirect` rows
+  (`/shop/` → `/products/`) as **data**, not code.
+* The theme picker would still offer `montenegro` on a store without the app, where its
+  homepage would fail on `{% load booking_tags %}`. Gate the theme on the app being
+  installed, or the picker is a trap.
+
+Verify: Montenegro boots with the env var and its booking pages still serve real data;
+dotbooks boots without the app and every other route is unchanged.
 
 ### Phase 5 — cut over
 
@@ -144,11 +165,10 @@ existing `.env` verbatim (`DATABASE_URL`, `MORPHEUS_ACTIVE_THEME=montenegro`,
 `STORE_NAME`). Deploy, smoke `/readyz` for the Morpheus version, then smoke the booking,
 places and stays paths before declaring it done.
 
-Rollback: point the app back at `magnetoid/montenegro-new` and redeploy — the database is
-untouched by the cutover itself, so the old code boots against it as before. **This stops
-being true the moment Phase 4's migration runs**, which is why Phase 4 needs a database
-backup taken immediately before, and why the nightly backups being broken
-(`docs/plans/linda-agent-quality-2026-09.md`) should be fixed first.
+Rollback: point the app back at `magnetoid/montenegro-new` and redeploy. Because Phase 4
+runs no migration against either live database, this stays true throughout — the old code
+boots against the same data as before. That is the single biggest reason to prefer the
+extra-apps approach over schema reconciliation.
 
 ### Phase 6 — retire the fork
 
@@ -157,9 +177,11 @@ a full release cycle.
 
 ## Rules this plan must not break
 
-* **No new app may default to enabled.** Anything Montenegro-specific that becomes a
-  platform app ships `enabled_by_default = False`, or dotbooks and Supernatural Shop
-  silently acquire a feature nobody asked for on their next deploy.
+* **A store-specific app is not in `MORPHEUS_DEFAULT_APPS` at all.** Per-store app sets
+  belong in the deployment environment (`MORPHEUS_EXTRA_APPS`), not in a shared code
+  list — otherwise every store installs, migrates and routes an app it will never use.
+  `booking_marketplace` on dotbooks is exactly that mistake already shipped: an empty
+  app serving four dead public URLs on a bookshop.
 * **Montenegro-specific behaviour arrives as a contribution**, never as an `{% if %}` on
   the store name inside a shared template.
 * **One version line.** `MORPHEUS_VERSION` stays the platform version. The fork's
