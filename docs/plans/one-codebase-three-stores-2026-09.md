@@ -41,7 +41,7 @@ One commit (`4704212e`) carries the whole fork: 272 files, +36,590/−753.
 | Area | Files | Conflict risk |
 |---|---|---|
 | `themes/library/montenegro/` | 104 | **none** — upstream has no such directory |
-| `plugins/installed/booking_marketplace/` | 92 | **the only real collision** (below) |
+| `plugins/installed/booking_marketplace/` | 92 | none once it becomes Montenegro-only (below) |
 | Other plugins (storefront, seo, marketplace, cms, catalog, affiliates, admin_dashboard, agentic_checkout, referrals, agent_mcp) | ~40 | low — mostly additions, six are generic patches upstream wants |
 | `core/hooks.py`, `core/utils/site.py` | 2 | low — both generic |
 | `morph/settings.py`, `morph/urls.py` | 2 | low |
@@ -72,8 +72,8 @@ homepage links to `/shop/`, and it appears zero times in the sitemap.
 
 ## Plan
 
-Phases 1–3 are safe and independently shippable. Phase 4 is the one that needs a real
-Postgres rehearsal against copies of both production databases.
+All four phases are safe: none of them migrates a live database. Phase 4 changes only
+which apps each deployment installs, so the cutover stays reversible throughout.
 
 ### Phase 1 — upstream the generic patches
 
