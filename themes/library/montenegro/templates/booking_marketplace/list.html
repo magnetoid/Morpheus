@@ -1,0 +1,69 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
+{% comment %}1:1 with pages/Search.tsx — 4-segment search bar + count/sort row + grid.
+Context: services, listing_mode, region, q, category, sort.{% endcomment %}
+{% block title %}{% trans "Experiences in Montenegro" %} — Montenegro Experience{% endblock %}
+{% block seo %}{% seo_meta fallback_title="Montenegro Tours & Experiences with Local Hosts" fallback_description="Discover boat trips, hikes, food experiences, cultural tours and outdoor adventures across Montenegro, with practical local guidance before you book." %}{% endblock %}
+{% block extra_head %}
+{% if list_jsonld %}<script type="application/ld+json">{{ list_jsonld|safe }}</script>{% endif %}
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What are the best experiences in Montenegro?","acceptedAnswer":{"@type":"Answer","text":"Popular choices include Bay of Kotor boat trips, Tara Canyon rafting, Durmitor hikes, Lake Skadar cruises and food or wine experiences with local hosts."}},{"@type":"Question","name":"Should I book Montenegro tours in advance?","acceptedAnswer":{"@type":"Answer","text":"Book high-demand boat trips, rafting and private tours ahead in July and August. Outside peak season, shorter notice is often possible."}},{"@type":"Question","name":"Are experiences suitable for families?","acceptedAnswer":{"@type":"Answer","text":"Many boat trips, cultural visits and easy nature tours suit families. Always check duration, minimum age and activity level on the individual listing."}}]}</script>
+{% endblock %}
+
+{% block content %}
+{% booking_listing_mode as listing_mode %}
+<div class="container mx-auto px-4 py-8">
+  <header class="mb-6">
+    <h1 class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{% trans "Experiences in Montenegro" %}</h1>
+    <p class="text-muted-foreground leading-7 max-w-3xl">{% trans "Explore the Bay of Kotor by boat, hike in Durmitor, raft the Tara Canyon or meet local food and wine producers. Compare activities by destination, pace and travel style." %}</p>
+  </header>
+
+  {% include "booking_marketplace/_search_bar.html" %}
+
+  <!-- Count + sort row -->
+  <div class="flex flex-wrap items-center justify-between gap-3 mt-8 mb-6">
+    <p class="text-sm text-muted-foreground">{% blocktrans count c=services|length %}{{ c }} experience{% plural %}{{ c }} experiences{% endblocktrans %}</p>
+    <form method="get" class="flex items-center gap-2">
+      {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+      {% if region %}<input type="hidden" name="region" value="{{ region }}">{% endif %}
+      {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+      <label class="text-sm text-muted-foreground hidden sm:inline">{% trans "Sort by" %}</label>
+      <select name="sort" onchange="this.form.submit()" class="h-9 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer">
+        <option value="recommended" {% if sort == 'recommended' %}selected{% endif %}>{% trans "Recommended" %}</option>
+        <option value="rating" {% if sort == 'rating' %}selected{% endif %}>{% trans "Top rated" %}</option>
+        {% if not listing_mode %}
+        <option value="price_low" {% if sort == 'price_low' %}selected{% endif %}>{% trans "Price: low to high" %}</option>
+        <option value="price_high" {% if sort == 'price_high' %}selected{% endif %}>{% trans "Price: high to low" %}</option>
+        {% endif %}
+        <option value="newest" {% if sort == 'newest' %}selected{% endif %}>{% trans "Newest" %}</option>
+      </select>
+    </form>
+  </div>
+
+  {% if services %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    {% for s in services %}
+    {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-16">
+    <p class="text-muted-foreground">{% trans "No experiences match your search." %} <a href="/bookings/" class="text-primary underline">{% trans "Clear filters" %}</a></p>
+  </div>
+  {% endif %}
+
+  <section class="mt-12 rounded-2xl border border-border bg-card p-5 md:p-7">
+    <h2 class="text-2xl font-semibold text-foreground mb-3">{% trans "How to choose a Montenegro experience" %}</h2>
+    <p class="text-muted-foreground leading-7 max-w-4xl">{% trans "Choose coastal boat trips and old-town walks for an easy first visit, mountain activities for active itineraries, and food or wine experiences for a slower local perspective. Check meeting points, duration and transport before confirming." %}</p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6">
+      <article><h3 class="font-semibold text-foreground mb-2">{% trans "Best for first-time visitors" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "Start with Kotor, Perast and the bay, then add a day around Budva or Lake Skadar." %}</p></article>
+      <article><h3 class="font-semibold text-foreground mb-2">{% trans "Best for active trips" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "Look for Tara rafting, Durmitor hiking, kayaking and guided canyon or mountain routes." %}</p></article>
+      <article><h3 class="font-semibold text-foreground mb-2">{% trans "Best for local culture" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "Choose old-town walks, monastery visits, village food, wine tastings and host-led workshops." %}</p></article>
+    </div>
+    <div class="flex flex-wrap gap-3 mt-6 text-sm font-medium">
+      <a href="/places/" class="text-primary hover:underline">{% trans "Explore destinations" %}</a>
+      <a href="/journal/" class="text-primary hover:underline">{% trans "Read local travel guides" %}</a>
+      <a href="/hotels/" class="text-primary hover:underline">{% trans "Find a place to stay" %}</a>
+    </div>
+  </section>
+</div>
+{% endblock %}

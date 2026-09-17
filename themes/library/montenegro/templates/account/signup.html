@@ -1,0 +1,121 @@
+{% extends "storefront/base.html" %}
+{% load i18n account socialaccount %}
+{% comment %}
+  Montenegro-themed allauth signup override (Adriatic design).
+  Look ported from src/pages/Auth.tsx; conventions from booking_marketplace/detail.html.
+  Preserves allauth contract: ACCOUNT_SIGNUP_FIELDS = ['email*','password1*','password2*'].
+  Email + both password fields are rendered explicitly with their exact html_name/id;
+  any other configured field falls through the generic loop so the form never breaks.
+  action {% url 'account_signup' %}, csrf, redirect_field_name/redirect_field_value preserved.
+{% endcomment %}
+
+{% block title %}{% trans "Create account" %} — Montenegro Experience{% endblock %}
+
+{% block seo %}<title>{% trans "Create account" %} — Montenegro Experience</title>
+<meta name="robots" content="noindex,nofollow">{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4">
+  <div class="max-w-md mx-auto my-12">
+    <div class="rounded-2xl border border-border shadow-card bg-card p-6 sm:p-8">
+
+      <!-- Brand -->
+      <div class="text-center mb-6">
+        <a href="/" class="inline-flex items-center gap-2 mb-5">
+          <span class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+            <span class="text-primary-foreground font-display font-bold text-xl">M</span>
+          </span>
+          <span class="font-display text-xl font-semibold text-foreground">{% trans "Montenegro Experience" %}</span>
+        </a>
+        <h1 class="font-display text-2xl font-bold text-foreground">{% trans "Create your account" %}</h1>
+        <p class="text-muted-foreground mt-2 text-sm">{% trans "Join Montenegro Experience to book and save your favourites." %}</p>
+      </div>
+
+      <form method="post" action="{% url 'account_signup' %}" class="space-y-4">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="rounded-lg border border-destructive/40 bg-destructive/5 px-3.5 py-2.5">
+          <ul class="space-y-1 text-sm text-destructive">
+            {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        <!-- Email -->
+        {% if form.email %}
+        <div class="space-y-1.5">
+          <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-foreground">{{ form.email.label|default:_("Email") }}</label>
+          <input type="email" name="{{ form.email.html_name }}" id="{{ form.email.id_for_label }}"
+                 value="{{ form.email.value|default:'' }}" autocomplete="email" required
+                 placeholder="{% trans 'you@example.com' %}"
+                 class="w-full h-11 rounded-lg border bg-background px-3.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring {% if form.email.errors %}border-destructive{% else %}border-input{% endif %}">
+          {% if form.email.errors %}<p class="text-sm text-destructive">{{ form.email.errors|join:" " }}</p>{% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Password -->
+        {% if form.password1 %}
+        <div class="space-y-1.5">
+          <label for="{{ form.password1.id_for_label }}" class="block text-sm font-medium text-foreground">{{ form.password1.label|default:_("Password") }}</label>
+          <input type="password" name="{{ form.password1.html_name }}" id="{{ form.password1.id_for_label }}"
+                 autocomplete="new-password" required placeholder="••••••••"
+                 class="w-full h-11 rounded-lg border bg-background px-3.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring {% if form.password1.errors %}border-destructive{% else %}border-input{% endif %}">
+          {% if form.password1.help_text %}<p class="text-xs text-muted-foreground">{{ form.password1.help_text|safe }}</p>{% endif %}
+          {% if form.password1.errors %}<p class="text-sm text-destructive">{{ form.password1.errors|join:" " }}</p>{% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Confirm password -->
+        {% if form.password2 %}
+        <div class="space-y-1.5">
+          <label for="{{ form.password2.id_for_label }}" class="block text-sm font-medium text-foreground">{{ form.password2.label|default:_("Confirm password") }}</label>
+          <input type="password" name="{{ form.password2.html_name }}" id="{{ form.password2.id_for_label }}"
+                 autocomplete="new-password" required placeholder="••••••••"
+                 class="w-full h-11 rounded-lg border bg-background px-3.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring {% if form.password2.errors %}border-destructive{% else %}border-input{% endif %}">
+          {% if form.password2.errors %}<p class="text-sm text-destructive">{{ form.password2.errors|join:" " }}</p>{% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Any other configured signup field (kept generic so the form never breaks) -->
+        {% for field in form %}
+          {% if field.name != 'email' and field.name != 'password1' and field.name != 'password2' and field.name != 'captcha' and not field.is_hidden %}
+          <div class="space-y-1.5">
+            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-foreground">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="text-xs text-muted-foreground">{{ field.help_text|safe }}</p>{% endif %}
+            {% if field.errors %}<p class="text-sm text-destructive">{{ field.errors|join:" " }}</p>{% endif %}
+          </div>
+          {% endif %}
+        {% endfor %}
+
+        {% if redirect_field_value %}<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">{% endif %}
+
+        <button type="submit" class="w-full h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">{% trans "Create account" %}</button>
+      </form>
+
+      <!-- Social providers (renders only if any are configured) -->
+      {% get_providers as socialaccount_providers %}
+      {% if socialaccount_providers %}
+      <div class="relative my-6">
+        <div class="absolute inset-0 flex items-center"><span class="w-full border-t border-border"></span></div>
+        <div class="relative flex justify-center"><span class="bg-card px-3 text-xs uppercase tracking-wide text-muted-foreground">{% trans "or" %}</span></div>
+      </div>
+      <div class="space-y-2">
+        {% for provider in socialaccount_providers %}
+        <a href="{% provider_login_url provider.id process='login' %}{% if redirect_field_value %}?{{ redirect_field_name }}={{ redirect_field_value }}{% endif %}"
+           class="flex items-center justify-center gap-2 w-full h-11 px-5 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">
+          {% blocktrans with name=provider.name %}Continue with {{ name }}{% endblocktrans %}
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <p class="text-center text-muted-foreground mt-6 text-sm">
+      {% trans "Already have an account?" %}
+      <a href="{% url 'account_login' %}{% if redirect_field_value %}?{{ redirect_field_name }}={{ redirect_field_value }}{% endif %}" class="text-primary hover:underline font-medium">{% trans "Sign in" %}</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

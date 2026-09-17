@@ -1,0 +1,49 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
+{% block title %}{% trans "Hotels in Montenegro" %} — Montenegro Experience{% endblock %}
+{% block seo %}{% seo_meta fallback_title="Hotels in Montenegro — Coast, Mountains & Local Stays" fallback_description="Compare hotels, resorts and apartments across Kotor, Budva, Durmitor and the rest of Montenegro, with practical local guidance for choosing where to stay." %}{% endblock %}
+{% block extra_head %}
+{% if stays_jsonld %}<script type="application/ld+json">{{ stays_jsonld|safe }}</script>{% endif %}
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Which part of Montenegro is best for a first visit?","acceptedAnswer":{"@type":"Answer","text":"The Bay of Kotor is ideal for historic towns and scenery, Budva for beaches and nightlife, and Durmitor for hiking and mountain landscapes."}},{"@type":"Question","name":"When should I book a hotel in Montenegro?","acceptedAnswer":{"@type":"Answer","text":"For July and August, book several months ahead. May, June, September and October usually offer better value, lighter crowds and comfortable weather."}},{"@type":"Question","name":"Do I need a car to explore Montenegro?","acceptedAnswer":{"@type":"Answer","text":"A car is useful for mountain and rural areas, while Kotor, Budva and other coastal towns can also be explored with buses, transfers and local tours."}}]}</script>
+{% endblock %}
+{% block content %}
+{% booking_listing_mode as listing_mode %}
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{% trans "Where to stay in Montenegro" %}</h1>
+  <p class="text-muted-foreground mb-6">{% trans "Hand-picked hotels, resorts and apartments across the coast and mountains." %}</p>
+
+  <section class="rounded-2xl border border-border bg-card p-5 md:p-6 mb-8">
+    <h2 class="text-xl font-semibold text-foreground mb-2">{% trans "Find the right base for your trip" %}</h2>
+    <p class="text-muted-foreground leading-7">{% trans "Stay around Kotor for old-town atmosphere and the bay, choose Budva for beaches and evening energy, or head north to Durmitor for cooler air and mountain trails. Use the filters below, then compare each property with our destination guides before you book." %}</p>
+    <div class="flex flex-wrap gap-3 mt-4 text-sm font-medium">
+      <a href="/places/kotor/" class="text-primary hover:underline">{% trans "Kotor guide" %}</a>
+      <a href="/places/budva/" class="text-primary hover:underline">{% trans "Budva guide" %}</a>
+      <a href="/places/durmitor/" class="text-primary hover:underline">{% trans "Durmitor guide" %}</a>
+      <a href="/journal/when-to-visit-montenegro-seasonal-guide/" class="text-primary hover:underline">{% trans "When to visit" %}</a>
+    </div>
+  </section>
+
+  <form method="get" class="flex flex-wrap items-center gap-2 mb-8">
+    <select name="region" onchange="this.form.submit()" class="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground">
+      <option value="">{% trans "All regions" %}</option>
+      {% for value, label in region_choices %}<option value="{{ value }}" {% if value == active_region %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="type" onchange="this.form.submit()" class="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground">
+      <option value="">{% trans "All types" %}</option>
+      {% for value, label in type_choices %}<option value="{{ value }}" {% if value == active_type %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </form>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    {% for p in properties %}{% include "booking_marketplace/stays/_hotel_card.html" %}
+    {% empty %}<p class="text-muted-foreground col-span-full">{% trans "No hotels match your filters yet." %}</p>{% endfor %}
+  </div>
+
+  <section class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-5" aria-labelledby="hotel-faq-heading">
+    <h2 id="hotel-faq-heading" class="md:col-span-3 text-2xl font-semibold text-foreground">{% trans "Planning your Montenegro stay" %}</h2>
+    <article class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-2">{% trans "Which area is best for a first visit?" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "The Bay of Kotor combines historic towns, water access and easy day trips. Budva suits beach-focused stays, while Durmitor is the strongest choice for hiking." %}</p></article>
+    <article class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-2">{% trans "When should I book?" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "Reserve early for July and August. The shoulder months of May, June, September and October often provide better value and fewer crowds." %}</p></article>
+    <article class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-2">{% trans "Do I need a car?" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "Not always on the coast, but a car makes mountain, lake and rural itineraries easier. Local tours and transfers are practical alternatives." %}</p></article>
+  </section>
+</div>
+{% endblock %}

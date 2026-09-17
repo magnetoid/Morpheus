@@ -1,0 +1,128 @@
+<!doctype html>
+<html amp lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ entry.title }} — Montenegro Experience</title>
+<link rel="canonical" href="{{ canonical_url }}">
+<meta name="viewport" content="width=device-width">
+<meta name="description" content="{{ entry.excerpt|default:entry.body|striptags|truncatechars:155 }}">
+<script async src="https://cdn.ampproject.org/v0.js"></script>
+<style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style><noscript><style amp-boilerplate>body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>
+<style amp-custom>
+  :root {
+    --paper: #f6efe1;
+    --ink:   #1f1b15;
+    --ink-2: #3a342a;
+    --muted: #7a6f5e;
+    --accent: #b04a2f;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+  }
+  .crumbs {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0 0 2rem 0;
+    letter-spacing: 0.01em;
+  }
+  .crumbs a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .crumbs a:hover {
+    color: var(--ink-2);
+  }
+  .crumbs .sep {
+    margin: 0 0.5rem;
+    opacity: 0.6;
+  }
+  .meta {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0 0 0.75rem 0;
+    letter-spacing: 0.02em;
+  }
+  h1.title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 600;
+    font-size: 2.25rem;
+    line-height: 1.15;
+    margin: 0 0 1.75rem 0;
+    color: var(--ink);
+  }
+  h1.title .dot { color: var(--accent); }
+  .body {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--ink-2);
+  }
+  .body p { margin: 0 0 1.25rem 0; }
+  .body a { color: var(--accent); }
+  hr.rule {
+    border: none;
+    border-top: 1px solid rgba(0,0,0,0.12);
+    margin: 2.5rem 0 1.5rem 0;
+  }
+  .footer-links {
+    font-size: 0.9rem;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .footer-links a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .footer-links a:hover {
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+<article>
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      {% for item in breadcrumb_items %}
+        {% if not forloop.last %}
+          <a href="{{ item.url }}">{{ item.name }}</a><span class="sep">›</span>
+        {% else %}
+          <span>{{ item.name }}</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
+
+    <p class="meta">{{ entry.date_label }}</p>
+    <h1 class="title">{{ entry.title }}<span class="dot">.</span></h1>
+
+    <div class="body">
+      {% if entry.body %}
+        {% if entry.is_html %}
+          {{ entry.body|safe }}
+        {% else %}
+          {{ entry.body|linebreaks }}
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <hr class="rule">
+    <p class="footer-links">
+      <a href="/journal/">All entries</a>
+      <a href="{{ canonical_url }}">View on the regular site →</a>
+    </p>
+  </div>
+</article>
+</body>
+</html>

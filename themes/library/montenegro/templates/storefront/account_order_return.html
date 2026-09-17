@@ -1,0 +1,80 @@
+{% extends "storefront/base.html" %}
+{% load seo %}{% load i18n %}
+{% comment %}Adriatic Tailwind port of the return-request form. Account shell
+(breadcrumb + heading) + item quantity picker + reason select + note. Context vars
+preserved exactly: order (order_number, items.all → id, product.name/product_name,
+quantity). Form posts to itself (method="post"); fields unchanged: qty_<item.id>
+(number 0..quantity), reason (select), note (textarea). The view creates the
+ReturnRequest and redirects to the status page.{% endcomment %}
+{% block title %}{% blocktrans with number=order.order_number %}Return order #{{ number }}{% endblocktrans %} — Montenegro Experience{% endblock %}
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
+
+{% block content %}
+<section class="container mx-auto px-4 py-8 sm:py-12">
+  <div class="max-w-xl mx-auto">
+
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-1.5 text-sm mb-4">
+      <a href="{% url 'storefront:account_home' %}" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Account" %}</a>
+      <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <a href="{% url 'storefront:account_order_detail' order_number=order.order_number %}" class="text-muted-foreground hover:text-foreground transition-colors">{% blocktrans with number=order.order_number %}Order #{{ number }}{% endblocktrans %}</a>
+      <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="text-foreground font-medium">{% trans "Return" %}</span>
+    </nav>
+
+    <!-- Page heading -->
+    <div class="mb-6">
+      <p class="text-sm font-medium text-primary mb-1">{% trans "Your account" %}</p>
+      <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground">{% trans "Request a return" %}<span class="text-accent-warm">.</span></h1>
+      <p class="text-muted-foreground mt-1">{% trans "Pick the items + quantities you'd like to send back." %}</p>
+    </div>
+
+    <form method="post" class="grid gap-5">
+      {% csrf_token %}
+
+      <!-- Items -->
+      <div class="rounded-2xl border border-border shadow-card bg-card p-6">
+        {% for item in order.items.all %}
+        <div class="flex items-center justify-between gap-4 py-3 {% if not forloop.last %}border-b border-border{% endif %}">
+          <div class="min-w-0">
+            <p class="font-medium text-foreground truncate">{% if item.product %}{{ item.product.name }}{% else %}{{ item.product_name }}{% endif %}</p>
+            <p class="text-sm text-muted-foreground mt-0.5">{% blocktrans with count=item.quantity %}Ordered: {{ count }}{% endblocktrans %}</p>
+          </div>
+          <div class="shrink-0">
+            <label for="qty_{{ item.id }}" class="sr-only">{% blocktrans with name=item.product_name %}Quantity to return for {{ name }}{% endblocktrans %}</label>
+            <input id="qty_{{ item.id }}" type="number" name="qty_{{ item.id }}" min="0" max="{{ item.quantity }}" value="0" class="w-20 h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground text-center outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Reason -->
+      <div class="grid gap-2">
+        <label for="reason" class="text-sm font-medium text-foreground">{% trans "Reason" %}</label>
+        <select id="reason" name="reason" class="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <option value="defective">{% trans "Defective" %}</option>
+          <option value="wrong_item">{% trans "Wrong item" %}</option>
+          <option value="not_as_described">{% trans "Not as described" %}</option>
+          <option value="changed_mind">{% trans "Changed my mind" %}</option>
+          <option value="damaged_in_transit">{% trans "Damaged in transit" %}</option>
+          <option value="other">{% trans "Other" %}</option>
+        </select>
+      </div>
+
+      <!-- Note -->
+      <div class="grid gap-2">
+        <label for="note" class="text-sm font-medium text-foreground">{% trans "Note (optional)" %}</label>
+        <textarea id="note" name="note" rows="4" class="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground outline-none resize-y focus-visible:ring-2 focus-visible:ring-ring"></textarea>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <button type="submit" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+          {% trans "Submit return request" %}
+        </button>
+      </div>
+    </form>
+
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load i18n %}
+{% comment %}Adriatic Tailwind port of the per-RMA status page. Account shell
+(breadcrumb + heading) + four-step status rail, returned items, notes, and refund
+block. Context vars preserved exactly: rma (rma_number, state, created_at,
+get_reason_display, customer_note, staff_note, refund_amount, refund), order
+(order_number), status_steps (label, done, current), line_items (name, sku,
+quantity, unit_price), is_terminal. Money via |money to match account_order_detail.
+ReturnRequest uses .state (its own model field) — not Order.status.{% endcomment %}
+{% block title %}{% blocktrans with number=rma.rma_number %}Return {{ number }}{% endblocktrans %} — Montenegro Experience{% endblock %}
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
+
+{% block content %}
+<section class="container mx-auto px-4 py-8 sm:py-12">
+  <div class="max-w-2xl mx-auto">
+
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-1.5 text-sm mb-4">
+      <a href="{% url 'storefront:account_home' %}" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Account" %}</a>
+      <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <a href="{% url 'storefront:account_returns' %}" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Returns" %}</a>
+      <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="text-foreground font-medium truncate max-w-[200px]">{{ rma.rma_number }}</span>
+    </nav>
+
+    <!-- Page heading -->
+    <div class="flex items-start justify-between gap-4 mb-8">
+      <div class="min-w-0">
+        <p class="text-sm font-medium text-primary mb-1">{% trans "Your return" %}</p>
+        <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground">{{ rma.rma_number }}<span class="text-accent-warm">.</span></h1>
+        <p class="text-sm text-muted-foreground mt-1.5">
+          {% trans "For order" %}
+          <a href="{% url 'storefront:account_order_detail' order_number=order.order_number %}" class="text-foreground font-medium hover:text-primary transition-colors">#{{ order.order_number }}</a>
+          · {% blocktrans with date=rma.created_at|date:"M j, Y" %}requested {{ date }}{% endblocktrans %}
+        </p>
+      </div>
+      {% if rma.state == 'rejected' %}
+      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-destructive/10 text-destructive shrink-0">{% trans "Rejected" %}</span>
+      {% elif rma.state == 'cancelled' %}
+      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground shrink-0">{% trans "Cancelled" %}</span>
+      {% endif %}
+    </div>
+
+    {% comment %}Status stepper — four-stage rail (requested → approved → received → refunded).{% endcomment %}
+    <div class="rounded-2xl border border-border shadow-card bg-card p-6 mb-8">
+      <ol class="grid gap-2 relative" style="grid-template-columns: repeat({{ status_steps|length }}, minmax(0, 1fr));">
+        {% for s in status_steps %}
+        <li class="text-center relative">
+          <div class="inline-flex w-8 h-8 rounded-full items-center justify-center text-xs font-semibold mb-2 {% if s.done %}bg-primary text-primary-foreground{% elif s.current %}bg-foreground text-background{% else %}bg-muted text-muted-foreground{% endif %}">
+            {% if s.done %}
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            {% else %}{{ forloop.counter }}{% endif %}
+          </div>
+          <p class="text-xs {% if s.current %}font-semibold text-foreground{% else %}font-medium text-muted-foreground{% endif %}">{{ s.label }}</p>
+          {% if not forloop.last %}
+          <span class="absolute top-4 left-1/2 w-full h-0.5 -z-10 {% if s.done %}bg-primary{% else %}bg-border{% endif %}" aria-hidden="true"></span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+
+    {% comment %}Items being returned.{% endcomment %}
+    <h2 class="font-display text-xl font-semibold text-foreground mb-3">{% trans "Items" %}</h2>
+    <div class="rounded-2xl border border-border shadow-card bg-card p-6 mb-8">
+      {% for line in line_items %}
+      <div class="flex items-center justify-between gap-4 py-3 {% if not forloop.last %}border-b border-border{% endif %}">
+        <div class="min-w-0">
+          <p class="font-medium text-foreground truncate">{{ line.name }}</p>
+          {% if line.sku %}<p class="text-sm text-muted-foreground mt-0.5">{{ line.sku }}</p>{% endif %}
+        </div>
+        <p class="text-sm text-foreground shrink-0">{{ line.quantity }} × {{ line.unit_price|money }}</p>
+      </div>
+      {% empty %}
+      <p class="text-sm text-muted-foreground">{% trans "No item details on file." %}</p>
+      {% endfor %}
+    </div>
+
+    {% comment %}Reason / customer note / staff note (only if present).{% endcomment %}
+    {% if rma.customer_note or rma.staff_note %}
+    <div class="rounded-2xl border border-border shadow-card bg-card p-6 mb-8 space-y-4">
+      <div>
+        <p class="text-sm font-medium text-muted-foreground mb-1">{% trans "Reason" %}</p>
+        <p class="text-foreground">{{ rma.get_reason_display }}</p>
+      </div>
+      {% if rma.customer_note %}
+      <div>
+        <p class="text-sm font-medium text-muted-foreground mb-1">{% trans "Your note" %}</p>
+        <p class="text-foreground whitespace-pre-line">{{ rma.customer_note }}</p>
+      </div>
+      {% endif %}
+      {% if rma.staff_note %}
+      <div>
+        <p class="text-sm font-medium text-muted-foreground mb-1">{% trans "Update from us" %}</p>
+        <p class="text-foreground whitespace-pre-line">{{ rma.staff_note }}</p>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% comment %}Refund block when terminal + refunded.{% endcomment %}
+    {% if rma.state == 'refunded' %}
+    <div class="rounded-2xl border border-primary/30 bg-primary/5 p-6 mb-8 flex items-start gap-3">
+      <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      </span>
+      <div>
+        <p class="font-semibold text-foreground">{% blocktrans with amount=rma.refund_amount|money %}Refunded {{ amount }}{% endblocktrans %}</p>
+        <p class="text-sm text-muted-foreground mt-0.5">
+          {% if rma.refund %}{% trans "Processed via your original payment method." %}{% else %}{% trans "Issued as store credit on your account." %}{% endif %}
+        </p>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="flex flex-wrap items-center gap-3">
+      <a href="{% url 'storefront:account_order_detail' order_number=order.order_number %}" class="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg border border-border bg-card text-foreground text-sm font-semibold hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+        {% trans "Back to order" %}
+      </a>
+      <a href="{% url 'storefront:account_returns' %}" class="inline-flex items-center justify-center h-11 px-5 rounded-lg text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{% trans "All returns" %}</a>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

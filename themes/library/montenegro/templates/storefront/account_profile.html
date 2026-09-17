@@ -1,0 +1,104 @@
+{% extends "storefront/base.html" %}
+{% load seo %}{% load i18n %}
+{% comment %}Adriatic Tailwind port of components/account/ProfileCard.tsx. Account
+shell + profile-edit card (gradient banner + avatar initials + inputs). Context
+vars preserved exactly: user (first_name, last_name, email). Form posts to itself
+(method="post"); the view updates first_name/last_name/email and redirects back.{% endcomment %}
+{% block title %}{% seo_title "Profile" %}{% endblock %}
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
+
+{% block content %}
+<section class="container mx-auto px-4 py-8 sm:py-12">
+  <div class="max-w-2xl mx-auto">
+
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-1.5 text-sm mb-4">
+      <a href="{% url 'storefront:account_home' %}" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Account" %}</a>
+      <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="text-foreground font-medium">{% trans "Profile" %}</span>
+    </nav>
+
+    <!-- Page heading -->
+    <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground mb-6">{% trans "Your profile" %}<span class="text-accent-warm">.</span></h1>
+
+    <!-- Account nav -->
+    <nav class="flex flex-wrap items-center gap-1 mb-8 -mx-1" aria-label="{% trans 'Account navigation' %}">
+      <a href="{% url 'storefront:account_home' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        {% trans "Overview" %}
+      </a>
+      <span class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-primary bg-muted">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        {% trans "Profile" %}
+      </span>
+      <a href="{% url 'storefront:account_orders' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+        {% trans "Orders" %}
+      </a>
+      <a href="{% url 'storefront:account_addresses' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        {% trans "Addresses" %}
+      </a>
+      <a href="/wishlist/" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        {% trans "Wishlist" %}
+      </a>
+      <a href="/auth/logout/" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        {% trans "Sign out" %}
+      </a>
+    </nav>
+
+    <!-- Profile card -->
+    <div class="rounded-2xl border border-border shadow-card bg-card overflow-hidden">
+      <!-- Gradient banner + avatar (mirrors ProfileCard.tsx) -->
+      <div class="h-24 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent"></div>
+      <div class="px-6 -mt-12 pb-4 flex items-end gap-4">
+        <div class="w-24 h-24 rounded-full border-4 border-background shadow-card bg-primary/10 flex items-center justify-center text-2xl font-semibold text-primary shrink-0">
+          {{ user.first_name|first|upper }}{{ user.last_name|first|upper|default:"" }}{% if not user.first_name and not user.last_name %}{{ user.email|first|upper }}{% endif %}
+        </div>
+        <div class="pb-2 min-w-0">
+          <p class="font-display text-xl font-semibold text-foreground truncate">{{ user.first_name }} {{ user.last_name }}{% if not user.first_name and not user.last_name %}{% trans "Guest" %}{% endif %}</p>
+          <p class="text-sm text-muted-foreground flex items-center gap-1.5 mt-1 truncate">
+            <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            {{ user.email }}
+          </p>
+        </div>
+      </div>
+
+      <div class="border-t border-border"></div>
+
+      <!-- Edit form -->
+      <form method="post" class="p-6 grid gap-5">
+        {% csrf_token %}
+        <div class="grid gap-5 sm:grid-cols-2">
+          <div class="grid gap-2">
+            <label for="first_name" class="text-sm font-medium text-foreground">{% trans "First name" %}</label>
+            <div class="relative">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <input id="first_name" type="text" name="first_name" value="{{ user.first_name }}" class="w-full h-11 rounded-lg border border-input bg-background pl-10 pr-3.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            </div>
+          </div>
+          <div class="grid gap-2">
+            <label for="last_name" class="text-sm font-medium text-foreground">{% trans "Last name" %}</label>
+            <div class="relative">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <input id="last_name" type="text" name="last_name" value="{{ user.last_name }}" class="w-full h-11 rounded-lg border border-input bg-background pl-10 pr-3.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            </div>
+          </div>
+        </div>
+        <div class="grid gap-2">
+          <label for="email" class="text-sm font-medium text-foreground">{% trans "Email" %}</label>
+          <div class="relative">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            <input id="email" type="email" name="email" value="{{ user.email }}" class="w-full h-11 rounded-lg border border-input bg-background pl-10 pr-3.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          </div>
+        </div>
+        <div class="flex justify-end pt-1">
+          <button type="submit" class="inline-flex items-center justify-center h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{% trans "Save profile" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

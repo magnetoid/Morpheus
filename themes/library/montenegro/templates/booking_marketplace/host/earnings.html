@@ -1,0 +1,96 @@
+{% extends "booking_marketplace/host/_shell.html" %}
+{% load i18n %}
+{% comment %}Adriatic Tailwind port of pages/vendor/VendorPayouts.tsx (+ VendorAnalytics
+KPI tiles) onto the host shell. Context preserved exactly: gross, fees, net (all
+plain EUR Decimals from host_earnings), count, recent (each b.service.name,
+b.booking_date, b.guests, b.get_status_display, b.subtotal.amount). gross/fees/net
+are bare Decimals already in EUR, so they render with an explicit € + floatformat
+(the |money filter assumes USD for non-Money values).{% endcomment %}
+{% block title %}{% trans "Earnings — Montenegro Experience" %}{% endblock %}
+
+{% block host_eyebrow %}{% trans "Host" %}{% endblock %}
+{% block host_title %}{% trans "Earnings" %}{% endblock %}
+{% block host_subtitle %}<p class="text-muted-foreground mt-1.5">{% trans "Track take-home pay from confirmed and completed bookings." %}</p>{% endblock %}
+
+{% block host_content %}
+
+{% comment %} KPI tiles — net (highlighted), platform fee, gross {% endcomment %}
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+
+  {% comment %} Net to you — primary highlight {% endcomment %}
+  <div class="rounded-2xl border border-primary/30 bg-primary/5 shadow-card p-5">
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Net to you" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl font-bold text-primary mt-2">&euro;{{ net|floatformat:2 }}</p>
+    <p class="text-xs text-muted-foreground mt-1">{% trans "Your take-home pay" %}</p>
+  </div>
+
+  {% comment %} Platform fee {% endcomment %}
+  <div class="rounded-2xl border border-border bg-card shadow-card p-5">
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Platform fee (12%)" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-accent-warm/10 flex items-center justify-center text-accent-warm shrink-0">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl font-bold text-foreground mt-2">&euro;{{ fees|floatformat:2 }}</p>
+    <p class="text-xs text-muted-foreground mt-1">{% trans "Service fee guests pay on top" %}</p>
+  </div>
+
+  {% comment %} Gross {% endcomment %}
+  <div class="rounded-2xl border border-border bg-card shadow-card p-5">
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Gross" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-foreground shrink-0">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl font-bold text-foreground mt-2">&euro;{{ gross|floatformat:2 }}</p>
+    <p class="text-xs text-muted-foreground mt-1">{% blocktrans count counter=count %}From {{ count }} booking{% plural %}From {{ count }} bookings{% endblocktrans %}</p>
+  </div>
+</div>
+
+{% comment %} Explainer note {% endcomment %}
+<div class="rounded-xl border border-border bg-muted/50 px-4 py-3 mb-8 flex items-start gap-2.5">
+  <svg class="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <p class="text-sm text-muted-foreground">{% trans "Net is your take-home (per-guest price × guests). Montenegro Experience keeps the 12% service fee guests pay on top. Payouts are settled to your registered account." %}</p>
+</div>
+
+{% comment %} Breakdown: confirmed & completed bookings {% endcomment %}
+{% if recent %}
+<h2 class="font-display text-xl font-bold text-foreground mb-4">{% trans "Confirmed & completed" %}</h2>
+<div class="grid gap-2.5">
+  {% for b in recent %}
+  <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-border bg-card shadow-card px-4 py-3">
+    <div class="min-w-0 flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span class="font-medium text-foreground truncate">{{ b.service.name }}</span>
+      <span class="inline-flex items-center gap-x-2 text-sm text-muted-foreground">
+        <span class="inline-flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+          {{ b.booking_date|date:"j M Y" }}
+        </span>
+        <span>&middot; {{ b.guests }}g</span>
+        <span>&middot; {{ b.get_status_display }}</span>
+      </span>
+    </div>
+    <div class="text-right shrink-0">
+      <span class="font-display text-base font-semibold text-foreground">&euro;{{ b.subtotal.amount|floatformat:2 }}</span>
+      <span class="text-xs text-muted-foreground ml-1">{% trans "net" %}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="rounded-2xl border border-dashed border-border bg-card py-16 px-6 text-center">
+  <span class="mx-auto mb-4 w-14 h-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground">
+    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+  </span>
+  <p class="font-display text-lg font-semibold text-foreground mb-1">{% trans "No confirmed bookings yet" %}</p>
+  <p class="text-muted-foreground">{% trans "Your earnings will appear here once bookings are confirmed." %}</p>
+</div>
+{% endif %}
+{% endblock %}

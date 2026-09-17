@@ -1,0 +1,135 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% comment %}Event detail — hero, editorial body, highlights, FAQ, and the rest of
+the same month so a visitor planning a trip sees the whole window. Event/FAQ/
+Breadcrumb JSON-LD in extra_head (the Event node only when a real date exists —
+never a guessed one; see seo_jsonld.event_jsonld).{% endcomment %}
+{% block title %}{{ event.name }} — Montenegro Experience{% endblock %}
+{% block extra_head %}{% if event_jsonld %}<script type="application/ld+json">{{ event_jsonld|safe }}</script>{% endif %}{% endblock %}
+{% block content %}
+
+<section class="relative bg-gradient-to-br from-primary/10 via-background to-background py-12 md:py-16">
+  <div class="container mx-auto px-4">
+    <nav class="text-sm text-muted-foreground mb-4" aria-label="{% trans 'Breadcrumb' %}">
+      <a href="/" class="hover:text-primary">{% trans "Home" %}</a>
+      <span class="mx-1">/</span>
+      <a href="/events/" class="hover:text-primary">{% trans "Events" %}</a>
+      <span class="mx-1">/</span>
+      <span class="text-foreground">{{ event.name }}</span>
+    </nav>
+    <div class="flex flex-wrap items-center gap-2 mb-3">
+      {% if event.category %}<span class="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">{{ event.get_category_display }}</span>{% endif %}
+      {% if event.is_annual %}<span class="px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">{% trans "Annual" %}</span>{% endif %}
+    </div>
+    <h1 class="font-display text-3xl md:text-5xl font-bold text-foreground mb-3">{{ event.name }}</h1>
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+      {% if event.when_display %}
+      <span class="inline-flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        {{ event.when_display }}
+      </span>
+      {% endif %}
+      {% if event.venue or event.place %}
+      <span class="inline-flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        {% if event.venue %}{{ event.venue }}{% if event.place %} · <a href="/places/{{ event.place.slug }}/" class="hover:text-primary underline">{{ event.place.name }}</a>{% endif %}{% else %}<a href="/places/{{ event.place.slug }}/" class="hover:text-primary underline">{{ event.place.name }}</a>{% endif %}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<div class="container mx-auto px-4 py-10">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+
+    <div class="lg:col-span-2 space-y-8">
+      {% if event.image %}
+      <img src="{{ event.image.url }}" alt="{{ event.name }}" class="w-full rounded-2xl border border-border object-cover aspect-[16/9]">
+      {% endif %}
+
+      {% if event.summary %}<p class="text-lg text-muted-foreground">{{ event.summary }}</p>{% endif %}
+      {% if event.description %}<div class="prose prose-sm max-w-none text-foreground">{{ event.description|linebreaks }}</div>{% endif %}
+
+      {% if event.highlights %}
+      <div>
+        <h2 class="font-display text-2xl font-bold text-foreground mb-4">{% trans "What to expect" %}</h2>
+        <ul class="space-y-2">
+          {% for h in event.highlights %}
+          <li class="flex items-start gap-2 text-muted-foreground">
+            <svg class="w-4 h-4 text-primary mt-1 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span>{{ h }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if event.faqs %}
+      <div>
+        <h2 class="font-display text-2xl font-bold text-foreground mb-4">{% trans "Good to know" %}</h2>
+        <div class="space-y-3">
+          {% for f in event.faqs %}
+          <details class="rounded-xl border border-border bg-card p-4">
+            <summary class="font-medium text-foreground cursor-pointer">{{ f.q }}</summary>
+            <p class="text-sm text-muted-foreground mt-2">{{ f.a }}</p>
+          </details>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <aside class="space-y-6">
+      <div class="rounded-2xl border border-border bg-card p-5">
+        <h2 class="font-semibold text-foreground mb-3">{% trans "Plan your visit" %}</h2>
+        <p class="text-sm text-muted-foreground mb-4">
+          {% blocktrans with name=event.name %}Dates for {{ name }} shift a little each year. Check the official listing before you book travel.{% endblocktrans %}
+        </p>
+        {% if event.official_url %}
+        <a href="{{ event.official_url }}" target="_blank" rel="nofollow noopener"
+           class="inline-flex items-center justify-center w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+          {% trans "Official event site" %}
+        </a>
+        {% endif %}
+        {% if event.place %}
+        <a href="/places/{{ event.place.slug }}/"
+           class="inline-flex items-center justify-center w-full h-10 rounded-lg border border-input bg-background text-foreground text-sm font-medium hover:bg-muted transition-colors mt-2">
+          {% blocktrans with name=event.place.name %}Where to stay in {{ name }}{% endblocktrans %}
+        </a>
+        {% endif %}
+      </div>
+
+      {% if services %}
+      <div class="rounded-2xl border border-border bg-card p-5">
+        <h2 class="font-semibold text-foreground mb-3">{% trans "Experiences nearby" %}</h2>
+        <div class="space-y-3">
+          {% for s in services %}
+          <a href="/bookings/{{ s.slug }}/" class="block group">
+            <p class="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{{ s.name }}</p>
+            {% if not listing_mode and s.price %}<p class="text-xs text-muted-foreground">{% trans "from" %} {{ s.price }}</p>{% endif %}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </aside>
+  </div>
+
+  {% if same_month %}
+  <section class="mt-14">
+    <h2 class="font-display text-2xl font-bold text-foreground mb-6">{% trans "Also on around then" %}</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for e in same_month %}
+      <a href="/events/{{ e.slug }}/" class="group block rounded-2xl overflow-hidden border border-border bg-card shadow-card hover:shadow-lg transition-all duration-300">
+        <div class="p-4">
+          <h3 class="font-semibold text-foreground group-hover:text-primary transition-colors">{{ e.name }}</h3>
+          <p class="text-xs text-primary font-medium mt-1">{{ e.when_display }}{% if e.place %} · {{ e.place.name }}{% endif %}</p>
+          {% if e.summary %}<p class="text-sm text-muted-foreground line-clamp-2 mt-1">{{ e.summary }}</p>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

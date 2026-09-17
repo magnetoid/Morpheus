@@ -1,0 +1,110 @@
+{% extends "booking_marketplace/host/_shell.html" %}
+{% load morph %}{% load i18n %}
+{% comment %}Adriatic Tailwind port of pages/vendor/VendorBookings.tsx onto the host
+shell. Context preserved exactly: bookings (each b.service.name, b.booking_date,
+b.guests, b.customer_name, b.customer_email, b.customer_phone, b.total_price,
+b.status, b.get_status_display). POST action identical to the plugin default:
+{% templatetag openblock %} csrf_token {% templatetag closeblock %} + booking_id + action (confirm/complete/cancel).{% endcomment %}
+{% block title %}{% trans "Your bookings — Montenegro Experience" %}{% endblock %}
+
+{% block host_eyebrow %}{% trans "Host" %}{% endblock %}
+{% block host_title %}{% trans "Bookings" %}{% endblock %}
+{% block host_subtitle %}<p class="text-muted-foreground mt-1.5">{% trans "Review guest reservations and confirm, complete, or cancel each one." %}</p>{% endblock %}
+
+{% block host_content %}
+{% if bookings %}
+<div class="grid gap-3">
+  {% for b in bookings %}
+  <div class="rounded-2xl border border-border bg-card shadow-card p-4 sm:p-5 transition-colors hover:border-primary/30">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+
+      {% comment %} Left: experience + guest details {% endcomment %}
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2.5">
+          <p class="font-display text-lg font-semibold text-foreground truncate">{{ b.service.name }}</p>
+          {% comment %} Status badge — colour-keyed to b.status {% endcomment %}
+          {% if b.status == 'confirmed' %}
+          <span class="inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-xs font-semibold bg-primary/10 text-primary capitalize">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>{{ b.get_status_display }}
+          </span>
+          {% elif b.status == 'completed' %}
+          <span class="inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-xs font-semibold bg-muted text-foreground capitalize">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>{{ b.get_status_display }}
+          </span>
+          {% elif b.status == 'cancelled' %}
+          <span class="inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-xs font-semibold bg-destructive/10 text-destructive capitalize">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>{{ b.get_status_display }}
+          </span>
+          {% else %}
+          <span class="inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-xs font-semibold bg-rating/15 text-rating capitalize">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>{{ b.get_status_display }}
+          </span>
+          {% endif %}
+        </div>
+
+        <div class="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+          <span class="inline-flex items-center gap-1.5">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+            {{ b.booking_date|date:"D, j M Y" }}
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            {{ b.guests }} {% blocktrans count counter=b.guests %}guest{% plural %}guests{% endblocktrans %}
+          </span>
+        </div>
+
+        <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <span class="inline-flex items-center gap-1.5 font-medium text-foreground">
+            <svg class="w-4 h-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            {{ b.customer_name }}
+          </span>
+          <a href="mailto:{{ b.customer_email }}" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            {{ b.customer_email }}
+          </a>
+          {% if b.customer_phone %}
+          <a href="tel:{{ b.customer_phone }}" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>
+            {{ b.customer_phone }}
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      {% comment %} Right: total + actions {% endcomment %}
+      <div class="flex flex-col items-end gap-3 shrink-0">
+        <p class="font-display text-xl font-semibold text-foreground">{{ b.total_price|money }}</p>
+        {% if b.status == 'pending' or b.status == 'confirmed' %}
+        <form method="post" class="flex flex-wrap items-center justify-end gap-2">{% csrf_token %}
+          <input type="hidden" name="booking_id" value="{{ b.id }}">
+          {% if b.status == 'pending' %}
+          <button name="action" value="confirm" class="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>{% trans "Confirm" %}
+          </button>
+          {% endif %}
+          {% if b.status == 'confirmed' %}
+          <button name="action" value="complete" class="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>{% trans "Complete" %}
+          </button>
+          {% endif %}
+          <button name="action" value="cancel" class="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg border border-border bg-card text-sm font-medium text-muted-foreground hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>{% trans "Cancel" %}
+          </button>
+        </form>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="rounded-2xl border border-dashed border-border bg-card py-16 px-6 text-center">
+  <span class="mx-auto mb-4 w-14 h-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground">
+    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+  </span>
+  <p class="font-display text-lg font-semibold text-foreground mb-1">{% trans "No bookings yet." %}</p>
+  <p class="text-muted-foreground">{% trans "When a guest reserves one of your experiences, it'll show up here." %}</p>
+</div>
+{% endif %}
+{% endblock %}

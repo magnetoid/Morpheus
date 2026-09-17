@@ -1,0 +1,128 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load caching %}{% load i18n %}
+{% comment %}Public hosts directory — Adriatic Tailwind 1:1 port of the VendorProfile/vendor-card design.
+Context preserved: vendors (list of {obj, product_count, preview_products}), query, breadcrumb_items.{% endcomment %}
+{% block title %}{% trans "Local hosts" %} — Montenegro Experience{% endblock %}
+
+{% block extra_head %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 sm:py-12">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="{% trans 'Breadcrumb' %}" class="flex flex-wrap items-center gap-1.5 text-sm mb-6">
+    {% for item in breadcrumb_items %}
+      {% if forloop.last %}
+        <span class="text-foreground font-medium" aria-current="page">{{ item.name }}</span>
+      {% else %}
+        <a href="{{ item.url }}" class="text-muted-foreground hover:text-foreground transition-colors">{{ item.name }}</a>
+        <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      {% endif %}
+    {% endfor %}
+  </nav>
+
+  <!-- Intro -->
+  <div class="max-w-3xl mb-8">
+    <p class="text-sm font-semibold uppercase tracking-wide text-accent-warm mb-3">{% trans "The makers" %}</p>
+    <h1 class="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground tracking-tight mb-4">{% trans "Local hosts we work with" %}</h1>
+    <p class="text-lg text-muted-foreground leading-relaxed">
+      {% trans "Every experience comes from one of these trusted local hosts — independent guides, makers, and small businesses across Montenegro. Click into one to see everything they offer." %}
+    </p>
+  </div>
+
+  <!-- Search -->
+  <form method="get" action="" role="search" aria-label="{% trans 'Search hosts' %}" class="flex flex-col sm:flex-row gap-2 max-w-xl mb-2">
+    <div class="relative flex-1">
+      <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      </span>
+      <input type="search" name="q" value="{{ query|default:'' }}"
+             placeholder="{% trans 'Search hosts' %}" aria-label="{% trans 'Search hosts' %}"
+             class="w-full h-11 pl-11 pr-4 rounded-full border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring transition-shadow">
+    </div>
+    <div class="flex items-center gap-2">
+      <button type="submit" class="h-11 px-5 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors">{% trans "Search" %}</button>
+      {% if query %}<a href="/vendors/" class="h-11 inline-flex items-center px-4 rounded-full text-sm text-muted-foreground hover:text-foreground transition-colors">{% trans "Clear" %}</a>{% endif %}
+    </div>
+  </form>
+  {% if query %}
+  <p class="text-sm text-muted-foreground mt-3 mb-2">
+    {% blocktrans count counter=vendors|length with q=query %}Showing {{ counter }} result for &ldquo;{{ q }}&rdquo;{% plural %}Showing {{ counter }} results for &ldquo;{{ q }}&rdquo;{% endblocktrans %}
+  </p>
+  {% endif %}
+
+  <!-- Grid -->
+  {% if vendors %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+    {% for v in vendors %}
+    <a href="/vendor/{{ v.obj.slug }}/" class="group flex flex-col bg-card rounded-2xl border border-border shadow-card hover-lift overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+      <div class="p-5 flex flex-col gap-4 flex-1">
+        <div class="flex items-center gap-4">
+          {% if v.obj.logo %}
+            <img src="{{ v.obj.logo.url }}" alt="{{ v.obj.name }}"
+                 loading="{% caching_img_loading_attr %}" decoding="async"
+                 class="w-14 h-14 rounded-full object-cover shrink-0 bg-muted">
+          {% else %}
+            <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-xl font-display font-bold text-primary" aria-hidden="true">{{ v.obj.name|slice:":1"|upper }}</div>
+          {% endif %}
+          <div class="min-w-0">
+            <h2 class="font-display text-lg font-semibold text-foreground leading-snug truncate">{{ v.obj.name }}</h2>
+            <p class="text-sm text-muted-foreground mt-0.5 tabular-nums">
+              {% blocktrans count counter=v.product_count %}{{ counter }} listing{% plural %}{{ counter }} listings{% endblocktrans %}{% if v.obj.created_at %} · {% blocktrans with since=v.obj.created_at|date:"Y" %}Since {{ since }}{% endblocktrans %}{% endif %}
+            </p>
+          </div>
+        </div>
+
+        {% if v.obj.description %}
+        <p class="text-sm text-muted-foreground leading-relaxed line-clamp-3">{{ v.obj.description|truncatechars:200 }}</p>
+        {% endif %}
+
+        {% if v.preview_products %}
+        <div class="grid grid-cols-3 gap-2 mt-auto" aria-hidden="true">
+          {% for p in v.preview_products %}
+            <div class="aspect-square rounded-lg overflow-hidden bg-muted">
+            {% if p.primary_image and p.primary_image.image %}
+              <img src="{{ p.primary_image.image.url }}" alt="" loading="{% caching_img_loading_attr %}" decoding="async" class="w-full h-full object-cover">
+            {% else %}
+              <div class="w-full h-full flex items-center justify-center text-muted-foreground text-sm font-display">{{ p.name|slice:":1"|upper }}</div>
+            {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="px-5 py-3.5 border-t border-border flex items-center justify-between">
+        <span class="text-sm font-medium text-primary">{% trans "Visit shop" %}</span>
+        <svg class="w-4 h-4 text-primary transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-20">
+    <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-5 text-muted-foreground">
+      <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
+    </div>
+    <p class="text-muted-foreground max-w-md mx-auto">
+      {% if query %}{% trans "No hosts match your search. Try a different term." %}{% else %}{% trans "No hosts listed yet — once experiences go live, the hosts appear here." %}{% endif %}
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- Become a host CTA -->
+  <div class="mt-16 rounded-2xl bg-primary text-primary-foreground p-8 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+    <div class="max-w-xl">
+      <h2 class="font-display text-2xl font-bold mb-2">{% trans "Share your Montenegro" %}</h2>
+      <p class="text-primary-foreground/80 leading-relaxed">{% trans "Host experiences, sell products, or welcome guests. Join the local hosts already growing their business with us." %}</p>
+    </div>
+    <a href="/vendor/apply/" class="shrink-0 inline-flex items-center gap-2 h-12 px-7 rounded-full bg-primary-foreground text-primary text-sm font-semibold shadow-elevated hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-primary transition-opacity">
+      {% trans "Become a host" %}
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+
+</div>
+{% endblock %}

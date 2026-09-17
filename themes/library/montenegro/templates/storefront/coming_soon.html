@@ -1,0 +1,22 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% block title %}{{ page_title }} — Montenegro Experience{% endblock %}
+
+{% block content %}
+<section style="padding: 5rem 0;">
+  <div class="wrap" style="max-width: 600px; text-align: center;">
+    <p class="eyebrow">{% trans "In progress" %}</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
+      {{ page_title }}<span class="text-accent">.</span>
+    </h1>
+    <p class="lede">
+      We're putting this page together. Drop us a line at
+      <a href="/contact/" class="btn-link" style="display: inline-flex;">contact</a>
+      if you need this answered today.
+    </p>
+    <div style="margin-top: 2.5rem;">
+      <a href="/" class="btn btn-primary">{% trans "Back home" %}</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

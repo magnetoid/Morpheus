@@ -1,0 +1,167 @@
+{% extends "booking_marketplace/host/_shell.html" %}
+{% load morph %}{% load i18n %}
+{% comment %}Adriatic Tailwind port of pages/vendor/VendorOrders.tsx (single-order
+view) onto the host shell. Context vars preserved exactly from the
+vendor_order_detail view: vendor, vendor_order (.status, .get_status_display,
+.gross/.commission/.net Money, .tracking_number, .tracking_url, .fulfilled_at),
+parent_order_number, shipping_address (dict), items (list of dicts: name, sku,
+quantity, unit_price, currency), workflow_statuses (list of (value, label):
+preparing/packed/shipped/delivered/cancelled). POST = same URL
+(/vendor/me/orders/<id>/), csrf. Field names kept identical: status,
+tracking_number, tracking_url. The status <select> selection logic is kept
+1:1 with the plugin default (form vocab differs from model statuses).{% endcomment %}
+{% block title %}{% blocktrans with n=parent_order_number %}Order {{ n }} — Montenegro Experience{% endblocktrans %}{% endblock %}
+
+{% block host_eyebrow %}{% trans "Vendor order" %}{% endblock %}
+{% block host_title %}{{ parent_order_number }}{% endblock %}
+{% block host_subtitle %}<p class="text-muted-foreground mt-1.5">{% trans "Update fulfilment status and tracking — the customer is notified automatically." %}</p>{% endblock %}
+
+{% block host_actions %}
+<a href="/vendor/me/" class="inline-flex items-center justify-center gap-2 h-11 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+  {% trans "Vendor dashboard" %}
+</a>
+{% endblock %}
+
+{% block host_content %}
+
+<div class="grid lg:grid-cols-3 gap-4 lg:gap-6">
+
+  {% comment %} Left: line items + totals {% endcomment %}
+  <section class="lg:col-span-2 rounded-2xl border border-border shadow-card bg-card p-6">
+    <header class="flex items-baseline justify-between gap-3 mb-5">
+      <h2 class="font-display text-lg font-bold text-foreground">{% trans "Items" %}</h2>
+      <span class="text-sm text-muted-foreground">{% blocktrans count counter=items|length %}{{ counter }} line{% plural %}{{ counter }} lines{% endblocktrans %}</span>
+    </header>
+
+    {% comment %} Table for sm+ {% endcomment %}
+    <div class="hidden sm:block overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border text-left">
+            <th class="py-2.5 pr-4 font-semibold text-muted-foreground">{% trans "Title" %}</th>
+            <th class="py-2.5 px-4 font-semibold text-muted-foreground">{% trans "SKU" %}</th>
+            <th class="py-2.5 px-4 font-semibold text-muted-foreground text-right">{% trans "Qty" %}</th>
+            <th class="py-2.5 pl-4 font-semibold text-muted-foreground text-right">{% trans "Unit" %}</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {% for it in items %}
+          <tr>
+            <td class="py-3 pr-4 text-foreground">{{ it.name|default:"—" }}</td>
+            <td class="py-3 px-4 font-mono text-xs text-muted-foreground">{{ it.sku|default:"—" }}</td>
+            <td class="py-3 px-4 text-right tabular-nums text-foreground">{{ it.quantity }}</td>
+            <td class="py-3 pl-4 text-right tabular-nums text-foreground">{{ it.unit_price }} {{ it.currency }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="py-6 text-center text-muted-foreground">{% trans "No items snapshot recorded." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% comment %} Stacked rows for mobile {% endcomment %}
+    <div class="sm:hidden divide-y divide-border">
+      {% for it in items %}
+      <div class="py-3">
+        <div class="flex items-start justify-between gap-3">
+          <p class="font-medium text-foreground min-w-0">{{ it.name|default:"—" }}</p>
+          <p class="text-sm text-foreground tabular-nums shrink-0">{{ it.quantity }} &times; {{ it.unit_price }} {{ it.currency }}</p>
+        </div>
+        {% if it.sku %}<p class="mt-1 font-mono text-xs text-muted-foreground">{{ it.sku }}</p>{% endif %}
+      </div>
+      {% empty %}
+      <p class="py-6 text-center text-muted-foreground text-sm">{% trans "No items snapshot recorded." %}</p>
+      {% endfor %}
+    </div>
+
+    {% comment %} Gross / Commission / Net {% endcomment %}
+    <div class="mt-6 pt-4 border-t border-border grid grid-cols-3 gap-3 text-center">
+      <div>
+        <p class="text-xs uppercase tracking-wide text-muted-foreground">{% trans "Gross" %}</p>
+        <p class="font-display text-base font-semibold text-foreground mt-1 tabular-nums">{{ vendor_order.gross|money }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wide text-muted-foreground">{% trans "Commission" %}</p>
+        <p class="font-display text-base font-semibold text-accent-warm mt-1 tabular-nums">{{ vendor_order.commission|money }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wide text-muted-foreground">{% trans "Net" %}</p>
+        <p class="font-display text-base font-semibold text-primary mt-1 tabular-nums">{{ vendor_order.net|money }}</p>
+      </div>
+    </div>
+  </section>
+
+  {% comment %} Right: ship-to + current status {% endcomment %}
+  <aside class="space-y-4">
+    <div class="rounded-2xl border border-border shadow-card bg-card p-6">
+      <h3 class="font-display text-base font-bold text-foreground mb-3 flex items-center gap-2">
+        <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        {% trans "Ship to" %}
+      </h3>
+      {% if shipping_address %}
+      <p class="text-sm leading-relaxed text-foreground">
+        {% if shipping_address.first_name or shipping_address.last_name %}<span class="font-medium">{{ shipping_address.first_name }} {{ shipping_address.last_name }}</span><br>{% endif %}
+        {% if shipping_address.company %}{{ shipping_address.company }}<br>{% endif %}
+        {% if shipping_address.address_line1 %}{{ shipping_address.address_line1 }}<br>{% endif %}
+        {% if shipping_address.address_line2 %}{{ shipping_address.address_line2 }}<br>{% endif %}
+        {{ shipping_address.city }}{% if shipping_address.state %}, {{ shipping_address.state }}{% endif %} {{ shipping_address.postal_code }}<br>
+        {{ shipping_address.country }}
+        {% if shipping_address.phone %}<br><span class="text-muted-foreground">{{ shipping_address.phone }}</span>{% endif %}
+      </p>
+      {% else %}
+      <p class="text-sm text-muted-foreground">{% trans "No shipping address on file." %}</p>
+      {% endif %}
+    </div>
+
+    <div class="rounded-2xl border border-border shadow-card bg-card p-6">
+      <h3 class="font-display text-base font-bold text-foreground mb-3">{% trans "Current status" %}</h3>
+      {% if vendor_order.status == 'delivered' %}<span class="inline-flex items-center h-7 px-3 rounded-full text-xs font-semibold bg-primary/10 text-primary">{{ vendor_order.get_status_display }}</span>
+      {% elif vendor_order.status == 'shipped' %}<span class="inline-flex items-center h-7 px-3 rounded-full text-xs font-semibold bg-accent-warm/10 text-accent-warm">{{ vendor_order.get_status_display }}</span>
+      {% elif vendor_order.status == 'cancelled' or vendor_order.status == 'refunded' %}<span class="inline-flex items-center h-7 px-3 rounded-full text-xs font-semibold bg-destructive/10 text-destructive">{{ vendor_order.get_status_display }}</span>
+      {% else %}<span class="inline-flex items-center h-7 px-3 rounded-full text-xs font-semibold bg-muted text-muted-foreground">{{ vendor_order.get_status_display }}</span>{% endif %}
+      {% if vendor_order.fulfilled_at %}
+      <p class="mt-3 text-xs text-muted-foreground">{% blocktrans with d=vendor_order.fulfilled_at|date:"M j, Y" %}Fulfilled {{ d }}{% endblocktrans %}</p>
+      {% endif %}
+    </div>
+  </aside>
+</div>
+
+{% comment %} Update fulfilment form — field names + POST action preserved {% endcomment %}
+{% with inp="h-11 w-full rounded-lg border border-input bg-background px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" lbl="block text-sm font-medium text-foreground mb-1.5" %}
+<section class="rounded-2xl border border-border shadow-card bg-card p-6 mt-4 max-w-3xl">
+  <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Update fulfilment" %}</h2>
+  <p class="text-sm text-muted-foreground mb-5">{% trans "Change the status and add tracking details for the customer." %}</p>
+  <form method="post" class="space-y-5">
+    {% csrf_token %}
+    <div>
+      <label for="f-status" class="{{ lbl }}">{% trans "Status" %}</label>
+      <div class="relative max-w-xs">
+        <select id="f-status" name="status" class="{{ inp }} appearance-none pr-10">
+          {% for value, label in workflow_statuses %}
+          <option value="{{ value }}" {% if vendor_order.status == value or value == 'shipped' and vendor_order.status == 'shipped' or value == 'delivered' and vendor_order.status == 'delivered' or value == 'cancelled' and vendor_order.status == 'cancelled' %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <svg class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </div>
+    <div class="grid sm:grid-cols-2 gap-5">
+      <div>
+        <label for="f-track-no" class="{{ lbl }}">{% trans "Tracking number" %}</label>
+        <input id="f-track-no" type="text" name="tracking_number" maxlength="200" value="{{ vendor_order.tracking_number }}" placeholder="{% trans 'e.g. 1Z999AA10123456784' %}" class="{{ inp }}">
+      </div>
+      <div>
+        <label for="f-track-url" class="{{ lbl }}">{% trans "Tracking URL" %}</label>
+        <input id="f-track-url" type="url" name="tracking_url" maxlength="500" value="{{ vendor_order.tracking_url }}" placeholder="https://" class="{{ inp }}">
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-3 pt-1">
+      <button type="submit" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        {% trans "Save changes" %}
+      </button>
+    </div>
+  </form>
+</section>
+{% endwith %}
+{% endblock %}

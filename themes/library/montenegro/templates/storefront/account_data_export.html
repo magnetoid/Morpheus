@@ -1,0 +1,59 @@
+{% extends "storefront/base.html" %}
+{% load seo %}{% load i18n %}
+{% comment %}Adriatic Tailwind port. Account shell + GDPR Art. 15 data-export
+confirmation card. Context var preserved: user. The form posts to itself
+(method="post") and the view streams a ZIP back. Link to /account/delete/
+preserved.{% endcomment %}
+{% block title %}{% trans "Download my data" %} — Montenegro Experience{% endblock %}
+{% block seo %}{% seo_meta robots="noindex, nofollow" fallback_title="Download my data" %}{% endblock %}
+
+{% block content %}
+<section class="container mx-auto px-4 py-8 sm:py-12">
+  <div class="max-w-2xl mx-auto">
+
+    {% comment %}Breadcrumb{% endcomment %}
+    <nav class="flex items-center gap-1.5 text-sm mb-4" aria-label="{% trans 'Breadcrumb' %}">
+      <a href="{% url 'storefront:account_home' %}" class="text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">{% trans "Account" %}</a>
+      <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="text-foreground font-medium">{% trans "Download my data" %}</span>
+    </nav>
+
+    {% comment %}Page heading{% endcomment %}
+    <p class="text-sm font-medium text-primary mb-1">{% trans "Privacy" %}</p>
+    <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground mb-3">{% trans "Download my data" %}<span class="text-accent-warm">.</span></h1>
+    <p class="text-muted-foreground mb-8 max-w-prose">{% trans "Get a copy of everything we have on file for you — account profile, orders, reviews, addresses, consent decisions, and anything else tied to your customer record. GDPR Article 15. CCPA's \"right to know\". Every right-to-access law any of us know about." %}</p>
+
+    {% comment%}What you'll get + download{% endcomment %}
+    <div class="rounded-2xl border border-border shadow-card bg-card p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+        </span>
+        <h2 class="font-display text-xl font-semibold text-foreground">{% trans "What you'll get" %}</h2>
+      </div>
+      <ul class="space-y-2 mb-6 text-sm text-muted-foreground">
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-primary shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><code class="font-mono text-foreground">account.json</code> — {% trans "name, email, profile fields" %}</span></li>
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-primary shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><code class="font-mono text-foreground">orders.json</code> — {% trans "every order you've placed, with items + totals" %}</span></li>
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-primary shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><code class="font-mono text-foreground">addresses.json</code> — {% trans "shipping/billing addresses on file" %}</span></li>
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-primary shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><code class="font-mono text-foreground">reviews.json</code> — {% trans "reviews you've written" %}</span></li>
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-primary shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><code class="font-mono text-foreground">consent.json</code> — {% trans "your cookie/privacy decisions" %}</span></li>
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-primary shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><code class="font-mono text-foreground">wishlist.json</code>, <code class="font-mono text-foreground">loyalty.json</code>, <code class="font-mono text-foreground">affiliate.json</code> — {% trans "when applicable" %}</span></li>
+      </ul>
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+          {% trans "Download my data (ZIP)" %}
+        </button>
+      </form>
+      <p class="text-xs text-muted-foreground mt-4">{% trans "Files arrive as JSON inside a ZIP. Free, instant, no support ticket required." %}</p>
+    </div>
+
+    <p class="text-sm text-muted-foreground mt-8">
+      {% trans "Want to permanently delete your account instead?" %}
+      <a href="/account/delete/" class="text-destructive font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">{% trans "Go to delete account →" %}</a>
+    </p>
+
+  </div>
+</section>
+{% endblock %}

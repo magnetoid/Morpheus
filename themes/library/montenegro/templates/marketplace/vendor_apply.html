@@ -1,0 +1,401 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load static %}
+{% comment %}Become a host — Adriatic Tailwind port of pages/BecomeVendor.tsx.
+Hero (become-vendor-hero.jpg) + offer bar + benefits + steps + vendor types
++ what a founding partner gets + application form + final CTA.
+
+The GET is PUBLIC: this page is the entire recruitment argument and used to
+sit behind @login_required, so visitors met a login screen instead of a pitch.
+Anonymous visitors get `needs_account` and see a create-account CTA where the
+form would be; POSTing still requires a session (marketplace.views.apply).
+
+Context: existing (VendorApplication|None), needs_account, error, seo_title,
+seo_description. Form POSTs to /vendor/apply/ with business_name (req),
+contact_email (req), description, tax_id, payout_method.
+
+Every claim here must be one we can evidence — see the offer-bar comment.{% endcomment %}
+{% block title %}{% firstof seo_title "Become a host" %} — Montenegro Experience{% endblock %}
+
+{% block content %}
+
+<!-- ============ HERO ============ -->
+<section class="relative min-h-[80vh] flex items-center overflow-hidden">
+  <div class="absolute inset-0">
+    <img src="{% static 'montenegro/become-vendor-hero.jpg' %}" alt="{% trans 'Montenegro landscape' %}" class="w-full h-full object-cover">
+    <div class="absolute inset-0 bg-gradient-to-r from-foreground/85 via-foreground/65 to-foreground/30"></div>
+  </div>
+  <div class="relative container mx-auto px-4 py-20">
+    <div class="max-w-2xl">
+      <span class="inline-flex items-center gap-2 rounded-full bg-primary/20 text-primary-foreground border border-primary-foreground/20 px-4 py-1.5 text-sm font-medium mb-6">
+        🇲🇪 {% trans "Now accepting hosts across Montenegro" %}
+      </span>
+      <h1 class="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-primary-foreground leading-tight tracking-tight mb-6">
+        {% trans "List your Montenegro" %} <span class="text-primary">{% trans "free" %}</span>{% trans ". Keep every euro." %}
+      </h1>
+      <p class="text-lg sm:text-xl text-primary-foreground/80 leading-relaxed max-w-xl mb-4">
+        {% trans "Tours, stays, boat trips, tastings — list them at no cost. As a founding partner you pay 0% commission during our launch period: you keep 100% of the price you set." %}
+      </p>
+      <p class="text-base text-primary-foreground/70 leading-relaxed max-w-xl mb-8">
+        {% trans "No setup fee. No monthly fee. No exclusivity — keep selling everywhere else you already do." %}
+      </p>
+      <div class="flex flex-wrap gap-4">
+        <a href="#apply" class="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-primary text-primary-foreground text-lg font-semibold shadow-elevated hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-transparent transition-colors">
+          {% trans "Become a founding partner" %}
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="#benefits" class="inline-flex items-center h-14 px-8 rounded-full border border-primary-foreground/30 text-primary-foreground text-lg font-semibold hover:bg-primary-foreground/10 focus-visible:ring-2 focus-visible:ring-primary-foreground transition-colors">
+          {% trans "Learn More" %}
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SOCIAL PROOF BAR ============ -->
+<section class="bg-foreground text-background py-6">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+      {% comment %}These are terms of the offer, not metrics. The block previously
+      claimed 500+ experiences, 10,000+ guests, 200+ hosts and EUR 2M+ host
+      earnings — none true (142 experiences, 15 bookings, 0 applications, 0
+      payouts). The page is public now, so nothing here may be a number we cannot
+      stand behind. Live catalog counts were the obvious alternative, but
+      marketplace must not import booking_marketplace's models (CLAUDE.md), and a
+      count in a context processor would cost a query on every page — so the bar
+      states the deal instead, which is both true and the actual pitch.{% endcomment %}
+      <div class="flex flex-col items-center gap-1">
+        <svg class="w-5 h-5 text-primary mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span class="font-display text-2xl sm:text-3xl font-bold">0%</span>
+        <span class="text-sm text-background/60">{% trans "Commission during launch" %}</span>
+      </div>
+      <div class="flex flex-col items-center gap-1">
+        <svg class="w-5 h-5 text-primary mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span class="font-display text-2xl sm:text-3xl font-bold">{% trans "Free" %}</span>
+        <span class="text-sm text-background/60">{% trans "To list, always" %}</span>
+      </div>
+      <div class="flex flex-col items-center gap-1">
+        <svg class="w-5 h-5 text-primary mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span class="font-display text-2xl sm:text-3xl font-bold">EN · SR</span>
+        <span class="text-sm text-background/60">{% trans "Your listing, both languages" %}</span>
+      </div>
+      <div class="flex flex-col items-center gap-1">
+        <svg class="w-5 h-5 text-primary mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+        <span class="font-display text-2xl sm:text-3xl font-bold">{% trans "No lock-in" %}</span>
+        <span class="text-sm text-background/60">{% trans "Sell anywhere else too" %}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BENEFITS ============ -->
+<section id="benefits" class="py-20 lg:py-28 scroll-mt-20">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-16">
+      <h2 class="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">{% trans "Why Hosts Choose Us" %}</h2>
+      <p class="text-lg text-muted-foreground max-w-2xl mx-auto">{% trans "Everything you need to grow your business in Montenegro's booming tourism market." %}</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Reach Global Tourists -->
+      <div class="group h-full bg-card rounded-2xl border border-border p-6 hover:border-primary/30 hover:shadow-card transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary group-hover:bg-primary/20 transition-colors">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/></svg>
+        </div>
+        <h3 class="text-lg font-semibold text-foreground mb-2">{% trans "Reach Global Tourists" %}</h3>
+        <p class="text-sm text-muted-foreground leading-relaxed">{% trans "Be found by travellers planning a Montenegro trip — in search, and in the AI assistants they increasingly ask." %}</p>
+      </div>
+      <!-- Easy Setup -->
+      <div class="group h-full bg-card rounded-2xl border border-border p-6 hover:border-primary/30 hover:shadow-card transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary group-hover:bg-primary/20 transition-colors">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <h3 class="text-lg font-semibold text-foreground mb-2">{% trans "Easy Setup" %}</h3>
+        <p class="text-sm text-muted-foreground leading-relaxed">{% trans "List in minutes. No tech skills needed — we handle everything." %}</p>
+      </div>
+      <!-- Flexible Earnings -->
+      <div class="group h-full bg-card rounded-2xl border border-border p-6 hover:border-primary/30 hover:shadow-card transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary group-hover:bg-primary/20 transition-colors">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <h3 class="text-lg font-semibold text-foreground mb-2">{% trans "Flexible Earnings" %}</h3>
+        <p class="text-sm text-muted-foreground leading-relaxed">{% trans "Set your own prices. Get paid directly to your account." %}</p>
+      </div>
+      <!-- Full Support -->
+      <div class="group h-full bg-card rounded-2xl border border-border p-6 hover:border-primary/30 hover:shadow-card transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary group-hover:bg-primary/20 transition-colors">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a9 9 0 0 1 18 0v5a3 3 0 0 1-3 3h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h4M3 11v5a3 3 0 0 0 3 3h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3"/></svg>
+        </div>
+        <h3 class="text-lg font-semibold text-foreground mb-2">{% trans "Full Support" %}</h3>
+        <p class="text-sm text-muted-foreground leading-relaxed">{% trans "Talk to a real person. We answer every host ourselves, in English or Serbian." %}</p>
+      </div>
+      <!-- Sell Anything -->
+      <div class="group h-full bg-card rounded-2xl border border-border p-6 hover:border-primary/30 hover:shadow-card transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary group-hover:bg-primary/20 transition-colors">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+        </div>
+        <h3 class="text-lg font-semibold text-foreground mb-2">{% trans "Sell Anything" %}</h3>
+        <p class="text-sm text-muted-foreground leading-relaxed">{% trans "Experiences, products, food delivery — all on one platform." %}</p>
+      </div>
+      <!-- Free Marketing -->
+      <div class="group h-full bg-card rounded-2xl border border-border p-6 hover:border-primary/30 hover:shadow-card transition-all duration-300">
+        <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary group-hover:bg-primary/20 transition-colors">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        </div>
+        <h3 class="text-lg font-semibold text-foreground mb-2">{% trans "Free Marketing" %}</h3>
+        <p class="text-sm text-muted-foreground leading-relaxed">{% trans "We put your listing in front of travellers at no cost to you — search, structured data, and AI feeds included." %}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section class="py-20 lg:py-28 bg-muted/50">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-16">
+      <h2 class="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">{% trans "Get Started in 3 Simple Steps" %}</h2>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+      <div class="text-center relative">
+        <div class="w-16 h-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-5 text-xl font-bold shadow-card">01</div>
+        <div class="hidden md:block absolute top-8 left-[60%] w-[80%] border-t-2 border-dashed border-primary/30"></div>
+        <h3 class="text-lg font-semibold text-foreground mb-2">{% trans "Apply" %}</h3>
+        <p class="text-sm text-muted-foreground">{% trans "Tell us about your business in under 5 minutes." %}</p>
+      </div>
+      <div class="text-center relative">
+        <div class="w-16 h-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-5 text-xl font-bold shadow-card">02</div>
+        <div class="hidden md:block absolute top-8 left-[60%] w-[80%] border-t-2 border-dashed border-primary/30"></div>
+        <h3 class="text-lg font-semibold text-foreground mb-2">{% trans "List Your Offerings" %}</h3>
+        <p class="text-sm text-muted-foreground">{% trans "Add your experiences, products, or food items with photos and pricing." %}</p>
+      </div>
+      <div class="text-center relative">
+        <div class="w-16 h-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-5 text-xl font-bold shadow-card">03</div>
+        <h3 class="text-lg font-semibold text-foreground mb-2">{% trans "Start Earning" %}</h3>
+        <p class="text-sm text-muted-foreground">{% trans "Receive booking requests and enquiries directly. You confirm, you host, you get paid." %}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VENDOR TYPES ============ -->
+<section class="py-20 lg:py-28">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-16">
+      <h2 class="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">{% trans "Who Can Join?" %}</h2>
+      <p class="text-lg text-muted-foreground max-w-2xl mx-auto">{% trans "Whether you host experiences, sell products, or deliver food — there's a place for you." %}</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <!-- Experience Hosts -->
+      <div class="h-full bg-card rounded-2xl border border-border p-8 hover:border-primary/30 hover:shadow-card transition-all duration-300">
+        <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5 text-primary">
+          <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+        </div>
+        <h3 class="text-xl font-semibold text-foreground mb-3">{% trans "Experience Hosts" %}</h3>
+        <p class="text-sm text-muted-foreground leading-relaxed mb-5">{% trans "Tours, adventures, cultural activities, wellness retreats, wine tastings, and more." %}</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "Boat tours" %}</span>
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "Hiking guides" %}</span>
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "Cooking classes" %}</span>
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "City walks" %}</span>
+        </div>
+      </div>
+      <!-- Product Sellers -->
+      <div class="h-full bg-card rounded-2xl border border-border p-8 hover:border-primary/30 hover:shadow-card transition-all duration-300">
+        <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5 text-primary">
+          <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4 7.5 4.21M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg>
+        </div>
+        <h3 class="text-xl font-semibold text-foreground mb-3">{% trans "Product Sellers" %}</h3>
+        <p class="text-sm text-muted-foreground leading-relaxed mb-5">{% trans "Local goods, handmade crafts, souvenirs, artisan products, and specialty items." %}</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "Olive oil" %}</span>
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "Handmade jewelry" %}</span>
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "Local wine" %}</span>
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "Art prints" %}</span>
+        </div>
+      </div>
+      <!-- Food & Delivery -->
+      <div class="h-full bg-card rounded-2xl border border-border p-8 hover:border-primary/30 hover:shadow-card transition-all duration-300">
+        <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5 text-primary">
+          <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+        </div>
+        <h3 class="text-xl font-semibold text-foreground mb-3">{% trans "Food & Delivery" %}</h3>
+        <p class="text-sm text-muted-foreground leading-relaxed mb-5">{% trans "Restaurants, catering services, meal kits, and local food specialties." %}</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "Restaurants" %}</span>
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "Bakeries" %}</span>
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "Meal prep" %}</span>
+          <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-foreground">{% trans "Catering" %}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHAT A FOUNDING PARTNER GETS ============ -->
+{% comment %}This section previously held three testimonials attributed to named
+hosts ("Ana M., Tour Guide, Kotor" …) with five-star ratings. No such hosts had
+applied — 0 applications on record — so they were invented. Fabricated reviews on
+a public page are a straightforward misrepresentation and, for a business
+soliciting partners, a legal exposure. Replaced with commitments that are
+verifiable on this site today. When real hosts send real quotes, put them back
+here with their consent and their actual names.{% endcomment %}
+<section class="py-20 lg:py-28 bg-muted/50">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-16 max-w-2xl mx-auto">
+      <h2 class="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">{% trans "What a founding partner gets" %}</h2>
+      <p class="text-muted-foreground">{% trans "We are early, and we would rather be straight with you than oversell. Here is exactly what you get today." %}</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+      <div class="h-full bg-card rounded-2xl border border-border p-6">
+        <svg class="w-8 h-8 text-primary mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <h3 class="font-display text-lg font-bold text-foreground mb-2">{% trans "0% commission during launch" %}</h3>
+        <p class="text-muted-foreground text-sm leading-relaxed">{% trans "You keep 100% of the price you set — we take no cut of it. No listing fee, no monthly fee, no payout fee. Guests pay a 12% service fee on top of your price, which is what funds the platform. If we ever introduce a host commission, founding partners are told well in advance and are free to leave." %}</p>
+      </div>
+      <div class="h-full bg-card rounded-2xl border border-border p-6">
+        <svg class="w-8 h-8 text-primary mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <h3 class="font-display text-lg font-bold text-foreground mb-2">{% trans "You stay in control" %}</h3>
+        <p class="text-muted-foreground text-sm leading-relaxed">{% trans "Your prices, your dates, your cancellation terms. No exclusivity — keep selling on every other channel you already use. Guests contact you directly, and you can pause or remove a listing whenever you want." %}</p>
+      </div>
+      <div class="h-full bg-card rounded-2xl border border-border p-6">
+        <svg class="w-8 h-8 text-primary mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <h3 class="font-display text-lg font-bold text-foreground mb-2">{% trans "We do the finding" %}</h3>
+        <p class="text-muted-foreground text-sm leading-relaxed">{% trans "Your listing gets its own page in English and Serbian, structured data for Google, and a feed built for AI assistants — so travellers asking ChatGPT what to do in Kotor can be shown your tour. That is work most small operators never get to." %}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ APPLICATION FORM ============ -->
+<section id="apply" class="py-20 lg:py-28 scroll-mt-20">
+  <div class="container mx-auto px-4">
+    <div class="max-w-2xl mx-auto">
+      <div class="text-center mb-10">
+        <h2 class="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">{% trans "Apply to Become a Host" %}</h2>
+        <p class="text-muted-foreground">{% trans "Fill out the form below and our team will get back to you within 2 business days." %}</p>
+      </div>
+
+      {% if error %}
+      <div class="mb-6 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+      {% endif %}
+
+      {% if needs_account %}
+        {% comment %}Anonymous visitor: the pitch above is public, but creating an
+        application needs an account. Show what happens next instead of a form
+        that would silently bounce them to a login screen.{% endcomment %}
+        <div class="bg-card rounded-2xl border border-border shadow-card p-8 text-center">
+          <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-5 text-primary">
+            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          </div>
+          <h3 class="font-display text-xl font-bold text-foreground mb-2">{% trans "Create an account to apply" %}</h3>
+          <p class="text-muted-foreground max-w-md mx-auto mb-6">
+            {% trans "It takes a minute. You'll use the same account to manage your listings, prices and bookings once you're approved." %}
+          </p>
+          <div class="flex flex-wrap gap-3 justify-center">
+            <a href="/auth/signup/?next=/vendor/apply/" class="inline-flex items-center gap-2 h-12 px-7 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-card hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors">
+              {% trans "Create an account" %}
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+            <a href="/auth/login/?next=/vendor/apply/" class="inline-flex items-center h-12 px-7 rounded-full border border-border text-foreground text-sm font-semibold hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring transition-colors">
+              {% trans "I already have one" %}
+            </a>
+          </div>
+          <p class="text-xs text-muted-foreground mt-6">{% trans "Questions before you commit? Write to us — we answer every host personally." %}</p>
+        </div>
+      {% elif existing and existing.status != 'rejected' %}
+        <!-- Application status card -->
+        <div class="bg-card rounded-2xl border border-border shadow-card p-8 text-center">
+          <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-5 text-primary">
+            {% if existing.status == 'approved' %}
+            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+            {% else %}
+            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            {% endif %}
+          </div>
+          <span class="inline-flex items-center rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-semibold mb-4">{{ existing.get_status_display }}</span>
+          <h3 class="font-display text-xl font-bold text-foreground mb-2">{{ existing.business_name }}</h3>
+          <p class="text-muted-foreground max-w-md mx-auto mb-6">
+            {% if existing.status == 'submitted' %}{% trans "We've received your application. Our team will review it within 2 business days." %}
+            {% elif existing.status == 'reviewing' %}{% trans "One of our team is reviewing your application now." %}
+            {% elif existing.status == 'approved' %}{% trans "You're approved! Head to your host dashboard to start listing." %}
+            {% endif %}
+          </p>
+          <a href="/vendor/me/" class="inline-flex items-center gap-2 h-12 px-7 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-card hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors">
+            {% trans "Open host dashboard" %}
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      {% else %}
+        {% if existing and existing.status == 'rejected' %}
+        <div class="mb-6 rounded-xl border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+          {% trans "A previous application wasn't approved. You're welcome to submit a fresh one below." %}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/vendor/apply/" class="space-y-5">
+          {% csrf_token %}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div class="space-y-2">
+              <label for="business_name" class="block text-sm font-medium text-foreground">{% trans "Business name" %} <span class="text-destructive">*</span></label>
+              <input id="business_name" type="text" name="business_name" required maxlength="200"
+                     placeholder="{% trans 'Your business or brand name' %}"
+                     class="w-full h-11 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring transition-shadow">
+            </div>
+            <div class="space-y-2">
+              <label for="contact_email" class="block text-sm font-medium text-foreground">{% trans "Contact email" %} <span class="text-destructive">*</span></label>
+              <input id="contact_email" type="email" name="contact_email" required maxlength="254"
+                     value="{{ request.user.email }}" placeholder="you@example.com"
+                     class="w-full h-11 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring transition-shadow">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div class="space-y-2">
+              <label for="tax_id" class="block text-sm font-medium text-foreground">{% trans "Tax ID" %} <span class="text-muted-foreground font-normal">({% trans "optional" %})</span></label>
+              <input id="tax_id" type="text" name="tax_id" maxlength="50"
+                     placeholder="{% trans 'VAT / PIB / etc.' %}"
+                     class="w-full h-11 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring transition-shadow">
+            </div>
+            <div class="space-y-2">
+              <label for="payout_method" class="block text-sm font-medium text-foreground">{% trans "Preferred payout method" %}</label>
+              <select id="payout_method" name="payout_method"
+                      class="w-full h-11 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring transition-shadow">
+                <option value="">{% trans "— select —" %}</option>
+                <option value="stripe">{% trans "Stripe Connect" %}</option>
+                <option value="bank_transfer">{% trans "Bank transfer (SEPA / wire)" %}</option>
+                <option value="paypal">{% trans "PayPal" %}</option>
+                <option value="other">{% trans "Other (we'll discuss)" %}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label for="description" class="block text-sm font-medium text-foreground">{% trans "Tell us about your offerings" %}</label>
+            <textarea id="description" name="description" rows="5" maxlength="5000"
+                      placeholder="{% trans 'Briefly describe what you would like to offer on the platform, where you operate, and your typical guests.' %}"
+                      class="w-full px-3.5 py-2.5 rounded-lg border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring transition-shadow"></textarea>
+          </div>
+
+          <div>
+            <button type="submit" class="w-full inline-flex items-center justify-center gap-2 h-14 rounded-full bg-primary text-primary-foreground text-lg font-semibold shadow-card hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors">
+              {% trans "Submit application" %}
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+            <p class="text-xs text-muted-foreground text-center mt-3">{% trans "We respond within 2 business days." %} <span class="text-destructive">*</span> {% trans "required." %}</p>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section class="py-20 bg-primary">
+  <div class="container mx-auto px-4 text-center">
+    <h2 class="font-display text-3xl sm:text-4xl font-bold text-primary-foreground mb-4">{% trans "Ready to Grow Your Business?" %}</h2>
+    <p class="text-lg text-primary-foreground/80 max-w-xl mx-auto mb-8">{% trans "Be one of the first hosts on a new Montenegrin platform — and set your terms while it is still being built." %}</p>
+    <a href="#apply" class="inline-flex items-center gap-2 h-14 px-10 rounded-full bg-primary-foreground text-primary text-lg font-semibold shadow-elevated hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-primary transition-opacity">
+      {% trans "Apply Now — It's Free" %}
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "storefront/base.html" %}
+{% load morph i18n seo %}
+{% comment %}Account address form — Adriatic Tailwind port. Inputs mirror
+booking_marketplace/detail.html (h-11 rounded-lg border border-input bg-background
+px-3.5 focus-visible:ring-2 focus-visible:ring-ring); teal submit. Context: address
+(None for new). POST to the current URL (new or <id>/edit/) — fields + ids
+(addr-line1/addr-city/addr-state/addr-zip/addr-country) unchanged for the Google
+Places script below.{% endcomment %}
+{% block title %}{% if address %}{% trans "Edit address" %}{% else %}{% trans "New address" %}{% endif %} — Montenegro Experience{% endblock %}
+
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
+
+{% block content %}
+<section class="container mx-auto px-4 py-8 sm:py-12">
+  <div class="max-w-xl mx-auto">
+
+    <!-- Back -->
+    <a href="{% url 'storefront:account_addresses' %}" class="inline-flex items-center gap-1 -ml-1 mb-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded-sm">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      {% trans "Addresses" %}
+    </a>
+
+    <h1 class="text-2xl md:text-3xl font-display font-bold text-foreground mb-8">
+      {% if address %}{% trans "Edit address" %}{% else %}{% trans "New address" %}{% endif %}
+    </h1>
+
+    <div class="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-card">
+      <form method="post" class="grid gap-4">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid gap-1.5">
+            <label for="addr-first" class="text-sm font-medium text-foreground">{% trans "First name" %}</label>
+            <input id="addr-first" type="text" name="first_name" required value="{{ address.first_name|default:'' }}" autocomplete="given-name" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          </div>
+          <div class="grid gap-1.5">
+            <label for="addr-last" class="text-sm font-medium text-foreground">{% trans "Last name" %}</label>
+            <input id="addr-last" type="text" name="last_name" required value="{{ address.last_name|default:'' }}" autocomplete="family-name" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          </div>
+        </div>
+
+        <div class="grid gap-1.5">
+          <label for="addr-company" class="text-sm font-medium text-foreground">{% trans "Company (optional)" %}</label>
+          <input id="addr-company" type="text" name="company" value="{{ address.company|default:'' }}" autocomplete="organization" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        </div>
+
+        <div class="grid gap-1.5">
+          <label for="addr-line1" class="text-sm font-medium text-foreground">{% trans "Address line 1" %}</label>
+          <input id="addr-line1" type="text" name="address_line1" required value="{{ address.address_line1|default:'' }}" autocomplete="address-line1" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        </div>
+
+        <div class="grid gap-1.5">
+          <label for="addr-line2" class="text-sm font-medium text-foreground">{% trans "Address line 2 (optional)" %}</label>
+          <input id="addr-line2" type="text" name="address_line2" value="{{ address.address_line2|default:'' }}" autocomplete="address-line2" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr] gap-4">
+          <div class="grid gap-1.5">
+            <label for="addr-city" class="text-sm font-medium text-foreground">{% trans "City" %}</label>
+            <input id="addr-city" type="text" name="city" required value="{{ address.city|default:'' }}" autocomplete="address-level2" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          </div>
+          <div class="grid gap-1.5">
+            <label for="addr-state" class="text-sm font-medium text-foreground">{% trans "State / region" %}</label>
+            <input id="addr-state" type="text" name="state" value="{{ address.state|default:'' }}" autocomplete="address-level1" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          </div>
+          <div class="grid gap-1.5">
+            <label for="addr-zip" class="text-sm font-medium text-foreground">{% trans "Postal code" %}</label>
+            <input id="addr-zip" type="text" name="postal_code" required value="{{ address.postal_code|default:'' }}" autocomplete="postal-code" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid gap-1.5">
+            <label for="addr-country" class="text-sm font-medium text-foreground">{% trans "Country (2-letter)" %}</label>
+            <input id="addr-country" type="text" name="country" required maxlength="2" value="{{ address.country|default:'US' }}" autocomplete="country" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm uppercase outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          </div>
+          <div class="grid gap-1.5">
+            <label for="addr-phone" class="text-sm font-medium text-foreground">{% trans "Phone (optional)" %}</label>
+            <input id="addr-phone" type="tel" name="phone" value="{{ address.phone|default:'' }}" autocomplete="tel" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          </div>
+        </div>
+
+        <div class="grid gap-1.5">
+          <label for="addr-type" class="text-sm font-medium text-foreground">{% trans "Address type" %}</label>
+          <select id="addr-type" name="address_type" class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <option value="shipping" {% if address.address_type == "shipping" %}selected{% endif %}>{% trans "Shipping" %}</option>
+            <option value="billing" {% if address.address_type == "billing" %}selected{% endif %}>{% trans "Billing" %}</option>
+          </select>
+        </div>
+
+        <label class="flex items-center gap-2.5 text-sm text-foreground cursor-pointer">
+          <input type="checkbox" name="is_default" {% if address.is_default %}checked{% endif %} class="h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring">
+          {% trans "Make this my default address" %}
+        </label>
+
+        <div class="pt-1">
+          <button type="submit" class="inline-flex items-center justify-center h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none">
+            {% trans "Save address" %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+{% if GOOGLE_PLACES_API_KEY %}
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_PLACES_API_KEY }}&libraries=places"></script>
+<script>
+  // Google Places autocomplete — fills empty city/state/postal/country
+  // when a place is selected. Never overwrites manually-typed values.
+  (function () {
+    function init() {
+      if (!window.google || !google.maps || !google.maps.places) return;
+      var addr1 = document.getElementById('addr-line1');
+      if (!addr1) return;
+      var ac = new google.maps.places.Autocomplete(addr1, {
+        types: ['address'],
+        fields: ['address_components']
+      });
+      ac.addListener('place_changed', function () {
+        var place = ac.getPlace();
+        if (!place || !place.address_components) return;
+        var get = function (type, short) {
+          for (var i = 0; i < place.address_components.length; i++) {
+            var c = place.address_components[i];
+            if (c.types.indexOf(type) !== -1) return short ? c.short_name : c.long_name;
+          }
+          return '';
+        };
+        var streetNumber = get('street_number', false);
+        var route = get('route', false);
+        var street = (streetNumber + ' ' + route).trim();
+        var city = get('locality', false) || get('postal_town', false) || get('sublocality', false);
+        var state = get('administrative_area_level_1', true);
+        var postal = get('postal_code', false);
+        var country = get('country', true);
+        var setIfEmpty = function (id, val) {
+          var el = document.getElementById(id);
+          if (el && !el.value && val) el.value = val;
+        };
+        if (street) addr1.value = street;
+        setIfEmpty('addr-city', city);
+        setIfEmpty('addr-state', state);
+        setIfEmpty('addr-zip', postal);
+        setIfEmpty('addr-country', country);
+      });
+    }
+    var tries = 0;
+    var t = setInterval(function () {
+      if (window.google && google.maps && google.maps.places) { clearInterval(t); init(); }
+      else if (++tries > 40) clearInterval(t);
+    }, 100);
+  })();
+</script>
+{% endif %}
+{% endblock %}

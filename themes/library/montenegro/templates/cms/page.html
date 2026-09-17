@@ -1,0 +1,126 @@
+{% extends "storefront/base.html" %}
+{% load cms %}{% load seo %}{% load i18n %}
+{% comment %}
+  Montenegro (Adriatic) override of the CMS plugin's cms/page.html.
+  Footer links like /p/privacy-policy/ and /p/terms-of-service/ render through here.
+
+  Faithful to src/pages/StaticPage.tsx: a clean, readable article layout —
+  Playfair (font-display) title, optional excerpt lede, then the sanitized
+  page.body inside a max-w-3xl prose container. page.body is raw HTML
+  (h2/h3/p/ul/a/blockquote/...), so a small scoped style below styles those
+  descendants in the Adriatic system. Do NOT wrap page.body itself in {% trans %}.
+
+  PageSection composition (theme builder) still takes priority over the legacy
+  body, mirroring the plugin default — merchants who built the page in the
+  builder shouldn't see their old body bleed in.
+{% endcomment %}
+{% block title %}{{ page.title }} — Montenegro Experience{% endblock %}
+
+{% block seo %}{% seo_meta object=seo_object|default:None fallback_title=page.title fallback_description=page.excerpt og_type="article" %}{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Scoped Adriatic prose — styles the raw HTML in page.body. Tokens mirror
+     :root in storefront/base.html, so this stays on-brand and CSP-clean. */
+  .cms-prose { font-size: 1.0625rem; line-height: 1.75; color: hsl(var(--muted-foreground)); }
+  .cms-prose > :first-child { margin-top: 0; }
+  .cms-prose > :last-child { margin-bottom: 0; }
+  .cms-prose h2, .cms-prose h3, .cms-prose h4 {
+    font-family: 'Playfair Display', Georgia, serif;
+    color: hsl(var(--foreground));
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+  .cms-prose h2 {
+    font-size: 1.5rem;
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  .cms-prose h3 { font-size: 1.25rem; margin: 2rem 0 0.75rem; }
+  .cms-prose h4 { font-size: 1.0625rem; margin: 1.5rem 0 0.5rem; }
+  .cms-prose p { margin: 0 0 1.25rem; }
+  .cms-prose a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .cms-prose a:hover { color: hsl(var(--primary) / 0.8); }
+  .cms-prose strong { color: hsl(var(--foreground)); font-weight: 600; }
+  .cms-prose ul, .cms-prose ol { margin: 0 0 1.25rem; padding-left: 1.5rem; }
+  .cms-prose ul { list-style: disc; }
+  .cms-prose ol { list-style: decimal; }
+  .cms-prose li { margin: 0.375rem 0; }
+  .cms-prose li::marker { color: hsl(var(--muted-foreground)); }
+  .cms-prose blockquote {
+    margin: 1.5rem 0;
+    padding: 0.75rem 1.25rem;
+    border-left: 3px solid hsl(var(--primary));
+    background: hsl(var(--muted) / 0.5);
+    border-radius: 0 0.5rem 0.5rem 0;
+    color: hsl(var(--foreground));
+  }
+  .cms-prose blockquote p:last-child { margin-bottom: 0; }
+  .cms-prose img { border-radius: 0.75rem; box-shadow: var(--shadow-card); max-width: 100%; height: auto; }
+  .cms-prose hr { margin: 2.5rem 0; border: 0; border-top: 1px solid hsl(var(--border)); }
+  .cms-prose code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.875em;
+    background: hsl(var(--muted));
+    padding: 0.15em 0.4em;
+    border-radius: 0.375rem;
+  }
+  .cms-prose table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.95rem; }
+  .cms-prose th { background: hsl(var(--muted)); text-align: left; padding: 0.5rem 1rem; color: hsl(var(--foreground)); }
+  .cms-prose td { padding: 0.5rem 1rem; border-top: 1px solid hsl(var(--border)); }
+</style>
+{% endblock %}
+
+{% block content %}
+{# Theme-builder sections win over the legacy body (mirrors the plugin default). #}
+{% render_page_sections page as sections_html %}
+{% if sections_html %}
+{{ sections_html }}
+{% else %}
+<article class="container mx-auto px-4 py-12 md:py-16">
+  <div class="max-w-3xl mx-auto">
+
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-1.5 text-sm mb-6" aria-label="{% trans 'Breadcrumb' %}">
+      <a href="/" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Home" %}</a>
+      <svg class="w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="text-foreground font-medium truncate max-w-[240px]" aria-current="page">{{ page.title }}</span>
+    </nav>
+
+    <!-- Title -->
+    <header class="pb-6 mb-8 border-b border-border">
+      <h1 class="font-display text-3xl md:text-4xl font-bold text-foreground leading-tight tracking-tight">{{ page.title }}</h1>
+      {% if page.excerpt %}
+      <p class="text-lg text-muted-foreground mt-4 leading-relaxed">{{ page.excerpt }}</p>
+      {% endif %}
+      {% if page.updated_at %}
+      <p class="flex items-center gap-1.5 text-sm text-muted-foreground mt-4">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        {% trans "Last updated" %} {{ page.updated_at|date:"F j, Y" }}
+      </p>
+      {% endif %}
+    </header>
+
+    <!-- Body — sanitized raw HTML; styled by .cms-prose above. Do not translate. -->
+    {% if page.body %}
+    <div class="cms-prose">{{ page.body|safe }}</div>
+    {% endif %}
+
+    <!-- Back navigation -->
+    <div class="mt-14 pt-8 border-t border-border">
+      <a href="/" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+        {% trans "Back to home" %}
+      </a>
+    </div>
+
+  </div>
+</article>
+{% endif %}
+{% endblock %}

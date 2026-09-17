@@ -1,0 +1,44 @@
+{% load morph %}{% load i18n %}
+{% comment %}Shared experience card — 1:1 port of components/ExperienceCard.tsx.
+Expects `s` (BookableService) and `listing_mode` (bool).{% endcomment %}
+<a href="/bookings/{{ s.slug }}/" class="block group">
+  <div>
+    <div class="relative aspect-[4/3] rounded-xl overflow-hidden mb-3 bg-muted">
+      {% if s.image %}
+        <img src="{{ s.image.url }}" alt="{{ s.name }}{% if s.location %} in {{ s.location }}, Montenegro{% endif %}" class="w-full h-full object-cover img-zoom" loading="lazy" decoding="async">
+      {% else %}
+        <div class="w-full h-full flex items-center justify-center text-muted-foreground text-sm p-4 text-center">{{ s.name|truncatewords:4 }}</div>
+      {% endif %}
+      <div class="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      <button type="button" onclick="event.preventDefault();event.stopPropagation();this.querySelector('svg').classList.toggle('heart-on');" class="absolute top-3 right-3 p-2 rounded-full bg-white/80 backdrop-blur-sm transition-all hover:scale-110 active:scale-95 hover:bg-white shadow-sm" aria-label="{% trans 'Save to wishlist' %}">
+        <svg class="w-5 h-5 text-muted-foreground transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+      </button>
+      <div class="absolute top-3 left-3 flex flex-col gap-1.5 items-start">
+        {% if s.is_bestseller %}<span class="inline-flex items-center bg-white text-foreground font-medium text-xs shadow-sm rounded-md px-2 py-1">{% trans "Guest favourite" %}</span>{% endif %}
+      </div>
+    </div>
+
+    <div class="space-y-1">
+      <div class="flex items-center justify-between">
+        <h3 class="font-medium text-foreground truncate pr-2">{% if s.location %}{{ s.location }}, Montenegro{% else %}{{ s.name }}{% endif %}</h3>
+        <div class="flex items-center gap-1 shrink-0">
+          <svg class="w-3.5 h-3.5 fill-foreground text-foreground" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span class="text-sm font-medium">{% if s.rating %}{{ s.rating }}{% else %}{% trans "New" %}{% endif %}</span>
+          {% if s.review_count %}<span class="text-sm text-muted-foreground">({{ s.review_count }})</span>{% endif %}
+        </div>
+      </div>
+      <p class="text-muted-foreground text-sm line-clamp-1">{{ s.name }}</p>
+      {% if s.duration_label %}<p class="text-muted-foreground text-sm">{{ s.duration_label }}</p>{% endif %}
+      <div class="pt-1">
+        {% if listing_mode %}
+          <span class="text-sm font-medium text-primary">{% trans "Contact for price" %}</span>
+        {% else %}
+          {% if s.original_price %}<span class="text-sm text-muted-foreground line-through mr-1.5">{{ s.original_price|money }}</span>{% endif %}
+          <span class="font-semibold text-foreground">{{ s.price|money }}</span>
+          {% if s.listing_kind != 'product' %}<span class="text-foreground"> {% trans "per person" %}</span>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</a>
+<style>.heart-on{fill:#f43f5e!important;color:#f43f5e!important;}</style>

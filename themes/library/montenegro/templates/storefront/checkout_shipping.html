@@ -1,0 +1,72 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load seo %}
+{% block title %}{% seo_title "Shipping" %}{% endblock %}
+
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap">
+    <p class="eyebrow">{% trans "Checkout · 2 of 3" %}</p>
+    <h1 class="display display-l" style="margin: 1rem 0 2rem;">{% trans "Pick a shipping speed" %}<span class="text-accent">.</span></h1>
+
+    <form method="post" style="display:grid; gap: 3rem; grid-template-columns: 1fr;" class="checkout-grid">
+      {% csrf_token %}
+      <div class="stack-6">
+        <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem; background: var(--paper);">
+          <p class="eyebrow" style="margin-bottom: .5rem;">{% trans "Ships to" %}</p>
+          <p style="margin: 0;">{{ address.first_name }} {{ address.last_name }}<br>
+          {{ address.address_line1 }}{% if address.address_line2 %}, {{ address.address_line2 }}{% endif %}<br>
+          {{ address.city }}{% if address.state %}, {{ address.state }}{% endif %} {{ address.postal_code }}<br>
+          {{ address.country }}</p>
+          <p style="margin-top:.5rem;"><a href="{% url 'storefront:checkout' %}" style="text-decoration:underline;">{% trans "Edit address" %}</a></p>
+        </div>
+
+        <fieldset style="border: 0; padding: 0; margin: 0;">
+          <legend class="eyebrow" style="margin-bottom: 1rem;">{% trans "Shipping method" %}</legend>
+          {% if rates %}
+          <div class="stack-3">
+            {% for r in rates %}
+            <label style="display:flex; align-items:center; gap:1rem; padding:1rem; border:1px solid var(--rule); border-radius:6px; cursor:pointer;">
+              <input type="radio" name="shipping_rate_id" value="{{ r.id }}" {% if r.id|stringformat:'s' == selected_rate_id or forloop.first and not selected_rate_id %}checked{% endif %}>
+              <div style="flex:1;">
+                <div style="font-weight:600;">{{ r.label }}</div>
+              </div>
+              <div style="font-weight:600;">
+                {% if r.amount %}{{ r.amount }} {{ r.currency }}{% else %}{% trans "Free" %}{% endif %}
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="meta">{% trans "No shipping rates available for this address. Configure shipping zones in the dashboard, or contact support." %}</p>
+          {% endif %}
+        </fieldset>
+
+        <button type="submit" class="btn btn-primary" style="height: 52px; padding: 0 2rem; align-self: flex-start;" {% if not rates %}disabled{% endif %}>{% trans "Continue to review" %} &rarr;</button>
+      </div>
+
+      <aside style="border: 1px solid var(--rule); border-radius: 4px; padding: 2rem; background: var(--paper-2);">
+        <p class="eyebrow">{% trans "Your order" %}</p>
+        {% if cart.items %}
+        <div style="margin: 1rem 0;">
+          {% for it in cart.items %}
+          <div style="display:flex; justify-content:space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--rule); font-size: .9rem;">
+            <span>{{ it.product.name }} <span style="color:var(--muted);">× {{ it.quantity }}</span></span>
+            <span>{{ it.totalPrice|money }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <hr class="rule" style="margin: 1rem 0;">
+        <div style="display:flex; justify-content:space-between;">
+          <span>{% trans "Subtotal" %}</span><span>{{ cart.subtotal|money }}</span>
+        </div>
+        {% endif %}
+      </aside>
+    </form>
+  </div>
+</section>
+
+<style>
+@media (min-width: 900px) { .checkout-grid { grid-template-columns: 1.4fr 0.6fr !important; gap: 4rem !important; align-items: start; } }
+</style>
+{% endblock %}

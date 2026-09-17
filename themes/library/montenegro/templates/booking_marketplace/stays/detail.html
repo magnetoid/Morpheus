@@ -1,0 +1,131 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
+{% block title %}{{ property.name }}, Montenegro — Montenegro Experience{% endblock %}
+{% block seo %}{% seo_meta object=seo_object|default:None fallback_title=property.name fallback_description=property.description og_type="website" %}{% endblock %}
+{% block extra_head %}{% if seo_jsonld %}<script type="application/ld+json">{{ seo_jsonld|safe }}</script>{% endif %}{% endblock %}
+{% block content %}
+{% booking_listing_mode as listing_mode %}
+{% booking_enquiry_only as enquiry_only %}
+<div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+  <nav aria-label="{% trans 'Breadcrumb' %}" class="flex items-center gap-1.5 text-sm mb-4">
+    <a href="/" class="text-muted-foreground hover:text-foreground">{% trans "Home" %}</a>
+    <span class="text-muted-foreground">/</span>
+    <a href="/hotels/" class="text-muted-foreground hover:text-foreground">{% trans "Hotels" %}</a>
+    <span class="text-muted-foreground">/</span>
+    <span class="text-foreground font-medium truncate max-w-[220px]">{{ property.name }}</span>
+  </nav>
+
+  <div class="mb-6">
+    {% if property.star_rating %}<div class="flex items-center gap-0.5 text-primary text-sm mb-1">{% for _ in ""|center:property.star_rating %}★{% endfor %}</div>{% endif %}
+    <h1 class="text-2xl md:text-[28px] font-semibold text-foreground tracking-tight">{{ property.name }}</h1>
+    <p class="text-muted-foreground">{{ property.location }} · {{ property.get_property_type_display }}</p>
+  </div>
+
+  {% if property.image %}<img src="{{ property.image.url }}" alt="{{ property.name }}" class="w-full rounded-2xl mb-6 object-cover max-h-[420px]">{% endif %}
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-2 space-y-8">
+      {% if property.description %}<section aria-labelledby="about-stay"><h2 id="about-stay" class="text-xl font-semibold text-foreground mb-3">{% blocktrans with name=property.name %}About {{ name }}{% endblocktrans %}</h2><div class="prose max-w-none text-foreground"><p>{{ property.description|linebreaksbr }}</p></div></section>{% endif %}
+
+      <section aria-labelledby="location-guide">
+        <h2 id="location-guide" class="text-lg font-semibold text-foreground mb-3">{% blocktrans with location=property.location %}Staying in {{ location }}{% endblocktrans %}</h2>
+        <p class="text-muted-foreground leading-7">{% blocktrans with location=property.location %}Use {{ location }} as your base for nearby beaches, historic towns and day trips. Review transport options and seasonal travel times before confirming your stay.{% endblocktrans %}</p>
+        <div class="flex flex-wrap gap-3 mt-3 text-sm font-medium"><a href="/places/" class="text-primary hover:underline">{% trans "Explore Montenegro destinations" %}</a><a href="/bookings/" class="text-primary hover:underline">{% trans "Find nearby experiences" %}</a></div>
+      </section>
+
+      {% if amenities %}
+      <section>
+        <h2 class="text-lg font-semibold text-foreground mb-3">{% trans "Amenities" %}</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {% for a in amenities %}
+          <div class="flex items-center gap-2 text-sm text-foreground"><span class="text-primary">•</span>{{ a.label }}</div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <section>
+        <h2 class="text-lg font-semibold text-foreground mb-3">{% trans "Rooms" %}</h2>
+        <div class="space-y-4">
+          {% for r in room_types %}
+          <div class="rounded-2xl border border-border bg-card shadow-card p-4">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 class="font-semibold text-foreground">{{ r.name }}</h3>
+                <p class="text-sm text-muted-foreground">{{ r.bed_configuration }}{% if r.size_sqm %} · {{ r.size_sqm }} m²{% endif %} · {% blocktrans with n=r.max_occupancy %}sleeps {{ n }}{% endblocktrans %}</p>
+              </div>
+              {% if not listing_mode %}<div class="text-right text-sm"><span class="font-semibold text-foreground">{{ r.base_rate }}</span><span class="text-muted-foreground"> / {% trans "night" %}</span></div>{% endif %}
+            </div>
+
+            <form method="post" action="/hotels/{{ property.slug }}/book/" class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3"
+                  data-quote-url="/hotels/{{ property.slug }}/quote/" data-room-type="{{ r.id }}">
+              {% csrf_token %}
+              <input type="hidden" name="room_type" value="{{ r.id }}">
+              <label class="text-xs text-muted-foreground">{% trans "Check-in" %}<input type="date" name="check_in" required class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              <label class="text-xs text-muted-foreground">{% trans "Check-out" %}<input type="date" name="check_out" required class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              <label class="text-xs text-muted-foreground">{% trans "Rooms" %}<input type="number" name="rooms" value="1" min="1" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              <label class="text-xs text-muted-foreground">{% trans "Adults" %}<input type="number" name="adults" value="2" min="1" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              <label class="text-xs text-muted-foreground">{% trans "Children" %}<input type="number" name="children" value="0" min="0" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              <div class="col-span-2 sm:col-span-3 grid grid-cols-2 gap-3">
+                <label class="text-xs text-muted-foreground">{% trans "Your name" %}<input type="text" name="name" required class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+                <label class="text-xs text-muted-foreground">{% trans "Email" %}<input type="email" name="email" required class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              </div>
+              <p class="col-span-2 sm:col-span-3 text-sm text-muted-foreground" data-quote-output aria-live="polite"></p>
+              <button type="submit" class="col-span-2 sm:col-span-3 rounded-full bg-primary text-primary-foreground font-medium px-5 py-2.5 hover:opacity-90 transition-opacity">
+                {% if listing_mode %}{% trans "Contact for price" %}{% elif enquiry_only %}{% trans "Request to book" %}{% else %}{% trans "Book now" %}{% endif %}
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <aside class="space-y-4">
+      {% if property.latitude and property.longitude %}
+      <div id="stay-map" class="h-64 rounded-2xl border border-border overflow-hidden z-0" data-lat="{{ property.latitude }}" data-lng="{{ property.longitude }}"></div>
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+      {% endif %}
+      <div class="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
+        {% if property.check_in_time %}<p>{% trans "Check-in from" %} {{ property.check_in_time|time:"H:i" }}</p>{% endif %}
+        {% if property.check_out_time %}<p>{% trans "Check-out until" %} {{ property.check_out_time|time:"H:i" }}</p>{% endif %}
+        {% if property.address %}<p class="mt-2">{{ property.address }}</p>{% endif %}
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll('form[data-quote-url]').forEach(function (form) {
+    var out = form.querySelector('[data-quote-output]');
+    var url = form.getAttribute('data-quote-url');
+    var room = form.getAttribute('data-room-type');
+    var t;
+    function refresh() {
+      var ci = form.check_in.value, co = form.check_out.value;
+      if (!ci || !co) { out.textContent = ''; return; }
+      var qs = new URLSearchParams({ room_type: room, check_in: ci, check_out: co,
+        rooms: form.rooms.value || 1, adults: form.adults.value || 2, children: form.children.value || 0 });
+      fetch(url + '?' + qs.toString()).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          if (!res.ok) { out.textContent = res.d.error || 'Unavailable for those dates.'; return; }
+          {% if listing_mode %}
+          out.textContent = res.d.available > 0 ? (res.d.nights + ' night(s) · ' + res.d.available + ' room(s) available') : 'No rooms available for those dates.';
+          {% else %}
+          out.textContent = res.d.available > 0
+            ? (res.d.nights + ' night(s) · €' + res.d.total + ' total (incl. fees & tax) · ' + res.d.available + ' room(s) left')
+            : 'No rooms available for those dates.';
+          {% endif %}
+        }).catch(function () { out.textContent = ''; });
+    }
+    ['check_in', 'check_out', 'rooms', 'adults', 'children'].forEach(function (n) {
+      if (form[n]) form[n].addEventListener('change', function () { clearTimeout(t); t = setTimeout(refresh, 250); });
+    });
+  });
+  var m = document.getElementById('stay-map');
+  if (m) { var f = function () { if (!window.L) return setTimeout(f, 120); var map = L.map(m).setView([+m.dataset.lat, +m.dataset.lng], 14); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '© OpenStreetMap'}).addTo(map); L.marker([+m.dataset.lat, +m.dataset.lng]).addTo(map); }; f(); }
+})();
+</script>
+{% endblock %}

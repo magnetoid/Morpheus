@@ -1,0 +1,26 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load booking_tags %}
+{% comment %}Region experiences — breadcrumb + Tailwind experience grid.{% endcomment %}
+{% block title %}{{ region_label }} experiences — Montenegro Experience{% endblock %}
+{% block extra_head %}{% if region_jsonld %}<script type="application/ld+json">{{ region_jsonld|safe }}</script>{% endif %}{% endblock %}
+{% block content %}
+{% booking_listing_mode as listing_mode %}
+<div class="container mx-auto px-4 py-10 sm:py-14">
+  <nav class="flex items-center gap-1.5 text-sm mb-4">
+    <a href="/regions/" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Regions" %}</a>
+    <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    <span class="text-foreground font-medium">{{ region_label }}</span>
+  </nav>
+  <p class="text-xs font-semibold text-primary uppercase tracking-wider mb-2">{% trans "Region" %}</p>
+  <h1 class="font-display text-3xl sm:text-4xl font-bold text-foreground tracking-tight mb-8">{{ region_label }}</h1>
+  {% if services %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    {% for s in services %}
+    {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-muted-foreground">{% trans "No experiences here yet." %} <a href="/bookings/" class="text-primary underline">{% trans "Browse all experiences" %}</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

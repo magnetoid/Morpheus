@@ -1,0 +1,42 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% load i18n %}
+{% block title %}{{ entry.title }} — Montenegro Experience{% endblock %}
+
+{% block extra_head %}
+<link rel="amphtml" href="/journal/{{ entry.slug }}/amp/">
+{% seo_article_jsonld headline=entry.title body=entry.body|striptags|truncatechars:5000 author=entry.author|default:"Montenegro Experience staff" published=entry.published_at modified=entry.updated_at|default:entry.published_at image=entry.image %}
+{% seo_speakable_jsonld %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% seo_llms_link %}
+{% with faq=entry.body|faq_items_from_body %}
+  {% if faq %}{% seo_faq_jsonld faq %}{% endif %}
+{% endwith %}
+{% endblock %}
+
+{% block content %}
+<article style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 640px;">
+    <p class="meta" style="margin-bottom: 1.25rem;">
+      <a href="/journal/" style="color: var(--muted);">{% trans "Blog" %}</a>
+    </p>
+    <p class="meta" itemprop="author" itemscope itemtype="https://schema.org/Person">
+      {% if entry.author %}<span itemprop="name">{{ entry.author }}</span>{% endif %}
+      {% if entry.author and entry.date_label %} · {% endif %}{{ entry.date_label }}
+    </p>
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">
+      {{ entry.title }}<span class="text-accent">.</span>
+    </h1>
+    <div itemprop="articleBody" style="font-family: var(--serif); font-size: 1.1rem; line-height: 1.7; color: var(--ink-2);">
+      {% if entry.is_html %}
+        {{ entry.body|safe }}
+      {% else %}
+        {{ entry.body|linebreaks }}
+      {% endif %}
+    </div>
+
+    <hr class="rule" style="margin: 3rem 0;">
+    <a href="/journal/" class="btn-link">{% trans "All entries" %}</a>
+  </div>
+</article>
+{% endblock %}
