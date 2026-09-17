@@ -168,3 +168,62 @@ class HomeHeroTests(TestCase):
         self.assertIn('--window-h:', body)
         self.assertIn('calc(var(--window-h) * 2 / 3)', body)
         self.assertNotIn('justify-content: start;', body)
+
+    @patch(
+        'plugins.installed.personalisation.services.rank_for_visitor',
+        side_effect=lambda request, products, surface: products,
+    )
+    @patch('plugins.installed.storefront.views.home.internal_graphql')
+    def test_hero_skips_drawn_covers_and_tops_up(self, mocked_graphql, _rank_for_visitor):
+        """The window leads with artwork, not a stand-in.
+
+        `backfill_book_covers` drew a cover for 752 cover-less classics, saved as
+        `cover-<slug>.jpg`. At product-card size they rescue the grid; at the
+        full height of the hero they read as a missing cover. The next featured
+        book with real artwork takes the slot instead.
+        """
+        drawn = _hero_product('The Valley of Fear', 'valley-of-fear')
+        drawn['primaryImage']['url'] = '/media/products/cover-the-valley-of-fear.jpg'
+        none_at_all = _hero_product('The Murder at the Vicarage', 'vicarage')
+        none_at_all['primaryImage'] = None
+        real = _hero_product('Peter Pan', 'peter-pan')
+        real['primaryImage']['url'] = '/media/products/peter-pan.png'
+
+        mocked_graphql.return_value = {
+            'featuredProducts': [drawn, none_at_all, real],
+            'collections': [],
+            'categories': [],
+        }
+
+        body = self.client.get('/').content.decode()
+        # Scope to the hero: the skipped books still sell, so they go on
+        # appearing in the featured grid below it.
+        hero = body[body.index('id="editors-pick"') : body.index('</section>')]
+
+        self.assertIn('Peter Pan', hero)
+        self.assertNotIn('cover-the-valley-of-fear', hero)
+        self.assertNotIn('The Murder at the Vicarage', hero)
+        # One book left with artwork, so one panel — not three.
+        self.assertNotIn('aria-controls="hero-panel-1"', hero)
+
+    @patch(
+        'plugins.installed.personalisation.services.rank_for_visitor',
+        side_effect=lambda request, products, surface: products,
+    )
+    @patch('plugins.installed.storefront.views.home.internal_graphql')
+    def test_hero_is_never_empty(self, mocked_graphql, _rank_for_visitor):
+        """Every featured book carrying a drawn cover must still fill the window
+        — an empty hero is worse than a stand-in."""
+        drawn = _hero_product('The Valley of Fear', 'valley-of-fear')
+        drawn['primaryImage']['url'] = '/media/products/cover-the-valley-of-fear.jpg'
+
+        mocked_graphql.return_value = {
+            'featuredProducts': [drawn],
+            'collections': [],
+            'categories': [],
+        }
+
+        body = self.client.get('/').content.decode()
+
+        self.assertIn('The Valley of Fear', body)
+        self.assertIn('data-home-hero', body)

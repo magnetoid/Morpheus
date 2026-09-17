@@ -74,7 +74,7 @@ geometry, so the dots and cover never move between books.
             short titles it was designed for and steps long ones down the existing
             scale — no JS fitter, the thing this hero deleted.{% endcomment %}
             <h3
-              class="display window__book {% if pick.name|length > 90 %}window__book--xs{% elif pick.name|length > 55 %}display-m{% elif pick.name|length > 26 %}display-l{% else %}display-xl{% endif %}"
+              class="display window__book {% if pick.name|length > 70 %}window__book--xs{% elif pick.name|length > 26 %}display-l{% else %}display-xl{% endif %}"
               style="--d: 60ms;"
             ><em>{{ pick.name }}</em><span class="text-accent">.</span></h3>
             <p class="window__meta" style="--d: 120ms;">
@@ -304,12 +304,13 @@ geometry, so the dots and cover never move between books.
     text-wrap: balance;
     overflow-wrap: break-word;
   }
-  .window__book.display-xl { max-width: 12ch; }
-  .window__book.display-l { max-width: 15ch; }
-  .window__book.display-m { max-width: 22ch; }
+  /* Measures widen with the band so the copy reaches across its column instead
+     of leaving a channel of empty paper between the text and the book. */
+  .window__book.display-xl { max-width: 13ch; }
+  .window__book.display-l { max-width: 20ch; }
   .window__book--xs {
-    font-size: clamp(1.45rem, 2.4vw, 1.9rem);
-    line-height: 1.14;
+    font-size: clamp(1.75rem, 2.9vw, 2.5rem);
+    line-height: 1.12;
     max-width: 32ch;
   }
   .window__meta {
@@ -320,7 +321,7 @@ geometry, so the dots and cover never move between books.
   }
   .window__cat {
     font-family: var(--sans);
-    font-size: 0.7rem;
+    font-size: 0.78rem;
     font-weight: 600;
     letter-spacing: 0.16em;
     text-transform: uppercase;
@@ -329,7 +330,7 @@ geometry, so the dots and cover never move between books.
   .window__sep { color: var(--rule); }
   .window__price {
     font-family: var(--serif);
-    font-size: clamp(1.15rem, 1.1vw + 0.95rem, 1.45rem);
+    font-size: clamp(1.3rem, 1.2vw + 1.05rem, 1.7rem);
     font-variant-numeric: tabular-nums; /* digits hold width between slides */
   }
   .window__from { color: var(--muted); font-size: 0.85em; }

@@ -50,6 +50,46 @@ def _serialize_product(p) -> dict:
     }
 
 
+def _has_real_cover(product) -> bool:
+    """True when the book's cover is artwork, not a drawn stand-in.
+
+    `backfill_book_covers` gave all 752 cover-less classics a Pillow-rendered
+    "classic imprint" cover — title and author set on a cloth colour — saved as
+    ``cover-<slug>.jpg``. They rescue a product card, but blown up to the full
+    height of the homepage window they read as a missing cover, which is exactly
+    what the shop's front page must not lead with.
+
+    The filename IS the marker (that command names every file it writes). Its
+    rarer branch fetches a real cover from gutenberg.org under the same name, so
+    a handful of genuine covers are skipped here too — immaterial against 125
+    books with artwork, and the alternative is opening every candidate image to
+    measure it on a page render.
+    """
+    img = (product or {}).get('primaryImage') or {}
+    url = img.get('url') or ''
+    return bool(url) and '/cover-' not in url
+
+
+def _hero_with_covers(picks: list, pool: list, limit: int = 4) -> list:
+    """Hero picks that have real artwork, topped up from the featured pool.
+
+    Never returns empty: a shop whose featured books all carry drawn covers
+    still gets its window, because a hero with nothing in it is worse than one
+    with a stand-in.
+    """
+    kept = [p for p in picks if _has_real_cover(p)]
+    if len(kept) < limit:
+        seen = {p.get('id') for p in kept}
+        for candidate in pool:
+            if len(kept) >= limit:
+                break
+            if candidate.get('id') in seen or not _has_real_cover(candidate):
+                continue
+            kept.append(candidate)
+            seen.add(candidate.get('id'))
+    return kept or picks
+
+
 def _surface_products(request, surface: str, *, value=None, limit: int = 8):
     """Fire the merchandising-takeover hook for one placeholder (fail-soft)."""
     try:
@@ -115,6 +155,11 @@ def home(request):
         data['hero_products'] = [_serialize_product(p) for p in hero_taken]
     else:
         data['hero_products'] = list(data['featured_products'][:4])
+    # The window shows books with real covers — applied after BOTH paths, so a
+    # merchandising takeover and personalisation's reorder are filtered too.
+    data['hero_products'] = _hero_with_covers(
+        data['hero_products'], data.get('featured_products') or []
+    )
     data.setdefault('seasonal_products', data.get('featured_products', []))
 
     # Staff picks rail — same fallback chain as the dedicated /staff-picks/ page.

@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.68.5 — 2026-09-17
+
+**Real covers in the shop window**
+
+- The homepage slider now features only books with real cover artwork. The 752 classics carrying an auto-generated typographic cover keep it on their product cards and still sell normally — they just no longer lead the front page.
+- Bigger type in the slider's left column, so the copy reaches across the page instead of leaving a channel of empty paper beside it.
+- Slightly wider page margins throughout.
+
 ## v0.68.4 — 2026-09-17
 
 **The book fills the shop window**
