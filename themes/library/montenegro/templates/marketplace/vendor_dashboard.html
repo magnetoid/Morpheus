@@ -1,0 +1,243 @@
+{% extends "booking_marketplace/host/_shell.html" %}
+{% load morph %}{% load i18n %}
+{% comment %}Adriatic Tailwind port of the marketplace vendor dashboard —
+reference src/pages/vendor/VendorDashboard.tsx (KPI cards + recent activity).
+Extends the host shell and fills its blocks (NOT block content). Context vars
+preserved exactly: application, vendor, vendor_orders, accrued, payouts,
+open_orders_count, active_products_count, month_sales. `accrued` and
+`month_sales` arrive as plain decimal strings (€ prefixed here); vendor_order
+gross/net and payout amount are Money. Order links → /vendor/me/orders/<id>/.
+Status via .get_status_display.{% endcomment %}
+{% block title %}{% trans "Vendor dashboard — Montenegro Experience" %}{% endblock %}
+
+{% block host_eyebrow %}{% trans "Host" %}{% if vendor and vendor.name %} · {{ vendor.name }}{% endif %}{% endblock %}
+{% block host_title %}{% trans "Dashboard" %}{% endblock %}
+{% block host_subtitle %}
+{% if vendor %}
+<p class="text-muted-foreground mt-1.5">{% blocktrans with name=vendor.name %}Welcome back, {{ name }} — here's the state of the shop.{% endblocktrans %}</p>
+{% else %}
+<p class="text-muted-foreground mt-1.5">{% trans "Your application status, vendor orders and payout balance — all in one place." %}</p>
+{% endif %}
+{% endblock %}
+
+{% block host_actions %}
+{% if vendor %}
+<a href="/vendor/me/products/" class="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
+  {% trans "Manage products" %}
+</a>
+{% endif %}
+{% endblock %}
+
+{% block host_content %}
+
+{% if not application %}
+{% comment %} No application yet {% endcomment %}
+<div class="rounded-2xl border border-dashed border-border bg-muted/30 p-10 sm:p-14 text-center">
+  <span class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+  </span>
+  <h3 class="font-display text-xl font-bold text-foreground">{% trans "You haven't applied to sell yet" %}</h3>
+  <p class="text-muted-foreground mt-1.5 max-w-sm mx-auto">{% trans "Apply to become a vendor on Montenegro Experience and reach travellers looking for the real thing." %}</p>
+  <a href="/vendor/apply/" class="mt-6 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    {% trans "Apply to sell" %}
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+  </a>
+</div>
+
+{% else %}
+
+{% comment %} Application summary card — business name, contact, status pill {% endcomment %}
+<div class="rounded-2xl border border-border shadow-card bg-card p-6 mb-6">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div class="min-w-0">
+      <h2 class="font-display text-xl font-bold text-foreground truncate">{{ application.business_name }}</h2>
+      {% if application.contact_email %}<p class="text-sm text-muted-foreground mt-1">{{ application.contact_email }}</p>{% endif %}
+    </div>
+    <div class="shrink-0">
+      {% if application.status == 'approved' %}
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+        <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>{% trans "Approved" %}
+      </span>
+      {% elif application.status == 'rejected' %}
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">
+        <span class="w-1.5 h-1.5 rounded-full bg-destructive"></span>{{ application.get_status_display }}
+      </span>
+      {% else %}
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-accent-warm/15 px-3 py-1 text-xs font-semibold text-accent-warm">
+        <span class="w-1.5 h-1.5 rounded-full bg-accent-warm"></span>{{ application.get_status_display }}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  {% if application.status != 'approved' %}
+  <p class="mt-4 text-sm text-muted-foreground">
+    {% if application.status == 'submitted' %}{% trans "We've received your application — we review them within 2 business days." %}
+    {% elif application.status == 'reviewing' %}{% trans "We're reviewing your application — expect to hear from us shortly." %}
+    {% elif application.status == 'rejected' %}{% trans "Your application wasn't approved this time. You're welcome to" %} <a href="/vendor/apply/" class="text-primary font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">{% trans "apply again" %}</a>.
+    {% endif %}
+  </p>
+  {% endif %}
+</div>
+
+{% if vendor and application.status == 'approved' %}
+
+{% comment %} KPI cards — Accrued balance · This month · Open orders · Active products {% endcomment %}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+
+  <a href="/vendor/me/payouts/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Payout balance" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+      </span>
+    </div>
+    {% comment %} `accrued` is str(Money) — already carries its currency symbol, so render bare. {% endcomment %}
+    <p class="font-display text-3xl font-bold text-foreground mt-3 tabular-nums">{{ accrued }}</p>
+    <p class="text-xs text-muted-foreground mt-1 inline-flex items-center gap-1">{% trans "Accrued to date" %}<svg class="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></p>
+  </a>
+
+  <div class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Sales this month" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-accent-warm/15 flex items-center justify-center text-accent-warm shrink-0">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl font-bold text-foreground mt-3 tabular-nums">€{{ month_sales }}</p>
+    <p class="text-xs text-muted-foreground mt-1">{% trans "Gross, current month" %}</p>
+  </div>
+
+  <a href="/vendor/me/products/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Active products" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl font-bold text-foreground mt-3 tabular-nums">{{ active_products_count }}</p>
+    <p class="text-xs text-muted-foreground mt-1 inline-flex items-center gap-1">{% trans "On the shelf" %}<svg class="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></p>
+  </a>
+
+  <div class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Open orders" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-accent-warm/15 flex items-center justify-center text-accent-warm shrink-0">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl font-bold text-foreground mt-3 tabular-nums">{{ open_orders_count }}</p>
+    <p class="text-xs text-muted-foreground mt-1">{% trans "Awaiting fulfilment" %}</p>
+  </div>
+
+</div>
+
+{% comment %} Quick actions {% endcomment %}
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+  <a href="/vendor/me/products/" class="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-card hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <svg class="w-4 h-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
+    {% trans "Products" %}
+  </a>
+  <a href="/vendor/me/payouts/" class="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-card hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <svg class="w-4 h-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+    {% trans "Payouts" %}
+  </a>
+  <a href="/vendor/me/settings/" class="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-card hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <svg class="w-4 h-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+    {% trans "Settings" %}
+  </a>
+  <a href="#orders" class="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-card hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <svg class="w-4 h-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    {% trans "Recent orders" %}
+  </a>
+</div>
+
+{% comment %} Recent orders {% endcomment %}
+<div id="orders" class="rounded-2xl border border-border shadow-card bg-card overflow-hidden mb-6 scroll-mt-24">
+  <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-border">
+    <h2 class="font-display text-lg font-bold text-foreground">{% trans "Recent orders" %}</h2>
+  </div>
+  {% if vendor_orders %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+          <th class="px-6 py-3 font-semibold">{% trans "Order" %}</th>
+          <th class="px-6 py-3 font-semibold">{% trans "Status" %}</th>
+          <th class="px-6 py-3 font-semibold text-right">{% trans "Gross" %}</th>
+          <th class="px-6 py-3 font-semibold text-right">{% trans "Net" %}</th>
+          <th class="px-6 py-3 font-semibold text-right">{% trans "When" %}</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-border">
+        {% for vo in vendor_orders %}
+        <tr class="hover:bg-muted/40 transition-colors">
+          <td class="px-6 py-3.5">
+            <a href="/vendor/me/orders/{{ vo.id }}/" class="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">#{{ vo.parent_order.order_number|default:vo.parent_order_id|truncatechars:12 }}</a>
+          </td>
+          <td class="px-6 py-3.5">
+            {% if vo.status == 'delivered' or vo.status == 'shipped' or vo.status == 'confirmed' %}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>{{ vo.get_status_display }}</span>
+            {% elif vo.status == 'cancelled' or vo.status == 'refunded' %}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-medium text-destructive"><span class="w-1.5 h-1.5 rounded-full bg-destructive"></span>{{ vo.get_status_display }}</span>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-accent-warm/15 px-2.5 py-0.5 text-xs font-medium text-accent-warm"><span class="w-1.5 h-1.5 rounded-full bg-accent-warm"></span>{{ vo.get_status_display }}</span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-3.5 text-right tabular-nums text-foreground">{{ vo.gross|money }}</td>
+          <td class="px-6 py-3.5 text-right tabular-nums text-foreground">{{ vo.net|money }}</td>
+          <td class="px-6 py-3.5 text-right text-muted-foreground whitespace-nowrap">{{ vo.created_at|date:"M j" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="px-6 py-12 text-center">
+    <span class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+    </span>
+    <p class="text-muted-foreground">{% trans "No orders yet. They'll appear here as customers buy your products." %}</p>
+  </div>
+  {% endif %}
+</div>
+
+{% comment %} Recent payouts {% endcomment %}
+{% if payouts %}
+<div class="rounded-2xl border border-border shadow-card bg-card overflow-hidden">
+  <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-border">
+    <h2 class="font-display text-lg font-bold text-foreground">{% trans "Recent payouts" %}</h2>
+    <a href="/vendor/me/payouts/" class="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+      {% trans "See all" %}
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <tbody class="divide-y divide-border">
+        {% for p in payouts %}
+        <tr class="hover:bg-muted/40 transition-colors">
+          <td class="px-6 py-3.5 text-muted-foreground whitespace-nowrap">{{ p.requested_at|date:"M j, Y" }}</td>
+          <td class="px-6 py-3.5 text-right tabular-nums text-foreground">{{ p.amount|money }}</td>
+          <td class="px-6 py-3.5 text-right">
+            {% if p.status == 'paid' %}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>{{ p.get_status_display }}</span>
+            {% elif p.status == 'failed' %}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-medium text-destructive"><span class="w-1.5 h-1.5 rounded-full bg-destructive"></span>{{ p.get_status_display }}</span>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-accent-warm/15 px-2.5 py-0.5 text-xs font-medium text-accent-warm"><span class="w-1.5 h-1.5 rounded-full bg-accent-warm"></span>{{ p.get_status_display }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

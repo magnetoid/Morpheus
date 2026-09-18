@@ -1,0 +1,104 @@
+{% extends "booking_marketplace/host/_shell.html" %}
+{% load i18n %}
+{% comment %}Adriatic Tailwind port of the marketplace vendor product edit form —
+reference src/pages/vendor/VendorProductForm.tsx. Extends the host shell and
+fills its blocks. Reproduces EVERY field the vendor_product_edit view reads:
+name, status, price, short_description, description. Context vars preserved
+exactly: vendor, product, error. POST = same page (no enctype — this view reads
+no file), csrf. Status options match Product.STATUS_CHOICES
+(draft/active/archived). Price input mirrors product.price.amount /
+product.price.currency.{% endcomment %}
+{% block title %}{% blocktrans with name=product.name %}Edit {{ name }} — Vendor{% endblocktrans %}{% endblock %}
+
+{% block host_eyebrow %}{% trans "Edit product" %}{% endblock %}
+{% block host_title %}{{ product.name }}{% endblock %}
+{% block host_subtitle %}
+<p class="text-muted-foreground mt-1.5">{% trans "Update the copy, price and visibility travellers see for this product." %}</p>
+{% endblock %}
+
+{% block host_actions %}
+<a href="/vendor/me/products/" class="inline-flex items-center justify-center gap-2 h-11 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+  {% trans "Back to products" %}
+</a>
+{% endblock %}
+
+{% block host_content %}
+{% comment %} Shared input classes (Adriatic — mirrors detail.html / service_form.html inputs). {% endcomment %}
+{% with inp="h-11 w-full rounded-lg border border-input bg-background px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" area="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" lbl="block text-sm font-medium text-foreground mb-1.5" hint="mt-1.5 text-xs text-muted-foreground" %}
+
+{% if error %}
+<div role="alert" class="mb-6 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+  <strong class="font-semibold">{% trans "Couldn't save." %}</strong> {{ error }}
+</div>
+{% endif %}
+
+<form method="post" class="max-w-3xl space-y-6">
+  {% csrf_token %}
+
+  {% comment %} Basics — name, short + long description {% endcomment %}
+  <section class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Basics" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "The title and descriptions shoppers will read." %}</p>
+    <div class="space-y-5">
+      <div>
+        <label for="f-name" class="{{ lbl }}">{% trans "Title" %} <span class="text-destructive">*</span></label>
+        <input id="f-name" type="text" name="name" required maxlength="300" value="{{ product.name|default:'' }}" placeholder="{% trans 'e.g. Homemade Montenegrin lunch box' %}" class="{{ inp }}">
+      </div>
+      <div>
+        <label for="f-short" class="{{ lbl }}">{% trans "Short description" %}</label>
+        <textarea id="f-short" name="short_description" rows="3" placeholder="{% trans 'One-line pitch — appears under the title on category pages.' %}" class="{{ area }}">{{ product.short_description|default:'' }}</textarea>
+        <p class="{{ hint }}">{% trans "Typically 1–2 sentences. Plain text or basic HTML." %}</p>
+      </div>
+      <div>
+        <label for="f-desc" class="{{ lbl }}">{% trans "Long description" %}</label>
+        <textarea id="f-desc" name="description" rows="12" placeholder="{% trans 'The full description — what it is, what makes it special.' %}" class="{{ area }}">{{ product.description|default:'' }}</textarea>
+        <p class="{{ hint }}">{% trans "HTML is OK (paragraphs, bold, italic, links). Avoid scripts or stylesheets." %}</p>
+      </div>
+    </div>
+  </section>
+
+  {% comment %} Pricing & visibility — price + status {% endcomment %}
+  <section class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Pricing &amp; visibility" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "What it costs and whether it's shown on the storefront." %}</p>
+    <div class="grid sm:grid-cols-2 gap-5">
+      <div>
+        <label for="f-price" class="{{ lbl }}">{% trans "Price" %} <span class="text-muted-foreground font-normal">({% if product.price %}{{ product.price.currency }}{% else %}EUR{% endif %})</span></label>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{% if product.price %}{{ product.price.currency }}{% else %}EUR{% endif %}</span>
+          <input id="f-price" type="number" name="price" min="0" step="0.01" value="{% if product.price %}{{ product.price.amount }}{% endif %}" placeholder="0.00" class="{{ inp }} pl-14">
+        </div>
+        <p class="{{ hint }}">{% trans "For variable products this is the floor — the storefront shows “From …” automatically." %}</p>
+      </div>
+      <div>
+        <label for="f-status" class="{{ lbl }}">{% trans "Status" %}</label>
+        <div class="relative">
+          <select id="f-status" name="status" class="{{ inp }} appearance-none pr-10">
+            <option value="draft"    {% if product.status == 'draft' %}selected{% endif %}>{% trans "Draft — not shown publicly" %}</option>
+            <option value="active"   {% if product.status == 'active' %}selected{% endif %}>{% trans "Active — on the shelf" %}</option>
+            <option value="archived" {% if product.status == 'archived' %}selected{% endif %}>{% trans "Archived — hidden, kept for history" %}</option>
+          </select>
+          <svg class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+        <p class="{{ hint }}">{% trans "Only Active products appear to shoppers." %}</p>
+      </div>
+    </div>
+  </section>
+
+  {% comment %} Actions {% endcomment %}
+  <div class="flex flex-wrap items-center gap-3 pt-1">
+    <button type="submit" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+      {% trans "Save changes" %}
+    </button>
+    <a href="/vendor/me/products/" class="inline-flex items-center justify-center h-11 px-5 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{% trans "Cancel" %}</a>
+  </div>
+
+</form>
+
+<p class="mt-8 max-w-2xl text-xs text-muted-foreground">
+  {% trans "For changes to SKU, format, vendor information or pricing currency, contact our acquisitions team — those fields are platform-managed so the canonical record stays clean." %}
+</p>
+{% endwith %}
+{% endblock %}

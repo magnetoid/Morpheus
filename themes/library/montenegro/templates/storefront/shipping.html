@@ -1,0 +1,32 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}
+{% block title %}What to expect — Montenegro Experience{% endblock %}
+
+{% block extra_head %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 760px;">
+    <p class="meta" style="margin-bottom: 1.25rem;">
+      <a href="/" style="color: var(--muted);">Home</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      <span>What to expect</span>
+    </p>
+    <h1 class="display display-l" style="margin: .5rem 0 1.5rem;">What to expect<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 2rem;">How booking an experience works, from enquiry to the day itself.</p>
+
+    <h2 class="display display-m" style="margin: 2rem 0 .75rem;">Booking</h2>
+    <p style="color:var(--ink-2); line-height:1.7;">Pick a date and the number of guests, or — for listings shown as “Contact for price” — send the host an enquiry with your dates. The host confirms availability, the final price and the meeting point by email. Bookings made through the site are backed by our service guarantee.</p>
+
+    <h2 class="display display-m" style="margin: 2rem 0 .75rem;">On the day</h2>
+    <p style="color:var(--ink-2); line-height:1.7;">You’ll get the exact meeting point and host contact details in your confirmation. Arrive a few minutes early. Each listing’s page shows the duration, what’s included, and what to bring.</p>
+
+    <h2 class="display display-m" style="margin: 2rem 0 .75rem;">Payments</h2>
+    <p style="color:var(--ink-2); line-height:1.7;">Prices are per guest in euros (€). A 12% service fee is added at confirmation. You only ever pay the total shown before you confirm — no hidden charges.</p>
+
+    <p class="meta" style="margin-top:2.5rem;">Questions? See our <a href="/returns/" style="text-decoration:underline;">cancellations &amp; refunds</a> page or <a href="/contact/" style="text-decoration:underline;">get in touch</a>.</p>
+  </div>
+</section>
+{% endblock %}

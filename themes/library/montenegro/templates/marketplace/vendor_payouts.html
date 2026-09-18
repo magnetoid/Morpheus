@@ -1,0 +1,137 @@
+{% extends "booking_marketplace/host/_shell.html" %}
+{% load morph %}{% load i18n %}
+{% comment %}Adriatic Tailwind port of pages/vendor/VendorPayouts.tsx onto the host
+shell. Context vars preserved exactly from the vendor_payouts view: vendor,
+account (.method, .external_account), accrued (Money), threshold (Decimal),
+can_request (bool), history (VendorPayout: .requested_at, .status,
+.get_status_display, .amount Money, .paid_at, .external_reference). POST = same
+URL (/vendor/me/payouts/), csrf, no body fields — submitting requests a payout.
+Money rendered with |money; threshold is a bare Decimal so it gets €+floatformat.{% endcomment %}
+{% block title %}{% trans "Payouts — Montenegro Experience" %}{% endblock %}
+
+{% block host_eyebrow %}{% trans "Money" %}{% endblock %}
+{% block host_title %}{% trans "Payouts" %}{% endblock %}
+{% block host_subtitle %}<p class="text-muted-foreground mt-1.5">{% trans "Your accrued balance sits here until you request a payout. We pay out via your configured method within ~3 business days." %}</p>{% endblock %}
+
+{% block host_content %}
+
+{% comment %} Balance KPI cards + request-payout form {% endcomment %}
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+
+  {% comment %} Accrued balance — primary highlight, holds the request form {% endcomment %}
+  <div class="rounded-2xl border border-primary/30 bg-primary/5 shadow-card p-6 flex flex-col">
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Accrued balance" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl sm:text-4xl font-bold text-primary mt-2 tabular-nums leading-none">{{ accrued|money }}</p>
+    <p class="text-xs text-muted-foreground mt-2">{% trans "Available to withdraw to your registered account." %}</p>
+
+    <form method="post" class="mt-5">
+      {% csrf_token %}
+      {% if can_request %}
+      <button type="submit" class="inline-flex w-full sm:w-auto items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        {% trans "Request payout" %}
+      </button>
+      {% else %}
+      <button type="submit" disabled aria-disabled="true" class="inline-flex w-full sm:w-auto items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold opacity-45 cursor-not-allowed">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        {% trans "Request payout" %}
+      </button>
+      {% endif %}
+    </form>
+
+    {% if not can_request %}
+    <p class="text-xs text-muted-foreground mt-3">
+      {% if account.method == 'unset' or not account.method %}
+        {% trans "Configure a payout method in" %}
+        <a href="{% url 'marketplace:vendor_settings' %}" class="underline text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">{% trans "settings" %}</a>
+        {% trans "first." %}
+      {% else %}
+        {% blocktrans with t=threshold|floatformat:2 %}You need to accrue at least &euro;{{ t }} before requesting a payout.{% endblocktrans %}
+      {% endif %}
+    </p>
+    {% endif %}
+  </div>
+
+  {% comment %} Minimum payout threshold {% endcomment %}
+  <div class="rounded-2xl border border-border bg-card shadow-card p-6">
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Minimum payout threshold" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-foreground shrink-0">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl sm:text-4xl font-bold text-foreground mt-2 tabular-nums leading-none">&euro;{{ threshold|floatformat:2 }}</p>
+    <p class="text-xs text-muted-foreground mt-2">{% trans "You can request a payout once your balance reaches this amount." %}</p>
+  </div>
+</div>
+
+{% comment %} Payout history {% endcomment %}
+<h2 class="font-display text-xl font-bold text-foreground mb-4">{% trans "History" %}</h2>
+{% if history %}
+
+{% comment %} Table for sm+ screens {% endcomment %}
+<div class="hidden sm:block rounded-2xl border border-border bg-card shadow-card overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-border bg-muted/40 text-left">
+        <th class="px-4 py-3 font-semibold text-muted-foreground">{% trans "Requested" %}</th>
+        <th class="px-4 py-3 font-semibold text-muted-foreground">{% trans "Status" %}</th>
+        <th class="px-4 py-3 font-semibold text-muted-foreground text-right">{% trans "Amount" %}</th>
+        <th class="px-4 py-3 font-semibold text-muted-foreground">{% trans "Paid" %}</th>
+        <th class="px-4 py-3 font-semibold text-muted-foreground">{% trans "Reference" %}</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-border">
+      {% for p in history %}
+      <tr class="hover:bg-muted/30 transition-colors">
+        <td class="px-4 py-3 tabular-nums text-foreground">{{ p.requested_at|date:"M j, Y" }}</td>
+        <td class="px-4 py-3">
+          {% if p.status == 'paid' %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-primary/10 text-primary">{{ p.get_status_display }}</span>
+          {% elif p.status == 'failed' %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-destructive/10 text-destructive">{{ p.get_status_display }}</span>
+          {% elif p.status == 'processing' %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-accent-warm/10 text-accent-warm">{{ p.get_status_display }}</span>
+          {% else %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground">{{ p.get_status_display }}</span>{% endif %}
+        </td>
+        <td class="px-4 py-3 text-right tabular-nums font-medium text-foreground">{{ p.amount|money }}</td>
+        <td class="px-4 py-3 text-muted-foreground">{% if p.paid_at %}{{ p.paid_at|date:"M j, Y" }}{% else %}&mdash;{% endif %}</td>
+        <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{{ p.external_reference|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% comment %} Stacked cards for mobile {% endcomment %}
+<div class="grid gap-2.5 sm:hidden">
+  {% for p in history %}
+  <div class="rounded-xl border border-border bg-card shadow-card p-4">
+    <div class="flex items-center justify-between gap-3">
+      <span class="font-display text-lg font-semibold text-foreground tabular-nums">{{ p.amount|money }}</span>
+      {% if p.status == 'paid' %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-primary/10 text-primary">{{ p.get_status_display }}</span>
+      {% elif p.status == 'failed' %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-destructive/10 text-destructive">{{ p.get_status_display }}</span>
+      {% elif p.status == 'processing' %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-accent-warm/10 text-accent-warm">{{ p.get_status_display }}</span>
+      {% else %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground">{{ p.get_status_display }}</span>{% endif %}
+    </div>
+    <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+      <dt class="text-muted-foreground">{% trans "Requested" %}</dt><dd class="text-right text-foreground tabular-nums">{{ p.requested_at|date:"M j, Y" }}</dd>
+      <dt class="text-muted-foreground">{% trans "Paid" %}</dt><dd class="text-right text-foreground tabular-nums">{% if p.paid_at %}{{ p.paid_at|date:"M j, Y" }}{% else %}&mdash;{% endif %}</dd>
+      <dt class="text-muted-foreground">{% trans "Reference" %}</dt><dd class="text-right font-mono text-muted-foreground break-all">{{ p.external_reference|default:"—" }}</dd>
+    </dl>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="rounded-2xl border border-dashed border-border bg-card py-16 px-6 text-center">
+  <span class="mx-auto mb-4 w-14 h-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground">
+    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+  </span>
+  <p class="font-display text-lg font-semibold text-foreground mb-1">{% trans "No payouts yet" %}</p>
+  <p class="text-muted-foreground">{% trans "Once you request a payout it will appear here with its status." %}</p>
+</div>
+{% endif %}
+{% endblock %}

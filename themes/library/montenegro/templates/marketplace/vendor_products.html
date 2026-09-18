@@ -1,0 +1,143 @@
+{% extends "booking_marketplace/host/_shell.html" %}
+{% load morph %}{% load i18n %}
+{% comment %}Adriatic Tailwind port of the marketplace vendor catalogue —
+reference src/pages/vendor/VendorProducts.tsx. Extends the host shell and fills
+its blocks (NOT block content). Context vars preserved exactly: vendor, products.
+Edit links → /vendor/me/products/<id>/. Product status uses .status /
+.get_status_display (draft/active/archived). Price via |money.{% endcomment %}
+{% block title %}{% trans "Your products — Montenegro Experience" %}{% endblock %}
+
+{% block host_eyebrow %}{% if vendor %}{% trans "Host" %} · {{ vendor.name }}{% else %}{% trans "Host" %}{% endif %}{% endblock %}
+{% block host_title %}{% trans "Products" %}{% endblock %}
+{% block host_subtitle %}
+<p class="text-muted-foreground mt-1.5">{% trans "Manage the copy, pricing and visibility of your product listings." %}</p>
+{% endblock %}
+
+{% block host_actions %}
+{% if vendor %}
+<a href="/contact/" title="{% trans 'New listings are accessioned by our team' %}" class="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>
+  {% trans "Add product" %}
+</a>
+{% endif %}
+{% endblock %}
+
+{% block host_content %}
+
+{% if not vendor %}
+{% comment %} Not an approved vendor {% endcomment %}
+<div class="rounded-2xl border border-dashed border-border bg-muted/30 p-10 sm:p-14 text-center">
+  <span class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
+  </span>
+  <h3 class="font-display text-xl font-bold text-foreground">{% trans "You're not an approved vendor yet" %}</h3>
+  <p class="text-muted-foreground mt-1.5 max-w-md mx-auto">{% trans "Apply to sell on Montenegro Experience — once approved, every product attributed to you appears here to edit." %}</p>
+  <a href="/vendor/apply/" class="mt-6 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    {% trans "Apply to sell" %}
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+  </a>
+</div>
+
+{% elif not products %}
+{% comment %} Empty state — approved but no products {% endcomment %}
+<div class="rounded-2xl border border-dashed border-border bg-muted/30 p-10 sm:p-14 text-center">
+  <span class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
+  </span>
+  <h3 class="font-display text-xl font-bold text-foreground">{% trans "No products listed yet" %}</h3>
+  <p class="text-muted-foreground mt-1.5 max-w-md mx-auto">{% trans "Products are accessioned by the Montenegro Experience team. Once an editor adds one, it shows up here for you to manage copy, pricing and status." %}</p>
+  <a href="/contact/" class="mt-6 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    {% trans "Get in touch" %}
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+  </a>
+</div>
+
+{% else %}
+
+{% comment %} KPI row — total products + active count {% endcomment %}
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+  <div class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Products" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl font-bold text-foreground mt-3">{{ products|length }}</p>
+    <p class="text-xs text-muted-foreground mt-1">{% trans "In your catalogue" %}</p>
+  </div>
+</div>
+
+{% comment %} Product list — thumb, name/sku, status pill, price, updated, Edit {% endcomment %}
+<div class="flex items-center justify-between gap-4 mb-4">
+  <h2 class="font-display text-lg font-bold text-foreground">{% trans "Your products" %}</h2>
+</div>
+
+<div class="grid gap-3">
+  {% for p in products %}
+  <div class="group flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-border shadow-card bg-card p-4 hover:border-primary/30 hover:shadow-card-hover transition-all">
+
+    <div class="w-full sm:w-28 h-32 sm:h-20 rounded-xl overflow-hidden bg-muted shrink-0">
+      {% if p.primary_image %}
+      <img src="{{ p.primary_image.image.url }}" alt="{{ p.name }}" class="w-full h-full object-cover">
+      {% else %}
+      <div class="w-full h-full flex items-center justify-center text-muted-foreground">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="min-w-0 flex-1">
+      <div class="flex items-center gap-2 flex-wrap">
+        <h3 class="font-display text-base font-semibold text-foreground truncate">{{ p.name }}</h3>
+        {% if p.status == 'active' %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+          <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>{% trans "Active" %}
+        </span>
+        {% elif p.status == 'draft' %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-accent-warm/15 px-2 py-0.5 text-xs font-medium text-accent-warm">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent-warm"></span>{% trans "Draft" %}
+        </span>
+        {% else %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          <span class="w-1.5 h-1.5 rounded-full bg-muted-foreground/60"></span>{{ p.get_status_display }}
+        </span>
+        {% endif %}
+        {% if p.is_featured %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-rating/15 px-2 py-0.5 text-xs font-medium text-rating">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>{% trans "Featured" %}
+        </span>
+        {% endif %}
+      </div>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-sm text-muted-foreground">
+        <span class="inline-flex items-center gap-1.5">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h.01M7 3h5a1.99 1.99 0 0 1 1.41.59l7 7a2 2 0 0 1 0 2.82l-5 5a2 2 0 0 1-2.82 0l-7-7A1.99 1.99 0 0 1 5 11V6a3 3 0 0 1 3-3"/></svg>
+          {{ p.sku|default:"—" }}
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+          {% blocktrans with when=p.updated_at|date:"M j, Y" %}Updated {{ when }}{% endblocktrans %}
+        </span>
+        <span class="font-medium text-foreground">{{ p.price|money }}</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 shrink-0">
+      <a href="/vendor/me/products/{{ p.id }}/" class="inline-flex items-center justify-center gap-2 h-9 px-3.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
+        {% trans "Edit" %}
+      </a>
+    </div>
+
+  </div>
+  {% endfor %}
+</div>
+
+<p class="mt-6 text-xs text-muted-foreground">
+  {% blocktrans count counter=products|length %}Showing {{ counter }} product.{% plural %}Showing {{ counter }} products.{% endblocktrans %}
+  {% trans "To add a new title, send the details to our acquisitions team — we accession everything by hand." %}
+</p>
+
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,523 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}{% load booking_tags %}
+{% comment %}1:1 Adriatic port of pages/ProductDetail.tsx — 2-col layout (gallery left,
+details right), gallery thumbnails, variant picker, qty + Add-to-cart, reviews,
+related + recently-viewed. Branches on booking_listing_mode (price + cart hidden,
+neutral "Contact for price" state shown instead).
+
+All context vars + form actions kept identical to catalog.product_detail:
+  product (GraphQL dict: name, slug, price, shortDescription, description,
+  compareAtPrice, isOnSale, priceStartsFrom, variants, tags, category,
+  collections, images, id), pdp_vendor, review_summary, images, hero_image,
+  primary_image, videos, related_products, book_specs, product_codes, reviews,
+  pdp_faqs, breadcrumb_items, last_reviewed, out_of_stock, web_story.
+POST: /cart/add/{{ product.id }}/  ·  /back-in-stock/subscribe/{{ product.id }}/
+{% endcomment %}
+{% block title %}{{ product.name }} — Montenegro Experience{% endblock %}
+
+{% block extra_head %}
+{% if hero_image.url %}{% caching_preload_lcp hero_image.url %}{% endif %}
+{% seo_product_jsonld product product_seo_extra %}
+{% if book_jsonld_data %}{% seo_book_jsonld book_jsonld_data %}{% endif %}
+{% if video_seo %}{% seo_video_jsonld video_seo %}{% endif %}
+{% seo_product_og product %}
+{% seo_product_md_link product.slug %}
+{% seo_speakable_jsonld %}
+{% if product.category %}{% seo_breadcrumb_jsonld items=breadcrumb_items %}{% endif %}
+{% if pdp_faqs %}{% seo_faq_jsonld items=pdp_faqs %}{% endif %}
+{% if pdp_faqs %}{% seo_qa_jsonld qa=pdp_faqs name=product.name %}{% endif %}
+{% dl_view_item product %}
+{% endblock %}
+
+{% block content %}
+{% booking_listing_mode as listing_mode %}
+<main class="container max-w-6xl mx-auto px-4 py-8">
+
+  <!-- Breadcrumb / back link -->
+  <nav class="flex flex-wrap items-center gap-1.5 text-sm mb-6">
+    <a href="/" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Home" %}</a>
+    <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    <a href="/products/" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Shop" %}</a>
+    {% with genre=product.book.genres.first %}
+    {% if genre %}
+    <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    <a href="/genre/{{ genre.slug }}/" class="text-muted-foreground hover:text-foreground transition-colors">{{ genre.name }}</a>
+    {% elif product.category %}
+    <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    <a href="/products/?category={{ product.category.slug }}" class="text-muted-foreground hover:text-foreground transition-colors">{{ product.category.name }}</a>
+    {% endif %}
+    {% endwith %}
+    <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    <span class="text-foreground font-medium truncate max-w-[220px]">{{ product.name }}</span>
+  </nav>
+
+  {% if messages %}{% for m in messages %}
+  <div class="mb-6 rounded-xl border px-4 py-3 text-sm {% if m.tags == 'error' %}border-destructive/40 bg-destructive/5 text-destructive{% else %}border-primary/30 bg-primary/5 text-foreground{% endif %}">{{ m }}</div>
+  {% endfor %}{% endif %}
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12" data-pdp-grid>
+
+    <!-- ===== Gallery ===== -->
+    <div class="lg:sticky lg:top-24 lg:self-start">
+      <div class="aspect-square rounded-2xl overflow-hidden bg-muted mb-4">
+        {% if hero_image.url %}
+          <img id="pdp-main-image" src="{{ hero_image.url }}" alt="{{ hero_image.altText|default:product.name }}" class="w-full h-full object-cover" decoding="async">
+        {% else %}
+          <div class="w-full h-full flex items-center justify-center text-muted-foreground">
+            <svg class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+          </div>
+        {% endif %}
+      </div>
+      {% if images|length > 1 %}
+      <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1" role="group" aria-label="{% trans 'Product images' %}">
+        {% for im in images %}{% if im.url %}
+        <button type="button" onclick="var m=document.getElementById('pdp-main-image');if(m){m.src='{{ im.url|escapejs }}';m.alt='{{ im.altText|default:product.name|escapejs }}';}this.parentNode.querySelectorAll('button').forEach(function(b){b.classList.remove('border-primary');b.classList.add('border-transparent');});this.classList.remove('border-transparent');this.classList.add('border-primary');" class="w-20 h-20 rounded-lg overflow-hidden border-2 {% if forloop.first %}border-primary{% else %}border-transparent{% endif %} shrink-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" aria-label="{% blocktrans with n=forloop.counter %}View image {{ n }}{% endblocktrans %}">
+          <img src="{{ im.url }}" alt="" class="w-full h-full object-cover" loading="lazy" decoding="async">
+        </button>
+        {% endif %}{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ===== Details ===== -->
+    <div class="space-y-6">
+      {% with genre=product.book.genres.first %}
+      {% firstof genre.name product.category.name as eyebrow %}
+      {% if eyebrow %}<p class="text-xs font-semibold uppercase tracking-wider text-primary">{{ eyebrow }}</p>{% endif %}
+      {% endwith %}
+
+      <h1 class="font-display text-3xl font-bold text-foreground leading-tight">{{ product.name }}</h1>
+
+      {% if pdp_vendor %}
+      <a href="/vendor/{{ pdp_vendor.slug }}/" class="inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">{% blocktrans with v=pdp_vendor.name %}by {{ v }}{% endblocktrans %}</a>
+      {% endif %}
+
+      {% if review_summary %}
+      <a href="#reviews" class="inline-flex items-center gap-2 text-sm" aria-label="{% blocktrans with a=review_summary.avg c=review_summary.count %}{{ a }} out of 5 from {{ c }} reviews{% endblocktrans %}">
+        <span class="text-rating tracking-wide" aria-hidden="true">{% for i in "12345" %}{% if forloop.counter <= review_summary.avg_int %}★{% elif forloop.counter == review_summary.avg_int|add:1 and review_summary.has_half %}★{% else %}☆{% endif %}{% endfor %}</span>
+        <span class="font-semibold text-foreground">{{ review_summary.avg }}</span>
+        <span class="text-muted-foreground">· {{ review_summary.count }} {% trans "reviews" %}</span>
+      </a>
+      {% endif %}
+
+      <!-- Price -->
+      <div class="flex items-center gap-3" aria-live="polite">
+        {% if listing_mode %}
+          <span class="text-2xl font-semibold text-primary">{% trans "Contact for price" %}</span>
+        {% else %}
+          <span data-pdp-price class="text-3xl font-bold text-foreground">{% if product.priceStartsFrom %}<span class="text-sm font-normal text-muted-foreground">{% trans "From" %} </span>{% endif %}{{ product.price|money }}</span>
+          <span data-pdp-compare class="text-xl text-muted-foreground line-through {% if not product.isOnSale %}hidden{% endif %}">{% if product.isOnSale %}{{ product.compareAtPrice|money }}{% endif %}</span>
+        {% endif %}
+      </div>
+      {% if last_reviewed %}<p class="text-xs text-muted-foreground -mt-3">{% trans "Last reviewed" %} <time datetime="{{ last_reviewed|date:'c' }}">{{ last_reviewed|date:"M j, Y" }}</time></p>{% endif %}
+
+      {# shortDescription is HTML from the TipTap editor; render unescaped. #}
+      {% if product.shortDescription %}<div class="text-muted-foreground leading-relaxed">{{ product.shortDescription|safe }}</div>{% endif %}
+
+      {% storefront_blocks "pdp_below_price" %}
+
+      {% if not listing_mode %}
+      {% if product.variants %}
+      {# Variant picker: selecting one swaps the price + the hidden variant_id sent to /cart/add/. #}
+      <div data-pdp-variant-picker class="space-y-3">
+        <p class="text-xs font-semibold uppercase tracking-wider text-foreground" id="pdp-variants-label">{% trans "Choose an option" %}</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pdp-variants" role="radiogroup" aria-labelledby="pdp-variants-label">
+          {% for v in product.variants %}{% if v.isActive %}
+          <button type="button"
+                  class="pdp-variant relative grid gap-1 text-left p-3.5 rounded-xl border border-border bg-card transition-colors hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none{% if forloop.first %} is-selected{% endif %}"
+                  role="radio"
+                  aria-checked="{% if forloop.first %}true{% else %}false{% endif %}"
+                  tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+                  data-variant-id="{{ v.id }}"
+                  data-variant-type="{{ v.variantType|default:'physical' }}"
+                  data-variant-price="{% if v.price %}{{ v.price|money }}{% endif %}"
+                  data-variant-compare="{% if v.isOnSale and v.compareAtPrice %}{{ v.compareAtPrice|money }}{% endif %}"
+                  data-variant-on-sale="{% if v.isOnSale %}1{% else %}0{% endif %}"
+                  data-variant-image="{{ v.imageUrl|default:'' }}"
+                  data-variant-desc="{{ v.shortDescription|default:''|escape }}">
+            {% if v.imageUrl %}<span class="pdp-variant__thumb"><img src="{{ v.imageUrl }}" alt="" class="w-full h-full object-cover" loading="lazy"></span>{% endif %}
+            <span class="absolute top-3 right-3.5 text-[0.65rem] uppercase tracking-wider font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+              {% if v.variantType == 'digital' %}{% trans "Digital" %}{% elif v.variantType == 'virtual' %}{% trans "Access" %}{% else %}{% trans "Physical" %}{% endif %}
+            </span>
+            {% if v.isOnSale and v.discountPercentage %}<span class="absolute top-2 left-2 bg-accent-warm text-accent-warm-foreground text-[0.65rem] font-semibold rounded-full px-1.5 py-0.5" title="{% trans 'On sale' %}">−{{ v.discountPercentage }}%</span>{% endif %}
+            <span class="font-display text-base font-medium text-foreground leading-snug pr-20">{{ v.name }}{% if v.size %} <span class="text-muted-foreground font-normal">· {{ v.size }}</span>{% endif %}</span>
+            {% if v.price %}
+            <span class="inline-flex items-baseline gap-1.5">
+              <span class="font-semibold text-foreground text-sm">{{ v.price|money }}</span>
+              {% if v.isOnSale and v.compareAtPrice %}<span class="text-xs text-muted-foreground line-through">{{ v.compareAtPrice|money }}</span>{% endif %}
+            </span>
+            {% endif %}
+            {% if v.shortDescription %}<span class="text-sm text-muted-foreground leading-relaxed">{{ v.shortDescription|truncatewords:14 }}</span>{% endif %}
+          </button>
+          {% endif %}{% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Qty + Add to cart -->
+      <form method="post" action="/cart/add/{{ product.id }}/" class="flex items-center gap-3">
+        {% csrf_token %}
+        {% with product.variants|first as first_v %}
+        <input type="hidden" name="variant_id" value="{{ first_v.id|default:'' }}" data-pdp-variant-input>
+        {% endwith %}
+        <label for="pdp-qty" class="sr-only">{% trans "Quantity" %}</label>
+        <div class="flex items-center border border-input rounded-lg h-11">
+          <button type="button" onclick="var i=document.getElementById('pdp-qty');i.value=Math.max(1,(parseInt(i.value,10)||1)-1);" class="w-11 h-full flex items-center justify-center text-foreground hover:bg-muted rounded-l-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" aria-label="{% trans 'Decrease quantity' %}">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+          </button>
+          <input id="pdp-qty" type="number" name="quantity" value="1" min="1" max="20" inputmode="numeric" autocomplete="off" class="w-12 h-full text-center font-medium text-foreground bg-transparent outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
+          <button type="button" onclick="var i=document.getElementById('pdp-qty');i.value=Math.min(20,(parseInt(i.value,10)||1)+1);" class="w-11 h-full flex items-center justify-center text-foreground hover:bg-muted rounded-r-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" aria-label="{% trans 'Increase quantity' %}">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>
+          </button>
+        </div>
+        <button type="submit" data-pdp-cta class="inline-flex items-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+          {% trans "Add to cart" %}
+        </button>
+      </form>
+
+      {% if out_of_stock %}
+      <form method="post" action="/back-in-stock/subscribe/{{ product.id }}/" class="rounded-xl border border-border bg-muted/50 p-4">
+        {% csrf_token %}
+        <p class="text-xs font-semibold uppercase tracking-wider text-foreground mb-1">{% trans "Out of stock" %}</p>
+        <p class="text-sm text-muted-foreground mb-3">{% trans "Drop your email — we'll let you know the moment this is available again." %}</p>
+        <div class="flex flex-wrap items-center gap-2">
+          <label for="bis-email" class="sr-only">{% trans "Email address" %}</label>
+          <input id="bis-email" type="email" name="email" required placeholder="{% trans 'your@email.com' %}" value="{% if request.user.is_authenticated %}{{ request.user.email|default:'' }}{% endif %}" autocomplete="email" class="flex-1 min-w-[180px] h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <button type="submit" class="h-11 px-5 rounded-lg border border-input bg-background text-sm font-semibold text-foreground hover:bg-muted transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">{% trans "Notify me" %}</button>
+        </div>
+      </form>
+      {% endif %}
+
+      {% storefront_blocks "pdp_below_form" %}
+      {% else %}
+      <!-- Listing mode: neutral state (no product enquiry endpoint) -->
+      <div class="rounded-2xl border border-border bg-card p-5">
+        <p class="text-sm text-muted-foreground mb-3">{% trans "This product is part of our directory. Reach out to the maker for availability and pricing." %}</p>
+        {% if pdp_vendor %}
+        <a href="/vendor/{{ pdp_vendor.slug }}/" class="inline-flex items-center gap-2 h-11 px-5 rounded-lg bg-accent-warm text-accent-warm-foreground text-sm font-semibold hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+          {% blocktrans with v=pdp_vendor.name %}Contact {{ v }}{% endblocktrans %}
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Fulfilment / trust strip -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-2xl bg-muted/50 p-5">
+        <div class="flex items-start gap-2.5">
+          <span class="shrink-0 text-primary mt-0.5"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg></span>
+          <div><strong class="block text-sm font-semibold text-foreground">{% trans "Local delivery" %}</strong><p class="text-xs text-muted-foreground mt-0.5">{% trans "Across Montenegro" %}</p></div>
+        </div>
+        <div class="flex items-start gap-2.5">
+          <span class="shrink-0 text-primary mt-0.5"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+          <div><strong class="block text-sm font-semibold text-foreground">{% trans "Local pickup" %}</strong><p class="text-xs text-muted-foreground mt-0.5">{% trans "Meet the maker" %}</p></div>
+        </div>
+        <div class="flex items-start gap-2.5">
+          <span class="shrink-0 text-primary mt-0.5"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-4z"/></svg></span>
+          <div><strong class="block text-sm font-semibold text-foreground">{% trans "Vetted makers" %}</strong><p class="text-xs text-muted-foreground mt-0.5">{% trans "Hand-picked goods" %}</p></div>
+        </div>
+      </div>
+
+      {% if pdp_vendor %}
+      <div class="flex items-center gap-3.5 rounded-2xl bg-secondary/40 p-4">
+        {% if pdp_vendor.logo %}
+        <img src="{{ pdp_vendor.logo.url }}" alt="" class="w-11 h-11 rounded-lg object-contain bg-background p-1 border border-border shrink-0" loading="lazy" decoding="async">
+        {% else %}
+        <div class="w-11 h-11 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-semibold shrink-0">{{ pdp_vendor.name|first|upper }}</div>
+        {% endif %}
+        <div class="min-w-0 flex-1">
+          <p class="text-[0.7rem] uppercase tracking-wider text-muted-foreground">{% trans "Sold by" %}</p>
+          <a href="/vendor/{{ pdp_vendor.slug }}/" class="font-display text-base text-foreground hover:text-primary transition-colors">{{ pdp_vendor.name }}</a>
+        </div>
+        <a href="/vendor/{{ pdp_vendor.slug }}/" class="shrink-0 text-sm font-medium text-primary hover:underline">{% blocktrans with v=pdp_vendor.name %}More from {{ v }} →{% endblocktrans %}</a>
+      </div>
+      {% endif %}
+
+      {% if book_specs %}
+      <div class="border-t border-border pt-5">
+        <p class="text-xs font-semibold uppercase tracking-wider text-foreground mb-3">{% trans "Details" %}</p>
+        <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm text-foreground">
+          {% for spec in book_specs %}
+          <dt class="text-[0.7rem] uppercase tracking-wider text-muted-foreground self-center">{{ spec.label }}</dt>
+          <dd class="m-0">{% if spec.link %}<a href="{{ spec.link }}" class="text-primary hover:underline">{{ spec.value }}</a>{% else %}{{ spec.value }}{% endif %}</dd>
+          {% endfor %}
+        </dl>
+      </div>
+      {% endif %}
+
+      {% if product_codes %}
+      <div class="border-t border-border pt-5">
+        <p class="text-xs font-semibold uppercase tracking-wider text-foreground mb-3">{% trans "Product codes" %}</p>
+        <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm text-foreground">
+          {% for c in product_codes %}
+          <dt class="text-[0.7rem] uppercase tracking-wider text-muted-foreground self-center">{{ c.label }}</dt>
+          <dd class="m-0 tabular-nums">{{ c.value }}</dd>
+          {% endfor %}
+        </dl>
+      </div>
+      {% endif %}
+
+      {% if product.collections %}
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-foreground mb-2.5">{% trans "Featured in" %}</p>
+        <div class="flex flex-wrap gap-2">
+          {% for col in product.collections %}
+          <a href="/products/?collection={{ col.slug }}" class="inline-flex items-center h-8 px-3 rounded-full border border-border text-sm text-foreground hover:border-primary hover:text-primary transition-colors">{{ col.name }}</a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if product.tags %}
+      <div class="flex flex-wrap gap-2">
+        {% for tag in product.tags %}
+        <a href="/products/?tag={{ tag.slug|default:tag.name }}" class="inline-flex items-center h-7 px-2.5 rounded-full bg-muted text-xs text-muted-foreground hover:text-foreground transition-colors">{{ tag.name }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% storefront_blocks "pdp_above_long_description" %}
+
+  {% if product.description %}
+  <section id="about" class="max-w-3xl mt-12 sm:mt-16 scroll-mt-20">
+    <p class="text-xs font-semibold uppercase tracking-wider text-primary mb-3">{% trans "About this product" %}</p>
+    <hr class="border-border mb-6">
+    {# description is HTML from the TipTap editor; render unescaped. #}
+    <div itemprop="description" class="prose-pdp text-foreground leading-7 space-y-4">{{ product.description|safe }}</div>
+  </section>
+  {% endif %}
+
+  {% storefront_blocks "pdp_below_long_description" %}
+</main>
+
+{% if pdp_faqs %}
+<section id="faqs" class="container max-w-3xl mx-auto px-4 mt-4 scroll-mt-20">
+  <p class="text-xs font-semibold uppercase tracking-wider text-primary mb-3">{% trans "Questions" %}</p>
+  <h2 class="font-display text-2xl font-bold text-foreground mb-6">{% trans "Frequently asked" %}</h2>
+  <div class="divide-y divide-border border-y border-border">
+    {% for f in pdp_faqs %}
+    <details class="group py-4">
+      <summary class="flex items-center justify-between gap-4 cursor-pointer font-display text-lg font-medium text-foreground list-none [&::-webkit-details-marker]:hidden">
+        {{ f.q }}
+        <svg class="w-5 h-5 text-muted-foreground shrink-0 transition-transform group-open:rotate-45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      </summary>
+      <div class="mt-3 text-muted-foreground leading-relaxed">{{ f.a }}</div>
+    </details>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% cache 600 pdp_reviews product.id product.updated_at|default:"0" %}
+{% if reviews %}
+<section id="reviews" class="bg-muted/30 mt-12 sm:mt-16 py-12 sm:py-16 scroll-mt-20">
+  <div class="container mx-auto px-4">
+    <p class="text-xs font-semibold uppercase tracking-wider text-primary mb-1">{% trans "Reviews" %}</p>
+    <h2 class="font-display text-2xl font-bold text-foreground mb-8">{% trans "What others said" %}</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {% for r in reviews %}
+      <article class="bg-card border border-border rounded-2xl p-6">
+        <p class="text-rating tracking-wide mb-2">{{ r.stars }}</p>
+        <p class="font-display text-lg italic leading-relaxed text-foreground">“{{ r.body|truncatewords:30 }}”</p>
+        <p class="text-sm text-muted-foreground mt-4">{{ r.author_name }} · {{ r.created_at|date:"M Y" }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endcache %}
+
+{% cache 1800 pdp_related product.id product.updated_at|default:"0" %}
+{% if related_products %}
+<section id="related" class="container mx-auto px-4 mt-12 sm:mt-16 mb-12 scroll-mt-20">
+  <p class="text-xs font-semibold uppercase tracking-wider text-primary mb-1">{% trans "You might also like" %}</p>
+  <h2 class="font-display text-2xl font-bold text-foreground mb-8">{% trans "More to discover" %}</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+    {% for p in related_products %}
+    <a href="/products/{{ p.slug }}/" class="group block">
+      <div class="aspect-[4/3] rounded-xl overflow-hidden bg-muted mb-3">
+        {% if p.primaryImage and p.primaryImage.url %}
+          <img src="{{ p.primaryImage.url }}" alt="{{ p.primaryImage.altText|default:p.name }}" class="w-full h-full object-cover img-zoom" loading="{% caching_img_loading_attr %}" decoding="async">
+        {% else %}
+          <div class="w-full h-full flex items-center justify-center text-muted-foreground text-sm p-4 text-center">{{ p.name|truncatewords:3 }}</div>
+        {% endif %}
+      </div>
+      <h3 class="font-medium text-foreground truncate group-hover:text-primary transition-colors">{{ p.name }}</h3>
+      {% if not listing_mode %}<p class="text-sm font-semibold text-foreground mt-0.5">{{ p.price|money }}</p>{% else %}<p class="text-sm font-semibold text-primary mt-0.5">{% trans "Contact for price" %}</p>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endcache %}
+
+{# Recently Viewed — localStorage; rendered empty server-side; JS hydrates from the visitor's last 8 PDP visits. #}
+<section data-recently-viewed-section hidden class="container mx-auto px-4 mb-12 scroll-mt-20">
+  <p class="text-xs font-semibold uppercase tracking-wider text-primary mb-1">{% trans "Picking up where you left off" %}</p>
+  <h2 class="font-display text-2xl font-bold text-foreground mb-8">{% trans "Recently viewed" %}</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6" data-recently-viewed-list></div>
+</section>
+
+{# Mobile-only sticky add-to-cart bar — mirrors the inline form, proxies clicks to the inline submit. Hidden in listing mode. #}
+{% if not listing_mode %}
+<div data-pdp-sticky class="pdp-sticky-cart fixed inset-x-0 bottom-0 z-40 hidden items-center gap-3 bg-background border-t border-border px-4 py-2.5 shadow-elevated" aria-hidden="false">
+  <span class="flex-1 min-w-0 font-semibold text-lg text-foreground">
+    {% if product.priceStartsFrom %}<span class="block text-[0.7rem] font-normal text-muted-foreground leading-none">{% trans "From" %}</span>{% endif %}
+    <span data-pdp-sticky-price>{{ product.price|money }}</span>
+  </span>
+  <button type="button" data-pdp-sticky-cta class="shrink-0 inline-flex items-center gap-2 h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+    {% trans "Add to cart" %}
+  </button>
+</div>
+{% endif %}
+
+<style>
+/* Component-only styles Tailwind utilities can't express — variant picker
+   :has() grid, selected inset ring, thumbnail, + the mobile sticky-bar
+   show/hide + body padding. Everything else uses theme utilities. */
+.pdp-variant.is-selected { border-color: hsl(var(--primary)); box-shadow: inset 0 0 0 1px hsl(var(--primary)); }
+.pdp-variant:has(.pdp-variant__thumb) { grid-template-columns: 48px 1fr; column-gap: .75rem; align-items: center; }
+.pdp-variant__thumb { grid-row: 1 / span 3; width: 48px; height: 64px; border-radius: 6px; overflow: hidden; background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); }
+.prose-pdp h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.35rem; font-weight: 500; line-height: 1.25; margin: 2rem 0 .75rem; }
+.prose-pdp h3 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.15rem; font-weight: 500; line-height: 1.3; margin: 1.5rem 0 .5rem; }
+@media (max-width: 767px) { .pdp-sticky-cart { display: flex; } body.has-pdp-sticky main { padding-bottom: 5rem; } }
+@media (prefers-reduced-motion: reduce) { .pdp-variant, .group-open\:rotate-45 { transition: none; } }
+</style>
+
+<script>
+/* Variant picker — swaps the displayed price, the hidden variant_id sent to
+   /cart/add/, and the CTA label per variant_type. First active variant is
+   pre-selected server-side so a no-JS POST still works. (Ported verbatim from
+   the original PDP; selected styling now via .is-selected class.) */
+(function () {
+  var picker = document.querySelector('[data-pdp-variant-picker]');
+  if (!picker) return;
+  var hiddenInput  = document.querySelector('[data-pdp-variant-input]');
+  var priceMain    = document.querySelector('[data-pdp-price]');
+  var priceCompare = document.querySelector('[data-pdp-compare]');
+  var ctaButton    = document.querySelector('[data-pdp-cta]');
+  var ctaLabel = { digital: 'Buy & download', virtual: 'Get access', physical: 'Add to cart' };
+  function select(card) {
+    if (!card) return;
+    picker.querySelectorAll('.pdp-variant').forEach(function (c) {
+      c.classList.remove('is-selected');
+      c.setAttribute('aria-checked', 'false');
+      c.setAttribute('tabindex', '-1');
+    });
+    card.classList.add('is-selected');
+    card.setAttribute('aria-checked', 'true');
+    card.setAttribute('tabindex', '0');
+    if (hiddenInput && card.dataset.variantId) hiddenInput.value = card.dataset.variantId;
+    var p = card.dataset.variantPrice;
+    if (p && priceMain) priceMain.textContent = p;
+    if (priceCompare) {
+      var onSale = card.dataset.variantOnSale === '1';
+      var compare = card.dataset.variantCompare || '';
+      if (onSale && compare) { priceCompare.textContent = compare; priceCompare.classList.remove('hidden'); }
+      else { priceCompare.textContent = ''; priceCompare.classList.add('hidden'); }
+    }
+    if (ctaButton && card.dataset.variantType) ctaButton.textContent = ctaLabel[card.dataset.variantType] || 'Add to cart';
+    if (card.dataset.variantId) { try { history.replaceState(null, '', '#v=' + card.dataset.variantId); } catch (_) {} }
+  }
+  picker.addEventListener('click', function (e) {
+    var card = e.target.closest('.pdp-variant');
+    if (!card) return;
+    e.preventDefault(); select(card); card.focus();
+  });
+  function selectFromHash() {
+    var m = (location.hash || '').match(/[#&]v=([0-9a-f-]+)/i);
+    if (!m) return;
+    var target = picker.querySelector('.pdp-variant[data-variant-id="' + m[1] + '"]');
+    if (target) select(target);
+  }
+  selectFromHash();
+  window.addEventListener('hashchange', selectFromHash);
+  picker.addEventListener('keydown', function (e) {
+    var cards = Array.prototype.slice.call(picker.querySelectorAll('.pdp-variant'));
+    if (!cards.length) return;
+    var cur = cards.indexOf(document.activeElement);
+    if (cur < 0) return;
+    var next = cur;
+    switch (e.key) {
+      case 'ArrowRight': case 'ArrowDown': next = (cur + 1) % cards.length; break;
+      case 'ArrowLeft':  case 'ArrowUp':   next = (cur - 1 + cards.length) % cards.length; break;
+      case 'Home': next = 0; break;
+      case 'End':  next = cards.length - 1; break;
+      default: return;
+    }
+    e.preventDefault(); select(cards[next]); cards[next].focus();
+  });
+})();
+</script>
+
+<script>
+/* Recently Viewed — pushes current product onto a localStorage list (cap 8)
+   and renders the OTHER entries into the rail. Cards use the same 4:3 markup
+   as related-products. Falls silent if localStorage is unavailable. */
+(function () {
+  if (!window.localStorage) return;
+  var KEY = 'morph:recently_viewed';
+  var current = {
+    slug:  '{{ product.slug|escapejs }}',
+    name:  '{{ product.name|escapejs }}',
+    image: '{% if hero_image and hero_image.url %}{{ hero_image.url|escapejs }}{% endif %}',
+    price: '{% if product.price %}{{ product.price.amount|escapejs }}{% endif %}',
+    currency: '{% if product.price %}{{ product.price.currency|escapejs }}{% else %}EUR{% endif %}'
+  };
+  var listingMode = {% if listing_mode %}true{% else %}false{% endif %};
+  var list = [];
+  try { list = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (_) { list = []; }
+  if (!Array.isArray(list)) list = [];
+  var others = list.filter(function (p) { return p && p.slug && p.slug !== current.slug; }).slice(0, 8);
+  var wrap = document.querySelector('[data-recently-viewed-section]');
+  var ul   = document.querySelector('[data-recently-viewed-list]');
+  if (wrap && ul && others.length) {
+    ul.innerHTML = others.map(function (p) {
+      var price = (!listingMode && p.price) ? ((p.currency === 'USD' ? '$' : '€') + parseFloat(p.price).toFixed(2)) : '';
+      var imgHtml = p.image
+        ? '<img src="' + p.image.replace(/"/g, '&quot;') + '" alt="" class="w-full h-full object-cover img-zoom" loading="lazy" decoding="async">'
+        : '<div class="w-full h-full flex items-center justify-center text-muted-foreground text-sm p-4 text-center"></div>';
+      var card = document.createElement('a');
+      card.href = '/products/' + p.slug + '/';
+      card.className = 'group block';
+      card.innerHTML = '<div class="aspect-[4/3] rounded-xl overflow-hidden bg-muted mb-3">' + imgHtml + '</div><h3 class="font-medium text-foreground truncate group-hover:text-primary transition-colors"></h3><p class="text-sm font-semibold text-foreground mt-0.5"></p>';
+      card.querySelector('h3').textContent = p.name || '';
+      card.querySelector('p').textContent = price;
+      if (!p.image) card.querySelector('.text-muted-foreground').textContent = (p.name || '').slice(0, 24);
+      return card.outerHTML;
+    }).join('');
+    wrap.hidden = false;
+  }
+  var deduped = [current].concat(list.filter(function (p) { return p && p.slug && p.slug !== current.slug; }));
+  try { localStorage.setItem(KEY, JSON.stringify(deduped.slice(0, 8))); } catch (_) {}
+})();
+</script>
+
+<script>
+/* Mobile sticky cart — mirrors data-pdp-price + data-pdp-cta into the sticky
+   bar and proxies its click to the inline form's submit so server flow is
+   identical. No-op on desktop / when the bar isn't rendered (listing mode). */
+(function () {
+  if (window.matchMedia && !window.matchMedia('(max-width: 767px)').matches) return;
+  var sticky = document.querySelector('[data-pdp-sticky]');
+  if (!sticky) return;
+  document.body.classList.add('has-pdp-sticky');
+  var priceMain   = document.querySelector('[data-pdp-price]');
+  var ctaInline   = document.querySelector('[data-pdp-cta]');
+  var priceSticky = sticky.querySelector('[data-pdp-sticky-price]');
+  var ctaSticky   = sticky.querySelector('[data-pdp-sticky-cta]');
+  function sync() {
+    if (priceMain && priceSticky) priceSticky.textContent = priceMain.textContent;
+    if (ctaInline && ctaSticky)   ctaSticky.textContent   = ctaInline.textContent;
+  }
+  sync();
+  if (priceMain) new MutationObserver(sync).observe(priceMain, { childList: true, characterData: true, subtree: true });
+  if (ctaInline) new MutationObserver(sync).observe(ctaInline, { childList: true, characterData: true, subtree: true });
+  ctaSticky.addEventListener('click', function () { if (ctaInline) ctaInline.click(); });
+})();
+</script>
+{% endblock %}

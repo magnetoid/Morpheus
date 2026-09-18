@@ -1,0 +1,291 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load caching %}{% load i18n %}
+{% block title %}The Marketplace — Montenegro Experience{% endblock %}
+
+{% block extra_head %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 2.5rem;">
+  <div class="wrap">
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.5rem;">
+      {% for item in breadcrumb_items %}
+        {% if forloop.last %}
+          <span aria-current="page">{{ item.name }}</span>
+        {% else %}
+          <a href="{{ item.url }}" style="color: var(--muted);">{{ item.name }}</a>
+          <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
+    <p class="eyebrow">The marketplace</p>
+    <h1 class="display display-xl" style="margin: 1rem 0 1.25rem; max-width: 18ch;">
+      A marketplace of independent hosts<span class="text-accent">.</span>
+    </h1>
+    <p class="lede" style="max-width: 64ch;">
+      Curated by locals. Run by independent guides, hosts and small operators.
+      Every host here was vetted by the Montenegro Experience team before going live.
+    </p>
+    <div style="margin-top: 2rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <a href="/vendors/" class="btn btn-primary">Browse every shop</a>
+      <a href="/products/" class="btn btn-ghost">Or browse all experiences</a>
+    </div>
+  </div>
+</section>
+
+<section class="mp-numbers tight" style="padding: 1.5rem 0 3rem;">
+  <div class="wrap">
+    <hr class="rule">
+    <div class="mp-numbers__row">
+      <div class="mp-numbers__cell">
+        <p class="mp-numbers__big tabular-nums">{{ vendor_count }}</p>
+        <p class="eyebrow">{{ vendor_count|pluralize:"host,hosts" }}</p>
+      </div>
+      <div class="mp-numbers__cell">
+        <p class="mp-numbers__big tabular-nums">{{ active_product_count }}</p>
+        <p class="eyebrow">{{ active_product_count|pluralize:"experience,experiences" }} listed</p>
+      </div>
+      <div class="mp-numbers__cell">
+        <p class="mp-numbers__big tabular-nums">{{ titles_in_stock_now }}</p>
+        <p class="eyebrow">in stock right now</p>
+      </div>
+    </div>
+    <hr class="rule">
+  </div>
+</section>
+
+{% if featured_vendors %}
+<section style="padding: 1.5rem 0 4rem;">
+  <div class="wrap">
+    <div class="mp-section-head">
+      <p class="eyebrow">Featured shops</p>
+      <h2 class="display display-l" style="margin: 0.5rem 0 0;">Recently arrived<span class="text-accent">.</span></h2>
+      <p class="lede" style="max-width: 56ch; margin-top: 0.85rem;">
+        A few of the hosts that joined most recently.
+        Click into a shop to see the full list they keep with us.
+      </p>
+    </div>
+    <div class="mp-grid">
+      {% for v in featured_vendors %}
+      <a href="/vendor/{{ v.obj.slug }}/" class="mp-card">
+        <div class="mp-card__head">
+          {% if v.obj.logo %}
+            <img src="{{ v.obj.logo.url }}" alt="{{ v.obj.name }} logo"
+                 loading="{% caching_img_loading_attr %}" decoding="async"
+                 class="mp-card__logo">
+          {% else %}
+            <div class="mp-card__monogram" aria-hidden="true">{{ v.obj.name|slice:":1" }}</div>
+          {% endif %}
+          <div>
+            <h3 class="mp-card__name">{{ v.obj.name }}</h3>
+            <p class="mp-card__count">
+              {{ v.product_count }} title{{ v.product_count|pluralize }}
+              {% if v.obj.created_at %}· Since {{ v.obj.created_at|date:"F Y" }}{% endif %}
+            </p>
+          </div>
+        </div>
+        {% if v.obj.description %}
+        <p class="mp-card__desc">{{ v.obj.description|truncatechars:200 }}</p>
+        {% endif %}
+        <p class="mp-card__cta">Visit shop <span aria-hidden="true">&rarr;</span></p>
+      </a>
+      {% endfor %}
+    </div>
+    <p style="text-align: center; margin-top: 2.5rem;">
+      <a href="/vendors/" class="btn btn-ghost">See every shop</a>
+    </p>
+  </div>
+</section>
+{% endif %}
+
+<section class="mp-sell" style="padding: 4rem 0;">
+  <div class="wrap">
+    <div class="mp-sell__inner">
+      <div>
+        <p class="eyebrow">Sell with us</p>
+        <h2 class="display display-l" style="margin: 0.5rem 0 1rem; max-width: 20ch;">
+          Bring your experiences to Montenegro Experience<span class="text-accent">.</span>
+        </h2>
+        <p class="lede" style="max-width: 52ch; margin-bottom: 1.5rem;">
+          A three-step onboarding. Transparent commission. Your own dashboard
+          for listings, orders, and payouts. No corporate decks, no algorithmic dumpsters.
+        </p>
+        <ul class="mp-sell__steps">
+          <li><span class="mp-sell__num">1</span> Tell us about your shop.</li>
+          <li><span class="mp-sell__num">2</span> We try it ourselves.</li>
+          <li><span class="mp-sell__num">3</span> List your first experience.</li>
+        </ul>
+        <a href="/vendor/apply/" class="btn btn-primary" style="margin-top: 1.75rem;">Apply to sell</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap">
+    <p class="eyebrow">Questions readers ask</p>
+    <h2 class="display display-m" style="margin: 0.5rem 0 1.5rem;">A few of the obvious ones<span class="text-accent">.</span></h2>
+    <div class="mp-faq">
+      {% if faqs %}
+        {% for f in faqs %}
+        <details class="mp-faq__item">
+          <summary>{{ f.q }}</summary>
+          <p>{{ f.a }}</p>
+        </details>
+        {% endfor %}
+      {% else %}
+        <details class="mp-faq__item">
+          <summary>Who decides which shops join the marketplace?</summary>
+          <p>We do, by hand. Each application is read at the desk. We look for shops with a clear voice and a list that lives somewhere — not on a spreadsheet of dropshipping.</p>
+        </details>
+        <details class="mp-faq__item">
+          <summary>How are orders shipped?</summary>
+          <p>Each shop fulfills its own orders. If your basket pulls from three shops, you'll get three parcels — most arrive in a week or so.</p>
+        </details>
+        <details class="mp-faq__item">
+          <summary>What about returns?</summary>
+          <p>Same cancellation policy across every host. Cancel up to 24h before for a full refund to the original card.</p>
+        </details>
+        <details class="mp-faq__item">
+          <summary>Is Montenegro Experience a host itself?</summary>
+          <p>No. We're the marketplace. The hosts run the experiences. Each listing here belongs to one of them.</p>
+        </details>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section style="padding: 0 0 5rem;">
+  <div class="wrap">
+    <div style="border-top: 1px solid var(--rule); padding-top: 2rem; max-width: 60ch;">
+      <p class="eyebrow">Recommend our shop</p>
+      <p class="lede" style="margin: .5rem 0 1rem;">
+        If you write about travel — earn a commission on every booking tracked through your link.
+      </p>
+      <a href="/affiliates/apply/" class="btn-link">Join our affiliate program</a>
+    </div>
+  </div>
+</section>
+
+<style>
+.mp-numbers__row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  padding: 2.5rem 0;
+  text-align: center;
+}
+@media (max-width: 640px) {
+  .mp-numbers__row { grid-template-columns: 1fr; gap: 2rem; padding: 2rem 0; }
+}
+.mp-numbers__cell { display: flex; flex-direction: column; align-items: center; }
+.mp-numbers__big {
+  font-family: var(--serif);
+  font-size: clamp(2.5rem, 5vw + 1rem, 4rem);
+  line-height: 1;
+  margin: 0 0 0.5rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.mp-section-head { margin-bottom: 2.5rem; max-width: 60ch; }
+
+.mp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.mp-card {
+  display: flex; flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  color: inherit; text-decoration: none;
+  transition: border-color 200ms ease, transform 200ms ease;
+  min-height: 100%;
+}
+.mp-card:hover { border-color: var(--ink-2); transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) {
+  .mp-card { transition: none; }
+  .mp-card:hover { transform: none; }
+}
+.mp-card__head { display: flex; gap: 1rem; align-items: center; }
+.mp-card__logo {
+  width: 56px; height: 56px; flex-shrink: 0;
+  border-radius: 8px; object-fit: contain;
+  background: var(--paper); padding: 6px;
+  border: 1px solid var(--rule);
+}
+.mp-card__monogram {
+  width: 56px; height: 56px; flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--ink); color: var(--paper);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 1.5rem; font-weight: 500;
+}
+.mp-card__name {
+  font-family: var(--serif); font-size: 1.2rem; font-weight: 500;
+  line-height: 1.2; margin: 0;
+}
+.mp-card__count {
+  font-size: 0.78rem; color: var(--muted); margin: 0.2rem 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.mp-card__desc {
+  font-size: 0.9rem; line-height: 1.55; color: var(--ink-2); margin: 0;
+}
+.mp-card__cta {
+  margin: auto 0 0; font-size: 0.85rem; font-weight: 600;
+  color: var(--ink); padding-top: 0.5rem;
+}
+.mp-card:hover .mp-card__cta { color: var(--accent-ink); }
+
+.mp-sell {
+  background: var(--paper-2);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.mp-sell__inner { max-width: 64ch; }
+.mp-sell__steps { list-style: none; padding: 0; margin: 0; }
+.mp-sell__steps li {
+  display: flex; align-items: center; gap: 0.85rem;
+  padding: 0.5rem 0;
+  font-family: var(--serif); font-size: 1.1rem;
+  color: var(--ink-2);
+}
+.mp-sell__num {
+  width: 28px; height: 28px;
+  border-radius: 999px;
+  background: var(--ink); color: var(--paper);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--sans); font-size: 0.85rem; font-weight: 600;
+  flex-shrink: 0;
+}
+
+.mp-faq { max-width: 64ch; }
+.mp-faq__item {
+  border-top: 1px solid var(--rule);
+  padding: 1rem 0;
+}
+.mp-faq__item:last-of-type { border-bottom: 1px solid var(--rule); }
+.mp-faq__item summary {
+  font-family: var(--serif); font-size: 1.15rem; font-weight: 500;
+  cursor: pointer; list-style: none;
+  display: flex; justify-content: space-between; gap: 1rem;
+}
+.mp-faq__item summary::after {
+  content: '+'; font-family: var(--sans); font-size: 1.4rem; line-height: 1;
+  color: var(--muted); transition: transform var(--motion-fast) var(--ease-out);
+}
+.mp-faq__item[open] summary::after { transform: rotate(45deg); }
+.mp-faq__item summary::-webkit-details-marker { display: none; }
+.mp-faq__item p {
+  margin: 0.75rem 0 0; color: var(--ink-2);
+  font-size: 0.95rem; line-height: 1.55;
+}
+</style>
+{% endblock %}

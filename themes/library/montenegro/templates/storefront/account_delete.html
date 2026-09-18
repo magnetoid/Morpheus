@@ -1,0 +1,87 @@
+{% extends "storefront/base.html" %}
+{% load seo %}{% load i18n %}
+{% comment %}Adriatic Tailwind port. Account shell + GDPR Art. 17 destructive
+delete-account confirmation. Context vars preserved: user, error. The form posts
+to itself (method="post") with a required confirm_email field the view checks
+against request.user.email. Destructive styling (red confirm button + warning
+card). Link to /account/data-export/ preserved.{% endcomment %}
+{% block title %}{% trans "Delete my account" %} — Montenegro Experience{% endblock %}
+{% block seo %}{% seo_meta robots="noindex, nofollow" fallback_title="Delete my account" %}{% endblock %}
+
+{% block content %}
+<section class="container mx-auto px-4 py-8 sm:py-12">
+  <div class="max-w-2xl mx-auto">
+
+    {% comment %}Breadcrumb{% endcomment %}
+    <nav class="flex items-center gap-1.5 text-sm mb-4" aria-label="{% trans 'Breadcrumb' %}">
+      <a href="{% url 'storefront:account_home' %}" class="text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">{% trans "Account" %}</a>
+      <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="text-foreground font-medium">{% trans "Delete account" %}</span>
+    </nav>
+
+    {% comment %}Page heading{% endcomment %}
+    <p class="text-sm font-medium text-primary mb-1">{% trans "Privacy" %}</p>
+    <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground mb-3">{% trans "Delete my account" %}<span class="text-accent-warm">.</span></h1>
+    <p class="text-muted-foreground mb-8 max-w-prose">{% trans "You can leave any time. We'll keep what we're legally required to keep (order history for accounting), anonymise what we can, and delete the rest." %}</p>
+
+    {% if error %}
+    <div class="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 mb-6 flex items-start gap-2.5">
+      <svg class="w-4 h-4 text-destructive shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+      <p class="text-sm text-destructive">{{ error }}</p>
+    </div>
+    {% endif %}
+
+    {% comment %}What gets deleted vs anonymised{% endcomment %}
+    <div class="rounded-2xl border border-border shadow-card bg-card p-6 mb-6">
+      <div class="flex items-center gap-3 mb-4">
+        <span class="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive shrink-0">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </span>
+        <h2 class="font-display text-xl font-semibold text-foreground">{% trans "What gets deleted" %}</h2>
+      </div>
+      <ul class="space-y-2 text-sm text-muted-foreground">
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-destructive shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>{% trans "Your profile (name, email, password)" %}</li>
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-destructive shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>{% trans "Saved addresses" %}</li>
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-destructive shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>{% trans "Wishlist + saved payment methods" %}</li>
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-destructive shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>{% trans "Account preferences + login history" %}</li>
+      </ul>
+
+      <div class="border-t border-border my-5"></div>
+
+      <div class="flex items-center gap-3 mb-4">
+        <span class="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61M2 2l20 20"/></svg>
+        </span>
+        <h2 class="font-display text-xl font-semibold text-foreground">{% trans "What gets anonymised (kept for legal/fiscal)" %}</h2>
+      </div>
+      <ul class="space-y-2 text-sm text-muted-foreground">
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>{% trans "Order numbers + totals (for accounting; tax law requires we keep these)" %}</li>
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>{% trans "Reviews you wrote (visible publicly as \"Deleted user\" — the content stays for other readers)" %}</li>
+        <li class="flex items-start gap-2"><svg class="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>{% trans "Customer name + ship-to address inside past Orders → \"[redacted]\"" %}</li>
+      </ul>
+    </div>
+
+    {% comment %}Destructive confirm form{% endcomment %}
+    <form method="post" class="rounded-2xl border border-destructive/30 bg-destructive/5 p-6">
+      {% csrf_token %}
+      <label for="confirm_email" class="block text-sm font-medium text-foreground mb-2">
+        {% trans "Type your email to confirm:" %} <code class="font-mono text-destructive">{{ request.user.email }}</code>
+      </label>
+      <input id="confirm_email" type="email" name="confirm_email" required
+             placeholder="{{ request.user.email }}"
+             class="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring mb-5">
+      <button type="submit" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-destructive text-destructive-foreground text-sm font-semibold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        {% trans "Permanently delete my account" %}
+      </button>
+      <p class="text-xs text-muted-foreground mt-4">{% trans "This cannot be undone. You'll be logged out and redirected home." %}</p>
+    </form>
+
+    <p class="text-sm text-muted-foreground mt-8">
+      {% trans "Not ready?" %}
+      <a href="/account/data-export/" class="text-primary font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">{% trans "Download my data first →" %}</a>
+    </p>
+
+  </div>
+</section>
+{% endblock %}

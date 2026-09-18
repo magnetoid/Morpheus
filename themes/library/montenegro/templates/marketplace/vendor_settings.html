@@ -1,0 +1,85 @@
+{% extends "booking_marketplace/host/_shell.html" %}
+{% load i18n %}
+{% comment %}Adriatic Tailwind port of pages/vendor/VendorSettings.tsx onto the host
+shell. Context vars preserved exactly from the vendor_settings view: vendor
+(.name, .description), account (.method, .external_account), contact_email,
+error, payout_methods (list of (value, label)). POST = same URL
+(/vendor/me/settings/), csrf. Field names kept identical: name (required),
+description, contact_email, payout_method, external_account. Inputs mirror
+service_form.html / detail.html.{% endcomment %}
+{% block title %}{% trans "Settings — Montenegro Experience" %}{% endblock %}
+
+{% block host_eyebrow %}{% trans "Account" %}{% endblock %}
+{% block host_title %}{% trans "Settings" %}{% endblock %}
+{% block host_subtitle %}<p class="text-muted-foreground mt-1.5">{% trans "Manage how your shop appears to customers and how we pay you out." %}</p>{% endblock %}
+
+{% block host_content %}
+{% comment %} Shared input classes (Adriatic — mirrors service_form.html / detail.html). {% endcomment %}
+{% with inp="h-11 w-full rounded-lg border border-input bg-background px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" area="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" lbl="block text-sm font-medium text-foreground mb-1.5" hint="mt-1.5 text-xs text-muted-foreground" %}
+
+{% comment %} View passes a separate `error` string (not via messages) {% endcomment %}
+{% if error %}
+<div class="mb-5 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">{{ error }}</div>
+{% endif %}
+
+<form method="post" class="max-w-3xl space-y-6">
+  {% csrf_token %}
+
+  {% comment %} Shop profile {% endcomment %}
+  <section class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Shop profile" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "How your shop appears to customers across the site." %}</p>
+    <div class="space-y-5">
+      <div>
+        <label for="f-name" class="{{ lbl }}">{% trans "Vendor name" %} <span class="text-destructive">*</span></label>
+        <input id="f-name" type="text" name="name" required maxlength="200" value="{{ vendor.name }}" placeholder="{% trans 'Your shop or business name' %}" class="{{ inp }}">
+      </div>
+      <div>
+        <label for="f-desc" class="{{ lbl }}">{% trans "Description" %}</label>
+        <textarea id="f-desc" name="description" rows="5" placeholder="{% trans 'Tell customers about your shop and what you sell.' %}" class="{{ area }}">{{ vendor.description }}</textarea>
+        <p class="{{ hint }}">{% trans "Shown on your public vendor profile." %}</p>
+      </div>
+      <div>
+        <label for="f-email" class="{{ lbl }}">{% trans "Contact email" %}</label>
+        <input id="f-email" type="email" name="contact_email" maxlength="254" value="{{ contact_email }}" placeholder="you@example.com" class="{{ inp }}">
+        <p class="{{ hint }}">{% trans "Where we send vendor announcements and payout notifications." %}</p>
+      </div>
+    </div>
+  </section>
+
+  {% comment %} Payout method {% endcomment %}
+  <section class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Payout method" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "How we send you the money you earn." %}</p>
+    <div class="space-y-5">
+      <div>
+        <label for="f-method" class="{{ lbl }}">{% trans "Method" %}</label>
+        <div class="relative">
+          <select id="f-method" name="payout_method" class="{{ inp }} appearance-none pr-10">
+            <option value="">{% trans "— select —" %}</option>
+            {% for value, label in payout_methods %}
+            <option value="{{ value }}" {% if account.method == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <svg class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div>
+        <label for="f-ext" class="{{ lbl }}">{% trans "External account reference" %}</label>
+        <input id="f-ext" type="text" name="external_account" maxlength="200" value="{{ account.external_account }}" placeholder="{% trans 'Stripe account ID / IBAN / PayPal email' %}" class="{{ inp }}">
+        <p class="{{ hint }}">{% trans "Stored encrypted. We use this to send payouts." %}</p>
+      </div>
+    </div>
+  </section>
+
+  {% comment %} Actions {% endcomment %}
+  <div class="flex flex-wrap items-center gap-3 pt-1">
+    <button type="submit" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+      {% trans "Save settings" %}
+    </button>
+  </div>
+
+</form>
+{% endwith %}
+{% endblock %}

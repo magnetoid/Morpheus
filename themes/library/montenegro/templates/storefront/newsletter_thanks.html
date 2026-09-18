@@ -1,0 +1,23 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% load i18n %}
+{% block title %}Newsletter — Montenegro Experience{% endblock %}
+
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
+{% block content %}
+<section style="padding: 6rem 0; min-height: 50vh;">
+  <div class="wrap" style="max-width: 560px; text-align: center;">
+    {% if error %}
+      <p class="eyebrow">{% trans "Couldn't sign you up" %}</p>
+      <h1 class="display display-l" style="margin: 1.5rem 0 1rem;">Try again<span class="text-accent">.</span></h1>
+      <p class="lede">{{ error }}</p>
+      <a href="/" class="btn-link" style="margin-top: 2rem; justify-content: center; display: inline-flex;">{% trans "Back to home" %}</a>
+    {% else %}
+      <p class="eyebrow">{% trans "Welcome to the list" %}</p>
+      <h1 class="display display-l" style="margin: 1.5rem 0 1rem;">You're in<span class="text-accent">.</span></h1>
+      <p class="lede">{% trans "We'll send a short note when something worth your attention. No spam." %}</p>
+      <a href="/" class="btn-link" style="margin-top: 2rem; justify-content: center; display: inline-flex;">{% trans "Back to home" %}</a>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

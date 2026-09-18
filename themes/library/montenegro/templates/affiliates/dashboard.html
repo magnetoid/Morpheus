@@ -1,0 +1,185 @@
+{% extends "storefront/base.html" %}
+{% load seo %}{% load i18n %}
+{% comment %}Adriatic (montenegro) port of affiliates/dashboard.html. Renders the
+same context the view passes — accounts (each a.program, a.handle, a.status,
+a.stats{clicks_total,convs_total,approved_conv_total,cr,clicks_7d,convs_7d},
+a.lifetime_earned_amount, a.accrued_balance, a.pending_earnings,
+a.recent_conversions, a.top_links, a.spark) — using montenegro tokens. No
+"dot books" brand leak; links only to routes that exist.{% endcomment %}
+{% block title %}{{ seo_title|default:"Affiliate dashboard" }} — Montenegro Experience{% endblock %}
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
+
+{% block content %}
+<section class="container mx-auto px-4 py-8 sm:py-12">
+  <div class="max-w-5xl mx-auto">
+
+    <p class="text-sm font-medium text-primary mb-1">{% trans "Your account" %}</p>
+    <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground mb-2">{% trans "Affiliate dashboard" %}<span class="text-accent-warm">.</span></h1>
+    <p class="text-muted-foreground max-w-2xl mb-8">{% trans "Clicks, conversions, earnings — what's happening with the travellers you've sent our way, all in one place." %}</p>
+
+    {% if not accounts %}
+    <div class="rounded-2xl border border-dashed border-border bg-card py-16 px-6 text-center">
+      <span class="mx-auto mb-4 w-14 h-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground">
+        <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </span>
+      <p class="font-display text-lg font-semibold text-foreground mb-1">{% trans "You don't have an affiliate account yet." %}</p>
+      <p class="text-muted-foreground max-w-md mx-auto mb-5">{% trans "Apply once, get approved, then earn commission every time a traveller you sent us books." %}</p>
+      <a href="/affiliates/apply/" class="inline-flex items-center justify-center h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{% trans "Apply to join" %} →</a>
+    </div>
+    {% endif %}
+
+    {% for a in accounts %}
+    <article class="rounded-2xl border border-border shadow-card bg-card p-6 sm:p-8 mb-8">
+      <header class="flex flex-wrap items-baseline justify-between gap-4 mb-6">
+        <div>
+          <p class="text-sm font-medium text-primary">{{ a.program.name }}</p>
+          <h2 class="font-display text-xl font-semibold text-foreground mt-0.5">@{{ a.handle }}</h2>
+        </div>
+        <div>
+          {% if a.status == 'approved' %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-primary/10 text-primary">{% trans "Approved" %}</span>
+          {% elif a.status == 'pending' %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-accent-warm/15 text-accent-warm">{% trans "Pending review" %}</span>
+          {% elif a.status == 'suspended' %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-destructive/10 text-destructive">{% trans "Suspended" %}</span>
+          {% else %}<span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground">{{ a.get_status_display }}</span>{% endif %}
+        </div>
+      </header>
+
+      {% if a.status == 'approved' and a.stats %}
+      <!-- KPI row · lifetime -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
+        <div class="rounded-xl border border-border bg-background p-4">
+          <p class="text-[0.68rem] uppercase tracking-wider text-muted-foreground">{% trans "Clicks · lifetime" %}</p>
+          <p class="font-display text-2xl font-semibold text-foreground tabular-nums mt-1">{{ a.stats.clicks_total }}</p>
+        </div>
+        <div class="rounded-xl border border-border bg-background p-4">
+          <p class="text-[0.68rem] uppercase tracking-wider text-muted-foreground">{% trans "Conversions · lifetime" %}</p>
+          <p class="font-display text-2xl font-semibold text-foreground tabular-nums mt-1">{{ a.stats.convs_total }}</p>
+          {% if a.stats.approved_conv_total %}<p class="text-xs text-muted-foreground mt-0.5">{{ a.stats.approved_conv_total }} {% trans "approved" %}</p>{% endif %}
+        </div>
+        <div class="rounded-xl border border-border bg-background p-4">
+          <p class="text-[0.68rem] uppercase tracking-wider text-muted-foreground">{% trans "Earned · lifetime" %}</p>
+          <p class="font-display text-2xl font-semibold text-foreground tabular-nums mt-1">{% if a.lifetime_earned_amount %}{{ a.lifetime_earned_amount }}{% else %}{{ a.accrued_balance }}{% endif %}</p>
+        </div>
+        <div class="rounded-xl border border-border bg-background p-4">
+          <p class="text-[0.68rem] uppercase tracking-wider text-muted-foreground">{% trans "Pending payout" %}</p>
+          <p class="font-display text-2xl font-semibold text-foreground tabular-nums mt-1">{% if a.pending_earnings %}{{ a.pending_earnings }}{% else %}—{% endif %}</p>
+          <p class="text-xs text-muted-foreground mt-0.5">{% trans "approved, not yet paid" %}</p>
+        </div>
+        <div class="rounded-xl border border-border bg-background p-4" title="{% trans 'Conversion rate — conversions divided by clicks.' %}">
+          <p class="text-[0.68rem] uppercase tracking-wider text-muted-foreground">{% trans "Conversion rate" %}</p>
+          <p class="font-display text-2xl font-semibold text-foreground tabular-nums mt-1">{{ a.stats.cr }}%</p>
+        </div>
+      </div>
+
+      <!-- 7-day activity strip -->
+      <div class="rounded-xl border border-border bg-background p-4 mb-6">
+        <div class="flex items-center gap-4 flex-wrap">
+          <p class="text-sm text-muted-foreground"><strong class="text-foreground tabular-nums">{{ a.stats.clicks_7d }}</strong> {% blocktrans count counter=a.stats.clicks_7d %}click{% plural %}clicks{% endblocktrans %} <span class="mx-1 text-muted-foreground">·</span> <strong class="text-foreground tabular-nums">{{ a.stats.convs_7d }}</strong> {% blocktrans count counter=a.stats.convs_7d %}conversion{% plural %}conversions{% endblocktrans %} <span class="text-muted-foreground">— {% trans "last 7 days" %}</span></p>
+          <div class="flex items-end gap-1.5 h-10 ml-auto" role="presentation" aria-hidden="true">
+            {% for d in a.spark %}
+            <div class="flex flex-col items-center w-5" title="{{ d.date|date:'D M j' }} · {{ d.clicks }} clicks · {{ d.conversions }} conv.">
+              <span class="block w-full rounded-t bg-primary/70" style="height: {% if d.clicks %}{{ d.clicks }}{% else %}2{% endif %}px; min-height: 2px; max-height: 28px;"></span>
+              <span class="text-[0.6rem] text-muted-foreground mt-0.5">{{ d.date|date:"D"|slice:":1" }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="flex flex-wrap items-center gap-2 mb-8">
+        {% with btn="inline-flex items-center h-9 px-3.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" %}
+        <a href="/affiliates/me/links/" class="{{ btn }}">{% trans "All links" %}</a>
+        <a href="/affiliates/me/creatives/" class="{{ btn }}">{% trans "Creatives" %}</a>
+        <a href="/affiliates/me/analytics/" class="{{ btn }}">{% trans "Analytics" %}</a>
+        <a href="/affiliates/me/conversions/" class="{{ btn }}">{% trans "Conversions" %}</a>
+        <a href="/affiliates/me/payouts/" class="{{ btn }}">{% trans "Request payout" %}</a>
+        <a href="/affiliates/me/settings/" class="{{ btn }}">{% trans "Settings" %}</a>
+        {% endwith %}
+        <form method="post" action="/affiliates/me/links/new/" class="flex flex-wrap items-center gap-2 ml-auto">
+          {% csrf_token %}
+          <input type="hidden" name="affiliate_id" value="{{ a.id }}">
+          <input type="hidden" name="return_to" value="/affiliates/me/">
+          <input type="text" name="landing_url" value="/" required aria-label="{% trans 'Landing path' %}" placeholder="/experiences/kotor-kayak/" class="h-9 w-44 rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <input type="text" name="label" maxlength="100" aria-label="{% trans 'Label' %}" placeholder="{% trans 'Label (optional)' %}" class="h-9 w-36 rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <button type="submit" class="inline-flex items-center h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">+ {% trans "New link" %}</button>
+        </form>
+      </div>
+
+      <!-- Recent conversions -->
+      <div class="mb-8">
+        <h3 class="font-display text-base font-semibold text-foreground mb-3">{% trans "Recent conversions" %}</h3>
+        {% if a.recent_conversions %}
+        <div class="overflow-x-auto rounded-xl border border-border">
+          <table class="w-full text-sm min-w-[520px]">
+            <thead>
+              <tr class="text-left text-xs uppercase tracking-wide text-muted-foreground border-b border-border">
+                <th class="font-semibold py-2.5 px-4">{% trans "When" %}</th><th class="font-semibold py-2.5 px-4">{% trans "Order" %}</th><th class="font-semibold py-2.5 px-4">{% trans "Gross" %}</th><th class="font-semibold py-2.5 px-4">{% trans "Commission" %}</th><th class="font-semibold py-2.5 px-4">{% trans "Status" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in a.recent_conversions %}
+              <tr class="border-b border-border last:border-0">
+                <td class="py-2.5 px-4 text-muted-foreground tabular-nums">{{ c.created_at|date:"M j, H:i" }}</td>
+                <td class="py-2.5 px-4"><code class="text-xs">#{{ c.order.order_number|default:c.order_id }}</code></td>
+                <td class="py-2.5 px-4 tabular-nums">{{ c.order.total }}</td>
+                <td class="py-2.5 px-4 tabular-nums text-primary">+{{ c.commission }}</td>
+                <td class="py-2.5 px-4">
+                  {% if c.status == 'approved' %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary">{{ c.get_status_display }}</span>
+                  {% elif c.status == 'pending' %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-accent-warm/15 text-accent-warm">{{ c.get_status_display }}</span>
+                  {% elif c.status == 'paid' %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted text-foreground">{{ c.get_status_display }}</span>
+                  {% else %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-destructive/10 text-destructive">{{ c.get_status_display }}</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="text-sm mt-3"><a href="/affiliates/me/conversions/" class="text-primary hover:underline">{% trans "See all conversions" %} →</a></p>
+        {% else %}
+        <p class="text-muted-foreground text-sm py-3">{% trans "No conversions yet — share your links and check back." %}</p>
+        {% endif %}
+      </div>
+
+      <!-- Top performing links -->
+      <div class="mb-6">
+        <h3 class="font-display text-base font-semibold text-foreground mb-3">{% trans "Top performing links" %}</h3>
+        {% if a.top_links %}
+        <div class="overflow-x-auto rounded-xl border border-border">
+          <table class="w-full text-sm min-w-[480px]">
+            <thead>
+              <tr class="text-left text-xs uppercase tracking-wide text-muted-foreground border-b border-border">
+                <th class="font-semibold py-2.5 px-4">{% trans "Link" %}</th><th class="font-semibold py-2.5 px-4">{% trans "Clicks" %}</th><th class="font-semibold py-2.5 px-4">{% trans "Conversions" %}</th><th class="font-semibold py-2.5 px-4">{% trans "CR" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for link in a.top_links %}
+              <tr class="border-b border-border last:border-0">
+                <td class="py-2.5 px-4"><code class="text-xs">/r/{{ link.code }}</code>{% if link.label %} <span class="text-muted-foreground">· {{ link.label }}</span>{% endif %}</td>
+                <td class="py-2.5 px-4 tabular-nums">{{ link.click_count }}</td>
+                <td class="py-2.5 px-4 tabular-nums">{{ link.conversion_count }}</td>
+                <td class="py-2.5 px-4 tabular-nums">{{ link.cr }}%</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted-foreground text-sm py-3">{% trans "No clicks recorded yet." %}</p>
+        {% endif %}
+      </div>
+
+      <p class="text-xs text-muted-foreground pt-4 border-t border-border">
+        {% blocktrans %}Cookie window: <strong>30 days</strong>. A traveller who clicks your link and books anything inside that window is attributed to you, even if they leave and come back later.{% endblocktrans %}
+      </p>
+
+      {% elif a.status == 'pending' %}
+      <p class="text-muted-foreground text-sm">{% trans "We're reviewing your application. You'll be able to create tracked links here once approved — typically within 2 business days." %}</p>
+      {% elif a.status == 'suspended' %}
+      <p class="text-muted-foreground text-sm">{% trans "Your account is suspended. Email us if you think this is an error." %}</p>
+      {% endif %}
+    </article>
+    {% endfor %}
+
+  </div>
+</section>
+{% endblock %}

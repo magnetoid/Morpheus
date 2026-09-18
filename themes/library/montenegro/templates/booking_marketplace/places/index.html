@@ -1,0 +1,58 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% comment %}Places index — gradient hero + type filter + region-grouped card
+sections (richer cards with type badge + good_for pills). CollectionPage/ItemList
+JSON-LD in extra_head.{% endcomment %}
+{% block title %}Places to visit in Montenegro — Montenegro Experience{% endblock %}
+{% block extra_head %}{% if places_jsonld %}<script type="application/ld+json">{{ places_jsonld|safe }}</script>{% endif %}{% endblock %}
+{% block content %}
+<section class="relative bg-gradient-to-br from-primary/10 via-background to-background py-16 md:py-24">
+  <div class="container mx-auto px-4 text-center">
+    <div class="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-medium mb-4">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      {{ places|length }} {% trans "Destinations" %}
+    </div>
+    <h1 class="font-display text-4xl md:text-5xl font-bold text-foreground mb-4">{% trans "Explore Montenegro" %}</h1>
+    <p class="text-lg text-muted-foreground max-w-2xl mx-auto">{% trans "From ancient coastal towns to dramatic mountain peaks, discover every corner of this stunning Adriatic jewel — where to go, when to visit, and what not to miss." %}</p>
+  </div>
+</section>
+
+<div class="container mx-auto px-4 pb-16">
+  {% if type_filters %}
+  <div class="flex flex-wrap justify-center gap-2 -mt-4 mb-12">
+    <a href="/places/" class="inline-flex items-center h-9 px-4 rounded-full text-sm font-medium {% if not selected_type %}bg-primary text-primary-foreground{% else %}border border-input bg-background text-foreground hover:bg-muted{% endif %} transition-colors">{% trans "All" %}</a>
+    {% for t in type_filters %}
+    <a href="/places/?type={{ t.key }}" class="inline-flex items-center h-9 px-4 rounded-full text-sm font-medium {% if selected_type == t.key %}bg-primary text-primary-foreground{% else %}border border-input bg-background text-foreground hover:bg-muted{% endif %} transition-colors">{{ t.label }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if region_groups %}
+  {% for group in region_groups %}
+  <section class="mb-12" aria-label="{{ group.label }}">
+    <h2 class="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
+      <svg class="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      {{ group.label }}
+    </h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {% for p in group.places %}
+      <a href="/places/{{ p.slug }}/" class="group block rounded-2xl overflow-hidden border border-border bg-card shadow-card hover:shadow-lg transition-all duration-300">
+        <div class="aspect-[4/3] overflow-hidden bg-muted relative">
+          {% if p.image %}<img src="{{ p.image.url }}" alt="{{ p.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">{% endif %}
+          {% if p.place_type %}<span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-background/85 backdrop-blur-sm text-xs font-medium text-foreground">{{ p.get_place_type_display }}</span>{% endif %}
+        </div>
+        <div class="p-4">
+          <h3 class="font-semibold text-foreground text-lg mb-1 group-hover:text-primary transition-colors">{{ p.name }}</h3>
+          {% if p.summary %}<p class="text-sm text-muted-foreground line-clamp-2">{{ p.summary }}</p>{% endif %}
+          {% if p.good_for %}<div class="flex flex-wrap gap-1.5 mt-3">{% for g in p.good_for|slice:":3" %}<span class="px-2 py-0.5 rounded-full bg-muted text-[11px] text-muted-foreground capitalize">{{ g }}</span>{% endfor %}</div>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+  {% else %}
+  <p class="text-center text-muted-foreground py-12">{% trans "Destinations are being added. Check back soon." %}</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load i18n %}
+{% comment %}Adriatic Tailwind port of pages/Account.tsx dashboard. Account shell
+(page heading + inline account nav) + card-based tiles. Context vars preserved
+exactly: user, summary (orders_count, pending_returns, store_credit_balance,
+gift_card_count) and the {% templatetag openblock %} storefront_blocks "account_nav" {% templatetag closeblock %} slot.{% endcomment %}
+{% block title %}{% trans "Account" %} — Montenegro Experience{% endblock %}
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
+
+{% block content %}
+<section class="container mx-auto px-4 py-8 sm:py-12">
+  <div class="max-w-3xl mx-auto">
+
+    <!-- Page heading -->
+    <div class="mb-8">
+      <p class="text-sm font-medium text-primary mb-1">{% trans "Your account" %}</p>
+      <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground">
+        {% trans "Hello" %}{% if user.first_name %}, {{ user.first_name }}{% endif %}<span class="text-accent-warm">.</span>
+      </h1>
+      <p class="text-muted-foreground mt-1">{% blocktrans with email=user.email %}Logged in as {{ email }}.{% endblocktrans %}</p>
+    </div>
+
+    <!-- Account nav -->
+    <nav class="flex flex-wrap items-center gap-1 mb-8 -mx-1" aria-label="{% trans 'Account navigation' %}">
+      <span class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-primary bg-muted">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        {% trans "Overview" %}
+      </span>
+      <a href="{% url 'storefront:account_profile' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        {% trans "Profile" %}
+      </a>
+      <a href="{% url 'storefront:account_orders' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+        {% trans "Orders" %}
+      </a>
+      <a href="{% url 'storefront:account_addresses' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        {% trans "Addresses" %}
+      </a>
+      <a href="/wishlist/" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        {% trans "Wishlist" %}
+      </a>
+      <a href="/auth/logout/" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        {% trans "Sign out" %}
+      </a>
+    </nav>
+
+    <!-- Tiles -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      <a href="/account/orders/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+          </span>
+          <p class="font-semibold text-foreground">{% trans "Order history" %}{% if summary.orders_count %} <span class="text-muted-foreground font-normal">({{ summary.orders_count }})</span>{% endif %}</p>
+        </div>
+        <p class="text-sm text-muted-foreground">{% trans "Past orders, status, receipts." %}</p>
+      </a>
+
+      <a href="/account/addresses/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          </span>
+          <p class="font-semibold text-foreground">{% trans "Addresses" %}</p>
+        </div>
+        <p class="text-sm text-muted-foreground">{% trans "Saved shipping &amp; billing addresses." %}</p>
+      </a>
+
+      <a href="/account/returns/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+          </span>
+          <p class="font-semibold text-foreground">{% trans "Returns" %}{% if summary.pending_returns %} <span class="text-muted-foreground font-normal">({{ summary.pending_returns }} {% trans "open" %})</span>{% endif %}</p>
+        </div>
+        <p class="text-sm text-muted-foreground">{% trans "Open and past return requests." %}</p>
+      </a>
+
+      {% if summary.store_credit_balance or summary.gift_card_count %}
+      <a href="/account/credits/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8"/></svg>
+          </span>
+          <p class="font-semibold text-foreground">{% trans "Store credit &amp; gift cards" %}</p>
+        </div>
+        <p class="text-sm text-muted-foreground">
+          {% if summary.store_credit_balance %}{% trans "Credit:" %} {{ summary.store_credit_balance|money }}{% endif %}{% if summary.store_credit_balance and summary.gift_card_count %} · {% endif %}{% if summary.gift_card_count %}{{ summary.gift_card_count }} {% trans "gift card" %}{{ summary.gift_card_count|pluralize }}{% endif %}.
+        </p>
+      </a>
+      {% endif %}
+
+      {% comment %} Plugin-contributed account tiles (downloads, loyalty, …). A disabled
+         plugin contributes nothing, so its tile vanishes. We wrap each block
+         to match the card aesthetic via the shared .account-tile styles below. {% endcomment %}
+      <div class="contents account-blocks">
+        {% storefront_blocks "account_nav" %}
+      </div>
+
+      <a href="/account/profile/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          <p class="font-semibold text-foreground">{% trans "Profile" %}</p>
+        </div>
+        <p class="text-sm text-muted-foreground">{% trans "Name, email, contact preferences." %}</p>
+      </a>
+
+      <a href="/products/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </span>
+          <p class="font-semibold text-foreground">{% trans "Keep browsing" %}</p>
+        </div>
+        <p class="text-sm text-muted-foreground">{% trans "Pick up where you left off." %}</p>
+      </a>
+    </div>
+
+    <!-- Sign out (danger zone) — mirrors SignOutCard.tsx -->
+    <div class="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive shrink-0">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
+        </span>
+        <div>
+          <p class="font-semibold text-destructive">{% trans "Sign out" %}</p>
+          <p class="text-sm text-muted-foreground">{% trans "End your session on this device." %}</p>
+        </div>
+      </div>
+      <a href="/auth/logout/" class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-destructive text-destructive-foreground text-sm font-semibold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        {% trans "Sign out" %}
+      </a>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load caching %}{% load i18n %}
+{% block title %}{{ author_name }} — Montenegro Experience{% endblock %}
+
+{% block extra_head %}
+{% seo_person_jsonld name=author_name slug=author_slug %}
+{% seo_collection_jsonld items=bib_items name=author_name description=seo_description %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="meta" style="margin-bottom: 1rem;">
+      <a href="/" style="color: var(--muted);">Home</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      <a href="/products/" style="color: var(--muted);">All experiences</a>
+    </p>
+    <p class="eyebrow">Experiences</p>
+    <h1 class="display display-xl" style="margin: 1rem 0 1rem;">
+      {{ author_name }}<span class="text-accent">.</span>
+    </h1>
+    {% if book_term.description %}
+      {% if book_term.image %}<img src="{{ book_term.image.url }}" alt="{{ author_name }}" style="width:100%; height:auto; display:block; border-radius:8px; margin:0 0 1.25rem;">{% endif %}
+      <div class="lede">{{ book_term.description|linebreaks }}</div>
+    {% elif bio_page %}
+      {% if bio_page.excerpt %}<p class="lede">{{ bio_page.excerpt }}</p>{% endif %}
+      {% if bio_page.body %}
+      <div style="margin-top: 2rem; font-family: var(--serif); font-size: 1.05rem; line-height: 1.7; color: var(--ink-2);">
+        {{ bio_page.body|linebreaks }}
+      </div>
+      {% endif %}
+    {% else %}
+      <p class="lede">Every experience hosted by {{ author_name }} — newest first.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section style="padding-top: 1.5rem; padding-bottom: 5rem;">
+  <div class="wrap">
+    {% if bibliography %}
+    <p class="eyebrow" style="margin-bottom: 1.25rem;">Bibliography</p>
+    <div class="grid-books">
+      {% for p in bibliography %}
+      {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 5rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
+      <p class="display display-m" style="margin: 0 0 1rem;">No titles in this season<span class="text-accent">.</span></p>
+      <p class="lede" style="margin: 0 auto;">We're between issues for {{ author_name }}. Check the <a href="/products/" style="border-bottom: 1px dotted var(--rule);">full shelf</a>.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

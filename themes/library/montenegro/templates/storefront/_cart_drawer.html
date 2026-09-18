@@ -1,0 +1,274 @@
+{% comment %}
+Slide-out cart drawer. Triggered by any form posting to
+/cart/add/<product_id>/ — JS intercepts, hits the JSON variant, then
+opens the drawer with the new cart contents. Falls back to a normal
+form post + redirect when JS is off.
+{% endcomment %}
+<div id="cart-drawer-root">
+  <div id="cart-drawer-backdrop" hidden></div>
+  <aside id="cart-drawer" hidden aria-label="Cart" aria-hidden="true">
+    <header>
+      <p class="eyebrow" style="margin: 0;">Your bag</p>
+      <button id="cart-drawer-close" type="button" aria-label="Close">×</button>
+    </header>
+    <div id="cart-drawer-empty" hidden>
+      <p>Nothing in the bag yet.</p>
+      <a href="/products/" class="btn btn-primary">Browse experiences</a>
+    </div>
+    <ul id="cart-drawer-items"></ul>
+    <footer id="cart-drawer-footer" hidden>
+      <div class="row">
+        <span>Subtotal</span>
+        <strong id="cart-drawer-subtotal">$0.00</strong>
+      </div>
+      <p class="meta">Shipping &amp; taxes calculated at checkout.</p>
+      <a href="/cart/" class="btn">View cart</a>
+      <a href="/checkout/quick/" class="btn btn-primary">Checkout</a>
+    </footer>
+  </aside>
+</div>
+
+<style>
+  #cart-drawer-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1100;
+    opacity: 0; transition: opacity .2s ease-out;
+  }
+  #cart-drawer-backdrop.is-shown { opacity: 1; }
+  #cart-drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: min(420px, calc(100vw - 2rem));
+    background: var(--paper, #fff);
+    box-shadow: -12px 0 40px rgba(0,0,0,.15);
+    z-index: 1101;
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform .25s ease-out;
+    font-family: var(--sans, system-ui), sans-serif;
+  }
+  #cart-drawer.is-shown { transform: translateX(0); }
+  #cart-drawer header {
+    padding: 1.15rem 1.25rem;
+    border-bottom: 1px solid var(--rule, #e5e0d6);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #cart-drawer-close {
+    background: none; border: 0; cursor: pointer;
+    font-size: 1.4rem; line-height: 1; color: var(--muted, #777);
+  }
+  #cart-drawer-empty {
+    padding: 3rem 1.5rem; text-align: center;
+  }
+  #cart-drawer-empty p { color: var(--muted, #777); margin-bottom: 1.5rem; }
+  #cart-drawer ul {
+    list-style: none; margin: 0; padding: 0;
+    flex: 1; overflow-y: auto;
+  }
+  #cart-drawer ul li {
+    display: flex; gap: .85rem; padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--rule, #e5e0d6);
+  }
+  .cart-drawer-thumb {
+    width: 56px; height: 72px; flex-shrink: 0;
+    background: var(--paper-2, #f7f3ec);
+    border: 1px solid var(--rule, #e5e0d6);
+    overflow: hidden; display: flex; align-items: center; justify-content: center;
+  }
+  .cart-drawer-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .cart-drawer-line { flex: 1; min-width: 0; }
+  .cart-drawer-line .name { font-weight: 600; margin: 0; line-height: 1.3; }
+  .cart-drawer-line .meta { font-size: .8rem; color: var(--muted, #777); margin: .15rem 0 .35rem; }
+  .cart-drawer-line .price { font-weight: 600; }
+  #cart-drawer footer {
+    padding: 1rem 1.25rem 1.5rem;
+    border-top: 1px solid var(--rule, #e5e0d6);
+    display: grid; gap: .65rem;
+    background: var(--paper-2, #f7f3ec);
+  }
+  #cart-drawer footer .row {
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  #cart-drawer footer .meta { font-size: .8rem; color: var(--muted, #777); margin: 0; }
+  #cart-drawer footer .btn { display: block; text-align: center; padding: .75rem 1rem; }
+</style>
+
+<script>
+(function () {
+  var root = document.getElementById('cart-drawer-root');
+  if (!root) return;
+  var backdrop = document.getElementById('cart-drawer-backdrop');
+  var drawer = document.getElementById('cart-drawer');
+  var closeBtn = document.getElementById('cart-drawer-close');
+  var listEl = document.getElementById('cart-drawer-items');
+  var emptyEl = document.getElementById('cart-drawer-empty');
+  var footerEl = document.getElementById('cart-drawer-footer');
+  var subtotalEl = document.getElementById('cart-drawer-subtotal');
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
+      return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c];
+    });
+  }
+
+  function fmtMoney(money) {
+    if (!money || money.amount == null) return '';
+    var symbol = ({ USD: '$', EUR: '€', GBP: '£' })[money.currency] || (money.currency + ' ');
+    return symbol + Number(money.amount).toFixed(2);
+  }
+
+  function render(cart) {
+    listEl.innerHTML = '';
+    var items = (cart && cart.items) || [];
+    if (items.length === 0) {
+      emptyEl.hidden = false;
+      footerEl.hidden = true;
+      return;
+    }
+    emptyEl.hidden = true;
+    footerEl.hidden = false;
+    items.forEach(function (it) {
+      var li = document.createElement('li');
+      var img = it.product && it.product.primaryImage && it.product.primaryImage.url;
+      li.innerHTML = (
+        '<div class="cart-drawer-thumb">'
+        + (img ? '<img src="' + escapeHtml(img) + '" alt="">' : '')
+        + '</div>'
+        + '<div class="cart-drawer-line">'
+        + '<p class="name">' + escapeHtml(it.product && it.product.name) + '</p>'
+        + '<p class="meta">'
+        + (it.variant && it.variant.name ? escapeHtml(it.variant.name) + ' · ' : '')
+        + 'Qty ' + escapeHtml(it.quantity)
+        + '</p>'
+        + '<p class="price">' + escapeHtml(fmtMoney(it.totalPrice)) + '</p>'
+        + '</div>'
+      );
+      listEl.appendChild(li);
+    });
+    subtotalEl.textContent = fmtMoney(cart.subtotal);
+  }
+
+  function open() {
+    drawer.hidden = false;
+    backdrop.hidden = false;
+    drawer.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(function () {
+      drawer.classList.add('is-shown');
+      backdrop.classList.add('is-shown');
+    });
+    document.body.style.overflow = 'hidden';
+  }
+  function close() {
+    drawer.classList.remove('is-shown');
+    backdrop.classList.remove('is-shown');
+    drawer.setAttribute('aria-hidden', 'true');
+    setTimeout(function () {
+      drawer.hidden = true;
+      backdrop.hidden = true;
+    }, 220);
+    document.body.style.overflow = '';
+  }
+
+  closeBtn.addEventListener('click', close);
+  backdrop.addEventListener('click', close);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !drawer.hidden) close();
+  });
+
+  // Fly-to-cart animation: clone the nearest product image, spring it
+  // toward the cart icon, then bump the cart-count badge. Respects
+  // reduced-motion (skips the clone, just bumps the badge).
+  function flyToCart(form) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+    var card = form.closest('[data-product-card]') || form.closest('article') || form.closest('.book') || form.parentElement;
+    var srcImg = card && card.querySelector('img');
+    var target = document.getElementById('cart-icon-link');
+    if (!srcImg || !target || !window.__motion) return Promise.resolve();
+    var rs = srcImg.getBoundingClientRect();
+    var rt = target.getBoundingClientRect();
+    var clone = srcImg.cloneNode(true);
+    clone.className = 'fly-cart-clone';
+    clone.style.left = rs.left + 'px';
+    clone.style.top = rs.top + 'px';
+    clone.style.width = rs.width + 'px';
+    clone.style.height = rs.height + 'px';
+    document.body.appendChild(clone);
+    var dx = (rt.left + rt.width / 2) - (rs.left + rs.width / 2);
+    var dy = (rt.top + rt.height / 2) - (rs.top + rs.height / 2);
+    return window.__motion.animate(
+      clone,
+      { transform: ['translate(0,0) scale(1)', 'translate(' + dx + 'px,' + dy + 'px) scale(0.18)'],
+        opacity: [1, 0.4] },
+      { duration: 0.55, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+    ).finished.then(function () { clone.remove(); }).catch(function () { clone.remove(); });
+  }
+
+  function bumpBadge(count) {
+    var badge = document.getElementById('cart-badge');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.hidden = false;
+      badge.style.animation = 'none';
+      // Force reflow so the next assignment restarts the animation.
+      void badge.offsetWidth;
+      badge.style.animation = 'ko-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1)';
+    } else {
+      badge.hidden = true;
+    }
+  }
+
+  // Intercept any form posting to /cart/add/<id>/ — fetch the JSON
+  // version, then open the drawer with the response.
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    var action = form.getAttribute('action') || '';
+    if (!/^\/cart\/add\//.test(action)) return;
+    e.preventDefault();
+    var fd = new FormData(form);
+    var btn = form.querySelector('button[type=submit]');
+    if (btn) {
+      btn.disabled = true;
+      btn.dataset._origText = btn.dataset._origText || btn.textContent;
+      btn.textContent = 'Adding…';
+    }
+    // Kick the visual immediately — defer the network for parallel feel.
+    var flying = flyToCart(form);
+    fetch(action, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'fetch' },
+      body: fd,
+    })
+      .then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+      })
+      .then(function (res) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = btn.dataset._origText || 'Add to cart';
+        }
+        if (!res.ok || (res.data && res.data.error)) {
+          alert((res.data && res.data.error) || 'Sorry — couldn\'t add that.');
+          return;
+        }
+        var cart = (res.data && res.data.cart) || {};
+        var count = (cart.items || []).reduce(function (n, it) { return n + (it.quantity || 0); }, 0);
+        // Wait for the clone to land before bumping + opening, so the
+        // user's eye follows: image → badge → drawer.
+        flying.then(function () {
+          bumpBadge(count);
+          render(cart);
+          open();
+        });
+      })
+      .catch(function () {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = btn.dataset._origText || 'Add to cart';
+        }
+        // Fall back to a normal form post.
+        form.submit();
+      });
+  }, true);
+})();
+</script>

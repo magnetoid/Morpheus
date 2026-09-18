@@ -1,0 +1,53 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% block title %}{% seo_title "About" %}{% endblock %}
+
+{% block extra_head %}
+{% seo_aboutpage_jsonld name="About Montenegro Experience" description="Montenegro Experience is an independent travel marketplace, run by locals, for travellers. We list experiences from independent local hosts across Montenegro." %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="eyebrow">A note from us</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
+      The Montenegro<br>locals would show you<span class="text-accent">.</span>
+    </h1>
+    <p class="lede" style="margin-bottom: 2rem;">
+      Montenegro Experience is an independent travel marketplace, run by locals, for travellers. We
+      list experiences from independent local hosts across Montenegro. We don't carry
+      books we haven't read. We don't take placements from publishers. The
+      list is small on purpose.
+    </p>
+
+    <hr class="rule" style="margin: 2.5rem 0;">
+
+    <h2 class="display display-m" style="margin-bottom: 1rem;">How it works<span class="text-accent">.</span></h2>
+    <div style="font-size: 1rem; line-height: 1.7; color: var(--ink-2); max-width: 60ch;">
+      <p style="margin-bottom: 1rem;">
+        Every title here was read by at least one of us before it made it
+        onto the list. That's both a constraint and a promise. The list
+        will always be small. Promise: if it's here, it earned the spot.
+      </p>
+      <p style="margin-bottom: 1rem;">
+        We pay attention to small operators. We pay attention to local guides.
+        We pay attention to the books that don't have a marketing budget
+        but have an editor who fought for them. Those are usually the
+        books worth keeping.
+      </p>
+      <p>
+        Free shipping on orders over $40. Always read first.
+      </p>
+    </div>
+
+    <hr class="rule" style="margin: 2.5rem 0;">
+
+    <h2 class="display display-m" style="margin-bottom: 1rem;">Find us<span class="text-accent">.</span></h2>
+    <p class="lede">
+      Drop a line at <a href="{% url 'storefront:contact' %}" class="btn-link" style="display:inline-flex;">contact</a>
+      or browse the <a href="{% url 'storefront:product_list' %}" class="btn-link" style="display:inline-flex;">shelf</a>.
+    </p>
+  </div>
+</section>
+{% endblock %}

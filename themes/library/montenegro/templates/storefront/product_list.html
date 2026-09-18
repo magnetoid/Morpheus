@@ -1,0 +1,172 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load seo %}{% load tracking %}{% load booking_tags %}
+{% comment %}1:1 Adriatic port of pages/Shop.tsx — product grid with search + filters.
+Keeps every context var + GET form/URL from the original storefront PLP view
+(catalog.product_list): products, categories, facets, available_authors,
+search_query, selected_* , page_obj, paginator_base_qs, breadcrumb_items.
+Branches on booking_listing_mode (prices hidden / no cart in listing mode).
+{% endcomment %}
+{% block title %}{% if selected_author %}{% blocktrans with a=selected_author %}Experiences by {{ a }}{% endblocktrans %}{% elif selected_publisher %}{{ selected_publisher }}{% elif selected_category_obj %}{{ selected_category_obj.name }}{% elif search_query %}{% blocktrans with q=search_query %}Search: {{ q }}{% endblocktrans %}{% else %}{% trans "Shop" %}{% endif %} — Montenegro Experience{% endblock %}
+
+{# Clean SEO: bypass the stale catalog seo_object; brand suffix comes from brand_name() = configured store name. #}
+{% block seo %}{% seo_meta og_type="website" fallback_title=selected_category_obj.name|default:search_query|default:"Shop — Montenegro Experience" fallback_description=seo_description|default:"Locally made goods, crafts and souvenirs from Montenegro." %}{% endblock %}
+
+{% block extra_head %}
+{% seo_collection_jsonld items=plp_items name=plp_name description=seo_description %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% seo_pagination_links page_obj=page_obj %}
+{% dl_view_item_list products list_id=selected_category|default:'all' list_name=plp_name %}
+{% endblock %}
+
+{% block content %}
+{% booking_listing_mode as listing_mode %}
+<main class="container mx-auto px-4 py-8">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="{% trans 'Breadcrumb' %}" class="flex flex-wrap items-center gap-1.5 text-sm mb-6">
+    {% for item in breadcrumb_items %}
+      {% if forloop.last %}
+        <span class="text-foreground font-medium" aria-current="page">{{ item.name }}</span>
+      {% else %}
+        <a href="{{ item.url }}" class="text-muted-foreground hover:text-foreground transition-colors">{{ item.name }}</a>
+        <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      {% endif %}
+    {% endfor %}
+  </nav>
+
+  <!-- Title -->
+  <div class="flex items-center gap-3 mb-6">
+    <span class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+    </span>
+    <div>
+      <h1 class="font-display text-3xl font-bold text-foreground leading-tight">
+        {% if selected_author %}{% blocktrans with a=selected_author %}Experiences by {{ a }}{% endblocktrans %}
+        {% elif selected_publisher %}{{ selected_publisher }}
+        {% elif selected_category_obj %}{{ selected_category_obj.name }}
+        {% elif search_query %}{% blocktrans with q=search_query %}Results for “{{ q }}”{% endblocktrans %}
+        {% else %}{% trans "Shop" %}{% endif %}
+      </h1>
+      <p class="text-muted-foreground text-sm mt-1">{% trans "Locally made goods, crafts and souvenirs from Montenegro." %}</p>
+    </div>
+  </div>
+
+  {# Active filter chips — clickable to remove. Shown when any filter is active. #}
+  {% if selected_author or selected_publisher or selected_category or selected_tag or search_query %}
+  <div class="flex flex-wrap gap-2 mb-6">
+    {% if search_query %}<a href="?{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border bg-card text-sm text-foreground hover:border-primary transition-colors">{% trans "Search" %}: {{ search_query }} <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></a>{% endif %}
+    {% if selected_author %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border bg-card text-sm text-foreground hover:border-primary transition-colors">{% trans "Host" %}: {{ selected_author }} <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></a>{% endif %}
+    {% if selected_publisher %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border bg-card text-sm text-foreground hover:border-primary transition-colors">{% trans "Maker" %}: {{ selected_publisher }} <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></a>{% endif %}
+    {% if selected_category %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border bg-card text-sm text-foreground hover:border-primary transition-colors">{% trans "Category" %}: {{ selected_category_obj.name|default:selected_category }} <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></a>{% endif %}
+    {% if selected_tag %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border bg-card text-sm text-foreground hover:border-primary transition-colors">{% trans "Tag" %}: {{ selected_tag }} <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></a>{% endif %}
+    <a href="/products/" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-dashed border-primary/50 text-sm text-primary hover:bg-primary/5 transition-colors">{% trans "Clear all" %}</a>
+  </div>
+  {% endif %}
+
+  <!-- Search + filters (GET → /products/) -->
+  <form method="get" class="flex flex-col sm:flex-row flex-wrap gap-3 mb-8">
+    <div class="relative flex-1 min-w-[240px]">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input name="q" value="{{ search_query }}" placeholder="{% trans 'Search products' %}"
+             class="w-full h-11 rounded-lg border border-input bg-background pl-9 pr-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring transition-shadow">
+    </div>
+    <select name="category" aria-label="{% trans 'Category' %}" class="h-11 w-full sm:w-48 rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <option value="">{% trans "All categories" %}</option>
+      {% for c in categories %}
+      <option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    {% if available_authors %}
+    <select name="author" aria-label="{% trans 'Host' %}" class="h-11 w-full sm:w-44 rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <option value="">{% trans "All hosts" %}</option>
+      {% for a in available_authors %}
+      <option value="{{ a }}" {% if a == selected_author %}selected{% endif %}>{{ a }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <select name="sort" aria-label="{% trans 'Sort' %}" class="h-11 w-full sm:w-40 rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>{% trans "Newest" %}</option>
+      {% if not listing_mode %}
+      <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>{% trans "Price ↑" %}</option>
+      <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>{% trans "Price ↓" %}</option>
+      {% endif %}
+      <option value="name" {% if selected_sort == 'name' %}selected{% endif %}>{% trans "Name" %}</option>
+    </select>
+    {# Carry over active facet selections so the search button doesn't drop them #}
+    {% for f in facets %}{% for v in f.selected %}<input type="hidden" name="attr_{{ f.attr.slug }}" value="{{ v }}">{% endfor %}{% endfor %}
+    <button type="submit" class="h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{% trans "Apply" %}</button>
+  </form>
+
+  {% if facets %}
+  <div class="flex flex-wrap gap-x-6 gap-y-4 mb-8 p-4 sm:p-5 rounded-xl border border-border bg-card">
+    {% for f in facets %}
+    <details class="min-w-[180px]" {% if f.selected %}open{% endif %}>
+      <summary class="cursor-pointer font-semibold text-sm text-foreground py-1 select-none">
+        {{ f.attr.name }}{% if f.selected %} <span class="text-muted-foreground font-normal">({{ f.selected|length }})</span>{% endif %}
+      </summary>
+      <div class="mt-2 flex flex-col gap-2">
+        {% for v in f.values %}
+        <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+          <input type="checkbox" form="facet-form" name="attr_{{ f.attr.slug }}" value="{{ v.slug }}" {% if v.slug in f.selected %}checked{% endif %} onchange="this.form.submit()" class="accent-primary w-4 h-4 rounded border-input focus-visible:ring-2 focus-visible:ring-ring">
+          {% if f.attr.input_type == 'color' and v.value %}<span class="inline-block w-3.5 h-3.5 rounded-full border border-border" style="background:{{ v.value }};"></span>{% endif %}
+          <span>{{ v.name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  <form id="facet-form" method="get">
+    {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+    {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+    {% if selected_sort %}<input type="hidden" name="sort" value="{{ selected_sort }}">{% endif %}
+  </form>
+  {% endif %}
+
+  {% if products %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+    {% for p in products %}
+    {% include "storefront/_product_card.html" with product=p listing_mode=listing_mode %}
+    {% endfor %}
+  </div>
+
+  {% if page_obj and page_obj.paginator.num_pages > 1 %}
+  <nav class="flex flex-wrap items-center justify-center gap-2 mt-12 pt-6 border-t border-border" aria-label="{% trans 'Page navigation' %}">
+    {% if page_obj.has_previous %}
+      <a href="?{{ paginator_base_qs }}{% if paginator_base_qs %}&{% endif %}page={{ page_obj.previous_page_number }}" rel="prev" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>{% trans "Previous" %}
+      </a>
+    {% else %}
+      <span class="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-muted-foreground opacity-50 cursor-not-allowed" aria-disabled="true"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>{% trans "Previous" %}</span>
+    {% endif %}
+
+    <span class="px-4 text-sm text-muted-foreground">
+      {% blocktrans with cur=page_obj.number total=page_obj.paginator.num_pages %}Page {{ cur }} of {{ total }}{% endblocktrans %}
+    </span>
+
+    {% if page_obj.has_next %}
+      <a href="?{{ paginator_base_qs }}{% if paginator_base_qs %}&{% endif %}page={{ page_obj.next_page_number }}" rel="next" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">
+        {% trans "Next" %}<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </a>
+    {% else %}
+      <span class="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-muted-foreground opacity-50 cursor-not-allowed" aria-disabled="true">{% trans "Next" %}<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <!-- Empty state (1:1 with Shop.tsx Package empty state) -->
+  <div class="text-center py-20 px-4 rounded-2xl border border-dashed border-border bg-card">
+    <span class="inline-flex w-14 h-14 rounded-2xl bg-muted items-center justify-center text-muted-foreground mb-4">
+      <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+    </span>
+    <h2 class="font-display text-xl font-semibold text-foreground mb-2">{% trans "No products yet" %}</h2>
+    <p class="text-muted-foreground max-w-md mx-auto">{% trans "We're curating local makers and goods — check back soon, or browse experiences in the meantime." %}</p>
+    <a href="/bookings/" class="inline-flex items-center gap-2 mt-5 h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
+      {% trans "Browse experiences" %}
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

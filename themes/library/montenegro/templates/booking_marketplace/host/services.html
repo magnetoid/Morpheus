@@ -1,0 +1,145 @@
+{% extends "booking_marketplace/host/_shell.html" %}
+{% load morph %}{% load i18n %}
+{% comment %}Adriatic Tailwind port of the host experiences list — references
+src/pages/vendor/VendorDashboard.tsx (KPI cards) + VendorExperiences.tsx (list).
+Extends the host shell and fills its blocks (NOT block content).
+Context vars preserved exactly: vendor, services, pending_bookings,
+new_enquiries. Edit links → /bookings/host/<slug>/edit/, new → /bookings/host/new/.{% endcomment %}
+{% block title %}{% trans "Your experiences — Montenegro Experience" %}{% endblock %}
+
+{% block host_eyebrow %}{% trans "Host" %} · {{ vendor.name }}{% endblock %}
+{% block host_title %}{% trans "Experiences" %}{% endblock %}
+{% block host_subtitle %}
+<p class="text-muted-foreground mt-1.5">{% trans "Manage the experiences you offer and keep an eye on what needs attention." %}</p>
+{% endblock %}
+
+{% block host_actions %}
+<a href="/bookings/host/new/" class="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>
+  {% trans "New experience" %}
+</a>
+{% endblock %}
+
+{% block host_content %}
+
+{% comment %} KPI cards row — Experiences count · Pending bookings · New enquiries {% endcomment %}
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+
+  <div class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Experiences" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl font-bold text-foreground mt-3">{{ services|length }}</p>
+    <p class="text-xs text-muted-foreground mt-1">{% trans "Listed in your catalogue" %}</p>
+  </div>
+
+  <a href="/bookings/host/bookings/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "Pending bookings" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-accent-warm/15 flex items-center justify-center text-accent-warm shrink-0">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl font-bold text-foreground mt-3">{{ pending_bookings|default:0 }}</p>
+    <p class="text-xs text-muted-foreground mt-1 inline-flex items-center gap-1">{% trans "Awaiting your reply" %}<svg class="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></p>
+  </a>
+
+  <a href="/bookings/host/enquiries/" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm font-medium text-muted-foreground">{% trans "New enquiries" %}</p>
+      <span class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+      </span>
+    </div>
+    <p class="font-display text-3xl font-bold text-foreground mt-3">{{ new_enquiries|default:0 }}</p>
+    <p class="text-xs text-muted-foreground mt-1 inline-flex items-center gap-1">{% trans "Leads to follow up" %}<svg class="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></p>
+  </a>
+
+</div>
+
+{% comment %} Experiences list — cover thumb, name, location/region, status, Edit {% endcomment %}
+<div class="flex items-center justify-between gap-4 mb-4">
+  <h2 class="font-display text-lg font-bold text-foreground">{% trans "Your experiences" %}</h2>
+  <a href="/bookings/host/earnings/" class="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+    {% trans "View earnings" %}
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+  </a>
+</div>
+
+{% if services %}
+<div class="grid gap-3">
+  {% for s in services %}
+  <div class="group flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-border shadow-card bg-card p-4 hover:border-primary/30 hover:shadow-card-hover transition-all">
+
+    <div class="w-full sm:w-28 h-32 sm:h-20 rounded-xl overflow-hidden bg-muted shrink-0">
+      {% if s.image %}
+      <img src="{{ s.image.url }}" alt="{{ s.name }}" class="w-full h-full object-cover">
+      {% else %}
+      <div class="w-full h-full flex items-center justify-center text-muted-foreground">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="min-w-0 flex-1">
+      <div class="flex items-center gap-2 flex-wrap">
+        <h3 class="font-display text-base font-semibold text-foreground truncate">{{ s.name }}</h3>
+        {% if s.is_active %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+          <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>{% trans "Live" %}
+        </span>
+        {% else %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          <span class="w-1.5 h-1.5 rounded-full bg-muted-foreground/60"></span>{% trans "Hidden" %}
+        </span>
+        {% endif %}
+      </div>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-sm text-muted-foreground">
+        {% if s.location or s.region %}
+        <span class="inline-flex items-center gap-1.5">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          {% if s.location %}{{ s.location }}{% else %}{{ s.get_region_display }}{% endif %}
+        </span>
+        {% endif %}
+        <span class="inline-flex items-center gap-1.5">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          {% blocktrans with cap=s.daily_capacity %}{{ cap }} seats/day{% endblocktrans %}
+        </span>
+        <span class="font-medium text-foreground">{{ s.price|money }}</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 shrink-0">
+      <a href="/bookings/{{ s.slug }}/" class="inline-flex items-center justify-center gap-2 h-9 px-3 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span class="hidden sm:inline">{% trans "View" %}</span>
+      </a>
+      <a href="/bookings/host/{{ s.slug }}/edit/" class="inline-flex items-center justify-center gap-2 h-9 px-3.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
+        {% trans "Edit" %}
+      </a>
+    </div>
+
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+{% comment %} Empty state {% endcomment %}
+<div class="rounded-2xl border border-dashed border-border bg-muted/30 p-10 sm:p-14 text-center">
+  <span class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+  </span>
+  <h3 class="font-display text-xl font-bold text-foreground">{% trans "No experiences yet" %}</h3>
+  <p class="text-muted-foreground mt-1.5 max-w-sm mx-auto">{% trans "List your first tour, activity or stay and start reaching travellers looking for the real Montenegro." %}</p>
+  <a href="/bookings/host/new/" class="mt-6 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>
+    {% trans "List your first experience" %}
+  </a>
+</div>
+{% endif %}
+
+{% endblock %}

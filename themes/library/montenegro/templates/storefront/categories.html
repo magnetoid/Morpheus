@@ -1,0 +1,53 @@
+{% extends "storefront/base.html" %}
+{% load seo %}{% load caching %}
+{% load i18n %}
+{% block title %}Categories — Montenegro Experience{% endblock %}
+
+{% block extra_head %}
+{% seo_collection_jsonld items=cat_items name="Categories" description="All categories on the Montenegro Experience shelf." %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap">
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem;">
+      {% for item in breadcrumb_items %}
+        {% if forloop.last %}
+          <span aria-current="page">{{ item.name }}</span>
+        {% else %}
+          <a href="{{ item.url }}" style="color: var(--muted);">{{ item.name }}</a>
+          <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
+    <p class="eyebrow">{% trans "Browse experiences" %}</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 2rem;">
+      Categories<span class="text-accent">.</span>
+    </h1>
+
+    {% if categories %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem;">
+      {% for cat in categories %}
+      <a href="/category/{{ cat.slug }}/" class="book" style="display: block; text-decoration: none;">
+        <div class="cover-wrap" style="aspect-ratio: 16/9; border-radius: 6px;">
+          {% if cat.image %}
+            <img src="{{ cat.image.url }}" alt="{{ cat.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
+          {% else %}
+            <div class="placeholder">{{ cat.name }}</div>
+          {% endif %}
+        </div>
+        <div>
+          <p class="title" style="margin-top: .5rem;">{{ cat.name }}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px;">
+      <p class="lede" style="margin: 0 auto;">{% trans "Categories are being set up. Check back soon." %}</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

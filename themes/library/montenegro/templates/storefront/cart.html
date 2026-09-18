@@ -1,0 +1,136 @@
+{% extends "storefront/base.html" %}
+{% load morph i18n booking_tags caching seo %}
+{% comment %}1:1 port of pages/Cart.tsx into the Adriatic Tailwind system.
+Data model is the Django storefront cart (flat line list), not the React
+vendor-grouped cart: context var is `cart` (from CART_QUERY) with
+.itemCount, .subtotal {amount, currency}, and .items[] each carrying
+.id, .quantity, .totalPrice, .product {name, slug, primaryImage}, .variant.
+No quantity-update endpoint exists, so quantity is shown read-only (the
+original table did the same) — only the Remove form POSTs. Branches on
+listing_mode: in listing mode Morpheus runs as a directory, the cart is
+empty/de-emphasized and checkout totals are hidden.
+URLs preserved: storefront:cart_remove (POST), /products/, /checkout/quick/.{% endcomment %}
+{% block title %}{% trans "Your cart" %} — Montenegro Experience{% endblock %}
+
+{% block seo %}{% seo_meta fallback_title="Your cart — Montenegro Experience" robots="noindex, nofollow" %}{% endblock %}
+
+{% block content %}
+{% booking_listing_mode as listing_mode %}
+<div class="container mx-auto px-4 py-8 sm:py-10">
+
+  {% if cart.items %}
+  <!-- ============ HEADING ============ -->
+  <h1 class="text-2xl font-display font-bold text-foreground mb-6 flex items-center gap-2">
+    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+    {% trans "Your cart" %} ({{ cart.itemCount }})
+  </h1>
+
+  {% if messages %}{% for m in messages %}
+  <div class="mb-6 rounded-xl border px-4 py-3 text-sm {% if m.tags == 'error' %}border-destructive/40 bg-destructive/5 text-destructive{% else %}border-primary/30 bg-primary/5 text-foreground{% endif %}">{{ m }}</div>
+  {% endfor %}{% endif %}
+
+  <div class="grid lg:grid-cols-3 gap-6 sm:gap-8 items-start">
+
+    <!-- ============ LINE ITEMS ============ -->
+    <div class="lg:col-span-2">
+      <div class="rounded-2xl border border-border bg-card shadow-card">
+        <div class="p-5 sm:p-6 space-y-4">
+          {% for item in cart.items %}
+          <div class="flex items-center gap-4 {% if not forloop.last %}pb-4 border-b border-border{% endif %}">
+            <!-- thumbnail -->
+            <a href="/products/{{ item.product.slug }}/" class="w-16 h-16 rounded-lg bg-muted overflow-hidden flex-shrink-0 block">
+              {% if item.product.primaryImage %}
+              <img src="{{ item.product.primaryImage.url }}" alt="{{ item.product.name }}" loading="{% caching_img_loading_attr %}" decoding="async" class="w-full h-full object-cover">
+              {% else %}
+              <span class="w-full h-full flex items-center justify-center text-muted-foreground">
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+              </span>
+              {% endif %}
+            </a>
+
+            <!-- title + variant -->
+            <div class="flex-1 min-w-0">
+              <a href="/products/{{ item.product.slug }}/" class="font-medium text-foreground truncate block hover:text-primary transition-colors">{{ item.product.name }}</a>
+              {% if item.variant %}<p class="text-sm text-muted-foreground truncate">{{ item.variant.name }}</p>{% endif %}
+            </div>
+
+            <!-- quantity (read-only: no update endpoint) -->
+            <div class="flex items-center justify-center min-w-[2.5rem] h-9 px-3 rounded-lg border border-border bg-background text-sm font-medium text-foreground" aria-label="{% trans 'Quantity' %}">
+              <span class="text-muted-foreground mr-1 text-xs">×</span>{{ item.quantity }}
+            </div>
+
+            <!-- line total (hidden in listing mode) -->
+            {% if not listing_mode %}
+            <span class="font-semibold w-20 text-right tabular-nums">{{ item.totalPrice|money }}</span>
+            {% endif %}
+
+            <!-- remove -->
+            <form method="post" action="{% url 'storefront:cart_remove' item.id %}">
+              {% csrf_token %}
+              <button type="submit" class="w-9 h-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="{% trans 'Remove' %}">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <a href="/products/" class="inline-flex items-center gap-2 mt-6 text-sm font-medium text-primary hover:text-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+        {% trans "Keep browsing" %}
+      </a>
+    </div>
+
+    <!-- ============ ORDER SUMMARY ============ -->
+    <aside class="lg:col-span-1">
+      <div class="rounded-2xl border border-border bg-card shadow-card p-6 lg:sticky lg:top-24">
+        <h2 class="text-lg font-display font-semibold text-foreground mb-4">{% trans "Order summary" %}</h2>
+
+        {% if listing_mode %}
+        <p class="text-sm text-muted-foreground">{% trans "Browse the directory and contact hosts directly — no checkout needed." %}</p>
+        <a href="/products/" class="mt-5 h-11 w-full rounded-lg bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          {% trans "Keep browsing" %}
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        {% else %}
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm text-foreground">
+            <span>{% trans "Subtotal" %}</span><span class="tabular-nums">{{ cart.subtotal|money }}</span>
+          </div>
+          <div class="flex justify-between text-sm text-muted-foreground">
+            <span>{% trans "Shipping" %}</span><span>{% trans "Calculated at checkout" %}</span>
+          </div>
+          <div class="border-t border-border pt-3 mt-3 flex justify-between items-baseline">
+            <span class="font-semibold text-foreground">{% trans "Total" %}</span>
+            <span class="text-xl font-display font-bold text-foreground tabular-nums">{{ cart.subtotal|money }}</span>
+          </div>
+        </div>
+
+        {% storefront_blocks "cart_summary_extra" %}
+
+        {# Single short flow: one-page checkout (address + shipping + payment on one screen). #}
+        <a href="/checkout/quick/" class="mt-5 h-11 w-full rounded-lg bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          {% trans "Checkout" %}
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <p class="text-xs text-muted-foreground text-center mt-3">{% trans "Free shipping over €40." %}</p>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+
+  {% else %}
+  <!-- ============ EMPTY STATE (1:1 port of Cart.tsx empty branch) ============ -->
+  <div class="max-w-2xl mx-auto py-16 text-center">
+    <svg class="w-16 h-16 mx-auto mb-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+    <h1 class="text-2xl font-display font-bold text-foreground mb-2">{% trans "Your cart is empty" %}</h1>
+    <p class="text-muted-foreground mb-6">{% trans "Nothing here yet. Browse experiences and add one or two." %}</p>
+    <a href="/products/" class="h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {% trans "Browse experiences" %}
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

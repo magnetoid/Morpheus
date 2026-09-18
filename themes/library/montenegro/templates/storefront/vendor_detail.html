@@ -1,0 +1,102 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load caching %}{% load i18n %}{% load booking_tags %}
+{% comment %}Public vendor storefront — Adriatic Tailwind 1:1 port of pages/VendorProfile.tsx.
+Header (logo/monogram + name + location + stats + bio) then a product grid.
+Context preserved: vendor, products, product_count, category_count, books_sold,
+collection_items, intro_text, breadcrumb_items. Branches on listing_mode for pricing.{% endcomment %}
+{% block title %}{{ vendor.name }} — Montenegro Experience{% endblock %}
+
+{% block extra_head %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% if collection_items %}{% seo_collection_jsonld items=collection_items name=vendor.name description=intro_text|truncatechars:200 %}{% endif %}
+{% endblock %}
+
+{% block content %}
+{% booking_listing_mode as listing_mode %}
+<div class="container mx-auto px-4 py-8 sm:py-10">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="{% trans 'Breadcrumb' %}" class="flex flex-wrap items-center gap-1.5 text-sm mb-6">
+    {% for item in breadcrumb_items %}
+      {% if forloop.last %}
+        <span class="text-foreground font-medium truncate max-w-[220px]" aria-current="page">{{ item.name }}</span>
+      {% else %}
+        <a href="{{ item.url }}" class="text-muted-foreground hover:text-foreground transition-colors">{{ item.name }}</a>
+        <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      {% endif %}
+    {% endfor %}
+  </nav>
+
+  <!-- Vendor header -->
+  <div class="flex flex-col sm:flex-row items-start gap-5 sm:gap-6 mb-10">
+    <div class="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+      {% if vendor.logo %}
+        <img src="{{ vendor.logo.url }}" alt="{{ vendor.name }}" loading="eager" decoding="async" fetchpriority="high" class="w-full h-full object-cover">
+      {% else %}
+        <span class="text-2xl font-display font-bold text-primary">{{ vendor.name|slice:":1"|upper }}</span>
+      {% endif %}
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2">
+        <h1 class="font-display text-3xl font-bold text-foreground tracking-tight">{{ vendor.name }}</h1>
+        {% if vendor.is_verified %}
+        <svg class="w-5 h-5 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="{% trans 'Verified host' %}"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+        {% endif %}
+      </div>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground tabular-nums">
+        <span>{% blocktrans count counter=product_count %}{{ counter }} listing{% plural %}{{ counter }} listings{% endblocktrans %}</span>
+        {% if category_count %}<span>{% blocktrans count counter=category_count %}{{ counter }} category{% plural %}{{ counter }} categories{% endblocktrans %}</span>{% endif %}
+        {% if books_sold %}<span>{% blocktrans with sold=books_sold %}{{ sold }}+ sold{% endblocktrans %}</span>{% endif %}
+        {% if vendor.created_at %}<span>{% blocktrans with since=vendor.created_at|date:"F Y" %}Host since {{ since }}{% endblocktrans %}</span>{% endif %}
+      </div>
+      {% if intro_text %}<p class="mt-3 text-muted-foreground leading-relaxed max-w-2xl">{{ intro_text }}</p>{% endif %}
+    </div>
+  </div>
+
+  {% if messages %}{% for m in messages %}
+  <div class="mb-8 rounded-xl border px-4 py-3 text-sm {% if m.tags == 'error' %}border-destructive/40 bg-destructive/5 text-destructive{% else %}border-primary/30 bg-primary/5 text-foreground{% endif %}">{{ m }}</div>
+  {% endfor %}{% endif %}
+
+  <!-- Products / Storefront -->
+  {% if products %}
+  <section>
+    <h2 class="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+      <svg class="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+      {% trans "Shop" %}
+    </h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {% for p in products %}
+      <a href="/products/{{ p.slug }}/" class="group block bg-card rounded-2xl border border-border shadow-card hover-lift overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        <div class="aspect-square bg-muted overflow-hidden">
+          {% if p.primary_image and p.primary_image.image %}
+            <img src="{{ p.primary_image.image.url }}" alt="{{ p.name }}" loading="{% caching_img_loading_attr %}" decoding="async" class="w-full h-full object-cover img-zoom">
+          {% else %}
+            <div class="w-full h-full flex items-center justify-center text-muted-foreground">
+              <svg class="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+            </div>
+          {% endif %}
+        </div>
+        <div class="p-4">
+          <h3 class="font-semibold text-foreground truncate">{{ p.name }}</h3>
+          {% if p.short_description %}<p class="text-sm text-muted-foreground line-clamp-2 mt-1">{{ p.short_description }}</p>{% endif %}
+          <div class="flex items-center justify-between gap-2 mt-2">
+            {% if listing_mode %}
+              <span class="text-sm font-medium text-primary">{% trans "Contact for price" %}</span>
+            {% else %}
+              <span class="font-bold text-foreground">{% if p.price_starts_from %}<span class="text-sm font-normal text-muted-foreground">{% trans "From" %} </span>{% endif %}{% if p.display_price %}{{ p.display_price|money }}{% elif p.price %}{{ p.price|money }}{% endif %}</span>
+            {% endif %}
+            {% if p.category %}<span class="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground shrink-0">{{ p.category.name }}</span>{% endif %}
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% else %}
+  <div class="text-center py-16">
+    <p class="text-muted-foreground">{% trans "This host has no active listings right now." %} <a href="/vendors/" class="text-primary underline hover:no-underline">{% trans "Browse other hosts" %}</a>.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

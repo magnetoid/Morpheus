@@ -1,0 +1,242 @@
+{% extends "booking_marketplace/host/_shell.html" %}
+{% load i18n %}
+{% load booking_tags %}
+{% comment %}Adriatic Tailwind port of the host create/edit experience form —
+reference src/pages/vendor/VendorExperienceForm.tsx. Extends the host shell and
+fills its blocks. Reproduces EVERY field the host_service_form view reads:
+name, short_description, description, region, category, price, duration_minutes,
+daily_capacity, max_guests_per_booking, cancellation_policy, is_active, image,
+weekdays, start_time_<wd>, tier_name/tier_price, addon_name/addon_price/addon_type,
+gallery. Context vars preserved exactly: vendor, svc, categories, regions,
+weekdays, selected_wd, start_times. POST = same page, enctype multipart/form-data, csrf.{% endcomment %}
+{% block title %}{% if svc %}{% trans "Edit" %}{% else %}{% trans "New" %}{% endif %} {% trans "experience — Montenegro Experience" %}{% endblock %}
+
+{% block host_eyebrow %}{% if svc %}{% trans "Edit experience" %}{% else %}{% trans "New experience" %}{% endif %}{% endblock %}
+{% block host_title %}{% if svc %}{{ svc.name }}{% else %}{% trans "New experience" %}{% endif %}{% endblock %}
+{% block host_subtitle %}
+<p class="text-muted-foreground mt-1.5">{% if svc %}{% trans "Update the details travellers see and how this experience can be booked." %}{% else %}{% trans "Tell travellers what makes this experience special and set how it runs." %}{% endif %}</p>
+{% endblock %}
+
+{% block host_actions %}
+<a href="/bookings/host/" class="inline-flex items-center justify-center gap-2 h-11 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+  {% trans "Back to experiences" %}
+</a>
+{% endblock %}
+
+{% block host_content %}
+{% comment %} Shared input classes (Adriatic — mirrors detail.html inputs). {% endcomment %}
+{% with inp="h-11 w-full rounded-lg border border-input bg-background px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" area="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" lbl="block text-sm font-medium text-foreground mb-1.5" hint="mt-1.5 text-xs text-muted-foreground" %}
+
+<form method="post" enctype="multipart/form-data" class="max-w-3xl space-y-6">
+  {% csrf_token %}
+
+  {% comment %} Basics {% endcomment %}
+  <section class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Basics" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "The name and descriptions travellers will read." %}</p>
+    <div class="space-y-5">
+      <div>
+        <label for="f-kind" class="{{ lbl }}">{% trans "Listing type" %}</label>
+        <select id="f-kind" name="listing_kind" class="{{ inp }} appearance-none">
+          {% for k in listing_kinds %}<option value="{{ k.0 }}" {% if svc and svc.listing_kind == k.0 %}selected{% endif %}>{{ k.1 }}</option>{% endfor %}
+        </select>
+        <p class="{{ hint }}">{% trans "Experiences are booked by date; products are ordered by quantity." %}</p>
+      </div>
+      <div>
+        <label for="f-name" class="{{ lbl }}">{% trans "Name" %} <span class="text-destructive">*</span></label>
+        <input id="f-name" type="text" name="name" required value="{{ svc.name|default:'' }}" placeholder="{% trans 'e.g. Kotor Bay sunset kayak tour' %}" class="{{ inp }}">
+      </div>
+      <div>
+        <label for="f-short" class="{{ lbl }}">{% trans "Short description" %}</label>
+        <input id="f-short" type="text" name="short_description" maxlength="300" value="{{ svc.short_description|default:'' }}" placeholder="{% trans 'One line shown on listing cards' %}" class="{{ inp }}">
+        <p class="{{ hint }}">{% trans "Shown on cards across the site. Up to 300 characters." %}</p>
+      </div>
+      <div>
+        <label for="f-desc" class="{{ lbl }}">{% trans "Full description" %}</label>
+        <textarea id="f-desc" name="description" rows="6" placeholder="{% trans 'Describe the experience, what to expect, and why travellers will love it.' %}" class="{{ area }}">{{ svc.description|default:'' }}</textarea>
+      </div>
+    </div>
+  </section>
+
+  {% comment %} Location & category {% endcomment %}
+  <section class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Location &amp; category" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "Help travellers find this experience by area." %}</p>
+    <div class="grid sm:grid-cols-2 gap-5">
+      <div>
+        <label for="f-region" class="{{ lbl }}">{% trans "Region" %}</label>
+        <div class="relative">
+          <select id="f-region" name="region" class="{{ inp }} appearance-none pr-10">
+            <option value="">{% trans "— Select a region —" %}</option>
+            {% for r in regions %}<option value="{{ r.0 }}" {% if svc and svc.region == r.0 %}selected{% endif %}>{{ r.1 }}</option>{% endfor %}
+          </select>
+          <svg class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div>
+        <label for="f-cat" class="{{ lbl }}">{% trans "Category" %}</label>
+        <div class="relative">
+          <select id="f-cat" name="category" class="{{ inp }} appearance-none pr-10">
+            <option value="">{% trans "— Select a category —" %}</option>
+            {% for c in categories %}<option value="{{ c.id }}" {% if svc and svc.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+          </select>
+          <svg class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% comment %} Pricing & capacity {% endcomment %}
+  <section class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Pricing &amp; capacity" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "How much it costs and how many guests you can take." %}</p>
+    <div class="grid sm:grid-cols-3 gap-5">
+      <div>
+        <label for="f-price" class="{{ lbl }}">{% trans "Price per guest" %}</label>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">€</span>
+          <input id="f-price" type="number" name="price" min="0" step="0.01" value="{% if svc %}{{ svc.price.amount }}{% endif %}" placeholder="0.00" class="{{ inp }} pl-7">
+        </div>
+      </div>
+      <div>
+        <label for="f-duration" class="{{ lbl }}">{% trans "Duration (minutes)" %}</label>
+        <input id="f-duration" type="number" name="duration_minutes" min="0" value="{{ svc.duration_minutes|default:120 }}" class="{{ inp }}">
+      </div>
+      <div>
+        <label for="f-cap" class="{{ lbl }}">{% trans "Seats per day" %}</label>
+        <input id="f-cap" type="number" name="daily_capacity" min="0" value="{{ svc.daily_capacity|default:10 }}" class="{{ inp }}">
+        <p class="{{ hint }}">{% trans "Total guests you can take across all bookings each day." %}</p>
+      </div>
+    </div>
+    <div class="mt-5 sm:max-w-[50%]">
+      <label for="f-maxg" class="{{ lbl }}">{% trans "Max guests per booking" %}</label>
+      <input id="f-maxg" type="number" name="max_guests_per_booking" min="1" value="{{ svc.max_guests_per_booking|default:10 }}" class="{{ inp }}">
+      <p class="{{ hint }}">{% trans "The largest party a single booking can include." %}</p>
+    </div>
+  </section>
+
+  {% comment %} Availability — weekdays via weekdays / selected_wd {% endcomment %}
+  <section data-exp-only class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Availability" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "Pick the weekdays this experience runs on." %}</p>
+    <div class="flex flex-wrap gap-2">
+      {% for wd in weekdays %}
+      <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-input bg-background px-3.5 h-11 text-sm font-medium text-foreground transition-colors hover:bg-muted has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:text-primary focus-within:ring-2 focus-within:ring-ring">
+        <input type="checkbox" name="weekdays" value="{{ wd.0 }}" {% if wd.0 in selected_wd %}checked{% endif %} class="h-4 w-4 rounded border-input text-primary accent-primary focus:ring-ring">
+        {{ wd.1 }}
+        <input type="text" name="start_time_{{ wd.0 }}" placeholder="09:00, 14:30" value="{{ start_times|dictkey:wd.0 }}" class="h-9 w-28 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring" onclick="event.preventDefault();event.stopPropagation();">
+      </label>
+      {% endfor %}
+    </div>
+    <p class="{{ hint }}">{% trans "Leave all unchecked to run every day (capacity-limited)." %}</p>
+  </section>
+
+  {% comment %} Pricing tiers — experience-only {% endcomment %}
+  <section data-exp-only class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Pricing tiers (optional)" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "Leave empty to use the single price above." %}</p>
+    <div class="space-y-3">
+      {% for t in svc.tiers.all %}
+      <div class="grid grid-cols-[2fr_1fr] gap-3">
+        <input type="text" name="tier_name" value="{{ t.name }}" placeholder="{% trans 'Name' %}" class="{{ inp }}">
+        <input type="number" name="tier_price" value="{{ t.price.amount }}" step="0.01" placeholder="€" class="{{ inp }}">
+      </div>
+      {% endfor %}
+      <div class="grid grid-cols-[2fr_1fr] gap-3">
+        <input type="text" name="tier_name" placeholder="{% trans 'e.g. Adult' %}" class="{{ inp }}">
+        <input type="number" name="tier_price" step="0.01" placeholder="€" class="{{ inp }}">
+      </div>
+    </div>
+  </section>
+
+  {% comment %} Add-ons + gallery — experience-only {% endcomment %}
+  <section data-exp-only class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Add-ons (optional)" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "Optional paid extras guests can add." %}</p>
+    <div class="space-y-3">
+      {% for a in svc.addons.all %}
+      <div class="grid grid-cols-[2fr_1fr_1fr] gap-3">
+        <input type="text" name="addon_name" value="{{ a.name }}" class="{{ inp }}">
+        <input type="number" name="addon_price" value="{{ a.price.amount }}" step="0.01" class="{{ inp }}">
+        <select name="addon_type" class="{{ inp }} appearance-none"><option value="per_person" {% if a.price_type == 'per_person' %}selected{% endif %}>{% trans "per person" %}</option><option value="per_booking" {% if a.price_type == 'per_booking' %}selected{% endif %}>{% trans "per booking" %}</option></select>
+      </div>
+      {% endfor %}
+      <div class="grid grid-cols-[2fr_1fr_1fr] gap-3">
+        <input type="text" name="addon_name" placeholder="{% trans 'e.g. Hotel pickup' %}" class="{{ inp }}">
+        <input type="number" name="addon_price" step="0.01" placeholder="€" class="{{ inp }}">
+        <select name="addon_type" class="{{ inp }} appearance-none"><option value="per_person">{% trans "per person" %}</option><option value="per_booking">{% trans "per booking" %}</option></select>
+      </div>
+    </div>
+    <div class="mt-5">
+      <label for="f-gallery" class="{{ lbl }}">{% trans "Add gallery photos" %}</label>
+      <input id="f-gallery" type="file" name="gallery" accept="image/*" multiple class="block w-full text-sm text-muted-foreground rounded-lg border border-input bg-background file:mr-3 file:cursor-pointer file:border-0 file:bg-muted file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-foreground">
+    </div>
+  </section>
+
+  {% comment %} Logistics — experience-only {% endcomment %}
+  <section data-exp-only class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Logistics" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "Meeting point, map location and languages." %}</p>
+    <div class="space-y-5">
+      <div><label for="f-meet" class="{{ lbl }}">{% trans "Meeting point" %}</label><textarea id="f-meet" name="meeting_point" rows="2" class="{{ area }}">{{ svc.meeting_point|default:'' }}</textarea></div>
+      <div class="grid sm:grid-cols-2 gap-5">
+        <div><label for="f-lat" class="{{ lbl }}">{% trans "Latitude" %}</label><input id="f-lat" type="text" name="latitude" value="{{ svc.latitude|default:'' }}" class="{{ inp }}"></div>
+        <div><label for="f-lng" class="{{ lbl }}">{% trans "Longitude" %}</label><input id="f-lng" type="text" name="longitude" value="{{ svc.longitude|default:'' }}" class="{{ inp }}"></div>
+      </div>
+      <div><label for="f-lang" class="{{ lbl }}">{% trans "Languages (comma-separated)" %}</label><input id="f-lang" type="text" name="languages" value="{{ svc.languages|join:', ' }}" class="{{ inp }}"></div>
+      <div><label for="f-bring" class="{{ lbl }}">{% trans "What to bring (one per line)" %}</label><textarea id="f-bring" name="what_to_bring" rows="3" class="{{ area }}">{% for w in svc.what_to_bring %}{{ w }}
+{% endfor %}</textarea></div>
+    </div>
+  </section>
+
+  {% comment %} Photo {% endcomment %}
+  <section class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Photo" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "A strong cover image helps travellers picture the experience." %}</p>
+    {% if svc.image %}
+    <div class="mb-4">
+      <div class="w-40 h-28 rounded-xl overflow-hidden bg-muted border border-border">
+        <img src="{{ svc.image.url }}" alt="{{ svc.name }}" class="w-full h-full object-cover">
+      </div>
+      <p class="{{ hint }}">{% trans "Current photo. Upload a new one to replace it." %}</p>
+    </div>
+    {% endif %}
+    <div>
+      <label for="f-image" class="{{ lbl }}">{% if svc.image %}{% trans "Replace photo" %}{% else %}{% trans "Cover photo" %}{% endif %}</label>
+      <input id="f-image" type="file" name="image" accept="image/*" class="block w-full text-sm text-muted-foreground rounded-lg border border-input bg-background file:mr-3 file:cursor-pointer file:border-0 file:bg-muted file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-foreground hover:file:bg-primary/10 hover:file:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    </div>
+  </section>
+
+  {% comment %} Policy & visibility {% endcomment %}
+  <section class="rounded-2xl border border-border shadow-card bg-card p-6">
+    <h2 class="font-display text-lg font-bold text-foreground mb-1">{% trans "Policy &amp; visibility" %}</h2>
+    <p class="text-sm text-muted-foreground mb-5">{% trans "Set expectations and choose whether it's published." %}</p>
+    <div class="space-y-5">
+      <div>
+        <label for="f-cancel" class="{{ lbl }}">{% trans "Cancellation policy" %}</label>
+        <textarea id="f-cancel" name="cancellation_policy" rows="3" placeholder="{% trans 'e.g. Free cancellation up to 24 hours before the experience.' %}" class="{{ area }}">{{ svc.cancellation_policy|default:'' }}</textarea>
+      </div>
+      <label for="f-active" class="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4 cursor-pointer">
+        <input id="f-active" type="checkbox" name="is_active" {% if not svc or svc.is_active %}checked{% endif %} class="mt-0.5 h-4 w-4 rounded border-input text-primary accent-primary focus:ring-ring">
+        <span>
+          <span class="block text-sm font-medium text-foreground">{% trans "Visible on the storefront" %}</span>
+          <span class="block text-xs text-muted-foreground mt-0.5">{% trans "Uncheck to keep this experience hidden from travellers while you finish it." %}</span>
+        </span>
+      </label>
+    </div>
+  </section>
+
+  {% comment %} Actions {% endcomment %}
+  <div class="flex flex-wrap items-center gap-3 pt-1">
+    <button type="submit" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+      {% if svc %}{% trans "Save changes" %}{% else %}{% trans "Create experience" %}{% endif %}
+    </button>
+    <a href="/bookings/host/" class="inline-flex items-center justify-center h-11 px-5 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{% trans "Cancel" %}</a>
+  </div>
+
+</form>
+<script>(function(){var k=document.getElementById('f-kind');if(!k)return;function sync(){var p=k.value==='product';document.querySelectorAll('[data-exp-only]').forEach(function(el){el.style.display=p?'none':'';});}k.addEventListener('change',sync);sync();})();</script>
+{% endwith %}
+{% endblock %}

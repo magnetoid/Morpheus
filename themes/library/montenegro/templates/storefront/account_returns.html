@@ -1,0 +1,90 @@
+{% extends "storefront/base.html" %}
+{% load seo %}{% load i18n %}
+{% comment %}Adriatic Tailwind port of the returns list. Account shell (breadcrumb
++ page heading + inline account nav) + card list of return requests. Context vars
+preserved exactly: returns (ReturnRequest list: id, rma_number, order.order_number,
+created_at, get_reason_display, state, get_state_display). Links unchanged:
+/account/returns/<id>/ and /account/orders/. ReturnRequest uses .state (its own
+model field) — distinct from Order.status.{% endcomment %}
+{% block title %}{% trans "Returns" %} — Montenegro Experience{% endblock %}
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
+
+{% block content %}
+<section class="container mx-auto px-4 py-8 sm:py-12">
+  <div class="max-w-2xl mx-auto">
+
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-1.5 text-sm mb-4">
+      <a href="{% url 'storefront:account_home' %}" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Account" %}</a>
+      <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="text-foreground font-medium">{% trans "Returns" %}</span>
+    </nav>
+
+    <!-- Page heading -->
+    <div class="mb-6">
+      <p class="text-sm font-medium text-primary mb-1">{% trans "Your account" %}</p>
+      <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground">{% trans "Returns" %}<span class="text-accent-warm">.</span></h1>
+    </div>
+
+    <!-- Account nav -->
+    <nav class="flex flex-wrap items-center gap-1 mb-8 -mx-1" aria-label="{% trans 'Account navigation' %}">
+      <a href="{% url 'storefront:account_home' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        {% trans "Overview" %}
+      </a>
+      <a href="{% url 'storefront:account_orders' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+        {% trans "Orders" %}
+      </a>
+      <span class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-primary bg-muted">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+        {% trans "Returns" %}
+      </span>
+      <a href="{% url 'storefront:account_addresses' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        {% trans "Addresses" %}
+      </a>
+      <a href="/auth/logout/" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        {% trans "Sign out" %}
+      </a>
+    </nav>
+
+    {% if returns %}
+    <div class="grid gap-4">
+      {% for r in returns %}
+      <a href="{% url 'storefront:account_return_status' rma_id=r.id %}" class="group rounded-2xl border border-border shadow-card bg-card p-6 hover:border-primary/30 hover:shadow-card-hover transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <div class="flex items-center justify-between gap-4">
+          <div class="min-w-0">
+            <p class="font-display text-lg font-semibold text-foreground truncate">{{ r.rma_number }}</p>
+            <p class="text-sm text-muted-foreground mt-1">
+              {% blocktrans with number=r.order.order_number %}Order #{{ number }}{% endblocktrans %} · {{ r.created_at|date:"M j, Y" }} · {{ r.get_reason_display }}
+            </p>
+          </div>
+          {% if r.state == 'refunded' %}
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary shrink-0">{% trans "Refunded" %}</span>
+          {% elif r.state == 'received' or r.state == 'approved' %}
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary shrink-0">{{ r.get_state_display }}</span>
+          {% elif r.state == 'requested' %}
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rating/15 text-rating shrink-0">{% trans "Requested" %}</span>
+          {% elif r.state == 'rejected' or r.state == 'cancelled' %}
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-destructive/10 text-destructive shrink-0">{{ r.get_state_display }}</span>
+          {% else %}
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground shrink-0">{{ r.get_state_display }}</span>
+          {% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="rounded-2xl border border-dashed border-border bg-card px-6 py-16 text-center">
+      <span class="mx-auto mb-4 w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+      </span>
+      <p class="text-muted-foreground mb-5">{% trans "No returns yet." %}</p>
+      <a href="{% url 'storefront:account_orders' %}" class="inline-flex items-center justify-center h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{% trans "View orders" %}</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

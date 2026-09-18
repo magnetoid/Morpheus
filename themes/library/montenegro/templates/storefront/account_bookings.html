@@ -1,0 +1,146 @@
+{% extends "storefront/base.html" %}
+{% load seo %}{% load i18n %}
+{% comment %}My Bookings — the signed-in customer's experience Bookings + hotel
+StayBookings in one place. Adriatic account shell mirroring account_orders.html.
+Context: experience_bookings (each b.service.name, b.booking_date, b.guests,
+b.get_status_display, b.total_price), stay_bookings (each s.property.name,
+s.room_type.name, s.check_in, s.check_out, s.nights, s.rooms, s.get_status_display,
+s.total), has_bookings.{% endcomment %}
+{% block title %}{% seo_title "My bookings" %}{% endblock %}
+{% block seo %}{% seo_meta robots="noindex, nofollow" %}{% endblock %}
+
+{% block content %}
+<section class="container mx-auto px-4 py-8 sm:py-12">
+  <div class="max-w-3xl mx-auto">
+
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-1.5 text-sm mb-4">
+      <a href="{% url 'storefront:account_home' %}" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Account" %}</a>
+      <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="text-foreground font-medium">{% trans "Bookings" %}</span>
+    </nav>
+
+    <!-- Page heading -->
+    <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground mb-6 flex items-center gap-2">
+      <svg class="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+      {% trans "Your bookings" %}<span class="text-accent-warm">.</span>
+    </h1>
+
+    <!-- Account nav -->
+    <nav class="flex flex-wrap items-center gap-1 mb-8 -mx-1" aria-label="{% trans 'Account navigation' %}">
+      <a href="{% url 'storefront:account_home' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        {% trans "Overview" %}
+      </a>
+      <a href="{% url 'storefront:account_orders' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+        {% trans "Orders" %}
+      </a>
+      <span class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-primary bg-muted">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+        {% trans "Bookings" %}
+      </span>
+      <a href="{% url 'storefront:account_profile' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        {% trans "Profile" %}
+      </a>
+      <a href="/wishlist/" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        {% trans "Wishlist" %}
+      </a>
+      <a href="/auth/logout/" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        {% trans "Sign out" %}
+      </a>
+    </nav>
+
+    {% if has_bookings %}
+    <div class="space-y-10">
+
+      {% if experience_bookings %}
+      <div>
+        <h2 class="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg>
+          {% trans "Experiences & tours" %}
+        </h2>
+        <div class="grid gap-4">
+          {% for b in experience_bookings %}
+          <div class="rounded-2xl border border-border shadow-card bg-card p-5 sm:p-6">
+            <div class="flex items-start justify-between gap-4 flex-wrap">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <p class="font-display text-lg font-semibold text-foreground">{{ b.service.name }}</p>
+                  <span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-medium capitalize
+                    {% if b.status == 'confirmed' %}bg-primary/10 text-primary{% elif b.status == 'completed' %}bg-muted text-foreground{% elif b.status == 'cancelled' %}bg-destructive/10 text-destructive{% else %}bg-accent-warm/15 text-accent-warm{% endif %}">{{ b.get_status_display }}</span>
+                </div>
+                <p class="text-sm text-muted-foreground mt-1.5 flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+                  {{ b.booking_date|date:"F j, Y" }}{% if b.time_slot %} · {{ b.time_slot }}{% endif %}
+                  <span class="mx-1">·</span>
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  {% blocktrans count counter=b.guests %}{{ counter }} guest{% plural %}{{ counter }} guests{% endblocktrans %}
+                </p>
+              </div>
+              <div class="text-right ml-auto">
+                <p class="font-display text-xl font-semibold text-foreground">{{ b.total_price }}</p>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if stay_bookings %}
+      <div>
+        <h2 class="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"/></svg>
+          {% trans "Hotel stays" %}
+        </h2>
+        <div class="grid gap-4">
+          {% for s in stay_bookings %}
+          <div class="rounded-2xl border border-border shadow-card bg-card p-5 sm:p-6">
+            <div class="flex items-start justify-between gap-4 flex-wrap">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <p class="font-display text-lg font-semibold text-foreground">{{ s.property.name }}</p>
+                  <span class="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-medium capitalize
+                    {% if s.status == 'confirmed' %}bg-primary/10 text-primary{% elif s.status == 'completed' %}bg-muted text-foreground{% elif s.status == 'cancelled' %}bg-destructive/10 text-destructive{% else %}bg-accent-warm/15 text-accent-warm{% endif %}">{{ s.get_status_display }}</span>
+                </div>
+                <p class="text-sm text-muted-foreground mt-1">{{ s.room_type.name }}</p>
+                <p class="text-sm text-muted-foreground mt-1.5 flex items-center gap-1.5 flex-wrap">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+                  {{ s.check_in|date:"M j" }} → {{ s.check_out|date:"M j, Y" }}
+                  <span class="mx-1">·</span>
+                  {% blocktrans count counter=s.nights %}{{ counter }} night{% plural %}{{ counter }} nights{% endblocktrans %}
+                  <span class="mx-1">·</span>
+                  {% blocktrans count counter=s.rooms %}{{ counter }} room{% plural %}{{ counter }} rooms{% endblocktrans %}
+                </p>
+              </div>
+              <div class="text-right ml-auto">
+                <p class="font-display text-xl font-semibold text-foreground">{{ s.total }}</p>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+    {% else %}
+    <div class="rounded-2xl border border-dashed border-border bg-card py-16 px-6 text-center">
+      <span class="mx-auto mb-4 w-14 h-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground">
+        <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+      </span>
+      <p class="font-display text-lg font-semibold text-foreground mb-1">{% trans "No bookings yet." %}</p>
+      <p class="text-muted-foreground mb-5">{% trans "When you book an experience or a hotel stay, it'll show up here." %}</p>
+      <div class="flex items-center justify-center gap-3 flex-wrap">
+        <a href="/bookings/" class="inline-flex items-center justify-center h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{% trans "Browse experiences" %}</a>
+        <a href="/hotels/" class="inline-flex items-center justify-center h-11 px-6 rounded-lg border border-border text-foreground text-sm font-semibold hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{% trans "Find a hotel" %}</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

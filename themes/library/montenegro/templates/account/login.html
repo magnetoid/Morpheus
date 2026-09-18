@@ -1,0 +1,111 @@
+{% extends "storefront/base.html" %}
+{% load i18n account socialaccount %}
+{% comment %}
+  Montenegro-themed allauth login override (Adriatic design).
+  Look ported from src/pages/Auth.tsx; conventions from booking_marketplace/detail.html.
+  Preserves allauth contract: form.login (email — ACCOUNT_LOGIN_METHODS={'email'}),
+  form.password, form.remember, action {% url 'account_login' %}, csrf,
+  redirect_field_name/redirect_field_value hidden input.
+{% endcomment %}
+
+{% block title %}{% trans "Sign in" %} — Montenegro Experience{% endblock %}
+
+{% block seo %}<title>{% trans "Sign in" %} — Montenegro Experience</title>
+<meta name="robots" content="noindex,nofollow">{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4">
+  <div class="max-w-md mx-auto my-12">
+    <div class="rounded-2xl border border-border shadow-card bg-card p-6 sm:p-8">
+
+      <!-- Brand -->
+      <div class="text-center mb-6">
+        <a href="/" class="inline-flex items-center gap-2 mb-5">
+          <span class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+            <span class="text-primary-foreground font-display font-bold text-xl">M</span>
+          </span>
+          <span class="font-display text-xl font-semibold text-foreground">{% trans "Montenegro Experience" %}</span>
+        </a>
+        <h1 class="font-display text-2xl font-bold text-foreground">{% trans "Welcome back" %}</h1>
+        <p class="text-muted-foreground mt-2 text-sm">{% trans "Sign in to continue your journey." %}</p>
+      </div>
+
+      <form method="post" action="{% url 'account_login' %}" class="space-y-4">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="rounded-lg border border-destructive/40 bg-destructive/5 px-3.5 py-2.5">
+          <ul class="space-y-1 text-sm text-destructive">
+            {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        <!-- Email (allauth login field) -->
+        <div class="space-y-1.5">
+          <label for="{{ form.login.id_for_label }}" class="block text-sm font-medium text-foreground">{{ form.login.label|default:_("Email") }}</label>
+          <input type="email" name="{{ form.login.html_name }}" id="{{ form.login.id_for_label }}"
+                 value="{{ form.login.value|default:'' }}" autocomplete="email" required
+                 placeholder="{% trans 'you@example.com' %}"
+                 class="w-full h-11 rounded-lg border bg-background px-3.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring {% if form.login.errors %}border-destructive{% else %}border-input{% endif %}">
+          {% if form.login.errors %}<p class="text-sm text-destructive">{{ form.login.errors|join:" " }}</p>{% endif %}
+        </div>
+
+        <!-- Password -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-foreground">{{ form.password.label|default:_("Password") }}</label>
+            <a href="{% url 'account_reset_password' %}" class="text-sm text-primary hover:underline">{% trans "Forgot password?" %}</a>
+          </div>
+          <input type="password" name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
+                 autocomplete="current-password" required placeholder="••••••••"
+                 class="w-full h-11 rounded-lg border bg-background px-3.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring {% if form.password.errors %}border-destructive{% else %}border-input{% endif %}">
+          {% if form.password.errors %}<p class="text-sm text-destructive">{{ form.password.errors|join:" " }}</p>{% endif %}
+        </div>
+
+        <!-- Remember me -->
+        {% if form.remember %}
+        <label class="inline-flex items-center gap-2 text-sm text-foreground select-none">
+          <input type="checkbox" name="{{ form.remember.html_name }}" id="{{ form.remember.id_for_label }}"
+                 {% if form.remember.value %}checked{% endif %}
+                 class="h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring">
+          {% trans "Remember me" %}
+        </label>
+        {% endif %}
+
+        {% if redirect_field_value %}<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">{% endif %}
+
+        <button type="submit" class="w-full h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">{% trans "Sign in" %}</button>
+      </form>
+
+      <!-- Social providers (renders only if any are configured) -->
+      {% get_providers as socialaccount_providers %}
+      {% if socialaccount_providers %}
+      <div class="relative my-6">
+        <div class="absolute inset-0 flex items-center"><span class="w-full border-t border-border"></span></div>
+        <div class="relative flex justify-center"><span class="bg-card px-3 text-xs uppercase tracking-wide text-muted-foreground">{% trans "or" %}</span></div>
+      </div>
+      <div class="space-y-2">
+        {% for provider in socialaccount_providers %}
+        <a href="{% provider_login_url provider.id process='login' %}{% if redirect_field_value %}?{{ redirect_field_name }}={{ redirect_field_value }}{% endif %}"
+           class="flex items-center justify-center gap-2 w-full h-11 px-5 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">
+          {% blocktrans with name=provider.name %}Continue with {{ name }}{% endblocktrans %}
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Passwordless OTP login (parallel to allauth) -->
+      <div class="mt-5 pt-5 border-t border-border text-center">
+        <a href="{% url 'core_auth:otp_request' %}{% if redirect_field_value %}?next={{ redirect_field_value }}{% endif %}"
+           class="text-sm text-muted-foreground hover:text-primary transition-colors">{% trans "Email me a code instead" %} →</a>
+      </div>
+    </div>
+
+    <p class="text-center text-muted-foreground mt-6 text-sm">
+      {% trans "Don't have an account?" %}
+      <a href="{% url 'account_signup' %}{% if redirect_field_value %}?{{ redirect_field_name }}={{ redirect_field_value }}{% endif %}" class="text-primary hover:underline font-medium">{% trans "Create account" %}</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
