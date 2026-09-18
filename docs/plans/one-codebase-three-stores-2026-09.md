@@ -70,6 +70,64 @@ dotbooks does still *serve* four routes from it — `/shop/`, `/places/`, `/book
 `/regions/` all return 200 — but on zero data, so they are empty shells. Nothing on the
 homepage links to `/shop/`, and it appears zero times in the sitemap.
 
+## How the shops should differ (measured 2026-09-18)
+
+Both stores install **109 apps**. The only structural difference is `janus`, which
+dotbooks has because Montenegro is still on v0.57.1. Everything else is identical code
+running against different data — which is the good news, and also the problem: almost
+nothing distinguishes a bookshop from a travel marketplace except which tables happen to
+be full.
+
+Counting rows per app across both live databases, and separating apps that own models
+from apps that are pure behaviour (where a row count means nothing):
+
+| Class | Count | What it is |
+|---|---|---|
+| Behaviour-only, no models | 27 | shared platform: storefront, admin_dashboard, agent_mcp, checkout_experience, tax rules, … |
+| Data in **both** stores | 18 | the genuine commerce core: catalog, orders-adjacent, customers, payments, seo, cms, analytics, crm, ai_assistant, … |
+| Data **only on dotbooks** | 21 | the book vertical (`book_product` 2,574 rows, `audiobooks`) **plus** platform apps that simply have activity there (`observability`, `notifications_center`, `metafields`, `orders`) |
+| Data **only on Montenegro** | 1 | `booking_marketplace` (1,263 rows) |
+| Models but **no data in either** | 42 | every shop carries their tables and migrations; no shop has ever used them |
+
+**Root cause: only 3 of 111 apps ship `enabled_by_default = False`** (agentic_checkout,
+booking_marketplace, staff_sso). The other 108 switch themselves on for any new store, so
+a fresh shop inherits 42 apps' tables it will never fill, and a travel marketplace
+installs the book vertical.
+
+### The three-tier split to adopt
+
+1. **Platform core** — in `MORPHEUS_DEFAULT_APPS`, on everywhere. The 27 behaviour-only
+   apps plus the 18 with data in both stores.
+2. **Vertical apps** — *removed* from `MORPHEUS_DEFAULT_APPS` and added per shop through
+   `MORPHEUS_EXTRA_APPS`, so their tables only exist where the vertical does:
+   * travel → `booking_marketplace` (Montenegro)
+   * books → `book_product`, `audiobooks`, `bookvault`, `bookstore_3d`, `flipbook` (dotbooks)
+3. **Optional features** — installed everywhere but `enabled_by_default = False`, so the
+   merchant turns them on from Settings → Apps: loyalty_points, subscriptions, b2b, drops,
+   lookbook, referrals and the rest of the 42.
+
+Tier 3 is **safe for the three existing stores**: `enabled_by_default` is only consulted
+when a store has no `PluginConfig` row yet, and all three have rows for everything. It
+changes nothing today and stops the next shop inheriting the whole catalogue.
+
+### What stays per-shop, and where it lives
+
+| Concern | Mechanism | Lives in |
+|---|---|---|
+| Data | `DATABASE_URL` | environment |
+| Theme | `MORPHEUS_ACTIVE_THEME` | environment |
+| Which vertical apps | `MORPHEUS_EXTRA_APPS` | environment |
+| Feature on/off | `PluginConfig.is_enabled` | database (Settings → Apps) |
+| Settings, keys, copy | `PluginConfig.config`, `StoreSettings` | database |
+| Version | `MORPHEUS_VERSION` | code — one line for all shops |
+
+**The single rule that makes continuous updates work: no shop-specific branch in shared
+code.** No `if store_name == …`, no shop's marketing copy inside a shared view. A shop
+differs by environment and database, or it differs by having its own app or theme —
+never by an edit to a file another shop also runs. Montenegro's fork breaks this today
+(its page copy sits inside `storefront/views/content.py`), which is precisely why its
+syncs conflict; Phase 3 moves that copy into its theme.
+
 ## Plan
 
 All four phases are safe: none of them migrates a live database. Phase 4 changes only
