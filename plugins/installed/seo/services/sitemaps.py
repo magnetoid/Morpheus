@@ -290,6 +290,48 @@ def iter_sitemap_entries() -> Iterable[dict]:
         logger.debug('seo: manual sitemap entries skipped: %s', e)
 
 
+def _normalize_contributed_entry(e: dict) -> dict:
+    """SITEMAP_URLS subscribers may hand back raw ``date``/``datetime``
+    lastmod values and numeric priorities (the filter's documented payload
+    shape); the renderer below expects the same string-only shape
+    ``iter_sitemap_entries()`` already yields. Native entries pass through
+    unchanged (already strings)."""
+    lastmod = e.get('lastmod')
+    priority = e.get('priority')
+    if hasattr(lastmod, 'isoformat') or isinstance(priority, (int, float)):
+        e = dict(e)
+        if hasattr(lastmod, 'isoformat'):
+            e['lastmod'] = lastmod.isoformat()
+        if isinstance(priority, (int, float)):
+            e['priority'] = str(priority)
+    return e
+
+
+def _merged_sitemap_entries() -> list[dict]:
+    """Native ``iter_sitemap_entries()`` output + anything folded in through
+    the ``SITEMAP_URLS`` filter, deduped by ``loc`` — first entry wins, so a
+    contributed URL can never shadow a native one. This is how an app whose
+    routes seo knows nothing about (bookings, stays, a vertical's facets)
+    reaches the sitemap without seo importing it."""
+    from core.hooks import MorpheusEvents, hook_registry
+
+    entries = hook_registry.filter(MorpheusEvents.SITEMAP_URLS, list(iter_sitemap_entries()))
+    seen: set[str] = set()
+    merged: list[dict] = []
+    for e in entries:
+        # Fail-soft: a buggy subscriber handing back a non-dict (None, str, …)
+        # must not 500 /sitemap.xml — skip it and keep rendering.
+        if not isinstance(e, dict):
+            logger.warning('seo: sitemap contribution skipped (non-dict entry): %r', e)
+            continue
+        loc = e.get('loc')
+        if not loc or loc in seen:
+            continue
+        seen.add(loc)
+        merged.append(_normalize_contributed_entry(e))
+    return merged
+
+
 def sitemap_counts() -> dict:  # noqa: PLR0912 — flat per-source classifier; branches are clearer than a dispatch table
     """Aggregate ``iter_sitemap_entries()`` into per-source counts +
     overall last-modified timestamps. Used by the Sitemap dashboard.
@@ -426,7 +468,11 @@ def render_sitemap_xml() -> str:
     """Render the primary /sitemap.xml. Capped at
     `sitemap_max_urls_per_file` so we don't emit a > 50 MB document
     that Google rejects. Overflow is silently truncated — a split
-    sitemap index is a follow-up (Phase 2 of the SEO knob wiring)."""
+    sitemap index is a follow-up (Phase 2 of the SEO knob wiring).
+
+    URLs come from ``_merged_sitemap_entries()`` — the native list plus
+    whatever other apps fold in through the ``SITEMAP_URLS`` filter, so seo
+    never has to import a sibling to know its routes exist."""
     cap = _sitemap_max_urls()
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -434,7 +480,7 @@ def render_sitemap_xml() -> str:
         'xmlns:xhtml="http://www.w3.org/1999/xhtml">',
     ]
     count = 0
-    for e in iter_sitemap_entries():
+    for e in _merged_sitemap_entries():
         if count >= cap:
             logger.warning('seo: sitemap truncated at %d entries (cap=%d)', count, cap)
             break

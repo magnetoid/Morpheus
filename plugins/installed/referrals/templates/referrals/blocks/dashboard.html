@@ -3,6 +3,10 @@
   <p>{% trans 'Share your link. You both get store credit when they place their first order.' %}</p>
   <input type="text" readonly value="{{ referral_url }}" aria-label="{% trans 'Your referral link' %}" />
   <p class="morpheus-referrals__stat">
-    {% blocktrans count counter=referrals_count %}{{ counter }} friend joined so far{% plural %}{{ counter }} friends joined so far{% endblocktrans %}
+    {# `referrals_count` is not in the slot's context — storefront blocks only #}
+    {# receive the parent template's context (StorefrontBlock.context_keys is  #}
+    {# documentation-only), so an undefined value reached blocktrans as '' and #}
+    {# raised "'counter' argument must be a number", killing the whole block.  #}
+    {% blocktrans count counter=referrals_count|default:0 %}{{ counter }} friend joined so far{% plural %}{{ counter }} friends joined so far{% endblocktrans %}
   </p>
 </section>

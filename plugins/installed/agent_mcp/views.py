@@ -36,6 +36,8 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from core.utils.site import store_contact_email, store_logo_url, store_name, store_slug
+
 logger = logging.getLogger('morpheus.agent_mcp')
 
 # ── JSON-RPC error codes ──────────────────────────────────────────────
@@ -172,12 +174,12 @@ def _handle_initialize(params: dict, authed: bool) -> dict:
             'resources': {'listChanged': False, 'subscribe': False},
         },
         'serverInfo': {
-            'name': 'morpheus-mcp',
+            'name': store_slug('mcp'),
             'version': '0.1.0',
         },
         'authenticated': authed,
         'instructions': (
-            'Morpheus catalog API. Use `tools/list` to see available '
+            f'{store_name()} catalog API. Use `tools/list` to see available '
             'read tools, then `tools/call` to fetch products, orders, '
             'and analytics. Public access without an API key is '
             'limited to discovery; passing a Bearer token enables '
@@ -810,7 +812,7 @@ def health(request: HttpRequest) -> HttpResponse:
     return JsonResponse(
         {
             'status': 'ok',
-            'name': 'morpheus-mcp',
+            'name': store_slug('mcp'),
             'version': '0.1.0',
             'tools_exposed': len(_public_tools()),
         }
@@ -824,15 +826,19 @@ def manifest(request: HttpRequest) -> HttpResponse:
     without speaking JSON-RPC first.
     """
     base = request.build_absolute_uri('/').rstrip('/')
+    # The merchant's brand, not the platform's — this manifest is what an AI
+    # client shows a shopper. Logo and contact are omitted when unset rather
+    # than pointing at a placeholder that 404s.
+    brand = store_name()
+    logo = store_logo_url()
+    contact = store_contact_email()
     return JsonResponse(
         {
             'schema_version': 'v1',
-            'name_for_human': 'Morpheus storefront',
-            'name_for_model': 'morpheus_storefront',
+            'name_for_human': brand,
+            'name_for_model': store_slug().replace('-', '_'),
             'description_for_human': (
-                'Search this store, look up products, fetch order status, '
-                'and read recent analytics through a Morpheus-powered '
-                'commerce backend.'
+                f'Search {brand}, look up products, fetch order status, and read recent analytics.'
             ),
             'description_for_model': (
                 'Use this API to answer shopper questions about products, '
@@ -847,8 +853,9 @@ def manifest(request: HttpRequest) -> HttpResponse:
                 'type': 'jsonrpc',
                 'url': f'{base}/mcp/v1/',
             },
-            'logo_url': f'{base}/static/admin_dashboard/morpheus-logo.png',
-            'contact_email': 'support@morpheus.local',
-            'legal_info_url': f'{base}/pages/terms/',
+            **({'logo_url': logo} if logo else {}),
+            **({'contact_email': contact} if contact else {}),
+            # /pages/terms/ is a 404; the cms page route is /p/<slug>/.
+            'legal_info_url': f'{base}/p/terms/',
         }
     )

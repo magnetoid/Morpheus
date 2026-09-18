@@ -24,6 +24,8 @@ from django.conf import settings
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_http_methods
 
+from core.utils.site import store_contact_email, store_name, store_slug
+
 
 def _trusted_agent_enabled() -> bool:
     """True only when the origin actually honors verified-agent headers — i.e.
@@ -64,8 +66,8 @@ def ucp_manifest(request: HttpRequest) -> JsonResponse:
     return JsonResponse(
         {
             'protocolVersion': '1.0',
-            'name': 'morpheus-ucp',
-            'description': 'Universal Commerce Protocol — Morpheus storefront.',
+            'name': store_slug('ucp'),
+            'description': f'Universal Commerce Protocol — {store_name()} storefront.',
             'capabilities': {
                 'productSearch': True,
                 'productDetails': True,
@@ -109,7 +111,7 @@ def trusted_agent_manifest(request: HttpRequest) -> JsonResponse:
     accepts = _trusted_agent_enabled()
     return JsonResponse(
         {
-            'name': 'morpheus',
+            'name': store_slug(),
             'version': '0.1.0',
             'accepts': {
                 'visa_trusted_agent': accepts,
@@ -130,6 +132,8 @@ def trusted_agent_manifest(request: HttpRequest) -> JsonResponse:
                 'cart': f'{base}/mcp/cart/v1/',
                 'checkout': f'{base}/mcp/checkout/v1/',
             },
-            'contact': 'support@morpheus.local',
+            # Omitted when the merchant has set no contact address: telling an
+            # agent to mail an address that does not exist is worse than silence.
+            **({'contact': store_contact_email()} if store_contact_email() else {}),
         }
     )

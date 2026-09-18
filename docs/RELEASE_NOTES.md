@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.68.6 — 2026-09-18
+
+**Your store's name, not ours**
+
+- Every document an AI shopping agent reads to identify your store — the UCP, Trusted-Agent, MCP and plugin manifests — now carries your store name and contact address instead of the platform's. They previously introduced every shop as 'Morpheus' with a support address that does not exist and a terms link that 404s; the contact and logo are now omitted entirely when you have not set them.
+- Apps whose inventory is not a catalog product (bookings, stays, tickets) can now add their own entries to the sitemap and the AI shopping feed, so a store built on them no longer advertises an empty catalogue to crawlers.
+- Fixed the referral block on the account page, which could fail to render and take the whole block with it.
+
 ## v0.68.5 — 2026-09-17
 
 **Real covers in the shop window**

@@ -13,8 +13,15 @@ Perplexity, etc.).
 
 from __future__ import annotations
 
+import logging
+
+from core.hooks import MorpheusEvents, hook_registry
+from core.utils.site import store_name
+
 from ._helpers import _site_base_url, site_settings
 from .jsonld import product_jsonld
+
+logger = logging.getLogger('morpheus.seo')
 
 
 def render_product_markdown(product) -> str:
@@ -113,28 +120,47 @@ def render_ai_products_feed(*, limit: int = 1000, offset: int = 0) -> dict:
     out = {
         '@context': 'https://schema.org',
         '@type': 'ItemList',
-        'name': site_settings().organization_name or 'Morpheus product feed',
+        # The merchant's brand, never the engine's name — an AI crawler
+        # reads this as who the shop IS.
+        'name': site_settings().organization_name or store_name() or 'Product feed',
         'numberOfItems': 0,
         'itemListElement': [],
     }
+    items: list[dict] = []
+    catalog_total = 0
     try:
         from plugins.installed.catalog.models import Product
 
         qs = Product.objects.filter(status='active').order_by('-created_at')
-        total = qs.count()
-        out['numberOfItems'] = total
-        for i, p in enumerate(qs[offset : offset + limit]):
-            out['itemListElement'].append(
-                {
-                    '@type': 'ListItem',
-                    'position': offset + i + 1,
-                    'item': product_jsonld(p),
-                }
-            )
-        if (offset + limit) < total:
-            base = _site_base_url().rstrip('/')
-            next_offset = offset + limit
-            out['nextPage'] = f'{base}/ai/products.json?offset={next_offset}&limit={limit}'
+        catalog_total = qs.count()
+        items = [product_jsonld(p) for p in qs[offset : offset + limit]]
     except Exception:  # noqa: BLE001
         pass
+
+    # A store whose inventory is not a catalog Product (bookings, stays,
+    # tickets) folds its own schema.org objects in here — otherwise the feed
+    # truthfully reports an empty shop to every AI crawler. Contributed items
+    # sit AFTER the catalog rows and share the same window, so paging stays
+    # consistent across the combined sequence.
+    contributed: list[dict] = []
+    try:
+        contributed = hook_registry.filter(MorpheusEvents.AI_FEED_ITEMS, []) or []
+    except Exception:  # noqa: BLE001 — a bad subscriber must not empty the feed
+        logger.warning('ai_feed: AI_FEED_ITEMS subscriber failed', exc_info=True)
+
+    if contributed:
+        # Window the contributed tail by whatever the catalog page left free.
+        start = max(0, offset - catalog_total)
+        items.extend(contributed[start : start + (limit - len(items))])
+
+    total = catalog_total + len(contributed)
+    out['numberOfItems'] = total
+    out['itemListElement'] = [
+        {'@type': 'ListItem', 'position': offset + i + 1, 'item': item}
+        for i, item in enumerate(items)
+    ]
+    if (offset + limit) < total:
+        base = _site_base_url().rstrip('/')
+        next_offset = offset + limit
+        out['nextPage'] = f'{base}/ai/products.json?offset={next_offset}&limit={limit}'
     return out

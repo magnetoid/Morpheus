@@ -12,6 +12,7 @@ from __future__ import annotations
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_http_methods
 
+from core.utils.site import store_name, store_slug
 from plugins.installed.agentic_checkout.app import ACP_API_VERSION
 from plugins.installed.agentic_checkout.auth import ACP_SCOPE
 
@@ -22,8 +23,8 @@ def acp_manifest(request: HttpRequest) -> JsonResponse:
     return JsonResponse(
         {
             'protocolVersion': ACP_API_VERSION,
-            'name': 'morpheus-acp',
-            'description': 'Agentic Commerce Protocol — Morpheus storefront.',
+            'name': store_slug('acp'),
+            'description': f'Agentic Commerce Protocol — {store_name()} storefront.',
             'checkout': {
                 'base_url': f'{base}/acp/checkout_sessions',
                 'operations': [

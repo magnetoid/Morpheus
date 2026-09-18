@@ -736,6 +736,34 @@ class MorpheusEvents:
     #   DASHBOARD_KPIS list-accumulator shape.
     AGENT_READINESS_SECTIONS = 'agent.readiness_sections'  # filter
 
+    # SITEMAP_URLS — filter, value=list[dict], no kwargs. The seo plugin's
+    #   sitemap renderer builds its own native URL list (catalog, CMS pages,
+    #   book facets, …) then fires this filter so any OTHER plugin can fold
+    #   in URLs it owns — {'loc': str (absolute, required), 'lastmod':
+    #   date|datetime|None, 'changefreq': str, 'priority': float|str} —
+    #   without seo importing that plugin's models. Each subscriber appends
+    #   its own dicts and returns the list; seo dedupes by `loc` (first
+    #   wins) and normalises lastmod/priority to strings at the merge point.
+    #   A disabled plugin's URLs simply never appear (bus skips inactive
+    #   owners).
+    SITEMAP_URLS = 'seo.sitemap_urls'  # filter
+
+    # AI_FEED_ITEMS — filter, value=list[dict], no kwargs. The AI-shopping
+    #   feed (/ai/products.json) is built from catalog Products; this filter
+    #   lets a plugin whose inventory is NOT a catalog Product fold its own
+    #   schema.org objects in, so seo never imports a sibling (the same
+    #   arrangement as SITEMAP_URLS). Each entry is a bare schema.org item
+    #   (e.g. {'@type': 'Product'|'TouristAttraction'|'Hotel', 'name': …,
+    #   'url': absolute, 'offers': {…}}); seo wraps it in the ListItem and
+    #   assigns `position`, so subscribers never manage numbering.
+    #   Contributed items are concatenated AFTER the catalog rows and share
+    #   the same offset/limit window, so `numberOfItems` and `nextPage` stay
+    #   truthful across the combined sequence. A disabled plugin's items
+    #   simply never appear (the bus skips inactive owners). Without it a
+    #   store whose inventory is not a Product advertises an empty catalog
+    #   to every AI crawler.
+    AI_FEED_ITEMS = 'seo.ai_feed_items'  # filter
+
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,
     #                     session_key=str. Fires from the storefront PDP.
