@@ -88,6 +88,56 @@
   </div>
   {% endif %}
 
+  {% if permalinks_card %}
+  <div class="card">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Permalinks</h2>
+      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
+        URL templates for experiences, places, hotels, events, shop items, journal posts and other dynamic pages.
+        Navigation structure, labels and ordering stay under <a href="/dashboard/apps/cms/menus/" class="underline">CMS → Menus</a>;
+        these templates decide what the generated link looks like.
+      </p>
+    </div>
+    <form method="post" class="card-padded space-y-4" data-morph-dirty data-ajax>
+      {% csrf_token %}
+      <input type="hidden" name="_form" value="permalinks">
+
+      {% if permalinks_card.form.non_field_errors %}
+      <div class="field-error">{{ permalinks_card.form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-muted)] p-3 text-xs text-[color:var(--text-muted)]">
+        Changing a template only affects newly generated links. Existing indexed URLs keep working, and moving a
+        live URL family still requires a matching SEO redirect — the SEO plugin owns that record.
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for field in permalinks_card.form %}
+        <div class="space-y-1">
+          <label for="{{ field.id_for_label }}" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] flex items-center">
+            {{ field.label }}
+            {% if field.help_text %}
+            <span class="context-help" aria-label="{{ field.help_text }}">
+              <i data-lucide="help-circle" class="h-3.5 w-3.5"></i>
+              <span class="context-help-tooltip">{{ field.help_text }}</span>
+            </span>
+            {% endif %}
+          </label>
+          {{ field }}
+          {% if field.errors %}<p class="field-error">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button class="btn btn-primary" type="submit">
+          <i data-lucide="save" class="h-4 w-4"></i> Save
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
   {% if cards %}
     {% for c in cards %}
     <div class="card">

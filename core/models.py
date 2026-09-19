@@ -39,6 +39,10 @@ class StoreSettings(models.Model):
     contact_email = models.EmailField(blank=True)
     support_phone = models.CharField(max_length=30, blank=True)
     social_links = models.JSONField(default=dict)
+    # Merchant-editable path templates for dynamic storefront entities.  These
+    # are consumed through core.services.permalinks, never interpolated in a
+    # template directly, so generated navigation/canonical URLs stay local.
+    permalink_templates = models.JSONField(default=dict, blank=True)
     meta_title = models.CharField(max_length=200, blank=True)
     meta_description = models.TextField(blank=True)
 

@@ -73,19 +73,64 @@ def _nav_categories():
     return tiles
 
 
+def _permalink_path(kind: str, slug: str, fallback: str) -> str:
+    """Resolve a dynamic nav target through General → Permalinks.
+
+    The resolver is the single source of truth for entity URL shapes; if a
+    stored template is invalid or the settings table is missing we keep the
+    caller's already-correct hardcoded path rather than emitting a broken link.
+    """
+    try:
+        from core.services.permalinks import resolver_for_settings
+
+        return resolver_for_settings().path(kind, slug=slug)
+    except Exception:  # noqa: BLE001 — nav must never break a render
+        return fallback
+
+
 def storefront_nav(request):
     """Inject header megamenu data on every render.
 
     Category tiles and destination lists are both built live from the DB
     (categories with active experiences, active Place records) so the menu
-    never links to a 404 or an empty filter.
+    never links to a 404 or an empty filter.  Link shapes come from
+    General → Permalinks; the hardcoded paths remain the fallback.
+
+    The keys are namespaced ``montenegro_nav_*`` on purpose: the generic
+    catalog plugin also exposes ``nav_categories`` and whichever context
+    processor ran last used to win, which is how the Montenegro dropdown
+    rendered empty rows.
     """
     places, destinations = _nav_places()
+    places = {
+        column: [
+            {**item, 'href': _permalink_path('place', item['slug'], f"/places/{item['slug']}/")}
+            for item in items
+        ]
+        for column, items in places.items()
+    }
+    destinations = [
+        {**item, 'href': _permalink_path('place', item['slug'], f"/places/{item['slug']}/")}
+        for item in destinations
+    ]
     return {
+        'storefront_nav': {
+            'categories': _nav_categories(),
+            'destinations': destinations,
+            'places': places,
+        },
+        # Legacy keys kept for the shipped theme markup; catalog's
+        # ``nav_categories`` is left untouched so neither plugin clobbers the
+        # other regardless of registration order.
         'nav_categories': _nav_categories(),
         'nav_destinations': destinations,
         'nav_places_coastal': places['coastal'],
         'nav_places_mountains': places['mountains'],
         'nav_places_cities': places['cities'],
         'nav_places_landmarks': places['landmarks'],
+        'permalinks': {
+            'product': _permalink_path('product', 'sample', '/products/sample/'),
+            'booking': _permalink_path('booking', 'sample', '/bookings/sample/'),
+            'journal': _permalink_path('journal', 'sample', '/journal/sample/'),
+        },
     }

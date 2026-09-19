@@ -1050,6 +1050,32 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
 
     core_card = None
     core_entry = _core_form_for(category)
+    permalinks_card = None
+    if category == 'general':
+        # Permalinks live on the same General page but keep their own form so a
+        # URL-template mistake can never block an unrelated store detail save.
+        from plugins.installed.admin_dashboard.forms.settings import PermalinksForm
+
+        from core.models import StoreSettings
+        from django.http import JsonResponse
+
+        instance = StoreSettings.objects.first()
+        if request.method == 'POST' and request.POST.get('_form') == 'permalinks':
+            is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            permalink_form = PermalinksForm(request.POST, instance=instance)
+            if permalink_form.is_valid():
+                permalink_form.save()
+                if is_ajax:
+                    return JsonResponse({'ok': True})
+                messages.success(request, 'Permalinks saved.')
+                return redirect('admin_dashboard:settings_category', category=category)
+            if is_ajax:
+                return JsonResponse(
+                    {'ok': False, 'errors': permalink_form.errors.get_json_data()}, status=400
+                )
+        else:
+            permalink_form = PermalinksForm(instance=instance)
+        permalinks_card = {'form': permalink_form}
     if core_entry is not None:
         FormCls, core_title, core_description = core_entry
         from core.models import StoreSettings
@@ -1158,6 +1184,7 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
         {
             'category': cat,
             'core_card': core_card,
+            'permalinks_card': permalinks_card,
             'cards': cards,
             'developer_tools': developer_tools,
             'active_nav': 'settings',

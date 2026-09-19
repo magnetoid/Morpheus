@@ -2,9 +2,31 @@
 
 from __future__ import annotations
 
+import re
+
 from morpheus.app import forms
 
 from ._helpers import DashboardFormMixin
+
+_URL_TYPES = (
+    ('product', 'Product / shop item URL', '/products/{slug}/'),
+    ('category', 'Category URL', '/category/{slug}/'),
+    ('booking', 'Experience / booking URL', '/bookings/{slug}/'),
+    ('place', 'Place / destination URL', '/places/{slug}/'),
+    ('hotel', 'Hotel URL', '/hotels/{slug}/'),
+    ('event', 'Event URL', '/events/{slug}/'),
+    ('journal', 'Journal / blog post URL', '/journal/{slug}/'),
+    ('vendor', 'Vendor / host profile URL', '/vendors/{slug}/'),
+    ('cms_page', 'CMS page URL', '/p/{slug}/'),
+)
+PERMALINK_TYPES = tuple(k for k, _, _ in _URL_TYPES)
+PERMALINK_DEFAULTS = {k: d for k, _, d in _URL_TYPES}
+_PERMALINK_HELP = (
+    'Local path template with exactly one {slug} placeholder. Must start and '
+    'end with "/". Query strings, fragments and full URLs are rejected so '
+    'canonical tags, the sitemap and hreflang stay valid.'
+)
+_TOKEN_RE = re.compile(r'\{([a-z_]+)\}')
 
 # Common storefront languages for the core-language picker. Code is ISO 639-1;
 # the core language is served unprefixed, other enabled languages get a /xx/
@@ -116,6 +138,60 @@ class StoreGeneralForm(DashboardFormMixin, forms.Form):
 
         with contextlib.suppress(Exception):
             cache.delete('morph:gdpr_enabled')
+        return instance
+
+
+class PermalinksForm(DashboardFormMixin, forms.Form):
+    """General → Permalinks: the URL source of truth for dynamic entities.
+
+    Every field is optional.  An empty field falls back to the shipped default
+    so a partially filled form can never blank out a URL family.  Validation is
+    strict (local path, one ``{slug}``) because these strings feed canonical
+    tags, the sitemap and hreflang — see ``core.services.permalinks``.
+    """
+
+    def __init__(self, *args, instance=None, **kwargs):
+        self.instance = instance
+        stored = {}
+        if instance is not None:
+            stored = getattr(instance, 'permalink_templates', None) or {}
+            if not isinstance(stored, dict):
+                stored = {}
+        for key, label, default in _URL_TYPES:
+            self.base_fields[key] = forms.CharField(
+                max_length=200,
+                required=False,
+                label=label,
+                initial=stored.get(key) or default,
+                help_text=_PERMALINK_HELP,
+            )
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned = super().clean()
+        from core.services.permalinks import PermalinkError, validate_template
+
+        for key, _label, default in _URL_TYPES:
+            value = (cleaned.get(key) or '').strip() or default
+            try:
+                validate_template(key, value)
+            except PermalinkError as exc:
+                self.add_error(key, str(exc))
+        return cleaned
+
+    def save(self):
+        from core.models import StoreSettings
+
+        instance = self.instance or StoreSettings.objects.first() or StoreSettings()
+        stored = {}
+        for key, _label, default in _URL_TYPES:
+            value = (self.cleaned_data.get(key) or '').strip()
+            # Store only real overrides; the default lives in code so a future
+            # default change is picked up by stores that never customised.
+            if value and value != default:
+                stored[key] = value
+        instance.permalink_templates = stored
+        instance.save()
         return instance
 
 
