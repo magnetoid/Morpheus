@@ -95,7 +95,7 @@
       </a>
 
       <!-- Desktop Navigation — Megamenu -->
-      <nav class="hidden lg:flex items-center gap-1">
+      <nav class="hidden xl:flex items-center gap-1">
         <!-- Experiences -->
         <div class="nav-item relative">
           <button class="bg-transparent hover:bg-muted rounded-full px-4 py-2.5 text-sm font-medium inline-flex items-center gap-1 transition-colors">
@@ -352,7 +352,7 @@
         </a>
         {% endif %}
         <!-- Mobile menu trigger -->
-        <button type="button" onclick="document.getElementById('mobile-menu').classList.remove('hidden');document.body.style.overflow='hidden';" class="lg:hidden w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center text-foreground transition-colors" aria-label="{% trans 'Open menu' %}">
+        <button type="button" onclick="document.getElementById('mobile-menu').classList.remove('hidden');document.body.style.overflow='hidden';" class="xl:hidden w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center text-foreground transition-colors" aria-label="{% trans 'Open menu' %}">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M4 6h16M4 18h16"/></svg>
         </button>
       </div>
@@ -361,7 +361,7 @@
 </header>
 
 <!-- Mobile menu -->
-<div id="mobile-menu" class="hidden fixed inset-0 z-[60] lg:hidden">
+<div id="mobile-menu" class="hidden fixed inset-0 z-[60] xl:hidden">
   <div class="absolute inset-0 bg-black/40" onclick="document.getElementById('mobile-menu').classList.add('hidden');document.body.style.overflow='';"></div>
   <div class="absolute inset-y-0 left-0 w-full sm:max-w-md bg-background shadow-elevated flex flex-col">
     <div class="p-4 border-b border-border flex items-center justify-between">

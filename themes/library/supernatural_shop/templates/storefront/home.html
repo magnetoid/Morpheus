@@ -114,9 +114,9 @@ geometry, so the dots and cover never move between books.
         >
           {% if pick.primaryImage and pick.primaryImage.url %}
             {% if forloop.first %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 340px, 62vw" priority=True %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,800,1200" sizes="(min-width: 1200px) 360px, (min-width: 900px) 30vw, 70vw" priority=True %}
             {% else %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 340px, 62vw" %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,800,1200" sizes="(min-width: 1200px) 360px, (min-width: 900px) 30vw, 70vw" %}
             {% endif %}
           {% elif PRODUCT_PLACEHOLDER_IMAGE %}
             <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ pick.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
@@ -187,7 +187,7 @@ geometry, so the dots and cover never move between books.
       box-shadow var(--motion-med) var(--ease-out);
   }
   @media (min-width: 900px) {
-    .window__cover { width: clamp(160px, 16vw, 200px); margin-inline: 0; }
+    .window__cover { width: clamp(260px, 24vw, 360px); margin-inline: 0; }
   }
   .window__cover.is-active {
     opacity: 1;
