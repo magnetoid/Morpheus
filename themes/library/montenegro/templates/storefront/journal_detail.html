@@ -9,9 +9,6 @@
 {% seo_speakable_jsonld %}
 {% seo_breadcrumb_jsonld items=breadcrumb_items %}
 {% seo_llms_link %}
-{% with faq=entry.body|faq_items_from_body %}
-  {% if faq %}{% seo_faq_jsonld faq %}{% endif %}
-{% endwith %}
 {% endblock %}
 
 {% block content %}
