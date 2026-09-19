@@ -55,7 +55,9 @@
   .linda-log {
     flex: 1 1 auto; min-height: 0;
     overflow-y: auto;
-    padding: 3rem 1.5rem 2rem;
+    /* Bottom padding clears the pinned dock so the last message is never
+       hidden behind it; top padding keeps the first message off the chrome. */
+    padding: 3rem 1.5rem 1.5rem;
     scroll-behavior: smooth;
     scrollbar-gutter: stable;
   }
@@ -225,22 +227,51 @@
     white-space: pre-wrap; word-break: break-word;
   }
 
-  /* ── Dock — suggested chips + floating chat form ───────────────────── */
+  /* ── Dock — suggested chips + pinned chat form ─────────────────────── */
+  /* The dock is the last flex child of a full-height column with the log
+     above it, so it stays pinned to the bottom of the panel while only the
+     transcript scrolls. `position: sticky` would drift once the log's own
+     scroll container ended, which is why this uses the flex child instead. */
   .linda-dock {
     flex: 0 0 auto;
-    padding: .75rem 1.5rem 1.75rem;
-    background: transparent;        /* no full-width bar; the form floats */
-    display: flex; flex-direction: column; align-items: center; gap: .65rem;
+    position: relative;
+    z-index: 2;
+    padding: .6rem 1.5rem 1.5rem;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--surface) 0%, transparent) 0%,
+      var(--surface) 38%,
+      var(--surface) 100%
+    );
+    display: flex; flex-direction: column; align-items: stretch; gap: .55rem;
   }
-  /* Suggested-next chips just above the form — wrap on narrow screens. */
+  /* Suggested-next chips: ONE line that scrolls left/right, never wraps.
+     Scroll-snap keeps a half-visible chip from looking broken, and the
+     horizontal scrollbar is hidden because the row already reads as
+     scrollable from the clipped chip at the edge. */
   .linda-suggested {
-    display: flex; flex-wrap: wrap; gap: .4rem;
-    max-width: 48rem; width: 100%;
-    justify-content: center;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: .4rem;
+    width: 100%; max-width: 48rem;
+    margin: 0 auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding: .1rem .1rem .2rem;
+    /* Fade both ends so clipped chips read as "more this way". */
+    mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
     transition: opacity var(--motion-fast, 140ms) ease;
   }
+  .linda-suggested::-webkit-scrollbar { display: none; }
   .linda-suggested:empty { display: none; }
   .linda-chip {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 999px;
@@ -255,9 +286,10 @@
   .linda-chip:hover { background: var(--surface-2); border-color: var(--border-strong); transform: translateY(-1px); }
   .linda-chip:active { transform: translateY(0); }
 
-  /* Floating chat form — pill-shaped with a soft elevation shadow. */
+  /* Pinned chat form — pill-shaped with a soft elevation shadow. */
   .linda-form {
     width: 100%; max-width: 48rem;
+    margin: 0 auto;
     display: flex; align-items: flex-end; gap: .5rem;
     background: var(--surface);
     border: 1px solid var(--border);
@@ -306,6 +338,17 @@
   @media (max-width: 640px) {
     .linda-dock { padding: .5rem 1rem 1rem; }
     .linda-form { border-radius: 24px; }
+    /* Tighter fades on narrow screens — the mask eats more of a short row. */
+    .linda-suggested {
+      mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+    }
+  }
+  /* Without JS the chip row cannot be dragged with a mouse, so show a real
+     scrollbar instead of hiding it. */
+  @media (scripting: none) {
+    .linda-suggested { scrollbar-width: thin; }
+    .linda-suggested::-webkit-scrollbar { display: initial; }
   }
 </style>
 
@@ -368,6 +411,63 @@
     log.scrollTop = log.scrollHeight;
     return wrap;
   }
+
+  /* ── Chip row: horizontal scroll affordances ───────────────────────────
+     The row is one line that scrolls sideways. Native overflow already
+     covers trackpads and touch; these add the two cases it misses:
+     shift-free mouse-wheel scrolling, and click-drag panning. */
+  (function initChipScroller() {
+    if (!suggested) return;
+
+    // Mouse wheel: a vertical wheel over the row pans it horizontally, but
+    // only while there is somewhere to go — otherwise the page keeps its
+    // normal scroll and the row never becomes a scroll trap.
+    suggested.addEventListener('wheel', function (e) {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return; // real horizontal gesture
+      var max = suggested.scrollWidth - suggested.clientWidth;
+      if (max <= 0) return;
+      var next = suggested.scrollLeft + e.deltaY;
+      if ((e.deltaY < 0 && suggested.scrollLeft <= 0) || (e.deltaY > 0 && suggested.scrollLeft >= max)) return;
+      e.preventDefault();
+      suggested.scrollLeft = next;
+    }, { passive: false });
+
+    // Click-drag panning for mouse users (touch already works natively).
+    var dragging = false, startX = 0, startLeft = 0, moved = false;
+    suggested.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      var max = suggested.scrollWidth - suggested.clientWidth;
+      if (max <= 0) return;
+      dragging = true; moved = false;
+      startX = e.clientX; startLeft = suggested.scrollLeft;
+      suggested.style.cursor = 'grabbing';
+      // Capture the pointer so the pan keeps tracking once the cursor leaves
+      // the row — without this, dragging past either edge drops the gesture.
+      try { suggested.setPointerCapture(e.pointerId); } catch (_) { /* unsupported */ }
+      e.preventDefault();
+    });
+    suggested.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var dx = e.clientX - startX;
+      if (Math.abs(dx) > 3) moved = true;
+      suggested.scrollLeft = startLeft - dx;
+    });
+    var endDrag = function (e) {
+      if (!dragging) return;
+      dragging = false;
+      suggested.style.cursor = '';
+      try { suggested.releasePointerCapture(e.pointerId); } catch (_) { /* already released */ }
+    };
+    suggested.addEventListener('pointerup', endDrag);
+    suggested.addEventListener('pointercancel', endDrag);
+    // NB: no pointerleave handler — with capture active the pointer legitimately
+    // leaves the element mid-drag, and killing the gesture there made dragging
+    // stop the moment the cursor crossed the row's edge.
+    // ...but a drag must never fire the chip underneath it.
+    suggested.addEventListener('click', function (e) {
+      if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; }
+    }, true);
+  })();
 
   /* Minimal Markdown renderer — covers the 90% Linda actually emits:
      **bold**, *italic*, `inline code`, ```code blocks```, > blockquote,

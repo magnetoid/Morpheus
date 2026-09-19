@@ -1581,8 +1581,13 @@
     });
   })();
 </script>
-{# Linda — the hard-coded staff AI assistant. Always present in admin. #}
-{% include "assistant/_floating_widget.html" %}
+{% comment %}
+Linda — the hard-coded staff AI assistant. Always present in admin, except on
+Linda's own page: the full-page composer is already there, and a launcher that
+opens a second Linda into the same conversation is just a stray button hovering
+over the pinned chat box.
+{% endcomment %}
+{% if active_nav != 'assistant' %}{% include "assistant/_floating_widget.html" %}{% endif %}
 
 <script>
 // Safety net + sidebar active-state sync for htmx partial swaps.
