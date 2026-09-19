@@ -23,7 +23,7 @@ def nav_categories(request):
 
     cached = cache.get(_NAV_CACHE_KEY)
     if cached is not None:
-        return {'nav_categories': cached}
+        return {'catalog_nav_categories': cached}
 
     data: list[dict] = []
     try:
@@ -49,7 +49,13 @@ def nav_categories(request):
         cache.set(_NAV_CACHE_KEY, data, _NAV_CACHE_TTL)
     except Exception:  # noqa: BLE001 — nav must never break a page render
         data = []
-    return {'nav_categories': data}
+    # Namespaced key is the contract (v0.69.0).  The bare ``nav_categories``
+    # used to be published here as well, which silently collided with
+    # booking_marketplace's own ``nav_categories`` — the two shapes differ
+    # (``slug`` vs ``href``/``label``), so whichever context processor ran last
+    # won and the Montenegro dropdown rendered rows with no visible link.
+    # Themes read ``catalog_nav_categories``; only this plugin publishes it.
+    return {'catalog_nav_categories': data}
 
 
 def nav_authors(request):

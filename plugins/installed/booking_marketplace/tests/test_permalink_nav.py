@@ -26,9 +26,10 @@ class StorefrontNavPayloadTests(TestCase):
         )
 
     def test_the_legacy_keys_still_exist_for_the_shipped_theme(self):
+        """Place columns stay published under their original names — the
+        booking plugin owns them, so there is no cross-plugin collision."""
         ctx = storefront_nav(None)
         for key in (
-            'nav_categories',
             'nav_destinations',
             'nav_places_coastal',
             'nav_places_mountains',
@@ -36,6 +37,15 @@ class StorefrontNavPayloadTests(TestCase):
             'nav_places_landmarks',
         ):
             self.assertIn(key, ctx)
+
+    def test_this_plugin_is_the_only_publisher_of_nav_categories(self):
+        """Catalog publishes ``catalog_nav_categories``; a second
+        ``nav_categories`` from catalog used to overwrite this one."""
+        from plugins.installed.catalog.context_processors import nav_categories
+
+        catalog_keys = set(nav_categories(None))
+        self.assertIn('catalog_nav_categories', catalog_keys)
+        self.assertNotIn('nav_categories', catalog_keys)
 
     def test_a_place_permalink_override_changes_the_generated_href(self):
         StoreSettings.objects.create(permalink_templates={'place': '/destinations/{slug}/'})

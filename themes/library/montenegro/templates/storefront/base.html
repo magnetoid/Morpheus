@@ -108,10 +108,10 @@
                 <div>
                   <h4 class="text-sm font-semibold text-muted-foreground mb-3">{% trans "Browse by category" %}</h4>
                   <ul class="space-y-1">
-                    {# Namespaced payload first — the generic catalog plugin also
-                       publishes `nav_categories` in a different shape, and the
-                       last context processor used to win (empty dropdown rows). #}
-                    {% for c in storefront_nav.categories|default:nav_categories %}
+                    {# `storefront_nav` is the booking plugin's namespaced payload.
+                       Catalog now publishes `catalog_nav_categories` instead, so
+                       the two plugins can no longer clobber each other. #}
+                    {% for c in storefront_nav.categories %}
                     <li>
                       <a href="{{ c.href|default:'/bookings/?category=' }}{{ c.slug|default:'' }}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group">
                         <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors text-primary [&_svg]:w-4 [&_svg]:h-4">{{ c.icon|default:'<svg viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot;><circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;8&quot;/></svg>'|safe }}</div>

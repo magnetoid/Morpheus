@@ -1,4 +1,4 @@
-"""nav_categories context processor — feeds the storefront Genres mega menu."""
+"""catalog_nav_categories context processor — feeds the storefront Genres mega menu."""
 
 # ruff: noqa: PLC0415
 from __future__ import annotations
@@ -24,7 +24,7 @@ class NavCategoriesTests(TestCase):
         Category.objects.create(name='Crime', slug='crime', parent=fiction, sort_order=0)
         Category.objects.create(name='Poetry', slug='poetry', sort_order=1)
 
-        data = nav_categories(request=None)['nav_categories']
+        data = nav_categories(request=None)['catalog_nav_categories']
         names = [c['name'] for c in data]
         self.assertEqual(names, ['Fiction', 'Poetry'])  # by sort_order
         fiction_children = [c['name'] for c in data[0]['children']]
@@ -38,7 +38,7 @@ class NavCategoriesTests(TestCase):
             name='HiddenChild', slug='hidden-child', parent=active, is_active=False
         )
 
-        data = nav_categories(request=None)['nav_categories']
+        data = nav_categories(request=None)['catalog_nav_categories']
         names = [c['name'] for c in data]
         self.assertIn('Visible', names)
         self.assertNotIn('Hidden', names)
@@ -46,7 +46,7 @@ class NavCategoriesTests(TestCase):
         self.assertEqual(active_row['children'], [])
 
     def test_empty_when_no_categories(self):
-        self.assertEqual(nav_categories(request=None)['nav_categories'], [])
+        self.assertEqual(nav_categories(request=None)['catalog_nav_categories'], [])
 
 
 class NavAuthorsTests(TestCase):
