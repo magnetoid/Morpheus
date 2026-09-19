@@ -227,15 +227,48 @@ def list_agents_view(request):
 @staff_member_required
 @require_capability('system.read')
 def runs_dashboard_view(request):
+    from django.core.paginator import Paginator
+
     from plugins.installed.agent_core.models import AgentRun
 
-    runs = AgentRun.objects.all().order_by('-started_at')[:100]
+    qs = AgentRun.objects.select_related('customer').order_by('-started_at')
+
+    state = (request.GET.get('state') or '').strip()
+    filter_agent = (request.GET.get('agent') or '').strip()
+    query = (request.GET.get('q') or '').strip()
+    if state:
+        qs = qs.filter(state=state)
+    if filter_agent:
+        qs = qs.filter(agent_name=filter_agent)
+    if query:
+        qs = qs.filter(user_message__icontains=query)
+
+    paginator = Paginator(qs, 50)
+    try:
+        page_number = max(1, int(request.GET.get('page') or 1))
+    except (TypeError, ValueError):
+        page_number = 1
+    runs = paginator.get_page(page_number)
+
+    # Distinct names + states for the filter controls (cheap, indexed).
+    agent_names = list(
+        AgentRun.objects.order_by('agent_name').values_list('agent_name', flat=True).distinct()
+    )
+    states = [s for s, _ in AgentRun.STATE_CHOICES]
+
     return render(
         request,
         'agent_core/dashboard/runs.html',
         {
             'runs': runs,
             'agents': agent_registry.all_agents(),
+            'agent_names': agent_names,
+            'states': states,
+            'state': state,
+            'filter_agent': filter_agent,
+            'q': query,
+            'janus_learned': _janus_learning_summary(),
+            'learned_skills': _learned_skills_summary(),
             'active_nav': 'agents',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
@@ -244,6 +277,37 @@ def runs_dashboard_view(request):
             ],
         },
     )
+
+
+def _janus_learning_summary() -> dict:
+    """Read-only snapshot of what Janus has learned (the real Janus activity).
+
+    Mirrors the review card on Settings → AI → Janus, but surfaced here as a
+    compact activity summary. Never raises — a sync glitch must not break the
+    activity page.
+    """
+    from core.assistant import janus_learning
+
+    try:
+        return {
+            'notes': janus_learning.notes(),
+            'skills': janus_learning.skills(),
+            'lessons': janus_learning.lesson_count(),
+        }
+    except Exception:  # noqa: BLE001
+        logger.warning('runs dashboard: janus learning summary failed', exc_info=True)
+        return {'notes': {'store': [], 'user': []}, 'skills': [], 'lessons': 0}
+
+
+def _learned_skills_summary() -> list:
+    """LearnedSkill rows (Linda-authored skills) with use/outcome feedback."""
+    from core.assistant.models import LearnedSkill
+
+    try:
+        return list(LearnedSkill.objects.order_by('-uses', '-updated_at')[:20])
+    except Exception:  # noqa: BLE001
+        logger.warning('runs dashboard: learned skills summary failed', exc_info=True)
+        return []
 
 
 @staff_member_required
