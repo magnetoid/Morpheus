@@ -110,11 +110,11 @@
                   <ul class="space-y-1">
                     {% for c in nav_categories %}
                     <li>
-                      <a href="{{ c.href }}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group">
-                        <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors text-primary [&_svg]:w-4 [&_svg]:h-4">{{ c.icon|safe }}</div>
+                      <a href="{{ c.href|default:'/bookings/?category=' }}{{ c.slug|default:'' }}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group">
+                        <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors text-primary [&_svg]:w-4 [&_svg]:h-4">{{ c.icon|default:'<svg viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot;><circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;8&quot;/></svg>'|safe }}</div>
                         <div>
-                          <p class="text-sm font-medium text-foreground">{{ c.label }}</p>
-                          <p class="text-xs text-muted-foreground">{{ c.desc }}</p>
+                          <p class="text-sm font-medium text-foreground">{{ c.label|default:c.name }}</p>
+                          {% if c.desc %}<p class="text-xs text-muted-foreground">{{ c.desc }}</p>{% endif %}
                         </div>
                       </a>
                     </li>
