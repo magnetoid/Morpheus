@@ -56,8 +56,10 @@ services:
       MAX_CLIENT_CONN: 1000
       DEFAULT_POOL_SIZE: 20
       POOL_MODE: transaction
-    ports:
-      - "6432:5432"
+    # No host port: pgbouncer is an internal pooler. The web/worker services
+    # connect directly to postgres until SCRAM auth is wired (see web note),
+    # and publishing 6432 on every instance made the second store's deploy
+    # fail with "port is already allocated" — only one container can bind it.
     depends_on:
       postgres:
         condition: service_healthy
