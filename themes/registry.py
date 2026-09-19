@@ -114,6 +114,21 @@ class ThemeRegistry:
         theme = self.active
         if theme is None:
             return ['No active theme.']
+        return self.validate_active_theme_for(theme.name)
+
+    def validate_active_theme_for(self, name: str) -> list[str]:
+        """Validate a theme by name — whether it may be activated on this store.
+
+        A theme declares `requires_plugins`; activating it without those apps
+        installed would render a broken surface (e.g. the montenegro theme's
+        homepage loads `{% load booking_tags %}` which only exists in
+        `booking_marketplace`). Used by the theme-activation tool so the picker
+        is not a trap.
+        """
+        errors: list[str] = []
+        theme = self.get(name)
+        if theme is None:
+            return [f'Unknown theme: {name!r}.']
         if theme.requires_plugins:
             try:
                 from plugins.registry import app_registry

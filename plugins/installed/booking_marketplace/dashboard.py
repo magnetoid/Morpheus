@@ -5,12 +5,10 @@ from __future__ import annotations
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 
-from core.authz import require_capability
 from plugins.installed.booking_marketplace.models import BookableService, Booking
 
 
 @staff_member_required
-@require_capability('orders.read')
 def bookings_list(request):
     bookings = Booking.objects.select_related('service', 'service__vendor').order_by(
         '-booking_date', '-created_at'

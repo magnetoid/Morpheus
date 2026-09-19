@@ -113,4 +113,5 @@ urlpatterns = [
     path('staff-picks/', views.staff_picks, name='staff_picks'),
     path('shipping/', views.shipping, name='shipping'),
     path('returns/', views.returns, name='returns'),
+    path('do-not-sell/', content_views.do_not_sell, name='do_not_sell'),
 ]

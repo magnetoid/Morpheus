@@ -1,20 +1,24 @@
 """Booking marketplace — storefront views (only wired while the plugin is on).
 
 Two operating modes (parity with the reference montenegro-experience-hub):
-- LISTING mode (default, BOOKING_LISTING_MODE=True): prices hidden, the detail
-  page shows a "Contact for price" enquiry form → submit_enquiry.
-- MARKETPLACE mode: prices shown, the detail page shows a date + guests booking
-  form → create_booking (server-derived totals + capacity check).
+- MARKETPLACE mode (default): prices shown, the detail page shows a date + guests
+  booking form → create_booking (server-derived totals + capacity check).
+- LISTING/ENQUIRY mode (opt-in via BOOKING_ENQUIRY_MODE=1): prices hidden, the
+  detail page shows a "Contact for price" enquiry form → submit_enquiry.
 """
 
 from __future__ import annotations
+
+import calendar
 
 from django.conf import settings
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.translation import gettext as _
 
+from plugins.installed.booking_marketplace import seo_jsonld
 from plugins.installed.booking_marketplace.models import REGIONS, BookableService, Place
 from plugins.installed.booking_marketplace.services import (
     BookingError,
@@ -29,8 +33,25 @@ from plugins.installed.booking_marketplace.services import (
 
 
 def listing_mode() -> bool:
-    """Year-1 directory mode (no prices/payments). Defaults to True."""
-    return getattr(settings, 'BOOKING_LISTING_MODE', True)
+    """Enquiry mode (opt-in; no prices/payments). Defaults to False (marketplace mode)."""
+    return getattr(settings, 'BOOKING_LISTING_MODE', False)
+
+
+def payments_ready() -> bool:
+    """True once a payment step gates confirmation (see settings.BOOKING_PAYMENTS_READY)."""
+    return getattr(settings, 'BOOKING_PAYMENTS_READY', False)
+
+
+def takes_enquiry_only() -> bool:
+    """Whether a submit must capture an ENQUIRY rather than confirm a booking.
+
+    Two independent reasons, and conflating them is what shipped free confirmed
+    bookings to production: `listing_mode` hides prices (a merchandising choice),
+    while `payments_ready` says money can actually be taken (a safety one). A
+    confirmed booking holds real inventory, so it must never be created while
+    nothing charges for it — regardless of whether prices happen to be visible.
+    """
+    return listing_mode() or not payments_ready()
 
 
 def services_list(request):
@@ -61,6 +82,20 @@ def services_list(request):
         'newest': ('-id',),
     }.get(sort, ('-is_bestseller', '-rating', '-review_count'))
     services = services.order_by(*order)
+    seo_title = (
+        _('%(category)s experiences in Montenegro') % {'category': category}
+        if category
+        else _('Experiences in Montenegro — book with local hosts')
+    )
+    seo_description = (
+        _(
+            'Book %(category)s experiences in Montenegro with trusted local hosts '
+            '— instant confirmation, free cancellation on most tours.'
+        )
+        % {'category': category}
+        if category
+        else _('Tours, activities and rentals from trusted local hosts across the Adriatic.')
+    )
     return render(
         request,
         'booking_marketplace/list.html',
@@ -71,6 +106,9 @@ def services_list(request):
             'q': q,
             'category': category,
             'sort': sort,
+            'seo_title': seo_title,
+            'seo_description': seo_description,
+            'list_jsonld': seo_jsonld.experiences_index_jsonld(services, request=request),
         },
     )
 
@@ -92,20 +130,41 @@ def products_list(request):
             'services': products.order_by('-is_bestseller', 'name'),
             'listing_mode': listing_mode(),
             'is_product_shop': True,
-            'seo_title': 'Shop',
+            'seo_title': 'Shop Montenegro — local goods',
+            'seo_description': (
+                'Locally made Montenegrin products from trusted vendors — shipped '
+                'or ready for pickup across the Adriatic coast.'
+            ),
         },
     )
 
 
 def places_index(request):
-    """Directory of destinations (editorial), filterable by type."""
+    """Directory of Montenegro destinations (editorial), grouped by region."""
     from plugins.installed.booking_marketplace.models import PLACE_TYPES
 
-    places = Place.objects.filter(is_active=True)
     place_type = (request.GET.get('type') or '').strip()
+    qs = Place.objects.filter(is_active=True)
     if place_type:
-        places = places.filter(place_type=place_type)
-    # Only offer filter pills for types that actually have places.
+        qs = qs.filter(place_type=place_type)
+    places = list(qs)
+
+    # Group by region, in canonical REGIONS order (blank/unknown regions last).
+    region_labels = dict(REGIONS)
+    by_region: dict[str, list] = {}
+    for p in places:
+        by_region.setdefault(p.region, []).append(p)
+    region_groups = [
+        {'key': key, 'label': label, 'places': by_region[key]}
+        for key, label in REGIONS
+        if key in by_region
+    ]
+    for key, group_places in by_region.items():
+        if key not in region_labels:
+            region_groups.append(
+                {'key': key, 'label': key or 'Elsewhere in Montenegro', 'places': group_places}
+            )
+
     used = set(
         Place.objects.filter(is_active=True)
         .exclude(place_type='')
@@ -117,11 +176,27 @@ def places_index(request):
         'booking_marketplace/places/index.html',
         {
             'places': places,
+            'region_groups': region_groups,
             'type_filters': type_filters,
             'selected_type': place_type,
-            'seo_title': 'Explore places',
+            'seo_title': _('Explore Montenegro'),
+            'seo_description': _(
+                'Destination guides to the best places to visit in Montenegro — the Bay of '
+                'Kotor, the Budva Riviera, Durmitor and the northern mountains, Lake Skadar '
+                'and the southern coast.'
+            ),
+            'places_jsonld': seo_jsonld.places_index_jsonld(places, request=request),
         },
     )
+
+
+def _place_meta_description(place) -> str:
+    """A 150–160 char meta description: the curated summary, topped up from the
+    overview when the summary alone is too short for a strong SERP snippet."""
+    desc = (place.summary or '').strip()
+    if len(desc) < 130 and (place.overview or '').strip():
+        desc = f'{desc} {place.overview.strip()}'.strip()
+    return desc[:158].rstrip(' ,.;—-')
 
 
 def place_detail(request, slug):
@@ -132,28 +207,35 @@ def place_detail(request, slug):
         .select_related('vendor')
         .distinct()[:12]
     )
+    region_siblings = (
+        list(Place.objects.filter(is_active=True, region=place.region).exclude(pk=place.pk)[:6])
+        if place.region
+        else []
+    )
+    from plugins.installed.booking_marketplace.place_content import good_for_cards
+
     return render(
         request,
         'booking_marketplace/places/detail.html',
         {
             'place': place,
             'services': services,
+            'region_siblings': region_siblings,
+            'place_events': list(place.events.filter(is_active=True)[:6]),
+            'good_for_cards': good_for_cards(place.good_for),
             'listing_mode': listing_mode(),
-            'seo_title': place.name,
+            # Per-place SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
+            'seo_title': f'{place.name} Travel Guide, Tours & Hotels',
+            'seo_description': _place_meta_description(place),
+            'seo_image': place.image.url if place.image else '',
+            'seo_og_type': 'article',
+            'place_jsonld': seo_jsonld.place_jsonld(place, request=request),
         },
     )
 
 
-def _region_label(key):
-    """Human label for a region key — configured label if set, else title-cased."""
-    return dict(REGIONS).get(key) or key.replace('-', ' ').replace('_', ' ').title()
-
-
 def regions_index(request):
-    """Directory of regions with listing counts + a cover image.
-
-    Regions are derived from live data (distinct non-empty `region` values), so
-    the browse works with or without a configured `BOOKING_REGIONS` list."""
+    """Directory of Montenegro regions with experience counts + a cover image."""
     counts = dict(
         BookableService.objects.filter(is_active=True, vendor__is_active=True)
         .exclude(region='')
@@ -161,10 +243,8 @@ def regions_index(request):
         .annotate(n=Count('id'))
         .values_list('region', 'n')
     )
-    # Configured order first, then any other regions present in the data.
-    keys = [k for k, _ in REGIONS if k in counts] + [k for k in counts if k not in dict(REGIONS)]
     regions = []
-    for key in keys:
+    for key, label in REGIONS:
         cover = (
             BookableService.objects.filter(region=key, is_active=True, vendor__is_active=True)
             .exclude(image='')
@@ -173,7 +253,7 @@ def regions_index(request):
         regions.append(
             {
                 'key': key,
-                'label': _region_label(key),
+                'label': label,
                 'count': counts.get(key, 0),
                 'image': cover.image.url if cover and cover.image else None,
             }
@@ -181,27 +261,33 @@ def regions_index(request):
     return render(
         request,
         'booking_marketplace/regions/index.html',
-        {'regions': regions, 'seo_title': 'Explore by region'},
+        {
+            'regions': regions,
+            'seo_title': 'Explore Montenegro by region',
+            'regions_jsonld': seo_jsonld.regions_index_jsonld(regions, request=request),
+        },
     )
 
 
 def region_detail(request, region):
+    labels = dict(REGIONS)
+    if region not in labels:
+        raise Http404('Unknown region')
     services = BookableService.objects.filter(
         region=region, is_active=True, vendor__is_active=True
     ).select_related('vendor', 'category')
-    # Accept a region that is either configured or present in the data.
-    if region not in dict(REGIONS) and not services.exists():
-        raise Http404('Unknown region')
-    label = _region_label(region)
     return render(
         request,
         'booking_marketplace/regions/region.html',
         {
             'region_key': region,
-            'region_label': label,
+            'region_label': labels[region],
             'services': services,
             'listing_mode': listing_mode(),
-            'seo_title': f'{label} experiences',
+            'seo_title': f'{labels[region]} experiences',
+            'region_jsonld': seo_jsonld.region_jsonld(
+                region, labels[region], services, request=request
+            ),
         },
     )
 
@@ -215,13 +301,16 @@ def service_detail(request, slug):
     is_listing = listing_mode()
 
     if request.method == 'POST':
-        if is_listing:
+        # Enquiry unless a payment step can actually charge — a confirmed booking
+        # holds inventory, so it must never be free. See takes_enquiry_only().
+        if takes_enquiry_only():
             return _submit_enquiry(request, service)
         return _create_booking(request, service)
 
     ctx = {
         'service': service,
         'listing_mode': is_listing,
+        'enquiry_only': takes_enquiry_only(),
         'dates': [] if is_listing else available_dates(service),
         'sessions': [] if is_listing else available_sessions(service),
         'tiers': list(service.tiers.filter(is_active=True)),
@@ -232,6 +321,13 @@ def service_detail(request, slug):
         'can_review': can_review(service, request.user),
         'similar': _similar_services(service),
         'has_map': service.latitude is not None and service.longitude is not None,
+        # Per-page SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
+        'seo_object': service,
+        'seo_title': f'{service.name} · {service.location or "Montenegro"}',
+        'seo_description': (service.short_description or service.description)[:155],
+        'seo_image': service.image.url if service.image else '',
+        'seo_og_type': 'product',
+        'seo_jsonld': seo_jsonld.experience_jsonld(service, request=request),
     }
     return render(request, 'booking_marketplace/detail.html', ctx)
 
@@ -347,3 +443,97 @@ def _submit_enquiry(request, service):
 
 def _detail_url(service) -> str:
     return f'/bookings/{service.slug}/'
+
+
+def events_index(request):
+    """Calendar of Montenegro events, grouped by month.
+
+    Grouped by `month` rather than by date because most editions are annual
+    fixtures with no announced date yet (see the Event model docstring). Events
+    with no month at all sort last under "Dates to be announced".
+    """
+    from plugins.installed.booking_marketplace.models import EVENT_CATEGORIES, Event
+
+    category = (request.GET.get('category') or '').strip()
+    qs = Event.objects.filter(is_active=True).select_related('place')
+    if category:
+        qs = qs.filter(category=category)
+    events = list(qs)
+
+    by_month: dict[int, list] = {}
+    for e in events:
+        by_month.setdefault(e.month, []).append(e)
+    # Months 1–12 in order; the 0 ("unset") bucket always goes last.
+    month_groups = [
+        {'month': m, 'label': calendar.month_name[m], 'events': by_month[m]}
+        for m in sorted(k for k in by_month if k)
+    ]
+    if 0 in by_month:
+        month_groups.append(
+            {'month': 0, 'label': _('Dates to be announced'), 'events': by_month[0]}
+        )
+
+    used = set(
+        Event.objects.filter(is_active=True).exclude(category='').values_list('category', flat=True)
+    )
+    return render(
+        request,
+        'booking_marketplace/events/index.html',
+        {
+            'events': events,
+            'month_groups': month_groups,
+            'category_filters': [{'key': k, 'label': v} for k, v in EVENT_CATEGORIES if k in used],
+            'selected_category': category,
+            'seo_title': _('Montenegro Events Calendar'),
+            'seo_description': _(
+                'What is on in Montenegro through the year — Kotor Carnival, the Mimosa '
+                'Festival, Boka Night, summer theatre in Budva, Lake Fest and the winter '
+                'ski season on Bjelasica.'
+            ),
+            'events_jsonld': seo_jsonld.events_index_jsonld(events, request=request),
+        },
+    )
+
+
+def event_detail(request, slug):
+    from plugins.installed.booking_marketplace.models import Event
+
+    event = get_object_or_404(Event.objects.select_related('place'), slug=slug, is_active=True)
+    # What else is on in the same month, so a visitor planning a trip sees the
+    # whole window rather than one fixture.
+    same_month = (
+        list(
+            Event.objects.filter(is_active=True, month=event.month)
+            .exclude(pk=event.pk)
+            .select_related('place')[:6]
+        )
+        if event.month
+        else []
+    )
+    services = (
+        BookableService.objects.filter(is_active=True, vendor__is_active=True)
+        .filter(
+            Q(region=event.region) | Q(location__iexact=(event.place.name if event.place else ''))
+        )
+        .select_related('vendor')
+        .distinct()[:6]
+        if (event.region or event.place)
+        else []
+    )
+    return render(
+        request,
+        'booking_marketplace/events/detail.html',
+        {
+            'event': event,
+            'same_month': same_month,
+            'services': services,
+            'listing_mode': listing_mode(),
+            'seo_title': f'{event.name} — {event.when_display or "Montenegro"}'.strip(' —'),
+            'seo_description': (
+                event.summary or f'{event.name} in Montenegro. Dates, location and what to expect.'
+            )[:300],
+            'seo_image': event.image.url if event.image else '',
+            'seo_og_type': 'article',
+            'event_jsonld': seo_jsonld.event_jsonld(event, request=request),
+        },
+    )

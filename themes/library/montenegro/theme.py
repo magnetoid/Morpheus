@@ -33,6 +33,11 @@ class MontenegroTheme(MorpheusTheme):
     )
     author = 'Montenegro Experience'
     supports_plugins = ['storefront', 'catalog', 'orders', 'marketplace', 'booking_marketplace']
+    # The homepage loads `{% load booking_tags %}` and calls six tags that only
+    # exist in the booking_marketplace vertical app. A store without that app
+    # would 500 on the homepage, so the theme must refuse to activate there
+    # rather than appear as a broken option in the theme picker.
+    requires_plugins = ['booking_marketplace']
     demo_topic = 'travel'
 
     def get_config_schema(self) -> dict:

@@ -1,0 +1,26 @@
+{% load i18n %}<!doctype html>
+<html><head><meta charset="utf-8"><title>{{ property.name }}</title></head>
+<body>
+<h1>{{ property.name }}</h1>
+<p>{{ property.location }} — {{ property.get_property_type_display }} — {{ property.star_rating }}★</p>
+<h2>{% trans "Amenities" %}</h2>
+<ul>{% for a in amenities %}<li>{{ a.label }}</li>{% endfor %}</ul>
+<h2>{% trans "Rooms" %}</h2>
+{% for r in room_types %}
+<form method="post" action="/hotels/{{ property.slug }}/book/">
+  {% csrf_token %}
+  <input type="hidden" name="room_type" value="{{ r.id }}">
+  <h3>{{ r.name }}</h3>
+  <p>{{ r.bed_configuration }} — {% blocktrans with n=r.max_occupancy %}sleeps {{ n }}{% endblocktrans %}
+     {% if not listing_mode %}— {{ r.base_rate }}/night{% endif %}</p>
+  <label>{% trans "Check-in" %} <input type="date" name="check_in" required></label>
+  <label>{% trans "Check-out" %} <input type="date" name="check_out" required></label>
+  <label>{% trans "Rooms" %} <input type="number" name="rooms" value="1" min="1"></label>
+  <label>{% trans "Adults" %} <input type="number" name="adults" value="2" min="1"></label>
+  <label>{% trans "Children" %} <input type="number" name="children" value="0" min="0"></label>
+  <label>{% trans "Name" %} <input type="text" name="name" required></label>
+  <label>{% trans "Email" %} <input type="email" name="email" required></label>
+  <button type="submit">{% if listing_mode %}{% trans "Contact for price" %}{% else %}{% trans "Book now" %}{% endif %}</button>
+</form>
+{% endfor %}
+</body></html>

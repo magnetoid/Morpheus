@@ -1,0 +1,23 @@
+{% extends "storefront/base.html" %}
+{% block title %}Events in Montenegro{% endblock %}
+{% block content %}
+<section style="padding:3.5rem 0;">
+  <div class="wrap">
+    <h1 class="display display-m" style="margin-bottom:1.5rem;">What's on<span class="text-accent">.</span></h1>
+    {% if month_groups %}
+    {% for group in month_groups %}
+    <h2 style="font-family:var(--serif); font-size:1.4rem; margin:2rem 0 .75rem;">{{ group.label }}</h2>
+    <div style="display:grid; gap:.75rem; grid-template-columns:repeat(auto-fill,minmax(240px,1fr));">
+      {% for e in group.events %}
+      <a href="/events/{{ e.slug }}/" style="display:block; padding:1.25rem; border:1px solid var(--rule); border-radius:10px; color:inherit; text-decoration:none;">
+        <h3 style="font-family:var(--serif); font-size:1.2rem; margin:0;">{{ e.name }}</h3>
+        {% if e.when_display %}<p class="meta" style="margin:.25rem 0 0;">{{ e.when_display }}{% if e.place %} · {{ e.place.name }}{% endif %}</p>{% endif %}
+        {% if e.summary %}<p class="meta" style="margin:.25rem 0 0;">{{ e.summary }}</p>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    {% else %}<p class="lede">Events are being added.</p>{% endif %}
+  </div>
+</section>
+{% endblock %}

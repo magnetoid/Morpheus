@@ -9,7 +9,6 @@ All money + capacity logic lives here, never in views/templates/client:
 
 from __future__ import annotations
 
-import contextlib
 import datetime
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -24,19 +23,6 @@ ACTIVE_STATUSES = ('pending', 'confirmed')
 
 class BookingError(ValueError):
     """Raised when a booking can't be made (bad input / no capacity)."""
-
-
-def _validated_guest_count(svc, guests) -> int:
-    """Coerce + bounds-check a flat guest count against the service limits."""
-    try:
-        guests = int(guests)
-    except (TypeError, ValueError):
-        raise BookingError('Please enter a valid number of guests.') from None
-    if guests < 1:
-        raise BookingError('At least one guest is required.')
-    if svc.max_guests_per_booking and guests > svc.max_guests_per_booking:
-        raise BookingError(f'Up to {svc.max_guests_per_booking} guests per booking.')
-    return guests
 
 
 def _weekdays(service) -> set[int]:
@@ -139,14 +125,21 @@ def create_booking(
         quote = price_quote(svc, tiers=tiers or {}, addons=addons or {})
         guests = quote['guests']
     else:
-        guests = _validated_guest_count(svc, guests)
+        try:
+            guests = int(guests)
+        except (TypeError, ValueError):
+            raise BookingError('Please enter a valid number of guests.')
+        if guests < 1:
+            raise BookingError('At least one guest is required.')
+        if svc.max_guests_per_booking and guests > svc.max_guests_per_booking:
+            raise BookingError(f'Up to {svc.max_guests_per_booking} guests per booking.')
         quote = price_quote(svc, tiers={'guests': guests}, addons={})
 
     if isinstance(booking_date, str):
         try:
             booking_date = datetime.date.fromisoformat(booking_date)
         except ValueError:
-            raise BookingError('Please choose a valid date.') from None
+            raise BookingError('Please choose a valid date.')
     if booking_date < timezone.localdate():
         raise BookingError('That date has already passed.')
     if booking_date.weekday() not in _weekdays(svc):
@@ -248,10 +241,12 @@ def submit_enquiry(
         addons=addon_snap,
     )
     # Notify host + confirm to guest — best-effort, never breaks capture.
-    with contextlib.suppress(Exception):
+    try:
         from plugins.installed.booking_marketplace.email import notify_enquiry
 
         notify_enquiry(enquiry)
+    except Exception:  # noqa: BLE001
+        pass
     return enquiry
 
 
@@ -259,38 +254,10 @@ def _safe_qty(v) -> int:
     try:
         q = int(v)
     except (TypeError, ValueError):
-        raise BookingError('Please enter a valid quantity.') from None
+        raise BookingError('Please enter a valid quantity.')
     if q < 0:
         raise BookingError('Quantity cannot be negative.')
     return q
-
-
-def _addon_lines(service, addons: dict, *, guests: int, currency) -> tuple[Money, list]:
-    """Validate the add-on selection and price it. Returns (total, snapshot)."""
-    active_addons = {str(a.id): a for a in service.addons.filter(is_active=True)}
-    total = Money(0, currency)
-    snap = []
-    for aid, raw_qty in addons.items():
-        addon = active_addons.get(str(aid))
-        if addon is None:
-            raise BookingError('Unknown add-on selected.')
-        qty = _safe_qty(raw_qty)
-        if qty == 0:
-            continue
-        if addon.max_qty and qty > addon.max_qty:
-            raise BookingError(f'Up to {addon.max_qty} × {addon.name}.')
-        units = qty * guests if addon.price_type == 'per_person' else qty
-        total += addon.price * units
-        snap.append(
-            {
-                'addon_id': str(addon.id),
-                'name': addon.name,
-                'qty': qty,
-                'unit_price': str(addon.price.amount),
-                'price_type': addon.price_type,
-            }
-        )
-    return total, snap
 
 
 def price_quote(service, *, tiers: dict, addons: dict) -> dict:
@@ -300,6 +267,7 @@ def price_quote(service, *, tiers: dict, addons: dict) -> dict:
     flat price (fallback when the service defines no tiers). `addons` maps AddOn
     id → qty. Returns money + JSON snapshots. Raises BookingError on bad input.
     """
+    from plugins.installed.booking_marketplace.models import AddOn, PricingTier
 
     tiers = tiers or {}
     addons = addons or {}
@@ -310,13 +278,13 @@ def price_quote(service, *, tiers: dict, addons: dict) -> dict:
 
     active = {str(t.id): t for t in service.tiers.filter(is_active=True)}
     if active:
-        for tid, raw_qty in tiers.items():
+        for tid, qty in tiers.items():
             if tid == 'guests':
                 continue
             tier = active.get(str(tid))
             if tier is None:
                 raise BookingError('Unknown ticket type selected.')
-            qty = _safe_qty(raw_qty)
+            qty = _safe_qty(qty)
             if qty == 0:
                 continue
             if tier.max_qty and qty > tier.max_qty:
@@ -348,8 +316,28 @@ def price_quote(service, *, tiers: dict, addons: dict) -> dict:
     if guests < 1:
         raise BookingError('At least one guest is required.')
 
-    addon_total, addon_snap = _addon_lines(service, addons, guests=guests, currency=currency)
-    subtotal += addon_total
+    active_addons = {str(a.id): a for a in service.addons.filter(is_active=True)}
+    addon_snap = []
+    for aid, qty in addons.items():
+        addon = active_addons.get(str(aid))
+        if addon is None:
+            raise BookingError('Unknown add-on selected.')
+        qty = _safe_qty(qty)
+        if qty == 0:
+            continue
+        if addon.max_qty and qty > addon.max_qty:
+            raise BookingError(f'Up to {addon.max_qty} × {addon.name}.')
+        units = qty * guests if addon.price_type == 'per_person' else qty
+        subtotal += addon.price * units
+        addon_snap.append(
+            {
+                'addon_id': str(addon.id),
+                'name': addon.name,
+                'qty': qty,
+                'unit_price': str(addon.price.amount),
+                'price_type': addon.price_type,
+            }
+        )
 
     fee_amount = (subtotal.amount * SERVICE_FEE_RATE).quantize(
         Decimal('0.01'), rounding=ROUND_HALF_UP
@@ -404,7 +392,7 @@ def create_review(service, *, user, rating, title='', body=''):
     try:
         rating = int(rating)
     except (TypeError, ValueError):
-        raise BookingError('Please choose a rating.') from None
+        raise BookingError('Please choose a rating.')
     if not 1 <= rating <= 5:
         raise BookingError('Rating must be between 1 and 5.')
 
@@ -422,4 +410,42 @@ def create_review(service, *, user, rating, title='', body=''):
             'author_name': author,
         },
     )
+    # Keep the denormalised fields in sync the same way seed_reviews does —
+    # otherwise a live review never moves the storefront's rating/count.
+    agg = service.reviews.aggregate(n=Count('id'), avg=Avg('rating'))
+    type(service).objects.filter(pk=service.pk).update(
+        review_count=agg['n'] or 0,
+        rating=round(agg['avg'] or 0, 1),
+    )
     return review
+
+
+def active_categories():
+    """Categories that currently have ≥1 active experience, with counts.
+
+    The single source for every category surface on the storefront (home
+    band, hero pills, filter chips, nav mega-menu) so the front can never
+    drift from the catalog. Fails soft to [] on a fresh/mid-migration DB.
+    """
+    try:
+        from django.db.models import Count, Q
+
+        from plugins.installed.catalog.models import Category
+
+        rows = (
+            Category.objects.annotate(
+                svc_count=Count(
+                    'bookable_services',
+                    filter=Q(
+                        bookable_services__is_active=True,
+                        bookable_services__vendor__is_active=True,
+                        bookable_services__listing_kind='experience',
+                    ),
+                )
+            )
+            .filter(is_active=True, svc_count__gt=0)
+            .order_by('-svc_count', 'name')
+        )
+        return [{'name': c.name, 'count': c.svc_count} for c in rows]
+    except Exception:  # noqa: BLE001 — table missing / not migrated yet
+        return []

@@ -1,0 +1,13 @@
+{% load i18n %}<!doctype html>
+<html><head><meta charset="utf-8"><title>{% trans "Hotels in Montenegro" %}</title></head>
+<body>
+<h1>{% trans "Hotels in Montenegro" %}</h1>
+<ul>
+{% for p in properties %}
+  <li><a href="/hotels/{{ p.slug }}/">{{ p.name }}</a> — {{ p.location }}
+    {% if not listing_mode %}(from {{ p.price_from }}){% endif %}</li>
+{% empty %}
+  <li>{% trans "No hotels yet." %}</li>
+{% endfor %}
+</ul>
+</body></html>

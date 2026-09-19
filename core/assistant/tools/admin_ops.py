@@ -192,6 +192,9 @@ def theme_activate_tool(
     if theme_registry.get(theme) is None:
         discovered = sorted(t.name for t in theme_registry.all_themes())
         raise ToolError(f'theme {theme!r} not found among {discovered}')
+    errors = theme_registry.validate_active_theme_for(theme)
+    if errors:
+        raise ToolError('; '.join(errors))
     row, _ = ThemeConfig.objects.get_or_create(theme_name=theme)
     row.is_active = True
     row.save()  # ThemeConfig.save() deactivates the others

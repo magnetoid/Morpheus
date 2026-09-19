@@ -91,7 +91,10 @@ MORPHEUS_DEFAULT_APPS = [
     'plugins.installed.environments',
     'plugins.installed.affiliates',
     'plugins.installed.marketplace',
-    'plugins.installed.booking_marketplace',
+    # booking_marketplace is NOT a default app — it is the Montenegro
+    # Experience travel vertical and must be opted in per store via
+    # MORPHEUS_EXTRA_APPS (see the one-codebase-three-stores plan). Keeping
+    # it here would install an empty booking shell on every bookshop.
     'plugins.installed.cloudflare',
     'plugins.installed.flipbook',
     'plugins.installed.seo',
@@ -580,6 +583,10 @@ _lang_codes = [
 if LANGUAGE_CODE not in _lang_codes:  # core language is always routable
     _lang_codes.insert(0, LANGUAGE_CODE)
 LANGUAGES = [(c, _SUPPORTED_LANGUAGE_NAMES.get(c, c)) for c in dict.fromkeys(_lang_codes)]
+# Translation catalogs (locale/sr/LC_MESSAGES/…). The Serbian catalog ships with
+# the Montenegro vertical; other stores simply have no .po/.mo there, so this
+# path is inert for them.
+LOCALE_PATHS = [BASE_DIR / 'locale']
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ── GraphQL ────────────────────────────────────────────────────────────────────

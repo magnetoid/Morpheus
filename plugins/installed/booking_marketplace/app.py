@@ -11,16 +11,18 @@ it on in Dashboard → Apps.
 from __future__ import annotations
 
 from morpheus.app import DashboardPage, Plugin
+from morpheus.core import events
 
 
 class BookingMarketplacePlugin(Plugin):
     name = 'booking_marketplace'
     label = 'Booking marketplace'
-    version = '2.0.0'
+    version = '1.0.0'
     description = (
-        'Multivendor booking marketplace — vendors offer time-slot services '
-        '(appointments, sessions, rentals); customers book a slot. Off by '
-        'default; enable from Dashboard → Apps.'
+        'Montenegro experience engine — bookable experiences and stays from '
+        'local hosts, plus the editorial layer around them: destination guides '
+        '(/places/), hotels (/hotels/) and the events calendar (/events/). '
+        'Off by default; enable from Dashboard → Apps.'
     )
     has_models = True
     requires = ['catalog']
@@ -33,6 +35,19 @@ class BookingMarketplacePlugin(Plugin):
             prefix='',
             namespace='booking_marketplace',
         )
+        # Fold experiences/places/stays into seo's sitemap without seo ever
+        # importing this plugin — the hook bus skips this handler for free
+        # while booking_marketplace is disabled (ADR 0023).
+        from plugins.installed.booking_marketplace.sitemap import contribute_sitemap_urls
+
+        self.register_hook(events.SITEMAP_URLS, contribute_sitemap_urls, priority=50)
+
+        # Same arrangement for /ai/products.json: this store's inventory is
+        # not a catalog Product, so without this the AI shopping feed reports
+        # an empty shop to every crawler.
+        from plugins.installed.booking_marketplace.ai_feed import contribute_ai_feed_items
+
+        self.register_hook(events.AI_FEED_ITEMS, contribute_ai_feed_items, priority=50)
 
     def contribute_dashboard_pages(self) -> list:
         return [

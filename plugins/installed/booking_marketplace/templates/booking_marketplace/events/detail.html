@@ -1,0 +1,21 @@
+{% extends "storefront/base.html" %}
+{% block title %}{{ event.name }}{% endblock %}
+{% block extra_head %}{% if event_jsonld %}<script type="application/ld+json">{{ event_jsonld|safe }}</script>{% endif %}{% endblock %}
+{% block content %}
+<section style="padding:3.5rem 0;">
+  <div class="wrap">
+    <h1 class="display display-m" style="margin-bottom:.5rem;">{{ event.name }}<span class="text-accent">.</span></h1>
+    <p class="meta">{{ event.when_display }}{% if event.venue %} · {{ event.venue }}{% elif event.place %} · {{ event.place.name }}{% endif %}</p>
+    {% if event.summary %}<p class="lede" style="margin-top:1rem;">{{ event.summary }}</p>{% endif %}
+    {% if event.description %}<div style="margin-top:1.5rem;">{{ event.description|linebreaks }}</div>{% endif %}
+    {% if event.highlights %}
+    <ul style="margin-top:1.5rem;">{% for h in event.highlights %}<li>{{ h }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% if event.official_url %}<p style="margin-top:1.5rem;"><a href="{{ event.official_url }}" rel="nofollow noopener" target="_blank">Official event site</a></p>{% endif %}
+    {% if event.faqs %}
+    <h2 style="font-family:var(--serif); font-size:1.4rem; margin:2rem 0 .75rem;">Questions</h2>
+    {% for f in event.faqs %}<p><strong>{{ f.q }}</strong><br>{{ f.a }}</p>{% endfor %}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -44,10 +44,10 @@ def _selection_lines(enquiry) -> str:
         parts.append(f'Departure: {enquiry.time_slot}')
     if enquiry.guests:
         parts.append(f'Guests: {enquiry.guests}')
-    for t in enquiry.tier_breakdown or []:
-        parts.append(f'  · {t.get("qty")}× {t.get("name")}')
-    for a in enquiry.addons or []:
-        parts.append(f'  + add-on: {a.get("qty")}× {a.get("name")}')
+    for t in (enquiry.tier_breakdown or []):
+        parts.append(f"  · {t.get('qty')}× {t.get('name')}")
+    for a in (enquiry.addons or []):
+        parts.append(f"  + add-on: {a.get('qty')}× {a.get('name')}")
     return '\n'.join(parts)
 
 
@@ -92,3 +92,50 @@ def notify_enquiry(enquiry) -> None:
     """Fire both emails, best-effort. Safe to call from the request path."""
     send_enquiry_host_notification(enquiry)
     send_enquiry_confirmation(enquiry)
+
+
+# ── Accommodation (stays) enquiries ──────────────────────────────────────────
+
+def _stay_host_recipient(enquiry) -> str | None:
+    """Property owner's email if available, else the configured ops inbox."""
+    prop = getattr(enquiry, 'property', None) if enquiry.property_id else None
+    vendor = getattr(prop, 'vendor', None) if prop else None
+    owner = getattr(vendor, 'owner', None)
+    owner_email = getattr(owner, 'email', '') if owner else ''
+    return owner_email or getattr(settings, 'BOOKING_ENQUIRY_NOTIFY_EMAIL', '') or _from()
+
+
+def send_stay_enquiry_host_notification(enquiry) -> bool:
+    to = _stay_host_recipient(enquiry)
+    name = enquiry.property.name if enquiry.property_id else 'a property'
+    parts = []
+    if enquiry.check_in:
+        parts.append(f'Check-in: {enquiry.check_in:%a %d %b %Y}')
+    if enquiry.check_out:
+        parts.append(f'Check-out: {enquiry.check_out:%a %d %b %Y}')
+    if enquiry.room_type_id:
+        parts.append(f'Room: {enquiry.room_type.name}')
+    if enquiry.rooms:
+        parts.append(f'Rooms: {enquiry.rooms}')
+    if enquiry.adults:
+        parts.append(f'Adults: {enquiry.adults}')
+    if enquiry.children:
+        parts.append(f'Children: {enquiry.children}')
+    lines = '\n'.join(parts)
+    body = (
+        f'New stay enquiry for "{name}".\n\n'
+        f'From: {enquiry.name or "(no name)"} <{enquiry.email}>\n'
+        f'Phone: {enquiry.phone or "—"}\n'
+        + (f'\n{lines}\n' if lines else '')
+        + (f'\nMessage:\n{enquiry.message}\n' if enquiry.message else '')
+        + '\nReply to the guest directly to follow up.\n'
+    )
+    return _send(f'New stay enquiry — {name}', body, to)
+
+
+def notify_stay_enquiry(enquiry) -> None:
+    """Best-effort host notification for a stay enquiry (never raises)."""
+    try:
+        send_stay_enquiry_host_notification(enquiry)
+    except Exception:  # noqa: BLE001 — mail must never break capture
+        logger.warning('booking.email: stay enquiry notify failed for %s', enquiry.pk)

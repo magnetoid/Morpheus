@@ -12,7 +12,6 @@ from plugins.installed.booking_marketplace.models import BookableService
 class HostKindTests(TestCase):
     def setUp(self):
         from plugins.installed.catalog.models import Vendor
-
         U = get_user_model()
         self.user = U.objects.create(**{U.USERNAME_FIELD: 'host2@x.io'})
         self.vendor = Vendor.objects.create(name='V', slug='v', is_active=True, owner=self.user)
@@ -26,11 +25,8 @@ class HostKindTests(TestCase):
 
     def test_saves_product_kind_and_languages(self):
         data = {
-            'name': 'Vranac',
-            'listing_kind': 'product',
-            'price': '18',
-            'languages': 'English, Montenegrin',
-            'is_active': 'on',
+            'name': 'Vranac', 'listing_kind': 'product', 'price': '18',
+            'languages': 'English, Montenegrin', 'is_active': 'on',
         }
         resp = host.host_service_form(self._req(data))
         self.assertEqual(resp.status_code, 302)
@@ -40,12 +36,8 @@ class HostKindTests(TestCase):
 
     def test_saves_experience_meeting_point(self):
         data = {
-            'name': 'Kayak',
-            'listing_kind': 'experience',
-            'price': '50',
-            'meeting_point': 'Old pier',
-            'latitude': '42.42',
-            'longitude': '18.77',
+            'name': 'Kayak', 'listing_kind': 'experience', 'price': '50',
+            'meeting_point': 'Old pier', 'latitude': '42.42', 'longitude': '18.77',
             'is_active': 'on',
         }
         host.host_service_form(self._req(data))
@@ -55,15 +47,9 @@ class HostKindTests(TestCase):
 
     def test_saves_tiers_and_addons(self):
         data = {
-            'name': 'Kayak',
-            'listing_kind': 'experience',
-            'price': '50',
-            'is_active': 'on',
-            'tier_name': ['Adult', 'Child'],
-            'tier_price': ['50', '25'],
-            'addon_name': ['Pickup'],
-            'addon_price': ['10'],
-            'addon_type': ['per_booking'],
+            'name': 'Kayak', 'listing_kind': 'experience', 'price': '50', 'is_active': 'on',
+            'tier_name': ['Adult', 'Child'], 'tier_price': ['50', '25'],
+            'addon_name': ['Pickup'], 'addon_price': ['10'], 'addon_type': ['per_booking'],
         }
         host.host_service_form(self._req(data))
         svc = BookableService.objects.get(name='Kayak')
