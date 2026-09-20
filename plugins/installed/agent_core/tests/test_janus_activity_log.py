@@ -117,3 +117,47 @@ class JanusActivityLogTests(TestCase):
         self.assertIn('events', out)
         self.assertIn('total', out)
         self.assertIn('active_days', out)
+
+    def test_tool_calls_are_shown_and_summarised(self):
+        """agents.decision rows are the engine's live tool-call trail."""
+        from core.audit.models import AuditEvent
+
+        AuditEvent.objects.create(
+            event_type='agents.decision',
+            actor_label='',
+            target='agent_run/abc',
+            metadata={
+                'agent': 'worker',
+                'tool': 'fs__search_files',
+                'run_id': 'abc',
+                'args': {'query': 'class Enquiry('},
+                'output': {'count': 1},
+                'duration_ms': 12,
+            },
+        )
+        r = self.c.get('/dashboard/agents/')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'search_files')
+        self.assertContains(r, 'worker')
+        self.assertContains(r, 'class Enquiry(')
+
+    def test_failed_tool_call_is_flagged_and_counted(self):
+        from core.audit.models import AuditEvent
+
+        AuditEvent.objects.create(
+            event_type='agents.decision',
+            actor_label='',
+            target='agent_run/xyz',
+            metadata={
+                'agent': 'worker',
+                'tool': 'fs__list_dir',
+                'args': {},
+                'output': {'error': "TypeError: '>=' not supported"},
+            },
+        )
+        r = self.c.get('/dashboard/agents/')
+        self.assertContains(r, 'TypeError')
+        self.assertContains(r, '⚠')
+        from plugins.installed.agent_core.views import _janus_activity_log
+
+        self.assertEqual(_janus_activity_log()['failed'], 1)

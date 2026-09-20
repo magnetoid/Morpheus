@@ -334,8 +334,14 @@ def _janus_activity_log(limit: int = 60) -> dict:
       turn stores or forgets learning (``janus.learned``,
       ``janus.learning_forgotten``). These carry the actor and the paths.
 
-    Merged and sorted newest-first so the page reads as a single feed. Never
+    merged and sorted newest-first so the page reads as a single feed. Never
     raises: a missing table or one malformed line must not break the dashboard.
+
+    A third source is the tool-call trail: ``agents.decision`` audit rows carry
+    every tool an agent invoked, with its arguments, output and errors (written
+    by ``core.audit.agent_decision``). These are the engine's live work log, so
+    they are shown too — flagged when the call failed, because an error is the
+    most useful line on the page.
     """
     from core.assistant.models import JanusLearning
 
@@ -391,16 +397,72 @@ def _janus_activity_log(limit: int = 60) -> dict:
     except Exception:  # noqa: BLE001
         logger.warning('runs dashboard: janus audit read failed', exc_info=True)
 
+    try:
+        from core.audit.models import AuditEvent
+
+        for ev in AuditEvent.objects.filter(event_type='agents.decision').order_by(
+            '-created_at'
+        )[: limit * 2]:
+            meta = ev.metadata if isinstance(ev.metadata, dict) else {}
+            tool = str(meta.get('tool') or '')
+            output = meta.get('output')
+            failed = isinstance(output, dict) and 'error' in output
+            events.append(
+                {
+                    'at': ev.created_at,
+                    'day': ev.created_at.strftime('%Y-%m-%d'),
+                    'clock': ev.created_at.strftime('%H:%M'),
+                    'kind': 'tool',
+                    'verb': tool.split('__')[-1] if tool else 'tool',
+                    'text': _describe_tool_call(meta, output, failed),
+                    'source': 'tool',
+                    'failed': failed,
+                }
+            )
+    except Exception:  # noqa: BLE001
+        logger.warning('runs dashboard: tool-call read failed', exc_info=True)
+
     events.sort(key=lambda e: (e['day'], e['clock']), reverse=True)
 
     days = sorted({e['day'] for e in events}, reverse=True)
+    shown = events[:limit]
     return {
-        'events': events[:limit],
+        'events': shown,
         'total': len(events),
+        'failed': sum(1 for e in events if e.get('failed')),
         'days': days,
         'active_days': len(days),
         'last_at': events[0]['at'] if events else None,
     }
+
+
+def _describe_tool_call(meta: dict, output, failed: bool) -> str:
+    """A one-line reading of an ``agents.decision`` tool call.
+
+    Prefers the error when the call failed — that is the line worth reading —
+    otherwise summarises the agent, arguments and result size.
+    """
+    agent = str(meta.get('agent') or '')
+    parts = [f'{agent} →'] if agent else []
+    if failed:
+        err = str(output.get('error', '')).strip().replace('\n', ' ')
+        parts.append(f'failed: {err[:220]}')
+        return ' '.join(parts)
+    args = meta.get('args') if isinstance(meta.get('args'), dict) else {}
+    if args:
+        shown = ', '.join(f'{k}={_short(v)}' for k, v in list(args.items())[:3])
+        parts.append(shown)
+    if isinstance(output, dict):
+        for key in ('count', 'path', 'size', 'total'):
+            if key in output:
+                parts.append(f'{key}={_short(output[key])}')
+                break
+    return ' '.join(parts) or 'tool call'
+
+
+def _short(value) -> str:
+    text = str(value).replace('\n', ' ')
+    return text if len(text) <= 60 else text[:57] + '…'
 
 
 def _describe_janus_audit(ev) -> str:

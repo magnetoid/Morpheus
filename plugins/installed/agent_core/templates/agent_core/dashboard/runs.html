@@ -103,9 +103,9 @@
     <p class="meta">{% if janus_activity.last_at %}{{ janus_activity.last_at|date:"H:i" }}{% else %}no activity recorded yet{% endif %}</p>
   </div>
   <div class="card card-padded">
-    <p class="meta">Active days</p>
-    <p class="display display-l">{{ janus_activity.active_days }}</p>
-    <p class="meta">journalled days in the last {{ 90 }} days</p>
+    <p class="meta">Failed tool calls</p>
+    <p class="display display-l">{{ janus_activity.failed }}</p>
+    <p class="meta">across {{ janus_activity.active_days }} journalled day{{ janus_activity.active_days|pluralize }}</p>
   </div>
 </div>
 
@@ -123,9 +123,9 @@
       <tr>
         <td class="text-[color:var(--text-muted)]">{{ e.day }} <span style="opacity:.7;">{{ e.clock }}</span></td>
         <td>
-          <span class="pill {% if e.kind == 'memory' %}pill-info{% elif e.kind == 'audit' %}pill-neutral{% else %}pill-success{% endif %}">{{ e.kind }}</span>
+          <span class="pill {% if e.failed %}pill-danger{% elif e.kind == 'memory' %}pill-info{% elif e.kind == 'tool' %}pill-success{% else %}pill-neutral{% endif %}">{{ e.kind }}</span>
         </td>
-        <td>{{ e.verb }}</td>
+        <td>{% if e.failed %}<span style="color:var(--danger,#dc2626);">{{ e.verb }} ⚠</span>{% else %}{{ e.verb }}{% endif %}</td>
         <td style="white-space:pre-wrap;">{{ e.text|truncatechars:280 }}</td>
       </tr>
     {% empty %}
