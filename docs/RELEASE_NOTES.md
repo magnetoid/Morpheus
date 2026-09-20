@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.68.7 — 2026-09-20
+
+**CI is green again, and the Montenegro store's live SEO and Serbian defects are fixed**
+
+- Fixed three different Montenegro pages sharing one browser-tab title and one search-result title: the experiences list, a category-filtered list and the Shop each have their own again.
+- The Serbian listing heading and the Highlights section on an experience page now actually appear in Serbian; the heading's translation had been stranded by an English copy change.
+- The journal seeding command no longer deletes store pages it was only ever meant to retire — it unpublishes them, so nothing a merchant wrote is destroyed.
+- Developer-facing: the build's lint and test gates pass again after the Montenegro fold, and the booking app's 180 tests run in CI instead of erroring.
+
 ## v0.68.6 — 2026-09-18
 
 **Your store's name, not ours**
