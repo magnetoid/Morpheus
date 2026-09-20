@@ -3,8 +3,10 @@
 from django.core.management import call_command
 from django.test import TestCase
 
+from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
 
-class JournalSeedTests(TestCase):
+
+class JournalSeedTests(MontenegroThemeMixin, TestCase):
     def test_publishes_montenegro_and_retires_core(self):
         from plugins.installed.cms.models import Page
 

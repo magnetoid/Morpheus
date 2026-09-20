@@ -23,6 +23,7 @@ from django.test import Client, TestCase
 
 from plugins.installed.booking_marketplace.models import Event, Place
 from plugins.installed.booking_marketplace.sitemap import contribute_sitemap_urls
+from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
 
 
 def _event(**kw):
@@ -131,7 +132,7 @@ class EventSitemapTests(TestCase):
         self.assertFalse(any('dead-sitemap-event' in u for u in urls))
 
 
-class PlaceEventsTests(TestCase):
+class PlaceEventsTests(MontenegroThemeMixin, TestCase):
     def test_place_page_lists_its_events(self):
         place = Place.objects.create(name='Testville', slug='testville', is_active=True)
         _event(name='Testville Fest', slug='testville-fest', place=place)

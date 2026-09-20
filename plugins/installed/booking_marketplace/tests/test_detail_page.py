@@ -6,6 +6,7 @@ from django.test import Client, TestCase, override_settings
 from djmoney.money import Money
 
 from plugins.installed.booking_marketplace.models import AddOn, BookableService, PricingTier
+from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
 
 
 def _vendor():
@@ -15,7 +16,7 @@ def _vendor():
 
 
 @override_settings(BOOKING_LISTING_MODE=False)
-class DetailKindTests(TestCase):
+class DetailKindTests(MontenegroThemeMixin, TestCase):
     def test_experience_shows_itinerary_and_map(self):
         BookableService.objects.create(
             vendor=_vendor(),
@@ -51,7 +52,7 @@ class DetailKindTests(TestCase):
 
 
 @override_settings(BOOKING_LISTING_MODE=False)
-class WidgetTests(TestCase):
+class WidgetTests(MontenegroThemeMixin, TestCase):
     def test_tier_and_addon_inputs_rendered(self):
         svc = BookableService.objects.create(
             vendor=_vendor(),

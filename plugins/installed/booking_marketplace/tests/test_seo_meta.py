@@ -4,10 +4,11 @@ from django.test import TestCase
 from djmoney.money import Money
 
 from plugins.installed.booking_marketplace.models import BookableService
+from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
 from plugins.installed.catalog.models import Category, Vendor
 
 
-class ExperienceSeoMetaTests(TestCase):
+class ExperienceSeoMetaTests(MontenegroThemeMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         v = Vendor.objects.create(name='Host', slug='host', is_active=True)

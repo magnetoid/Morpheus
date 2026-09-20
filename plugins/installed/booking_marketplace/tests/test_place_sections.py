@@ -14,6 +14,8 @@ from decimal import Decimal
 
 from django.test import Client, TestCase
 
+from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
+
 
 class GoodForCardsTests(TestCase):
     def test_resolves_icons_titlecase_and_fallback(self):
@@ -33,7 +35,7 @@ class GoodForCardsTests(TestCase):
         self.assertEqual(good_for_cards(['', '  ']), [])
 
 
-class PlaceSectionsRenderTests(TestCase):
+class PlaceSectionsRenderTests(MontenegroThemeMixin, TestCase):
     def setUp(self):
         self.client = Client()
 

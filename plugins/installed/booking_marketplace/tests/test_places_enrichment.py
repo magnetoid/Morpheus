@@ -5,6 +5,8 @@ from decimal import Decimal
 
 from django.test import RequestFactory, TestCase
 
+from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
+
 
 class PlaceFieldTests(TestCase):
     def test_new_content_fields_persist(self):
@@ -117,7 +119,7 @@ class PlaceJsonLdTests(TestCase):
         self.assertEqual(len(il['itemListElement']), 2)
 
 
-class PlaceViewTests(TestCase):
+class PlaceViewTests(MontenegroThemeMixin, TestCase):
     def setUp(self):
         from plugins.installed.booking_marketplace.models import Place
 

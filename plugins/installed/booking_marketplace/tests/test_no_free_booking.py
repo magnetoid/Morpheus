@@ -36,6 +36,7 @@ from plugins.installed.booking_marketplace.models import (
     StayBooking,
     StayEnquiry,
 )
+from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
 
 
 def _future(days: int) -> str:
@@ -134,7 +135,7 @@ class ExperienceConfirmationGateTests(TestCase):
         self.assertEqual(Booking.objects.count(), 1)
 
 
-class HonestCallToActionTests(TestCase):
+class HonestCallToActionTests(MontenegroThemeMixin, TestCase):
     """The button must not promise what the submit does not do."""
 
     def setUp(self):

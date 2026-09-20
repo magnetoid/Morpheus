@@ -21,6 +21,7 @@ from plugins.installed.booking_marketplace.models import (
     Enquiry,
     Place,
 )
+from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
 
 
 def _vendor():
@@ -234,7 +235,7 @@ class ReviewTests(TestCase):
         self.assertEqual(float(self.svc.rating), float(review.rating))
 
 
-class I18nTests(TestCase):
+class I18nTests(MontenegroThemeMixin, TestCase):
     def test_serbian_nav_translated(self):
         resp = Client().get('/regions/', HTTP_ACCEPT_LANGUAGE='sr')
         self.assertEqual(resp.status_code, 200)
@@ -270,7 +271,7 @@ class ExperienceSearchTests(TestCase):
         self.assertNotIn('Budva Spa Day', body)
 
 
-class PlacesTests(TestCase):
+class PlacesTests(MontenegroThemeMixin, TestCase):
     def setUp(self):
         v = _vendor()
         self.place = Place.objects.create(
@@ -347,7 +348,7 @@ class RegionDirectoryTests(TestCase):
 
 
 @override_settings(BOOKING_LISTING_MODE=False)
-class RichExperienceTests(TestCase):
+class RichExperienceTests(MontenegroThemeMixin, TestCase):
     def setUp(self):
         from decimal import Decimal
 
@@ -389,7 +390,7 @@ class RichExperienceTests(TestCase):
         self.assertIn('Domaćin', body)  # Hosted by → sr
 
 
-class HomepageExperiencesTests(TestCase):
+class HomepageExperiencesTests(MontenegroThemeMixin, TestCase):
     def test_featured_experiences_tag_orders_bestsellers_first(self):
         from decimal import Decimal
 

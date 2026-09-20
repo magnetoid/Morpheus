@@ -9,6 +9,8 @@ from django.urls import reverse
 from django.utils import timezone
 from djmoney.money import Money
 
+from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
+
 
 def _future(days):
     return (timezone.localdate() + datetime.timedelta(days=days)).isoformat()
@@ -123,7 +125,7 @@ class StayViewTests(TestCase):
         self.assertEqual(StayBooking.objects.count(), 0)
 
 
-class StayThemeTemplateTests(TestCase):
+class StayThemeTemplateTests(MontenegroThemeMixin, TestCase):
     def setUp(self):
         from plugins.installed.booking_marketplace.models import Property, RoomType
         from plugins.installed.catalog.models import Vendor

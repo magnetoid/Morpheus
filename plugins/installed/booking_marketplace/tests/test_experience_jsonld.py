@@ -7,6 +7,7 @@ from django.test import TestCase
 from djmoney.money import Money
 
 from plugins.installed.booking_marketplace.models import BookableService, ServiceReview
+from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
 from plugins.installed.catalog.models import Category, Vendor
 
 _LDJSON_RE = re.compile(r'<script type="application/ld\+json">(.*?)</script>', re.DOTALL)
@@ -30,7 +31,7 @@ def _find_types(html):
     return types
 
 
-class ExperienceJsonLdTests(TestCase):
+class ExperienceJsonLdTests(MontenegroThemeMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         v = Vendor.objects.create(name='Host', slug='host', is_active=True)

@@ -104,6 +104,15 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    # booking_marketplace is a per-store vertical, so it is NOT in
+    # MORPHEUS_DEFAULT_APPS — a store opts in with MORPHEUS_EXTRA_APPS. Without
+    # this the app has no tables and its 180 tests all error with `no such
+    # table`, which is how the Montenegro fold turned this job red. Its
+    # theme-dependent tests activate the Montenegro theme themselves (see
+    # booking_marketplace/tests/_theme.py), so the active theme is NOT forced
+    # here — doing that fails 16 storefront/seo tests that assert on the default.
+    env:
+      MORPHEUS_EXTRA_APPS: plugins.installed.booking_marketplace
     services:
       redis:
         image: redis:7-alpine
