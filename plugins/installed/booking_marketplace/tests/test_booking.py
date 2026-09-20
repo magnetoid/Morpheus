@@ -21,6 +21,7 @@ from plugins.installed.booking_marketplace.models import (
     Enquiry,
     Place,
 )
+from plugins.installed.booking_marketplace.tests._i18n import serbian_enabled
 from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
 
 
@@ -235,9 +236,19 @@ class ReviewTests(TestCase):
         self.assertEqual(float(self.svc.rating), float(review.rating))
 
 
+@serbian_enabled
 class I18nTests(MontenegroThemeMixin, TestCase):
+    """Serbian is served at `/sr/…`, not by content negotiation.
+
+    These asked for `/regions/` with `Accept-Language: sr` and asserted on
+    Serbian copy. Django's LocaleMiddleware ignores Accept-Language on an
+    unprefixed path whenever i18n_patterns are in use and the default language
+    is unprefixed — `/regions/` IS the English URL — so they could only ever
+    have rendered English, which is how they arrived from montenegro-new red.
+    """
+
     def test_serbian_nav_translated(self):
-        resp = Client().get('/regions/', HTTP_ACCEPT_LANGUAGE='sr')
+        resp = Client().get('/sr/regions/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Doživljaji')  # "Experiences" → sr
 
@@ -247,7 +258,7 @@ class I18nTests(MontenegroThemeMixin, TestCase):
         self.assertNotContains(resp, 'Doživljaji')
 
     def test_serbian_list_heading(self):
-        resp = Client().get('/bookings/', HTTP_ACCEPT_LANGUAGE='sr')
+        resp = Client().get('/sr/bookings/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Šta raditi u Crnoj Gori')
 
@@ -348,6 +359,7 @@ class RegionDirectoryTests(TestCase):
 
 
 @override_settings(BOOKING_LISTING_MODE=False)
+@serbian_enabled
 class RichExperienceTests(MontenegroThemeMixin, TestCase):
     def setUp(self):
         from decimal import Decimal
@@ -371,7 +383,9 @@ class RichExperienceTests(MontenegroThemeMixin, TestCase):
 
     def test_card_shows_rich_fields(self):
         body = Client().get('/bookings/').content.decode('utf-8')
-        self.assertIn('Bestseller', body)
+        # The badge's copy is the theme's to choose (it reads 'Guest favourite'
+        # today); assert the marker, not a display word.
+        self.assertIn('data-badge="bestseller"', body)
         self.assertIn('Rich Kayak', body)
         self.assertIn('85', body)  # was-price strikethrough
 
@@ -383,9 +397,7 @@ class RichExperienceTests(MontenegroThemeMixin, TestCase):
         self.assertIn('234 reviews', body)
 
     def test_detail_serbian_labels(self):
-        body = (
-            Client().get('/bookings/rich-kayak/', HTTP_ACCEPT_LANGUAGE='sr').content.decode('utf-8')
-        )
+        body = Client().get('/sr/bookings/rich-kayak/').content.decode('utf-8')
         self.assertIn('Istaknuto', body)  # Highlights → sr
         self.assertIn('Domaćin', body)  # Hosted by → sr
 

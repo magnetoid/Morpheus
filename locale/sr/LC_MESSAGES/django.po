@@ -95,7 +95,7 @@ msgstr "Pravi lokalni domaćini"
 msgid "Hand-picked only"
 msgstr "Samo pažljivo odabrano"
 
-msgid "Things to do in Montenegro"
+msgid "Experiences in Montenegro"
 msgstr "Šta raditi u Crnoj Gori"
 
 msgid "Tours, activities and rentals from trusted local hosts across the Adriatic."

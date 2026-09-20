@@ -292,9 +292,19 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         from plugins.installed.cms.models import Page
 
-        # Remove the known core "dot books" journal pages entirely — off-brand
+        # Unpublish the known core "dot books" journal pages — off-brand
         # book-vertical demo content with no place on the Montenegro site.
-        retired = Page.objects.filter(slug__in=CORE_JOURNAL_SLUGS).delete()[0]
+        # UNPUBLISH, never delete: this command's contract (docstring above) is
+        # to retire them, and a seeder that destroys CMS rows takes the
+        # merchant's own later edits with them and cannot be undone. Retiring is
+        # reversible from the dashboard. `update()` is safe for this particular
+        # write: cms.Page has no pre/post_save receivers, and its `save()`
+        # override only sanitises `body`, which a state-only flip never touches.
+        retired = (
+            Page.objects.filter(slug__in=CORE_JOURNAL_SLUGS)
+            .exclude(state='draft')
+            .update(state='draft')
+        )
 
         now = timezone.now()
         created = republished = 0
