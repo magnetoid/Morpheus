@@ -108,33 +108,58 @@
                 <div>
                   <h4 class="text-sm font-semibold text-muted-foreground mb-3">{% trans "Browse by category" %}</h4>
                   <ul class="space-y-1">
-                    {# `storefront_nav` is the booking plugin's namespaced payload.
-                       Catalog now publishes `catalog_nav_categories` instead, so
-                       the two plugins can no longer clobber each other. #}
-                    {% for c in storefront_nav.categories %}
+                    {% comment %}
+                    `storefront_nav` is the booking plugin's namespaced payload.
+                    Catalog now publishes `catalog_nav_categories` instead, so
+                    the two plugins can no longer clobber each other.
+                    {% endcomment %}
+                    {% if storefront_nav.categories %}{% for c in storefront_nav.categories %}
                     <li>
-                      <a href="{{ c.href|default:'/bookings/?category=' }}{{ c.slug|default:'' }}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group">
+                      <a href="{% if c.href %}{{ c.href }}{% else %}/bookings/?category={{ c.slug }}{% endif %}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group">
                         <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors text-primary [&_svg]:w-4 [&_svg]:h-4">{{ c.icon|default:'<svg viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot;><circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;8&quot;/></svg>'|safe }}</div>
                         <div>
-                          <p class="text-sm font-medium text-foreground">{{ c.label|default:c.name }}</p>
+                          <p class="text-sm font-medium text-foreground">{% firstof c.label c.name %}</p>
                           {% if c.desc %}<p class="text-xs text-muted-foreground">{{ c.desc }}</p>{% endif %}
                         </div>
                       </a>
                     </li>
-                    {% endfor %}
+                    {% endfor %}{% endif %}
+                    {% comment %}
+                    Legacy fallback: a store whose nav arrives under the bare
+                    `nav_categories` key still renders a menu. `firstof` is
+                    used for the label because a `|default:` chain evaluates
+                    BOTH sides and raises on the missing one.
+                    {% endcomment %}
+                    {% if not storefront_nav.categories %}{% for c in nav_categories %}
+                    <li>
+                      <a href="/bookings/?category={{ c.slug }}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group">
+                        <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors text-primary [&_svg]:w-4 [&_svg]:h-4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg></div>
+                        <div>
+                          <p class="text-sm font-medium text-foreground">{% firstof c.label c.name %}</p>
+                        </div>
+                      </a>
+                    </li>
+                    {% endfor %}{% endif %}
                   </ul>
                 </div>
                 <div>
                   <h4 class="text-sm font-semibold text-muted-foreground mb-3">{% trans "Popular destinations" %}</h4>
                   <ul class="grid grid-cols-2 gap-1">
-                    {% for d in storefront_nav.destinations|default:nav_destinations %}
+                    {% if storefront_nav.destinations %}{% for d in storefront_nav.destinations %}
                     <li>
-                      <a href="{{ d.href|default:'/places/' }}{% if not d.href %}{{ d.slug }}/{% endif %}" class="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors text-sm text-foreground">
+                      <a href="{% if d.href %}{{ d.href }}{% else %}/places/{{ d.slug }}/{% endif %}" class="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors text-sm text-foreground">
                         <svg class="w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                         {{ d.name }}
                       </a>
                     </li>
-                    {% endfor %}
+                    {% endfor %}{% elif nav_destinations %}{% for d in nav_destinations %}
+                    <li>
+                      <a href="{% if d.href %}{{ d.href }}{% else %}/places/{{ d.slug }}/{% endif %}" class="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors text-sm text-foreground">
+                        <svg class="w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                        {% firstof d.name d.label %}
+                      </a>
+                    </li>
+                    {% endfor %}{% endif %}
                   </ul>
                   <div class="mt-4 pt-4 border-t border-border">
                     <a href="/bookings/" class="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
@@ -163,31 +188,39 @@
                 <div>
                   <h4 class="text-sm font-semibold text-muted-foreground mb-3">{% trans "Coastal towns" %}</h4>
                   <ul class="space-y-1">
-                    {% for p in storefront_nav.places.coastal|default:nav_places_coastal %}
-                    <li><a href="{{ p.href|default:'/places/' }}{% if not p.href %}{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
-                    {% endfor %}
+                    {% if storefront_nav.places.coastal %}{% for p in storefront_nav.places.coastal %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
+                    {% endfor %}{% elif nav_places_coastal %}{% for p in nav_places_coastal %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{% firstof p.name p.label %}</a></li>
+                    {% endfor %}{% endif %}
                   </ul>
                 </div>
                 <div>
                   <h4 class="text-sm font-semibold text-muted-foreground mb-3">{% trans "Mountains &amp; parks" %}</h4>
                   <ul class="space-y-1">
-                    {% for p in storefront_nav.places.mountains|default:nav_places_mountains %}
-                    <li><a href="{{ p.href|default:'/places/' }}{% if not p.href %}{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
-                    {% endfor %}
+                    {% if storefront_nav.places.mountains %}{% for p in storefront_nav.places.mountains %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
+                    {% endfor %}{% elif nav_places_mountains %}{% for p in nav_places_mountains %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{% firstof p.name p.label %}</a></li>
+                    {% endfor %}{% endif %}
                   </ul>
                   <h4 class="text-sm font-semibold text-muted-foreground mb-3 mt-5">{% trans "Cities &amp; towns" %}</h4>
                   <ul class="space-y-1">
-                    {% for p in storefront_nav.places.cities|default:nav_places_cities %}
-                    <li><a href="{{ p.href|default:'/places/' }}{% if not p.href %}{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
-                    {% endfor %}
+                    {% if storefront_nav.places.cities %}{% for p in storefront_nav.places.cities %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
+                    {% endfor %}{% elif nav_places_cities %}{% for p in nav_places_cities %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{% firstof p.name p.label %}</a></li>
+                    {% endfor %}{% endif %}
                   </ul>
                 </div>
                 <div>
                   <h4 class="text-sm font-semibold text-muted-foreground mb-3">{% trans "Landmarks &amp; nature" %}</h4>
                   <ul class="space-y-1">
-                    {% for p in storefront_nav.places.landmarks|default:nav_places_landmarks %}
-                    <li><a href="{{ p.href|default:'/places/' }}{% if not p.href %}{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
-                    {% endfor %}
+                    {% if storefront_nav.places.landmarks %}{% for p in storefront_nav.places.landmarks %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
+                    {% endfor %}{% elif nav_places_landmarks %}{% for p in nav_places_landmarks %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{% firstof p.name p.label %}</a></li>
+                    {% endfor %}{% endif %}
                   </ul>
                 </div>
               </div>

@@ -35,6 +35,16 @@ class BookingMarketplacePlugin(Plugin):
             prefix='',
             namespace='booking_marketplace',
         )
+        # Header megamenu data (categories, destinations, place columns).
+        # This context processor was written but never registered, so every
+        # theme reading `nav_categories` / `nav_destinations` / `storefront_nav`
+        # from this plugin got VariableDoesNotExist — a live 500 — instead of a
+        # menu. Passed as the callable, matching orders/brand_kit/feature_adoption.
+        from plugins.installed.booking_marketplace.context_processors import (  # noqa: PLC0415
+            storefront_nav,
+        )
+
+        self.register_context_processor(storefront_nav)
         # Fold experiences/places/stays into seo's sitemap without seo ever
         # importing this plugin — the hook bus skips this handler for free
         # while booking_marketplace is disabled (ADR 0023).
