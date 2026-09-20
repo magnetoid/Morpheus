@@ -42,7 +42,7 @@ class JanusActivityLogTests(TestCase):
         """No learning yet must not break the page."""
         r = self.c.get('/dashboard/agents/')
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, 'Janus activity')
+        self.assertContains(r, 'Engine activity')
         self.assertContains(r, 'No Janus activity journalled yet')
 
     def test_journal_entries_appear_newest_first(self):

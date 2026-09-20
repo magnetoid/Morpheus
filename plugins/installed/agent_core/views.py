@@ -321,27 +321,30 @@ def _learned_skills_summary() -> list:
 
 
 def _janus_activity_log(limit: int = 60) -> dict:
-    """Janus's own activity, as one chronological feed.
+    """What the engine has been doing, as one chronological feed.
 
-    Janus writes two kinds of record, and until now the activity page showed
-    neither as a timeline:
+    Three sources, none of which the activity page showed as a timeline before:
 
     * **Journal entries** — ``JanusLearning`` rows at ``memories/daily/<date>.md``,
       one line per memory change, exactly as the ``memory_tool`` appends them:
-      ``- `HH:MM` **MEMORY** added: <text>``. These are the real "what Janus
-      learned, when" log, and they survive redeploys because they live in the DB.
-    * **Audit events** — the dotted-slug rows ``janus_learning`` writes whenever a
-      turn stores or forgets learning (``janus.learned``,
+      ``- `HH:MM` **MEMORY** added: <text>``. This is the real "what Janus
+      learned, when" log, and it survives redeploys because it lives in the DB.
+    * **Learning audit** — the dotted-slug rows ``janus_learning`` writes whenever
+      a chat turn stores or forgets learning (``janus.learned``,
       ``janus.learning_forgotten``). These carry the actor and the paths.
+    * **Tool calls** — ``agents.decision`` audit rows: every tool invocation with
+      its arguments, output and errors (written by ``core.audit.agent_decision``).
 
-    merged and sorted newest-first so the page reads as a single feed. Never
+    Note the tool-call rows are **not Janus-only**. The ``metadata.agent`` field
+    names the caller, and in practice most come from ``worker`` runs, which reach
+    the store through the agent runtime and never touch
+    :mod:`core.assistant.janus_learning`. So the journal and learning rows read as
+    Janus's own record, while the tool rows read as the wider agent's — the event
+    carries its agent name so the distinction stays visible.
+
+    Merged and sorted newest-first so the page reads as a single feed. Never
     raises: a missing table or one malformed line must not break the dashboard.
-
-    A third source is the tool-call trail: ``agents.decision`` audit rows carry
-    every tool an agent invoked, with its arguments, output and errors (written
-    by ``core.audit.agent_decision``). These are the engine's live work log, so
-    they are shown too — flagged when the call failed, because an error is the
-    most useful line on the page.
+    Errors are flagged, because a failed call is the most useful line on the page.
     """
     from core.assistant.models import JanusLearning
 

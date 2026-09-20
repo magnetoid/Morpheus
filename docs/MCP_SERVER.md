@@ -127,6 +127,14 @@ passes the same gates as Linda's in-process loop (`core/assistant/gates.py`):
   exposed to a turn. Linda learns and recalls through Janus's own memory, which
   Morpheus keeps in the database (`core/assistant/janus_learning.py`).
 
+  Learning is scoped to the **chat turn**: `hydrate` runs before it and `harvest`
+  after it, both inside `iter_janus_turn`
+  (`core/assistant/janus_engine.py`). A `worker` run spawned through
+  `delegate.spawn_workers` goes through the agent runtime instead and never
+  touches `janus_learning`, so it neither reads store memory nor contributes to
+  it. The `agents.decision` rows such a run writes are tool-call telemetry, not
+  learning, and their `metadata.agent` names the caller.
+
 ## Write surface (catalog, inventory, orders)
 
 The MCP **admin** server (`/mcp/admin/v1/`) and GraphQL endpoint

@@ -90,7 +90,7 @@
 </div>
 {% endif %}
 
-<h2 class="text-lg font-semibold mt-6 mb-3">Janus activity</h2>
+<h2 class="text-lg font-semibold mt-6 mb-3">Engine activity</h2>
 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
   <div class="card card-padded">
     <p class="meta">Logged events</p>
@@ -112,7 +112,7 @@
 <div class="card mt-3">
   <div class="card-padded" style="border-bottom:1px solid var(--border);">
     <p class="font-medium">Activity log</p>
-    <p class="meta">Every memory change Janus journalled, plus each store/forget of learned material. Newest first — this is the engine's own record, read straight from the database so it survives redeploys.</p>
+    <p class="meta">Every memory change Janus journalled, each store/forget of learned material, and every tool call the agents made. Rows are tagged by kind — journal and memory rows are Janus's own record; tool rows name the agent that called (<code>worker</code>, <code>merchant_ops</code>). Newest first, read straight from the database so it survives redeploys.</p>
   </div>
   <table class="morph-table">
     <thead>
