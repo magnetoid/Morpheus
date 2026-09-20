@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from queue import Empty, Queue
 from threading import Thread
 from typing import Any
@@ -33,6 +34,14 @@ from plugins.installed.agent_core.services import (
 )
 
 logger = logging.getLogger('morpheus.agents.views')
+
+# One journal line as tools/memory_tool.py:append_daily_snapshot writes it:
+# "- `HH:MM` **MEMORY** added: <text>".
+JANUS_JOURNAL_LINE_RE = re.compile(
+    r'^- `([^`]*)` \*\*(MEMORY|USER)\*\* (added|updated|removed): (.*)$'
+)
+# How many journal days to read when building the activity feed.
+JANUS_ACTIVITY_DAYS = 90
 
 
 def _decode_body(request) -> dict[str, Any]:
@@ -268,6 +277,7 @@ def runs_dashboard_view(request):
             'filter_agent': filter_agent,
             'q': query,
             'janus_learned': _janus_learning_summary(),
+            'janus_activity': _janus_activity_log(),
             'learned_skills': _learned_skills_summary(),
             'active_nav': 'agents',
             'breadcrumb_trail': [
@@ -308,6 +318,103 @@ def _learned_skills_summary() -> list:
     except Exception:  # noqa: BLE001
         logger.warning('runs dashboard: learned skills summary failed', exc_info=True)
         return []
+
+
+def _janus_activity_log(limit: int = 60) -> dict:
+    """Janus's own activity, as one chronological feed.
+
+    Janus writes two kinds of record, and until now the activity page showed
+    neither as a timeline:
+
+    * **Journal entries** — ``JanusLearning`` rows at ``memories/daily/<date>.md``,
+      one line per memory change, exactly as the ``memory_tool`` appends them:
+      ``- `HH:MM` **MEMORY** added: <text>``. These are the real "what Janus
+      learned, when" log, and they survive redeploys because they live in the DB.
+    * **Audit events** — the dotted-slug rows ``janus_learning`` writes whenever a
+      turn stores or forgets learning (``janus.learned``,
+      ``janus.learning_forgotten``). These carry the actor and the paths.
+
+    Merged and sorted newest-first so the page reads as a single feed. Never
+    raises: a missing table or one malformed line must not break the dashboard.
+    """
+    from core.assistant.models import JanusLearning
+
+    events: list[dict] = []
+
+    try:
+        rows = (
+            JanusLearning.objects.filter(scope='', kind='journal')
+            .order_by('-path')
+            .values_list('path', 'content', 'updated_at')[:JANUS_ACTIVITY_DAYS]
+        )
+        for path, content, updated_at in rows:
+            day = path.rsplit('/', 1)[-1].removesuffix('.md')
+            for line in (content or '').splitlines():
+                line = line.strip()
+                if not line.startswith('- `'):
+                    continue
+                match = JANUS_JOURNAL_LINE_RE.match(line)
+                if not match:
+                    continue
+                clock, kind, verb, text = match.groups()
+                events.append(
+                    {
+                        'at': updated_at,
+                        'day': day,
+                        'clock': clock,
+                        'kind': kind.lower(),
+                        'verb': verb,
+                        'text': text.strip()[:400],
+                        'source': 'journal',
+                    }
+                )
+    except Exception:  # noqa: BLE001
+        logger.warning('runs dashboard: janus journal read failed', exc_info=True)
+
+    try:
+        from core.audit.models import AuditEvent
+
+        for ev in AuditEvent.objects.filter(
+            event_type__startswith='janus.'
+        ).select_related('actor')[:limit]:
+            events.append(
+                {
+                    'at': ev.created_at,
+                    'day': ev.created_at.strftime('%Y-%m-%d'),
+                    'clock': ev.created_at.strftime('%H:%M'),
+                    'kind': 'audit',
+                    'verb': ev.event_type,
+                    'text': _describe_janus_audit(ev),
+                    'source': 'audit',
+                }
+            )
+    except Exception:  # noqa: BLE001
+        logger.warning('runs dashboard: janus audit read failed', exc_info=True)
+
+    events.sort(key=lambda e: (e['day'], e['clock']), reverse=True)
+
+    days = sorted({e['day'] for e in events}, reverse=True)
+    return {
+        'events': events[:limit],
+        'total': len(events),
+        'days': days,
+        'active_days': len(days),
+        'last_at': events[0]['at'] if events else None,
+    }
+
+
+def _describe_janus_audit(ev) -> str:
+    """A one-line, human reading of a ``janus.*`` audit row."""
+    meta = ev.metadata if isinstance(ev.metadata, dict) else {}
+    what = meta.get('what') or meta.get('skill') or ''
+    if ev.event_type == 'janus.learned':
+        paths = meta.get('paths') or []
+        shown = ', '.join(str(p) for p in paths[:3])
+        more = f' (+{len(paths) - 3} more)' if len(paths) > 3 else ''
+        return f"stored learning: {shown}{more}" if shown else 'stored learning'
+    if ev.event_type == 'janus.learning_forgotten':
+        return f'forgot {what}' if what else 'forgot learning'
+    return what or ev.target or ev.event_type
 
 
 @staff_member_required

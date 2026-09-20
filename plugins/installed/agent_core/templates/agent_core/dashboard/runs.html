@@ -90,6 +90,53 @@
 </div>
 {% endif %}
 
+<h2 class="text-lg font-semibold mt-6 mb-3">Janus activity</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+  <div class="card card-padded">
+    <p class="meta">Logged events</p>
+    <p class="display display-l">{{ janus_activity.total }}</p>
+    <p class="meta">across {{ janus_activity.active_days }} day{{ janus_activity.active_days|pluralize }}</p>
+  </div>
+  <div class="card card-padded">
+    <p class="meta">Last activity</p>
+    <p class="display display-l">{% if janus_activity.last_at %}{{ janus_activity.last_at|date:"M j" }}{% else %}—{% endif %}</p>
+    <p class="meta">{% if janus_activity.last_at %}{{ janus_activity.last_at|date:"H:i" }}{% else %}no activity recorded yet{% endif %}</p>
+  </div>
+  <div class="card card-padded">
+    <p class="meta">Active days</p>
+    <p class="display display-l">{{ janus_activity.active_days }}</p>
+    <p class="meta">journalled days in the last {{ 90 }} days</p>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-padded" style="border-bottom:1px solid var(--border);">
+    <p class="font-medium">Activity log</p>
+    <p class="meta">Every memory change Janus journalled, plus each store/forget of learned material. Newest first — this is the engine's own record, read straight from the database so it survives redeploys.</p>
+  </div>
+  <table class="morph-table">
+    <thead>
+      <tr><th style="width:9rem;">When</th><th style="width:7rem;">Kind</th><th style="width:8rem;">Action</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+    {% for e in janus_activity.events %}
+      <tr>
+        <td class="text-[color:var(--text-muted)]">{{ e.day }} <span style="opacity:.7;">{{ e.clock }}</span></td>
+        <td>
+          <span class="pill {% if e.kind == 'memory' %}pill-info{% elif e.kind == 'audit' %}pill-neutral{% else %}pill-success{% endif %}">{{ e.kind }}</span>
+        </td>
+        <td>{{ e.verb }}</td>
+        <td style="white-space:pre-wrap;">{{ e.text|truncatechars:280 }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+        No Janus activity journalled yet. Talk to Linda and the changes it saves will appear here.
+      </td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
 <h2 class="text-lg font-semibold mt-6 mb-3">What Janus has learned</h2>
 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
   <div class="card card-padded">
