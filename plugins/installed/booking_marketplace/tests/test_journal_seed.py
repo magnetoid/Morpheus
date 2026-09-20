@@ -12,8 +12,11 @@ class JournalSeedTests(TestCase):
         # already have seeded it in the test DB — update_or_create is safe either way).
         Page.objects.update_or_create(
             slug='the-case-for-the-small-press',
-            defaults={'title': 'The case for the small press',
-                      'state': 'published', 'metadata': {'category': 'journal'}},
+            defaults={
+                'title': 'The case for the small press',
+                'state': 'published',
+                'metadata': {'category': 'journal'},
+            },
         )
         call_command('seed_journal_montenegro')
 
@@ -24,14 +27,18 @@ class JournalSeedTests(TestCase):
         kotor = Page.objects.get(slug='48-hours-in-kotor')
         self.assertEqual(kotor.state, 'published')
         self.assertEqual(kotor.metadata.get('category'), 'journal')
-        self.assertTrue(Page.objects.filter(state='published', metadata__category='journal').count() >= 6)
+        self.assertTrue(
+            Page.objects.filter(state='published', metadata__category='journal').count() >= 6
+        )
 
     def test_idempotent_and_leaves_user_pages_alone(self):
         from plugins.installed.cms.models import Page
 
         # A merchant-authored journal page must survive re-runs.
         Page.objects.create(
-            slug='my-own-post', title='My own post', state='published',
+            slug='my-own-post',
+            title='My own post',
+            state='published',
             metadata={'category': 'journal'},
         )
         call_command('seed_journal_montenegro')

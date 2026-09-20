@@ -39,7 +39,7 @@ def _as_date(v) -> datetime.date:
     try:
         return datetime.date.fromisoformat(str(v).strip())
     except (ValueError, AttributeError):
-        raise BookingError('Please choose valid dates.')
+        raise BookingError('Please choose valid dates.') from None
 
 
 def nights_between(check_in, check_out) -> int:
@@ -61,7 +61,7 @@ def quote_stay(room_type, *, check_in, check_out, rooms=1, adults=2, children=0)
     try:
         rooms, adults, children = int(rooms), int(adults), int(children)
     except (TypeError, ValueError):
-        raise BookingError('Please enter valid guest and room numbers.')
+        raise BookingError('Please enter valid guest and room numbers.') from None
     if rooms < 1:
         raise BookingError('At least one room is required.')
     if adults < 1:
@@ -75,8 +75,7 @@ def quote_stay(room_type, *, check_in, check_out, rooms=1, adults=2, children=0)
     currency = room_type.base_rate.currency
     rate = room_type.base_rate
     nightly = [
-        {'date': (ci + datetime.timedelta(days=i)).isoformat(), 'rate': rate}
-        for i in range(nights)
+        {'date': (ci + datetime.timedelta(days=i)).isoformat(), 'rate': rate} for i in range(nights)
     ]
     room_subtotal = rate * nights * rooms
     fee_amount = (room_subtotal.amount * SERVICE_FEE_RATE).quantize(
@@ -88,10 +87,18 @@ def quote_stay(room_type, *, check_in, check_out, rooms=1, adults=2, children=0)
     )
     tourist_tax = Money(tax_amount, currency)
     return {
-        'nights': nights, 'rooms': rooms, 'adults': adults, 'children': children,
-        'guests': guests, 'check_in': ci, 'check_out': co, 'nightly': nightly,
-        'room_subtotal': room_subtotal, 'service_fee': service_fee,
-        'tourist_tax': tourist_tax, 'total': room_subtotal + service_fee + tourist_tax,
+        'nights': nights,
+        'rooms': rooms,
+        'adults': adults,
+        'children': children,
+        'guests': guests,
+        'check_in': ci,
+        'check_out': co,
+        'nightly': nightly,
+        'room_subtotal': room_subtotal,
+        'service_fee': service_fee,
+        'tourist_tax': tourist_tax,
+        'total': room_subtotal + service_fee + tourist_tax,
         'currency': str(currency),
     }
 
@@ -109,8 +116,10 @@ def room_availability(room_type, check_in, check_out) -> int:
     ci, co = _as_date(check_in), _as_date(check_out)
     overlapping = list(
         StayBooking.objects.filter(
-            room_type=room_type, status__in=ACTIVE_STATUSES,
-            check_in__lt=co, check_out__gt=ci,
+            room_type=room_type,
+            status__in=ACTIVE_STATUSES,
+            check_in__lt=co,
+            check_out__gt=ci,
         ).values('check_in', 'check_out', 'rooms')
     )
     peak = 0
@@ -122,9 +131,20 @@ def room_availability(room_type, check_in, check_out) -> int:
 
 
 @transaction.atomic
-def create_stay_booking(*, room_type, customer=None, customer_name, customer_email,
-                        customer_phone='', check_in, check_out, rooms=1, adults=2,
-                        children=0, notes=''):
+def create_stay_booking(
+    *,
+    room_type,
+    customer=None,
+    customer_name,
+    customer_email,
+    customer_phone='',
+    check_in,
+    check_out,
+    rooms=1,
+    adults=2,
+    children=0,
+    notes='',
+):
     """Create a confirmed stay booking with server-derived totals.
 
     Locks the room-type row so concurrent bookings can't oversell: the
@@ -137,13 +157,15 @@ def create_stay_booking(*, room_type, customer=None, customer_name, customer_ema
     if not rt.is_active:
         raise BookingError('This room type is not available.')
 
-    quote = quote_stay(rt, check_in=check_in, check_out=check_out,
-                       rooms=rooms, adults=adults, children=children)
+    quote = quote_stay(
+        rt, check_in=check_in, check_out=check_out, rooms=rooms, adults=adults, children=children
+    )
     available = room_availability(rt, quote['check_in'], quote['check_out'])
     if quote['rooms'] > available:
         raise BookingError(
             f'Only {available} room(s) left for those dates.'
-            if available > 0 else 'No rooms available for those dates.'
+            if available > 0
+            else 'No rooms available for those dates.'
         )
     if not (customer_name and customer_email):
         raise BookingError('Your name and email are required.')
@@ -152,22 +174,45 @@ def create_stay_booking(*, room_type, customer=None, customer_name, customer_ema
     # inventory immediately. Do NOT enable marketplace mode until the Phase 3
     # payment bridge gates this (listing mode books nothing — it enquires).
     return StayBooking.objects.create(
-        room_type=rt, property=rt.property,
+        room_type=rt,
+        property=rt.property,
         customer=customer if (customer and getattr(customer, 'is_authenticated', False)) else None,
-        customer_name=customer_name, customer_email=customer_email,
+        customer_name=customer_name,
+        customer_email=customer_email,
         customer_phone=customer_phone,
-        check_in=quote['check_in'], check_out=quote['check_out'], nights=quote['nights'],
-        rooms=quote['rooms'], adults=quote['adults'], children=quote['children'],
-        nightly_breakdown=[{'date': n['date'], 'rate': str(n['rate'].amount)} for n in quote['nightly']],
-        subtotal=quote['room_subtotal'], service_fee=quote['service_fee'],
-        tourist_tax=quote['tourist_tax'], total=quote['total'],
-        status='confirmed', notes=notes,
+        check_in=quote['check_in'],
+        check_out=quote['check_out'],
+        nights=quote['nights'],
+        rooms=quote['rooms'],
+        adults=quote['adults'],
+        children=quote['children'],
+        nightly_breakdown=[
+            {'date': n['date'], 'rate': str(n['rate'].amount)} for n in quote['nightly']
+        ],
+        subtotal=quote['room_subtotal'],
+        service_fee=quote['service_fee'],
+        tourist_tax=quote['tourist_tax'],
+        total=quote['total'],
+        status='confirmed',
+        notes=notes,
     )
 
 
-def submit_stay_enquiry(*, property, room_type=None, customer=None, name='', email,
-                        phone='', check_in=None, check_out=None, rooms=None,
-                        adults=None, children=None, message=''):
+def submit_stay_enquiry(
+    *,
+    property,
+    room_type=None,
+    customer=None,
+    name='',
+    email,
+    phone='',
+    check_in=None,
+    check_out=None,
+    rooms=None,
+    adults=None,
+    children=None,
+    message='',
+):
     """Capture a 'Contact for price' accommodation lead (listing mode; anon-allowed)."""
     from plugins.installed.booking_marketplace.models import StayEnquiry
 
@@ -191,16 +236,23 @@ def submit_stay_enquiry(*, property, room_type=None, customer=None, name='', ema
             return None
 
     enquiry = StayEnquiry.objects.create(
-        property=property, room_type=room_type,
+        property=property,
+        room_type=room_type,
         customer=customer if (customer and getattr(customer, 'is_authenticated', False)) else None,
-        name=name or '', email=email, phone=phone or '',
-        check_in=_opt_date(check_in), check_out=_opt_date(check_out),
-        rooms=_opt_int(rooms), adults=_opt_int(adults), children=_opt_int(children),
+        name=name or '',
+        email=email,
+        phone=phone or '',
+        check_in=_opt_date(check_in),
+        check_out=_opt_date(check_out),
+        rooms=_opt_int(rooms),
+        adults=_opt_int(adults),
+        children=_opt_int(children),
         message=message or '',
     )
     try:
         from plugins.installed.booking_marketplace.email import notify_stay_enquiry
+
         notify_stay_enquiry(enquiry)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110 — best-effort notify; never block the enquiry
         pass
     return enquiry

@@ -45,7 +45,9 @@ class MontenegroNavFallbackTests(TestCase):
             {
                 'storefront_nav': {
                     'categories': [{'label': 'Sailing', 'slug': 'sailing'}],
-                    'destinations': [{'name': 'Perast', 'slug': 'perast', 'href': '/places/perast/'}],
+                    'destinations': [
+                        {'name': 'Perast', 'slug': 'perast', 'href': '/places/perast/'}
+                    ],
                     'places': {
                         'coastal': [{'name': 'Tivat', 'slug': 'tivat', 'href': '/places/tivat/'}],
                         'mountains': [],

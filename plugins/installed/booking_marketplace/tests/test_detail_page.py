@@ -10,6 +10,7 @@ from plugins.installed.booking_marketplace.models import AddOn, BookableService,
 
 def _vendor():
     from plugins.installed.catalog.models import Vendor
+
     return Vendor.objects.create(name='Makers', slug='makers', is_active=True)
 
 
@@ -17,10 +18,16 @@ def _vendor():
 class DetailKindTests(TestCase):
     def test_experience_shows_itinerary_and_map(self):
         BookableService.objects.create(
-            vendor=_vendor(), name='Bay Kayak', slug='bay-kayak', price=Money(50, 'EUR'),
-            listing_kind='experience', latitude=Decimal('42.42'), longitude=Decimal('18.77'),
+            vendor=_vendor(),
+            name='Bay Kayak',
+            slug='bay-kayak',
+            price=Money(50, 'EUR'),
+            listing_kind='experience',
+            latitude=Decimal('42.42'),
+            longitude=Decimal('18.77'),
             itinerary=[{'title': 'Depart', 'detail': 'From the old pier'}],
-            what_to_bring=['Swimwear'], is_active=True,
+            what_to_bring=['Swimwear'],
+            is_active=True,
         )
         body = Client().get('/bookings/bay-kayak/').content.decode('utf-8')
         self.assertIn('Itinerary', body)
@@ -30,8 +37,12 @@ class DetailKindTests(TestCase):
 
     def test_product_hides_itinerary_shows_quantity(self):
         BookableService.objects.create(
-            vendor=_vendor(), name='Vranac Red', slug='vranac-red', price=Money(18, 'EUR'),
-            listing_kind='product', is_active=True,
+            vendor=_vendor(),
+            name='Vranac Red',
+            slug='vranac-red',
+            price=Money(18, 'EUR'),
+            listing_kind='product',
+            is_active=True,
         )
         body = Client().get('/bookings/vranac-red/').content.decode('utf-8')
         self.assertNotIn('Itinerary', body)
@@ -43,8 +54,12 @@ class DetailKindTests(TestCase):
 class WidgetTests(TestCase):
     def test_tier_and_addon_inputs_rendered(self):
         svc = BookableService.objects.create(
-            vendor=_vendor(), name='Kayak', slug='kayak', price=Money(50, 'EUR'),
-            listing_kind='experience', is_active=True,
+            vendor=_vendor(),
+            name='Kayak',
+            slug='kayak',
+            price=Money(50, 'EUR'),
+            listing_kind='experience',
+            is_active=True,
         )
         adult = PricingTier.objects.create(service=svc, name='Adult', price=Money(50, 'EUR'))
         pickup = AddOn.objects.create(service=svc, name='Pickup', price=Money(10, 'EUR'))

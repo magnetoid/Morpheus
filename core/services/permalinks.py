@@ -5,6 +5,7 @@ stored template cannot silently move an indexed page: views and SEO redirect
 rules must opt in separately.  This keeps navigation, canonicals and sitemap
 contributors on one contract while protecting existing URLs.
 """
+
 from __future__ import annotations
 
 import re
@@ -36,7 +37,7 @@ class PermalinkResolver:
     templates: Mapping[str, str]
 
     @classmethod
-    def from_settings(cls, settings) -> 'PermalinkResolver':
+    def from_settings(cls, settings) -> PermalinkResolver:
         stored = getattr(settings, 'permalink_templates', None) or {}
         if not isinstance(stored, dict):
             stored = {}
@@ -59,8 +60,16 @@ def validate_template(kind: str, template: str) -> None:
         raise PermalinkError(f'Unknown permalink type: {kind}')
     if not isinstance(template, str) or not template.startswith('/') or not template.endswith('/'):
         raise PermalinkError('Permalink must be a local path starting and ending with /.')
-    if '//' in template or '?' in template or '#' in template or '\\' in template or '://' in template:
-        raise PermalinkError('Permalink must be a clean local path without query, fragment or host.')
+    if (
+        '//' in template
+        or '?' in template
+        or '#' in template
+        or '\\' in template
+        or '://' in template
+    ):
+        raise PermalinkError(
+            'Permalink must be a clean local path without query, fragment or host.'
+        )
     tokens = set(_TOKEN_RE.findall(template))
     if tokens != {'slug'} or template.count('{slug}') != 1:
         raise PermalinkError('Permalink must contain exactly one {slug} placeholder.')
@@ -71,5 +80,6 @@ def validate_template(kind: str, template: str) -> None:
 def resolver_for_settings(settings=None) -> PermalinkResolver:
     if settings is None:
         from core.models import StoreSettings
+
         settings = StoreSettings.objects.first()
     return PermalinkResolver.from_settings(settings)

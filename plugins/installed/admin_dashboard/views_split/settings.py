@@ -1054,10 +1054,10 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
     if category == 'general':
         # Permalinks live on the same General page but keep their own form so a
         # URL-template mistake can never block an unrelated store detail save.
-        from plugins.installed.admin_dashboard.forms.settings import PermalinksForm
+        from django.http import JsonResponse
 
         from core.models import StoreSettings
-        from django.http import JsonResponse
+        from plugins.installed.admin_dashboard.forms.settings import PermalinksForm
 
         instance = StoreSettings.objects.first()
         if request.method == 'POST' and request.POST.get('_form') == 'permalinks':

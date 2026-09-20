@@ -10,7 +10,8 @@ from plugins.installed.booking_marketplace.models import BookableService
 
 
 def _product(**kw):
-    from plugins.installed.catalog.models import Category, Product, Vendor
+    from plugins.installed.catalog.models import Category, Product
+
     v = kw.pop('vendor', None)
     cat = Category.objects.create(name='Wine', slug='wine')
     return Product.objects.create(
@@ -18,14 +19,17 @@ def _product(**kw):
         slug=kw.get('slug', 'vranac-reserve'),
         sku=kw.get('sku', 'SKU-VR'),
         price=Money(Decimal('18.00'), 'EUR'),
-        short_description='Bold red', description='A barrel-aged Vranac.',
-        category=cat, status='active', vendor=v,
+        short_description='Bold red',
+        description='A barrel-aged Vranac.',
+        category=cat,
+        status='active',
+        vendor=v,
     )
 
 
 class MigrationTests(TestCase):
     def test_product_becomes_product_kind_service(self):
-        p = _product()
+        _product()
         call_command('migrate_products_to_bookable')
         svc = BookableService.objects.get(slug='vranac-reserve')
         self.assertEqual(svc.listing_kind, 'product')
@@ -43,9 +47,7 @@ class MigrationTests(TestCase):
         _product()
         call_command('migrate_products_to_bookable')
         call_command('migrate_products_to_bookable')
-        self.assertEqual(
-            BookableService.objects.filter(slug='vranac-reserve').count(), 1
-        )
+        self.assertEqual(BookableService.objects.filter(slug='vranac-reserve').count(), 1)
 
     def test_fallback_vendor_created_when_product_has_none(self):
         _product(vendor=None)

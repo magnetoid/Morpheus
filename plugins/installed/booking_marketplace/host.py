@@ -76,9 +76,7 @@ def host_services(request):
             'pending_bookings': Booking.objects.filter(
                 service__vendor=vendor, status='pending'
             ).count(),
-            'new_enquiries': Enquiry.objects.filter(
-                service__vendor=vendor, status='new'
-            ).count(),
+            'new_enquiries': Enquiry.objects.filter(service__vendor=vendor, status='new').count(),
             'seo_title': 'Your experiences',
         },
     )
@@ -86,7 +84,7 @@ def host_services(request):
 
 @login_required(login_url='/auth/login/')
 @require_http_methods(['GET', 'POST'])
-def host_service_form(request, slug=None):
+def host_service_form(request, slug=None):  # noqa: PLR0912, PLR0915 — one branch per optional listing field in a single POST
     vendor = _host_vendor(request.user)
     if vendor is None:
         return _not_host(request)
@@ -125,15 +123,23 @@ def host_service_form(request, slug=None):
             kind = (request.POST.get('listing_kind') or 'experience').strip()
             svc.listing_kind = kind if kind in dict(BookableService.LISTING_KINDS) else 'experience'
             svc.meeting_point = (request.POST.get('meeting_point') or '').strip()
-            svc.languages = [s.strip() for s in (request.POST.get('languages') or '').split(',') if s.strip()]
-            svc.what_to_bring = [s.strip() for s in (request.POST.get('what_to_bring') or '').splitlines() if s.strip()]
+            svc.languages = [
+                s.strip() for s in (request.POST.get('languages') or '').split(',') if s.strip()
+            ]
+            svc.what_to_bring = [
+                s.strip()
+                for s in (request.POST.get('what_to_bring') or '').splitlines()
+                if s.strip()
+            ]
 
             def _dec(v):
                 from decimal import Decimal, InvalidOperation
+
                 try:
                     return Decimal(v) if (v or '').strip() else None
                 except (InvalidOperation, TypeError):
                     return None
+
             svc.latitude = _dec(request.POST.get('latitude'))
             svc.longitude = _dec(request.POST.get('longitude'))
             svc.save()
@@ -160,8 +166,8 @@ def host_service_form(request, slug=None):
             PricingTier.objects.filter(service=svc).delete()
             names = request.POST.getlist('tier_name')
             prices = request.POST.getlist('tier_price')
-            for i, (nm, pr) in enumerate(zip(names, prices)):
-                nm = (nm or '').strip()
+            for i, (raw_nm, pr) in enumerate(zip(names, prices, strict=False)):
+                nm = (raw_nm or '').strip()
                 if not nm:
                     continue
                 try:
@@ -174,8 +180,8 @@ def host_service_form(request, slug=None):
             anames = request.POST.getlist('addon_name')
             aprices = request.POST.getlist('addon_price')
             atypes = request.POST.getlist('addon_type')
-            for i, nm in enumerate(anames):
-                nm = (nm or '').strip()
+            for i, raw_nm in enumerate(anames):
+                nm = (raw_nm or '').strip()
                 if not nm:
                     continue
                 try:
@@ -184,7 +190,9 @@ def host_service_form(request, slug=None):
                     amt = Decimal('0')
                 ptype = atypes[i] if i < len(atypes) else 'per_person'
                 AddOn.objects.create(
-                    service=svc, name=nm, price=_M(amt, 'EUR'),
+                    service=svc,
+                    name=nm,
+                    price=_M(amt, 'EUR'),
                     price_type=ptype if ptype in ('per_person', 'per_booking') else 'per_person',
                     sort_order=i,
                 )
@@ -197,11 +205,14 @@ def host_service_form(request, slug=None):
 
     from plugins.installed.catalog.models import Category
 
-    selected = set(
-        AvailabilityWindow.objects.filter(service=svc).values_list('weekday', flat=True)
-    ) if svc else set()
+    selected = (
+        set(AvailabilityWindow.objects.filter(service=svc).values_list('weekday', flat=True))
+        if svc
+        else set()
+    )
 
     from collections import defaultdict
+
     st_map = defaultdict(list)
     if svc:
         for w in AvailabilityWindow.objects.filter(service=svc):
@@ -286,9 +297,7 @@ def host_earnings(request):
     if vendor is None:
         return _not_host(request)
 
-    paid = Booking.objects.filter(
-        service__vendor=vendor, status__in=('confirmed', 'completed')
-    )
+    paid = Booking.objects.filter(service__vendor=vendor, status__in=('confirmed', 'completed'))
     gross = fees = net = Decimal('0')
     for b in paid:
         gross += b.total_price.amount

@@ -25,7 +25,10 @@ class BookingMarketplacePlugin(Plugin):
         'Off by default; enable from Dashboard → Apps.'
     )
     has_models = True
-    requires = ['catalog']
+    # cms + seo are real deps, not surfaces: the Montenegro seeders write
+    # cms Pages (journal, guides) and seo Redirects/SiteSeoSettings, and the
+    # sitemap/AI-feed contributions are asserted against seo's renderers.
+    requires = ['catalog', 'cms', 'seo']
     enabled_by_default = False
 
     def ready(self) -> None:

@@ -485,8 +485,8 @@ class HostUITests(TestCase):
         self.assertEqual(svc.availability.count(), 2)
 
     def test_cannot_edit_other_hosts_service(self):
-        from plugins.installed.catalog.models import Vendor
         from plugins.installed.booking_marketplace import host
+        from plugins.installed.catalog.models import Vendor
 
         v2 = Vendor.objects.create(name='Other', slug='other-co', is_active=True, owner=self.other)
         BookableService.objects.create(

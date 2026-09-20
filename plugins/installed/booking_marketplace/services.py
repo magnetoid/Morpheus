@@ -92,7 +92,7 @@ def available_sessions(service, *, days: int = 30, limit: int = 30) -> list:
 
 
 @transaction.atomic
-def create_booking(
+def create_booking(  # noqa: PLR0912 — one branch per validated booking field
     service,
     *,
     booking_date,
@@ -128,7 +128,7 @@ def create_booking(
         try:
             guests = int(guests)
         except (TypeError, ValueError):
-            raise BookingError('Please enter a valid number of guests.')
+            raise BookingError('Please enter a valid number of guests.') from None
         if guests < 1:
             raise BookingError('At least one guest is required.')
         if svc.max_guests_per_booking and guests > svc.max_guests_per_booking:
@@ -139,7 +139,7 @@ def create_booking(
         try:
             booking_date = datetime.date.fromisoformat(booking_date)
         except ValueError:
-            raise BookingError('Please choose a valid date.')
+            raise BookingError('Please choose a valid date.') from None
     if booking_date < timezone.localdate():
         raise BookingError('That date has already passed.')
     if booking_date.weekday() not in _weekdays(svc):
@@ -245,7 +245,7 @@ def submit_enquiry(
         from plugins.installed.booking_marketplace.email import notify_enquiry
 
         notify_enquiry(enquiry)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110 — best-effort notify; never block the enquiry
         pass
     return enquiry
 
@@ -254,20 +254,19 @@ def _safe_qty(v) -> int:
     try:
         q = int(v)
     except (TypeError, ValueError):
-        raise BookingError('Please enter a valid quantity.')
+        raise BookingError('Please enter a valid quantity.') from None
     if q < 0:
         raise BookingError('Quantity cannot be negative.')
     return q
 
 
-def price_quote(service, *, tiers: dict, addons: dict) -> dict:
+def price_quote(service, *, tiers: dict, addons: dict) -> dict:  # noqa: PLR0912 — one branch per priceable component
     """Server-derived quote for a booking selection. Single source of truth.
 
     `tiers` maps PricingTier id → qty; the special key 'guests' uses the service
     flat price (fallback when the service defines no tiers). `addons` maps AddOn
     id → qty. Returns money + JSON snapshots. Raises BookingError on bad input.
     """
-    from plugins.installed.booking_marketplace.models import AddOn, PricingTier
 
     tiers = tiers or {}
     addons = addons or {}
@@ -278,13 +277,13 @@ def price_quote(service, *, tiers: dict, addons: dict) -> dict:
 
     active = {str(t.id): t for t in service.tiers.filter(is_active=True)}
     if active:
-        for tid, qty in tiers.items():
+        for tid, raw_qty in tiers.items():
             if tid == 'guests':
                 continue
             tier = active.get(str(tid))
             if tier is None:
                 raise BookingError('Unknown ticket type selected.')
-            qty = _safe_qty(qty)
+            qty = _safe_qty(raw_qty)
             if qty == 0:
                 continue
             if tier.max_qty and qty > tier.max_qty:
@@ -318,11 +317,11 @@ def price_quote(service, *, tiers: dict, addons: dict) -> dict:
 
     active_addons = {str(a.id): a for a in service.addons.filter(is_active=True)}
     addon_snap = []
-    for aid, qty in addons.items():
+    for aid, raw_qty in addons.items():
         addon = active_addons.get(str(aid))
         if addon is None:
             raise BookingError('Unknown add-on selected.')
-        qty = _safe_qty(qty)
+        qty = _safe_qty(raw_qty)
         if qty == 0:
             continue
         if addon.max_qty and qty > addon.max_qty:
@@ -392,7 +391,7 @@ def create_review(service, *, user, rating, title='', body=''):
     try:
         rating = int(rating)
     except (TypeError, ValueError):
-        raise BookingError('Please choose a rating.')
+        raise BookingError('Please choose a rating.') from None
     if not 1 <= rating <= 5:
         raise BookingError('Rating must be between 1 and 5.')
 

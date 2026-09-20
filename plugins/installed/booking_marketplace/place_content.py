@@ -66,8 +66,10 @@ def good_for_cards(good_for) -> list:
         label = str(raw).strip()
         if not label:
             continue
-        cards.append({
-            'label': label[:1].upper() + label[1:],
-            'icon': _ICON_SVG[_icon_key_for(label)],
-        })
+        cards.append(
+            {
+                'label': label[:1].upper() + label[1:],
+                'icon': _ICON_SVG[_icon_key_for(label)],
+            }
+        )
     return cards

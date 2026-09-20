@@ -140,7 +140,7 @@ def booking_regions():
     """Region options for the hero 'Where' dropdown (key + label)."""
     from plugins.installed.booking_marketplace.models import REGIONS
 
-    return [{'key': k, 'label': l} for k, l in REGIONS]
+    return [{'key': k, 'label': label} for k, label in REGIONS]
 
 
 @register.simple_tag

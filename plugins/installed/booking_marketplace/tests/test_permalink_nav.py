@@ -21,9 +21,7 @@ class StorefrontNavPayloadTests(TestCase):
         ctx = storefront_nav(None)
         payload = ctx['storefront_nav']
         self.assertEqual(set(payload), {'categories', 'destinations', 'places'})
-        self.assertEqual(
-            set(payload['places']), {'coastal', 'mountains', 'cities', 'landmarks'}
-        )
+        self.assertEqual(set(payload['places']), {'coastal', 'mountains', 'cities', 'landmarks'})
 
     def test_the_legacy_keys_still_exist_for_the_shipped_theme(self):
         """Place columns stay published under their original names — the
@@ -52,15 +50,17 @@ class StorefrontNavPayloadTests(TestCase):
         ctx = storefront_nav(None)
         # No Place rows in this DB, so assert through the resolver the
         # context processor uses — the same call the link builder makes.
-        self.assertEqual(
-            ctx['permalinks']['booking'], '/bookings/sample/'
-        )
+        self.assertEqual(ctx['permalinks']['booking'], '/bookings/sample/')
         from core.services.permalinks import resolver_for_settings
 
-        self.assertEqual(resolver_for_settings().path('place', slug='kotor'), '/destinations/kotor/')
+        self.assertEqual(
+            resolver_for_settings().path('place', slug='kotor'), '/destinations/kotor/'
+        )
 
     def test_an_invalid_stored_template_cannot_break_the_render(self):
         """A hand-edited row must degrade to the caller's fallback, not 500."""
-        StoreSettings.objects.create(permalink_templates={'place': 'https://evil.example.com/{slug}/'})
+        StoreSettings.objects.create(
+            permalink_templates={'place': 'https://evil.example.com/{slug}/'}
+        )
         ctx = storefront_nav(None)
         self.assertIn('storefront_nav', ctx)

@@ -110,7 +110,6 @@ class ThemeRegistry:
 
     def validate_active_theme(self) -> list[str]:
         """Return a list of error strings if the active theme is misconfigured."""
-        errors: list[str] = []
         theme = self.active
         if theme is None:
             return ['No active theme.']

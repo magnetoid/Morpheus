@@ -104,13 +104,13 @@ def storefront_nav(request):
     places, destinations = _nav_places()
     places = {
         column: [
-            {**item, 'href': _permalink_path('place', item['slug'], f"/places/{item['slug']}/")}
+            {**item, 'href': _permalink_path('place', item['slug'], f'/places/{item["slug"]}/')}
             for item in items
         ]
         for column, items in places.items()
     }
     destinations = [
-        {**item, 'href': _permalink_path('place', item['slug'], f"/places/{item['slug']}/")}
+        {**item, 'href': _permalink_path('place', item['slug'], f'/places/{item["slug"]}/')}
         for item in destinations
     ]
     return {

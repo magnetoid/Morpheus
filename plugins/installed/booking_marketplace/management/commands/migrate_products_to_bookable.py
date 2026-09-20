@@ -75,6 +75,8 @@ class Command(BaseCommand):
             p.save(update_fields=['status'])
             created += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            f'Products → bookable: {created} migrated, {skipped} already present.'
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'Products → bookable: {created} migrated, {skipped} already present.'
+            )
+        )

@@ -358,8 +358,8 @@ def _janus_activity_log(limit: int = 60) -> dict:
         )
         for path, content, updated_at in rows:
             day = path.rsplit('/', 1)[-1].removesuffix('.md')
-            for line in (content or '').splitlines():
-                line = line.strip()
+            for raw_line in (content or '').splitlines():
+                line = raw_line.strip()
                 if not line.startswith('- `'):
                     continue
                 match = JANUS_JOURNAL_LINE_RE.match(line)
@@ -383,9 +383,9 @@ def _janus_activity_log(limit: int = 60) -> dict:
     try:
         from core.audit.models import AuditEvent
 
-        for ev in AuditEvent.objects.filter(
-            event_type__startswith='janus.'
-        ).select_related('actor')[:limit]:
+        for ev in AuditEvent.objects.filter(event_type__startswith='janus.').select_related(
+            'actor'
+        )[:limit]:
             events.append(
                 {
                     'at': ev.created_at,
@@ -403,9 +403,9 @@ def _janus_activity_log(limit: int = 60) -> dict:
     try:
         from core.audit.models import AuditEvent
 
-        for ev in AuditEvent.objects.filter(event_type='agents.decision').order_by(
-            '-created_at'
-        )[: limit * 2]:
+        for ev in AuditEvent.objects.filter(event_type='agents.decision').order_by('-created_at')[
+            : limit * 2
+        ]:
             meta = ev.metadata if isinstance(ev.metadata, dict) else {}
             tool = str(meta.get('tool') or '')
             output = meta.get('output')
@@ -416,7 +416,7 @@ def _janus_activity_log(limit: int = 60) -> dict:
                     'day': ev.created_at.strftime('%Y-%m-%d'),
                     'clock': ev.created_at.strftime('%H:%M'),
                     'kind': 'tool',
-                    'verb': tool.split('__')[-1] if tool else 'tool',
+                    'verb': tool.rsplit('__', maxsplit=1)[-1] if tool else 'tool',
                     'text': _describe_tool_call(meta, output, failed),
                     'source': 'tool',
                     'failed': failed,
@@ -476,7 +476,7 @@ def _describe_janus_audit(ev) -> str:
         paths = meta.get('paths') or []
         shown = ', '.join(str(p) for p in paths[:3])
         more = f' (+{len(paths) - 3} more)' if len(paths) > 3 else ''
-        return f"stored learning: {shown}{more}" if shown else 'stored learning'
+        return f'stored learning: {shown}{more}' if shown else 'stored learning'
     if ev.event_type == 'janus.learning_forgotten':
         return f'forgot {what}' if what else 'forgot learning'
     return what or ev.target or ev.event_type

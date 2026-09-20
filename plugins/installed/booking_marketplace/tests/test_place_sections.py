@@ -41,15 +41,23 @@ class PlaceSectionsRenderTests(TestCase):
         from plugins.installed.booking_marketplace.models import Place
 
         return Place.objects.create(
-            name='Testville', slug='testville', region='kotor',
-            summary='A test town on the bay.', overview='Lead overview body.',
-            latitude=Decimal('42.42'), longitude=Decimal('18.77'),
+            name='Testville',
+            slug='testville',
+            region='kotor',
+            summary='A test town on the bay.',
+            overview='Lead overview body.',
+            latitude=Decimal('42.42'),
+            longitude=Decimal('18.77'),
             good_for=['couples', 'hikers', 'wine lovers'],
             sections=[
-                {'heading': 'The layered past',
-                 'body': 'A deep dive into the stone lanes and Venetian walls of Testville.'},
-                {'heading': 'When to visit',
-                 'body': 'Shoulder seasons are calmest here, summer is busiest.'},
+                {
+                    'heading': 'The layered past',
+                    'body': 'A deep dive into the stone lanes and Venetian walls of Testville.',
+                },
+                {
+                    'heading': 'When to visit',
+                    'body': 'Shoulder seasons are calmest here, summer is busiest.',
+                },
             ],
             external_links=[
                 {'label': 'UNESCO World Heritage', 'url': 'https://whc.unesco.org/en/list/125'},
@@ -110,7 +118,8 @@ class SeedPopulatesEnrichmentTests(TestCase):
         self.assertGreaterEqual(len(kotor.sections), 3)
         self.assertGreaterEqual(len(kotor.external_links), 2)
         self.assertGreaterEqual(
-            sum(len(s['body']) for s in kotor.sections), 2000,
+            sum(len(s['body']) for s in kotor.sections),
+            2000,
             'Kotor deep-dive prose should be >= 2000 chars',
         )
 

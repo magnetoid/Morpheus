@@ -11,17 +11,28 @@ class PlaceFieldTests(TestCase):
         from plugins.installed.booking_marketplace.models import Place
 
         p = Place.objects.create(
-            name='Kotor', slug='kotor-test', region='kotor', place_type='coastal',
+            name='Kotor',
+            slug='kotor-test',
+            region='kotor',
+            place_type='coastal',
             summary='A fortified medieval old town.',
             description='Lead paragraph.',
             overview='A much longer editorial body about Kotor that adds real depth.',
-            faqs=[{'q': 'Is Kotor worth visiting?', 'a': 'Yes — the walled old town and bay are unmissable.'}],
+            faqs=[
+                {
+                    'q': 'Is Kotor worth visiting?',
+                    'a': 'Yes — the walled old town and bay are unmissable.',
+                }
+            ],
             quick_facts=[{'label': 'Best time', 'value': 'May–Jun, Sep'}],
             good_for=['couples', 'history lovers'],
-            latitude=Decimal('42.424200'), longitude=Decimal('18.771200'),
+            latitude=Decimal('42.424200'),
+            longitude=Decimal('18.771200'),
         )
         p.refresh_from_db()
-        self.assertEqual(p.overview, 'A much longer editorial body about Kotor that adds real depth.')
+        self.assertEqual(
+            p.overview, 'A much longer editorial body about Kotor that adds real depth.'
+        )
         self.assertEqual(p.faqs[0]['q'], 'Is Kotor worth visiting?')
         self.assertEqual(p.quick_facts[0]['label'], 'Best time')
         self.assertIn('couples', p.good_for)
@@ -43,12 +54,22 @@ class PlaceJsonLdTests(TestCase):
         from plugins.installed.booking_marketplace.models import Place
 
         self.place = Place.objects.create(
-            name='Kotor', slug='kotor-jld', region='kotor', place_type='coastal',
-            summary='A fortified medieval old town.', overview='A longer body.',
+            name='Kotor',
+            slug='kotor-jld',
+            region='kotor',
+            place_type='coastal',
+            summary='A fortified medieval old town.',
+            overview='A longer body.',
             image=None,
-            faqs=[{'q': 'Is Kotor worth visiting?', 'a': 'Absolutely — the old town and bay are unmissable.'},
-                  {'q': 'When should I go?', 'a': 'Late spring or early autumn.'}],
-            latitude=Decimal('42.424200'), longitude=Decimal('18.771200'),
+            faqs=[
+                {
+                    'q': 'Is Kotor worth visiting?',
+                    'a': 'Absolutely — the old town and bay are unmissable.',
+                },
+                {'q': 'When should I go?', 'a': 'Late spring or early autumn.'},
+            ],
+            latitude=Decimal('42.424200'),
+            longitude=Decimal('18.771200'),
         )
         self.factory = RequestFactory()
 
@@ -86,7 +107,9 @@ class PlaceJsonLdTests(TestCase):
         from plugins.installed.booking_marketplace.models import Place
 
         p2 = Place.objects.create(name='Budva', slug='budva-jld', region='budva')
-        data = json.loads(seo_jsonld.places_index_jsonld([self.place, p2], request=self.factory.get('/places/')))
+        data = json.loads(
+            seo_jsonld.places_index_jsonld([self.place, p2], request=self.factory.get('/places/'))
+        )
         types = [n['@type'] for n in data['@graph']]
         self.assertIn('ItemList', types)
         self.assertIn('BreadcrumbList', types)
@@ -99,27 +122,32 @@ class PlaceViewTests(TestCase):
         from plugins.installed.booking_marketplace.models import Place
 
         self.place = Place.objects.create(
-            name='Kotor', slug='kotor-view', region='kotor', place_type='coastal',
-            summary='A fortified medieval old town.', description='The lead paragraph.',
+            name='Kotor',
+            slug='kotor-view',
+            region='kotor',
+            place_type='coastal',
+            summary='A fortified medieval old town.',
+            description='The lead paragraph.',
             overview='An extended editorial body about Kotor with real depth and detail.',
             highlights=['Old Town walls', 'Fortress hike'],
             faqs=[{'q': 'Is Kotor worth visiting?', 'a': 'Absolutely — a must-see.'}],
             quick_facts=[{'label': 'Best time', 'value': 'May–Jun, Sep'}],
             good_for=['couples', 'history lovers'],
-            latitude=Decimal('42.424200'), longitude=Decimal('18.771200'),
+            latitude=Decimal('42.424200'),
+            longitude=Decimal('18.771200'),
         )
 
     def test_detail_renders_enriched_sections_and_jsonld(self):
         resp = self.client.get('/places/kotor-view/')
         self.assertEqual(resp.status_code, 200)
         html = resp.content.decode()
-        self.assertIn('An extended editorial body about Kotor', html)   # overview
-        self.assertIn('Best time', html)                                # quick_facts label
-        self.assertIn('Is Kotor worth visiting?', html)                 # FAQ question
-        self.assertIn('History lovers', html)                           # good_for → Ideal-for icon card (title-cased)
-        self.assertIn('application/ld+json', html)                      # structured data present
+        self.assertIn('An extended editorial body about Kotor', html)  # overview
+        self.assertIn('Best time', html)  # quick_facts label
+        self.assertIn('Is Kotor worth visiting?', html)  # FAQ question
+        self.assertIn('History lovers', html)  # good_for → Ideal-for icon card (title-cased)
+        self.assertIn('application/ld+json', html)  # structured data present
         self.assertIn('TouristDestination', html)
-        self.assertIn('place-map', html)                                # map (has coords)
+        self.assertIn('place-map', html)  # map (has coords)
 
     def test_detail_feeds_per_place_meta_description(self):
         # place_detail passes seo_description=summary → the shared seo_meta emits it.
@@ -130,8 +158,8 @@ class PlaceViewTests(TestCase):
         resp = self.client.get('/places/')
         self.assertEqual(resp.status_code, 200)
         html = resp.content.decode()
-        self.assertIn('Kotor Bay', html)          # REGIONS label for 'kotor'
-        self.assertIn('Kotor', html)               # the place card
+        self.assertIn('Kotor Bay', html)  # REGIONS label for 'kotor'
+        self.assertIn('Kotor', html)  # the place card
         self.assertIn('application/ld+json', html)
         self.assertIn('ItemList', html)
 
