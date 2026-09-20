@@ -20,15 +20,18 @@ from __future__ import annotations
 from decimal import Decimal
 from unittest import mock
 
-from django.test import TestCase
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.sessions.backends.db import SessionStore
+from django.test import RequestFactory, TestCase
 from djmoney.money import Money
 
+from plugins.installed.catalog.models import Product
 from plugins.installed.orders.graphql.inputs import AddressInput
 from plugins.installed.orders.graphql.mutations import (
     CompleteOrderInput,
     OrdersMutationExtension,
 )
-from plugins.installed.orders.models import Order
+from plugins.installed.orders.models import Cart, CartItem, Order
 from plugins.installed.payments.gateway import PaymentGateway, gateway_registry
 from plugins.installed.payments.models import PaymentGatewayConfig, PaymentTransaction
 from plugins.installed.payments.services import routing
@@ -252,18 +255,44 @@ class CompleteOrderWiringTests(TestCase):
     saved Order) so this exercises the resolver→routing wiring without the
     cart/product hook cascade — the routing behaviour itself is covered by
     the suites above.
+
+    The cart is REAL and owned by the caller's session. Since the v0.56.0 IDOR
+    fix the resolver runs ``load_owned_cart`` before anything else, so a mocked
+    ``Cart`` class — which has no owner — is refused with NOT_FOUND and the
+    router is never reached.
     """
 
+    def setUp(self):
+        self.session = SessionStore()
+        self.session.create()
+        product = Product.objects.create(
+            name='Routed Book',
+            slug='routed-book',
+            sku='ROUTE-1',
+            price=Money(Decimal('42.00'), 'USD'),
+            status='active',
+        )
+        self.cart = Cart.objects.create(session_key=self.session.session_key)
+        CartItem.objects.create(
+            cart=self.cart,
+            product=product,
+            quantity=1,
+            unit_price=Money(Decimal('42.00'), 'USD'),
+        )
+
     def _info(self):
+        request = RequestFactory().post('/graphql/')
+        request.session = self.session
+        request.user = AnonymousUser()
         info = mock.Mock()
-        info.context = {}
+        info.context = {'request': request}
         return info
 
     def test_resolver_passes_selected_slug_to_router(self):
         order = _make_order()
         ext = OrdersMutationExtension()
         inp = CompleteOrderInput(
-            cart_id='ignored',
+            cart_id=str(self.cart.pk),
             email='x@y.com',
             shipping_address=AddressInput(country='US'),
             payment_gateway='manual',
@@ -273,16 +302,10 @@ class CompleteOrderWiringTests(TestCase):
                 'plugins.installed.orders.services.OrderService.create_from_cart',
                 return_value=order,
             ),
-            # Cart.objects.get + items.exists() are short-circuited: patch the
-            # Cart lookup to a stub with a non-empty cart.
-            mock.patch('plugins.installed.orders.models.Cart') as CartCls,
             mock.patch(
                 'plugins.installed.payments.services.routing.create_payment_intent_for'
             ) as router,
         ):
-            CartCls.objects.prefetch_related.return_value.get.return_value = mock.Mock(
-                items=mock.Mock(exists=mock.Mock(return_value=True)),
-            )
             router.return_value = {'success': True, 'client_secret': ''}
             res = ext.complete_order(self._info(), inp)
 
