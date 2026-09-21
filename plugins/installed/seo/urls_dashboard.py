@@ -18,6 +18,7 @@ urlpatterns = [
     path('rules/', views.index_rules_page, name='index_rules'),
     path('templates/', views.templates_page, name='templates'),
     path('audit/', views.audit_page, name='audit'),
+    path('site-audit/run/', views.seo_site_audit_run, name='site_audit_run'),
     path('keywords/', views.keywords_page, name='keywords'),
     path('bulk-meta/', views.bulk_meta, name='bulk_meta'),
     path('sitemap/', views.sitemap_page, name='sitemap'),

@@ -92,6 +92,16 @@ class SeoPlugin(Plugin):
         # Morpheus Brain — contribute the SEO/content-audit + Core Web Vitals
         # slices to the read-only signal snapshot (disable-gated by the bus).
         self.register_hook(events.BRAIN_SIGNALS, self.on_brain_signals, priority=50)
+        # Nightly site-wide crawl. It renders every URL in the sitemap, so it
+        # runs here and never in a request — the dashboard reads the cached
+        # report. 3:10am keeps it clear of the 4:00/4:30 jobs.
+        from celery.schedules import crontab  # noqa: PLC0415
+
+        self.register_celery_tasks('plugins.installed.seo.tasks')
+        self.register_celery_beat(
+            'seo:site_audit',
+            {'task': 'seo.site_audit', 'schedule': crontab(hour=3, minute=10)},
+        )
         # CMS pages — wire the post_save signal directly so we don't need
         # a new cms/signals.py + apps.py wiring.
         self._wire_cms_page_signal()

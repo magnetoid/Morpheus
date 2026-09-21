@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.72.0 — 2026-09-21
+
+**The SEO page shows what is wrong, not how many of things there are**
+
+- The page led with five counters — meta complete, redirects, 404s, keywords, audits. None of them is a problem you can act on: '12 redirects' is a fact, not a finding. And none could surface the three defects a paid audit of a live Morpheus store actually found in Sep 2026, because all three exist only BETWEEN pages and all three render as valid markup: two URLs sharing a title, a sitemap inviting crawlers to a URL that redirects, and a bilingual store emitting no hreflang.
+- New site-wide scan (seo/services/site_audit.py) renders every URL in the sitemap through the real stack and reports twelve classes of finding, each with the reason it costs traffic, up to five real example URLs, and a link to where it is fixed. Ordered worst-first by severity then page count, with a health score and head-coverage bars measured from what the page RENDERED rather than whether a column is non-empty (the seo_gap landmine).
+- It never runs in a request: a full render per URL inside a live request would re-enter the middleware stack and hold a worker for the length of the catalogue. It runs nightly at 03:10 via a new beat task, on demand from `manage.py seo_site_audit`, or from the page's Scan button which dispatches to a worker — and says so plainly when no broker is reachable rather than reporting 'queued' for work that never ran.
+- Results are cached, not stored in a table: this is derived data that is recomputable at any time, so a migration would buy history nobody needs. The cache outlives a daily run by two hours, so a failed night shows the previous report instead of an empty page.
+
 ## v0.71.0 — 2026-09-21
 
 **Product image shape is a setting, not a book cover**

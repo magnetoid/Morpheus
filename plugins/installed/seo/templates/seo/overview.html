@@ -1,8 +1,138 @@
 {% extends "admin_dashboard/base.html" %}
 {% block title %}SEO · Morpheus{% endblock %}
 
+{% comment %}
+  Findings first, counts second.
+
+  The old page led with five counters — meta complete, redirects, 404s,
+  keywords, audits. Every one is a number you can read without learning
+  anything: "12 redirects" is not a problem, and "8 open 404s" is not a
+  priority. None of them could tell a merchant that two pages shared a title,
+  that the sitemap was inviting crawlers to a redirect, or that a bilingual
+  store emitted no hreflang — the three defects a paid audit of a live
+  Morpheus store actually found in Sep 2026, each of which rendered as
+  perfectly valid markup.
+
+  So the page now opens with what is WRONG, ordered by how much it costs, each
+  with the reason it matters and somewhere to go and fix it. The counters are
+  still here, below, where a number belongs.
+{% endcomment %}
+
 {% block content %}
-<h1 class="text-xl font-semibold mb-4">SEO</h1>
+<div class="flex items-start justify-between gap-4 mb-4">
+  <div>
+    <h1 class="text-xl font-semibold">SEO</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">
+      What is costing you traffic, most expensive first.
+    </p>
+  </div>
+  <form method="post" action="{% url 'seo_dashboard:site_audit_run' %}" style="margin:0;">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">
+      <i data-lucide="radar" class="h-4 w-4"></i>
+      {% if site_report %}Re-scan the site{% else %}Scan the site{% endif %}
+    </button>
+  </form>
+</div>
+
+{% if site_report %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6">
+  <div class="card card-padded flex flex-col justify-center items-center text-center">
+    <span class="kpi__label">Site health</span>
+    <span class="text-4xl font-semibold mt-1"
+          {% if site_report.score < 60 %}style="color:var(--danger);"
+          {% elif site_report.score < 85 %}style="color:var(--warn);"
+          {% else %}style="color:var(--success);"{% endif %}>{{ site_report.score }}</span>
+    <span class="text-xs text-[color:var(--text-muted)] mt-1">
+      {{ site_report.pages_checked }} page{{ site_report.pages_checked|pluralize }} checked
+    </span>
+  </div>
+  <div class="card card-padded lg:col-span-2">
+    <h3 class="font-semibold mb-3">Head coverage</h3>
+    {% comment %}
+      Share of LIVE pages carrying each element — measured from what the page
+      rendered, not from whether a column is non-empty. A description can be
+      blank in the database and still render from the fallback chain, and a
+      column can be full while the page shows nothing.
+    {% endcomment %}
+    <div style="display:grid; gap:.55rem;">
+      {% for row in site_report.coverage %}
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span>{{ row.label }}</span>
+          <span class="text-[color:var(--text-muted)]">{{ row.count }} / {{ row.total }}</span>
+        </div>
+        <div style="height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;">
+          <div style="height:100%;width:{{ row.pct }}%;background:{% if row.pct < 60 %}var(--danger){% elif row.pct < 95 %}var(--warn){% else %}var(--success){% endif %};"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="card card-padded mb-6">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="font-semibold">Fix these first</h3>
+    <span class="text-xs text-[color:var(--text-muted)]">
+      Scanned {{ site_report.generated_at|slice:":16" }}
+    </span>
+  </div>
+
+  {% for f in site_report.findings %}
+  <details style="border-bottom:1px solid var(--border);padding:.65rem 0;">
+    <summary style="cursor:pointer;display:flex;align-items:center;gap:.6rem;">
+      <span style="flex-shrink:0;font-size:.7rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;padding:.1rem .45rem;border-radius:3px;
+        {% if f.severity == 'critical' %}background:color-mix(in srgb, var(--danger) 14%, transparent);color:var(--danger);
+        {% elif f.severity == 'warning' %}background:color-mix(in srgb, var(--warn) 16%, transparent);color:var(--warn);
+        {% else %}background:var(--surface-2);color:var(--text-muted);{% endif %}">{{ f.severity }}</span>
+      <span class="font-medium">{{ f.title }}</span>
+      <span class="text-sm text-[color:var(--text-muted)]" style="margin-left:auto;">
+        {{ f.count }} page{{ f.count|pluralize }}
+      </span>
+    </summary>
+    <div style="padding:.6rem 0 .2rem 3.4rem;">
+      <p class="text-sm text-[color:var(--text-muted)]" style="margin:0 0 .5rem;">{{ f.why }}</p>
+      <ul style="margin:0 0 .6rem;padding-left:1rem;">
+        {% for example in f.examples %}
+        <li class="text-xs" style="color:var(--text-muted);font-family:var(--mono, monospace);">{{ example }}</li>
+        {% endfor %}
+        {% if f.count > f.examples|length %}
+        <li class="text-xs" style="color:var(--text-muted);">
+          …and {{ f.count|add:"-5" }} more
+        </li>
+        {% endif %}
+      </ul>
+      {% if f.fix_url %}
+      <a href="{{ f.fix_url }}" class="btn btn-sm">{{ f.fix_label }}</a>
+      {% endif %}
+    </div>
+  </details>
+  {% empty %}
+  <div class="text-center" style="padding:1.5rem 0;">
+    <i data-lucide="check-circle" class="h-6 w-6" style="color:var(--success);"></i>
+    <p class="text-sm font-medium" style="margin:.4rem 0 0;">No findings.</p>
+    <p class="text-xs text-[color:var(--text-muted)]" style="margin:.2rem 0 0;">
+      Every page checked has a title, a description, a canonical, one H1 and structured data.
+    </p>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card card-padded mb-6 text-center" style="padding:2rem 1rem;">
+  <i data-lucide="radar" class="h-7 w-7" style="color:var(--text-muted);"></i>
+  <h3 class="font-semibold" style="margin:.6rem 0 .25rem;">No site scan yet</h3>
+  <p class="text-sm text-[color:var(--text-muted)]" style="max-width:46ch;margin:0 auto;">
+    A scan renders every URL in your sitemap and reports what is actually wrong —
+    duplicate titles, pages the sitemap sends crawlers to that redirect, missing
+    hreflang, thin pages. It runs nightly once queued.
+  </p>
+  <form method="post" action="{% url 'seo_dashboard:site_audit_run' %}" style="margin:.9rem 0 0;">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">Run the first scan</button>
+  </form>
+</div>
+{% endif %}
 
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
   <div class="card card-padded kpi">
@@ -37,26 +167,23 @@
 <div class="card card-padded mb-6">
   <h3 class="font-semibold mb-1">Core Web Vitals (p75)</h3>
   <p class="text-xs text-[color:var(--text-muted)] mb-3">
-    Real-User-Metrics captured from storefront visitors via
-    <code>web-vitals</code>. Each pill turns red when the 75th-percentile
-    visitor crosses Google's "good" threshold — that's the value that
-    appears in Search Console + AI Overview ranking signals.
+    Real-User-Metrics captured from storefront visitors.
   </p>
-  <div class="grid grid-cols-3 gap-3 text-sm">
+  <div class="grid grid-cols-3 gap-3">
     <div>
-      <p class="text-xs uppercase text-[color:var(--text-muted)]">LCP <span class="text-[color:var(--text-subtle)]">(≤2.5s good)</span></p>
-      <p class="text-xl font-semibold mt-0.5" {% if cwv.lcp and cwv.lcp > 2500 %}style="color:var(--danger);"{% elif cwv.lcp %}style="color:var(--success);"{% endif %}>
-        {% if cwv.lcp %}{{ cwv.lcp|floatformat:0 }} ms{% else %}—{% endif %}
+      <span class="kpi__label">LCP</span>
+      <p class="text-xl font-semibold mt-0.5" {% if cwv.lcp and cwv.lcp > 2.5 %}style="color:var(--danger);"{% elif cwv.lcp %}style="color:var(--success);"{% endif %}>
+        {% if cwv.lcp %}{{ cwv.lcp|floatformat:2 }}s{% else %}—{% endif %}
       </p>
     </div>
     <div>
-      <p class="text-xs uppercase text-[color:var(--text-muted)]">INP <span class="text-[color:var(--text-subtle)]">(≤200ms good)</span></p>
+      <span class="kpi__label">INP</span>
       <p class="text-xl font-semibold mt-0.5" {% if cwv.inp and cwv.inp > 200 %}style="color:var(--danger);"{% elif cwv.inp %}style="color:var(--success);"{% endif %}>
-        {% if cwv.inp %}{{ cwv.inp|floatformat:0 }} ms{% else %}—{% endif %}
+        {% if cwv.inp %}{{ cwv.inp|floatformat:0 }}ms{% else %}—{% endif %}
       </p>
     </div>
     <div>
-      <p class="text-xs uppercase text-[color:var(--text-muted)]">CLS <span class="text-[color:var(--text-subtle)]">(≤0.1 good)</span></p>
+      <span class="kpi__label">CLS</span>
       <p class="text-xl font-semibold mt-0.5" {% if cwv.cls and cwv.cls > 0.1 %}style="color:var(--danger);"{% elif cwv.cls %}style="color:var(--success);"{% endif %}>
         {% if cwv.cls %}{{ cwv.cls|floatformat:3 }}{% else %}—{% endif %}
       </p>
@@ -67,7 +194,7 @@
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
   <div class="card card-padded">
-    <h3 class="font-semibold mb-3">Quick actions</h3>
+    <h3 class="font-semibold mb-3">Tools</h3>
     <div style="display:grid; gap:.5rem;">
       <a href="{% url 'seo_dashboard:inspector' %}" class="btn">SEO Inspector (paste-a-slug)</a>
       <a href="{% url 'seo_dashboard:settings' %}" class="btn">Site SEO settings</a>
@@ -82,9 +209,11 @@
         <input type="hidden" name="action" value="ping_sitemap">
         <button type="submit" class="btn" style="width:100%;">Ping IndexNow now</button>
       </form>
-      <p class="text-xs text-[color:var(--text-muted)]" style="margin:.25rem 0 0;">
-        <code>/llms.txt</code> is rendered live on every request — no rebuild needed.
-      </p>
+    </div>
+  </div>
+  <div class="card card-padded">
+    <h3 class="font-semibold mb-3">Machine-readable surfaces</h3>
+    <div style="display:grid; gap:.35rem;">
       <a href="/sitemap.xml" target="_blank" class="btn-link">sitemap.xml</a>
       <a href="/sitemap-images.xml" target="_blank" class="btn-link">sitemap-images.xml</a>
       <a href="/robots.txt" target="_blank" class="btn-link">robots.txt (with AI crawler matrix)</a>
@@ -92,12 +221,13 @@
       <a href="/llms-full.txt" target="_blank" class="btn-link">llms-full.txt</a>
       <a href="/ai/products.json" target="_blank" class="btn-link">/ai/products.json</a>
     </div>
-  </div>
-  <div class="card card-padded">
-    <h3 class="font-semibold mb-3">Lowest scoring products</h3>
-    {% for r in lowest_scores %}
-    <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border);">
-      <span>{{ r.target|default:"(deleted)" }}</span><strong>{{ r.score }}/100</strong>
+    <p class="text-xs text-[color:var(--text-muted)]" style="margin:.6rem 0 0;">
+      <code>/llms.txt</code> is rendered live on every request — no rebuild needed.
+    </p>
+    <h3 class="font-semibold" style="margin:1rem 0 .5rem;">Lowest scoring products</h3>
+    {% for r in lowest_scores|slice:":5" %}
+    <div style="display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--border);">
+      <span class="text-sm truncate">{{ r.target|default:"(deleted)" }}</span><strong class="text-sm">{{ r.score }}/100</strong>
     </div>
     {% empty %}<p class="text-sm text-[color:var(--text-muted)]">No audits yet — run them.</p>{% endfor %}
   </div>

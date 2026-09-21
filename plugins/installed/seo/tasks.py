@@ -4,8 +4,11 @@
 from __future__ import annotations
 
 import io
+import logging
 
 from morph.celery import app
+
+logger = logging.getLogger('morpheus.seo.tasks')
 
 _STATUS_KEY = 'seo:image_optimize:status'
 
@@ -55,3 +58,25 @@ def last_image_optimize_status() -> dict | None:
     from django.core.cache import cache
 
     return cache.get(_STATUS_KEY)
+
+
+@app.task(name='seo.site_audit', ignore_result=True)
+def site_audit_task(limit: int = 0) -> None:
+    """Nightly site-wide SEO crawl — see `services/site_audit.py`.
+
+    Runs off-request because it renders every URL in the sitemap. Failures are
+    swallowed: a missed night shows the previous report (the cache outlives a
+    daily run by two hours) rather than an empty page.
+    """
+    from plugins.installed.seo.services.site_audit import run_and_store
+
+    try:
+        report = run_and_store(limit=limit or None)
+        logger.info(
+            'seo.site_audit: %s pages, score %s, %s finding(s)',
+            report['pages_checked'],
+            report['score'],
+            len(report['findings']),
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning('seo.site_audit failed', exc_info=True)

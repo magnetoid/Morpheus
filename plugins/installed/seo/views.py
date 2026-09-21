@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from django.contrib import messages
 from django.utils.http import http_date
@@ -35,10 +36,13 @@ from plugins.installed.seo.services import (
     store_audit,
     suggest_redirect,
 )
+from plugins.installed.seo.services import site_audit
 from plugins.installed.seo.services.feeds import (
     render_journal_atom,
     render_journal_rss,
 )
+
+logger = logging.getLogger('morpheus.seo.views')
 
 
 def _cache_headers(response: HttpResponse, last_modified=None) -> HttpResponse:
@@ -511,8 +515,51 @@ def seo_overview(request):
             'lowest_scores': SeoAuditResult.objects.order_by('score')[:10],
             'cwv': cwv,
             'active_nav': 'seo',
+            # The site-wide report: findings that only exist BETWEEN pages
+            # (a duplicated title, a sitemap url that redirects, a translated
+            # tree with no hreflang) and that a per-product audit cannot see.
+            # Read from cache — the crawl runs nightly, never in a request.
+            'site_report': site_audit.cached(),
+            'ai_help': {
+                'page': 'SEO',
+                'context': 'Site-wide SEO findings, coverage and Core Web Vitals.',
+            },
         },
     )
+
+
+@staff_member_required
+def seo_site_audit_run(request):
+    """Queue a fresh site-wide crawl.
+
+    Dispatched to a worker rather than run here: it renders every URL in the
+    sitemap, which inside a request would re-enter the middleware stack and
+    hold a worker for the length of the catalogue. When no broker is reachable
+    the page says so instead of appearing to succeed — a dashboard that
+    reports "queued" for work that never ran is worse than one that refuses.
+    """
+    from django.contrib import messages
+    from django.shortcuts import redirect
+
+    if request.method != 'POST':
+        return redirect('seo_dashboard:overview')
+    try:
+        from plugins.installed.seo.tasks import site_audit_task
+
+        site_audit_task.delay()
+        messages.success(
+            request,
+            'Site audit queued. Findings appear here when the crawl finishes — '
+            'usually a minute or two for a few hundred pages.',
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning('seo: could not queue the site audit: %s', e, exc_info=True)
+        messages.error(
+            request,
+            'Could not queue the site audit — no background worker is reachable. '
+            'Run `manage.py seo_site_audit` on the server instead.',
+        )
+    return redirect('seo_dashboard:overview')
 
 
 @staff_member_required
