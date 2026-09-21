@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.69.0 — 2026-09-21
+
+**Product photos fill their frames, and Montenegro pages tell search engines the truth**
+
+- Supernatural Shop: product images now fill their card instead of sitting at a third of the width with empty space beside them, and the fake book-spine shadow that was drawn over every photograph is gone.
+- A product whose image file has gone missing now shows its title card rather than a broken-image icon.
+- Montenegro: every page's title, canonical, robots and social-share tags now come from one place, so the shop finally publishes language alternates for its Serbian pages — search engines could not tell the two languages apart before.
+- Montenegro: the homepage has a destinations strip; the code for it existed but no page had ever shown it.
+
 ## v0.68.7 — 2026-09-20
 
 **CI is green again, and the Montenegro store's live SEO and Serbian defects are fixed**
