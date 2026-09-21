@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.74.1 — 2026-09-21
+
+**Hotel stay policies are data-driven, not hardcoded in the theme**
+
+- The stay-policies block added in v0.74.0 hardcoded the four policy keys and their labels in the montenegro theme. The theme no longer knows the shape of a hotel's policies dict: POLICY_LABELS (the plugin's models) owns the labels and their order, a _policies view helper resolves them, and the template just loops what it is given — the same arrangement amenities already use.
+- A policy key the theme has never heard of now renders, humanised, with no theme edit — so adding a policy is a data change, not a template change. Existing hotels render exactly as before.
+
 ## v0.74.0 — 2026-09-21
 
 **Hotel pages now link out to the region around them**

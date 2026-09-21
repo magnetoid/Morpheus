@@ -14,6 +14,7 @@ from django.test import TestCase
 
 from plugins.installed.booking_marketplace import stays
 from plugins.installed.booking_marketplace.models import Place, Property
+from plugins.installed.booking_marketplace.stay_views import _policies
 from plugins.installed.booking_marketplace.tests._theme import MontenegroThemeMixin
 from plugins.installed.catalog.models import Vendor
 
@@ -146,3 +147,47 @@ class StayDetailRendersLinksTests(MontenegroThemeMixin, TestCase):
         # the self link only appears in the breadcrumb's current crumb (plain text),
         # never as an <a href> in the related-stays rail
         self.assertNotIn('href="/hotels/hotel-base/"', html)
+
+
+class PolicyResolutionTests(TestCase):
+    """The policies dict shape lives in the plugin (POLICY_LABELS + _policies),
+    never hardcoded in the theme — so a new policy key renders with no theme
+    edit, mirroring how amenities work."""
+
+    def test_canonical_order_regardless_of_stored_order(self):
+        items = _policies({'payment': 'Cards', 'cancellation': 'Free', 'pets': 'No pets'})
+        self.assertEqual([i['key'] for i in items], ['cancellation', 'pets', 'payment'])
+
+    def test_empty_and_missing_values_are_skipped(self):
+        items = _policies({'cancellation': 'Free', 'children': '', 'pets': '   '})
+        self.assertEqual([i['key'] for i in items], ['cancellation'])
+
+    def test_unknown_key_is_humanised_and_kept(self):
+        items = _policies({'smoking_policy': 'No smoking indoors.'})
+        self.assertEqual(
+            items,
+            [{'key': 'smoking_policy', 'label': 'Smoking policy', 'value': 'No smoking indoors.'}],
+        )
+
+    def test_none_is_safe(self):
+        self.assertEqual(_policies(None), [])
+
+
+class PolicyRenderIsDataDrivenTests(MontenegroThemeMixin, TestCase):
+    def test_a_policy_key_the_theme_never_names_still_renders(self):
+        """Proof the theme is not hardcoded to the four seeded keys: an
+        unrecognised key reaches the page through _policies alone."""
+        vendor = Vendor.objects.create(name='Stays', slug='stays', is_active=True)
+        Property.objects.create(
+            vendor=vendor,
+            name='Hotel Base',
+            slug='hotel-base',
+            property_type='hotel',
+            star_rating=4,
+            location='Budva',
+            region='budva',
+            policies={'smoking_policy': 'No smoking indoors.'},
+        )
+        html = self.client.get('/hotels/hotel-base/').content.decode()
+        self.assertIn('Smoking policy', html)
+        self.assertIn('No smoking indoors.', html)

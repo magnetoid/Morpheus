@@ -53,14 +53,13 @@
       </section>
       {% endif %}
 
-      {% if property.policies %}
+      {% if policy_items %}
       <section aria-labelledby="stay-policies">
         <h2 id="stay-policies" class="text-lg font-semibold text-foreground mb-3">{% trans "Good to know" %}</h2>
         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          {% if property.policies.cancellation %}<div class="rounded-xl border border-border bg-card p-3"><dt class="font-medium text-foreground">{% trans "Cancellation" %}</dt><dd class="text-muted-foreground mt-0.5">{{ property.policies.cancellation }}</dd></div>{% endif %}
-          {% if property.policies.children %}<div class="rounded-xl border border-border bg-card p-3"><dt class="font-medium text-foreground">{% trans "Children" %}</dt><dd class="text-muted-foreground mt-0.5">{{ property.policies.children }}</dd></div>{% endif %}
-          {% if property.policies.pets %}<div class="rounded-xl border border-border bg-card p-3"><dt class="font-medium text-foreground">{% trans "Pets" %}</dt><dd class="text-muted-foreground mt-0.5">{{ property.policies.pets }}</dd></div>{% endif %}
-          {% if property.policies.payment %}<div class="rounded-xl border border-border bg-card p-3"><dt class="font-medium text-foreground">{% trans "Payment" %}</dt><dd class="text-muted-foreground mt-0.5">{{ property.policies.payment }}</dd></div>{% endif %}
+          {% for p in policy_items %}
+          <div class="rounded-xl border border-border bg-card p-3"><dt class="font-medium text-foreground">{{ p.label }}</dt><dd class="text-muted-foreground mt-0.5">{{ p.value }}</dd></div>
+          {% endfor %}
         </dl>
       </section>
       {% endif %}

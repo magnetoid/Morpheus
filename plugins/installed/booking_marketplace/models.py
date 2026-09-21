@@ -461,6 +461,19 @@ AMENITY_LABELS = {
 }
 
 
+# Stay-policy keys -> display label, in the order a guest reads them. Owned
+# here, never in a theme: adding or renaming a policy is a data change, and the
+# template just loops what the view resolves (mirrors AMENITY_LABELS). An
+# unknown key still renders — the view humanises it — so a new policy needs no
+# theme edit.
+POLICY_LABELS = {
+    'cancellation': 'Cancellation',
+    'children': 'Children',
+    'pets': 'Pets',
+    'payment': 'Payment',
+}
+
+
 class Property(models.Model):
     """A hotel / accommodation, owned by a catalog.Vendor."""
 

@@ -10,6 +10,7 @@ from django.utils.translation import gettext as _
 from plugins.installed.booking_marketplace import seo_jsonld, stays
 from plugins.installed.booking_marketplace.models import (
     AMENITY_LABELS,
+    POLICY_LABELS,
     PROPERTY_TYPES,
     REGIONS,
     Property,
@@ -24,6 +25,22 @@ def _amenities(slugs):
     for s in slugs or []:
         label, icon = AMENITY_LABELS.get(s, (s.replace('_', ' ').title(), 'check'))
         out.append({'slug': s, 'label': label, 'icon': icon})
+    return out
+
+
+def _policies(policies):
+    """Ordered [{key, label, value}] for a property's policies dict: canonical
+    order from POLICY_LABELS, any extra key humanised, empty values skipped.
+    Keeps the policies-dict shape out of the theme (mirrors _amenities)."""
+    policies = policies or {}
+    ordered = list(POLICY_LABELS) + [k for k in policies if k not in POLICY_LABELS]
+    out = []
+    for key in ordered:
+        value = str(policies.get(key) or '').strip()
+        if not value:
+            continue
+        label = POLICY_LABELS.get(key) or key.replace('_', ' ').capitalize()
+        out.append({'key': key, 'label': label, 'value': value})
     return out
 
 
@@ -64,6 +81,7 @@ def stay_detail(request, slug):
             'amenities': _amenities(prop.amenities),
             'nearby_places': stays.nearby_places(prop),
             'related_stays': stays.related_stays(prop),
+            'policy_items': _policies(prop.policies),
             'listing_mode': listing_mode(),
             # Per-page SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
             'seo_object': prop,
