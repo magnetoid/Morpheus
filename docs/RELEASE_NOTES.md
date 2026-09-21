@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.73.3 — 2026-09-21
+
+**Every hotel got its own meta description**
+
+- montenegro's hotel pages drew their meta description from a string built out of star rating, type and town alone, so nine 4-star Podgorica hotels all published "An upscale hotel in Podgorica." — 18 such groups, 52 hotels, the site audit's top warning.
+- Each hotel's meta description now leads with its own name and names its real amenities ("… in Podgorica, Montenegro, with a pool, a restaurant and a gym"). Across all 100 live hotels: 100 distinct descriptions where there were 66, every one inside the 70–160 character window, and none naming an amenity the hotel does not have.
+- The generator was fixed and a `refresh_hotel_blurbs` command rewrites the already-seeded hotels in place. It only touches a description still holding the old generated string, so a hotel a host has since written up keeps its own words.
+- Nothing a shopper sees changes: the hotel page's on-page description was already unique and is untouched.
+
 ## v0.73.2 — 2026-09-21
 
 **The AI feed stopped claiming reviews nobody wrote**

@@ -529,12 +529,59 @@ def _policies_for(star: int) -> dict:
     }
 
 
-def _blurb_for(name: str, town: str, star: int, ptype_label: str):
-    tier_word = {2: 'a simple, comfortable', 3: 'a well-appointed', 4: 'an upscale', 5: 'a luxury'}[
-        star
-    ]
+_TIER_WORD = {2: 'a simple, comfortable', 3: 'a well-appointed', 4: 'an upscale', 5: 'a luxury'}
+
+# Guest-salient amenities, most distinguishing first, as noun phrases for the
+# meta description. Only amenities the hotel actually has are ever named: a
+# description is a public claim, like the rating this store already stopped
+# inventing (the aggregateRating landmine) — it must not promise a spa.
+_FEATURE_PHRASES = [
+    ('sea_view', 'sea views'),
+    ('beachfront', 'a beachfront'),
+    ('spa', 'a spa'),
+    ('pool', 'a pool'),
+    ('restaurant', 'a restaurant'),
+    ('gym', 'a gym'),
+    ('airport_shuttle', 'an airport shuttle'),
+    ('wifi', 'free WiFi'),
+    ('parking', 'parking'),
+]
+
+
+def _feature_phrase(amenities) -> str:
+    """Up to three of the hotel's real, guest-salient amenities, as a phrase
+    ('sea views, a spa and a pool'). Empty when it has none worth naming."""
+    have = set(amenities or ())
+    picked = [phrase for slug, phrase in _FEATURE_PHRASES if slug in have][:3]
+    if not picked:
+        return ''
+    if len(picked) == 1:
+        return picked[0]
+    return ', '.join(picked[:-1]) + ' and ' + picked[-1]
+
+
+def _legacy_short_blurb(town: str, star: int, ptype_label: str) -> str:
+    """The pre-v0.73.3 short_description — tier + type + town only, which
+    collided across every same-class hotel in a town (18 groups / 52 hotels
+    live). Kept so `refresh_hotel_blurbs` can tell a platform-generated blurb
+    from one a host has since edited, and rewrite only the former — the
+    SeoMeta.auto_filled rule (never clobber a human's words)."""
+    return f'{_TIER_WORD[star].capitalize()} {ptype_label.lower()} in {town}.'
+
+
+def _blurb_for(name: str, town: str, star: int, ptype_label: str, amenities):
+    """(short_description, description) for one hotel.
+
+    short_description is the hotel page's meta description (stay_views:
+    `seo_description`). Leading with the unique hotel name makes all 100
+    distinct, and naming real amenities gives each an in-range (70-160 char)
+    summary in place of 'An upscale hotel in Podgorica.' on nine hotels at once.
+    `description` is the on-page prose and is unchanged."""
+    tier_word = _TIER_WORD[star]
     ptype_lower = ptype_label.lower()
-    short = f'{tier_word.capitalize()} {ptype_lower} in {town}.'
+    lead = f'{name} is {tier_word} {star}-star {ptype_lower} in {town}, Montenegro'
+    feature = _feature_phrase(amenities)
+    short = f'{lead}, with {feature}.' if feature else f'{lead}.'
     description = (
         f'{name} is {tier_word} {star}-star {ptype_lower} in {town}, Montenegro, offering '
         f'comfortable rooms for couples, families and small groups, with a range of room types '
@@ -550,7 +597,8 @@ def _field_values(name: str, town: str, star: int, ptype: str) -> dict:
     lat, lng = _jitter(lat_base, lng_base, slug)
     rating, review_count = _rating_and_reviews(slug, star)
     ptype_label = PTYPE_LABELS.get(ptype, 'Hotel')
-    short_desc, desc = _blurb_for(name, town, star, ptype_label)
+    amenities = _amenities_for(star, ptype, region)
+    short_desc, desc = _blurb_for(name, town, star, ptype_label, amenities)
     return {
         'slug': slug,
         'name': name,
@@ -563,7 +611,7 @@ def _field_values(name: str, town: str, star: int, ptype: str) -> dict:
         'address': f'{town}, Montenegro',
         'latitude': lat,
         'longitude': lng,
-        'amenities': _amenities_for(star, ptype, region),
+        'amenities': amenities,
         'check_in_time': time(15, 0) if star == 5 else time(14, 0),
         'check_out_time': time(11, 0),
         'policies': _policies_for(star),
