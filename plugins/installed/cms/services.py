@@ -70,44 +70,67 @@ def strip_duplicate_heading(body: str) -> str:
     return _LEADING_BYLINE_RE.sub('', stripped, count=1)
 
 
-_H2_RE = re.compile(r'<h2\b[^>]*>(.*?)</h2>(.*?)(?=<h[1-3]\b|\Z)', re.IGNORECASE | re.DOTALL)
+_H2_RE = re.compile(r'<h2\b[^>]*>(.*?)</h2>(.*?)(?=<h[1-2]\b|\Z)', re.IGNORECASE | re.DOTALL)
+_H3_RE = re.compile(r'<h3\b[^>]*>(.*?)</h3>(.*?)(?=<h[1-3]\b|\Z)', re.IGNORECASE | re.DOTALL)
+# A section the article itself labels an FAQ. Serbian included because
+# `seed_journal_serbian` publishes the same template at /sr/.
+_FAQ_HEADING_RE = re.compile(
+    r'\A(?:frequently\s+asked\s+questions|faqs?|common\s+questions'
+    r'|(?:naj)?česta\s+pitanja|pitanja\s+i\s+odgovori)\b',
+    re.IGNORECASE,
+)
 _MIN_ANSWER_CHARS = 40
 _MAX_ANSWER_CHARS = 700
 _MIN_FAQ_PAIRS = 2
 
 
 def _plain(fragment: str) -> str:
-    return html_lib.unescape(re.sub(r'<[^>]+>', ' ', fragment or '')).strip()
+    return re.sub(r'\s+', ' ', html_lib.unescape(re.sub(r'<[^>]+>', ' ', fragment or ''))).strip()
+
+
+def _pair(question: str, section: str) -> dict | None:
+    """One Q&A, or None when the heading is not a question or the answer is thin."""
+    if not question.endswith('?'):
+        return None
+    answer = _plain(section)
+    if len(answer) < _MIN_ANSWER_CHARS:
+        return None
+    if len(answer) > _MAX_ANSWER_CHARS:
+        # Cut on a sentence boundary — a mid-word truncation would publish a
+        # different answer than the page shows.
+        cut = answer.rfind('. ', 0, _MAX_ANSWER_CHARS)
+        answer = answer[: cut + 1] if cut > _MIN_ANSWER_CHARS else answer[:_MAX_ANSWER_CHARS]
+    return {'q': question, 'a': answer}
 
 
 def journal_faq_pairs(body: str) -> list[dict]:
-    """Q&A pairs for `FAQPage`, taken ONLY from H2s that are real questions.
+    """Q&A pairs for `FAQPage`, taken only from Q&A the article really shows.
 
-    The obvious version of this — turn every H2 section into a Question — is
-    the `seo/tests/test_offer_claims.py` mistake in another costume: a
-    structured-data property is a public claim, and "Where to stay in Kotor"
-    rendered as a `Question` asserts the page answers a question it never
-    asked. Google also requires the Q&A to appear on the page in that form.
+    Two sources, in order of how certain they are:
 
-    So an H2 qualifies only if it ends in '?', and a page emits nothing below
-    two pairs — one stray question is not an FAQ. On a corpus of long-form
-    travel articles this covers a minority of pages by design; the alternative
-    covers all of them and lies about most.
+    1. A section the article titles "Frequently Asked Questions", whose H3s are
+       its questions. This is the article declaring its own FAQ, which is also
+       exactly what Google asks for — the Q&A must be visible on the page in
+       that form.
+    2. Failing that, top-level H2s that end in '?'.
+
+    What this deliberately does NOT do is treat every H2 section as a Q&A pair.
+    That was the Sep 2026 audit's suggestion and it is the
+    `seo/tests/test_offer_claims.py` mistake in another costume: "Days 1–4: Bay
+    of Kotor with Kids" rendered as a `Question` asserts the page answers
+    something it never asked. A page emits nothing below two pairs — one stray
+    question is not an FAQ.
     """
-    pairs: list[dict] = []
-    for heading, section in _H2_RE.findall(body or ''):
-        question = re.sub(r'\s+', ' ', _plain(heading))
-        if not question.endswith('?'):
+    sections = _H2_RE.findall(body or '')
+    for heading, section in sections:
+        if not _FAQ_HEADING_RE.match(_plain(heading)):
             continue
-        answer = re.sub(r'\s+', ' ', _plain(section))
-        if len(answer) < _MIN_ANSWER_CHARS:
-            continue
-        if len(answer) > _MAX_ANSWER_CHARS:
-            # Cut on a sentence boundary — a mid-word truncation would publish
-            # a different answer than the page shows.
-            cut = answer.rfind('. ', 0, _MAX_ANSWER_CHARS)
-            answer = answer[: cut + 1] if cut > _MIN_ANSWER_CHARS else answer[:_MAX_ANSWER_CHARS]
-        pairs.append({'q': question, 'a': answer})
+        pairs = [
+            pair for q, a in _H3_RE.findall(section) if (pair := _pair(_plain(q), a)) is not None
+        ]
+        if len(pairs) >= _MIN_FAQ_PAIRS:
+            return pairs
+    pairs = [pair for h, sec in sections if (pair := _pair(_plain(h), sec)) is not None]
     return pairs if len(pairs) >= _MIN_FAQ_PAIRS else []
 
 

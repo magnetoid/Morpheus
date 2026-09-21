@@ -117,6 +117,41 @@ class JournalFaqPairsTests(TestCase):
 
         return journal_faq_pairs(body)
 
+    def test_a_labelled_faq_section_wins(self):
+        """The article says "Frequently Asked Questions" — believe it.
+
+        Every seeded journal article ends with exactly this section, and the
+        H2-only reader walked straight past it: 1 of 34 live articles emitted
+        FAQPage while 33 carried a visible, explicitly-labelled FAQ.
+        """
+        answer = 'A properly long answer that clears the minimum length. '
+        pairs = self._pairs(
+            f'<h2>Days 1-4: Bay of Kotor</h2><p>{answer}</p>'
+            '<h2>Frequently Asked Questions</h2>'
+            f'<h3>Is Montenegro good for families?</h3><p>{answer}</p>'
+            f'<h3>How many days do we need?</h3><p>{answer}</p>'
+            '<h2>Plan the next part of your trip</h2><p>Unrelated CTA.</p>'
+        )
+        self.assertEqual(
+            [p['q'] for p in pairs],
+            ['Is Montenegro good for families?', 'How many days do we need?'],
+        )
+        # The itinerary H2 above the section is not swept in.
+        self.assertNotIn('Days 1-4: Bay of Kotor', [p['q'] for p in pairs])
+
+    def test_serbian_faq_heading_is_recognised(self):
+        answer = 'Dovoljno dug odgovor koji prelazi minimalnu duzinu teksta. '
+        pairs = self._pairs(
+            '<h2>Česta pitanja</h2>'
+            f'<h3>Da li je Crna Gora skupa?</h3><p>{answer}</p>'
+            f'<h3>Koliko dana treba?</h3><p>{answer}</p>'
+        )
+        self.assertEqual(len(pairs), 2)
+
+    def test_a_labelled_section_with_one_question_falls_through(self):
+        # Not an FAQ, and no question-shaped H2s either.
+        self.assertEqual(self._pairs('<h2>FAQ</h2><h3>Only one?</h3><p>' + 'x' * 80 + '</p>'), [])
+
     def test_question_headings_become_pairs(self):
         pairs = self._pairs(
             '<h2>Why visit Montenegro with children?</h2>'

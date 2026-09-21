@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.70.1 — 2026-09-21
+
+**FAQPage reads the article's own labelled FAQ section**
+
+- The H2-only reader found FAQ content on 1 of 34 live journal articles — while 33 of them end in a literal 'Frequently Asked Questions' H2 whose H3s are the questions and the paragraphs beneath are the answers. That section is the article declaring its own FAQ, which is also exactly what Google requires (the Q&A must be visible on the page in that form). Serbian headings recognised too. The question-shaped-H2 reader stays as the fallback; neither ever converts a noun-phrase heading into a Question.
+
 ## v0.70.0 — 2026-09-21
 
 **Montenegro SEO/AEO audit: hreflang, /categories/, llms.txt and journal markup**
