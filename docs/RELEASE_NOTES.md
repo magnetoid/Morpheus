@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.69.1 — 2026-09-21
+
+**Broken product images now fall back cleanly, including the homepage hero**
+
+- A product whose image file is missing now shows its title card everywhere, including the homepage hero — that one slipped through the previous release because it loads earlier than the rest of the page.
+
 ## v0.69.0 — 2026-09-21
 
 **Product photos fill their frames, and Montenegro pages tell search engines the truth**
