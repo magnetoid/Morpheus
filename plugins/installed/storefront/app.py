@@ -20,6 +20,10 @@ class StorefrontPlugin(Plugin):
         # (core/emails/handlers.on_order_placed). The storefront used to subscribe
         # ORDER_PLACED to send a second, duplicate copy — removed.
         self.register_hook(MorpheusEvents.SEO_ROBOTS_RULES, self.on_robots_rules)
+        # Same inversion for the one sitemap entry seo cannot decide alone.
+        from plugins.installed.storefront.sitemap import contribute_sitemap_urls
+
+        self.register_hook(MorpheusEvents.SITEMAP_URLS, contribute_sitemap_urls, priority=50)
 
     def on_robots_rules(self, value, **kwargs):
         """The storefront's own private paths, in the storefront's own file.

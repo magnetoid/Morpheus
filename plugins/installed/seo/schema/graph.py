@@ -330,6 +330,14 @@ def _article_nodes(page: SeoPage, url: str) -> list[dict]:
         published_at=get('published_at') or get('publish_at'),
         updated_at=get('updated_at'),
         image=str(get('image') or page.image or ''),
+        # E-E-A-T + provenance. `journal_dict` has assembled these since v0.46
+        # and the themes' journal templates pass them to `seo_article_jsonld` —
+        # but under the head contract that tag is shimmed to '' and the GRAPH is
+        # what ships, so every author sameAs and citation the merchant entered
+        # was silently dropped on every live article.
+        word_count=get('word_count') or None,
+        author_same_as=get('author_same_as') or None,
+        citations=get('citations') or None,
     )
     node = _strip_context(node)
     if not node:

@@ -21,6 +21,11 @@ REDIRECTS = [
     # Recovered + republished (seed_journal_serbian) at its original slug.
     ('/manastiri-crne-gore-vodic', '/journal/manastiri-crne-gore-vodic/'),
     ('/privacy-policy-2', '/p/privacy/'),
+    # The marketplace's placeholder legal pages, retired by `seed_cms_pages` in
+    # favour of gdpr's. The middleware fires on 404, so the 301 only works once
+    # those pages are drafts — the two commands are a pair, run both.
+    ('/p/privacy-policy/', '/p/privacy/'),
+    ('/p/terms-of-service/', '/p/terms/'),
 ]
 
 

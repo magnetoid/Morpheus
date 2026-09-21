@@ -578,6 +578,34 @@ settings (ADR 0007) — never append the shop name in a view; and machine endpoi
 `surface='chrome'`, or `i18n_patterns` publishes a second copy of each per
 language (`/fr/robots.txt`). ADR 0036.
 
+**Landmine — a machine-readable file is read for what it IMPLIES, and all of
+this shipped as valid syntax.** Three defects on one live store, none visible in
+a browser, none caught by the suite, all found only by crawling 346 URLs.
+(1) `x-default` was built from **the current page's** canonical, so `/` declared
+`/` the default and `/sr/` declared `/sr/` — two contradictory claims per
+cluster, which is the same as no claim; it must name the `LANGUAGE_CODE` tree
+(`seo/head/builder.py:_x_default_href`). (2) `llms.txt` wrote the `## Products`
+heading *before* checking whether a row followed, so a marketplace whose 244
+listings are not `catalog.Product` published **"this shop has no catalogue"** to
+the AI crawlers robots.txt goes out of its way to welcome — a section opens only
+once it has a row, and an owner contributes its own through `SEO_LLMS_SECTIONS`
+rather than seo importing the vertical. (3) `seo/services/sitemaps.py` hardcoded
+`/categories/` while `storefront/views/catalog.py` **unconditionally** 301'd it
+to `/genres/`, a route only the optional `book_product` app mounts — so every
+sitemap invited crawlers to a redirect, and on a non-book store to a redirect
+into a 404 (the book vertical had deleted the shell's own index; both themes
+still ship the orphaned `categories.html`). Rules: an annotation that *can* name
+any URL must name a computed one, never "wherever I am"; never open a section
+you have not filled; and the app that owns a route is the only layer that can
+say whether the route belongs in the sitemap. Corollary from the same audit:
+when a page renders its title twice, read the stored **content** before blaming
+the template — 19 journal articles carried their own `<h1>` + byline in the body
+under the one the template renders, so demoting the template heading (the
+audit's own advice) would have kept the raw duplicate and dropped the styled
+one. Guarded by `seo/tests/test_audit_fixes_2026_09.py`,
+`storefront/tests/test_categories_index.py` and
+`cms/tests/test_journal_seo.py::JournalDuplicateHeadingTests`.
+
 **Landmine — when two tables hold the same field, "which row wins" is the wrong
 question; "which value did a human choose" is the right one.** Product SEO lived
 in 13 native `catalog.Product` columns *and* in the generic `SeoMeta` overlay,

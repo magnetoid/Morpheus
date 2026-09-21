@@ -254,10 +254,14 @@ def iter_sitemap_entries() -> Iterable[dict]:
 
     # Static editorial routes shipped by the storefront plugin. These don't
     # have model rows so they're hard-coded here; cheap and stable.
+    # `/categories/` is deliberately NOT here: the book vertical replaces it
+    # with `/genres/`, so on those stores it is a permanent redirect and a
+    # sitemap must never invite a crawler to one. storefront contributes it
+    # through SITEMAP_URLS when it actually serves the page
+    # (`storefront/sitemap.py`) — the owner knows, seo cannot.
     for path in (
         '/products/',
         '/staff-picks/',
-        '/categories/',
         '/vendors/',
         '/about/',
         '/contact/',

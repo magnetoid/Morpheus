@@ -62,6 +62,12 @@ class BookingMarketplacePlugin(Plugin):
 
         self.register_hook(events.AI_FEED_ITEMS, contribute_ai_feed_items, priority=50)
 
+        # And for /llms.txt, which had the same blind spot: seo enumerates
+        # catalog.Product only, so the file advertised an empty catalogue.
+        from plugins.installed.booking_marketplace.llms import contribute_llms_sections
+
+        self.register_hook(events.SEO_LLMS_SECTIONS, contribute_llms_sections, priority=50)
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(

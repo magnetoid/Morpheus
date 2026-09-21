@@ -43,6 +43,12 @@ class CmsPlugin(Plugin):
         # Supply merchant-edited intro copy for the built-in storefront listing
         # pages (/products/, /vendors/, /journal/) from Block rows.
         self.register_hook(events.STOREFRONT_PAGE_INTRO, self.on_storefront_page_intro, priority=50)
+
+        # FAQPage for a journal article, into the page's one JSON-LD graph —
+        # built only from H2s that are genuinely questions (see seo_graph.py).
+        from plugins.installed.cms.seo_graph import on_seo_jsonld_graph
+
+        self.register_hook(events.SEO_JSONLD_GRAPH, on_seo_jsonld_graph, priority=50)
         # Theme sections register on import. Pull the active theme's
         # section bundle so the section_registry is populated before
         # any page render tries to look up a section_id. Other themes

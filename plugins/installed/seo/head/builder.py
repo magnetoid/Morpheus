@@ -343,18 +343,40 @@ def _apply_alternates(doc, page: SeoPage, request) -> None:
     Two independent axes, and conflating them is a classic mistake: a language
     alternate is a different URL of the same page (`/fr/products/x/`), while a
     market alternate is the same content priced for another country. Both are
-    emitted with a single `x-default` pointing at the canonical.
+    emitted with a single `x-default`, which names the default-language url for
+    the whole cluster — see `_x_default_href`.
     """
-    canonical = doc.link_href('canonical')
-    emitted = False
-    for code, href in _language_alternates(request):
+    languages = _language_alternates(request)
+    markets = _market_alternates(request)
+    for code, href in (*languages, *markets):
         doc.link('alternate', href, hreflang=code, source='seo')
-        emitted = True
-    for code, href in _market_alternates(request):
-        doc.link('alternate', href, hreflang=code, source='seo')
-        emitted = True
-    if emitted and canonical:
-        doc.link('alternate', canonical, hreflang='x-default', source='seo')
+    if not (languages or markets):
+        return
+    default = _x_default_href(languages, doc.link_href('canonical'))
+    if default:
+        doc.link('alternate', default, hreflang='x-default', source='seo')
+
+
+def _x_default_href(languages: list[tuple[str, str]], canonical: str) -> str:
+    """`x-default` names ONE url for the whole cluster: the default language.
+
+    It used to be the *current* page's canonical, which meant every page
+    declared itself the default — so a bilingual store shipped two conflicting
+    `x-default` claims per cluster (`/` said `/`, `/sr/` said `/sr/`) and the
+    annotation carried no information at all. It reads as valid markup either
+    way, which is why it survived a live crawl of 346 urls.
+
+    With no language axis (a market-only store) the canonical IS the default.
+    """
+    from django.conf import settings
+
+    if not languages:
+        return canonical
+    wanted = (getattr(settings, 'LANGUAGE_CODE', '') or '').lower()
+    by_code = {code.lower(): href for code, href in languages}
+    # `LANGUAGE_CODE` may be regional (`en-us`) while `LANGUAGES` lists the
+    # base tag (`en`), so fall back to the base before giving up.
+    return by_code.get(wanted) or by_code.get(wanted.split('-')[0]) or languages[0][1]
 
 
 def _apply_pagination(doc, page: SeoPage, request) -> None:

@@ -1,35 +1,29 @@
-"""Seed baseline policy/support CMS pages so the footer links resolve (not 404).
+"""Seed the marketplace-only policy/support CMS pages so the footer resolves.
 
 Mirrors the slugs the reference montenegro site used (help-center, safety-info,
-cancellation-policy, hosting-resources, privacy-policy, terms-of-service). These
-are placeholder pages the merchant edits later in the dashboard's Content area.
-Idempotent: safe to run on every deploy.
+cancellation-policy, hosting-resources). These are placeholder pages the
+merchant edits later in the dashboard's Content area. Idempotent: safe to run
+on every deploy.
+
+It used to seed `privacy-policy` and `terms-of-service` too — two-paragraph
+stubs whose own text said "replace it with your finalised text". But the gdpr
+app already seeds `privacy` and `terms` on every Morpheus store, so the site
+served BOTH: four live URLs, two of them titled "Privacy Policy", each with its
+own self-canonical, splitting the signal between a real policy and a placeholder
+(the Sep 2026 audit found the duplicate title). One concept, one owner: gdpr
+owns legal text, this command retires the stubs and `seed_seo_redirects` 301s
+their paths. Retiring is `state='draft'`, never a delete — a merchant may have
+edited the stub, and a draft is recoverable.
 """
 
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand
 
+# Retired in favour of gdpr's `privacy` / `terms`; see the module docstring.
+SUPERSEDED_SLUGS = ('privacy-policy', 'terms-of-service')
+
 PAGES = [
-    (
-        'privacy-policy',
-        'Privacy Policy',
-        'How Montenegro Experience collects, uses and protects your data.',
-        '<p>This Privacy Policy explains what information Montenegro Experience collects, '
-        'how we use it, and the choices you have. We collect only what we need to run the '
-        'marketplace — your account details, enquiries and bookings — and we never sell your '
-        'data.</p><p>For any privacy question, contact us via the Contact page. This is a '
-        'starter policy; replace it with your finalised text in the dashboard.</p>',
-    ),
-    (
-        'terms-of-service',
-        'Terms of Service',
-        'The terms that govern your use of Montenegro Experience.',
-        '<p>By using Montenegro Experience you agree to these terms. Experiences are offered by '
-        'independent local hosts; Montenegro Experience connects you with them and facilitates '
-        'enquiries and bookings.</p><p>This is a starter document — replace it with your '
-        'finalised terms in the dashboard.</p>',
-    ),
     (
         'help-center',
         'Help Center',
@@ -84,7 +78,13 @@ class Command(BaseCommand):
                 obj.state = 'published'
                 obj.save(update_fields=['state'])
                 published += 1
+        retired = (
+            Page.objects.filter(slug__in=SUPERSEDED_SLUGS)
+            .exclude(state='draft')
+            .update(state='draft')
+        )
         self.stdout.write(
             f'CMS pages: {created} created, {published} re-published, '
-            f'{len(PAGES) - created} already present ({len(PAGES)} total).'
+            f'{len(PAGES) - created} already present ({len(PAGES)} total); '
+            f'{retired} duplicate legal page(s) retired to draft.'
         )

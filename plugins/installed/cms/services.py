@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import html as html_lib
 import logging
 import re
 
@@ -38,6 +39,76 @@ def _str_list(value) -> list[str]:
     if isinstance(value, (list, tuple)):
         return [str(v) for v in value if v]
     return []
+
+
+# A journal body authored as a full HTML document repeats the title as its own
+# <h1> and often a "By <name>" byline under it — both of which the template
+# already renders around the body. Left in, the page ships two <h1> elements and
+# the byline twice (19 live articles did). Anchored to the START of the body and
+# limited to one heading, so a body that legitimately opens with prose is
+# untouched.
+_LEADING_H1_RE = re.compile(r'\A\s*<h1\b[^>]*>.*?</h1>\s*', re.IGNORECASE | re.DOTALL)
+_LEADING_BYLINE_RE = re.compile(
+    r'\A\s*<p\b[^>]*>\s*(?:<(?:strong|em|b|i)\b[^>]*>\s*)?'
+    r'(?:by|autor|piše)\b.{0,80}?</p>\s*',
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def strip_duplicate_heading(body: str) -> str:
+    """Drop a leading <h1> (and the byline right under it) from a journal body.
+
+    The heading only goes if one is actually there; the byline only goes if it
+    followed that heading, so a body whose first paragraph merely starts with
+    the word "by" keeps it.
+    """
+    if not body:
+        return body or ''
+    stripped = _LEADING_H1_RE.sub('', body, count=1)
+    if stripped == body:
+        return body
+    return _LEADING_BYLINE_RE.sub('', stripped, count=1)
+
+
+_H2_RE = re.compile(r'<h2\b[^>]*>(.*?)</h2>(.*?)(?=<h[1-3]\b|\Z)', re.IGNORECASE | re.DOTALL)
+_MIN_ANSWER_CHARS = 40
+_MAX_ANSWER_CHARS = 700
+_MIN_FAQ_PAIRS = 2
+
+
+def _plain(fragment: str) -> str:
+    return html_lib.unescape(re.sub(r'<[^>]+>', ' ', fragment or '')).strip()
+
+
+def journal_faq_pairs(body: str) -> list[dict]:
+    """Q&A pairs for `FAQPage`, taken ONLY from H2s that are real questions.
+
+    The obvious version of this — turn every H2 section into a Question — is
+    the `seo/tests/test_offer_claims.py` mistake in another costume: a
+    structured-data property is a public claim, and "Where to stay in Kotor"
+    rendered as a `Question` asserts the page answers a question it never
+    asked. Google also requires the Q&A to appear on the page in that form.
+
+    So an H2 qualifies only if it ends in '?', and a page emits nothing below
+    two pairs — one stray question is not an FAQ. On a corpus of long-form
+    travel articles this covers a minority of pages by design; the alternative
+    covers all of them and lies about most.
+    """
+    pairs: list[dict] = []
+    for heading, section in _H2_RE.findall(body or ''):
+        question = re.sub(r'\s+', ' ', _plain(heading))
+        if not question.endswith('?'):
+            continue
+        answer = re.sub(r'\s+', ' ', _plain(section))
+        if len(answer) < _MIN_ANSWER_CHARS:
+            continue
+        if len(answer) > _MAX_ANSWER_CHARS:
+            # Cut on a sentence boundary — a mid-word truncation would publish
+            # a different answer than the page shows.
+            cut = answer.rfind('. ', 0, _MAX_ANSWER_CHARS)
+            answer = answer[: cut + 1] if cut > _MIN_ANSWER_CHARS else answer[:_MAX_ANSWER_CHARS]
+        pairs.append({'q': question, 'a': answer})
+    return pairs if len(pairs) >= _MIN_FAQ_PAIRS else []
 
 
 def _default_author() -> str:
@@ -75,7 +146,8 @@ def journal_dict(page) -> dict:
     # Strip tags ONCE: accurate wordCount from the FULL body (the template
     # truncates the body it passes to the JSON-LD tag, which would otherwise
     # undercount long posts) + the honest ~200wpm reading time.
-    word_count = len(re.sub(r'<[^>]+>', ' ', page.body or '').split())
+    body = strip_duplicate_heading(page.body or '')
+    word_count = len(re.sub(r'<[^>]+>', ' ', body).split())
     read_min = max(1, round(word_count / 200))
     return {
         'id': str(page.id),
@@ -86,7 +158,7 @@ def journal_dict(page) -> dict:
         # OF MONTH as a fake reading time and showed no actual date.)
         'date_label': (f'{pub.strftime("%B %-d, %Y")} · {read_min} min read' if pub else ''),
         'excerpt': page.excerpt or '',
-        'body': page.body or '',
+        'body': body,
         'published_at': pub,
         'updated_at': page.updated_at,
         'image': image,
@@ -94,6 +166,7 @@ def journal_dict(page) -> dict:
         'author_same_as': author_same_as,
         'citations': citations,
         'word_count': word_count,
+        'faq_pairs': journal_faq_pairs(body),
         'is_html': True,
     }
 

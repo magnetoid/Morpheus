@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.70.0 — 2026-09-21
+
+**Montenegro SEO/AEO audit: hreflang, /categories/, llms.txt and journal markup**
+
+- hreflang x-default named whichever page emitted it, so / declared / the default and /sr/ declared /sr/ — two contradictory claims per cluster, which is the same as none. It now names the LANGUAGE_CODE tree.
+- /categories/ 301'd unconditionally to /genres/, a route only the optional book_product app mounts, while the sitemap advertised it — so every store published a sitemap URL that redirects, and a non-book store redirected into a 404. The shell's own category index is restored (both themes already shipped the orphaned template), and the sitemap entry moved to its owner.
+- llms.txt emitted 45 double-slash URLs (a missing rstrip the agents.md renderer already had) and opened a '## Products' heading before checking for rows — telling AI crawlers the shop had no catalogue. New SEO_LLMS_SECTIONS filter: booking_marketplace now publishes its experiences and stays.
+- Journal bodies authored as full documents repeat the title as their own <h1> plus a byline, both of which the template already renders; 19 live articles shipped two <h1> elements. Stripped at the journal_dict seam, so existing content is fixed without a re-seed.
+- author.sameAs, citations and wordCount reached no live page: every theme passes them to {% seo_article_jsonld %}, which the head contract shims to ''. They are now read from the entry by the graph builder.
+- FAQPage for journal articles, built only from H2 headings that are genuinely questions — converting every H2 would assert questions the page never asks.
+- booking_marketplace stopped seeding placeholder Privacy/Terms pages that duplicated gdpr's; seed_cms_pages retires the existing rows to draft and seed_seo_redirects 301s their paths.
+
 ## v0.69.1 — 2026-09-21
 
 **Broken product images now fall back cleanly, including the homepage hero**

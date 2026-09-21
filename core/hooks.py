@@ -837,6 +837,16 @@ class MorpheusEvents:
     #   owner publishes. ADR 0008 says every public page belongs in the sitemap;
     #   this is how an app satisfies that without editing seo.
     SEO_SITEMAP_SOURCES = 'seo.sitemap_sources'  # filter
+    # SEO_LLMS_SECTIONS — filter, value=list[dict] (each {title, lines:list[str]}),
+    #   kwargs: base=str (site root, no trailing slash), full=bool. Extra
+    #   `## Section` blocks for /llms.txt and /llms-full.txt. seo can only list
+    #   `catalog.Product`, so a vertical whose catalogue lives in its own models
+    #   published NOTHING to AI crawlers: the Montenegro marketplace served a
+    #   "## Products" heading with no rows under it while 244 bookings and
+    #   hotels were live and in the sitemap. Importing the vertical from seo
+    #   would be the plugin→plugin coupling the ratchet blocks, so the owner
+    #   answers instead.
+    SEO_LLMS_SECTIONS = 'seo.llms_sections'  # filter
     # EDGE_PURGE_URLS — fire, kwargs: urls=list[str] (absolute paths, e.g.
     #   ['/products/x/', '/sitemap.xml']), reason=str. "These URLs just changed
     #   at the origin; drop them from the CDN." Fired by seo when a SeoMeta

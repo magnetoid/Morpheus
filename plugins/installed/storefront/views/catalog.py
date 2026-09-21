@@ -1531,11 +1531,66 @@ def staff_picks(request):
 
 
 def categories(request):
-    # Categories were collapsed to a single "Books" root; genres are the browse
-    # axis now. 301 the old index to /genres/ to preserve SEO + bookmarks.
-    from django.shortcuts import redirect  # noqa: PLC0415
+    """The catalogue's category index.
 
-    return redirect('/genres/', permanent=True)
+    The book vertical replaces categories with genres, so when `book_product`
+    is installed this 301s to `/genres/` to preserve SEO + bookmarks. That
+    redirect used to be unconditional — a book-vertical decision hardcoded in
+    the shell — which meant every non-book store served a permanent redirect to
+    a route only an optional plugin mounts, while `seo/services/sitemaps.py`
+    went on advertising `/categories/` in the sitemap. On the Montenegro
+    marketplace that shipped a sitemap url redirecting to a page titled
+    "Genres", and the index this view renders had been dead since the migration
+    even though both themes still carry `categories.html`.
+    """
+    if app_registry.is_active('book_product'):
+        from django.shortcuts import redirect  # noqa: PLC0415
+
+        return redirect('/genres/', permanent=True)
+
+    data = (
+        internal_graphql(
+            """
+        query Categories {
+          categories(topLevel: true, first: 50) {
+            id name slug image { url }
+          }
+        }
+    """,
+            request=request,
+        )
+        or {}
+    )
+    cats = data.get('categories', [])
+    # `/category/<slug>/` is the indexed detail route both themes link to; the
+    # `?category=` form is the legacy duplicate the SEO audit flagged, so the
+    # ItemList must not name a different url than the anchors around it.
+    cat_items = [
+        {
+            'name': c.get('name', ''),
+            'url': request.build_absolute_uri(f'/category/{c.get("slug", "")}/'),
+            'image': (c.get('image') or {}).get('url', ''),
+        }
+        for c in cats
+    ]
+    breadcrumb_items = [
+        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': 'Categories', 'url': request.build_absolute_uri(request.path)},
+    ]
+    return render(
+        request,
+        'storefront/categories.html',
+        {
+            'categories': cats,
+            'cat_items': cat_items,
+            'breadcrumb_items': breadcrumb_items,
+            # Clean page name only — the head document applies the brand
+            # (ADR 0007); the old view hardcoded "Categories — dot books".
+            'seo_title': 'Categories',
+            'seo_description': 'Browse every category in the shop.',
+            'seo_og_type': 'website',
+        },
+    )
 
 
 def quick_search(request):

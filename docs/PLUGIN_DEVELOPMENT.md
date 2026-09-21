@@ -683,6 +683,22 @@ policy), subscribe to `SEO_JSONLD_GRAPH` instead of emitting your own
 block competes with it. Never write `<title>`, a canonical or `og:*` from a
 plugin template (ADR 0036).
 
+**If your app owns a catalogue of its own**, contribute it to `/llms.txt` and
+`/llms-full.txt` through `SEO_LLMS_SECTIONS`. seo can only enumerate
+`catalog.Product`, so a vertical whose listings live in its own models (a
+marketplace's bookings, a venue's rooms) publishes *nothing* to AI crawlers
+otherwise — and worse, seo used to emit the `## Products` heading regardless,
+so the file stated the shop had an empty catalogue. Return
+`[*value, {"title": "Stays", "lines": ["- [Name](url)", ...]}]`; `base` (no
+trailing slash) and `full` arrive as kwargs. A section with no rows is dropped.
+
+**If your app replaces one of the shell's routes** (the book vertical swaps
+`/categories/` for `/genres/`), the shell must gate the swap on
+`app_registry.is_active("<you>")` **and** whoever lists that route in the
+sitemap has to gate it the same way. An ungated swap leaves every other store
+301'ing a sitemap url to a route only your plugin mounts — see
+`storefront/sitemap.py`.
+
 **If your page is a private surface**, say so through `SEO_ROBOTS_RULES` rather
 than asking for an edit to the seo app. `value` is a
 [`core.robots.RobotsDocument`](../core/robots.py) — call `disallow()`,

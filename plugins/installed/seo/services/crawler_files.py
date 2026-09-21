@@ -193,7 +193,11 @@ def render_llms_txt(*, full: bool = False) -> str:  # noqa: PLR0912, PLR0915 —
         - [Title](url): description
     """
     s = site_settings()
-    base = _site_base_url()
+    # rstrip is load-bearing: `_site_base_url()` ends in '/', and every line
+    # below interpolates f'{base}/...', so the live file shipped 45 urls like
+    # `https://example.com//journal/x/`. They resolve, but llms.txt exists to be
+    # read by machines. `render_agents_md` had the rstrip; this never did.
+    base = _site_base_url().rstrip('/')
     name = s.organization_name or 'Morpheus store'
     out = [f'# {name}', '']
     if s.llms_txt_intro:
@@ -206,7 +210,6 @@ def render_llms_txt(*, full: bool = False) -> str:  # noqa: PLR0912, PLR0915 —
             '## Site map',
             f'- [Home]({base}/)',
             f'- [All products]({base}/products/)',
-            f'- [Categories]({base}/categories/)',
             f'- [Search]({base}/search/?q=)',
             f'- [Sitemap XML]({base}/sitemap.xml)',
             '',
@@ -239,12 +242,17 @@ def render_llms_txt(*, full: bool = False) -> str:  # noqa: PLR0912, PLR0915 —
 
         out.append('## Categories')
         for c in Category.objects.filter(parent__isnull=True).order_by('name')[:50]:
-            out.append(f'- [{c.name}]({base}/products/?category={c.slug})')
+            out.append(f'- [{c.name}]({base}/category/{c.slug}/)')
         out.append('')
 
-        out.append('## Products')
         qs = Product.objects.filter(status='active').order_by('-created_at')
         limit = 200 if full else 50
+        # A heading with no rows under it is worse than no heading: it tells a
+        # crawler the shop has no catalogue. Only open the section once a row
+        # exists — a vertical whose products live elsewhere contributes its own
+        # through SEO_LLMS_SECTIONS below.
+        if qs.exists():
+            out.append('## Products')
         for p in qs[:limit]:
             # Per-product markdown export — let crawlers fetch the
             # canonical content without parsing HTML. /md/products/<slug>
@@ -296,7 +304,30 @@ def render_llms_txt(*, full: bool = False) -> str:  # noqa: PLR0912, PLR0915 —
     except Exception:  # noqa: BLE001
         pass
 
+    out.extend(_contributed_llms_sections(base=base, full=full))
     return '\n'.join(out) + '\n'
+
+
+def _contributed_llms_sections(*, base: str, full: bool) -> list[str]:
+    """`SEO_LLMS_SECTIONS` subscribers append their own catalogue sections.
+
+    Fail-soft per the hook bus: a broken subscriber must not take llms.txt down,
+    because the file is fetched by crawlers, not by a person who would report it.
+    """
+    from morpheus.core import MorpheusEvents, hook_registry
+
+    try:
+        sections = hook_registry.filter(MorpheusEvents.SEO_LLMS_SECTIONS, [], base=base, full=full)
+    except Exception:  # noqa: BLE001
+        return []
+    lines: list[str] = []
+    for section in sections or []:
+        title = str((section or {}).get('title') or '').strip()
+        rows = [str(r) for r in ((section or {}).get('lines') or []) if str(r).strip()]
+        if not title or not rows:
+            continue
+        lines.extend(['', f'## {title}', *rows])
+    return lines
 
 
 def render_agents_md() -> str:
