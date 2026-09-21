@@ -4,17 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#f4f9f9">
-{% block seo %}
+{% comment %}The entire SEO head — title, description, canonical, robots, Open Graph,
+Twitter, hreflang, pagination, verification metas and the JSON-LD graph — comes from
+one core tag (ADR 0036). The theme supplies fallback copy for a store that has not
+filled in its SEO settings; everything else is resolved per page by the seo app, which
+reads the `seo_title`/`seo_description`/`seo_object` this theme's views already put in
+the context. Do NOT add a <title>, canonical, robots, og:* or JSON-LD tag alongside
+this call: that is how this theme previously shipped three pages under one title and
+a 404 with two <meta name="robots">.{% endcomment %}
 {% static 'montenegro/og-default.jpg' as og_default %}
-{% seo_meta object=seo_object|default:None fallback_title=seo_title|default:"Montenegro Experience" fallback_description=seo_description|default:"Unforgettable experiences along the Adriatic — hand-picked tours, stays and hidden gems across Montenegro." fallback_image=seo_image|default:og_default og_type=seo_og_type|default:"website" %}
+{% block seo %}
+{% comment %}`seo_image` is what the page resolver reads for og:image / twitter:image.
+The theme's bundled card is the fallback: without it every page loses its share
+image the moment a store has not filled in Settings -> SEO -> default OG image,
+which is exactly what this theme was relying on before it adopted the contract.{% endcomment %}
+{% with seo_image=seo_image|default:og_default %}{% storefront_head title=seo_title description=seo_description %}{% endwith %}
 {% endblock %}
-
-{# Site-wide Organization + WebSite JSON-LD (gated by SiteSeoSettings toggles, both on by default). #}
-{% seo_organization_jsonld %}
-{% seo_website_jsonld %}
-{# Search-console verification codes (render only when configured) + /llms.txt discovery hint for AI answer engines. #}
-{% seo_verification_metas %}
-{% seo_llms_link %}
 
 {# Legacy favicon.ico — pwa plugin injects manifest/SVG/apple-touch below body; this covers /favicon.ico (was 404). #}
 <link rel="icon" href="{% static 'montenegro/favicon.ico' %}" sizes="32x32">

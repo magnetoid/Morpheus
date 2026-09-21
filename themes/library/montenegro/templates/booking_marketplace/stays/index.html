@@ -1,7 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
 {% block title %}{% trans "Hotels in Montenegro" %} — Montenegro Experience{% endblock %}
-{% block seo %}{% seo_meta fallback_title="Hotels in Montenegro — Coast, Mountains & Local Stays" fallback_description="Compare hotels, resorts and apartments across Kotor, Budva, Durmitor and the rest of Montenegro, with practical local guidance for choosing where to stay." %}{% endblock %}
 {% block extra_head %}
 {% if stays_jsonld %}<script type="application/ld+json">{{ stays_jsonld|safe }}</script>{% endif %}
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Which part of Montenegro is best for a first visit?","acceptedAnswer":{"@type":"Answer","text":"The Bay of Kotor is ideal for historic towns and scenery, Budva for beaches and nightlife, and Durmitor for hiking and mountain landscapes."}},{"@type":"Question","name":"When should I book a hotel in Montenegro?","acceptedAnswer":{"@type":"Answer","text":"For July and August, book several months ahead. May, June, September and October usually offer better value, lighter crowds and comfortable weather."}},{"@type":"Question","name":"Do I need a car to explore Montenegro?","acceptedAnswer":{"@type":"Answer","text":"A car is useful for mountain and rural areas, while Kotor, Budva and other coastal towns can also be explored with buses, transfers and local tours."}}]}</script>

@@ -1,9 +1,7 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load seo %}{% load i18n %}{% load static %}{% load booking_tags %}
+{% block seo %}{% trans "Montenegro Experience — tours, stays & hidden gems" as home_title %}{% trans "Unforgettable experiences along the Adriatic. Hand-picked tours, stays and hidden gems from trusted local hosts across Montenegro." as home_desc %}{% storefront_head title=home_title description=home_desc %}{% endblock %}
 {% block title %}{% seo_title "Montenegro Experience" %}{% endblock %}
-{% block seo %}{% trans "Montenegro Experience — tours, stays & hidden gems" as home_title %}{% trans "Unforgettable experiences along the Adriatic. Hand-picked tours, stays and hidden gems from trusted local hosts across Montenegro." as home_desc %}{% seo_meta object=seo_object|default:None fallback_title=home_title fallback_description=home_desc og_type="website" %}
-{# Preload the LCP hero — responsive so mobile pulls the 50 KiB variant, not the 1600w one. #}
-<link rel="preload" as="image" href="{% static 'montenegro/hero-kotor.webp' %}" imagesrcset="{% static 'montenegro/hero-kotor-800.webp' %} 800w, {% static 'montenegro/hero-kotor.webp' %} 1600w" imagesizes="100vw" fetchpriority="high">{% endblock %}
 
 {% block content %}
 {% booking_listing_mode as listing_mode %}
@@ -136,6 +134,44 @@
     {% endif %}
   </div>
 </section>
+
+<!-- ============ DESTINATIONS ============ -->
+{% comment %}`featured_places` had no consumer in any template: the tag was
+written for this strip and the strip was never built, so the homepage never
+showed a destination. Mirrors the Popular Experiences section above and reuses
+the card from booking_marketplace/places/index.html.{% endcomment %}
+{% featured_places 4 as places %}
+{% if places %}
+<section class="py-10 sm:py-16 lg:py-20 bg-background border-t border-border">
+  <div class="container mx-auto px-4">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+      <div>
+        <h2 class="font-display text-2xl lg:text-3xl font-bold text-foreground mb-2">{% trans "Where to go" %}</h2>
+        <p class="text-muted-foreground">{% trans "Coastal towns, mountain parks and the places worth the detour" %}</p>
+      </div>
+      <a href="/places/" class="inline-flex items-center gap-2 self-start sm:self-auto text-sm font-medium text-primary hover:text-primary/90">
+        {% trans "All destinations" %}
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {% for p in places %}
+      <a href="/places/{{ p.slug }}/" class="group block rounded-2xl overflow-hidden border border-border bg-card shadow-card hover:shadow-lg transition-all duration-300">
+        <div class="aspect-[4/3] overflow-hidden bg-muted relative">
+          {% if p.image %}<img src="{{ p.image.url }}" alt="{{ p.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">{% endif %}
+          {% if p.place_type %}<span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-background/85 backdrop-blur-sm text-xs font-medium text-foreground">{{ p.get_place_type_display }}</span>{% endif %}
+        </div>
+        <div class="p-4">
+          <h3 class="font-semibold text-foreground text-lg mb-1 group-hover:text-primary transition-colors">{{ p.name }}</h3>
+          {% if p.summary %}<p class="text-sm text-muted-foreground line-clamp-2">{{ p.summary }}</p>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
 
 <!-- ============ TRUST SECTION (1:1 port of components/TrustSection.tsx) ============ -->
 <section class="border-y border-border bg-secondary/40">

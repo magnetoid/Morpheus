@@ -9,7 +9,6 @@ Branches on booking_listing_mode (prices hidden / no cart in listing mode).
 {% block title %}{% if selected_author %}{% blocktrans with a=selected_author %}Experiences by {{ a }}{% endblocktrans %}{% elif selected_publisher %}{{ selected_publisher }}{% elif selected_category_obj %}{{ selected_category_obj.name }}{% elif search_query %}{% blocktrans with q=search_query %}Search: {{ q }}{% endblocktrans %}{% else %}{% trans "Shop" %}{% endif %} — Montenegro Experience{% endblock %}
 
 {# Clean SEO: bypass the stale catalog seo_object; brand suffix comes from brand_name() = configured store name. #}
-{% block seo %}{% seo_meta og_type="website" fallback_title=selected_category_obj.name|default:search_query|default:"Shop — Montenegro Experience" fallback_description=seo_description|default:"Locally made goods, crafts and souvenirs from Montenegro." %}{% endblock %}
 
 {% block extra_head %}
 {% seo_collection_jsonld items=plp_items name=plp_name description=seo_description %}

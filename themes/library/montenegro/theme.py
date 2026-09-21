@@ -38,6 +38,8 @@ class MontenegroTheme(MorpheusTheme):
     # would 500 on the homepage, so the theme must refuse to activate there
     # rather than appear as a broken option in the theme picker.
     requires_plugins = ['booking_marketplace']
+    # base.html calls `{% storefront_head %}` and emits no SEO markup of its own.
+    head_contract = 1
     demo_topic = 'travel'
 
     def get_config_schema(self) -> dict:

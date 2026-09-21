@@ -1,7 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
 {% block title %}{{ property.name }}, Montenegro — Montenegro Experience{% endblock %}
-{% block seo %}{% seo_meta object=seo_object|default:None fallback_title=property.name fallback_description=property.description og_type="website" %}{% endblock %}
 {% block extra_head %}{% if seo_jsonld %}<script type="application/ld+json">{{ seo_jsonld|safe }}</script>{% endif %}{% endblock %}
 {% block content %}
 {% booking_listing_mode as listing_mode %}
