@@ -150,15 +150,21 @@ def _product_node(service, *, request) -> dict:
         'availability': 'https://schema.org/InStock',
         'url': url,
     }
-    if service.review_count:
+    # Never from the denormalised rating/review_count columns: they count
+    # seeded rows too (services.verified_reviews). The aggregate and the
+    # Review nodes come from the same verified set.
+    from plugins.installed.booking_marketplace.services import verified_rating, verified_reviews
+
+    count, avg = verified_rating(service)
+    if count:
         node['aggregateRating'] = {
             '@type': 'AggregateRating',
-            'ratingValue': str(service.rating),
-            'reviewCount': service.review_count,
+            'ratingValue': f'{avg:.1f}',
+            'reviewCount': count,
         }
         # ServiceReview's default ordering is -created_at, so this is
         # already "up to 5, newest first".
-        reviews = list(service.reviews.all()[:5])
+        reviews = list(verified_reviews(service)[:5])
         if reviews:
             node['review'] = [
                 {

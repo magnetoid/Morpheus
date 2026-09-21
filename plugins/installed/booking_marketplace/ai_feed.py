@@ -32,15 +32,22 @@ def _money(value) -> tuple[str, str] | None:
         return None
 
 
-def _rating(obj) -> dict | None:
-    """schema.org aggregateRating, only when real reviews back it."""
-    if not getattr(obj, 'review_count', 0) or not getattr(obj, 'rating', 0):
+def _rating(svc) -> dict | None:
+    """schema.org aggregateRating over the experience's verified reviews only.
+
+    Never from the denormalised rating/review_count columns, which count
+    seeded rows too (services.verified_reviews) — reading them published
+    40,733 reviews to every AI crawler while the database held 559, all
+    seeded. A stay gets none: Property has no reviews at all (its columns
+    are seeded/editorial), and the hotel page already omits it
+    (seo_jsonld._hotel_node).
+    """
+    from plugins.installed.booking_marketplace.services import verified_rating
+
+    count, avg = verified_rating(svc)
+    if not count:
         return None
-    return {
-        '@type': 'AggregateRating',
-        'ratingValue': str(obj.rating),
-        'reviewCount': obj.review_count,
-    }
+    return {'@type': 'AggregateRating', 'ratingValue': f'{avg:.1f}', 'reviewCount': count}
 
 
 def _common(obj, url: str) -> dict:
@@ -51,9 +58,6 @@ def _common(obj, url: str) -> dict:
     }
     if getattr(obj, 'image', None):
         node['image'] = absolutize(obj.image.url)
-    rating = _rating(obj)
-    if rating:
-        node['aggregateRating'] = rating
     return node
 
 
@@ -61,6 +65,9 @@ def _service_item(svc, base: str) -> dict:
     url = urljoin(base, f'/bookings/{svc.slug}/')
     node = {'@type': 'Product', **_common(svc, url)}
     node['brand'] = {'@type': 'Organization', 'name': svc.vendor.name}
+    rating = _rating(svc)
+    if rating:
+        node['aggregateRating'] = rating
     priced = _money(svc.price)
     if priced:
         amount, currency = priced
@@ -112,13 +119,14 @@ def _property_item(prop, base: str) -> dict:
 def contribute_ai_feed_items(value, **kwargs):
     """AI_FEED_ITEMS subscriber — appends live experiences and stays."""
     from plugins.installed.booking_marketplace.models import BookableService, Property
+    from plugins.installed.booking_marketplace.services import with_verified_rating
 
     base = site_base_url()
     items = list(value or [])
     items.extend(
         _service_item(svc, base)
-        for svc in BookableService.objects.filter(
-            is_active=True, vendor__is_active=True
+        for svc in with_verified_rating(
+            BookableService.objects.filter(is_active=True, vendor__is_active=True)
         ).select_related('vendor')
     )
     items.extend(

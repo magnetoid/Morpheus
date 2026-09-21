@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.73.2 — 2026-09-21
+
+**The AI feed stopped claiming reviews nobody wrote**
+
+- `/ai/products.json` put an `aggregateRating` on 225 of the Montenegro store's 242 listings — 40,733 reviews in all — read from the denormalised `rating`/`review_count` columns. The database held 559 reviews, every one written by `seed_reviews` with no booking behind it, and the 100 hotel ratings were computed from a hash of each hotel's slug: hotels have no review model at all.
+- A rating is now claimed only from reviews carrying the evidence `create_review` demands — a confirmed or completed booking (`booking_marketplace/services.py:verified_reviews`). The experience page's `aggregateRating` and its `Review` nodes come from that one set; the page had claimed "4.8 from 3 reviews" whenever the columns said so, whatever it showed.
+- Hotels never carry a guest rating in the feed now, matching the hotel page, which already omitted it for exactly this reason. The hotel's star class is a fact about the hotel and stays.
+- Nothing changes on the page a shopper sees: which reviews a merchant displays is their content. What the platform asserts to Google and AI crawlers is not.
+- The feed computes the verified rating for every listing in one query, guarded by a test that fails if it ever becomes one query per row.
+
 ## v0.73.1 — 2026-09-21
 
 **404 pages were titled Error**

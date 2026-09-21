@@ -13,7 +13,7 @@ import datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import transaction
-from django.db.models import Avg, Count, Sum
+from django.db.models import Avg, Count, Q, Sum
 from django.utils import timezone
 from djmoney.money import Money
 
@@ -373,6 +373,46 @@ def review_summary(service) -> dict:
         'avg': round(agg['avg'], 1) if agg['avg'] is not None else None,
         'count': agg['count'] or 0,
     }
+
+
+def _verified(prefix: str = '') -> Q:
+    """The booking is the evidence a review is a guest's: `create_review`
+    refuses to write one without a confirmed/completed booking, and
+    `seed_reviews` writes rows with none. `prefix` applies the same rule
+    across the relation, for a listing's annotation."""
+    return Q(**{f'{prefix}booking__isnull': False})
+
+
+def verified_reviews(service):
+    """The reviews a public claim may rest on.
+
+    Structured data — the experience page's Product node, `/ai/products.json`
+    — states a rating to Google and AI crawlers as fact. The denormalised
+    `rating`/`review_count` columns cannot back that: `seed_reviews` and
+    `create_review` both sync them over *every* row, seeded or real. Showing
+    a review on the page is the merchant's content; claiming it in markup is
+    ours, and Google requires it to come from a real customer.
+    """
+    return service.reviews.filter(_verified())
+
+
+def with_verified_rating(qs):
+    """Annotate `verified_count` / `verified_avg` on a BookableService
+    queryset — one query for a whole listing instead of one per row."""
+    rule = _verified('reviews__')
+    return qs.annotate(
+        verified_count=Count('reviews', filter=rule),
+        verified_avg=Avg('reviews__rating', filter=rule),
+    )
+
+
+def verified_rating(service) -> tuple[int, float | None]:
+    """(count, average) over `verified_reviews` — the only rating structured
+    data may state. Reads a `with_verified_rating` annotation when present."""
+    if hasattr(service, 'verified_count'):
+        return service.verified_count or 0, service.verified_avg
+    agg = verified_reviews(service).aggregate(n=Count('id'), avg=Avg('rating'))
+    return agg['n'] or 0, agg['avg']
 
 
 def create_review(service, *, user, rating, title='', body=''):

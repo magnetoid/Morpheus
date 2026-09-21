@@ -664,7 +664,18 @@ owners now (`shipping/seo_graph.py`, `returns_portal/seo_graph.py` on
 through the one shared vocabulary in `plugins/feed_mapping.py`, and the head
 parity profile SHRANK on purpose — the one case where that is not the bug.
 Guarded by `seo/tests/test_offer_claims.py`, which asserts both directions
-(configured → published and matching; unconfigured → absent).
+(configured → published and matching; unconfigured → absent). **A denormalised
+display column is not a source either.** booking_marketplace published
+`aggregateRating` from `BookableService`/`Property.rating`+`review_count` — columns
+`seed_reviews` and `create_review` both sync over *every* row, seeded or real — so
+`/ai/products.json` claimed 40,733 reviews on a store whose database held 559, all
+seeded, and 100 hotel ratings were a hash of the slug (Property has no review model
+at all). The hotel page had already omitted it for exactly that reason; the feed
+didn't. A rating is claimable only from reviews carrying evidence of a guest — the
+booking `create_review` requires (`booking_marketplace/services.py:verified_reviews`)
+— and the aggregate and the `Review` nodes come from that one set. Guarded by
+`booking_marketplace/tests/test_ai_feed.py::AiFeedRatingClaimTests` +
+`test_experience_jsonld.py`.
 
 **Landmine — an SEO gap is what the page RENDERS empty, never what one column
 holds; and a collector nothing ever calls fails silently for months.**
