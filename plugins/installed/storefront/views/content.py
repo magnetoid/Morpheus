@@ -10,6 +10,7 @@ from django.http import HttpResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from morpheus.app.views import render
+from plugins.installed.storefront.services import store_blurb, store_name
 from plugins.registry import app_registry
 
 # Served at the conventional /favicon.ico path — browsers request it unprompted
@@ -104,7 +105,11 @@ def about(request):
         {
             'breadcrumb_items': breadcrumb_items,
             'seo_title': 'About',
-            'seo_description': 'dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world.',
+            # The merchant's own words when they have written any; otherwise
+            # nothing, and the seo app derives one from the page. The shell
+            # used to hardcode dot books' own copy here, so every other store
+            # introduced itself to Google as an independent bookshop.
+            'seo_description': store_blurb() or f'About {store_name()}.',
             'seo_og_type': 'website',
         },
     )
@@ -156,7 +161,10 @@ def contact(request):
             'sent': sent,
             'breadcrumb_items': breadcrumb_items,
             'seo_title': 'Contact',
-            'seo_description': 'Get in touch with dot books. Recommendations, suggestions, and help with orders — we read every message.',
+            'seo_description': (
+                f'Get in touch with {store_name()} — questions about an order, '
+                'or anything else. We read every message.'
+            ),
             'seo_og_type': 'website',
         },
     )
@@ -321,7 +329,12 @@ def shipping(request):
         {
             'breadcrumb_items': breadcrumb_items,
             'seo_title': 'Shipping',
-            'seo_description': 'How dot books ships your order — tracked, signed-for, free over $40. Domestic + international rates.',
+            # No rates, no thresholds, no service level. Those are claims the
+            # shipping app owns, and the hardcoded line promised "free over
+            # $40" on two stores whose checkout says nothing of the kind —
+            # the same shape as the invented shippingDetails in the offer
+            # claims landmine: a promise checkout will break.
+            'seo_description': 'Delivery options, estimated times and shipping rates.',
         },
     )
 
@@ -350,9 +363,11 @@ def do_not_sell(request):
     if the consent plugin is installed, we write a ConsentLog row with
     everything off (analytics, marketing, functional); otherwise we
     just flash a success message and let the visitor know we received it.
-    DotBooks does not sell personal data — this page exists for the
-    CCPA "do not sell" right and for the parallel state laws that
-    require it (Colorado, Virginia, Connecticut, etc.).
+    The page exists for the CCPA "do not sell" right and the parallel
+    state laws that require it (Colorado, Virginia, Connecticut, etc.).
+    It must not assert what a given store does or does not do with
+    personal data — the shell cannot know that, and the copy it used to
+    ship made that claim on behalf of every store, under one store's name.
     """
     import contextlib  # noqa: PLC0415
 
@@ -394,9 +409,13 @@ def do_not_sell(request):
             'submitted': submitted,
             'breadcrumb_items': breadcrumb_items,
             'seo_title': 'Do not sell my info',
+            # Describes the RIGHT, not the store's data practices. The old
+            # copy asserted "DotBooks doesn't sell personal data" on every
+            # store — another business's name attached to a privacy claim the
+            # shell has no way to verify for the store actually serving it.
             'seo_description': (
-                "DotBooks doesn't sell personal data. If you'd like to opt out anyway "
-                'under CCPA, this is the page.'
+                f'Opt out of the sale or sharing of your personal information at '
+                f'{store_name()}, under CCPA and the parallel state privacy laws.'
             ),
             'seo_og_type': 'website',
         },

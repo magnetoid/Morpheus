@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.73.0 — 2026-09-21
+
+**One store's brand was published on every other store**
+
+- The storefront shell hardcoded dot books inside SEO descriptions, so two other live businesses introduced themselves to Google as a bookshop. supernatural-shop.com About read 'dot books is an independent bookshop, run by readers, for readers'; montenegro-experience.me Shipping read 'How dot books ships your order — tracked, signed-for, free over 40 dollars'. Verified live on both before the fix.
+- The shipping line is the serious one: a rate and a threshold published on stores whose checkout has no such rule — the same shape as the invented shippingDetails in the offer-claims landmine, a promise checkout will break. It now describes delivery generically and names no rate the shipping app did not supply.
+- Worse still, the CCPA opt-out page asserted 'DotBooks does not sell personal data' — a privacy claim, under another company's name, on every store. It now describes the RIGHT rather than any store's data practices, which the shell has no way to verify.
+- Descriptions come from the merchant's own StoreSettings (store_name, store_description / meta_description), and fall back to nothing rather than to invented copy. 'All books' was hardcoded in six places for titles and breadcrumbs, so an oils shop's listing was titled All books; the book vertical owns that word now and every other store gets the neutral one.
+- templates/404.html overrode the whole seo block with its own title and robots meta, so error pages on every theme without their own 404 shipped one store's brand, no canonical, no Open Graph — and the v0.70.3 error-page noindex rule could never reach them. It calls storefront_head now. templates/500.html renders with an empty context so its brand is simply gone.
+- Guarded by storefront/tests/test_store_identity.py (no brand and no 'All books' anywhere in the shell) and the head-contract guard extended to the shared error templates.
+
 ## v0.72.2 — 2026-09-21
 
 **The sitemap dashboard and the SEO audit saw a fraction of the real sitemap**

@@ -171,8 +171,8 @@
       }
     ],
     "meta": {
-      "description": "dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world.",
-      "og:description": "dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world.",
+      "description": "About this shop.",
+      "og:description": "About this shop.",
       "og:locale": "en",
       "og:site_name": "Morpheus Store",
       "og:title": "About",
@@ -180,7 +180,7 @@
       "og:url": "http://testserver/about/",
       "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
       "twitter:card": "summary_large_image",
-      "twitter:description": "dot books is an independent bookshop, run by readers, for readers. We stock titles from independent presses around the world.",
+      "twitter:description": "About this shop.",
       "twitter:title": "About"
     },
     "path": "/about/",
@@ -332,8 +332,8 @@
       }
     ],
     "meta": {
-      "description": "Books by Ines Parityauthor, on the dot books shelf.",
-      "og:description": "Books by Ines Parityauthor, on the dot books shelf.",
+      "description": "Books by Ines Parityauthor at this shop.",
+      "og:description": "Books by Ines Parityauthor at this shop.",
       "og:locale": "en",
       "og:site_name": "Morpheus Store",
       "og:title": "Ines Parityauthor",
@@ -341,7 +341,7 @@
       "og:url": "http://testserver/author/ines-parityauthor/",
       "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
       "twitter:card": "summary_large_image",
-      "twitter:description": "Books by Ines Parityauthor, on the dot books shelf.",
+      "twitter:description": "Books by Ines Parityauthor at this shop.",
       "twitter:title": "Ines Parityauthor"
     },
     "path": "/author/ines-parityauthor/",
@@ -816,8 +816,8 @@
       }
     ],
     "meta": {
-      "description": "Get in touch with dot books. Recommendations, suggestions, and help with orders \u2014 we read every message.",
-      "og:description": "Get in touch with dot books. Recommendations, suggestions, and help with orders \u2014 we read every message.",
+      "description": "Get in touch with this shop \u2014 questions about an order, or anything else. We read every message.",
+      "og:description": "Get in touch with this shop \u2014 questions about an order, or anything else. We read every message.",
       "og:locale": "en",
       "og:site_name": "Morpheus Store",
       "og:title": "Contact",
@@ -825,7 +825,7 @@
       "og:url": "http://testserver/contact/",
       "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
       "twitter:card": "summary_large_image",
-      "twitter:description": "Get in touch with dot books. Recommendations, suggestions, and help with orders \u2014 we read every message.",
+      "twitter:description": "Get in touch with this shop \u2014 questions about an order, or anything else. We read every message.",
       "twitter:title": "Contact"
     },
     "path": "/contact/",
@@ -1296,8 +1296,8 @@
       }
     ],
     "meta": {
-      "description": "The full dot books shelf \u2014 independent press, curated by readers.",
-      "og:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "description": "Browse everything this shop sells.",
+      "og:description": "Browse everything this shop sells.",
       "og:locale": "en",
       "og:site_name": "Morpheus Store",
       "og:title": "All books",
@@ -1305,7 +1305,7 @@
       "og:url": "http://testserver/products/",
       "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
       "twitter:card": "summary_large_image",
-      "twitter:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "twitter:description": "Browse everything this shop sells.",
       "twitter:title": "All books"
     },
     "path": "/products/",
@@ -1433,8 +1433,8 @@
       }
     ],
     "meta": {
-      "description": "The full dot books shelf \u2014 independent press, curated by readers.",
-      "og:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "description": "Browse everything this shop sells.",
+      "og:description": "Browse everything this shop sells.",
       "og:locale": "en",
       "og:site_name": "Morpheus Store",
       "og:title": "Search: parity",
@@ -1442,7 +1442,7 @@
       "og:url": "http://testserver/products/",
       "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
       "twitter:card": "summary_large_image",
-      "twitter:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "twitter:description": "Browse everything this shop sells.",
       "twitter:title": "Search: parity"
     },
     "path": "/products/?q=parity",
@@ -1570,8 +1570,8 @@
       }
     ],
     "meta": {
-      "description": "The full dot books shelf \u2014 independent press, curated by readers.",
-      "og:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "description": "Browse everything this shop sells.",
+      "og:description": "Browse everything this shop sells.",
       "og:locale": "en",
       "og:site_name": "Morpheus Store",
       "og:title": "All books",
@@ -1579,7 +1579,7 @@
       "og:url": "http://testserver/products/",
       "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
       "twitter:card": "summary_large_image",
-      "twitter:description": "The full dot books shelf \u2014 independent press, curated by readers.",
+      "twitter:description": "Browse everything this shop sells.",
       "twitter:title": "All books"
     },
     "path": "/products/?sort=price",
@@ -1954,8 +1954,8 @@
       }
     ],
     "meta": {
-      "description": "Search the dot books shelf.",
-      "og:description": "Search the dot books shelf.",
+      "description": "Search this shop.",
+      "og:description": "Search this shop.",
       "og:locale": "en",
       "og:site_name": "Morpheus Store",
       "og:title": "Search",
@@ -1963,7 +1963,7 @@
       "og:url": "http://testserver/search/",
       "robots": "noindex, follow",
       "twitter:card": "summary_large_image",
-      "twitter:description": "Search the dot books shelf.",
+      "twitter:description": "Search this shop.",
       "twitter:title": "Search"
     },
     "path": "/search/",

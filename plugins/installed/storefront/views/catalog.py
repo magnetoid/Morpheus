@@ -25,7 +25,7 @@ import contextlib
 from api.client import internal_graphql
 from morpheus.core import MorpheusEvents, hook_registry
 from morpheus.app.views import render
-from plugins.installed.storefront.services import page_intro
+from plugins.installed.storefront.services import catalogue_label, page_intro, store_name
 from plugins.registry import app_registry
 
 from ._queries import PRODUCT_DETAIL_QUERY
@@ -285,7 +285,7 @@ def product_list(request):
     # {% seo_meta %}), the CollectionPage JSON-LD name, and the OG title — the
     # theme's {% block title %} is NOT what renders <title> (base.html emits it
     # through seo_meta), so this must mirror that block's precedence or filtered
-    # PLPs all title as "All books". Order: author > publisher > category > tag
+    # PLPs all title as the catalogue label. Order: author > publisher > category > tag
     # > search > default.
     _author_label = book_filter.get('author', '')
     _publisher_label = book_filter.get('publisher', '')
@@ -301,7 +301,7 @@ def product_list(request):
     elif q:
         plp_name = f'Search: {q}'
     else:
-        plp_name = 'All books'
+        plp_name = catalogue_label()
     plp_items = [
         {
             'name': p.name,
@@ -316,7 +316,7 @@ def product_list(request):
     ]
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'All books', 'url': request.build_absolute_uri('/products/')},
+        {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')},
     ]
     if selected_cat:
         breadcrumb_items.append(
@@ -384,7 +384,7 @@ def product_list(request):
                 )
                 or _intro['meta_description']
                 or _intro['body']
-                or 'The full dot books shelf — independent press, curated by readers.'
+                or f'Browse everything {store_name()} sells.'
             )[:160],
         },
     )
@@ -537,7 +537,9 @@ def product_detail(request, slug):
     primary_image = primary_images[0] if primary_images else None
     hero_image = primary_image or (images[0] if images else None)
     breadcrumb_items = [{'name': 'Home', 'url': request.build_absolute_uri('/')}]
-    breadcrumb_items.append({'name': 'All books', 'url': request.build_absolute_uri('/products/')})
+    breadcrumb_items.append(
+        {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')}
+    )
     cat = (product or {}).get('category') or {}
     if cat.get('slug'):
         breadcrumb_items.append(
@@ -1087,9 +1089,9 @@ def search(request):
             'search_items': search_items,
             'breadcrumb_items': breadcrumb_items,
             'seo_title': f'Search results for {q}' if q else 'Search',
-            'seo_description': f'Results for "{q}" on the dot books shelf.'
+            'seo_description': f'Search results for "{q}" at {store_name()}.'
             if q
-            else 'Search the dot books shelf.',
+            else f'Search {store_name()}.',
         },
     )
 
@@ -1228,7 +1230,7 @@ def category_detail(request, slug):
     intro = _CATEGORY_INTROS.get(slug, {})
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'All books', 'url': request.build_absolute_uri('/products/')},
+        {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')},
         {'name': category.name, 'url': request.build_absolute_uri(request.path)},
     ]
     collection_items = [
@@ -1325,7 +1327,7 @@ def collection_detail(request, slug):
     _attach_book_authors(products)
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'All books', 'url': request.build_absolute_uri('/products/')},
+        {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')},
         {'name': collection.name, 'url': request.build_absolute_uri(request.path)},
     ]
     collection_items = [
@@ -1437,7 +1439,7 @@ def author_detail(request, slug):
     ]
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'All books', 'url': request.build_absolute_uri('/products/')},
+        {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')},
         {'name': author_name, 'url': request.build_absolute_uri(request.path)},
     ]
     # Merchant-editable per-author SEO + intro (Book taxonomies dashboard).
@@ -1452,7 +1454,7 @@ def author_detail(request, slug):
     default_desc = (
         bio_page.excerpt
         if bio_page and bio_page.excerpt
-        else f'Books by {author_name}, on the dot books shelf.'
+        else f'Books by {author_name} at {store_name()}.'
     )
     return render(
         request,

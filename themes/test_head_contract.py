@@ -179,7 +179,27 @@ class EveryContractThemeTests(TestCase):
     def test_no_contract_theme_hardcodes_a_tag_the_head_document_owns(self):
         import pathlib
 
-        root = pathlib.Path(__file__).resolve().parent / 'library'
+        repo = pathlib.Path(__file__).resolve().parents[1]
+        # The shared error templates render INSIDE whichever theme is active,
+        # so they are bound by the same contract. `templates/404.html` used to
+        # override `{% block seo %}` with its own <title> and robots meta,
+        # which replaced the theme's entire head: no canonical, no Open Graph,
+        # one store's brand on every other store, and the error-page `noindex`
+        # rule could not reach it because the head document never ran.
+        for shared in sorted((repo / 'templates').glob('*.html')):
+            markup = self._COMMENTS.sub('', shared.read_text(errors='ignore'))
+            if '<!DOCTYPE' in markup and '{% extends' not in markup:
+                continue  # 500.html stands alone by design (empty context)
+            for pattern, label in self._OWNED:
+                with self.subTest(template=f'templates/{shared.name}'):
+                    self.assertEqual(
+                        pattern.findall(markup),
+                        [],
+                        f'templates/{shared.name} hardcodes a {label}; it renders '
+                        'inside the active theme, so the head document owns it',
+                    )
+
+        root = repo / 'themes' / 'library'
         checked = 0
         for theme_dir in sorted(root.iterdir()):
             theme_py = theme_dir / 'theme.py'

@@ -9,7 +9,10 @@ no extends, no static, no variables.
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Something went wrong &mdash; dot books.</title>
+<title>Something went wrong</title>
+{% comment %}No brand here. Django's server_error renders this with an EMPTY
+context, so no store name is reachable — and the hardcoded one published a
+different business's brand on every store that hit a 500.{% endcomment %}
 <style>
   body { margin: 0; background: #f6f1e7; color: #0e0e0e; font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   main { max-width: 42rem; margin: 0 auto; padding: 6rem 1.5rem 7rem; text-align: center; }
@@ -23,10 +26,10 @@ no extends, no static, no variables.
 <body>
 <main>
   <p class="eyebrow">&mdash; 500 &mdash;</p>
-  <h1>The shelf tipped over<span>.</span></h1>
+  <h1>Something went wrong<span>.</span></h1>
   <p>Something broke on our side &mdash; not yours. It has been logged the
      moment it happened; give it a minute and try again.</p>
-  <a href="/">Back to the front table</a>
+  <a href="/">Back to the homepage</a>
 </main>
 </body>
 </html>

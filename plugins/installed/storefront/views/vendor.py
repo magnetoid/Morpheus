@@ -62,7 +62,8 @@ def _marketplace_counts() -> dict:
 
 def vendors_directory(request):
     """Public vendor directory — every active vendor with at least one
-    active product. Editorial intro mirrors the dot books voice.
+    active product. The editorial intro comes from the merchant's own copy
+    (`page_intro`), not from a voice the shell decides for them.
 
     Supports an optional ``?q=`` filter against ``Vendor.name`` /
     ``Vendor.description`` so customers can hunt for a known shop.

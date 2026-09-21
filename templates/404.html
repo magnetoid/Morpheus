@@ -1,14 +1,23 @@
 {% extends "storefront/base.html" %}
+{% load morph %}
 {% comment %}
 Site-wide 404 (Django resolves the root template name when DEBUG is off).
 Lives in the global templates/ dir so any active theme gets a branded page;
 a theme may override it by shipping its own 404.html.
+
+This block used to emit `<title>Page not found — dot books.</title>` and its
+own robots meta, which was wrong three times over: it published ONE store's
+brand on every store that has no 404 of its own, it replaced the theme's whole
+head so the page shipped with no canonical and no Open Graph, and its hardcoded
+`noindex` was the only reason the page was not indexable — the head document
+never ran here, so the v0.70.3 fix that makes an error page `noindex, follow`
+could not reach it.
+
+`{% storefront_head %}` supplies all of it now, and applies the merchant's own
+brand from settings (ADR 0007), so the page name below carries no brand.
 {% endcomment %}
 
-{% block seo %}
-<title>Page not found — dot books.</title>
-<meta name="robots" content="noindex">
-{% endblock %}
+{% block seo %}{% storefront_head title="Page not found" %}{% endblock %}
 
 {% block content %}
 <section style="max-width: 42rem; margin: 0 auto; padding: 5.5rem 1.5rem 7rem; text-align: center;">
@@ -22,7 +31,7 @@ a theme may override it by shipping its own 404.html.
   <form action="{% url 'storefront:product_list' %}" method="get" role="search"
         style="display: flex; gap: .5rem; max-width: 26rem; margin: 0 auto 2.4rem;">
     <label for="nf-q" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Search the shop</label>
-    <input id="nf-q" type="search" name="q" placeholder="Search the shelf&hellip;"
+    <input id="nf-q" type="search" name="q" placeholder="Search&hellip;"
            style="flex: 1; padding: .7rem 1.1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: .95rem;">
     <button type="submit"
             style="padding: .7rem 1.3rem; border: 1px solid var(--ink); border-radius: 999px; background: var(--ink); color: var(--paper); font-family: var(--sans); font-size: .95rem; cursor: pointer;">
@@ -31,8 +40,8 @@ a theme may override it by shipping its own 404.html.
   </form>
 
   <div style="display: flex; flex-wrap: wrap; gap: .8rem; justify-content: center; font-family: var(--sans); font-size: .95rem;">
-    <a href="{% url 'storefront:home' %}" style="padding: .6rem 1.2rem; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink); text-decoration: none;">Back to the front table</a>
-    <a href="{% url 'storefront:product_list' %}" style="padding: .6rem 1.2rem; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink); text-decoration: none;">Browse all books</a>
+    <a href="{% url 'storefront:home' %}" style="padding: .6rem 1.2rem; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink); text-decoration: none;">Back to the homepage</a>
+    <a href="{% url 'storefront:product_list' %}" style="padding: .6rem 1.2rem; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink); text-decoration: none;">Browse the shop</a>
   </div>
 </section>
 {% endblock %}
