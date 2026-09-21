@@ -62,6 +62,8 @@ def stay_detail(request, slug):
             'property': prop,
             'room_types': prop.room_types.filter(is_active=True),
             'amenities': _amenities(prop.amenities),
+            'nearby_places': stays.nearby_places(prop),
+            'related_stays': stays.related_stays(prop),
             'listing_mode': listing_mode(),
             # Per-page SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
             'seo_object': prop,

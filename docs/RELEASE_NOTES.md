@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.74.0 — 2026-09-21
+
+**Hotel pages now link out to the region around them**
+
+- A montenegro hotel page ended at its room list with two generic links. It now carries three internal-linking blocks: the destination guides in the hotel's region (/places/), other hotels in the same town and region (/hotels/), and the stay's own cancellation, children, pets and payment policies — a field that was stored on every hotel but never rendered.
+- The related-hotels rail is ordered by star class, a real attribute, and shows ★ — never the guest rating this store stopped publishing. Same-town hotels rank ahead of the wider region; a hotel never links to itself, and an inactive hotel or vendor never appears.
+- This is the audit's §4.2 hub<->spoke: a stay now points at the region pages that rank for its area, and they point back, so crawlers (and readers) can move between them. Every block is hidden when it has no data, so a hotel with no region or policies degrades cleanly.
+
 ## v0.73.3 — 2026-09-21
 
 **Every hotel got its own meta description**

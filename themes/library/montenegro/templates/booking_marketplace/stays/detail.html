@@ -29,6 +29,16 @@
       <section aria-labelledby="location-guide">
         <h2 id="location-guide" class="text-lg font-semibold text-foreground mb-3">{% blocktrans with location=property.location %}Staying in {{ location }}{% endblocktrans %}</h2>
         <p class="text-muted-foreground leading-7">{% blocktrans with location=property.location %}Use {{ location }} as your base for nearby beaches, historic towns and day trips. Review transport options and seasonal travel times before confirming your stay.{% endblocktrans %}</p>
+        {% if nearby_places %}
+        <div class="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x mt-4">
+          {% for pl in nearby_places %}
+          <a href="/places/{{ pl.slug }}/" class="group shrink-0 w-56 snap-start rounded-2xl overflow-hidden border border-border bg-card shadow-card">
+            <div class="aspect-[4/3] bg-muted overflow-hidden">{% if pl.image %}<img src="{{ pl.image.url }}" alt="{{ pl.name }}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">{% endif %}</div>
+            <div class="p-3"><h3 class="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">{{ pl.name }}</h3>{% if pl.summary %}<p class="text-xs text-muted-foreground line-clamp-2 mt-1">{{ pl.summary }}</p>{% endif %}</div>
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
         <div class="flex flex-wrap gap-3 mt-3 text-sm font-medium"><a href="/places/" class="text-primary hover:underline">{% trans "Explore Montenegro destinations" %}</a><a href="/bookings/" class="text-primary hover:underline">{% trans "Find nearby experiences" %}</a></div>
       </section>
 
@@ -40,6 +50,18 @@
           <div class="flex items-center gap-2 text-sm text-foreground"><span class="text-primary">•</span>{{ a.label }}</div>
           {% endfor %}
         </div>
+      </section>
+      {% endif %}
+
+      {% if property.policies %}
+      <section aria-labelledby="stay-policies">
+        <h2 id="stay-policies" class="text-lg font-semibold text-foreground mb-3">{% trans "Good to know" %}</h2>
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          {% if property.policies.cancellation %}<div class="rounded-xl border border-border bg-card p-3"><dt class="font-medium text-foreground">{% trans "Cancellation" %}</dt><dd class="text-muted-foreground mt-0.5">{{ property.policies.cancellation }}</dd></div>{% endif %}
+          {% if property.policies.children %}<div class="rounded-xl border border-border bg-card p-3"><dt class="font-medium text-foreground">{% trans "Children" %}</dt><dd class="text-muted-foreground mt-0.5">{{ property.policies.children }}</dd></div>{% endif %}
+          {% if property.policies.pets %}<div class="rounded-xl border border-border bg-card p-3"><dt class="font-medium text-foreground">{% trans "Pets" %}</dt><dd class="text-muted-foreground mt-0.5">{{ property.policies.pets }}</dd></div>{% endif %}
+          {% if property.policies.payment %}<div class="rounded-xl border border-border bg-card p-3"><dt class="font-medium text-foreground">{% trans "Payment" %}</dt><dd class="text-muted-foreground mt-0.5">{{ property.policies.payment }}</dd></div>{% endif %}
+        </dl>
       </section>
       {% endif %}
 
@@ -78,6 +100,24 @@
           {% endfor %}
         </div>
       </section>
+
+      {% if related_stays %}
+      <section aria-labelledby="related-stays">
+        <h2 id="related-stays" class="text-lg font-semibold text-foreground mb-3">{% blocktrans with region=property.get_region_display %}Other places to stay in {{ region }}{% endblocktrans %}</h2>
+        <div class="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
+          {% for s in related_stays %}
+          <a href="/hotels/{{ s.slug }}/" class="group shrink-0 w-56 snap-start rounded-2xl overflow-hidden border border-border bg-card shadow-card">
+            <div class="aspect-[4/3] bg-muted overflow-hidden">{% if s.image %}<img src="{{ s.image.url }}" alt="{{ s.name }}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">{% endif %}</div>
+            <div class="p-3">
+              {% if s.star_rating %}<div class="text-primary text-xs mb-0.5" aria-label="{% blocktrans count stars=s.star_rating %}{{ stars }} star{% plural %}{{ stars }} stars{% endblocktrans %}">{% for _ in ""|center:s.star_rating %}★{% endfor %}</div>{% endif %}
+              <h3 class="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">{{ s.name }}</h3>
+              <p class="text-xs text-muted-foreground mt-0.5">{{ s.location }}</p>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
     </div>
 
     <aside class="space-y-4">

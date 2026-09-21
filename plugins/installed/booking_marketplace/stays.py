@@ -256,3 +256,42 @@ def submit_stay_enquiry(
     except Exception:  # noqa: BLE001, S110 — best-effort notify; never block the enquiry
         pass
     return enquiry
+
+
+def nearby_places(prop, *, limit=6):
+    """Destination guides in this hotel's region.
+
+    Internal links from a stay to the /places/ pages that rank for the region
+    — the hub<->spoke the audit asked for (§4.2). Empty when the hotel has no
+    region set."""
+    from plugins.installed.booking_marketplace.models import Place
+
+    if not prop.region:
+        return []
+    return list(Place.objects.filter(is_active=True, region=prop.region).order_by('name')[:limit])
+
+
+def related_stays(prop, *, limit=6):
+    """Other active hotels near this one: the same town first, then the wider
+    region, never itself or an inactive vendor's.
+
+    Ordered by star class — a real hotel attribute, not the guest rating this
+    store stopped publishing — so the card shows ★, never a review number."""
+    from plugins.installed.booking_marketplace.models import Property
+
+    base = Property.objects.filter(is_active=True, vendor__is_active=True).exclude(pk=prop.pk)
+    picked, seen = [], set()
+    if prop.location:
+        for p in base.filter(location__iexact=prop.location).order_by('-star_rating', 'name')[
+            :limit
+        ]:
+            picked.append(p)
+            seen.add(p.pk)
+    if len(picked) < limit and prop.region:
+        remaining = (
+            base.filter(region=prop.region)
+            .exclude(pk__in=seen)
+            .order_by('-star_rating', 'name')[: limit - len(picked)]
+        )
+        picked.extend(remaining)
+    return picked
