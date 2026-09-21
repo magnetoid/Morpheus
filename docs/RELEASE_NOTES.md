@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.72.2 — 2026-09-21
+
+**The sitemap dashboard and the SEO audit saw a fraction of the real sitemap**
+
+- Both read iter_sitemap_entries(), which yields only the URLs seo builds itself. A vertical's routes arrive through the SITEMAP_URLS filter and were invisible to both: on the Montenegro marketplace the Sitemap page reported 59 URLs while /sitemap.xml served 343, and the new site audit checked the same 59 — every booking, stay, place and event, i.e. the entire commercial catalogue, was skipped by the two screens that exist to cover it.
+- Both now read the merged corpus. Contributed URLs get their own count rather than being absorbed into manual_count, which means a hand-written SitemapEntry row and would have misreported both. Guarded by a test asserting the dashboard total equals what /sitemap.xml actually serves.
+
 ## v0.72.1 — 2026-09-21
 
 **Site audit reported every page as a redirect on production**

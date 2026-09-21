@@ -319,7 +319,12 @@ def _merged_sitemap_entries() -> list[dict]:
     reaches the sitemap without seo importing it."""
     from core.hooks import MorpheusEvents, hook_registry
 
-    entries = hook_registry.filter(MorpheusEvents.SITEMAP_URLS, list(iter_sitemap_entries()))
+    native = list(iter_sitemap_entries())
+    # Which locs seo generated itself, so the dashboard can tell a contributed
+    # route (a booking, a stay) from a hand-written SitemapEntry — they land in
+    # the same "matches no native prefix" bucket otherwise.
+    native_locs = {e.get('loc') for e in native if isinstance(e, dict)}
+    entries = hook_registry.filter(MorpheusEvents.SITEMAP_URLS, native)
     seen: set[str] = set()
     merged: list[dict] = []
     for e in entries:
@@ -332,13 +337,24 @@ def _merged_sitemap_entries() -> list[dict]:
         if not loc or loc in seen:
             continue
         seen.add(loc)
-        merged.append(_normalize_contributed_entry(e))
+        entry = _normalize_contributed_entry(e)
+        if loc not in native_locs:
+            entry['_contributed'] = True
+        merged.append(entry)
     return merged
 
 
 def sitemap_counts() -> dict:  # noqa: PLR0912 — flat per-source classifier; branches are clearer than a dispatch table
-    """Aggregate ``iter_sitemap_entries()`` into per-source counts +
+    """Aggregate every URL the sitemap serves into per-source counts +
     overall last-modified timestamps. Used by the Sitemap dashboard.
+
+    Counts the MERGED corpus — native entries plus everything folded in
+    through `SITEMAP_URLS`. It used to count `iter_sitemap_entries()` alone, so
+    on any store whose catalogue lives in a contributing app the page reported
+    a fraction of the real sitemap: the Montenegro marketplace's dashboard said
+    59 URLs while `/sitemap.xml` served 343, hiding all 284 bookings, stays,
+    places and events. A dashboard that under-reports by 6x is worse than one
+    that shows nothing, because it looks like an answer.
 
     Returns a dict shaped:
         {
@@ -361,6 +377,7 @@ def sitemap_counts() -> dict:  # noqa: PLR0912 — flat per-source classifier; b
         'journal_count': 0,
         'static_count': 0,
         'manual_count': 0,
+        'contributed_count': 0,
         'last_modified': '',
         'truncated': False,
     }
@@ -380,7 +397,7 @@ def sitemap_counts() -> dict:  # noqa: PLR0912 — flat per-source classifier; b
     )
     cap = _sitemap_max_urls()
     latest = ''
-    for e in iter_sitemap_entries():
+    for e in _merged_sitemap_entries():
         counts['total'] += 1
         loc = e.get('loc', '')
         path = loc[len(base) :] if loc.startswith(base) else loc
@@ -402,6 +419,8 @@ def sitemap_counts() -> dict:  # noqa: PLR0912 — flat per-source classifier; b
             counts['page_count'] += 1
         elif path in static_routes:
             counts['static_count'] += 1
+        elif e.get('_contributed'):
+            counts['contributed_count'] += 1
         else:
             counts['manual_count'] += 1
         lm = e.get('lastmod') or ''

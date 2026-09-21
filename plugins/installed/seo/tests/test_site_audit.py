@@ -189,3 +189,56 @@ class HttpsRedirectTests(TestCase):
         )
         # And the pages must actually have been read, not just not-flagged.
         self.assertTrue(any(row['count'] for row in report['coverage']))
+
+
+class ContributedCorpusTests(TestCase):
+    """The audit and the sitemap dashboard must see the SAME urls as /sitemap.xml.
+
+    Both read `iter_sitemap_entries()` once, which yields only what seo builds
+    itself — a vertical's routes arrive through the `SITEMAP_URLS` filter. On
+    the Montenegro marketplace that meant the dashboard reported 59 urls while
+    the sitemap served 343, and the audit checked those same 59: every booking,
+    stay, place and event — the commercial catalogue — was invisible to both.
+    """
+
+    def _with_contribution(self, fn):
+        from morpheus.core import MorpheusEvents, hook_registry
+
+        def _subscriber(value, **kwargs):
+            return [*value, {'loc': 'https://testserver/contributed-probe/', 'priority': '0.7'}]
+
+        hook_registry.register(MorpheusEvents.SITEMAP_URLS, _subscriber, priority=50)
+        try:
+            return fn()
+        finally:
+            hook_registry.unregister(MorpheusEvents.SITEMAP_URLS, _subscriber)
+
+    def test_audit_covers_contributed_urls(self):
+        from plugins.installed.seo.services.site_audit import _paths
+
+        paths = self._with_contribution(lambda: _paths(None))
+        self.assertIn('/contributed-probe/', paths)
+
+    def test_sitemap_counts_matches_what_the_sitemap_serves(self):
+        from plugins.installed.seo.services.sitemaps import (
+            _merged_sitemap_entries,
+            sitemap_counts,
+        )
+
+        counts, merged = self._with_contribution(
+            lambda: (sitemap_counts(), _merged_sitemap_entries())
+        )
+        self.assertEqual(
+            counts['total'],
+            len(merged),
+            'the dashboard total must equal the urls /sitemap.xml actually serves',
+        )
+        self.assertGreaterEqual(counts['contributed_count'], 1)
+
+    def test_a_contributed_url_is_not_counted_as_hand_written(self):
+        # `manual_count` means a merchant typed a SitemapEntry row; a booking
+        # route is not that, and conflating them misreports both.
+        from plugins.installed.seo.services.sitemaps import sitemap_counts
+
+        counts = self._with_contribution(sitemap_counts)
+        self.assertEqual(counts['manual_count'], 0)

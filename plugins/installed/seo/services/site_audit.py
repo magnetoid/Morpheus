@@ -134,11 +134,19 @@ def _first(pattern, html: str) -> str:
 
 
 def _paths(limit: int | None) -> list[str]:
-    """Every URL the store publishes, as site-relative paths."""
-    from plugins.installed.seo.services.sitemaps import iter_sitemap_entries
+    """Every URL the store publishes, as site-relative paths.
+
+    The MERGED corpus, not `iter_sitemap_entries()`. The native generator
+    yields only what seo knows how to build itself; a vertical's routes arrive
+    through the `SITEMAP_URLS` filter. Auditing the native list alone checked
+    59 of Montenegro's 343 URLs and silently skipped every booking, stay, place
+    and event — the commercial catalogue, which is precisely what an SEO report
+    exists to cover.
+    """
+    from plugins.installed.seo.services.sitemaps import _merged_sitemap_entries
 
     seen: list[str] = []
-    for entry in iter_sitemap_entries():
+    for entry in _merged_sitemap_entries():
         loc = (entry or {}).get('loc') or ''
         path = '/' + loc.split('/', 3)[3] if loc.count('/') > 2 else '/'
         if path not in seen:
