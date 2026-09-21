@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.73.1 — 2026-09-21
+
+**404 pages were titled Error**
+
+- The shared 404 passes title='Page not found' to storefront_head, but _title_from_object only reads the page's OBJECT and an error render has none — so _fallback_title Title-Cased the subtype and every 404 shipped as 'Error — <store>'. The resolver now names the error page explicitly, and a title the template supplies still wins.
+
 ## v0.73.0 — 2026-09-21
 
 **One store's brand was published on every other store**

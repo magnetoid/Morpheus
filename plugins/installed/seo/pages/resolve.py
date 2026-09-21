@@ -91,6 +91,11 @@ def resolve_page(request, context=None) -> SeoPage:
         # its nav is the same nav as everywhere else and there is no reason to
         # strand a crawler that arrived on a dead URL.
         page.deny_index('error page')
+        # Title it explicitly. `_title_from_object` only reads the page's OBJECT,
+        # and an error render has none, so `_fallback_title` would Title-Case the
+        # subtype — the live 404 read "Error — <store>" rather than the
+        # "Page not found" its template passes to `{% storefront_head %}`.
+        page.title = (context.get('seo_title') or '').strip() or 'Page not found'
         return _finish(page, request, context)
 
     page = _from_hook(request, context)

@@ -210,6 +210,17 @@ class ErrorPageRobotsTests(TestCase):
         self.assertEqual(page.kind, 'private')
         self.assertEqual(page.robots(), 'noindex, follow')
 
+    def test_the_error_page_is_named_for_a_human(self):
+        from plugins.installed.seo.pages.resolve import resolve_page
+
+        request = self.client.get('/').wsgi_request
+        error_ctx = {'request_path': '/nope/', 'exception': 'Not Found'}
+        # Nothing supplied: a readable default, not the Title-Cased subtype.
+        self.assertEqual(resolve_page(request, error_ctx).title, 'Page not found')
+        # And the template's own wording wins when it passes one.
+        page = resolve_page(request, {**error_ctx, 'seo_title': 'Nothing here'})
+        self.assertEqual(page.title, 'Nothing here')
+
     def test_an_ordinary_page_is_untouched(self):
         from plugins.installed.seo.pages.resolve import resolve_page
 
