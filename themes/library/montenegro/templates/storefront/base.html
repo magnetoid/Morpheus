@@ -13,6 +13,7 @@ the context. Do NOT add a <title>, canonical, robots, og:* or JSON-LD tag alongs
 this call: that is how this theme previously shipped three pages under one title and
 a 404 with two <meta name="robots">.{% endcomment %}
 {% static 'montenegro/og-default.jpg' as og_default %}
+{% image_frame_style %}
 {% block seo %}
 {% comment %}`seo_image` is what the page resolver reads for og:image / twitter:image.
 The theme's bundled card is the fallback: without it every page loses its share

@@ -979,7 +979,27 @@
      no lift/pointer since they aren't clickable. (.kpi is the .card element.) */
   .kpi { transition: box-shadow var(--motion-med) var(--ease-out); }
   .kpi:hover { box-shadow: var(--shadow-pop); }
+
+  /* Product image frames. The shape is a MERCHANT setting (Settings → General →
+     Images), not a constant — every frame below was hardcoded `2 / 3`, a book
+     cover, so a store selling anything else showed square photographs
+     letterboxed into portrait slots in its own product list. */
+  .img-frame {
+    aspect-ratio: var(--img-ratio, 1 / 1);
+    background: var(--surface-2);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .img-frame > img { width: 100%; height: 100%; object-fit: var(--img-fit, cover); }
+  /* `original` resolves --img-ratio to `auto`, which leaves the frame unsized;
+     cap it so a very tall upload cannot stretch a table row. */
+  .img-frame--row { height: 2.5rem; width: auto; min-width: 1.75rem; max-width: 4rem; }
+  .img-frame--sm  { height: 2.25rem; width: auto; min-width: 1.5rem; max-width: 3.5rem; }
 </style>
+{% image_frame_style %}
 </head>
 <body class="min-h-screen flex guided-ux" hx-boost="true" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true" hx-indicator="#htmx-progress">
 

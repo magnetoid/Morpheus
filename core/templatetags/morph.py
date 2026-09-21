@@ -342,3 +342,39 @@ def ai_disclosure(surface: str = '') -> str:
         surface or '',
         text,
     )
+
+
+@register.simple_tag
+def image_frame_style() -> str:
+    """CSS custom properties for the store's image frame, for either shell.
+
+    Emits `--img-ratio` and `--img-fit` on `:root`, so a frame is written
+
+        aspect-ratio: var(--img-ratio); object-fit: var(--img-fit);
+
+    and the merchant's choice restyles the dashboard, the media library and
+    the storefront together. Before this, six dashboard frames and every
+    theme card hardcoded `2 / 3` — a book cover — so a store selling anything
+    else showed square photographs letterboxed into portrait slots with no
+    setting that could change it.
+
+    `original` resolves to `auto`, which in `aspect-ratio` means "impose no
+    frame"; the image then keeps the proportions it was uploaded with.
+    """
+    from core.images import configured_display_settings
+
+    try:
+        settings_ = configured_display_settings()
+    except Exception:  # noqa: BLE001 — a style tag must never 500 a page
+        logger.warning('image_frame_style: could not read image settings', exc_info=True)
+        return ''
+    if settings_ is None:
+        # No explicit choice: emit nothing and let each surface's own fallback
+        # stand, so an existing storefront is not reshaped without being asked.
+        return ''
+    return mark_safe(
+        '<style>:root{'
+        f'--img-ratio:{escape(settings_["ratio"])};'
+        f'--img-fit:{escape(settings_["fit"])};'
+        '}</style>'
+    )

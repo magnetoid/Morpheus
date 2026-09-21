@@ -236,7 +236,7 @@ Usage from a parent template:
   }
   .muploader-tile {
     position: relative;
-    aspect-ratio: 2 / 3;
+    aspect-ratio: var(--img-ratio, 1 / 1);
     border-radius: 6px;
     overflow: hidden;
     background: var(--surface-2);
@@ -258,7 +258,7 @@ Usage from a parent template:
     overflow: hidden;
   }
   .muploader-tile__media img {
-    width: 100%; height: 100%; object-fit: cover;
+    width: 100%; height: 100%; object-fit: var(--img-fit, cover);
   }
   .muploader-tile__videoph {
     display: flex; flex-direction: column;
@@ -400,7 +400,7 @@ Usage from a parent template:
   }
   .muploader-modal__preview {
     width: 100%;
-    aspect-ratio: 2/3;
+    aspect-ratio: var(--img-ratio, 1 / 1);
     max-height: 280px;
     background: var(--surface-2);
     border-radius: 6px;

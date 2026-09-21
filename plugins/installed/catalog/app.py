@@ -1,3 +1,12 @@
+from core.images import (
+    ASPECT_RATIOS,
+    DEFAULT_ASPECT_RATIO,
+    DEFAULT_FIT,
+    DEFAULT_QUALITY,
+    FIT_MODES,
+    MAX_QUALITY,
+    MIN_QUALITY,
+)
 from morpheus.app import Plugin, SettingsPanel
 from morpheus.core import events
 
@@ -87,17 +96,69 @@ class CatalogPlugin(Plugin):
         return value
 
     def get_config_schema(self):
-        """Store-wide image defaults — apply to every uploaded product
-        image, OG / Twitter card, and cover slot.
+        """Store-wide image settings.
 
-        Phase 4 of docs/plans/product-slider.md. Stored under
-        PluginConfig['catalog']; read by the image variant generator
-        on upload and the storefront responsive image tag at serve
-        time.
+        Stored under PluginConfig['catalog'] and read through ONE resolver,
+        `core/images.py`, so the dashboard, the themes and the variant
+        pipeline cannot drift apart on what shape an image is.
+
+        Two keys were removed in v0.71.0 because nothing read them — the
+        "a settings field with no consumer is a lie" landmine, twice over:
+        `grid_image_width/height` (the on-demand `/img/<fmt>/<w>/` resizer
+        behind `seo_responsive_image` does listing sizes, so these were
+        redundant) and `og_image_width/height` (nothing on this platform
+        GENERATES an og:image — `SeoMeta.og_image` is a URL the merchant
+        supplies, so a size setting described an image that never existed).
         """
         return {
             'type': 'object',
             'properties': {
+                'image_aspect_ratio': {
+                    'type': 'string',
+                    'enum': list(ASPECT_RATIOS),
+                    'default': DEFAULT_ASPECT_RATIO,
+                    'title': 'Image shape',
+                    'description': (
+                        'The frame every product image is shown in — product list, '
+                        'media library, cover slot and storefront cards. Square suits '
+                        'most catalogues; portrait suits books and posters. "Original" '
+                        'imposes no frame and lets each image keep its own proportions.'
+                    ),
+                },
+                'image_fit': {
+                    'type': 'string',
+                    'enum': list(FIT_MODES),
+                    'default': DEFAULT_FIT,
+                    'title': 'How images fill the frame',
+                    'description': (
+                        'Fill crops the edges so the frame is never empty. Fit shows the '
+                        'whole image and leaves margins — safer for artwork and labels '
+                        'where an edge crop loses something.'
+                    ),
+                },
+                'image_quality': {
+                    'type': 'integer',
+                    'default': DEFAULT_QUALITY,
+                    'minimum': MIN_QUALITY,
+                    'maximum': MAX_QUALITY,
+                    'title': 'Image quality',
+                    'description': (
+                        'Encoder quality for generated variants, 40–100. Lower means '
+                        'smaller files and faster pages; above ~90 the extra bytes buy '
+                        'very little a shopper can see.'
+                    ),
+                },
+                'crop_to_aspect_ratio': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Crop uploads to the chosen shape',
+                    'description': (
+                        'Off by default: the frame already crops visually without '
+                        'altering the file. Turn this on to bake the crop into the '
+                        'stored variant and save the bytes outside it — it cannot be '
+                        'undone for images already processed.'
+                    ),
+                },
                 'default_image_format': {
                     'type': 'string',
                     'enum': ['webp', 'avif', 'jpg'],
@@ -115,27 +176,6 @@ class CatalogPlugin(Plugin):
                     'type': 'integer',
                     'default': 1200,
                     'title': 'PDP image height (px)',
-                },
-                'grid_image_width': {
-                    'type': 'integer',
-                    'default': 400,
-                    'title': 'Grid (PLP) image width (px)',
-                },
-                'grid_image_height': {
-                    'type': 'integer',
-                    'default': 600,
-                    'title': 'Grid (PLP) image height (px)',
-                },
-                'og_image_width': {
-                    'type': 'integer',
-                    'default': 1200,
-                    'title': 'Open Graph image width (px)',
-                    'description': '1200×630 is the recommended Facebook / LinkedIn / Twitter card size.',
-                },
-                'og_image_height': {
-                    'type': 'integer',
-                    'default': 630,
-                    'title': 'Open Graph image height (px)',
                 },
                 'lazy_load_below_fold': {
                     'type': 'boolean',
@@ -174,8 +214,8 @@ class CatalogPlugin(Plugin):
 
     def contribute_settings_panel(self):
         return SettingsPanel(
-            label='Image defaults',
-            description='Store-wide defaults for product image variants — format, sizes, lazy-load, AVIF. Applied to every uploaded image at variant-generation time and at storefront serve time.',
+            label='Images',
+            description='The shape product images are shown in, how they fill their frame, and the format and quality of the variants generated on upload. One setting drives the dashboard, the storefront and the pipeline together.',
             schema=self.get_config_schema(),
             category='general',
         )

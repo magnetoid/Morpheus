@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.71.0 — 2026-09-21
+
+**Product image shape is a setting, not a book cover**
+
+- Every image frame on the platform was hardcoded 2/3 — a book cover — because the first store here sold books. Six in the dashboard alone (the product list's h-10 w-7 = 28x40, the media library tile and modal, the cover slot, the variant modal) plus every theme card. A store selling soap, tours or wine showed square photographs letterboxed into portrait slots in the merchant's own product list.
+- Nothing could change it: the Images panel's grid_image_width/height and og_image_width/height had ZERO consumers in the tree — the 'a settings field with no consumer is a lie' landmine, four keys over. grid_* was superseded by the on-demand /img/<fmt>/<w>/ resizer; nothing on this platform generates an og:image at all (SeoMeta.og_image is a URL the merchant supplies). Both pairs are removed.
+- New Settings → General → Images: image shape (square / portrait / tall / landscape / wide / original), how images fill the frame (cover / contain), image quality (40-100, was hardcoded 82/60/85 per format), and an off-by-default crop that bakes the shape into the stored variant.
+- One resolver, core/images.py, read by the dashboard, all three themes and the variant pipeline, so they cannot drift on what shape an image is. It reads the catalog plugin's config by name — the same inversion core/agents/guardrails.py uses — so neither shell imports the other's plugin.
+- The {% image_frame_style %} tag emits nothing until a merchant actually chooses, so an existing storefront is never reshaped on deploy: dot_books keeps its portrait frames, and the dashboard falls back to square, which is the fix.
+
 ## v0.70.3 — 2026-09-21
 
 **Error pages asked to be indexed**

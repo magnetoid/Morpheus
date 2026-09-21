@@ -285,14 +285,14 @@
       }
       .variant-modal__thumb {
         position: relative;
-        aspect-ratio: 2 / 3;
+        aspect-ratio: var(--img-ratio, 1 / 1);
         border-radius: var(--radius-sm, 6px);
         overflow: hidden;
         background: var(--surface-2);
         border: 1px solid var(--border);
         display: flex; align-items: center; justify-content: center;
       }
-      .variant-modal__thumb img { width: 100%; height: 100%; object-fit: cover; }
+      .variant-modal__thumb img { width: 100%; height: 100%; object-fit: var(--img-fit, cover); }
       .variant-modal__thumb-note {
         position: absolute; left: 0; right: 0; bottom: 0;
         font-size: .65rem; text-align: center;

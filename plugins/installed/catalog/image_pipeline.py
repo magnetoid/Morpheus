@@ -22,6 +22,8 @@ from io import BytesIO
 from django.core.files.base import ContentFile
 from PIL import features as _pil_features
 
+from core.images import MAX_QUALITY, MIN_QUALITY, aspect_ratio_float, crop_to_ratio, quality
+
 logger = logging.getLogger('morpheus.catalog.image_pipeline')
 
 
@@ -125,6 +127,27 @@ def _pil_format(fmt: str) -> str:
     return {'webp': 'WEBP', 'avif': 'AVIF', 'jpg': 'JPEG'}.get(fmt, 'WEBP')
 
 
+def _crop_to_ratio(pil, ratio: float | None):
+    """Centre-crop to `ratio` (width / height). No-op when already there.
+
+    A centre crop is the only honest default: without a focal point there is
+    no way to know which edge matters, and taking equal bites from both sides
+    is the choice least likely to behead a product.
+    """
+    if not ratio or ratio <= 0 or not pil.width or not pil.height:
+        return pil
+    current = pil.width / pil.height
+    if abs(current - ratio) < 0.01:
+        return pil
+    if current > ratio:  # too wide — trim the sides
+        new_w = max(1, int(round(pil.height * ratio)))
+        left = (pil.width - new_w) // 2
+        return pil.crop((left, 0, left + new_w, pil.height))
+    new_h = max(1, int(round(pil.width / ratio)))  # too tall — trim top/bottom
+    top = (pil.height - new_h) // 2
+    return pil.crop((0, top, pil.width, top + new_h))
+
+
 def generate_pdp_variant(product_image) -> None:
     """Resize + re-encode `product_image.image` and store it on
     `product_image.webp_image`. Saves the parent model with
@@ -161,20 +184,30 @@ def generate_pdp_variant(product_image) -> None:
         flat.paste(pil, mask=pil.split()[-1])
         pil = flat
 
+    # Optional: bake the store's chosen shape into the file. Off by default,
+    # because the display frame already crops visually with `object-fit` and
+    # this cannot be undone for images already processed.
+    if crop_to_ratio():
+        pil = _crop_to_ratio(pil, aspect_ratio_float())
+
     # Resize using a max-fit so we never UPscale a small original.
     # Pillow's `thumbnail()` is in-place and preserves aspect ratio.
     if pil.width > target_w or pil.height > target_h:
         pil.thumbnail((target_w, target_h), PILImage.LANCZOS)
 
     buf = BytesIO()
+    # Merchant-set, clamped to 40–100. These were hardcoded (82/60/85), so a
+    # store on a slow network had no way to trade sharpness for bytes. AVIF is
+    # offset down because it reaches the same perceived quality lower.
+    q = quality()
     save_kwargs: dict = {'format': _pil_format(fmt)}
     if fmt == 'webp':
-        save_kwargs['quality'] = 82
+        save_kwargs['quality'] = q
         save_kwargs['method'] = 4
     elif fmt == 'avif':
-        save_kwargs['quality'] = 60  # AVIF compresses better at lower quality
+        save_kwargs['quality'] = max(MIN_QUALITY - 20, q - 22)
     elif fmt == 'jpg':
-        save_kwargs['quality'] = 85
+        save_kwargs['quality'] = min(MAX_QUALITY, q + 3)
         save_kwargs['optimize'] = True
         save_kwargs['progressive'] = True
     pil.save(buf, **save_kwargs)
