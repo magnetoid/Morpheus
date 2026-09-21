@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.70.3 — 2026-09-21
+
+**Error pages asked to be indexed**
+
+- The 404 template resolved as an ordinary static page, so the head document emitted 'index, follow' on every error page of every theme. Removing montenegro's hand-written noindex in v0.70.2 exposed it: what had looked like a duplicate-directive bug was a theme papering over a resolver gap. resolve_page now recognises Django's documented 404 context ({request_path, exception}) and returns a private page with 'noindex, follow' — noindex because the page is not worth indexing, follow because its nav is the same nav as everywhere else.
+
 ## v0.70.2 — 2026-09-21
 
 **404 emitted two robots directives; the contract guard now checks every theme that signs it**

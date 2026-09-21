@@ -85,10 +85,34 @@ def resolve_page(request, context=None) -> SeoPage:
     if isinstance(hinted, SeoPage):
         return _finish(hinted, request, context)
 
+    if _is_error_render(context):
+        page = SeoPage(kind=KIND_PRIVATE, subtype='error', path=_path_of(request), context=context)
+        # `noindex, follow`, not `nofollow`: the page is not worth indexing, but
+        # its nav is the same nav as everywhere else and there is no reason to
+        # strand a crawler that arrived on a dead URL.
+        page.deny_index('error page')
+        return _finish(page, request, context)
+
     page = _from_hook(request, context)
     if page is None:
         page = _builtin(request, context)
     return _finish(page, request, context)
+
+
+def _is_error_render(context) -> bool:
+    """True while Django is rendering `404.html`.
+
+    `django.views.defaults.page_not_found` renders the template with exactly
+    `{'request_path': …, 'exception': …}` — that pair is the documented contract
+    and nothing else in a storefront render supplies it.
+
+    Without this the error page resolved as an ordinary static page and shipped
+    `index, follow`. Themes papered over it by emitting their own `noindex`
+    beside the document's, which is how montenegro's 404 came to carry two
+    robots directives (v0.70.2). The status code is the stronger signal to a
+    crawler either way, but a page must not *ask* to be indexed and then 404.
+    """
+    return bool(context) and 'request_path' in context and 'exception' in context
 
 
 def _from_hook(request, context) -> SeoPage | None:

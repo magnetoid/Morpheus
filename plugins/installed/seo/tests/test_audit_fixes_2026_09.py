@@ -7,6 +7,8 @@ therefore invisible when wrong.
 
 from __future__ import annotations
 
+import re
+
 from django.test import TestCase, override_settings
 
 from core.head import HeadDocument
@@ -188,3 +190,38 @@ class JournalGraphTests(TestCase):
     def test_an_article_without_questions_publishes_no_faqpage(self):
         graph = self._graph(body='<h2>Beaches</h2><p>' + 'word ' * 40 + '</p>')
         self.assertIsNone(self._node(graph, 'FAQPage'))
+
+
+class ErrorPageRobotsTests(TestCase):
+    """A 404 must not ask to be indexed.
+
+    The error template resolved as an ordinary static page, so the head
+    document emitted `index, follow` on every 404. Themes worked around it by
+    hand-emitting their own `noindex`, which is how montenegro's 404 came to
+    carry two robots directives — removing the theme's copy exposed the real
+    bug underneath.
+    """
+
+    def test_404_resolves_as_private(self):
+        from plugins.installed.seo.pages.resolve import resolve_page
+
+        request = self.client.get('/').wsgi_request
+        page = resolve_page(request, {'request_path': '/nope/', 'exception': 'Not Found'})
+        self.assertEqual(page.kind, 'private')
+        self.assertEqual(page.robots(), 'noindex, follow')
+
+    def test_an_ordinary_page_is_untouched(self):
+        from plugins.installed.seo.pages.resolve import resolve_page
+
+        request = self.client.get('/').wsgi_request
+        # Only Django's error contract counts — `exception` alone is not it.
+        page = resolve_page(request, {'exception': 'something'})
+        self.assertNotEqual(page.subtype, 'error')
+
+    def test_the_rendered_404_carries_exactly_one_noindex(self):
+        response = self.client.get('/definitely-no-such-page-here/')
+        self.assertEqual(response.status_code, 404)
+        body = response.content.decode()
+        directives = re.findall(r'<meta[^>]+name=["\']robots["\'][^>]*>', body, re.I)
+        self.assertEqual(len(directives), 1, f'expected one robots meta, got {directives}')
+        self.assertIn('noindex', directives[0])
