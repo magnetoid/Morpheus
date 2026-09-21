@@ -33,18 +33,27 @@ THEME = 'montenegro'
 
 
 class MontenegroThemeMixin:
-    """Mix in BEFORE the TestCase base: `class T(MontenegroThemeMixin, TestCase)`."""
+    """Mix in BEFORE the TestCase base: `class T(MontenegroThemeMixin, TestCase)`.
+
+    Cleanup is registered with `addClassCleanup`, not written as `tearDownClass`.
+    unittest runs class cleanups even when setUpClass raises part-way and even
+    when a tearDown chain breaks; a `tearDownClass` body does not. The first cut
+    of this mixin used tearDownClass and leaked BOTH the registry name and the
+    overridden setting into every test that ran afterwards in the same process —
+    the storefront suite then rendered the Montenegro theme and 11 of its tests
+    failed, which is exactly the process-global trap this file exists to avoid.
+    """
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls._theme_override = override_settings(MORPHEUS_ACTIVE_THEME=THEME)
-        cls._theme_override.enable()
-        cls._prev_active_theme = theme_registry._active_name
-        theme_registry.set_active(THEME)
         super().setUpClass()
+        override = override_settings(MORPHEUS_ACTIVE_THEME=THEME)
+        override.enable()
+        previous = theme_registry._active_name
+        theme_registry.set_active(THEME)
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        super().tearDownClass()
-        theme_registry._active_name = cls._prev_active_theme
-        cls._theme_override.disable()
+        def _restore() -> None:
+            theme_registry._active_name = previous
+            override.disable()
+
+        cls.addClassCleanup(_restore)
