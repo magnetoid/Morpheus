@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.70.2 — 2026-09-21
+
+**404 emitted two robots directives; the contract guard now checks every theme that signs it**
+
+- The montenegro 404 carried its own <meta name="robots" content="noindex"> next to the one the head document emits for a KIND_PRIVATE page — two directives for one URL, which is precisely what head_contract = 1 exists to prevent.
+- It survived because HeadContractTests renders only the ACTIVE theme, and CI runs with dot_books. A second theme could sign the contract and never be looked at. themes/test_head_contract.py now also scans every theme declaring head_contract for tags the head document owns, with no request cycle — Django comments are stripped first (a comment may legitimately quote the markup it warns about) and AMP templates are exempt, since the AMP spec requires each to carry its own canonical.
+
 ## v0.70.1 — 2026-09-21
 
 **FAQPage reads the article's own labelled FAQ section**

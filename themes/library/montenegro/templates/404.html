@@ -8,7 +8,13 @@
 {% endcomment %}
 {% block title %}{% trans "Page not found" %} — Montenegro Experience{% endblock %}
 
-{% block extra_head %}<meta name="robots" content="noindex">{% endblock %}
+{% comment %}
+  No `<meta name="robots">` here. The head document already emits `noindex`
+  for a 404 (KIND_PRIVATE), so this block shipped a SECOND robots meta on
+  every 404 — two directives for one page, which is what the head contract
+  exists to prevent. The theme declares `head_contract = 1`, but that guard
+  only runs against the ACTIVE theme, so it never checked this one.
+{% endcomment %}
 
 {% block content %}
 <section class="flex-1 flex items-center justify-center py-20 md:py-28">

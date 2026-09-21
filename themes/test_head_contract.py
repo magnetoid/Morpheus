@@ -150,3 +150,52 @@ class HeadContractTests(TestCase):
         finally:
             app_registry.activate('seo')
             cache.clear()
+
+
+class EveryContractThemeTests(TestCase):
+    """The contract must be checked for EVERY theme that signs it.
+
+    `HeadContractTests` renders only the ACTIVE theme, so a second theme can
+    declare `head_contract = 1` and never be looked at — which is what happened:
+    montenegro signed the contract in v0.69.0 and went on shipping a 404 that
+    carried two `<meta name="robots">`, because CI only ever runs with dot_books
+    active. This needs no request cycle; it reads each theme's own templates for
+    the tags the head document owns.
+    """
+
+    _OWNED = (
+        (re.compile(r'<meta[^>]+name=["\']robots["\']', re.I), 'robots meta'),
+        (re.compile(r'<link[^>]+rel=["\']canonical["\']', re.I), 'canonical link'),
+    )
+    # A Django comment may legitimately QUOTE the markup it is warning about.
+    _COMMENTS = re.compile(r'{%\s*comment\s*%}.*?{%\s*endcomment\s*%}|{#.*?#}', re.S)
+
+    @staticmethod
+    def _is_amp(path) -> bool:
+        """AMP pages are exempt: the spec REQUIRES each to carry its own
+        `<link rel="canonical">` back to the non-AMP URL."""
+        return path.stem.endswith('_amp') or path.stem.startswith('amp_')
+
+    def test_no_contract_theme_hardcodes_a_tag_the_head_document_owns(self):
+        import pathlib
+
+        root = pathlib.Path(__file__).resolve().parent / 'library'
+        checked = 0
+        for theme_dir in sorted(root.iterdir()):
+            theme_py = theme_dir / 'theme.py'
+            if not theme_py.is_file() or 'head_contract' not in theme_py.read_text():
+                continue
+            checked += 1
+            for template in theme_dir.rglob('*.html'):
+                if self._is_amp(template):
+                    continue
+                markup = self._COMMENTS.sub('', template.read_text(errors='ignore'))
+                for pattern, label in self._OWNED:
+                    with self.subTest(theme=theme_dir.name, template=template.name):
+                        self.assertEqual(
+                            pattern.findall(markup),
+                            [],
+                            f'{theme_dir.name}/{template.name} hardcodes a {label}; '
+                            'the head document emits it (ADR 0036)',
+                        )
+        self.assertGreater(checked, 1, 'expected more than one contract theme to check')
