@@ -165,3 +165,27 @@ class OverviewPageTests(TestCase):
         # A GET that triggered a full-site crawl would fire on every prefetch.
         response = self.client.get('/dashboard/seo/site-audit/run/')
         self.assertEqual(response.status_code, 302)
+
+
+@override_settings(SECURE_SSL_REDIRECT=True)
+class HttpsRedirectTests(TestCase):
+    """The audit must work on a store that forces HTTPS — i.e. all of them.
+
+    `SECURE_SSL_REDIRECT` is on in production and off in dev, so a plain
+    in-process request is 301'd by SecurityMiddleware before it reaches a view.
+    The first production run of this audit reported 59 of 59 URLs as
+    "Sitemap lists URLs that redirect" — the dashboard lying at maximum volume,
+    and invisible to every local test.
+    """
+
+    def test_forced_https_is_not_mistaken_for_a_broken_sitemap(self):
+        report = site_audit.collect(limit=10)
+        self.assertGreater(report['pages_checked'], 0)
+        redirect_finding = _finding(report, 'sitemap_redirect')
+        self.assertIsNone(
+            redirect_finding,
+            'SECURE_SSL_REDIRECT must not be reported as every page redirecting: '
+            f'{redirect_finding}',
+        )
+        # And the pages must actually have been read, not just not-flagged.
+        self.assertTrue(any(row['count'] for row in report['coverage']))

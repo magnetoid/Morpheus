@@ -92,7 +92,12 @@ def _facts(client, path: str, host: str) -> PageFacts:
     finding, and following it would hide exactly what we are looking for.
     """
     try:
-        response = client.get(path, HTTP_HOST=host)
+        # `secure=True` is load-bearing. Production sets SECURE_SSL_REDIRECT, so
+        # a plain in-process request is 301'd to https by SecurityMiddleware
+        # before it reaches a view — and this audit would then report EVERY url
+        # in the sitemap as a redirect. Dev has the flag off, so no local test
+        # can see it; the first prod run reported 59 of 59 pages critical.
+        response = client.get(path, HTTP_HOST=host, secure=True)
     except Exception as e:  # noqa: BLE001 — one bad page must not end the audit
         logger.warning('site_audit: %s raised %s', path, e)
         return PageFacts(path=path, status=0)

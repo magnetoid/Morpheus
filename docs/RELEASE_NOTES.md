@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.72.1 — 2026-09-21
+
+**Site audit reported every page as a redirect on production**
+
+- SECURE_SSL_REDIRECT is on in production and off in dev, so the in-process request the audit makes was 301ed to https by SecurityMiddleware before it reached a view. The first production run reported 59 of 59 sitemap URLs as critical Sitemap lists URLs that redirect — the dashboard lying at maximum volume, and invisible to every local test because dev does not set the flag. The audit now makes a secure request, and a test pins SECURE_SSL_REDIRECT on so this cannot regress.
+
 ## v0.72.0 — 2026-09-21
 
 **The SEO page shows what is wrong, not how many of things there are**
