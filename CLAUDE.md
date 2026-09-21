@@ -84,7 +84,27 @@ which removed the REAL catalog tool for every test that ran later in the same
 process, producing four "order-dependent" failures with no obvious cause. Save
 and restore the prior registration (`get_tool` + `_tool_owners`) instead of
 dropping. More generally: when a test mutates a process-global registry, restore
-the previous *value*, never assume removal is the inverse of registration.
+the previous *value*, never assume removal is the inverse of registration — and
+restore it with **`addClassCleanup`, not a `tearDownClass` body**. unittest runs
+class cleanups even when `setUpClass` raises part-way or a teardown chain breaks;
+a `tearDownClass` body is simply skipped, and the mutation then leaks into every
+test that runs after it in the same process. booking_marketplace's theme mixin
+shipped that way in v0.68.7: after its classes ran, both `theme_registry._active_name`
+and an overridden `MORPHEUS_ACTIVE_THEME` still said `montenegro`, so the storefront
+suite rendered the wrong theme and 11 of its tests failed — while `storefront`
+alone passed 97/97. **A suite that is green per-app can be red as a whole**; run
+the two apps together before believing an ordering fix.
+
+**Landmine — a guard that skips itself when its precondition is absent is
+invisible, not green.** `themes/test_head_contract.py` begins
+`if getattr(theme, 'head_contract', 0) < 1: self.skipTest(...)`, so it asserts
+one title / one canonical / one robots / one JSON-LD per page **only for themes
+that opted in**. The montenegro theme never declared `head_contract`, so the
+guard had never once run against it — and it shipped three indexable URLs under
+one `<title>`, a 404 carrying two `<meta name="robots">`, and zero hreflang on a
+live bilingual store, all with a green suite. When a contract test gates itself
+on a declaration, something must assert that the declaration EXISTS; a skip is
+not a pass. (Fixed in v0.69.0: the theme signs the contract and the guard runs.)
 
 **Landmine — `body.index('Word')` on a rendered page finds the THEME'S copy.**
 A live_commerce test asserted product order via `body.index('Two') <
