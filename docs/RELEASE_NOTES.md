@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.0 — 2026-09-21
+
+**A non-book store can switch off the book vertical**
+
+- book_product ships as a default app (the first Morpheus store sold books), so the Montenegro travel marketplace served live /genres/, /authors/, /series/ pages and a "Book taxonomies" dashboard page it can never fill. A new MORPHEUS_DISABLED_APPS env lets a deployment subtract a default app; montenegro + supernatural switch off the book vertical (book_product, audiobooks, and the entirely book-gated eco_impact) in their own Coolify env.
+- This deploy changes nothing on its own: a store that sets no MORPHEUS_DISABLED_APPS — dotbooks — is completely unaffected and keeps its whole book vertical. The switch is opt-out, per deployment, no code fork.
+- book_product's Genres/Topics nav context processors moved from settings.TEMPLATES to register_context_processor, so a store with the vertical disabled runs none of that code instead of querying unloaded models on every request. INSTALLED_APPS also now dedupes, so listing an app in both the default and extra lists can't double-register it.
+
 ## v0.74.1 — 2026-09-21
 
 **Hotel stay policies are data-driven, not hardcoded in the theme**

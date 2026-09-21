@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.74.1')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.75.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -229,7 +229,25 @@ MORPHEUS_EXTRA_APPS = config('MORPHEUS_EXTRA_APPS', default='', cast=Csv()) or c
     'MORPHEUS_EXTRA_PLUGINS', default='', cast=Csv()
 )
 
-ALL_MORPHEUS_APPS = MORPHEUS_DEFAULT_APPS + list(MORPHEUS_EXTRA_APPS)
+# Per-deployment opt-OUT of a default app. A book vertical (book_product +
+# audiobooks + the book-gated eco_impact) ships in the defaults because the
+# first store sold books, but a non-book store (e.g. the Montenegro travel
+# marketplace) then mounts /genres/, /authors/, a "Book taxonomies" dashboard
+# page and empty book nav it can never fill. This lets that store switch the
+# vertical off in its own Coolify env without any code fork, and — critically —
+# a store that sets nothing (dotbooks) is completely unaffected. It only
+# subtracts: an app named here that isn't a default is simply ignored.
+MORPHEUS_DISABLED_APPS = config('MORPHEUS_DISABLED_APPS', default='', cast=Csv())
+
+# dict.fromkeys dedupes while preserving order (a store listing an app in both
+# DEFAULT and EXTRA must not double-register it in INSTALLED_APPS), then the
+# disabled set is subtracted.
+_disabled = set(MORPHEUS_DISABLED_APPS)
+ALL_MORPHEUS_APPS = [
+    app
+    for app in dict.fromkeys(MORPHEUS_DEFAULT_APPS + list(MORPHEUS_EXTRA_APPS))
+    if app not in _disabled
+]
 
 # ── Installed Apps ─────────────────────────────────────────────────────────────
 DJANGO_APPS = [
@@ -373,8 +391,13 @@ TEMPLATES = [
                 'plugins.installed.catalog.context_processors.nav_categories',
                 'plugins.installed.catalog.context_processors.nav_authors',
                 'plugins.installed.catalog.context_processors.nav_featured_books',
-                'plugins.installed.book_product.context_processors.nav_genres',
-                'plugins.installed.book_product.context_processors.nav_topics',
+                # book_product's nav_genres/nav_topics are contributed via
+                # register_context_processor (see its app.py) so they run only
+                # while book_product is active — a store that disables the book
+                # vertical (MORPHEUS_DISABLED_APPS) would otherwise execute a
+                # removed app's context processor against unloaded models on
+                # every request. plugins.context_processors.plugin_context (below)
+                # is the request-time consumer that merges them.
                 'plugins.installed.cms.context_processors.nav_menus',
                 'plugins.installed.admin_dashboard.context_processors.dashboard_breadcrumbs',
                 'plugins.installed.admin_dashboard.context_processors.dashboard_shell',

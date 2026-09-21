@@ -495,6 +495,29 @@ is its own declaration, it does nothing. Still-dead knobs are inventoried in
 `storefront/tests/test_identity_maintenance.py` +
 `brand_kit/tests/test_tokens_render.py`.
 
+**Landmine — a vertical shipped in the DEFAULT app list appears on every store,
+and a default app's context processors keep running after it's "off".**
+`book_product` (with `audiobooks` and the entirely book-gated `eco_impact`) sold
+the first store's books, so it sits in `MORPHEUS_DEFAULT_APPS` — and a non-book
+store (the Montenegro travel marketplace) then served live `/genres/`,
+`/authors/`, `/series/` pages and a "Book taxonomies" dashboard page it can never
+fill. A store opts OUT via `MORPHEUS_DISABLED_APPS` (Coolify env, subtracts from
+the assembled list; a store that sets nothing — dotbooks — is untouched, which is
+the whole point). Two rules make a disable actually clean: (1) **a default app's
+context processors must be contributed via `register_context_processor`, never
+listed in `settings.TEMPLATES`** — Django resolves that list at settings-import,
+before the disable is known, so a hardcoded `plugins.installed.book_product.
+context_processors.nav_genres` runs a removed app's code against unloaded models
+on every request (the aggregator `plugins.context_processors.plugin_context`
+skips inactive owners; a `settings.TEMPLATES` entry cannot); (2) **an unmet
+`requires` logs at ERROR on every boot but does not fail it** (`registry.validate`
+is non-fatal), so disable a required app *together with its requirers* — here all
+three go as one bundle — or the store logs a permanent error. Note `eco_impact`
+is a "general" plugin that hard-`requires` a vertical although its whole feature
+returns `None` for anything that isn't a book: a general plugin requiring a
+vertical is the coupling to avoid. Guarded by
+`book_product/tests/test_disable_vertical.py`.
+
 **Landmine — two plugins can register the same URL, and the loser is silent.**
 `get_urlpatterns` mounts in `_topo_sort` order and **first registrant wins**, so
 `newsletter` beat storefront to `/newsletter/subscribe/` and `pwa` beat it to

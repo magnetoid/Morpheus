@@ -52,6 +52,14 @@ class BookProductPlugin(Plugin):
         )
         # Bulk taxonomy-copy backfill runs on the worker (one LLM call per term).
         self.register_celery_tasks('plugins.installed.book_product.tasks')
+        # Storefront nav for Genres/Topics. Contributed (not listed in
+        # settings.TEMPLATES) so it runs only while this app is active — a
+        # non-book store that disables the vertical then executes none of it,
+        # instead of querying unloaded Genre/Topic models every request.
+        from plugins.installed.book_product.context_processors import nav_genres, nav_topics
+
+        self.register_context_processor(nav_genres)
+        self.register_context_processor(nav_topics)
 
     # Every route this app mounts, and what it is in SEO terms. Author landings
     # are entity pages (they get a Person node); the rest are listings of books
