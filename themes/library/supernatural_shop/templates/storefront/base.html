@@ -1281,8 +1281,7 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
    every candidate source has failed, so a working webp still wins over a
    missing avif. */
 (function () {
-  document.addEventListener('error', function (e) {
-    var img = e.target;
+  function swap(img) {
     if (!img || img.tagName !== 'IMG') return;
     var wrap = img.closest('.cover-wrap, .window__cover, .pdp-hero__slide');
     if (!wrap || wrap.querySelector('.placeholder')) return;
@@ -1290,7 +1289,24 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
     ph.className = 'placeholder';
     ph.textContent = img.getAttribute('alt') || '';
     (img.closest('picture') || img).replaceWith(ph);
-  }, true);
+  }
+  document.addEventListener('error', function (e) { swap(e.target); }, true);
+  /* A listener added at the end of <body> cannot see an error that already
+     fired. The hero is loading="eager" fetchpriority="high", so a 404 on it
+     resolves while the parser is still working through the page — the lazy
+     card images below error later and are caught, the hero never was. Sweep
+     whatever has already failed, and again once decoding settles. */
+  function sweep() {
+    var imgs = document.querySelectorAll('img');
+    for (var i = 0; i < imgs.length; i++) {
+      if (imgs[i].complete && imgs[i].naturalWidth === 0) swap(imgs[i]);
+    }
+  }
+  sweep();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', sweep);
+  }
+  window.addEventListener('load', sweep);
 })();
 </script>
 
