@@ -244,7 +244,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 
     {% if product.description %}
     <section class="pdp-about wrap-narrow" id="about" style="scroll-margin-top: 80px;">
-      <p class="eyebrow" style="margin-bottom: 0.75rem;">About this book</p>
+      <p class="eyebrow" style="margin-bottom: 0.75rem;">About this product</p>
       <hr class="rule" style="margin-bottom: 1.5rem;">
       <div itemprop="description" class="pdp-long-desc">
         {# description is HTML from the TipTap editor; render unescaped. #}
@@ -626,9 +626,9 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 {% if pdp_faqs %}
 <section class="pdp-faqs" id="faqs" style="scroll-margin-top: 80px;">
   <div class="wrap-narrow">
-    <p class="eyebrow" style="margin-bottom: 0.75rem;">Reader questions</p>
+    <p class="eyebrow" style="margin-bottom: 0.75rem;">Common questions</p>
     <h2 class="display display-m" style="margin: 0 0 1.5rem;">Frequently asked<span class="text-accent">.</span></h2>
-    <p class="meta" style="margin-bottom: 1.5rem; color: var(--muted);">Distilled from reader reviews. Not editorial.</p>
+    <p class="meta" style="margin-bottom: 1.5rem; color: var(--muted);">Distilled from customer reviews. Not editorial.</p>
     <div class="faq-list">
       {% for f in pdp_faqs %}
       <details class="faq-row">
@@ -662,7 +662,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 {% if reviews %}
 <section class="tight" id="reviews" style="background: var(--paper-2); scroll-margin-top: 80px;">
   <div class="wrap">
-    <p class="eyebrow">Reader letters</p>
+    <p class="eyebrow">Customer reviews</p>
     <h2 class="display display-m" style="margin: 0.5rem 0 2rem;">What others said<span class="text-accent">.</span></h2>
     <div style="display:grid; gap: 1.5rem; grid-template-columns: 1fr;" class="reviews-grid">
       {% for r in reviews %}
@@ -684,7 +684,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 <section id="related" style="padding: 3rem 0 4rem; scroll-margin-top: 80px;">
   <div class="wrap">
     <p class="eyebrow">You might also like</p>
-    <h2 class="display display-m" style="margin: .75rem 0 2rem;">Readers who picked this also reached for<span class="text-accent">.</span></h2>
+    <h2 class="display display-m" style="margin: .75rem 0 2rem;">You may also enjoy<span class="text-accent">.</span></h2>
     <div class="grid-books">
       {% for p in related_products %}
       <a href="/products/{{ p.slug }}/" class="book">

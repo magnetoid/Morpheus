@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.3 — 2026-09-22
+
+**Supernatural Shop copy drops leftover book-shop vocabulary**
+
+- The Supernatural Shop theme is a clone of the book theme, so an essential-oils store showed book vocabulary in its copy: the PDP said "About this book", "Reader questions", "Reader letters" and "Readers who picked this also reached for"; the cart column read "Book" and its empty state said "pick a book or two"; checkout said "Browse books"; the privacy page said "ship you a book"; account pages said "book reviews" and "for other readers". All 12 are now product-neutral ("About this product", "Common questions", "Customer reviews", "Item", "Browse the shop", "ship your order", …).
+- The shop's deliberate apothecary voice is untouched: the "Made for the workbench, not the bookshelf" tagline and the "shelf / bench" metaphor stay, because they are the brand, not a leak.
+- Book-taxonomy nav panels (authors/genres/topics) and the /authors/ page are book_product-driven and off on this store, so they don't render — left as-is rather than editing dead templates.
+
 ## v0.75.2 — 2026-09-22
 
 **Product cards show clean text, and survive the book vertical being off**
