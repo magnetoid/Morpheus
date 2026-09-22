@@ -159,6 +159,21 @@ class LegalPageSeedTests(TestCase):
 
         self.assertEqual(Page.objects.filter(slug__in=['privacy', 'terms', 'imprint']).count(), 3)
 
+    def test_post_migrate_handler_self_heals_missing_pages(self):
+        """A swallowed first seed (0002 marked applied, zero pages, footer 404s)
+        recovers on the next migrate because post_migrate re-runs the idempotent
+        seed. The handler must be fail-soft and re-create every missing page."""
+        from plugins.installed.cms.models import Page
+        from plugins.installed.gdpr.apps import _seed_legal_pages_on_migrate
+
+        Page.objects.filter(slug__in=self._SLUGS).delete()
+        self.assertEqual(Page.objects.filter(slug__in=self._SLUGS).count(), 0)
+
+        _seed_legal_pages_on_migrate()  # what post_migrate fires on deploy
+
+        for slug in self._SLUGS:
+            self.assertTrue(Page.objects.filter(slug=slug, state='published').exists())
+
 
 class DeadCodeLitmusTests(TestCase):
     """Removing the old dead storefront views left no dangling reference."""

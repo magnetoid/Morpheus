@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.6 — 2026-09-22
+
+**Self-heal the legal pages if their seed was ever swallowed**
+
+- gdpr now re-runs its idempotent legal-page seed on post_migrate, so a seed that failed once (e.g. mid store-cutover) and left the 0002 migration marked applied with zero pages — 404ing every footer legal link — recovers on the next deploy instead of staying broken forever.
+
 ## v0.75.5 — 2026-09-22
 
 **Fix product pages crashing on any tagged product**
