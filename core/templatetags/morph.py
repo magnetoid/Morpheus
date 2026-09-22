@@ -25,15 +25,46 @@ Usage:
 from __future__ import annotations
 
 import logging
-from html import escape
+import re
+from html import escape, unescape
 
 from django import template
 from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
 
 logger = logging.getLogger('morpheus.templatetags')
 
 register = template.Library()
+
+_SENTENCE_END = re.compile(r'[.!?](\s|$)')
+
+
+@register.filter
+def first_sentence(text) -> str:
+    """First sentence of `text` — up to the first . ! or ?, trimmed, capped at
+    180 chars; the whole (capped) string when there's no sentence break. Used on
+    every theme's product card for a one-line pitch under the title.
+
+    Normalises to PLAIN TEXT first: unescape entities (twice — some stored copy
+    arrived pre-escaped, and `{% firstof … as %}` escapes once more) then strip
+    markup, so a description holding ``<ul><li>…&#8217;s…`` renders as clean
+    prose instead of literal ``&#8217;`` / ``<li>`` on the card.
+
+    Lives in core (not book_product's book_extras, where it began) because the
+    shared storefront card in every theme uses it, and a store can disable the
+    book vertical — a book-plugin filter in a shared template 500s once that
+    plugin is off.
+    """
+    s = ('' if text is None else str(text)).strip()
+    if not s:
+        return ''
+    s = strip_tags(unescape(unescape(s))).strip()
+    if not s:
+        return ''
+    m = _SENTENCE_END.search(s)
+    out = s[: m.start() + 1] if m else s
+    return out.strip()[:180]
 
 
 @register.simple_tag

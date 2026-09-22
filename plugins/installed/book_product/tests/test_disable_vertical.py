@@ -93,3 +93,22 @@ class BookNavIsContributedNotHardcodedTests(SimpleTestCase):
         }
         self.assertEqual(owners.get('nav_genres'), 'book_product')
         self.assertEqual(owners.get('nav_topics'), 'book_product')
+
+
+class SharedCardSurvivesBookDisableTests(SimpleTestCase):
+    """The shared storefront product card renders on stores with the book
+    vertical off (montenegro, supernatural), so it must not `{% load
+    book_extras %}` — that lib only exists while book_product is installed, and
+    `{% load %}` fails at parse time. `first_sentence` (its only general filter)
+    is in core's `morph` now; the book-specific tags stay in book_extras."""
+
+    def test_no_theme_product_card_loads_book_extras(self):
+        import pathlib
+
+        root = pathlib.Path(settings.BASE_DIR) / 'themes' / 'library'
+        offenders = [
+            str(card.relative_to(root))
+            for card in root.glob('*/templates/storefront/_product_card.html')
+            if 'book_extras' in card.read_text()
+        ]
+        self.assertEqual(offenders, [], f'shared card loads book_extras: {offenders}')

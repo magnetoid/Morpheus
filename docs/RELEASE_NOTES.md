@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.2 — 2026-09-22
+
+**Product cards show clean text, and survive the book vertical being off**
+
+- Supernatural Shop product cards rendered raw HTML entities — "bring it back&#8230; It&#8217;s been…" — because the card used |striptags, which removes tags but leaves entities to escape into literal text. It now uses first_sentence, which decodes entities and strips markup into clean prose (matching the other themes).
+- That filter, first_sentence, lived in book_product's book_extras — but every theme's shared product card uses it, and montenegro + supernatural just disabled the book vertical. Their cards `{% load book_extras %}`, which fails to parse once book_product is uninstalled: a latent 500 that only stayed hidden because those stores have no catalog products to render a card for. first_sentence moved to core's morph (always loaded); the three cards no longer load book_extras.
+- Guarded both ways: core/tests/test_first_sentence.py (entities/markup never leak) and a scan that fails if any theme's shared _product_card.html loads book_extras again.
+
 ## v0.75.1 — 2026-09-22
 
 **Supernatural Shop product images are no longer tiny squares**

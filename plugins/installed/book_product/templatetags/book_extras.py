@@ -7,36 +7,17 @@ slug/id. Fail-soft: returns None on any miss so a block never breaks the page.
 
 from __future__ import annotations
 
-import html as _html
-import re
-
 from django import template
-from django.utils.html import strip_tags
+
+# first_sentence moved to core (core/templatetags/morph.py): the shared
+# storefront card in every theme uses it, and a store can disable the book
+# vertical, so it must not live in a book-plugin lib. Re-registered here so any
+# template still doing `{% load book_extras %}{{ x|first_sentence }}` keeps
+# working while book_product is active — one implementation, no drift.
+from core.templatetags.morph import first_sentence
 
 register = template.Library()
-
-_SENTENCE_END = re.compile(r'[.!?](\s|$)')
-
-
-@register.filter
-def first_sentence(text) -> str:
-    """First sentence of `text` — up to the first . ! or ?, trimmed. Used on the
-    product card to show a one-line pitch under the title. Falls back to the
-    whole (capped) string when there's no sentence break.
-
-    Normalises to PLAIN TEXT first: unescape entities (twice — some stored copy
-    arrived pre-escaped, and template plumbing like ``{% firstof … as %}``
-    escapes once more) then strip any markup. Cards showed literal
-    ``&lt;p&gt;``/``&#x27;`` on the storefront without this."""
-    s = ('' if text is None else str(text)).strip()
-    if not s:
-        return ''
-    s = strip_tags(_html.unescape(_html.unescape(s))).strip()
-    if not s:
-        return ''
-    m = _SENTENCE_END.search(s)
-    out = s[: m.start() + 1] if m else s
-    return out.strip()[:180]
+register.filter('first_sentence', first_sentence)
 
 
 def _attr(product, name):

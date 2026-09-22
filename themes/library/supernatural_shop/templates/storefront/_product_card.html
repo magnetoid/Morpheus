@@ -37,8 +37,8 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
     {% comment %}if/elif, NOT firstof-as — firstof-as stores an escaped string that
        then escapes again on output (visible &lt;p&gt; / &amp;#x27; on cards).
        first_sentence also normalises entities/markup to plain text.{% endcomment %}
-    {% if product.short_description %}<p class="book__excerpt">{{ product.short_description|striptags|truncatewords:18 }}</p>
-    {% elif product.shortDescription %}<p class="book__excerpt">{{ product.shortDescription|striptags|truncatewords:18 }}</p>{% endif %}
+    {% if product.short_description %}<p class="book__excerpt">{{ product.short_description|first_sentence }}</p>
+    {% elif product.shortDescription %}<p class="book__excerpt">{{ product.shortDescription|first_sentence }}</p>{% endif %}
     {% comment %}Price goes through the PRODUCT_CALCULATE_PRICE seam (storefront_price)
        so the shelf can never quote a different number than the PDP and cart.{% endcomment %}
     {% storefront_price product as card_price %}
