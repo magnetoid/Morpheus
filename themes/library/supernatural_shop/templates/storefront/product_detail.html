@@ -289,10 +289,16 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 .pdp-long-desc h2 { font-family: var(--serif); font-size: 1.35rem; font-weight: 500; line-height: 1.25; margin: 2rem 0 0.75rem; color: var(--ink); }
 .pdp-long-desc h3 { font-family: var(--serif); font-size: 1.15rem; font-weight: 500; line-height: 1.3; margin: 1.5rem 0 0.5rem; color: var(--ink); }
 @media (min-width: 900px) {
-  /* Gallery (left) narrower than details (right) — a portrait book cover
-     doesn't need half the page. 2fr/3fr ≈ 40/60, the editorial "old"
-     proportion rather than the 50/50 Shopify split. */
-  .pdp-grid { grid-template-columns: 2fr 3fr !important; gap: 4rem !important; align-items: start !important; }
+  /* This store's product images are square (1/1), not portrait book covers,
+     so they earn a bigger share of the page: a 50/50 split, image column
+     flush-left with the breadcrumb line. (The book theme's 2fr/3fr was sized
+     for a cover that "doesn't need half the page".) */
+  .pdp-grid { grid-template-columns: 1fr 1fr !important; gap: 3rem !important; align-items: start !important; }
+  /* Fill that column and left-align. The product_gallery plugin caps the hero
+     at (100svh − reserve)/1.5 and centres it with margin:0 auto — the /1.5 is a
+     2/3 book-cover ratio that under-sizes a square image, and the auto margins
+     indent it from the column's (breadcrumb-aligned) left edge. */
+  .pdp-hero { max-width: 100% !important; margin: 0 !important; }
   /* Pin the cover column while the details column scrolls past. Top offset
      clears the sticky topbar (64px) + a comfortable breathing margin. */
   .pdp-grid > div:first-child { position: sticky; top: 84px; align-self: start; }

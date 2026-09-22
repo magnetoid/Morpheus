@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.4 — 2026-09-22
+
+**Bigger, left-aligned product image on the Supernatural Shop PDP**
+
+- The product-detail image was capped at ~412px and centred in a narrow 2fr/3fr column, inset ~48px from the page's left edge. Both were sized for portrait book covers: the column comment literally says a cover "doesn't need half the page", and the product_gallery plugin caps the hero by (100svh − reserve)/1.5 — the 1.5 being a 2/3 cover ratio that under-sizes this store's square images.
+- The PDP now uses a 50/50 split; the image fills its column (~640px, +55%) and its left edge lines up with the breadcrumb. Scoped to the supernatural_shop theme (overrides the shared plugin with !important) — dotbooks and montenegro keep their book-cover layout. Mobile (<900px, single column) is unchanged.
+
 ## v0.75.3 — 2026-09-22
 
 **Supernatural Shop copy drops leftover book-shop vocabulary**
