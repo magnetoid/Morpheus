@@ -371,11 +371,14 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   .btn-sm { padding: 0.5rem 0.9rem; font-size: 0.8rem; }
   .grid-books--rail .book__excerpt { display: none; }
 
-  /* Grids */
-  .grid-books { display: grid; gap: 1.5rem 1.1rem; grid-template-columns: repeat(2, 1fr); }
-  @media (min-width: 640px) { .grid-books { grid-template-columns: repeat(4, 1fr); } }
-  @media (min-width: 1024px) { .grid-books { grid-template-columns: repeat(5, 1fr); } }
-  @media (min-width: 1280px) { .grid-books { grid-template-columns: repeat(6, 1fr); } }
+  /* Grids — a boutique wellness shop (essential oils, hydrosols, ritual
+     goods), not a bookshelf. Fewer, larger product images: 2 on phones, 3 on
+     tablets, 4 on desktop, where the old 6-across rendered every product an
+     ~208px square. The --rail variant sets its own flex layout, so it is
+     unaffected by these column counts. */
+  .grid-books { display: grid; gap: 1.75rem 1.35rem; grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 640px) { .grid-books { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 1024px) { .grid-books { grid-template-columns: repeat(4, 1fr); } }
 
   /* Book rail — a horizontal scroll-snap carousel variant of .grid-books.
      Keeps the .grid-books class so the reveal engine still hooks it, but flips

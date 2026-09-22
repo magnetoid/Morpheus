@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.1 — 2026-09-22
+
+**Supernatural Shop product images are no longer tiny squares**
+
+- The Supernatural Shop product grid packed up to 6 columns on desktop, rendering every product an ~208px square — bookshelf density inherited from the book theme, wrong for a boutique shop of essential oils, hydrosols and ritual goods. It now shows 2 columns on phones, 3 on tablets and 4 on desktop, so each product image is ~318px — about 50% larger.
+- Scoped to the supernatural_shop theme's own base.html; dotbooks (dot_books) and Montenegro keep their own layouts untouched. The horizontal --rail carousels set their own flex layout and are unaffected.
+
 ## v0.75.0 — 2026-09-21
 
 **A non-book store can switch off the book vertical**
