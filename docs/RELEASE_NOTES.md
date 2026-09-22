@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.5 — 2026-09-22
+
+**Fix product pages crashing on any tagged product**
+
+- PDP 500'd for every product carrying a tag (180 of 684 on the supernatural store) — the tag-chip link used {{ tag.slug|default:tag.name }}, but GraphQL returns tags as plain strings, so the eager filter argument raised VariableDoesNotExist. Now uses {% firstof %} across all three themes; renders string and object tags alike.
+
 ## v0.75.4 — 2026-09-22
 
 **Bigger, left-aligned product image on the Supernatural Shop PDP**

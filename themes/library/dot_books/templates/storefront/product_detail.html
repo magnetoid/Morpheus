@@ -242,7 +242,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
         {% if product.tags %}
         <div style="margin-top: 2rem; display:flex; flex-wrap: wrap; gap: 0.4rem;">
           {% for tag in product.tags %}
-          <a href="/products/?tag={{ tag.slug|default:tag.name }}" style="font-size: 0.75rem; padding: 0.3rem 0.65rem; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted);">{{ tag.name }}</a>
+          <a href="/products/?tag={% firstof tag.slug tag.name tag %}" style="font-size: 0.75rem; padding: 0.3rem 0.65rem; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted);">{% firstof tag.name tag %}</a>
           {% endfor %}
         </div>
         {% endif %}

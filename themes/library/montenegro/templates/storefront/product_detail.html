@@ -272,7 +272,7 @@ POST: /cart/add/{{ product.id }}/  ·  /back-in-stock/subscribe/{{ product.id }}
       {% if product.tags %}
       <div class="flex flex-wrap gap-2">
         {% for tag in product.tags %}
-        <a href="/products/?tag={{ tag.slug|default:tag.name }}" class="inline-flex items-center h-7 px-2.5 rounded-full bg-muted text-xs text-muted-foreground hover:text-foreground transition-colors">{{ tag.name }}</a>
+        <a href="/products/?tag={% firstof tag.slug tag.name tag %}" class="inline-flex items-center h-7 px-2.5 rounded-full bg-muted text-xs text-muted-foreground hover:text-foreground transition-colors">{% firstof tag.name tag %}</a>
         {% endfor %}
       </div>
       {% endif %}
