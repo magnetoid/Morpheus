@@ -182,8 +182,8 @@ def places_index(request):
             'seo_title': _('Explore Montenegro'),
             'seo_description': _(
                 'Destination guides to the best places to visit in Montenegro — the Bay of '
-                'Kotor, the Budva Riviera, Durmitor and the northern mountains, Lake Skadar '
-                'and the southern coast.'
+                'Kotor, the Budva Riviera, Durmitor, Lake Skadar and the southern Adriatic '
+                'coast.'
             ),
             'places_jsonld': seo_jsonld.places_index_jsonld(places, request=request),
         },
@@ -486,9 +486,9 @@ def events_index(request):
             'selected_category': category,
             'seo_title': _('Montenegro Events Calendar'),
             'seo_description': _(
-                'What is on in Montenegro through the year — Kotor Carnival, the Mimosa '
+                "What's on in Montenegro through the year — Kotor Carnival, the Mimosa "
                 'Festival, Boka Night, summer theatre in Budva, Lake Fest and the winter '
-                'ski season on Bjelasica.'
+                'ski season.'
             ),
             'events_jsonld': seo_jsonld.events_index_jsonld(events, request=request),
         },

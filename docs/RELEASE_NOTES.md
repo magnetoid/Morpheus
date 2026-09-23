@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.8 — 2026-09-23
+
+**Montenegro SEO: hotels hub meta description + trimmed over-long hub metas**
+
+- The /hotels/ hub had 1,700+ words but no meta description (stay_detail set one, stays_index didn't) — added a 154-char description. Trimmed the /events/ (167) and /places/ (172) hub meta descriptions to a SERP-friendly ~154 chars.
+
 ## v0.75.7 — 2026-09-23
 
 **Fix the admin bar scrolling away and leaving a gap above the sticky header**

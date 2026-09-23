@@ -63,6 +63,10 @@ def stays_index(request):
             'region_choices': REGIONS,
             'type_choices': PROPERTY_TYPES,
             'seo_title': _('Hotels & stays in Montenegro'),
+            'seo_description': _(
+                'Hand-picked hotels, apartments and guesthouses across Montenegro — from the '
+                'Bay of Kotor to the Adriatic coast and the northern mountains. Book your stay.'
+            ),
             'stays_jsonld': seo_jsonld.stays_index_jsonld(qs, request=request),
         },
     )

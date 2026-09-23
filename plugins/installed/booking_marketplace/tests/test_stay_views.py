@@ -50,6 +50,16 @@ class StayViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Hotel Kotor Bay')
 
+    def test_index_provides_a_meta_description(self):
+        """The /hotels/ hub had 1,700+ words but no meta description (SEO audit
+        2026-09) — stay_detail set one, stays_index didn't. It must supply one
+        (via the same `seo_description` context the shared head reads), kept to a
+        SERP-friendly length."""
+        resp = self.client.get(reverse('booking_marketplace:stays'))
+        desc = str(resp.context['seo_description'])
+        self.assertTrue(desc.strip(), 'the hotels hub must have a meta description')
+        self.assertLessEqual(len(desc), 160, f'hub meta description too long: {len(desc)}')
+
     def test_detail_renders_room_types(self):
         resp = self.client.get(reverse('booking_marketplace:stay_detail', args=['hotel-kotor-bay']))
         self.assertEqual(resp.status_code, 200)
