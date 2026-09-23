@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.7 — 2026-09-23
+
+**Fix the admin bar scrolling away and leaving a gap above the sticky header**
+
+- The motion plugin's page-enter animation ran on <html> with a transform keyframe, which makes the root a containing block for position:fixed — so the staff admin bar scrolled away with the page instead of staying pinned, leaving a ~32px hole above the sticky store header on every theme (visible only when signed in). The entrance is now an opacity-only fade.
+
 ## v0.75.6 — 2026-09-22
 
 **Self-heal the legal pages if their seed was ever swallowed**
