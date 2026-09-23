@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 
-from plugins.installed.booking_marketplace import seo_jsonld, stays
+from plugins.installed.booking_marketplace import seo_jsonld, stay_content, stays
 from plugins.installed.booking_marketplace.models import (
     AMENITY_LABELS,
     POLICY_LABELS,
@@ -76,6 +76,7 @@ def stay_detail(request, slug):
     prop = get_object_or_404(
         Property.objects.prefetch_related('room_types', 'images'), slug=slug, is_active=True
     )
+    nearby = stays.nearby_places(prop)
     return render(
         request,
         'booking_marketplace/stays/detail.html',
@@ -83,7 +84,12 @@ def stay_detail(request, slug):
             'property': prop,
             'room_types': prop.room_types.filter(is_active=True),
             'amenities': _amenities(prop.amenities),
-            'nearby_places': stays.nearby_places(prop),
+            # Data-grounded per-property copy: a unique "Staying in…" intro +
+            # a "Best for" profile from this hotel's own type/stars/amenities
+            # (stay_content) — replaces the boilerplate that repeated on all 68.
+            'best_for': stay_content.best_for(prop),
+            'location_intro': stay_content.location_intro(prop, nearby),
+            'nearby_places': nearby,
             'related_stays': stays.related_stays(prop),
             'policy_items': _policies(prop.policies),
             'listing_mode': listing_mode(),

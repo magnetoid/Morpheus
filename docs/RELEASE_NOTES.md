@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.10 — 2026-09-23
+
+**Deeper, unique hotel pages: data-grounded 'Staying in' intro + 'Best for' profile**
+
+- Hotel detail pages were thin and shared one boilerplate 'Staying in…' paragraph across all 68 (SEO audit). New stay_content composes a unique intro from each property's own type, star rating, region and the real nearby-place names, plus a 'Best for' audience profile derived from its type/stars/amenities. No invented facts, no LLM — pure and unit-tested.
+
 ## v0.75.9 — 2026-09-23
 
 **Fix montenegro header hiding under the admin bar + dashboard icon baseline alignment**

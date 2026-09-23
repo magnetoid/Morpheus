@@ -26,9 +26,25 @@
     <div class="lg:col-span-2 space-y-8">
       {% if property.description %}<section aria-labelledby="about-stay"><h2 id="about-stay" class="text-xl font-semibold text-foreground mb-3">{% blocktrans with name=property.name %}About {{ name }}{% endblocktrans %}</h2><div class="prose max-w-none text-foreground"><p>{{ property.description|linebreaksbr }}</p></div></section>{% endif %}
 
+      {% if best_for %}
+      <section aria-labelledby="best-for">
+        <h2 id="best-for" class="text-lg font-semibold text-foreground mb-3">{% trans "Best for" %}</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {% for c in best_for %}
+          <div class="flex items-center gap-2.5 rounded-xl border border-border bg-card p-3 text-sm font-medium text-foreground">
+            <span class="w-8 h-8 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ c.icon|safe }}</svg>
+            </span>
+            <span>{{ c.label }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
       <section aria-labelledby="location-guide">
         <h2 id="location-guide" class="text-lg font-semibold text-foreground mb-3">{% blocktrans with location=property.location %}Staying in {{ location }}{% endblocktrans %}</h2>
-        <p class="text-muted-foreground leading-7">{% blocktrans with location=property.location %}Use {{ location }} as your base for nearby beaches, historic towns and day trips. Review transport options and seasonal travel times before confirming your stay.{% endblocktrans %}</p>
+        <p class="text-muted-foreground leading-7">{{ location_intro }}</p>
         {% if nearby_places %}
         <div class="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x mt-4">
           {% for pl in nearby_places %}
