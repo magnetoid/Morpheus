@@ -139,7 +139,13 @@
   /* Remix glyphs sized to match the Tailwind h-*/w-* the existing markup uses.
      Font icons size by font-size. The `.hidden`/`md:inline` utilities below are
      re-asserted on our icons so responsive show/hide keeps working. */
-  i[data-lucide] { font-style:normal; line-height:1; vertical-align:middle; }
+  /* Remix icon-font glyphs sit low on the text baseline, so `vertical-align`
+     alone left icons a touch below their label/box everywhere the per-surface
+     flex-centering below doesn't reach (e.g. the top-bar search field, badges,
+     table cells). Flex-center the glyph in its own box on EVERY icon so the
+     whole dashboard aligns uniformly; `vertical-align:middle` still positions
+     that box against adjacent text. */
+  i[data-lucide] { font-style:normal; line-height:1; vertical-align:middle; display:inline-flex; align-items:center; justify-content:center; }
   i[data-lucide].h-3,  i[data-lucide].w-3  { font-size:.75rem; }
   i[data-lucide].h-3\.5, i[data-lucide].w-3\.5 { font-size:.9rem; }
   i[data-lucide].h-4,  i[data-lucide].w-4  { font-size:1rem; }
@@ -147,7 +153,7 @@
   i[data-lucide].h-6,  i[data-lucide].w-6  { font-size:1.45rem; }
   i[data-lucide].h-8,  i[data-lucide].w-8  { font-size:1.8rem; }
   i[data-lucide].hidden { display: none; }
-  @media (min-width:768px) { i[data-lucide].md\:inline { display: inline; } }
+  @media (min-width:768px) { i[data-lucide].md\:inline { display: inline-flex; } }
   /* Remix icon-font glyphs render low on their text baseline, so icon+text
      controls looked like the icon sat slightly below the label. Flex-center
      the glyph inside its own box on the interactive surfaces (the icon box is

@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.9 — 2026-09-23
+
+**Fix montenegro header hiding under the admin bar + dashboard icon baseline alignment**
+
+- Montenegro: the admin-bar offset targeted .topbar (which this theme doesn't use), so with the admin bar now correctly pinned the header slid under it — offset the real <header> and the home categories rail by 32px instead.
+- Dashboard: Remix icon-font glyphs render low on the baseline; flex-center every icon glyph in its box (not just on .btn/.nav-link surfaces) so the top-bar search field and other icon+element pairs align.
+
 ## v0.75.8 — 2026-09-23
 
 **Montenegro SEO: hotels hub meta description + trimmed over-long hub metas**

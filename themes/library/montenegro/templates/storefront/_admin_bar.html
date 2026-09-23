@@ -34,7 +34,12 @@
 }
 .storefront-admin-bar a:hover { color: #fff !important; }
 body.has-admin-bar { padding-top: 32px; }
-body.has-admin-bar .topbar { top: 32px !important; }
+/* This theme's sticky chrome uses Tailwind `top-*` utilities, not `.topbar`
+   (that selector — copied from the other themes — matched nothing here, so the
+   header slid under the pinned admin bar). Push the header and the home
+   "Experience categories" rail down by the 32px admin bar. */
+body.has-admin-bar > header { top: 32px !important; }
+body.has-admin-bar .top-\[72px\] { top: 104px !important; }
 @media (max-width: 640px) {
   .storefront-admin-bar { font-size: 11px !important; }
   .storefront-admin-bar a:not(:first-child):not(:nth-child(2)) { display: none; }
