@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.15 — 2026-09-24
+
+**Dashboard settings: General leads the categories again (after Settings overview)**
+
+- Restore General to the top of the settings categories so the menu reads Settings overview → General → Payments → Shipping → Taxes → …
+
 ## v0.75.14 — 2026-09-24
 
 **Dashboard settings: General moves below Payments/Shipping/Taxes**
