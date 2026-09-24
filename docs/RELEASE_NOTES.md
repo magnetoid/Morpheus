@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.11 — 2026-09-24
+
+**Product editor: saving works again (un-nested variant forms)**
+
+- The variant delete/add/edit forms were nested inside the product form, which is invalid HTML — the browser adopted the add-variant modal's empty required name/SKU into the product form, so native validation aborted every save ('An invalid form control is not focusable') before it could run.
+- Un-nested them: delete buttons now target their form via form=, and the add/edit modals are dialogs outside the product form. Saving now succeeds and runs through the interactive AJAX path — a button spinner ('Saving' → 'Saved'), no full-page reload.
+
 ## v0.75.10 — 2026-09-23
 
 **Deeper, unique hotel pages: data-grounded 'Staying in' intro + 'Best for' profile**

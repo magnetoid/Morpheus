@@ -493,14 +493,10 @@
                       onclick="document.getElementById('variant-edit-{{ v.id }}').showModal()">
                 <i data-lucide="pencil" class="h-4 w-4"></i>
               </button>
-              <form method="post" action="{% url 'admin_dashboard:variant_delete' product_id=product.id variant_id=v.id %}"
-                    data-confirm="Delete variant '{{ v.name|escapejs }}'?" data-confirm-cta="Delete" data-confirm-danger
-                    style="display:inline-block; margin:0;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-ghost p-1.5" title="Delete variant">
-                  <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]"></i>
-                </button>
-              </form>
+              {# Submits the external #variant-del form (below, outside #product-form) — no nested form. #}
+              <button type="submit" form="variant-del-{{ v.id }}" class="btn btn-ghost p-1.5" title="Delete variant">
+                <i data-lucide="trash-2" class="h-4 w-4 text-[color:var(--danger)]"></i>
+              </button>
             </td>
           </tr>
           {% endfor %}
@@ -511,6 +507,153 @@
         No variants yet. Click <strong>Add variant</strong> above to create one.
       </div>
       {% endif %}
+
+    </div>
+
+    {% endif %}
+
+    {% comment %}
+    Inventory & shipping — full section visible for physical products
+    (simple, variable, bundle). For digital we render a slim "Delivery"
+    card below instead, since weight + shipping don't apply.
+    {% endcomment %}
+    {# Inventory & shipping — per-variant on Variable products, so the parent card is hidden when product_type=variable. Vendor select moved to Basics so it's only rendered once. #}
+    <div class="card card-padded space-y-3" data-pt-show="simple,bundle">
+      <h2 class="font-semibold text-sm">Inventory &amp; shipping</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Weight</label>
+          <input type="number" step="0.001" min="0" name="weight" class="input" value="{{ form.weight.value|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Weight unit</label>
+          <input type="text" name="weight_unit" class="input" value="{{ form.weight_unit.value|default:'kg' }}">
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-4 pt-1">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_featured" {% if form.is_featured.value %}checked{% endif %}> Featured
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_taxable" {% if form.is_taxable.value %}checked{% endif %}> Taxable
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="track_inventory" {% if form.track_inventory.value %}checked{% endif %}> Track inventory
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="requires_shipping" {% if form.requires_shipping.value %}checked{% endif %}> Requires shipping
+        </label>
+      </div>
+    </div>
+
+    <div class="card card-padded space-y-3" data-pt-show="digital">
+      <h2 class="font-semibold text-sm">Digital delivery</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">
+        Customers receive an email with a token-protected download link after the
+        order is paid. Token TTL + max-downloads-per-token are configured in
+        <a href="/dashboard/settings/general/" class="underline">Settings → Digital downloads</a>.
+      </p>
+      <div>
+        <label class="block text-sm font-medium mb-1">Downloadable file</label>
+        {% if product and product.digital_file %}
+        <p class="text-sm mb-2 flex items-center gap-2">
+          <i data-lucide="file" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
+          <a href="{{ product.digital_file.url }}" class="underline" target="_blank" rel="noopener">
+            {{ product.digital_file.name }}
+          </a>
+        </p>
+        <label class="inline-flex items-center gap-2 text-xs text-[color:var(--text-muted)] mb-2">
+          <input type="checkbox" name="digital_file_clear"> Remove the current file
+        </label>
+        <p class="text-xs text-[color:var(--text-muted)] mb-2">Upload a new file below to replace the current one.</p>
+        {% endif %}
+        <input type="file" name="digital_file" class="input" style="padding:.4rem .55rem;">
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">
+          Common formats: PDF, EPUB, ZIP, MP3, MP4, JPG. Stored encrypted at rest;
+          merchants serve via short-lived tokens, never a public URL.
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-4 pt-1">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_featured" {% if form.is_featured.value %}checked{% endif %}> Featured
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_taxable" {% if form.is_taxable.value %}checked{% endif %}> Taxable (digital sales tax / VAT)
+        </label>
+      </div>
+      <input type="hidden" name="track_inventory" value="">
+      <input type="hidden" name="requires_shipping" value="">
+    </div>
+
+    {# Product identifier codes — 'identifiers' metafields; shown on PDP + JSON-LD. #}
+    {% if identifier_fields %}
+    <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">
+      <h2 class="font-semibold text-sm">Identifiers / product codes</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">ISBN, EAN/GTIN, UPC, MPN, ASIN, barcode — shown on the product page and emitted in feeds &amp; structured data. Leave blank if not applicable.</p>
+      <input type="hidden" name="identifiers_present" value="1">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {% for f in identifier_fields %}
+        <div>
+          <label class="block text-sm font-medium mb-1">{{ f.label }}</label>
+          <input type="text" name="identifier_{{ f.key }}" class="input" value="{{ f.value }}"{% if f.placeholder %} placeholder="{{ f.placeholder }}"{% endif %}>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Plugin-contributed product-form cards (PRODUCT_FORM_CARDS) — incl. book_product's Book details; each vanishes when its plugin is disabled. #}
+    {% for card in extra_product_cards %}{{ card|safe }}{% endfor %}
+
+    {% comment %}
+    Structured data (raw JSON-LD) is the one SEO field still edited here: it is
+    loose-typed and validated by ProductForm.clean_structured_data, and the
+    structured-data work that gives it a proper home is the next phase.
+    Everything else — title, description, focus keyword, canonical, Open Graph,
+    Twitter, robots — is in the SEO card the seo app contributes above
+    (PRODUCT_FORM_CARDS), stored on SeoMeta, and shared with categories,
+    collections and CMS pages.
+    {% endcomment %}
+    <details class="card" id="product-schema-details" data-pt-show="simple,variable,digital,bundle">
+      <summary class="card-padded cursor-pointer flex items-center justify-between border-b border-[color:var(--border)]" style="list-style:none;">
+        <div>
+          <h2 class="font-semibold text-sm">Structured data</h2>
+          <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Rich-result schema. Product, price and review markup is generated for you.</p>
+        </div>
+        <i data-lucide="chevron-down" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
+      </summary>
+      <div class="card-padded space-y-3">
+        {% plugin_enabled "seo" as seo_enabled %}
+        {% if seo_enabled and product.id %}
+        <a href="/dashboard/seo/schema/catalog/product/{{ product.id }}/" class="btn btn-secondary btn-sm">✦ Structured data editor — FAQ, How-to, Event…</a>
+        <p class="text-xs text-[color:var(--text-muted)]">Add rich-result schema with no JSON.</p>
+        {% endif %}
+        <div>
+          <label class="block text-sm font-medium mb-1">Extra JSON-LD (advanced)</label>
+          <textarea name="structured_data" rows="6" class="input font-mono text-xs" placeholder='{"brand": "Acme", "gtin": "0123456789012"}'>{{ form.structured_data.value|default:'' }}</textarea>
+          {% if form.structured_data.errors %}<p class="field-error">{{ form.structured_data.errors.0 }}</p>{% endif %}
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Merged into the auto-generated Product JSON-LD. Use schema.org property names.</p>
+        </div>
+      </div>
+    </details>
+
+  </form>
+
+  {% comment %}
+  Variant management, kept OUTSIDE #product-form. Nested forms inside the product
+  form are invalid HTML: the browser adopts their empty required name/sku inputs
+  into the product form, so native validation aborts every save ("... is not
+  focusable"). Delete buttons target these forms by form= id; the modals are
+  dialog overlays, so this DOM position has no visual effect.
+  {% endcomment %}
+  {% if product %}
+  {% for v in variants %}
+  <form id="variant-del-{{ v.id }}" method="post" hidden
+        action="{% url 'admin_dashboard:variant_delete' product_id=product.id variant_id=v.id %}"
+        data-confirm="Delete variant '{{ v.name|escapejs }}'?" data-confirm-cta="Delete" data-confirm-danger>
+    {% csrf_token %}
+  </form>
+  {% endfor %}
 
       {# Per-variant edit modals — one <dialog> per row, server-rendered with values; Cancel discards. #}
       {% for v in variants %}
@@ -714,136 +857,7 @@
           </div>
         </form>
       </dialog>
-    </div>
-
-    {% endif %}
-
-    {% comment %}
-    Inventory & shipping — full section visible for physical products
-    (simple, variable, bundle). For digital we render a slim "Delivery"
-    card below instead, since weight + shipping don't apply.
-    {% endcomment %}
-    {# Inventory & shipping — per-variant on Variable products, so the parent card is hidden when product_type=variable. Vendor select moved to Basics so it's only rendered once. #}
-    <div class="card card-padded space-y-3" data-pt-show="simple,bundle">
-      <h2 class="font-semibold text-sm">Inventory &amp; shipping</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label class="block text-sm font-medium mb-1">Weight</label>
-          <input type="number" step="0.001" min="0" name="weight" class="input" value="{{ form.weight.value|default:'' }}">
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Weight unit</label>
-          <input type="text" name="weight_unit" class="input" value="{{ form.weight_unit.value|default:'kg' }}">
-        </div>
-      </div>
-      <div class="flex flex-wrap gap-4 pt-1">
-        <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="is_featured" {% if form.is_featured.value %}checked{% endif %}> Featured
-        </label>
-        <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="is_taxable" {% if form.is_taxable.value %}checked{% endif %}> Taxable
-        </label>
-        <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="track_inventory" {% if form.track_inventory.value %}checked{% endif %}> Track inventory
-        </label>
-        <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="requires_shipping" {% if form.requires_shipping.value %}checked{% endif %}> Requires shipping
-        </label>
-      </div>
-    </div>
-
-    <div class="card card-padded space-y-3" data-pt-show="digital">
-      <h2 class="font-semibold text-sm">Digital delivery</h2>
-      <p class="text-xs text-[color:var(--text-muted)]">
-        Customers receive an email with a token-protected download link after the
-        order is paid. Token TTL + max-downloads-per-token are configured in
-        <a href="/dashboard/settings/general/" class="underline">Settings → Digital downloads</a>.
-      </p>
-      <div>
-        <label class="block text-sm font-medium mb-1">Downloadable file</label>
-        {% if product and product.digital_file %}
-        <p class="text-sm mb-2 flex items-center gap-2">
-          <i data-lucide="file" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
-          <a href="{{ product.digital_file.url }}" class="underline" target="_blank" rel="noopener">
-            {{ product.digital_file.name }}
-          </a>
-        </p>
-        <label class="inline-flex items-center gap-2 text-xs text-[color:var(--text-muted)] mb-2">
-          <input type="checkbox" name="digital_file_clear"> Remove the current file
-        </label>
-        <p class="text-xs text-[color:var(--text-muted)] mb-2">Upload a new file below to replace the current one.</p>
-        {% endif %}
-        <input type="file" name="digital_file" class="input" style="padding:.4rem .55rem;">
-        <p class="text-xs text-[color:var(--text-muted)] mt-1">
-          Common formats: PDF, EPUB, ZIP, MP3, MP4, JPG. Stored encrypted at rest;
-          merchants serve via short-lived tokens, never a public URL.
-        </p>
-      </div>
-      <div class="flex flex-wrap gap-4 pt-1">
-        <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="is_featured" {% if form.is_featured.value %}checked{% endif %}> Featured
-        </label>
-        <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="is_taxable" {% if form.is_taxable.value %}checked{% endif %}> Taxable (digital sales tax / VAT)
-        </label>
-      </div>
-      <input type="hidden" name="track_inventory" value="">
-      <input type="hidden" name="requires_shipping" value="">
-    </div>
-
-    {# Product identifier codes — 'identifiers' metafields; shown on PDP + JSON-LD. #}
-    {% if identifier_fields %}
-    <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">
-      <h2 class="font-semibold text-sm">Identifiers / product codes</h2>
-      <p class="text-xs text-[color:var(--text-muted)]">ISBN, EAN/GTIN, UPC, MPN, ASIN, barcode — shown on the product page and emitted in feeds &amp; structured data. Leave blank if not applicable.</p>
-      <input type="hidden" name="identifiers_present" value="1">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {% for f in identifier_fields %}
-        <div>
-          <label class="block text-sm font-medium mb-1">{{ f.label }}</label>
-          <input type="text" name="identifier_{{ f.key }}" class="input" value="{{ f.value }}"{% if f.placeholder %} placeholder="{{ f.placeholder }}"{% endif %}>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
-
-    {# Plugin-contributed product-form cards (PRODUCT_FORM_CARDS) — incl. book_product's Book details; each vanishes when its plugin is disabled. #}
-    {% for card in extra_product_cards %}{{ card|safe }}{% endfor %}
-
-    {% comment %}
-    Structured data (raw JSON-LD) is the one SEO field still edited here: it is
-    loose-typed and validated by ProductForm.clean_structured_data, and the
-    structured-data work that gives it a proper home is the next phase.
-    Everything else — title, description, focus keyword, canonical, Open Graph,
-    Twitter, robots — is in the SEO card the seo app contributes above
-    (PRODUCT_FORM_CARDS), stored on SeoMeta, and shared with categories,
-    collections and CMS pages.
-    {% endcomment %}
-    <details class="card" id="product-schema-details" data-pt-show="simple,variable,digital,bundle">
-      <summary class="card-padded cursor-pointer flex items-center justify-between border-b border-[color:var(--border)]" style="list-style:none;">
-        <div>
-          <h2 class="font-semibold text-sm">Structured data</h2>
-          <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Rich-result schema. Product, price and review markup is generated for you.</p>
-        </div>
-        <i data-lucide="chevron-down" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
-      </summary>
-      <div class="card-padded space-y-3">
-        {% plugin_enabled "seo" as seo_enabled %}
-        {% if seo_enabled and product.id %}
-        <a href="/dashboard/seo/schema/catalog/product/{{ product.id }}/" class="btn btn-secondary btn-sm">✦ Structured data editor — FAQ, How-to, Event…</a>
-        <p class="text-xs text-[color:var(--text-muted)]">Add rich-result schema with no JSON.</p>
-        {% endif %}
-        <div>
-          <label class="block text-sm font-medium mb-1">Extra JSON-LD (advanced)</label>
-          <textarea name="structured_data" rows="6" class="input font-mono text-xs" placeholder='{"brand": "Acme", "gtin": "0123456789012"}'>{{ form.structured_data.value|default:'' }}</textarea>
-          {% if form.structured_data.errors %}<p class="field-error">{{ form.structured_data.errors.0 }}</p>{% endif %}
-          <p class="text-xs text-[color:var(--text-muted)] mt-1">Merged into the auto-generated Product JSON-LD. Use schema.org property names.</p>
-        </div>
-      </div>
-    </details>
-
-  </form>
+  {% endif %}
 
   </div> {# /lg:col-span-8 — close LEFT column #}
 
