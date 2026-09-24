@@ -19,13 +19,14 @@ class SettingsCategoriesTests(TestCase):
         from plugins.installed.admin_dashboard.settings_categories import SETTINGS_CATEGORIES
 
         slugs = [c.slug for c in SETTINGS_CATEGORIES]
+        # Commerce config leads; General follows the Payments/Shipping/Taxes group.
         self.assertEqual(
             slugs,
             [
-                'general',
                 'payments',
                 'shipping',
                 'taxes',
+                'general',
                 'channels',
                 'ai',
                 'marketing',

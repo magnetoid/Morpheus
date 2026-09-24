@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.14 — 2026-09-24
+
+**Dashboard settings: General moves below Payments/Shipping/Taxes**
+
+- Reorder the settings categories so commerce config (Payments, Shipping, Taxes) leads and store basics (General) follows the group, in both the settings sidebar and the overview cards.
+
 ## v0.75.13 — 2026-09-24
 
 **Unify the two update pages into one 'Version & updates'**

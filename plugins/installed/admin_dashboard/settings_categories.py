@@ -27,12 +27,14 @@ class SettingsCategory:
 
 # Order here is the order shown in the settings sidebar.
 SETTINGS_CATEGORIES: list[SettingsCategory] = [
-    SettingsCategory('general', 'General', 'Store name, currency, country, basics.', 'store'),
+    # Commerce config (Payments / Shipping / Taxes) leads; store basics (General)
+    # follows it rather than opening the list.
     SettingsCategory(
         'payments', 'Payments', 'Gateways and payment methods customers can use.', 'credit-card'
     ),
     SettingsCategory('shipping', 'Shipping', 'Zones, rates, and carriers.', 'truck'),
     SettingsCategory('taxes', 'Taxes', 'Regional rates and overrides.', 'percent'),
+    SettingsCategory('general', 'General', 'Store name, currency, country, basics.', 'store'),
     SettingsCategory(
         'channels',
         'Sales channels',
