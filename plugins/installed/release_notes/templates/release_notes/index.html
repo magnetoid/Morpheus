@@ -2,11 +2,11 @@
 {% block title %}Version & updates · Morpheus{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
+<div class="max-w-4xl mx-auto space-y-6">
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Version &amp; updates</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Detailed updates to the Morpheus OS core.</p>
+      <p class="text-sm text-[color:var(--text-muted)]">The running version, available updates, and the full changelog — in one place.</p>
     </div>
     <span class="pill pill-info" style="font-size:.95rem;padding:.4rem .8rem;">
       <i data-lucide="git-commit-horizontal" class="h-4 w-4" style="vertical-align:-2px;"></i>
@@ -14,14 +14,110 @@
     </span>
   </div>
 
-  {% if latest %}
+  {% comment %}
+  Updater. Status is read from core (core.updates / core.versioning); the
+  check/apply actions POST to the admin_dashboard endpoints that own the guarded
+  engines (backup → verified artifact → boot-probe → auto-rollback). This is the
+  same updater that used to live on a second page at /dashboard/updates/.
+  {% endcomment %}
   <div class="card card-padded">
-    <div class="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-      <i data-lucide="sparkles" class="h-4 w-4"></i>
-      <span>Latest release{% if latest.date %} · {{ latest.date }}{% endif %}</span>
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Morpheus core</p>
+        <p class="text-lg font-semibold">{{ core_version }}</p>
+      </div>
+      <form method="post" action="{% url 'admin_dashboard:updates_check' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost text-sm"><i data-lucide="refresh-cw" class="h-4 w-4"></i> Check for updates</button>
+      </form>
+    </div>
+    <div class="mt-3 pt-3 border-t border-[color:var(--border)] text-sm">
+      {% if platform.available == 'yes' %}
+        <span class="pill pill-warn">Update available</span>
+        <span class="text-[color:var(--text-muted)]">{{ platform.behind }} commit(s) behind <code>{{ platform.upstream }}</code> · deployed <code>{{ platform.current }}</code></span>
+        <div class="mt-2 flex items-center gap-2 flex-wrap">
+          <form method="post" action="{% url 'admin_dashboard:updates_apply' %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary text-sm"
+                    data-confirm="Apply update? This backs up first, fast-forwards the deployment from {{ platform.current }} to {{ platform.latest }}, boot-probes the new code, runs migrations, and auto-rolls-back on any failure.">
+              <i data-lucide="download" class="h-4 w-4"></i> Update now
+            </button>
+          </form>
+          {% if not self_update_enabled %}<span class="text-xs text-[color:var(--text-muted)]">Self-update is off — set <code>MORPHEUS_SELF_UPDATE_ENABLED=1</code> to allow one-click apply.</span>{% endif %}
+        </div>
+      {% elif platform.available == 'no' %}
+        <span class="pill pill-success">Up to date</span>
+        <span class="text-[color:var(--text-muted)]">on <code>{{ platform.branch }}</code> at <code>{{ platform.current }}</code></span>
+      {% else %}
+        <span class="pill">Version check {{ platform.available }}</span>
+        <span class="text-[color:var(--text-muted)]">{{ platform.reason }}{% if platform.current and platform.current != 'unknown' %} · deployed <code>{{ platform.current }}</code>{% endif %}</span>
+      {% endif %}
     </div>
   </div>
+
+  {# Per-app / per-theme signed release channel — components installed on their own. #}
+  <div class="card overflow-hidden" data-testid="component-updates">
+    <div class="card-padded border-b border-[color:var(--border)] flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <h2 class="font-semibold text-sm">App &amp; theme updates</h2>
+        <p class="text-sm text-[color:var(--text-muted)]">Apps and themes installed on their own — those that ship with the platform update with core.</p>
+      </div>
+      {% if component_updates %}<span class="pill pill-warn">{{ component_updates|length }} available</span>{% endif %}
+    </div>
+    {% if component_updates %}
+    <table class="morph-table morph-table-zebra">
+      <thead><tr><th>Component</th><th>Installed</th><th>Available</th><th></th></tr></thead>
+      <tbody>
+        {% for c in component_updates %}
+        <tr>
+          <td class="font-medium">{{ c.name }} <span class="text-[color:var(--text-muted)] font-mono text-xs">{{ c.kind }}</span></td>
+          <td class="font-mono text-xs">{{ c.current }}</td>
+          <td class="font-mono text-xs">{{ c.latest }}{% if c.notes %} · <a class="link" href="{{ c.notes }}" rel="noopener" target="_blank">notes</a>{% endif %}</td>
+          <td class="text-right">
+            {% if c.core_ok %}
+            <form method="post" action="{% url 'admin_dashboard:updates_apply_component' %}" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="kind" value="{{ c.kind }}">
+              <input type="hidden" name="name" value="{{ c.name }}">
+              <button type="submit" class="btn btn-primary text-sm"
+                      data-confirm="Update {{ c.name }} from {{ c.current }} to {{ c.latest }}? The artifact is verified against the signed manifest, boot-probed, and the previous version is restored on any failure. Restart web + worker afterwards.">
+                <i data-lucide="download" class="h-4 w-4"></i> Update
+              </button>
+            </form>
+            {% else %}<span class="text-xs text-[color:var(--text-muted)]">needs core {{ c.min_core }} first</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">Nothing newer is published for the apps and themes installed here.</div>
+    {% endif %}
+  </div>
+
+  {% if themes %}
+  <div class="card overflow-hidden">
+    <div class="card-padded border-b border-[color:var(--border)]"><h2 class="font-semibold text-sm">Themes <span class="text-[color:var(--text-muted)] font-normal">({{ themes|length }})</span></h2></div>
+    <table class="morph-table morph-table-zebra">
+      <thead><tr><th>Theme</th><th>Version</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for t in themes %}
+        <tr>
+          <td class="font-medium">{{ t.label|default:t.name }} <span class="text-[color:var(--text-muted)] font-mono text-xs">{{ t.name }}</span></td>
+          <td class="font-mono text-xs">v{{ t.version }}</td>
+          <td>{% if t.active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill">Installed</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
+
+  {# ── Changelog ── #}
+  <div class="pt-2 flex items-baseline justify-between gap-3 flex-wrap">
+    <h2 class="font-semibold tracking-tight flex items-center gap-2"><i data-lucide="history" class="h-4 w-4"></i> Changelog</h2>
+    {% if latest %}<span class="text-xs text-[color:var(--text-muted)]">Latest{% if latest.date %} · {{ latest.date }}{% endif %}</span>{% endif %}
+  </div>
 
   {% if releases %}
     <div class="space-y-5">

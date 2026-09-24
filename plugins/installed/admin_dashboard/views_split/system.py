@@ -25,6 +25,16 @@ from morpheus.app.views import (
 
 @staff_member_required
 def updates_page(request: HttpRequest) -> HttpResponse:
+    # Unified surface: when the release_notes app is on, "Version & updates" is
+    # ONE page (changelog + this updater) that it owns. Redirect there so every
+    # entry point (settings card, activity feed, bookmarks) lands in one place.
+    # When release_notes is off, fall through to the standalone updater below so
+    # the update mechanism survives that plugin being disabled (disable-safety).
+    from plugins.registry import app_registry
+
+    if app_registry.is_active('release_notes'):
+        return redirect('/dashboard/apps/release_notes/version/')
+
     from django.conf import settings as dj_settings
 
     from core.updates import cached_update_status, platform_update_status

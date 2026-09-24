@@ -50,6 +50,26 @@ class VersionPageTests(TestCase):
         resp = self.client.get('/dashboard/apps/release_notes/version/')
         self.assertIn(resp.status_code, (302, 301, 403))
 
+    def test_page_is_the_unified_updater_plus_changelog(self):
+        """The two update pages are one: the version page now also renders the
+        updater (check for updates + the apply endpoints) alongside the changelog."""
+        self.client.force_login(self.staff)
+        html = self.client.get('/dashboard/apps/release_notes/version/').content.decode()
+        # Updater surface.
+        self.assertIn('Morpheus core', html)
+        self.assertIn('Check for updates', html)
+        self.assertIn('/dashboard/updates/check/', html)  # admin_dashboard action endpoint
+        self.assertIn('App &amp; theme updates', html)
+        # Changelog surface.
+        self.assertIn('Changelog', html)
+
+    def test_updates_page_redirects_to_the_unified_page(self):
+        """/dashboard/updates/ folds into the one page while release_notes is on."""
+        self.client.force_login(self.staff)
+        resp = self.client.get('/dashboard/updates/')
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp['Location'], '/dashboard/apps/release_notes/version/')
+
 
 class AboutPageTests(TestCase):
     def setUp(self):

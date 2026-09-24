@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.13 — 2026-09-24
+
+**Unify the two update pages into one 'Version & updates'**
+
+- The updater (check / apply core + app/theme updates) and the changelog lived on two separate dashboard pages. Fold the updater into the single Version & updates page: it now shows the running version, the platform + per-app/theme update checks with one-click apply, and the full changelog.
+- /dashboard/updates/ redirects there while the release_notes app is on, and still renders the standalone updater when it's disabled (the update mechanism survives a disable). Settings card relabelled to match.
+
 ## v0.75.12 — 2026-09-24
 
 **Linda chat: composer stays put when the sidebar nav is expanded**

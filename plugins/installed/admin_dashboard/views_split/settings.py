@@ -1165,10 +1165,10 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
                 'hint': 'server + client error log',
             },
             {
-                'label': 'Updates',
+                'label': 'Version & updates',
                 'url': '/dashboard/updates/',
-                'icon': 'refresh-cw',
-                'hint': 'component version inventory',
+                'icon': 'git-commit-horizontal',
+                'hint': 'version, updates & changelog',
             },
             {
                 'label': 'Caching',

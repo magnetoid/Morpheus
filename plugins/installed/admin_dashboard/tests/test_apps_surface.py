@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
@@ -13,6 +15,15 @@ class AppsSurfaceSmoke(TestCase):
             is_superuser=True,
         )
         self.client.force_login(self.staff)
+        # /dashboard/updates/ is the standalone updater; with the release_notes
+        # app on it redirects to the unified Version & updates page. Pin it
+        # inactive so these smoke checks hit the standalone render.
+        p = patch(
+            'plugins.registry.app_registry.is_active',
+            side_effect=lambda name: name != 'release_notes',
+        )
+        p.start()
+        self.addCleanup(p.stop)
 
     def test_all_three_surfaces_render(self):
         for url in ('/dashboard/apps/', '/dashboard/apps/store/', '/dashboard/updates/'):

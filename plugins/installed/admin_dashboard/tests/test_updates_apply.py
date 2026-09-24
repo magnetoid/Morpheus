@@ -10,6 +10,18 @@ from django.test import TestCase
 from django.urls import reverse
 
 
+def _pin_standalone_updater(test):
+    """`/dashboard/updates/` is the disable-safe standalone updater; when the
+    release_notes app is on it redirects to the unified Version & updates page.
+    These tests exercise the standalone render, so pin release_notes inactive."""
+    p = patch(
+        'plugins.registry.app_registry.is_active',
+        side_effect=lambda name: name != 'release_notes',
+    )
+    p.start()
+    test.addCleanup(p.stop)
+
+
 class UpdatesApplyTests(TestCase):
     def setUp(self):
         u = get_user_model().objects.create_user(
@@ -17,6 +29,7 @@ class UpdatesApplyTests(TestCase):
         )
         self.client.force_login(u)
         self.url = reverse('admin_dashboard:updates_apply')
+        _pin_standalone_updater(self)
 
     def test_get_does_not_apply(self):
         with patch('core.updates.apply_platform_update') as ap:
@@ -72,6 +85,7 @@ class ComponentUpdatesSurfaceTests(TestCase):
         self.client.force_login(u)
         self.page = reverse('admin_dashboard:updates')
         self.apply = reverse('admin_dashboard:updates_apply_component')
+        _pin_standalone_updater(self)
 
     def _cache(self, components):
         from django.core.cache import cache

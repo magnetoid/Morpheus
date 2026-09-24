@@ -115,6 +115,13 @@ def parse_releases(raw: str) -> list[dict]:
 @staff_member_required
 @require_capability('system.read')
 def version_updates(request):
+    """The one "Version & updates" page: the running version, the updater
+    (platform + per-app/theme checks and one-click apply), and the changelog.
+
+    The updater status is read from *core* (``core.updates`` / ``core.versioning``);
+    the apply/check actions POST to the admin_dashboard endpoints that own the
+    guarded engines. ``/dashboard/updates/`` redirects here while this app is on.
+    """
     version = getattr(settings, 'MORPHEUS_VERSION', 'v0.1.0')
     path = _release_notes_path()
     releases: list[dict] = []
@@ -123,6 +130,17 @@ def version_updates(request):
             releases = parse_releases(path.read_text(encoding='utf-8'))
         except Exception:  # noqa: BLE001 — never break the page on a doc glitch
             releases = []
+
+    # Updater status — core-owned, no network call on load (last check / daily beat).
+    from core.updates import cached_update_status, platform_update_status
+    from core.versioning import component_versions
+
+    components_data = component_versions()
+    platform = platform_update_status(fetch=False)
+    component_updates = platform.get('components')
+    if component_updates is None:
+        component_updates = (cached_update_status() or {}).get('components') or []
+
     return render(
         request,
         'release_notes/index.html',
@@ -130,6 +148,11 @@ def version_updates(request):
             'version': version,
             'releases': releases,
             'latest': releases[0] if releases else None,
+            'core_version': components_data.get('core', 'unknown'),
+            'themes': components_data.get('themes') or [],
+            'platform': platform,
+            'component_updates': component_updates,
+            'self_update_enabled': bool(getattr(settings, 'MORPHEUS_SELF_UPDATE_ENABLED', False)),
         },
     )
 
