@@ -771,6 +771,15 @@
      icons centre. Width is animated; state persists in localStorage. */
   @media (min-width: 1024px) {
     #sidebar { transition: width var(--motion-med) var(--ease-out); }
+    /* Bound the desktop sidebar to the viewport so its OWN nav scrolls
+       internally (#nav-main is flex-1 overflow-y-auto). The sidebar is
+       `lg:static`, and <body> is `min-h-screen flex`, so without a height
+       bound an expanded nav group grows the sidebar past the viewport, the
+       flex row stretches the content column to match, and #main-content —
+       whose Linda-chat child is `position:absolute; inset:0` — pushes the
+       chat composer below the fold. Sticky + 100dvh keeps the rail pinned
+       and self-scrolling on every page. */
+    #sidebar { position: sticky; top: 0; height: 100dvh; align-self: flex-start; }
     body.sidebar-collapsed #sidebar { width: 4rem; }
     body.sidebar-collapsed #sidebar .nav-link {
       justify-content: center; gap: 0; padding-left: 0; padding-right: 0; font-size: 0;

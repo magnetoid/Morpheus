@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.12 — 2026-09-24
+
+**Linda chat: composer stays put when the sidebar nav is expanded**
+
+- The desktop sidebar (lg:static, inside a min-h-screen flex body) had no height bound, so expanding a nav group grew it past the viewport, stretched the content column, and pushed the Linda chat composer — an absolute inset:0 child of #main-content — below the fold.
+- Pin the desktop rail to the viewport (position:sticky; height:100dvh) so its own nav scrolls internally instead of growing the page. The composer stays fixed at the bottom on every page.
+
 ## v0.75.11 — 2026-09-24
 
 **Product editor: saving works again (un-nested variant forms)**

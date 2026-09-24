@@ -65,6 +65,22 @@ class LindaChatLayoutTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn('id="morph-assistant"', resp.content.decode())
 
+    def test_desktop_sidebar_is_viewport_bounded_not_page_height(self):
+        """An expanded nav group must not grow the page and push the composer off-screen.
+
+        The desktop sidebar is ``lg:static`` inside a ``min-h-screen flex`` body,
+        so without a height bound a tall (expanded) nav rail stretches the content
+        column; the chat composer — an ``absolute; inset:0`` child of #main-content
+        — then sits below the fold. The shell pins the rail to the viewport
+        (``100dvh``) so its own nav scrolls instead of growing the page.
+        """
+        import re
+
+        html = self._html()
+        rules = ' '.join(re.findall(r'#sidebar\s*\{([^}]*)\}', html))
+        self.assertIn('position: sticky', rules)
+        self.assertRegex(rules, r'height:\s*100dvh')
+
     def test_no_django_comment_leaks_into_the_page(self):
         """A multi-line ``{# … #}`` is not a comment and renders as literal text."""
         html = self._html()
