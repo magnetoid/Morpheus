@@ -224,6 +224,7 @@ def _plan(cluster: Cluster, pol) -> dict | None:
     """Call the analyzer LLM with the recommend prompt. Returns the
     parsed JSON dict, or None on failure."""
     try:
+        from core.agents.llm import LLMMessage  # noqa: PLC0415
         from core.assistant.providers import get_default_provider  # noqa: PLC0415
         from core.safety import PROTECTED_PATHS  # noqa: PLC0415
 
@@ -242,17 +243,22 @@ def _plan(cluster: Cluster, pol) -> dict | None:
             auto_threshold=pol.auto_apply_threshold,
             protected_paths=list(PROTECTED_PATHS)[:25],
         )
-        response = provider.complete(
-            system='You output strict JSON. No prose.',
-            messages=[{'role': 'user', 'content': prompt}],
+        # Kernel providers expose `respond()` only — there is no `complete()`.
+        response = provider.respond(
+            messages=[
+                LLMMessage(role='system', content='You output strict JSON. No prose.'),
+                LLMMessage(role='user', content=prompt),
+            ],
             max_tokens=1000,
             temperature=0.2,
         )
-        text = (response.get('text') or '').strip()
+        text = (getattr(response, 'text', '') or '').strip()
         parsed = _parse_json(text)
         if parsed is None:
             return _heuristic_plan(cluster)
-        parsed['_tokens_used'] = int(response.get('usage', {}).get('total_tokens', 0))
+        parsed['_tokens_used'] = int(getattr(response, 'prompt_tokens', 0) or 0) + int(
+            getattr(response, 'completion_tokens', 0) or 0
+        )
         return parsed
     except Exception:  # noqa: BLE001
         logger.exception('analyzer: _plan failed')

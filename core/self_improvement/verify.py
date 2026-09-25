@@ -35,6 +35,7 @@ def verify_recommendation(recommendation: dict) -> VerifyResult:
     rationale so the engineer can review.
     """
     try:
+        from core.agents.llm import LLMMessage  # noqa: PLC0415
         from core.assistant.providers import get_default_provider  # noqa: PLC0415
 
         provider = get_default_provider()
@@ -42,13 +43,16 @@ def verify_recommendation(recommendation: dict) -> VerifyResult:
             return _fail_open('no_provider')
 
         prompt = verify_v1(recommendation=recommendation)
-        response = provider.complete(
-            system='You output strict JSON.',
-            messages=[{'role': 'user', 'content': prompt}],
+        # Kernel providers expose `respond()` only — there is no `complete()`.
+        response = provider.respond(
+            messages=[
+                LLMMessage(role='system', content='You output strict JSON.'),
+                LLMMessage(role='user', content=prompt),
+            ],
             max_tokens=600,
             temperature=0.0,
         )
-        text = (response.get('text') or '').strip()
+        text = (getattr(response, 'text', '') or '').strip()
         parsed = _parse_json(text)
         if parsed is None:
             return _fail_open('parse_error', raw=text)
