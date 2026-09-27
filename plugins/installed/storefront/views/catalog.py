@@ -1036,9 +1036,11 @@ def search(request):
     # PLP. A query-less /search/ falls through to render the mood-search landing
     # (the empty-state panel) instead of bouncing to /products/.
     if q and not use_semantic:
+        from urllib.parse import urlencode
+
         from django.shortcuts import redirect as _redirect
 
-        return _redirect(f'/products/?q={q}')
+        return _redirect(f'/products/?{urlencode({"q": q})}')
 
     data = (
         internal_graphql(
