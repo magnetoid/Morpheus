@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.21 — 2026-09-27
+
+**Store emails use the sender address you set**
+
+- Emails now go out from the sender address in Settings → Notifications. It only took effect once something in the same process had opened a mail connection, so most emails, including newsletter confirmations, went out from the server's fallback address instead.
+
 ## v0.75.20 — 2026-09-27
 
 **Backups run again; missing email setup is visible; crawlers aren't visitors**

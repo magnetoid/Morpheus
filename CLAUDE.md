@@ -913,7 +913,12 @@ emails and newsletter confirmations are printed, never delivered — two of thre
 live stores ran like that, while the dashboard checklist said "Set a sending
 email ✓" because `DEFAULT_FROM_EMAIL` always has a default. Test for a real
 transport with `core.email.smtp_configured()`; the fallback now logs a warning
-per message. Relatedly, deciding who is a visitor has one home:
+per message. The merchant's sender (`StoreSettings.default_from_email`) is
+swapped in by the backend's `send_messages`: callers build messages from
+`settings.DEFAULT_FROM_EMAIL` before any backend exists (async mail is built in
+the web process), so mutating that setting at backend construction sent live
+mail from a `noreply@` that doesn't exist (`core/tests/test_email_sender.py`).
+Relatedly, deciding who is a visitor has one home:
 `core.utils.crawlers.is_crawler_user_agent` (crawlers, HTTP libraries and empty
 user agents are not browsers) — analytics browsing signals and GA4 both use it;
 Django's test client sends no user agent, so visitor tests must set one.

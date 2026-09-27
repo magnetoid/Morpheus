@@ -1,4 +1,5 @@
 import logging
+from email.utils import parseaddr
 
 from django.conf import settings
 from django.core.mail.backends.console import EmailBackend as ConsoleBackend
@@ -31,6 +32,9 @@ class MorpheusEmailBackend:
     back to ``EMAIL_*`` environment variables. When neither path resolves a host
     we drop to the console backend so dev work and unconfigured installs see
     every outbound message in stdout instead of silently failing or 500-ing.
+
+    The merchant's sender (``StoreSettings.default_from_email``) replaces the
+    deployment's ``DEFAULT_FROM_EMAIL`` at send time, in ``send_messages``.
     """
 
     def __init__(self, fail_silently=False, **kwargs):
@@ -39,6 +43,7 @@ class MorpheusEmailBackend:
         username = getattr(settings, 'EMAIL_HOST_USER', '')
         password = getattr(settings, 'EMAIL_HOST_PASSWORD', '')
         use_tls = getattr(settings, 'EMAIL_USE_TLS', True)
+        self._sender = ''
         try:
             store_settings = StoreSettings.objects.first()
             if store_settings and store_settings.smtp_host:
@@ -47,7 +52,7 @@ class MorpheusEmailBackend:
                 username = store_settings.smtp_user
                 password = store_settings.smtp_password
             if store_settings and store_settings.default_from_email:
-                settings.DEFAULT_FROM_EMAIL = store_settings.default_from_email
+                self._sender = store_settings.default_from_email
         except Exception:  # noqa: BLE001, S110
             pass
 
@@ -72,6 +77,18 @@ class MorpheusEmailBackend:
                     'EMAIL_HOST) — this message is written to the log, not delivered'
                 )
             self._backend = ConsoleBackend(fail_silently=fail_silently, **kwargs)
+
+    def send_messages(self, email_messages):
+        # Callers build messages from DEFAULT_FROM_EMAIL, usually before any
+        # backend exists in the process (async mail is built in the web
+        # process and sent by the worker), so the merchant's sender is applied
+        # here, where every message passes. An explicit other sender is kept.
+        if self._sender:
+            fallback = parseaddr(settings.DEFAULT_FROM_EMAIL)[1]
+            for message in email_messages:
+                if parseaddr(message.from_email)[1] == fallback:
+                    message.from_email = self._sender
+        return self._backend.send_messages(email_messages)
 
     def __getattr__(self, name):
         return getattr(self._backend, name)
