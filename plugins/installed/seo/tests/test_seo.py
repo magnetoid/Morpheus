@@ -141,6 +141,26 @@ class DocumentTitleTests(TestCase):
         # Idempotent — never double-brands an already-suffixed title.
         self.assertEqual(format_document_title('My Page — dotbooks'), 'My Page — dotbooks')
 
+    def test_clamping_a_long_title_never_cuts_through_a_word(self):
+        """The 60-char clamp sliced the finished string, so the brand was the
+        part cut: montenegro's /bookings/ title rendered as "Experiences in
+        Montenegro — book with local hosts — Montene" in every tab and SERP.
+        Over the cap the brand is dropped whole; a title that is still too
+        long ends on a word, never inside one."""
+        from core.models import StoreSettings
+        from plugins.installed.seo.services.meta import format_document_title
+
+        StoreSettings.objects.all().delete()
+        StoreSettings.objects.create(store_name='Montenegro Experience')
+        page = 'Experiences in Montenegro — book with local hosts'
+        self.assertEqual(format_document_title(page), page)
+
+        long_page = 'A Treatise on the Principles of Human Knowledge and Understanding'
+        clamped = format_document_title(long_page)
+        self.assertLessEqual(len(clamped), 60)
+        self.assertTrue(long_page.startswith(clamped))
+        self.assertEqual(long_page[len(clamped)], ' ', f'cut inside a word: {clamped!r}')
+
     def test_object_page_gets_branded_document_title(self):
         from core.models import StoreSettings
 

@@ -94,14 +94,29 @@ def format_document_title(page_title: str, *, category: str = '', settings_row=N
     if not page_title:
         return (brand or 'Untitled')[:max_len]
     if not brand or page_title == brand:
-        return page_title[:max_len]
+        return _clamp_on_word(page_title, max_len)
     try:
         out = template_str.format(
             title=page_title, site_name=brand, category=category or ''
         ).strip()
     except (KeyError, IndexError, ValueError):
         out = f'{page_title} — {brand}'
-    return out[:max_len]
+    if len(out) <= max_len:
+        return out
+    # Over the cap: drop the brand whole rather than slicing through it (or
+    # the page title itself, mid-word) — a title cut inside a word reads as
+    # broken in every tab and SERP.
+    if len(page_title) <= max_len:
+        return page_title
+    return _clamp_on_word(page_title, max_len)
+
+
+def _clamp_on_word(text: str, max_len: int) -> str:
+    """Clamp ``text`` to ``max_len`` without cutting inside a word."""
+    if len(text) <= max_len:
+        return text
+    idx = text.rfind(' ', 0, max_len + 1)
+    return text[:idx] if idx > 0 else text[:max_len]
 
 
 def _template_layer(
