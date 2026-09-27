@@ -1,8 +1,27 @@
+import logging
+
 from django.conf import settings
 from django.core.mail.backends.console import EmailBackend as ConsoleBackend
 from django.core.mail.backends.smtp import EmailBackend as SmtpBackend
 
 from core.models import StoreSettings
+
+logger = logging.getLogger('morpheus.email')
+
+
+def smtp_configured() -> bool:
+    """Whether outbound email has a real transport (StoreSettings or env).
+
+    Without one, MorpheusEmailBackend prints every message to the log instead
+    of sending it — sign-in codes and order emails included.
+    """
+    if getattr(settings, 'EMAIL_HOST', ''):
+        return True
+    try:
+        row = StoreSettings.objects.first()
+    except Exception:  # noqa: BLE001 — no table yet (fresh install)
+        return False
+    return bool(row and row.smtp_host)
 
 
 class MorpheusEmailBackend:
@@ -45,7 +64,13 @@ class MorpheusEmailBackend:
         else:
             # No SMTP configured — log every outbound email to stdout so
             # devs and merchants can see what was attempted before they
-            # wire a real provider.
+            # wire a real provider. In production that silently meant no
+            # email was ever delivered, so say so where someone will see it.
+            if not settings.DEBUG:
+                logger.warning(
+                    'email: no SMTP host is configured (Settings → Notifications, or '
+                    'EMAIL_HOST) — this message is written to the log, not delivered'
+                )
             self._backend = ConsoleBackend(fail_silently=fail_silently, **kwargs)
 
     def __getattr__(self, name):

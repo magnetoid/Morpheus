@@ -181,20 +181,26 @@ def _compute_setup_steps() -> list:
     email step reads core settings — no plugin owns it — and is
     appended here so it always lands last.
     """
-    from django.conf import settings as dj_settings
-
     from morpheus.core import MorpheusEvents, hook_registry
 
     steps: list = []
     with _safe_block('setup.steps'):
         steps = hook_registry.filter(MorpheusEvents.DASHBOARD_SETUP_STEPS, value=steps)
+    # Done only when mail can actually leave: a sender address always has a
+    # default, so checking DEFAULT_FROM_EMAIL reported done on stores that
+    # delivered nothing.
+    from core.email import smtp_configured
+
     steps.append(
         {
             'key': 'email',
-            'label': 'Set a sending email',
-            'hint': 'So order confirmations and receipts can go out.',
-            'url': '/dashboard/settings/general/',
-            'done': bool(getattr(dj_settings, 'DEFAULT_FROM_EMAIL', '') or ''),
+            'label': 'Connect outgoing email',
+            'hint': (
+                'Without an SMTP server, sign-in codes and order emails are only '
+                'logged, never delivered.'
+            ),
+            'url': '/dashboard/settings/notifications/',
+            'done': smtp_configured(),
         }
     )
     return steps
