@@ -17,11 +17,18 @@ logger = logging.getLogger('morpheus.b2b')
 
 
 def resolve_price_for_account(*, product, account=None, variant=None):
-    """Find the best price-list price for this product+account, else fall back."""
+    """Find the best price-list price for this product+account, else fall back.
+
+    The fallback is the catalog price the storefront cart charges — the
+    variant's own price first (`effective_price`). Falling back to the parent
+    product priced a variable product's variants at the parent's placeholder
+    (0.00), so a bulk CSV reorder put free lines in the cart.
+    """
     from plugins.installed.b2b.models import PriceListItem
 
+    list_price = variant.effective_price if variant is not None else product.price
     if account is None:
-        return product.price
+        return list_price
     qs = PriceListItem.objects.filter(
         price_list__accounts=account,
         product=product,
@@ -34,7 +41,7 @@ def resolve_price_for_account(*, product, account=None, variant=None):
             product=product,
             variant__isnull=True,
         ).first()
-    return item.price if item is not None else product.price
+    return item.price if item is not None else list_price
 
 
 def create_quote(
