@@ -25,9 +25,16 @@ import logging
 import re
 from dataclasses import asdict, dataclass, field
 
+from celery.exceptions import SoftTimeLimitExceeded
 from django.core.cache import cache
 
+from core.ratelimit import INTERNAL_REQUEST_ENVIRON_KEY
+
 logger = logging.getLogger('morpheus.seo.site_audit')
+
+# A crawler's user agent, so analytics and tracking don't count the audit's
+# nightly pass over every page as visitors.
+_AUDIT_USER_AGENT = 'MorpheusSiteAudit/1.0 (internal crawler)'
 
 CACHE_KEY = 'seo:site_audit:v1'
 CACHE_TTL = 60 * 60 * 26  # outlive a daily run, so a failed night still shows
@@ -97,7 +104,18 @@ def _facts(client, path: str, host: str) -> PageFacts:
         # before it reaches a view — and this audit would then report EVERY url
         # in the sitemap as a redirect. Dev has the flag off, so no local test
         # can see it; the first prod run reported 59 of 59 pages critical.
-        response = client.get(path, HTTP_HOST=host, secure=True)
+        # The internal marker keeps the storefront rate limiter from 429ing the
+        # audit (it is one anonymous client fetching hundreds of pages a
+        # minute), and the user agent tells analytics this is not a visitor.
+        response = client.get(
+            path,
+            HTTP_HOST=host,
+            HTTP_USER_AGENT=_AUDIT_USER_AGENT,
+            secure=True,
+            **{INTERNAL_REQUEST_ENVIRON_KEY: True},
+        )
+    except SoftTimeLimitExceeded:
+        raise  # the task's time budget is spent — stop, don't crawl on to the hard kill
     except Exception as e:  # noqa: BLE001 — one bad page must not end the audit
         logger.warning('site_audit: %s raised %s', path, e)
         return PageFacts(path=path, status=0)
@@ -178,12 +196,21 @@ def collect(*, limit: int | None = None) -> dict:
         host = next((h for h in allowed if h and not h.startswith('.')), 'testserver')
 
     client = Client()
-    pages = [_facts(client, path, host) for path in _paths(limit)]
+    pages: list[PageFacts] = []
+    partial = False
+    try:
+        for path in _paths(limit):
+            pages.append(_facts(client, path, host))
+    except SoftTimeLimitExceeded:
+        # Report what was checked rather than lose the whole night's work.
+        partial = True
+        logger.warning('site_audit: time budget spent after %d pages', len(pages))
     findings = _analyse(pages)
     score = max(0, 100 - sum(_PENALTY.get(f.severity, 0) for f in findings))
     return {
         'generated_at': timezone.now().isoformat(),
         'pages_checked': len(pages),
+        'partial': partial,
         'score': score,
         'findings': [f.as_dict() for f in findings],
         'coverage': _coverage(pages),

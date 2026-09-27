@@ -60,7 +60,10 @@ def last_image_optimize_status() -> dict | None:
     return cache.get(_STATUS_KEY)
 
 
-@app.task(name='seo.site_audit', ignore_result=True)
+# Its own budget: the global 4/5-minute limits cannot hold a full crawl
+# (dotbooks' sitemap is ~3,700 URLs), so the worker was SIGKILLed mid-audit
+# every night. On the soft limit the audit stops and stores what it checked.
+@app.task(name='seo.site_audit', ignore_result=True, soft_time_limit=1800, time_limit=1920)
 def site_audit_task(limit: int = 0) -> None:
     """Nightly site-wide SEO crawl — see `services/site_audit.py`.
 

@@ -57,6 +57,13 @@ _BYPASS = (
 )
 
 
+#: WSGI environ key an in-process request sets (the SEO site audit crawls the
+#: store through Django's test Client). The dot is load-bearing: the server
+#: turns every HTTP header into an ``HTTP_*`` key, so no remote client can
+#: produce this one.
+INTERNAL_REQUEST_ENVIRON_KEY = 'morpheus.internal_request'
+
+
 def _client_id(request) -> str:
     # Behind Cloudflare the real client IP is CF-Connecting-IP (the payments +
     # cloudflare plugins resolve it the same way). The XFF first-hop can collapse
@@ -94,7 +101,11 @@ class RateLimitMiddleware:
         self.enabled = bool(getattr(settings, 'MORPHEUS_RATELIMIT_ENABLED', not settings.DEBUG))
 
     def __call__(self, request):
-        if not self.enabled or _is_bypassed(request.path):
+        if (
+            not self.enabled
+            or _is_bypassed(request.path)
+            or request.META.get(INTERNAL_REQUEST_ENVIRON_KEY)
+        ):
             return self.get_response(request)
 
         # Trusted operators (staff/admin) are never IP-rate-limited — their
