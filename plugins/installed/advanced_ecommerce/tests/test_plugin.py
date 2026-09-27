@@ -82,6 +82,30 @@ class LowStockTemplateTagTests(TestCase):
         StockLevel.objects.create(variant=v, warehouse=wh, quantity=3, reserved_quantity=0)
         self.assertEqual(product_total_stock(product), 3)
 
+    def test_low_stock_badge_renders_on_the_live_pdp(self):
+        """The PDP hands its blocks the GraphQL product DICT, not the model.
+
+        `product_total_stock` filtered `variant__product=<dict>`, which raised;
+        the bare except returned 0 and the "Only N left" badge never rendered on
+        a real product page — while the ORM-fed test above stayed green.
+        """
+        product = Product.objects.create(
+            name='Scarce',
+            slug='scarce-probe',
+            sku='SCARCE',
+            price=Money(10, 'USD'),
+            status='active',
+        )
+        v = ProductVariant.objects.create(
+            product=product, name='V', sku='SCARCE-V', price=Money(10, 'USD')
+        )
+        wh = Warehouse.objects.create(name='W', code='W', is_default=True)
+        StockLevel.objects.create(variant=v, warehouse=wh, quantity=2, reserved_quantity=0)
+
+        response = self.client.get('/products/scarce-probe/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Only 2 left', response.content.decode())
+
 
 class CollectionRailsTests(TestCase):
     """featured_collection_rails powers the homepage collection sliders."""

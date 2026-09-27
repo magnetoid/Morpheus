@@ -99,14 +99,23 @@ def featured_collection_rails(exclude_slug: str = '', per_rail: int = 8, max_rai
 
 @register.simple_tag
 def product_total_stock(product) -> int:
-    """Sum of available stock across all variants of a product."""
+    """Sum of available stock across all variants of a product.
+
+    The PDP hands storefront blocks the GraphQL product DICT, not the model —
+    filtering `variant__product=<dict>` raised and the bare except returned 0,
+    so the "Only N left" badge never rendered on a real product page. Resolve
+    the id from either shape and filter by `variant__product_id` instead.
+    """
     if product is None:
+        return 0
+    product_id = product.get('id') if isinstance(product, dict) else getattr(product, 'pk', None)
+    if not product_id:
         return 0
     try:
         from plugins.installed.inventory.models import StockLevel
 
         total = 0
-        for sl in StockLevel.objects.filter(variant__product=product):
+        for sl in StockLevel.objects.filter(variant__product_id=product_id):
             total += max(0, sl.quantity - sl.reserved_quantity)
         return total
     except Exception:  # noqa: BLE001
