@@ -15,7 +15,10 @@ from morpheus.core import ToolError, ToolResult, tool
             'limit': {'type': 'integer', 'minimum': 1, 'maximum': 25, 'default': 10},
             'state': {
                 'type': 'string',
-                'description': 'Filter by order state (e.g. pending, paid, shipped).',
+                'description': (
+                    'Filter by order status (e.g. pending, processing, shipped, '
+                    'delivered, cancelled).'
+                ),
             },
         },
     },
@@ -24,18 +27,19 @@ def list_recent_orders_tool(*, limit: int = 10, state: str = '') -> ToolResult:
     from plugins.installed.orders.models import Order
 
     limit = max(1, min(int(limit or 10), 25))
-    qs = Order.objects.all().order_by('-created_at')
+    # Order records `status` and `placed_at` — there is no state/created_at.
+    qs = Order.objects.all().order_by('-placed_at')
     if state:
-        qs = qs.filter(state=state)
+        qs = qs.filter(status=state)
     rows = []
     for o in qs[:limit]:
         rows.append(
             {
                 'order_number': o.order_number,
-                'state': o.state,
+                'state': o.status,
                 'total': str(getattr(o.total, 'amount', '')),
                 'currency': str(getattr(o.total, 'currency', '')),
-                'created_at': o.created_at.isoformat(),
+                'created_at': o.placed_at.isoformat(),
                 'customer_email': getattr(o.customer, 'email', '') if o.customer_id else o.email,
             }
         )
@@ -70,11 +74,11 @@ def summarise_order_tool(*, order_number: str) -> ToolResult:
     return ToolResult(
         output={
             'order_number': order.order_number,
-            'state': order.state,
+            'state': order.status,
             'total': str(getattr(order.total, 'amount', '')),
             'currency': str(getattr(order.total, 'currency', '')),
             'items': items,
-            'created_at': order.created_at.isoformat(),
+            'created_at': order.placed_at.isoformat(),
         }
     )
 

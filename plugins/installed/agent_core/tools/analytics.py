@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from decimal import Decimal
 
 from morpheus.core import ToolResult, tool
 
@@ -26,16 +27,23 @@ def revenue_summary_tool(*, days: int = 30) -> ToolResult:
 
     days = max(1, min(int(days or 30), 365))
     since = timezone.now() - timedelta(days=days)
-    qs = Order.objects.filter(
-        created_at__gte=since, state__in=['paid', 'shipped', 'delivered', 'completed']
-    )
+    # Revenue is money received: payment_status, not a fulfilment status
+    # ('paid' and 'completed' were never order statuses), by placed_at.
+    qs = Order.objects.filter(placed_at__gte=since, payment_status='paid')
     agg = qs.aggregate(total=Sum('total'), n=Count('id'))
+    # Sum over a MoneyField yields the bare amount, so the currency is read
+    # separately — and named as mixed when the orders add different ones.
+    currencies = sorted(set(qs.values_list('total_currency', flat=True)))
+    if len(currencies) == 1:
+        currency = currencies[0]
+    else:
+        currency = f'mixed ({", ".join(currencies)})' if currencies else ''
     return ToolResult(
         output={
             'days': days,
             'order_count': agg['n'] or 0,
-            'revenue': str(agg['total'].amount) if agg.get('total') is not None else '0',
-            'currency': str(agg['total'].currency) if agg.get('total') is not None else '',
+            'revenue': str(Decimal(agg['total'] or 0).quantize(Decimal('0.01'))),
+            'currency': currency,
         }
     )
 
