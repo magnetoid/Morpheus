@@ -992,8 +992,8 @@
       }
     ],
     "meta": {
-      "description": "Notes, essays, short pieces from the booksellers. Updated when there's something to say.",
-      "og:description": "Notes, essays, short pieces from the booksellers. Updated when there's something to say.",
+      "description": "Notes and stories from this shop.",
+      "og:description": "Notes and stories from this shop.",
       "og:locale": "en",
       "og:site_name": "Morpheus Store",
       "og:title": "Journal",
@@ -1001,7 +1001,7 @@
       "og:url": "http://testserver/journal/",
       "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
       "twitter:card": "summary_large_image",
-      "twitter:description": "Notes, essays, short pieces from the booksellers. Updated when there's something to say.",
+      "twitter:description": "Notes and stories from this shop.",
       "twitter:title": "Journal"
     },
     "path": "/journal/",
