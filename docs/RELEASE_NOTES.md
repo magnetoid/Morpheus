@@ -15,6 +15,21 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.19 — 2026-09-27
+
+**Deep-debug batch: payments, bookings, agents, search, SEO**
+
+- Payments: a Stripe payment whose first webhook processing failed is now processed on Stripe's retry (it was acknowledged unprocessed, leaving a paid order unpaid).
+- B2B bulk reorder prices variant lines at the variant's price (it used the parent's 0.00 placeholder).
+- Bookings: closes three overbooking paths, applies a room's adult limit, and enquiries keep the guest's chosen date and party size.
+- Back-in-stock subscribers are emailed when stock returns; re-cancelling an order no longer frees other orders' stock holds.
+- Agent tools: catalog and SEO update tools apply the fields they are given (price changes stay on the gated price tool); the recent-orders, order-summary and revenue tools work again.
+- GA4: product views are sent for shoppers (not crawlers), at the shown price, without delaying the page; cart and order lines report what was charged.
+- Journal: stores no longer serve another store's sample essays. The nightly SEO audit is no longer throttled by its own store and completes on large catalogs.
+- Storefront and SEO: low-stock badge, account points page title, titles clamp on a word, honest sitemap index with vendor pages, quick-search and PDP stock notices agree with checkout, full search queries, trust-strip rating, web-story logo.
+- Dashboard: the Theme builder preview renders; the marketplace Reports page loads; re-posting a review keeps its moderation; a taken profile email shows a message instead of an error.
+- The self-improvement analyzer uses the configured AI provider again.
+
 ## v0.75.18 — 2026-09-27
 
 **Product editor keeps stock tracking and shipping on save**
