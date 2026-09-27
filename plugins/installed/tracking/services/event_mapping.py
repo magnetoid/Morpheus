@@ -34,6 +34,31 @@ def _money_currency(value, default: str = 'USD') -> str:
     return str(cur)
 
 
+def _shown_price(product):
+    """The price a shopper is shown for `product` (model OR dict).
+
+    For a model: the display price (a variable product's own price is a 0.00
+    placeholder; its offer is the cheapest active variant) through the same
+    PRODUCT_CALCULATE_PRICE seam the product page uses. Columns a caller
+    deferred with `.only()` are loaded first — djmoney raises KeyError, not
+    AttributeError, when a deferred MoneyField is read, so a `getattr` default
+    never applies and the whole event used to fail.
+    """
+    if isinstance(product, dict):
+        return product.get('price')
+    deferred = getattr(product, 'get_deferred_fields', None)
+    if callable(deferred):
+        missing = [f for f in ('price', 'price_currency', 'product_type') if f in deferred()]
+        if missing:
+            product.refresh_from_db(fields=missing)
+    base = getattr(product, 'display_price', None) or getattr(product, 'price', None)
+    if base is None:
+        return None
+    from core.pricing import apply_price_filter  # noqa: PLC0415
+
+    return apply_price_filter(base, product=product)
+
+
 def _product_item(
     product,
     *,
@@ -42,22 +67,26 @@ def _product_item(
     list_id: str = '',
     list_name: str = '',
     index: int = 0,
+    unit_price=None,
 ) -> dict[str, Any]:
-    """Shape a Product (model OR dict) into a GA4 items[] entry."""
+    """Shape a Product (model OR dict) into a GA4 items[] entry.
+
+    `unit_price` is what a cart/order line was actually charged; when given it
+    is the item's price, never the catalog's current one.
+    """
     if isinstance(product, dict):
         name = product.get('name') or ''
         slug = product.get('slug') or ''
         sku = product.get('sku') or ''
-        price = product.get('price')
         cat = product.get('category') or {}
         cat_name = cat.get('name') if isinstance(cat, dict) else getattr(cat, 'name', '')
     else:
         name = getattr(product, 'name', '') or ''
         slug = getattr(product, 'slug', '') or ''
         sku = getattr(product, 'sku', '') or ''
-        price = getattr(product, 'price', None)
         cat = getattr(product, 'category', None)
         cat_name = getattr(cat, 'name', '') if cat else ''
+    price = unit_price if unit_price is not None else _shown_price(product)
 
     item: dict[str, Any] = {
         'item_id': sku or slug,
@@ -88,13 +117,10 @@ def _product_item(
 
 
 def view_item(product) -> tuple[str, dict[str, Any]]:
-    item = _product_item(product)
+    price = _shown_price(product)
+    item = _product_item(product, unit_price=price)
     return 'view_item', {
-        'currency': _money_currency(
-            getattr(product, 'price', None)
-            if not isinstance(product, dict)
-            else product.get('price')
-        ),
+        'currency': _money_currency(price),
         'value': item['price'],
         'items': [item],
     }
@@ -117,18 +143,20 @@ def view_item_list(
 def add_to_cart(
     *, cart, item, product, variant=None, quantity: int = 1
 ) -> tuple[str, dict[str, Any]]:
-    line_item = _product_item(product, quantity=quantity, variant=variant)
+    price = getattr(item, 'unit_price', None) or _shown_price(product)
+    line_item = _product_item(product, quantity=quantity, variant=variant, unit_price=price)
     return 'add_to_cart', {
-        'currency': _money_currency(getattr(product, 'price', None)),
+        'currency': _money_currency(price),
         'value': line_item['price'] * quantity,
         'items': [line_item],
     }
 
 
 def remove_from_cart(*, cart, item, product, quantity: int = 1) -> tuple[str, dict[str, Any]]:
-    line_item = _product_item(product, quantity=quantity)
+    price = getattr(item, 'unit_price', None) or _shown_price(product)
+    line_item = _product_item(product, quantity=quantity, unit_price=price)
     return 'remove_from_cart', {
-        'currency': _money_currency(getattr(product, 'price', None)),
+        'currency': _money_currency(price),
         'value': line_item['price'] * quantity,
         'items': [line_item],
     }
@@ -146,12 +174,17 @@ def begin_checkout(cart) -> tuple[str, dict[str, Any]]:
             if prod is None:
                 continue
             qty = int(getattr(ci, 'quantity', 1) or 1)
+            unit_price = getattr(ci, 'unit_price', None)
             line = _product_item(
-                prod, quantity=qty, variant=getattr(ci, 'variant', None), index=i + 1
+                prod,
+                quantity=qty,
+                variant=getattr(ci, 'variant', None),
+                index=i + 1,
+                unit_price=unit_price,
             )
             items.append(line)
             total += Decimal(str(line['price'])) * qty
-            currency = _money_currency(getattr(prod, 'price', None), currency)
+            currency = _money_currency(unit_price, currency)
     except Exception as exc:  # noqa: BLE001
         logger.debug('begin_checkout shape failed: %s', exc)
     return 'begin_checkout', {
@@ -173,7 +206,11 @@ def purchase(order) -> tuple[str, dict[str, Any]]:
             qty = int(getattr(line, 'quantity', 1) or 1)
             items.append(
                 _product_item(
-                    prod, quantity=qty, variant=getattr(line, 'variant', None), index=i + 1
+                    prod,
+                    quantity=qty,
+                    variant=getattr(line, 'variant', None),
+                    index=i + 1,
+                    unit_price=getattr(line, 'unit_price', None),
                 )
             )
     except Exception as exc:  # noqa: BLE001

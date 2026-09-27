@@ -499,6 +499,14 @@ def product_detail(request, slug):
                 'id',
                 'slug',
                 'updated_at',
+                # PRODUCT_VIEWED hands this row to subscribers as the product;
+                # tracking's view_item reads these (a deferred price raises).
+                'name',
+                'sku',
+                'product_type',
+                'price',
+                'price_currency',
+                'category',
                 'vendor__id',
                 'vendor__name',
                 'vendor__slug',

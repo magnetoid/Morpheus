@@ -11,11 +11,25 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from morpheus.app import Plugin, SettingsPanel
 from morpheus.core import events
 
 logger = logging.getLogger('morpheus.tracking')
+
+# User agents that are not a person in a browser: crawlers, previews, monitors
+# and HTTP libraries. An empty user agent is not a browser either.
+_CRAWLER_UA = re.compile(
+    r'bot|crawl|spider|slurp|preview|monitor|lighthouse|headless|scrap|fetch'
+    r'|python|curl|wget|go-http|java/|httpclient|okhttp|axios',
+    re.IGNORECASE,
+)
+
+
+def _is_crawler(request) -> bool:
+    ua = (request.META.get('HTTP_USER_AGENT') or '') if request is not None else ''
+    return not ua or _CRAWLER_UA.search(ua) is not None
 
 
 class TrackingPlugin(Plugin):
@@ -89,8 +103,12 @@ class TrackingPlugin(Plugin):
             return
         self._fire('begin_checkout', cart=cart)
 
-    def on_product_viewed(self, product=None, **_):
-        if product is None:
+    def on_product_viewed(self, product=None, request=None, **_):
+        # A product page is a GET, so crawlers fire this as often as shoppers
+        # (~9 in 10 hits on the live stores). GA4 filters known bots only for
+        # hits it sees from the browser; a Measurement Protocol hit carries our
+        # server's user agent, so the crawler check has to happen here.
+        if product is None or _is_crawler(request):
             return
         self._fire('view_item', product=product)
 
@@ -112,7 +130,7 @@ class TrackingPlugin(Plugin):
         """
         try:
             from plugins.installed.tracking.services import event_mapping
-            from plugins.installed.tracking.services.measurement_protocol import send_event
+            from plugins.installed.tracking.tasks import send_event_task
         except Exception as exc:  # noqa: BLE001
             logger.warning('tracking: import failed for %s: %s', event_kind, exc)
             return
@@ -158,10 +176,14 @@ class TrackingPlugin(Plugin):
             logger.warning('tracking: %s builder failed: %s', event_kind, exc)
             return
 
+        # Queued, not sent: the POST to Google must never hold the shopper's
+        # request (product page, add to cart, checkout) open.
         try:
-            send_event(event_name=event_name, params=params, transaction_id=transaction_id)
+            send_event_task.delay(
+                event_name=event_name, params=params, transaction_id=transaction_id
+            )
         except Exception as exc:  # noqa: BLE001
-            logger.warning('tracking: send_event(%s) failed: %s', event_name, exc)
+            logger.warning('tracking: could not queue %s: %s', event_name, exc)
 
     def contribute_dashboard_pages(self) -> list:
         # No DashboardPage — Tracking lives at /dashboard/tracking/ via
