@@ -199,3 +199,16 @@ class AccountPointsBoundaryTests(TestCase):
         body = resp.content.decode()
         self.assertIn('0 points', body)
         self.assertNotIn('420 points', body)
+
+    def test_page_keeps_the_head_document(self):
+        """The template overrode `{% block seo %}` — the block that holds the
+        theme's `{% storefront_head %}` — with a bare `seo_meta` to force
+        noindex, so the page shipped with no `<title>` at all. The head
+        document already holds every `/account/` path back."""
+        import re
+
+        self.client.force_login(self.alice)
+        body = self.client.get('/account/points/').content.decode()
+        head = body[: body.lower().find('</head>')]
+        self.assertEqual(len(re.findall(r'<title[^>]*>', head, re.I)), 1, 'one <title>')
+        self.assertRegex(head, r'name=["\']robots["\'] content=["\']noindex, nofollow')
