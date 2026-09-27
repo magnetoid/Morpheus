@@ -873,6 +873,39 @@ page, and asserts three surfaces vanish) + `admin_dashboard/tests/test_disable_s
 The right end state is still a contribution per surface (PDP gallery/facets,
 journal, settings panels) — `docs/plans/boundary-debt-2026-07.md`.
 
+**Landmine — a Celery task defined outside `<app>.tasks` never reaches the
+worker, and the eager test suite cannot see it.** Autodiscovery imports only
+each installed app's `tasks` module. A task defined anywhere else registers in
+the *web* process (which imports it to call `.delay()`) and never in the worker,
+which discards every message as unregistered — no queue backlog, no error in
+the web logs. `core.emails.tasks.deliver_email` shipped this way: every order
+and newsletter email from 2026-07-12 to v0.75.17 was enqueued and dropped (so
+were catalog search sync and the query-embedding warm-up). Import such tasks
+from the owning app's `tasks.py`. To check a live worker:
+`celery -A morph inspect registered`. Guarded by
+`core/tests/test_celery_wiring.py`, which boots a fresh interpreter the way the
+worker does.
+
+**Landmine — a hidden form control still submits, and Django reads the LAST
+value of a repeated key.** The product editor hid inactive per-type cards with
+`el.hidden`; their controls still posted, and the Digital card's trailing
+`<input type=hidden name=track_inventory value="">` switched stock tracking and
+shipping off on every simple-product save. One control per name per form;
+decide type-dependent values on the server. Guarded by
+`admin_dashboard/tests/test_product_form_roundtrip.py`, which posts back exactly
+what a browser builds from the rendered page.
+
+**Landmine — invoking an agent hands the caller every scope the AGENT holds.**
+The runtime checks tools against the agent's scopes, never the caller's, so
+`audience='any'` (the generic Worker, which holds every merchant scope) being
+treated as public let anonymous POSTs run `customers.search` (fixed v0.75.16).
+One predicate, `agent_core.services.invocation_denial`, serves REST and GraphQL:
+only `storefront` agents are public, and a Bearer token must hold every scope
+the agent holds. Relatedly, `Tool.invoke` forwards schema-declared arguments to
+a `**fields` handler (it once dropped them all, so catalog updates reported
+success and changed nothing) — and a generic update tool must refuse fields
+that have their own gated tool (price → `products.update_price`).
+
 **Known debt to repay (still fails the disable test):**
 the storefront account *summary* is fixed — `_account_summary` is now
 assembled entirely by `ACCOUNT_SUMMARY_FIELDS` subscribers (orders,
