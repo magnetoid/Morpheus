@@ -76,7 +76,16 @@ def story_page(request: HttpRequest, slug: str) -> HttpResponse:
     publisher_name = (
         getattr(settings_row, 'store_name', None) or getattr(settings_row, 'name', None) or 'Store'
     )
-    publisher_logo = getattr(settings_row, 'logo_url', '') or f'{base}/static/img/logo-1x1.png'
+    # StoreSettings has `logo` (an ImageField), never `logo_url` — reading the
+    # latter always missed, silently falling back to a static file that isn't
+    # in the tree, so every story on every store pointed publisher-logo-src at
+    # a 404. An empty ImageField is falsy, so the truthy check guards the
+    # `.url` access (an empty FileField raises ValueError on `.url`).
+    logo = getattr(settings_row, 'logo', None)
+    logo_url = logo.url if logo else ''
+    if logo_url and not logo_url.startswith(('http://', 'https://')):
+        logo_url = f'{base}{logo_url}'
+    publisher_logo = logo_url or f'{base}/favicon.ico'
 
     context = {
         'story': story,
