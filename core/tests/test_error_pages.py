@@ -15,7 +15,7 @@ class ErrorPageTests(TestCase):
         self.assertEqual(resp.status_code, 404)
         self.assertContains(resp, 'gone missing', status_code=404)
         # dead-ends must offer a way out
-        self.assertContains(resp, 'Browse all books', status_code=404)
+        self.assertContains(resp, 'Browse the shop', status_code=404)
 
     def test_404_is_noindexed(self):
         resp = self.client.get('/definitely-not-a-real-page-xyz/')
@@ -27,7 +27,7 @@ class ErrorPageTests(TestCase):
         # exactly the production condition; any {% extends %}/{% static %}/
         # variable dependency would blow up here.
         html = loader.render_to_string('500.html')
-        self.assertIn('tipped over', html)
+        self.assertIn('Something went wrong', html)
         self.assertIn('href="/"', html)
 
     def test_favicon_served_at_conventional_path(self):
