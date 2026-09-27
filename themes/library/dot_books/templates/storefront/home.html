@@ -578,6 +578,7 @@ geometry, so the dots and cover never move between books.
   </div>
 </section>
 
+{% if journal_teasers %}
 <hr class="rule">
 
 <!-- Journal teaser -->
@@ -592,7 +593,7 @@ geometry, so the dots and cover never move between books.
     </div>
 
     <div style="display:grid; gap: 2rem; grid-template-columns: 1fr; margin-top: 2rem;" class="journal-grid">
-      {% comment %}Real entries — published CMS journal pages, falling back to the seeded editorial set (journal_teasers, set in views/home.py). Same links as /journal/.{% endcomment %}
+      {% comment %}Real entries — published CMS journal pages (journal_teasers, set in views/home.py). Same links as /journal/.{% endcomment %}
       {% for entry in journal_teasers %}
       <article class="journal-card" data-reveal {% if forloop.counter == 2 %}style="--reveal-delay: 90ms;"{% elif forloop.counter == 3 %}style="--reveal-delay: 180ms;"{% endif %}>
         <p class="meta">{{ entry.date_label }}</p>
@@ -605,6 +606,7 @@ geometry, so the dots and cover never move between books.
     </div>
   </div>
 </section>
+{% endif %}
 
 <style>
 @media (min-width: 900px) { .journal-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 2.5rem !important; } }

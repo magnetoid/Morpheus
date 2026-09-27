@@ -139,10 +139,10 @@ class StorefrontSurvivesOptionalPluginDisableTests(TestCase):
             self._toggle_on('product_videos')
 
     def test_cms_journal_surface_vanishes_on_disable(self):
-        from plugins.installed.storefront.views.content import _JOURNAL_ENTRIES
-
         marker = f'/journal/{_JOURNAL_SLUG}/'
-        seeded_marker = f'/journal/{_JOURNAL_ENTRIES[0]["slug"]}/'
+        # One of the dot books essays the shell used to substitute for a
+        # store's own journal (see test_journal_no_seeded_posts).
+        seeded_marker = '/journal/a-short-note-on-patience/'
         for path in ('/journal/', '/'):
             with self.subTest(path=path):
                 body = self.client.get(path).content.decode()
@@ -156,9 +156,8 @@ class StorefrontSurvivesOptionalPluginDisableTests(TestCase):
                     self.assertEqual(r.status_code, 200)
                     body = r.content.decode()
                     self.assertNotIn(marker, body)
-                    # The seeded editorial set takes over — same fallback as
-                    # a store with no CMS at all.
-                    self.assertIn(seeded_marker, body)
+                    # Nothing takes its place — no other store's essays.
+                    self.assertNotIn(seeded_marker, body)
         finally:
             self._toggle_on('cms')
 

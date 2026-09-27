@@ -187,8 +187,8 @@ def home(request):
     data['staff_picks'] = sp_products
 
     # Journal teaser — real entries instead of copy hardcoded in the template.
-    # Same source chain as /journal/: published CMS journal pages first, then
-    # the seeded editorial set (fail-soft, mirrors content.journal_index).
+    # Same source as /journal/: published CMS journal pages, and nothing else
+    # (fail-soft, mirrors content.journal_index); themes hide an empty section.
     entries = []
     try:
         if app_registry.is_active('cms'):
@@ -197,10 +197,6 @@ def home(request):
             entries = list_journal_entries(limit=3)
     except Exception:  # noqa: BLE001 — journal must never break home
         entries = []
-    if not entries:
-        from plugins.installed.storefront.views.content import _JOURNAL_ENTRIES  # noqa: PLC0415
-
-        entries = _JOURNAL_ENTRIES[:3]
     data['journal_teasers'] = entries
 
     return render(request, 'storefront/home.html', data)
