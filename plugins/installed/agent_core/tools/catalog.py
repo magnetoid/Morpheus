@@ -383,14 +383,31 @@ def create_product_tool(
     )
 
 
+_PRICE_FIELDS = ('price_amount', 'price_currency')
+
+
+def _refuse_price_change(fields: dict) -> None:
+    """A price edit belongs to products.update_price, never to a generic update.
+
+    That tool carries the approval gate and the merchant's per-action price
+    cap (max_price_change_pct); applying a price here would be a second,
+    ungated path around both.
+    """
+    if any(fields.get(k) not in (None, '') for k in _PRICE_FIELDS):
+        raise ToolError(
+            'Prices are changed with products.update_price (it applies the '
+            'approval gate and the price-change cap). Nothing was updated.'
+        )
+
+
 @tool(
     name='catalog.update_product',
     description=(
         'Update any field on an existing product (lookup by slug). Every '
         'argument is optional — only the fields you pass are touched. '
-        'Useful for re-pricing, changing status, editing description, '
-        're-categorising, or flipping SEO flags. Returns the updated '
-        'product summary.'
+        'Useful for changing status, editing description, re-categorising, '
+        'or flipping SEO flags. Price changes go through '
+        'products.update_price. Returns the updated product summary.'
     ),
     scopes=['catalog.write'],
     schema={
@@ -427,6 +444,7 @@ def create_product_tool(
 def update_product_tool(*, slug: str, **fields) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, update_product
 
+    _refuse_price_change(fields)
     try:
         r = update_product(slug=slug, **fields)
     except PublishError as e:
@@ -780,6 +798,7 @@ def create_variant_tool(
 def update_variant_tool(*, sku: str, **fields) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, update_variant
 
+    _refuse_price_change(fields)
     kwargs = {k: v for k, v in fields.items() if v not in (None, '')}
     try:
         r = update_variant(sku=sku, **kwargs)

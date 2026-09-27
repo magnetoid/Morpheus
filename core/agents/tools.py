@@ -119,13 +119,28 @@ class Tool:
     def invoke(self, arguments: dict[str, Any], **runtime_kwargs: Any) -> ToolResult:
         """Call the underlying handler, normalising the return type."""
         sig = inspect.signature(self.handler)
+        params = sig.parameters
+        runtime_names = ('agent', 'request', 'context', 'customer')
+        # A `**fields` handler names only some of its arguments; the rest are
+        # the ones its schema declares. Filtering on the signature alone dropped
+        # them all, so catalog.update_product & co. reported success and changed
+        # nothing. Undeclared arguments (typos, a habitual `confirmed=True`) are
+        # still dropped, and runtime context never comes from the model.
+        takes_kwargs = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+        declared = set(((self.schema or {}).get('properties') or {}).keys())
         accepted: dict[str, Any] = {}
         for k, v in (arguments or {}).items():
-            if k in sig.parameters:
+            if k in runtime_names:
+                continue
+            named = k in params and params[k].kind not in (
+                inspect.Parameter.VAR_KEYWORD,
+                inspect.Parameter.VAR_POSITIONAL,
+            )
+            if named or (takes_kwargs and k in declared):
                 accepted[k] = v
         # Inject runtime context if the handler asks for it.
-        for ctx_name in ('agent', 'request', 'context', 'customer'):
-            if ctx_name in sig.parameters and ctx_name in runtime_kwargs:
+        for ctx_name in runtime_names:
+            if ctx_name in params and ctx_name in runtime_kwargs:
                 accepted[ctx_name] = runtime_kwargs[ctx_name]
         try:
             out = self.handler(**accepted)
