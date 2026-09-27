@@ -370,6 +370,11 @@ MIDDLEWARE = [
     'core.errors.middleware.ErrorCaptureMiddleware',
 ]
 
+# SAMEORIGIN, not Django's default DENY: the dashboard's Theme builder previews
+# storefront pages in a same-origin iframe, which DENY blanked. Other origins
+# stay out, and /dashboard/ sends an enforcing frame-ancestors 'none'.
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
 ROOT_URLCONF = 'morph.urls'
 
 TEMPLATES = [
@@ -750,7 +755,6 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 # Pretty text formatter in DEBUG, single-line JSON in production. Every record
