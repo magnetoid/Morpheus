@@ -1,5 +1,8 @@
 """Seed the three baked-in journal entries as Page rows so the merchant has
-something to edit in the dashboard the first time the journal page loads."""
+something to edit in the dashboard the first time the journal page loads.
+
+They are drafts: they are one bookshop's essays, and published they went live
+on every new store under that store's brand."""
 from __future__ import annotations
 
 from django.db import migrations
@@ -55,7 +58,7 @@ def seed(apps, schema_editor):
             title=entry['title'],
             excerpt=entry['excerpt'],
             body=entry['body'],
-            state='published',
+            state='draft',
             publish_at=now,
             metadata={'category': 'journal', 'source': 'seed'},
         )

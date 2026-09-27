@@ -871,46 +871,7 @@
         ],
         "type": "ItemList",
         "values": {
-          "numberOfItems": 4
-        }
-      },
-      {
-        "props": [
-          "name",
-          "position",
-          "url"
-        ],
-        "type": "ListItem",
-        "values": {
-          "name": "The case for the small press, made in numbers",
-          "position": 1,
-          "url": "http://testserver/journal/the-case-for-the-small-press/"
-        }
-      },
-      {
-        "props": [
-          "name",
-          "position",
-          "url"
-        ],
-        "type": "ListItem",
-        "values": {
-          "name": "Why we don't carry books we haven't read",
-          "position": 2,
-          "url": "http://testserver/journal/why-we-dont-carry-books-we-havent-read/"
-        }
-      },
-      {
-        "props": [
-          "name",
-          "position",
-          "url"
-        ],
-        "type": "ListItem",
-        "values": {
-          "name": "A short note on patience and the long sentence",
-          "position": 3,
-          "url": "http://testserver/journal/a-short-note-on-patience/"
+          "numberOfItems": 1
         }
       },
       {
@@ -922,7 +883,7 @@
         "type": "ListItem",
         "values": {
           "name": "Parity journal entry",
-          "position": 4,
+          "position": 1,
           "url": "http://testserver/journal/head-parity-journal-entry/"
         }
       },

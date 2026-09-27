@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.22 — 2026-09-27
+
+**New stores no longer publish the sample journal essays**
+
+- A brand-new store no longer publishes dotbooks' three sample journal essays under its own name. They're still created, as drafts you can edit or delete. Existing stores are unchanged.
+
 ## v0.75.21 — 2026-09-27
 
 **Store emails use the sender address you set**
