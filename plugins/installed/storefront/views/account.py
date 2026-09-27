@@ -78,7 +78,14 @@ def account_profile(request):
                 setattr(user, field, val[:120])
         new_email = (request.POST.get('email') or '').strip().lower()
         if new_email and new_email != user.email:
-            user.email = new_email[:254]
+            # Customer.email is unique: saving another account's address
+            # raised IntegrityError (a 500) and lost the name change with it.
+            if type(user).objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
+                from django.contrib import messages
+
+                messages.error(request, 'That email address is already used by another account.')
+            else:
+                user.email = new_email[:254]
         user.save(update_fields=['first_name', 'last_name', 'email'])
         from django.shortcuts import redirect as _redirect
 

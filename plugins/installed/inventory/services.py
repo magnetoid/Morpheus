@@ -134,7 +134,18 @@ class InventoryService:
 
     @classmethod
     def release_reservation(cls, order) -> int:
-        """Undo the reservations made by `reserve_for_order`."""
+        """Undo the reservations made by `reserve_for_order`.
+
+        Idempotent, like its siblings: `Order.cancel` accepts any source state,
+        so a cancelled order can be cancelled (and ORDER_CANCELLED fired) again.
+        Releasing twice would subtract this order's units a second time and
+        free holds that belong to other orders.
+        """
+        if StockMovement.objects.filter(
+            movement_type='unreserve',
+            reference=order.order_number,
+        ).exists():
+            return 0
         movements = 0
         reservations = StockMovement.objects.filter(
             movement_type='reserve',

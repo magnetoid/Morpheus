@@ -237,6 +237,18 @@ def _serialize_variant(v) -> dict:
 # ── Variant field applier ─────────────────────────────────────────────
 
 
+def _variant_currency(variant) -> str:
+    """The currency a variant's amounts default to: its own price's, else its
+    product's. A new variant (or one inheriting its product's price) has no
+    price of its own, and a hardcoded 'USD' put dollars inside a EUR product."""
+    product = getattr(variant, 'product', None)
+    for money in (variant.price, getattr(product, 'price', None)):
+        currency = getattr(money, 'currency', None)
+        if currency:
+            return str(currency)
+    return 'USD'
+
+
 def _apply_variant_fields(variant, fields: dict, *, allow_sku_collision_check: bool = True) -> None:  # noqa: PLR0912, PLR0915
     """Mutate `variant` in place with whatever fields are present. Skips
     unspecified keys so partial updates work. Raises PublishError on
@@ -266,20 +278,14 @@ def _apply_variant_fields(variant, fields: dict, *, allow_sku_collision_check: b
         if v in (None, '', 'null'):
             variant.price = None
         else:
-            currency = (
-                fields.get('price_currency')
-                or str(getattr(variant.price, 'currency', None) or 'USD')
-            ).upper()
+            currency = (fields.get('price_currency') or _variant_currency(variant)).upper()
             variant.price = Money(_coerce_price(v), currency)
     if 'compare_at_amount' in fields:
         v = fields['compare_at_amount']
         if v in (None, '', 'null'):
             variant.compare_at_price = None
         else:
-            currency = (
-                fields.get('price_currency')
-                or str(getattr(variant.price, 'currency', None) or 'USD')
-            ).upper()
+            currency = (fields.get('price_currency') or _variant_currency(variant)).upper()
             variant.compare_at_price = Money(_coerce_price(v), currency)
     if 'variant_type' in fields:
         vt = fields['variant_type']

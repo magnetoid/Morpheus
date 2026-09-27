@@ -81,6 +81,17 @@ class AttributeValueType:
 from core.graphql.types import MoneyType  # noqa: E402 — deliberate late import
 from core.pricing import apply_price_filter  # noqa: E402 — same late-import block
 
+# schema.org availability values a shopper can still act on (buy, back-order,
+# pre-order) — `agentMetadata.inStock` is True for these only.
+_BUYABLE = frozenset(
+    {
+        'https://schema.org/InStock',
+        'https://schema.org/BackOrder',
+        'https://schema.org/PreOrder',
+        'https://schema.org/LimitedAvailability',
+    }
+)
+
 
 @strawberry_django.type(models.Collection)
 class CollectionType:
@@ -418,26 +429,33 @@ class ProductType:
         )
     )
     def agent_metadata(self) -> 'AgentProductMetadata':
+        from plugins.feed_mapping import availability_to_schema
         from plugins.installed.catalog.graphql.types import AgentProductMetadata
 
         primary = self.primary_image
         primary_image_url = primary.image.url if primary and primary.image else ''
         # Agent feed must quote the SAME price seam as the PDP + checkout, or an
         # AI buyer is told one price and charged another (displayed≠charged).
-        _priced = apply_price_filter(self.price, product=self) if self.price else None
+        # `display_price`, not `price`: a variable product's own price is 0 and
+        # its offer is the cheapest active variant — what `ProductType.price` shows.
+        base = self.display_price
+        _priced = apply_price_filter(base, product=self) if base else None
         return AgentProductMetadata(
             id=str(self.id),
             sku=self.sku or '',
             name=self.name,
             currency=str(_priced.currency) if _priced else 'USD',
             price_amount=str(_priced.amount) if _priced else '0.00',
-            in_stock=any(v.is_active for v in self.variants.all()) or self.product_type == 'simple',
+            # Stock is the inventory app's answer (the one JSON-LD and the
+            # channel feeds give), never "a variant row is active".
+            in_stock=availability_to_schema(self) in _BUYABLE,
             requires_shipping=bool(self.requires_shipping),
             is_digital=self.product_type == 'digital',
             primary_image_url=primary_image_url,
             category_slug=self.category.slug if self.category_id else '',
             tags=[t.name for t in self.tags.all()],
-            url_path=f'/p/{self.slug}',
+            # The storefront PDP route; `/p/<slug>` is the CMS page route.
+            url_path=f'/products/{self.slug}/',
         )
 
 

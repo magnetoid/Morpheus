@@ -421,7 +421,12 @@ def _submit_enquiry(request, service):
             name=(request.POST.get('name') or '').strip(),
             email=(request.POST.get('email') or '').strip(),
             phone=(request.POST.get('phone') or '').strip(),
-            preferred_date=(request.POST.get('preferred_date') or '').strip(),
+            # The marketplace booking form (shown whenever prices are visible)
+            # posts its date as `booking_date`; the listing-mode form as
+            # `preferred_date`. Either way it is the date the guest chose.
+            preferred_date=(
+                request.POST.get('preferred_date') or request.POST.get('booking_date') or ''
+            ).strip(),
             guests=(request.POST.get('guests') or '').strip(),
             message=(request.POST.get('message') or '').strip(),
             time=(request.POST.get('time_slot') or '').strip(),

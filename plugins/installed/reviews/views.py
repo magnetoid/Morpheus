@@ -26,9 +26,16 @@ def add_review(request, product_id):
         rating = 5
 
     if body:
-        Review.objects.update_or_create(
+        review, created = Review.objects.get_or_create(
             product=product,
             customer=request.user,
             defaults={'rating': rating, 'body': body[:5000], 'is_approved': True},
         )
+        if not created:
+            # An edit keeps the merchant's moderation decision: a review the
+            # dashboard hid (is_approved=False) must not re-publish itself
+            # because its author posted the form again.
+            review.rating = rating
+            review.body = body[:5000]
+            review.save(update_fields=['rating', 'body', 'updated_at'])
     return redirect(f'/products/{product.slug}/#reviews')

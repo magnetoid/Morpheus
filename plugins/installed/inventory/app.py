@@ -32,6 +32,22 @@ class InventoryPlugin(Plugin):
         self.register_hook('return.refunded', self.on_return_refunded, priority=5)
         self.register_celery_tasks('plugins.installed.inventory.tasks')
 
+        # "Email me when it's back": a stock write that leaves sellable units
+        # enqueues the product's waiting subscribers (back_in_stock.py).
+        from django.db.models.signals import post_save  # noqa: PLC0415
+
+        from plugins.installed.inventory.back_in_stock import (  # noqa: PLC0415
+            on_stock_level_saved,
+        )
+        from plugins.installed.inventory.models import StockLevel  # noqa: PLC0415
+
+        post_save.connect(
+            on_stock_level_saved,
+            sender=StockLevel,
+            dispatch_uid='inventory.back_in_stock',
+            weak=False,
+        )
+
         # Beat schedules: apply price schedules every 5 min. (Abandoned-cart
         # detection is owned solely by the cart_abandonment plugin — inventory's
         # duplicate, un-stamped detector was removed; see tasks.py.)

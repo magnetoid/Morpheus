@@ -71,6 +71,8 @@ def quote_stay(room_type, *, check_in, check_out, rooms=1, adults=2, children=0)
         raise BookingError(f'Up to {room_type.max_occupancy} guest(s) per room.')
     if children > room_type.max_children * rooms:
         raise BookingError('Too many children for this room type.')
+    if room_type.max_adults and adults > room_type.max_adults * rooms:
+        raise BookingError(f'Up to {room_type.max_adults} adult(s) per room.')
 
     currency = room_type.base_rate.currency
     rate = room_type.base_rate

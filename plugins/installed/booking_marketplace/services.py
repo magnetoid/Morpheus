@@ -44,20 +44,16 @@ def booked_guests(service, date, time=None) -> int:
 
 
 def available_dates(service, *, days: int = 30, limit: int = 30) -> list[dict]:
-    """Upcoming dates with remaining capacity, soonest first."""
-    weekdays = _weekdays(service)
-    today = timezone.localdate()
-    out: list[dict] = []
-    for d in range(days):
-        date = today + datetime.timedelta(days=d)
-        if date.weekday() not in weekdays:
-            continue
-        remaining = (service.daily_capacity or 0) - booked_guests(service, date)
-        if remaining > 0:
-            out.append({'date': date, 'remaining': remaining})
-            if len(out) >= limit:
-                break
-    return out
+    """Upcoming dates with remaining capacity, soonest first.
+
+    Derived from `available_sessions`: capacity is per departure, so a date
+    stays bookable while any departure has a seat, and its `remaining` is the
+    seats left across the day's departures.
+    """
+    return [
+        {'date': s['date'], 'remaining': sum(t['remaining'] for t in s['times'])}
+        for s in available_sessions(service, days=days, limit=limit)
+    ]
 
 
 def _start_times(service) -> list:
@@ -131,9 +127,10 @@ def create_booking(  # noqa: PLR0912 — one branch per validated booking field
             raise BookingError('Please enter a valid number of guests.') from None
         if guests < 1:
             raise BookingError('At least one guest is required.')
-        if svc.max_guests_per_booking and guests > svc.max_guests_per_booking:
-            raise BookingError(f'Up to {svc.max_guests_per_booking} guests per booking.')
         quote = price_quote(svc, tiers={'guests': guests}, addons={})
+    # The party cap holds however the party was counted — tier quantities too.
+    if svc.max_guests_per_booking and guests > svc.max_guests_per_booking:
+        raise BookingError(f'Up to {svc.max_guests_per_booking} guests per booking.')
 
     if isinstance(booking_date, str):
         try:
@@ -145,13 +142,17 @@ def create_booking(  # noqa: PLR0912 — one branch per validated booking field
     if booking_date.weekday() not in _weekdays(svc):
         raise BookingError('This experience does not run on that day.')
 
-    # If the experience runs at fixed departure times, a chosen time must be one
-    # of them — never trust a client-supplied slot that was never offered.
+    # If the experience runs at fixed departure times, a booking must name one
+    # of them — never trust a client-supplied slot that was never offered, and
+    # never take one with no slot (no per-departure count would include it).
     starts = _start_times(svc)
-    if time and starts != [None] and time not in starts:
+    if starts != [None] and time not in starts:
         raise BookingError('Please choose an available departure time.')
 
-    remaining = (svc.daily_capacity or 0) - booked_guests(svc, booking_date, time or None)
+    # Without fixed departures the capacity is the whole day's: a client-sent
+    # time is only a label, never a separate pool of seats.
+    slot = time if starts != [None] else None
+    remaining = (svc.daily_capacity or 0) - booked_guests(svc, booking_date, slot)
     if guests > remaining:
         raise BookingError(
             f'Only {remaining} spot(s) left on that date.'
@@ -224,6 +225,10 @@ def submit_enquiry(
         try:
             q = price_quote(service, tiers=tiers or {}, addons=addons or {})
             breakdown, addon_snap = q['tier_breakdown'], q['addons']
+            # A ticket-tier form sends no `guests` field: its party is the
+            # sum of the tier quantities, which the quote already counted.
+            if guests is None:
+                guests = q['guests']
         except BookingError:
             breakdown, addon_snap = [], []
 
