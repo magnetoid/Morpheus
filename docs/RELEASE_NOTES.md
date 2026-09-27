@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.18 — 2026-09-27
+
+**Product editor keeps stock tracking and shipping on save**
+
+- Saving a simple or bundle product in the dashboard editor no longer switches stock tracking and shipping off, and Featured/Taxable can be unticked again (they now appear once, in the Status card, for every product type). Digital products still never track stock or ship — the server decides that now.
+
 ## v0.75.17 — 2026-09-27
 
 **Emails and search sync run again (worker task registration)**
