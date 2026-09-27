@@ -35,6 +35,7 @@ class AgentCoreMutationExtension:
     ) -> AgentRunResultType:
         from plugins.installed.agent_core.services import (
             history_for_conversation,
+            invocation_denial,
             run_agent,
         )
 
@@ -67,13 +68,9 @@ class AgentCoreMutationExtension:
                 error=msg,
             )
 
-        agent = agent_registry.get_agent(input.agent_name)
-        if agent.audience == 'system':
-            return _denied('System agents cannot be invoked via the API.')
-        if agent.audience == 'merchant':
-            user = getattr(request, 'user', None) if request else None
-            if not (user and getattr(user, 'is_authenticated', False) and user.is_staff):
-                return _denied('Staff authentication required for this agent.')
+        reason = invocation_denial(agent_registry.get_agent(input.agent_name), request)
+        if reason:
+            return _denied(reason)
 
         if request is not None:  # no request = trusted internal call
             from core.utils.rate_limit import RateLimitExceeded, check_and_consume  # noqa: PLC0415

@@ -290,6 +290,39 @@ def run_agent(  # noqa: PLR0915
     return result
 
 
+def invocation_denial(agent: MorpheusAgent, request: Any) -> str:
+    """Why the caller behind `request` may NOT invoke `agent` ('' = allowed).
+
+    ONE predicate for the REST views and the GraphQL `invokeAgent` mutation —
+    two copies drift and the looser one wins. The runtime checks each tool
+    against the AGENT's scopes, never the caller's, so invoking an agent hands
+    the caller every scope that agent holds. Hence:
+
+    - only a `storefront` agent is public;
+    - `merchant` AND `any` need staff. `any` is the generic Worker, which holds
+      every merchant scope (customers.search, orders.search, catalog writes…);
+      treating it as public gave anonymous visitors a merchant agent;
+    - a Bearer token resolves to a SHARED is_staff service user, so it must
+      itself hold every scope the agent holds (or the wildcard — see
+      agent_mcp/scopes.py), or a narrow token escalates through the agent.
+    """
+    if agent.audience == 'system':
+        return 'System agents cannot be invoked via HTTP.'
+    if agent.audience == 'storefront':
+        return ''
+    user = getattr(request, 'user', None) if request is not None else None
+    if not (user and getattr(user, 'is_authenticated', False) and getattr(user, 'is_staff', False)):
+        return 'Staff authentication required.'
+    token_scopes = getattr(request, '_morph_token_scopes_graphql', None)
+    if (
+        token_scopes is not None
+        and '*' not in token_scopes
+        and not set(agent.scopes) <= set(token_scopes)
+    ):
+        return 'This token does not hold every scope the agent holds.'
+    return ''
+
+
 from core.utils.safe_db import safe_db  # noqa: E402 — deliberate late import
 
 

@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.16 — 2026-09-27
+
+**Security: merchant-capable agents require staff to invoke**
+
+- The agent invoke endpoints (REST /api/agents/<name>/invoke and /stream, and the GraphQL invokeAgent mutation) now treat the generic Worker (audience 'any') like a merchant agent: staff only. One predicate serves both surfaces.
+- A Bearer token must hold every scope an agent holds (or the wildcard) to invoke it, so a narrow token can no longer reach tools outside its own scopes through an agent.
+
 ## v0.75.15 — 2026-09-24
 
 **Dashboard settings: General leads the categories again (after Settings overview)**

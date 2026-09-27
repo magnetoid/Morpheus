@@ -59,17 +59,16 @@ def _check_audience(request, agent_name: str):
     - audience='system'      → never invokable via HTTP
     - audience='merchant'    → must be authenticated + is_staff
     - audience='storefront'  → public (rate-limited via DRF middleware)
-    - audience='any'         → public
+    - audience='any'         → staff too: see services.invocation_denial
     """
+    from plugins.installed.agent_core.services import invocation_denial
+
     agent = agent_registry.get_agent(agent_name)
     if agent is None:
         return JsonResponse({'error': f'Unknown agent: {agent_name}'}, status=404)
-    if agent.audience == 'system':
-        return JsonResponse({'error': 'System agents cannot be invoked via HTTP.'}, status=403)
-    if agent.audience == 'merchant':
-        user = getattr(request, 'user', None)
-        if user is None or not user.is_authenticated or not getattr(user, 'is_staff', False):
-            return JsonResponse({'error': 'Staff authentication required.'}, status=403)
+    reason = invocation_denial(agent, request)
+    if reason:
+        return JsonResponse({'error': reason}, status=403)
     return None
 
 
