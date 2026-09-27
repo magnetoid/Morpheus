@@ -629,22 +629,18 @@ def product_detail(request, slug):
             web_story = None
 
     # Stock gate for the "Notify me when back in stock" form on the PDP.
-    # True iff inventory tracking is on AND no variant has any available
-    # stock anywhere. Falls quietly to False if the inventory plugin
-    # isn't installed (no stock_levels relation).
+    # Goes through the same shared availability vocabulary the cart, the
+    # Open Graph tags and the JSON-LD offer already read (plugins.feed_mapping
+    # → inventory.product_availability), so a product without variants or a
+    # variant with no stock rows reads as untracked/purchasable (not empty),
+    # a backorder variant stays buyable, and reservations count against
+    # what's on hand — instead of a second, disagreeing query here.
     out_of_stock = False
     if product_row is not None and getattr(product_row, 'track_inventory', False):
         try:
-            from plugins.installed.catalog.models import (  # noqa: PLC0415
-                ProductVariant,
-            )
+            from plugins.feed_mapping import availability_to_schema  # noqa: PLC0415
 
-            has_stock = (
-                ProductVariant.objects.filter(product=product_row, stock_levels__quantity__gt=0)
-                .only('id')
-                .exists()
-            )
-            out_of_stock = not has_stock
+            out_of_stock = availability_to_schema(product_row) == 'https://schema.org/OutOfStock'
         except Exception:  # noqa: BLE001
             out_of_stock = False
 
