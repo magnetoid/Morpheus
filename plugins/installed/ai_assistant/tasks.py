@@ -4,6 +4,11 @@ from celery import shared_task
 
 from plugins.installed.ai_assistant.services.operator import AgentOperator
 
+# Defined in services/search.py, which the worker never imports on its own —
+# autodiscovery only loads this module — so the query-embedding warm-up was
+# dropped as NotRegistered and hybrid search never got its dense pass.
+from plugins.installed.ai_assistant.services.search import warm_query_embedding  # noqa: F401
+
 logger = logging.getLogger('morpheus.ai.tasks')
 
 

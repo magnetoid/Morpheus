@@ -16,6 +16,11 @@ from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from django.utils import timezone
 
+# Celery autodiscovery imports only ``<installed app>.tasks`` and ``core.emails``
+# is not an app, so without this import the worker never registered
+# ``deliver_email`` and rejected every queued email as NotRegistered.
+import core.emails.tasks  # noqa: F401
+
 logger = logging.getLogger('morpheus.core.webhooks')
 
 
