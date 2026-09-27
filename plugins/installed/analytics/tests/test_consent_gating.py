@@ -8,8 +8,19 @@ from django.test import TestCase
 
 from plugins.installed.analytics.models import AnalyticsEvent, AnalyticsSession
 
+# A real visitor sends a user agent; the test client sends none, which the
+# analytics middleware now (rightly) treats as not-a-browser.
+_BROWSER = (
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 Version/17.5 Safari/605.1.15'
+)
+
 
 class ConsentGatingTests(TestCase):
+    def setUp(self):
+        from django.test import Client
+
+        self.client = Client(HTTP_USER_AGENT=_BROWSER)
+
     def test_no_session_without_consent(self):
         self.client.get('/')
         self.client.get('/')

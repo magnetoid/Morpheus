@@ -11,25 +11,18 @@
 from __future__ import annotations
 
 import logging
-import re
 
 from morpheus.app import Plugin, SettingsPanel
 from morpheus.core import events
 
 logger = logging.getLogger('morpheus.tracking')
 
-# User agents that are not a person in a browser: crawlers, previews, monitors
-# and HTTP libraries. An empty user agent is not a browser either.
-_CRAWLER_UA = re.compile(
-    r'bot|crawl|spider|slurp|preview|monitor|lighthouse|headless|scrap|fetch'
-    r'|python|curl|wget|go-http|java/|httpclient|okhttp|axios',
-    re.IGNORECASE,
-)
-
 
 def _is_crawler(request) -> bool:
+    from core.utils.crawlers import is_crawler_user_agent  # noqa: PLC0415
+
     ua = (request.META.get('HTTP_USER_AGENT') or '') if request is not None else ''
-    return not ua or _CRAWLER_UA.search(ua) is not None
+    return is_crawler_user_agent(ua)
 
 
 class TrackingPlugin(Plugin):

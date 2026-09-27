@@ -46,9 +46,16 @@ class AnalyticsMiddleware:
             # as catalog reads — the merchant's "AI is reading my store"
             # signal — and are NOT visitor sessions/pageviews (they used to
             # pollute both).
-            bot = ai_crawler_from_ua(request.META.get('HTTP_USER_AGENT', ''))
+            ua = request.META.get('HTTP_USER_AGENT', '')
+            bot = ai_crawler_from_ua(ua)
             if bot:
                 record_ai_crawler_hit(bot)
+                return response
+            # Every other crawler (search engines, SEO tools, previews) is not
+            # a visitor either — it used to become sessions and pageviews.
+            from core.utils.crawlers import is_crawler_user_agent  # noqa: PLC0415
+
+            if is_crawler_user_agent(ua):
                 return response
 
             if not should_track_request(request):

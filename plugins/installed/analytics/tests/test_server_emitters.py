@@ -16,7 +16,10 @@ class _FakeProduct:
 
 class ServerEmitterTests(TestCase):
     def setUp(self):
-        self.rf = RequestFactory()
+        # A visitor's request carries a user agent; crawler browsing is not recorded.
+        self.rf = RequestFactory(
+            HTTP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 Version/17.5 Safari/605.1.15'
+        )
 
     def _request(self):
         req = self.rf.get('/products/test-book/')

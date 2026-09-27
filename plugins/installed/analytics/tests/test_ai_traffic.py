@@ -19,6 +19,9 @@ from plugins.installed.analytics.services import (
 )
 
 GPTBOT_UA = 'Mozilla/5.0 AppleWebKit/537.36 (compatible; GPTBot/1.2; +https://openai.com/gptbot)'
+BROWSER_UA = (
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 Version/17.5 Safari/605.1.15'
+)
 
 
 class ClassifierTests(TestCase):
@@ -42,7 +45,7 @@ class ClassifierTests(TestCase):
 
 class SessionStampingTests(TestCase):
     def _visit(self, **extra):
-        client = Client()
+        client = Client(HTTP_USER_AGENT=BROWSER_UA)
         client.cookies['morpheus_consent'] = (
             '{"analytics": true, "functional": true, "marketing": true}'  # consented visitor
         )
@@ -57,7 +60,7 @@ class SessionStampingTests(TestCase):
     def test_explicit_utm_wins_over_inference(self):
         self._visit(HTTP_REFERER='https://chatgpt.com/c/x')  # arrives via ?utm too
         AnalyticsSession.objects.all().delete()
-        consented = Client()
+        consented = Client(HTTP_USER_AGENT=BROWSER_UA)
         consented.cookies['morpheus_consent'] = (
             '{"analytics": true, "functional": true, "marketing": true}'
         )

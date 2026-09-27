@@ -117,6 +117,13 @@ class AnalyticsPlugin(Plugin):
                 # Server-side storefront fires pass request= so the event
                 # joins the visitor's session (funnels group by session_id).
                 request = kwargs.get('request')
+                # Browsing by a crawler is not a visitor's product view or
+                # search. Transactional events are kept whoever the client is.
+                if event_name in (events.PRODUCT_VIEWED, events.SEARCH_PERFORMED) and request:
+                    from core.utils.crawlers import is_crawler_user_agent  # noqa: PLC0415
+
+                    if is_crawler_user_agent(request.META.get('HTTP_USER_AGENT', '')):
+                        return
                 record_event(
                     name=event_name,
                     kind=_kind_for(event_name),
