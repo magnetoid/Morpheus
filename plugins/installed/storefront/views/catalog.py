@@ -1606,6 +1606,8 @@ def quick_search(request):
     Returns up to 6 matches; empty array for queries < 2 chars.
     """
     from django.http import JsonResponse
+
+    from core.pricing import apply_price_filter
     from plugins.installed.catalog.models import Product
 
     q = (request.GET.get('q') or '').strip()
@@ -1629,12 +1631,17 @@ def quick_search(request):
             except Exception:  # noqa: BLE001
                 img = ''
         price_str = ''
-        if p.price:
+        # display_price is the cheapest active variant for a variable product
+        # (its own `price` column is the parent's $0 placeholder) — same seam
+        # the PDP and product card quote, so the dropdown never over/undersells.
+        price = p.display_price
+        if price:
+            price = apply_price_filter(price, product=p)
             try:
                 price_str = (
-                    f'${p.price.amount:.2f}'
-                    if str(p.price.currency) == 'USD'
-                    else f'{p.price.currency} {p.price.amount}'
+                    f'${price.amount:.2f}'
+                    if str(price.currency) == 'USD'
+                    else f'{price.currency} {price.amount}'
                 )
             except Exception:  # noqa: BLE001
                 price_str = ''

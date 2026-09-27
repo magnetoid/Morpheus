@@ -85,3 +85,50 @@ class QuickSearchTests(TestCase):
             self.assertIn('slug', r)
             self.assertIn('price', r)
             self.assertIn('image_url', r)
+
+
+class QuickSearchPriceTests(TestCase):
+    """The dropdown quotes the same price the product card and the PDP quote.
+
+    It read the raw `Product.price` column — which, on a variable product, is
+    the parent's `$0.00` the dashboard form writes (per-variant prices are
+    canonical there) — and skipped the PRODUCT_CALCULATE_PRICE seam every
+    other shopper-facing price goes through.
+    """
+
+    def setUp(self):
+        from plugins.installed.catalog.models import ProductVariant
+
+        self.product = Product.objects.create(
+            name='Variable Probe',
+            slug='variable-probe-qs',
+            sku='QS-VAR',
+            status='active',
+            price=Money(Decimal('0.00'), 'USD'),
+            product_type='variable',
+        )
+        for sku, amount in (('QS-VAR-S', '5.00'), ('QS-VAR-L', '8.00')):
+            ProductVariant.objects.create(
+                product=self.product,
+                name=sku,
+                sku=sku,
+                price=Money(Decimal(amount), 'USD'),
+            )
+
+    def _prices(self):
+        # An exact SKU hit is the one match tier that needs no search backend.
+        results = self.client.get('/api/quick-search/', {'q': 'QS-VAR'}).json()['results']
+        return [r['price'] for r in results if r['slug'] == 'variable-probe-qs']
+
+    def test_variable_product_quotes_its_cheapest_variant_not_the_parent_zero(self):
+        self.assertEqual(self._prices(), ['$5.00'])
+
+    def test_price_goes_through_the_pricing_seam(self):
+        from morpheus.core import MorpheusEvents, hook_registry
+
+        def _rule(value, **kwargs):
+            return Money(Decimal('4.00'), 'USD')
+
+        hook_registry.register(MorpheusEvents.PRODUCT_CALCULATE_PRICE, _rule, priority=10)
+        self.addCleanup(hook_registry.unregister, MorpheusEvents.PRODUCT_CALCULATE_PRICE, _rule)
+        self.assertEqual(self._prices(), ['$4.00'])
