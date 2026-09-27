@@ -564,7 +564,7 @@ def _session_usage(conv_home: Path, session_id: str) -> dict[str, Any]:
     try:
         with contextlib.closing(sqlite3.connect(f'file:{db}?mode=ro', uri=True, timeout=2)) as conn:
             row = conn.execute(
-                f'SELECT model, {", ".join(_USAGE_COLUMNS)} FROM sessions WHERE id = ?',  # noqa: S608 — fixed column list
+                f'SELECT model, {", ".join(_USAGE_COLUMNS)} FROM sessions WHERE id = ?',  # noqa: S608 — fixed column list  # nosec B608
                 (session_id,),
             ).fetchone()
     except sqlite3.Error:

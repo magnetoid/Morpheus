@@ -22,13 +22,13 @@ from django.conf import settings
 from django.template import Context, Template
 from django.test import SimpleTestCase
 
-_TAG_LOOP = re.compile(r"{% for tag in product\.tags %}.*?{% endfor %}", re.S)
+_TAG_LOOP = re.compile(r'{% for tag in product\.tags %}.*?{% endfor %}', re.S)
 
 
 class PdpStringTagRenderingTests(SimpleTestCase):
     def test_every_theme_pdp_renders_a_string_tag(self):
-        root = pathlib.Path(settings.BASE_DIR) / "themes" / "library"
-        pdps = sorted(root.glob("*/templates/storefront/product_detail.html"))
+        root = pathlib.Path(settings.BASE_DIR) / 'themes' / 'library'
+        pdps = sorted(root.glob('*/templates/storefront/product_detail.html'))
         tested = 0
         for pdp in pdps:
             m = _TAG_LOOP.search(pdp.read_text())
@@ -37,13 +37,9 @@ class PdpStringTagRenderingTests(SimpleTestCase):
             tested += 1
             theme = pdp.relative_to(root).parts[0]
             # product.tags is a list of STRINGS, exactly as GraphQL returns it.
-            ctx = Context({"product": {"tags": ["divination"]}})
+            ctx = Context({'product': {'tags': ['divination']}})
             out = Template(m.group(0)).render(ctx)  # raised on the old template
-            self.assertIn(
-                "divination", out, f"{theme}: string tag dropped from the chip"
-            )
-            self.assertIn(
-                "?tag=divination", out, f"{theme}: tag link lost its query value"
-            )
+            self.assertIn('divination', out, f'{theme}: string tag dropped from the chip')
+            self.assertIn('?tag=divination', out, f'{theme}: tag link lost its query value')
         # Don't let the guard pass vacuously if the glob or regex drifts.
-        self.assertGreaterEqual(tested, 3, "expected the 3 shipped themes to have a tag loop")
+        self.assertGreaterEqual(tested, 3, 'expected the 3 shipped themes to have a tag loop')

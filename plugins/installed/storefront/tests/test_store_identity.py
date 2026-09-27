@@ -122,9 +122,7 @@ class LivePageDescriptionTests(TestCase):
         for path in ('/about/', '/contact/', '/shipping/'):
             with self.subTest(path=path):
                 body = self.client.get(path).content.decode()
-                description = re.search(
-                    r'<meta name="description" content="([^"]*)"', body, re.I
-                )
+                description = re.search(r'<meta name="description" content="([^"]*)"', body, re.I)
                 self.assertIsNotNone(description, f'{path} has no meta description')
                 self.assertNotIn('dot books', description.group(1).lower())
 
