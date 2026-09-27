@@ -238,10 +238,10 @@ def iter_sitemap_entries() -> Iterable[dict]:
                 'changefreq': 'weekly',
                 'priority': '0.6',
             }
-        for v in Vendor.objects.filter(is_active=True).only('slug', 'updated_at'):
+        for v in Vendor.objects.filter(is_active=True).only('slug', 'created_at'):
             yield {
                 'loc': urljoin(base, f'/vendor/{v.slug}/'),
-                'lastmod': v.updated_at.isoformat() if v.updated_at else '',
+                'lastmod': v.created_at.isoformat() if v.created_at else '',
                 'changefreq': 'weekly',
                 'priority': '0.6',
             }
@@ -530,16 +530,33 @@ def render_sitemap_index_xml() -> str:
     """Sitemap index — points at every sub-sitemap. Crawlers discover
     sub-sitemaps from here without hitting the main sitemap.xml
     against the 50k-URL limit.
+
+    Only lists a sub-sitemap the store actually serves: image/news are
+    merchant-configurable (`image_sitemap_enabled` default on,
+    `news_sitemap_enabled` default off — same defaults `views.py` enforces
+    when serving them) and a listed-but-404 child wastes crawl budget on a
+    dead fetch every time.
     """
     from django.utils import timezone
 
     base = _site_base_url().rstrip('/')
     now = timezone.now().replace(microsecond=0).isoformat()
-    children = [
-        f'{base}/sitemap.xml',
-        f'{base}/sitemap-images.xml',
-        f'{base}/sitemap-news.xml',
-    ]
+    children = [f'{base}/sitemap.xml']
+    seo_plugin = _seo_plugin()
+    image_enabled, news_enabled = True, False
+    if seo_plugin is not None:
+        try:
+            image_enabled = bool(seo_plugin.get_config_value('image_sitemap_enabled', True))
+        except Exception:  # noqa: BLE001
+            image_enabled = True
+        try:
+            news_enabled = bool(seo_plugin.get_config_value('news_sitemap_enabled', False))
+        except Exception:  # noqa: BLE001
+            news_enabled = False
+    if image_enabled:
+        children.append(f'{base}/sitemap-images.xml')
+    if news_enabled:
+        children.append(f'{base}/sitemap-news.xml')
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',

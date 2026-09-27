@@ -74,3 +74,53 @@ class SitemapPolicyTests(TestCase):
         """A row that exists for other reasons must not change listing."""
         _seo(self.hidden, title='Just a title')
         self.assertTrue(any('hidden-probe' in loc for loc in self._locs()))
+
+    def test_an_active_vendor_is_listed(self):
+        """`/vendor/<slug>/` is a live storefront page and the docstring lists it.
+
+        The catalog block asked Vendor for an `updated_at` column the model has
+        never had, so the query raised after products, categories and collections
+        had been yielded — the fail-soft `except` logged it at DEBUG and every
+        vendor page was simply absent from the sitemap.
+        """
+        from plugins.installed.catalog.models import Vendor
+
+        Vendor.objects.create(name='Probe Press', slug='probe-press')
+        self.assertTrue(any(loc.endswith('/vendor/probe-press/') for loc in self._locs()))
+
+
+class SitemapIndexTests(TestCase):
+    """robots.txt names `/sitemap-index.xml`, so everything it lists gets fetched."""
+
+    def _children(self) -> list[str]:
+        import re
+        from urllib.parse import urlsplit
+
+        body = self.client.get('/sitemap-index.xml').content.decode()
+        return [urlsplit(url).path for url in re.findall(r'<loc>([^<]+)</loc>', body)]
+
+    def _set_seo_config(self, key, value) -> None:
+        from plugins.registry import app_registry
+
+        plugin = app_registry.get('seo')
+        plugin.set_config(key, value)
+        plugin.invalidate_config_cache()
+        # The DB row rolls back with the test; the per-process cache does not.
+        self.addCleanup(plugin.invalidate_config_cache)
+
+    def test_every_child_the_index_lists_is_served(self):
+        """The news sitemap is OFF by default and 404s — the index listed it anyway,
+        so every store handed crawlers a dead sitemap on every fetch."""
+        children = self._children()
+        self.assertIn('/sitemap.xml', children)
+        for path in children:
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path).status_code, 200)
+
+    def test_a_sitemap_the_merchant_enabled_is_listed(self):
+        self._set_seo_config('news_sitemap_enabled', True)
+        self.assertIn('/sitemap-news.xml', self._children())
+
+    def test_a_sitemap_the_merchant_disabled_is_not_listed(self):
+        self._set_seo_config('image_sitemap_enabled', False)
+        self.assertNotIn('/sitemap-images.xml', self._children())
