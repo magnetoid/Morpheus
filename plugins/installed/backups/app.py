@@ -64,8 +64,12 @@ class BackupsPlugin(Plugin):
                 'backup_dir': {
                     'type': 'string',
                     'title': 'Backup directory',
-                    'default': '/tmp/morpheus-backups',  # noqa: S108  # nosec B108
-                    'description': 'Where dumps land. Reads MORPHEUS_BACKUP_DIR env var if this is blank.',
+                    'default': '',
+                    'description': (
+                        'Where dumps land. Blank uses MORPHEUS_BACKUP_DIR, else /app/backups '
+                        "— the worker's persistent backup volume. A path outside a mounted "
+                        'volume is lost on the next deploy.'
+                    ),
                 },
                 'retention_count': {
                     'type': 'integer',

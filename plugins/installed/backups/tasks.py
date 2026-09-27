@@ -18,16 +18,23 @@ logger = logging.getLogger('morpheus.backups')
 
 
 def _config() -> dict:
-    """Read plugin config; default to including media."""
+    """Read plugin config. Blank values fall through to the command's own
+    defaults (MORPHEUS_BACKUP_DIR / MORPHEUS_BACKUP_KEEP, else the worker's
+    persistent /app/backups volume and 7 copies)."""
+    cfg: dict = {'include_media': True, 'backup_dir': '', 'retention_count': None}
     try:
         from plugins.registry import app_registry
 
         plugin = app_registry.get('backups')
         if plugin is not None:
-            return {'include_media': bool(plugin.get_config_value('include_media', True))}
+            cfg['include_media'] = bool(plugin.get_config_value('include_media', True))
+            cfg['backup_dir'] = str(plugin.get_config_value('backup_dir', '') or '').strip()
+            keep = plugin.get_config_value('retention_count', None)
+            if keep not in (None, ''):
+                cfg['retention_count'] = max(1, int(keep))
     except Exception:  # noqa: BLE001, S110
         pass
-    return {'include_media': True}
+    return cfg
 
 
 @shared_task(bind=True, time_limit=60 * 60, soft_time_limit=60 * 55)
@@ -37,6 +44,11 @@ def run_backup(self) -> dict:
     args: list[str] = []
     if not cfg['include_media']:
         args.append('--no-media')
+    # The settings panel's directory and retention used to be ignored.
+    if cfg['backup_dir']:
+        args += ['--dest', cfg['backup_dir']]
+    if cfg['retention_count']:
+        args += ['--keep', str(cfg['retention_count'])]
 
     out = io.StringIO()
     try:

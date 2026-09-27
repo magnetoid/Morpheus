@@ -60,6 +60,12 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY --chown=morpheus:morpheus . /app
 
+# The worker mounts its persistent backup volume here (docker-compose
+# `backup_data`). Docker creates a missing mount point as root:root and the
+# worker runs as morpheus, so every nightly backup failed with
+# PermissionError. An empty named volume takes this directory's ownership.
+RUN mkdir -p /app/backups && chown morpheus:morpheus /app/backups
+
 # Janus is the store agent (Linda is brand only). Always install into an
 # isolated venv so Django and Janus do not share `plugins/` / `tools/` on
 # sys.path. ARG LINDA_JANUS is ignored (kept so old Coolify build-args still

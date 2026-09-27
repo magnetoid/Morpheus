@@ -1,7 +1,7 @@
 """`python manage.py morph_backup` — dump database + media to local disk.
 
 Configuration via env:
-    MORPHEUS_BACKUP_DIR  (default: /tmp/morpheus-backups)
+    MORPHEUS_BACKUP_DIR  (default: /app/backups — the worker's persistent volume)
     MORPHEUS_BACKUP_KEEP (default: 7)  — keep N most recent backups
 
 For Postgres uses `pg_dump`; for SQLite copies the file. Media is tarred
