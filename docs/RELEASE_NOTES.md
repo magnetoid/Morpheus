@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.17 — 2026-09-27
+
+**Emails and search sync run again (worker task registration)**
+
+- The Celery worker never registered tasks defined outside an app's tasks.py, so it discarded them: every order-lifecycle and newsletter email (since 2026-07-12), the search-index sync, and the query-embedding warm-up. The owning apps now import them, and a test boots a worker-like interpreter to catch any task the worker would not know.
+
 ## v0.75.16 — 2026-09-27
 
 **Security: merchant-capable agents require staff to invoke**
