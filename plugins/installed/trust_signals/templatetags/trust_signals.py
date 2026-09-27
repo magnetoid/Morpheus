@@ -20,6 +20,26 @@ def trust_data(context, product) -> dict:
     if product is None:
         return {}
 
+    # The PDP hands storefront blocks the GraphQL product DICT, not the
+    # model — collect_trust_data needs the real row (reviews reverse FK,
+    # review_count/average_rating properties), so resolve it here. Looked
+    # up via the app registry (like `_order_item_model` in services.py)
+    # rather than a direct import — trust_signals has no declared `requires`
+    # on catalog.
+    if isinstance(product, dict):
+        product_id = product.get('id')
+        if not product_id:
+            return {}
+        from django.apps import apps  # noqa: PLC0415
+
+        try:
+            product_model = apps.get_model('catalog', 'Product')
+        except LookupError:
+            return {}
+        product = product_model.objects.filter(pk=product_id).first()
+        if product is None:
+            return {}
+
     # Per-plugin config lives on PluginConfig — pull it lazily to keep
     # this tag cheap to import.
     config = _plugin_config()
