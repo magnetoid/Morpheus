@@ -563,8 +563,9 @@ def reports(request):
             t=Sum('commission')
         )['t']
         or Decimal('0'),
+        # Payouts record requested_at/paid_at — there is no created_at.
         'paid_period': VendorPayout.objects.filter(
-            created_at__gte=since,
+            paid_at__gte=since,
             status='paid',
         ).aggregate(t=Sum('amount'))['t']
         or Decimal('0'),
