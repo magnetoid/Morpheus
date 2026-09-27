@@ -220,8 +220,14 @@ class ProductForm(forms.Form):
         product.description = cd.get('description') or ''
         product.is_featured = bool(cd.get('is_featured'))
         product.is_taxable = bool(cd.get('is_taxable'))
-        product.track_inventory = bool(cd.get('track_inventory'))
-        product.requires_shipping = bool(cd.get('requires_shipping'))
+        # A digital product is never stocked or shipped. This is decided here,
+        # not by hidden inputs in the Digital card: the editor only HIDES the
+        # cards of other types, so their controls still submit, and a trailing
+        # hidden `track_inventory=""` switched stock tracking and shipping off
+        # on every save of a simple or bundle product.
+        is_digital = product.product_type == 'digital'
+        product.track_inventory = bool(cd.get('track_inventory')) and not is_digital
+        product.requires_shipping = bool(cd.get('requires_shipping')) and not is_digital
         product.weight = cd.get('weight')
         product.weight_unit = cd.get('weight_unit') or 'kg'
 

@@ -532,12 +532,6 @@
       </div>
       <div class="flex flex-wrap gap-4 pt-1">
         <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="is_featured" {% if form.is_featured.value %}checked{% endif %}> Featured
-        </label>
-        <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="is_taxable" {% if form.is_taxable.value %}checked{% endif %}> Taxable
-        </label>
-        <label class="inline-flex items-center gap-2 text-sm">
           <input type="checkbox" name="track_inventory" {% if form.track_inventory.value %}checked{% endif %}> Track inventory
         </label>
         <label class="inline-flex items-center gap-2 text-sm">
@@ -573,16 +567,6 @@
           merchants serve via short-lived tokens, never a public URL.
         </p>
       </div>
-      <div class="flex flex-wrap gap-4 pt-1">
-        <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="is_featured" {% if form.is_featured.value %}checked{% endif %}> Featured
-        </label>
-        <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" name="is_taxable" {% if form.is_taxable.value %}checked{% endif %}> Taxable (digital sales tax / VAT)
-        </label>
-      </div>
-      <input type="hidden" name="track_inventory" value="">
-      <input type="hidden" name="requires_shipping" value="">
     </div>
 
     {# Product identifier codes — 'identifiers' metafields; shown on PDP + JSON-LD. #}
@@ -875,6 +859,20 @@
         Active products are visible on the storefront. Drafts and archived
         products are hidden from shoppers.
       </p>
+      {% comment %}
+        Featured and Taxable apply to every product type, so they live once, here.
+        They used to be repeated inside the type-specific cards, which are only
+        hidden (not disabled) when inactive — a hidden copy still submits, so a
+        merchant could never untick either box.
+      {% endcomment %}
+      <div class="flex flex-wrap gap-4 pt-1">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_featured" form="product-form" {% if form.is_featured.value %}checked{% endif %}> Featured
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="is_taxable" form="product-form" {% if form.is_taxable.value %}checked{% endif %}> Taxable
+        </label>
+      </div>
     </div>
 
     <div class="card card-padded space-y-3">
