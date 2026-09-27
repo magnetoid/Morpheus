@@ -906,6 +906,18 @@ a `**fields` handler (it once dropped them all, so catalog updates reported
 success and changed nothing) — and a generic update tool must refuse fields
 that have their own gated tool (price → `products.update_price`).
 
+**Landmine — a store without SMTP "sends" every email to its own log.**
+`core.email.MorpheusEmailBackend` falls back to the console backend when neither
+`StoreSettings.smtp_host` nor `EMAIL_HOST` is set, so sign-in codes, order
+emails and newsletter confirmations are printed, never delivered — two of three
+live stores ran like that, while the dashboard checklist said "Set a sending
+email ✓" because `DEFAULT_FROM_EMAIL` always has a default. Test for a real
+transport with `core.email.smtp_configured()`; the fallback now logs a warning
+per message. Relatedly, deciding who is a visitor has one home:
+`core.utils.crawlers.is_crawler_user_agent` (crawlers, HTTP libraries and empty
+user agents are not browsers) — analytics browsing signals and GA4 both use it;
+Django's test client sends no user agent, so visitor tests must set one.
+
 **Known debt to repay (still fails the disable test):**
 the storefront account *summary* is fixed — `_account_summary` is now
 assembled entirely by `ACCOUNT_SUMMARY_FIELDS` subscribers (orders,

@@ -62,3 +62,29 @@ before it was integrated.
 - The analytics plugin excludes only AI crawlers; Semrush/Petal/Apple bots
   (~90% of product-page hits) count as views.
 - Precompile Tailwind for the dashboard (drops the Play CDN and `unsafe-eval`).
+
+## Second pass — "go fix all" (2026-09-27)
+
+- **Lost email, sized:** since 2026-07-12 the only orders are 4 cancelled staff
+  test orders — no customer missed an order email. The real loss: **29 newsletter
+  sign-ups stuck at `pending`** (18 dotbooks, 11 supernatural) because their
+  double opt-in email was dropped. New `manage.py newsletter_resend_confirmations`
+  (`--dry-run`, `--since`; skips undeliverable addresses).
+- **supernatural + montenegro have no outgoing email at all** (no SMTP host,
+  user or password in env or StoreSettings) — every email, including storefront
+  sign-in codes, is printed to the log. Needs an SMTP provider from the owner.
+  Now visible: a log warning per undelivered message, and the dashboard setup
+  step checks for a real transport (it used to pass on the default sender).
+- **Backups fixed:** the workers mount a persistent `/app/backups` volume, but
+  Docker created it root-owned and the worker runs as `morpheus`. The image now
+  creates the directory owned by `morpheus`; the live volumes were chowned and a
+  montenegro backup (101.7 MiB, 327 tables restorable) proved the path. The
+  settings panel's directory and retention were never passed to the command —
+  wired, with the ephemeral `/tmp` default removed.
+- **Crawlers counted as visitors:** one detector, `core.utils.crawlers`; analytics
+  pageviews / product views / searches skip crawlers (transactional events are
+  kept whoever the client is); tracking uses the same detector.
+- **Not done — needs owner approval:** fresh installs still seed dot books'
+  essays as *published* (cms migration 0004). Changing a migration file is
+  blocked by the `no_migration_writes` hook, which asks for a deliberate human
+  bypass; only brand-new stores are affected.
