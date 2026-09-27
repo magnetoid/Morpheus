@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.20 — 2026-09-27
+
+**Backups run again; missing email setup is visible; crawlers aren't visitors**
+
+- Nightly backups work again: the worker can write to its persistent backup volume (it failed with a permission error every night). The settings panel's backup directory and retention are now honoured.
+- A store with no outgoing email configured now says so: the dashboard setup step checks for a real SMTP server (it used to pass on the default sender address), and every undelivered message is logged as a warning.
+- New command newsletter_resend_confirmations re-sends the confirmation email to newsletter subscribers stuck at pending (their confirmations were dropped while the worker didn't know the email task).
+- Analytics: search-engine and SEO crawlers no longer count as visitors, pageviews, product views or searches; the same crawler check is shared with GA4 tracking.
+
 ## v0.75.19 — 2026-09-27
 
 **Deep-debug batch: payments, bookings, agents, search, SEO**
