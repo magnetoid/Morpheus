@@ -154,6 +154,50 @@ class PaymentSucceededTests(TestCase):
         self.assertFalse(row.is_processed)
         self.assertIn('db went away', row.error)
 
+    def test_stripe_retry_of_a_failed_event_is_processed(self):
+        """The failed delivery re-raises so Stripe retries — the retry must then
+        actually run. It used to hit the event-id dedup guard and be 200-OK'd
+        unprocessed, so a transient error lost the payment for good: the order
+        stayed unpaid (and was later auto-expired) although the card was charged."""
+        order, tx = _order_with_tx()
+        event = FakeEvent('evt_retry', 'payment_intent.succeeded', tx.provider_transaction_id)
+        with (
+            mock.patch.object(
+                PaymentService, '_mark_transaction_success', side_effect=RuntimeError('db blip')
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            _deliver(event)
+
+        self.assertTrue(_deliver(event))  # Stripe's retry of the same event id
+
+        tx.refresh_from_db()
+        order = Order.objects.get(pk=order.pk)
+        self.assertEqual(tx.status, PaymentTransaction.Status.SUCCEEDED)
+        self.assertEqual(order.payment_status, 'paid')
+        self.assertEqual([o.pk for o in self.paid_orders], [order.pk])
+        row = StripeWebhookEvent.objects.get(stripe_event_id='evt_retry')
+        self.assertTrue(row.is_processed)
+        self.assertEqual(row.error, '')
+        self.assertEqual(StripeWebhookEvent.objects.count(), 1)
+
+    def test_retry_runs_even_when_the_failure_had_no_message(self):
+        """A recorded error is the retry's claim marker, so a failure whose
+        exception message is empty must still record something non-empty."""
+        order, tx = _order_with_tx()
+        event = FakeEvent('evt_blank', 'payment_intent.succeeded', tx.provider_transaction_id)
+        with (
+            mock.patch.object(PaymentService, '_mark_transaction_success', side_effect=KeyError()),
+            self.assertRaises(KeyError),
+        ):
+            _deliver(event)
+
+        self.assertTrue(_deliver(event))
+
+        tx.refresh_from_db()
+        self.assertEqual(tx.status, PaymentTransaction.Status.SUCCEEDED)
+        self.assertTrue(StripeWebhookEvent.objects.get(stripe_event_id='evt_blank').is_processed)
+
 
 class PaymentFailedTests(TestCase):
     def test_failed_marks_tx_with_error(self):

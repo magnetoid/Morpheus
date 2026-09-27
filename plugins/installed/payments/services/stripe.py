@@ -379,8 +379,19 @@ class PaymentService:
         except IntegrityError:
             # Duplicate event id — Stripe retried while the first
             # delivery was still in flight (or completed). The original
-            # handler owns the side effects.
-            return True
+            # handler owns the side effects. EXCEPT when that handler failed:
+            # it recorded the error and re-raised precisely so Stripe would
+            # retry, and 200-OK'ing the retry unprocessed lost the payment for
+            # good. Claim the failed row (clearing the error is the atomic
+            # claim, so two concurrent retries can't both run it) and re-run.
+            claimed = (
+                StripeWebhookEvent.objects.filter(stripe_event_id=event.id, is_processed=False)
+                .exclude(error='')
+                .update(error='')
+            )
+            if not claimed:
+                return True
+            event_row = StripeWebhookEvent.objects.get(stripe_event_id=event.id)
 
         try:
             if event.type == 'payment_intent.succeeded':
@@ -400,7 +411,8 @@ class PaymentService:
                 # record-and-reraise branch below.
                 cls._dispatch_stripe_event_hook(event.type, event_row.payload)
         except Exception as exc:  # noqa: BLE001 — record + re-raise so Stripe retries
-            event_row.error = str(exc)[:5000]
+            # Never blank: a recorded error is what lets the retry claim the row.
+            event_row.error = (str(exc) or type(exc).__name__)[:5000]
             event_row.save(update_fields=['error'])
             raise
         event_row.is_processed = True
