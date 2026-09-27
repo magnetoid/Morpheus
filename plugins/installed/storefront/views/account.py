@@ -80,7 +80,15 @@ def account_profile(request):
         if new_email and new_email != user.email:
             # Customer.email is unique: saving another account's address
             # raised IntegrityError (a 500) and lost the name change with it.
-            if type(user).objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
+            from django.contrib.auth import get_user_model
+
+            taken = (
+                get_user_model()
+                .objects.filter(email__iexact=new_email)
+                .exclude(pk=user.pk)
+                .exists()
+            )
+            if taken:
                 from django.contrib import messages
 
                 messages.error(request, 'That email address is already used by another account.')
