@@ -34,6 +34,9 @@ class RichPostPurchasePlugin(Plugin):
     )
     has_models = True
     requires = ['post_purchase', 'consent']
+    # Ships OFF until it is built: nothing reads or sends through its channel preferences.
+    # A merchant can still switch it on in Dashboard → Apps.
+    enabled_by_default = False
 
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(

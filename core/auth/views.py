@@ -160,6 +160,10 @@ def otp_verify(request: HttpRequest) -> HttpResponse:
         else:
             # Successful verify clears any pending fail counter.
             cache.delete(_OTP_EMAIL_FAIL_KEY.format(email=email_lower))
+            # The code reached the inbox, so this person controls the address.
+            hook_registry.fire(
+                MorpheusEvents.CUSTOMER_EMAIL_VERIFIED, customer=user, email=user.email
+            )
             # Required when the project has multiple auth backends —
             # allauth registers more than one. Pin to the model backend.
             user.backend = 'django.contrib.auth.backends.ModelBackend'

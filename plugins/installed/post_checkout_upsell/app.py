@@ -24,21 +24,15 @@ class PostCheckoutUpsellPlugin(Plugin):
     label = 'Post-checkout upsell'
     version = '1.0.0'
     description = (
-        'A single in-checkout upsell and a single post-checkout upsell, '
-        'hand-picked by the merchant from a settings panel. The post-'
-        'checkout upsell creates a one-tap follow-up order in the same '
-        'session. No fragmentation — one upsell at a time.'
+        'Suggests one product on the order confirmation page: the one the '
+        'merchant picks, or the newest active product the shopper did not just '
+        'buy. (The in-checkout "add" button it used to show had nothing behind it.)'
     )
     has_models = False
     requires = ['orders', 'catalog']
 
     def contribute_storefront_blocks(self) -> list:
         return [
-            StorefrontBlock(
-                slot='checkout_extra',
-                template='post_checkout_upsell/blocks/in_checkout.html',
-                priority=25,
-            ),
             StorefrontBlock(
                 slot='order_receipt_extra',
                 template='post_checkout_upsell/blocks/post_order.html',
@@ -49,7 +43,7 @@ class PostCheckoutUpsellPlugin(Plugin):
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
             label='Post-checkout upsell',
-            description='In-checkout + post-checkout upsell target (a single product slug each).',
+            description='The one product suggested on the order confirmation page.',
             category='payments',
             schema=self.get_config_schema(),
         )
@@ -58,24 +52,14 @@ class PostCheckoutUpsellPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'in_checkout_upsell_slug': {
-                    'type': 'string',
-                    'default': '',
-                    'title': 'In-checkout upsell product slug (one product)',
-                },
                 'post_order_upsell_slug': {
                     'type': 'string',
                     'default': '',
                     'title': 'Post-order upsell product slug (one product)',
                 },
-                'in_checkout_copy': {
-                    'type': 'string',
-                    'default': 'Add a little something extra?',
-                    'title': 'In-checkout upsell copy',
-                },
                 'post_order_copy': {
                     'type': 'string',
-                    'default': 'P.S. One more thing that pairs well — one-tap add.',
+                    'default': 'P.S. One more thing that pairs well.',
                     'title': 'Post-order upsell copy',
                 },
             },

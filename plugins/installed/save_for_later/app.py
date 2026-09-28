@@ -35,6 +35,9 @@ class SaveForLaterPlugin(Plugin):
     )
     has_models = True
     requires = ['wishlist', 'notifications_center', 'consent']
+    # Ships OFF until it is built: its cart button has no script or endpoint behind it.
+    # A merchant can still switch it on in Dashboard → Apps.
+    enabled_by_default = False
 
     def contribute_storefront_blocks(self) -> list:
         return [

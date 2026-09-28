@@ -206,6 +206,29 @@ a business address and tax ID, which StoreSettings doesn't have.
    (`gateway_registry`), with a webhook and refunds.
 4. **Bank transfer:** add bank details, or leave it off.
 
+### Release 4 status (v0.75.25)
+Done:
+- **Inert apps:** save_for_later, one_click, referrals and rich_post_purchase ship off
+  (`enabled_by_default = False`) and are switched off on the three live stores. The
+  referrals block had promised "Give $5, get $5".
+- **Upsell trimmed:** post_checkout_upsell keeps its working receipt suggestion and
+  loses the dead in-checkout button and its dead settings.
+- **AI agent runs retired:** the agent runs on order placed, customer registered,
+  cart abandoned and product created are gone. So is the orphaned AgentOperator
+  (plugin-boundary baseline 118 → 117). Descriptions stay on request in the product
+  editor.
+- **Guest orders** link to an account on `CUSTOMER_EMAIL_VERIFIED` (a new event
+  produced by the sign-in code and by allauth email confirmation), never at signup.
+- **Draft conversion** keeps the quoted prices but reserves stock (refusing if
+  short), fires ORDER_PLACED, and converts once (row lock).
+- **Store credit** is a checkout tender (@46): debited on order, re-credited in
+  full on cancel and pro rata on refund, idempotent and capped.
+
+Deferred to a later release:
+- **The three per-market price stores and B2B price lists in the price seam.**
+  Every store is USD with no markets or B2B in use.
+- **Stock quantities in the editor and importer.** The owner chose no stock limits.
+
 ### Release 4 — finish or retire half-built features
 1. **Inert apps:** take the five out of `MORPHEUS_DEFAULT_APPS` (or disable them per
    store) until they're built.

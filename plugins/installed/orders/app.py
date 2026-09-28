@@ -54,6 +54,19 @@ class OrdersPlugin(Plugin):
         self.register_hook(events.CUSTOMER_DATA_EXPORT, gdpr.on_customer_export, priority=10)
         self.register_hook(events.CUSTOMER_ANONYMISE, gdpr.on_customer_anonymise, priority=10)
         self.register_hook(events.CUSTOMER_LOGIN, self.on_customer_login, priority=30)
+        # Store credit is a tender: after loyalty (45), before gift cards (50).
+        self.register_hook(
+            events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown_store_credit, priority=46
+        )
+        self.register_hook(
+            events.ORDER_CANCELLED, self.on_order_cancelled_store_credit, priority=50
+        )
+        self.register_hook(
+            events.PAYMENT_REFUNDED, self.on_payment_refunded_store_credit, priority=50
+        )
+        self.register_hook(
+            events.CUSTOMER_EMAIL_VERIFIED, self.on_customer_email_verified, priority=30
+        )
         # Nav-bar cart item count — contributed to every template (it reads
         # orders.Cart). The aggregator in plugins/context_processors.py runs it
         # only while orders is active, so the count vanishes on disable.
@@ -138,6 +151,85 @@ class OrdersPlugin(Plugin):
             schema=self.get_config_schema(),
             category='general',
         )
+
+    def on_cart_breakdown_store_credit(self, value, cart=None, **kwargs):
+        """Pay down the final total with the signed-in customer's store credit.
+
+        Same shape as the gift card tender: ``remaining = subtotal + tax +
+        shipping − discount`` is what is owed; the credit pays ``min(balance,
+        remaining)``, folded into ``discount`` and recorded in
+        ``meta['store_credit']`` for the debit at order creation. Fail-soft.
+        """
+        if cart is None or not isinstance(value, dict) or not getattr(cart, 'customer_id', None):
+            return value
+        try:
+            from decimal import Decimal  # noqa: PLC0415
+
+            from djmoney.money import Money  # noqa: PLC0415
+
+            from plugins.installed.orders import store_credit  # noqa: PLC0415
+
+            subtotal = value.get('subtotal')
+            currency = str(value.get('currency') or getattr(subtotal, 'currency', 'USD'))
+            balance = store_credit.available_for(cart.customer, currency)
+            if balance <= 0:
+                return value
+
+            def amount(key):
+                return Decimal(str(getattr(value.get(key), 'amount', 0) or 0))
+
+            discount = amount('discount')
+            remaining = amount('subtotal') + amount('shipping') + amount('tax') - discount
+            if remaining <= 0:
+                return value
+            applied = min(balance, remaining).quantize(Decimal('0.01'))
+            meta = value.get('meta') or {}
+            meta['store_credit'] = {'amount': str(applied)}
+            value['meta'] = meta
+            value['discount'] = Money(discount + applied, currency)
+            value['total'] = Money(max(remaining - applied, Decimal('0')), currency)
+        except Exception:  # noqa: BLE001 — pricing must never crash the cart
+            logger.warning('orders: store credit breakdown failed', exc_info=True)
+        return value
+
+    def on_order_cancelled_store_credit(self, order=None, **kwargs):
+        if order is None:
+            return
+        try:
+            from plugins.installed.orders import store_credit  # noqa: PLC0415
+
+            store_credit.recredit_cancelled_order(order)
+        except Exception:  # noqa: BLE001 — never block a cancel
+            logger.warning('orders: store credit re-credit on cancel failed', exc_info=True)
+
+    def on_payment_refunded_store_credit(self, refund=None, order=None, **kwargs):
+        if order is None or refund is None:
+            return
+        try:
+            from plugins.installed.orders import store_credit  # noqa: PLC0415
+
+            store_credit.recredit_refund(order, refund)
+        except Exception:  # noqa: BLE001 — never break refund processing
+            logger.warning('orders: store credit re-credit on refund failed', exc_info=True)
+
+    def on_customer_email_verified(self, customer=None, email='', **kwargs):
+        """CUSTOMER_EMAIL_VERIFIED: file the guest orders placed with this email
+        under the account, so "My orders" shows them. Only on proven control of
+        the address — linking at signup would hand anyone who registers with
+        someone else's email that person's orders and addresses."""
+        email = (email or getattr(customer, 'email', '') or '').strip()
+        if customer is None or not email:
+            return
+        try:
+            from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+            linked = Order.objects.filter(customer__isnull=True, email__iexact=email).update(
+                customer=customer
+            )
+            if linked:
+                logger.info('orders: linked %d guest order(s) to customer %s', linked, customer.pk)
+        except Exception:  # noqa: BLE001 — never break sign-in over this
+            logger.warning('orders: guest-order linking failed', exc_info=True)
 
     def on_customer_login(self, customer=None, request=None, **kwargs):
         """CUSTOMER_LOGIN: adopt/merge the anonymous-session cart onto the

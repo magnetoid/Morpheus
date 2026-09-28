@@ -27,6 +27,9 @@ class OneClickPlugin(Plugin):
     )
     has_models = True
     requires = ['customers', 'orders', 'payments', 'consent']
+    # Ships OFF until it is built: its checkout button has no endpoint behind it.
+    # A merchant can still switch it on in Dashboard → Apps.
+    enabled_by_default = False
 
     def contribute_storefront_blocks(self) -> list:
         return [

@@ -274,7 +274,12 @@ and compile every changed template with `get_template()` before shipping
 sign-in path MUST itself run the gate (`staff_mfa.services.second_factor_response`
 → `ImmediateHttpResponse` to the TOTP challenge), which is exactly why staff_sso
 interposes in its `SocialAccountAdapter.pre_social_login`. Don't add a login route
-without it.
+without it. Relatedly, signing up proves nothing about the email
+(`ACCOUNT_EMAIL_VERIFICATION = 'optional'`): anything that hands an account data
+filed under an address — orders' guest-order linking — waits for
+`CUSTOMER_EMAIL_VERIFIED` (an emailed sign-in code, or a confirmed email link),
+never `CUSTOMER_REGISTERED`, or registering with someone else's email reveals their
+orders and addresses.
 
 **Landmine — the staged-writes approval exemption is gated on `Tool.supports_staging`,
 not on `context['staged']` alone.** `AgentRuntime._dispatch_tool` skips the approval
@@ -849,11 +854,11 @@ must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a
 handler that reads `value['tax']`/`value['shipping']` at a priority **below** tax
 (20) / shipping (30) reads **zero**. The live order is: coupon/promo (10) → tax
-(20) → shipping (30) → member discount (40) → **loyalty points (45)** → **gift
-card (50)** → eco_impact (60). A **discount** (reduces what's owed, may precede
-tax) differs from a **tender** (pays down the *final* total): gift cards and
-points are tenders and MUST cap against `subtotal+tax+shipping−discount`, so they
-sit at 45/50 — the last handlers. Shipping/tax/member each *recompute*
+(20) → shipping (30) → member discount (40) → **loyalty points (45)** → **store
+credit (46)** → **gift card (50)** → eco_impact (60). A **discount** (reduces
+what's owed, may precede tax) differs from a **tender** (pays down the *final*
+total): gift cards, points and store credit are tenders and MUST cap against
+`subtotal+tax+shipping−discount`, so they sit at 45–50 — the last handlers. Shipping/tax/member each *recompute*
 `value['total']` from the running fields, so whoever writes `total` **last** wins;
 a tender at priority 50 must recompute `total` itself (nothing after it does).
 (Deep-debug #7: the gift-card tender shipped inside `promotions.on_cart_breakdown`

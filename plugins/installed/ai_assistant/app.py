@@ -93,9 +93,9 @@ class AIAssistantPlugin(Plugin):
         # the plain-catalog behaviour when this plugin is disabled.
         self.register_hook(events.SEARCH_RANKED_IDS, self.on_search_ranked_ids, priority=10)
         self.register_hook(events.SIMILAR_PRODUCTS, self.on_similar_products, priority=10)
-        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
-        self.register_hook(events.CUSTOMER_REGISTERED, self.on_customer_registered, priority=80)
-        self.register_hook(events.CART_ABANDONED, self.on_cart_abandoned, priority=80)
+        # No free-form agent runs on order / sign-up / abandoned-cart events: each
+        # handed the all-scope Worker a vague objective from a background task,
+        # used nothing it produced, and timed out at 45 s on every live order.
         self.register_hook(events.PRODUCT_CREATED, self.on_product_created, priority=90)
         self.register_hook(events.PRODUCT_UPDATED, self.on_product_updated, priority=90)
 
@@ -259,30 +259,10 @@ class AIAssistantPlugin(Plugin):
 
         return list(similar_to(product, limit=limit))
 
-    def on_order_placed(self, order, **kwargs):
-        """Update recommendation model after purchase."""
-        from plugins.installed.ai_assistant.tasks import update_recommendations_after_order
-
-        update_recommendations_after_order.delay(str(order.id))
-
-    def on_customer_registered(self, customer, **kwargs):
-        """Initialize memory store for new customer."""
-        from plugins.installed.ai_assistant.tasks import initialize_customer_memory
-
-        initialize_customer_memory.delay(str(customer.id))
-
-    def on_cart_abandoned(self, cart, **kwargs):
-        """Generate AI-personalized cart recovery message."""
-        from plugins.installed.ai_assistant.tasks import generate_cart_recovery
-
-        generate_cart_recovery.delay(str(cart.id))
-
     def on_product_created(self, product, **kwargs):
-        """If product has no description, auto-generate one. Always (re)embed."""
-        if not product.description:
-            from plugins.installed.ai_assistant.tasks import generate_product_description
-
-            generate_product_description.delay(str(product.id))
+        """(Re)embed for search. Descriptions are written on request from the
+        product editor's AI writer, where a person reviews them — never
+        autonomously on creation."""
         self._enqueue_embedding(product)
 
     def on_product_updated(self, product, **kwargs):

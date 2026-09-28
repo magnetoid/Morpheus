@@ -25,6 +25,9 @@ class ReferralsPlugin(Plugin):
     )
     has_models = True
     requires = ['customers', 'orders', 'loyalty_points', 'consent']
+    # Ships OFF until it is built: nothing issues referral links or credit, yet its account block promised both.
+    # A merchant can still switch it on in Dashboard → Apps.
+    enabled_by_default = False
 
     def contribute_storefront_blocks(self) -> list:
         return [

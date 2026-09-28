@@ -868,6 +868,15 @@ class MorpheusEvents:
     CUSTOMER_REGISTERED = 'customer.registered'
     NEWSLETTER_SUBSCRIBED = 'newsletter.subscribed'
     CUSTOMER_LOGIN = 'customer.login'
+    # CUSTOMER_EMAIL_VERIFIED — kwargs: customer=Customer, email=str.
+    #                           The person just proved they control ``email``: an
+    #                           emailed sign-in code (core.auth) or a confirmed
+    #                           email link (allauth, bridged by customers). Signup
+    #                           alone proves nothing (ACCOUNT_EMAIL_VERIFICATION is
+    #                           'optional'), so anything that grants an account data
+    #                           filed under an email — orders links guest orders —
+    #                           waits for this, never for CUSTOMER_REGISTERED.
+    CUSTOMER_EMAIL_VERIFIED = 'customer.email_verified'
     # CUSTOMER_SEGMENT_CHANGED — kwargs: customer=Customer, old=str, new=str.
     #                            Fired by customers.rfm on the nightly recompute
     #                            when a customer crosses into a different RFM segment;

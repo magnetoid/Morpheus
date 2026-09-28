@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.25 — 2026-09-28
+
+**Unfinished features switched off, store credit spendable, guest orders under accounts**
+
+- Save for later, one-click checkout, referrals and rich post-purchase messaging are switched off: their buttons and settings had nothing behind them, and the referral block promised "Give $5, get $5" credit nobody received. Each can be switched back on in Dashboard → Apps.
+- The post-checkout suggestion keeps its product link on the order confirmation page; the in-checkout "add" button, which did nothing, is gone.
+- Store credit from returns is applied at checkout for signed-in customers, and comes back when an order is cancelled or refunded.
+- A shopper's earlier guest orders appear in their account once they sign in with an emailed code or confirm their email.
+- Converting a draft order reserves stock, sends the order confirmation, counts like any other order, and can't create the order twice.
+- The AI assistant no longer runs a background agent on every order, sign-up, abandoned cart and new product: nothing used the result, and it timed out on every order.
+
 ## v0.75.24 — 2026-09-28
 
 **Shipping emails, safe refunds, a real order export, and an enquiry inbox**

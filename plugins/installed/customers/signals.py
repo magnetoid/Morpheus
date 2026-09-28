@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 
-from allauth.account.signals import user_signed_up
+from allauth.account.signals import email_confirmed, user_signed_up
 from django.contrib.auth.signals import user_logged_in
 from django.dispatch import receiver
 
@@ -25,6 +25,20 @@ def _on_user_signed_up(request, user, **kwargs):
         hooks.fire(events.CUSTOMER_REGISTERED, customer=user)
     except Exception as e:  # noqa: BLE001 — never block signup
         logger.warning('CUSTOMER_REGISTERED fire failed: %s', e, exc_info=True)
+
+
+@receiver(email_confirmed)
+def _on_email_confirmed(request, email_address, **kwargs):
+    # A confirmed email link proves the person controls the address — the only
+    # allauth moment that does (signup doesn't: verification is 'optional').
+    try:
+        hook_registry.fire(
+            MorpheusEvents.CUSTOMER_EMAIL_VERIFIED,
+            customer=email_address.user,
+            email=email_address.email,
+        )
+    except Exception as e:  # noqa: BLE001 — never block confirmation
+        logger.warning('CUSTOMER_EMAIL_VERIFIED fire failed: %s', e, exc_info=True)
 
 
 @receiver(user_logged_in)

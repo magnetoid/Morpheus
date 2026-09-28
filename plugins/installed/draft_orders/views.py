@@ -154,6 +154,10 @@ def convert(request, number: str):
             messages.error(request, 'Add at least one line before converting.')
             return redirect(f'/dashboard/draft-orders/{draft.number}/')
         services.recalc(draft)
-        order = services.convert_to_order(draft)
+        try:
+            order = services.convert_to_order(draft)
+        except Exception as exc:  # noqa: BLE001 — e.g. not enough stock; nothing was created
+            messages.error(request, f'Could not create the order: {exc}')
+            return redirect(f'/dashboard/draft-orders/{draft.number}/')
         return redirect(f'/dashboard/orders/{order.order_number}/')
     return redirect(f'/dashboard/draft-orders/{draft.number}/')

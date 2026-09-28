@@ -99,10 +99,6 @@
     },
     {
       "importer": "ai_assistant",
-      "target": "agent_core"
-    },
-    {
-      "importer": "ai_assistant",
       "target": "inventory"
     },
     {

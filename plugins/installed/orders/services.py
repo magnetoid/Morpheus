@@ -38,6 +38,11 @@ class GiftCardRedeemFailed(ValueError):
     refuse' path silently no-op'd because the flag write always failed.)"""
 
 
+class StoreCreditRedeemFailed(ValueError):
+    """Raised when store credit can't be debited at checkout (a balance race).
+    The credit is already in order.total, so the order is rolled back."""
+
+
 class LoyaltyRedeemFailed(ValueError):
     """Raised when a loyalty-points redemption fails at checkout (balance
     race). Like the gift-card case, the points discount is already baked into
@@ -268,6 +273,10 @@ def _order_metadata(visitor_id: str, breakdown: dict) -> dict:
             extras.append({'label': str(extra['label']), 'amount': str(amount)})
     if extras:
         metadata['extras'] = extras
+    store_credit = (breakdown.get('meta') or {}).get('store_credit') or {}
+    if store_credit.get('amount'):
+        # Read back on cancel / refund to re-credit what was spent.
+        metadata['store_credit_used'] = str(store_credit['amount'])
     return metadata
 
 
@@ -580,6 +589,32 @@ class OrderService:
                 raise LoyaltyRedeemFailed(
                     'Your points could not be applied. Please review your cart and try again.'
                 ) from e
+
+        # Debit store credit — same contract as the gift card and points above:
+        # the discount is already in order.total, so a failed debit aborts.
+        store_credit_meta = (breakdown.get('meta') or {}).get('store_credit') or {}
+        if store_credit_meta and cart.customer_id:
+            from plugins.installed.orders import store_credit
+
+            applied = Money(Decimal(str(store_credit_meta.get('amount') or '0')), currency)
+            if applied.amount > 0:
+                try:
+                    store_credit.redeem(
+                        cart.customer,
+                        amount=applied,
+                        reference=order.order_number,
+                        note='Applied at checkout',
+                    )
+                except ValueError as e:
+                    logger.warning(
+                        'orders: store credit debit failed for order %s: %s',
+                        order.order_number,
+                        e,
+                    )
+                    raise StoreCreditRedeemFailed(
+                        'Your store credit could not be applied. Please review your cart '
+                        'and try again.'
+                    ) from e
 
         # Eco impact: record the plant-a-tree pledge when the shopper opted in.
         # meta['eco_impact'] is present only when eco_impact's breakdown

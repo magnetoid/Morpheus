@@ -35,9 +35,19 @@ def recalc(draft) -> None:
 
 @transaction.atomic
 def convert_to_order(draft) -> Any:
-    """Spawn a real `orders.Order` from this draft. Returns the new Order."""
+    """Spawn a real `orders.Order` from this draft. Returns the new Order.
+
+    Keeps the staff-entered prices (a draft is a custom quote, so it does not go
+    through the cart's price seam), but runs the two steps every other order
+    gets: the fail-closed stock reservation inside this transaction, and
+    ORDER_PLACED — which is what sends the confirmation and feeds fraud checks,
+    affiliates, CRM and analytics. Both were skipped before.
+    """
+    from morpheus.core import MorpheusEvents, hook_registry
     from plugins.installed.orders.models import Order, OrderItem
 
+    # Lock the draft so two clicks on "Convert" can't make two orders.
+    draft = type(draft).objects.select_for_update().get(pk=draft.pk)
     if draft.status == 'converted' and draft.converted_order_id:
         return Order.objects.get(pk=draft.converted_order_id)
 
@@ -66,7 +76,12 @@ def convert_to_order(draft) -> Any:
             quantity=line.quantity,
             total_price=line.unit_price * line.quantity,
         )
+    # Short stock raises and rolls the conversion back (InsufficientStockError).
+    hook_registry.filter(
+        MorpheusEvents.ORDER_RESERVE_STOCK, value=0, order=order, raise_errors=True
+    )
     draft.status = 'converted'
     draft.converted_order_id = str(order.id)
     draft.save(update_fields=['status', 'converted_order_id', 'updated_at'])
+    hook_registry.fire(MorpheusEvents.ORDER_PLACED, order=order)
     return order
