@@ -48,8 +48,30 @@
 - Fully wired in `core/sentry.py` (Django + Celery + logging integrations,
   PII scrubbed in `before_send`). It activates the moment `SENTRY_DSN` is set —
   see the Sentry block in `.env.coolify.example`.
-- Without a DSN, production 500s reach only stdout JSON logs and the internal
-  `core/errors` pipeline — **nobody is paged**.
+- Without a DSN, production 500s reach stdout JSON logs and the internal
+  `core/errors` pipeline (`ErrorEvent`, `/dashboard/errors/`), which survives
+  redeploys. Since v0.75.26 that pipeline also emails people (below).
+
+## Error emails and the nightly health check
+
+- **Daily digest** (`core.errors.tasks.error_digest_task`, 06:30 UTC): the last
+  24 hours' server errors grouped by cause, most frequent first. Nothing is sent
+  on a clean day.
+- **Nightly health check** (`core.errors.tasks.nightly_health_check`, 05:00 UTC):
+  core checks that outgoing email is set up and the order-email templates load.
+  Each app adds its own through the `HEALTH_CHECKS` filter: payments (a payment
+  method is offered), orders (a real product can be carted and priced — rolled
+  back), storefront (home, a product, cart and checkout load through the CDN),
+  booking_marketplace (listings and an experience page). A failure is recorded
+  as an `ErrorEvent` (`HealthCheckFailed`) and emailed immediately.
+- **Recipients:** `ERROR_ALERT_EMAILS` (comma-separated env) if set, else the
+  active superusers, else the store's contact email.
+- **Run by hand:** `python manage.py shell -c "from core.errors.health import
+  run_checks; print(run_checks())"` (reports only; `run_and_report()` also
+  records and emails).
+- **An app that can stop the store selling should contribute a check.** A
+  release can break checkout in ways no request logs as an error — a payment
+  method with no keys, a template no loader finds — and only a check notices.
 
 ## Rollback
 

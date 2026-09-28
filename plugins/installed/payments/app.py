@@ -31,6 +31,7 @@ class PaymentsPlugin(Plugin):
         # instead of importing payments.services.routing, so the picker empties
         # on disable.
         self.register_hook(events.CHECKOUT_GATEWAYS, self.on_checkout_gateways, priority=10)
+        self.register_hook(events.HEALTH_CHECKS, self.on_health_checks, priority=20)
 
         # Register GraphQL extensions if we want mutations like `processPayment`
         self.register_graphql_extension('plugins.installed.payments.graphql.mutations')
@@ -79,6 +80,27 @@ class PaymentsPlugin(Plugin):
             from plugins.installed.payments.services.paypal import sync_gateway_row
 
             sync_gateway_row()
+
+    def on_health_checks(self, value, **kwargs):
+        """HEALTH_CHECKS: checkout offers at least one payment method that works."""
+        from plugins.installed.payments.services.routing import picker_gateways  # noqa: PLC0415
+
+        name = 'Checkout can take payment'
+        try:
+            offered = [g['slug'] for g in picker_gateways()]
+        except Exception as e:  # noqa: BLE001 — the failure is the finding
+            value.append({'name': name, 'ok': False, 'detail': f'Could not list methods: {e}'})
+            return value
+        value.append(
+            {
+                'name': name,
+                'ok': bool(offered),
+                'detail': f'Offered: {", ".join(offered)}'
+                if offered
+                else 'No payment method is switched on and set up; every checkout fails.',
+            }
+        )
+        return value
 
     def on_checkout_gateways(self, value, user=None, **kwargs):
         """CHECKOUT_GATEWAYS: enabled-gateway dicts for the checkout picker."""

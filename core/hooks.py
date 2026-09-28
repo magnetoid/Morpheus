@@ -877,6 +877,16 @@ class MorpheusEvents:
     #                           filed under an email — orders links guest orders —
     #                           waits for this, never for CUSTOMER_REGISTERED.
     CUSTOMER_EMAIL_VERIFIED = 'customer.email_verified'
+
+    # ── Health (filter) ───────────────────────────────────────────────────
+    # HEALTH_CHECKS — filter, value=list[dict]. The nightly health check
+    #                 (core.errors.health) collects one
+    #                 ``{'name': str, 'ok': bool, 'detail': str}`` per check;
+    #                 each app appends its own (payments: can checkout take
+    #                 money; orders: can a cart be priced; storefront: do the
+    #                 public pages load). A failure is recorded as an ErrorEvent
+    #                 and emailed to the operator the same night.
+    HEALTH_CHECKS = 'health.checks'
     # CUSTOMER_SEGMENT_CHANGED — kwargs: customer=Customer, old=str, new=str.
     #                            Fired by customers.rfm on the nightly recompute
     #                            when a customer crosses into a different RFM segment;

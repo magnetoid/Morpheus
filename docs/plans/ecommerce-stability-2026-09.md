@@ -240,6 +240,30 @@ Deferred to a later release:
 6. **Platform:** stock quantities editable in the product editor and the CSV importer,
    for stores that do track stock.
 
+### Release 5 status (v0.75.26)
+Done:
+- **The error log now emails people.** Errors had been captured all along
+  (`core/errors`, `ErrorEvent`, `/dashboard/errors/`, surviving deploys) and told
+  nobody: supernatural's product pages returned 500 from Sep 12 to Sep 22
+  unnoticed.
+  - A **daily digest** of server errors at 06:30 UTC.
+  - A **nightly health check** at 05:00 UTC. Core checks email setup and the
+    templates; payments, orders, storefront and booking each contribute their own
+    via `HEALTH_CHECKS`. A failure is recorded and emailed at once.
+  - Alerts go to `ERROR_ALERT_EMAILS`, else the superusers, else the contact
+    email.
+- A **checkout test under every theme**.
+
+Changed from the plan:
+- **No synthetic purchase with a real order each night.** It would create fake
+  orders, or push fake purchases to GA4 and ad platforms through ORDER_PLACED
+  subscribers. The health check instead prices a real cart inside a rolled-back
+  transaction and loads the purchase pages over HTTP.
+- **No CI browser test.** GitHub Actions is billing-blocked, so it would never
+  run; the Django-level theme test runs in every suite.
+- **Sentry stays optional.** It is already wired and turns on when `SENTRY_DSN`
+  is set.
+
 ### Release 5 — stay stable
 1. **Error tracking** (Sentry or self-hosted GlitchTip) on web and worker, with alerts on
    5xx and failed tasks. Keep logs across deploys.

@@ -946,6 +946,16 @@ missing" on every store — the only test that sent one is `@skipIf(SQLite)`. Th
 directory is listed in `TEMPLATES['DIRS']`; `core/tests/test_core_email_templates.py`
 always runs.
 
+**Convention — an error log nobody reads is not monitoring.** `core/errors`
+captured every 500 into `ErrorEvent` for months while supernatural's product
+pages failed for ten days unnoticed. It now emails a daily digest and runs a
+nightly health check (`core/errors/health.py`, schedule in `morph/celery.py`).
+An app that can stop the store selling contributes a check through
+`HEALTH_CHECKS` (`{'name', 'ok', 'detail'}`) — a check never places a real order
+(ORDER_PLACED subscribers push purchases to GA4 and ad platforms), it prices
+inside a rolled-back transaction or fetches pages. Recipients:
+`ERROR_ALERT_EMAILS`, else superusers, else the store contact (runbook).
+
 **Landmine — a payment method offered without its credentials fails at the
 payment step, and absence meant "on".** `payments.is_enabled()` treats a missing
 config row as enabled (`DEFAULT_ENABLED = stripe, manual`) and `default()` preferred

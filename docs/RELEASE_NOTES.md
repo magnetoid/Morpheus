@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.26 — 2026-09-28
+
+**Error emails and a nightly health check**
+
+- Each morning you get an email listing the previous day's server errors, grouped by cause; nothing is sent on a clean day. Errors were recorded all along, but nobody was told: in September a group of product pages failed for ten days unnoticed.
+- A nightly health check emails you straight away if something would stop the store selling: no working payment method, email not set up, order emails missing, a cart that can't be priced, or shop pages that don't load.
+- Alerts go to the store's superusers, or to the addresses in ERROR_ALERT_EMAILS when that is set.
+- Checkout is now tested under every theme.
+
 ## v0.75.25 — 2026-09-28
 
 **Unfinished features switched off, store credit spendable, guest orders under accounts**

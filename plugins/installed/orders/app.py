@@ -54,6 +54,7 @@ class OrdersPlugin(Plugin):
         self.register_hook(events.CUSTOMER_DATA_EXPORT, gdpr.on_customer_export, priority=10)
         self.register_hook(events.CUSTOMER_ANONYMISE, gdpr.on_customer_anonymise, priority=10)
         self.register_hook(events.CUSTOMER_LOGIN, self.on_customer_login, priority=30)
+        self.register_hook(events.HEALTH_CHECKS, self.on_health_checks, priority=30)
         # Store credit is a tender: after loyalty (45), before gift cards (50).
         self.register_hook(
             events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown_store_credit, priority=46
@@ -151,6 +152,13 @@ class OrdersPlugin(Plugin):
             schema=self.get_config_schema(),
             category='general',
         )
+
+    def on_health_checks(self, value, **kwargs):
+        """HEALTH_CHECKS: a real product can be carted and priced (rolled back)."""
+        from plugins.installed.orders.health import cart_pricing_check  # noqa: PLC0415
+
+        value.append(cart_pricing_check())
+        return value
 
     def on_cart_breakdown_store_credit(self, value, cart=None, **kwargs):
         """Pay down the final total with the signed-in customer's store credit.

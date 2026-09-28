@@ -36,3 +36,19 @@ def prune_errors_task(keep_days: int = 30) -> int:
         keep_days,
     )
     return deleted
+
+
+@shared_task(name='core.errors.tasks.error_digest_task', ignore_result=True)
+def error_digest_task(hours: int = 24) -> int:
+    """Email the operator the day's server errors, grouped (nothing on a clean day)."""
+    from core.errors.alerts import send_digest
+
+    return send_digest(hours)
+
+
+@shared_task(name='core.errors.tasks.nightly_health_check', ignore_result=True)
+def nightly_health_check() -> int:
+    """Run the health checks; failures are logged and emailed. Returns the failure count."""
+    from core.errors.health import run_and_report
+
+    return len(run_and_report())

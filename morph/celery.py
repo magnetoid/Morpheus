@@ -35,6 +35,16 @@ from celery.schedules import crontab  # noqa: E402
 app.conf.beat_schedule = {
     # Prune the error log nightly so the table stays bounded on noisy
     # storefronts. 30-day retention; older rows are deleted.
+    # The error log told nobody; these two do. The health check runs before the
+    # digest so a failure it records is in that morning's email too.
+    'core-health-nightly': {
+        'task': 'core.errors.tasks.nightly_health_check',
+        'schedule': crontab(hour=5, minute=0),  # 05:00 UTC daily
+    },
+    'core-errors-digest': {
+        'task': 'core.errors.tasks.error_digest_task',
+        'schedule': crontab(hour=6, minute=30),  # 06:30 UTC daily
+    },
     'core-errors-prune': {
         'task': 'core.errors.tasks.prune_errors_task',
         'schedule': crontab(hour=3, minute=15),  # 03:15 UTC daily

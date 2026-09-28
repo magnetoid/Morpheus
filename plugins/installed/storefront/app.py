@@ -24,6 +24,14 @@ class StorefrontPlugin(Plugin):
         from plugins.installed.storefront.sitemap import contribute_sitemap_urls
 
         self.register_hook(MorpheusEvents.SITEMAP_URLS, contribute_sitemap_urls, priority=50)
+        self.register_hook(MorpheusEvents.HEALTH_CHECKS, self.on_health_checks, priority=40)
+
+    def on_health_checks(self, value, **kwargs):
+        """HEALTH_CHECKS: the pages a purchase goes through load for a visitor."""
+        from plugins.installed.storefront.health import public_pages_check  # noqa: PLC0415
+
+        value.append(public_pages_check())
+        return value
 
     def on_robots_rules(self, value, **kwargs):
         """The storefront's own private paths, in the storefront's own file.

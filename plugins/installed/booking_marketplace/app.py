@@ -61,12 +61,33 @@ class BookingMarketplacePlugin(Plugin):
         from plugins.installed.booking_marketplace.ai_feed import contribute_ai_feed_items
 
         self.register_hook(events.AI_FEED_ITEMS, contribute_ai_feed_items, priority=50)
+        self.register_hook(events.HEALTH_CHECKS, self.on_health_checks, priority=45)
 
         # And for /llms.txt, which had the same blind spot: seo enumerates
         # catalog.Product only, so the file advertised an empty catalogue.
         from plugins.installed.booking_marketplace.llms import contribute_llms_sections
 
         self.register_hook(events.SEO_LLMS_SECTIONS, contribute_llms_sections, priority=50)
+
+    def on_health_checks(self, value, **kwargs):
+        """HEALTH_CHECKS: the listings and an experience page load for a visitor."""
+        from core.errors.health import fetch_failures  # noqa: PLC0415
+        from plugins.installed.booking_marketplace.models import BookableService  # noqa: PLC0415
+
+        paths = ['/shop/']
+        slug = (
+            BookableService.objects.filter(is_active=True)
+            .order_by('pk')
+            .values_list('slug', flat=True)
+            .first()
+        )
+        if slug:
+            paths.append(f'/bookings/{slug}/')
+        failures = fetch_failures(paths)
+        value.append(
+            {'name': 'Booking pages load', 'ok': not failures, 'detail': '; '.join(failures)}
+        )
+        return value
 
     def contribute_dashboard_pages(self) -> list:
         return [
