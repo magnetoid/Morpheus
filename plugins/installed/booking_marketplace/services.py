@@ -163,7 +163,7 @@ def create_booking(  # noqa: PLR0912 — one branch per validated booking field
     if not (name and email):
         raise BookingError('Your name and email are required.')
 
-    return Booking.objects.create(
+    booking = Booking.objects.create(
         service=svc,
         customer=user if (user and user.is_authenticated) else None,
         customer_name=name,
@@ -180,6 +180,10 @@ def create_booking(  # noqa: PLR0912 — one branch per validated booking field
         tier_breakdown=quote['tier_breakdown'],
         addons=quote['addons'],
     )
+    from plugins.installed.booking_marketplace.email import notify_booking
+
+    transaction.on_commit(lambda: notify_booking(booking))
+    return booking
 
 
 def submit_enquiry(

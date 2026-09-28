@@ -44,34 +44,24 @@ class RefundForm(forms.Form):
                 )
         return amount
 
-    def save(self) -> Any:
-        from plugins.installed.orders.models import Refund
+    def save(self, *, actor=None) -> Any:
+        # Through RefundService, like every other refund path: it locks the
+        # order and reuses an identical pending row, so a double-clicked
+        # "Refund" can't create two rows — each with its own gateway
+        # idempotency key — and refund the customer twice.
+        from plugins.installed.orders.refunds import RefundService
 
         if self.order is None:
             raise ValueError('RefundForm.save() requires an order.')
 
         currency = str(getattr(self.order.total, 'currency', 'USD'))
-        refund = Refund.objects.create(
+        return RefundService.process(
             order=self.order,
             amount=_money(self.cleaned_data['amount'], currency),
             reason=self.cleaned_data['reason'],
             notes=self.cleaned_data.get('notes') or '',
-            is_processed=False,
+            actor=actor,
         )
-        self.order.log_event(
-            'REFUND_CREATED',
-            message=f'{refund.amount} — {refund.get_reason_display()}',
-        )
-        # Ask the payments plugin (or any other listener) to issue the
-        # actual refund via the gateway. Failures are logged on the order
-        # timeline; the local Refund record stays in place either way.
-        try:
-            from morpheus.core import hooks
-
-            hooks.fire('refund.requested', refund=refund)
-        except Exception:  # noqa: BLE001, S110
-            pass
-        return refund
 
 
 class FulfillmentForm(forms.Form):

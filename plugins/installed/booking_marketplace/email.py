@@ -20,19 +20,32 @@ logger = logging.getLogger('morpheus.booking.email')
 
 
 def _store_name() -> str:
-    return getattr(settings, 'STORE_NAME', 'the team')
+    from core.utils.site import store_name
+
+    return store_name() or 'the team'
 
 
 def _from() -> str:
     return getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@example.com')
 
 
-def _host_recipient(enquiry) -> str | None:
-    """Vendor owner's email if available, else the configured ops inbox."""
-    vendor = getattr(enquiry.service, 'vendor', None) if enquiry.service_id else None
+def _ops_inbox() -> str:
+    """Where a listing without an owner's email sends its alerts: the configured
+    inbox, else the store's contact address, else the sender address."""
+    from core.utils.site import store_contact_email
+
+    return getattr(settings, 'BOOKING_ENQUIRY_NOTIFY_EMAIL', '') or store_contact_email() or _from()
+
+
+def _owner_email(vendor) -> str:
     owner = getattr(vendor, 'owner', None)
-    owner_email = getattr(owner, 'email', '') if owner else ''
-    return owner_email or getattr(settings, 'BOOKING_ENQUIRY_NOTIFY_EMAIL', '') or _from()
+    return getattr(owner, 'email', '') if owner else ''
+
+
+def _host_recipient(enquiry) -> str | None:
+    """Vendor owner's email if available, else the ops inbox."""
+    vendor = getattr(enquiry.service, 'vendor', None) if enquiry.service_id else None
+    return _owner_email(vendor) or _ops_inbox()
 
 
 def _selection_lines(enquiry) -> str:
@@ -51,11 +64,13 @@ def _selection_lines(enquiry) -> str:
     return '\n'.join(parts)
 
 
-def _send(subject: str, body: str, to: str) -> bool:
+def _send(subject: str, body: str, to: str, *, reply_to: str = '') -> bool:
     if not to:
         return False
     try:
-        EmailMultiAlternatives(subject, body, _from(), [to]).send(fail_silently=False)
+        EmailMultiAlternatives(
+            subject, body, _from(), [to], reply_to=[reply_to] if reply_to else None
+        ).send(fail_silently=False)
         return True
     except Exception as e:  # noqa: BLE001 — SMTP outage / unconfigured; never break capture
         logger.warning('booking.email: send failed -> %s: %s', to, e)
@@ -72,9 +87,9 @@ def send_enquiry_host_notification(enquiry) -> bool:
         f'Phone: {enquiry.phone or "—"}\n'
         + (f'\n{lines}\n' if lines else '')
         + (f'\nMessage:\n{enquiry.message}\n' if enquiry.message else '')
-        + '\nReply to the guest directly to follow up.\n'
+        + '\nReply to this email to answer the guest.\n'
     )
-    return _send(f'New enquiry — {name}', body, to)
+    return _send(f'New enquiry — {name}', body, to, reply_to=enquiry.email)
 
 
 def send_enquiry_confirmation(enquiry) -> bool:
@@ -101,9 +116,7 @@ def _stay_host_recipient(enquiry) -> str | None:
     """Property owner's email if available, else the configured ops inbox."""
     prop = getattr(enquiry, 'property', None) if enquiry.property_id else None
     vendor = getattr(prop, 'vendor', None) if prop else None
-    owner = getattr(vendor, 'owner', None)
-    owner_email = getattr(owner, 'email', '') if owner else ''
-    return owner_email or getattr(settings, 'BOOKING_ENQUIRY_NOTIFY_EMAIL', '') or _from()
+    return _owner_email(vendor) or _ops_inbox()
 
 
 def send_stay_enquiry_host_notification(enquiry) -> bool:
@@ -129,14 +142,89 @@ def send_stay_enquiry_host_notification(enquiry) -> bool:
         f'Phone: {enquiry.phone or "—"}\n'
         + (f'\n{lines}\n' if lines else '')
         + (f'\nMessage:\n{enquiry.message}\n' if enquiry.message else '')
-        + '\nReply to the guest directly to follow up.\n'
+        + '\nReply to this email to answer the guest.\n'
     )
-    return _send(f'New stay enquiry — {name}', body, to)
+    return _send(f'New stay enquiry — {name}', body, to, reply_to=enquiry.email)
+
+
+def send_stay_enquiry_confirmation(enquiry) -> bool:
+    name = enquiry.property.name if enquiry.property_id else 'your stay'
+    body = (
+        f'Hi {enquiry.name or "there"},\n\n'
+        f'Thanks for your enquiry about "{name}". We\'ve passed it to the host, '
+        f'who will be in touch shortly with availability and a price.\n\n'
+        f'— {_store_name()}\n'
+    )
+    return _send(f'We received your enquiry — {name}', body, enquiry.email)
 
 
 def notify_stay_enquiry(enquiry) -> None:
-    """Best-effort host notification for a stay enquiry (never raises)."""
+    """Tell the host and the guest about a stay enquiry (never raises)."""
+    for send in (send_stay_enquiry_host_notification, send_stay_enquiry_confirmation):
+        try:
+            send(enquiry)
+        except Exception:  # noqa: BLE001 — mail must never break capture
+            logger.warning(
+                'booking.email: stay enquiry %s failed for %s', send.__name__, enquiry.pk
+            )
+
+
+# ── Bookings (sent only once payments gate booking; enquiries until then) ────
+
+
+def notify_booking(booking) -> None:
+    """Tell the guest and the host about an experience booking (never raises)."""
     try:
-        send_stay_enquiry_host_notification(enquiry)
-    except Exception:  # noqa: BLE001 — mail must never break capture
-        logger.warning('booking.email: stay enquiry notify failed for %s', enquiry.pk)
+        name = booking.service.name
+        when = f'{booking.booking_date:%a %d %b %Y}' + (
+            f' at {booking.time_slot}' if booking.time_slot else ''
+        )
+        state = (
+            'confirmed'
+            if booking.status == 'confirmed'
+            else 'received — the host will confirm it shortly'
+        )
+        _send(
+            f'Your booking — {name}',
+            f'Hi {booking.customer_name or "there"},\n\n'
+            f'Your booking for "{name}" on {when} for {booking.guests} guest(s) is {state}.\n'
+            f'Total: {booking.total_price}\n\n— {_store_name()}\n',
+            booking.customer_email,
+        )
+        _send(
+            f'New booking — {name}',
+            f'New booking for "{name}" on {when}.\n\n'
+            f'Guest: {booking.customer_name} <{booking.customer_email}>\n'
+            f'Phone: {booking.customer_phone or "—"}\nGuests: {booking.guests}\n'
+            f'Total: {booking.total_price}\nStatus: {booking.get_status_display()}\n',
+            _owner_email(getattr(booking.service, 'vendor', None)) or _ops_inbox(),
+            reply_to=booking.customer_email,
+        )
+    except Exception:  # noqa: BLE001 — mail must never break a booking
+        logger.warning('booking.email: booking notify failed for %s', booking.pk)
+
+
+def notify_stay_booking(booking) -> None:
+    """Tell the guest and the host about a stay booking (never raises)."""
+    try:
+        name = booking.property.name
+        dates = f'{booking.check_in:%a %d %b %Y} to {booking.check_out:%a %d %b %Y}'
+        _send(
+            f'Your stay — {name}',
+            f'Hi {booking.customer_name or "there"},\n\n'
+            f'Your stay at "{name}" from {dates} ({booking.nights} night(s)) is confirmed.\n'
+            f'Total: {booking.total}\n\n— {_store_name()}\n',
+            booking.customer_email,
+        )
+        _send(
+            f'New stay booking — {name}',
+            f'New booking at "{name}", {dates}.\n\n'
+            f'Guest: {booking.customer_name} <{booking.customer_email}>\n'
+            f'Phone: {booking.customer_phone or "—"}\n'
+            f'Rooms: {booking.rooms} · Adults: {booking.adults} · Children: {booking.children}\n'
+            f'Total: {booking.total}\n',
+            _owner_email(getattr(booking.property, 'vendor', None)) or _ops_inbox(),
+            reply_to=booking.customer_email,
+        )
+    except Exception:  # noqa: BLE001 — mail must never break a booking
+        logger.warning('booking.email: stay booking notify failed for %s', booking.pk)

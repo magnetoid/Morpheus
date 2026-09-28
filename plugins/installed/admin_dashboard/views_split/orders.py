@@ -387,9 +387,13 @@ def order_refund(request: HttpRequest, order_number: str) -> HttpResponse:
     if request.method == 'POST':
         form = RefundForm(request.POST, order=order)
         if form.is_valid():
-            refund = form.save()
-            messages.success(request, f'Refund of {refund.amount} recorded.')
-            return redirect('admin_dashboard:order_detail', order_number=order.order_number)
+            try:
+                refund = form.save(actor=request.user)
+            except ValueError as exc:  # over the refundable balance (a race past the form)
+                messages.error(request, str(exc))
+            else:
+                messages.success(request, f'Refund of {refund.amount} recorded.')
+                return redirect('admin_dashboard:order_detail', order_number=order.order_number)
     else:
         form = RefundForm(order=order)
     return render(
@@ -408,13 +412,140 @@ def order_refund(request: HttpRequest, order_number: str) -> HttpResponse:
 
 @staff_member_required
 @require_capability('orders.write')
+def order_notes(request: HttpRequest, order_number: str) -> HttpResponse:
+    """Save the staff-only notes on an order (never shown to the customer)."""
+    from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+    order = get_object_or_404(Order, order_number=order_number)
+    if request.method == 'POST':
+        order.staff_notes = (request.POST.get('staff_notes') or '').strip()[:5000]
+        order.save(update_fields=['staff_notes', 'updated_at'])
+        order.log_event('NOTES_UPDATED')
+        messages.success(request, 'Notes saved.')
+    return redirect('admin_dashboard:order_detail', order_number=order_number)
+
+
+@staff_member_required
+@require_capability('orders.read')
+def order_invoice(request: HttpRequest, order_number: str) -> HttpResponse:
+    """A print-ready invoice for one order (the browser prints or saves it as PDF)."""
+    from core.models import StoreSettings  # noqa: PLC0415
+    from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+    order = get_object_or_404(Order.objects.prefetch_related('items'), order_number=order_number)
+    labels = {
+        'cod': 'Cash on delivery',
+        'manual': 'Bank transfer',
+        'stripe': 'Card',
+        'paypal': 'PayPal',
+    }
+    return render(
+        request,
+        'admin_dashboard/order_invoice.html',
+        {
+            'order': order,
+            'store': StoreSettings.objects.first() or StoreSettings(),
+            'payment_method': labels.get(order.payment_gateway, order.payment_gateway or '—'),
+        },
+    )
+
+
+_EXPORT_HEADER = [
+    'Order', 'Placed', 'Status', 'Payment', 'Payment method', 'Email', 'Name', 'Country',
+    'Items', 'Subtotal', 'Discount', 'Shipping', 'Tax', 'Extras', 'Total', 'Currency',
+    'Tracking',
+]  # fmt: skip
+
+
+def _csv_cell(value) -> str:
+    """One CSV cell. A leading = + - @ makes a spreadsheet run the cell as a
+    formula, and names and addresses here are typed by shoppers."""
+    text = '' if value is None else str(value)
+    return f"'{text}" if text.startswith(('=', '+', '-', '@', '\t', '\r')) else text
+
+
+def _order_export_row(order) -> list:
+    addr = order.shipping_address if isinstance(order.shipping_address, dict) else {}
+    name = ' '.join(p for p in (addr.get('first_name'), addr.get('last_name')) if p)
+    extras = sum((e['amount'].amount for e in order.extra_lines), Decimal('0'))
+
+    def amount(money) -> str:
+        return f'{money.amount:.2f}' if money is not None else ''
+
+    return [
+        order.order_number,
+        order.placed_at.strftime('%Y-%m-%d %H:%M') if order.placed_at else '',
+        order.get_status_display(),
+        order.payment_status,
+        order.payment_gateway,
+        order.email,
+        name,
+        addr.get('country', ''),
+        sum(item.quantity for item in order.items.all()),
+        amount(order.subtotal),
+        amount(order.discount_total),
+        amount(order.shipping_total),
+        amount(order.tax_total),
+        f'{extras:.2f}',
+        amount(order.total),
+        str(order.total.currency) if order.total is not None else '',
+        order.tracking_number,
+    ]
+
+
+def _orders_csv(queryset, filename: str = 'orders'):
+    """Stream ``queryset`` as a CSV download, newest first."""
+    import csv  # noqa: PLC0415
+
+    from django.http import StreamingHttpResponse  # noqa: PLC0415
+    from django.utils import timezone  # noqa: PLC0415
+
+    class _Echo:
+        def write(self, value):
+            return value
+
+    writer = csv.writer(_Echo())
+
+    def rows():
+        yield writer.writerow(_EXPORT_HEADER)
+        for order in (
+            queryset.prefetch_related('items').order_by('-placed_at').iterator(chunk_size=500)
+        ):
+            yield writer.writerow([_csv_cell(v) for v in _order_export_row(order)])
+
+    response = StreamingHttpResponse(rows(), content_type='text/csv; charset=utf-8')
+    stamp = timezone.now().strftime('%Y%m%d')
+    response['Content-Disposition'] = f'attachment; filename="{filename}-{stamp}.csv"'
+    return response
+
+
+@staff_member_required
+@require_capability('orders.read')
+def orders_export(request: HttpRequest) -> HttpResponse:
+    """CSV of the orders the list is showing: same status, search and
+    awaiting-payment filters. (Export used to hand over the product catalogue.)"""
+    from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+    qs = Order.objects.all()
+    status_filter = request.GET.get('status', '')
+    search = request.GET.get('q', '').strip()[:80]
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    if search:
+        qs = qs.filter(order_number__icontains=search) | qs.filter(email__icontains=search)
+    if request.GET.get('awaiting_payment') == '1':
+        qs = qs.filter(_awaiting_payment_q())
+    return _orders_csv(qs)
+
+
+@staff_member_required
+@require_capability('orders.write')
 def orders_bulk(request: HttpRequest) -> HttpResponse:
     """Bulk action endpoint for the orders list page.
 
     Supported actions: ``mark_paid`` (flip payment_status to paid),
     ``cancel`` (transition to cancelled, fires the cancel hook),
-    ``export`` (redirect to the importers/csv export with a pre-filtered
-    set — placeholder; falls back to the full export).
+    ``export`` (CSV of the selected orders).
     """
     if request.method != 'POST':
         return redirect('admin_dashboard:orders')
@@ -457,7 +588,7 @@ def orders_bulk(request: HttpRequest) -> HttpResponse:
                 continue
         messages.success(request, f'Cancelled {ok} order(s).')
     elif action == 'export':
-        return redirect('/dashboard/apps/importers/csv/')
+        return _orders_csv(qs, filename='orders-selected')
     else:
         messages.warning(request, f'Unknown action: {action!r}.')
     return redirect('admin_dashboard:orders')

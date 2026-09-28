@@ -20,7 +20,7 @@
         {% if draft_count %}<span class="pill pill-info" style="margin-left:.35rem;">{{ draft_count }}</span>{% endif %}
       </a>
       {% endif %}
-      <a href="/dashboard/apps/importers/csv/" class="btn"><i data-lucide="download" class="h-4 w-4"></i> Export</a>
+      <a href="{% url 'admin_dashboard:orders_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn"><i data-lucide="download" class="h-4 w-4"></i> Export</a>
       <a href="{% url 'admin_dashboard:order_new' %}" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Create order</a>
     </div>
   </div>

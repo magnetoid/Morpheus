@@ -22,6 +22,7 @@
       8 buttons. Refund + Cancel always live in the menu.
     {% endcomment %}
     <div class="flex items-center gap-2">
+      <a href="{% url 'admin_dashboard:order_invoice' order_number=order.order_number %}" target="_blank" rel="noopener" class="btn"><i data-lucide="printer" class="h-4 w-4"></i> Print invoice</a>
       {# Primary action — single button per state. #}
       {% if order.status == 'pending' %}
       <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
@@ -208,11 +209,21 @@
       </div>
       <div class="card card-padded">
         <h3 class="font-semibold">Shipping address</h3>
-        {% if order.shipping_address %}
-          <pre class="mt-2 text-xs bg-[color:var(--surface-2)] p-2 rounded overflow-auto whitespace-pre-wrap">{{ order.shipping_address }}</pre>
-        {% else %}
-          <p class="mt-2 text-sm text-[color:var(--text-muted)]">No shipping address.</p>
+        <div class="mt-2">{% include "admin_dashboard/_address.html" with address=order.shipping_address %}</div>
+      </div>
+
+      <div class="card card-padded">
+        <h3 class="font-semibold">Notes</h3>
+        {% if order.customer_notes %}
+        <p class="mt-2 text-xs text-[color:var(--text-muted)]">From the customer</p>
+        <p class="text-sm whitespace-pre-wrap">{{ order.customer_notes }}</p>
         {% endif %}
+        <form method="post" action="{% url 'admin_dashboard:order_notes' order_number=order.order_number %}" class="mt-2 space-y-2">
+          {% csrf_token %}
+          <label for="staff-notes" class="text-xs text-[color:var(--text-muted)]">Staff notes (not shown to the customer)</label>
+          <textarea id="staff-notes" name="staff_notes" rows="4" class="w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">{{ order.staff_notes }}</textarea>
+          <button class="btn">Save notes</button>
+        </form>
       </div>
 
       <div class="card card-padded">

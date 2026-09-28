@@ -781,6 +781,18 @@ reason**, and a merchant-selectable/auto-provisioned slot must always render
 block). Also: assert a **contribution-specific marker** when testing a render —
 `'<style' in head` passes on the theme's own CSS and proves nothing.
 
+**Landmine — an order that skips a state skips that state's event.** Order events
+fire from `orders/signals.py` on the FSM transition a call reaches, and
+`ORDER_FULFILLED` (the "on its way" email with tracking, post-purchase follow-ups,
+merchant webhooks) was mapped to `'fulfilled'` only — while the dashboard's fulfil
+form ships straight from `'processing'`, so until v0.75.24 no shipped order ever
+told anyone. A transition that reaches the same business moment by another path
+must fire the event too, once (`ship` from anything but `'fulfilled'` counts).
+Same shape for money: every refund goes through `orders.refunds.RefundService.process`,
+which locks the order and reuses an identical pending row — the dashboard form
+created its own row, so a double-click was two gateway refunds. Guarded by
+`orders/tests/test_ship_notifies.py` and `admin_dashboard/tests/test_refund_form.py`.
+
 **Landmine — a tender is not a discount: refunds must re-credit it.** Gift cards
 and loyalty points are folded into `Order.discount_total`, and
 `RefundService._compute_refund` nets them back **out** of the cash refund (the

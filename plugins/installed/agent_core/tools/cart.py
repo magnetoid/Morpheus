@@ -6,27 +6,30 @@ from morpheus.core import ToolError, ToolResult, tool
 
 
 def _resolve_cart(context: dict) -> object | None:
-    """Get-or-create a cart from a request session, mirroring storefront behavior."""
+    """The shopper's cart, found the way the storefront finds it (CartService).
+
+    This used to query ``Cart(status='active')`` — a field Cart has never had —
+    so every call raised FieldError and the concierge could not add anything.
+    """
     request = (context or {}).get('request')
     if request is None:
         return None
     try:
-        from plugins.installed.orders.models import Cart
+        from plugins.installed.orders.services import CartService
     except ImportError:
         return None
     customer = (context or {}).get('customer')
     if customer is not None and getattr(customer, 'is_authenticated', False):
-        cart, _ = Cart.objects.get_or_create(customer=customer, status='active')
-        return cart
-    if hasattr(request, 'session'):
+        cart = CartService.get_or_create_cart(customer=customer)
+    elif hasattr(request, 'session'):
         if not request.session.session_key:
             request.session.save()
-        cart, _ = Cart.objects.get_or_create(
-            session_key=request.session.session_key,
-            status='active',
-        )
-        return cart
-    return None
+        cart = CartService.get_or_create_cart(session_key=request.session.session_key)
+    else:
+        return None
+    if hasattr(request, 'session') and not request.session.get('cart_id'):
+        request.session['cart_id'] = str(cart.id)
+    return cart
 
 
 @tool(
@@ -50,7 +53,7 @@ def _resolve_cart(context: dict) -> object | None:
 )
 def add_to_cart_tool(*, slug: str, quantity: int = 1, context: dict | None = None) -> ToolResult:
     from plugins.installed.catalog.models import Product
-    from plugins.installed.orders.models import CartItem
+    from plugins.installed.orders.services import CartService
 
     cart = _resolve_cart(context or {})
     if cart is None:
@@ -59,14 +62,14 @@ def add_to_cart_tool(*, slug: str, quantity: int = 1, context: dict | None = Non
         product = Product.objects.get(slug=slug, status='active')
     except Product.DoesNotExist as e:
         raise ToolError(f'Unknown product: {slug}') from e
-    item, created = CartItem.objects.get_or_create(
-        cart=cart,
-        product=product,
-        defaults={'quantity': quantity, 'unit_price': product.price},
-    )
-    if not created:
-        item.quantity = min(20, item.quantity + max(1, int(quantity)))
-        item.save(update_fields=['quantity'])
+    # Through CartService, like every storefront add: the price seam, the $0
+    # guard, one currency per cart and the stock hold all apply here too.
+    try:
+        item = CartService.add_item(
+            cart=cart, product_id=str(product.id), quantity=max(1, min(20, int(quantity)))
+        )
+    except ValueError as e:
+        raise ToolError(str(e)) from e
     return ToolResult(
         output={
             'cart_id': str(cart.id),

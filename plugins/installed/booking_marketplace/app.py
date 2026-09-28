@@ -79,4 +79,22 @@ class BookingMarketplacePlugin(Plugin):
                 order=60,
                 nav='main',
             ),
+            DashboardPage(
+                label='Enquiries',
+                slug='enquiries',
+                view='plugins.installed.booking_marketplace.dashboard.enquiries_list',
+                icon='inbox',
+                section='marketplace',
+                order=61,
+                nav='main',
+            ),
+            DashboardPage(
+                label='Stays',
+                slug='stays',
+                view='plugins.installed.booking_marketplace.dashboard.stays_list',
+                icon='bed',
+                section='marketplace',
+                order=62,
+                nav='main',
+            ),
         ]

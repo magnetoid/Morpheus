@@ -175,7 +175,7 @@ def create_stay_booking(
     # Phase 1: no payment step yet — the booking is 'confirmed' and holds
     # inventory immediately. Do NOT enable marketplace mode until the Phase 3
     # payment bridge gates this (listing mode books nothing — it enquires).
-    return StayBooking.objects.create(
+    booking = StayBooking.objects.create(
         room_type=rt,
         property=rt.property,
         customer=customer if (customer and getattr(customer, 'is_authenticated', False)) else None,
@@ -198,6 +198,10 @@ def create_stay_booking(
         status='confirmed',
         notes=notes,
     )
+    from plugins.installed.booking_marketplace.email import notify_stay_booking
+
+    transaction.on_commit(lambda: notify_stay_booking(booking))
+    return booking
 
 
 def submit_stay_enquiry(

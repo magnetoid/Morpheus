@@ -160,6 +160,29 @@ Deviations from the plan:
 8. **Live.** One staff purchase per selling store, paid by cash on delivery: order,
    emails, dashboard state.
 
+### Release 2 status (v0.75.24)
+Done:
+- **Shipping:** shipping straight from processing now fulfils the order: the "on its
+  way" email with tracking, post-purchase follow-ups and webhooks. None had fired
+  for any shipped order.
+- **Refunds:** the dashboard refund goes through `RefundService`, which now locks the
+  order and logs to the timeline.
+- **Orders:** a real CSV export (list filters, selected orders, formula-safe); staff
+  notes and the customer's note on the order page; the address shown as lines; a
+  printable invoice.
+- **Montenegro:**
+  - an Enquiries inbox (experiences and stays, new/contacted/closed, reply by email)
+    and a Stays screen;
+  - host alerts reply to the guest and fall back to the store contact email;
+  - stay enquiries confirm to the guest;
+  - booking confirmation emails are wired for when payments are on;
+  - the cart icon shows only when the cart has items;
+  - the sign-in code pages are branded.
+- **AI concierge:** the cart tool goes through `CartService`.
+
+Note: the invoice shows the store name, email and phone. A legal invoice also needs
+a business address and tax ID, which StoreSettings doesn't have.
+
 ### Release 2 — merchants can run the shop
 1. **Shipped email (B7):** an `ORDER_SHIPPED` event with the tracking number.
 2. **Refunds (B8)** go through `RefundService`.

@@ -133,7 +133,13 @@ class RefundService:
         ``(order, amount, reason)`` — retries reuse the same Refund row
         (which carries a deterministic Stripe idempotency_key) so the
         provider can never be billed twice."""
-        from plugins.installed.orders.models import Refund
+        from plugins.installed.orders.models import Order, Refund
+
+        # Lock the order first. Without it two concurrent requests (a
+        # double-clicked "Refund") both find no matching row below and both
+        # create one, and the dedup and the over-refund cap each see only
+        # their own transaction.
+        Order.objects.select_for_update().filter(pk=order.pk).exists()
 
         # Guard against over-refunding: the sum of already-processed refunds
         # plus this one must not exceed what was charged (order.total). The
@@ -173,6 +179,9 @@ class RefundService:
                 amount=amount,
                 reason=reason,
                 notes=notes,
+            )
+            order.log_event(
+                'REFUND_CREATED', message=f'{refund.amount} — {refund.get_reason_display()}'
             )
         elif refund.is_processed:
             return refund

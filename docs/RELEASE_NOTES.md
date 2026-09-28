@@ -15,6 +15,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.24 — 2026-09-28
+
+**Shipping emails, safe refunds, a real order export, and an enquiry inbox**
+
+- Customers get the "on its way" email with the tracking number when you mark an order shipped. Shipping from the order page skipped that step, so no shipped order had sent it; post-purchase follow-ups and webhooks now fire too.
+- A refund clicked twice refunds once.
+- Orders → Export downloads your orders, following the list's filters, and exporting selected orders does too. It used to give the product catalogue.
+- The order page has staff notes, shows the customer's note, shows the address as an address, and prints an invoice.
+- Bookings: a new Enquiries inbox lists every guest request for experiences and stays, with reply by email and new / contacted / closed. A Stays screen lists hotel bookings.
+- Bookings: enquiry alerts go to the store's contact email when a listing has no owner, and replying to an alert answers the guest. Stay enquiries now confirm to the guest.
+- Montenegro: the cart icon appears only when the cart has something in it, and the sign-in code pages match the site.
+- The AI shopping assistant can add items to the cart again.
+
 ## v0.75.23 — 2026-09-28
 
 **Checkout takes payment with the methods you have, and order emails are sent**

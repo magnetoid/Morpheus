@@ -41,6 +41,12 @@ def _on_order_transition(sender, instance, name, source, target, **kwargs):
     state. Fail-soft: a hook problem must never block the transition itself.
     """
     event = _TARGET_EVENTS.get(target)
+    # Shipping straight from processing skips 'fulfilled' — the dashboard's
+    # fulfil form does exactly that — so the order's fulfilment (the "on its
+    # way" email with tracking, post-purchase follow-ups, merchant webhooks)
+    # happens here. Coming from 'fulfilled', it already fired.
+    if target == 'shipped' and source != 'fulfilled':
+        event = MorpheusEvents.ORDER_FULFILLED
     if event is None:
         return
     try:

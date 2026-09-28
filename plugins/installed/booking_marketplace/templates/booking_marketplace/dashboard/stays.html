@@ -1,0 +1,37 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Stays · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Stays</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Hotel and apartment bookings · {{ upcoming }} confirmed and not yet over</p>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if stays %}
+    <table class="morph-table morph-table-zebra">
+      <thead><tr><th>Dates</th><th>Property</th><th>Guest</th><th>Party</th><th class="text-right">Total</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for s in stays %}
+        <tr>
+          <td class="whitespace-nowrap">{{ s.check_in|date:"M j" }} → {{ s.check_out|date:"M j, Y" }} · {{ s.nights }} night{{ s.nights|pluralize }}</td>
+          <td><div class="font-medium">{{ s.property.name }}</div><div class="text-xs text-[color:var(--text-muted)]">{{ s.room_type.name }}</div></td>
+          <td><div>{{ s.customer_name }}</div><a class="text-xs underline" href="mailto:{{ s.customer_email }}">{{ s.customer_email }}</a></td>
+          <td class="whitespace-nowrap">{{ s.rooms }} room{{ s.rooms|pluralize }} · {{ s.adults }} adult{{ s.adults|pluralize }}{% if s.children %} · {{ s.children }} child{{ s.children|pluralize:"ren" }}{% endif %}</td>
+          <td class="text-right whitespace-nowrap">{{ s.total }}</td>
+          <td>
+            {% if s.status == 'confirmed' %}<span class="pill pill-success">Confirmed</span>
+            {% elif s.status == 'cancelled' %}<span class="pill pill-danger">Cancelled</span>
+            {% else %}<span class="pill pill-neutral">{{ s.get_status_display }}</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No stay bookings yet. While the marketplace takes enquiries only, guests' requests appear under Enquiries.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
