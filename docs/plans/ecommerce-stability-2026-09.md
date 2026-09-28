@@ -264,6 +264,19 @@ Changed from the plan:
 - **Sentry stays optional.** It is already wired and turns on when `SENTRY_DSN`
   is set.
 
+Found while verifying Release 5 (fixed in v0.75.27):
+- **Every job scheduled in `morph/celery.py` had never run.** An
+  `app.conf.beat_schedule` assignment was replaced when Celery loaded its config
+  from settings. The affected jobs were the error-log prune, the update check, the
+  outbox drain, the daily briefing, and the new health check and digest. They now
+  go into `settings.CELERY_BEAT_SCHEDULE`.
+
+Follow-up (not done):
+- **dotbooks has 50,962 PENDING `OutboxEvent` rows since 2026-04-26.** No store
+  sets `NATS_URL`, so `process_outbox` (now scheduled) leaves them pending and the
+  table only grows. Either stop writing outbox rows when NATS is unset, or prune
+  them.
+
 ### Release 5 — stay stable
 1. **Error tracking** (Sentry or self-hosted GlitchTip) on web and worker, with alerts on
    5xx and failed tasks. Keep logs across deploys.

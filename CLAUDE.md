@@ -905,7 +905,12 @@ were catalog search sync and the query-embedding warm-up). Import such tasks
 from the owning app's `tasks.py`. To check a live worker:
 `celery -A morph inspect registered`. Guarded by
 `core/tests/test_celery_wiring.py`, which boots a fresh interpreter the way the
-worker does.
+worker does. The schedule has the same trap one level up: Celery loads its
+config from Django settings on the first read of `app.conf`, which silently
+replaced the `app.conf.beat_schedule = {...}` in `morph/celery.py` — so core's
+jobs (error-log prune, update check, outbox drain, daily briefing) never ran
+until v0.75.27, while every app's jobs did. Schedule into
+`settings.CELERY_BEAT_SCHEDULE` (`core/tests/test_beat_schedule.py`).
 
 **Landmine — a hidden form control still submits, and Django reads the LAST
 value of a repeated key.** The product editor hid inactive per-type cards with

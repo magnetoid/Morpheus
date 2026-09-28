@@ -32,9 +32,7 @@ app.autodiscover_tasks()
 # cron entries in Coolify. Each entry runs on the `beat` container.
 from celery.schedules import crontab  # noqa: E402
 
-app.conf.beat_schedule = {
-    # Prune the error log nightly so the table stays bounded on noisy
-    # storefronts. 30-day retention; older rows are deleted.
+_CORE_BEAT_SCHEDULE = {
     # The error log told nobody; these two do. The health check runs before the
     # digest so a failure it records is in that morning's email too.
     'core-health-nightly': {
@@ -45,6 +43,8 @@ app.conf.beat_schedule = {
         'task': 'core.errors.tasks.error_digest_task',
         'schedule': crontab(hour=6, minute=30),  # 06:30 UTC daily
     },
+    # Prune the error log nightly so the table stays bounded on noisy
+    # storefronts. 30-day retention; older rows are deleted.
     'core-errors-prune': {
         'task': 'core.errors.tasks.prune_errors_task',
         'schedule': crontab(hour=3, minute=15),  # 03:15 UTC daily
@@ -72,6 +72,17 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=6, minute=0),  # 06:00 UTC daily
     },
 }
+
+# Celery takes its configuration from Django settings (config_from_object
+# above), and the first read of ``app.conf`` loads it from there — so the
+# ``app.conf.beat_schedule = {...}`` assignment this block used to be was
+# silently replaced, and not one of these jobs ever ran in production (found
+# 2026-09-28: the error log had never been pruned, the update check never ran).
+# They go into the settings dict the apps add their own jobs to, which is the
+# dict the scheduler reads. Guarded by core/tests/test_beat_schedule.py.
+from django.conf import settings as _settings  # noqa: E402
+
+_settings.CELERY_BEAT_SCHEDULE.update(_CORE_BEAT_SCHEDULE)
 
 # Self-improvement engine — registers ingest/analyze/digest tasks.
 try:

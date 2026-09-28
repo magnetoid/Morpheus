@@ -57,11 +57,14 @@ def _core_checks() -> list[dict]:
             get_template(f'emails/{base}.txt')
         except Exception:  # noqa: BLE001
             missing.append(base)
+    email_ok = smtp_configured()
     return [
         {
             'name': 'Outgoing email is set up',
-            'ok': smtp_configured(),
-            'detail': 'Emails are written to the log instead of being sent: no SMTP server '
+            'ok': email_ok,
+            'detail': ''
+            if email_ok
+            else 'Emails are written to the log instead of being sent: no SMTP server '
             'is configured (Settings → Notifications).',
         },
         {

@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.27 — 2026-09-28
+
+**Scheduled maintenance jobs now run**
+
+- Jobs scheduled by Morpheus itself had never run: the nightly error-log cleanup, the daily update check behind "update available", the event outbox drain, the optional daily briefing, and the new health check and error digest. They run from this release on.
+- A passing health check no longer shows a failure note next to it.
+
 ## v0.75.26 — 2026-09-28
 
 **Error emails and a nightly health check**
