@@ -93,7 +93,11 @@ shipped that way in v0.68.7: after its classes ran, both `theme_registry._active
 and an overridden `MORPHEUS_ACTIVE_THEME` still said `montenegro`, so the storefront
 suite rendered the wrong theme and 11 of its tests failed — while `storefront`
 alone passed 97/97. **A suite that is green per-app can be red as a whole**; run
-the two apps together before believing an ordering fix.
+the two apps together before believing an ordering fix. Same for `hook_registry`:
+`hook_registry.clear(event)` in a test deletes every real handler for the rest of
+the process — `orders/tests/test_totals_breakdown.py` wiped tax, shipping and
+promotions for every later test until v0.75.23. Save `_handlers[event]` and put it
+back with `addCleanup`.
 
 **Landmine — a guard that skips itself when its precondition is absent is
 invisible, not green.** `themes/test_head_contract.py` begins
@@ -918,6 +922,23 @@ swapped in by the backend's `send_messages`: callers build messages from
 `settings.DEFAULT_FROM_EMAIL` before any backend exists (async mail is built in
 the web process), so mutating that setting at backend construction sent live
 mail from a `noreply@` that doesn't exist (`core/tests/test_email_sender.py`).
+And the templates must be reachable: `core.emails` is not an installed app, so
+until v0.75.23 no loader found `core/emails/templates` and every order email
+(placed, paid, shipped, cancelled, refund, downloads) was skipped as "template
+missing" on every store — the only test that sent one is `@skipIf(SQLite)`. The
+directory is listed in `TEMPLATES['DIRS']`; `core/tests/test_core_email_templates.py`
+always runs.
+
+**Landmine — a payment method offered without its credentials fails at the
+payment step, and absence meant "on".** `payments.is_enabled()` treats a missing
+config row as enabled (`DEFAULT_ENABLED = stripe, manual`) and `default()` preferred
+Stripe, so every store without Stripe keys pre-selected Stripe at checkout and a
+shopper who kept the default got Stripe's raw error (which can name the key). A
+gateway is offered only when switched on **and** `is_configured()` (Stripe: both
+keys; PayPal: client id + secret; bank transfer: written instructions); `default()`
+is Stripe only when it can charge, else the first working method; the sandbox is
+`staff_only`. Provider error text is logged, never shown. Guarded by
+`payments/tests/test_routing.py::UnconfiguredGatewayTests`.
 Relatedly, deciding who is a visitor has one home:
 `core.utils.crawlers.is_crawler_user_agent` (crawlers, HTTP libraries and empty
 user agents are not browsers) — analytics browsing signals and GA4 both use it;

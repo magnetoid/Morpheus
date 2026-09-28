@@ -145,11 +145,20 @@ class PaymentService:
         return settings.STRIPE_SECRET_KEY
 
     @classmethod
+    def get_stripe_public_key(cls) -> str:
+        """The publishable key the Payment Element needs (Settings → Payments, else env)."""
+        plugin = app_registry.get('payments')
+        stored = plugin.get_config_value('stripe_public_key', '') if plugin else ''
+        return stored or getattr(settings, 'STRIPE_PUBLIC_KEY', '') or ''
+
+    @classmethod
     def create_payment_intent(cls, order):
         """
         Creates a Stripe PaymentIntent for a given Order.
         """
         stripe.api_key = cls.get_stripe_api_key()
+        if not stripe.api_key:
+            return {'success': False, 'error': 'Card payments are not set up for this store yet.'}
 
         # Amount in the currency's minor units (cents for USD; JPY has none).
         amount_minor = amount_to_minor(order.total.amount, order.total.currency.code)
@@ -181,7 +190,14 @@ class PaymentService:
 
             return {'success': True, 'client_secret': intent.client_secret, 'transaction_id': tx.id}
         except stripe.error.StripeError as e:
-            return {'success': False, 'error': str(e)}
+            # Stripe's text can name the key or the account; the shopper sees
+            # this message, so it stays generic and the detail goes to the log.
+            logger.warning('stripe: payment intent for order %s failed: %s', order.order_number, e)
+            return {
+                'success': False,
+                'error': 'Card payment could not be started. Please try again or choose '
+                'another payment method.',
+            }
 
     @classmethod
     def redeem_delegated_token(cls, order, token):

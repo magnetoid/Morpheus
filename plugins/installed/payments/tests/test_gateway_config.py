@@ -8,7 +8,7 @@ stripe + manual as enabled so checkout never has zero methods.
 
 from __future__ import annotations
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from plugins.installed.payments.gateway import gateway_registry
 from plugins.installed.payments.models import (
@@ -35,15 +35,23 @@ class IsEnabledDefaultsTests(TestCase):
         self.assertTrue(is_enabled('paypal'))
 
 
+FAKE_SECRET, FAKE_PUBLIC = 'sk_test_x', 'pk_test_x'  # not real keys
+
+
+@override_settings(STRIPE_SECRET_KEY=FAKE_SECRET, STRIPE_PUBLIC_KEY=FAKE_PUBLIC)
 class EnabledGatewaysTests(TestCase):
     def test_registry_filters_by_enabled(self):
-        # Both ship enabled by default → both appear.
+        # Both ship enabled by default → both appear once they are set up
+        # (Stripe keys above; bank details here).
+        PaymentGatewayConfig.objects.create(
+            slug='manual', enabled=True, config={'instructions': 'Wire to IBAN 123.'}
+        )
         slugs = {g.slug for g in gateway_registry.enabled_gateways()}
         self.assertIn('stripe', slugs)
         self.assertIn('manual', slugs)
 
         # Disable manual → drops out; default() (checkout) unaffected.
-        PaymentGatewayConfig.objects.create(slug='manual', enabled=False)
+        PaymentGatewayConfig.objects.filter(slug='manual').update(enabled=False)
         slugs = {g.slug for g in gateway_registry.enabled_gateways()}
         self.assertNotIn('manual', slugs)
         self.assertIn('stripe', slugs)

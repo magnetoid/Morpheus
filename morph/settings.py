@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.75.22')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.75.23')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -380,7 +380,11 @@ ROOT_URLCONF = 'morph.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        # core/emails/templates holds every order email (placed, paid, shipped,
+        # cancelled, refund, downloads, welcome). 'core.emails' is not an app,
+        # so no app loader reaches it: without this line each of those emails
+        # was skipped as "template missing" on every store.
+        'DIRS': [BASE_DIR / 'templates', BASE_DIR / 'core' / 'emails' / 'templates'],
         'APP_DIRS': False,
         'OPTIONS': {
             'context_processors': [

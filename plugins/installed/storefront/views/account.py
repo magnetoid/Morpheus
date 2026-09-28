@@ -415,7 +415,6 @@ def account_payment_methods(request):
     if redirect_resp is not None:
         return redirect_resp
 
-    from django.conf import settings as dj_settings
     from django.shortcuts import redirect as _redirect
 
     from plugins.installed.payments.services import stripe as stripe_svc
@@ -452,7 +451,7 @@ def account_payment_methods(request):
         {
             'cards': cards,
             'setup_client_secret': client_secret,
-            'stripe_publishable_key': getattr(dj_settings, 'STRIPE_PUBLIC_KEY', '') or '',
+            'stripe_publishable_key': stripe_svc.PaymentService.get_stripe_public_key(),
             'return_url': request.build_absolute_uri('/account/payment-methods/'),
             'error': error,
             'notice': notice,

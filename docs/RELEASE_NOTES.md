@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.75.23 — 2026-09-28
+
+**Checkout takes payment with the methods you have, and order emails are sent**
+
+- Checkout offers only the payment methods that are set up: Stripe needs both keys, PayPal its credentials, bank transfer its bank details. When card payments aren't set up, cash on delivery is pre-selected, so shoppers no longer hit a card-payment error.
+- Order emails are sent: order placed, paid, shipped, cancelled, refunded, download links and welcome. Their templates could not be found, so none had gone out.
+- Tax rates for a state or province now apply at checkout. Settings → Tax no longer offers "Stripe Tax" or "Prices include tax", which had no effect.
+- A product priced at 0 can't be bought and shows as unavailable until it has a price.
+- A tree-planting offset shows as its own line on the order, in the order email and in the dashboard; order emails also show discounts.
+- Marking a cash-on-delivery or bank-transfer order paid confirms it, and the orders list shows shipped or delivered orders still waiting for payment.
+- The test payment method is offered to staff only.
+
 ## v0.75.22 — 2026-09-27
 
 **New stores no longer publish the sample journal essays**

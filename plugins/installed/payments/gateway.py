@@ -27,7 +27,10 @@ Plugins register their gateway in `ready()`:
 # gateway.py ↔ models.py import cycle at module load.
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
+
+logger = logging.getLogger('morpheus.payments')
 
 
 class PaymentGateway(ABC):
@@ -37,6 +40,17 @@ class PaymentGateway(ABC):
     label: str = ''
     supports_refunds: bool = True
     supports_webhooks: bool = True
+    # Offered only to staff (a sandbox method a merchant uses to test checkout).
+    staff_only: bool = False
+
+    def is_configured(self) -> bool:
+        """Whether this gateway can take a payment right now.
+
+        A gateway without its credentials (no Stripe keys, no bank details)
+        must not be offered at checkout: shoppers would pick it, or get it as
+        the default, and hit an error at the payment step.
+        """
+        return True
 
     @abstractmethod
     def create_payment_intent(self, *, order, **kwargs) -> dict:
@@ -72,8 +86,8 @@ class GatewayRegistry:
     def all(self) -> list[PaymentGateway]:
         return list(self._gateways.values())
 
-    def enabled_gateways(self) -> list[PaymentGateway]:
-        """Registered gateways whose Settings → Payments toggle is on.
+    def enabled_gateways(self, *, user=None) -> list[PaymentGateway]:
+        """Registered gateways that are switched on, set up, and offered to ``user``.
 
         Backs the checkout payment-method picker AND server-side
         validation of the submitted slug (see
@@ -83,11 +97,34 @@ class GatewayRegistry:
         """
         from plugins.installed.payments.models import is_enabled
 
-        return [g for g in self._gateways.values() if is_enabled(g.slug)]
+        is_staff = bool(getattr(user, 'is_staff', False))
+        return [
+            g
+            for g in self._gateways.values()
+            if is_enabled(g.slug) and (is_staff or not g.staff_only) and _configured(g)
+        ]
 
-    def default(self) -> PaymentGateway | None:
-        # Prefer 'stripe' if registered, else first registered, else None.
-        return self._gateways.get('stripe') or (next(iter(self._gateways.values()), None))
+    def default(self, *, user=None) -> PaymentGateway | None:
+        """Stripe when it can take payments, else the first working method.
+
+        A staff-only method is the default only when nothing else is offered;
+        ``None`` means the store cannot take a payment at all.
+        """
+        offered = self.enabled_gateways(user=user)
+        for g in offered:
+            if g.slug == 'stripe':
+                return g
+        return next((g for g in offered if not g.staff_only), None) or (
+            offered[0] if offered else None
+        )
+
+
+def _configured(gateway: PaymentGateway) -> bool:
+    try:
+        return bool(gateway.is_configured())
+    except Exception:  # noqa: BLE001 — a broken check means "not ready", never a 500
+        logger.warning('payments: %s.is_configured() failed', gateway.slug, exc_info=True)
+        return False
 
 
 gateway_registry = GatewayRegistry()

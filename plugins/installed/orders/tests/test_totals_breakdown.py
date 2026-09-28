@@ -65,7 +65,14 @@ class CheckoutTotalsBreakdownTests(TestCase):
             action={'kind': 'fixed_off', 'value': 5},
         )
 
-        hook_registry.clear(MorpheusEvents.CART_CALCULATE_BREAKDOWN)
+        # Swap in a fake breakdown handler for this test only, and put the real
+        # ones back after it. clear() alone wiped tax, shipping, promotions and
+        # every other breakdown handler for each test that ran later in the same
+        # process, so a state-tax test after it computed no tax at all.
+        event = MorpheusEvents.CART_CALCULATE_BREAKDOWN
+        saved = list(hook_registry._handlers.get(event, []))
+        self.addCleanup(hook_registry._handlers.__setitem__, event, saved)
+        hook_registry.clear(event)
 
         def handler(value, cart=None, address=None, shipping_rate_id=None, coupon=None, **kwargs):
             self.assertEqual(shipping_rate_id, 'rate_1')
@@ -91,9 +98,6 @@ class CheckoutTotalsBreakdownTests(TestCase):
             return value
 
         hook_registry.register(MorpheusEvents.CART_CALCULATE_BREAKDOWN, handler, priority=1)
-
-    def tearDown(self) -> None:
-        hook_registry.clear(MorpheusEvents.CART_CALCULATE_BREAKDOWN)
 
     def test_breakdown_persists_totals_and_records_coupon_and_promotions(self):
         cart = CartService.get_or_create_cart(session_key='s-breakdown', customer=self.customer)

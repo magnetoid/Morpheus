@@ -41,9 +41,23 @@ ORDER_STATUS_CHOICES = (
 )
 
 
+def _awaiting_payment_q():
+    """Shipped or delivered orders paid offline (cash on delivery, bank transfer)
+    that nobody has marked paid — nothing but staff ever will."""
+    from django.db.models import Q  # noqa: PLC0415
+
+    return Q(
+        payment_status='unpaid',
+        status__in=('shipped', 'delivered'),
+        payment_gateway__in=('cod', 'manual'),
+    )
+
+
 @staff_member_required
 def orders_list(request: HttpRequest) -> HttpResponse:
     status_filter = request.GET.get('status', '')
+    awaiting_payment = request.GET.get('awaiting_payment') == '1'
+    awaiting_payment_count = 0
     search = request.GET.get('q', '').strip()[:80]
     orders: list[Any] = []
     status_counts: dict[str, int] = {}
@@ -64,6 +78,9 @@ def orders_list(request: HttpRequest) -> HttpResponse:
         qs = Order.objects.select_related('customer', 'channel')
         if status_filter:
             qs = qs.filter(status=status_filter)
+        if awaiting_payment:
+            qs = qs.filter(_awaiting_payment_q())
+        awaiting_payment_count = Order.objects.filter(_awaiting_payment_q()).count()
         if search:
             qs = qs.filter(order_number__icontains=search) | qs.filter(email__icontains=search)
         page_obj, paging_ctx = paginate_and_sort(
@@ -103,6 +120,8 @@ def orders_list(request: HttpRequest) -> HttpResponse:
             'orders': orders,
             'load_error': load_error,
             'status_filter': status_filter,
+            'awaiting_payment': awaiting_payment,
+            'awaiting_payment_count': awaiting_payment_count,
             'status_choices': ORDER_STATUS_CHOICES,
             'status_counts': status_counts,
             'search': search,
@@ -251,7 +270,13 @@ def _mark_order_paid(order) -> bool:
     from morpheus.core import MorpheusEvents, hook_registry
 
     order.payment_status = 'paid'
-    order.save(update_fields=['payment_status', 'updated_at'])
+    fields = ['payment_status', 'updated_at']
+    if order.status == 'pending':
+        # Same as the online paths (Stripe, PayPal): a paid order is confirmed.
+        # Left pending, it dropped out of every paid-order count.
+        order.confirm()
+        fields.append('status')
+    order.save(update_fields=fields)
     order.log_event('PAYMENT_MARKED_PAID', message='Marked paid via dashboard')
     hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order)
     return True

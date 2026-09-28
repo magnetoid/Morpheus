@@ -25,6 +25,18 @@
     </div>
   </div>
 
+  {% if awaiting_payment %}
+  <div class="card card-padded flex flex-wrap items-center justify-between gap-2" role="status">
+    <p class="text-sm">Showing shipped or delivered orders paid by cash or bank transfer that aren&rsquo;t marked paid yet. Mark each one paid once the money arrives.</p>
+    <a href="?" class="btn">Show all orders</a>
+  </div>
+  {% elif awaiting_payment_count %}
+  <div class="card card-padded flex flex-wrap items-center justify-between gap-2" role="status">
+    <p class="text-sm">{{ awaiting_payment_count }} shipped or delivered order{{ awaiting_payment_count|pluralize }} paid by cash or bank transfer {{ awaiting_payment_count|pluralize:"is,are" }} not marked paid yet.</p>
+    <a href="?awaiting_payment=1" class="btn">Review</a>
+  </div>
+  {% endif %}
+
   {% index_tabs param="status" choices=status_choices counts=status_counts %}
 
   <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">

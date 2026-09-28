@@ -15,6 +15,11 @@ class PayPalGateway(PaymentGateway):
     supports_refunds = True
     supports_webhooks = True
 
+    def is_configured(self) -> bool:
+        from plugins.installed.payments.services import paypal
+
+        return paypal.is_configured()
+
     def create_payment_intent(self, *, order, **kwargs) -> dict:
         """Create a PayPal order; the shopper approves at ``approval_url``.
 

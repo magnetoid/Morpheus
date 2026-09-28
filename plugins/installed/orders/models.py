@@ -210,6 +210,23 @@ class Order(models.Model):
     def __str__(self):
         return f'Order #{self.order_number}'
 
+    @property
+    def extra_lines(self) -> list[dict]:
+        """Named charges on top of the priced lines (e.g. a tree-planting offset),
+        recorded at checkout, as ``[{'label', 'amount': Money}]``."""
+        from djmoney.money import Money  # noqa: PLC0415
+
+        currency = str(self.total.currency) if self.total is not None else 'USD'
+        lines = []
+        for extra in (self.metadata or {}).get('extras') or []:
+            try:
+                lines.append(
+                    {'label': extra['label'], 'amount': Money(Decimal(extra['amount']), currency)}
+                )
+            except (KeyError, TypeError, ArithmeticError):
+                continue
+        return lines
+
     def save(self, *args, **kwargs):
         if not self.order_number:
             self.order_number = self._generate_order_number()

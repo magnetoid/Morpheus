@@ -9,9 +9,11 @@ Placed {{ order.placed_at|date:"F j, Y H:i" }}
 {% endfor %}
 
 Subtotal: {{ order.subtotal }}
-Shipping: {{ order.shipping_total }}
+{% if order.discount_total.amount %}Discount: -{{ order.discount_total }}
+{% endif %}Shipping: {{ order.shipping_total }}
 Tax:      {{ order.tax_total }}
-Total:    {{ order.total }}
+{% for extra in order.extra_lines %}{{ extra.label }}: {{ extra.amount }}
+{% endfor %}Total:    {{ order.total }}
 
 You'll get another email once payment is confirmed and your order ships.
 {% if track_url %}

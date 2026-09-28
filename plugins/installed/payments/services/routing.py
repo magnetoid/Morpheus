@@ -30,7 +30,7 @@ import logging
 logger = logging.getLogger('morpheus.payments.routing')
 
 
-def picker_gateways() -> list[dict]:
+def picker_gateways(user=None) -> list[dict]:
     """Presentation-ready list of enabled gateways for the checkout picker.
 
     Each entry: ``{slug, label, capability, instructions, is_default}``.
@@ -43,7 +43,7 @@ def picker_gateways() -> list[dict]:
     from plugins.installed.payments.gateway import gateway_registry
     from plugins.installed.payments.models import PaymentGatewayConfig
 
-    default = gateway_registry.default()
+    default = gateway_registry.default(user=user)
     default_slug = default.slug if default else ''
 
     # One query for all configured instruction blobs (avoids N round-trips).
@@ -57,7 +57,7 @@ def picker_gateways() -> list[dict]:
         instructions_by_slug = {}
 
     out: list[dict] = []
-    for g in gateway_registry.enabled_gateways():
+    for g in gateway_registry.enabled_gateways(user=user):
         if g.supports_webhooks:
             capability = 'Pay securely online'
         elif g.supports_refunds:
@@ -76,7 +76,7 @@ def picker_gateways() -> list[dict]:
     return out
 
 
-def resolve_gateway(selected_slug: str | None):
+def resolve_gateway(selected_slug: str | None, *, user=None):
     """Return the gateway to charge for ``selected_slug``.
 
     Falls back to ``gateway_registry.default()`` when the slug is empty,
@@ -85,12 +85,12 @@ def resolve_gateway(selected_slug: str | None):
     """
     from plugins.installed.payments.gateway import gateway_registry
 
-    default = gateway_registry.default()
+    default = gateway_registry.default(user=user)
     slug = (selected_slug or '').strip()
     if not slug:
         return default
     try:
-        enabled = {g.slug for g in gateway_registry.enabled_gateways()}
+        enabled = {g.slug for g in gateway_registry.enabled_gateways(user=user)}
     except Exception:  # noqa: BLE001 — DB hiccup must not break checkout
         logger.warning('routing: enabled_gateways() failed; using default', exc_info=True)
         return default
@@ -107,12 +107,15 @@ def create_payment_intent_for(order, selected_slug: str | None = None) -> dict:
     returns the gateway's result dict (``{success, client_secret?,
     transaction_id?, error?, ...}``).
     """
-    gateway = resolve_gateway(selected_slug)
+    gateway = resolve_gateway(selected_slug, user=getattr(order, 'customer', None))
     if gateway is None:
-        # No gateway registered at all — should never happen in prod
-        # (payments plugin registers stripe + manual in ready()).
-        logger.error('routing: no payment gateway registered')
-        return {'success': False, 'error': 'No payment gateway available.'}
+        # Nothing is switched on AND set up (no keys, no bank details, COD off).
+        logger.error('routing: no payment method is set up; checkout cannot take payment')
+        return {
+            'success': False,
+            'error': "This store can't take payments right now. Please contact us to "
+            'complete your order.',
+        }
 
     _record_gateway_slug(order, gateway.slug)
 

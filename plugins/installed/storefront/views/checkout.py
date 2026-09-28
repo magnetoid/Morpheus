@@ -546,13 +546,13 @@ def checkout_review(request):
 
 def checkout_payment(request):
     """Step 4: Stripe Payment Element."""
-    from django.conf import settings as dj_settings
-
     order_no = request.session.get('checkout_order_number') or ''
     client_secret = request.session.get('checkout_client_secret') or ''
     if not (order_no and client_secret):
         return redirect('/checkout/')
-    publishable = getattr(dj_settings, 'STRIPE_PUBLIC_KEY', '') or ''
+    from plugins.installed.payments.services.stripe import PaymentService  # noqa: PLC0415
+
+    publishable = PaymentService.get_stripe_public_key()
     # Append public_token to the Stripe return URL so guest checkout
     # users keep access to the confirmation page (the view requires
     # either auth-owner or matching token).

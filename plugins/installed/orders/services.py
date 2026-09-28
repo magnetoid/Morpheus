@@ -105,6 +105,10 @@ class CartService:
         unit_price = _resolve_unit_price(
             target, currency, fallback=product, customer=getattr(cart, 'customer', None)
         )
+        # A price of 0 means the merchant has not priced it yet (18 such products
+        # were buyable for nothing on a live store) — not for sale until it is.
+        if unit_price.amount <= 0:
+            raise ValueError('This product is not available to buy yet.')
 
         # Single-currency cart invariant. calculate_cart_breakdown sums the
         # subtotal against the FIRST line's currency label, so a cart mixing
@@ -250,6 +254,23 @@ def _resolve_unit_price(target, currency: str | None, *, fallback, customer=None
     return apply_price_filter(localized, product=fallback, customer=customer)
 
 
+def _order_metadata(visitor_id: str, breakdown: dict) -> dict:
+    """Order metadata, including any named charges the breakdown added on top
+    of the priced lines (``Order.extra_lines``), so a receipt adds up."""
+    metadata = {'visitor_id': visitor_id} if visitor_id else {}
+    extras = []
+    for extra in breakdown.get('extras') or []:
+        try:
+            amount = Decimal(str(extra['amount'])).quantize(Decimal('0.01'))
+        except (KeyError, TypeError, ArithmeticError):
+            continue
+        if extra.get('label') and amount:
+            extras.append({'label': str(extra['label']), 'amount': str(amount)})
+    if extras:
+        metadata['extras'] = extras
+    return metadata
+
+
 class OrderService:
     @classmethod
     def calculate_cart_breakdown(
@@ -392,7 +413,7 @@ class OrderService:
             # Anonymous attribution (autopilot-plan follow-up): experiments'
             # ORDER_PLACED handler reads metadata['visitor_id'] to credit
             # `v:` assignments — without it, anonymous conversions are lost.
-            metadata={'visitor_id': visitor_id} if visitor_id else {},
+            metadata=_order_metadata(visitor_id, breakdown),
         )
 
         for cart_item in items:

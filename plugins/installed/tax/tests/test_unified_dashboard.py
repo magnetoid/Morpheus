@@ -25,6 +25,9 @@ class UnifiedTaxDashboardTests(TestCase):
         self.assertContains(r, 'Regions')
         self.assertContains(r, 'Rates')
         self.assertContains(r, 'Tax calculation')
+        # Controls that did nothing are not offered.
+        self.assertNotContains(r, 'prices_include_tax')
+        self.assertNotContains(r, 'Stripe Tax')
 
     def test_config_saves_to_taxconfiguration_model(self):
         from plugins.installed.tax.models import TaxConfiguration, TaxRegion
@@ -35,14 +38,12 @@ class UnifiedTaxDashboardTests(TestCase):
             {
                 'kind': 'config',
                 'provider': 'none',
-                'prices_include_tax': 'on',
                 'default_region': str(reg.id),
             },
         )
         cfg = TaxConfiguration.objects.first()
         self.assertIsNotNone(cfg)
         self.assertEqual(cfg.provider, 'none')
-        self.assertTrue(cfg.prices_include_tax)
         self.assertEqual(cfg.default_region_id, reg.id)
 
     def test_create_region_then_rate_via_kind_dispatch(self):

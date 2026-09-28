@@ -320,7 +320,7 @@ def _qty_from_note(note: str) -> int:
 # and every product page and channel feed repeated that.
 
 
-def product_availability(product) -> str:
+def product_availability(product) -> str:  # noqa: PLR0911 — one early answer per case
     """An availability token for ``product`` — the vocabulary key, not a URL.
 
     One of: in_stock · out_of_stock · backorder · discontinued.
@@ -335,6 +335,10 @@ def product_availability(product) -> str:
         return ''
     if str(getattr(product, 'status', '') or '') == 'archived':
         return 'discontinued'
+    # The cart refuses an unpriced product (orders.CartService.add_item), so
+    # the page and the feeds must not call it in stock either.
+    if _is_unpriced(product):
+        return 'out_of_stock'
     # The merchant said not to count this one. Nothing below can override that.
     if getattr(product, 'track_inventory', True) is False:
         return 'in_stock'
@@ -345,6 +349,28 @@ def product_availability(product) -> str:
         return _availability_from_stock(pk)
     except Exception:  # noqa: BLE001 — an unmigrated DB must not change the answer
         return ''
+
+
+def _is_unpriced(product) -> bool:
+    """No price to sell at: the product's own price is 0 and no active variant has one.
+
+    Queried rather than read off ``product``: pages load products with
+    ``.only()``, and a deferred djmoney field raises ``KeyError`` on access.
+    """
+    from plugins.installed.catalog.models import Product, ProductVariant
+
+    pk = getattr(product, 'pk', None)
+    if pk is None:
+        return False
+    try:
+        own = Product.objects.filter(pk=pk).values_list('price', flat=True).first()
+        if own is None or own > 0:
+            return False
+        return not ProductVariant.objects.filter(
+            product_id=pk, is_active=True, price__gt=0
+        ).exists()
+    except Exception:  # noqa: BLE001 — never change the answer over a failed lookup
+        return False
 
 
 def _availability_from_stock(product_pk) -> str:

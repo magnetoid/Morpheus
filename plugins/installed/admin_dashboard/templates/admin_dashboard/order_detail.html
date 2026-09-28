@@ -115,6 +115,7 @@
           {% if order.discount_total %}<div class="flex justify-between text-[color:var(--text-muted)]"><span>Discount</span><span>−{{ order.discount_total }}</span></div>{% endif %}
           <div class="flex justify-between text-[color:var(--text-muted)]"><span>Shipping</span><span>{{ order.shipping_total }}</span></div>
           <div class="flex justify-between text-[color:var(--text-muted)]"><span>Tax</span><span>{{ order.tax_total }}</span></div>
+          {% for extra in order.extra_lines %}<div class="flex justify-between text-[color:var(--text-muted)]"><span>{{ extra.label }}</span><span>{{ extra.amount }}</span></div>{% endfor %}
           <div class="flex justify-between font-semibold pt-1 border-t border-[color:var(--border)]"><span>Total</span><span>{{ order.total }}</span></div>
         </div>
       </div>

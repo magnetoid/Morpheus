@@ -12,7 +12,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest import mock
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from djmoney.money import Money
 
 from plugins.installed.orders.models import Order
@@ -38,6 +38,10 @@ class AmountToMinorTests(TestCase):
         self.assertEqual(amount_to_minor(Decimal('0.5'), 'JPY'), 1)
 
 
+FAKE_SECRET = 'sk_test_x'  # not a real key
+
+
+@override_settings(STRIPE_SECRET_KEY=FAKE_SECRET)
 class CreatePaymentIntentMinorUnitsTests(TestCase):
     def test_jpy_intent_amount_is_not_multiplied_by_100(self):
         order = Order.objects.create(

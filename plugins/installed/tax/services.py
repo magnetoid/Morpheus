@@ -22,7 +22,7 @@ def _resolve_region(country: str, region: str) -> TaxRegion | None:  # noqa: F82
         return config.default_region if config else None
 
     if region:
-        match = TaxRegion.objects.filter(country=country, region=region).first()
+        match = TaxRegion.objects.filter(country=country, region__iexact=region).first()
         if match:
             return match
     return TaxRegion.objects.filter(country=country, region='').first()

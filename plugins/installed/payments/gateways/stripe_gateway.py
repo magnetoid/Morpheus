@@ -15,6 +15,13 @@ class StripeGateway(PaymentGateway):
     supports_refunds = True
     supports_webhooks = True
 
+    def is_configured(self) -> bool:
+        """Both keys are needed: the secret one creates the intent, the
+        publishable one renders the Payment Element."""
+        from plugins.installed.payments.services.stripe import PaymentService
+
+        return bool(PaymentService.get_stripe_api_key() and PaymentService.get_stripe_public_key())
+
     def create_payment_intent(self, *, order, **kwargs) -> dict:
         from plugins.installed.payments.services.stripe import PaymentService
 

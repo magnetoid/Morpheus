@@ -41,7 +41,9 @@ class TaxPlugin(Plugin):
             result = compute_tax_for_cart(
                 cart,
                 country=(address or {}).get('country', ''),
-                region=(address or {}).get('region', ''),
+                # Checkout addresses carry the subdivision as ``state``; shipping
+                # reads both keys the same way.
+                region=(address or {}).get('region') or (address or {}).get('state') or '',
             )
             tax_total = result.get('total')
             value['tax'] = tax_total
@@ -79,7 +81,11 @@ class TaxPlugin(Plugin):
             from plugins.installed.tax.services import compute_tax_for_cart  # noqa: PLC0415
 
             country = (address or {}).get('country', '') if address else ''
-            region = (address or {}).get('region', '') if address else ''
+            region = (
+                ((address or {}).get('region') or (address or {}).get('state') or '')
+                if address
+                else ''
+            )
             result = compute_tax_for_cart(cart, country=country, region=region)
             return value + result.get('total')
         except Exception as e:  # noqa: BLE001

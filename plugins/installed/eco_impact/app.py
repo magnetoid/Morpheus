@@ -74,6 +74,9 @@ class EcoImpactPlugin(Plugin):
             meta = value.get('meta') or {}
             meta['eco_impact'] = {'trees': 1, 'amount': str(amt)}
             value['meta'] = meta
+            # Named so the order, its email and the dashboard can show the line;
+            # otherwise the total is $1.50 more than the lines that make it up.
+            value.setdefault('extras', []).append({'label': 'Plant a tree', 'amount': str(amt)})
         except Exception:  # noqa: BLE001 — never break the cart over the offset
             return value
         return value

@@ -290,9 +290,10 @@ def _render_form(request, *, addr: dict | None, rate_id: str, error: str, paymen
     ctx['form'] = addr or {}
     ctx['selected_rate_id'] = rate_id
     ctx['error'] = error
-    ctx['payment_methods'] = _payment_methods()
+    ctx['payment_methods'] = _payment_methods(request)
     # Keep the shopper's pick across re-renders; default to the gateway the
-    # picker flags as default (stripe) so the live path is pre-selected.
+    # picker flags as default (Stripe when it is set up, else the first method
+    # that can take payment) so a working method is pre-selected.
     if not payment_method:
         payment_method = next(
             (m['slug'] for m in ctx['payment_methods'] if m.get('is_default')), ''
@@ -308,7 +309,7 @@ def _render_form(request, *, addr: dict | None, rate_id: str, error: str, paymen
     return render(request, 'storefront/checkout_one_page.html', ctx)
 
 
-def _payment_methods() -> list[dict]:
+def _payment_methods(request=None) -> list[dict]:
     """Enabled gateways for the checkout picker via CHECKOUT_GATEWAYS.
 
     The payments plugin subscribes with its enabled-gateway dicts; the bus
@@ -317,4 +318,5 @@ def _payment_methods() -> list[dict]:
     """
     from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
-    return hook_registry.filter(MorpheusEvents.CHECKOUT_GATEWAYS, []) or []
+    user = getattr(request, 'user', None)
+    return hook_registry.filter(MorpheusEvents.CHECKOUT_GATEWAYS, [], user=user) or []

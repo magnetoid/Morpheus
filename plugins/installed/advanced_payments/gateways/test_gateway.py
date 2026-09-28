@@ -16,6 +16,9 @@ class TestPaymentGateway(PaymentGateway):
     label = 'Test payment (sandbox)'
     supports_refunds = True
     supports_webhooks = False
+    # Offered to signed-in staff only, so a merchant can test checkout on a
+    # live store without shoppers seeing a method that takes no money.
+    staff_only = True
 
     def create_payment_intent(self, *, order, **kwargs) -> dict:
         return {

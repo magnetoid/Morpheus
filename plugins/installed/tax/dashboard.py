@@ -139,9 +139,11 @@ def _save_config(request) -> None:
     from plugins.installed.tax.models import TaxConfiguration  # noqa: PLC0415
 
     config = TaxConfiguration.objects.first() or TaxConfiguration()
+    # Only what compute_tax honours is offered: 'stripe' (Stripe Tax) was never
+    # implemented and taxed exactly like local rates, and prices-include-tax was
+    # saved but never read — both were controls that did nothing.
     provider = (request.POST.get('provider') or 'local').strip()
-    config.provider = provider if provider in {'local', 'stripe', 'none'} else 'local'
-    config.prices_include_tax = bool(request.POST.get('prices_include_tax'))
+    config.provider = provider if provider in {'local', 'none'} else 'local'
     region_id = (request.POST.get('default_region') or '').strip()
     config.default_region_id = region_id or None
     try:

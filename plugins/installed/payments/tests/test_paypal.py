@@ -316,8 +316,16 @@ class PayPalPickerTests(TestCase):
 
     def test_enabled_paypal_in_picker(self):
         PaymentGatewayConfig.objects.update_or_create(slug='paypal', defaults={'enabled': True})
-        slugs = [g['slug'] for g in routing.picker_gateways()]
+        with mock.patch.object(paypal, 'get_config', return_value=dict(_CONFIG)):
+            slugs = [g['slug'] for g in routing.picker_gateways()]
         self.assertIn('paypal', slugs)
+
+    def test_enabled_paypal_without_credentials_is_not_offered(self):
+        PaymentGatewayConfig.objects.update_or_create(slug='paypal', defaults={'enabled': True})
+        broken = dict(_CONFIG, client_secret='')
+        with mock.patch.object(paypal, 'get_config', return_value=broken):
+            slugs = [g['slug'] for g in routing.picker_gateways()]
+        self.assertNotIn('paypal', slugs)
 
     def test_sync_gateway_row_projects_toggle_and_credentials(self):
         with mock.patch.object(paypal, 'get_config', return_value=dict(_CONFIG)):

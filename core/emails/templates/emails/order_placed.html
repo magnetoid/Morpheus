@@ -24,8 +24,10 @@
 
   <table class="totals" role="presentation" cellspacing="0" cellpadding="0" border="0">
     <tr><td>Subtotal</td><td class="right">{{ order.subtotal }}</td></tr>
+    {% if order.discount_total.amount %}<tr><td>Discount</td><td class="right">&minus;{{ order.discount_total }}</td></tr>{% endif %}
     <tr><td>Shipping</td><td class="right">{{ order.shipping_total }}</td></tr>
     <tr><td>Tax</td><td class="right">{{ order.tax_total }}</td></tr>
+    {% for extra in order.extra_lines %}<tr><td>{{ extra.label }}</td><td class="right">{{ extra.amount }}</td></tr>{% endfor %}
     <tr class="grand"><td>Total</td><td class="right">{{ order.total }}</td></tr>
   </table>
 
