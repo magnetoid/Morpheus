@@ -271,11 +271,22 @@ Found while verifying Release 5 (fixed in v0.75.27):
   outbox drain, the daily briefing, and the new health check and digest. They now
   go into `settings.CELERY_BEAT_SCHEDULE`.
 
-Follow-up (not done):
-- **dotbooks has 50,962 PENDING `OutboxEvent` rows since 2026-04-26.** No store
-  sets `NATS_URL`, so `process_outbox` (now scheduled) leaves them pending and the
-  table only grows. Either stop writing outbox rows when NATS is unset, or prune
-  them.
+Follow-up, done 2026-09-29:
+- **dotbooks' 50,962 PENDING `OutboxEvent` rows are deleted.** They dated from
+  2026-04-26 to 2026-07-12. The table was not growing: since 79c4cfa2 (2026-07-12)
+  `core/hooks.py` writes outbox rows only when `NATS_URL` is set, and no store sets
+  it. The rows had no reader: the drain skips without NATS, and the observability
+  rollup reads only the last 6 hours. They were removed after that night's backup.
+  The other two stores had none.
+
+Found while doing it (not fixed):
+- **`/healthz/deep`'s outbox check has never checked anything.** It filters on
+  `sent_at`, which `OutboxEvent` does not have. The `FieldError` is caught and the
+  check reports `ok` with "unavailable".
+- **The observability rollup has had no input since 2026-07-12.** It builds
+  `MerchantMetric` from outbox rows, which stopped being written without NATS. Its
+  only reader is the GraphQL `metricSeries` field, and nothing in the dashboard
+  calls it. Either feed it from the hooks directly or retire it.
 
 ### Release 5 — stay stable
 1. **Error tracking** (Sentry or self-hosted GlitchTip) on web and worker, with alerts on
