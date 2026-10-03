@@ -76,9 +76,13 @@ to humans too.
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE). By submitting a contribution, you
-agree it's licensed under the same terms as the rest of the repo.
+Business Source License 1.1 — see [LICENSE](LICENSE). Non-production use
+(evaluation, development, testing) is free; production use needs a commercial
+licence from the licensor; each version converts to Apache 2.0 four years
+after it is published (ADR 0038). Versions up to v0.76.0 were Apache 2.0.
 
-Morpheus is open-core: the platform is Apache 2.0, but future enterprise
-features may ship as proprietary plugins in separate repos. Contributions
-to this repo are always Apache 2.0.
+By submitting a contribution you agree that it is licensed under the same
+terms as the rest of the repo, and you grant Marko Tiosavljevic the right to
+relicense it — including under the Change License — because the licence's
+conversion to Apache 2.0 depends on the licensor holding that right. Future
+enterprise features may ship as separate, separately licensed packages.

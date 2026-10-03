@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.76.1 — 2026-10-03
+
+**License: Business Source License 1.1**
+
+- Morpheus is licensed under the Business Source License 1.1 from this version (ADR 0038). Non-production use (evaluation, development, testing) is free; production use needs a commercial licence per store; each version becomes Apache 2.0 four years after it is published.
+- Versions up to v0.76.0 were published under Apache 2.0 and remain so. The README, CONTRIBUTING, CHARTER and the morpheus.direct site no longer describe the platform as open source.
+
 ## v0.76.0 — 2026-10-03
 
 **Sign-in activity**

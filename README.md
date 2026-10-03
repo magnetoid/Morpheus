@@ -6,7 +6,7 @@
 
 *Describe your shop in one sentence and get a real, stocked storefront. Toggle 109 capabilities on and off like apps. Then hand the back office to an AI operator who knows your catalog, briefs you every morning, and proposes improvements to her own source code — every one of them reviewed by a panel of independent models, and then by you.*
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
 [![Live stores](https://img.shields.io/badge/live-3%20stores%2C%20one%20codebase-ff5722.svg)](#-three-live-stores-one-codebase)
 [![Apps](https://img.shields.io/badge/apps-109%20toggleable-2563eb.svg)](#-whats-in-the-box-all-109-apps)
 [![AI operator](https://img.shields.io/badge/AI-built--in%20operator%20(Linda)-e11d48.svg)](#-meet-linda--the-ai-operator)
@@ -106,8 +106,8 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 | **Feature model** | 109 apps, disable-safe by construction | Apps (billed, sandboxed) | Extensions / modules |
 | **Sales channels** | 8 ad/commerce channels + a multivendor marketplace, built in | Per-channel apps | Per-channel extensions |
 | **Migration in** | Shopify, WooCommerce, Magento, BigCommerce, CSV importers | — | Varies |
-| **Own your data & code** | Yes — self-hosted, Apache-2.0 | No | Yes |
-| **Platform fees** | None | % of revenue + app fees | None |
+| **Own your data & code** | Yes — self-hosted; source-available under BUSL-1.1, each version turning Apache 2.0 after four years | No | Yes |
+| **Platform fees** | A per-store licence; no revenue share, no seat count | % of revenue + app fees | None |
 | **Self-improving** | Code changes reviewed by an LLM panel, then by you | — | — |
 | **EU AI Act ready** | Art. 50 disclosure + evidence export | Varies | Bring your own |
 
@@ -635,6 +635,7 @@ A README that only lists wins is a sales page. Here is the honest edge of the th
 - **Some surfaces are deeper than others.** Core commerce, the agent layer, security, and SEO have had the most attention. Search Console integration, the site crawler and bulk AI content tooling are specified and not yet built.
 - **A few screens are still ahead of their data.** Keyword tracking, for instance, has a page but nothing yet writes positions into it — it is waiting on the Search Console work.
 - **RBAC ships in log mode by default.** The capability checks run everywhere and record what they *would* deny; flipping a store to `enforce` is a deliberate per-store step after its role bindings exist. That default is honest, not timid — an enforcement flip with no bindings provisioned would lock out every non-superuser on day one.
+- **It is not open source — yet.** The code is public under the Business Source License 1.1: free to read, evaluate, develop and test; production use needs a commercial licence; each version turns Apache 2.0 four years after it is released. Versions up to v0.76.0 were published under Apache 2.0 and stay that way.
 - **It is opinionated to the point of being bossy.** One AI worker, not many. Everything is an app. Core imports nothing. If you disagree with those, you will be fighting the grain of the codebase rather than riding it.
 
 The full, dated list of what shipped and when is in [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md), and the breaking changes are in [`docs/MIGRATING.md`](docs/MIGRATING.md). Both are maintained because a deploy without a changelog entry fails CI.
@@ -789,7 +790,7 @@ Morpheus is built and run by **Marko Tiosavljevic**, and the three live stores a
 
 Write if you are:
 
-- **A merchant** who wants a store on Morpheus — set up, themed, migrated from Shopify, WooCommerce, Magento or BigCommerce, and run with an AI operator — without platform fees or a share of your sales.
+- **A merchant** who wants a store on Morpheus — set up, themed, migrated from Shopify, WooCommerce, Magento or BigCommerce, and run with an AI operator — under a per-store licence, with no share of your sales.
 - **An agency or developer** who wants to build on it, ship an app or a theme, or bring a client's store across.
 - **A partner or investor** who sees the same shift to agentic commerce and wants to talk about the road ahead.
 - **Anyone** who found a bug, has a question, or wants a walkthrough of a live store.
@@ -804,7 +805,14 @@ Read [`CONTRIBUTING.md`](CONTRIBUTING.md) and the house rules in [`CLAUDE.md`](C
 
 ## 📄 License
 
-[Apache License 2.0](LICENSE) — self-host it, modify it, sell with it, own it. No platform fees, no seat count, no revenue share.
+**[Business Source License 1.1](LICENSE)**. In plain words:
+
+- You may read the code, run it for evaluation, development and testing, change it, and pass it on under the same terms — free.
+- **Production use needs a commercial licence** from the licensor: running a store on it, or any other use for a business. One licence per store; no revenue share, no seat count. Write to [marko@morpheus.direct](mailto:marko@morpheus.direct).
+- **Each version becomes open source on a schedule.** Four years after a version is published, it is relicensed to Apache 2.0 automatically.
+- Versions up to v0.76.0 were published under Apache 2.0 and stay that way; the Business Source License applies from v0.76.1.
+
+The BSL is a source-available licence, not an open-source one, by design: it keeps the code readable and the platform yours while funding the work. Third-party components keep their own licences.
 
 <div align="center">
 

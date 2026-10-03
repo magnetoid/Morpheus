@@ -6,7 +6,7 @@
 
 ## 1. Mission
 
-**Morpheus is the first open-source ecommerce platform with AI as a primary citizen — not an integration.**
+**Morpheus is the first source-available ecommerce platform with AI as a primary citizen — not an integration.** (Business Source License 1.1; each version becomes Apache 2.0 four years after release — ADR 0038.)
 
 Every model, hook, dashboard surface, and state transition is designed so an AI agent can use it before a human UI ever wraps it. The result: a self-hostable commerce engine that a single merchant can boot from one sentence, that a senior engineer can extend through a sharp plugin contract, and that an AI agent can operate end-to-end via the platform's own MCP server.
 
@@ -43,7 +43,7 @@ The platform laws live in [`RULES.md`](RULES.md). Summary:
 | 6 | **Money Is Quantised at Every Step** — `Money` type, never raw floats | Production money bugs are unforgiving |
 | 7 | **Every Write Goes Through Hooks** — `order.placed`, `product.updated`, … | Outbox + audit + agent observability all depend on this |
 | 8 | **Agent Write Tools Take `confirmed: bool`** — irreversible operations require explicit consent | The platform won't let an LLM commit a refund alone |
-| 9 | **Plugin Crashes Are Isolated** — broken `ready()` doesn't take siblings down | Foundation of the open-source extension story |
+| 9 | **Plugin Crashes Are Isolated** — broken `ready()` doesn't take siblings down | Foundation of the extension story |
 | 10 | **The Assistant Is Hard-coded in `core/`** — never a plugin | The "what just broke?" channel must always be reachable |
 
 If a PR breaks any of these, it does not land — no matter who wrote it.
