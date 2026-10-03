@@ -61,7 +61,9 @@ class AccountPageTests(TestCase):
         )
 
         rows = _account_recent_activity(u)
-        self.assertEqual(len(rows), 1)  # only the user's own event, not the system one
+        # Only the user's own action: not the system event, and not the
+        # sign-in that _staff() just recorded.
+        self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]['event_type'], 'catalog.product_updated')
         self.assertIn('catalog', rows[0]['label'])
 

@@ -79,8 +79,12 @@ def _account_recent_activity(user, limit: int = 8) -> list:
     rows: list = []
     try:
         from core.audit.models import AuditEvent
+        from core.auth.sign_ins import SIGN_IN_EVENT
 
-        for ev in AuditEvent.objects.filter(actor=user).order_by('-created_at')[:limit]:
+        # Sign-ins have their own card on the person's Contacts page; here
+        # they would crowd the user's actions out of the few rows shown.
+        events = AuditEvent.objects.filter(actor=user).exclude(event_type=SIGN_IN_EVENT)
+        for ev in events.order_by('-created_at')[:limit]:
             rows.append(
                 {
                     'event_type': ev.event_type,
