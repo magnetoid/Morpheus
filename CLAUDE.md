@@ -274,7 +274,10 @@ and compile every changed template with `get_template()` before shipping
 sign-in path MUST itself run the gate (`staff_mfa.services.second_factor_response`
 → `ImmediateHttpResponse` to the TOTP challenge), which is exactly why staff_sso
 interposes in its `SocialAccountAdapter.pre_social_login`. Don't add a login route
-without it. Relatedly, signing up proves nothing about the email
+without it. It must also end in Django's `login()`: the sign-in log
+(`core/auth/sign_ins.py`, the Contacts "Last sign-in" column) listens to
+`user_logged_in`, so a route that signs people in any other way leaves no trace.
+Relatedly, signing up proves nothing about the email
 (`ACCOUNT_EMAIL_VERIFICATION = 'optional'`): anything that hands an account data
 filed under an address — orders' guest-order linking — waits for
 `CUSTOMER_EMAIL_VERIFIED` (an emailed sign-in code, or a confirmed email link),

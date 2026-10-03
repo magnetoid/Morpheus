@@ -26,3 +26,11 @@ class CoreAuthConfig(AppConfig):
     name = 'core.auth'
     label = 'core_auth'
     default_auto_field = 'django.db.models.BigAutoField'
+
+    def ready(self):
+        # Every sign-in route ends in login(), which sends user_logged_in.
+        from django.contrib.auth.signals import user_logged_in
+
+        from core.auth.sign_ins import record_sign_in
+
+        user_logged_in.connect(record_sign_in, dispatch_uid='core.auth.record_sign_in')

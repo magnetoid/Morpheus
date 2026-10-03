@@ -49,6 +49,11 @@ _CORE_BEAT_SCHEDULE = {
         'task': 'core.errors.tasks.prune_errors_task',
         'schedule': crontab(hour=3, minute=15),  # 03:15 UTC daily
     },
+    # Sign-in log entries carry IP addresses (personal data): keep 90 days.
+    'core-sign-ins-prune': {
+        'task': 'core.auth.tasks.prune_sign_ins_task',
+        'schedule': crontab(hour=3, minute=20),  # 03:20 UTC daily
+    },
     # Check upstream for a new Morpheus version once a day; caches the result
     # so the dashboard can flag "update available" without a per-request fetch.
     'core-check-for-updates': {

@@ -19,6 +19,7 @@ CORE_JOBS = (
     'core-check-for-updates',
     'core-outbox-publish',
     'assistant-daily-briefing',
+    'core-sign-ins-prune',
 )
 
 

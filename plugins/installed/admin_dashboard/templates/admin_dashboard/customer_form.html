@@ -150,6 +150,29 @@
       {% endif %}
 
       <div class="card">
+        <div class="card-padded"><h3 class="font-semibold text-sm">Recent sign-ins</h3></div>
+        {% if sign_ins %}
+        <table class="morph-table">
+          <tbody>
+            {% for s in sign_ins %}
+            <tr>
+              <td>
+                <div class="font-medium whitespace-nowrap">{{ s.at|date:"M j, Y H:i" }} UTC</div>
+                <div class="text-xs text-[color:var(--text-muted)]">{{ s.device }}</div>
+              </td>
+              <td class="text-right text-xs text-[color:var(--text-muted)]">{{ s.ip|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% elif customer.last_login %}
+        <p class="card-padded text-sm text-[color:var(--text-muted)]">Last signed in {{ customer.last_login|date:"M j, Y H:i" }} UTC (no details on record).</p>
+        {% else %}
+        <p class="card-padded text-sm text-[color:var(--text-muted)]">No sign-ins yet.</p>
+        {% endif %}
+      </div>
+
+      <div class="card">
         <div class="card-padded flex items-center justify-between">
           <h3 class="font-semibold text-sm">Addresses</h3>
           <a href="{% url 'admin_dashboard:address_new' customer_id=customer.id %}" class="btn btn-ghost p-1.5" aria-label="Add address">

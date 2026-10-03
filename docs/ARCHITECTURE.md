@@ -86,6 +86,19 @@ adapter calls `staff_mfa`'s `second_factor_response` directly, so SSO
 logins honour MFA too. MFA and SSO are plugins; disabling them reverts
 sign-in to single-factor email-OTP.
 
+### Sign-in log
+
+Every successful sign-in is written to the audit log as `auth.sign_in`
+(who, when, IP address, browser and device) by
+[`core/auth/sign_ins.py`](../core/auth/sign_ins.py), connected to Django's
+`user_logged_in` signal in `CoreAuthConfig.ready()`. Every route (emailed
+code, allauth password, staff two-factor, SSO) ends in `login()`, so none
+can skip it. The dashboard's Contacts list shows each person's last
+sign-in (`last_login`), and their page lists the ten most recent. The IP
+comes from Cloudflare's `CF-Connecting-IP` first, the same rule the rate
+limiter uses. The `core-sign-ins-prune` beat job deletes entries after 90
+days, because an IP address is personal data.
+
 ## The agent layer
 
 ```

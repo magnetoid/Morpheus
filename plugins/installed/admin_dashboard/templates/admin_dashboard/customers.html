@@ -67,6 +67,7 @@
           <th>{% sort_link "email" "Customer" %}</th>
           <th>Source</th>
           <th>{% sort_link "date_joined" "Joined" %}</th>
+          <th>{% sort_link "last_sign_in" "Last sign-in" %}</th>
           <th>{% sort_link "last_order_at" "Last order" %}</th>
           <th class="text-right">{% sort_link "purchase_count" "Orders" %}</th>
           <th class="text-right">{% sort_link "lifetime_value" "Spent" %}</th>
@@ -97,6 +98,7 @@
             {% else %}<span class="pill pill-neutral">—</span>{% endif %}
           </td>
           <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ c.date_joined|date:"M j, Y" }}</td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{% if c.last_login %}{{ c.last_login|date:"M j, Y H:i" }} UTC{% else %}Never{% endif %}</td>
           <td class="text-[color:var(--text-muted)] whitespace-nowrap">{% if c.last_order_at %}{{ c.last_order_at|date:"M j, Y" }}{% else %}—{% endif %}</td>
           <td class="text-right">{{ c.order_count }}</td>
           <td class="text-right font-medium">${{ c.spent|floatformat:2 }}</td>

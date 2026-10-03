@@ -12,6 +12,7 @@ from typing import Any
 
 from django.db.models import Sum
 
+from core.auth.sign_ins import recent_sign_ins
 from core.authz import require_capability
 from morpheus.app.views import (
     HttpRequest,
@@ -84,6 +85,20 @@ def customers_list(request: HttpRequest) -> HttpResponse:
             qs = qs.filter(source=source_filter)
         if admin_filter:
             qs = qs.filter(is_staff=True)
+        # Sort key for "Last sign-in": never-signed-in counts as oldest.
+        # Ordering on last_login itself would put them FIRST in a newest-first
+        # sort on Postgres (NULLs sort high there, low in SQLite).
+        from datetime import UTC, datetime
+
+        from django.db.models import DateTimeField, Value
+        from django.db.models.functions import Coalesce
+
+        qs = qs.annotate(
+            last_sign_in=Coalesce(
+                'last_login',
+                Value(datetime(1970, 1, 1, tzinfo=UTC), output_field=DateTimeField()),
+            )
+        )
         # Paginate first, then enrich the page's rows. This keeps the
         # Python loop over a bounded slice no matter how many users exist.
         page_obj, paging_ctx = paginate_and_sort(
@@ -93,6 +108,7 @@ def customers_list(request: HttpRequest) -> HttpResponse:
             allowed_sorts=(
                 'email',
                 'date_joined',
+                'last_sign_in',
                 'last_order_at',
                 'lifetime_value',
                 'purchase_count',
@@ -132,6 +148,7 @@ def customers_list(request: HttpRequest) -> HttpResponse:
                     'spent': spent,
                     'last_order_at': getattr(user, 'last_order_at', None),
                     'date_joined': getattr(user, 'date_joined', None),
+                    'last_login': user.last_login,
                 }
             )
         customers = rows
@@ -254,6 +271,7 @@ def customer_edit(request: HttpRequest, customer_id: str) -> HttpResponse:
             'customer': customer,
             'order_summary': order_summary,
             'addresses': addresses,
+            'sign_ins': recent_sign_ins(customer),
             'customer_detail_panels': detail_panels,
             'active_nav': 'customers',
         },
