@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.76.0 — 2026-10-03
+
+**Sign-in activity**
+
+- Contacts shows when each customer and admin last signed in: a new, sortable Last sign-in column, also on the Admins tab.
+- Each person's page lists their ten most recent sign-ins with the time, browser and device, and IP address.
+- Every sign-in route (emailed code, password, two-factor, SSO) is recorded in the audit log. Entries are deleted after 90 days, because IP addresses are personal data.
+
 ## v0.75.27 — 2026-09-28
 
 **Scheduled maintenance jobs now run**
