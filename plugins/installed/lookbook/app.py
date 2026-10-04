@@ -15,7 +15,7 @@ shop and a brand.
 
 from __future__ import annotations
 
-from morpheus.app import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import Plugin, StorefrontBlock
 
 
 class LookbookPlugin(Plugin):
@@ -50,17 +50,3 @@ class LookbookPlugin(Plugin):
                 context_keys=['product'],
             ),
         ]
-
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='Lookbook',
-            description='Enable/disable auto-look, look-block position, add-to-cart default behaviour.',
-            category='marketing',
-            schema=self.get_config_schema(),
-        )
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {},
-        }

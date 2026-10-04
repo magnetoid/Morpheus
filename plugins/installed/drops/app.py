@@ -10,7 +10,7 @@ Drops are *built* from anticipation; the *waiting* is the product.
 
 from __future__ import annotations
 
-from morpheus.app import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import Plugin, StorefrontBlock
 
 
 class DropsPlugin(Plugin):
@@ -33,17 +33,3 @@ class DropsPlugin(Plugin):
                 context_keys=['product'],
             ),
         ]
-
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='Drops',
-            description='Drop schedule, queue mode (FIFO vs raffle), push opt-in copy.',
-            category='marketing',
-            schema=self.get_config_schema(),
-        )
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {},
-        }

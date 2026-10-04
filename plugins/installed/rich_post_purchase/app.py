@@ -20,7 +20,7 @@ Channels supported by this plugin:
 
 from __future__ import annotations
 
-from morpheus.app import Plugin, SettingsPanel
+from morpheus.app import Plugin
 
 
 class RichPostPurchasePlugin(Plugin):
@@ -37,17 +37,3 @@ class RichPostPurchasePlugin(Plugin):
     # Ships OFF until it is built: nothing reads or sends through its channel preferences.
     # A merchant can still switch it on in Dashboard → Apps.
     enabled_by_default = False
-
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='Rich post-purchase',
-            description='Per-step channel choice, content blocks, opt-in gating.',
-            category='notifications',
-            schema=self.get_config_schema(),
-        )
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {},
-        }

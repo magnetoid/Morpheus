@@ -22,7 +22,7 @@ use case that makes wishlists on-brand.
 
 from __future__ import annotations
 
-from morpheus.app import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import Plugin, StorefrontBlock
 
 
 class SaveForLaterPlugin(Plugin):
@@ -47,17 +47,3 @@ class SaveForLaterPlugin(Plugin):
                 priority=40,
             ),
         ]
-
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='Save for later',
-            description='Price-drop cadence, shareable-wishlist toggle, re-engagement prompt frequency.',
-            category='marketing',
-            schema=self.get_config_schema(),
-        )
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {},
-        }

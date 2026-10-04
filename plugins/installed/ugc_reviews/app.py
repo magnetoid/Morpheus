@@ -18,7 +18,7 @@ hook bus.
 
 from __future__ import annotations
 
-from morpheus.app import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import Plugin, StorefrontBlock
 
 
 class UgcReviewsPlugin(Plugin):
@@ -48,17 +48,3 @@ class UgcReviewsPlugin(Plugin):
                 context_keys=['product'],
             ),
         ]
-
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='UGC reviews + creator program',
-            description='Auto-moderation, creator tier eligibility, photo + video upload budget.',
-            category='marketing',
-            schema=self.get_config_schema(),
-        )
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {},
-        }

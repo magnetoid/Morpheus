@@ -3,7 +3,7 @@
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
-from morpheus.app import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import Plugin, StorefrontBlock
 from morpheus.core import events
 
 
@@ -164,19 +164,3 @@ class BookProductPlugin(Plugin):
                 context_keys=['product'],
             ),
         ]
-
-    def contribute_settings_panel(self) -> SettingsPanel:
-        # Lives under Settings → Product Types (the category is declared in
-        # admin_dashboard.settings_categories). Disabling the plugin removes it.
-        return SettingsPanel(
-            label='Books',
-            description='Defaults for the Book product type.',
-            schema=self.get_config_schema(),
-            category='general',
-        )
-
-    def get_config_schema(self) -> dict:
-        return {
-            'type': 'object',
-            'properties': {},
-        }

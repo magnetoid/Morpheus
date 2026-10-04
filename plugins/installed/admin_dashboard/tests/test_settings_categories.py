@@ -45,5 +45,8 @@ class SettingsCategoriesTests(TestCase):
         resp = self.client.get('/dashboard/settings/general/')
         self.assertEqual(resp.status_code, 200)
         content = resp.content.decode()
-        self.assertIn('/dashboard/settings/book_product/', content)
         self.assertIn('/dashboard/settings/audiobooks/', content)
+        # book_product's panel held only controls nothing read (default paper and
+        # print type, the 3D preview switch); v0.76.4 removed them and the panel
+        # with them, so a page with no controls is not offered.
+        self.assertNotIn('/dashboard/settings/book_product/', content)
