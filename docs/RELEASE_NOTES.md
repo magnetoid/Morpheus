@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.76.2 — 2026-10-04
+
+**Maps on Serbian pages, dead facet links, feed caching**
+
+- Montenegro: maps on Serbian pages work again. Coordinates were rendered localized (42,42), which the page script turned into NaN, so every /sr/ place, experience and stay map failed while the English pages worked.
+- Books: a free-text print type (one book stores 'PDF report') is no longer linked from the product page or listed in the sitemap, where the link 404'd; only values the /format/ and /language/ routes can serve are linked.
+- Responsive images no longer carry a bare storage-path attribute (data-src-rel) that nothing read and that crawlers resolved against the page into roughly 13,000 404s a month.
+- /ai/products.json is served from a 15-minute server cache; it was rebuilt on every request, taking 12 seconds for 1.25 MB on a 1,000-product store.
+- GitHub: the release workflow's tag step now has a git identity; it failed on v0.76.1 with 'empty ident name', so no tag or GitHub Release was created.
+
 ## v0.76.1 — 2026-10-03
 
 **License: Business Source License 1.1**

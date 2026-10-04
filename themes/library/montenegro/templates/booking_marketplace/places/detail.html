@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load i18n %}{% load booking_tags %}
+{% load morph %}{% load i18n %}{% load l10n %}{% load booking_tags %}
 {% comment %}Enriched destination guide — semantic <article> with varied section
 shapes (hero, quick-facts <dl>, two-column overview + pull-quote, highlight cards,
 Leaflet map, FAQ accordion, experiences grid, region rail). Per-place JSON-LD
@@ -99,7 +99,7 @@ seo_* context vars from place_detail.{% endcomment %}
     {% if place.latitude and place.longitude %}
     <section class="mb-12">
       <h2 class="font-display text-2xl font-bold text-foreground mb-4">{% trans "Where it is" %}</h2>
-      <div id="place-map" data-lat="{{ place.latitude }}" data-lng="{{ place.longitude }}" class="relative rounded-2xl overflow-hidden h-72 border border-border z-0"></div>
+      <div id="place-map" data-lat="{{ place.latitude|unlocalize }}" data-lng="{{ place.longitude|unlocalize }}" class="relative rounded-2xl overflow-hidden h-72 border border-border z-0"></div>
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
     </section>

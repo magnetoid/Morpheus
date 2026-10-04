@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load i18n %}{% load booking_tags %}
+{% load morph %}{% load i18n %}{% load l10n %}{% load booking_tags %}
 {% comment %}1:1 port of pages/ExperienceDetail.tsx — 2-col layout (content left,
 sticky enquiry/booking card right). Branches on listing_mode (enquiry vs booking).
 Context: service, listing_mode, dates ([{date, remaining}]), max_guests,
@@ -159,7 +159,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         <h2 class="text-xl font-semibold text-foreground mb-4">{% trans "Where you'll be" %}</h2>
         <p class="flex items-center gap-2 text-foreground mb-4"><svg class="w-5 h-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{% if service.location %}{{ service.location }}, Montenegro{% else %}{{ service.get_region_display }}{% endif %}</p>
         {% if has_map %}
-        <div id="exp-map" data-lat="{{ service.latitude }}" data-lng="{{ service.longitude }}" class="relative rounded-2xl overflow-hidden h-56 border border-border"></div>
+        <div id="exp-map" data-lat="{{ service.latitude|unlocalize }}" data-lng="{{ service.longitude|unlocalize }}" class="relative rounded-2xl overflow-hidden h-56 border border-border"></div>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
         {% else %}

@@ -911,6 +911,7 @@ def _book_specs_from_model(slug, slugify, urlencode):  # noqa: PLR0911 — flat 
     if not app_registry.is_active('book_product'):
         return None
     try:
+        from plugins.installed.book_product.facets import value_facet_url
         from plugins.installed.book_product.models import BookProduct
     except Exception:  # noqa: BLE001 — plugin absent
         return None
@@ -935,11 +936,11 @@ def _book_specs_from_model(slug, slugify, urlencode):  # noqa: PLR0911 — flat 
         (
             'Format',
             book.get_print_type_display() if book.print_type else '',
-            f'/format/{book.print_type}/' if book.print_type else '',
+            value_facet_url('format', book.print_type),
         ),
         ('Paper', book.get_paper_type_display() if book.paper_type else '', ''),
         ('Pages', str(book.page_count) if book.page_count else '', ''),
-        ('Language', book.language, f'/language/{book.language}/' if book.language else ''),
+        ('Language', book.language, value_facet_url('language', book.language)),
         ('Edition', book.edition, ''),
         ('Series', series, _link('series', book.series)),
     ]

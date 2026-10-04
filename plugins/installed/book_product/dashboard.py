@@ -124,18 +124,15 @@ def _facets(book, slugify) -> list[dict]:
         out.append(
             {'label': 'Imprint', 'value': book.imprint, 'url': f'/imprint/{slugify(book.imprint)}/'}
         )
-    if book.print_type:
-        out.append(
-            {
-                'label': 'Format',
-                'value': book.get_print_type_display(),
-                'url': f'/format/{book.print_type}/',
-            }
-        )
-    if book.language:
-        out.append(
-            {'label': 'Language', 'value': book.language, 'url': f'/language/{book.language}/'}
-        )
+    from plugins.installed.book_product.facets import value_facet_url  # noqa: PLC0415
+
+    # A free-text value (one book stores 'PDF report') has no page to appear on.
+    format_url = value_facet_url('format', book.print_type)
+    if format_url:
+        out.append({'label': 'Format', 'value': book.get_print_type_display(), 'url': format_url})
+    language_url = value_facet_url('language', book.language)
+    if language_url:
+        out.append({'label': 'Language', 'value': book.language, 'url': language_url})
     return out
 
 

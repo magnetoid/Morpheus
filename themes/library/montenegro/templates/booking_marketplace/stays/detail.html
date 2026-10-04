@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
+{% load morph %}{% load i18n %}{% load l10n %}{% load booking_tags %}{% load seo %}
 {% block title %}{{ property.name }}, Montenegro — Montenegro Experience{% endblock %}
 {% block extra_head %}{% if seo_jsonld %}<script type="application/ld+json">{{ seo_jsonld|safe }}</script>{% endif %}{% endblock %}
 {% block content %}
@@ -137,7 +137,7 @@
 
     <aside class="space-y-4">
       {% if property.latitude and property.longitude %}
-      <div id="stay-map" class="h-64 rounded-2xl border border-border overflow-hidden z-0" data-lat="{{ property.latitude }}" data-lng="{{ property.longitude }}"></div>
+      <div id="stay-map" class="h-64 rounded-2xl border border-border overflow-hidden z-0" data-lat="{{ property.latitude|unlocalize }}" data-lng="{{ property.longitude|unlocalize }}"></div>
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
       {% endif %}

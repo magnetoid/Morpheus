@@ -81,6 +81,7 @@ def _iter_book_facet_entries(base: str) -> Iterable[dict]:
     try:
         from django.utils.text import slugify
 
+        from plugins.installed.book_product.facets import value_facet_url
         from plugins.installed.book_product.models import BookProduct
 
         active = BookProduct.objects.filter(product__status='active')
@@ -103,12 +104,14 @@ def _iter_book_facet_entries(base: str) -> Iterable[dict]:
         for prefix, field in (('format', 'print_type'), ('language', 'language')):
             seen = set()
             for raw in active.exclude(**{field: ''}).values_list(field, flat=True):
-                value = (raw or '').strip()
-                if not value or value in seen:
+                # '' for a value the route can't serve (free text such as
+                # 'PDF report'): the sitemap must never point at a 404.
+                url = value_facet_url(prefix, raw)
+                if not url or url in seen:
                     continue
-                seen.add(value)
+                seen.add(url)
                 yield {
-                    'loc': urljoin(base, f'/{prefix}/{value}/'),
+                    'loc': urljoin(base, url),
                     'changefreq': 'weekly',
                     'priority': '0.5',
                 }

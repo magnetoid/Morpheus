@@ -809,9 +809,9 @@ def seo_responsive_image(
         final_style += f' view-transition-name: {view_transition_name};'
     style_attr = f' style="{escape(final_style.strip())}"' if final_style else ''
     id_attr = f' id="{escape(img_id)}"' if img_id else ''
-    # data-src-rel lets JS (e.g. PDP gallery swap) rewrite the
-    # <source srcset> + <img> src from a relative media path.
-    data_attr = f' data-src-rel="{escape(rel)}"'
+    # Every attribute value here is an absolute URL on purpose. A bare storage
+    # path (`data-src-rel="products/x.jpg"`, which nothing read) was resolved
+    # against the page by crawlers and logged ~13k 404s a month on one store.
 
     return mark_safe(
         f'<picture>'
@@ -819,7 +819,7 @@ def seo_responsive_image(
         f'<source type="image/webp" srcset="{escape(srcset_for("webp"))}"{sizes_attr}>'
         f'<img src="{escape(fallback)}" alt="{escape(alt)}" '
         f'loading="{loading}" decoding="async"{fp}'
-        f'{class_attr}{style_attr}{id_attr}{data_attr}>'
+        f'{class_attr}{style_attr}{id_attr}>'
         f'</picture>'
     )
 

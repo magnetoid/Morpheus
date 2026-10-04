@@ -70,6 +70,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.v.outputs.version }}
         run: |
+          # An annotated tag needs a tagger identity; the runner has none and
+          # fails with "fatal: empty ident name" (seen on v0.76.1).
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$VERSION" -m "Morpheus OS $VERSION"
           git push origin "$VERSION"
           gh release create "$VERSION" \

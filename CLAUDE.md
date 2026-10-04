@@ -641,6 +641,22 @@ one. Guarded by `seo/tests/test_audit_fixes_2026_09.py`,
 `storefront/tests/test_categories_index.py` and
 `cms/tests/test_journal_seo.py::JournalDuplicateHeadingTests`.
 
+**Landmine — a number rendered into an attribute is LOCALIZED, and `+` turns it
+into NaN.** `data-lat="{{ place.latitude }}"` renders `42,420000` on a `/sr/` page
+(`LocaleMiddleware` + `USE_L10N`), and the theme's `+m.dataset.lat` made it NaN —
+every Serbian place, experience and stay map threw `Invalid LatLng (NaN, NaN)` for
+weeks while the English pages worked. Pass anything JavaScript parses through
+`|unlocalize` (`{% load l10n %}`). Two neighbours from the same crawl (v0.76.2):
+a URL built from a *stored* value must be routable — `print_type` accepts free
+text, so `/format/PDF report/` sat in the sitemap and on the PDP while the route
+takes a slug (`book_product/facets.py:value_facet_url` is the one builder); and
+every attribute value that looks like a path gets fetched by crawlers —
+`data-src-rel="products/x.jpg"` (which nothing read) became ~13k 404s a month,
+resolved against the page. Guarded by
+`booking_marketplace/tests/test_map_coordinates.py`,
+`seo/tests/test_sitemap_book_facets.py`, `book_product/tests/test_facet_links.py`
+and `seo/tests/test_responsive_image_tag.py`.
+
 **Landmine — when two tables hold the same field, "which row wins" is the wrong
 question; "which value did a human choose" is the right one.** Product SEO lived
 in 13 native `catalog.Product` columns *and* in the generic `SeoMeta` overlay,
