@@ -64,40 +64,10 @@ class RailsPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'enable_for_you': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': '"For You" rail (homepage)',
-                },
-                'enable_restocked': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': '"Restocked for You" rail',
-                },
-                'enable_recently_viewed': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': '"Recently viewed" rail',
-                },
-                'enable_trending_with_you': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': '"Trending with your cohort" rail',
-                },
-                'enable_looks_like_you': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': '"Looks like you" rail (checkout)',
-                },
                 'require_consent': {
                     'type': 'boolean',
                     'default': True,
                     'title': 'Require explicit consent for personalised rails',
-                },
-                'fallback_to_global_trending': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'When consent missing or unknown, show global trending',
                 },
             },
         }

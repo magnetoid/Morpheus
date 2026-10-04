@@ -52,8 +52,8 @@ class ReturnFeedback(models.Model):
     what_went_wrong = models.TextField(blank=True)
     what_would_have_made_it_right = models.TextField(blank=True)
     nps_score = models.IntegerField(default=0, help_text='0-10')
-    # If `feedback_to_crm` is on, the feedback is also routed to the
-    # `crm` plugin's lead pipeline as a recovery opportunity.
+    # The feedback is also routed to the `crm` plugin's lead pipeline as a
+    # recovery opportunity; this records when.
     routed_to_crm_at = models.DateTimeField(null=True, blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
 

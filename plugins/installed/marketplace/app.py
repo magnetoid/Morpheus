@@ -73,22 +73,11 @@ class MarketplacePlugin(Plugin):
                     'description': "Platform commission on each vendor's gross. New vendors inherit this.",
                     'default': 15,
                 },
-                'auto_approve_applications': {
-                    'type': 'boolean',
-                    'title': 'Auto-approve applications',
-                    'description': 'When on, new vendor applications are approved on submission. Useful for invite-only marketplaces.',
-                    'default': False,
-                },
                 'min_payout_threshold': {
                     'type': 'number',
                     'title': 'Minimum payout threshold',
                     'description': 'A vendor must accrue at least this much before a payout is generated.',
                     'default': 50,
-                },
-                'require_tax_id': {
-                    'type': 'boolean',
-                    'title': 'Require tax ID on application',
-                    'default': True,
                 },
             },
         }

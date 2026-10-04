@@ -55,31 +55,10 @@ class SmartShippingPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'enable_easypost': {
-                    'type': 'boolean',
-                    'default': False,
-                    'title': 'EasyPost carrier integration (EASYPOST_API_KEY)',
-                },
-                'enable_shippo': {
-                    'type': 'boolean',
-                    'default': False,
-                    'title': 'Shippo carrier integration (SHIPPO_API_KEY)',
-                },
                 'show_lowest_carbon_badge': {
                     'type': 'boolean',
                     'default': True,
                     'title': 'Show "lowest carbon" badge on the rate list',
-                },
-                'emissions_source': {
-                    'type': 'string',
-                    'enum': ['climatiq', 'manual', 'none'],
-                    'default': 'manual',
-                    'title': 'Emissions estimate source',
-                },
-                'manual_emissions_g_per_kg_km': {
-                    'type': 'number',
-                    'default': 0.0,
-                    'title': 'Manual emissions estimate (g CO2e per kg·km). 0 = no estimate.',
                 },
             },
         }

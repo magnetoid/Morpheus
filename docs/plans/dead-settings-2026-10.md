@@ -1,7 +1,11 @@
 # Settings controls that nothing reads (2026-10-04)
 
-Status: **inventory, awaiting the owner's decision** (remove the controls, or wire
-each one). Found by the plugin-layer debug pass for v0.76.3.
+Status: **done — the owner chose removal (2026-10-04).** v0.76.4 removed the 77
+controls below (`analytics.keep_event_days`, the 78th, was wired in v0.76.3), and
+`core/tests/test_settings_keys_have_readers.py` fails the build if a schema key
+without a reader is added again. Stored values for the removed keys stay in
+`PluginConfig.config` and are ignored. Found by the plugin-layer debug pass for
+v0.76.3.
 
 ## How this was measured
 

@@ -59,26 +59,5 @@ class SaveForLaterPlugin(Plugin):
     def get_config_schema(self) -> dict:
         return {
             'type': 'object',
-            'properties': {
-                'enable_price_drop': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Price-drop notifications',
-                },
-                'enable_back_in_stock': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Back-in-stock notifications',
-                },
-                'shareable_wishlist': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Shareable wishlists (gift-giving)',
-                },
-                'price_drop_check_interval_minutes': {
-                    'type': 'integer',
-                    'default': 60,
-                    'title': 'Price-drop check interval (minutes)',
-                },
-            },
+            'properties': {},
         }

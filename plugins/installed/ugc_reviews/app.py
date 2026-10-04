@@ -60,29 +60,5 @@ class UgcReviewsPlugin(Plugin):
     def get_config_schema(self) -> dict:
         return {
             'type': 'object',
-            'properties': {
-                'allow_photo': {'type': 'boolean', 'default': True, 'title': 'Allow photo uploads'},
-                'allow_video': {'type': 'boolean', 'default': True, 'title': 'Allow video uploads'},
-                'max_video_seconds': {
-                    'type': 'integer',
-                    'default': 60,
-                    'title': 'Max video length (seconds)',
-                },
-                'creator_prompt_delay_days': {
-                    'type': 'integer',
-                    'default': 90,
-                    'title': 'Days after delivery → creator prompt',
-                    'description': '90 days is empirically optimal — long enough to use the product, short enough to still be memorable.',
-                },
-                'creator_stipend_currency': {
-                    'type': 'string',
-                    'default': 'USD',
-                    'title': 'Creator stipend currency',
-                },
-                'creator_stipend_amount': {
-                    'type': 'number',
-                    'default': 25,
-                    'title': 'Creator stipend amount (paid via store credit, not cash)',
-                },
-            },
+            'properties': {},
         }

@@ -72,10 +72,5 @@ class MotionPlugin(Plugin):
                     'default': False,
                     'title': 'Default to reduced motion (server-side hint; client prefers-reduced-motion always wins)',
                 },
-                'skeleton_shimmer': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Skeleton shimmer for slow GraphQL queries',
-                },
             },
         }

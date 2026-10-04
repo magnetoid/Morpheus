@@ -148,10 +148,5 @@ class AudiobooksPlugin(Plugin):
                     'default': 'eleven_multilingual_v2',
                     'title': 'Model',
                 },
-                'auto_generate': {
-                    'type': 'boolean',
-                    'default': False,
-                    'title': 'Auto-generate narration when an audiobook edition is added',
-                },
             },
         }

@@ -69,11 +69,6 @@ class Media3dPlugin(Plugin):
                     'default': 12,
                     'title': 'Max .glb size (MB) before falling back to a static poster',
                 },
-                'auto_detect_device': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Auto-detect iOS / Android and show the correct AR launcher',
-                },
                 'shoppable_video_max_cards': {
                     'type': 'integer',
                     'minimum': 0,

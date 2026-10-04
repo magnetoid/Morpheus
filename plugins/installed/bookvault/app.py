@@ -197,11 +197,5 @@ class BookvaultPlugin(Plugin):
                     'title': 'Auto-send orders on payment',
                     'description': 'When on, every ORDER_PAID hook forwards the order to BV fulfilment. Off = admin must Resend manually.',
                 },
-                'use_live_shipping_rates': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Live shipping rates at checkout',
-                    'description': "Quote BV's shipping API for any cart containing a 13-digit-SKU (ISBN) line.",
-                },
             },
         }

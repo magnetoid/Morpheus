@@ -72,21 +72,5 @@ class ReturnsPortalPlugin(Plugin):
                     'default': 30,
                     'title': 'Return window (days)',
                 },
-                'default_resolution': {
-                    'type': 'string',
-                    'enum': ['refund', 'exchange', 'store_credit'],
-                    'default': 'exchange',
-                    'title': 'Default resolution (exchange retains more revenue than refund)',
-                },
-                'store_credit_bonus_pct': {
-                    'type': 'integer',
-                    'default': 10,
-                    'title': 'Store-credit bonus % (the nudge to pick store credit)',
-                },
-                'feedback_to_crm': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Route "why" feedback to the CRM lead pipeline',
-                },
             },
         }

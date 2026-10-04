@@ -20,13 +20,6 @@ def test_plugin_metadata():
     assert 'orders' in ReturnsPortalPlugin.requires
 
 
-def test_default_resolution_is_exchange():
-    from plugins.installed.returns_portal.app import ReturnsPortalPlugin
-
-    schema = ReturnsPortalPlugin().get_config_schema()
-    assert schema['properties']['default_resolution']['default'] == 'exchange'
-
-
 def test_no_parallel_return_model():
     # One concept, one owner: the return lives in orders.refunds.
     from plugins.installed.returns_portal import models as portal_models

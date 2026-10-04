@@ -56,36 +56,5 @@ class ReferralsPlugin(Plugin):
             'type': 'object',
             'properties': {
                 'enabled': {'type': 'boolean', 'default': True, 'title': 'Master switch'},
-                'referrer_reward_cents': {
-                    'type': 'integer',
-                    'default': 500,
-                    'title': 'Referrer reward (cents in store credit)',
-                },
-                'referee_reward_cents': {
-                    'type': 'integer',
-                    'default': 500,
-                    'title': 'Referee reward (cents in store credit)',
-                },
-                'min_order_subtotal_cents': {
-                    'type': 'integer',
-                    'default': 2000,
-                    'title': 'Minimum order subtotal to trigger reward',
-                },
-                'enable_contest': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Contest layer (top referrers get a free product)',
-                },
-                'contest_period': {
-                    'type': 'string',
-                    'enum': ['monthly', 'quarterly'],
-                    'default': 'monthly',
-                    'title': 'Contest period',
-                },
-                'antifraud_max_referrals_per_ip_per_day': {
-                    'type': 'integer',
-                    'default': 3,
-                    'title': 'Max referrals per IP per day (anti-fraud)',
-                },
             },
         }

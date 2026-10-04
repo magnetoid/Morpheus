@@ -344,17 +344,5 @@ class CrmPlugin(Plugin):
                     'default': True,
                     'title': 'Auto-create follow-up task on abandoned cart',
                 },
-                'enable_b2b_accounts': {
-                    'type': 'boolean',
-                    'default': False,
-                    'title': 'Enable B2B Accounts UI',
-                },
-                'default_followup_hours': {
-                    'type': 'integer',
-                    'default': 24,
-                    'minimum': 1,
-                    'maximum': 720,
-                    'title': 'Default follow-up due window (hours)',
-                },
             },
         }

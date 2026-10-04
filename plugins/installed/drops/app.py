@@ -45,27 +45,5 @@ class DropsPlugin(Plugin):
     def get_config_schema(self) -> dict:
         return {
             'type': 'object',
-            'properties': {
-                'queue_mode': {
-                    'type': 'string',
-                    'enum': ['fifo', 'raffle'],
-                    'default': 'fifo',
-                    'title': 'Queue mode (FIFO for tech drops, raffle for fashion)',
-                },
-                'waitlist_after_sellout': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Allow post-sellout waitlist (email me when back)',
-                },
-                'push_opt_in': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Offer PWA push opt-in during the drop window',
-                },
-                'countdown_copy': {
-                    'type': 'string',
-                    'default': 'Dropping soon',
-                    'title': 'Pre-drop countdown copy',
-                },
-            },
+            'properties': {},
         }

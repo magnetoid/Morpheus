@@ -65,24 +65,10 @@ class AiStylistPlugin(Plugin):
                     'default': "Hi! I'm Aria — what are you shopping for today?",
                     'title': 'Welcome prompt',
                 },
-                'system_prelude': {
-                    'type': 'string',
-                    'default': (
-                        "You are a brand-aware shopping stylist. Speak in the merchant's "
-                        'voice. Always cite product names + prices from the catalog. '
-                        'Never invent SKUs.'
-                    ),
-                    'title': 'System prompt prelude',
-                },
                 'require_consent': {
                     'type': 'boolean',
                     'default': True,
                     'title': 'Require explicit consent before first message',
-                },
-                'audit_trail': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Record every assistant turn in core.audit (EU AI Act art. 12/13)',
                 },
             },
         }

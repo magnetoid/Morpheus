@@ -502,9 +502,10 @@ every palette rendered as the hardcoded default), and store identity
 edited a `StoreSettings` row). When adding a settings field, wire the consumer
 in the **same change**, or don't add the field. The cheap check:
 `grep -rn '<field_name>' --include='*.py' --include='*.html'` — if the only hit
-is its own declaration, it does nothing. Still-dead knobs are inventoried in
-`docs/plans/dead-settings-2026-10.md` — 78 controls across 30 apps as of v0.76.3,
-measured by searching every schema key for a reader; the owner decides remove or wire. Guarded by
+is its own declaration, it does nothing. 78 such controls across 30 apps
+were found and removed in v0.76.4 (`docs/plans/dead-settings-2026-10.md`), and
+`core/tests/test_settings_keys_have_readers.py` now fails on any schema key with no
+reader — so the only way to add a control is together with the code that reads it. Guarded by
 `storefront/tests/test_identity_maintenance.py` +
 `brand_kit/tests/test_tokens_render.py`.
 

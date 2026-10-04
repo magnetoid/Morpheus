@@ -65,16 +65,5 @@ class BrandKitPlugin(Plugin):
                     'default': 'default',
                     'title': 'Active design-token set (slug)',
                 },
-                'allow_ai_brand_kit': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Allow AI brand kit generator (admin-only)',
-                },
-                'tag_taxonomy': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'default': ['logo', 'pattern', 'hero', 'lifestyle', 'detail'],
-                    'title': 'Asset tag taxonomy',
-                },
             },
         }

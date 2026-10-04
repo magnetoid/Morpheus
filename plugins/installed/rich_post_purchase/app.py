@@ -49,40 +49,5 @@ class RichPostPurchasePlugin(Plugin):
     def get_config_schema(self) -> dict:
         return {
             'type': 'object',
-            'properties': {
-                'tracking_channels': {
-                    'type': 'array',
-                    'items': {'type': 'string', 'enum': ['email', 'sms', 'whatsapp', 'push']},
-                    'default': ['email'],
-                    'title': 'Channels for the tracking email step',
-                },
-                'delivered_channels': {
-                    'type': 'array',
-                    'items': {'type': 'string', 'enum': ['email', 'sms', 'whatsapp', 'push']},
-                    'default': ['email'],
-                    'title': 'Channels for the delivered-confirmation step',
-                },
-                'review_channels': {
-                    'type': 'array',
-                    'items': {'type': 'string', 'enum': ['email', 'sms', 'whatsapp', 'push']},
-                    'default': ['email'],
-                    'title': 'Channels for the review request step',
-                },
-                'nps_channels': {
-                    'type': 'array',
-                    'items': {'type': 'string', 'enum': ['email', 'sms', 'whatsapp', 'push']},
-                    'default': ['email'],
-                    'title': 'Channels for the NPS survey step',
-                },
-                'embed_journal_articles': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Embed a journal article in the 14-day review step',
-                },
-                'embed_brand_assets': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Embed brand asset gallery in the 30-day NPS step',
-                },
-            },
+            'properties': {},
         }

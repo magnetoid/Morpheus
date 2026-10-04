@@ -48,17 +48,6 @@ class DiscoveryQuizPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'active_quiz': {'type': 'string', 'default': '', 'title': 'Active quiz slug'},
-                'max_questions': {
-                    'type': 'integer',
-                    'default': 5,
-                    'title': 'Max questions shown per session',
-                },
-                'always_collect_email': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Collect email at the end of the quiz',
-                },
                 'require_consent': {
                     'type': 'boolean',
                     'default': True,

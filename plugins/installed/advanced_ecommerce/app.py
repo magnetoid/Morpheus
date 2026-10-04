@@ -24,7 +24,6 @@ Operations:
 Settings (admin):
   * `low_stock_threshold` (int, default 5) — shown as the badge cutoff.
   * `free_shipping_target` (number, default 40) — used by the cart bar.
-  * `enable_recently_viewed` (bool, default True).
 """
 
 from __future__ import annotations
@@ -128,11 +127,6 @@ class AdvancedEcommercePlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
-                'enable_recently_viewed': {
-                    'type': 'boolean',
-                    'title': 'Show recently-viewed rail',
-                    'default': True,
-                },
                 'enable_collection_rails': {
                     'type': 'boolean',
                     'title': 'Show featured-collection rails on the homepage',

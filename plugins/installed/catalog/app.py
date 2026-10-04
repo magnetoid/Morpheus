@@ -177,11 +177,6 @@ class CatalogPlugin(Plugin):
                     'default': 1200,
                     'title': 'PDP image height (px)',
                 },
-                'lazy_load_below_fold': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Lazy-load images below the fold',
-                },
                 'enable_avif_variant': {
                     'type': 'boolean',
                     'default': False,

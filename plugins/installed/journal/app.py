@@ -62,20 +62,5 @@ class JournalPlugin(Plugin):
             'type': 'object',
             'properties': {
                 'enabled': {'type': 'boolean', 'default': True, 'title': 'Enable the journal'},
-                'allow_block_types': {
-                    'type': 'array',
-                    'items': {
-                        'type': 'string',
-                        'enum': ['text', 'image', 'video', 'product', 'collection', 'form'],
-                    },
-                    'default': ['text', 'image', 'video', 'product', 'collection'],
-                    'title': 'Block types the editor permits',
-                },
-                'live_preview': {'type': 'boolean', 'default': True, 'title': 'Real-time preview'},
-                'scheduled_publish_window_hours': {
-                    'type': 'integer',
-                    'default': 24,
-                    'title': 'How far ahead a scheduled post can be set',
-                },
             },
         }

@@ -254,11 +254,6 @@ class AnalyticsPlugin(Plugin):
                     'maximum': 730,
                     'title': 'Days of raw event log to retain',
                 },
-                'enable_pageview_middleware': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Auto-track storefront pageviews',
-                },
                 'exclude_staff': {
                     'type': 'boolean',
                     'default': True,

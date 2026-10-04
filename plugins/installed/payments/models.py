@@ -137,7 +137,7 @@ class PaymentGatewayConfig(models.Model):
     model above.
 
     Config blobs:
-      * stripe — {secret_key, publishable_key, webhook_secret, capture_strategy}
+      * stripe — {secret_key, publishable_key, webhook_secret}
       * manual — {instructions}
     """
 

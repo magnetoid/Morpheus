@@ -181,15 +181,5 @@ class SubscriptionsPlugin(Plugin):
                     'default': [14, 30, 45, 60, 90],
                     'title': 'Cadences offered to the shopper',
                 },
-                'swap_window_days': {
-                    'type': 'integer',
-                    'default': 2,
-                    'title': 'Swap window (days before next ship the customer can swap)',
-                },
-                'churn_save_prompt': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Show a churn-save prompt on pause / cancel',
-                },
             },
         }

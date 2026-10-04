@@ -178,22 +178,5 @@ class BookProductPlugin(Plugin):
     def get_config_schema(self) -> dict:
         return {
             'type': 'object',
-            'properties': {
-                'default_print_type': {
-                    'type': 'string',
-                    'default': 'paperback',
-                    'title': 'Default print type',
-                    'description': 'Pre-selected when a book has no print type set.',
-                },
-                'default_paper_type': {
-                    'type': 'string',
-                    'default': '',
-                    'title': 'Default paper type',
-                },
-                'enable_3d_preview': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Enable the 3D cover preview on product pages',
-                },
-            },
+            'properties': {},
         }

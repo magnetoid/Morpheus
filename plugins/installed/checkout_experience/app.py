@@ -81,11 +81,6 @@ class CheckoutExperiencePlugin(Plugin):
                     'default': ['apple_pay', 'google_pay'],
                     'title': 'Express-pay methods to advertise',
                 },
-                'show_address_autocomplete': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'Address autocomplete (uses GOOGLE_PLACES_API_KEY)',
-                },
                 'reduced_motion_default': {
                     'type': 'boolean',
                     'default': False,

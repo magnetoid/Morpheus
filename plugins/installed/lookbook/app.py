@@ -62,24 +62,5 @@ class LookbookPlugin(Plugin):
     def get_config_schema(self) -> dict:
         return {
             'type': 'object',
-            'properties': {
-                'enable_auto_look': {
-                    'type': 'boolean',
-                    'default': True,
-                    'title': 'AI auto-look (uses personalisation co-purchase graph)',
-                },
-                'max_products_per_look': {
-                    'type': 'integer',
-                    'default': 6,
-                    'minimum': 2,
-                    'maximum': 12,
-                    'title': 'Max products per look',
-                },
-                'add_to_cart_default': {
-                    'type': 'string',
-                    'enum': ['whole_look', 'pick_items'],
-                    'default': 'whole_look',
-                    'title': 'Add-to-cart default for a look',
-                },
-            },
+            'properties': {},
         }

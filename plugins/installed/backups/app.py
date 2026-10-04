@@ -77,11 +77,5 @@ class BackupsPlugin(Plugin):
                     'default': 7,
                     'description': 'Older backups are pruned after each run.',
                 },
-                'schedule_hour_utc': {
-                    'type': 'integer',
-                    'title': 'Daily run hour (UTC)',
-                    'default': 3,
-                    'description': 'Hour of day the backup task fires. 0-23.',
-                },
             },
         }

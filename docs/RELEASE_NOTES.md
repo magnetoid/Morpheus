@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.76.4 — 2026-10-04
+
+**Settings controls that did nothing are gone**
+
+- 77 settings controls across 30 apps that no code read have been removed: changing them never had an effect. The sharpest was Payments → Capture strategy, where 'manual' suggested funds were only authorised while Stripe always captured. The full list is in docs/plans/dead-settings-2026-10.md; values already saved for them are ignored.
+- A new test fails the build if a settings key is added without code that reads it.
+
 ## v0.76.3 — 2026-10-04
 
 **Plugin layer: scheduled tasks, channel coverage, dashboard links**

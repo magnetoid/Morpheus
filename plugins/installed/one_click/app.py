@@ -53,21 +53,5 @@ class OneClickPlugin(Plugin):
             'type': 'object',
             'properties': {
                 'enabled': {'type': 'boolean', 'default': True, 'title': 'Master switch'},
-                'min_completed_orders': {
-                    'type': 'integer',
-                    'default': 1,
-                    'minimum': 1,
-                    'title': 'Only show after N completed orders',
-                },
-                'token_rotation_days': {
-                    'type': 'integer',
-                    'default': 30,
-                    'title': 'Token rotation period (days)',
-                },
-                'retained_tokens_per_customer': {
-                    'type': 'integer',
-                    'default': 3,
-                    'title': 'Active device tokens per customer',
-                },
             },
         }

@@ -74,14 +74,6 @@ class AIContentPlugin(Plugin):
                     'title': 'Voice guidelines',
                     'description': 'Free-form rules: words to avoid, signature phrases, sentence length, formality. Prepended to every AI prompt as a system message.',
                 },
-                # Legacy field — kept for back-compat. New copy uses brand_tone.
-                'tone_of_voice': {
-                    'type': 'string',
-                    'enum': ['professional', 'playful', 'luxury', 'minimalist'],
-                    'default': 'luxury',
-                    'title': 'Legacy preset tone',
-                    'description': 'Kept for back-compat with older code paths. Prefer `brand_tone` for new generation.',
-                },
             },
         }
 

@@ -8,12 +8,3 @@ def test_plugin_metadata():
 
     assert JournalPlugin.name == 'journal'
     assert 'cms' in JournalPlugin.requires
-
-
-def test_default_block_types():
-    from plugins.installed.journal.app import JournalPlugin
-
-    schema = JournalPlugin().get_config_schema()
-    defaults = schema['properties']['allow_block_types']['default']
-    assert 'product' in defaults
-    assert 'video' in defaults

@@ -169,18 +169,6 @@ class AffiliatesPlugin(Plugin):
                     'description': 'Affiliates must accrue at least this much before a payout is generated.',
                     'default': 25,
                 },
-                'auto_lock_days': {
-                    'type': 'integer',
-                    'title': 'Refund clawback window (days)',
-                    'description': 'After this many days a conversion is locked in and survives any refund.',
-                    'default': 30,
-                },
-                'allow_self_signup': {
-                    'type': 'boolean',
-                    'title': 'Allow public affiliate sign-up',
-                    'description': 'When off, only the merchant can create affiliates via the dashboard.',
-                    'default': True,
-                },
             },
         }
 

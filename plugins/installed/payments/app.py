@@ -207,12 +207,6 @@ class PaymentsPlugin(Plugin):
                     'format': 'password',
                     'title': 'Stripe Webhook Secret',
                 },
-                'capture_strategy': {
-                    'type': 'string',
-                    'enum': ['automatic', 'manual'],
-                    'default': 'automatic',
-                    'title': 'Capture strategy',
-                },
                 'paypal_enabled': {
                     'type': 'boolean',
                     'default': False,
