@@ -30,6 +30,12 @@ class ChannelsPlugin(Plugin):
             'channels:refresh_metrics',
             {'task': 'channels.refresh_metrics', 'schedule': 60 * 60 * 24},
         )
+        # Keep the overview snapshot (and every channel's coverage report) warm
+        # so no dashboard request ever walks the catalogue six times over.
+        self.register_celery_beat(
+            'channels:refresh_overview',
+            {'task': 'channels.refresh_overview', 'schedule': 60 * 30},
+        )
 
     def contribute_dashboard_pages(self) -> list:
         return [

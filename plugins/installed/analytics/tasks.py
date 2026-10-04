@@ -66,9 +66,16 @@ def roll_daily_task() -> int:
 
 
 @app.task(name='analytics.trim_old_events', ignore_result=True, time_limit=120, soft_time_limit=60)
-def trim_old_events_task(keep_days: int = 90) -> int:
-    from plugins.installed.analytics.services import trim_old_events
+def trim_old_events_task(keep_days: int | None = None) -> int:
+    from plugins.installed.analytics.services import _config, trim_old_events
 
+    if keep_days is None:
+        # The merchant's "Days of raw event log to retain" setting; 90 when unset.
+        try:
+            keep_days = int(_config().get('keep_event_days') or 90)
+        except (TypeError, ValueError):
+            keep_days = 90
+        keep_days = max(7, min(keep_days, 730))
     n = trim_old_events(keep_days=keep_days)
     logger.info('analytics: trimmed %d old events (keep_days=%d)', n, keep_days)
     return n

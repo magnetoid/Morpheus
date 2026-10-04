@@ -503,7 +503,8 @@ edited a `StoreSettings` row). When adding a settings field, wire the consumer
 in the **same change**, or don't add the field. The cheap check:
 `grep -rn '<field_name>' --include='*.py' --include='*.html'` — if the only hit
 is its own declaration, it does nothing. Still-dead knobs are inventoried in
-`docs/plans/` (caching page, `products_per_page`, theme config). Guarded by
+`docs/plans/dead-settings-2026-10.md` — 78 controls across 30 apps as of v0.76.3,
+measured by searching every schema key for a reader; the owner decides remove or wire. Guarded by
 `storefront/tests/test_identity_maintenance.py` +
 `brand_kit/tests/test_tokens_render.py`.
 
@@ -596,7 +597,7 @@ As of v0.46 the storefront `<head>` is a *document*, not markup: core seeds
 `HeadDocument` (`core/head.py`), fires `STOREFRONT_HEAD`, and the seo app fills in
 title/description/canonical/robots/OG/Twitter/hreflang/pagination/JSON-LD. A theme
 calls **`{% storefront_head %}` once** and declares `head_contract = 1`; apps
-contribute through `SEO_RESOLVE_PAGE` / `SEO_JSONLD_GRAPH` / `SEO_SITEMAP_SOURCES`
+contribute through `SEO_RESOLVE_PAGE` / `SEO_JSONLD_GRAPH` / `SITEMAP_URLS`
 / `SEO_ROBOTS_RULES`, never by emitting tags. Entries are **keyed**, so a second
 writer replaces rather than duplicates — which is the whole point: the old
 per-tag arrangement shipped two `og:type` tags on every PDP, two `WebSite` nodes
@@ -929,7 +930,12 @@ config from Django settings on the first read of `app.conf`, which silently
 replaced the `app.conf.beat_schedule = {...}` in `morph/celery.py` — so core's
 jobs (error-log prune, update check, outbox drain, daily briefing) never ran
 until v0.75.27, while every app's jobs did. Schedule into
-`settings.CELERY_BEAT_SCHEDULE` (`core/tests/test_beat_schedule.py`).
+`settings.CELERY_BEAT_SCHEDULE` (`core/tests/test_beat_schedule.py`). And a beat
+entry must name the task's **registered name** — the explicit `name=` on the
+decorator, not its module path: beat sends by name and the worker rejects an
+unknown one silently as far as the schedule can tell. feature_adoption's hourly
+flush shipped under its module path and no store ever got a `FeatureUsageDay`
+row (v0.76.3); the same test now asserts every scheduled name is registered.
 
 **Landmine — a hidden form control still submits, and Django reads the LAST
 value of a repeated key.** The product editor hid inactive per-type cards with

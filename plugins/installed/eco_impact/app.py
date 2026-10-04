@@ -179,6 +179,7 @@ class EcoImpactPlugin(Plugin):
                 icon='leaf',
                 section='marketing',
                 order=55,
-                url='/dashboard/eco-impact/',
+                # Served by the contributed-page router; the plugin mounts no
+                # dashboard URL of its own, so a custom `url` here 404'd.
             ),
         ]

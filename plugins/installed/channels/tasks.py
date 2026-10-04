@@ -30,3 +30,19 @@ def refresh_metrics():
     except Exception as e:  # noqa: BLE001
         logger.warning('channels: refresh_metrics failed: %s', e)
         return {'ok': False, 'reason': str(e)[:200]}
+
+
+@app.task(name='channels.refresh_overview', ignore_result=True, time_limit=600, soft_time_limit=540)
+def refresh_overview():
+    """Recompute the overview rows — and, through them, each channel's coverage
+    report — off the request path. Six channels' reports took 49 s on one page
+    load before this; the page now reads the snapshot this task keeps warm."""
+    try:
+        # Imported here: views imports this module for METRICS_CACHE_KEY.
+        from plugins.installed.channels.views import _rows  # noqa: PLC0415
+
+        rows = _rows(refresh=True)
+        return {'channels': len(rows)}
+    except Exception as e:  # noqa: BLE001
+        logger.warning('channels: refresh_overview failed: %s', e)
+        return {'ok': False, 'reason': str(e)[:200]}

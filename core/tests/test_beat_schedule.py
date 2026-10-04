@@ -36,3 +36,19 @@ class CoreBeatScheduleTests(SimpleTestCase):
         from morph.celery import app
 
         self.assertIn('observability.rollup_hourly', app.conf.beat_schedule)
+
+    def test_every_scheduled_task_is_one_the_worker_registers(self):
+        # Beat sends a task by NAME. A schedule entry naming a task under its
+        # module path while the task registers under an explicit ``name=`` is
+        # rejected by the worker as unregistered — silently, as far as the
+        # schedule is concerned. feature_adoption's hourly flush shipped that
+        # way, so no store ever got a FeatureUsageDay row.
+        from morph.celery import app
+
+        app.loader.import_default_modules()
+        unknown = {
+            entry: spec['task']
+            for entry, spec in app.conf.beat_schedule.items()
+            if spec.get('task') not in app.tasks
+        }
+        self.assertEqual(unknown, {})

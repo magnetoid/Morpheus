@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.76.3 — 2026-10-04
+
+**Plugin layer: scheduled tasks, channel coverage, dashboard links**
+
+- Feature adoption: the hourly flush was scheduled under a task name the worker did not recognise, so usage counters were never written on any store. Every scheduled task name is now checked against the registered tasks.
+- Sales channels: the overview recomputed every channel's feed coverage on each visit (49 seconds on the bookshop). Coverage reports are cached and refreshed every 30 minutes in the background.
+- Eco impact: the dashboard entry linked to a URL the app never served; it now opens the contributed page. Every contributed page's link is tested.
+- Analytics: the 'days of raw event log to retain' setting is applied by the nightly trim; it was fixed at 90 days.
+- Docs: the sitemap contribution point is SITEMAP_URLS (SEO_SITEMAP_SOURCES is declared but never fired). An inventory of 78 settings controls that nothing reads is in docs/plans/dead-settings-2026-10.md.
+
 ## v0.76.2 — 2026-10-04
 
 **Maps on Serbian pages, dead facet links, feed caching**

@@ -1,7 +1,10 @@
 """Unified sales-channels overview — one operator page across every commerce
 channel. Pure aggregator: collects a status row from each channel plugin via the
-CHANNELS_OVERVIEW filter (cheap, per-page) and merges cached ads KPIs from the
-daily channels.refresh_metrics task (no live API calls on page load)."""
+CHANNELS_OVERVIEW filter and merges cached ads KPIs from the daily
+channels.refresh_metrics task (no live API calls on page load). The rows are a
+snapshot: each channel's coverage report walks the whole catalogue, so
+channels.refresh_overview recomputes them every half hour and a request only
+builds them when the cache is empty."""
 
 from __future__ import annotations
 
@@ -16,7 +19,7 @@ from plugins.installed.channels.tasks import METRICS_CACHE_KEY
 logger = logging.getLogger('morpheus.channels')
 
 _CACHE_KEY = 'channels:overview:v1'
-_TTL = 300
+_TTL = 60 * 60  # refreshed every 30 min by channels.refresh_overview
 
 
 def _rows(*, refresh: bool = False) -> list[dict]:

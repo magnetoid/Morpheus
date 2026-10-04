@@ -38,7 +38,10 @@ class FeatureAdoptionPlugin(Plugin):
         self.register_celery_beat(
             'feature_adoption.flush',
             {
-                'task': 'plugins.installed.feature_adoption.tasks.flush_usage_counters',
+                # The registered NAME, not the module path: beat sends by name and
+                # the worker rejected the module path as unregistered, so no store
+                # ever got a FeatureUsageDay row (core/tests/test_beat_schedule.py).
+                'task': 'feature_adoption.flush_usage_counters',
                 'schedule': 60 * 60,
             },
         )

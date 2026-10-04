@@ -2,11 +2,26 @@
 
 from __future__ import annotations
 
+from django.core.cache import cache
+
 from .mapping import map_product
 from .settings import pinterest_settings
 
+COVERAGE_CACHE_TTL = 60 * 60  # recomputed every 30 min by channels.refresh_overview
+
 
 def coverage_report(*, limit: int | None = None) -> dict:
+    """Cached snapshot: building it walks every active product with several
+    queries each, so it never runs on a request (see channels.refresh_overview)."""
+    key = f'pinterest_commerce:coverage:v1:{limit or 0}'
+    report = cache.get(key)
+    if report is None:
+        report = _build_coverage_report(limit=limit)
+        cache.set(key, report, COVERAGE_CACHE_TTL)
+    return report
+
+
+def _build_coverage_report(*, limit: int | None = None) -> dict:
     from plugins.installed.catalog.models import Product  # noqa: PLC0415
 
     settings = pinterest_settings()
