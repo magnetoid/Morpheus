@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.76.5 — 2026-10-06
+
+**Accessibility: card covers no longer repeat the title; live audits run after the deploy**
+
+- dot_books: a product card's cover is decorative (alt="") inside the link it shares with the title — a screen reader announced every book twice (axe image-redundant-alt, 80 occurrences across the live home and listing pages).
+- dot_books: the home hero panels are <div role="tabpanel">, not <article>, which does not permit that role (axe aria-allowed-role).
+- The lighthouse and accessibility workflows run after deploy-smoke has seen production converge (workflow_run), instead of on the push — when the store still served the previous build, then a 503 mid-swap. Both had been red on every run since 22 September for that reason.
+- axe waits 2 s for the theme's scroll-reveal fade before auditing (text sampled mid-fade read as a 1.8:1 contrast failure, 42 times on one run); Lighthouse retries once on a runtime error, never on a failed budget; the axe-reports artefact now uploads (its directory was hidden, which upload-artifact skips).
+- Guard: themes/test_a11y_markup.py renders the home and listing pages and fails on a cover alt that repeats the title or a tabpanel on an article.
+
 ## v0.76.4 — 2026-10-04
 
 **Settings controls that did nothing are gone**

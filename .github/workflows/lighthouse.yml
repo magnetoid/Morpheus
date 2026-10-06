@@ -1,41 +1,33 @@
 name: lighthouse
 
-# Runs Lighthouse-CI against the live storefront on every push to main
-# and on PRs that touch storefront-rendering code. Blocks the PR (and
-# emits a status check) if LCP, CLS, or TBT regress past the budgets
-# in `.lighthouserc.json`. Performance is now a guarded contract — same
-# as ruff, mypy, and bandit are for code.
+# Runs Lighthouse-CI against the live storefront after every production
+# deploy and fails if LCP, CLS, or TBT regress past the budgets in
+# `.lighthouserc.json`. Performance is a guarded contract — same as ruff,
+# mypy, and bandit are for code.
+#
+# It runs after `deploy-smoke` has watched production converge on the pushed
+# version — never on the push itself. A push to main IS the deploy: for the
+# next ten-odd minutes the live store still serves the previous version and
+# then briefly a 503 while Coolify swaps containers, so an audit triggered by
+# the push tested the wrong build or none (this workflow was red on every run
+# for two weeks that way). A pull request cannot be audited here either — the
+# live store does not carry the PR's code — so there is no PR trigger.
 
 on:
-  push:
+  workflow_run:
+    workflows: ["deploy-smoke"]
+    types: [completed]
     branches: ["main"]
-    paths:
-      - "themes/**"
-      - "plugins/installed/storefront/**"
-      - "plugins/installed/catalog/**"
-      - "plugins/installed/seo/**"
-      - "core/storefront_cache.py"
-      - "core/security_headers.py"
-      - ".github/workflows/lighthouse.yml"
-      - ".lighthouserc.json"
-  pull_request:
-    paths:
-      - "themes/**"
-      - "plugins/installed/storefront/**"
-      - "plugins/installed/catalog/**"
-      - "plugins/installed/seo/**"
-      - "core/storefront_cache.py"
-      - "core/security_headers.py"
-      - ".lighthouserc.json"
   # Manual run for ad-hoc audits.
   workflow_dispatch:
 
 concurrency:
-  group: lighthouse-${{ github.ref }}
+  group: lighthouse
   cancel-in-progress: true
 
 jobs:
   lhci:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -52,8 +44,19 @@ jobs:
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
         run: |
-          lhci autorun --config=.lighthouserc.json || EXIT=$?
-          if [ "${EXIT:-0}" -ne 0 ]; then
-            echo "::error::Lighthouse-CI exit $EXIT — perf budget exceeded. See assertions above."
-            exit "$EXIT"
-          fi
+          set -o pipefail
+          # One retry, and only for a Lighthouse runtime error (a NO_NAVSTART
+          # trace glitch, a dropped connection) — never for a failed assertion,
+          # which is the budget doing its job.
+          for attempt in 1 2; do
+            if lhci autorun --config=.lighthouserc.json 2>&1 | tee lhci.log; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 1 ] && grep -q "Runtime error encountered" lhci.log; then
+              echo "Lighthouse runtime error — retrying once in 30s"
+              sleep 30
+              continue
+            fi
+            echo "::error::Lighthouse-CI failed — see the assertions above."
+            exit 1
+          done

@@ -1131,7 +1131,13 @@ section); it no-ops if the tag already exists. The
 `deploy-smoke` workflow polls `/readyz` after every main push and fails
 red if prod never converges on the pushed `MORPHEUS_VERSION` — stuck-queue
 recovery (zombie `in_progress` builds wedge Coolify's whole app queue) is in
-`docs/OPERATIONS_RUNBOOK.md`.
+`docs/OPERATIONS_RUNBOOK.md`. **Anything that audits the LIVE store
+(`lighthouse`, `accessibility`) hangs off deploy-smoke's success via
+`workflow_run`, never off the push:** on push the store still serves the
+previous build, then a 503 mid-swap, so both were red on every run for two
+weeks without anyone noticing — and a PR cannot be audited against the live
+store at all. Let the audit settle the page first (axe `--load-delay`): text
+sampled mid scroll-reveal fade reads as a contrast failure.
 
 **Landmine — a native dep that loads at settings-import is deploy-critical.**
 A provider app in `INSTALLED_APPS` (e.g. allauth's `openid_connect` / `saml`

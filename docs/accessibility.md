@@ -24,9 +24,15 @@ Two GitHub Actions workflows gate WCAG regression:
 - [`.github/workflows/accessibility.yml`](.github/workflows/accessibility.yml) — full axe-core ruleset
   (`wcag2a wcag2aa wcag21a wcag21aa wcag22aa best-practice`) across the same URLs.
 
-Both run on every push to `main` and on PRs touching `themes/` or
-`plugins/installed/storefront/`. Reports are uploaded as job artefacts
-for 30 days.
+Both audit the **live** store, so they run after the `deploy-smoke`
+workflow has seen production converge on a pushed version (a
+`workflow_run` trigger), or by hand (`workflow_dispatch`) — never on the
+push itself, when the store still serves the previous build, and never on
+a PR, whose code the live store does not carry. axe waits 2 s after load
+so the theme's scroll-reveal fade has settled (mid-fade text reads as a
+contrast failure). Reports are uploaded as the `axe-reports` artefact for
+30 days. Structural findings get a rendering guard in
+`themes/test_a11y_markup.py` so they fail before a deploy, not after.
 
 ## What WCAG 2.2 AA actually requires
 
@@ -58,7 +64,8 @@ backlog dashboard shows them by class with a per-fix workflow.
 
 ## Manual audit cadence
 
-- Lighthouse-CI + axe-core CI run on every PR (automated floor).
+- Lighthouse-CI + axe-core CI run against the live store after every
+  production deploy (automated floor).
 - Full WCAG 2.2 AA manual audit annually (external auditor recommended).
 - Keyboard-only navigation walkthrough on every checkout-flow PR
   (manual; checklist below).

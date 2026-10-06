@@ -10,26 +10,29 @@ name: accessibility
 # 28 June 2025 for new products; existing services grandfathered until
 # 2030). Non-compliance is increasingly a legal-and-marketing risk in
 # the EU; the audit doc at docs/accessibility.md tracks our position.
+#
+# It runs after `deploy-smoke` has watched production converge on the pushed
+# version — never on the push itself. A push to main IS the deploy: for the
+# next ten-odd minutes the live store still serves the previous version and
+# then briefly a 503 while Coolify swaps containers, so an audit triggered by
+# the push tested the wrong build or none (this workflow was red on every run
+# for two weeks that way). A pull request cannot be audited here either — the
+# live store does not carry the PR's code — so there is no PR trigger.
 
 on:
-  push:
+  workflow_run:
+    workflows: ["deploy-smoke"]
+    types: [completed]
     branches: ["main"]
-    paths:
-      - "themes/**"
-      - "plugins/installed/storefront/**"
-      - ".github/workflows/accessibility.yml"
-  pull_request:
-    paths:
-      - "themes/**"
-      - "plugins/installed/storefront/**"
   workflow_dispatch:
 
 concurrency:
-  group: a11y-${{ github.ref }}
+  group: a11y
   cancel-in-progress: true
 
 jobs:
   axe:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -39,9 +42,8 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install axe-core CLI + Puppeteer
-        run: |
-          npm install -g @axe-core/cli@4.10.x puppeteer-core@23.x
+      - name: Install axe-core CLI
+        run: npm install -g @axe-core/cli@4.10.x
 
       - name: Run axe against 5 representative URLs
         run: |
@@ -53,26 +55,33 @@ jobs:
             "https://dotbooks.store/cart/"
             "https://dotbooks.store/journal/"
           )
-          mkdir -p .a11y-reports
+          mkdir -p a11y-reports
           FAIL=0
           for URL in "${URLS[@]}"; do
             SAFE=$(echo "$URL" | sed 's|[^a-zA-Z0-9]|_|g')
             echo "::group::axe $URL"
+            # --load-delay: the theme fades cards in on scroll-reveal (under a
+            # second). axe sampling text mid-fade reads a 1.8:1 contrast on a
+            # button that settles at 4.5:1 — 42 such "violations" on one run.
+            # Audit the settled page.
             if ! axe "$URL" \
               --tags wcag2a,wcag2aa,wcag21a,wcag21aa,wcag22aa,best-practice \
-              --save ".a11y-reports/${SAFE}.json" \
+              --load-delay=2000 \
+              --dir a11y-reports --save "${SAFE}.json" \
               --exit; then
-              echo "::error::axe found WCAG violations on $URL — see job artefacts"
+              echo "::error::axe found WCAG violations on $URL — see the axe-reports artefact"
               FAIL=1
             fi
             echo "::endgroup::"
           done
           exit $FAIL
 
+      # Not a dot-directory: upload-artifact v4 skips hidden paths by default,
+      # which is why `.a11y-reports/` never produced an artefact.
       - name: Upload axe reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: axe-reports
-          path: .a11y-reports/
+          path: a11y-reports/
           retention-days: 30
