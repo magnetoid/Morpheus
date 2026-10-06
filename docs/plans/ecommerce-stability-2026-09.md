@@ -286,7 +286,8 @@ Found while doing it (not fixed):
 - **The observability rollup has had no input since 2026-07-12.** It builds
   `MerchantMetric` from outbox rows, which stopped being written without NATS. Its
   only reader is the GraphQL `metricSeries` field, and nothing in the dashboard
-  calls it. Either feed it from the hooks directly or retire it.
+  calls it. Either feed it from the hooks directly or retire it. **Retired in
+  v0.77.0** (table, beat jobs and GraphQL fields removed).
 
 ### Release 5 — stay stable
 1. **Error tracking** (Sentry or self-hosted GlitchTip) on web and worker, with alerts on

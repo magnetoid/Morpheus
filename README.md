@@ -493,7 +493,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `gdpr` | Article 15 export and Article 17 erasure as self-service, an auditable request trail, seeded Privacy / Terms / Imprint pages |
 | `consent` | A cookie banner with per-category opt-in and an auditable log of every decision |
 | `fraud_rules` | Risk scoring over Stripe Radar: velocity, address mismatch, BIN denylist, refund history |
-| `observability` | The audit-log surface, the error log, per-merchant metric rollups |
+| `observability` | The audit-log surface and the error log |
 | `backups` | Nightly database and media backups with retention, scheduled through beat |
 | `webhooks_ui` | Webhook endpoints, HMAC-SHA256-signed deliveries, a delivery log with retry and replay |
 | `notifications_center` | A persistent staff inbox for what needs follow-up: pending RMAs, low stock, failed agent runs, overdue tasks |

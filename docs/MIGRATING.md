@@ -6,6 +6,25 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.77.0 — the metrics rollup is retired
+
+`observability` no longer ships `MerchantMetric`, the hourly and daily
+`rollup_metrics` beat jobs, or the GraphQL fields `metricSeries` and
+`supportedMetrics`. The rollup read `core.OutboxEvent`, which the hook bus
+writes only when a NATS broker (`NATS_URL`) is configured — so on every
+deployment without one it had produced nothing since 2026-07-12, and no
+dashboard surface read the table. Migration `observability.0002` drops it. The
+`read:metrics` GraphQL scope gates nothing now; a token that still lists it is
+unaffected.
+
+**If you queried `metricSeries`:** read the owning app's data instead — orders
+through the `orders` tools (`analytics.summary`), traffic through `analytics`
+(`analytics.traffic_summary`, `DailyMetric`).
+
+Grep template: `grep -rn "metricSeries\|supportedMetrics\|MerchantMetric\|read:metrics"`.
+
+---
+
 ## v0.65.0 — Janus is Linda's only engine
 
 Linda's in-process agent loop is gone. Every chat turn runs on Janus, which calls

@@ -69,7 +69,6 @@ _CAPABILITY_FOR_SCOPE = {
     'catalog.write': 'catalog.write',
     'read:orders': 'orders.read',
     'read:carts': 'orders.read',
-    'read:metrics': 'analytics.read',
     'read:environments': 'system.read',
     'read:functions': 'system.read',
     'write:functions': 'system.write',

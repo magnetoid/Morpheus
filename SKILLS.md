@@ -373,20 +373,6 @@ agent to do work in this repo.
 
 # 10. Observability
 
-### Skill: add a metric
-**When:** a new domain event is worth tracking on the dashboard.
-**Steps:**
-1. Add an entry to `_EVENT_METRIC_MAP` in [`plugins/installed/observability/services.py`](plugins/installed/observability/services.py).
-2. The `rollup` task auto-populates `MerchantMetric` rows on the next beat tick.
-3. Expose it via the existing `metricSeries` GraphQL field (no schema change needed — it accepts any metric name).
-**Validate:** `Query.supportedMetrics` returns your metric; querying the series after a beat tick returns at least one bucket.
-
-### Skill: query a metric
-**Steps:**
-1. `Query.metricSeries(metric: "orders_placed", granularity: "hour", hours: 24)` from any agent or admin client.
-2. Requires `read:metrics` scope.
-**Validate:** the response contains `points` with `bucket`, `value`, `sample_count`.
-
 ### Skill: log with structure
 **When:** any log line in the engine.
 **Steps:**

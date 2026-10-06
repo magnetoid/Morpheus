@@ -188,10 +188,13 @@ def healthz_deep(request: HttpRequest) -> JsonResponse:
     try:
         from core.models import OutboxEvent
 
-        unsent = OutboxEvent.objects.filter(sent_at__isnull=True).count()
+        # Rows the drain has not published yet. (This filtered on `sent_at`, a
+        # field the model never had, from the day it shipped — the FieldError
+        # landed in the except below, which then reported ok "unavailable".)
+        unsent = OutboxEvent.objects.filter(status='PENDING').count()
         checks['outbox'] = {'ok': unsent < 1000, 'unsent': unsent}
-    except Exception:  # noqa: BLE001
-        checks['outbox'] = {'ok': True, 'note': 'unavailable'}
+    except Exception as e:  # noqa: BLE001 — a check whose own query fails is not ok
+        checks['outbox'] = {'ok': False, 'error': str(e)[:200]}
 
     ok = all(c.get('ok', False) for c in checks.values())
     return JsonResponse(

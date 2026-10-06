@@ -104,14 +104,15 @@ def storefront_blocks(context, slot: str) -> str:
         return ''
 
     rendered_parts: list[str] = []
-    request = context.get('request')
+    # The page's flattened context already carries `request` and every context
+    # processor's output. Passing `request=` here would build a fresh
+    # RequestContext — re-running EVERY processor — once per block: ~50 times
+    # on a product page, 80% of its server time (v0.77.0).
     base_ctx = {k: v for k, v in context.flatten().items() if k != 'block'}
 
     for block in blocks:
         try:
-            rendered_parts.append(
-                render_to_string(block.template, {**base_ctx, 'block': block}, request=request)
-            )
+            rendered_parts.append(render_to_string(block.template, {**base_ctx, 'block': block}))
         except Exception as e:  # noqa: BLE001 — never break the page on a bad block
             logger.warning(
                 'storefront_blocks: %s/%s render failed: %s',

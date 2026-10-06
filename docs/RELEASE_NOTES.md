@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.77.0 — 2026-10-06
+
+**Retire the metrics rollup that had nothing to read; the deep health probe checks the outbox for real; the product page stops shifting and stops re-running every context processor per block**
+
+- Storefront: `{% storefront_blocks %}` rendered every block with a fresh request context, re-running every context processor per block — ~50 times on a product page (101 store-settings queries, 52 market resolutions, 50 cart loads), 80% of its 0.6 s server time. Blocks now render from the page's own context; the processors run once per request.
+- Product page: the hero slider's stylesheet moved ahead of its markup — on a slow connection the browser laid the hero out as an empty box and grew it to 618 px when the rules arrived, a layout shift of 0.42 measured by the post-deploy lighthouse run (the "bad" threshold is 0.25). Its thumbnail strip and the dot_books "you might also like" grid go through the responsive image proxy instead of loading the raw originals (7.2 MB of PNGs on one page).
+- observability: MerchantMetric, the hourly/daily rollup_metrics beat jobs and the GraphQL metricSeries/supportedMetrics fields are removed (breaking — see docs/MIGRATING.md). The rollup read the event outbox, which the hook bus writes only when a NATS broker is configured, so on every store it had produced nothing since 12 July, its series sat frozen at that date, and no dashboard surface read it. Migration observability.0002 drops the table.
+- /healthz/deep: the outbox check filtered on sent_at, a field OutboxEvent never had; the error was swallowed and the check reported ok "unavailable" on every store since it shipped. It counts PENDING rows now, and a failing query reports not-ok like every other check in the probe.
+- The read:metrics GraphQL scope gates nothing now; a token that still lists it is unaffected.
+- Guards: api/tests_healthz.py; core/tests/test_beat_schedule.py names a live app job (feature_adoption.flush) as its example; core/tests/test_storefront_blocks_context.py counts processor runs; product_gallery/tests/test_hero_layout.py and themes/test_pdp_images.py pin the stylesheet order and the proxied covers.
+
 ## v0.76.5 — 2026-10-06
 
 **Accessibility: card covers no longer repeat the title; live audits run after the deploy**

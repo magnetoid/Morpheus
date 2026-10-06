@@ -156,9 +156,7 @@ re-deploy.
 | `/graphql/` | GraphQL endpoint |
 
 For metrics + traces, point `OTEL_EXPORTER_OTLP_ENDPOINT` at any OTLP HTTP
-collector (Grafana Cloud, Honeycomb, Tempo, self-hosted otel-collector). The
-beat service runs hourly + daily rollups into the `MerchantMetric` table —
-queryable via the GraphQL `metricSeries` field.
+collector (Grafana Cloud, Honeycomb, Tempo, self-hosted otel-collector).
 
 ---
 

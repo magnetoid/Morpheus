@@ -35,7 +35,7 @@ class CoreBeatScheduleTests(SimpleTestCase):
     def test_app_jobs_are_still_there(self):
         from morph.celery import app
 
-        self.assertIn('observability.rollup_hourly', app.conf.beat_schedule)
+        self.assertIn('feature_adoption.flush', app.conf.beat_schedule)
 
     def test_every_scheduled_task_is_one_the_worker_registers(self):
         # Beat sends a task by NAME. A schedule entry naming a task under its

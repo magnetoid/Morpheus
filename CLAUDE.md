@@ -807,6 +807,19 @@ reason**, and a merchant-selectable/auto-provisioned slot must always render
 block). Also: assert a **contribution-specific marker** when testing a render —
 `'<style' in head` passes on the theme's own CSS and proves nothing.
 
+**Landmine — `render_to_string(…, request=request)` inside a loop runs EVERY
+context processor once per item, and nothing looks wrong.** A `request=` builds
+a fresh `RequestContext` each call. `{% storefront_blocks %}` did that per
+block, so a live product page ran the processors ~50 times — 101 store-settings
+queries, 52 market resolutions, 50 cart loads, 379 queries for 66 ms of SQL —
+and 80% of its 0.6 s server time was that tag (v0.77.0). The parent template's
+`context.flatten()` already carries `request` and the processors' output, so
+render fragments from it and pass no request (`core/tests/test_storefront_blocks_context.py`
+counts the runs). cms's `{% render_page_sections %}` still renders each section with
+`request=` from a context of its own; it is off the hot path and left as is.
+Profile a slow page before guessing: `CaptureQueriesContext` + `cProfile` on the
+test client inside the container found this in one run.
+
 **Landmine — an order that skips a state skips that state's event.** Order events
 fire from `orders/signals.py` on the FSM transition a call reaches, and
 `ORDER_FULFILLED` (the "on its way" email with tracking, post-purchase follow-ups,

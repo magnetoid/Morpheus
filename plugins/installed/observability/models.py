@@ -1,10 +1,10 @@
 """
-Per-merchant observability — metrics rollups & error logs.
+Per-merchant observability — the retired plugin error log.
 
-`MerchantMetric` is a long, narrow append-only table with one row per
-(channel, metric, bucket) where bucket is the truncated timestamp. The
-rollup task collapses raw OutboxEvent rows into these buckets so the
-dashboard can serve a fast time-series chart.
+The metrics rollup (`MerchantMetric`, fed from `core.OutboxEvent`) was removed
+in v0.77.0: the outbox is only written when a NATS broker is configured, so on
+every deployment without one the rollup had read nothing since 2026-07-12 and
+its GraphQL series sat frozen at that date, unread by any dashboard surface.
 """
 
 from __future__ import annotations
@@ -12,41 +12,6 @@ from __future__ import annotations
 import uuid
 
 from morpheus.app import models
-
-
-class MerchantMetric(models.Model):
-    """A single metric value for a (channel, metric, bucket) triple."""
-
-    GRANULARITY_CHOICES = [
-        ('minute', 'Minute'),
-        ('hour', 'Hour'),
-        ('day', 'Day'),
-    ]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    channel = models.ForeignKey(
-        'core.StoreChannel',
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='metrics',
-    )
-    metric = models.CharField(max_length=80, db_index=True)
-    granularity = models.CharField(max_length=10, choices=GRANULARITY_CHOICES, db_index=True)
-    bucket = models.DateTimeField(db_index=True)
-    value = models.FloatField(default=0)
-    sample_count = models.PositiveIntegerField(default=0)
-    metadata = models.JSONField(default=dict, blank=True)
-
-    class Meta:
-        unique_together = ('channel', 'metric', 'granularity', 'bucket')
-        indexes = [
-            models.Index(fields=['metric', 'granularity', '-bucket']),
-            models.Index(fields=['channel', 'metric', '-bucket']),
-        ]
-
-    def __str__(self) -> str:
-        return f'{self.metric}@{self.bucket.isoformat()} = {self.value}'
 
 
 class ErrorEvent(models.Model):
