@@ -4,17 +4,17 @@
 
 ### Commerce you own. Run by an AI you can actually trust with the keys. Bought by agents.
 
-*Describe your shop in one sentence and get a real, stocked storefront. Toggle 110 capabilities on and off like apps. Then hand the back office to an AI operator who knows your catalog, briefs you every morning, and proposes improvements to her own source code — every one of them reviewed by a panel of independent models, and then by you.*
+*Describe your shop in one sentence and get a real, stocked storefront. Toggle 111 capabilities on and off like apps. Then hand the back office to an AI operator who knows your catalog, briefs you every morning, and proposes improvements to her own source code — every one of them reviewed by a panel of independent models, and then by you.*
 
 [![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
 [![Live stores](https://img.shields.io/badge/live-3%20stores%2C%20one%20codebase-ff5722.svg)](#-three-live-stores-one-codebase)
-[![Apps](https://img.shields.io/badge/apps-110%20toggleable-2563eb.svg)](#-whats-in-the-box-all-110-apps)
+[![Apps](https://img.shields.io/badge/apps-111%20toggleable-2563eb.svg)](#-whats-in-the-box-all-111-apps)
 [![AI operator](https://img.shields.io/badge/AI-built--in%20operator%20(Linda)-e11d48.svg)](#-meet-linda--the-ai-operator)
 [![Agentic](https://img.shields.io/badge/agentic-MCP%20%2F%20ACP%20%2F%20UCP-7c3aed.svg)](#-agentic-commerce-be-transactable-by-ai)
 [![Stack](https://img.shields.io/badge/django%206-postgres%20%C2%B7%20celery%20%C2%B7%20graphql-092e20.svg)](#-tech-stack)
 [![Contact](https://img.shields.io/badge/contact-marko%40morpheus.direct-0ea5e9.svg)](mailto:marko@morpheus.direct)
 
-**[▶ See it live](https://dotbooks.store) · [✉ Talk to us](#-get-in-touch) · [🚀 Run your own](#-quick-start) · [🧩 What's in the box](#-whats-in-the-box-all-110-apps) · [🧱 Architecture](#-architecture-a-small-kernel-a-deep-ecosystem) · [🧭 Roadmap](#-roadmap) · [📚 Docs](#-documentation)**
+**[▶ See it live](https://dotbooks.store) · [✉ Talk to us](#-get-in-touch) · [🚀 Run your own](#-quick-start) · [🧩 What's in the box](#-whats-in-the-box-all-111-apps) · [🧱 Architecture](#-architecture-a-small-kernel-a-deep-ecosystem) · [🧭 Roadmap](#-roadmap) · [📚 Docs](#-documentation)**
 
 </div>
 
@@ -78,7 +78,7 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 - [Found by search, and by answer engines](#-found-by-search-and-by-answer-engines)
 - [A tour: shoppers, merchants, developers](#-a-tour-shoppers-merchants-developers)
 - [Architecture: a small kernel, a deep ecosystem](#-architecture-a-small-kernel-a-deep-ecosystem)
-- [What's in the box: all 110 apps](#-whats-in-the-box-all-110-apps)
+- [What's in the box: all 111 apps](#-whats-in-the-box-all-111-apps)
 - [It runs itself](#-it-runs-itself)
 - [The self-improvement loop](#-the-self-improvement-loop)
 - [Safety, security & compliance](#-safety-security--compliance)
@@ -103,7 +103,7 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 |---|---|---|---|
 | **AI operator** | Built in, governed, on *your* infra | Add-on / per-seat copilot | Bring your own |
 | **Agent-transactable** | MCP + ACP + UCP, native | Emerging, platform-mediated | Rare |
-| **Feature model** | 110 apps, disable-safe by construction | Apps (billed, sandboxed) | Extensions / modules |
+| **Feature model** | 111 apps, disable-safe by construction | Apps (billed, sandboxed) | Extensions / modules |
 | **Sales channels** | 8 ad/commerce channels + a multivendor marketplace, built in | Per-channel apps | Per-channel extensions |
 | **Migration in** | Shopify, WooCommerce, Magento, BigCommerce, CSV importers | — | Varies |
 | **Own your data & code** | Yes — self-hosted; source-available under BUSL-1.1, each version turning Apache 2.0 after four years | No | Yes |
@@ -126,14 +126,14 @@ Measured at **v0.76.0 (3 October 2026)** by a script over the tree, not from mem
 
 | Metric | Value | Source of truth |
 |---|---|---|
-| Toggleable apps in the tree | **110** (108 on by default + 2 opt-in: the Montenegro booking vertical and DSers dropshipping) | `plugins/installed/` · `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` |
+| Toggleable apps in the tree | **111** (108 on by default + 3 opt-in: the Montenegro booking vertical and the DSers and Zendrop dropshipping apps) | `plugins/installed/` · `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` |
 | Typed events on the hooks bus | **94**, with **256** subscriptions | `MorpheusEvents` in `core/hooks.py` |
 | Agent tools in the typed registry | **184** — 47 of them require a human's approval | `core/agents/registry.py` at boot |
 | MCP token scopes | **38** | `plugins/installed/agent_mcp/scopes.py` |
 | RBAC capabilities | **32** · gating **249 views** | `plugins/installed/rbac/models.py` · `@require_capability` sites |
 | GraphQL surface | **41** queries · **50** mutations · **114** types | `api/schema.py` |
 | URL routes | **626**, of which **261** dashboard | `python manage.py show_urls`-style walk of the resolver |
-| Dashboard pages · settings panels · storefront blocks | **110** · **61** · **80** across 19 theme slots | the app registry at boot |
+| Dashboard pages · settings panels · storefront blocks | **111** · **62** · **80** across 19 theme slots | the app registry at boot |
 | Scheduled jobs · management commands | **57** · **58** | `CELERY_BEAT_SCHEDULE` · `manage.py help` |
 | Payment gateways | **5** — Stripe, PayPal, cash on delivery, bank transfer, sandbox | `payments.gateway_registry` |
 | Production releases since v0.1.0 (2026-06-20) | **215 in 105 days** | `docs/RELEASE_NOTES.md` |
@@ -260,7 +260,7 @@ What that buys you, concretely:
 
 ### What a merchant gets
 
-- **A dashboard of 110 contributed pages** (Tailwind + shadcn/ui), plus a command bar that talks to Linda.
+- **A dashboard of 111 contributed pages** (Tailwind + shadcn/ui), plus a command bar that talks to Linda.
 - **Orders**: lifecycle from placed to fulfilled, refunds through one service that locks the order (a double-click can never charge twice), partial refunds that re-credit gift cards, points and credit pro rata, shipped notifications with tracking, printable invoices, notes, CSV export, an *awaiting payment* queue, draft orders and quotes that convert on payment.
 - **Catalog and stock**: products, variants, bundles via lookbooks, collections, metafields on anything, a unified asset manager, bulk CSV import/export, importers for Shopify, WooCommerce, Magento and BigCommerce; warehouses, stock movements, reservations, low-stock alerts and a 28-day stockout forecast.
 - **Pricing and promotions**: a rule engine that stacks predicates (cart total, channel, country, customer group, product) with actions (% off, fixed off, free shipping, gift); coupons; per-market pricing and currency; B2B price lists, quotes and net terms; sandboxed merchant functions for cart totals, pricing, shipping and validation.
@@ -327,7 +327,7 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/PLUGIN_DEVELOPMENT.md`](doc
 
 ---
 
-## 🧩 What's in the box: all 110 apps
+## 🧩 What's in the box: all 111 apps
 
 Every shipped capability is a toggleable app, and every app below is described from its own manifest at v0.76.0. The always-current version is **Settings → About Morpheus** in the dashboard; the source of truth for the count is `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`.
 
@@ -509,7 +509,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 </details>
 
 <details>
-<summary><strong>Verticals</strong> — 7 apps</summary>
+<summary><strong>Verticals</strong> — 8 apps</summary>
 
 | App | What it does |
 |---|---|
@@ -520,6 +520,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `digital_products` | Token-protected downloads with expiry and count limits, emailed automatically after payment |
 | `booking_marketplace` | Bookable experiences and stays from local hosts, destination guides, hotels and an events calendar, with an operator inbox (opt-in; runs the Montenegro store) |
 | `dsers` | Dropshipping through DSers (AliExpress): link each variant to its supplier item, export paid orders as DSers' CSV, import the tracking numbers and ship the orders (opt-in; runs on supernatural-shop) |
+| `zendrop` | Dropshipping through Zendrop: connect over its MCP server and see what the account can do, map variants to Zendrop products, work paid orders from a copy-ready order sheet, ship them with Zendrop's tracking (opt-in; runs on supernatural-shop) |
 
 </details>
 

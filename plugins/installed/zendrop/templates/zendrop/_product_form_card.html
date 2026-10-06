@@ -1,0 +1,22 @@
+{% comment %}Zendrop supplier card on the product form (PRODUCT_FORM_CARDS). One row per
+variant: the Zendrop product id, variant id and product page. Saved by the zendrop
+app's PRODUCT_FORM_SAVED subscriber from the zendrop_product__/zendrop_variant__/
+zendrop_url__ fields.{% endcomment %}
+<div class="card card-padded mb-4" data-zendrop-card>
+  <h2 class="text-base font-semibold mb-1">Zendrop supplier</h2>
+  <p class="meta mb-3">The Zendrop product id and variant id as Zendrop shows them, and the product page link. Leave all empty to unlink.</p>
+  <table class="table">
+    <thead><tr><th>Variant</th><th>Store SKU</th><th>Zendrop product id</th><th>Zendrop variant id</th><th>Zendrop product page</th></tr></thead>
+    <tbody>
+    {% for row in zendrop_rows %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td><code>{{ row.sku }}</code></td>
+        <td><input type="text" name="zendrop_product__{{ row.key }}" value="{{ row.link.zendrop_product_id|default:'' }}" placeholder="8421" style="width:100%;"></td>
+        <td><input type="text" name="zendrop_variant__{{ row.key }}" value="{{ row.link.zendrop_variant_id|default:'' }}" placeholder="optional" style="width:100%;"></td>
+        <td><input type="url" name="zendrop_url__{{ row.key }}" value="{{ row.link.product_url|default:'' }}" placeholder="https://app.zendrop.com/…" style="width:100%;"></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -53,7 +53,10 @@ Examples (this is what's already shipped — mirror the pattern):
 - Storefront integration through `StorefrontBlock(slot=...)` contributions,
   not direct template edits in `themes/`.
 - Cross-plugin coupling through the `core.hooks` event bus — never import
-  one plugin from another's models.
+  one plugin from another's models. Code several sibling apps need but core
+  does not is *shared plugin infrastructure* at the `plugins/` package root:
+  `plugins/feed_mapping.py` (channel feeds), `plugins/dropshipping/` (supplier
+  apps: eligibility, address normalisation, tracking files, ship-with-tracking).
 - **Before creating a plugin, audit for overlap**: grep
   `MORPHEUS_DEFAULT_APPS` and the existing plugin descriptions, and
   justify the boundary in the PR. One concept = one model owner —

@@ -4,24 +4,35 @@ Column names and order follow DSers' CSV templates as documented in its help
 centre (help.dsers.com → "Place CSV orders", "Import product data via CSV").
 The order file is strict: a full country name, no special characters in the
 address lines, a phone of digits and `+` only, and the same *Product id* +
-*SKU* pair that the mapping file used.
+*SKU* pair that the mapping file used. The address and eligibility rules are
+the shared supplier machinery in ``plugins.dropshipping``.
 """
 
 from __future__ import annotations
 
 import csv
 import io
-import re
 import uuid
 
 from django.db import transaction
 from django.utils import timezone
 
-from plugins.installed.dsers.services.countries import country_name
+from plugins.dropshipping import (
+    clean_phone,
+    clean_text,
+    country_name,
+    normalised_address,
+    shippable,
+)
+from plugins.dropshipping import (
+    eligible_orders as _eligible_orders,
+)
 
 __all__ = [
     'ORDER_COLUMNS',
     'PRODUCT_COLUMNS',
+    'clean_phone',
+    'clean_text',
     'country_name',
     'eligible_orders',
     'export_orders',
@@ -54,13 +65,6 @@ ORDER_COLUMNS = (
 )
 PRODUCT_COLUMNS = ('Product id', 'SKU', 'Supplier url', 'Supplier SKU')
 
-# Paid orders that have not gone out yet. 'processing' is included because a
-# merchant may have moved an order there by hand before exporting.
-EXPORTABLE_STATUSES = ('confirmed', 'processing')
-
-_UNSAFE = re.compile(r'[^\w\s,./#-]', re.UNICODE)
-_SPACES = re.compile(r'\s+')
-
 
 def _config() -> dict:
     from plugins.registry import app_registry
@@ -69,68 +73,26 @@ def _config() -> dict:
     return plugin.get_config() if plugin is not None else {}
 
 
-def shippable(item) -> bool:
-    """Does this order line need a parcel? Digital and virtual lines never go to DSers."""
-    variant = item.variant
-    if variant is not None:
-        return bool(variant.requires_shipping)
-    product = item.product
-    if product is not None:
-        return product.product_type != 'digital'
-    return True
-
-
 def eligible_orders() -> list:
     """Paid, confirmed/processing, never exported, with at least one shippable line."""
-    from plugins.installed.orders.models import Order
-
-    qs = (
-        Order.objects.filter(
-            payment_status='paid', status__in=EXPORTABLE_STATUSES, dsers_sync__isnull=True
-        )
-        .order_by('placed_at')
-        .prefetch_related('items__variant', 'items__product')
-    )
-    return [order for order in qs if any(shippable(i) for i in order.items.all())]
-
-
-def clean_text(value) -> str:
-    """Address text the way DSers wants it: letters, digits, space and ,./#- only."""
-    text = _UNSAFE.sub('', str(value or ''))
-    return _SPACES.sub(' ', text).strip()
-
-
-def clean_phone(value) -> str:
-    text = str(value or '').strip()
-    digits = re.sub(r'\D', '', text)
-    return ('+' if text.startswith('+') else '') + digits
-
-
-def _first(addr: dict, *keys: str) -> str:
-    for key in keys:
-        if addr.get(key):
-            return str(addr[key])
-    return ''
+    return _eligible_orders('dsers_sync')
 
 
 def order_rows(order, memo: str) -> list[list[str]]:
-    addr = order.shipping_address if isinstance(order.shipping_address, dict) else {}
-    contact = f'{addr.get("first_name", "")} {addr.get("last_name", "")}'.strip() or _first(
-        addr, 'name', 'full_name'
-    )
+    addr = normalised_address(order)
     base = {
         'Order number': order.order_number,
         'Date': timezone.localtime(order.placed_at).strftime('%Y-%m-%d'),
-        'Country': country_name(_first(addr, 'country', 'country_code')),
+        'Country': addr['country'],
         'Order memo': memo,
-        'Contact person': contact,
-        'Mobile no': clean_phone(_first(addr, 'phone', 'mobile')),
-        'Email': order.email or '',
-        'Address': clean_text(_first(addr, 'address_line1', 'line1', 'address1', 'street')),
-        'Address2': clean_text(_first(addr, 'address_line2', 'line2', 'address2')),
-        'Province': clean_text(_first(addr, 'state', 'province', 'region')),
-        'City': clean_text(_first(addr, 'city')),
-        'Zip': _first(addr, 'postal_code', 'zip', 'postcode').strip(),
+        'Contact person': addr['contact'],
+        'Mobile no': addr['phone'],
+        'Email': addr['email'],
+        'Address': addr['line1'],
+        'Address2': addr['line2'],
+        'Province': addr['province'],
+        'City': addr['city'],
+        'Zip': addr['zip'],
     }
     rows = []
     for item in order.items.all():

@@ -1,0 +1,172 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Zendrop dropshipping · Morpheus{% endblock %}
+
+{% block content %}
+<h1 class="text-xl font-semibold mb-2">Zendrop dropshipping</h1>
+<p class="meta mb-4">
+  Zendrop connects natively only to Shopify, Wix, TikTok Shop and ClickFunnels. For this store you place
+  orders in Zendrop from the sheet below, record them here, and ship them with the tracking Zendrop reports.
+</p>
+
+{% if error %}
+<div class="callout callout-error" style="margin-bottom:1rem;">
+  <i data-lucide="alert-circle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body"><p class="callout__title">Tracking import failed</p>{{ error }}</div>
+</div>
+{% endif %}
+
+{% if result %}
+<div class="card card-padded" style="margin-bottom:1rem;">
+  <strong>Tracking imported.</strong>
+  <ul style="margin-top:.5rem;">
+    <li>Shipped: {{ result.shipped|length }}{% if result.shipped %} — {{ result.shipped|join:", " }}{% endif %}</li>
+    {% if result.skipped %}<li>Skipped: {% for number, reason in result.skipped %}{{ number }} ({{ reason }}){% if not forloop.last %}, {% endif %}{% endfor %}</li>{% endif %}
+    {% if result.unknown %}<li>Not found in this store: {{ result.unknown|join:", " }}</li>{% endif %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Connection</h2>
+  {% if not has_token %}
+  <p class="meta">No access token saved. Generate one in Zendrop for its MCP server (app.zendrop.com/mcp/v1) with the orders and catalog scopes, then paste it under <a href="/dashboard/settings/zendrop/">Settings → Apps → Zendrop dropshipping</a>.</p>
+  {% else %}
+  <p class="meta">Token saved. Testing lists the tools this token can reach — that is what Zendrop lets this account do.</p>
+  {% if connection %}
+    {% if connection.ok %}
+    <p style="margin:.5rem 0;"><strong>Connected</strong>{% if connection.server.name %} to {{ connection.server.name }} {{ connection.server.version }}{% endif %} — {{ connection.tools|length }} tool{{ connection.tools|length|pluralize }}.</p>
+    {% if connection.capabilities %}
+    <ul class="meta" style="margin:.25rem 0 .75rem;">
+      <li>Orders, read: {{ connection.capabilities.orders_read|join:", "|default:"none found" }}</li>
+      <li>Orders, write: {{ connection.capabilities.orders_write|join:", "|default:"none found" }}</li>
+      <li>Shipping estimates: {{ connection.capabilities.shipping|join:", "|default:"none found" }}</li>
+      <li>Catalog: {{ connection.capabilities.catalog|join:", "|default:"none found" }}</li>
+    </ul>
+    {% endif %}
+    <details><summary class="meta">All tools</summary>
+      <table class="table" style="margin-top:.5rem;"><tbody>
+      {% for t in connection.tools %}<tr><td><code>{{ t.name }}</code></td><td class="meta">{{ t.description }}</td></tr>{% endfor %}
+      </tbody></table>
+    </details>
+    {% else %}
+    <p class="callout callout-error" style="margin:.5rem 0;">{{ connection.error }}</p>
+    {% endif %}
+  {% endif %}
+  <form method="post" action="/dashboard/zendrop/connection/test/" style="margin-top:.5rem;">{% csrf_token %}<button type="submit" class="btn">Test connection</button></form>
+  {% endif %}
+</div>
+
+{% if unmapped_count %}
+<div class="callout callout-warning" style="margin-bottom:1rem;">
+  <i data-lucide="link-2-off" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">{{ unmapped_count }} order line{{ unmapped_count|pluralize }} without a Zendrop product</p>
+    Add the Zendrop product id (and variant id) on the product's edit page — the "Zendrop supplier" card — so the sheet names what to order.
+  </div>
+</div>
+{% endif %}
+
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Orders to place in Zendrop</h2>
+  <p class="meta">{{ links_count }} variant{{ links_count|pluralize }} mapped. Each sheet holds what Zendrop's order form asks for; when the order is in Zendrop, record it here.</p>
+  {% for s in sheets %}
+  <details class="card card-padded" style="margin:.75rem 0;" data-zendrop-sheet>
+    <summary><strong>#{{ s.order.order_number }}</strong> · {{ s.order.placed_at|date:"Y-m-d" }} · {{ s.address.country|default:"—" }} · {{ s.lines|length }} line{{ s.lines|length|pluralize }}</summary>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:.75rem;">
+      <div>
+        <p class="meta">Ship to</p>
+        <pre style="white-space:pre-wrap; font-size:.85rem;">{{ s.address.contact }}
+{{ s.address.line1 }}{% if s.address.line2 %}
+{{ s.address.line2 }}{% endif %}
+{{ s.address.city }}{% if s.address.province %}, {{ s.address.province }}{% endif %} {{ s.address.zip }}
+{{ s.address.country }}
+{{ s.address.phone }}
+{{ s.address.email }}</pre>
+      </div>
+      <div>
+        <p class="meta">Lines</p>
+        <table class="table"><thead><tr><th>Item</th><th>Qty</th><th>Zendrop product / variant</th></tr></thead><tbody>
+        {% for line in s.lines %}
+          <tr>
+            <td>{{ line.name }}{% if line.variant %} — {{ line.variant }}{% endif %}<br><code>{{ line.sku }}</code></td>
+            <td>{{ line.quantity }}</td>
+            <td>{% if line.mapped %}{% if line.product_url %}<a href="{{ line.product_url }}" target="_blank" rel="noopener">{{ line.zendrop_product_id|default:"open" }}</a>{% else %}{{ line.zendrop_product_id }}{% endif %}{% if line.zendrop_variant_id %} / {{ line.zendrop_variant_id }}{% endif %}{% else %}<span style="color:var(--danger);">not mapped</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody></table>
+      </div>
+    </div>
+    <form method="post" action="/dashboard/zendrop/orders/{{ s.order.order_number }}/placed/" style="display:flex; gap:.5rem; align-items:center; margin-top:.75rem;">
+      {% csrf_token %}
+      <input type="text" name="zendrop_order_number" placeholder="Zendrop order number (optional)" style="max-width:20rem;">
+      <button type="submit" class="btn btn-primary">Placed in Zendrop</button>
+    </form>
+  </details>
+  {% empty %}
+  <p class="meta">No paid, shippable orders waiting. New paid orders appear here until you record them as placed.</p>
+  {% endfor %}
+</div>
+
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Placed in Zendrop — awaiting tracking</h2>
+  {% if placed %}
+  <table class="table">
+    <thead><tr><th>Order</th><th>Placed</th><th>Zendrop order</th><th>Ship with tracking</th></tr></thead>
+    <tbody>
+    {% for r in placed %}
+      <tr>
+        <td><a href="/dashboard/orders/{{ r.order.order_number }}/">#{{ r.order.order_number }}</a></td>
+        <td>{{ r.placed_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ r.zendrop_order_number|default:"—" }}</td>
+        <td>
+          <form method="post" action="/dashboard/zendrop/orders/{{ r.order.order_number }}/ship/" style="display:flex; gap:.4rem;">
+            {% csrf_token %}
+            <input type="text" name="tracking_number" placeholder="Tracking number" required style="max-width:14rem;">
+            <input type="text" name="carrier" placeholder="Carrier" style="max-width:10rem;">
+            <button type="submit" class="btn btn-sm">Ship</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="meta">Nothing is out with Zendrop right now.</p>
+  {% endif %}
+  <p class="meta" style="margin-top:.75rem;">Many at once: upload a CSV with an order-number column and a tracking-number column (Zendrop's orders export works).</p>
+  <form method="post" action="/dashboard/zendrop/import/tracking/" enctype="multipart/form-data" style="margin-top:.25rem;">
+    {% csrf_token %}
+    <input type="file" name="csv" accept=".csv,text/csv" required>
+    <button type="submit" class="btn">Import tracking CSV</button>
+  </form>
+</div>
+
+{% if attention %}
+<div class="callout callout-error" style="margin-bottom:1rem;">
+  <i data-lucide="alert-triangle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">Cancelled after placing — cancel these in Zendrop too</p>
+    {% for r in attention %}<a href="/dashboard/orders/{{ r.order.order_number }}/">#{{ r.order.order_number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if shipped %}
+<div class="card card-padded">
+  <h2 class="text-base font-semibold mb-2">Recently shipped via Zendrop</h2>
+  <table class="table">
+    <thead><tr><th>Order</th><th>Shipped</th><th>Tracking</th><th>Carrier</th></tr></thead>
+    <tbody>
+    {% for r in shipped %}
+      <tr>
+        <td><a href="/dashboard/orders/{{ r.order.order_number }}/">#{{ r.order.order_number }}</a></td>
+        <td>{{ r.shipped_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ r.tracking_number }}</td>
+        <td>{{ r.carrier|default:"—" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

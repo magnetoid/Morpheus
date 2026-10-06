@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.79.0 — 2026-10-06
+
+**Zendrop dropshipping app, and one shared supplier module under both dropshipping apps**
+
+- New opt-in app zendrop (MORPHEUS_EXTRA_APPS): Zendrop connects natively only to Shopify, Wix, TikTok Shop and ClickFunnels and has no CSV order path, so the app connects over Zendrop's MCP server (app.zendrop.com/mcp/v1, scoped access token, JSON-RPC over HTTP) and shows the merchant exactly which tools their token reaches — the basis for automating fulfilment and tracking once the catalogue for this account is known — while running the manual loop fast today: a per-order sheet with the supplier-ready address and the Zendrop product/variant ids, "placed in Zendrop" bookkeeping (and the move to processing), and shipping with tracking one order at a time or from a tracking CSV, the platform way (Order.ship() + Fulfillment, so the shopper's email fires once). Spec: docs/plans/zendrop-dropshipping.md.
+- plugins/dropshipping: the supplier machinery both apps share — paid/shippable eligibility, address normalisation (full country names, cleaned lines, phone digits), header-tolerant tracking CSV parsing, and ship-with-tracking — moved out of dsers into shared plugin infrastructure at the plugins package root (like feed_mapping for the channel apps). dsers behaves exactly as before.
+- Guards: plugins/installed/zendrop/tests (MCP client over JSON and SSE with token-free errors, order sheets, placed/shipped bookkeeping incl. the single ORDER_FULFILLED fire, dashboard actions, product-form card, cancel-after-placing, manifest + migration), plugins/tests_dropshipping.py. CI's test job loads both dropshipping apps.
+
 ## v0.78.0 — 2026-10-06
 
 **DSers dropshipping app — supplier mapping, order export, tracking import; opt-in, live on supernatural-shop**
