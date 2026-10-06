@@ -1,0 +1,20 @@
+{% comment %}DSers supplier card on the product form (PRODUCT_FORM_CARDS). One row per
+variant: the AliExpress item URL and the supplier SKU DSers should order. Saved by
+the dsers app's PRODUCT_FORM_SAVED subscriber from the dsers_url__/dsers_sku__ fields.{% endcomment %}
+<div class="card card-padded mb-4" data-dsers-card>
+  <h2 class="text-base font-semibold mb-1">DSers supplier</h2>
+  <p class="meta mb-3">Paste the AliExpress product link for each variant, and the supplier SKU exactly as DSers shows it (e.g. <code>Color:Black;Size:M</code>). Leave both empty to unlink.</p>
+  <table class="table">
+    <thead><tr><th>Variant</th><th>Store SKU</th><th>AliExpress product URL</th><th>Supplier SKU</th></tr></thead>
+    <tbody>
+    {% for row in dsers_rows %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td><code>{{ row.sku }}</code></td>
+        <td><input type="url" name="dsers_url__{{ row.key }}" value="{{ row.link.supplier_url|default:'' }}" placeholder="https://www.aliexpress.com/item/…" style="width:100%;"></td>
+        <td><input type="text" name="dsers_sku__{{ row.key }}" value="{{ row.link.supplier_sku|default:'' }}" placeholder="Color:Black;Size:M" style="width:100%;"></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

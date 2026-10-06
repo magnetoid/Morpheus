@@ -112,7 +112,8 @@ jobs:
     # booking_marketplace/tests/_theme.py), so the active theme is NOT forced
     # here — doing that fails 16 storefront/seo tests that assert on the default.
     env:
-      MORPHEUS_EXTRA_APPS: plugins.installed.booking_marketplace
+      # dsers (DSers dropshipping) is opt-in the same way — supernatural-shop has it on.
+      MORPHEUS_EXTRA_APPS: plugins.installed.booking_marketplace,plugins.installed.dsers
     services:
       redis:
         image: redis:7-alpine

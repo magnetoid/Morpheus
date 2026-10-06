@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.78.0 — 2026-10-06
+
+**DSers dropshipping app — supplier mapping, order export, tracking import; opt-in, live on supernatural-shop**
+
+- New opt-in app dsers (MORPHEUS_EXTRA_APPS=plugins.installed.dsers): a product-form card links each variant to its AliExpress item and supplier SKU; the DSers page exports paid, shippable orders as DSers' import_orders CSV (21 columns, full country names, cleaned addresses, phone digits only) and the import_products mapping file; uploading DSers' tracking export ships each order the platform way — Order.ship() plus a Fulfillment row with carrier and tracking link — so the shopper's "on its way" email and every subscriber fire as for a hand-fulfilled order.
+- Exported orders are marked (never exported twice) and move to processing; an order cancelled after export is flagged so it can be cancelled in DSers too. Settings → Apps → DSers dropshipping: order memo for suppliers, tracking link template, the processing move.
+- Why CSV: DSers connects natively only to Shopify, WooCommerce and Wix; its Open API ("Channel App") is released to approved partners only (dsers.dev, up to 15 business days). The CSV bridge is DSers' documented path for other platforms. Spec and the API follow-up: docs/plans/dsers-dropshipping.md.
+- Guards: plugins/installed/dsers/tests (eligibility, CSV shape and normalisation, tracking import incl. the single ORDER_FULFILLED fire, dashboard downloads/upload, product-form card, cancel-after-export, manifest + migrations package). CI's test job loads the app.
+
 ## v0.77.1 — 2026-10-06
 
 **Product page: the real layout-shift cause, an eager hero image, and no more raw originals**

@@ -1,0 +1,132 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}DSers dropshipping · Morpheus{% endblock %}
+
+{% block content %}
+<h1 class="text-xl font-semibold mb-2">DSers dropshipping</h1>
+<p class="meta mb-4">
+  Paid orders leave as DSers' <code>import_orders</code> CSV; DSers places the AliExpress orders and
+  gives you a file with the tracking numbers, which you import here to ship them.
+</p>
+
+{% if error %}
+<div class="callout callout-error" style="margin-bottom:1rem;">
+  <i data-lucide="alert-circle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">Tracking import failed</p>
+    {{ error }}
+  </div>
+</div>
+{% endif %}
+
+{% if result %}
+<div class="card card-padded" style="margin-bottom:1rem;">
+  <strong>Tracking imported.</strong>
+  <ul style="margin-top:.5rem;">
+    <li>Shipped: {{ result.shipped|length }}{% if result.shipped %} — {{ result.shipped|join:", " }}{% endif %}</li>
+    {% if result.skipped %}<li>Skipped: {% for number, reason in result.skipped %}{{ number }} ({{ reason }}){% if not forloop.last %}, {% endif %}{% endfor %}</li>{% endif %}
+    {% if result.unknown %}<li>Not found in this store: {{ result.unknown|join:", " }}</li>{% endif %}
+  </ul>
+</div>
+{% endif %}
+
+{% if unmapped_products %}
+<div class="callout callout-warning" style="margin-bottom:1rem;">
+  <i data-lucide="link-2-off" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">{{ unmapped_products|length }} product{{ unmapped_products|length|pluralize }} in these orders ha{{ unmapped_products|length|pluralize:"s,ve" }} no supplier link</p>
+    DSers can only order a line whose product id and SKU are in your mapping file. Add the AliExpress
+    link on each product's edit page (the "DSers supplier" card), then download the mapping again:
+    {% for p in unmapped_products %}<a href="/dashboard/products/{{ p.id }}/edit/">{{ p.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}.
+  </div>
+</div>
+{% endif %}
+
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">1 · Products → DSers</h2>
+  <p class="meta">{{ links_count }} supplier link{{ links_count|pluralize }}. Upload this file in DSers → <em>CSV Upload → Products</em> whenever you add or change a link.</p>
+  <a href="/dashboard/dsers/export/products/" class="btn">Download import_products.csv</a>
+</div>
+
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">2 · Orders → DSers</h2>
+  {% if awaiting %}
+  <p class="meta">{{ awaiting|length }} paid order{{ awaiting|length|pluralize }} awaiting export. Upload the file in DSers → <em>CSV Upload → Orders</em>; each order is marked as exported and moves to processing.</p>
+  <table class="table" style="margin:.75rem 0;">
+    <thead><tr><th>Order</th><th>Date</th><th>Country</th><th>Lines</th><th>Email</th></tr></thead>
+    <tbody>
+    {% for o in awaiting %}
+      <tr>
+        <td><a href="/dashboard/orders/{{ o.order_number }}/">#{{ o.order_number }}</a></td>
+        <td>{{ o.placed_at|date:"Y-m-d" }}</td>
+        <td>{{ o.shipping_address.country|default:"—" }}</td>
+        <td>{{ o.items.count }}</td>
+        <td>{{ o.email }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <a href="/dashboard/dsers/export/orders/" class="btn btn-primary">Export {{ awaiting|length }} order{{ awaiting|length|pluralize }} to DSers</a>
+  {% else %}
+  <p class="meta">No paid, shippable orders waiting. New paid orders appear here until exported.</p>
+  {% endif %}
+</div>
+
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">3 · Tracking ← DSers</h2>
+  <p class="meta">Once DSers has placed and paid the orders, download its orders CSV (AliExpress order number + tracking number) and upload it here. Each matching order ships with its tracking number; the shopper gets the usual email.</p>
+  <form method="post" action="/dashboard/dsers/import/tracking/" enctype="multipart/form-data" style="margin-top:.5rem;">
+    {% csrf_token %}
+    <input type="file" name="csv" accept=".csv,text/csv" required>
+    <button type="submit" class="btn btn-primary">Import tracking</button>
+  </form>
+</div>
+
+{% if attention %}
+<div class="callout callout-error" style="margin-bottom:1rem;">
+  <i data-lucide="alert-triangle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">Cancelled after export — cancel these in DSers too</p>
+    {% for s in attention %}<a href="/dashboard/orders/{{ s.order.order_number }}/">#{{ s.order.order_number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">With DSers, awaiting tracking</h2>
+  {% if exported %}
+  <table class="table">
+    <thead><tr><th>Order</th><th>Exported</th><th>AliExpress order</th></tr></thead>
+    <tbody>
+    {% for s in exported %}
+      <tr>
+        <td><a href="/dashboard/orders/{{ s.order.order_number }}/">#{{ s.order.order_number }}</a></td>
+        <td>{{ s.exported_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ s.supplier_order_number|default:"—" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="meta">Nothing is out with DSers right now.</p>
+  {% endif %}
+</div>
+
+{% if shipped %}
+<div class="card card-padded">
+  <h2 class="text-base font-semibold mb-2">Recently shipped via DSers</h2>
+  <table class="table">
+    <thead><tr><th>Order</th><th>Shipped</th><th>Tracking</th><th>Carrier</th></tr></thead>
+    <tbody>
+    {% for s in shipped %}
+      <tr>
+        <td><a href="/dashboard/orders/{{ s.order.order_number }}/">#{{ s.order.order_number }}</a></td>
+        <td>{{ s.imported_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ s.tracking_number }}</td>
+        <td>{{ s.carrier|default:"—" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
