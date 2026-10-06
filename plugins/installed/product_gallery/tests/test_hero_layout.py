@@ -1,12 +1,15 @@
-"""The PDP hero must have its box before its markup is laid out.
+"""The PDP hero: sized before it is laid out, and its first slide is the LCP.
 
-The slider template emitted its ``<style>`` AFTER the markup. On a fast
-connection the parser swallows both in one go and nothing is visible; on a
-slow one the chunk boundary falls between them, the hero is laid out as an
-empty 0 px div, and when the stylesheet arrives the box grows to its 2:3
-aspect ratio — a layout shift of 0.42 on the live product page (Lighthouse's
-"bad" threshold is 0.25), measured by the post-deploy lighthouse workflow.
-The rules that size the hero have to precede the elements they size.
+The slider template emitted its ``<style>`` AFTER the markup, so on a slow
+connection the hero could be laid out before the rules that give its slides a
+2:3 box arrive. (v0.77.0 blamed this for the live product page's 0.42 layout
+shift; it was not the cause — that was the theme's two-column rule arriving
+after the grid, see ``themes/test_pdp_images.py`` — but the rules that size an
+element still belong ahead of it.)
+
+The first slide is the page's largest contentful paint, and it rendered with
+``loading="lazy"`` and no fetch priority — Lighthouse's "LCP image was lazily
+loaded" penalty on every product page. It is the one image that must be eager.
 
 The thumbnail strip also loaded the raw ``/media/`` original of every image
 (a 1.7 MB PNG for a 56 px thumbnail); it goes through the responsive proxy
@@ -16,8 +19,10 @@ like the slides do.
 from __future__ import annotations
 
 import pathlib
+import re
 
 from django.conf import settings
+from django.template.loader import render_to_string
 from django.test import SimpleTestCase
 
 _TEMPLATE = (
@@ -42,3 +47,25 @@ class HeroLayoutTests(SimpleTestCase):
         src = _TEMPLATE.read_text()
         thumbs = src[src.index('pdp-hero__thumbs') :]
         self.assertNotIn('<img src="{{ img.url }}"', thumbs)
+
+    def test_first_slide_is_eager_and_high_priority_the_rest_lazy(self):
+        html = render_to_string(
+            'product_gallery/_pdp_hero_slider.html',
+            {
+                'product': {'name': 'Probe', 'slug': 'probe'},
+                'images': [
+                    {'url': '/media/products/probe-1.png', 'altText': '', 'sortOrder': 0},
+                    {'url': '/media/products/probe-2.png', 'altText': '', 'sortOrder': 1},
+                ],
+                'videos': [],
+                'alt': 'Probe',
+            },
+        )
+        # Markup-only anchors: the class names also occur in the stylesheet above it.
+        track = html[html.index('data-slider-track') : html.index('role="tablist"')]
+        slides = re.findall(r'<img\b[^>]*>', track)
+        self.assertEqual(len(slides), 2, slides)
+        self.assertIn('fetchpriority="high"', slides[0])
+        self.assertIn('loading="eager"', slides[0])
+        self.assertIn('loading="lazy"', slides[1])
+        self.assertNotIn('fetchpriority', slides[1])

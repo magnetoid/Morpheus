@@ -6,9 +6,7 @@ passes only the fallbacks — a merchant who fills in Settings → SEO overrides
 {% block seo %}{% storefront_head title="Dot Books — an independent bookshop" description="A quieter shelf for louder books. New and rare titles from independent presses — curated, modern, independent." %}{% endblock %}
 
 {% block extra_head %}
-{% with hero_products|first as pick %}
-{% if pick.primaryImage and pick.primaryImage.url %}{% caching_preload_lcp pick.primaryImage.url %}{% endif %}
-{% endwith %}
+{# No <link rel=preload> of the raw original — the first hero pick renders through the proxy with priority=True. #}
 {% endblock %}
 
 {% block content %}

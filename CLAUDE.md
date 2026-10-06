@@ -659,6 +659,25 @@ resolved against the page. Guarded by
 `seo/tests/test_sitemap_book_facets.py`, `book_product/tests/test_facet_links.py`
 and `seo/tests/test_responsive_image_tag.py`.
 
+**Landmine — a page's `<style>` placed AFTER the markup it lays out is a
+layout shift you only see on a slow connection, and it is deterministic.**
+dot_books' product page kept its CSS — including the rule that makes
+`.pdp-grid` two columns — in a `<style>` below the content; the grid's inline
+style is single-column, so once the HTML streams in chunks the details column
+is laid out under the hero, off screen, then jumps up beside it when the rule
+arrives: CLS 0.275 on every Lighthouse run (threshold 0.1), the same number
+each time because the parse boundary is. Nothing shows locally or on a fast
+link. Page CSS goes in `{% block extra_head %}`; a plugin fragment's `<style>`
+precedes its markup. Diagnose with a `PerformanceObserver('layout-shift')`
+in a throttled `initScript` reload and read the sources' `previousRect` →
+`currentRect` — an element arriving from (0,0,0,0) was off screen, not new
+(v0.77.0 blamed the hero slider's own stylesheet order and was wrong; v0.77.1
+has the cause). Same page: the LCP image rendered `loading="lazy"`, and the
+theme preloaded the RAW original at high priority while the hero rendered the
+proxied AVIF — a preload must name exactly what the markup will request, or
+be dropped. Guarded by `themes/test_pdp_images.py` and
+`product_gallery/tests/test_hero_layout.py`.
+
 **Landmine — when two tables hold the same field, "which row wins" is the wrong
 question; "which value did a human choose" is the right one.** Product SEO lived
 in 13 native `catalog.Product` columns *and* in the generic `SeoMeta` overlay,

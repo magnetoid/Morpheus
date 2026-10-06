@@ -2,6 +2,7 @@
    Uses the dot_books storefront card classes (.wrap/.grid-books/.book) so
    it inherits the active theme's look; degrades to plain markup if the
    theme doesn't define them. Renders nothing when there are no products.{% endcomment %}
+{% load seo %}
 {% if products %}
 <section class="dynamics" style="padding: 3rem 0;">
   <div class="wrap">
@@ -15,7 +16,13 @@
       <a href="/products/{{ product.slug }}/" class="book">
         <div class="cover-wrap">
           {% if product.primary_image %}
-            <img src="{{ product.primary_image.image.url }}" alt="{{ product.name }}" loading="lazy">
+            {% comment %}Through the responsive proxy — the raw original is a multi-MB PNG for a
+               260px card. Decorative when the title is shown beside it (the link's name).{% endcomment %}
+            {% if show_title or show_title == None %}
+            {% seo_responsive_image product.primary_image.image alt="" widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
+            {% else %}
+            {% seo_responsive_image product.primary_image.image alt=product.name widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
+            {% endif %}
           {% else %}
             <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
           {% endif %}

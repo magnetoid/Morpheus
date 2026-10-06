@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.77.1 — 2026-10-06
+
+**Product page: the real layout-shift cause, an eager hero image, and no more raw originals**
+
+- dot_books: the product page's own stylesheet — including the rule that turns the layout into two columns — sat after the grid markup. The grid's inline style is single-column, so on a slow connection the details column was first laid out below the hero, off screen, and jumped up beside it when the rule arrived: the 0.275 layout shift every Lighthouse run measured (threshold 0.1). The stylesheet now renders in the head block. (v0.77.0 blamed the hero slider's stylesheet order for this; that was wrong — the slider's own box was fine.)
+- product_gallery: the first slide is the page's largest contentful paint and rendered lazy with no fetch priority; it is now eager with fetchpriority=high, the rest stay lazy.
+- dot_books + supernatural_shop: the <link rel=preload> of the hero was the raw original (a 1.7 MB PNG, fetched at high priority) while the hero renders the proxied AVIF/WebP — removed on the product and home pages.
+- dot_books: the variant chooser's 48px thumbnails loaded the raw original once per variant; dynamics: the recommendation carousel printed raw originals for 260px cards. Both go through the responsive image proxy. On the live Peter Pan page these were 6.5 MB of a 7.5 MB oversized-images finding.
+- Guards: themes/test_pdp_images.py (stylesheet order, no raw preload, proxied variant thumbnails), product_gallery/tests/test_hero_layout.py (first slide eager), dynamics/tests/test_carousel_images.py.
+
 ## v0.77.0 — 2026-10-06
 
 **Retire the metrics rollup that had nothing to read; the deep health probe checks the outbox for real; the product page stops shifting and stops re-running every context processor per block**

@@ -2,7 +2,7 @@
 {% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}
 
 {% block extra_head %}
-{% if hero_image.url %}{% caching_preload_lcp hero_image.url %}{% endif %}
+{# No <link rel=preload> of the raw original — the hero renders through the responsive proxy. #}
 {% seo_product_jsonld product product_seo_extra %}
 {% if video_seo %}{% seo_video_jsonld video_seo %}{% endif %}
 {% seo_product_og product %}

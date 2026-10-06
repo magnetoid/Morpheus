@@ -7,7 +7,7 @@ passes only the fallbacks — a merchant who fills in Settings → SEO overrides
 
 {% block extra_head %}
 {% with hero_products|first as pick %}
-{% if pick.primaryImage and pick.primaryImage.url %}{% caching_preload_lcp pick.primaryImage.url %}{% endif %}
+{# No <link rel=preload> of the raw original — the hero renders through the responsive proxy. #}
 {% endwith %}
 {% endblock %}
 

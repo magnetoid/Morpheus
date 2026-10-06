@@ -208,7 +208,12 @@ Backward compatible with single-image / no-image products:
             aria-label="Slide {{ forloop.counter }} of {{ total_slides }}"
             style="view-transition-name: cover-{{ product.slug }}{% if forloop.first %}{% else %}-{{ forloop.counter0 }}{% endif %};">
       {% if img.url %}
+        {% comment %}The first slide is the page's LCP: eager + fetchpriority=high. The rest lazy.{% endcomment %}
+        {% if forloop.first %}
+        {% seo_responsive_image img.url alt=img.altText|default:alt|default:product.name widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 92vw" priority=True %}
+        {% else %}
         {% seo_responsive_image img.url alt=img.altText|default:alt|default:product.name widths="400,600,800,1200" sizes="(min-width: 900px) 480px, 92vw" %}
+        {% endif %}
       {% endif %}
     </figure>
     {% endfor %}
