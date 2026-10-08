@@ -1686,3 +1686,186 @@ msgstr "Datumi za %(name)s se svake godine malo pomjeraju. Provjerite zvanični 
 msgid "Where to stay in %(name)s"
 msgstr "Gdje odsjesti u %(name)s"
 
+
+# ── Errors, sign-in and page titles (v0.80.0) ──
+msgid "Page not found"
+msgstr "Stranica nije pronađena"
+
+msgid "Oops! Page not found"
+msgstr "Ups! Stranica nije pronađena"
+
+msgid "The page you're looking for doesn't exist or has been moved."
+msgstr "Stranica koju tražite ne postoji ili je premještena."
+
+msgid "Sign in"
+msgstr "Prijava"
+
+msgid "Reset your password"
+msgstr "Resetujte lozinku"
+
+msgid "Check your inbox"
+msgstr "Provjerite poštu"
+
+msgid "Choose a new password"
+msgstr "Izaberite novu lozinku"
+
+msgid "Password changed"
+msgstr "Lozinka je promijenjena"
+
+msgid "Confirm your email"
+msgstr "Potvrdite e-adresu"
+
+msgid "Change your password"
+msgstr "Promijenite lozinku"
+
+msgid "Email addresses"
+msgstr "E-adrese"
+
+msgid "Sign in with a code"
+msgstr "Prijava putem koda"
+
+msgid "Enter your code"
+msgstr "Unesite kod"
+
+msgid "Your cart"
+msgstr "Vaša korpa"
+
+msgid "Delivery details"
+msgstr "Podaci za dostavu"
+
+msgid "Review your order"
+msgstr "Pregled porudžbine"
+
+msgid "Order received"
+msgstr "Porudžbina je primljena"
+
+msgid "Order details"
+msgstr "Detalji porudžbine"
+
+msgid "Return an order"
+msgstr "Povrat porudžbine"
+
+msgid "Return status"
+msgstr "Status povrata"
+
+msgid "Store credit & gift cards"
+msgstr "Kredit i poklon kartice"
+
+# ── Hosts, listings and the shop (v0.80.0) ──
+msgid "Host"
+msgstr "Domaćin"
+
+msgid "Stays"
+msgstr "Smještaj"
+
+msgid "Local goods"
+msgstr "Lokalni proizvodi"
+
+msgid "Hotels"
+msgstr "Hoteli"
+
+msgid "Shop Montenegro"
+msgstr "Prodavnica Crne Gore"
+
+msgid "Shop Montenegro — local goods"
+msgstr "Prodavnica Crne Gore — lokalni proizvodi"
+
+msgid "Locally made Montenegrin products from trusted vendors — shipped or ready for pickup across the Adriatic coast."
+msgstr "Crnogorski proizvodi lokalnih proizvođača od provjerenih prodavaca — sa dostavom ili za preuzimanje duž jadranske obale."
+
+msgid "%(region)s experiences"
+msgstr "%(region)s — doživljaji"
+
+msgid "No products match your search."
+msgstr "Nijedan proizvod ne odgovara pretrazi."
+
+msgid "No experiences match your search."
+msgstr "Nijedan doživljaj ne odgovara pretrazi."
+
+msgid "Clear filters"
+msgstr "Obriši filtere"
+
+msgid "%(c)s product"
+msgid_plural "%(c)s products"
+msgstr[0] "%(c)s proizvod"
+msgstr[1] "%(c)s proizvoda"
+msgstr[2] "%(c)s proizvoda"
+
+msgid "%(c)s experience"
+msgid_plural "%(c)s experiences"
+msgstr[0] "%(c)s doživljaj"
+msgstr[1] "%(c)s doživljaja"
+msgstr[2] "%(c)s doživljaja"
+
+msgid "%(counter)s listing"
+msgid_plural "%(counter)s listings"
+msgstr[0] "%(counter)s ponuda"
+msgstr[1] "%(counter)s ponude"
+msgstr[2] "%(counter)s ponuda"
+
+msgid "This host has no active listings right now."
+msgstr "Ovaj domaćin trenutno nema aktivnih ponuda."
+
+msgid "Browse other hosts"
+msgstr "Pogledajte druge domaćine"
+
+msgid "Planning your Montenegro stay"
+msgstr "Planiranje boravka u Crnoj Gori"
+
+msgid "Which area is best for a first visit?"
+msgstr "Koji kraj je najbolji za prvu posjetu?"
+
+msgid "The Bay of Kotor combines historic towns, water access and easy day trips. Budva suits beach-focused stays, while Durmitor is the strongest choice for hiking."
+msgstr "Bokokotorski zaliv spaja istorijske gradove, more i lake jednodnevne izlete. Budva je za odmor na plaži, a Durmitor je najbolji izbor za planinarenje."
+
+msgid "When should I book?"
+msgstr "Kada da rezervišem?"
+
+msgid "Reserve early for July and August. The shoulder months of May, June, September and October often provide better value and fewer crowds."
+msgstr "Za jul i avgust rezervišite na vrijeme. Maj, jun, septembar i oktobar često nude bolje cijene i manje gužve."
+
+msgid "Do I need a car?"
+msgstr "Da li mi treba automobil?"
+
+msgid "Not always on the coast, but a car makes mountain, lake and rural itineraries easier. Local tours and transfers are practical alternatives."
+msgstr "Na primorju ne uvijek, ali automobil olakšava obilaske planina, jezera i sela. Lokalne ture i transferi su praktična alternativa."
+
+msgid "Bring Montenegro home"
+msgstr "Ponesite Crnu Goru kući"
+
+msgid "Local wine, olive oil, honey and crafts from the makers you meet."
+msgstr "Lokalno vino, maslinovo ulje, med i rukotvorine od proizvođača koje upoznate."
+
+msgid "Shop local goods"
+msgstr "Kupite lokalne proizvode"
+
+msgid "Cancellations & refunds"
+msgstr "Otkazivanja i povraćaji"
+
+msgid "Blog"
+msgstr "Blog"
+
+# ── Pagination (v0.80.0) ──
+msgid "Pages"
+msgstr "Stranice"
+
+msgid "Previous"
+msgstr "Prethodna"
+
+msgid "Next"
+msgstr "Sljedeća"
+
+msgid "Page %(n)s of %(total)s"
+msgstr "Strana %(n)s od %(total)s"
+
+msgid "Page %(cur)s of %(total)s"
+msgstr "Strana %(cur)s od %(total)s"
+
+msgid "Journal pages"
+msgstr "Stranice bloga"
+
+msgid "Newer"
+msgstr "Novije"
+
+msgid "Older"
+msgstr "Starije"

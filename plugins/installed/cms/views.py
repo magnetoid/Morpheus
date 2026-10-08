@@ -14,19 +14,30 @@ from morpheus.app.views import (
 
 
 def page_view(request, slug: str):
+    from morpheus.core import MorpheusEvents, hook_registry
     from plugins.installed.cms.services import get_live_page
 
     page = get_live_page(slug)
     if page is None:
         raise Http404
     meta = page.metadata or {}
+    default_path = f'/p/{slug}/'
+    # `/sr` on a Serbian request: a redirect that drops it sends the visitor
+    # back to English, and tells a crawler the two trees are one page.
+    prefix = request.path[: -len(default_path)] if request.path.endswith(default_path) else ''
     # Journal posts have a canonical /journal/<slug>/ route with full Article
     # treatment (BlogPosting JSON-LD + article:* OG). Serving the same content
     # at the generic /p/<slug>/ URL is a duplicate page that would advertise
     # og:type=article with no backing article metadata — 301 it to the
     # canonical route instead.
     if meta.get('category') == 'journal':
-        return redirect(f'/journal/{slug}/', permanent=True)
+        return redirect(f'{prefix}/journal/{slug}/', permanent=True)
+    # A page another app renders at a route of its own (storefront's /shipping/
+    # and /returns/) has ONE url: dotbooks served its shipping policy at both
+    # /shipping/ and /p/shipping/ under one title.
+    claimed = hook_registry.filter(MorpheusEvents.CMS_PAGE_PATH, default_path, page=page)
+    if isinstance(claimed, str) and claimed.startswith('/') and claimed != default_path:
+        return redirect(f'{prefix}{claimed}', permanent=True)
 
     # Staff admin-bar deep-link: edit this page in the dashboard.
     active_edit_url = ''

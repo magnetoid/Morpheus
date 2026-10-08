@@ -219,3 +219,181 @@ class EveryContractThemeTests(TestCase):
                             'the head document emits it (ADR 0036)',
                         )
         self.assertGreater(checked, 1, 'expected more than one contract theme to check')
+
+
+def _activate_theme(testcase, name: str) -> None:
+    """Render with theme `name` active; the previous VALUE is restored on cleanup.
+
+    Both halves, as in booking_marketplace's mixin: `ThemeMiddleware` re-reads
+    `MORPHEUS_ACTIVE_THEME` on every request, and a direct `get_template()`
+    reads the registry. The registry is process-global, so the previous name is
+    put back rather than assumed (CLAUDE.md: restore values, not removals).
+    """
+    from django.test import override_settings
+
+    override = override_settings(MORPHEUS_ACTIVE_THEME=name)
+    override.enable()
+    testcase.addCleanup(override.disable)
+    previous = theme_registry._active_name
+    theme_registry.set_active(name)
+    testcase.addCleanup(setattr, theme_registry, '_active_name', previous)
+    cache.clear()
+
+
+def _contract_themes() -> list[str]:
+    """Every theme that signs the head contract and can run in this process."""
+    names = []
+    for theme in theme_registry.all_themes():
+        if getattr(theme, 'head_contract', 0) < 1:
+            continue
+        if any(app_registry.get(app) is None for app in theme.requires_plugins):
+            continue  # its vertical is not installed in this run
+        names.append(theme.name)
+    return sorted(names)
+
+
+class ErrorHeadEveryThemeTests(TestCase):
+    """A 404 names no URL and describes no entity — under EVERY contract theme.
+
+    The live 404s of all three stores carried a self-canonical, `og:url`,
+    hreflang alternates pointing at the dead URL and a WebPage graph, beside a
+    correct `noindex`. The default-theme render was the only one any test ever
+    looked at; montenegro's own 404 template had been wrong for months.
+    """
+
+    _CANONICAL = re.compile(r'<link[^>]+rel=["\']canonical["\']', re.I)
+
+    def test_a_missing_page_carries_a_bare_head_under_every_theme(self):
+        checked = []
+        for name in _contract_themes():
+            _activate_theme(self, name)
+            with self.subTest(theme=name):
+                response = self.client.get('/no-such-page-under-any-theme/')
+                self.assertEqual(response.status_code, 404)
+                head = response.content.decode().split('</head>', 1)[0]
+                self.assertEqual(len(_TITLE.findall(head)), 1)
+                self.assertEqual(len(_ROBOTS.findall(head)), 1)
+                self.assertIn('noindex, follow', head)
+                self.assertIsNone(self._CANONICAL.search(head))
+                self.assertNotIn('hreflang=', head)
+                self.assertNotIn('application/ld+json', head)
+                self.assertNotIn('og:url', head)
+                checked.append(name)
+        self.assertGreater(len(checked), 1, f'only {checked} could run')
+
+
+class ThemeMarkupContractTests(TestCase):
+    """What a contract theme's templates may not contain at all.
+
+    `EveryContractThemeTests` scanned for robots and canonical only, so twelve
+    raw `ld+json` blocks in montenegro's booking templates and a raw hreflang
+    loop in dot_books' product page passed it. The head document owns both.
+    """
+
+    _FORBIDDEN = (
+        (re.compile(r'application/ld\+json', re.I), 'a JSON-LD block'),
+        (re.compile(r'hreflang=', re.I), 'an hreflang alternate'),
+        (re.compile(r'<html lang=["\']en["\']', re.I), 'a hardcoded <html lang="en">'),
+    )
+    _COMMENTS = EveryContractThemeTests._COMMENTS
+
+    def test_contract_themes_and_storefront_plugin_templates_emit_none(self):
+        import pathlib
+
+        repo = pathlib.Path(__file__).resolve().parents[1]
+        roots = [
+            repo / 'themes' / 'library' / name / 'templates'
+            for name in (t.name for t in theme_registry.all_themes())
+            if getattr(theme_registry.get(name), 'head_contract', 0) >= 1
+        ]
+        roots += sorted((repo / 'plugins' / 'installed').glob('*/templates'))
+        offenders = []
+        for root in roots:
+            for template in root.rglob('*.html'):
+                if EveryContractThemeTests._is_amp(template):
+                    continue
+                markup = self._COMMENTS.sub('', template.read_text(errors='ignore'))
+                # Only pages rendered inside a storefront theme are bound by the
+                # contract; standalone documents (AMP stories, emails) are not.
+                if 'storefront/base.html' not in markup:
+                    continue
+                for pattern, label in self._FORBIDDEN:
+                    if pattern.search(markup):
+                        offenders.append(f'{template.relative_to(repo)}: {label}')
+        for theme in theme_registry.all_themes():
+            if getattr(theme, 'head_contract', 0) < 1:
+                continue
+            base = (
+                repo / 'themes' / 'library' / theme.name / 'templates' / 'storefront' / 'base.html'
+            )
+            if base.is_file() and self._FORBIDDEN[2][0].search(base.read_text()):
+                offenders.append(f'{base.relative_to(repo)}: a hardcoded <html lang="en">')
+        self.assertEqual(
+            offenders, [], 'the head document owns these:\n  ' + '\n  '.join(offenders)
+        )
+
+
+class DeadBlockTests(TestCase):
+    """No template overrides a block that nothing above it renders.
+
+    ~190 storefront templates carried `{% block title %}…{% endblock %}` — and
+    no theme's `storefront/base.html` defines a `title` block. Every one of
+    them was dead: montenegro's translated 404 title, its "Cancellations &
+    refunds", every "— dot books" suffix. They read as working code to anyone
+    editing a page, and nothing ever rendered them.
+    """
+
+    @staticmethod
+    def _dead_blocks(name: str) -> list[str]:
+        from django.template import Context
+        from django.template.loader import get_template
+        from django.template.loader_tags import BlockNode, ExtendsNode
+
+        template = get_template(name).template
+        extends = next((n for n in template.nodelist if isinstance(n, ExtendsNode)), None)
+        if extends is None:
+            return []
+        own = [n.name for n in extends.nodelist if isinstance(n, BlockNode)]
+        available: set[str] = set()
+        node = extends
+        while node is not None:
+            parent_name = node.parent_name.resolve(Context())
+            if not isinstance(parent_name, str):
+                return []  # a dynamic parent — cannot be checked statically
+            parent = get_template(parent_name).template
+            available |= {b.name for b in parent.nodelist.get_nodes_by_type(BlockNode)}
+            node = next((n for n in parent.nodelist if isinstance(n, ExtendsNode)), None)
+        return [b for b in own if b not in available]
+
+    def _scan(self, root, offenders, label) -> int:
+        checked = 0
+        for path in root.rglob('*.html'):
+            name = str(path.relative_to(root))
+            try:
+                dead = self._dead_blocks(name)
+            except Exception:  # noqa: BLE001, S112 — a template another test compiles
+                continue
+            checked += 1
+            if dead:
+                offenders.append(f'{label}/{name}: {", ".join(dead)}')
+        return checked
+
+    def test_no_template_overrides_a_block_its_base_never_renders(self):
+        import pathlib
+
+        repo = pathlib.Path(__file__).resolve().parents[1]
+        offenders: list[str] = []
+        checked = 0
+        for name in _contract_themes():
+            _activate_theme(self, name)
+            checked += self._scan(repo / 'themes' / 'library' / name / 'templates', offenders, name)
+        _activate_theme(self, 'dot_books')
+        for root in [
+            repo / 'templates',
+            *sorted((repo / 'plugins' / 'installed').glob('*/templates')),
+        ]:
+            checked += self._scan(root, offenders, str(root.relative_to(repo)))
+        self.assertGreater(checked, 200, 'the scan found almost nothing to check')
+        self.assertEqual(
+            offenders, [], 'blocks no base template renders:\n  ' + '\n  '.join(offenders)
+        )

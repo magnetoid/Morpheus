@@ -1,10 +1,9 @@
 {% extends "account/base.html" %}
 
-{% block head_title %}Enter your sign-in code{% endblock %}
 {% block heading %}Enter the 6-digit code{% endblock %}
 {% block subheading %}<p class="text-sm" style="color:var(--text-muted);">If <strong>{{ email }}</strong> is on file, your code is on its way. Check your inbox.</p>{% endblock %}
 
-{% block content %}
+{% block auth_form %}
 <form method="post" class="space-y-3">
   {% csrf_token %}
 

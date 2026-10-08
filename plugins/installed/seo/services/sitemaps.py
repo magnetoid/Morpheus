@@ -19,17 +19,38 @@ from django.utils.html import escape
 from ._helpers import _seo_plugin, _site_base_url, logger, site_settings
 
 
+def _app_active(name: str) -> bool:
+    """Whether the app that SERVES a family of urls is on right now.
+
+    The native sources used to guard only against the app being absent (an
+    ImportError). A runtime disable unmounts the app's routes while its models
+    stay importable, so every author, facet, story and CMS url stayed in the
+    sitemap — each one a 404 — until the next deploy.
+    """
+    try:
+        from plugins.registry import app_registry
+
+        return app_registry.is_active(name)
+    except Exception:  # noqa: BLE001 — registry not ready
+        return True
+
+
 def _iter_author_entries(base: str) -> Iterable[dict]:
-    """Authors are derived from ``Metafield`` rows
-    (``namespace='book'``, ``key='author'``). ``author_detail`` enumerates
-    by ``slugify(name)`` — match the same shape here so the sitemap URLs
-    actually resolve."""
+    """``/author/<slug>/`` for every author with at least one ACTIVE book.
+
+    ``author_detail`` enumerates by ``slugify(name)`` — match the same shape so
+    the sitemap urls resolve. An author whose books are all withdrawn renders an
+    empty bibliography (a soft 404), so the name must come from active books
+    only; 14 of dotbooks' 303 authors were exactly that.
+    """
+    if not _app_active('book_product'):
+        return
     try:
         from django.utils.text import slugify
 
-        from plugins.installed.book_product.compat import distinct_values
+        from plugins.installed.book_product.compat import distinct_active_values
 
-        names = distinct_values('author')  # model-first, legacy book.* fallback
+        names = distinct_active_values('author')  # model-first, legacy book.* fallback
         seen: set[str] = set()
         for name in names:
             slug = slugify(name)
@@ -50,6 +71,8 @@ def _iter_webstory_entries(base: str) -> Iterable[dict]:
     standalone + self-canonical (no ``rel='amphtml'`` pairing from the PDP),
     so listing their URLs in the main sitemap is what gets them discovered and
     into Google's Web Stories surface."""
+    if not _app_active('webstories'):
+        return
     try:
         from plugins.installed.webstories.models import WebStory
 
@@ -76,8 +99,10 @@ def _iter_book_facet_entries(base: str) -> Iterable[dict]:
     ``/publisher/<slug>/``, ``/series/<slug>/``, ``/imprint/<slug>/`` (matched by
     ``slugify`` of the stored value) and ``/format/<value>/``,
     ``/language/<value>/`` (matched by the raw enum value). Only taxonomies with
-    at least one *active* product are emitted — the facet views 404 on an empty
-    set, so listing an empty one would put a dead URL in the sitemap."""
+    at least one *active* product are emitted: an empty value facet 404s and an
+    empty curated term is held out of the index, so neither belongs here."""
+    if not _app_active('book_product'):
+        return
     try:
         from django.utils.text import slugify
 
@@ -115,18 +140,26 @@ def _iter_book_facet_entries(base: str) -> Iterable[dict]:
                     'changefreq': 'weekly',
                     'priority': '0.5',
                 }
-        # Curated taxonomies (Genre, Topic) — only those with ≥1 active book
-        # (the index/detail views 404 on an empty set, so an empty one is dead).
+        # Curated taxonomies (Genre, Topic) — only those with ≥1 active book (an
+        # empty term renders but is held out of the index). One annotated query
+        # per model, not one EXISTS per term: dotbooks has 1,527 topics.
+        from django.db.models import Count, Q
+
         from plugins.installed.book_product.models import Genre, Topic
 
         for prefix, model in (('genre', Genre), ('topic', Topic)):
-            for obj in model.objects.filter(is_active=True):
-                if obj.books.filter(product__status='active').exists():
-                    yield {
-                        'loc': urljoin(base, f'/{prefix}/{obj.slug}/'),
-                        'changefreq': 'weekly',
-                        'priority': '0.6',
-                    }
+            stocked = (
+                model.objects.filter(is_active=True)
+                .annotate(_n=Count('books', filter=Q(books__product__status='active')))
+                .filter(_n__gt=0)
+                .values_list('slug', flat=True)
+            )
+            for slug in stocked:
+                yield {
+                    'loc': urljoin(base, f'/{prefix}/{slug}/'),
+                    'changefreq': 'weekly',
+                    'priority': '0.6',
+                }
     except Exception as e:  # noqa: BLE001 — book_product plugin optional
         logger.debug('seo: sitemap book facets skipped: %s', e)
 
@@ -134,11 +167,17 @@ def _iter_book_facet_entries(base: str) -> Iterable[dict]:
 def _iter_cms_page_entries(base: str) -> Iterable[dict]:
     """Every *published* CMS page, so any page a merchant adds shows up in the
     sitemap automatically. Journal posts live at ``/journal/<slug>/``; every
-    other page renders through the CMS resolver at ``/p/<slug>/``. Scheduled
-    (future ``publish_at``) pages are held back until they go live."""
+    other page renders through the CMS resolver at ``/p/<slug>/`` — unless the
+    app that renders it at a route of its own claims it through
+    ``CMS_PAGE_PATH`` (storefront's /shipping/ and /returns/), in which case the
+    claimed path is the page's one url. Scheduled (future ``publish_at``) pages
+    are held back until they go live."""
+    if not _app_active('cms'):
+        return
     try:
         from django.utils import timezone
 
+        from core.hooks import MorpheusEvents, hook_registry
         from plugins.installed.cms.models import Page
 
         now = timezone.now()
@@ -148,7 +187,12 @@ def _iter_cms_page_entries(base: str) -> Iterable[dict]:
             if p.publish_at and p.publish_at > now:
                 continue
             is_journal = (p.metadata or {}).get('category') == 'journal'
-            path = f'/journal/{p.slug}/' if is_journal else f'/p/{p.slug}/'
+            if is_journal:
+                path = f'/journal/{p.slug}/'
+            else:
+                path = hook_registry.filter(MorpheusEvents.CMS_PAGE_PATH, f'/p/{p.slug}/', page=p)
+                if not isinstance(path, str) or not path.startswith('/'):
+                    path = f'/p/{p.slug}/'
             yield {
                 'loc': urljoin(base, path),
                 'lastmod': p.updated_at.isoformat() if p.updated_at else '',
@@ -196,19 +240,31 @@ def iter_sitemap_entries() -> Iterable[dict]:
     """Yield entries that should appear in the sitemap. Pulls from:
 
     1. Active products (catalog)
-    2. Active categories (catalog)
-    3. Active collections (catalog)
-    4. Active vendors (catalog)
-    5. Authors — distinct values from book/author metafields
-    6. Journal entries (cms)
+    2. Active categories with at least one active product (catalog)
+    3. Active collections with at least one active product (catalog)
+    4. Active vendors with something to show (`catalog.vendors.listing_counts`)
+    5. Authors with at least one active book (book_product)
+    6. Book facets, web stories, CMS pages — each only while its app is on
     7. Manually-curated SitemapEntry rows
+
+    A listing enters only when it has items. An empty one answers 200 with
+    "nothing here", which Google files as a soft 404 — and the sitemap is what
+    invited it: 181 of the travel store's 520 urls were exactly that.
+
+    The storefront's own index pages (/products/, /vendors/, /journal/, the
+    policy pages, …) are NOT listed here: the storefront contributes them
+    through SITEMAP_URLS, because only the owner of a route knows whether it
+    currently has anything on it (`storefront/sitemap.py`).
     """
     base = _site_base_url()
 
     yield {'loc': base, 'changefreq': 'daily', 'priority': '1.0'}
 
     try:
+        from django.db.models import Q
+
         from plugins.installed.catalog.models import Category, Collection, Product, Vendor
+        from plugins.installed.catalog.vendors import listing_counts
 
         product_seo = _seo_overrides(Product)
         for p in Product.objects.filter(status='active').only('slug', 'updated_at'):
@@ -221,8 +277,16 @@ def iter_sitemap_entries() -> Iterable[dict]:
                 'priority': '0.8',
                 'md_alternate': urljoin(base, f'/md/products/{p.slug}'),
             }
+        # Same membership `category_detail` renders: the primary category OR
+        # the cross-listing M2M.
         category_seo = _seo_overrides(Category)
-        for c in Category.objects.filter(is_active=True).only('slug', 'updated_at'):
+        stocked = (
+            Category.objects.filter(is_active=True)
+            .filter(Q(products__status='active') | Q(also_listed_products__status='active'))
+            .distinct()
+            .only('slug', 'updated_at')
+        )
+        for c in stocked:
             if not _in_sitemap(category_seo, c):
                 continue
             yield {
@@ -232,7 +296,12 @@ def iter_sitemap_entries() -> Iterable[dict]:
                 'priority': '0.6',
             }
         collection_seo = _seo_overrides(Collection)
-        for col in Collection.objects.filter(is_active=True).only('slug', 'updated_at'):
+        curated = (
+            Collection.objects.filter(is_active=True, products__status='active')
+            .distinct()
+            .only('slug', 'updated_at')
+        )
+        for col in curated:
             if not _in_sitemap(collection_seo, col):
                 continue
             yield {
@@ -241,7 +310,10 @@ def iter_sitemap_entries() -> Iterable[dict]:
                 'changefreq': 'weekly',
                 'priority': '0.6',
             }
-        for v in Vendor.objects.filter(is_active=True).only('slug', 'created_at'):
+        # Products AND whatever another app lists for the vendor (a host's
+        # experiences and stays) — the count the vendor page itself shows.
+        with_listings = listing_counts()
+        for v in Vendor.objects.filter(pk__in=list(with_listings)).only('slug', 'created_at'):
             yield {
                 'loc': urljoin(base, f'/vendor/{v.slug}/'),
                 'lastmod': v.created_at.isoformat() if v.created_at else '',
@@ -254,26 +326,6 @@ def iter_sitemap_entries() -> Iterable[dict]:
     yield from _iter_author_entries(base)
     yield from _iter_book_facet_entries(base)
     yield from _iter_webstory_entries(base)
-
-    # Static editorial routes shipped by the storefront plugin. These don't
-    # have model rows so they're hard-coded here; cheap and stable.
-    # `/categories/` is deliberately NOT here: the book vertical replaces it
-    # with `/genres/`, so on those stores it is a permanent redirect and a
-    # sitemap must never invite a crawler to one. storefront contributes it
-    # through SITEMAP_URLS when it actually serves the page
-    # (`storefront/sitemap.py`) — the owner knows, seo cannot.
-    for path in (
-        '/products/',
-        '/staff-picks/',
-        '/vendors/',
-        '/about/',
-        '/contact/',
-        '/journal/',
-    ):
-        yield {'loc': urljoin(base, path), 'changefreq': 'weekly', 'priority': '0.7'}
-    # Policy pages — low priority, change rarely.
-    for path in ('/shipping/', '/returns/'):
-        yield {'loc': urljoin(base, path), 'changefreq': 'monthly', 'priority': '0.4'}
 
     # Every published CMS page (journal posts + standalone /p/<slug>/ pages),
     # so any page a merchant adds is picked up automatically.
@@ -692,8 +744,12 @@ def render_opensearch_xml() -> str:
     search engine (Edge, Brave). Lightweight discoverability win.
     """
     base = _site_base_url().rstrip('/')
+    from .meta import brand_name
+
     s = site_settings()
-    short = (s.organization_name or 'dot books')[:16]
+    # The store's own name: the fallback was one store's brand ("dot books"),
+    # so every other store's browser search box was labelled with it.
+    short = (s.organization_name or brand_name() or 'Search')[:16]
     desc = (s.llms_txt_intro or short)[:160]
     return (
         '<?xml version="1.0" encoding="UTF-8"?>'
@@ -702,6 +758,9 @@ def render_opensearch_xml() -> str:
         f'<Description>{escape(desc)}</Description>'
         '<InputEncoding>UTF-8</InputEncoding>'
         f'<Image width="16" height="16" type="image/x-icon">{escape(base)}/favicon.ico</Image>'
-        f'<Url type="text/html" method="get" template="{escape(base)}/products/?q={{searchTerms}}"/>'
+        # `/search/` sends the query wherever the store's inventory is
+        # (STOREFRONT_SEARCH_PATH) — `/products/` is empty on a store whose
+        # catalogue lives in another app.
+        f'<Url type="text/html" method="get" template="{escape(base)}/search/?q={{searchTerms}}"/>'
         '</OpenSearchDescription>'
     )

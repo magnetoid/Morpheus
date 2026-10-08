@@ -1,0 +1,11 @@
+{% extends "storefront/base.html" %}
+{% comment %}
+allauth's own pages — the password-reset link, email confirmation, and the rest
+of its flows — inside the store's theme instead of allauth's unstyled stock
+layout. allauth's templates fill `content`, the theme's main block, so they
+render in the store's frame; the shared auth sheet, scoped to `main` on these
+pages only, gives them the sign-in card. Their `head_title` is not rendered:
+the head document titles these private routes (seo `_TITLE_BY_VIEW_NAME`).
+{% endcomment %}
+
+{% block extra_head %}{% include "account/_auth_styles.html" with scope="main" %}<style>main{margin-top:clamp(2rem,5vw,4rem);margin-bottom:clamp(3rem,6vw,5rem)}</style>{% endblock %}

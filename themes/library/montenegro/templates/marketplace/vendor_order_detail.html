@@ -10,7 +10,6 @@ preparing/packed/shipped/delivered/cancelled). POST = same URL
 (/vendor/me/orders/<id>/), csrf. Field names kept identical: status,
 tracking_number, tracking_url. The status <select> selection logic is kept
 1:1 with the plugin default (form vocab differs from model statuses).{% endcomment %}
-{% block title %}{% blocktrans with n=parent_order_number %}Order {{ n }} — Montenegro Experience{% endblocktrans %}{% endblock %}
 
 {% block host_eyebrow %}{% trans "Vendor order" %}{% endblock %}
 {% block host_title %}{{ parent_order_number }}{% endblock %}

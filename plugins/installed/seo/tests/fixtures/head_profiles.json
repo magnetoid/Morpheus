@@ -352,33 +352,7 @@
   },
   "/cart/": {
     "canonical_count": 1,
-    "jsonld": [
-      {
-        "id": "http://testserver/cart/#webpage",
-        "props": [
-          "inLanguage",
-          "isPartOf",
-          "name",
-          "url"
-        ],
-        "type": "WebPage",
-        "values": {
-          "inLanguage": "en",
-          "name": "Cart",
-          "url": "http://testserver/cart/"
-        }
-      },
-      {
-        "id": "https://localhost#website",
-        "props": [
-          "url"
-        ],
-        "type": "WebSite",
-        "values": {
-          "url": "https://localhost/"
-        }
-      }
-    ],
+    "jsonld": [],
     "links": [
       {
         "href": "/journal/atom.xml",
@@ -412,17 +386,17 @@
     "meta": {
       "og:locale": "en",
       "og:site_name": "Morpheus Store",
-      "og:title": "Cart",
+      "og:title": "Your cart",
       "og:type": "website",
       "og:url": "http://testserver/cart/",
       "robots": "noindex, nofollow",
       "twitter:card": "summary_large_image",
-      "twitter:title": "Cart"
+      "twitter:title": "Your cart"
     },
     "path": "/cart/",
     "robots_count": 1,
     "status": 200,
-    "title": "Cart \u2014 Morpheus Store",
+    "title": "Your cart \u2014 Morpheus Store",
     "title_count": 1
   },
   "/category/head-parity-category/": {
@@ -1276,93 +1250,8 @@
     "title_count": 1
   },
   "/products/?q=parity": {
-    "canonical_count": 1,
-    "jsonld": [
-      {
-        "id": "http://testserver/products/?q=parity#breadcrumb",
-        "props": [
-          "itemListElement"
-        ],
-        "type": "BreadcrumbList"
-      },
-      {
-        "id": "http://testserver/products/?q=parity#webpage",
-        "props": [
-          "breadcrumb",
-          "description",
-          "inLanguage",
-          "isPartOf",
-          "mainEntity",
-          "name",
-          "url"
-        ],
-        "type": "CollectionPage",
-        "values": {
-          "inLanguage": "en",
-          "name": "Search: parity",
-          "url": "http://testserver/products/?q=parity"
-        }
-      },
-      {
-        "id": "http://testserver/products/?q=parity#itemlist",
-        "props": [
-          "itemListElement",
-          "itemListOrder",
-          "numberOfItems"
-        ],
-        "type": "ItemList",
-        "values": {
-          "numberOfItems": 1
-        }
-      },
-      {
-        "props": [
-          "name",
-          "position",
-          "url"
-        ],
-        "type": "ListItem",
-        "values": {
-          "name": "Head Parity Probe",
-          "position": 1,
-          "url": "http://testserver/products/head-parity-probe/"
-        }
-      },
-      {
-        "props": [
-          "item",
-          "name",
-          "position"
-        ],
-        "type": "ListItem",
-        "values": {
-          "name": "Home",
-          "position": 1
-        }
-      },
-      {
-        "props": [
-          "item",
-          "name",
-          "position"
-        ],
-        "type": "ListItem",
-        "values": {
-          "name": "All books",
-          "position": 2
-        }
-      },
-      {
-        "id": "https://localhost#website",
-        "props": [
-          "url"
-        ],
-        "type": "WebSite",
-        "values": {
-          "url": "https://localhost/"
-        }
-      }
-    ],
+    "canonical_count": 0,
+    "jsonld": [],
     "links": [
       {
         "href": "/journal/atom.xml",
@@ -1383,10 +1272,6 @@
         "type": "text/plain"
       },
       {
-        "href": "http://testserver/products/",
-        "rel": "canonical"
-      },
-      {
         "href": "/opensearch.xml",
         "rel": "search",
         "title": "Morpheus Store",
@@ -1400,8 +1285,7 @@
       "og:site_name": "Morpheus Store",
       "og:title": "Search: parity",
       "og:type": "website",
-      "og:url": "http://testserver/products/",
-      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      "robots": "noindex, follow",
       "twitter:card": "summary_large_image",
       "twitter:description": "Browse everything this shop sells.",
       "twitter:title": "Search: parity"
@@ -1416,14 +1300,14 @@
     "canonical_count": 1,
     "jsonld": [
       {
-        "id": "http://testserver/products/?sort=price#breadcrumb",
+        "id": "http://testserver/products/#breadcrumb",
         "props": [
           "itemListElement"
         ],
         "type": "BreadcrumbList"
       },
       {
-        "id": "http://testserver/products/?sort=price#webpage",
+        "id": "http://testserver/products/#webpage",
         "props": [
           "breadcrumb",
           "description",
@@ -1437,11 +1321,11 @@
         "values": {
           "inLanguage": "en",
           "name": "All books",
-          "url": "http://testserver/products/?sort=price"
+          "url": "http://testserver/products/"
         }
       },
       {
-        "id": "http://testserver/products/?sort=price#itemlist",
+        "id": "http://testserver/products/#itemlist",
         "props": [
           "itemListElement",
           "itemListOrder",
@@ -1824,66 +1708,7 @@
   },
   "/search/": {
     "canonical_count": 1,
-    "jsonld": [
-      {
-        "id": "http://testserver/search/#breadcrumb",
-        "props": [
-          "itemListElement"
-        ],
-        "type": "BreadcrumbList"
-      },
-      {
-        "props": [
-          "item",
-          "name",
-          "position"
-        ],
-        "type": "ListItem",
-        "values": {
-          "name": "Home",
-          "position": 1
-        }
-      },
-      {
-        "props": [
-          "item",
-          "name",
-          "position"
-        ],
-        "type": "ListItem",
-        "values": {
-          "name": "Search",
-          "position": 2
-        }
-      },
-      {
-        "id": "http://testserver/search/#webpage",
-        "props": [
-          "breadcrumb",
-          "description",
-          "inLanguage",
-          "isPartOf",
-          "name",
-          "url"
-        ],
-        "type": "SearchResultsPage",
-        "values": {
-          "inLanguage": "en",
-          "name": "Search",
-          "url": "http://testserver/search/"
-        }
-      },
-      {
-        "id": "https://localhost#website",
-        "props": [
-          "url"
-        ],
-        "type": "WebSite",
-        "values": {
-          "url": "https://localhost/"
-        }
-      }
-    ],
+    "jsonld": [],
     "links": [
       {
         "href": "/journal/atom.xml",
@@ -2006,7 +1831,7 @@
         ],
         "type": "ListItem",
         "values": {
-          "name": "Marketplace",
+          "name": "Publishers",
           "position": 2
         }
       },
@@ -2018,20 +1843,8 @@
         ],
         "type": "ListItem",
         "values": {
-          "name": "Publishers",
-          "position": 3
-        }
-      },
-      {
-        "props": [
-          "item",
-          "name",
-          "position"
-        ],
-        "type": "ListItem",
-        "values": {
           "name": "Parity Press",
-          "position": 4
+          "position": 3
         }
       },
       {

@@ -3,9 +3,7 @@
 {% comment %}Events calendar — gradient hero + category filter + month-grouped
 cards. Grouped by month rather than date because most Montenegro fixtures are
 annual and announce exact dates only weeks ahead (see the Event model).
-ItemList JSON-LD in extra_head.{% endcomment %}
-{% block title %}Events in Montenegro — what's on, month by month — Montenegro Experience{% endblock %}
-{% block extra_head %}{% if events_jsonld %}<script type="application/ld+json">{{ events_jsonld|safe }}</script>{% endif %}{% endblock %}
+The ItemList is the head document's (the view's `jsonld_items`).{% endcomment %}
 {% block content %}
 <section class="relative bg-gradient-to-br from-primary/10 via-background to-background py-16 md:py-24">
   <div class="container mx-auto px-4 text-center">

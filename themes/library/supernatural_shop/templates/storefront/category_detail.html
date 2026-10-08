@@ -3,7 +3,6 @@
 {% load seo %}
 {% load caching %}
 {% load i18n %}
-{% block title %}{{ category.name }} — Supernatural Shop{% endblock %}
 {% block extra_head %}
   {% seo_breadcrumb_jsonld items=breadcrumb_items %}
   {% seo_collection_jsonld items=collection_items name=category.name description=category.description %}
@@ -52,9 +51,9 @@
     </div>
     {% if page_obj.has_other_pages %}
     <nav aria-label="Pages" style="display:flex; gap:0.75rem; justify-content:center; align-items:center; margin-top:3rem; flex-wrap:wrap;">
-      {% if page_obj.has_previous %}<a href="?sort={{ sort }}&amp;page={{ page_obj.previous_page_number }}" class="btn btn-ghost">← Prev</a>{% endif %}
+      {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="btn btn-ghost">← Prev</a>{% endif %}
       <span class="meta" style="margin:0;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-      {% if page_obj.has_next %}<a href="?sort={{ sort }}&amp;page={{ page_obj.next_page_number }}" class="btn btn-ghost">Next →</a>{% endif %}
+      {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="btn btn-ghost">Next →</a>{% endif %}
     </nav>
     {% endif %}
     {% else %}

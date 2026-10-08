@@ -34,6 +34,12 @@ class BookProductPlugin(Plugin):
         # no author entity, no per-term meta. Answering SEO_RESOLVE_PAGE tells it
         # what they are, without seo importing this app.
         self.register_hook(events.SEO_RESOLVE_PAGE, self.on_seo_resolve_page, priority=40)
+        # A translated work's editions name each other as hreflang alternates —
+        # added to the head document after seo has decided the page (priority
+        # 60 > seo's 50), never printed by a theme beside it.
+        from plugins.installed.book_product.head import on_storefront_head
+
+        self.register_hook(events.STOREFRONT_HEAD, on_storefront_head, priority=60)
         # Full GraphQL control: bookProduct query + setBookProduct mutation.
         self.register_graphql_extension('plugins.installed.book_product.graphql.queries')
         self.register_graphql_extension('plugins.installed.book_product.graphql.mutations')

@@ -4,16 +4,15 @@
   Montenegro (Adriatic) 404 — faithful to src/pages/NotFound.tsx.
   Django's default handler404 renders templates/404.html when DEBUG=False; the
   ThemeLoader resolves it from the active theme first, so this is what ships.
-  No custom handler404 is registered, and none is needed.
-{% endcomment %}
-{% block title %}{% trans "Page not found" %} — Montenegro Experience{% endblock %}
 
-{% comment %}
-  No `<meta name="robots">` here. The head document already emits `noindex`
-  for a 404 (KIND_PRIVATE), so this block shipped a SECOND robots meta on
-  every 404 — two directives for one page, which is what the head contract
-  exists to prevent. The theme declares `head_contract = 1`, but that guard
-  only runs against the ACTIVE theme, so it never checked this one.
+  No head block of its own. The seo app recognises Django's error render and
+  emits the title ("Page not found", translated), the description and
+  `noindex, follow` — nothing that names a URL. The `{% block title %}` this
+  file used to carry was never rendered: no base template defines that block,
+  so the Serbian title it promised never reached a page.
+
+  Links are reversed, not hardcoded, so a visitor who hits a dead `/sr/…` URL
+  stays in Serbian.
 {% endcomment %}
 
 {% block content %}
@@ -23,16 +22,16 @@
     <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground">{% trans "Oops! Page not found" %}</h1>
     <p class="text-muted-foreground leading-relaxed">{% trans "The page you're looking for doesn't exist or has been moved." %}</p>
     <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-      <a href="/" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+      <a href="{% url 'storefront:home' %}" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
         {% trans "Home" %}
       </a>
-      <a href="/bookings/" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg border border-border bg-background text-foreground text-sm font-semibold hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <a href="{% url 'booking_marketplace:list' %}" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg border border-border bg-background text-foreground text-sm font-semibold hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         {% trans "Browse experiences" %}
       </a>
-      <a href="/places/" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg border border-border bg-background text-foreground text-sm font-semibold hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      <a href="{% url 'booking_marketplace:places' %}" class="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg border border-border bg-background text-foreground text-sm font-semibold hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
         {% trans "Destinations" %}
       </a>
     </div>

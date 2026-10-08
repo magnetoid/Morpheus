@@ -46,10 +46,14 @@ _ITEM_KEYS = (
 _SPEAKABLE_SELECTORS = ['h1', '[data-speakable]', '.product-summary', '.entry-summary']
 
 
-def build_graph(page: SeoPage, *, request=None) -> dict | None:
-    """Assemble `{'@context': …, '@graph': [...]}` for a resolved page."""
+def build_graph(page: SeoPage, *, request=None, url: str = '') -> dict | None:
+    """Assemble `{'@context': …, '@graph': [...]}` for a resolved page.
+
+    `url` is the page's canonical. The head builder passes it so every `@id`
+    names the URL the page claims to be, not the one the visitor arrived at.
+    """
     base = _base_url()
-    url = _absolute(request, page.path)
+    url = url or _absolute(request, page.path)
     nodes: list[dict] = []
 
     org = _safe(_organization)

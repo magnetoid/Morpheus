@@ -52,6 +52,10 @@ _ROBOTS_RE = re.compile(r'<meta[^>]+name=["\']robots["\'][^>]+content=["\'](.*?)
 _CANONICAL_RE = re.compile(r'<link[^>]+rel=["\']canonical["\'][^>]+href=["\'](.*?)["\']', re.I)
 _H1_RE = re.compile(r'<h1\b', re.I)
 _HREFLANG_RE = re.compile(r'hreflang=["\']([^"\']+)["\']', re.I)
+_ALTERNATE_RE = re.compile(
+    r'<link[^>]+rel=["\']alternate["\'][^>]*?href=["\']([^"\']+)["\'][^>]*?hreflang=["\']([^"\']+)["\']',
+    re.I,
+)
 _JSONLD_RE = re.compile(r'application/ld\+json', re.I)
 _TAG_RE = re.compile(r'<[^>]+>')
 
@@ -87,9 +91,21 @@ class PageFacts:
     canonical: str = ''
     h1_count: int = 0
     hreflangs: list[str] = field(default_factory=list)
+    hreflang_hrefs: list[tuple[str, str]] = field(default_factory=list)
     has_jsonld: bool = False
     words: int = 0
     redirect_to: str = ''
+
+
+@dataclass
+class NotFoundFacts:
+    """How the store answers a URL that cannot exist."""
+
+    path: str
+    status: int
+    canonical: str = ''
+    hreflangs: list[str] = field(default_factory=list)
+    has_jsonld: bool = False
 
 
 def _facts(client, path: str, host: str) -> PageFacts:
@@ -141,9 +157,84 @@ def _facts(client, path: str, host: str) -> PageFacts:
         canonical=_first(_CANONICAL_RE, html),
         h1_count=len(_H1_RE.findall(body)),
         hreflangs=_HREFLANG_RE.findall(html),
+        hreflang_hrefs=[
+            (code, href.replace('&amp;', '&')) for href, code in _ALTERNATE_RE.findall(html)
+        ],
         has_jsonld=bool(_JSONLD_RE.search(html)),
         words=len(_TAG_RE.sub(' ', body).split()),
     )
+
+
+def _probe_missing(client, host: str) -> NotFoundFacts:
+    """Ask for a URL that cannot exist and read what comes back.
+
+    A store must answer 404, and the 404 page must not name a URL: the October
+    crawl found every store's 404 carrying a canonical, hreflang alternates and
+    a WebPage graph for the dead address beside a correct `noindex`.
+    """
+    import secrets
+
+    path = f'/morpheus-audit-missing-{secrets.token_hex(6)}/'
+    try:
+        response = client.get(
+            path,
+            HTTP_HOST=host,
+            HTTP_USER_AGENT=_AUDIT_USER_AGENT,
+            secure=True,
+            **{INTERNAL_REQUEST_ENVIRON_KEY: True},
+        )
+    except SoftTimeLimitExceeded:
+        raise
+    except Exception as e:  # noqa: BLE001 — a probe failure is not a finding
+        logger.warning('site_audit: not-found probe raised %s', e)
+        return NotFoundFacts(path=path, status=0)
+    head = ''
+    if 'html' in (response.get('Content-Type') or ''):
+        html = response.content.decode(response.charset or 'utf-8', errors='ignore')
+        head = html.split('</head>', 1)[0]
+    return NotFoundFacts(
+        path=path,
+        status=response.status_code,
+        canonical=_first(_CANONICAL_RE, head),
+        hreflangs=_HREFLANG_RE.findall(head),
+        has_jsonld=bool(_JSONLD_RE.search(head)),
+    )
+
+
+def _not_found_findings(probe: NotFoundFacts) -> list[Finding]:
+    """Findings about how the store answers a missing page."""
+    out: list[Finding] = []
+    if probe.status == 200:
+        out.append(
+            Finding(
+                code='missing_pages_answer_200',
+                severity=CRITICAL,
+                title='Pages that do not exist answer "200 OK"',
+                why=(
+                    'Every mistyped or retired address looks like a real page, so search '
+                    'engines index an unbounded set of duplicates and report the site as full '
+                    'of soft 404s.'
+                ),
+                count=1,
+                examples=[probe.path],
+            )
+        )
+    elif probe.status == 404 and (probe.canonical or probe.hreflangs or probe.has_jsonld):
+        out.append(
+            Finding(
+                code='error_page_names_a_url',
+                severity=WARNING,
+                title='The "page not found" page names a URL',
+                why=(
+                    'A 404 should carry a title and "noindex" and nothing else. A canonical, '
+                    'hreflang alternates or structured data on it describe a page that does not '
+                    'exist, and contradict the status code.'
+                ),
+                count=1,
+                examples=[probe.path],
+            )
+        )
+    return out
 
 
 def _first(pattern, html: str) -> str:
@@ -198,14 +289,18 @@ def collect(*, limit: int | None = None) -> dict:
     client = Client()
     pages: list[PageFacts] = []
     partial = False
+    probe = NotFoundFacts(path='', status=0)
     try:
+        probe = _probe_missing(client, host)
         for path in _paths(limit):
             pages.append(_facts(client, path, host))
     except SoftTimeLimitExceeded:
         # Report what was checked rather than lose the whole night's work.
         partial = True
         logger.warning('site_audit: time budget spent after %d pages', len(pages))
-    findings = _analyse(pages)
+    findings = _not_found_findings(probe) + _analyse(pages)
+    order = {CRITICAL: 0, WARNING: 1, NOTICE: 2}
+    findings.sort(key=lambda f: (order.get(f.severity, 9), -f.count))
     score = max(0, 100 - sum(_PENALTY.get(f.severity, 0) for f in findings))
     return {
         'generated_at': timezone.now().isoformat(),
@@ -214,6 +309,7 @@ def collect(*, limit: int | None = None) -> dict:
         'score': score,
         'findings': [f.as_dict() for f in findings],
         'coverage': _coverage(pages),
+        'not_found_probe': {'path': probe.path, 'status': probe.status},
     }
 
 
@@ -271,6 +367,39 @@ def _analyse(pages: list[PageFacts]) -> list[Finding]:  # noqa: PLR0912 — a li
         [p.path for p in ok if 'noindex' in p.robots.lower()],
         'Review index rules',
         '/dashboard/seo/rules/',
+    )
+    from urllib.parse import urlsplit
+
+    add(
+        'sitemap_canonical_elsewhere',
+        CRITICAL,
+        'Sitemap lists pages whose canonical is another URL',
+        'The sitemap says "index this page" and the page says "index that one '
+        'instead". Google drops one claim — usually the sitemap entry — and trusts '
+        'the rest of the sitemap less.',
+        [
+            f'{p.path} → {p.canonical}'
+            for p in ok
+            if p.canonical and (urlsplit(p.canonical).path or '/') != (urlsplit(p.path).path or '/')
+        ],
+        'Review index rules',
+        '/dashboard/seo/rules/',
+    )
+    add(
+        'hreflang_not_canonical',
+        WARNING,
+        'hreflang alternates that are not canonical URLs',
+        'An alternate must name the canonical URL of each language version. One that '
+        'carries a tracking or filter parameter the canonical drops is ignored, and the '
+        'language versions stop being connected.',
+        [
+            p.path
+            for p in ok
+            if any(
+                urlsplit(href).query and urlsplit(href).query != urlsplit(p.canonical or '').query
+                for _code, href in p.hreflang_hrefs
+            )
+        ],
     )
     add(
         'missing_title',

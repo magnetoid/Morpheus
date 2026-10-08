@@ -110,7 +110,12 @@ def _user_in_db(user) -> bool:
 def _deny(request, message: str):
     """Render an access-denied page and raise it so allauth aborts the login —
     no account is created and no session is established."""
-    resp = render(request, 'staff_sso/access_denied.html', {'message': message}, status=403)
+    resp = render(
+        request,
+        'staff_sso/access_denied.html',
+        {'message': message, 'seo_title': 'Sign-in not permitted'},
+        status=403,
+    )
     raise ImmediateHttpResponse(resp)
 
 

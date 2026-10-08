@@ -2,7 +2,6 @@
 {% load morph %}{% load seo %}{% load caching %}{% load i18n %}
 {% comment %}Public hosts directory — Adriatic Tailwind 1:1 port of the VendorProfile/vendor-card design.
 Context preserved: vendors (list of {obj, product_count, preview_products}), query, breadcrumb_items.{% endcomment %}
-{% block title %}{% trans "Local hosts" %} — Montenegro Experience{% endblock %}
 
 {% block extra_head %}
 {% seo_breadcrumb_jsonld items=breadcrumb_items %}

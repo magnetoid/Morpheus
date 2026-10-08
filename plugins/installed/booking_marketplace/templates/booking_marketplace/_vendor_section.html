@@ -1,0 +1,11 @@
+{% comment %}One block of a host's page — their experiences, stays or local goods,
+contributed through STOREFRONT_VENDOR_SECTIONS. The default for any theme
+without its own; montenegro ships a card-grid version.{% endcomment %}
+<section style="margin: 0 0 3rem;" aria-labelledby="host-{{ section.key }}">
+  <h2 id="host-{{ section.key }}" class="display display-s" style="margin: 0 0 1.25rem;">{{ section.title }} <span class="meta">{{ section.count }}</span></h2>
+  <ul style="list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem;">
+    {% for item in section.context.items %}
+    <li><a href="{% if section.context.kind == 'stays' %}/hotels/{% else %}/bookings/{% endif %}{{ item.slug }}/">{{ item.name }}</a></li>
+    {% endfor %}
+  </ul>
+</section>

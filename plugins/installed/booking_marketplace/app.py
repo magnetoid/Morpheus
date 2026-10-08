@@ -69,6 +69,22 @@ class BookingMarketplacePlugin(Plugin):
 
         self.register_hook(events.SEO_LLMS_SECTIONS, contribute_llms_sections, priority=50)
 
+        # What each route is, the entity nodes for its one JSON-LD graph, what a
+        # host's page lists, and where a search lands — all answered here so
+        # neither seo nor the storefront shell imports this vertical
+        # (`booking_marketplace/seo.py` explains each).
+        from plugins.installed.booking_marketplace import seo as booking_seo
+
+        self.register_hook(events.SEO_RESOLVE_PAGE, booking_seo.on_seo_resolve_page, priority=40)
+        self.register_hook(events.SEO_JSONLD_GRAPH, booking_seo.on_seo_jsonld_graph, priority=50)
+        self.register_hook(
+            events.VENDOR_LISTING_COUNTS, booking_seo.on_vendor_listing_counts, priority=50
+        )
+        self.register_hook(
+            events.STOREFRONT_VENDOR_SECTIONS, booking_seo.on_vendor_sections, priority=50
+        )
+        self.register_hook(events.STOREFRONT_SEARCH_PATH, booking_seo.on_search_path, priority=50)
+
     def on_health_checks(self, value, **kwargs):
         """HEALTH_CHECKS: the listings and an experience page load for a visitor."""
         from core.errors.health import fetch_failures  # noqa: PLC0415

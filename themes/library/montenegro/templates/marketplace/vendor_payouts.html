@@ -7,7 +7,6 @@ can_request (bool), history (VendorPayout: .requested_at, .status,
 .get_status_display, .amount Money, .paid_at, .external_reference). POST = same
 URL (/vendor/me/payouts/), csrf, no body fields — submitting requests a payout.
 Money rendered with |money; threshold is a bare Decimal so it gets €+floatformat.{% endcomment %}
-{% block title %}{% trans "Payouts — Montenegro Experience" %}{% endblock %}
 
 {% block host_eyebrow %}{% trans "Money" %}{% endblock %}
 {% block host_title %}{% trans "Payouts" %}{% endblock %}

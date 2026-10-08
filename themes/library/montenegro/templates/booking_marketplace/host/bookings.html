@@ -5,7 +5,6 @@ shell. Context preserved exactly: bookings (each b.service.name, b.booking_date,
 b.guests, b.customer_name, b.customer_email, b.customer_phone, b.total_price,
 b.status, b.get_status_display). POST action identical to the plugin default:
 {% templatetag openblock %} csrf_token {% templatetag closeblock %} + booking_id + action (confirm/complete/cancel).{% endcomment %}
-{% block title %}{% trans "Your bookings — Montenegro Experience" %}{% endblock %}
 
 {% block host_eyebrow %}{% trans "Host" %}{% endblock %}
 {% block host_title %}{% trans "Bookings" %}{% endblock %}

@@ -61,46 +61,50 @@ def _marketplace_counts() -> dict:
 
 
 def vendors_directory(request):
-    """Public vendor directory — every active vendor with at least one
-    active product. The editorial intro comes from the merchant's own copy
-    (`page_intro`), not from a voice the shell decides for them.
+    """Public vendor directory — every active vendor with something to show.
+
+    "Something" is catalog Products AND whatever another app lists for the
+    vendor (`catalog.vendors.listing_counts`): the travel store's directory
+    showed one vendor while its 170 hosts — whose experiences and stays live in
+    booking_marketplace — were missing from it. The editorial intro comes from
+    the merchant's own copy (`page_intro`), not from a voice the shell decides.
 
     Supports an optional ``?q=`` filter against ``Vendor.name`` /
     ``Vendor.description`` so customers can hunt for a known shop.
     """
+    from plugins.installed.catalog.vendors import listing_counts
+    from plugins.installed.storefront.services import store_name, vendor_nouns
+
+    counts = listing_counts()
     q = (request.GET.get('q') or '').strip()
-    qs = Vendor.objects.filter(is_active=True)
+    qs = Vendor.objects.filter(pk__in=list(counts))
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(description__icontains=q))
-    qs = (
-        qs.annotate(active_product_count=Count('products', filter=Q(products__status='active')))
-        .filter(active_product_count__gt=0)
-        .prefetch_related(
-            Prefetch(
-                'products',
-                queryset=Product.objects.filter(status='active').order_by(
-                    '-is_featured', '-created_at'
-                ),
-                to_attr='_preview_products_all',
-            )
+    qs = qs.prefetch_related(
+        Prefetch(
+            'products',
+            queryset=Product.objects.filter(status='active').order_by(
+                '-is_featured', '-created_at'
+            ),
+            to_attr='_preview_products_all',
         )
-        .order_by('name')[:100]
-    )
+    ).order_by('name')[:100]
 
-    vendors = []
-    for v in qs:
-        vendors.append(
-            {
-                'obj': v,
-                'product_count': v.active_product_count,
-                'preview_products': getattr(v, '_preview_products_all', [])[:3],
-            }
-        )
+    vendors = [
+        {
+            'obj': v,
+            # Everything the vendor page lists, not only catalog Products —
+            # the card's count and the page it links to must agree.
+            'product_count': counts.get(str(v.pk), 0),
+            'preview_products': getattr(v, '_preview_products_all', [])[:3],
+        }
+        for v in qs
+    ]
 
+    _single, plural = vendor_nouns()
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Marketplace', 'url': request.build_absolute_uri('/marketplace/')},
-        {'name': 'Publishers', 'url': request.build_absolute_uri(request.path)},
+        {'name': plural, 'url': request.build_absolute_uri(request.path)},
     ]
     intro = page_intro(request, 'vendors')
     return render(
@@ -111,32 +115,70 @@ def vendors_directory(request):
             'query': q,
             'breadcrumb_items': breadcrumb_items,
             'page_intro': intro['body'],
-            'seo_title': 'Publishers & makers',
+            'seo_title': plural,
             'seo_description': (
                 intro['meta_description']
                 or intro['body']
-                or 'The independent presses, university imprints, and small publishers we work with. Every title on the shelf comes from one of these makers.'
+                or f'The {plural.lower()} behind everything {store_name()} offers.'
             )[:160],
             'seo_og_type': 'website',
+            # The SEO layer holds an empty directory out of the index.
+            'seo_item_count': len(vendors),
         },
     )
 
 
+def _vendor_sections(vendor, request) -> list[dict]:
+    """What other apps list for this vendor (`STOREFRONT_VENDOR_SECTIONS`), in order."""
+    from morpheus.core import MorpheusEvents, hook_registry
+
+    try:
+        raw = hook_registry.filter(
+            MorpheusEvents.STOREFRONT_VENDOR_SECTIONS, [], vendor=vendor, request=request
+        )
+    except Exception:  # noqa: BLE001 — a broken contributor must not take the page down
+        return []
+    sections = []
+    for section in raw or []:
+        if not isinstance(section, dict) or not section.get('template'):
+            continue
+        try:
+            count = int(section.get('count') or 0)
+        except (TypeError, ValueError):
+            continue
+        if count > 0:
+            sections.append({**section, 'count': count})
+    return sorted(sections, key=lambda s: s.get('order', 100))
+
+
 def vendor_detail(request, slug):
-    """Per-vendor storefront — logo, bio, product grid, stats."""
+    """Per-vendor storefront — logo, bio, everything the vendor lists, stats.
+
+    Catalog Products are paginated here; anything another app lists for the
+    vendor (a travel host's experiences and stays) arrives as sections through
+    `STOREFRONT_VENDOR_SECTIONS` and counts toward the page's total — the number
+    the SEO layer reads to keep an empty vendor page out of the index.
+    """
+    from core.utils.pagination import paginate_or_404
+    from plugins.installed.storefront.services import store_name, vendor_nouns
+
     vendor = Vendor.objects.filter(slug=slug, is_active=True).first()
     if vendor is None:
         raise Http404
 
-    products = list(
+    page_obj = paginate_or_404(
         Product.objects.filter(vendor=vendor, status='active')
         .select_related('category')
-        .order_by('-is_featured', '-created_at')[:60]
+        .order_by('-is_featured', '-created_at'),
+        48,
+        request,
     )
+    products = list(page_obj.object_list)
+    vendor_sections = _vendor_sections(vendor, request)
 
-    # Derive count + represented-category count from the materialised list
-    # so we avoid two extra COUNT queries against the same filter.
-    product_count = len(products)
+    # Everything the vendor lists, across every page and every section.
+    product_count = page_obj.paginator.count
+    listing_count = product_count + sum(s['count'] for s in vendor_sections)
     category_count = len({p.category_id for p in products if p.category_id})
 
     # Books sold lifetime — sum of confirmed/shipped/delivered VendorOrder.gross.
@@ -154,19 +196,15 @@ def vendor_detail(request, slug):
         except Exception:  # noqa: BLE001 — never break the page on a stats query
             books_sold = 0
 
+    single, plural = vendor_nouns()
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Marketplace', 'url': request.build_absolute_uri('/marketplace/')},
-        {'name': 'Publishers', 'url': request.build_absolute_uri('/vendors/')},
+        {'name': plural, 'url': request.build_absolute_uri('/vendors/')},
         {'name': vendor.name, 'url': request.build_absolute_uri(request.path)},
     ]
-    intro_fallback = (
-        f'{vendor.name} is one of the independent presses we work with. '
-        f'Every {vendor.name} title on the shelf was read and selected by us first.'
-    )
 
-    # Build CollectionPage items for the product grid — used by
-    # seo_collection_jsonld so search/AI engines see this as a vendor catalog.
+    # The ItemList the SEO graph publishes for this page — the catalog grid and
+    # every contributed section, so a host's page describes its experiences.
     collection_items = []
     for p in products[:30]:
         img = ''
@@ -183,22 +221,36 @@ def vendor_detail(request, slug):
                 'image': img,
             }
         )
+    for section in vendor_sections:
+        collection_items.extend(section.get('jsonld_items') or [])
 
+    # The vendor's own words, or none: the shell used to invent "one of the
+    # independent presses we work with" for every vendor of every store.
+    description = (vendor.description or '').strip()
     return render(
         request,
         'storefront/vendor_detail.html',
         {
             'vendor': vendor,
             'products': products,
+            'page_obj': page_obj,
             'product_count': product_count,
+            'listing_count': listing_count,
+            'vendor_sections': vendor_sections,
+            'vendor_noun': single,
             'category_count': category_count,
             'books_sold': books_sold,
             'collection_items': collection_items,
-            'intro_text': vendor.description or intro_fallback,
+            'intro_text': description,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': f'{vendor.name} — Publishers',
-            'seo_description': (vendor.description or intro_fallback)[:160],
+            'seo_title': f'{vendor.name} — {plural}',
+            'seo_description': (
+                description or f'Everything {vendor.name} offers on {store_name()}.'
+            )[:160],
             'seo_og_type': 'website',
+            # Products on every page + every section: zero means an empty page,
+            # which the SEO layer keeps out of the index.
+            'seo_item_count': listing_count,
         },
     )
 
@@ -258,6 +310,9 @@ def marketplace_landing(request):
         except Exception:  # noqa: BLE001 — FAQ is best-effort, never breaks landing
             faqs = []
 
+    from plugins.installed.storefront.services import store_name, vendor_nouns
+
+    single, _plural = vendor_nouns()
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
         {'name': 'Marketplace', 'url': request.build_absolute_uri(request.path)},
@@ -273,7 +328,9 @@ def marketplace_landing(request):
             'faqs': faqs,
             'breadcrumb_items': breadcrumb_items,
             'seo_title': 'The Marketplace',
-            'seo_description': 'Independent presses and bookshops, in one shelf.',
+            # "Independent presses and bookshops, in one shelf." was this
+            # description on the apothecary and the travel store too.
+            'seo_description': f'Every {single.lower()} on {store_name()}, in one place.',
             'seo_og_type': 'website',
         },
     )

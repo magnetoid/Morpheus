@@ -1,11 +1,10 @@
 {% extends "account/base.html" %}
 {% load i18n account morph %}
 
-{% block head_title %}{% trans "Sign in" %}{% endblock %}
 {% block heading %}{% trans "Sign in" %}{% endblock %}
 {% block subheading %}<p class="text-sm" style="color:var(--text-muted);">Welcome back.</p>{% endblock %}
 
-{% block content %}
+{% block auth_form %}
 <form method="post" action="{% url 'account_login' %}" class="space-y-3">
   {% csrf_token %}
 

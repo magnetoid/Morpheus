@@ -7,7 +7,6 @@ get_reason_display, customer_note, staff_note, refund_amount, refund), order
 (order_number), status_steps (label, done, current), line_items (name, sku,
 quantity, unit_price), is_terminal. Money via |money to match account_order_detail.
 ReturnRequest uses .state (its own model field) — not Order.status.{% endcomment %}
-{% block title %}{% blocktrans with number=rma.rma_number %}Return {{ number }}{% endblocktrans %} — Montenegro Experience{% endblock %}
 
 {% block content %}
 <section class="container mx-auto px-4 py-8 sm:py-12">

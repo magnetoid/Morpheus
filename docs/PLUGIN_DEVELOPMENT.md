@@ -710,7 +710,41 @@ every integer into an indexable duplicate of your first page), and put the
 paginator page in your template context as **`page_obj`** — the canonical only
 trusts `?page=` when a real paginator is present, so a listing that hides its
 paginator will canonicalise all of its pages onto page 1 and de-index the rest.
-`?page=1` is redirected to the clean URL for you.
+`?page=1` is redirected to the clean URL for you. `core.utils.pagination`
+does both (`paginate_or_404(rows, per_page, request)`), and `{% page_href n %}`
+(`{% load morph %}`) builds a page link that keeps the listing's filters and
+names page 1 by its clean URL.
+
+**If your page lists things, say how many.** Put **`seo_item_count`** (an int)
+in the context — or a real paginator as `page_obj`. A listing that shows
+nothing answers 200 with "nothing here", which a search engine files as a soft
+404; the SEO layer marks such a page `noindex, follow` on its own once it knows
+the count. Leave it out and nothing changes: unknown is not zero. Two related
+context keys: **`seo_noindex_reason`** (a string) holds a page back for a reason
+you state — a placeholder, a preview — and a listing filtered by `?q=` is
+treated as internal search results (`noindex, follow`) whoever owns it.
+
+**List your pages in the sitemap only while they have content.** A
+`SITEMAP_URLS` subscriber that appends an index page unconditionally invites
+crawlers to an empty page on every store that has nothing in it yet. Check, then
+append — `storefront/sitemap.py` and `booking_marketplace/sitemap.py` show the
+shape.
+
+**If your app's listings belong to a catalog vendor** (a marketplace host's
+experiences, a venue's rooms), answer two hooks so the vendor's page is not an
+empty "0 listings" page: `VENDOR_LISTING_COUNTS` (add `{str(vendor_pk): n}` —
+the directory and the sitemap read it) and `STOREFRONT_VENDOR_SECTIONS` (append
+`{'key', 'title', 'template', 'context', 'count', 'order', 'jsonld_items'}` — the
+vendor page renders it). The count you report must be what your section
+renders. **If your inventory is the store's inventory**, answer
+`STOREFRONT_SEARCH_PATH` so a search lands on it (only when the catalogue is
+empty — a mixed store keeps the catalogue's search). **If you render a CMS
+page at a route of your own**, claim it with `CMS_PAGE_PATH` so it has one URL.
+
+**Building URLs by hand?** Carry the language prefix:
+`core.utils.i18n.localized_path(request, '/hotels/x/')` gives `/sr/hotels/x/` on
+a Serbian page. A hardcoded redirect target sends the visitor back to the
+default language and tells a crawler the two trees are one page.
 
 ### Adding a card to somebody else's edit form
 

@@ -5,7 +5,6 @@ delete-account confirmation. Context vars preserved: user, error. The form posts
 to itself (method="post") with a required confirm_email field the view checks
 against request.user.email. Destructive styling (red confirm button + warning
 card). Link to /account/data-export/ preserved.{% endcomment %}
-{% block title %}{% trans "Delete my account" %} — Montenegro Experience{% endblock %}
 
 {% block content %}
 <section class="container mx-auto px-4 py-8 sm:py-12">

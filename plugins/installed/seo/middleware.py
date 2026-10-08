@@ -109,7 +109,7 @@ class SeoRedirectMiddleware:
 
 
 def _is_pagination_404(request) -> bool:
-    """A page number past the end is not a broken address.
+    """A page number past the end of a REAL listing is not a broken address.
 
     `record_404` stores `path_info` with the query string stripped, so a 404
     caused by `?page=999` would be filed as a broken `/products/` — a URL that
@@ -117,11 +117,23 @@ def _is_pagination_404(request) -> bool:
     somewhere". A merchant acting on that entry would 301 their entire product
     listing away. The log is for addresses that stopped working; a valid
     address with an out-of-range page number is not one.
+
+    Only when the path itself routes: any 404 that merely CARRIED `?page=` used
+    to be skipped, so a dead address linked as `/old-listing/?page=2` never
+    reached the log at all.
     """
     try:
+        from django.urls import Resolver404, resolve
+
         from plugins.installed.seo.rules.params import RESERVED_PARAMS
 
-        return any(key.lower() in RESERVED_PARAMS for key in request.GET)
+        if not any(key.lower() in RESERVED_PARAMS for key in request.GET):
+            return False
+        try:
+            resolve(request.path_info)
+        except Resolver404:
+            return False
+        return True
     except Exception:  # noqa: BLE001 — never let this decide the response
         return False
 

@@ -83,9 +83,24 @@ class SitemapPolicyTests(TestCase):
         had been yielded — the fail-soft `except` logged it at DEBUG and every
         vendor page was simply absent from the sitemap.
         """
-        from plugins.installed.catalog.models import Vendor
+        from decimal import Decimal
 
-        Vendor.objects.create(name='Probe Press', slug='probe-press')
+        from djmoney.money import Money
+
+        from plugins.installed.catalog.models import Product, Vendor
+
+        vendor = Vendor.objects.create(name='Probe Press', slug='probe-press')
+        # A vendor page is listed once it has something on it — an empty one is
+        # a soft 404 (v0.80.0, `test_sitemap_soft404.py`).
+        Product.objects.create(
+            name='Probe Title',
+            slug='probe-title',
+            sku='PROBE-TITLE',
+            price=Money(Decimal('9.00'), 'USD'),
+            product_type='simple',
+            status='active',
+            vendor=vendor,
+        )
         self.assertTrue(any(loc.endswith('/vendor/probe-press/') for loc in self._locs()))
 
 

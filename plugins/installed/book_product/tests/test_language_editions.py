@@ -88,3 +88,49 @@ class LanguageEditionsTests(TestCase):
         self.assertEqual(language_name('fr'), 'français')
         self.assertEqual(language_name(''), '')
         self.assertEqual(language_name('zz-unknown'), 'zz-unknown')
+
+
+class EditionHreflangHeadTests(TestCase):
+    """Edition alternates come from the head document, with ISO codes (v0.80.0).
+
+    The dot_books product template printed them itself — beside the seo app's
+    head, on indexable and noindexed pages alike, with the raw `language` value
+    (`English`) as the hreflang code.
+    """
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.original = _book('work-en', 'English')
+        fr = _book('work-fr', 'fr')
+        fr.translation_of = self.original
+        fr.save()
+
+    def _alternates(self, path):
+        import re
+
+        head = self.client.get(path).content.decode().split('</head>', 1)[0]
+        return dict(
+            (code, href)
+            for href, code in re.findall(
+                r'<link rel="alternate" href="([^"]+)" hreflang="([^"]+)"', head
+            )
+        )
+
+    def test_each_edition_names_the_others_by_language_code(self):
+        alternates = self._alternates('/products/work-fr/')
+        self.assertEqual(alternates.get('fr'), 'http://testserver/products/work-fr/')
+        self.assertEqual(alternates.get('en'), 'http://testserver/products/work-en/')
+
+    def test_a_single_edition_declares_nothing(self):
+        _book('lonely-work', 'en')
+        self.assertEqual(self._alternates('/products/lonely-work/'), {})
+
+    def test_a_multilingual_store_leaves_hreflang_to_its_interface_languages(self):
+        from django.test import override_settings
+
+        with override_settings(LANGUAGES=[('en', 'English'), ('sr', 'Srpski')], LANGUAGE_CODE='en'):
+            alternates = self._alternates('/products/work-fr/')
+        self.assertNotIn('fr', alternates)
+        self.assertEqual(set(alternates), {'en', 'sr', 'x-default'})

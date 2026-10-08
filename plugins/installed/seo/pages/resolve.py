@@ -8,16 +8,24 @@ Three sources, in order:
    book_product for `/author/…` and its taxonomy landings, cms for pages,
    marketplace for vendor pages. First non-None answer wins, which is how this
    module stays free of imports it has no business having.
-3. **Built-in knowledge of the storefront.** Keyed on `resolver_match.url_name`,
-   because URL *names* are stable while paths are merchant-editable.
+3. **Built-in knowledge of the storefront.** Keyed on the NAMESPACED view name
+   (`storefront:home`), because URL names are stable while paths are
+   merchant-editable — and a bare `home` is also wishlist's index.
 
 Anything unrecognised resolves to a plain indexable page rather than nothing:
 an unknown page with a title beats a known page with none.
+
+`_finish` then applies the rules that hold whoever resolved the page: a private
+path is never indexed, a listing carrying a search query is search results, a
+listing with nothing on it is an empty shelf (a soft 404 to a search engine),
+and a view may hold its own page back with `seo_noindex_reason`.
 """
 
 from __future__ import annotations
 
 import logging
+
+from django.utils.translation import gettext
 
 from .types import (
     KIND_ARTICLE,
@@ -33,32 +41,74 @@ from .types import (
 
 logger = logging.getLogger('morpheus.seo')
 
-# url_name → (kind, subtype). The storefront's own routes; everything else
-# arrives through SEO_RESOLVE_PAGE or falls back to a static page.
-_KIND_BY_URL_NAME: dict[str, tuple[str, str]] = {
-    'home': (KIND_HOME, ''),
-    'product_list': (KIND_LISTING, 'products'),
-    'product_detail': (KIND_PRODUCT, ''),
-    'categories': (KIND_LISTING, 'categories'),
-    'category_detail': (KIND_LISTING, 'category'),
-    'collection_detail': (KIND_LISTING, 'collection'),
-    'author_detail': (KIND_LISTING, 'author'),
-    'vendors': (KIND_LISTING, 'vendors'),
-    'vendor_detail': (KIND_LISTING, 'vendor'),
-    'marketplace_landing': (KIND_LISTING, 'marketplace'),
-    'staff_picks': (KIND_LISTING, 'staff_picks'),
-    'journal_index': (KIND_LISTING, 'journal'),
-    'journal_detail': (KIND_ARTICLE, 'journal'),
-    'journal_amp': (KIND_ARTICLE, 'journal_amp'),
-    'search': (KIND_SEARCH, ''),
-    'about': (KIND_STATIC, 'about'),
-    'contact': (KIND_STATIC, 'contact'),
-    'shipping': (KIND_STATIC, 'shipping'),
-    'returns': (KIND_STATIC, 'returns'),
-    'stockists': (KIND_STATIC, ''),
-    'affiliate_terms': (KIND_STATIC, ''),
-    'do_not_sell': (KIND_STATIC, ''),
-    'page_detail': (KIND_PAGE, ''),
+# view name → (kind, subtype). The storefront's own routes; everything else
+# arrives through SEO_RESOLVE_PAGE or falls back to a static page. Namespaced:
+# matching on the bare url_name made wishlist's `home` route the home page.
+_KIND_BY_VIEW_NAME: dict[str, tuple[str, str]] = {
+    'storefront:home': (KIND_HOME, ''),
+    'storefront:product_list': (KIND_LISTING, 'products'),
+    'storefront:product_detail': (KIND_PRODUCT, ''),
+    'storefront:categories': (KIND_LISTING, 'categories'),
+    'storefront:category_detail': (KIND_LISTING, 'category'),
+    'storefront:collection_detail': (KIND_LISTING, 'collection'),
+    'storefront:author_detail': (KIND_LISTING, 'author'),
+    'storefront:vendors': (KIND_LISTING, 'vendors'),
+    'storefront:vendor_detail': (KIND_LISTING, 'vendor'),
+    'storefront:marketplace_landing': (KIND_LISTING, 'marketplace'),
+    'storefront:staff_picks': (KIND_LISTING, 'staff_picks'),
+    'storefront:journal_index': (KIND_LISTING, 'journal'),
+    'storefront:journal_detail': (KIND_ARTICLE, 'journal'),
+    'storefront:journal_amp': (KIND_ARTICLE, 'journal_amp'),
+    'storefront:search': (KIND_SEARCH, ''),
+    'storefront:about': (KIND_STATIC, 'about'),
+    'storefront:contact': (KIND_STATIC, 'contact'),
+    'storefront:shipping': (KIND_STATIC, 'shipping'),
+    'storefront:returns': (KIND_STATIC, 'returns'),
+    'storefront:stockists': (KIND_STATIC, ''),
+    'storefront:affiliate_terms': (KIND_STATIC, ''),
+    'storefront:do_not_sell': (KIND_STATIC, ''),
+    'cms:page': (KIND_PAGE, ''),
+}
+
+# Pages a shopper reaches while signing in, paying or managing an account. Their
+# views pass no title (the theme templates carried `{% block title %}`s that no
+# base template renders), so the fallback read "Account Payment Methods" or,
+# for allauth's routes, "Account Login". Looked up at render time so the words
+# follow the page's language.
+_TITLE_BY_VIEW_NAME: dict[str, str] = {
+    'storefront:cart': 'Your cart',
+    'storefront:checkout': 'Checkout',
+    'storefront:checkout_one_page': 'Checkout',
+    'storefront:checkout_shipping': 'Delivery details',
+    'storefront:checkout_review': 'Review your order',
+    'storefront:checkout_payment': 'Payment',
+    'storefront:order_confirmation': 'Order received',
+    'storefront:account_home': 'Your account',
+    'storefront:account_profile': 'Profile',
+    'storefront:account_orders': 'Order history',
+    'storefront:account_order_detail': 'Order details',
+    'storefront:account_order_return': 'Return an order',
+    'storefront:account_addresses': 'Addresses',
+    'storefront:account_address_new': 'New address',
+    'storefront:account_address_edit': 'Edit address',
+    'storefront:account_returns': 'Returns',
+    'storefront:account_return_status': 'Return status',
+    'storefront:account_credits': 'Store credit & gift cards',
+    'storefront:account_payment_methods': 'Saved cards',
+    'account_login': 'Sign in',
+    'account_signup': 'Create an account',
+    'account_logout': 'Sign out',
+    'account_reset_password': 'Reset your password',
+    'account_reset_password_done': 'Check your inbox',
+    'account_reset_password_from_key': 'Choose a new password',
+    'account_reset_password_from_key_done': 'Password changed',
+    'account_email_verification_sent': 'Confirm your email',
+    'account_confirm_email': 'Confirm your email',
+    'account_change_password': 'Change your password',
+    'account_email': 'Email addresses',
+    'core_auth:otp_request': 'Sign in with a code',
+    'staff_mfa:challenge': 'Two-factor verification',
+    'core_auth:otp_verify': 'Enter your code',
 }
 
 # Surfaces that must never be indexed. Prefix-matched on the path so a plugin
@@ -94,8 +144,9 @@ def resolve_page(request, context=None) -> SeoPage:
         # Title it explicitly. `_title_from_object` only reads the page's OBJECT,
         # and an error render has none, so `_fallback_title` would Title-Case the
         # subtype — the live 404 read "Error — <store>" rather than the
-        # "Page not found" its template passes to `{% storefront_head %}`.
-        page.title = (context.get('seo_title') or '').strip() or 'Page not found'
+        # "Page not found" its template passes to `{% storefront_head %}`. The
+        # default is translated: `/sr/<missing>/` used to say it in English.
+        page.title = (context.get('seo_title') or '').strip() or gettext('Page not found')
         return _finish(page, request, context)
 
     page = _from_hook(request, context)
@@ -120,6 +171,11 @@ def _is_error_render(context) -> bool:
     return bool(context) and 'request_path' in context and 'exception' in context
 
 
+def is_error_page(page: SeoPage) -> bool:
+    """The page Django renders for a 404 — not a page in any search sense."""
+    return page.kind == KIND_PRIVATE and page.subtype == 'error'
+
+
 def _from_hook(request, context) -> SeoPage | None:
     try:
         from core.hooks import MorpheusEvents, hook_registry
@@ -133,10 +189,18 @@ def _from_hook(request, context) -> SeoPage | None:
     return answer if isinstance(answer, SeoPage) else None
 
 
+def _view_name(request) -> tuple[str, str]:
+    """`(view_name, url_name)` of the matched route — `('', '')` when unmatched."""
+    match = getattr(request, 'resolver_match', None)
+    if match is None:
+        return '', ''
+    return (getattr(match, 'view_name', '') or ''), (getattr(match, 'url_name', '') or '')
+
+
 def _builtin(request, context) -> SeoPage:
     path = _path_of(request)
-    url_name = getattr(getattr(request, 'resolver_match', None), 'url_name', '') or ''
-    kind, subtype = _KIND_BY_URL_NAME.get(url_name, ('', ''))
+    view_name, url_name = _view_name(request)
+    kind, subtype = _KIND_BY_VIEW_NAME.get(view_name, ('', ''))
 
     if not kind:
         kind = KIND_PRIVATE if _is_private(path) else KIND_STATIC
@@ -170,11 +234,18 @@ def _builtin(request, context) -> SeoPage:
         page.obj = None
 
     page.title = _clean(context.get('seo_title'))
+    if not page.title and view_name in _TITLE_BY_VIEW_NAME:
+        page.title = gettext(_TITLE_BY_VIEW_NAME[view_name])
     page.description = _clean(context.get('seo_description'))
     page.image = _clean(context.get('seo_image'))
     page.og_type = _clean(context.get('seo_og_type')) or _og_type_for(kind)
     page.breadcrumbs = context.get('breadcrumb_items') or []
-    page.page_obj = context.get('page_obj') or context.get('products')
+    # `is None`, not `or`: a Django paginator Page defines `__len__`, so an EMPTY
+    # page is falsy — and `or` swapped it for the product list, losing the very
+    # paginator that says the listing is empty.
+    page.page_obj = context.get('page_obj')
+    if page.page_obj is None:
+        page.page_obj = context.get('products')
     page.query = _clean(context.get('query') or (request.GET.get('q') if request else ''))
 
     # The home page's title IS the brand — appending it again gives
@@ -211,7 +282,48 @@ def _finish(page: SeoPage, request, context) -> SeoPage:
     if _is_private(page.path) and not page.noindex:
         page.kind = KIND_PRIVATE
         page.deny_index('private surface (cart / checkout / account)', nofollow=True)
+    # A listing filtered by a search query IS internal search results, whoever
+    # owns the listing: `/search/?q=` lands on `/products/?q=`, and that page
+    # shipped `index, follow` on every store — one indexable page per query.
+    query = _search_query(request)
+    if page.kind == KIND_LISTING and query:
+        page.kind = KIND_SEARCH
+        page.query = page.query or query
+        page.deny_index('internal search results')
+    # A view that knows its page should stay out (a placeholder, a preview)
+    # says so with a reason, and the reason surfaces in the head inspector.
+    reason = _clean(context.get('seo_noindex_reason'))
+    if reason:
+        page.deny_index(reason)
+    # An empty shelf is a soft 404 to a search engine: a 200 page that says
+    # "nothing here". 181 of 520 sitemap urls on the travel store were exactly
+    # that. Follow the links, keep it out of the index.
+    if page.kind == KIND_LISTING and _item_count(page, context) == 0:
+        page.deny_index('empty listing')
     return page
+
+
+def _search_query(request) -> str:
+    try:
+        return (request.GET.get('q') or '').strip() if request is not None else ''
+    except Exception:  # noqa: BLE001 — a request-like object without a QueryDict
+        return ''
+
+
+def _item_count(page: SeoPage, context) -> int | None:
+    """How many things the listing shows, or None when nobody said.
+
+    A view reports it as `seo_item_count` (the reliable source: it knows what it
+    rendered, including items another app contributed); otherwise a real
+    paginator's total is used. Unknown is not zero — the rule must never hold
+    back a listing whose count was simply not reported.
+    """
+    explicit = (context or {}).get('seo_item_count')
+    if isinstance(explicit, int) and not isinstance(explicit, bool):
+        return explicit
+    paginator = getattr(page.page_obj, 'paginator', None)
+    count = getattr(paginator, 'count', None)
+    return count if isinstance(count, int) and not isinstance(count, bool) else None
 
 
 # -- helpers -------------------------------------------------------------

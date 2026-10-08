@@ -9,7 +9,6 @@ daily_capacity, max_guests_per_booking, cancellation_policy, is_active, image,
 weekdays, start_time_<wd>, tier_name/tier_price, addon_name/addon_price/addon_type,
 gallery. Context vars preserved exactly: vendor, svc, categories, regions,
 weekdays, selected_wd, start_times. POST = same page, enctype multipart/form-data, csrf.{% endcomment %}
-{% block title %}{% if svc %}{% trans "Edit" %}{% else %}{% trans "New" %}{% endif %} {% trans "experience — Montenegro Experience" %}{% endblock %}
 
 {% block host_eyebrow %}{% if svc %}{% trans "Edit experience" %}{% else %}{% trans "New experience" %}{% endif %}{% endblock %}
 {% block host_title %}{% if svc %}{{ svc.name }}{% else %}{% trans "New experience" %}{% endif %}{% endblock %}

@@ -506,6 +506,30 @@ they get caught.
 | Put theme wording in the tag's `title=` / `description=` arguments | Hardcode the shop's name in templates or views (it comes from settings) |
 | Render `{% storefront_blocks "global_head" %}` too | Reverse another app's URL (`{% url 'seo:…' %}`) — it 500s the page when that app is off |
 | Let page templates override `{% block seo %}` only to pass different fallbacks | Override the block to change robots — page kind decides that |
+| Give a page your own name with `{% block seo %}{% with seo_title=… %}{{ block.super }}{% endwith %}{% endblock %}` | Write `{% block title %}` — no base renders it, so it never reaches the page |
+| Use `{% page_href page_obj.next_page_number %}` for pagination links | Build `?page={{ n }}` by hand — page 1 then costs a 301 hop |
+| Set `<html lang="{% get_current_language as L %}{{ L }}">` | Hardcode `lang="en"` on a theme any store may run in another language |
+| Let the head document emit hreflang and JSON-LD | Paste `<script type="application/ld+json">` or `hreflang` links — apps contribute through `SEO_JSONLD_GRAPH` / `STOREFRONT_HEAD` |
+
+**Error pages.** A theme's `404.html` overrides no head block and passes no
+title: the seo app recognises Django's error render and emits the title
+("Page not found", translated), the description and `noindex, follow` — no
+canonical, no hreflang, no Open Graph, no structured data, because each of
+those would name a page that does not exist.
+
+**Words for the marketplace.** Set `vendor_noun` / `vendor_noun_plural` on your
+theme class ("Publisher"/"Publishers" on a bookshop, "Host"/"Hosts" on a travel
+store); the shell's vendor pages read them for titles and breadcrumbs.
+
+**Sign-in pages** render inside your theme through `templates/account/base.html`
+(children fill `heading`, `subheading`, `auth_form`) and
+`templates/allauth/layouts/base.html`. The shared sheet maps onto either token
+set (`--ink`/`--paper`/`--rule` or the HSL `--foreground`/`--background`/
+`--border`); override `account/*.html` only to change the markup.
+
+`themes/test_head_contract.py` enforces all of it for every theme that sets
+`head_contract = 1`: the 404 head under each theme, no raw JSON-LD / hreflang /
+`lang="en"` in its templates, and no `{% block %}` that no base renders.
 
 ### Legacy themes
 

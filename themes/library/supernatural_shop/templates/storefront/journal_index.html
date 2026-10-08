@@ -1,11 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load seo %}
-{% block title %}Journal — Supernatural Shop{% endblock %}
-
-{% block extra_head %}
-{% seo_collection_jsonld items=post_items name="Journal" description="Editorial notes from Supernatural Shop — oils, hydrosols, and the work of making scent." %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
-{% endblock %}
+{% load morph %}{% load i18n %}
 
 {% block content %}
 <section style="padding: 4rem 0 2rem;">
@@ -35,6 +29,13 @@
       </article>
       {% endfor %}
     </div>
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="{% trans 'Journal pages' %}" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);">
+      {% if page_obj.has_previous %}<a class="btn" href="{% page_href page_obj.previous_page_number %}" rel="prev">&larr; {% trans "Newer" %}</a>{% else %}<span></span>{% endif %}
+      <span class="meta">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+      {% if page_obj.has_next %}<a class="btn" href="{% page_href page_obj.next_page_number %}" rel="next">{% trans "Older" %} &rarr;</a>{% else %}<span></span>{% endif %}
+    </nav>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

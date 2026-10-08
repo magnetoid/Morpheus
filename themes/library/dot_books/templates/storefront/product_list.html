@@ -1,7 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}
 {% load i18n %}{% load seo %}{% load tracking %}{% load book_extras %}
-{% block title %}{% if selected_author %}Books by {{ selected_author }}{% elif selected_publisher %}{{ selected_publisher }} titles{% elif selected_category_obj %}{{ selected_category_obj.name }}{% elif selected_tag %}{{ selected_tag_obj.name|default:selected_tag }}{% elif search_query %}Search: {{ search_query }}{% else %}All books{% endif %} — dot books{% endblock %}
 
 {% block extra_head %}
 {% seo_collection_jsonld items=plp_items name=plp_name description=seo_description %}
@@ -148,7 +147,7 @@
     {% with qsep=paginator_base_qs|yesno:"&," %}
     <nav class="plp-pagination" aria-label="Page navigation" style="display:flex; justify-content:center; align-items:center; gap:0.5rem; margin: 3rem 0 0; padding: 1.5rem 0 0; border-top: 1px solid var(--rule); flex-wrap: wrap;">
       {% if page_obj.has_previous %}
-        <a class="btn" href="?{{ paginator_base_qs }}{% if paginator_base_qs %}&{% endif %}page={{ page_obj.previous_page_number }}" rel="prev">&larr; Previous</a>
+        <a class="btn" href="{% page_href page_obj.previous_page_number %}" rel="prev">&larr; Previous</a>
       {% else %}
         <span class="btn" aria-disabled="true" style="opacity:.4; cursor:not-allowed;">&larr; Previous</span>
       {% endif %}
@@ -159,7 +158,7 @@
       </span>
 
       {% if page_obj.has_next %}
-        <a class="btn" href="?{{ paginator_base_qs }}{% if paginator_base_qs %}&{% endif %}page={{ page_obj.next_page_number }}" rel="next">Next &rarr;</a>
+        <a class="btn" href="{% page_href page_obj.next_page_number %}" rel="next">Next &rarr;</a>
       {% else %}
         <span class="btn" aria-disabled="true" style="opacity:.4; cursor:not-allowed;">Next &rarr;</span>
       {% endif %}

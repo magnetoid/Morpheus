@@ -1,10 +1,11 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}
-{% block title %}Cancellations & refunds — Montenegro Experience{% endblock %}
+{% load morph %}{% load i18n %}
 
-{% block extra_head %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
-{% endblock %}
+{% comment %}The page's name in this store's words. `{{ block.super }}` renders the
+base's `{% storefront_head %}` with the title below as its fallback, so the head
+document still owns every tag — the `{% block title %}` this replaced was never
+rendered (no base defines that block).{% endcomment %}
+{% block seo %}{% trans "Cancellations & refunds" as theme_title %}{% with seo_title=theme_title %}{{ block.super }}{% endwith %}{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 2rem;">

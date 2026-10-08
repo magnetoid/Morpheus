@@ -2,26 +2,34 @@
 {% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
 {% comment %}1:1 with pages/Search.tsx — 4-segment search bar + count/sort row + grid.
 Context: services, listing_mode, region, q, category, sort.{% endcomment %}
-{% block title %}{% trans "Experiences in Montenegro" %} — Montenegro Experience{% endblock %}
-{% comment %}The view computes a per-page seo_title/seo_description (category-filtered list, the product Shop); read them the way storefront/base.html does, or every listing this template serves ships the same <title> under a different canonical.{% endcomment %}
-{% block extra_head %}
-{% if list_jsonld %}<script type="application/ld+json">{{ list_jsonld|safe }}</script>{% endif %}
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What are the best experiences in Montenegro?","acceptedAnswer":{"@type":"Answer","text":"Popular choices include Bay of Kotor boat trips, Tara Canyon rafting, Durmitor hikes, Lake Skadar cruises and food or wine experiences with local hosts."}},{"@type":"Question","name":"Should I book Montenegro tours in advance?","acceptedAnswer":{"@type":"Answer","text":"Book high-demand boat trips, rafting and private tours ahead in July and August. Outside peak season, shorter notice is often possible."}},{"@type":"Question","name":"Are experiences suitable for families?","acceptedAnswer":{"@type":"Answer","text":"Many boat trips, cultural visits and easy nature tours suit families. Always check duration, minimum age and activity level on the individual listing."}}]}</script>
-{% endblock %}
+{% comment %}Title, description, breadcrumbs and the ItemList come from the head
+document (`seo_title`, `jsonld_items`, `breadcrumb_items` in the view's context).
+This template used to paste its own ld+json beside it — plus a FAQPage whose
+questions appeared nowhere on the page, on /shop/ as much as /bookings/.
+`/shop/` renders here too (`is_product_shop`): it gets its own heading, count and
+empty state, and none of the experience-only search, sort and buying guide.{% endcomment %}
 
 {% block content %}
 {% booking_listing_mode as listing_mode %}
 <div class="container mx-auto px-4 py-8">
   <header class="mb-6">
+    {% if is_product_shop %}
+    <h1 class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{% trans "Shop Montenegro" %}</h1>
+    <p class="text-muted-foreground leading-7 max-w-3xl">{% trans "Locally made Montenegrin products from trusted vendors — shipped or ready for pickup across the Adriatic coast." %}</p>
+    {% else %}
     <h1 class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{% trans "Experiences in Montenegro" %}</h1>
     <p class="text-muted-foreground leading-7 max-w-3xl">{% trans "Explore the Bay of Kotor by boat, hike in Durmitor, raft the Tara Canyon or meet local food and wine producers. Compare activities by destination, pace and travel style." %}</p>
+    {% endif %}
   </header>
 
-  {% include "booking_marketplace/_search_bar.html" %}
+  {% if not is_product_shop %}{% include "booking_marketplace/_search_bar.html" %}{% endif %}
 
   <!-- Count + sort row -->
   <div class="flex flex-wrap items-center justify-between gap-3 mt-8 mb-6">
-    <p class="text-sm text-muted-foreground">{% blocktrans count c=services|length %}{{ c }} experience{% plural %}{{ c }} experiences{% endblocktrans %}</p>
+    {% if is_product_shop %}
+    <p class="text-sm text-muted-foreground">{% blocktrans count c=services|length %}{{ c }} product{% plural %}{{ c }} products{% endblocktrans %}</p>
+    {% else %}
+    <p class="text-sm text-muted-foreground">{% blocktrans count c=page_obj.paginator.count %}{{ c }} experience{% plural %}{{ c }} experiences{% endblocktrans %}</p>
     <form method="get" class="flex items-center gap-2">
       {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
       {% if region %}<input type="hidden" name="region" value="{{ region }}">{% endif %}
@@ -37,6 +45,7 @@ Context: services, listing_mode, region, q, category, sort.{% endcomment %}
         <option value="newest" {% if sort == 'newest' %}selected{% endif %}>{% trans "Newest" %}</option>
       </select>
     </form>
+    {% endif %}
   </div>
 
   {% if services %}
@@ -45,12 +54,24 @@ Context: services, listing_mode, region, q, category, sort.{% endcomment %}
     {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode %}
     {% endfor %}
   </div>
+  {% if page_obj.has_other_pages %}
+  <nav aria-label="{% trans 'Pages' %}" class="flex flex-wrap items-center justify-center gap-2 mt-10 pt-6 border-t border-border">
+    {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Previous" %}</a>{% endif %}
+    <span class="px-4 text-sm text-muted-foreground">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+    {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Next" %}</a>{% endif %}
+  </nav>
+  {% endif %}
   {% else %}
   <div class="text-center py-16">
-    <p class="text-muted-foreground">{% trans "No experiences match your search." %} <a href="/bookings/" class="text-primary underline">{% trans "Clear filters" %}</a></p>
+    {% if is_product_shop %}
+    <p class="text-muted-foreground">{% trans "No products match your search." %} <a href="{% url 'booking_marketplace:shop' %}" class="text-primary underline">{% trans "Clear filters" %}</a></p>
+    {% else %}
+    <p class="text-muted-foreground">{% trans "No experiences match your search." %} <a href="{% url 'booking_marketplace:list' %}" class="text-primary underline">{% trans "Clear filters" %}</a></p>
+    {% endif %}
   </div>
   {% endif %}
 
+  {% if not is_product_shop %}
   <section class="mt-12 rounded-2xl border border-border bg-card p-5 md:p-7">
     <h2 class="text-2xl font-semibold text-foreground mb-3">{% trans "How to choose a Montenegro experience" %}</h2>
     <p class="text-muted-foreground leading-7 max-w-4xl">{% trans "Choose coastal boat trips and old-town walks for an easy first visit, mountain activities for active itineraries, and food or wine experiences for a slower local perspective. Check meeting points, duration and transport before confirming." %}</p>
@@ -65,5 +86,6 @@ Context: services, listing_mode, region, q, category, sort.{% endcomment %}
       <a href="/hotels/" class="text-primary hover:underline">{% trans "Find a place to stay" %}</a>
     </div>
   </section>
+  {% endif %}
 </div>
 {% endblock %}

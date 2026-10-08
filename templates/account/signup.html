@@ -1,11 +1,10 @@
 {% extends "account/base.html" %}
 {% load i18n account %}
 
-{% block head_title %}{% trans "Create account" %}{% endblock %}
 {% block heading %}{% trans "Create account" %}{% endblock %}
 {% block subheading %}<p class="text-sm" style="color:var(--text-muted);">Track orders and save your details.</p>{% endblock %}
 
-{% block content %}
+{% block auth_form %}
 <form method="post" action="{% url 'account_signup' %}" class="space-y-3">
   {% csrf_token %}
 

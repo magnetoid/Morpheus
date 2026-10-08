@@ -87,6 +87,11 @@ urlpatterns += i18n_patterns(
     prefix_default_language=False,
 )
 
+# A missing PAGE gets the theme's 404 (Django's handler, whose context the seo
+# app recognises); a missing FILE — a stylesheet, an image, a `.php` probe —
+# gets a few bytes of plain text instead of a full themed render.
+handler404 = 'core.not_found.page_not_found'
+
 if settings.DEBUG:
     # Django's stock admin is only available in development as a fallback.
     # Production users go through /dashboard/ — see the `admin_dashboard`

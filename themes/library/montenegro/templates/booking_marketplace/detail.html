@@ -4,8 +4,6 @@
 sticky enquiry/booking card right). Branches on listing_mode (enquiry vs booking).
 Context: service, listing_mode, dates ([{date, remaining}]), max_guests,
 review_summary, reviews, can_review. Same POST actions as the plugin default.{% endcomment %}
-{% block title %}{{ service.name }}, Montenegro — Montenegro Experience{% endblock %}
-{% block extra_head %}{% if seo_jsonld %}<script type="application/ld+json">{{ seo_jsonld|safe }}</script>{% endif %}{% endblock %}
 
 {% block content %}
 {% booking_listing_mode as listing_mode %}

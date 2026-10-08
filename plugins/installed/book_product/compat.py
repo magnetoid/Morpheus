@@ -53,6 +53,47 @@ def distinct_values(field: str) -> list[str]:
     return sorted(values, key=str.lower)
 
 
+def distinct_active_values(field: str) -> list[str]:
+    """Distinct values of a book `field` that at least one ACTIVE product carries.
+
+    What a landing page can actually show. `distinct_values` counts every
+    product whatever its status, so an author whose books were all withdrawn
+    still got a sitemap entry and an index link — to a page with nothing on it.
+    """
+    values: set[str] = set()
+    try:
+        from plugins.installed.book_product.models import BookProduct  # noqa: PLC0415
+
+        values.update(
+            v.strip()
+            for v in BookProduct.objects.filter(product__status='active')
+            .exclude(**{field: ''})
+            .values_list(field, flat=True)
+            if v and str(v).strip()
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from plugins.installed.catalog.models import Product  # noqa: PLC0415
+        from plugins.installed.metafields.models import Metafield  # noqa: PLC0415
+
+        live = {
+            str(pk) for pk in Product.objects.filter(status='active').values_list('pk', flat=True)
+        }
+        values.update(
+            v.strip()
+            for oid, v in Metafield.objects.filter(
+                content_type=_product_ct(), namespace='book', key=field
+            )
+            .exclude(value='')
+            .values_list('object_id', 'value')
+            if str(oid) in live and v and v.strip()
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return sorted(values, key=str.lower)
+
+
 def product_ids_for(field: str, value: str) -> list[str]:
     """Product ids whose book `field` == `value` (case-insensitive) — model ∪ metafields."""
     ids: set[str] = set()

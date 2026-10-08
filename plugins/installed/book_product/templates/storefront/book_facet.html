@@ -1,14 +1,12 @@
 {% extends "storefront/base.html" %}
-{% load seo %}
-
-{% block title %}{{ seo_title|default:facet_value }}{% endblock %}
+{% load morph %}
 
 {% block content %}
-{# Auto structured data: CollectionPage + ItemList of the books on this shelf. #}
-{% seo_collection_jsonld items=jsonld_items name=facet_value description=seo_description %}
 {% comment %}Hero matches the shared shelf pattern (category_detail / author /
    PLP): breadcrumb → kind eyebrow → display title + accent dot → editable
-   description lede (dashboard: Products → Book taxonomies) → count.{% endcomment %}
+   description lede (dashboard: Products → Book taxonomies) → count.
+   Title, description and the CollectionPage/ItemList graph come from the head
+   document (`jsonld_items`, `seo_*` in the context) — no tags of our own.{% endcomment %}
 <section style="padding: 4rem 0 2rem;">
   <div class="wrap" style="max-width: 720px;">
     <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem;">
@@ -30,12 +28,21 @@
 <section style="padding-top: 1.5rem; padding-bottom: 5rem;">
   <div class="wrap">
     {% if products %}
-    <p class="meta" style="margin: 0 0 2rem;">{{ products|length }} book{{ products|length|pluralize }}</p>
+    {% with total=page_obj.paginator.count %}
+    <p class="meta" style="margin: 0 0 2rem;">{{ total }} book{{ total|pluralize }}{% if page_obj.paginator.num_pages > 1 %} · page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}{% endif %}</p>
+    {% endwith %}
     <div class="grid-books">
       {% for p in products %}
       {% include "storefront/_product_card.html" with product=p %}
       {% endfor %}
     </div>
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Pages" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 3rem;">
+      {% if page_obj.has_previous %}<a class="btn" href="{% page_href page_obj.previous_page_number %}" rel="prev">&larr; Previous</a>{% else %}<span></span>{% endif %}
+      <span class="meta">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}<a class="btn" href="{% page_href page_obj.next_page_number %}" rel="next">Next &rarr;</a>{% else %}<span></span>{% endif %}
+    </nav>
+    {% endif %}
     {% else %}
     <p class="lede">Nothing on this shelf yet. Browse the <a href="/products/" style="border-bottom:1px dotted var(--rule);">full catalogue</a>.</p>
     {% endif %}

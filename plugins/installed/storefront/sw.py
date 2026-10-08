@@ -126,4 +126,7 @@ def offline_page(request) -> HttpResponse:
     )
     response = HttpResponse(html, content_type='text/html')
     response['Cache-Control'] = 'public, max-age=86400'
+    # A service-worker fallback, not a page: it carried no robots directive and
+    # answered 200, so `/offline/` was an indexable "You are offline".
+    response['X-Robots-Tag'] = 'noindex'
     return response

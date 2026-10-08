@@ -1,46 +1,26 @@
-{# Shared frame for branded auth pages — sits in front of allauth's stock templates. #}
-{% load static %}<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block head_title %}Account{% endblock %} · Morpheus</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  :root {
-    --bg:#f1f1f1; --surface:#fff; --border:#e3e3e3; --text:#1a1a1a;
-    --text-muted:#6b7280; --primary:#1a1a1a; --primary-fg:#fff; --accent:#303030;
-    --danger:#b3261e; --danger-bg:#fde7e9; --radius:8px;
-  }
-  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
-  .auth-card { background: var(--surface); border-radius: var(--radius); box-shadow: 0 0 0 1px var(--border), 0 1px 0 rgba(0,0,0,.04); padding: 1.75rem; }
-  .input { width:100%; height:2.4rem; padding:0 .85rem; font-size:.9rem; border-radius:6px; border:1px solid var(--border); background:#fff; color:var(--text); }
-  .input:focus { outline:none; border-color:var(--text); box-shadow: 0 0 0 2px rgba(0,0,0,.08); }
-  .btn { display:inline-flex; align-items:center; justify-content:center; gap:.45rem; padding:.6rem 1rem; font-size:.875rem; font-weight:500; border-radius:6px; border:1px solid var(--border); background:#fff; color:var(--text); }
-  .btn:hover { background: #fafafa; }
-  .btn-primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); width:100%; }
-  .btn-primary:hover { background: var(--accent); }
-  .errorlist { color: var(--danger); font-size: .8rem; padding-left: 0; list-style: none; margin: .25rem 0 0; }
-  label { font-size: .85rem; font-weight: 500; }
-  a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
-</style>
-</head>
-<body class="min-h-screen flex items-center justify-center px-4 py-8">
-  <main class="w-full max-w-sm">
-    <a href="/" class="flex items-center justify-center gap-2 text-lg font-semibold tracking-tight mb-6">
-      <span>Morpheus</span>
-    </a>
-    <div class="auth-card">
-      <h1 class="text-lg font-semibold mb-1">{% block heading %}{% endblock %}</h1>
-      {% block subheading %}{% endblock %}
-      <div class="space-y-3 mt-4">
-        {% if messages %}{% for m in messages %}<div class="text-sm" style="color: {% if 'error' in m.tags %}var(--danger){% else %}var(--text-muted){% endif %};">{{ m.message }}</div>{% endfor %}{% endif %}
-        {% block content %}{% endblock %}
-      </div>
+{% extends "storefront/base.html" %}
+{% comment %}
+The frame for sign-in, sign-up, sign-out, password reset and the email-code
+pages — inside the store's own theme. It used to be a standalone page titled
+"… · Morpheus" with the platform's name where the store's logo should be, on
+every store whose theme had not copied each page (only montenegro had).
+
+Children fill `heading`, `subheading` and `auth_form`. The `<title>` and the
+robots directive are the head document's: these routes are private (`/auth/`)
+and the seo app names them for a person ("Sign in", "Create an account").
+Flash messages are the theme's to show (its toasts), not this frame's.
+{% endcomment %}
+
+{% block extra_head %}{% include "account/_auth_styles.html" %}{% endblock %}
+
+{% block content %}
+<section class="auth-page">
+  <div class="auth-card">
+    <h1 class="auth-card__heading">{% block heading %}{% endblock %}</h1>
+    {% block subheading %}{% endblock %}
+    <div class="auth-card__body">
+      {% block auth_form %}{% endblock %}
     </div>
-    <p class="text-center text-xs mt-4" style="color: var(--text-muted);">
-      <a href="/">← back to store</a>
-    </p>
-  </main>
-</body>
-</html>
+  </div>
+</section>
+{% endblock %}

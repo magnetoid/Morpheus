@@ -1,8 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load i18n %}{% load booking_tags %}
 {% comment %}Region experiences — breadcrumb + Tailwind experience grid.{% endcomment %}
-{% block title %}{{ region_label }} experiences — Montenegro Experience{% endblock %}
-{% block extra_head %}{% if region_jsonld %}<script type="application/ld+json">{{ region_jsonld|safe }}</script>{% endif %}{% endblock %}
 {% block content %}
 {% booking_listing_mode as listing_mode %}
 <div class="container mx-auto px-4 py-10 sm:py-14">

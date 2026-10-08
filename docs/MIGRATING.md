@@ -6,6 +6,48 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.80.0 — pages answer for what is on them
+
+Search-engine plumbing, tightened on all three live stores after a crawl found
+soft 404s in the sitemap and 404 pages that named URLs. What an integrator may
+notice:
+
+**Themes that extend `account/base.html`.** The shared sign-in frame now
+extends your theme's `storefront/base.html` instead of being a standalone
+"· Morpheus" page. Its children fill **`auth_form`** (was `content`) besides
+`heading` and `subheading`; `head_title` is no longer rendered — the seo app
+titles these routes. A template that still overrides `content` replaces the
+whole card; rename the block.
+
+**`{% block title %}` is gone from every storefront template.** No theme's
+`storefront/base.html` ever defined it, so none of them rendered. A contract
+theme (`head_contract = 1`) that still has one now fails
+`themes/test_head_contract.py::DeadBlockTests`. Give a page your own name with
+`{% block seo %}{% with seo_title=… %}{{ block.super }}{% endwith %}{% endblock %}`.
+
+**No raw JSON-LD or hreflang in a contract theme.** The same test fails on a
+`<script type="application/ld+json">`, an `hreflang` link or a hardcoded
+`<html lang="en">` in a template that extends `storefront/base.html`. Contribute
+nodes through `SEO_JSONLD_GRAPH` (booking_marketplace's `seo.py` is the model).
+
+**Sitemap sources.** The storefront's own pages (`/products/`, `/vendors/`,
+`/journal/`, `/staff-picks/`, `/about/`, `/contact/`, `/shipping/`,
+`/returns/`) moved from seo's native `iter_sitemap_entries()` to the
+storefront's `SITEMAP_URLS` contribution, and each index is listed only while
+it has content. Read the merged list (`seo.services.sitemaps._merged_sitemap_entries`)
+if you consumed the native one directly. Categories, collections, vendors and
+authors are listed only with active items.
+
+**Head rules.** A 404 carries title, description and `noindex, follow` only. A
+`noindex` page carries no hreflang, prev/next or JSON-LD, and a canonical only
+when the canonical is the page itself. hreflang is built from the canonical, and
+a market alternate requires country codes and an indexable `?market=`. A listing
+with `seo_item_count == 0` (or an empty paginator) is `noindex, follow`.
+
+Grep template: `grep -rn "block head_title\|block title %\|block content\b" templates/account themes/library/*/templates/account`.
+
+---
+
 ## v0.77.0 — the metrics rollup is retired
 
 `observability` no longer ships `MerchantMetric`, the hourly and daily

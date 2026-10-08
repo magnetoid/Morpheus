@@ -8,7 +8,6 @@ exactly: vendor, product, error. POST = same page (no enctype — this view read
 no file), csrf. Status options match Product.STATUS_CHOICES
 (draft/active/archived). Price input mirrors product.price.amount /
 product.price.currency.{% endcomment %}
-{% block title %}{% blocktrans with name=product.name %}Edit {{ name }} — Vendor{% endblocktrans %}{% endblock %}
 
 {% block host_eyebrow %}{% trans "Edit product" %}{% endblock %}
 {% block host_title %}{{ product.name }}{% endblock %}

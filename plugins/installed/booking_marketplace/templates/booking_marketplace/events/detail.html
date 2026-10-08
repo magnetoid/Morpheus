@@ -1,6 +1,4 @@
 {% extends "storefront/base.html" %}
-{% block title %}{{ event.name }}{% endblock %}
-{% block extra_head %}{% if event_jsonld %}<script type="application/ld+json">{{ event_jsonld|safe }}</script>{% endif %}{% endblock %}
 {% block content %}
 <section style="padding:3.5rem 0;">
   <div class="wrap">

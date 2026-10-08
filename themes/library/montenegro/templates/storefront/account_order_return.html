@@ -6,7 +6,6 @@ preserved exactly: order (order_number, items.all → id, product.name/product_n
 quantity). Form posts to itself (method="post"); fields unchanged: qty_<item.id>
 (number 0..quantity), reason (select), note (textarea). The view creates the
 ReturnRequest and redirects to the status page.{% endcomment %}
-{% block title %}{% blocktrans with number=order.order_number %}Return order #{{ number }}{% endblocktrans %} — Montenegro Experience{% endblock %}
 
 {% block content %}
 <section class="container mx-auto px-4 py-8 sm:py-12">

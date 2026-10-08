@@ -5,7 +5,6 @@ reference src/pages/vendor/VendorProducts.tsx. Extends the host shell and fills
 its blocks (NOT block content). Context vars preserved exactly: vendor, products.
 Edit links → /vendor/me/products/<id>/. Product status uses .status /
 .get_status_display (draft/active/archived). Price via |money.{% endcomment %}
-{% block title %}{% trans "Your products — Montenegro Experience" %}{% endblock %}
 
 {% block host_eyebrow %}{% if vendor %}{% trans "Host" %} · {{ vendor.name }}{% else %}{% trans "Host" %}{% endif %}{% endblock %}
 {% block host_title %}{% trans "Products" %}{% endblock %}

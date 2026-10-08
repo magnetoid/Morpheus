@@ -78,3 +78,62 @@ def catalogue_label() -> str:
     from plugins.registry import app_registry
 
     return 'All books' if app_registry.is_active('book_product') else 'All products'
+
+
+def staff_picks_collection():
+    """The collection behind /staff-picks/ — `staff-picks`, else the legacy slug."""
+    from plugins.installed.catalog.models import Collection
+
+    return (
+        Collection.objects.filter(slug='staff-picks', is_active=True).first()
+        or Collection.objects.filter(slug='editors-pick-april', is_active=True).first()
+    )
+
+
+def stocked_category_ids() -> set:
+    """Pks of active categories that list at least one active product.
+
+    The same membership `category_detail` renders — the primary category OR the
+    cross-listing M2M — so the category index, the sitemap and the page agree on
+    which categories have anything on them.
+    """
+    from django.db.models import Q
+
+    from plugins.installed.catalog.models import Category
+
+    return set(
+        Category.objects.filter(is_active=True)
+        .filter(Q(products__status='active') | Q(also_listed_products__status='active'))
+        .values_list('pk', flat=True)
+        .distinct()
+    )
+
+
+def journal_has_entries() -> bool:
+    """Whether /journal/ would list at least one live post."""
+    from plugins.registry import app_registry
+
+    if not app_registry.is_active('cms'):
+        return False
+    try:
+        from plugins.installed.cms.services import list_journal_entries  # noqa: PLC0415
+
+        return bool(list_journal_entries(limit=1))
+    except Exception:  # noqa: BLE001 — a broken cms must not break the sitemap
+        return False
+
+
+def vendor_nouns() -> tuple[str, str]:
+    """`(singular, plural)` — what this store calls its vendors, in the visitor's language.
+
+    The active theme says it (`MorpheusTheme.vendor_noun`): the shell used to
+    hardcode "Publishers", so a travel host's page was "<Host> — Publishers".
+    """
+    from django.utils.translation import gettext
+
+    from themes.registry import theme_registry
+
+    theme = theme_registry.active
+    single = getattr(theme, 'vendor_noun', '') or 'Seller'
+    plural = getattr(theme, 'vendor_noun_plural', '') or 'Sellers'
+    return gettext(single), gettext(plural)

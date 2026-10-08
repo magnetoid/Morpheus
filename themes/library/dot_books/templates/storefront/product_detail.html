@@ -3,11 +3,9 @@
 
 {% block extra_head %}
 {# No <link rel=preload> of the raw original: the hero renders the proxied AVIF/WebP, so that was a 1.7 MB high-priority download nothing displayed. The first slide is eager + fetchpriority=high instead. #}
-{% comment %}hreflang alternates — one per language edition of this work
-(BookProduct.translation_of graph). Only renders when 2+ editions exist.{% endcomment %}
-{% book_language_editions product as lang_alternates %}
-{% for e in lang_alternates %}<link rel="alternate" hreflang="{{ e.language }}" href="{{ request.scheme }}://{{ request.get_host }}/products/{{ e.slug }}/">
-{% endfor %}
+{% comment %}hreflang for a book's language editions is the head document's
+(book_product/head.py) — it was printed here, beside the seo app's, with the
+raw `language` value as the code and no check that the page was indexable.{% endcomment %}
 {% seo_product_jsonld product product_seo_extra %}
 {% if book_jsonld_data %}{% seo_book_jsonld book_jsonld_data %}{% endif %}
 {% if video_seo %}{% seo_video_jsonld video_seo %}{% endif %}

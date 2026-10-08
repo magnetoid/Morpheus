@@ -18,6 +18,8 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 
+from core.utils.i18n import localized_path
+from core.utils.pagination import paginate_or_404
 from plugins.installed.booking_marketplace import seo_jsonld
 from plugins.installed.booking_marketplace.models import REGIONS, BookableService, Place
 from plugins.installed.booking_marketplace.services import (
@@ -54,8 +56,32 @@ def takes_enquiry_only() -> bool:
     return listing_mode() or not payments_ready()
 
 
+def _crumbs(request, *trail):
+    """`breadcrumb_items` for the head's BreadcrumbList: Home, then `(name, path)` pairs.
+
+    The head builds the one BreadcrumbList from these; this app used to emit its
+    own (without the language prefix) in a second JSON-LD block.
+    """
+    items = [{'name': _('Home'), 'url': request.build_absolute_uri(localized_path(request, '/'))}]
+    for name, path in trail:
+        items.append(
+            {'name': name, 'url': request.build_absolute_uri(localized_path(request, path))}
+        )
+    return items
+
+
+def _image_url(obj) -> str:
+    image = getattr(obj, 'image', None)
+    try:
+        return image.url if image else ''
+    except Exception:  # noqa: BLE001 — a row whose file is gone
+        return ''
+
+
 def services_list(request):
     """Browse bookable experiences across all hosts."""
+    from plugins.installed.catalog.models import Category
+
     services = BookableService.objects.filter(
         is_active=True, vendor__is_active=True, listing_kind='experience'
     ).select_related('vendor', 'category')
@@ -71,6 +97,14 @@ def services_list(request):
             | Q(location__icontains=q)
         )
     category = (request.GET.get('category') or '').strip()
+    # The title names a category only when the filter matches a real one: it
+    # used to echo whatever `?category=` held ("<anything> experiences in
+    # Montenegro"), one indexable title per string anyone typed.
+    category_obj = (
+        Category.objects.filter(Q(slug=category) | Q(name__iexact=category)).first()
+        if category
+        else None
+    )
     if category:
         services = services.filter(category__name__icontains=category)
     sort = (request.GET.get('sort') or 'recommended').strip()
@@ -82,9 +116,13 @@ def services_list(request):
         'newest': ('-id',),
     }.get(sort, ('-is_bestseller', '-rating', '-review_count'))
     services = services.order_by(*order)
+    # 142 experiences on one page was a 381 KB document; 48 is four rows of
+    # the grid. A page past the end is a 404, like every other listing.
+    page_obj = paginate_or_404(services, 48, request)
+    label = category_obj.name if category_obj else ''
     seo_title = (
-        _('%(category)s experiences in Montenegro') % {'category': category}
-        if category
+        _('%(category)s experiences in Montenegro') % {'category': label}
+        if label
         else _('Experiences in Montenegro — book with local hosts')
     )
     seo_description = (
@@ -92,10 +130,11 @@ def services_list(request):
             'Book %(category)s experiences in Montenegro with trusted local hosts '
             '— instant confirmation, free cancellation on most tours.'
         )
-        % {'category': category}
-        if category
+        % {'category': label}
+        if label
         else _('Tours, activities and rentals from trusted local hosts across the Adriatic.')
     )
+    services = list(page_obj.object_list)
     return render(
         request,
         'booking_marketplace/list.html',
@@ -108,7 +147,15 @@ def services_list(request):
             'sort': sort,
             'seo_title': seo_title,
             'seo_description': seo_description,
-            'list_jsonld': seo_jsonld.experiences_index_jsonld(services, request=request),
+            'breadcrumb_items': _crumbs(request, (_('Experiences'), '/bookings/')),
+            'jsonld_items': seo_jsonld.listing_items(
+                [(s.name, f'/bookings/{s.slug}/', _image_url(s)) for s in services[:60]],
+                request=request,
+            ),
+            'page_obj': page_obj,
+            # Zero results (an empty region or category filter) is held out of
+            # the index; a `?q=` search is search results whatever it finds.
+            'seo_item_count': page_obj.paginator.count,
         },
     )
 
@@ -123,18 +170,26 @@ def products_list(request):
         products = products.filter(
             Q(name__icontains=q) | Q(short_description__icontains=q) | Q(description__icontains=q)
         )
+    products = list(products.order_by('-is_bestseller', 'name'))
     return render(
         request,
         'booking_marketplace/list.html',
         {
-            'services': products.order_by('-is_bestseller', 'name'),
+            'services': products,
             'listing_mode': listing_mode(),
             'is_product_shop': True,
-            'seo_title': 'Shop Montenegro — local goods',
-            'seo_description': (
+            'q': q,
+            'seo_title': _('Shop Montenegro — local goods'),
+            'seo_description': _(
                 'Locally made Montenegrin products from trusted vendors — shipped '
                 'or ready for pickup across the Adriatic coast.'
             ),
+            'breadcrumb_items': _crumbs(request, (_('Shop'), '/shop/')),
+            'jsonld_items': seo_jsonld.listing_items(
+                [(p.name, f'/bookings/{p.slug}/', _image_url(p)) for p in products[:60]],
+                request=request,
+            ),
+            'seo_item_count': len(products),
         },
     )
 
@@ -185,7 +240,12 @@ def places_index(request):
                 'Kotor, the Budva Riviera, Durmitor, Lake Skadar and the southern Adriatic '
                 'coast.'
             ),
-            'places_jsonld': seo_jsonld.places_index_jsonld(places, request=request),
+            'breadcrumb_items': _crumbs(request, (_('Places'), '/places/')),
+            'jsonld_items': seo_jsonld.listing_items(
+                [(p.name, f'/places/{p.slug}/', _image_url(p)) for p in places],
+                request=request,
+            ),
+            'seo_item_count': len(places),
         },
     )
 
@@ -229,13 +289,19 @@ def place_detail(request, slug):
             'seo_description': _place_meta_description(place),
             'seo_image': place.image.url if place.image else '',
             'seo_og_type': 'article',
-            'place_jsonld': seo_jsonld.place_jsonld(place, request=request),
+            'breadcrumb_items': _crumbs(
+                request, (_('Places'), '/places/'), (place.name, f'/places/{place.slug}/')
+            ),
         },
     )
 
 
 def regions_index(request):
-    """Directory of Montenegro regions with experience counts + a cover image."""
+    """Directory of Montenegro regions with experiences, each with a count + a cover.
+
+    Only regions with something to book: the directory linked every region,
+    including ones whose page said "No experiences here yet".
+    """
     counts = dict(
         BookableService.objects.filter(is_active=True, vendor__is_active=True)
         .exclude(region='')
@@ -250,6 +316,8 @@ def regions_index(request):
             .exclude(image='')
             .first()
         )
+        if not counts.get(key):
+            continue
         regions.append(
             {
                 'key': key,
@@ -263,8 +331,13 @@ def regions_index(request):
         'booking_marketplace/regions/index.html',
         {
             'regions': regions,
-            'seo_title': 'Explore Montenegro by region',
-            'regions_jsonld': seo_jsonld.regions_index_jsonld(regions, request=request),
+            'seo_title': _('Explore Montenegro by region'),
+            'breadcrumb_items': _crumbs(request, (_('Regions'), '/regions/')),
+            'jsonld_items': seo_jsonld.listing_items(
+                [(r['label'], f'/regions/{r["key"]}/', r['image'] or '') for r in regions],
+                request=request,
+            ),
+            'seo_item_count': len(regions),
         },
     )
 
@@ -273,9 +346,11 @@ def region_detail(request, region):
     labels = dict(REGIONS)
     if region not in labels:
         raise Http404('Unknown region')
-    services = BookableService.objects.filter(
-        region=region, is_active=True, vendor__is_active=True
-    ).select_related('vendor', 'category')
+    services = list(
+        BookableService.objects.filter(
+            region=region, is_active=True, vendor__is_active=True
+        ).select_related('vendor', 'category')
+    )
     return render(
         request,
         'booking_marketplace/regions/region.html',
@@ -284,19 +359,29 @@ def region_detail(request, region):
             'region_label': labels[region],
             'services': services,
             'listing_mode': listing_mode(),
-            'seo_title': f'{labels[region]} experiences',
-            'region_jsonld': seo_jsonld.region_jsonld(
-                region, labels[region], services, request=request
+            'seo_title': _('%(region)s experiences') % {'region': labels[region]},
+            'breadcrumb_items': _crumbs(
+                request, (_('Regions'), '/regions/'), (labels[region], f'/regions/{region}/')
             ),
+            'jsonld_items': seo_jsonld.listing_items(
+                [(s.name, f'/bookings/{s.slug}/', _image_url(s)) for s in services[:60]],
+                request=request,
+            ),
+            # A known region with nothing to book renders, but stays out of the
+            # index (and out of the sitemap).
+            'seo_item_count': len(services),
         },
     )
 
 
 def service_detail(request, slug):
+    # A deactivated host's listings are gone from the lists and the sitemap;
+    # the detail page must agree, not keep answering 200 at its old url.
     service = get_object_or_404(
         BookableService.objects.select_related('vendor', 'category'),
         slug=slug,
         is_active=True,
+        vendor__is_active=True,
     )
     is_listing = listing_mode()
 
@@ -327,7 +412,13 @@ def service_detail(request, slug):
         'seo_description': (service.short_description or service.description)[:155],
         'seo_image': service.image.url if service.image else '',
         'seo_og_type': 'product',
-        'seo_jsonld': seo_jsonld.experience_jsonld(service, request=request),
+        'breadcrumb_items': (
+            _crumbs(request, (_('Shop'), '/shop/'), (service.name, _detail_url(service)))
+            if service.listing_kind == 'product'
+            else _crumbs(
+                request, (_('Experiences'), '/bookings/'), (service.name, _detail_url(service))
+            )
+        ),
     }
     return render(request, 'booking_marketplace/detail.html', ctx)
 
@@ -358,7 +449,7 @@ def _similar_services(service, limit=4):
 
 
 def post_review(request, slug):
-    service = get_object_or_404(BookableService, slug=slug, is_active=True)
+    service = get_object_or_404(BookableService, slug=slug, is_active=True, vendor__is_active=True)
     if request.method == 'POST':
         try:
             create_review(
@@ -495,7 +586,12 @@ def events_index(request):
                 'Festival, Boka Night, summer theatre in Budva, Lake Fest and the winter '
                 'ski season.'
             ),
-            'events_jsonld': seo_jsonld.events_index_jsonld(events, request=request),
+            'breadcrumb_items': _crumbs(request, (_('Events'), '/events/')),
+            'jsonld_items': seo_jsonld.listing_items(
+                [(e.name, f'/events/{e.slug}/', _image_url(e)) for e in events],
+                request=request,
+            ),
+            'seo_item_count': len(events),
         },
     )
 
@@ -539,6 +635,8 @@ def event_detail(request, slug):
             )[:300],
             'seo_image': event.image.url if event.image else '',
             'seo_og_type': 'article',
-            'event_jsonld': seo_jsonld.event_jsonld(event, request=request),
+            'breadcrumb_items': _crumbs(
+                request, (_('Events'), '/events/'), (event.name, f'/events/{event.slug}/')
+            ),
         },
     )

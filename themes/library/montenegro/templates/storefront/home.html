@@ -1,7 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load seo %}{% load i18n %}{% load static %}{% load booking_tags %}
 {% block seo %}{% trans "Montenegro Experience — tours, stays & hidden gems" as home_title %}{% trans "Unforgettable experiences along the Adriatic. Hand-picked tours, stays and hidden gems from trusted local hosts across Montenegro." as home_desc %}{% storefront_head title=home_title description=home_desc %}{% endblock %}
-{% block title %}{% seo_title "Montenegro Experience" %}{% endblock %}
 
 {% block content %}
 {% booking_listing_mode as listing_mode %}

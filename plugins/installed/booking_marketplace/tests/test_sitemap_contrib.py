@@ -71,11 +71,25 @@ class ContributeSitemapUrlsTests(TestCase):
         self.assertTrue(any('/hotels/active-stay/' in u for u in urls))
         self.assertFalse(any('inactive-stay' in u for u in urls))
 
-    def test_list_pages_always_included(self):
+    def test_a_list_page_is_included_only_with_something_on_it(self):
+        """An empty list page answers 200 with "nothing here" — a soft 404 the
+        sitemap must not invite crawlers to (it used to list all of them always)."""
+        from plugins.installed.booking_marketplace.models import BookableService, Place
+
+        urls = [e['loc'] for e in contribute_sitemap_urls([])]
+        for path in ('/bookings/', '/places/', '/hotels/', '/shop/', '/regions/'):
+            self.assertFalse(any(u.endswith(path) for u in urls), path)
+
+        BookableService.objects.create(
+            vendor=_vendor(), name='Kayak', slug='kayak-x', region='kotor', is_active=True
+        )
+        Place.objects.create(name='Kotor', slug='kotor-x', region='kotor')
         urls = [e['loc'] for e in contribute_sitemap_urls([])]
         self.assertTrue(any(u.endswith('/bookings/') for u in urls))
         self.assertTrue(any(u.endswith('/places/') for u in urls))
-        self.assertTrue(any(u.endswith('/hotels/') for u in urls))
+        self.assertTrue(any(u.endswith('/regions/') for u in urls))
+        self.assertTrue(any(u.endswith('/regions/kotor/') for u in urls))
+        self.assertFalse(any(u.endswith('/hotels/') for u in urls), 'no stays yet')
 
     def test_preserves_incoming_value(self):
         seed = [{'loc': 'https://example.test/existing/'}]

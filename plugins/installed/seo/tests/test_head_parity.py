@@ -81,6 +81,22 @@ BASELINE_FINDINGS = (
     # store country, so it correctly claims neither.
     'pdp: fabricated free-shipping + return-policy markup (removed; owners contribute it)',
     "pdp: Product.sku published as '' because the page query never selected it (fixed)",
+    # v0.80.0: the profile SHRANK again, deliberately — the noindex rule. A page
+    # that asks not to be indexed no longer carries a graph, hreflang or a
+    # canonical naming another URL: `/cart/` and `/search/` lost their WebSite/
+    # WebPage nodes, and `/products/?q=` — internal search results, which used
+    # to be fully indexable with a canonical claiming to be the catalogue — is
+    # now `noindex, follow` with no canonical at all. Every graph `url`/`@id`
+    # is the canonical, so `?sort=price` describes `/products/`, not itself.
+    'search, cart: graph on a noindex page (removed)',
+    'plp ?q=: indexable search results with a canonical naming /products/ (fixed)',
+    'plp ?sort=: graph url carried the parameter the canonical drops (fixed)',
+    # Also v0.80.0: private pages are titled for a person ("Your cart", not the
+    # Title-Cased route name), and a vendor's breadcrumb is Home › <the theme's
+    # word for vendors> › name — the "Marketplace" hop linked a landing page
+    # written for one bookshop.
+    'cart: title from the route name (now "Your cart")',
+    'vendor: breadcrumb through the bookshop-only Marketplace landing (removed)',
 )
 
 _PRODUCT = 'head-parity-probe'

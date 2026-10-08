@@ -618,6 +618,27 @@ settings (ADR 0007) — never append the shop name in a view; and machine endpoi
 `surface='chrome'`, or `i18n_patterns` publishes a second copy of each per
 language (`/fr/robots.txt`). ADR 0036.
 
+**Landmine — an empty page is a soft 404, and a 404 that names a URL is still a
+page.** A crawl of all three stores (Oct 2026) found every real 404 correct —
+and 181 of montenegro's 520 sitemap urls answering 200 + `index, follow` with
+nothing on them (171 host pages counting catalog Products while the hosts'
+offers live in booking_marketplace; seven empty categories; the empty
+catalogue), every 404 and `noindex` page carrying a canonical, hreflang naming
+itself, `og:url` and a WebPage graph, and hreflang built from the raw request
+(echoing `?utm_source=` beside a canonical that dropped it). The rules, enforced
+in `seo/head/builder.py` + `seo/pages/resolve.py`: an error page gets title,
+description and `noindex, follow` only; a `noindex` page gets no hreflang,
+prev/next or graph, and a canonical only when the canonical IS the page;
+hreflang derives from the canonical; a listing reports `seo_item_count` (or a
+paginator) and an empty one is `noindex, follow`; the sitemap lists a listing
+only when its owner says it has items (`VENDOR_LISTING_COUNTS`, each owner's
+`SITEMAP_URLS`). Same audit: ~190 storefront templates carried a
+`{% block title %}` no base defines — a block no ancestor renders reads as
+working code and does nothing. Guarded by `seo/tests/test_head_rules.py`,
+`test_sitemap_soft404.py`, `themes/test_head_contract.py` (the 404 under every
+theme, no raw ld+json/hreflang, no dead blocks) and the site audit's not-found
+probe.
+
 **Landmine — a machine-readable file is read for what it IMPLIES, and all of
 this shipped as valid syntax.** Three defects on one live store, none visible in
 a browser, none caught by the suite, all found only by crawling 346 URLs.

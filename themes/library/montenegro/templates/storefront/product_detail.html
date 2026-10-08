@@ -13,7 +13,6 @@ All context vars + form actions kept identical to catalog.product_detail:
   pdp_faqs, breadcrumb_items, last_reviewed, out_of_stock, web_story.
 POST: /cart/add/{{ product.id }}/  ·  /back-in-stock/subscribe/{{ product.id }}/
 {% endcomment %}
-{% block title %}{{ product.name }} — Montenegro Experience{% endblock %}
 
 {% block extra_head %}
 {% if hero_image.url %}{% caching_preload_lcp hero_image.url %}{% endif %}

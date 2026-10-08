@@ -130,14 +130,20 @@ def journal_index(request):
 
     No seeded fallback — the shell used to fill an empty journal with dot books'
     own essays, so the herbal and travel stores published a bookshop's writing.
-    """
-    entries = []
-    try:
-        if app_registry.is_active('cms'):
-            from plugins.installed.cms.services import list_journal_entries
 
-            entries = list_journal_entries()
-    except Exception:  # noqa: BLE001
+    Paginated: the index used to stop at the 50 newest posts, so on a store
+    with 150 of them, 100 were reachable only through the sitemap — an archive
+    no reader could browse and no crawler could reach by following links.
+    """
+    from core.utils.pagination import paginate_or_404
+
+    if app_registry.is_active('cms'):
+        from plugins.installed.cms.services import journal_dict, journal_pages
+
+        page_obj = paginate_or_404(journal_pages(), 24, request)
+        entries = [journal_dict(p) for p in page_obj.object_list]
+    else:
+        page_obj = paginate_or_404([], 24, request)
         entries = []
     post_items = [
         {
@@ -160,6 +166,7 @@ def journal_index(request):
         'storefront/journal_index.html',
         {
             'entries': entries,
+            'page_obj': page_obj,
             'post_items': post_items,
             'breadcrumb_items': breadcrumb_items,
             'page_intro': intro['body'],
@@ -179,17 +186,17 @@ def journal_detail(request, slug):
 
     entry = None
     seo_object = None
-    try:
-        if app_registry.is_active('cms'):
-            from plugins.installed.cms.services import get_journal_page, journal_dict
+    # No broad `except → pass` around this any more: a bug in the journal page
+    # was answered as "not found" and logged as a missing URL, never as the
+    # error it was.
+    if app_registry.is_active('cms'):
+        from plugins.installed.cms.services import get_journal_page, journal_dict
 
-            # One Page fetch serves both: the model instance is the SEO object
-            # (resolve_meta layers the per-page SeoMeta override + visual schema
-            # blocks off it) and the render dict is derived from it.
-            seo_object = get_journal_page(slug)
-            entry = journal_dict(seo_object) if seo_object else None
-    except Exception:  # noqa: BLE001
-        pass
+        # One Page fetch serves both: the model instance is the SEO object
+        # (resolve_meta layers the per-page SeoMeta override + visual schema
+        # blocks off it) and the render dict is derived from it.
+        seo_object = get_journal_page(slug)
+        entry = journal_dict(seo_object) if seo_object else None
     if entry is None:
         raise Http404
     breadcrumb_items = [
@@ -230,13 +237,10 @@ def journal_amp(request, slug):
     from morpheus.app.views import Http404  # noqa: PLC0415
 
     entry = None
-    try:
-        if app_registry.is_active('cms'):
-            from plugins.installed.cms.services import get_journal_entry  # noqa: PLC0415
+    if app_registry.is_active('cms'):
+        from plugins.installed.cms.services import get_journal_entry  # noqa: PLC0415
 
-            entry = get_journal_entry(slug)
-    except Exception:  # noqa: BLE001, S110
-        pass
+        entry = get_journal_entry(slug)
     if entry is None:
         raise Http404
 
@@ -270,42 +274,82 @@ def journal_amp(request, slug):
     return response
 
 
-def shipping(request):
-    """Real shipping policy page."""
+def _policy_page(slug: str):
+    """The merchant's own published CMS page for a policy route, if there is one."""
+    if not app_registry.is_active('cms'):
+        return None
+    try:
+        from plugins.installed.cms.services import get_live_page
+
+        return get_live_page(slug)
+    except Exception:  # noqa: BLE001 — a broken cms falls back to the theme's page
+        return None
+
+
+def _policy(request, *, slug: str, template: str, title: str, description: str):
+    """A policy page: the merchant's CMS page when one exists, else the theme's.
+
+    The CMS page used to live at /p/<slug>/ BESIDE this route — dotbooks served
+    two shipping pages under one title, the merchant's text at one url and the
+    theme's at the other. Now this route renders the merchant's page (in the
+    theme's own CMS page design) and cms 301s /p/<slug>/ here (`CMS_PAGE_PATH`).
+    """
+    page = _policy_page(slug)
     breadcrumb_items = [
         {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Shipping', 'url': request.build_absolute_uri(request.path)},
+        {
+            'name': page.title if page else title,
+            'url': request.build_absolute_uri(request.path),
+        },
     ]
+    if page is not None:
+        return render(
+            request,
+            'cms/page.html',
+            {
+                'page': page,
+                'seo_object': page,
+                'seo_title': page.title,
+                'seo_description': page.excerpt or description,
+                'breadcrumb_items': breadcrumb_items,
+            },
+        )
     return render(
         request,
-        'storefront/shipping.html',
+        template,
         {
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'Shipping',
-            # No rates, no thresholds, no service level. Those are claims the
-            # shipping app owns, and the hardcoded line promised "free over
-            # $40" on two stores whose checkout says nothing of the kind —
-            # the same shape as the invented shippingDetails in the offer
-            # claims landmine: a promise checkout will break.
-            'seo_description': 'Delivery options, estimated times and shipping rates.',
+            'seo_title': title,
+            'seo_description': description,
         },
     )
 
 
-def returns(request):
-    """Real returns policy page."""
-    breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Returns', 'url': request.build_absolute_uri(request.path)},
-    ]
-    return render(
+def shipping(request):
+    """Shipping policy — the merchant's CMS page, else the theme's."""
+    # No rates, no thresholds, no service level in the description. Those are
+    # claims the shipping app owns, and the hardcoded line promised "free over
+    # $40" on two stores whose checkout says nothing of the kind — the same
+    # shape as the invented shippingDetails in the offer claims landmine.
+    return _policy(
         request,
-        'storefront/returns.html',
-        {
-            'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'Returns',
-            'seo_description': "Send a book back inside 30 days. Here's how — and what we cover.",
-        },
+        slug='shipping',
+        template='storefront/shipping.html',
+        title='Shipping',
+        description='Delivery options, estimated times and shipping rates.',
+    )
+
+
+def returns(request):
+    """Returns policy — the merchant's CMS page, else the theme's."""
+    # The description used to read "Send a book back inside 30 days" on every
+    # store: an apothecary and a travel marketplace promised a bookshop's terms.
+    return _policy(
+        request,
+        slug='returns',
+        template='storefront/returns.html',
+        title='Returns',
+        description=f'How returns, cancellations and refunds work at {store_name()}.',
     )
 
 
@@ -375,6 +419,23 @@ def do_not_sell(request):
     )
 
 
+def affiliate_terms(request):
+    """The affiliate programme's terms — only while there is a programme.
+
+    Mounted as a bare TemplateView, it answered 200 on every store with the
+    affiliates app switched off: terms for a programme nobody can join.
+    """
+    from morpheus.app.views import Http404
+
+    if not app_registry.is_active('affiliates'):
+        raise Http404
+    return render(
+        request,
+        'storefront/affiliate_terms.html',
+        {'seo_title': 'Affiliate programme terms'},
+    )
+
+
 def coming_soon(request, slug=None):
     """Generic placeholder for footer links that don't have first-class pages yet."""
     title_map = {
@@ -384,10 +445,15 @@ def coming_soon(request, slug=None):
         'returns': 'Returns',
     }
     page_slug = slug or request.path.strip('/').split('/')[-1] or 'coming-soon'
+    title = title_map.get(page_slug, page_slug.replace('-', ' ').title())
     return render(
         request,
         'storefront/coming_soon.html',
         {
-            'page_title': title_map.get(page_slug, page_slug.replace('-', ' ').title()),
+            'page_title': title,
+            'seo_title': title,
+            # "We're putting this page together" was indexable under its own
+            # canonical on every store that links /stockists/.
+            'seo_noindex_reason': 'placeholder page',
         },
     )

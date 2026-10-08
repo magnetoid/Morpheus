@@ -890,7 +890,7 @@ def bulk_meta(request):
 def sitemap_page(request):
     """Sitemap dashboard — single page for every sitemap surface,
     manual entries CRUD, IndexNow status, toggles, and a validate
-    button. No new models; reuses iter_sitemap_entries() +
+    button. No new models; reuses the merged sitemap +
     SitemapEntry + SiteSeoSettings + seo plugin config.
     """
     from decimal import Decimal, InvalidOperation
@@ -899,7 +899,6 @@ def sitemap_page(request):
     from plugins.installed.seo.services import (
         _site_base_url,
         get_or_create_indexnow_key,
-        iter_sitemap_entries,
         ping_indexnow,
         sitemap_counts,
     )
@@ -1018,7 +1017,11 @@ def sitemap_page(request):
             errors = []
             ok_n = 0
             sample = []
-            for i, e in enumerate(iter_sitemap_entries()):
+            # The MERGED list — the storefront's own pages and every contributed
+            # route (bookings, stays) are not in the native generator.
+            from plugins.installed.seo.services.sitemaps import _merged_sitemap_entries
+
+            for i, e in enumerate(_merged_sitemap_entries()):
                 if i >= 25:
                     break
                 sample.append(e['loc'])
@@ -1479,7 +1482,6 @@ def seo_inspector(request):
     # Path + canonical URL.
     from plugins.installed.seo.services import (
         _site_base_url,
-        iter_sitemap_entries,
         resolve_meta,
     )
 
@@ -1543,7 +1545,7 @@ def seo_inspector(request):
         _json.dumps(jsonld_payload, indent=2, ensure_ascii=False) if jsonld_payload else ''
     )
 
-    # Sitemap presence — scan iter_sitemap_entries up to the configured cap.
+    # Sitemap presence — scan the merged sitemap up to the configured cap.
     in_sitemap = False
     try:
         from plugins.installed.seo.services import _sitemap_max_urls
@@ -1552,7 +1554,9 @@ def seo_inspector(request):
     except Exception:  # noqa: BLE001
         cap = 50000
     try:
-        for i, entry in enumerate(iter_sitemap_entries()):
+        from plugins.installed.seo.services.sitemaps import _merged_sitemap_entries
+
+        for i, entry in enumerate(_merged_sitemap_entries()):
             if i >= cap:
                 break
             loc = (entry.get('loc') or '').rstrip('/')

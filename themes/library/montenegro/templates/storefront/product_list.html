@@ -6,7 +6,6 @@ Keeps every context var + GET form/URL from the original storefront PLP view
 search_query, selected_* , page_obj, paginator_base_qs, breadcrumb_items.
 Branches on booking_listing_mode (prices hidden / no cart in listing mode).
 {% endcomment %}
-{% block title %}{% if selected_author %}{% blocktrans with a=selected_author %}Experiences by {{ a }}{% endblocktrans %}{% elif selected_publisher %}{{ selected_publisher }}{% elif selected_category_obj %}{{ selected_category_obj.name }}{% elif search_query %}{% blocktrans with q=search_query %}Search: {{ q }}{% endblocktrans %}{% else %}{% trans "Shop" %}{% endif %} — Montenegro Experience{% endblock %}
 
 {# Clean SEO: bypass the stale catalog seo_object; brand suffix comes from brand_name() = configured store name. #}
 
@@ -132,7 +131,7 @@ Branches on booking_listing_mode (prices hidden / no cart in listing mode).
   {% if page_obj and page_obj.paginator.num_pages > 1 %}
   <nav class="flex flex-wrap items-center justify-center gap-2 mt-12 pt-6 border-t border-border" aria-label="{% trans 'Page navigation' %}">
     {% if page_obj.has_previous %}
-      <a href="?{{ paginator_base_qs }}{% if paginator_base_qs %}&{% endif %}page={{ page_obj.previous_page_number }}" rel="prev" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">
+      <a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>{% trans "Previous" %}
       </a>
     {% else %}
@@ -144,7 +143,7 @@ Branches on booking_listing_mode (prices hidden / no cart in listing mode).
     </span>
 
     {% if page_obj.has_next %}
-      <a href="?{{ paginator_base_qs }}{% if paginator_base_qs %}&{% endif %}page={{ page_obj.next_page_number }}" rel="next" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">
+      <a href="{% page_href page_obj.next_page_number %}" rel="next" class="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">
         {% trans "Next" %}<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
       </a>
     {% else %}

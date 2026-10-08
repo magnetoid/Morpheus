@@ -40,6 +40,9 @@ class MontenegroTheme(MorpheusTheme):
     requires_plugins = ['booking_marketplace']
     # base.html calls `{% storefront_head %}` and emits no SEO markup of its own.
     head_contract = 1
+    # The marketplace's vendors, in this store's words (see MorpheusTheme).
+    vendor_noun = 'Host'
+    vendor_noun_plural = 'Hosts'
     demo_topic = 'travel'
 
     def get_config_schema(self) -> dict:

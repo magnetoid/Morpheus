@@ -125,6 +125,22 @@ def storefront_blocks(context, slot: str) -> str:
 
 
 @register.simple_tag(takes_context=True)
+def page_href(context, number) -> str:
+    """`{% page_href page_obj.previous_page_number %}` — the link to a page of this listing.
+
+    Keeps the listing's other parameters and names page 1 by its clean URL:
+    the hand-built `?page={{ n }}` links sent every "previous" click from page 2
+    through a 301 (`?page=1` redirects to the clean URL).
+    """
+    from core.utils.pagination import page_href as _page_href
+
+    request = context.get('request')
+    if request is None:
+        return '' if str(number) in ('', '1') else f'?page={number}'
+    return _page_href(request, number)
+
+
+@register.simple_tag(takes_context=True)
 def storefront_head(context, title: str = '', description: str = '') -> str:
     """Render the whole SEO head: title, metas, canonical, robots, OG, JSON-LD.
 

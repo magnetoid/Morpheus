@@ -1,10 +1,9 @@
 {% extends "account/base.html" %}
 
-{% block head_title %}Two-factor verification{% endblock %}
 {% block heading %}Enter your authenticator code{% endblock %}
 {% block subheading %}<p class="text-sm" style="color:var(--text-muted);">Open your authenticator app and enter the current 6-digit code. Lost your device? Enter one of your recovery codes instead.</p>{% endblock %}
 
-{% block content %}
+{% block auth_form %}
 <form method="post" class="space-y-3">
   {% csrf_token %}
 
@@ -23,6 +22,6 @@
     <p class="text-xs" style="color: var(--text-muted); margin-top:.35rem;">Codes refresh every 30 seconds.</p>
   </div>
 
-  <button type="submit" class="w-full" style="padding:.6rem; border-radius:6px; background:var(--accent); color:#fff; border:none; font-weight:600; cursor:pointer;">Verify</button>
+  <button type="submit" class="btn btn-primary">Verify</button>
 </form>
 {% endblock %}

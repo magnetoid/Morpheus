@@ -6,7 +6,7 @@ _related_products) and the hybrid-search helpers (_apply_search,
 _metafield_search_ids). They're consumed by other modules in this package.
 """
 
-# ruff: noqa: PLC0415, PLR0912, PLR0915, S110, I001, B904
+# ruff: noqa: PLC0415, PLR0912, PLR0915, S110, I001
 # - PLC0415: inline imports across this file are intentional — every
 #   view-level function imports only what it needs, keeping import time
 #   low and avoiding circular deps with metafields / cms / ai_assistant.
@@ -16,8 +16,6 @@ _metafield_search_ids). They're consumed by other modules in this package.
 # - S110: defensive try/except/pass around optional integrations (videos,
 #   metafields, similar-to) is deliberate — they must never break a PDP.
 # - I001: per-function localised import groups intentionally.
-# - B904: Http404 in author_detail is a deliberate re-raise of an
-#   internal lookup failure; no chained context needed.
 from __future__ import annotations
 
 import contextlib
@@ -43,15 +41,12 @@ def _paginate(qs, per_page, request):
 
     A page that does not exist gets the same answer as any other URL that does
     not exist. Page 1 of an empty listing is still a page (Django's
-    `allow_empty_first_page`), so an empty category renders normally.
+    `allow_empty_first_page`), so an empty category renders normally — and the
+    SEO layer reads the paginator's count to keep it out of the index.
     """
-    from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator  # noqa: PLC0415
-    from django.http import Http404  # noqa: PLC0415
+    from core.utils.pagination import paginate_or_404  # noqa: PLC0415
 
-    try:
-        return Paginator(qs, per_page).page(request.GET.get('page') or 1)
-    except (EmptyPage, PageNotAnInteger):
-        raise Http404('No such page of results.') from None
+    return paginate_or_404(qs, per_page, request)
 
 
 def _surface_reorder(request, surface, products):
@@ -1023,6 +1018,30 @@ def _related_products(current_slug: str, limit: int = 4, *, request=None) -> lis
     return out
 
 
+def language_prefix(request) -> str:
+    """`/sr` while serving the Serbian tree — see `core.utils.i18n`."""
+    from core.utils.i18n import language_prefix as _language_prefix
+
+    return _language_prefix(request)
+
+
+def search_results_path(request) -> str:
+    """Where a keyword search lands, in the visitor's language.
+
+    The catalogue's listing unless an app whose inventory is not the catalogue
+    answers `STOREFRONT_SEARCH_PATH` — on the travel store every search went to
+    an empty product grid while 125 experiences sat at /bookings/.
+    """
+    path = '/products/'
+    try:
+        answer = hook_registry.filter(MorpheusEvents.STOREFRONT_SEARCH_PATH, path, request=request)
+        if isinstance(answer, str) and answer.startswith('/') and not answer.startswith('//'):
+            path = answer
+    except Exception:  # noqa: BLE001 — a broken subscriber falls back to the catalogue
+        pass
+    return f'{language_prefix(request)}{path}'
+
+
 def search(request):
     q = request.GET.get('q', '').strip()
     use_semantic = request.GET.get('mode') == 'semantic'
@@ -1033,15 +1052,15 @@ def search(request):
     # semantic branch below fires once its results are resolved. Firing here —
     # before either search runs — would double-count and lose the count.
 
-    # A plain keyword search bounces to /products/?q=… so it lands on the rich
-    # PLP. A query-less /search/ falls through to render the mood-search landing
-    # (the empty-state panel) instead of bouncing to /products/.
+    # A plain keyword search bounces to the store's results page so it lands on
+    # the rich listing. A query-less /search/ falls through to render the
+    # mood-search landing (the empty-state panel).
     if q and not use_semantic:
         from urllib.parse import urlencode
 
         from django.shortcuts import redirect as _redirect
 
-        return _redirect(f'/products/?{urlencode({"q": q})}')
+        return _redirect(f'{search_results_path(request)}?{urlencode({"q": q})}')
 
     data = (
         internal_graphql(
@@ -1181,18 +1200,24 @@ def category_detail(request, slug):
     from morpheus.app.views import Http404
     from plugins.installed.catalog.models import Category, Product
 
-    category = Category.objects.filter(slug=slug).first()
+    # Active only: a deactivated category answered 200, indexable, under a
+    # canonical naming itself — a page the merchant had taken down.
+    category = Category.objects.filter(slug=slug, is_active=True).first()
     if category is None:
         # Old genre-categories were migrated to /genre/<slug>/ — 301 so indexed
-        # /category/<slug>/ URLs + bookmarks keep their link equity.
+        # /category/<slug>/ URLs + bookmarks keep their link equity. Only to a
+        # genre with books on it: redirecting to an empty shelf is a 301 into a
+        # soft 404.
         from django.shortcuts import redirect  # noqa: PLC0415
 
         try:
             if app_registry.is_active('book_product'):
                 from plugins.installed.book_product.models import Genre  # noqa: PLC0415
 
-                if Genre.objects.filter(slug=slug, is_active=True).exists():
-                    return redirect(f'/genre/{slug}/', permanent=True)
+                if Genre.objects.filter(
+                    slug=slug, is_active=True, books__product__status='active'
+                ).exists():
+                    return redirect(f'{language_prefix(request)}/genre/{slug}/', permanent=True)
         except Exception:  # noqa: BLE001 — book_product may be disabled
             pass
         raise Http404
@@ -1391,27 +1416,23 @@ def author_detail(request, slug):
     """Author landing page — bibliography + optional bio."""
     from morpheus.app.views import Http404
 
-    author_name = ''
-    bibliography = []
     if not app_registry.is_active('book_product'):
         raise Http404
-    try:
-        from plugins.installed.book_product.compat import product_ids_for, resolve_slug
-        from plugins.installed.catalog.models import Product
+    from plugins.installed.book_product.compat import product_ids_for, resolve_slug
+    from plugins.installed.catalog.models import Product
 
-        match = resolve_slug('author', slug)
-        if match is None:
-            raise Http404
-        author_name = match
-        bibliography = list(
-            Product.objects.filter(id__in=product_ids_for('author', match), status='active')
-            .order_by('-is_featured', '-created_at')
-            .prefetch_related('images')
-        )
-    except Http404:
-        raise
-    except Exception:  # noqa: BLE001
+    # No broad `except → Http404` here any more: it turned every bug on this
+    # page into a "not found" — logged as a missing URL, never as the error it
+    # was. A real failure now surfaces (and reaches the error log).
+    match = resolve_slug('author', slug)
+    if match is None:
         raise Http404
+    author_name = match
+    bibliography = list(
+        Product.objects.filter(id__in=product_ids_for('author', match), status='active')
+        .order_by('-is_featured', '-created_at')
+        .prefetch_related('images')
+    )
 
     # Per-visitor merchandising: surface the books this visitor is most likely
     # to buy first (no-op without consent/history/personalisation plugin).
@@ -1431,6 +1452,10 @@ def author_detail(request, slug):
             ).first()
     except Exception:  # noqa: BLE001
         pass
+    # An author whose books are all withdrawn, with no biography either, is a
+    # page with nothing on it: the same answer as an author we never stocked.
+    if not bibliography and bio_page is None:
+        raise Http404
 
     bib_items = [
         {
@@ -1483,18 +1508,18 @@ def author_detail(request, slug):
                 else default_desc
             )[:160],
             'seo_og_type': 'profile',
+            # A biography with no books in print is held out of the index.
+            'seo_item_count': len(bibliography),
         },
     )
 
 
 def staff_picks(request):
     """Curated staff picks — Collection-backed."""
-    from plugins.installed.catalog.models import Collection, Product
+    from plugins.installed.catalog.models import Product
+    from plugins.installed.storefront.services import staff_picks_collection
 
-    collection = (
-        Collection.objects.filter(slug='staff-picks', is_active=True).first()
-        or Collection.objects.filter(slug='editors-pick-april', is_active=True).first()
-    )
+    collection = staff_picks_collection()
     products = []
     if collection is not None:
         products = list(
@@ -1535,6 +1560,9 @@ def staff_picks(request):
             'seo_title': 'Staff picks',
             'seo_description': description[:160],
             'seo_og_type': 'website',
+            # A shelf with nothing on it is held out of the index (and the
+            # sitemap leaves it out — storefront/sitemap.py).
+            'seo_item_count': len(products),
         },
     )
 
@@ -1555,7 +1583,7 @@ def categories(request):
     if app_registry.is_active('book_product'):
         from django.shortcuts import redirect  # noqa: PLC0415
 
-        return redirect('/genres/', permanent=True)
+        return redirect(f'{language_prefix(request)}/genres/', permanent=True)
 
     data = (
         internal_graphql(
@@ -1570,7 +1598,19 @@ def categories(request):
         )
         or {}
     )
-    cats = data.get('categories', [])
+    # Only categories with something on them, here or further down the tree:
+    # the travel store's index linked seven categories that each said "Nothing
+    # here yet" — an index of soft 404s.
+    from plugins.installed.catalog.models import Category  # noqa: PLC0415
+    from plugins.installed.storefront.services import stocked_category_ids  # noqa: PLC0415
+
+    stocked = stocked_category_ids()
+    showing = {
+        c.slug
+        for c in Category.objects.filter(is_active=True, parent__isnull=True)
+        if stocked & set(c.get_descendants(include_self=True).values_list('pk', flat=True))
+    }
+    cats = [c for c in data.get('categories', []) if c.get('slug') in showing]
     # `/category/<slug>/` is the indexed detail route both themes link to; the
     # `?category=` form is the legacy duplicate the SEO audit flagged, so the
     # ItemList must not name a different url than the anchors around it.
@@ -1598,6 +1638,7 @@ def categories(request):
             'seo_title': 'Categories',
             'seo_description': 'Browse every category in the shop.',
             'seo_og_type': 'website',
+            'seo_item_count': len(cats),
         },
     )
 

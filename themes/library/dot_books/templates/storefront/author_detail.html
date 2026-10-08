@@ -1,6 +1,5 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load seo %}{% load caching %}{% load i18n %}
-{% block title %}{{ author_name }} — dot books{% endblock %}
 
 {% block extra_head %}
 {% seo_person_jsonld name=author_name slug=author_slug %}

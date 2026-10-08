@@ -593,6 +593,38 @@ class MorpheusEvents:
     #   every element stays empty. Storefront fires it rather than importing
     #   cms, so a disabled cms degrades to the fallback instead of 500ing.
     STOREFRONT_PAGE_INTRO = 'storefront.page_intro'  # filter
+    # STOREFRONT_VENDOR_SECTIONS — filter, value=list[dict], kwargs:
+    #   vendor=catalog.Vendor, request=HttpRequest. What a vendor offers besides
+    #   catalog Products, for its public page (/vendor/<slug>/). Each subscriber
+    #   appends {'key': str, 'title': str, 'template': '<path>', 'context':
+    #   dict, 'count': int, 'order': int}; the view renders the sections in
+    #   order and adds their counts to the page's total. Without it every host
+    #   on the travel store — whose experiences and stays live in
+    #   booking_marketplace — read "0 listings", and 171 of those pages sat in
+    #   the sitemap as soft 404s. Fired by storefront, answered by the owner.
+    STOREFRONT_VENDOR_SECTIONS = 'storefront.vendor_sections'  # filter
+    # VENDOR_LISTING_COUNTS — filter, value=dict {str(vendor_pk): int}, no
+    #   kwargs. Public listings per active vendor, seeded with the vendor's
+    #   active catalog Products by `catalog.vendors.listing_counts()`; an app
+    #   whose listings are not Products adds its own. Read by the vendor
+    #   directory and the sitemap. A count contributed here MUST be what the
+    #   contributor renders through STOREFRONT_VENDOR_SECTIONS: a vendor that is
+    #   counted but shown empty is the soft 404 this exists to prevent.
+    VENDOR_LISTING_COUNTS = 'catalog.vendor_listing_counts'  # filter
+    # STOREFRONT_SEARCH_PATH — filter, value=str (default '/products/'),
+    #   kwargs: request=HttpRequest|None. Where a keyword search lands. The
+    #   storefront's /search/?q= and the OpenSearch description both go through
+    #   it; an app whose inventory is not the catalogue (booking_marketplace:
+    #   /bookings/) answers, so the travel store stops sending every search to
+    #   an empty product grid.
+    STOREFRONT_SEARCH_PATH = 'storefront.search_path'  # filter
+    # CMS_PAGE_PATH — filter, value=str (the default '/p/<slug>/'), kwargs:
+    #   page=cms.Page. Lets the app that renders a CMS page at a route of its
+    #   own claim it, so the page has ONE url: storefront shows the 'shipping'
+    #   and 'returns' pages at /shipping/ and /returns/, cms 301s /p/<slug>/ to
+    #   the claimed path, and the sitemap lists only that one. A path, never a
+    #   full URL; first subscriber to change the value wins by convention.
+    CMS_PAGE_PATH = 'cms.page_path'  # filter
     # ACTIVITY_FEED — filter, value=list[dict], kwargs: limit=int. The
     #   dashboard-home activity feed. Each plugin subscriber appends ITS OWN
     #   recent-event dicts — {'kind': str, 'icon': str, 'label': str,

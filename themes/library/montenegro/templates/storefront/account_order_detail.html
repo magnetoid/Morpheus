@@ -5,7 +5,6 @@ items + totals + a status timeline. Context vars preserved exactly: order
 (order_number, created_at, state, total, items.all → item.product.name /
 item.product_name / item.quantity / item.unit_price / item.total_price). Footer
 links to the return flow and the orders list, unchanged.{% endcomment %}
-{% block title %}{% trans "Order" %} #{{ order.order_number }} — Montenegro Experience{% endblock %}
 
 {% block content %}
 <section class="container mx-auto px-4 py-8 sm:py-12">

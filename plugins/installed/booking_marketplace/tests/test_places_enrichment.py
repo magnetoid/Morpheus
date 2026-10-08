@@ -51,7 +51,7 @@ class PlaceFieldTests(TestCase):
         self.assertIsNone(p.latitude)
 
 
-class PlaceJsonLdTests(TestCase):
+class PlaceJsonLdTests(MontenegroThemeMixin, TestCase):
     def setUp(self):
         from plugins.installed.booking_marketplace.models import Place
 
@@ -75,48 +75,52 @@ class PlaceJsonLdTests(TestCase):
         )
         self.factory = RequestFactory()
 
-    def test_place_jsonld_graph(self):
-        from plugins.installed.booking_marketplace import seo_jsonld
+    def _graph(self, path: str) -> list[dict]:
+        """Every node of the page's ONE JSON-LD graph (the head document's)."""
+        import re
 
-        req = self.factory.get('/places/kotor-jld/')
-        data = json.loads(seo_jsonld.place_jsonld(self.place, request=req))
-        types = [n['@type'] for n in data['@graph']]
+        from django.core.cache import cache
+
+        cache.clear()
+        body = self.client.get(path).content.decode()
+        blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', body, re.S)
+        self.assertEqual(len(blocks), 1, f'{path}: one graph per page, not {len(blocks)}')
+        return json.loads(blocks[0]).get('@graph', [])
+
+    def test_place_jsonld_graph(self):
+        graph = self._graph('/places/kotor-jld/')
+        types = [n['@type'] for n in graph]
         self.assertIn('TouristDestination', types)
         self.assertIn('FAQPage', types)
         self.assertIn('BreadcrumbList', types)
-        dest = next(n for n in data['@graph'] if n['@type'] == 'TouristDestination')
+        dest = next(n for n in graph if n['@type'] == 'TouristDestination')
         self.assertEqual(dest['name'], 'Kotor')
         self.assertIn('geo', dest)
         self.assertTrue(dest['url'].startswith('http'))
         self.assertEqual(dest['address']['addressCountry'], 'ME')
-        faq = next(n for n in data['@graph'] if n['@type'] == 'FAQPage')
+        faq = next(n for n in graph if n['@type'] == 'FAQPage')
         self.assertEqual(len(faq['mainEntity']), 2)
 
     def test_place_jsonld_omits_faq_and_geo_when_absent(self):
-        from plugins.installed.booking_marketplace import seo_jsonld
         from plugins.installed.booking_marketplace.models import Place
 
-        p = Place.objects.create(name='Bar', slug='bar-jld', region='ulcinj')
-        data = json.loads(seo_jsonld.place_jsonld(p, request=self.factory.get('/places/bar-jld/')))
-        types = [n['@type'] for n in data['@graph']]
+        Place.objects.create(name='Bar', slug='bar-jld', region='ulcinj')
+        graph = self._graph('/places/bar-jld/')
+        types = [n['@type'] for n in graph]
         self.assertIn('TouristDestination', types)
         self.assertNotIn('FAQPage', types)
-        dest = next(n for n in data['@graph'] if n['@type'] == 'TouristDestination')
+        dest = next(n for n in graph if n['@type'] == 'TouristDestination')
         self.assertNotIn('geo', dest)
 
     def test_index_jsonld_item_list(self):
-        from plugins.installed.booking_marketplace import seo_jsonld
         from plugins.installed.booking_marketplace.models import Place
 
-        p2 = Place.objects.create(name='Budva', slug='budva-jld', region='budva')
-        data = json.loads(
-            seo_jsonld.places_index_jsonld([self.place, p2], request=self.factory.get('/places/'))
-        )
-        types = [n['@type'] for n in data['@graph']]
-        self.assertIn('ItemList', types)
-        self.assertIn('BreadcrumbList', types)
-        il = next(n for n in data['@graph'] if n['@type'] == 'ItemList')
-        self.assertEqual(len(il['itemListElement']), 2)
+        Place.objects.create(name='Budva', slug='budva-jld', region='budva')
+        graph = self._graph('/places/')
+        webpage = next(n for n in graph if n.get('@id', '').endswith('#webpage'))
+        self.assertEqual(webpage['@type'], 'CollectionPage')
+        self.assertEqual(len(webpage['mainEntity']['itemListElement']), 2)
+        self.assertIn('BreadcrumbList', [n['@type'] for n in graph])
 
 
 class PlaceViewTests(MontenegroThemeMixin, TestCase):

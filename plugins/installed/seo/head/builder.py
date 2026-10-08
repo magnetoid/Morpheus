@@ -8,22 +8,32 @@ Graph + Twitter cards, search-engine verification metas, hreflang alternates
 (per language AND per market), pagination links, the LLM discovery hint, and one
 JSON-LD `@graph`.
 
-Two rules run through all of it:
+Four rules run through all of it:
 
 * **Every entry is keyed**, so the theme's fallback title is *replaced*, not
   joined by a second `<title>`.
 * **Nothing here may raise.** A head that fails must degrade to the seeded
   fallback, never take down a product page — so each section is guarded
   independently rather than the whole build sharing one try/except.
+* **An error page is not a page.** A 404 gets its title, description and
+  `noindex, follow` — no canonical, alternates, Open Graph or graph. Each of
+  those names a URL or describes an entity, and the live 404s on every store
+  named the dead URL five different ways under a correct status code.
+* **A noindex page never names another URL.** No hreflang (an alternate must be
+  an indexable canonical), no prev/next, no graph, and a canonical only when it
+  is the page itself. `noindex` beside a canonical naming a different URL is two
+  claims about two URLs, and the noindex can travel to the target.
 """
 
 from __future__ import annotations
 
 import logging
 from contextlib import suppress
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from plugins.installed.seo.head.canonical import canonical_for, paginated_links
 from plugins.installed.seo.pages import resolve_page
+from plugins.installed.seo.pages.resolve import is_error_page
 from plugins.installed.seo.pages.types import KIND_PRODUCT, SeoPage
 
 logger = logging.getLogger('morpheus.seo')
@@ -63,12 +73,18 @@ def build_document(doc, *, request=None, context=None):
     # should still get a title and a canonical, and a product whose price field
     # was deferred by the view must not cost the page its whole head.
     _section(_apply_title_and_description, doc, page, meta)
+    if is_error_page(page):
+        _section(_apply_error_head, doc, page)
+        return doc
     _section(_apply_canonical_and_robots, doc, page, meta, request)
     _section(_apply_social, doc, page, meta)
     _section(_apply_site_links, doc, request)
-    _section(_apply_alternates, doc, page, request)
-    _section(_apply_pagination, doc, page, request)
-    _section(_apply_graph, doc, page, request)
+    # Decided by `_apply_canonical_and_robots` above (blocked parameters, the
+    # merchant's robots, thin content), so the gate reads it afterwards.
+    if not page.noindex:
+        _section(_apply_alternates, doc, page, request)
+        _section(_apply_pagination, doc, page, request)
+        _section(_apply_graph, doc, page, request)
     return doc
 
 
@@ -169,6 +185,30 @@ def _apply_canonical_and_robots(doc, page: SeoPage, meta, request) -> None:
     doc.meta(robots, name='robots', source='seo')
     if page.reason:
         doc.note(f'noindex: {page.reason}')
+    if page.noindex and not _is_self(doc.link_href('canonical'), request):
+        # `/products/?q=x` canonicalised to `/products/` — "this search result
+        # is the catalogue" beside "do not index me". Say nothing instead.
+        doc.remove('link:canonical')
+
+
+def _apply_error_head(doc, page: SeoPage) -> None:
+    """Robots for a page that does not exist — the only other thing it says."""
+    doc.meta(page.robots(), name='robots', source='seo')
+    doc.note(f'noindex: {page.reason or "error page"}')
+
+
+def _is_self(canonical: str, request) -> bool:
+    """Does `canonical` name exactly the URL being rendered (same path, same query)?"""
+    if not canonical or request is None:
+        return False
+    try:
+        current = urlsplit(request.build_absolute_uri())
+    except Exception:  # noqa: BLE001
+        return False
+    target = urlsplit(canonical)
+    return (target.path or '/') == (current.path or '/') and sorted(
+        parse_qsl(target.query, keep_blank_values=True)
+    ) == sorted(parse_qsl(current.query, keep_blank_values=True))
 
 
 def _apply_thin_content_rule(page: SeoPage, meta) -> None:
@@ -345,16 +385,40 @@ def _apply_alternates(doc, page: SeoPage, request) -> None:
     market alternate is the same content priced for another country. Both are
     emitted with a single `x-default`, which names the default-language url for
     the whole cluster — see `_x_default_href`.
+
+    Every href is derived from the CANONICAL, never from the request. Built from
+    `build_absolute_uri()`, each alternate echoed whatever the visitor arrived
+    with — `?utm_source=`, `?fbclid=` — while the canonical beside it had already
+    dropped them, and Google ignores an alternate that is not a canonical URL. A
+    page canonicalised onto another path is a duplicate and declares nothing.
     """
-    languages = _language_alternates(request)
-    markets = _market_alternates(request)
+    canonical = doc.link_href('canonical')
+    if not canonical or not _same_path(canonical, request):
+        return
+    languages = _language_alternates(canonical)
+    markets = _market_alternates(canonical)
     for code, href in (*languages, *markets):
         doc.link('alternate', href, hreflang=code, source='seo')
     if not (languages or markets):
         return
-    default = _x_default_href(languages, doc.link_href('canonical'))
+    default = _x_default_href(languages, _without_market(canonical))
     if default:
         doc.link('alternate', default, hreflang='x-default', source='seo')
+
+
+def _same_path(url: str, request) -> bool:
+    if request is None:
+        return False
+    try:
+        return (urlsplit(url).path or '/') == (urlsplit(request.build_absolute_uri()).path or '/')
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _without_market(url: str) -> str:
+    parts = urlsplit(url)
+    rest = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != 'market']
+    return urlunsplit(parts._replace(query=urlencode(rest)))
 
 
 def _x_default_href(languages: list[tuple[str, str]], canonical: str) -> str:
@@ -387,7 +451,9 @@ def _apply_pagination(doc, page: SeoPage, request) -> None:
 def _apply_graph(doc, page: SeoPage, request) -> None:
     from plugins.installed.seo.schema import build_graph
 
-    graph = build_graph(page, request=request)
+    # The graph describes the canonical URL: built from the request, the
+    # WebPage `@id` carried `?utm_source=` on every campaign landing.
+    graph = build_graph(page, request=request, url=doc.link_href('canonical'))
     if graph:
         doc.jsonld(graph, source='seo')
 
@@ -418,7 +484,7 @@ def _store_description() -> str:
         return ''
 
 
-def _language_alternates(request) -> list[tuple[str, str]]:
+def _language_alternates(canonical: str) -> list[tuple[str, str]]:
     """One alternate per configured language, using the i18n URL prefix.
 
     Only meaningful once the store actually serves more than one language —
@@ -429,26 +495,35 @@ def _language_alternates(request) -> list[tuple[str, str]]:
     from django.urls import translate_url
 
     languages = [code for code, _ in (getattr(settings, 'LANGUAGES', None) or [])]
-    if request is None or len(languages) < 2:
-        return []
-    try:
-        current = request.build_absolute_uri()
-    except Exception:  # noqa: BLE001
+    if not canonical or len(languages) < 2:
         return []
     out: list[tuple[str, str]] = []
+    seen: set[str] = set()
     for code in languages:
         # An untranslatable URL (a route outside i18n_patterns) is not fatal —
-        # it simply has no alternate in that language.
+        # it simply has no alternate in that language. `translate_url` hands
+        # back its input when it cannot translate, so an href already claimed
+        # by another language is that failure, not a second alternate.
         with suppress(Exception):
-            out.append((code, translate_url(current, code)))
-    return out
+            href = translate_url(canonical, code)
+            if href not in seen:
+                seen.add(href)
+                out.append((code, href))
+    return out if len(out) > 1 else []
 
 
-def _market_alternates(request) -> list[tuple[str, str]]:
-    """`?market=<code>` alternates, one per (locale, country) a market covers."""
-    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+def _market_alternates(canonical: str) -> list[tuple[str, str]]:
+    """`?market=<code>` alternates, one per (locale, country) a market covers.
 
-    if request is None:
+    Two conditions, each of which a live store failed. The market must name its
+    countries: hreflang for a market is a REGION (`en-DE`), and a bare `en`
+    collides with the language axis — dotbooks' one market (locale en, no
+    countries) made every page say "the English version is `/?market=eu`". And
+    `?market=` must be an indexable parameter: if the index rules consolidate it,
+    `/?market=eu` canonicalises to `/` and the alternate names a URL that is
+    not a page. A default market lives at the clean URL.
+    """
+    if not canonical:
         return []
     try:
         from plugins.installed.markets.models import Market
@@ -458,24 +533,34 @@ def _market_alternates(request) -> list[tuple[str, str]]:
         return []
     if not markets:
         return []
-    try:
-        parts = urlsplit(request.build_absolute_uri())
-    except Exception:  # noqa: BLE001
-        return []
+    parts = urlsplit(canonical)
     base = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != 'market']
+    clean = urlunsplit(parts._replace(query=urlencode(base)))
 
     out: list[tuple[str, str]] = []
     for market in markets:
         locale = (getattr(market, 'default_locale', '') or '').strip()
-        if not locale:
-            continue
-        href = urlunsplit(parts._replace(query=urlencode([*base, ('market', market.code)])))
         countries = [str(c).strip().upper() for c in (market.country_codes or []) if c]
-        if countries:
-            out.extend((f'{locale}-{country}', href) for country in countries)
+        if not locale or not countries:
+            continue
+        if getattr(market, 'is_default', False):
+            href = clean
         else:
-            out.append((locale, href))
-    return out
+            query = urlencode([*base, ('market', market.code)])
+            if not _market_is_indexable(query, market.code):
+                continue
+            href = urlunsplit(parts._replace(query=query))
+        out.extend((f'{locale}-{country}', href) for country in countries)
+    # A cluster of one is not a cluster: only the clean URL means no alternates.
+    return out if any(href != clean for _, href in out) else []
+
+
+def _market_is_indexable(query: str, code: str) -> bool:
+    from plugins.installed.seo.rules import decide_params
+
+    decision = decide_params(query)
+    kept = parse_qsl(decision.query, keep_blank_values=True)
+    return ('market', code) in kept and 'market' not in decision.noindex_params
 
 
 def _product_price(product) -> tuple[str, str] | None:

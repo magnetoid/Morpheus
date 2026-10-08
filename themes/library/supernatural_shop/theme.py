@@ -26,6 +26,9 @@ class SupernaturalShopTheme(MorpheusTheme):
     author = 'Morph Team'
     supports_plugins = ['storefront', 'catalog', 'orders']
     head_contract = 1
+    # The marketplace's vendors, in this store's words (see MorpheusTheme).
+    vendor_noun = 'Maker'
+    vendor_noun_plural = 'Makers'
     demo_topic = 'general_store'
     preview_image = 'preview.png'
 

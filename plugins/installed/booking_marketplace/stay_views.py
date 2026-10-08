@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 
+from core.utils.pagination import paginate_or_404
 from plugins.installed.booking_marketplace import seo_jsonld, stay_content, stays
 from plugins.installed.booking_marketplace.models import (
     AMENITY_LABELS,
@@ -17,7 +18,45 @@ from plugins.installed.booking_marketplace.models import (
     RoomType,
 )
 from plugins.installed.booking_marketplace.services import BookingError
-from plugins.installed.booking_marketplace.views import listing_mode, takes_enquiry_only
+from plugins.installed.booking_marketplace.views import (
+    _crumbs,
+    _image_url,
+    listing_mode,
+    takes_enquiry_only,
+)
+
+
+def _planning_questions() -> list[dict]:
+    """The "Planning your Montenegro stay" questions the hotels index shows.
+
+    One list for the page AND its FAQPage node: the template used to hardcode
+    the visible answers while a separate hand-written JSON-LD block published
+    differently worded questions — markup that did not match the page.
+    """
+    return [
+        {
+            'q': _('Which area is best for a first visit?'),
+            'a': _(
+                'The Bay of Kotor combines historic towns, water access and easy day trips. '
+                'Budva suits beach-focused stays, while Durmitor is the strongest choice for '
+                'hiking.'
+            ),
+        },
+        {
+            'q': _('When should I book?'),
+            'a': _(
+                'Reserve early for July and August. The shoulder months of May, June, '
+                'September and October often provide better value and fewer crowds.'
+            ),
+        },
+        {
+            'q': _('Do I need a car?'),
+            'a': _(
+                'Not always on the coast, but a car makes mountain, lake and rural '
+                'itineraries easier. Local tours and transfers are practical alternatives.'
+            ),
+        },
+    ]
 
 
 def _amenities(slugs):
@@ -45,36 +84,51 @@ def _policies(policies):
 
 
 def stays_index(request):
-    qs = Property.objects.filter(is_active=True)
+    qs = Property.objects.filter(is_active=True, vendor__is_active=True)
     region = request.GET.get('region') or ''
     ptype = request.GET.get('type') or ''
     if region:
         qs = qs.filter(region=region)
     if ptype:
         qs = qs.filter(property_type=ptype)
+    # 100 hotels on one page was a 167 KB document; a page past the end is a 404.
+    page_obj = paginate_or_404(qs.order_by('name'), 48, request)
+    properties = list(page_obj.object_list)
     return render(
         request,
         'booking_marketplace/stays/index.html',
         {
-            'properties': qs,
+            'properties': properties,
+            'page_obj': page_obj,
             'listing_mode': listing_mode(),
             'active_region': region,
             'active_type': ptype,
             'region_choices': REGIONS,
             'type_choices': PROPERTY_TYPES,
+            'page_faqs': _planning_questions(),
             'seo_title': _('Hotels & stays in Montenegro'),
             'seo_description': _(
                 'Hand-picked hotels, apartments and guesthouses across Montenegro — from the '
                 'Bay of Kotor to the Adriatic coast and the northern mountains. Book your stay.'
             ),
-            'stays_jsonld': seo_jsonld.stays_index_jsonld(qs, request=request),
+            'breadcrumb_items': _crumbs(request, (_('Hotels'), '/hotels/')),
+            'jsonld_items': seo_jsonld.listing_items(
+                [(p.name, f'/hotels/{p.slug}/', _image_url(p)) for p in properties[:60]],
+                request=request,
+            ),
+            'seo_item_count': page_obj.paginator.count,
         },
     )
 
 
 def stay_detail(request, slug):
+    # A deactivated host's hotels are gone from the lists and the sitemap; the
+    # page must agree, not keep answering 200.
     prop = get_object_or_404(
-        Property.objects.prefetch_related('room_types', 'images'), slug=slug, is_active=True
+        Property.objects.prefetch_related('room_types', 'images'),
+        slug=slug,
+        is_active=True,
+        vendor__is_active=True,
     )
     nearby = stays.nearby_places(prop)
     return render(
@@ -99,9 +153,10 @@ def stay_detail(request, slug):
             'seo_description': (prop.short_description or prop.description)[:155],
             'seo_image': prop.image.url if prop.image else '',
             'seo_og_type': 'product',
-            # LodgingBusiness/Hotel JSON-LD (prices gated to non-listing mode).
-            'seo_jsonld': seo_jsonld.property_jsonld(
-                prop, request=request, with_prices=not listing_mode()
+            # The Hotel node joins the head's graph through SEO_JSONLD_GRAPH
+            # (booking_marketplace/seo.py), prices gated to non-listing mode.
+            'breadcrumb_items': _crumbs(
+                request, (_('Hotels'), '/hotels/'), (prop.name, f'/hotels/{prop.slug}/')
             ),
         },
     )
@@ -109,7 +164,12 @@ def stay_detail(request, slug):
 
 def stay_quote(request, slug):
     room_type = get_object_or_404(
-        RoomType, pk=request.GET.get('room_type'), property__slug=slug, is_active=True
+        RoomType,
+        pk=request.GET.get('room_type'),
+        property__slug=slug,
+        property__is_active=True,
+        property__vendor__is_active=True,
+        is_active=True,
     )
     try:
         q = stays.quote_stay(
@@ -138,7 +198,7 @@ def stay_quote(request, slug):
 
 
 def stay_book(request, slug):
-    prop = get_object_or_404(Property, slug=slug, is_active=True)
+    prop = get_object_or_404(Property, slug=slug, is_active=True, vendor__is_active=True)
     if request.method != 'POST':
         return redirect('booking_marketplace:stay_detail', slug=slug)
     room_type = get_object_or_404(

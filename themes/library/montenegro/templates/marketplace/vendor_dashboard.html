@@ -8,7 +8,6 @@ open_orders_count, active_products_count, month_sales. `accrued` and
 `month_sales` arrive as plain decimal strings (€ prefixed here); vendor_order
 gross/net and payout amount are Money. Order links → /vendor/me/orders/<id>/.
 Status via .get_status_display.{% endcomment %}
-{% block title %}{% trans "Vendor dashboard — Montenegro Experience" %}{% endblock %}
 
 {% block host_eyebrow %}{% trans "Host" %}{% if vendor and vendor.name %} · {{ vendor.name }}{% endif %}{% endblock %}
 {% block host_title %}{% trans "Dashboard" %}{% endblock %}

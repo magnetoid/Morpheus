@@ -1,10 +1,9 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
-{% block title %}{% trans "Hotels in Montenegro" %} — Montenegro Experience{% endblock %}
-{% block extra_head %}
-{% if stays_jsonld %}<script type="application/ld+json">{{ stays_jsonld|safe }}</script>{% endif %}
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Which part of Montenegro is best for a first visit?","acceptedAnswer":{"@type":"Answer","text":"The Bay of Kotor is ideal for historic towns and scenery, Budva for beaches and nightlife, and Durmitor for hiking and mountain landscapes."}},{"@type":"Question","name":"When should I book a hotel in Montenegro?","acceptedAnswer":{"@type":"Answer","text":"For July and August, book several months ahead. May, June, September and October usually offer better value, lighter crowds and comfortable weather."}},{"@type":"Question","name":"Do I need a car to explore Montenegro?","acceptedAnswer":{"@type":"Answer","text":"A car is useful for mountain and rural areas, while Kotor, Budva and other coastal towns can also be explored with buses, transfers and local tours."}}]}</script>
-{% endblock %}
+{% comment %}Head (title, ItemList, breadcrumbs) and the FAQPage node come from the
+head document; the planning questions below are the view's `page_faqs`, so the
+page and its markup say the same thing. The hand-written FAQPage this template
+used to carry asked differently worded questions than the ones shown.{% endcomment %}
 {% block content %}
 {% booking_listing_mode as listing_mode %}
 <div class="container mx-auto px-4 py-8">
@@ -37,12 +36,20 @@
     {% for p in properties %}{% include "booking_marketplace/stays/_hotel_card.html" %}
     {% empty %}<p class="text-muted-foreground col-span-full">{% trans "No hotels match your filters yet." %}</p>{% endfor %}
   </div>
+  {% if page_obj.has_other_pages %}
+  <nav aria-label="{% trans 'Pages' %}" class="flex flex-wrap items-center justify-center gap-2 mt-10 pt-6 border-t border-border">
+    {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Previous" %}</a>{% endif %}
+    <span class="px-4 text-sm text-muted-foreground">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+    {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Next" %}</a>{% endif %}
+  </nav>
+  {% endif %}
 
+  {% if page_faqs %}
   <section class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-5" aria-labelledby="hotel-faq-heading">
     <h2 id="hotel-faq-heading" class="md:col-span-3 text-2xl font-semibold text-foreground">{% trans "Planning your Montenegro stay" %}</h2>
-    <article class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-2">{% trans "Which area is best for a first visit?" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "The Bay of Kotor combines historic towns, water access and easy day trips. Budva suits beach-focused stays, while Durmitor is the strongest choice for hiking." %}</p></article>
-    <article class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-2">{% trans "When should I book?" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "Reserve early for July and August. The shoulder months of May, June, September and October often provide better value and fewer crowds." %}</p></article>
-    <article class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-2">{% trans "Do I need a car?" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "Not always on the coast, but a car makes mountain, lake and rural itineraries easier. Local tours and transfers are practical alternatives." %}</p></article>
+    {% for f in page_faqs %}<article class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-2">{{ f.q }}</h3><p class="text-sm text-muted-foreground leading-6">{{ f.a }}</p></article>
+    {% endfor %}
   </section>
+  {% endif %}
 </div>
 {% endblock %}

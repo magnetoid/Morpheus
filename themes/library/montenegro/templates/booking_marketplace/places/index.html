@@ -1,10 +1,8 @@
 {% extends "storefront/base.html" %}
 {% load i18n %}
 {% comment %}Places index — gradient hero + type filter + region-grouped card
-sections (richer cards with type badge + good_for pills). CollectionPage/ItemList
-JSON-LD in extra_head.{% endcomment %}
-{% block title %}Places to visit in Montenegro — Montenegro Experience{% endblock %}
-{% block extra_head %}{% if places_jsonld %}<script type="application/ld+json">{{ places_jsonld|safe }}</script>{% endif %}{% endblock %}
+sections (richer cards with type badge + good_for pills). The CollectionPage
+ItemList is the head document's (the view's `jsonld_items`).{% endcomment %}
 {% block content %}
 <section class="relative bg-gradient-to-br from-primary/10 via-background to-background py-16 md:py-24">
   <div class="container mx-auto px-4 text-center">

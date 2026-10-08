@@ -6,7 +6,6 @@ preserved exactly: returns (ReturnRequest list: id, rma_number, order.order_numb
 created_at, get_reason_display, state, get_state_display). Links unchanged:
 /account/returns/<id>/ and /account/orders/. ReturnRequest uses .state (its own
 model field) — distinct from Order.status.{% endcomment %}
-{% block title %}{% trans "Returns" %} — Montenegro Experience{% endblock %}
 
 {% block content %}
 <section class="container mx-auto px-4 py-8 sm:py-12">

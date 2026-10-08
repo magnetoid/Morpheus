@@ -256,10 +256,13 @@ which is exactly what this theme was relying on before it adopted the contract.{
                   <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8"/></svg>
                 </div>
                 <div class="flex-1">
-                  <h4 class="text-base font-semibold text-foreground mb-1">{% trans "Give the gift of experience" %}</h4>
-                  <p class="text-sm text-muted-foreground mb-4">{% trans "A Montenegro Experience gift card — for the traveller who has everything." %}</p>
-                  <a href="/products/" class="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-                    {% trans "Shop gift cards" %}
+                  {% comment %}This card sold gift cards and linked the catalogue — which has no
+                  gift card (or any active product) on this store, so it landed on an empty
+                  grid. It points at the local goods that are actually for sale.{% endcomment %}
+                  <h4 class="text-base font-semibold text-foreground mb-1">{% trans "Bring Montenegro home" %}</h4>
+                  <p class="text-sm text-muted-foreground mb-4">{% trans "Local wine, olive oil, honey and crafts from the makers you meet." %}</p>
+                  <a href="{% url 'booking_marketplace:shop' %}" class="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+                    {% trans "Shop local goods" %}
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                   </a>
                 </div>
@@ -496,7 +499,7 @@ which is exactly what this theme was relying on before it adopted the contract.{
           <li><a href="/events/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Events calendar" %}</a></li>
           <li><a href="/journal/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Blog" %}</a></li>
           <li><a href="/about/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "About us" %}</a></li>
-          <li><a href="/products/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Gift cards" %}</a></li>
+          <li><a href="{% url 'booking_marketplace:shop' %}" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Local goods" %}</a></li>
         </ul>
       </div>
     </div>

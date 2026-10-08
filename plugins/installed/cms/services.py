@@ -194,16 +194,20 @@ def journal_dict(page) -> dict:
     }
 
 
-def list_journal_entries(*, limit: int = 50) -> list[dict]:
-    """Published CMS pages tagged with metadata.category == 'journal'."""
+def journal_pages():
+    """Live journal posts, newest first — a queryset, so a listing can paginate it."""
     from plugins.installed.cms.models import Page
 
-    qs = (
+    return (
         Page.objects.filter(state='published', metadata__category='journal')
         .exclude(publish_at__gt=timezone.now())
-        .order_by('-publish_at', '-created_at')[:limit]
+        .order_by('-publish_at', '-created_at')
     )
-    return [journal_dict(p) for p in qs]
+
+
+def list_journal_entries(*, limit: int = 50) -> list[dict]:
+    """Published CMS pages tagged with metadata.category == 'journal'."""
+    return [journal_dict(p) for p in journal_pages()[:limit]]
 
 
 def get_journal_page(slug: str):

@@ -20,10 +20,17 @@ class StorefrontPlugin(Plugin):
         # (core/emails/handlers.on_order_placed). The storefront used to subscribe
         # ORDER_PLACED to send a second, duplicate copy — removed.
         self.register_hook(MorpheusEvents.SEO_ROBOTS_RULES, self.on_robots_rules)
-        # Same inversion for the one sitemap entry seo cannot decide alone.
-        from plugins.installed.storefront.sitemap import contribute_sitemap_urls
+        # The storefront's own index/content pages, listed only while they have
+        # something on them — seo cannot know that, the owner can.
+        from plugins.installed.storefront.sitemap import (
+            claim_cms_page_path,
+            contribute_sitemap_urls,
+        )
 
         self.register_hook(MorpheusEvents.SITEMAP_URLS, contribute_sitemap_urls, priority=50)
+        # The CMS policy pages this app renders at /shipping/ and /returns/:
+        # one url per page (cms 301s /p/<slug>/ here, the sitemap lists these).
+        self.register_hook(MorpheusEvents.CMS_PAGE_PATH, claim_cms_page_path, priority=50)
         self.register_hook(MorpheusEvents.HEALTH_CHECKS, self.on_health_checks, priority=40)
 
     def on_health_checks(self, value, **kwargs):

@@ -1,15 +1,12 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load seo %}{% load caching %}{% load i18n %}{% load booking_tags %}
-{% comment %}Public vendor storefront — Adriatic Tailwind 1:1 port of pages/VendorProfile.tsx.
-Header (logo/monogram + name + location + stats + bio) then a product grid.
-Context preserved: vendor, products, product_count, category_count, books_sold,
-collection_items, intro_text, breadcrumb_items. Branches on listing_mode for pricing.{% endcomment %}
-{% block title %}{{ vendor.name }} — Montenegro Experience{% endblock %}
-
-{% block extra_head %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
-{% if collection_items %}{% seo_collection_jsonld items=collection_items name=vendor.name description=intro_text|truncatechars:200 %}{% endif %}
-{% endblock %}
+{% comment %}Public host page — Adriatic Tailwind 1:1 port of pages/VendorProfile.tsx.
+Header (logo/monogram + name + stats + bio), then everything the host offers:
+the sections other apps contribute (`vendor_sections` — a host's experiences,
+stays and local goods from booking_marketplace) and any catalog products.
+`listing_count` is the total across all of them; a host with nothing to show is
+the empty state below AND held out of the index by the head document.
+Title, breadcrumbs and the ItemList are the head's (no tags of our own).{% endcomment %}
 
 {% block content %}
 {% booking_listing_mode as listing_mode %}
@@ -44,7 +41,7 @@ collection_items, intro_text, breadcrumb_items. Branches on listing_mode for pri
         {% endif %}
       </div>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground tabular-nums">
-        <span>{% blocktrans count counter=product_count %}{{ counter }} listing{% plural %}{{ counter }} listings{% endblocktrans %}</span>
+        <span>{% blocktrans count counter=listing_count %}{{ counter }} listing{% plural %}{{ counter }} listings{% endblocktrans %}</span>
         {% if category_count %}<span>{% blocktrans count counter=category_count %}{{ counter }} category{% plural %}{{ counter }} categories{% endblocktrans %}</span>{% endif %}
         {% if books_sold %}<span>{% blocktrans with sold=books_sold %}{{ sold }}+ sold{% endblocktrans %}</span>{% endif %}
         {% if vendor.created_at %}<span>{% blocktrans with since=vendor.created_at|date:"F Y" %}Host since {{ since }}{% endblocktrans %}</span>{% endif %}
@@ -57,7 +54,9 @@ collection_items, intro_text, breadcrumb_items. Branches on listing_mode for pri
   <div class="mb-8 rounded-xl border px-4 py-3 text-sm {% if m.tags == 'error' %}border-destructive/40 bg-destructive/5 text-destructive{% else %}border-primary/30 bg-primary/5 text-foreground{% endif %}">{{ m }}</div>
   {% endfor %}{% endif %}
 
-  <!-- Products / Storefront -->
+  {% for section in vendor_sections %}{% include section.template %}{% endfor %}
+
+  <!-- Catalog products -->
   {% if products %}
   <section>
     <h2 class="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
@@ -91,10 +90,19 @@ collection_items, intro_text, breadcrumb_items. Branches on listing_mode for pri
       </a>
       {% endfor %}
     </div>
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="{% trans 'Pages' %}" class="flex items-center justify-between gap-4 mt-10">
+      {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Previous" %}</a>{% else %}<span></span>{% endif %}
+      <span class="text-sm text-muted-foreground">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+      {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Next" %}</a>{% else %}<span></span>{% endif %}
+    </nav>
+    {% endif %}
   </section>
-  {% else %}
+  {% endif %}
+
+  {% if not listing_count %}
   <div class="text-center py-16">
-    <p class="text-muted-foreground">{% trans "This host has no active listings right now." %} <a href="/vendors/" class="text-primary underline hover:no-underline">{% trans "Browse other hosts" %}</a>.</p>
+    <p class="text-muted-foreground">{% trans "This host has no active listings right now." %} <a href="{% url 'storefront:vendors' %}" class="text-primary underline hover:no-underline">{% trans "Browse other hosts" %}</a>.</p>
   </div>
   {% endif %}
 

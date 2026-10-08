@@ -2,11 +2,10 @@
 {% load morph %}{% load i18n %}{% load l10n %}{% load booking_tags %}
 {% comment %}Enriched destination guide — semantic <article> with varied section
 shapes (hero, quick-facts <dl>, two-column overview + pull-quote, highlight cards,
-Leaflet map, FAQ accordion, experiences grid, region rail). Per-place JSON-LD
-(TouristDestination/FAQPage/BreadcrumbList) in extra_head; per-place og via the
-seo_* context vars from place_detail.{% endcomment %}
-{% block title %}{{ place.name }}, Montenegro — Montenegro Experience{% endblock %}
-{% block extra_head %}{% if place_jsonld %}<script type="application/ld+json">{{ place_jsonld|safe }}</script>{% endif %}{% endblock %}
+Leaflet map, FAQ accordion, experiences grid, region rail). TouristDestination
+and FAQPage join the head's one graph (booking_marketplace/seo.py), breadcrumbs
+come from the view's `breadcrumb_items`; per-place og via the seo_* context vars
+from place_detail.{% endcomment %}
 {% block content %}
 {% booking_listing_mode as listing_mode %}
 <article>

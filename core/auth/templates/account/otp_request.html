@@ -1,11 +1,10 @@
 {% extends "account/base.html" %}
 {% load i18n morph %}
 
-{% block head_title %}Sign in with email code{% endblock %}
 {% block heading %}Sign in with a code{% endblock %}
 {% block subheading %}<p class="text-sm" style="color:var(--text-muted);">No password needed — we'll email you a 6-digit code.</p>{% endblock %}
 
-{% block content %}
+{% block auth_form %}
 <form method="post" class="space-y-3">
   {% csrf_token %}
 

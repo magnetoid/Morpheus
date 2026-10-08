@@ -98,6 +98,14 @@ class MorpheusTheme:
     # 'bookstore' | 'apparel' | 'general'. Empty falls back to 'general'.
     demo_topic: str = ''
 
+    # What this store calls the businesses it sells for (the marketplace's
+    # vendors): "Publishers" on a bookshop, "Hosts" on a travel marketplace.
+    # The shell's vendor pages read it for their titles, breadcrumbs and the
+    # directory — the shell hardcoded "Publishers", so every travel host's page
+    # was titled "<Host> — Publishers". Plain English; translated at render.
+    vendor_noun: str = 'Seller'
+    vendor_noun_plural: str = 'Sellers'
+
     # ── Internal ──────────────────────────────────────────────────────────────
     _config_cache: dict | None = None
 

@@ -87,10 +87,13 @@ class EventJsonLdTests(TestCase):
     """The honest-dates guard. See the module docstring."""
 
     def _graph(self, slug):
-        ctx = Client().get(f'/events/{slug}/').context
-        return json.loads(ctx['event_jsonld'].replace('\\u003C', '<').replace('\\u003E', '>'))[
-            '@graph'
-        ]
+        """The page's ONE JSON-LD graph — the head document's, entity nodes included."""
+        import re
+
+        body = Client().get(f'/events/{slug}/').content.decode()
+        blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', body, re.S)
+        self.assertEqual(len(blocks), 1, 'one graph per page')
+        return json.loads(blocks[0])['@graph']
 
     def test_event_node_emitted_when_a_real_date_exists(self):
         _event(

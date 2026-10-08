@@ -1,11 +1,9 @@
 {% extends "storefront/base.html" %}
 {% load i18n %}
 {% comment %}Event detail — hero, editorial body, highlights, FAQ, and the rest of
-the same month so a visitor planning a trip sees the whole window. Event/FAQ/
-Breadcrumb JSON-LD in extra_head (the Event node only when a real date exists —
-never a guessed one; see seo_jsonld.event_jsonld).{% endcomment %}
-{% block title %}{{ event.name }} — Montenegro Experience{% endblock %}
-{% block extra_head %}{% if event_jsonld %}<script type="application/ld+json">{{ event_jsonld|safe }}</script>{% endif %}{% endblock %}
+the same month so a visitor planning a trip sees the whole window. The Event and
+FAQPage nodes join the head's one graph (the Event node only when a real date
+exists — never a guessed one; see seo_jsonld.event_nodes).{% endcomment %}
 {% block content %}
 
 <section class="relative bg-gradient-to-br from-primary/10 via-background to-background py-12 md:py-16">
