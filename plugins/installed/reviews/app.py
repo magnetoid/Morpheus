@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus.app import Plugin, StorefrontBlock
+from morpheus.app import DashboardPage, Plugin, StorefrontBlock
 from morpheus.core import events
 
 
@@ -65,13 +65,20 @@ class ReviewsPlugin(Plugin):
         ]
 
     def contribute_dashboard_pages(self) -> list:
-        # No DashboardPage — Reviews lives at /dashboard/reviews/ via
-        # register_urls above, and the sidebar entry is hardcoded under
-        # Products in admin_dashboard/base.html. The previous
-        # nav='hidden' DashboardPage existed only to surface a card in
-        # the /dashboard/apps/ tile grid; removing it kills that one
-        # tile but the plugin remains active and reachable.
-        return []
+        # The Reviews tab of the Products section, linking the moderation
+        # queue at /dashboard/reviews/ (register_urls above). The shell used
+        # to hardcode the link; contributed, it leaves with the app.
+        return [
+            DashboardPage(
+                label='Reviews',
+                slug='reviews',
+                view='plugins.installed.reviews.dashboard.reviews_list',
+                icon='star',
+                section='products',
+                order=50,
+                url='/dashboard/reviews/',
+            )
+        ]
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.reviews.agent_tools import (

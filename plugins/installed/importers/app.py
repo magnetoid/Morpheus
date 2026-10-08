@@ -32,6 +32,7 @@ class ImportersPlugin(Plugin):
                 view='plugins.installed.importers.views.csv_index',
                 order=10,
                 nav='settings',
+                hint='Products, customers and orders in and out as CSV',
             ),
             DashboardPage(
                 slug='shopify',
@@ -41,5 +42,6 @@ class ImportersPlugin(Plugin):
                 view='plugins.installed.importers.views.shopify_index',
                 order=20,
                 nav='settings',
+                hint='Bring a Shopify store over',
             ),
         ]

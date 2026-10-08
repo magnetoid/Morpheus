@@ -1,6 +1,6 @@
 from celery.schedules import crontab
 
-from morpheus.app import Plugin
+from morpheus.app import DashboardCard, Plugin
 from morpheus.core import events
 
 
@@ -140,17 +140,33 @@ class InventoryPlugin(Plugin):
                 exc_info=True,
             )
 
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Products landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='products',
+                title='Stockout forecast',
+                data='plugins.installed.inventory.cards.stockout_card',
+                url='/dashboard/apps/inventory/stockout-forecast/',
+                cta='Open forecast',
+                icon='trending-down',
+                order=80,
+                capability='inventory.read',
+            )
+        ]
+
     def contribute_dashboard_pages(self) -> list:
         from morpheus.app import DashboardPage  # noqa: PLC0415
 
         return [
             DashboardPage(
-                label='Stockout Forecast',
+                label='Stockout forecast',
                 slug='stockout-forecast',
                 view='plugins.installed.inventory.views.stockout_forecast_view',
                 icon='trending-down',
-                section='catalog',
-                nav='main',
+                section='products',
+                nav='hidden',
+                order=80,
             )
         ]
 

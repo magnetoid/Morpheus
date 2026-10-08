@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.81.0 — 2026-10-08
+
+**The dashboard is sections, tabs and cards**
+
+- The sidebar is eleven sections plus Settings — Home, Linda, Orders, Products, Customers, Marketing, Channels, Content, Analytics, SEO, Vendors — where it carried 95 to 100 links. A section with nothing in it is not listed.
+- Each section's pages are tabs at the top of the page; an app with several pages (Affiliates, CRM, Newsletter, each sales channel's catalog and ads) is one tab with sub-tabs. Big apps keep their own pages; SEO, CRM, Affiliates, the marketplace and booking pages are unchanged inside.
+- New Marketing overview at /dashboard/marketing/: Coupons, Promotions, Gift cards, Newsletter, Affiliates, Live shopping and Eco impact side by side as cards. The Products, Customers and Analytics pages carry cards too (stockout forecast, content audit, loyalty, referrals, NPS, feature adoption). A card that fails shows its error and is logged; the page stays up.
+- Settings: eleven categories that say what is in them (Payments & checkout, Shipping & tax, Storefront, Team & security and Data are new); an app's settings page is a card on its category instead of a sidebar link, and old category URLs redirect.
+- Apps catalogue grouped by the same areas, each app saying what it adds, with a filter box.
+- Fixed: three shell links had answered 404 for months (Improve with AI on Products, the Agents tile and the low-stock View all on Home); Import, Export, Bootstrap store and the notifications bell now leave with their apps; the Coupons menu entry opened a raw debug table while the coupon manager was in no menu; twelve icons drew a blank circle; three nav-badge queries ran on every storefront request.
+- For app authors: DashboardPage gains group= and hint=, new DashboardCard via contribute_dashboard_cards(); old section and category keys are aliased; an unknown one is a manage.py check warning (morpheus.W003–W005). See MIGRATING.md v0.81.0.
+
 ## v0.80.2 — 2026-10-08
 
 **Serbian pages finish the job — breadcrumbs, page descriptions and place facts in the visitor's language**

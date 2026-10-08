@@ -109,6 +109,6 @@ class NotificationsCenterPlugin(Plugin):
                 icon='bell',
                 view='plugins.installed.notifications_center.views.notifications_list',
                 order=40,
-                nav='settings',
+                nav='hidden',
             ),
         ]

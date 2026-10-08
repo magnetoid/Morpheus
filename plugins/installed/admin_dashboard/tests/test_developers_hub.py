@@ -1,8 +1,8 @@
 """The Developers hub (/dashboard/settings/developer/) is the ONE settings
-entry for developer tooling: every section='developer' DashboardPage renders
-there as a card instead of an individual settings-sidebar item, alongside
-the always-reachable core tools. IA redesign phase 2 —
-docs/plans/dashboard-ia-redesign-2026-06.md.
+entry for developer tooling: every DashboardPage(nav='settings',
+section='developer') renders there as a tool card instead of a settings-
+sidebar item, alongside the shell's own platform tools. Since v0.81.0 every
+settings category works this way (docs/plans/dashboard-hubs-2026-10.md).
 """
 
 # Lazy imports inside test methods are intentional (plugin load-order isolation).
@@ -26,27 +26,36 @@ class DevelopersHubTests(TestCase):
         self.assertIn('API tokens', content)
         self.assertIn('/dashboard/apps/agent_mcp/tokens/', content)
         self.assertIn('Webhooks', content)
-        # Core tools, still reachable through the hub
-        for url in ('/dashboard/tracking/', '/dashboard/errors/', '/dashboard/updates/'):
+        # The shell's own tools, always reachable through the hub. With
+        # release_notes on, its Version & updates page stands in for the
+        # shell's updater card (one card, not two).
+        for url in ('/dashboard/errors/', '/dashboard/settings/caching/'):
             self.assertIn(url, content)
+        self.assertIn('/dashboard/apps/release_notes/version/', content)
+        self.assertNotIn('href="/dashboard/updates/"', content)
 
     def test_developer_pages_are_not_individual_sidebar_entries(self):
-        from django.test import RequestFactory
+        import re
 
-        from plugins.context_processors import plugin_context
-
-        ctx = plugin_context(RequestFactory().get('/dashboard/settings/'))
-        for section in ctx['settings_sections']:
-            self.assertNotEqual(
-                section['key'] if isinstance(section, dict) else section.key,
-                'developer',
-                'developer pages must render inside the hub, not the sidebar',
-            )
+        html = self.client.get('/dashboard/settings/developer/').content.decode()
+        sidebar = re.search(r'<nav id="nav-settings".*?</nav>', html, re.S).group(0)
+        # The settings sidebar lists categories only; the tools are cards.
+        self.assertIn('/dashboard/settings/developer/', sidebar)
+        for url in (
+            '/dashboard/apps/agent_mcp/tokens/',
+            '/dashboard/workflows/',
+            '/dashboard/errors/',
+        ):
+            self.assertNotIn(url, sidebar)
 
     def test_disabled_plugin_card_vanishes(self):
         from plugins.registry import app_registry
 
+        self.assertIn(
+            '/dashboard/workflows/',
+            self.client.get('/dashboard/settings/developer/').content.decode(),
+        )
         self.addCleanup(app_registry.activate, 'workflows')
         app_registry.deactivate('workflows')
         resp = self.client.get('/dashboard/settings/developer/')
-        self.assertNotIn('/dashboard/apps/workflows/', resp.content.decode())
+        self.assertNotIn('/dashboard/workflows/', resp.content.decode())

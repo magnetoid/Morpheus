@@ -2,7 +2,7 @@
 {% block title %}Fulfill · Order #{{ order.order_number }}{% endblock %}
 
 {% block breadcrumb %}
-<div class="mb-4"><nav class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
+<div class="mb-4"><nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
   <a href="/dashboard/" class="hover:underline">Dashboard</a>
   <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
   <a href="{% url 'admin_dashboard:orders' %}" class="hover:underline">Orders</a>

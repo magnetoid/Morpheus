@@ -112,8 +112,8 @@ class BookingMarketplacePlugin(Plugin):
                 slug='bookings',
                 view='plugins.installed.booking_marketplace.dashboard.bookings_list',
                 icon='calendar-check',
-                section='marketplace',
-                order=60,
+                section='orders',
+                order=40,
                 nav='main',
             ),
             DashboardPage(
@@ -121,8 +121,8 @@ class BookingMarketplacePlugin(Plugin):
                 slug='enquiries',
                 view='plugins.installed.booking_marketplace.dashboard.enquiries_list',
                 icon='inbox',
-                section='marketplace',
-                order=61,
+                section='orders',
+                order=45,
                 nav='main',
             ),
             DashboardPage(
@@ -130,8 +130,8 @@ class BookingMarketplacePlugin(Plugin):
                 slug='stays',
                 view='plugins.installed.booking_marketplace.dashboard.stays_list',
                 icon='bed',
-                section='marketplace',
-                order=62,
+                section='products',
+                order=61,
                 nav='main',
             ),
         ]

@@ -47,6 +47,7 @@ class AppRegistry:
         # See `plugins.contributions` for shapes.
         self._storefront_blocks: list = []  # [StorefrontBlock]
         self._dashboard_pages: list = []  # [DashboardPage]
+        self._dashboard_cards: list = []  # [DashboardCard]
         self._settings_panels: dict = {}  # name -> SettingsPanel
         self._email_templates: list = []  # [EmailTemplateDef]
         self._plugin_skills: dict[str, list[str]] = {}  # plugin -> [skill.name]
@@ -302,34 +303,24 @@ class AppRegistry:
 
     # ── Contributions ─────────────────────────────────────────────────────────
 
+    def _collect_list(self, plugin: MorpheusPlugin, method: str, index: list) -> None:
+        """Append one `contribute_*` list to its index, owner-tagged. A plugin
+        whose method raises loses that one surface, never its activation."""
+        try:
+            for item in getattr(plugin, method)() or []:
+                item.plugin = plugin.name
+                index.append(item)
+        except Exception as e:  # noqa: BLE001
+            logger.warning('plugins: %s.%s failed: %s', plugin.name, method, e, exc_info=True)
+
     def _collect_contributions(self, plugin: MorpheusPlugin) -> None:
         """Pull `contribute_*` results from a plugin and merge them into
         the platform-wide indexes. Failures are logged and swallowed —
         a misbehaving plugin should not break activation."""
-        try:
-            for block in plugin.contribute_storefront_blocks() or []:
-                block.plugin = plugin.name
-                self._storefront_blocks.append(block)
-        except Exception as e:  # noqa: BLE001
-            logger.warning(
-                'plugins: %s.contribute_storefront_blocks failed: %s', plugin.name, e, exc_info=True
-            )
-        try:
-            for page in plugin.contribute_dashboard_pages() or []:
-                page.plugin = plugin.name
-                self._dashboard_pages.append(page)
-        except Exception as e:  # noqa: BLE001
-            logger.warning(
-                'plugins: %s.contribute_dashboard_pages failed: %s', plugin.name, e, exc_info=True
-            )
-        try:
-            for tpl in plugin.contribute_email_templates() or []:
-                tpl.plugin = plugin.name
-                self._email_templates.append(tpl)
-        except Exception as e:  # noqa: BLE001
-            logger.warning(
-                'plugins: %s.contribute_email_templates failed: %s', plugin.name, e, exc_info=True
-            )
+        self._collect_list(plugin, 'contribute_storefront_blocks', self._storefront_blocks)
+        self._collect_list(plugin, 'contribute_dashboard_pages', self._dashboard_pages)
+        self._collect_list(plugin, 'contribute_dashboard_cards', self._dashboard_cards)
+        self._collect_list(plugin, 'contribute_email_templates', self._email_templates)
         try:
             panel = plugin.contribute_settings_panel()
             if panel is not None:
@@ -361,10 +352,12 @@ class AppRegistry:
         # Sort blocks and pages once per activation so render-time stays cheap.
         self._storefront_blocks.sort(key=lambda b: (b.slot, b.priority, b.plugin))
         self._dashboard_pages.sort(key=lambda p: (p.section, p.order, p.label))
+        self._dashboard_cards.sort(key=lambda c: (c.section, c.order, c.title))
 
     def _drop_contributions(self, plugin_name: str) -> None:
         self._storefront_blocks = [b for b in self._storefront_blocks if b.plugin != plugin_name]
         self._dashboard_pages = [p for p in self._dashboard_pages if p.plugin != plugin_name]
+        self._dashboard_cards = [c for c in self._dashboard_cards if c.plugin != plugin_name]
         self._email_templates = [t for t in self._email_templates if t.plugin != plugin_name]
         self._settings_panels.pop(plugin_name, None)
         try:
@@ -387,6 +380,28 @@ class AppRegistry:
         if section is None:
             return list(self._dashboard_pages)
         return [p for p in self._dashboard_pages if p.section == section]
+
+    def dashboard_url_mounts(self) -> list[tuple[str, str]]:
+        """``(app, '/dashboard/<prefix>/')`` for every active app that mounts
+        its own routes under the dashboard. The dashboard uses them to tell
+        which app a detail page belongs to; the shell's own ``dashboard/``
+        mount is not an app's and is left out."""
+        out = []
+        for entry in self._plugin_urls:
+            prefix = entry.get('prefix') or ''
+            owner = entry.get('plugin') or ''
+            if not owner or prefix == 'dashboard/' or not prefix.startswith('dashboard/'):
+                continue
+            if self.is_active(owner):
+                out.append((owner, '/' + prefix))
+        return out
+
+    def dashboard_cards(self, section: str | None = None) -> list:
+        """Contributed `DashboardCard`s, sorted by section then order. Raw
+        `section` values — the dashboard resolves legacy aliases itself."""
+        if section is None:
+            return list(self._dashboard_cards)
+        return [c for c in self._dashboard_cards if c.section == section]
 
     def email_templates(self) -> list:
         """Every active plugin's contributed email templates (EmailTemplateDef),

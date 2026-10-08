@@ -39,6 +39,8 @@ def apps_view(request: HttpRequest) -> HttpResponse:
     except Exception:  # noqa: BLE001, S110
         pass
 
+    from plugins.installed.admin_dashboard import navigation
+
     plugins = []
     for name, cls in sorted(app_registry._classes.items()):
         if is_system(name):
@@ -48,6 +50,14 @@ def apps_view(request: HttpRequest) -> HttpResponse:
             continue
         runtime_active = app_registry.is_active(name)
         db_intends_on = db_enabled.get(name, True)
+        instance = app_registry.get(name)
+        # Where the app lives and what it adds, in the menu's own words —
+        # asked of the app, so one that is off still says what it would add.
+        described = (
+            navigation.describe_app(instance)
+            if instance is not None
+            else {'area': 'platform', 'area_label': 'Platform', 'adds': []}
+        )
         # "Active" is what the merchant sees in the button label.
         # We prefer the DB intent (matches what they just clicked).
         plugins.append(
@@ -62,15 +72,33 @@ def apps_view(request: HttpRequest) -> HttpResponse:
                 # merchant isn't confused why their just-enabled plugin
                 # doesn't surface its dashboard pages yet.
                 'needs_restart': db_intends_on and not runtime_active,
-                'pages': [p for p in app_registry.dashboard_pages() if p.plugin == name],
+                'pages': [
+                    {'label': p.label, 'icon': p.icon, 'url': navigation.page_url(p)}
+                    for p in app_registry.dashboard_pages()
+                    if p.plugin == name and p.nav != 'hidden'
+                ],
                 'has_settings': app_registry.settings_panel(name) is not None,
+                'area': described['area'],
+                'adds': described['adds'],
             }
         )
+    # Grouped the way the dashboard is: one heading per area, in menu order.
+    order = {key: i for i, (key, _label) in enumerate(navigation.CATALOGUE_AREAS)}
+    labels = dict(navigation.CATALOGUE_AREAS)
+    groups: dict[str, list] = {}
+    for app in plugins:
+        groups.setdefault(app['area'], []).append(app)
+    areas = [
+        {'key': key, 'label': labels.get(key, key.title()), 'apps': apps}
+        for key, apps in sorted(groups.items(), key=lambda kv: order.get(kv[0], len(order)))
+    ]
     return render(
         request,
         'admin_dashboard/apps.html',
         {
             'plugins': plugins,
+            'areas': areas,
+            'active_count': sum(1 for p in plugins if p['active']),
             'active_nav': 'apps',
         },
     )

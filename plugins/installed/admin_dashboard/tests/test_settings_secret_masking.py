@@ -38,7 +38,8 @@ class SecretMaskingTests(TestCase):
         app_registry.deactivate(self.PLUGIN)
 
     def test_saved_secret_is_not_rendered_in_page_source(self):
-        resp = self.client.get('/dashboard/settings/developer/')
+        # Staff SSO files under Settings › Team & security (v0.81.0).
+        resp = self.client.get('/dashboard/settings/team/')
         self.assertEqual(resp.status_code, 200)
         html = resp.content.decode()
         # The secret value must not appear anywhere in the page source.

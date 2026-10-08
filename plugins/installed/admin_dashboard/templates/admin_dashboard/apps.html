@@ -5,7 +5,7 @@
 <div class="space-y-4">
   <div>
     <h1 class="text-xl font-semibold tracking-tight">Apps</h1>
-    <p class="text-sm text-[color:var(--text-muted)]">Apps installed on this Morpheus instance. Toggle one on to add the storefront blocks, dashboard pages and settings it declares.</p>
+    <p class="text-sm text-[color:var(--text-muted)]">Apps installed on this Morpheus instance — {{ active_count }} of {{ plugins|length }} on. Each one is listed where it lives in the dashboard, with what it adds when it is on.</p>
   </div>
 
   {# Installed + Browse are two views of one surface, not two pages. #}
@@ -14,51 +14,91 @@
     <a href="{% url 'admin_dashboard:apps_store' %}" class="tab">Browse</a>
   </nav>
 
-  <div class="reveal-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-    {% for p in plugins %}
-    <div class="card card-padded flex flex-col gap-3">
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <h3 class="font-medium truncate">{{ p.label|default:p.name }}</h3>
-          <p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ p.name }} · v{{ p.version }}</p>
-        </div>
-        <div class="flex items-center gap-1.5 flex-shrink-0">
-          {% if p.active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
-          {% if p.needs_restart %}<span class="pill pill-warn" title="Enabled in settings, not yet loaded in the running process. Restart the web container to activate fully.">Restart needed</span>{% endif %}
-        </div>
-      </div>
-      {% if p.description %}<p class="text-sm text-[color:var(--text-muted)] line-clamp-3">{{ p.description }}</p>{% endif %}
-
-      {% if p.pages %}
-      <ul class="text-xs space-y-1 mt-1">
-        {% for page in p.pages %}
-        <li>
-          <a href="{% url 'admin_dashboard:plugin_page' p.name page.slug %}" class="hover:underline inline-flex items-center gap-1.5">
-            <i data-lucide="{{ page.icon|default:'circle' }}" class="h-3.5 w-3.5"></i>
-            {{ page.label }}
-          </a>
-        </li>
-        {% endfor %}
-      </ul>
-      {% endif %}
-
-      <div class="flex items-center gap-2 mt-auto pt-2 border-t border-[color:var(--border)]">
-        {% if p.has_settings %}
-        <a href="{% url 'admin_dashboard:plugin_settings' p.name %}" class="btn btn-ghost text-xs"><i data-lucide="settings" class="h-3.5 w-3.5"></i> Settings</a>
-        {% endif %}
-        <form method="post" action="{% url 'admin_dashboard:apps' %}" class="ml-auto">
-          {% csrf_token %}
-          <input type="hidden" name="plugin" value="{{ p.name }}">
-          <input type="hidden" name="enabled" value="{% if p.active %}0{% else %}1{% endif %}">
-          <button class="btn {% if p.active %}btn-ghost{% else %}btn-primary{% endif %} text-xs" type="submit">
-            {% if p.active %}Disable{% else %}Enable{% endif %}
-          </button>
-        </form>
-      </div>
-    </div>
-    {% empty %}
-    <p class="text-sm text-[color:var(--text-muted)]">No apps discovered.</p>
-    {% endfor %}
+  <div class="relative max-w-sm">
+    <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
+    <input type="search" class="input input-search" placeholder="Filter apps" aria-label="Filter apps" data-apps-filter>
   </div>
+
+  {% comment %}Grouped the way the dashboard is (admin_dashboard/navigation.py
+  CATALOGUE_AREAS): an app sits under the section or settings category its first
+  surface lands in.{% endcomment %}
+  {% for area in areas %}
+  <section class="space-y-2" data-apps-area>
+    <h2 class="text-sm font-semibold text-[color:var(--text-muted)]">{{ area.label }} <span class="font-normal">· {{ area.apps|length }}</span></h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {% for p in area.apps %}
+      <div class="card card-padded flex flex-col gap-3" data-app="{{ p.name }}" data-apps-text="{{ p.label|default:p.name|lower }} {{ p.name }} {{ p.description|lower }}">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h3 class="font-medium truncate">{{ p.label|default:p.name }}</h3>
+            <p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ p.name }} · v{{ p.version }}</p>
+          </div>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            {% if p.active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
+            {% if p.needs_restart %}<span class="pill pill-warn" title="Enabled in settings, not yet loaded in the running process. Restart the web container to activate fully.">Restart needed</span>{% endif %}
+          </div>
+        </div>
+        {% if p.description %}<p class="text-sm text-[color:var(--text-muted)] line-clamp-3">{{ p.description }}</p>{% endif %}
+        {% if p.adds %}<p class="text-xs text-[color:var(--text-subtle)]">Adds {{ p.adds|join:", " }}.</p>{% endif %}
+
+        {% if p.active and p.pages %}
+        <ul class="text-xs space-y-1 mt-1">
+          {% for page in p.pages %}
+          <li>
+            <a href="{{ page.url }}" class="hover:underline inline-flex items-center gap-1.5">
+              <i data-lucide="{{ page.icon|default:'circle' }}" class="h-3.5 w-3.5"></i>
+              {{ page.label }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+
+        <div class="flex items-center gap-2 mt-auto pt-2 border-t border-[color:var(--border)]">
+          {% if p.has_settings %}
+          <a href="{% url 'admin_dashboard:plugin_settings' p.name %}" class="btn btn-ghost text-xs"><i data-lucide="settings" class="h-3.5 w-3.5"></i> Settings</a>
+          {% endif %}
+          <form method="post" action="{% url 'admin_dashboard:apps' %}" class="ml-auto">
+            {% csrf_token %}
+            <input type="hidden" name="plugin" value="{{ p.name }}">
+            <input type="hidden" name="enabled" value="{% if p.active %}0{% else %}1{% endif %}">
+            <button class="btn {% if p.active %}btn-ghost{% else %}btn-primary{% endif %} text-xs" type="submit">
+              {% if p.active %}Disable{% else %}Enable{% endif %}
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% empty %}
+  <p class="text-sm text-[color:var(--text-muted)]">No apps discovered.</p>
+  {% endfor %}
+  <p class="text-sm text-[color:var(--text-muted)]" data-apps-none hidden>No app matches that filter.</p>
 </div>
+
+<script>
+  /* Filter the catalogue as you type — names, slugs and descriptions. An area
+     whose apps are all filtered out hides its heading too. */
+  (function () {
+    var input = document.querySelector('[data-apps-filter]');
+    if (!input) return;
+    input.addEventListener('input', function () {
+      var q = input.value.trim().toLowerCase();
+      var shown = 0;
+      document.querySelectorAll('[data-apps-area]').forEach(function (area) {
+        var visible = 0;
+        area.querySelectorAll('[data-app]').forEach(function (card) {
+          var hit = !q || (card.getAttribute('data-apps-text') || '').indexOf(q) !== -1;
+          card.hidden = !hit;
+          if (hit) visible++;
+        });
+        area.hidden = visible === 0;
+        shown += visible;
+      });
+      var none = document.querySelector('[data-apps-none]');
+      if (none) none.hidden = shown !== 0;
+    });
+  })();
+</script>
 {% endblock %}

@@ -53,7 +53,7 @@ class MotionPlugin(Plugin):
         return SettingsPanel(
             label='Motion + skeleton states',
             description='Intensity, reduced-motion default, brand-color tint.',
-            category='general',
+            category='storefront',
             schema=self.get_config_schema(),
         )
 

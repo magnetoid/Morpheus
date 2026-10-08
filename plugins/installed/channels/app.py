@@ -40,21 +40,21 @@ class ChannelsPlugin(Plugin):
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
-                label='Sales Channels',
+                label='Overview',
                 slug='overview',
                 view='plugins.installed.channels.views.overview',
                 icon='radio-tower',
-                section='marketing',
-                order=60,
+                section='channels',
+                order=10,
                 nav='main',
             ),
             DashboardPage(
-                label='Channel ROAS',
+                label='ROAS',
                 slug='attribution',
                 view='plugins.installed.channels.views.attribution_view',
                 icon='trending-up',
-                section='marketing',
-                order=61,
+                section='channels',
+                order=15,
                 nav='main',
             ),
         ]

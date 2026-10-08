@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus.app import DashboardPage, Plugin, SettingsPanel
+from morpheus.app import DashboardCard, DashboardPage, Plugin, SettingsPanel
 
 
 class PostPurchasePlugin(Plugin):
@@ -22,6 +22,21 @@ class PostPurchasePlugin(Plugin):
             namespace='post_purchase',
         )
 
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Analytics landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='analytics',
+                title='NPS',
+                data='plugins.installed.post_purchase.cards.nps_card',
+                url='/dashboard/apps/post_purchase/nps/',
+                cta='Open report',
+                icon='smile',
+                order=60,
+                capability='analytics.read',
+            )
+        ]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
@@ -31,6 +46,7 @@ class PostPurchasePlugin(Plugin):
                 icon='smile',
                 section='analytics',
                 order=60,
+                nav='hidden',
             ),
         ]
 

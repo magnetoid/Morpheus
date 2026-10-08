@@ -1,0 +1,21 @@
+{% comment %}The current section's pages (admin_dashboard/navigation.py): the shell's
+own and every app's, as tabs. A group ("Affiliates", "CRM", a channel's catalog and
+ads) is one tab whose pages show as sub-tabs while you are in it. Navigation, so it
+is drawn as pills — the underlined `.tab-list` below a page heading stays a filter
+of that page (status, source).{% endcomment %}
+{% if dashboard_nav.tabs %}
+<nav class="hub-tabs" aria-label="{{ dashboard_nav.section_label }}">
+  <div class="hub-tabs__row">
+    {% for t in dashboard_nav.tabs %}
+    <a href="{{ t.url }}" class="hub-tab{% if t.active %} is-active{% endif %}"{% if t.active %} aria-current="page"{% endif %}>{{ t.label }}{% if t.badge %}<span class="pill pill-warn pill-xs">{{ t.badge }}</span>{% endif %}</a>
+    {% endfor %}
+  </div>
+  {% if dashboard_nav.subtabs %}
+  <div class="hub-subtabs">
+    {% for t in dashboard_nav.subtabs %}
+    <a href="{{ t.url }}" class="hub-subtab{% if t.active %} is-active{% endif %}"{% if t.active %} aria-current="page"{% endif %}>{{ t.label }}{% if t.badge %}<span class="pill pill-warn pill-xs">{{ t.badge }}</span>{% endif %}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</nav>
+{% endif %}

@@ -5,7 +5,7 @@
 # manifest importable before the app registry is ready.
 from __future__ import annotations
 
-from morpheus.app import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import DashboardCard, Plugin, SettingsPanel, StorefrontBlock
 from morpheus.core import events
 
 
@@ -172,10 +172,24 @@ class AffiliatesPlugin(Plugin):
             },
         }
 
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Marketing landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='marketing',
+                title='Affiliates',
+                data='plugins.installed.affiliates.cards.affiliates_card',
+                url='/dashboard/apps/affiliates/list/',
+                cta='Open affiliates',
+                icon='link',
+                order=50,
+                capability='affiliates.read',
+            )
+        ]
+
     def contribute_dashboard_pages(self) -> list:
-        # nav='main': the sidebar group is rendered by the contributed-
-        # sections loop (section='growth', labelled 'Affiliates') — the old
-        # hardcoded base.html block is gone, so disable removes everything.
+        # One "Affiliates" tab in the Marketing section, its seven pages as
+        # sub-tabs (group=) — contributed, so a disable removes all of it.
         from morpheus.app import DashboardPage
 
         return [
@@ -184,62 +198,69 @@ class AffiliatesPlugin(Plugin):
                 slug='list',
                 view='plugins.installed.affiliates.dashboard.affiliates_list',
                 icon='link',
-                section='growth',
-                order=10,
+                section='marketing',
+                order=50,
                 nav='main',
+                group='Affiliates',
             ),
             DashboardPage(
                 label='Programs',
                 slug='programs',
                 view='plugins.installed.affiliates.dashboard.programs_list',
                 icon='layers',
-                section='growth',
-                order=15,
+                section='marketing',
+                order=51,
                 nav='main',
+                group='Affiliates',
             ),
             DashboardPage(
                 label='Links',
                 slug='links',
                 view='plugins.installed.affiliates.dashboard.links_list',
                 icon='link-2',
-                section='growth',
-                order=17,
+                section='marketing',
+                order=53,
                 nav='main',
+                group='Affiliates',
             ),
             DashboardPage(
                 label='Creatives',
                 slug='creatives',
                 view='plugins.installed.affiliates.dashboard.creatives_list',
                 icon='image',
-                section='growth',
-                order=17,
+                section='marketing',
+                order=52,
                 nav='main',
+                group='Affiliates',
             ),
             DashboardPage(
                 label='Conversions',
                 slug='conversions',
                 view='plugins.installed.affiliates.dashboard.conversions_list',
                 icon='trending-up',
-                section='growth',
-                order=18,
+                section='marketing',
+                order=54,
                 nav='main',
+                group='Affiliates',
             ),
             DashboardPage(
                 label='Payouts',
                 slug='payouts',
                 view='plugins.installed.affiliates.dashboard.payouts_list',
                 icon='wallet',
-                section='growth',
-                order=20,
+                section='marketing',
+                order=55,
                 nav='main',
+                group='Affiliates',
             ),
             DashboardPage(
                 label='Analytics',
                 slug='analytics',
                 view='plugins.installed.affiliates.dashboard.analytics',
                 icon='bar-chart-3',
-                section='growth',
-                order=25,
+                section='marketing',
+                order=56,
                 nav='main',
+                group='Affiliates',
             ),
         ]

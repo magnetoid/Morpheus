@@ -47,5 +47,6 @@ class MetafieldsPlugin(Plugin):
                 view='plugins.installed.metafields.views.index',
                 order=30,
                 nav='settings',
+                hint='Custom fields on products, customers and orders',
             ),
         ]

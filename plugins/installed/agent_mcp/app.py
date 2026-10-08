@@ -90,5 +90,6 @@ class AgentMcpPlugin(Plugin):
                 section='developer',
                 order=20,
                 nav='settings',
+                hint='Bearer tokens for the MCP server and the API',
             ),
         ]

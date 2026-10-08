@@ -150,10 +150,11 @@ class BookvaultPlugin(Plugin):
                 # Its own page in the Settings/Apps area — NOT lumped under the
                 # generic Shipping group (it's a distinct POD-fulfilment app).
                 icon='book-open',
-                section='apps',
+                section='shipping',
                 order=20,
                 nav='settings',
                 url='/dashboard/apps/bookvault/',
+                hint='Print-on-demand fulfilment: connection and linked products',
             ),
         ]
 
@@ -166,7 +167,7 @@ class BookvaultPlugin(Plugin):
             ),
             schema=self.get_config_schema(),
             # Own integration card, not buried in Shipping settings.
-            category='apps',
+            category='shipping',
         )
 
     def get_config_schema(self) -> dict:

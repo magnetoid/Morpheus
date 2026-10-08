@@ -47,63 +47,114 @@ class StorefrontBlock:
 
 @dataclass(slots=True)
 class DashboardPage:
-    """A merchant-dashboard sidebar entry.
+    """A merchant-dashboard page: a tab in one of the dashboard's sections.
 
     `view` is a callable that takes a request and returns an HttpResponse,
     OR a dotted path string ("plugins.installed.<plugin>.views.my_view")
     so the registry can resolve it lazily without import-time side effects.
 
-    `nav` controls which sidebar lists the entry:
-      * 'main'     — daily-use page in the main sidebar (default)
-      * 'settings' — admin/setup page that lives in the settings panel
-                     alongside the schema-driven SettingsPanel forms
+    `nav` decides where the page is listed:
+      * 'main'     — a tab in the main-sidebar `section` it names (default)
+      * 'settings' — a tool card on the Settings category `section` names
+      * 'hidden'   — routed but listed nowhere; reached from a card, a link
+                     or the command palette. It still belongs to `section`,
+                     so the sidebar and breadcrumb know where you are.
 
-    Routes are unchanged regardless of `nav`; only the sidebar listing
-    moves. This mirrors Shopify — Orders/Products/Customers on the main
-    rail; Webhooks/Roles/CSV import in the settings panel.
+    `section` is a key from `admin_dashboard/navigation.py`: for 'main' a
+    sidebar section (orders, products, customers, marketing, channels,
+    content, analytics, seo, vendors, ai), for 'settings' a settings
+    category (general, payments, shipping, storefront, channels, marketing,
+    ai, notifications, team, developer, data). Older keys (growth, cms,
+    catalog, marketplace, access, taxes, …) are aliased; an unknown key is
+    reported by `manage.py check` and the page is listed only in the Apps
+    catalogue.
+
+    `group` folds pages into one tab: pages of a section that share a group
+    label render as a single tab ("Affiliates") with the pages as sub-tabs.
+
+    Routes are unchanged regardless of `nav`; only the listing moves.
     """
 
     label: str
     slug: str  # the URL slug, mounted under /dashboard/apps/<plugin>/<slug>/
     view: Any  # callable | str
     icon: str = 'circle'  # any lucide icon name
-    # Sidebar grouping bucket. Known keys (see plugins/context_processors.py):
-    # ai, sales, catalog, crm, customers, cms, marketing, analytics, seo,
-    # growth, marketplace, plugins, developer, access, data, settings, apps.
-    # Unknown values fall through alphabetically under their literal slug.
     section: str = 'plugins'
     order: int = 100
     plugin: str = ''
     nav: str = 'main'  # 'main' | 'settings' | 'hidden'
-    # Optional canonical URL — when set, the sidebar links here instead of
+    # Optional canonical URL — when set, the tab links here instead of
     # /dashboard/apps/<plugin>/<slug>/. Lets a plugin that owns its own
-    # URL prefix (via register_urls) point the sidebar entry at the
-    # primary URL without losing the discovery surface in /dashboard/apps/.
+    # URL prefix (via register_urls) point the entry at the primary URL
+    # without losing the discovery surface in /dashboard/apps/.
     url: str = ''
+    group: str = ''  # tab-group label; '' = the page is its own tab
+    hint: str = ''  # one line for a settings tool card and the palette
+
+
+@dataclass(slots=True)
+class DashboardCard:
+    """A small widget an app places on a dashboard section's landing page.
+
+    Cards are how two apps share one page: the Marketing overview shows the
+    coupons card next to the gift-cards card, the Products list carries the
+    stockout forecast. The shell draws every card the same way; the app only
+    supplies the numbers.
+
+    `data` is a callable ``(request) -> dict | None`` (or a dotted path to
+    one), called when the landing renders. Keys of the dict, all optional:
+
+      * ``value``   — the headline ('12', '$1,250.00', '82/100')
+      * ``caption`` — one line under it ('active coupons')
+      * ``rows``    — up to five ``(label, value)`` pairs, or dicts with
+                      ``label``, ``value`` and an optional ``url``
+      * ``tone``    — '' | 'ok' | 'warn' | 'danger' (colours the headline)
+      * ``empty``   — text shown instead when there is nothing to report yet
+      * ``url``     — overrides the card's link for this render
+
+    Return ``None`` to leave the card off the page. A card whose callable
+    raises renders an error state and logs — it never takes the page down.
+
+    `section` names a landing that renders cards: home, orders, products,
+    customers, marketing or analytics (see admin_dashboard/navigation.py).
+    `capability` gates the card the way ``@require_capability`` gates a
+    page: under rbac's ``enforce`` mode a user without it does not see it.
+    """
+
+    section: str
+    title: str
+    data: Any  # callable(request) -> dict | None, or a dotted path
+    url: str = ''  # the card's link (its full page)
+    cta: str = 'Open'
+    icon: str = 'circle'
+    order: int = 100
+    capability: str = ''
+    plugin: str = ''  # filled in by the registry
 
 
 @dataclass(slots=True)
 class SettingsPanel:
     """Declarative settings panel rendered from a JSON Schema.
 
-    `category` controls which Shopify-style category the panel shows
-    under in the unified `/dashboard/settings/<category>/` view. If left
-    blank the panel falls into the catch-all 'apps' bucket so it still
-    has a home — older plugins that haven't been categorized yet keep
-    working without a code change.
+    `category` controls which settings category the panel shows under in
+    `/dashboard/settings/<category>/`. If left blank the panel falls into
+    the 'apps' bucket ("Other apps", listed only while something is in it)
+    so an uncategorised out-of-tree app still has a home.
 
-    Standard categories (see SETTINGS_CATEGORIES in
+    Categories (see SETTINGS_CATEGORIES in
     `plugins.installed.admin_dashboard.settings_categories`):
-      * 'general'        — Store name, currency, locales
-      * 'payments'       — Stripe, PayPal, manual, …
-      * 'shipping'       — Carriers, zones, rates
-      * 'taxes'          — Regions, rates
-      * 'channels'       — Storefront SEO, marketplaces, social
-      * 'ai'             — Provider, model, agent settings
-      * 'marketing'      — Email, coupons, CRM defaults
-      * 'notifications'  — Email/SMS templates, webhooks
-      * 'developer'      — API keys, agent tokens, observability
-      * 'apps'           — Catch-all for plugin-specific config
+      * 'general'        — store details, markets, languages, privacy
+      * 'payments'       — gateways, checkout, fraud, billing
+      * 'shipping'       — zones, rates, carriers, fulfilment, tax
+      * 'storefront'     — images, brand, motion, storefront features
+      * 'channels'       — feeds, ad accounts, SEO, conversion tracking
+      * 'marketing'      — loyalty, referrals, newsletter, affiliates
+      * 'ai'             — providers, guardrails, brand voice
+      * 'notifications'  — sender, SMTP, email templates
+      * 'team'           — roles, two-factor, single sign-on
+      * 'developer'      — API tokens, webhooks, platform tools
+      * 'data'           — import, export, backups
+    Older slugs ('taxes', 'access', 'security', …) are aliased.
     """
 
     label: str

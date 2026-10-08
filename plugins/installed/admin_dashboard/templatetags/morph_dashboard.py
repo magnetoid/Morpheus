@@ -266,6 +266,19 @@ def customer_row_actions(context, customer):
     return {'actions': actions, 'csrf_token': context.get('csrf_token', '')}
 
 
+@register.simple_tag(takes_context=True)
+def dashboard_card_list(context, section):
+    """The cards for a section's landing page (admin_dashboard/cards.py),
+    drawn by ``admin_dashboard/_cards.html``::
+
+        {% dashboard_card_list "products" as hub_cards %}
+        {% include "admin_dashboard/_cards.html" with cards=hub_cards %}
+    """
+    from plugins.installed.admin_dashboard.cards import cards_for
+
+    return cards_for(section, context.get('request'))
+
+
 @register.simple_tag
 def get_ai_page_help():
     try:

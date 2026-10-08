@@ -322,8 +322,18 @@ class MorpheusPlugin:
     def contribute_dashboard_pages(self) -> list:
         """Return a list of `DashboardPage` entries.
 
-        The registry mounts each at `/dashboard/apps/<plugin>/<slug>/` and
-        the dashboard sidebar renders them in their declared `section`.
+        The registry mounts each at `/dashboard/apps/<plugin>/<slug>/`; the
+        dashboard lists each as a tab of its declared `section` (or a tool
+        card on a settings category for `nav='settings'`).
+        """
+        return []
+
+    def contribute_dashboard_cards(self) -> list:
+        """Return a list of `DashboardCard` widgets.
+
+        Each renders on the landing page of its `section` (the Marketing
+        overview, the Products list, …) next to other apps' cards. Use a card
+        for a glanceable number with a link, rather than a page of its own.
         """
         return []
 

@@ -9,7 +9,7 @@ pipeline (no analytics beacon changes).
 
 from __future__ import annotations
 
-from morpheus.app import DashboardPage, Plugin, StorefrontBlock
+from morpheus.app import DashboardCard, DashboardPage, Plugin, StorefrontBlock
 
 
 class LiveCommercePlugin(Plugin):
@@ -44,15 +44,30 @@ class LiveCommercePlugin(Plugin):
             )
         ]
 
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Marketing landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='marketing',
+                title='Live shopping',
+                data='plugins.installed.live_commerce.cards.live_card',
+                url='/dashboard/live/',
+                cta='Open shows',
+                icon='radio',
+                order=60,
+                capability='marketing.read',
+            )
+        ]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
-                label='Live commerce',
+                label='Live shopping',
                 slug='live',
                 view='plugins.installed.live_commerce.views.index',
                 icon='radio',
                 section='marketing',
-                order=75,
+                order=60,
                 url='/dashboard/live/',
             )
         ]

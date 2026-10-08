@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.app import Plugin
+from morpheus.app import DashboardPage, Plugin
 
 logger = logging.getLogger('morpheus.draft_orders')
 
@@ -16,17 +16,12 @@ class DraftOrdersPlugin(Plugin):
     description = (
         'Staff-built draft orders / quotes that can be priced, shared with '
         'the customer, then converted to a real order on payment. '
-        'Surfaces inside the Orders dashboard rather than as a separate '
-        'sidebar entry — drafts live next to real orders.'
+        'A Drafts tab in the Orders section — drafts live next to real orders.'
     )
     has_models = True
     requires = ['orders']
 
     def ready(self) -> None:
-        # URLs (index/detail/convert) stay registered so the link from the
-        # Orders dashboard works. They just no longer appear as a separate
-        # sidebar entry — drafts surface as a "View drafts →" link inside
-        # the existing Orders dashboard.
         self.register_urls(
             'plugins.installed.draft_orders.urls',
             prefix='dashboard/draft-orders/',
@@ -41,4 +36,18 @@ class DraftOrdersPlugin(Plugin):
 
         return [list_drafts_tool, convert_draft_tool]
 
-    # No contribute_dashboard_pages — drafts live inside the Orders page.
+    def contribute_dashboard_pages(self) -> list:
+        # The Drafts tab of the Orders section. The shell used to hardcode
+        # this link behind a template guard; contributed, it leaves with the
+        # app on a disable.
+        return [
+            DashboardPage(
+                label='Drafts',
+                slug='drafts',
+                view='plugins.installed.draft_orders.views.index',
+                icon='file-pen',
+                section='orders',
+                order=20,
+                url='/dashboard/draft-orders/',
+            )
+        ]

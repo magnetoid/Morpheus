@@ -4,7 +4,7 @@
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
-from morpheus.app import DashboardPage, Plugin
+from morpheus.app import DashboardCard, DashboardPage, Plugin
 from morpheus.core import events
 
 
@@ -235,6 +235,21 @@ class GiftCardsPlugin(Plugin):
             )
         return value
 
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Marketing landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='marketing',
+                title='Gift cards',
+                data='plugins.installed.gift_cards.cards.gift_cards_card',
+                url='/dashboard/gift-cards/',
+                cta='Manage gift cards',
+                icon='gift',
+                order=30,
+                capability='gift_cards.read',
+            )
+        ]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
@@ -243,10 +258,10 @@ class GiftCardsPlugin(Plugin):
                 view='plugins.installed.gift_cards.views.gift_cards_list',
                 icon='gift',
                 section='marketing',
-                order=50,
+                order=30,
                 # Canonical URL — the routes live under register_urls'
                 # dashboard/gift-cards/ prefix; without this override the
-                # sidebar linked the doubled /dashboard/apps/gift_cards/gift_cards/.
+                # tab linked the doubled /dashboard/apps/gift_cards/gift_cards/.
                 url='/dashboard/gift-cards/',
             ),
         ]

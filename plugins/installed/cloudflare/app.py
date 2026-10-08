@@ -48,6 +48,7 @@ class CloudflarePlugin(Plugin):
                 order=15,
                 nav='settings',
                 url='/dashboard/cloudflare/',
+                hint='Cache purge, DNS and zone settings',
             ),
         ]
 
@@ -151,5 +152,5 @@ class CloudflarePlugin(Plugin):
             label='Turnstile',
             description='Cloudflare Turnstile bot protection for public forms.',
             schema=self.get_config_schema(),
-            category='general',
+            category='storefront',
         )

@@ -37,12 +37,12 @@ class ProductStoriesPlugin(Plugin):
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
-                label='Product stories',
+                label='Stories',
                 slug='stories',
                 view='plugins.installed.product_stories.dashboard.stories_index',
                 icon='book-open',
-                section='catalog',
-                order=55,
+                section='content',
+                order=60,
                 url='/dashboard/stories/',
             ),
         ]

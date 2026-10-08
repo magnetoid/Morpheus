@@ -8,7 +8,7 @@ DASHBOARD_KPIS tile), so it is disable- and delete-safe by construction.
 
 from __future__ import annotations
 
-from morpheus.app import DashboardPage, Plugin
+from morpheus.app import DashboardCard, DashboardPage, Plugin
 
 
 class FeatureAdoptionPlugin(Plugin):
@@ -46,6 +46,21 @@ class FeatureAdoptionPlugin(Plugin):
             },
         )
 
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Analytics landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='analytics',
+                title='Feature adoption',
+                data='plugins.installed.feature_adoption.cards.adoption_card',
+                url='/dashboard/apps/feature_adoption/adoption/',
+                cta='Open report',
+                icon='activity',
+                order=80,
+                capability='analytics.read',
+            )
+        ]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
@@ -55,5 +70,6 @@ class FeatureAdoptionPlugin(Plugin):
                 icon='activity',
                 section='analytics',
                 order=80,
+                nav='hidden',
             )
         ]

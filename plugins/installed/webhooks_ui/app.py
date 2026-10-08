@@ -133,6 +133,7 @@ class WebhooksUiPlugin(Plugin):
                 section='developer',
                 order=10,
                 nav='settings',
+                hint='Endpoints that receive store events',
             ),
             DashboardPage(
                 label='Deliveries',
@@ -142,5 +143,6 @@ class WebhooksUiPlugin(Plugin):
                 section='developer',
                 order=20,
                 nav='settings',
+                hint='Every webhook sent, with its response',
             ),
         ]

@@ -1,5 +1,9 @@
 # Dashboard IA redesign — Shopify-clear, Woo-familiar (2026-06)
 
+> **Superseded by [dashboard-hubs-2026-10.md](dashboard-hubs-2026-10.md)** (v0.81.0):
+> the sidebar is now a fixed list of sections, an app's pages are tabs, settings
+> pages are cards on their category. Kept for the history of the earlier phases.
+
 **Problem (from the 2026-06-12 audit):** two navigation systems fight each
 other (hardcoded base.html links + contributed sections), producing
 duplicate entries (Insights twice, Products' children repeated, Assets and

@@ -55,8 +55,9 @@ class DsersPlugin(Plugin):
                 slug='orders',
                 view='plugins.installed.dsers.views.dashboard',
                 icon='package',
-                section='data',
-                order=40,
+                section='orders',
+                order=60,
+                group='Suppliers',
             )
         ]
 
@@ -65,7 +66,7 @@ class DsersPlugin(Plugin):
             label='DSers dropshipping',
             description='What travels with each order to the supplier, and where tracking links point.',
             schema=self.get_config_schema(),
-            category='apps',
+            category='shipping',
         )
 
     def get_config_schema(self) -> dict:

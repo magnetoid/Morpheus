@@ -50,5 +50,6 @@ class WorkflowsPlugin(Plugin):
                 order=20,
                 nav='settings',
                 url='/dashboard/workflows/',
+                hint='When something happens, do something',
             ),
         ]

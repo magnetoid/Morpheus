@@ -2,8 +2,14 @@
 {% load static %}
 {% block title %}Linda · Morpheus admin{% endblock %}
 
+{% comment %}This page lays out the whole main panel itself, so the Linda tabs (Chat,
+Activity, Automations, …) are drawn inside it rather than above it, where the
+chat would cover them.{% endcomment %}
+{% block section_tabs %}{% endblock %}
+
 {% block content %}
 <div class="linda-page">
+  <div class="linda-page__tabs">{% include "admin_dashboard/_section_tabs.html" %}</div>
 
   <div id="linda-log" class="linda-log">
     {% comment %}Empty state — always rendered on page load. Previous-session messages are reachable via the history API; the page itself opens clean.{% endcomment %}
@@ -52,6 +58,9 @@
     background: var(--surface);
     overflow: hidden;
   }
+  .linda-page__tabs { flex: none; padding: .75rem 1.5rem 0; }
+  .linda-page__tabs .hub-tabs { margin-bottom: 0; }
+  .linda-page__tabs:empty { display: none; }
   .linda-log {
     flex: 1 1 auto; min-height: 0;
     overflow-y: auto;

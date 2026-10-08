@@ -17,14 +17,23 @@
     </div>
   </div>
 
-  <div class="card card-padded mb-4 border-l-4" style="border-left-color: var(--brand);">
-    <h3 class="font-medium text-sm mb-1">Quick Navigation</h3>
-    <div class="flex flex-wrap gap-2 mt-2">
-      <a href="/dashboard/assistant/" class="btn btn-secondary text-xs"><i data-lucide="message-square" class="h-3.5 w-3.5"></i> Linda Assistant</a>
-      <a href="/dashboard/agents/" class="btn btn-secondary text-xs"><i data-lucide="bot" class="h-3.5 w-3.5"></i> Agents Activity</a>
-      <a href="/dashboard/ai-insights/" class="btn btn-secondary text-xs"><i data-lucide="lightbulb" class="h-3.5 w-3.5"></i> AI Insights</a>
-    </div>
+  {% comment %}Tool cards: the AI settings pages apps file here (Janus, Bootstrap a
+  store, Morpheus Brain) — admin_dashboard/navigation.py. Linda's own pages are
+  tabs of the Linda section, not links here.{% endcomment %}
+  {% if tools %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    {% for tool in tools %}
+    <a href="{{ tool.url }}" class="card card-padded flex items-start gap-3 hover:bg-[color:var(--surface-2)]">
+      <div class="ai-tile-icon"><i data-lucide="{{ tool.icon }}" class="h-5 w-5"></i></div>
+      <div class="min-w-0 flex-1">
+        <div class="font-medium">{{ tool.label }}</div>
+        {% if tool.hint %}<p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ tool.hint }}</p>{% endif %}
+      </div>
+      <i data-lucide="chevron-right" class="h-4 w-4 text-[color:var(--text-muted)] mt-1"></i>
+    </a>
+    {% endfor %}
   </div>
+  {% endif %}
 
   {% with ab=active_banner %}
   {% if ab.card %}

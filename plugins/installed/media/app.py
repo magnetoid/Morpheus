@@ -35,17 +35,15 @@ class MediaPlugin(Plugin):
         return [media_search_tool]
 
     def contribute_dashboard_pages(self) -> list:
-        # Assets is a core surface — wired directly into the sidebar
-        # template (right under Users). Hidden from the
-        # plugin-contributed section loop so it doesn't double-render.
+        # The media library, a tab of the Content section.
         return [
             DashboardPage(
                 slug='library',
-                label='Assets',
-                section='cms',
+                label='Media',
+                section='content',
                 icon='image',
                 view='plugins.installed.media.views.library',
-                order=20,
+                order=50,
                 nav='main',
             ),
         ]

@@ -103,7 +103,7 @@ class StaffSsoPlugin(Plugin):
         return SettingsPanel(
             label='Staff SSO (OIDC / SAML)',
             description='Sign staff in through your OIDC or SAML 2.0 identity provider.',
-            category='developer',
+            category='team',
             schema=self.get_config_schema(),
         )
 

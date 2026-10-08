@@ -32,7 +32,7 @@ class FlipbookPlugin(Plugin):
         # registry after collection.
         return SettingsPanel(
             label='Flipbook preview',
-            category='channels',
+            category='storefront',
             description='Per-store flipbook preview controls.',
             schema={
                 'type': 'object',

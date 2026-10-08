@@ -226,7 +226,8 @@ The contribution surfaces an app may use:
 | Surface | Method | Lands in | Auto-removed on disable? |
 |---|---|---|---|
 | **Storefront block** | `contribute_storefront_blocks()` | a theme slot via `{% storefront_blocks "slot" %}` | ✅ |
-| **Dashboard page** | `contribute_dashboard_pages()` | merchant sidebar (main or settings nav) | ✅ |
+| **Dashboard page** | `contribute_dashboard_pages()` | a tab of a dashboard section, or a tool card on a settings category | ✅ |
+| **Dashboard card** | `contribute_dashboard_cards()` | a widget on a section's landing page, beside other apps' cards | ✅ |
 | **Settings panel** | `contribute_settings_panel()` | `/dashboard/settings/<category>/` form | ✅ |
 | **Email template** | `contribute_email_templates()` | central list at Settings → Email templates | ✅ |
 | **Agent command** | `contribute_agent_tools()` | Linda's tool catalogue (the agent runtime + MCP) | ✅ |
@@ -241,7 +242,7 @@ the plugin, every contribution lights up at once; when they disable it,
 `_drop_contributions` strips them back out.
 
 ```python
-from plugins.contributions import StorefrontBlock, DashboardPage, SettingsPanel
+from morpheus.app import DashboardCard, DashboardPage, SettingsPanel, StorefrontBlock
 
 class AdvancedShopPlugin(MorpheusPlugin):
     name = 'advanced_shop'
@@ -262,13 +263,29 @@ class AdvancedShopPlugin(MorpheusPlugin):
         ]
 
     def contribute_dashboard_pages(self) -> list:
-        # Routed at /dashboard/apps/advanced_shop/<slug>/.
+        # Routed at /dashboard/apps/advanced_shop/<slug>/; a tab of Products.
         return [
             DashboardPage(
                 label='Bulk price edit',
                 slug='bulk-price',
                 view='plugins.installed.advanced_shop.views.bulk_price_view',
                 icon='edit-3',
+                section='products',    # which sidebar section's tabs it joins
+                order=80,              # where among them
+            ),
+        ]
+
+    def contribute_dashboard_cards(self) -> list:
+        # A widget on the Products list, next to other apps' cards. The data
+        # callable returns {value, caption, rows, tone, empty} or None.
+        return [
+            DashboardCard(
+                section='products',
+                title='Low stock',
+                data='plugins.installed.advanced_shop.cards.low_stock_card',
+                url='/dashboard/apps/advanced_shop/bulk-price/',
+                icon='alert-triangle',
+                capability='catalog.read',
             ),
         ]
 
@@ -277,7 +294,7 @@ class AdvancedShopPlugin(MorpheusPlugin):
         return SettingsPanel(
             label='Advanced Shop',
             schema=self.get_config_schema(),
-            category='apps',           # which settings category to file under
+            category='storefront',     # which settings category to file under
         )
 
     def get_config_schema(self) -> dict:
@@ -300,10 +317,46 @@ class AdvancedShopPlugin(MorpheusPlugin):
         ...   # always accept **kwargs; wrap the body so a bad row can't break the chain
 ```
 
-The `nav` and `section` fields on `DashboardPage`, and `category` on
-`SettingsPanel`, decide *where* in the chrome the entry appears — see the
-dataclass docstrings in [`plugins/contributions.py`](../plugins/contributions.py)
-for the full enum of sidebar sections and settings categories.
+### Where an app's dashboard entries land (v0.81.0)
+
+The dashboard has **one taxonomy**, owned by the shell
+([`admin_dashboard/navigation.py`](../plugins/installed/admin_dashboard/navigation.py)
+and [`settings_categories.py`](../plugins/installed/admin_dashboard/settings_categories.py)).
+An app files each entry into it; it never adds a sidebar link of its own.
+
+* **The sidebar is the sections**: Home · Linda (`ai`) · Orders · Products ·
+  Customers · Marketing · Channels · Content · Analytics · SEO · Vendors, then
+  Settings. A section with nothing in it is not listed.
+* **`DashboardPage(nav='main', section=…)`** is a **tab** at the top of that
+  section's pages, ordered by `order`. Pages that share a **`group=`** label
+  fold into one tab with sub-tabs (use it when an app has several pages —
+  affiliates' seven, a channel's catalog + ads). A big app keeps its own pages;
+  it just gets one tab instead of seven sidebar links.
+* **`nav='hidden'`** routes the page and keeps its section (the sidebar and
+  breadcrumb still know where you are) but gives it no tab — the right choice
+  for a detail page, or a page a card links to.
+* **`nav='settings', section=<category>`** is a **tool card** on that settings
+  category's page (with `hint=` as its one-line description). Settings pages are
+  never sidebar links.
+* **`DashboardCard(section=…)`** is a widget on a section's landing — `orders`,
+  `products`, `customers` (above the list, when it is unfiltered), `marketing`
+  (the overview at `/dashboard/marketing/`), `analytics` (below the report). The
+  data callable returns `{value, caption, rows, tone, empty, url}` (or `None` to
+  stay off the page); the shell draws every card alike, shows an error state if
+  it raises, and gates it on `capability` under rbac `enforce`. **When an app's
+  whole page is a summary, make it a card** and hide the page behind it.
+* **`SettingsPanel(category=…)`** is a form on that category: `general`,
+  `payments`, `shipping`, `storefront`, `channels`, `marketing`, `ai`,
+  `notifications`, `team`, `developer`, `data`. Leaving it blank files it under
+  "Other apps", which no in-tree app uses.
+
+Older keys (`growth`, `cms`, `catalog`, `marketplace`, `b2b`, `crm`; `taxes`,
+`access`, `security`, `checkout`, `content`, `customers`, `settings`) are
+aliased to their new homes. A key that matches nothing is a `manage.py check`
+warning (`morpheus.W003`–`W005`) — a warning, not an error, so an older
+out-of-tree app never stops a boot — and the entry is reachable only from the
+Apps catalogue. The catalogue groups apps by the same areas and lists what each
+one adds.
 
 **Storefront slot names the reference theme (`dot_books`) renders today:**
 
@@ -455,8 +508,8 @@ Toggled from `/dashboard/apps/`. Enable and disable are exact mirrors —
    into the platform indexes.
 3. `{% storefront_blocks "slot" %}` now finds the app's blocks
    (`storefront_blocks_for`).
-4. The dashboard sidebar shows the app's pages — `plugin_context` builds
-   `sidebar_sections` / `settings_sections` from `dashboard_pages()`, and
+4. The dashboard shows the app's pages — `admin_dashboard/navigation.py` turns
+   `dashboard_pages()` into its section's tabs and its settings tool cards, and
    `admin_dashboard/base.html` loops over them. No hard-coded entry anywhere.
 5. The settings panel shows under its category in `/dashboard/settings/`.
 
@@ -465,10 +518,13 @@ Toggled from `/dashboard/apps/`. Enable and disable are exact mirrors —
 - Storefront blocks are dropped from the index → every `{% storefront_blocks %}`
   slot the app fed renders **empty**. Its `/dashboard/apps/<plugin>/...` and
   storefront routes 404.
-- Dashboard pages leave `dashboard_pages()` → the sidebar entries **vanish**
-  (the section header disappears too if it had no other pages).
-- The settings panel leaves `all_settings_panels()` → its form and its
-  settings-nav link **vanish**.
+- Dashboard pages leave `dashboard_pages()` → the app's tabs and settings
+  tool cards **vanish** (the section leaves the sidebar too if nothing else
+  was in it).
+- Dashboard cards leave `dashboard_cards()` → the app's widgets leave their
+  landing pages.
+- The settings panel leaves `all_settings_panels()` → its form **vanishes**
+  (and its category leaves the settings sidebar if it had nothing else).
 - Hook subscribers are not re-registered → the app stops reacting to events.
 
 Nothing the app added survives the toggle — provided the app followed the
@@ -503,8 +559,8 @@ properly modular":
    [LAW 4](../RULES.md#law-4--plugins-communicate-via-hooks--outbox).)
 2. **Disable test.** Toggle the app off in `/dashboard/apps/` → **every
    surface it added vanishes** — sidebar pages, settings panel, storefront
-   blocks, account tiles. If any surface remains, it was hard-coded somewhere
-   it shouldn't be.
+   blocks, account tiles, cards. If any surface remains, it was hard-coded
+   somewhere it shouldn't be.
 
 ### Anti-patterns — do NOT do these
 
@@ -513,11 +569,11 @@ Each of these welds an app's surface into code the app doesn't own, so it
 
 - ❌ **Hard-coding a plugin's nav into `admin_dashboard`.** Adding
   `<a href="/dashboard/apps/<plugin>/...">` to the dashboard chrome instead of
-  returning a `DashboardPage`. (Even guarded by `{% if 'x' in active_plugins %}`
-  it's a smell — it duplicates the `sidebar_sections` loop and the markup still
-  ships. The hard-coded **affiliates** block in `base.html` is the current
-  example; the fix is to verify affiliates contributes `DashboardPage`s and
-  delete the block.)
+  returning a `DashboardPage`. (Even guarded by `{% plugin_enabled %}` it's a
+  smell — the navigation already lists contributed pages, and a guarded link
+  is a second listing that drifts. Since v0.81.0 `base.html` links no app page
+  at all; reviews, draft orders and tracking, the last three, contribute their
+  own entries.)
 - ❌ **Hard-coding a plugin's settings UI into `admin_dashboard`.** A
   `settings_<x>()` view + `if category == 'x'` dispatch instead of
   `contribute_settings_panel()`. The **payments** plugin is the current debt —
@@ -1121,16 +1177,17 @@ def ready(self) -> None:
 The dashboard auto-renders **every active plugin** in its **Apps** view.
 For a custom dashboard page, return a `DashboardPage` from
 `contribute_dashboard_pages()` (see [§5.1](#51-modularity-contract-sdk-base)) —
-the registry routes it and the sidebar lists it automatically, **and it
-auto-hides when the plugin is disabled.** Prefer this over hand-mounting a URL
-under `dashboard/`: a hard-coded sidebar link won't disappear on disable and
-fails the litmus test.
+the registry routes it and its section lists it as a tab automatically, **and
+it auto-hides when the plugin is disabled.** Prefer this over hand-mounting a
+URL under `dashboard/`: a hard-coded link won't disappear on disable and fails
+the litmus test. For a number worth glancing at, add a `DashboardCard` instead
+of a page ([where entries land](#where-an-apps-dashboard-entries-land-v0810)).
 
 ```python
 def contribute_dashboard_pages(self) -> list:
     return [DashboardPage(label='My tool', slug='tool',
                           view='plugins.installed.my_plugin.views.tool',
-                          section='catalog')]
+                          section='products')]
 ```
 
 ---

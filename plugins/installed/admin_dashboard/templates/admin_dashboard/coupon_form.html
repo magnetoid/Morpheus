@@ -2,10 +2,12 @@
 {% block title %}{% if coupon %}{{ coupon.code }}{% else %}New coupon{% endif %} · Morpheus{% endblock %}
 
 {% block breadcrumb %}
-<div class="mb-4"><nav class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
+<div class="mb-4"><nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
   <a href="/dashboard/" class="hover:underline">Dashboard</a>
   <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
   <a href="{% url 'admin_dashboard:marketing' %}" class="hover:underline">Marketing</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <a href="{% url 'admin_dashboard:coupons' %}" class="hover:underline">Coupons</a>
   <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
   <span class="font-medium text-[color:var(--text)]">{% if coupon %}{{ coupon.code }}{% else %}New coupon{% endif %}</span>
 </nav></div>
@@ -26,7 +28,7 @@
         <button class="btn"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
       </form>
       {% endif %}
-      <a href="{% url 'admin_dashboard:marketing' %}" class="btn">Cancel</a>
+      <a href="{% url 'admin_dashboard:coupons' %}" class="btn">Cancel</a>
       <button type="submit" form="coupon-form" class="btn btn-primary">
         <i data-lucide="save" class="h-4 w-4"></i> Save
       </button>

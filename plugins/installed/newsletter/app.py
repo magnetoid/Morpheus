@@ -5,7 +5,14 @@ docs/plans/newsletter.md.
 
 from __future__ import annotations
 
-from morpheus.app import DashboardPage, EmailTemplateDef, Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import (
+    DashboardCard,
+    DashboardPage,
+    EmailTemplateDef,
+    Plugin,
+    SettingsPanel,
+    StorefrontBlock,
+)
 from morpheus.core import events
 
 
@@ -55,35 +62,53 @@ class NewsletterPlugin(Plugin):
                 'winback for %s failed: %s', getattr(customer, 'pk', '?'), exc, exc_info=True
             )
 
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Marketing landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='marketing',
+                title='Newsletter',
+                data='plugins.installed.newsletter.cards.newsletter_card',
+                url='/dashboard/newsletter/',
+                cta='Open subscribers',
+                icon='mail',
+                order=40,
+                capability='marketing.read',
+            )
+        ]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
-                label='Newsletter',
+                label='Subscribers',
                 slug='subscribers',
                 view='plugins.installed.newsletter.dashboard.subscribers_view',
                 icon='mail',
                 section='marketing',
-                order=60,
+                order=40,
                 url='/dashboard/newsletter/',
+                group='Newsletter',
             ),
             DashboardPage(
-                label='Signup popups',
+                label='Popups',
                 slug='popups',
                 view='plugins.installed.newsletter.dashboard.popups_view',
                 icon='message-square',
                 section='marketing',
-                order=61,
-                nav='hidden',
+                order=42,
+                nav='main',
                 url='/dashboard/newsletter/popups/',
+                group='Newsletter',
             ),
             DashboardPage(
-                label='Send campaigns',
+                label='Campaigns',
                 slug='newsletter-campaigns',
                 view='plugins.installed.newsletter.dashboard.campaigns_view',
                 icon='send',
                 section='marketing',
-                order=62,
+                order=41,
                 url='/dashboard/newsletter/campaigns/',
+                group='Newsletter',
             ),
         ]
 

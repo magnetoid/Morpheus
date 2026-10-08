@@ -100,7 +100,7 @@ destructive buttons = `btn-danger` (4 styles today).
   currency ×2 duplicates get defaults + "overrides X" labels;
   `get_category('caching')` null-guard.
 
-**1.4 Nav/IA + URLs (execute the two parked plans, they're still 100% valid).**
+**1.4 Nav/IA + URLs** — *the IA half shipped differently in v0.81.0 (sections, tabs, cards: [dashboard-hubs-2026-10.md](dashboard-hubs-2026-10.md)); the URL-unification half is still open.*
 - `dashboard-url-unification-2026-07.md` steps 1–5: mount the DashboardPage
   router at each plugin's own prefix so list and detail stop living in two
   trees (`/dashboard/apps/marketplace/vendors` vs

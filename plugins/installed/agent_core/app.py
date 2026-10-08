@@ -229,17 +229,10 @@ class AgentCorePlugin(Plugin):
         return []
 
     def contribute_dashboard_pages(self) -> list:
-        # All four pages are hidden from the sidebar — they're folded
-        # into Linda's domain (the "Linda" parent nav in
-        # admin_dashboard/base.html). The DashboardPage rows stay
-        # registered so the plugin_page_router resolves the URLs:
-        #   /dashboard/apps/agent_core/console/         → Ops console
-        #   /dashboard/apps/agent_core/runs/            → Agent runs
-        #   /dashboard/apps/agent_core/background/      → Background agents
-        #   /dashboard/apps/agent_core/observability/   → Observability
-        # The merchant reaches them via the Linda sub-menu, not the
-        # apps catalog (which now hides agent_core entirely — it's a
-        # SYSTEM_PLUGIN, see admin_dashboard.views_split.apps).
+        # Tabs of the Linda section (section='ai'), between the shell's own
+        # Chat, Insights and Proposals tabs (admin_dashboard/navigation.py).
+        # The apps catalogue hides agent_core entirely — it is a
+        # SYSTEM_PLUGIN, see admin_dashboard.views_split.apps.
         # Linda-aligned labels (2026-05-23). The legacy "Ops console"
         # DashboardPage entry was removed — Linda's Chat is the ops
         # console now since every objective routes through
@@ -248,33 +241,33 @@ class AgentCorePlugin(Plugin):
         # they just aren't surfaced in the sidebar or apps catalog.
         return [
             DashboardPage(
-                label='Linda activity',
+                label='Activity',
                 slug='runs',
                 view='plugins.installed.agent_core.views.runs_dashboard_view',
                 icon='activity',
                 section='ai',
                 order=20,
-                nav='hidden',
+                nav='main',
                 url='/dashboard/agents/',
             ),
             DashboardPage(
-                label='Linda automations',
+                label='Automations',
                 slug='background',
                 view='plugins.installed.agent_core.views.background_agents_view',
                 icon='clock',
                 section='ai',
                 order=30,
-                nav='hidden',
+                nav='main',
                 url='/dashboard/agents/background/',
             ),
             DashboardPage(
-                label='Linda insights',
+                label='Observability',
                 slug='observability',
                 view='plugins.installed.agent_core.views.observability_view',
                 icon='gauge',
                 section='ai',
                 order=40,
-                nav='hidden',
+                nav='main',
                 url='/dashboard/agents/observability/',
             ),
             # EU AI Act evidence export — the trail of automated AI decisions
@@ -286,7 +279,7 @@ class AgentCorePlugin(Plugin):
                 view='plugins.installed.agent_core.compliance_views.ai_act_report_view',
                 icon='file-check',
                 section='ai',
-                order=45,
+                order=70,
                 nav='main',
                 url='/dashboard/apps/agent_core/compliance/',
             ),
@@ -294,12 +287,12 @@ class AgentCorePlugin(Plugin):
             # Linda reads at the top of every turn. Read = staff; edits =
             # superuser (they shape Linda's behaviour).
             DashboardPage(
-                label='Linda memory',
+                label='Memory',
                 slug='memory',
                 view='plugins.installed.agent_core.views.memory_list_view',
                 icon='brain',
                 section='ai',
-                order=55,
+                order=50,
                 nav='main',
                 url='/dashboard/agents/memory/',
             ),

@@ -212,5 +212,5 @@ class CatalogPlugin(Plugin):
             label='Images',
             description='The shape product images are shown in, how they fill their frame, and the format and quality of the variants generated on upload. One setting drives the dashboard, the storefront and the pipeline together.',
             schema=self.get_config_schema(),
-            category='general',
+            category='storefront',
         )

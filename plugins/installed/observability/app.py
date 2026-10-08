@@ -26,8 +26,10 @@ class ObservabilityPlugin(Plugin):
                 slug='audit',
                 view='plugins.installed.observability.views.audit_log_view',
                 icon='scroll-text',
-                section='developer',
-                order=80,
+                section='team',
+                order=30,
                 url='/dashboard/observability/audit/',
+                hint='Who changed what, and when',
+                nav='settings',
             ),
         ]

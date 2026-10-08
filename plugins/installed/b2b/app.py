@@ -45,7 +45,7 @@ class B2bPlugin(Plugin):
                 slug='pricelists',
                 view='plugins.installed.b2b.dashboard.pricelists',
                 icon='tag',
-                section='b2b',
-                order=10,
+                section='products',
+                order=70,
             ),
         ]

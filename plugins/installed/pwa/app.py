@@ -68,7 +68,7 @@ class PwaPlugin(Plugin):
                 'service worker.'
             ),
             schema=self.get_config_schema(),
-            category='developer',
+            category='storefront',
         )
 
     def get_config_schema(self) -> dict:

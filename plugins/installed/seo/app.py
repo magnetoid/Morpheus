@@ -416,10 +416,10 @@ class SeoPlugin(Plugin):
         # registered via register_urls(prefix='dashboard/seo/'). The
         # legacy /dashboard/apps/seo/<slug>/ path still works (the
         # plugin_page_router resolves it) but nothing in the UI links
-        # there anymore — bookmarks survive, sidebar uses canonical.
+        # there anymore — bookmarks survive, the tabs use the canonical URL.
         return [
             DashboardPage(
-                label='SEO',
+                label='Overview',
                 slug='overview',
                 view='plugins.installed.seo.views.seo_overview',
                 icon='search',
@@ -512,7 +512,7 @@ class SeoPlugin(Plugin):
                 url='/dashboard/seo/schema/',
             ),
             DashboardPage(
-                label='Site SEO settings',
+                label='Settings',
                 slug='settings',
                 view='plugins.installed.seo.views.seo_settings_page',
                 icon='settings',

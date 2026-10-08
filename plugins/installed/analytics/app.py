@@ -185,12 +185,12 @@ class AnalyticsPlugin(Plugin):
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
-                label='Overview',
+                label='Traffic',
                 slug='overview',
                 view='plugins.installed.analytics.views.overview',
                 icon='line-chart',
                 section='analytics',
-                order=10,
+                order=20,
             ),
             DashboardPage(
                 label='Real-time',
@@ -198,7 +198,7 @@ class AnalyticsPlugin(Plugin):
                 view='plugins.installed.analytics.views.realtime',
                 icon='radio',
                 section='analytics',
-                order=20,
+                order=30,
             ),
             DashboardPage(
                 label='Funnel',
@@ -206,7 +206,7 @@ class AnalyticsPlugin(Plugin):
                 view='plugins.installed.analytics.views.funnel_view',
                 icon='filter',
                 section='analytics',
-                order=30,
+                order=40,
             ),
             DashboardPage(
                 label='Cohorts',
@@ -214,7 +214,7 @@ class AnalyticsPlugin(Plugin):
                 view='plugins.installed.analytics.views.cohort_view',
                 icon='users',
                 section='analytics',
-                order=40,
+                order=50,
             ),
             DashboardPage(
                 label='Attribution',
@@ -222,7 +222,7 @@ class AnalyticsPlugin(Plugin):
                 view='plugins.installed.analytics.views_attribution.attribution_view',
                 icon='git-merge',
                 section='analytics',
-                order=50,
+                order=60,
             ),
         ]
 
@@ -240,7 +240,7 @@ class AnalyticsPlugin(Plugin):
             label='Analytics',
             description='Event log retention, daily rollups, funnel definitions.',
             schema=self.get_config_schema(),
-            category='developer',
+            category='channels',
         )
 
     def get_config_schema(self) -> dict:

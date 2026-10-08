@@ -58,7 +58,7 @@ class CheckoutExperiencePlugin(Plugin):
                 'Express-pay methods, layout density, motion preferences. '
                 'Address autocomplete uses GOOGLE_PLACES_API_KEY.'
             ),
-            category='general',
+            category='payments',
             schema=self.get_config_schema(),
         )
 

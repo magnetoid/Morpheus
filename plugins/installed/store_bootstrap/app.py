@@ -49,5 +49,6 @@ class StoreBootstrapPlugin(Plugin):
                 section='ai',
                 order=15,
                 nav='settings',
+                hint='Let Linda draft a catalogue and pages from a brief',
             ),
         ]

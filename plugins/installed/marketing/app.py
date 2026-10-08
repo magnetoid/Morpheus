@@ -1,4 +1,4 @@
-from morpheus.app import DashboardPage, Plugin
+from morpheus.app import DashboardCard, DashboardPage, Plugin
 
 
 class MarketingPlugin(Plugin):
@@ -14,6 +14,21 @@ class MarketingPlugin(Plugin):
         # Cart-recovery email is owned solely by the cart_abandonment plugin's
         # consent-checked drip — marketing no longer subscribes to cart.abandoned.
 
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Marketing landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='marketing',
+                title='Coupons',
+                data='plugins.installed.marketing.cards.coupons_card',
+                url='/dashboard/marketing/coupons/',
+                cta='Manage coupons',
+                icon='ticket',
+                order=10,
+                capability='marketing.read',
+            )
+        ]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
@@ -23,6 +38,7 @@ class MarketingPlugin(Plugin):
                 icon='ticket',
                 section='marketing',
                 order=10,
+                url='/dashboard/marketing/coupons/',
             ),
             DashboardPage(
                 label='Campaigns',
@@ -31,5 +47,6 @@ class MarketingPlugin(Plugin):
                 icon='megaphone',
                 section='marketing',
                 order=20,
+                nav='hidden',
             ),
         ]

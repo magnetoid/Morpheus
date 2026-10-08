@@ -182,7 +182,7 @@ class ShippingPlugin(Plugin):
         # "Shipping" entry instead of two. Both views/URLs stay intact.
         return [
             DashboardPage(
-                label='Shipping',
+                label='Shipping zones',
                 slug='zones',
                 view='plugins.installed.shipping.dashboard.zones',
                 icon='truck',
@@ -190,6 +190,7 @@ class ShippingPlugin(Plugin):
                 order=10,
                 nav='settings',
                 url='/dashboard/shipping/zones/',
+                hint='Zones, rates and free-shipping rules',
             ),
         ]
 

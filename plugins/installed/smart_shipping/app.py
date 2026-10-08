@@ -47,7 +47,7 @@ class SmartShippingPlugin(Plugin):
         return SettingsPanel(
             label='Smart shipping',
             description='Carrier adapters, emissions source, lowest-carbon badge copy.',
-            category='general',
+            category='shipping',
             schema=self.get_config_schema(),
         )
 

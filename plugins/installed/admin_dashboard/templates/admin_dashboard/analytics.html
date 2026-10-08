@@ -278,5 +278,14 @@
   </div>
   {% endif %}
 
+  {% comment %}Reports from other apps (NPS, feature adoption, …) as cards — each links to its full page.{% endcomment %}
+  {% dashboard_card_list "analytics" as hub_cards %}
+  {% if hub_cards %}
+  <div>
+    <h2 class="font-semibold mb-2">More reports</h2>
+    {% include "admin_dashboard/_cards.html" with cards=hub_cards %}
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}

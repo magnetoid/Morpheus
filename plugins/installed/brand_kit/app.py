@@ -52,7 +52,7 @@ class BrandKitPlugin(Plugin):
         return SettingsPanel(
             label='Brand kit',
             description='Active token set, asset tag taxonomy, AI brand kit generator.',
-            category='general',
+            category='storefront',
             schema=self.get_config_schema(),
         )
 

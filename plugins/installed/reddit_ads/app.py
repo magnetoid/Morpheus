@@ -109,8 +109,8 @@ class RedditAdsPlugin(Plugin):
                 slug='ads',
                 view='plugins.installed.reddit_ads.views.ads_dashboard',
                 icon='message-circle',
-                section='marketing',
-                order=71,
+                section='channels',
+                order=90,
                 nav='main',
             ),
         ]

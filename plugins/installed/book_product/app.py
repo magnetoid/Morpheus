@@ -148,11 +148,10 @@ class BookProductPlugin(Plugin):
                 slug='book-taxonomies',
                 view='plugins.installed.book_product.dashboard_taxonomies.taxonomies_list',
                 icon='tags',
-                # section='products' renders this as a child of the hardcoded
-                # Products nav group (just below Collections, via order) — the
-                # plugin owns its placement; no hardcoded link in base.html (ADR 0016).
+                # A tab of the Products section, after the shell's own tabs
+                # (order) — the app owns its placement (ADR 0016).
                 section='products',
-                order=10,
+                order=60,
                 nav='main',
                 url='/dashboard/book-taxonomies/',
             ),

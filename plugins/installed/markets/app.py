@@ -37,10 +37,11 @@ class MarketsPlugin(Plugin):
             DashboardPage(
                 slug='index',
                 label='Markets',
-                section='settings',
+                section='general',
                 icon='globe',
                 view='plugins.installed.markets.views.index',
                 order=15,
                 nav='settings',
+                hint='Countries, currencies and prices per market',
             ),
         ]

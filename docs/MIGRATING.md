@@ -6,6 +6,44 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.81.0 — the dashboard is sections, tabs and cards
+
+Nothing an out-of-tree app does stops working; this is what it looks like now
+and what to adopt. The sidebar is a fixed list of sections; an app's pages are
+tabs of one ([where entries land](PLUGIN_DEVELOPMENT.md#where-an-apps-dashboard-entries-land-v0810)).
+
+**`DashboardPage.section` keys.** `growth`→`marketing`, `marketplace`→`vendors`,
+`cms`→`content`, `catalog` and `b2b`→`products`, `crm`→`customers`,
+`sales`→`orders` are aliased, so an app using them lands in the right section.
+A page with `nav='main'` whose section is none of
+`orders products customers marketing channels content analytics seo vendors ai`
+(and no alias) is listed only in the Apps catalogue, and `manage.py check`
+warns (`morpheus.W003`). Pages sharing `group=` become one tab with sub-tabs.
+
+**Settings pages are cards.** A `nav='settings'` page is a tool card on the
+settings category its `section` names (`general payments shipping storefront
+channels marketing ai notifications team developer data`; `taxes`, `access`,
+`settings` are aliased), with `hint=` as its description — it is no longer a
+settings-sidebar link. `SettingsPanel.category` takes the same slugs; old ones
+(`taxes`, `security`, `checkout`, `content`, `customers`) are aliased and
+`/dashboard/settings/<old>/` redirects.
+
+**New, optional: `DashboardCard`.** `contribute_dashboard_cards()` puts a
+widget on a section's landing (`orders`, `products`, `customers`, `marketing`,
+`analytics`). Exported from `morpheus.app` and `morpheus`.
+
+**URL moves (`/dashboard/*` is not a stable surface).** `/dashboard/marketing/`
+is the Marketing overview; the coupon list is `/dashboard/marketing/coupons/`.
+
+**Templates extending `admin_dashboard/base.html`.** The `sidebar_sections`,
+`settings_sections`, `products_nav_children`, `settings_category_nav` and
+`nav_badges`-for-every-request context keys are gone; the shell reads
+`dashboard_nav` (dashboard requests only). A page that lays out the whole main
+panel itself can override `{% block section_tabs %}` and place
+`admin_dashboard/_section_tabs.html` inside its own layout, as Linda's chat does.
+
+---
+
 ## v0.80.0 — pages answer for what is on them
 
 Search-engine plumbing, tightened on all three live stores after a crawl found

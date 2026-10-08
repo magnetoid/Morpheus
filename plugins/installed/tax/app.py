@@ -101,19 +101,20 @@ class TaxPlugin(Plugin):
         return [list_rates_tool, set_rate_tool]
 
     def contribute_dashboard_pages(self) -> list:
-        # Regions + rates are one 'Tax' page now (the template stacks both
-        # sections); a single settings nav entry instead of two. Both views/URLs
-        # stay intact — `rates` redirects to the unified page (ADR 0003).
+        # Regions + rates are one page (the template stacks both sections),
+        # a tool card on Settings › Shipping & tax. Both views/URLs stay
+        # intact — `rates` redirects to the unified page (ADR 0003).
         return [
             DashboardPage(
-                label='Tax',
+                label='Tax regions',
                 slug='regions',
                 view='plugins.installed.tax.dashboard.regions',
                 icon='percent',
-                section='taxes',
+                section='shipping',
                 order=10,
                 nav='settings',
                 url='/dashboard/tax/regions/',
+                hint='Tax rates per region',
             ),
         ]
 

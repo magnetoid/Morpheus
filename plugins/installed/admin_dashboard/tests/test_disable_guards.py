@@ -56,15 +56,13 @@ class DashboardNavGuardTests(TestCase):
     its `{% if <plugin>_enabled %}` guard, so disabling the plugin removes the
     link. Add a row here whenever a plugin link is hardcoded into base.html."""
 
-    # href fragment  ->  the plugin_enabled guard variable that must gate it
+    # href fragment  ->  the plugin_enabled guard variable that must gate it.
+    # Only the account dropdown links an app directly now; the sidebar is the
+    # sections (admin_dashboard/navigation.py) and every app page is a
+    # contributed tab or tool card.
     GUARDED_LINKS = {
-        '/dashboard/reviews/': 'reviews_enabled',
-        '/dashboard/draft-orders/': 'draft_orders_enabled',
-        # About link hardcoded into the top-right user dropdown. (The Version
-        # link is guarded by the same `release_notes_on` in the dropdown but is
-        # not listed here: the href also appears in the sidebar with a
-        # multi-line guard block that this inline check can't match.)
         '/dashboard/apps/release_notes/about/': 'release_notes_on',
+        '/dashboard/apps/release_notes/version/': 'release_notes_on',
     }
 
     def test_plugin_nav_links_are_guarded(self):
@@ -92,6 +90,12 @@ class DashboardNavGuardTests(TestCase):
             '/dashboard/apps/affiliates/',
             '/dashboard/media/',
             '/dashboard/book-taxonomies/',
+            # Hardcoded until v0.81.0; each app contributes its own entry now.
+            '/dashboard/reviews/',
+            '/dashboard/draft-orders/',
+            '/dashboard/tracking/',
+            '/dashboard/apps/morpheus_brain/',
+            '/dashboard/agents/',
         ):
             self.assertNotIn(fragment, src, f'{fragment} is hardcoded again')
 

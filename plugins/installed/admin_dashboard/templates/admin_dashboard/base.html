@@ -112,7 +112,13 @@
     'minimize-2':'ri-fullscreen-exit-line','rotate-ccw':'ri-arrow-go-back-line','archive':'ri-archive-line',
     'box':'ri-archive-stack-line','sheet':'ri-table-line','newspaper':'ri-newspaper-line',
     'film':'ri-film-line','video':'ri-vidicon-line','utensils':'ri-restaurant-line',
-    'graduation-cap':'ri-graduation-cap-line','pilcrow':'ri-paragraph'
+    'graduation-cap':'ri-graduation-cap-line','pilcrow':'ri-paragraph',
+    // navigation tabs, settings tool cards and dashboard cards (v0.81.0)
+    'layout-grid':'ri-layout-grid-line','folder-tree':'ri-folders-line','clipboard-check':'ri-clipboard-line',
+    'file-pen':'ri-file-edit-line','git-pull-request':'ri-git-pull-request-line','git-merge':'ri-git-merge-line',
+    'corner-up-right':'ri-corner-up-right-line','bed':'ri-hotel-bed-line','leaf':'ri-leaf-line',
+    'smile':'ri-emotion-happy-line','message-square-warning':'ri-feedback-line','monitor-smartphone':'ri-device-line',
+    'file-check':'ri-file-shield-2-line'
   };
   var FALLBACK = 'ri-checkbox-blank-circle-line';
   function renderIcons(root) {
@@ -159,14 +165,14 @@
      the glyph inside its own box on the interactive surfaces (the icon box is
      already vertically centered by the control's own flex, so this only lifts
      the glyph to that box's true center). */
-  :is(.btn, .nav-link, .nav-section-btn, .pill, .dropdown-item, .rte-btn) i[data-lucide] {
+  :is(.btn, .nav-link, .pill, .dropdown-item, .rte-btn) i[data-lucide] {
     display: inline-flex; align-items: center; justify-content: center; line-height: 1;
   }
   /* Optical centering: the icon box centers on the text line box, but text
      glyphs (cap-height, no descenders on most labels) sit high in that box, so
      a box-centered icon reads a touch low. A 1px lift aligns the icon to the
      visual centre of the label. */
-  :is(.nav-link, .nav-section-btn) i[data-lucide] { margin-top: -1px; }
+  .nav-link i[data-lucide] { margin-top: -1px; }
 
   /* ── Micro-interaction flows ──────────────────────────────────────────
      Tasteful, GPU-cheap (transform/opacity only), fully disabled under
@@ -180,8 +186,8 @@
     :is(.nav-link, .btn, a, button) i[data-lucide] {
       transition: transform .18s var(--ease-out, cubic-bezier(.2,.8,.2,1)), color .15s ease;
     }
-    :is(.nav-link, .nav-section-btn, .btn):hover i[data-lucide] { transform: scale(1.15); }
-    :is(.nav-link.active, .nav-section-btn.has-active) i[data-lucide] { transform: scale(1.06); }
+    :is(.nav-link, .btn):hover i[data-lucide] { transform: scale(1.15); }
+    .nav-link.active i[data-lucide] { transform: scale(1.06); }
 
     /* Glyph-specific character */
     :is(a, button, .btn, .nav-link):hover > i[data-lucide="bell"] {
@@ -218,8 +224,8 @@
        section buttons, and submenu children) so the micro-animation is uniform
        across the whole menu. Base matches the real .55rem row padding so the
        nudge is a clean, smooth +4px slide, not a jump. */
-    :is(.nav-link, .nav-section-btn) { transition: background var(--motion-fast,.14s) ease, color var(--motion-fast,.14s) ease, padding-left .16s var(--ease-out, cubic-bezier(.2,.8,.2,1)); }
-    :is(.nav-link, .nav-section-btn):hover { padding-left: calc(.55rem + 4px); }
+    .nav-link { transition: background var(--motion-fast,.14s) ease, color var(--motion-fast,.14s) ease, padding-left .16s var(--ease-out, cubic-bezier(.2,.8,.2,1)); }
+    .nav-link:hover { padding-left: calc(.55rem + 4px); }
 
     /* Page entrance is owned by the view transition on #main-content (see
        mc-vt-in below) — the old per-card mi-rise stagger stacked a second
@@ -543,14 +549,7 @@
      the space after a parent-with-submenu matches every other row. Submenu
      divs get their own margin when open (below); the inline-styled Settings
      separator keeps its larger gap. */
-  .sidebar-nav > .nav-link + .nav-link,
-  .sidebar-nav > .nav-link + .nav-section-btn,
-  .sidebar-nav > .nav-section-btn + .nav-link,
-  .sidebar-nav > .nav-section-btn + .nav-section-btn,
-  .sidebar-nav > .nav-children + .nav-link,
-  .sidebar-nav > .nav-children + .nav-section-btn,
-  .sidebar-nav > .nav-group + .nav-link,
-  .sidebar-nav > .nav-group + .nav-section-btn { margin-top: 2px; }
+  .sidebar-nav > .nav-link + .nav-link { margin-top: 2px; }
   .nav-link {
     display: flex; align-items: center; gap: .5rem;
     padding: .28rem .55rem; border-radius: var(--radius-sm);
@@ -568,89 +567,6 @@
     transition: transform var(--motion-med) var(--spring, var(--ease-out));
   }
   .nav-link.active::before { transform: scaleY(1); }
-  /* Submenus: indented children under a parent. Render only when the
-     parent group is active so the rail stays compact otherwise. */
-  /* Submenu slide: max-height transitions are bulletproof across browsers.
-     Effective max generous enough for the longest submenu (~8 items). */
-  .nav-children {
-    padding-left: 1.55rem;
-    margin: 0;
-    max-height: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition: max-height var(--motion-med) var(--ease-out),
-                opacity var(--motion-fast) var(--ease-out),
-                margin var(--motion-med) var(--ease-out);
-  }
-  .nav-children.open {
-    max-height: 420px;
-    opacity: 1;
-    margin: .15rem 0 .35rem;
-  }
-  .nav-children .nav-link { font-weight: 400; padding: .28rem .55rem; font-size: .8125rem; color: var(--text-muted); }
-  /* Sub-header inside a .nav-children block — groups children under a
-     small italic label. Used by Affiliates (People / Performance / Money)
-     and any future parent that benefits from sub-grouping. */
-  .nav-children .nav-subheader {
-    display: block;
-    font-size: .65rem;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: var(--text-subtle, var(--text-muted));
-    padding: .55rem .6rem .2rem;
-    font-weight: 600;
-  }
-  .nav-children .nav-subheader:first-child { padding-top: .25rem; }
-  /* Same hover affordance as the top-level rows: a subtle bg fill, not just
-     a text-colour shift (children used to darken text only — inconsistent). */
-  .nav-children .nav-link:hover { background: var(--nav-hover-bg); color: var(--text); }
-  .nav-children .nav-link.active { color: var(--text); background: transparent; font-weight: 600; }
-  .nav-children .nav-link.active::before { display: none; }
-  .nav-children .nav-link.active::after {
-    content: ''; position: absolute; left: -.95rem; top: 50%; width: 4px; height: 4px;
-    border-radius: 50%; background: var(--text); transform: translateY(-50%);
-  }
-  /* Section headers — Shopify-style collapsible parent with children
-     indented underneath. The button is `nav-link`-shaped so it visually
-     matches the standalone top-level entries (Home / Orders / Products).
-     A chevron rotates when expanded. */
-  .nav-section-btn {
-    display: flex; align-items: center; gap: .5rem; width: 100%;
-    padding: .28rem .55rem; border-radius: var(--radius-sm);
-    color: var(--text); font-size: .8125rem; font-weight: 500;
-    line-height: 1.25; background: transparent; border: none;
-    cursor: pointer; text-align: left; position: relative;
-  }
-  .nav-section-btn:hover { background: var(--nav-hover-bg); }
-  .nav-section-btn.has-active { font-weight: 600; }
-  .nav-section-btn .chev {
-    margin-left: auto;
-    transition: transform .15s ease;
-    color: var(--text-muted);
-  }
-  .nav-section-btn.collapsed .chev { transform: rotate(-90deg); }
-  .nav-group {
-    padding-left: 1.55rem;
-    margin: .15rem 0 .35rem;
-    display: block;
-    overflow: hidden;
-  }
-  .nav-group.collapsed { display: none; }
-  .nav-group .nav-link { font-weight: 400; padding: .28rem .55rem; font-size: .8125rem; color: var(--text-muted); }
-  .nav-group .nav-link:hover { background: var(--nav-hover-bg); color: var(--text); }
-  .nav-group .nav-link.active { color: var(--text); background: transparent; font-weight: 600; }
-  .nav-group .nav-link.active::before { display: none; }
-  .nav-group .nav-link.active::after {
-    content: ''; position: absolute; left: -.95rem; top: 50%; width: 4px; height: 4px;
-    border-radius: 50%; background: var(--text); transform: translateY(-50%);
-  }
-  /* Legacy flat-section styling — retained for any caller still emitting
-     <div class="nav-section"> directly. Phasing out. */
-  .nav-section {
-    padding: 1rem .6rem .35rem;
-    font-size: .68rem; font-weight: 600; color: var(--text-subtle);
-    text-transform: uppercase; letter-spacing: .04em;
-  }
   .sidebar-nav { transition: transform .25s ease, opacity .15s ease; }
   .sidebar-nav.slide-out-left { transform: translateX(-12px); opacity: 0; pointer-events: none; }
   .input { width:100%; height:2rem; padding:0 .65rem; font-size:.8125rem; border-radius: var(--radius-sm); border:1px solid var(--border); background: var(--surface); color: var(--text); transition: border-color var(--motion-fast), box-shadow var(--motion-fast); }
@@ -746,25 +662,6 @@
     }
     #sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
   }
-  /* Right-side chevron on every expandable parent (hardcoded nav-children
-     groups), matching the plugin section-group chevron. Rotates open via :has().
-     It's also a click-toggle handle (JS below): click the chevron to expand/
-     collapse the group; click the label to navigate — so hardcoded parents
-     behave like the section-group buttons. Box-sized hit area + pointer. */
-  .nav-link .nav-chev {
-    margin-left: auto; opacity: .5; flex: none;
-    /* Vertical padding kept small so the chevron's click hit-area doesn't
-       grow taller than the text line and inflate the row (parents with a
-       chevron were 32px vs 25px for plain rows). Horizontal padding keeps a
-       comfortable target width. */
-    box-sizing: content-box; padding: .12rem .35rem; margin-right: -.35rem;
-    line-height: 1;
-    cursor: pointer; border-radius: 4px;
-    transition: transform var(--motion-fast) var(--ease-out), opacity var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
-    transform: rotate(-90deg);
-  }
-  .nav-link .nav-chev:hover { opacity: 1; background: var(--nav-hover-bg); }
-  .nav-link:has(+ .nav-children.open) .nav-chev { transform: rotate(0); }
 
   /* Desktop (>= 1024px) collapse → ICON RAIL: the sidebar narrows to a strip of
      icons (it does NOT disappear). Labels, sub-menus, chevrons, badges hide;
@@ -786,13 +683,7 @@
     }
     body.sidebar-collapsed #sidebar .nav-link > i,
     body.sidebar-collapsed #sidebar .nav-link > svg { font-size: 1rem; }
-    body.sidebar-collapsed #sidebar .nav-section-btn { justify-content: center; padding-left: 0; padding-right: 0; }
-    body.sidebar-collapsed #sidebar .nav-children,
-    body.sidebar-collapsed #sidebar .nav-link .nav-chev,
     body.sidebar-collapsed #sidebar .nav-link .pill,
-    body.sidebar-collapsed #sidebar .nav-section-btn > span,
-    body.sidebar-collapsed #sidebar .nav-section-btn .chev,
-    body.sidebar-collapsed #sidebar .nav-section-label,
     body.sidebar-collapsed #sidebar .h-12 a span { display: none; }
   }
   /* Every Tailwind hover:bg-* utility in content eases uniformly — pages
@@ -981,6 +872,53 @@
   .tab:hover::after     { transform: scaleX(1); opacity: .35; }
   .tab.is-active::after { transform: scaleX(1); opacity: 1; }
 
+  /* Section tabs (_section_tabs.html) — the pages of the current sidebar
+     section. Pills, so navigation never looks like the underlined filter
+     tabs a page draws under its heading. Scrolls sideways on a phone. */
+  .hub-tabs { margin: 0 0 1.25rem; }
+  .hub-tabs__row, .hub-subtabs {
+    display: flex; align-items: center; overflow-x: auto;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .hub-tabs__row::-webkit-scrollbar, .hub-subtabs::-webkit-scrollbar { display: none; }
+  .hub-tabs__row { gap: .25rem; padding: .2rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); width: max-content; max-width: 100%; }
+  .hub-tab {
+    display: inline-flex; align-items: center; gap: .35rem; flex: none;
+    padding: .3rem .8rem; border-radius: 999px; white-space: nowrap;
+    font-size: .8125rem; font-weight: 500; color: var(--text-muted); text-decoration: none;
+  }
+  .hub-tab:hover { color: var(--text); background: var(--nav-hover-bg); }
+  .hub-tab.is-active { color: var(--text); background: var(--surface); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .hub-subtabs { gap: 1.1rem; margin-top: .6rem; padding: 0 .85rem; }
+  .hub-subtab {
+    display: inline-flex; align-items: center; gap: .35rem; flex: none; white-space: nowrap;
+    font-size: .78rem; color: var(--text-muted); text-decoration: none; padding: .15rem 0;
+    border-bottom: 2px solid transparent;
+  }
+  .hub-subtab:hover { color: var(--text); }
+  .hub-subtab.is-active { color: var(--text); font-weight: 600; border-bottom-color: var(--brand); }
+
+  /* Cards (_cards.html) — apps' widgets on a section's landing page, all
+     drawn alike: headline, caption, a few rows, a link to the app's page. */
+  .dash-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
+  .dash-card { padding: .9rem 1rem; display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+  .dash-card__head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .dash-card__title { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; font-weight: 600; color: var(--text-muted); min-width: 0; }
+  .dash-card__cta { font-size: .75rem; color: var(--brand); white-space: nowrap; }
+  .dash-card__cta:hover { text-decoration: underline; }
+  .dash-card__value { font-size: 1.5rem; font-weight: 600; letter-spacing: -.01em; line-height: 1.15; margin: .2rem 0 0; font-variant-numeric: tabular-nums; }
+  .dash-card__value--ok { color: var(--success); }
+  .dash-card__value--warn { color: var(--warn); }
+  .dash-card__value--danger { color: var(--danger); }
+  .dash-card__caption { font-size: .78rem; color: var(--text-muted); margin: 0; }
+  .dash-card__rows { list-style: none; margin: .35rem 0 0; padding: .4rem 0 0; border-top: 1px solid var(--border); display: grid; gap: .25rem; }
+  .dash-card__rows li { display: flex; justify-content: space-between; gap: .75rem; font-size: .78rem; }
+  .dash-card__row-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dash-card__row-label a:hover { text-decoration: underline; }
+  .dash-card__row-value { color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .dash-card__empty { font-size: .8rem; color: var(--text-muted); margin: .25rem 0 0; }
+  .dash-card__empty--error { color: var(--danger); }
+
   /* ── Micro-animation polish (interaction only; entrances are handled by the
      #main-content view-transition + .reveal-stagger, so nothing here duplicates
      a page-load animation). All durations honour the global reduced-motion
@@ -1033,161 +971,42 @@
     </a>
     <button id="sidebar-close" class="lg:hidden btn btn-ghost p-1.5"><i data-lucide="x" class="h-4 w-4"></i></button>
   </div>
-  {# ── MAIN NAV (slides out when entering Settings) ─────────────────────── #}
-  <nav id="nav-main" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2">
-    <a href="{% url 'admin_dashboard:home' %}"      class="nav-link {% if active_nav == 'home' %}active{% endif %}"><i data-lucide="home" class="h-4 w-4"></i> Home</a>
-    {% comment %}
-      AI surface promoted to the top of the rail — these are daily-use
-      entries (the Assistant chat especially) and Morpheus's defining
-      capability, so they sit above the standard ecommerce CRUD instead
-      of behind a collapsible.
-    {% endcomment %}
-    {% comment %}
-    Linda — Morpheus's core AI surface. Lives in core.assistant (not a
-    plugin). The three sub-pages below show what Linda has been doing:
-    every Worker she spawned, the recurring jobs she runs in the
-    background, and the cost/latency rollup. The legacy "Ops console"
-    chat surface was removed — Chat IS the ops console now since Linda
-    routes every objective through delegate.spawn_workers internally.
-    {% endcomment %}
-    {% with agents_active=request.path|slice:":17" %}
-    <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}active{% endif %}"><img src="{% static 'assistant/linda-avatar.jpg' %}" alt="" class="h-4 w-4" style="border-radius:50%;object-fit:cover;flex-shrink:0;"> Linda<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i></a>
-    <div class="nav-children {% if active_nav == 'assistant' or agents_active == '/dashboard/agents' %}open{% endif %}">
-      <a href="/dashboard/assistant/" class="nav-link {% if active_nav == 'assistant' %}active{% endif %}">Chat</a>
-      <a href="/dashboard/agents/" class="nav-link {% if request.path == '/dashboard/agents/' %}active{% endif %}">Activity</a>
-      <a href="/dashboard/agents/background/" class="nav-link {% if request.path == '/dashboard/agents/background/' %}active{% endif %}">Automations</a>
-      <a href="/dashboard/agents/observability/" class="nav-link {% if request.path == '/dashboard/agents/observability/' %}active{% endif %}">Observability</a>
-      <a href="/dashboard/ai-insights/" class="nav-link {% if active_nav == 'ai_insights' %}active{% endif %}">
-        Insights
-        {% if nav_badges.insights %}<span class="pill pill-info" style="margin-left:auto;">{{ nav_badges.insights }}</span>{% endif %}
-      </a>
-      {% if request.user.is_superuser %}
-      <a href="/dashboard/assistant/proposals/" class="nav-link {% if request.path == '/dashboard/assistant/proposals/' %}active{% endif %}">Proposals</a>
-      {% endif %}
-    </div>
-    {% endwith %}
-
-    {% comment %}
-      Each top-level entry below renders an indented submenu when the
-      page belongs to that group (so the rail stays compact when
-      browsing a different area). Active item is marked with a small
-      filled dot — Shopify-style.
-    {% endcomment %}
-
-    <a href="{% url 'admin_dashboard:orders' %}" class="nav-link {% if active_nav == 'orders' %}active{% endif %}">
-      <i data-lucide="shopping-bag" class="h-4 w-4"></i> Orders<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i>
+  {% comment %}The sidebar is the dashboard's sections, one entry each
+  (admin_dashboard/navigation.py). A section's pages are tabs at the top of
+  the page, not links here; Settings swaps this list for the settings
+  categories. Server-rendered for the first paint; after an htmx swap the
+  active entry and the mode come from data-nav-* on #main-content.{% endcomment %}
+  <nav id="nav-main" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2" aria-label="Dashboard"{% if dashboard_nav.mode == 'settings' %} style="display:none;"{% endif %}>
+    {% for s in dashboard_nav.sections %}
+    <a href="{{ s.url }}" data-section="{{ s.key }}" title="{{ s.label }}" class="nav-link{% if s.active %} active{% endif %}"{% if s.active %} aria-current="page"{% endif %}>
+      {% if s.avatar %}<img src="{% static s.avatar %}" alt="" class="h-4 w-4" style="border-radius:50%;object-fit:cover;flex-shrink:0;">{% else %}<i data-lucide="{{ s.icon }}" class="h-4 w-4"></i>{% endif %}
+      <span>{{ s.label }}</span>
+      {% if s.badge %}<span class="pill pill-warn" style="margin-left:auto;">{{ s.badge }}</span>{% endif %}
     </a>
-    <div class="nav-children {% if active_nav == 'orders' %}open{% endif %}">
-      <a href="{% url 'admin_dashboard:orders' %}" class="nav-link {% if active_nav == 'orders' %}active{% endif %}">All orders</a>
-      {% plugin_enabled "draft_orders" as draft_orders_enabled %}{% if draft_orders_enabled %}<a href="/dashboard/draft-orders/" class="nav-link {% if active_nav == 'drafts' %}active{% endif %}">Drafts</a>{% endif %}
-      <a href="/dashboard/returns/" class="nav-link {% if active_nav == 'returns' %}active{% endif %}">
-        Returns
-        {% if nav_badges.returns %}<span class="pill pill-warn" style="margin-left:.4rem;">{{ nav_badges.returns }}</span>{% endif %}
-      </a>
-    </div>
-
-    {% plugin_enabled "reviews" as reviews_enabled %}
-    <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' or active_nav == 'reviews' or active_nav == 'categories' %}active{% endif %}"><i data-lucide="package" class="h-4 w-4"></i> Products<i data-lucide="chevron-down" class="nav-chev h-3 w-3"></i></a>
-    <div class="nav-children {% if active_nav == 'products' or active_nav == 'reviews' or active_nav == 'categories' or active_nav == 'collections' or active_nav == 'book_taxonomies' %}open{% endif %}">
-      <a href="{% url 'admin_dashboard:products' %}" class="nav-link {% if active_nav == 'products' and request.path != '/dashboard/products/content-audit/' %}active{% endif %}">All products</a>
-      <a href="{% url 'admin_dashboard:categories' %}" class="nav-link {% if active_nav == 'categories' %}active{% endif %}">Categories</a>
-      <a href="{% url 'admin_dashboard:tag_descriptions' %}" class="nav-link {% if request.path == '/dashboard/tags/descriptions/' %}active{% endif %}">Tag descriptions</a>
-      <a href="{% url 'admin_dashboard:collections' %}" class="nav-link {% if active_nav == 'collections' %}active{% endif %}">Collections</a>
-      {# Plugin-contributed Products children (e.g. book_product's Book taxonomies), placed by each plugin via DashboardPage(section='products', order=…) — ADR 0016. #}
-      {% for p in products_nav_children %}<a href="{{ p.url }}" class="nav-link {% if p.is_active %}active{% endif %}">{{ p.label }}</a>{% endfor %}
-      <a href="{% url 'admin_dashboard:content_audit' %}" class="nav-link {% if request.path == '/dashboard/products/content-audit/' %}active{% endif %}">Content audit</a>
-      {% if reviews_enabled %}<a href="/dashboard/reviews/" class="nav-link {% if active_nav == 'reviews' %}active{% endif %}">Reviews</a>{% endif %}
-    </div>
-
-    <a href="{% url 'admin_dashboard:customers' %}" class="nav-link {% if active_nav == 'users' or active_nav == 'customers' or active_nav == 'leads' or active_nav == 'newsletter' or active_nav == 'admins' %}active{% endif %}"><i data-lucide="users" class="h-4 w-4"></i> Users</a>
-
-    {# Tracking + Errors moved to the Settings sidebar — see nav-settings below. #}
-
-    {% comment %}
-      Plugin-contributed pages, grouped by section. Each section is a
-      Shopify-style collapsible: the parent button toggles the indented
-      children below; auto-opens when a child is active. State persists
-      per-section in localStorage (see <script> at the bottom).
-    {% endcomment %}
-    {% for section in sidebar_sections %}
-    {% with first_page=section.pages.0 %}
-    <button type="button" class="nav-section-btn {% if section.is_active %}has-active{% endif %}"
-            data-section="{{ section.key }}"
-            data-first-href="{% if first_page.url %}{{ first_page.url }}{% else %}/dashboard/apps/{{ first_page.plugin }}/{{ first_page.slug }}/{% endif %}">
-      <i data-lucide="{{ section.icon|default:'folder' }}" class="h-4 w-4"></i>
-      <span>{{ section.label }}</span>
-      <i data-lucide="chevron-down" class="chev h-3 w-3"></i>
-    </button>
-    <div class="nav-group {% if not section.is_active %}collapsed{% endif %}" data-group="{{ section.key }}">
-      {% for page in section.pages %}
-      <a href="{% if page.url %}{{ page.url }}{% else %}/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/{% endif %}"
-         class="nav-link {% if page.url and request.path == page.url %}active{% elif active_apps_slug == page.plugin|add:'/'|add:page.slug %}active{% endif %}">
-        <i data-lucide="{{ page.icon|default:'circle' }}" class="h-4 w-4"></i> {{ page.label }}
-      </a>
-      {% endfor %}
-    </div>
-    {% endwith %}
     {% endfor %}
-
-    <a href="{% url 'admin_dashboard:settings' %}" id="settings-link" class="nav-link {% if active_nav == 'settings' %}active{% endif %}" style="margin-top: .5rem;">
-      <i data-lucide="settings" class="h-4 w-4"></i> Settings
+    <a href="{% url 'admin_dashboard:settings' %}" id="settings-link" data-section="settings" title="Settings" class="nav-link" style="margin-top: .5rem;">
+      <i data-lucide="settings" class="h-4 w-4"></i> <span>Settings</span>
     </a>
   </nav>
 
-  {# ── SETTINGS NAV (slides in when /dashboard/settings/ is open) ──────── #}
-  <nav id="nav-settings" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2" style="display:none;">
-    {# Overview link: active only on the bare /dashboard/settings/ root, #}
-    {# never on a category sub-page. #}
-    <a href="{% url 'admin_dashboard:settings' %}" class="nav-link {% if active_nav == 'settings' and not active_settings_category %}active{% endif %}">
-      <i data-lucide="settings" class="h-4 w-4"></i> Settings overview
+  {% comment %}Settings mode: the categories. An app's own settings page is a
+  tool card on its category page, never a link here.{% endcomment %}
+  <nav id="nav-settings" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2" aria-label="Settings"{% if dashboard_nav.mode != 'settings' %} style="display:none;"{% endif %}>
+    <a href="{% url 'admin_dashboard:settings' %}" data-category="" title="Settings overview" class="nav-link{% if dashboard_nav.mode == 'settings' and not dashboard_nav.category %} active{% endif %}">
+      <i data-lucide="settings" class="h-4 w-4"></i> <span>Settings overview</span>
     </a>
-
-    {% comment %}
-      Shopify-style flat menu — one link per category. General is the
-      first entry (store name, currency, country basics); other
-      categories follow in the order declared in settings_categories.py.
-      Apps + operational tools (Tracking, Errors) come AFTER so the
-      merchant sees the configuration knobs before the admin tools.
-    {% endcomment %}
-    {% for cat in settings_category_nav %}
-    <a href="{% url 'admin_dashboard:settings_category' category=cat.slug %}"
-       class="nav-link {% if active_settings_category == cat.slug %}active{% endif %}">
-      <i data-lucide="{{ cat.icon }}" class="h-4 w-4"></i> {{ cat.label }}
+    {% for cat in dashboard_nav.categories %}
+    <a href="{% url 'admin_dashboard:settings_category' category=cat.slug %}" data-category="{{ cat.slug }}" title="{{ cat.label }}" class="nav-link{% if cat.active %} active{% endif %}">
+      <i data-lucide="{{ cat.icon }}" class="h-4 w-4"></i> <span>{{ cat.label }}</span>
     </a>
-    {% if cat.slug == 'general' %}
-    {# Core platform pages pinned under General; guarded so they vanish if disabled. #}
-    {% plugin_enabled "morpheus_brain" as brain_nav_on %}{% if brain_nav_on %}
-    <a href="/dashboard/apps/morpheus_brain/brain/" class="nav-link {% if active_apps_slug == 'morpheus_brain/brain' %}active{% endif %}">
-      <i data-lucide="brain" class="h-4 w-4"></i> Morpheus Brain
-    </a>{% endif %}
-    {% plugin_enabled "release_notes" as version_nav_on %}{% if version_nav_on %}
-    <a href="/dashboard/apps/release_notes/version/" class="nav-link {% if active_apps_slug == 'release_notes/version' %}active{% endif %}">
-      <i data-lucide="git-commit-horizontal" class="h-4 w-4"></i> Version &amp; updates
-    </a>{% endif %}
-    {% endif %}
     {% endfor %}
-
-    {# ── Operational admin tools — below the configuration categories. ── #}
-    {# Apps link: active on /dashboard/apps/ but NOT on a specific plugin page. #}
-    <a href="{% url 'admin_dashboard:apps' %}" class="nav-link {% if active_nav == 'apps' and not active_apps_slug %}active{% endif %}" style="margin-top: .5rem;">
-      <i data-lucide="grid-3x3" class="h-4 w-4"></i> Apps
+    <a href="{% url 'admin_dashboard:apps' %}" data-category="apps-catalogue" title="Apps" class="nav-link{% if dashboard_nav.category == 'apps-catalogue' %} active{% endif %}" style="margin-top: .5rem;">
+      <i data-lucide="grid-3x3" class="h-4 w-4"></i> <span>Apps</span>
     </a>
-
-    {% comment %}Tracking / Errors / Updates / Caching now live as cards in
-    the Developers hub (settings → Developer) — core pages, still always
-    reachable through the hub, which is itself core.{% endcomment %}
-    {% for section in settings_sections %}{% for page in section.pages %}{% if page.plugin != 'morpheus_brain' and page.plugin != 'release_notes' %}
-    <a href="{% if page.url %}{{ page.url }}{% else %}/dashboard/apps/{{ page.plugin }}/{{ page.slug }}/{% endif %}"
-       class="nav-link {% if page.url and request.path == page.url %}active{% elif active_apps_slug == page.plugin|add:'/'|add:page.slug %}active{% endif %}">
-      <i data-lucide="{{ page.icon|default:'circle' }}" class="h-4 w-4"></i> {{ page.label }}
-    </a>
-    {% endif %}{% endfor %}{% endfor %}
-
-    <div style="margin-top:auto;"></div>
   </nav>
 
   {# Bottom-pinned 'go back' button — visible only in settings mode. #}
-  <div id="settings-back-row" class="border-t border-[color:var(--border)] p-2" style="display:none;">
+  <div id="settings-back-row" class="border-t border-[color:var(--border)] p-2"{% if dashboard_nav.mode != 'settings' %} style="display:none;"{% endif %}>
     <a href="{% url 'admin_dashboard:home' %}" class="nav-link" style="font-weight:500;">
       <i data-lucide="arrow-left" class="h-4 w-4"></i> Back to dashboard
     </a>
@@ -1215,6 +1034,8 @@
     {% comment %}Theme toggle moved into the user dropdown — 3 explicit choices (light / dark / system) instead of a topbar cycle button.{% endcomment %}
     {# margin-left:auto pushes the account cluster (settings, notifications, user menu) flush to the right edge. #}
     <a href="{% url 'admin_dashboard:settings' %}" class="btn btn-ghost p-1.5" style="margin-left:auto;" aria-label="Settings"><i data-lucide="settings" class="h-4 w-4"></i></a>
+    {% comment %}The bell is the notifications_center app's surface — it leaves with the app.{% endcomment %}
+    {% plugin_enabled "notifications_center" as notifications_on %}{% if notifications_on %}
     <div data-dropdown id="notif-bell" style="position: relative;">
       <button data-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
               class="btn btn-ghost p-1.5" aria-label="Notifications"
@@ -1247,6 +1068,7 @@
         </div>
       </div>
     </div>
+    {% endif %}
     {# User menu — top-right. Click to open dropdown. #}
     <div id="user-menu" style="position: relative;">
       <button id="user-menu-toggle" type="button" aria-label="Account" style="
@@ -1337,7 +1159,7 @@
   With overflow visible they stick to the window and park under the pinned top
   bar via --dash-topbar-h. Nothing scrolls this element programmatically; it is
   only an htmx swap target and a view-transition name.{% endcomment %}
-  <main id="main-content" class="flex-1">
+  <main id="main-content" class="flex-1" data-nav-mode="{{ dashboard_nav.mode }}" data-nav-section="{{ dashboard_nav.section }}" data-nav-category="{{ dashboard_nav.category }}">
    {# Global dashboard content width: max-w-screen-2xl (1536px) > old 7xl (1280px); use max-w-none for full-bleed. #}
    <div class="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
     {% if messages %}
@@ -1357,8 +1179,10 @@
     {% endif %}
     {% get_ai_page_help as ai_help %}
     {% if ai_help %}{% include "assistant/_page_helper.html" %}{% endif %}
-    {% comment %}Breadcrumbs, rendered once for every dashboard page. Default: the view's explicit `breadcrumb_trail`, else the path-derived `auto_breadcrumb_trail` (admin_dashboard.context_processors); self-hides on empty. Pages needing a richer trail with parent record names override `{% block breadcrumb %}` in place (e.g. variant_form, order_refund).{% endcomment %}
-    {% block breadcrumb %}{% with crumbs=breadcrumb_trail|default:auto_breadcrumb_trail %}{% if crumbs %}<div class="mb-4">{% include "admin_dashboard/_breadcrumb_trail.html" with trail=crumbs %}</div>{% endif %}{% endwith %}{% endblock %}
+    {% comment %}The current section's pages as tabs (admin_dashboard/navigation.py). A page that lays out the whole main panel itself (Linda's chat) overrides this block and places the strip inside its own layout.{% endcomment %}
+    {% block section_tabs %}{% include "admin_dashboard/_section_tabs.html" %}{% endblock %}
+    {% comment %}Breadcrumbs. Default: the view's explicit `breadcrumb_trail`, else the navigation-derived `auto_breadcrumb_trail` (admin_dashboard.context_processors); self-hides on empty. Not on a tab's own page — the tab strip already says where you are; below a tab (a record, a sub-page) the trail leads back. Pages needing a richer trail with parent record names override `{% block breadcrumb %}` in place (e.g. variant_form, order_refund).{% endcomment %}
+    {% block breadcrumb %}{% if not dashboard_nav.tab_root %}{% with crumbs=breadcrumb_trail|default:auto_breadcrumb_trail %}{% if crumbs %}<div class="mb-4">{% include "admin_dashboard/_breadcrumb_trail.html" with trail=crumbs %}</div>{% endif %}{% endwith %}{% endif %}{% endblock %}
     {% block content %}{% endblock %}
    </div>
   </main>
@@ -1482,129 +1306,41 @@
       });
     })();
 
-    // Collapsible sidebar sections — Shopify-style. State persisted per
-    // section in localStorage; the section containing the active page
-    // overrides the persisted state and stays open. Clicking the section
-    // button toggles open/closed without navigating; shift-click or
-    // double-click jumps straight to the first child page so power users
-    // can open a section's home in one motion.
-    document.querySelectorAll('.nav-section-btn').forEach(btn => {
-      const sec = btn.dataset.section;
-      const key = 'nav.collapsed.' + sec;
-      const group = document.querySelector(`.nav-group[data-group="${sec}"]`);
-      const hasActiveChild = btn.classList.contains('has-active');
-      // Sync button + group to ONE collapsed state on load. Without this the
-      // server renders the group collapsed (when its section isn't active) but
-      // leaves the button un-collapsed — so the toggle below, which reads the
-      // button's state, spends the first click just re-syncing them and it
-      // takes TWO clicks to actually expand. Active section always opens;
-      // else honour the persisted choice, else the server-rendered state.
-      const persisted = localStorage.getItem(key);
-      let collapsed;
-      if (hasActiveChild) {
-        collapsed = false;
-        // Sticky-open: persist the active section as open so it STAYS expanded
-        // when you navigate to a page in another section (accordion no longer
-        // auto-collapses the submenu you were just browsing). Manual collapse
-        // still wins on the next visit (writes '1').
-        try { localStorage.setItem(key, '0'); } catch (_) { /* storage off */ }
-      } else if (persisted !== null) {
-        collapsed = persisted === '1';
-      } else {
-        collapsed = group ? group.classList.contains('collapsed') : false;
-      }
-      btn.classList.toggle('collapsed', collapsed);
-      group?.classList.toggle('collapsed', collapsed);
-      btn.addEventListener('click', (e) => {
-        if (e.shiftKey || e.detail >= 2) {
-          const href = btn.dataset.firstHref;
-          if (href) location.href = href;
-          return;
-        }
-        const willCollapse = !btn.classList.contains('collapsed');
-        btn.classList.toggle('collapsed', willCollapse);
-        group?.classList.toggle('collapsed', willCollapse);
-        localStorage.setItem(key, willCollapse ? '1' : '0');
-      });
-    });
-
-    // Hardcoded expandable parents (Linda / Orders / Products / Affiliates) —
-    // make the chevron a click-toggle handle so they behave like the section
-    // groups above: click the chevron to expand/collapse (persisted per parent),
-    // click the label to navigate. The active route always forces its group open
-    // (the server renders `.open`), so a persisted "closed" never hides the page
-    // you're on.
-    document.querySelectorAll('#nav-main .nav-link > .nav-chev').forEach(chev => {
-      const parent = chev.closest('.nav-link');
-      const children = parent ? parent.nextElementSibling : null;
-      if (!children || !children.classList.contains('nav-children')) return;
-      const key = 'nav.parent.' + (parent.getAttribute('href') || '');
-      // Active route wins; otherwise honour the persisted manual choice.
-      if (!children.classList.contains('open')) {
-        if (localStorage.getItem(key) === '1') children.classList.add('open');
-      } else {
-        // Sticky-open: the active parent persists open so it stays expanded
-        // after you navigate into another submenu.
-        try { localStorage.setItem(key, '1'); } catch (_) { /* storage off */ }
-      }
-      chev.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const open = children.classList.toggle('open');
-        localStorage.setItem(key, open ? '1' : '0');
-      });
-    });
-
-    // Settings-mode sidebar swap. Trigger on:
-    //   /dashboard/settings/                       — the unified hub
-    //   /dashboard/settings/<category>/            — a category page
-    //   /dashboard/apps/                           — the apps catalog
-    //   /dashboard/apps/<plugin>/settings/         — a plugin's settings
-    // Plugin operational pages at /dashboard/apps/<plugin>/<other-slug>/
-    // keep the main menu visible (Shopify-style — daily-use pages live in
-    // the main sidebar; only persistent configuration switches into
-    // settings mode).
+    // Sidebar mode (sections vs settings categories) and its active entry come
+    // from the server: #main-content carries data-nav-mode / -section /
+    // -category (admin_dashboard/navigation.py). The sidebar DOM persists
+    // across htmx-boosted navigation, so after a swap they are re-read from
+    // the new #main-content — never guessed from the URL in a second place.
     const navMain = document.getElementById('nav-main');
     const navSettings = document.getElementById('nav-settings');
     const settingsBackRow = document.getElementById('settings-back-row');
-    const norm = (p) => (p || '').replace(/\/+$/, '') || '/';
-    // Any page the settings sub-nav links to should KEEP settings mode —
-    // otherwise a settings page whose URL isn't in the allow-list below
-    // bounces the sidebar back to the main dashboard nav.
-    const settingsHrefs = navSettings
-        ? Array.from(navSettings.querySelectorAll('a[href]')).map(
-            a => norm(new URL(a.href, location.origin).pathname))
-        : [];
-    function computeInSettings() {
-      const path = location.pathname;
-      return path.startsWith('/dashboard/settings/')
-        || path === '/dashboard/apps/' || path === '/dashboard/apps'
-        || path.startsWith('/dashboard/tracking/')
-        || path.startsWith('/dashboard/errors/')
-        || /^\/dashboard\/apps\/[^/]+\/settings\/?$/.test(path)
-        || settingsHrefs.includes(norm(path));
+    function markActive(links, attr, value, on) {
+      links.forEach(a => {
+        const hit = on && a.dataset[attr] === value;
+        a.classList.toggle('active', hit);
+        if (hit) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      });
     }
-    function showSettingsNav() {
-      if (!navMain || !navSettings) return;
-      navMain.style.display = 'none';
-      navSettings.style.display = 'block';
-      if (settingsBackRow) settingsBackRow.style.display = 'block';
-    }
-    function showMainNav() {
-      if (!navMain || !navSettings) return;
+    window.Morph = window.Morph || {};
+    window.Morph.syncSidebarMode = function () {
+      const main = document.getElementById('main-content');
+      if (!main || !navMain || !navSettings) return;
+      const inSettings = main.dataset.navMode === 'settings';
       // Clear any lingering exit-animation class — under boosted nav the
       // sidebar DOM persists, so a stale slide-out-left would blank the menu.
       navMain.classList.remove('slide-out-left');
-      navSettings.style.display = 'none';
-      navMain.style.display = 'block';
-      if (settingsBackRow) settingsBackRow.style.display = 'none';
-    }
-    // Exposed so htmx:afterSwap can re-evaluate settings-mode after a boosted
-    // partial nav — the sidebar DOM persists across swaps, so the menu must be
-    // re-toggled from the new URL rather than re-rendered by the server.
-    window.Morph = window.Morph || {};
-    window.Morph.syncSidebarMode = function () {
-      if (computeInSettings()) showSettingsNav(); else showMainNav();
+      navMain.style.display = inSettings ? 'none' : 'block';
+      navSettings.style.display = inSettings ? 'block' : 'none';
+      if (settingsBackRow) settingsBackRow.style.display = inSettings ? 'block' : 'none';
+      const section = main.dataset.navSection || '';
+      markActive(navMain.querySelectorAll('.nav-link[data-section]'), 'section', section, !inSettings && section !== '');
+      markActive(navSettings.querySelectorAll('.nav-link[data-category]'), 'category', main.dataset.navCategory || '', inSettings);
+      // On a narrow screen the section tabs scroll sideways; bring the active
+      // one into view without moving the page.
+      main.querySelectorAll('.hub-tabs__row, .hub-subtabs').forEach(row => {
+        const on = row.querySelector('.is-active');
+        if (on && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, on.offsetLeft - row.offsetLeft - 16);
+      });
     };
     window.Morph.syncSidebarMode();
 
@@ -1625,72 +1361,16 @@ over the pinned chat box.
 {% if active_nav != 'assistant' %}{% include "assistant/_floating_widget.html" %}{% endif %}
 
 <script>
-// Safety net + sidebar active-state sync for htmx partial swaps.
+// Safety net + sidebar sync for htmx partial swaps.
 (function () {
-  // Map path → active_nav key. Mirrors the server-side `active_nav`
-  // values set by each view, so the sidebar can re-highlight without
-  // a full reload.
-  var navMap = [
-    [/^\/dashboard\/?$/, 'home'],
-    [/^\/dashboard\/assistant\//, 'assistant'],
-    [/^\/dashboard\/orders\b/, 'orders'],
-    [/^\/dashboard\/draft-orders\b/, 'drafts'],
-    [/^\/dashboard\/returns\b/, 'returns'],
-    [/^\/dashboard\/products\b/, 'products'],
-    [/^\/dashboard\/reviews\b/, 'reviews'],
-    [/^\/dashboard\/customers\b/, 'customers'],
-    [/^\/dashboard\/settings\b/, 'settings'],
-    [/^\/dashboard\/apps\b/, 'apps'],
-    [/^\/dashboard\/ai-insights\b/, 'ai_insights'],
-  ];
-
-  function navKeyFor(pathname) {
-    for (var i = 0; i < navMap.length; i++) {
-      if (navMap[i][0].test(pathname)) return navMap[i][1];
-    }
-    return null;
-  }
-
-  function syncSidebarActive() {
-    var key = navKeyFor(location.pathname);
-    var sidebar = document.getElementById('sidebar');
-    if (!sidebar) return;
-    sidebar.querySelectorAll('.nav-link.active').forEach(function (el) { el.classList.remove('active'); });
-    sidebar.querySelectorAll('.nav-children.open').forEach(function (el) { el.classList.remove('open'); });
-    if (!key) return;
-    // Mark every nav-link whose href matches the current pathname.
-    sidebar.querySelectorAll('.nav-link').forEach(function (a) {
-      var href = a.getAttribute('href') || '';
-      try { href = new URL(href, location.origin).pathname; } catch (_) {}
-      if (href === location.pathname) a.classList.add('active');
-    });
-    // Open the submenu containing the active link — and ALSO open the
-    // sibling submenu when the active link is itself a parent (e.g.
-    // clicking "Orders" lands on /dashboard/orders/ where the active
-    // link IS the parent, not a child). Without this fallback the user
-    // had to click twice to open the submenu after navigating to a
-    // parent page.
-    sidebar.querySelectorAll('.nav-link.active').forEach(function (a) {
-      var inside = a.closest('.nav-children');
-      if (inside) {
-        inside.classList.add('open');
-        return;
-      }
-      var next = a.nextElementSibling;
-      if (next && next.classList.contains('nav-children')) {
-        next.classList.add('open');
-      }
-    });
-  }
-
-  // After swap: re-run client-side initializers + sync sidebar active.
+  // After swap: re-run client-side initializers + re-sync the sidebar.
   document.body.addEventListener('htmx:afterSwap', function (e) {
     try {
       if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
       if (window.Morph && typeof window.Morph.reinit === 'function') window.Morph.reinit(e.detail.target);
       if (window.MorphRichText && typeof window.MorphRichText.scan === 'function') window.MorphRichText.scan(e.detail.target);
-      // Sidebar is now boosted: re-evaluate main↔settings menu mode for the
-      // new URL (the sidebar DOM persists, so the server can't switch it).
+      // Sidebar is boosted: re-read the mode and the active entry from the
+      // new #main-content (the sidebar DOM persists across the swap).
       if (window.Morph && typeof window.Morph.syncSidebarMode === 'function') window.Morph.syncSidebarMode();
       // Close the mobile drawer after navigating — a boosted link no longer
       // triggers the full reload that used to close it implicitly.
@@ -1712,7 +1392,6 @@ over the pinned chat box.
         }, 450);
       }
     } catch (_) { /* swallow — never break navigation over a polish failure */ }
-    syncSidebarActive();
   });
 
   // Before swap: small entrance animation on the new main content.

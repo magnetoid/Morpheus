@@ -1,0 +1,30 @@
+{% comment %}Cards on a section's landing page (admin_dashboard/cards.py): one widget
+per app, all drawn alike — a headline number, a caption, up to five rows and a link
+to the app's page. `cards` comes from {% dashboard_card_list %}.{% endcomment %}
+{% if cards %}
+<div class="dash-cards" role="list">
+  {% for c in cards %}
+  <section class="card dash-card" role="listitem" data-card="{{ c.key }}" aria-label="{{ c.title }}">
+    <header class="dash-card__head">
+      <span class="dash-card__title"><i data-lucide="{{ c.icon }}" class="h-4 w-4"></i> {{ c.title }}</span>
+      {% if c.url %}<a href="{{ c.url }}" class="dash-card__cta">{{ c.cta }}</a>{% endif %}
+    </header>
+    {% if c.error %}
+    <p class="dash-card__empty dash-card__empty--error">This card couldn’t load. The error is in the log.</p>
+    {% elif c.value or c.rows %}
+    {% if c.value %}<p class="dash-card__value{% if c.tone %} dash-card__value--{{ c.tone }}{% endif %}">{{ c.value }}</p>{% endif %}
+    {% if c.caption %}<p class="dash-card__caption">{{ c.caption }}</p>{% endif %}
+    {% if c.rows %}
+    <ul class="dash-card__rows">
+      {% for r in c.rows %}
+      <li><span class="dash-card__row-label">{% if r.url %}<a href="{{ r.url }}">{{ r.label }}</a>{% else %}{{ r.label }}{% endif %}</span><span class="dash-card__row-value">{{ r.value }}</span></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% else %}
+    <p class="dash-card__empty">{{ c.empty|default:"Nothing to report yet." }}</p>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% endif %}

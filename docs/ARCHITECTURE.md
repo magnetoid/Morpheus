@@ -244,6 +244,33 @@ document too — [`core/robots.py`](../core/robots.py) — so `storefront`
 contributes `/cart/`, `/checkout/` and `/auth/` through `SEO_ROBOTS_RULES`
 instead of seo hardcoding another app's routes.
 
+## The dashboard's navigation
+
+One taxonomy, owned by the shell
+([`admin_dashboard/navigation.py`](../plugins/installed/admin_dashboard/navigation.py),
+v0.81.0, [plan](plans/dashboard-hubs-2026-10.md)), read by everything that
+tells a merchant where they are:
+
+```
+sidebar      = SECTIONS (Home · Linda · Orders · Products · Customers · Marketing ·
+               Channels · Content · Analytics · SEO · Vendors) + Settings
+tab strip    = the current section's pages: CORE_TABS + DashboardPage(nav='main'),
+               folded by `group` into one tab with sub-tabs
+landing page = + DashboardCard(section=…) widgets, drawn alike (admin_dashboard/cards.py)
+settings     = SETTINGS_CATEGORIES; DashboardPage(nav='settings') + CORE_TOOLS are
+               tool cards on a category, SettingsPanel(category=…) its forms
+```
+
+`navigation.build(request)` runs once per dashboard request (the
+`dashboard_nav` context processor — never for the storefront): it resolves the
+path to its tab or tool by the longest matching URL, falling back to an app's
+`register_urls` mount for detail routes, and writes the result onto
+`#main-content` as `data-nav-*` so the persistent sidebar re-syncs after an
+htmx swap. The breadcrumb, the Cmd+K palette and the Apps catalogue use the
+same resolver; an entry naming an unknown section is a `manage.py check`
+warning. The shell links no app page itself — every app entry is a
+contribution, so it leaves with the app.
+
 ## Key reference files when working in this repo
 
 | File | Why you'd open it |

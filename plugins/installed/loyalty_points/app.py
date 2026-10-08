@@ -35,7 +35,7 @@ their balance and what it is worth today — shipped in v1.
 # ready (this module is loaded at settings-import time).
 from __future__ import annotations
 
-from morpheus.app import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import DashboardCard, Plugin, SettingsPanel, StorefrontBlock
 from morpheus.core import events
 
 
@@ -268,6 +268,19 @@ class LoyaltyPointsPlugin(Plugin):
                 },
             },
         }
+
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Customers landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='customers',
+                title='Loyalty points',
+                data='plugins.installed.loyalty_points.cards.loyalty_card',
+                icon='award',
+                order=40,
+                capability='crm.read',
+            )
+        ]
 
     def contribute_settings_panel(self):
         return SettingsPanel(

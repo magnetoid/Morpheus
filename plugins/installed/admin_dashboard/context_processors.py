@@ -1,22 +1,27 @@
-"""Dashboard breadcrumbs — a fallback trail for every /dashboard/ page, so a
-page gets a breadcrumb even when its view doesn't supply an explicit
-`breadcrumb_trail`. Views that DO set `breadcrumb_trail` win (base.html prefers
-it over `auto_breadcrumb_trail`).
+"""Dashboard shell context: navigation, breadcrumbs and contributed chrome.
 
-The trail follows the page's location in the dashboard NAV, not the URL path:
-a plugin page declares a `DashboardPage(section=…, label=…)`, and the sidebar
-groups it under that section. So the breadcrumb reads
-`Dashboard › <Section> › <Page>` — matching where the entry sits in the
-sidebar — instead of exposing the routing prefix (the old path-split trail
-rendered `/dashboard/apps/marketplace/vendors/` as "Dashboard › Apps ›
-Marketplace › Vendors", leaking the internal `apps` discovery router). Pages
-with no registered nav entry (core sections at clean paths, register_urls
-detail routes) fall back to a path-derived trail with `apps` stripped.
+`dashboard_nav` hands the templates the sidebar sections, the current
+section's tabs and the settings categories (see `navigation.py`). It runs
+for dashboard requests only, so the storefront never pays for it.
+
+The breadcrumb is a fallback trail for every /dashboard/ page that doesn't
+supply an explicit `breadcrumb_trail` (base.html prefers the explicit one),
+and base.html shows it only below a tab — on a tab's own page the tab strip
+already says where you are. The trail follows the page's place in the
+navigation, not the URL path: `Dashboard › <Section> › <Tab> › …`, so it
+never leaks the internal `/dashboard/apps/` discovery prefix. Pages the
+navigation doesn't know fall back to a path-derived trail with `apps`
+stripped.
 """
 
 from __future__ import annotations
 
+import logging
 import re
+
+from django.conf import settings
+
+logger = logging.getLogger('morpheus.admin')
 
 # Slugs that should render as a fixed pretty label (acronyms + known pages).
 _LABELS = {
@@ -53,83 +58,70 @@ def _label(slug: str) -> str:
     return slug.replace('-', ' ').replace('_', ' ').strip().capitalize()
 
 
-def _section_label(section: str) -> str:
-    """Friendly name for a nav section key ('marketplace' → 'Multivendor'),
-    reusing the same map the sidebar renders."""
-    try:
-        from plugins.context_processors import _SECTION_LABELS  # noqa: PLC0415
+def _section_crumbs(request, loc) -> list[dict]:
+    from plugins.installed.admin_dashboard import navigation  # noqa: PLC0415
 
-        return _SECTION_LABELS.get(section, section.replace('_', ' ').title())
-    except Exception:  # noqa: BLE001
-        return section.replace('_', ' ').title()
+    sec = navigation.section(loc.section)
+    listed = [
+        t
+        for t in navigation.tabs(getattr(request, 'user', None))
+        if t.section == sec.key and t.nav == 'main'
+    ]
+    landing = sec.url or (listed[0].url if listed else loc.tab.url)
+    crumbs = [{'label': sec.label, 'url': landing}]
+    members = [t for t in listed if loc.tab.group and t.group == loc.tab.group]
+    if len(members) > 1:
+        crumbs.append({'label': loc.tab.group, 'url': members[0].url})
+    if loc.tab.url != landing:
+        crumbs.append({'label': loc.tab.label, 'url': loc.tab.url})
+    return crumbs
 
 
-def _canonical_url(page) -> str:
-    return getattr(page, 'url', '') or f'/dashboard/apps/{getattr(page, "plugin", "")}/{page.slug}/'
+def _settings_crumbs(loc) -> list[dict]:
+    from plugins.installed.admin_dashboard.settings_categories import (  # noqa: PLC0415
+        get_category,
+    )
+
+    crumbs = [{'label': 'Settings', 'url': '/dashboard/settings/'}]
+    cat = get_category(loc.section) if loc.section else None
+    if cat is not None:
+        crumbs.append({'label': cat.label, 'url': f'/dashboard/settings/{cat.slug}/'})
+    elif loc.section == 'apps-catalogue':
+        crumbs.append({'label': 'Apps', 'url': '/dashboard/apps/'})
+    if loc.tool is not None:
+        crumbs.append({'label': loc.tool.label, 'url': loc.tool.url})
+    return crumbs
 
 
-def _resolve_nav_page(path: str, pages):
-    """Find the DashboardPage this path belongs to, plus the remaining
-    (post-page) path segments. Returns (page, leftover_segments) or (None, []).
+def _nav_trail(request) -> list | None:
+    """The breadcrumb for a page the navigation knows, or None.
 
-    Two shapes are matched:
-      * `/dashboard/apps/<plugin>/<slug>/…` — the page's canonical URL is a
-        prefix of the path (longest match wins; also covers `url=` overrides).
-      * `/dashboard/<plugin>/<slug>/…` — a register_urls detail route whose
-        first two segments name the owning plugin + a page slug (e.g. the
-        vendor-detail page under the Vendors list).
+    `Dashboard › <Section> › [<Group>] › <Tab> › <sub-path…>`, where the
+    section's own landing tab is not repeated ("Dashboard › Products", not
+    "… › Products › All products") and a label equal to the one before it is
+    dropped ("Marketing › Affiliates", not "… › Affiliates › Affiliates").
+    Everything above the current page links back; record ids are skipped.
     """
-    # 1) canonical-URL prefix match
-    best, best_len = None, 0
-    for page in pages:
-        canon = _canonical_url(page)
-        if canon and path.startswith(canon) and len(canon) > best_len:
-            best, best_len = page, len(canon)
-    if best is not None:
-        leftover = [s for s in path[best_len:].strip('/').split('/') if s]
-        return best, leftover
+    from plugins.installed.admin_dashboard import navigation  # noqa: PLC0415
 
-    # 2) register_urls detail route: /dashboard/<plugin>/<slug>/…
-    segs = [s for s in path[len('/dashboard/') :].strip('/').split('/') if s]
-    if len(segs) >= 2:
-        plugin_seg, slug_seg = segs[0], segs[1]
-        for page in pages:
-            if getattr(page, 'plugin', '') == plugin_seg and page.slug == slug_seg:
-                return page, segs[2:]
-    return None, []
-
-
-def _nav_trail(path: str) -> list | None:
-    """Nav-location breadcrumb for a registered dashboard page, or None."""
-    from plugins.registry import app_registry  # noqa: PLC0415
-
-    pages = app_registry.dashboard_pages()
-    page, leftover = _resolve_nav_page(path, pages)
-    if page is None:
+    loc = navigation.build(request)['location']
+    if loc.mode == 'main' and loc.tab is not None:
+        crumbs = _section_crumbs(request, loc)
+    elif loc.mode == 'settings':
+        crumbs = _settings_crumbs(loc)
+    else:
         return None
+    crumbs += [{'label': _label(seg)} for seg in loc.leftover if not _ID_RE.match(seg)]
 
     trail = [{'label': 'Dashboard', 'url': '/dashboard/'}]
-    section_label = _section_label(getattr(page, 'section', '') or 'plugins')
-    # The section is a sidebar group, not a page — an unlinked label. Skip it
-    # when it just repeats the page label (a single-plugin section named after
-    # its occupant, e.g. growth→"Affiliates"), so the trail doesn't read
-    # "Affiliates › Affiliates".
-    if section_label.strip().casefold() != page.label.strip().casefold():
-        trail.append({'label': section_label})
-
-    leaf_segs = [s for s in leftover if not _ID_RE.match(s)]
-    # The page is the current leaf only when nothing follows it. If any
-    # segment follows — a sub-tab OR a record id (a detail route) — the page
-    # label links back to its list and the record is "below" it.
-    page_is_leaf = not leftover
-    trail.append(
-        {'label': page.label}
-        if page_is_leaf
-        else {'label': page.label, 'url': _canonical_url(page)}
-    )
-    # Any remaining non-id segments (sub-tabs) become trailing leaves.
-    for i, seg in enumerate(leaf_segs):
-        trail.append({'label': _label(seg)} if i == len(leaf_segs) - 1 else {'label': _label(seg)})
+    for crumb in crumbs:
+        if crumb['label'].strip().casefold() == trail[-1]['label'].strip().casefold():
+            trail[-1] = crumb  # "Affiliates › Affiliates" → one crumb
+            continue
+        trail.append(crumb)
+    # The page you are on is a label, not a link.
+    if len(trail) > 1 and request.path == trail[-1].get('url', request.path):
+        trail[-1] = {'label': trail[-1]['label']}
     return trail
 
 
@@ -159,11 +151,34 @@ def dashboard_breadcrumbs(request) -> dict:
     if not path.startswith('/dashboard/'):
         return {}
     try:
-        trail = _nav_trail(path) or _path_trail(path)
+        trail = _nav_trail(request) or _path_trail(path)
         # A bare /dashboard/ (home) needs no breadcrumb.
         return {'auto_breadcrumb_trail': trail if len(trail) > 1 else []}
     except Exception:  # noqa: BLE001 — breadcrumbs must never break a render
+        logger.warning('dashboard breadcrumb failed for %s', path, exc_info=True)
         return {}
+
+
+def dashboard_nav(request) -> dict:
+    """The sidebar sections, the current section's tabs and the settings
+    categories (navigation.py), plus the nav badges. Dashboard requests only.
+
+    A failure here empties the sidebar, so it is loud where someone is
+    looking: re-raised under tests and DEBUG, logged at ERROR in production
+    (the page still renders, with the Settings link)."""
+    path = getattr(request, 'path', '') or ''
+    if not path.startswith('/dashboard/'):
+        return {}
+    try:
+        from plugins.installed.admin_dashboard import navigation  # noqa: PLC0415
+
+        nav = navigation.build(request)
+    except Exception:
+        if settings.DEBUG or getattr(settings, '_RUNNING_TESTS', False):
+            raise
+        logger.error('dashboard navigation failed for %s', path, exc_info=True)
+        return {}
+    return {'dashboard_nav': nav, 'nav_badges': nav['badges']}
 
 
 def dashboard_shell(request) -> dict:

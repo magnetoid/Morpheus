@@ -49,9 +49,10 @@ class FeedbackPlugin(Plugin):
                 slug='tickets',
                 view='plugins.installed.feedback.views.ticket_list',
                 icon='message-square-warning',
-                section='settings',
+                section='developer',
                 order=96,
                 nav='settings',
+                hint='Bug reports staff sent from the dashboard',
             ),
         ]
 

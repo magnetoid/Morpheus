@@ -1,15 +1,14 @@
-"""Settings categories — the Shopify-style top-level grouping.
+"""Settings categories — the settings sidebar (docs/plans/dashboard-hubs-2026-10.md).
 
-IA redesign phase 3 (docs/plans/dashboard-ia-redesign-2026-06.md): caching
-lives as a card in the Developers hub (its /dashboard/settings/caching/
-URL is dispatched before the category lookup, so it stays reachable);
-product-type panels merged into General.
+Each category is one page under ``/dashboard/settings/<slug>/``. Apps file
+into one with ``SettingsPanel(category=…)`` (a form) or
+``DashboardPage(nav='settings', section=…)`` (a tool card linking to the
+app's own settings page); the shell adds its core forms and platform tools.
+A category with nothing in it is not listed — General and Notifications
+always are, they carry the store's core forms.
 
-Each category is one page under ``/dashboard/settings/<slug>/``. A
-plugin opts into a category by setting ``category=`` on the
-``SettingsPanel`` it returns from ``contribute_settings_panel()``.
-Plugins that don't set a category fall into ``apps`` — they still
-appear, just at the bottom of the menu.
+``apps`` ("Other apps") is the home of a panel that names no category; no
+in-tree app uses it, so it is listed only when an out-of-tree app does.
 """
 
 from __future__ import annotations
@@ -27,35 +26,68 @@ class SettingsCategory:
 
 # Order here is the order shown in the settings sidebar.
 SETTINGS_CATEGORIES: list[SettingsCategory] = [
-    # General (store basics) leads, right after the "Settings overview" link;
-    # commerce config (Payments / Shipping / Taxes) follows.
-    SettingsCategory('general', 'General', 'Store name, currency, country, basics.', 'store'),
     SettingsCategory(
-        'payments', 'Payments', 'Gateways and payment methods customers can use.', 'credit-card'
+        'general', 'General', 'Store details, markets, languages and privacy.', 'store'
     ),
-    SettingsCategory('shipping', 'Shipping', 'Zones, rates, and carriers.', 'truck'),
-    SettingsCategory('taxes', 'Taxes', 'Regional rates and overrides.', 'percent'),
+    SettingsCategory(
+        'payments',
+        'Payments & checkout',
+        'Payment methods, checkout, fraud checks and subscription billing.',
+        'credit-card',
+    ),
+    SettingsCategory(
+        'shipping', 'Shipping & tax', 'Zones, rates, carriers, fulfilment and tax.', 'truck'
+    ),
+    SettingsCategory(
+        'storefront',
+        'Storefront',
+        'Images, brand, motion and the features shoppers see.',
+        'monitor-smartphone',
+    ),
     SettingsCategory(
         'channels',
         'Sales channels',
-        'Storefront, social, SEO, tracking, marketplace listings.',
+        'Product feeds, ad accounts, SEO and conversion tracking.',
         'globe',
     ),
-    SettingsCategory('ai', 'AI', 'Provider, model, and agent settings.', 'sparkles'),
     SettingsCategory(
-        'marketing', 'Marketing', 'Coupons, email campaigns, CRM defaults.', 'megaphone'
+        'marketing',
+        'Marketing',
+        'Loyalty, referrals, newsletter, affiliates and recovery emails.',
+        'megaphone',
     ),
     SettingsCategory(
-        'notifications',
-        'Notifications',
-        'Transactional email templates, SMS, and outbound webhooks.',
-        'bell',
+        'ai', 'AI', 'Providers, guardrails, brand voice and Linda’s engine.', 'sparkles'
     ),
     SettingsCategory(
-        'developer', 'Developer', 'API keys, webhooks, agent tokens, observability.', 'code'
+        'notifications', 'Notifications', 'Email sender, SMTP and email templates.', 'bell'
     ),
-    SettingsCategory('apps', 'Other apps', 'Settings exposed by individual apps.', 'puzzle'),
+    SettingsCategory(
+        'team',
+        'Team & security',
+        'Roles, two-factor sign-in, single sign-on and the audit log.',
+        'shield-check',
+    ),
+    SettingsCategory(
+        'developer', 'Developer', 'API tokens, webhooks, workflows and platform tools.', 'code'
+    ),
+    SettingsCategory('data', 'Data', 'Import, export, migration and backups.', 'database'),
+    SettingsCategory(
+        'apps', 'Other apps', 'Settings from apps that have not picked a category.', 'puzzle'
+    ),
 ]
+
+# Slugs used before v0.81.0, or by apps written against an older Morpheus.
+# `/dashboard/settings/<old>/` redirects to the category it now belongs to.
+CATEGORY_ALIASES = {
+    'taxes': 'shipping',
+    'access': 'team',
+    'security': 'team',
+    'settings': 'general',
+    'checkout': 'payments',
+    'content': 'storefront',
+    'customers': 'marketing',
+}
 
 
 _BY_SLUG = {c.slug: c for c in SETTINGS_CATEGORIES}

@@ -3,8 +3,10 @@
 Regression for the old path-split trail that rendered
 `/dashboard/apps/marketplace/vendors/` as "Dashboard › Apps › Marketplace ›
 Vendors" — leaking the internal `apps` discovery-router prefix and ignoring
-where the page sits in the sidebar. The trail now reads
-"Dashboard › <Section> › <Page>" from the DashboardPage registry.
+where the page sits in the navigation. The trail reads
+"Dashboard › <Section> › [<Group>] › <Tab>" from admin_dashboard/navigation.py,
+without repeating a section's own landing tab or a label equal to the one
+before it.
 """
 
 from __future__ import annotations
@@ -34,26 +36,39 @@ class NavBreadcrumbTests(TestCase):
             self.assertNotIn('Apps', _labels(path), path)
 
     def test_trail_follows_nav_section(self):
-        # marketplace pages live in the 'marketplace' section → "Multivendor".
+        # marketplace pages are the Vendors section; its landing tab IS
+        # "Vendors", so the trail does not say it twice.
+        self.assertEqual(_labels('/dashboard/apps/marketplace/vendors/'), ['Dashboard', 'Vendors'])
         self.assertEqual(
-            _labels('/dashboard/apps/marketplace/vendors/'),
-            ['Dashboard', 'Multivendor', 'Vendors'],
+            _labels('/dashboard/apps/marketplace/payouts/'), ['Dashboard', 'Vendors', 'Payouts']
         )
 
     def test_detail_route_resolves_to_nav_location(self):
         # A register_urls detail route (different URL tree) still resolves to
-        # the owning page's nav location, with the page linking back.
+        # the owning page's place in the navigation, linking back to it.
         trail = dashboard_breadcrumbs(
             _Req('/dashboard/marketplace/vendors/3f0c9d2e-0000-4000-8000-000000000001/')
         )['auto_breadcrumb_trail']
-        self.assertEqual([c['label'] for c in trail], ['Dashboard', 'Multivendor', 'Vendors'])
+        self.assertEqual([c['label'] for c in trail], ['Dashboard', 'Vendors'])
         # 'Vendors' is a link back to the list (it is not the leaf here).
         self.assertEqual(trail[-1]['url'], '/dashboard/apps/marketplace/vendors/')
 
-    def test_section_dedup_when_it_equals_page_label(self):
-        # growth section is labelled "Affiliates"; don't render "Affiliates ›
-        # Affiliates" for the affiliates landing page.
-        self.assertEqual(_labels('/dashboard/apps/affiliates/list/'), ['Dashboard', 'Affiliates'])
+    def test_group_label_is_not_repeated(self):
+        # The affiliates list is the first page of the "Affiliates" tab group
+        # in Marketing: "Marketing › Affiliates", not "… › Affiliates › Affiliates".
+        self.assertEqual(
+            _labels('/dashboard/apps/affiliates/list/'), ['Dashboard', 'Marketing', 'Affiliates']
+        )
+        self.assertEqual(
+            _labels('/dashboard/apps/affiliates/programs/'),
+            ['Dashboard', 'Marketing', 'Affiliates', 'Programs'],
+        )
+
+    def test_settings_tool_reads_as_settings(self):
+        self.assertEqual(
+            _labels('/dashboard/apps/webhooks_ui/endpoints/'),
+            ['Dashboard', 'Settings', 'Developer', 'Webhooks'],
+        )
 
     def test_core_page_uses_clean_path_fallback(self):
         # Non-registered core pages fall back to the path trail (no 'apps').

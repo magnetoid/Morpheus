@@ -1,8 +1,8 @@
 """Cmd+K command palette — a wide, cross-app search backing the header search.
 
 Returns hits grouped into ordered `section`s: every dashboard page (pulled
-from the DashboardPage registry, so the palette covers the *whole* app —
-not a hand-maintained list), plus live entity matches across the commerce
+from the navigation — the shell's pages and every app's — so the palette
+covers the *whole* app, not a hand-maintained list), plus live entity matches across the commerce
 spine and catalog/content, plus a "search the storefront" escape hatch.
 
 Each hit carries `section` (the group title, in the order the front-end
@@ -12,12 +12,16 @@ is fail-soft — a disabled or absent plugin simply contributes nothing.
 
 from __future__ import annotations
 
+import logging
+
 from core.authz import require_capability
 from morpheus.app.views import (
     HttpRequest,
     HttpResponse,
     staff_member_required,
 )
+
+logger = logging.getLogger('morpheus.admin')
 
 # High-value create/jump actions that aren't registered DashboardPages.
 _ACTIONS = [
@@ -32,8 +36,11 @@ _ACTIONS = [
 ]
 
 
-def _nav_hits(q: str, ql: str) -> list[dict]:
-    """Every dashboard page (registry) + core actions, filtered by query."""
+def _nav_hits(q: str, ql: str, user=None) -> list[dict]:
+    """Every dashboard page + core actions, filtered by query. Pages come from
+    the navigation (admin_dashboard/navigation.py) — the shell's tabs, every
+    app's pages including the ones only a card links to, and every settings
+    tool — so a page is findable even when no menu lists it."""
     hits: list[dict] = []
     seen: set[str] = set()
 
@@ -58,19 +65,19 @@ def _nav_hits(q: str, ql: str) -> list[dict]:
         add(label, hint, url, icon)
 
     try:
-        from plugins.context_processors import _SECTION_LABELS  # noqa: PLC0415
-        from plugins.registry import app_registry  # noqa: PLC0415
+        from plugins.installed.admin_dashboard import navigation  # noqa: PLC0415
+        from plugins.installed.admin_dashboard.settings_categories import (  # noqa: PLC0415
+            get_category,
+        )
 
-        for page in app_registry.dashboard_pages():
-            if getattr(page, 'nav', 'main') == 'hidden':
-                continue
-            url = getattr(page, 'url', '') or (
-                f'/dashboard/apps/{getattr(page, "plugin", "")}/{page.slug}/'
-            )
-            section = _SECTION_LABELS.get(getattr(page, 'section', ''), '')
-            add(page.label, section or 'Dashboard', url, getattr(page, 'icon', 'circle'))
-    except Exception:  # noqa: BLE001, S110
-        pass
+        for tab in navigation.tabs(user):
+            where = navigation.section_label(tab.section)
+            add(tab.label, f'{where} › {tab.group}' if tab.group else where, tab.url, tab.icon)
+        for tool in navigation.tools():
+            cat = get_category(tool.category)
+            add(tool.label, f'Settings › {cat.label}' if cat else 'Settings', tool.url, tool.icon)
+    except Exception:  # noqa: BLE001 — the palette must answer even if the nav can't
+        logger.warning('palette: navigation entries failed', exc_info=True)
     return hits
 
 
@@ -204,7 +211,7 @@ def palette_search(request: HttpRequest) -> HttpResponse:
     q = (request.GET.get('q') or '').strip()
     ql = q.lower()
 
-    nav = _nav_hits(q, ql)
+    nav = _nav_hits(q, ql, getattr(request, 'user', None))
     if not q:
         return JsonResponse({'hits': nav[:12]})
 

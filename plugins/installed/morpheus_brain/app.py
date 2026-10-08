@@ -90,8 +90,9 @@ class MorpheusBrainPlugin(Plugin):
                 slug='brain',
                 view='plugins.installed.morpheus_brain.views.brain',
                 icon='brain',
-                section='settings',
+                section='ai',
                 order=90,
                 nav='settings',
+                hint='Code quality, errors, SEO health and daily reports',
             ),
         ]

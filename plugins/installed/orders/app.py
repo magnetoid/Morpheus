@@ -150,7 +150,7 @@ class OrdersPlugin(Plugin):
             label='Checkout & cart',
             description='Tweaks to the cart + checkout flow. Defaults are sensible for new stores.',
             schema=self.get_config_schema(),
-            category='general',
+            category='payments',
         )
 
     def on_health_checks(self, value, **kwargs):

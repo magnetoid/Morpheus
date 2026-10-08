@@ -25,6 +25,9 @@
     </div>
   </div>
 
+  {% comment %}Other apps' cards for this section (admin_dashboard/cards.py) — on the unfiltered list only; a search or filter is about the list.{% endcomment %}
+  {% if not request.GET %}{% dashboard_card_list "orders" as hub_cards %}{% include "admin_dashboard/_cards.html" with cards=hub_cards %}{% endif %}
+
   {% if awaiting_payment %}
   <div class="card card-padded flex flex-wrap items-center justify-between gap-2" role="status">
     <p class="text-sm">Showing shipped or delivered orders paid by cash or bank transfer that aren&rsquo;t marked paid yet. Mark each one paid once the money arrives.</p>

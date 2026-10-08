@@ -11,7 +11,7 @@ This is distinct from `affiliates` (B2B/influencer) and from
 
 from __future__ import annotations
 
-from morpheus.app import Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import DashboardCard, Plugin, SettingsPanel, StorefrontBlock
 
 
 class ReferralsPlugin(Plugin):
@@ -41,6 +41,19 @@ class ReferralsPlugin(Plugin):
                 template='referrals/blocks/credit_credit.html',
                 priority=20,
             ),
+        ]
+
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Customers landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='customers',
+                title='Referrals',
+                data='plugins.installed.referrals.cards.referrals_card',
+                icon='user-plus',
+                order=50,
+                capability='crm.read',
+            )
         ]
 
     def contribute_settings_panel(self) -> SettingsPanel:

@@ -90,6 +90,7 @@ class RbacPlugin(Plugin):
         return SettingsPanel(
             label='Roles & permissions',
             schema=self.get_config_schema(),
+            category='team',
         )
 
     def contribute_agent_tools(self) -> list:
@@ -108,8 +109,9 @@ class RbacPlugin(Plugin):
                 slug='roles',
                 view='plugins.installed.rbac.dashboard.roles_page',
                 icon='shield-check',
-                section='access',
+                section='team',
                 order=10,
                 nav='settings',
+                hint='Who can do what in the dashboard',
             ),
         ]

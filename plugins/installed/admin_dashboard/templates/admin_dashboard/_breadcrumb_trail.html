@@ -12,7 +12,7 @@ If `trail` is empty or missing, the whole row is hidden so the partial
 is safe to drop into every template unconditionally.
 {% endcomment %}
 {% if trail %}
-<nav class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
+<nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
   {% for crumb in trail %}
     {% if not forloop.first %}
     <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>

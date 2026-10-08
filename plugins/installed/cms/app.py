@@ -180,7 +180,7 @@ class CmsPlugin(Plugin):
                 slug='pages',
                 view='plugins.installed.cms.dashboard.pages_list',
                 icon='file-text',
-                section='cms',
+                section='content',
                 order=10,
             ),
             DashboardPage(
@@ -188,7 +188,7 @@ class CmsPlugin(Plugin):
                 slug='blocks',
                 view='plugins.installed.cms.dashboard.blocks_list',
                 icon='square',
-                section='cms',
+                section='content',
                 order=20,
             ),
             DashboardPage(
@@ -196,7 +196,7 @@ class CmsPlugin(Plugin):
                 slug='menus',
                 view='plugins.installed.cms.dashboard.menus_list',
                 icon='list',
-                section='cms',
+                section='content',
                 order=30,
             ),
             DashboardPage(
@@ -204,7 +204,7 @@ class CmsPlugin(Plugin):
                 slug='forms',
                 view='plugins.installed.cms.dashboard.forms_list',
                 icon='inbox',
-                section='cms',
+                section='content',
                 order=40,
             ),
         ]

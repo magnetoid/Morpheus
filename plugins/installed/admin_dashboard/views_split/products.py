@@ -909,6 +909,25 @@ def _content_audit_queryset():
     )
 
 
+def content_audit_card(request) -> dict:
+    """The Content audit card on the Products landing (admin_dashboard/cards.py):
+    how much copy work is outstanding, by kind, linking the audit page."""
+    qs = _content_audit_queryset()
+    total = qs.count()
+    if not total:
+        return {'empty': 'Every product has a description and a category.'}
+    return {
+        'value': str(total),
+        'caption': 'products missing copy or a category',
+        'tone': 'warn',
+        'rows': [
+            ('No short description', qs.filter(short_description='').count()),
+            ('No description', qs.filter(description='').count()),
+            ('No category', qs.filter(category__isnull=True).count()),
+        ],
+    }
+
+
 @staff_member_required
 def content_audit(request: HttpRequest) -> HttpResponse:
     """List every product missing copy or categorization."""

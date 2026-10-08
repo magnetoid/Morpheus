@@ -33,5 +33,6 @@ class DemoDataPlugin(Plugin):
                 view='plugins.installed.demo_data.views.demo_data_index',
                 order=20,
                 nav='settings',
+                hint='Load or remove sample products and orders',
             ),
         ]

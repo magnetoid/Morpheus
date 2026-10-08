@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.app import DashboardPage, Plugin
+from morpheus.app import DashboardCard, DashboardPage, Plugin
 
 logger = logging.getLogger('morpheus.promotions')
 
@@ -200,6 +200,21 @@ class PromotionsPlugin(Plugin):
         )
 
         return [list_promotions_tool, create_percent_off_tool]
+
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Marketing landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='marketing',
+                title='Promotions',
+                data='plugins.installed.promotions.cards.promotions_card',
+                url='/dashboard/apps/promotions/index/',
+                cta='Manage promotions',
+                icon='percent',
+                order=20,
+                capability='marketing.read',
+            )
+        ]
 
     def contribute_dashboard_pages(self) -> list:
         return [

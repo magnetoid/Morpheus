@@ -1,7 +1,8 @@
-"""Settings IA after redesign phase 3: 10 declared categories (8 visible —
-shipping/taxes are page-owned and suppressed from the sidebar), caching
-demoted to a Developers-hub card with its URL kept alive, product-type
-panels merged into General. docs/plans/dashboard-ia-redesign-2026-06.md.
+"""Settings categories since v0.81.0 (docs/plans/dashboard-hubs-2026-10.md):
+eleven categories plus "Other apps" for an out-of-tree app that names none;
+apps' settings pages are tool cards on their category, old slugs redirect,
+caching is a Developer card with its URL kept alive, product-type panels sit
+in General.
 """
 
 from __future__ import annotations
@@ -26,15 +27,39 @@ class SettingsCategoriesTests(TestCase):
                 'general',
                 'payments',
                 'shipping',
-                'taxes',
+                'storefront',
                 'channels',
-                'ai',
                 'marketing',
+                'ai',
                 'notifications',
+                'team',
                 'developer',
+                'data',
                 'apps',
             ],
         )
+
+    def test_every_in_tree_app_picks_a_category(self):
+        # "Other apps" exists for out-of-tree apps; nothing shipped lands there.
+        from plugins.installed.admin_dashboard import navigation
+        from plugins.registry import app_registry
+
+        stray = [
+            e['plugin']
+            for e in app_registry.all_settings_panels()
+            if navigation.settings_category_key(e['panel'].category) == 'apps'
+        ]
+        stray += [t.label for t in navigation.tools() if t.category == 'apps']
+        self.assertEqual(stray, [])
+
+    def test_old_category_slugs_redirect(self):
+        resp = self.client.get('/dashboard/settings/taxes/')
+        self.assertRedirects(resp, '/dashboard/settings/shipping/', fetch_redirect_response=False)
+
+    def test_settings_pages_are_tool_cards_on_their_category(self):
+        html = self.client.get('/dashboard/settings/shipping/').content.decode()
+        for url in ('/dashboard/shipping/zones/', '/dashboard/tax/regions/'):
+            self.assertIn(url, html)
 
     def test_caching_url_survives_category_removal(self):
         # Dispatched before the category lookup, linked from the hub.

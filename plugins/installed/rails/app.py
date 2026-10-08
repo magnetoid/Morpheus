@@ -56,7 +56,7 @@ class RailsPlugin(Plugin):
         return SettingsPanel(
             label='Personalised rails',
             description='Enable/disable individual rails, set rail titles, configure fallbacks.',
-            category='marketing',
+            category='storefront',
             schema=self.get_config_schema(),
         )
 

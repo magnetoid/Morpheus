@@ -94,8 +94,8 @@ class AmazonAdsPlugin(Plugin):
                 slug='ads',
                 view='plugins.installed.amazon_ads.views.ads_dashboard',
                 icon='shopping-cart',
-                section='marketing',
-                order=70,
+                section='channels',
+                order=80,
                 nav='main',
             ),
         ]

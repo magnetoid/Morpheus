@@ -60,7 +60,7 @@ class MarketplacePlugin(Plugin):
             label='Marketplace',
             description='Default commission rates and approval policy for new vendors.',
             schema=self.get_config_schema(),
-            category='marketing',
+            category='payments',
         )
 
     def get_config_schema(self) -> dict:
@@ -91,7 +91,7 @@ class MarketplacePlugin(Plugin):
                 slug='vendors',
                 view='plugins.installed.marketplace.dashboard.vendors_list',
                 icon='store',
-                section='marketplace',
+                section='vendors',
                 order=10,
             ),
             DashboardPage(
@@ -99,7 +99,7 @@ class MarketplacePlugin(Plugin):
                 slug='applications',
                 view='plugins.installed.marketplace.dashboard.applications_list',
                 icon='inbox',
-                section='marketplace',
+                section='vendors',
                 order=15,
             ),
             DashboardPage(
@@ -107,7 +107,7 @@ class MarketplacePlugin(Plugin):
                 slug='orders',
                 view='plugins.installed.marketplace.dashboard.vendor_orders',
                 icon='shopping-bag',
-                section='marketplace',
+                section='vendors',
                 order=20,
             ),
             DashboardPage(
@@ -115,7 +115,7 @@ class MarketplacePlugin(Plugin):
                 slug='payouts',
                 view='plugins.installed.marketplace.dashboard.payouts',
                 icon='wallet',
-                section='marketplace',
+                section='vendors',
                 order=30,
             ),
             DashboardPage(
@@ -123,7 +123,7 @@ class MarketplacePlugin(Plugin):
                 slug='payout-accounts',
                 view='plugins.installed.marketplace.dashboard.payout_accounts',
                 icon='credit-card',
-                section='marketplace',
+                section='vendors',
                 order=35,
             ),
             DashboardPage(
@@ -131,7 +131,7 @@ class MarketplacePlugin(Plugin):
                 slug='reports',
                 view='plugins.installed.marketplace.dashboard.reports',
                 icon='bar-chart-3',
-                section='marketplace',
+                section='vendors',
                 order=40,
             ),
         ]

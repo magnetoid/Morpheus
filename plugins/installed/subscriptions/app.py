@@ -92,16 +92,16 @@ class SubscriptionsPlugin(Plugin):
                 slug='subscriptions',
                 view='plugins.installed.subscriptions.views.subscriptions_dashboard',
                 icon='repeat',
-                section='customers',
-                order=70,
+                section='orders',
+                order=50,
             ),
             DashboardPage(
-                label='Subscription analytics',
+                label='Subscriptions',
                 slug='analytics',
                 view='plugins.installed.subscriptions.views_analytics.subscription_analytics',
                 icon='trending-up',
                 section='analytics',
-                order=55,
+                order=70,
             ),
         ]
 
@@ -145,7 +145,7 @@ class SubscriptionsPlugin(Plugin):
             label='Subscription billing',
             description='Dunning and pre-renewal email drips for Stripe subscriptions.',
             schema=self.get_config_schema(),
-            category='marketing',
+            category='payments',
         )
 
     def get_config_schema(self) -> dict:

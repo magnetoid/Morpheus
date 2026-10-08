@@ -44,6 +44,7 @@ from __future__ import annotations
 from plugins.base import MorpheusPlugin as Plugin
 from plugins.base import PluginConfigurationError
 from plugins.contributions import (
+    DashboardCard,
     DashboardPage,
     EmailTemplateDef,
     SettingsPanel,
@@ -57,6 +58,7 @@ from plugins.contributions import (
 __all__ = [
     'Plugin',
     'PluginConfigurationError',
+    'DashboardCard',
     'DashboardPage',
     'EmailTemplateDef',
     'SettingsPanel',

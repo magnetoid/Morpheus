@@ -61,8 +61,9 @@ class ZendropPlugin(Plugin):
                 slug='orders',
                 view='plugins.installed.zendrop.views.dashboard',
                 icon='truck',
-                section='data',
-                order=41,
+                section='orders',
+                order=61,
+                group='Suppliers',
             )
         ]
 
@@ -71,7 +72,7 @@ class ZendropPlugin(Plugin):
             label='Zendrop dropshipping',
             description='The Zendrop access token, where tracking links point, and the processing move.',
             schema=self.get_config_schema(),
-            category='apps',
+            category='shipping',
         )
 
     def get_config_schema(self) -> dict:

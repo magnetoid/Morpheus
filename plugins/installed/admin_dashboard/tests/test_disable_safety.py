@@ -51,6 +51,7 @@ SHELL_PAGES = (
     '/dashboard/orders/',
     '/dashboard/analytics/',
     '/dashboard/ai-insights/',
+    '/dashboard/marketing/',
     '/dashboard/settings/',
     '/dashboard/settings/caching/',
     '/dashboard/settings/ai/',
@@ -121,7 +122,7 @@ class ShellNeverFiveHundredTests(TestCase):
         # only: its enabled path 500s on a pre-existing TemplateSyntaxError in
         # email_template_edit.html — literal `{{ "{{ … }}" }}` — unrelated here.)
         owned = {
-            '/dashboard/marketing/': 'marketing',
+            '/dashboard/marketing/coupons/': 'marketing',
             '/dashboard/marketing/coupons/new/': 'marketing',
             f'/dashboard/pages/{page.id}/builder/': 'cms',
             '/dashboard/orders/new/': 'draft_orders',
@@ -155,7 +156,9 @@ class ShellNeverFiveHundredTests(TestCase):
 
 class MarketingSurfaceTests(TestCase):
     """(a) The coupon pages are the marketing plugin's surface: 404 when it is
-    disabled, back when it is enabled — the coupon row included."""
+    disabled, back when it is enabled — the coupon row included. The
+    Marketing overview above them is the shell's and stays up, the coupons
+    card leaving with the app."""
 
     def setUp(self):
         from plugins.installed.marketing.models import Coupon
@@ -172,12 +175,18 @@ class MarketingSurfaceTests(TestCase):
         edit = f'/dashboard/marketing/coupons/{self.coupon.id}/'
         delete = f'/dashboard/marketing/coupons/{self.coupon.id}/delete/'
         with disabled('marketing'):
-            for url in ('/dashboard/marketing/', '/dashboard/marketing/coupons/new/', edit):
+            for url in ('/dashboard/marketing/coupons/', '/dashboard/marketing/coupons/new/', edit):
                 self.assertEqual(self.client.get(url).status_code, 404, url)
             self.assertEqual(self.client.post(delete).status_code, 404)
-        r = self.client.get('/dashboard/marketing/')
+            overview = self.client.get('/dashboard/marketing/')
+            self.assertEqual(overview.status_code, 200)
+            self.assertNotContains(overview, 'data-card="marketing:Coupons"')
+        r = self.client.get('/dashboard/marketing/coupons/')
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, edit)  # the coupon's own edit URL — unique marker
+        self.assertContains(
+            self.client.get('/dashboard/marketing/'), 'data-card="marketing:Coupons"'
+        )
         self.assertEqual(self.client.get(edit).status_code, 200)
         self.assertEqual(self.client.get('/dashboard/marketing/coupons/new/').status_code, 200)
 

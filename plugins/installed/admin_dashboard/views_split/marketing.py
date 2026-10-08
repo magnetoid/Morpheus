@@ -37,7 +37,16 @@ def _require_marketing() -> None:
 
 @staff_member_required
 @require_capability('marketing.read')
-def marketing_view(request: HttpRequest) -> HttpResponse:
+def marketing_overview(request: HttpRequest) -> HttpResponse:
+    """The Marketing section's landing: every marketing app's card on one
+    page (coupons, gift cards, newsletter, affiliates, …). The shell owns the
+    page and no app — with every marketing app off it still answers, empty."""
+    return render(request, 'admin_dashboard/marketing_overview.html', {'active_nav': 'marketing'})
+
+
+@staff_member_required
+@require_capability('marketing.read')
+def coupons_list(request: HttpRequest) -> HttpResponse:
     _require_marketing()
     coupons: list[Any] = []
     try:
@@ -48,7 +57,7 @@ def marketing_view(request: HttpRequest) -> HttpResponse:
         logger.debug('admin_dashboard: marketing empty: %s', e)
     return render(
         request,
-        'admin_dashboard/marketing.html',
+        'admin_dashboard/coupons.html',
         {
             'coupons': coupons,
             'active_nav': 'marketing',
@@ -125,7 +134,7 @@ def coupon_delete(request: HttpRequest, coupon_id: str) -> HttpResponse:
         code = coupon.code
         coupon.delete()
         messages.success(request, f'Deleted coupon "{code}".')
-        return redirect('admin_dashboard:marketing')
+        return redirect('admin_dashboard:coupons')
     return redirect('admin_dashboard:coupon_edit', coupon_id=coupon.id)
 
 

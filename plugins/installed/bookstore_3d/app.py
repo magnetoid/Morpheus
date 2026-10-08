@@ -103,7 +103,7 @@ class Bookstore3DPlugin(Plugin):
             label='3D Bookstore',
             description='The /walkthrough/ immersive page — which books to shelve, room colors, lighting.',
             schema=self.get_config_schema(),
-            category='channels',
+            category='storefront',
         )
 
     def contribute_storefront_blocks(self) -> list:

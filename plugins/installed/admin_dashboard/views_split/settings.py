@@ -90,20 +90,30 @@ def settings_view(request: HttpRequest) -> HttpResponse:
     """
     from django.conf import settings as dj_settings
 
+    from plugins.installed.admin_dashboard import navigation
     from plugins.installed.admin_dashboard.settings_categories import (
         SETTINGS_CATEGORIES,
     )
 
     by_cat = _panels_by_category()
+    tools_by_cat: dict[str, list] = {}
+    for tool in navigation.tools():
+        tools_by_cat.setdefault(tool.category, []).append(tool)
     cards = []
     for cat in SETTINGS_CATEGORIES:
         entries = by_cat.get(cat.slug, [])
+        tools = tools_by_cat.get(cat.slug, [])
+        # Same rule as the settings sidebar: a category with nothing in it is
+        # not offered (General and Notifications carry core forms).
+        if not (entries or tools) and cat.slug not in ('general', 'notifications'):
+            continue
+        names = [t.label for t in tools] + [e['panel'].label or e['plugin_label'] for e in entries]
         cards.append(
             {
                 'category': cat,
-                'count': len(entries),
-                # Show up to 3 plugin labels as a hint of what's inside.
-                'plugins': [e['panel'].label or e['plugin_label'] for e in entries[:3]],
+                'count': len(entries) + len(tools),
+                # A few names as a hint of what's inside.
+                'plugins': names[:3],
             }
         )
 
@@ -979,11 +989,19 @@ def settings_ai(request: HttpRequest) -> HttpResponse:
             )
             continue
 
+    from plugins.installed.admin_dashboard import navigation
+
+    tools = [
+        {'label': t.label, 'url': t.url, 'icon': t.icon or 'circle', 'hint': t.hint}
+        for t in navigation.tools()
+        if t.category == 'ai'
+    ]
     return render(
         request,
         'admin_dashboard/settings_ai.html',
         {
             'category': cat,
+            'tools': tools,
             'cards': cards,
             'connected_cards': connected_cards,
             'available_cards': available_cards,
@@ -1026,6 +1044,11 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
         return settings_caching(request)
 
     cat = get_category(category)
+    from plugins.installed.admin_dashboard.settings_categories import CATEGORY_ALIASES
+
+    if cat is None and category in CATEGORY_ALIASES:
+        # A slug from before v0.81.0 (`taxes`, `access`, …) — its content moved.
+        return redirect('admin_dashboard:settings_category', category=CATEGORY_ALIASES[category])
     if cat is None:
         # Not a category — fall back to per-plugin settings page (the
         # canonical URL pattern post-2026-05-23: every plugin with a
@@ -1132,51 +1155,22 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
             }
         )
 
-    # The Developers hub: every section='developer' DashboardPage renders
-    # here as a tool card (one sidebar entry instead of seven), plus the
-    # always-reachable core tools. A disabled plugin's card vanishes with
-    # its contribution.
-    developer_tools = []
-    if category == 'developer':
-        for page in sorted(
-            app_registry.dashboard_pages(section='developer'),
-            key=lambda pg: (pg.order, pg.label),
-        ):
-            developer_tools.append(
-                {
-                    'label': page.label,
-                    'url': getattr(page, 'url', '')
-                    or f'/dashboard/apps/{page.plugin}/{page.slug}/',
-                    'icon': page.icon or 'circle',
-                    'hint': page.plugin.replace('_', ' '),
-                }
-            )
-        developer_tools += [
-            {
-                'label': 'Tracking',
-                'url': '/dashboard/tracking/',
-                'icon': 'activity',
-                'hint': 'GA4 / GTM, event log, consent',
-            },
-            {
-                'label': 'Errors',
-                'url': '/dashboard/errors/',
-                'icon': 'alert-circle',
-                'hint': 'server + client error log',
-            },
-            {
-                'label': 'Version & updates',
-                'url': '/dashboard/updates/',
-                'icon': 'git-commit-horizontal',
-                'hint': 'version, updates & changelog',
-            },
-            {
-                'label': 'Caching',
-                'url': '/dashboard/settings/caching/',
-                'icon': 'zap',
-                'hint': 'page cache, Redis, Cloudflare edge',
-            },
-        ]
+    # Tool cards: every settings page filed in this category — apps'
+    # `DashboardPage(nav='settings')` and the shell's platform tools
+    # (navigation.py). One card each instead of a sidebar link; a disabled
+    # app's card leaves with its contribution.
+    from plugins.installed.admin_dashboard import navigation
+
+    tools = [
+        {
+            'label': tool.label,
+            'url': tool.url,
+            'icon': tool.icon or 'circle',
+            'hint': tool.hint or tool.plugin.replace('_', ' '),
+        }
+        for tool in navigation.tools()
+        if tool.category == category
+    ]
 
     return render(
         request,
@@ -1186,7 +1180,7 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
             'core_card': core_card,
             'permalinks_card': permalinks_card,
             'cards': cards,
-            'developer_tools': developer_tools,
+            'tools': tools,
             'active_nav': 'settings',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},

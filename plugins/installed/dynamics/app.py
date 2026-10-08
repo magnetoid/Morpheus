@@ -175,20 +175,22 @@ class DynamicsPlugin(Plugin):
                 slug='index',
                 view='plugins.installed.dynamics.views.index',
                 icon='sparkles',
-                section='marketing',
+                section='storefront',
                 order=40,
                 nav='settings',
                 url='/dashboard/dynamics/',
+                hint='Personalised merchandising blocks per theme slot',
             ),
             DashboardPage(
                 label='Autopilot proposals',
                 slug='proposals',
                 view='plugins.installed.dynamics.views.proposals',
                 icon='wand-2',
-                section='marketing',
+                section='storefront',
                 order=41,
                 nav='settings',
                 url='/dashboard/dynamics/proposals/',
+                hint='Merchandising changes Autopilot suggests',
             ),
         ]
 
@@ -215,5 +217,5 @@ class DynamicsPlugin(Plugin):
             label='Autopilot',
             description='Controls for the self-optimizing merchandiser.',
             schema=self.get_config_schema(),
-            category='general',
+            category='storefront',
         )

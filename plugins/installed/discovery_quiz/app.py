@@ -40,7 +40,7 @@ class DiscoveryQuizPlugin(Plugin):
         return SettingsPanel(
             label='Discovery quiz',
             description='Active quiz, question order, result-template mapping.',
-            category='marketing',
+            category='storefront',
             schema=self.get_config_schema(),
         )
 

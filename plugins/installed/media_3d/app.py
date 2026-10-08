@@ -54,7 +54,7 @@ class Media3dPlugin(Plugin):
         return SettingsPanel(
             label='3D / AR / Shoppable video',
             description='Size budgets, viewer defaults, shoppable-video card slots.',
-            category='general',
+            category='storefront',
             schema=self.get_config_schema(),
         )
 

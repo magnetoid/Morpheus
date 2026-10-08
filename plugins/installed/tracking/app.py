@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.app import Plugin, SettingsPanel
+from morpheus.app import DashboardPage, Plugin, SettingsPanel
 from morpheus.core import events
 
 logger = logging.getLogger('morpheus.tracking')
@@ -179,12 +179,23 @@ class TrackingPlugin(Plugin):
             logger.warning('tracking: could not queue %s: %s', event_name, exc)
 
     def contribute_dashboard_pages(self) -> list:
-        # No DashboardPage — Tracking lives at /dashboard/tracking/ via
-        # register_urls above and is hardcoded in admin_dashboard/base.html's
-        # settings sidebar. The previous nav='hidden' DashboardPage was a
-        # duplicate URL surface (/dashboard/apps/tracking/overview/) that
-        # only existed to surface a card in /dashboard/apps/.
-        return []
+        # A tool card on Settings › Sales channels, beside the Google Ads
+        # conversions panel, linking the control centre at /dashboard/tracking/
+        # (register_urls above). The shell used to hardcode this card; an app
+        # page has to leave with its app.
+        return [
+            DashboardPage(
+                label='Tracking',
+                slug='overview',
+                view='plugins.installed.tracking.views.overview',
+                icon='activity',
+                section='channels',
+                nav='settings',
+                order=40,
+                url='/dashboard/tracking/',
+                hint='GA4 and GTM, event firing, consent',
+            )
+        ]
 
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(

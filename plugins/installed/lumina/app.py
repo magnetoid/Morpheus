@@ -49,7 +49,7 @@ class LuminaPlugin(Plugin):
             label='Lumina',
             description='The /create/ landing page and where its "Start creating" buttons link.',
             schema=self.get_config_schema(),
-            category='marketing',
+            category='storefront',
         )
 
     def contribute_storefront_blocks(self) -> list:

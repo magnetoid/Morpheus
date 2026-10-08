@@ -1,0 +1,23 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph_dashboard %}
+{% block title %}Marketing · Morpheus{% endblock %}
+
+{% comment %}The Marketing section's landing. Every marketing app puts its card here
+(DashboardCard(section='marketing')) — coupons next to gift cards next to the
+newsletter — and the tabs above lead to each app's full pages.{% endcomment %}
+{% block content %}
+<div class="space-y-4">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Marketing</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Discounts, gift cards, email and partners at a glance. Open a card or a tab to work on one.</p>
+  </div>
+
+  {% dashboard_card_list "marketing" as hub_cards %}
+  {% if hub_cards %}
+  {% include "admin_dashboard/_cards.html" with cards=hub_cards %}
+  {% else %}
+  {% url 'admin_dashboard:apps' as apps_url %}
+  <div class="card">{% include "admin_dashboard/_empty_state.html" with icon="megaphone" title="No marketing apps are on" hint="Turn on Coupons, Gift cards, Newsletter or Affiliates in Apps and their numbers appear here." action_url=apps_url action_label="Open Apps" action_icon="grid-3x3" %}</div>
+  {% endif %}
+</div>
+{% endblock %}

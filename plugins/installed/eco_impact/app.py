@@ -17,7 +17,7 @@ orders plugin fires and we answer — no storefront/theme edits.
 # Inline imports keep the manifest importable at settings-import time.
 from __future__ import annotations
 
-from morpheus.app import DashboardPage, Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import DashboardCard, DashboardPage, Plugin, SettingsPanel, StorefrontBlock
 from morpheus.core import events
 
 
@@ -170,6 +170,21 @@ class EcoImpactPlugin(Plugin):
             category='marketing',
         )
 
+    def contribute_dashboard_cards(self) -> list:
+        # A card on the Marketing landing, beside other apps' cards.
+        return [
+            DashboardCard(
+                section='marketing',
+                title='Eco impact',
+                data='plugins.installed.eco_impact.cards.eco_impact_card',
+                url='/dashboard/apps/eco_impact/eco_impact/',
+                cta='See pledges',
+                icon='leaf',
+                order=70,
+                capability='marketing.read',
+            )
+        ]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
@@ -179,6 +194,7 @@ class EcoImpactPlugin(Plugin):
                 icon='leaf',
                 section='marketing',
                 order=55,
+                nav='hidden',
                 # Served by the contributed-page router; the plugin mounts no
                 # dashboard URL of its own, so a custom `url` here 404'd.
             ),

@@ -154,6 +154,20 @@ paths and both CI boundary baselines, so it is a separate, opt-in change.
 fallback, because that name lives in the deployment environment, not the repo
 — renaming the read alone would silently drop a live deployment's extra apps.
 
+**Convention — the dashboard has one taxonomy, and an app files into it
+(v0.81.0).** The sidebar is the sections in `admin_dashboard/navigation.py`; an
+app's pages are tabs of a section (`DashboardPage(section=…, group=…)`), its
+settings pages tool cards on a category (`nav='settings'`), its at-a-glance
+numbers cards on a landing (`DashboardCard`). An app never adds a sidebar link,
+section or category, and a shell template never links an app page — base.html
+links none, because a guarded link is a second listing that drifts. Before the
+hubs the sidebar carried ~100 links, and three hardcoded shell links (products'
+"Improve with AI", home's "Agents" tile, the low-stock "View all") had pointed at
+pages that did not exist for months: nothing tests a hardcoded link. Guarded by
+`admin_dashboard/tests/test_navigation.py` (every tab and tool answers),
+`test_dashboard_cards.py` (every card runs on an empty store) and the
+`morpheus.W003`–`W005` checks.
+
 **Landmine — two lists with the same name WILL drift, and the looser one
 wins where it's read.** `PROTECTED_PLUGINS` ("apps that soft-brick if
 disabled") existed twice: in `core/safety.py` (gating Linda's `plugins.disable`

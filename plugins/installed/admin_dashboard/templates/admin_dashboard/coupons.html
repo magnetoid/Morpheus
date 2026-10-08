@@ -1,12 +1,12 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}Marketing · Morpheus{% endblock %}
+{% block title %}Coupons · Morpheus{% endblock %}
 
 {% block content %}
 <div class="space-y-4">
   <div class="flex items-end justify-between gap-3">
     <div>
-      <h1 class="text-xl font-semibold tracking-tight">Marketing</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Coupons, campaigns, and discount rules.</p>
+      <h1 class="text-xl font-semibold tracking-tight">Coupons</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Discount codes customers enter at checkout.</p>
     </div>
     <a href="{% url 'admin_dashboard:coupon_new' %}" class="btn btn-primary">
       <i data-lucide="plus" class="h-4 w-4"></i> New coupon

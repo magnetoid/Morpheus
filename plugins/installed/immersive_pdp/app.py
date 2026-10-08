@@ -51,7 +51,7 @@ class ImmersivePdpPlugin(Plugin):
         return SettingsPanel(
             label='Immersive PDP',
             description='The sticky product-page buy box.',
-            category='general',
+            category='storefront',
             schema=self.get_config_schema(),
         )
 

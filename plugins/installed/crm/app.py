@@ -256,12 +256,13 @@ class CrmPlugin(Plugin):
         # migrate Lead rows into Customer with source='lead_form'.
         return [
             DashboardPage(
-                label='CRM',
+                label='Overview',
                 slug='home',
                 view='plugins.installed.crm.views.crm_home',
                 icon='users-round',
                 section='customers',
-                order=10,
+                order=30,
+                group='CRM',
             ),
             DashboardPage(
                 label='Inbox',
@@ -269,7 +270,8 @@ class CrmPlugin(Plugin):
                 view='plugins.installed.crm.views.inbox_list',
                 icon='inbox',
                 section='customers',
-                order=20,
+                order=31,
+                group='CRM',
             ),
             DashboardPage(
                 label='Support chat',
@@ -277,8 +279,9 @@ class CrmPlugin(Plugin):
                 view='plugins.installed.crm.chat_views.chat_inbox',
                 icon='message-circle',
                 section='customers',
-                order=25,
+                order=32,
                 url='/dashboard/crm/chat/',
+                group='CRM',
             ),
             DashboardPage(
                 label='Pipeline',
@@ -286,7 +289,8 @@ class CrmPlugin(Plugin):
                 view='plugins.installed.crm.views.pipeline_board',
                 icon='kanban',
                 section='customers',
-                order=30,
+                order=33,
+                group='CRM',
             ),
             DashboardPage(
                 label='Tasks',
@@ -294,7 +298,8 @@ class CrmPlugin(Plugin):
                 view='plugins.installed.crm.views.tasks_list',
                 icon='list-checks',
                 section='customers',
-                order=40,
+                order=34,
+                group='CRM',
             ),
         ]
 

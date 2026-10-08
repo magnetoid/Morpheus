@@ -67,5 +67,6 @@ class JanusPlugin(Plugin):
                 section='ai',
                 order=15,
                 nav='settings',
+                hint='Linda’s engine: provider, limits, standing instructions',
             ),
         ]

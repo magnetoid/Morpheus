@@ -42,7 +42,7 @@ class CustomersPlugin(Plugin):
                 view='plugins.installed.customers.views_rfm.segments_dashboard',
                 icon='users',
                 section='customers',
-                order=80,
+                order=20,
             ),
         ]
 

@@ -48,7 +48,7 @@ class BackupsPlugin(Plugin):
             label='Backups',
             description='Daily database + media backup schedule and retention.',
             schema=self.get_config_schema(),
-            category='developer',
+            category='data',
         )
 
     def get_config_schema(self) -> dict:

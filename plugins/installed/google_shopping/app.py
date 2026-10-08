@@ -151,18 +151,20 @@ class GoogleShoppingPlugin(Plugin):
                 slug='overview',
                 view='plugins.installed.google_shopping.views.dashboard',
                 icon='shopping-bag',
-                section='marketing',
-                order=60,
+                section='channels',
+                order=20,
                 nav='main',
+                group='Google',
             ),
             DashboardPage(
                 label='Google Ads',
                 slug='ads',
                 view='plugins.installed.google_shopping.views.ads_dashboard',
                 icon='megaphone',
-                section='marketing',
-                order=61,
+                section='channels',
+                order=21,
                 nav='main',
+                group='Google',
             ),
             # OAuth connect flow — routed but not shown in nav.
             DashboardPage(
@@ -170,12 +172,14 @@ class GoogleShoppingPlugin(Plugin):
                 slug='connect',
                 view='plugins.installed.google_shopping.views.oauth_start',
                 nav='hidden',
+                section='channels',
             ),
             DashboardPage(
                 label='Google OAuth callback',
                 slug='oauth-callback',
                 view='plugins.installed.google_shopping.views.oauth_callback',
                 nav='hidden',
+                section='channels',
             ),
         ]
 

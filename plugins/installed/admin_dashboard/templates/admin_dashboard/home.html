@@ -161,7 +161,7 @@
         <p class="text-xs text-[color:var(--text-muted)] mt-1">Chat with the kernel agent — ask anything about the store.</p>
       </a>
       {% plugin_enabled "agent_core" as agent_core_enabled %}{% if agent_core_enabled %}
-      <a href="/dashboard/apps/agent_core/agents/" class="card-padded hover:bg-[color:var(--surface-2)] transition-colors">
+      <a href="/dashboard/agents/" class="card-padded hover:bg-[color:var(--surface-2)] transition-colors">
         <div class="flex items-center gap-2 text-sm font-medium"><i data-lucide="bot" class="h-4 w-4"></i> Agents</div>
         <p class="text-xs text-[color:var(--text-muted)] mt-1">{{ ai_summary.agent_count }} active · {{ ai_summary.recent_runs }} runs in last 7d</p>
       </a>
@@ -171,7 +171,7 @@
         <p class="text-xs text-[color:var(--text-muted)] mt-1">{{ ai_summary.unread_insights }} unread</p>
       </a>
       {% if agent_core_enabled %}
-      <a href="/dashboard/apps/agent_core/runs/" class="card-padded hover:bg-[color:var(--surface-2)] transition-colors">
+      <a href="/dashboard/agents/background/" class="card-padded hover:bg-[color:var(--surface-2)] transition-colors">
         <div class="flex items-center gap-2 text-sm font-medium"><i data-lucide="activity" class="h-4 w-4"></i> Ops console</div>
         <p class="text-xs text-[color:var(--text-muted)] mt-1">Background runs, schedules, observability.</p>
       </a>
@@ -190,7 +190,7 @@
         </div>
         <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Variants with on-hand inventory at or below your threshold. Restock soon.</p>
       </div>
-      <a href="/dashboard/apps/advanced_ecommerce/low-stock/" class="btn btn-ghost text-xs">View all <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i></a>
+      <a href="/dashboard/apps/inventory/stockout-forecast/" class="btn btn-ghost text-xs">Stockout forecast <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i></a>
     </div>
     <table class="morph-table">
       <thead>

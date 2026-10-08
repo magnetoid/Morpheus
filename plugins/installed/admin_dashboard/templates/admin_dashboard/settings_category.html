@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load morph %}
 {% block title %}{{ category.label }} · Settings · Morpheus{% endblock %}
 
 {% block content %}
@@ -15,20 +16,11 @@
     </div>
   </div>
 
-  {% if category.slug == 'notifications' %}
-  <a href="/dashboard/settings/email-templates/" class="card card-padded flex items-start gap-3 hover:bg-[color:var(--surface-2)]">
-    <div class="settings-tile-icon"><i data-lucide="mail" class="h-5 w-5"></i></div>
-    <div class="min-w-0 flex-1">
-      <div class="font-medium">Email templates</div>
-      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Edit subject + body of order, refund, welcome, and download emails.</p>
-    </div>
-    <i data-lucide="chevron-right" class="h-4 w-4 text-[color:var(--text-muted)] mt-1"></i>
-  </a>
-  {% endif %}
-
-  {% if developer_tools %}
+  {% comment %}Tool cards: the settings pages filed in this category (apps' and the
+  shell's), one card each — admin_dashboard/navigation.py.{% endcomment %}
+  {% if tools %}
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-    {% for tool in developer_tools %}
+    {% for tool in tools %}
     <a href="{{ tool.url }}" class="card card-padded flex items-start gap-3 hover:bg-[color:var(--surface-2)]">
       <div class="settings-tile-icon"><i data-lucide="{{ tool.icon }}" class="h-5 w-5"></i></div>
       <div class="min-w-0 flex-1">
@@ -94,7 +86,7 @@
       <h2 class="font-semibold">Permalinks</h2>
       <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
         URL templates for experiences, places, hotels, events, shop items, journal posts and other dynamic pages.
-        Navigation structure, labels and ordering stay under <a href="/dashboard/apps/cms/menus/" class="underline">CMS → Menus</a>;
+        Navigation structure, labels and ordering stay under {% plugin_enabled "cms" as cms_on %}{% if cms_on %}<a href="/dashboard/apps/cms/menus/" class="underline">Content → Menus</a>{% else %}the menus{% endif %};
         these templates decide what the generated link looks like.
       </p>
     </div>
@@ -204,10 +196,10 @@
     </div>
     {% endfor %}
   {% else %}
-    {% if not core_card %}
+    {% if not core_card and not tools %}
     {% url 'admin_dashboard:apps' as apps_url %}
     <div class="card">
-      {% include "admin_dashboard/_empty_state.html" with icon=category.icon title="Nothing configured here yet" hint="Install a plugin in this category to surface its settings." action_url=apps_url action_label="Browse apps" action_icon="grid-3x3" %}
+      {% include "admin_dashboard/_empty_state.html" with icon=category.icon title="Nothing configured here yet" hint="Turn on an app that belongs here and its settings appear on this page." action_url=apps_url action_label="Open Apps" action_icon="grid-3x3" %}
     </div>
     {% endif %}
   {% endif %}

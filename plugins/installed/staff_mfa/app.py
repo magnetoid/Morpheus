@@ -51,9 +51,10 @@ class StaffMfaPlugin(Plugin):
                 slug='enroll',
                 view='plugins.installed.staff_mfa.views.enroll',
                 icon='shield-check',
-                section='access',
+                section='team',
                 order=20,
                 nav='settings',
+                hint='Authenticator-app sign-in for staff',
             ),
         ]
 
@@ -61,7 +62,7 @@ class StaffMfaPlugin(Plugin):
         return SettingsPanel(
             label='Staff two-factor (MFA)',
             description='Require an authenticator-app code for staff sign-in.',
-            category='developer',
+            category='team',
             schema=self.get_config_schema(),
         )
 
