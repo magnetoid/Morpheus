@@ -52,8 +52,8 @@ def favicon(request):
 
 def about(request):
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'About', 'url': request.build_absolute_uri(request.path)},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': gettext('About'), 'url': request.build_absolute_uri(request.path)},
     ]
     return render(
         request,
@@ -65,7 +65,8 @@ def about(request):
             # nothing, and the seo app derives one from the page. The shell
             # used to hardcode dot books' own copy here, so every other store
             # introduced itself to Google as an independent bookshop.
-            'seo_description': store_blurb() or f'About {store_name()}.',
+            'seo_description': store_blurb()
+            or gettext('About %(store)s.') % {'store': store_name()},
             'seo_og_type': 'website',
         },
     )
@@ -107,8 +108,8 @@ def contact(request):
                 pass
         sent = True
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Contact', 'url': request.build_absolute_uri(request.path)},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Contact'), 'url': request.build_absolute_uri(request.path)},
     ]
     return render(
         request,
@@ -118,8 +119,11 @@ def contact(request):
             'breadcrumb_items': breadcrumb_items,
             'seo_title': gettext('Contact'),
             'seo_description': (
-                f'Get in touch with {store_name()} — questions about an order, '
-                'or anything else. We read every message.'
+                gettext(
+                    'Get in touch with %(store)s — questions about an order, '
+                    'or anything else. We read every message.'
+                )
+                % {'store': store_name()}
             ),
             'seo_og_type': 'website',
         },
@@ -156,8 +160,8 @@ def journal_index(request):
         for e in entries
     ]
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Journal', 'url': request.build_absolute_uri(request.path)},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Journal'), 'url': request.build_absolute_uri(request.path)},
     ]
     from plugins.installed.storefront.services import page_intro
 
@@ -175,7 +179,7 @@ def journal_index(request):
             'seo_description': (
                 intro['meta_description']
                 or intro['body']
-                or f'Notes and stories from {store_name()}.'
+                or gettext('Notes and stories from %(store)s.') % {'store': store_name()}
             )[:160],
             'seo_og_type': 'website',
         },
@@ -201,8 +205,8 @@ def journal_detail(request, slug):
     if entry is None:
         raise Http404
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Journal', 'url': request.build_absolute_uri('/journal/')},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Journal'), 'url': request.build_absolute_uri('/journal/')},
         {'name': entry.get('title', ''), 'url': request.build_absolute_uri(request.path)},
     ]
     # Front-end admin-bar "Edit this journal" link for staff (CMS page editor).
@@ -258,8 +262,8 @@ def journal_amp(request, slug):
 
     canonical_url = request.build_absolute_uri(f'/journal/{slug}/')
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Journal', 'url': request.build_absolute_uri('/journal/')},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Journal'), 'url': request.build_absolute_uri('/journal/')},
         {'name': entry.get('title', ''), 'url': canonical_url},
     ]
     response = render(
@@ -297,7 +301,7 @@ def _policy(request, *, slug: str, template: str, title: str, description: str):
     """
     page = _policy_page(slug)
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
         {
             'name': page.title if page else title,
             'url': request.build_absolute_uri(request.path),
@@ -336,8 +340,8 @@ def shipping(request):
         request,
         slug='shipping',
         template='storefront/shipping.html',
-        title='Shipping',
-        description='Delivery options, estimated times and shipping rates.',
+        title=gettext('Shipping'),
+        description=gettext('Delivery options, estimated times and shipping rates.'),
     )
 
 
@@ -349,8 +353,9 @@ def returns(request):
         request,
         slug='returns',
         template='storefront/returns.html',
-        title='Returns',
-        description=f'How returns, cancellations and refunds work at {store_name()}.',
+        title=gettext('Returns'),
+        description=gettext('How returns, cancellations and refunds work at %(store)s.')
+        % {'store': store_name()},
     )
 
 
@@ -397,8 +402,8 @@ def do_not_sell(request):
                 "Got it — you're opted out. We don't sell personal data anyway.",
             )
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Do not sell my info', 'url': request.build_absolute_uri(request.path)},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Do not sell my info'), 'url': request.build_absolute_uri(request.path)},
     ]
     return render(
         request,

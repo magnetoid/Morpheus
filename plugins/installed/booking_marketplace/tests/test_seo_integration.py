@@ -234,6 +234,21 @@ class SerbianChromeTests(MontenegroThemeMixin, TestCase):
             next(t for t in tiles if t['label'] == 'Sea Trips')['desc'], '2 doživljaja'
         )
 
+    def test_a_places_fact_labels_are_translated(self):
+        # The labels are a fixed vocabulary stored with each place; the values
+        # are content and stay as written.
+        from plugins.installed.booking_marketplace.models import Place
+
+        Place.objects.create(
+            name='Kotor',
+            slug='kotor',
+            region='kotor',
+            quick_facts=[{'label': 'Getting there', 'value': 'Tivat Airport, 8 km'}],
+        )
+        body = self.client.get('/sr/places/kotor/').content.decode()
+        self.assertIn('Kako stići', body)
+        self.assertIn('Tivat Airport, 8 km', body)
+
     def test_region_names_are_translated(self):
         from django.utils import translation
 

@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.80.2 — 2026-10-08
+
+**Serbian pages finish the job — breadcrumbs, page descriptions and place facts in the visitor's language**
+
+- Absolute links to the store itself — breadcrumbs are built that way — now stay in the visitor's language too, and the structured-data breadcrumb trail on a /sr/ page names the Serbian pages. v0.80.1 moved only relative links, so the breadcrumbs on /sr/ pages still led back to English.
+- Page descriptions and breadcrumb names the shell writes are translatable: about, contact, journal, search, shipping, returns, the hosts directory and each host's page ('The domaćini behind…' mixed two languages). montenegro's 'What to expect' and cancellations pages describe themselves in their own words instead of 'Delivery options, estimated times and shipping rates'.
+- Place pages' key facts ('Best time', 'Time needed', 'Getting there', 'Nearest airport') show their labels in Serbian; the values are the merchant's text. montenegro's contact page no longer asks visitors to 'suggest a title'.
+- Guards: core/tests/test_localized_links.py (absolute links, the BreadcrumbList on /sr/), booking_marketplace/tests/test_seo_integration.py (place facts in Serbian).
+
 ## v0.80.1 — 2026-10-08
 
 **Montenegro in Serbian end to end — links stay in the visitor's language, the interface is translated, every indexed page describes itself**

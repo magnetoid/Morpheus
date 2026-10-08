@@ -295,7 +295,7 @@ def product_list(request):
     elif _tag_label:
         plp_name = _tag_label
     elif q:
-        plp_name = f'Search: {q}'
+        plp_name = gettext('Search: %(q)s') % {'q': q}
     else:
         plp_name = catalogue_label()
     plp_items = [
@@ -311,7 +311,7 @@ def product_list(request):
         for p in products[:50]
     ]
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
         {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')},
     ]
     if selected_cat:
@@ -540,7 +540,7 @@ def product_detail(request, slug):
     )[:2]
     primary_image = primary_images[0] if primary_images else None
     hero_image = primary_image or (images[0] if images else None)
-    breadcrumb_items = [{'name': 'Home', 'url': request.build_absolute_uri('/')}]
+    breadcrumb_items = [{'name': gettext('Home'), 'url': request.build_absolute_uri('/')}]
     breadcrumb_items.append(
         {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')}
     )
@@ -1103,8 +1103,8 @@ def search(request):
         for p in (result.get('products') or [])
     ]
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Search', 'url': request.build_absolute_uri(request.path)},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Search'), 'url': request.build_absolute_uri(request.path)},
     ]
     return render(
         request,
@@ -1118,9 +1118,10 @@ def search(request):
             'seo_title': (
                 gettext('Search results for %(q)s') % {'q': q} if q else gettext('Search')
             ),
-            'seo_description': f'Search results for "{q}" at {store_name()}.'
+            'seo_description': gettext('Search results for "%(q)s" at %(store)s.')
+            % {'q': q, 'store': store_name()}
             if q
-            else f'Search {store_name()}.',
+            else gettext('Search %(store)s.') % {'store': store_name()},
         },
     )
 
@@ -1278,7 +1279,7 @@ def category_detail(request, slug):
     _attach_book_authors(products)
     intro = _CATEGORY_INTROS.get(slug, {})
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
         {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')},
         {'name': category.name, 'url': request.build_absolute_uri(request.path)},
     ]
@@ -1379,7 +1380,7 @@ def collection_detail(request, slug):
 
     _attach_book_authors(products)
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
         {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')},
         {'name': collection.name, 'url': request.build_absolute_uri(request.path)},
     ]
@@ -1491,7 +1492,7 @@ def author_detail(request, slug):
         for p in bibliography[:30]
     ]
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
         {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')},
         {'name': author_name, 'url': request.build_absolute_uri(request.path)},
     ]
@@ -1566,8 +1567,8 @@ def staff_picks(request):
         for p in products[:30]
     ]
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Staff picks', 'url': request.build_absolute_uri(request.path)},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Staff picks'), 'url': request.build_absolute_uri(request.path)},
     ]
     return render(
         request,
@@ -1644,8 +1645,8 @@ def categories(request):
         for c in cats
     ]
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Categories', 'url': request.build_absolute_uri(request.path)},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Categories'), 'url': request.build_absolute_uri(request.path)},
     ]
     return render(
         request,

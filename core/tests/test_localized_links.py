@@ -48,6 +48,18 @@ class LocalizeLinksTests(TestCase):
                 html = f'<a href="{href}">x</a>'
                 self.assertEqual(localize_links(html, 'sr'), html)
 
+    def test_an_absolute_link_to_this_store_gets_the_prefix(self):
+        # Breadcrumbs are built with request.build_absolute_uri('/').
+        html = '<a href="https://shop.example/vendors/">Hosts</a><a href="https://other.example/x/">x</a>'
+        self.assertEqual(
+            localize_links(html, 'sr', host='shop.example'),
+            '<a href="https://shop.example/sr/vendors/">Hosts</a><a href="https://other.example/x/">x</a>',
+        )
+
+    def test_an_absolute_link_needs_the_host_to_be_known(self):
+        html = '<a href="https://shop.example/vendors/">Hosts</a>'
+        self.assertEqual(localize_links(html, 'sr'), html)
+
     def test_a_link_into_another_language_is_left_alone(self):
         # A language switcher built from anchors names the other tree on purpose.
         for html in (
@@ -75,6 +87,40 @@ class LocalizedPageTests(TestCase):
         self.assertIn('/sr/', hrefs)
         self.assertNotIn('/products/', hrefs)
         self.assertNotIn('/', hrefs)
+
+    def test_the_breadcrumb_trail_names_the_serbian_pages(self):
+        # Views build the trail with build_absolute_uri('/'); the structured
+        # data on a /sr/ page must not send its breadcrumbs to the English tree.
+        import json
+        from decimal import Decimal
+
+        from djmoney.money import Money
+
+        from plugins.installed.catalog.models import Product, Vendor
+
+        vendor = Vendor.objects.create(name='Kotor Boats', slug='kotor-boats')
+        Product.objects.create(
+            name='Bay Map',
+            slug='bay-map',
+            sku='MAP-1',
+            price=Money(Decimal('9.00'), 'USD'),
+            product_type='simple',
+            status='active',
+            vendor=vendor,
+        )
+        body = self.client.get('/sr/vendors/').content.decode()
+        blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', body, re.S)
+        self.assertEqual(len(blocks), 1)
+        crumbs = next(
+            n for n in json.loads(blocks[0])['@graph'] if n.get('@type') == 'BreadcrumbList'
+        )
+        urls = [
+            i['item'] if isinstance(i['item'], str) else i['item']['@id']
+            for i in crumbs['itemListElement']
+        ]
+        self.assertTrue(urls)
+        for url in urls:
+            self.assertTrue(url.startswith('http://testserver/sr/'), url)
 
     def test_the_default_language_is_untouched(self):
         body = self.client.get('/').content.decode()

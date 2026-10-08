@@ -5,7 +5,7 @@
 base's `{% storefront_head %}` with the title below as its fallback, so the head
 document still owns every tag — the `{% block title %}` this replaced was never
 rendered (no base defines that block).{% endcomment %}
-{% block seo %}{% trans "Cancellations & refunds" as theme_title %}{% with seo_title=theme_title %}{{ block.super }}{% endwith %}{% endblock %}
+{% block seo %}{% trans "Cancellations & refunds" as theme_title %}{% trans "Plans change. Here’s how cancellations work across Montenegro Experience." as theme_description %}{% with seo_title=theme_title seo_description=theme_description %}{{ block.super }}{% endwith %}{% endblock %}
 
 {% block content %}
 {% url 'storefront:home' as home_url %}{% url 'storefront:contact' as contact_url %}

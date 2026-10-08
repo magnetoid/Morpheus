@@ -104,7 +104,7 @@ def vendors_directory(request):
 
     _single, plural = vendor_nouns()
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
         {'name': plural, 'url': request.build_absolute_uri(request.path)},
     ]
     intro = page_intro(request, 'vendors')
@@ -120,7 +120,8 @@ def vendors_directory(request):
             'seo_description': (
                 intro['meta_description']
                 or intro['body']
-                or f'The {plural.lower()} behind everything {store_name()} offers.'
+                or gettext('The %(nouns)s behind everything %(store)s offers.')
+                % {'nouns': plural.lower(), 'store': store_name()}
             )[:160],
             'seo_og_type': 'website',
             # The SEO layer holds an empty directory out of the index.
@@ -199,7 +200,7 @@ def vendor_detail(request, slug):
 
     single, plural = vendor_nouns()
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
         {'name': plural, 'url': request.build_absolute_uri('/vendors/')},
         {'name': vendor.name, 'url': request.build_absolute_uri(request.path)},
     ]
@@ -246,7 +247,9 @@ def vendor_detail(request, slug):
             'breadcrumb_items': breadcrumb_items,
             'seo_title': f'{vendor.name} — {plural}',
             'seo_description': (
-                description or f'Everything {vendor.name} offers on {store_name()}.'
+                description
+                or gettext('Everything %(name)s offers on %(store)s.')
+                % {'name': vendor.name, 'store': store_name()}
             )[:160],
             'seo_og_type': 'website',
             # Products on every page + every section: zero means an empty page,
@@ -315,8 +318,8 @@ def marketplace_landing(request):
 
     single, _plural = vendor_nouns()
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Marketplace', 'url': request.build_absolute_uri(request.path)},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Marketplace'), 'url': request.build_absolute_uri(request.path)},
     ]
     return render(
         request,
@@ -331,7 +334,8 @@ def marketplace_landing(request):
             'seo_title': gettext('The Marketplace'),
             # "Independent presses and bookshops, in one shelf." was this
             # description on the apothecary and the travel store too.
-            'seo_description': f'Every {single.lower()} on {store_name()}, in one place.',
+            'seo_description': gettext('Every %(noun)s on %(store)s, in one place.')
+            % {'noun': single.lower(), 'store': store_name()},
             'seo_og_type': 'website',
         },
     )

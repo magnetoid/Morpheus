@@ -4027,3 +4027,71 @@ msgstr "Uslovi affiliate programa"
 
 msgid "The Marketplace"
 msgstr "Platforma"
+
+# ── Shell titles, descriptions and place facts (v0.80.2) ──
+#, python-format
+msgid "Search: %(q)s"
+msgstr "Pretraga: %(q)s"
+
+#, python-format
+msgid "Search results for \"%(q)s\" at %(store)s."
+msgstr "Rezultati pretrage za „%(q)s“ — %(store)s."
+
+#, python-format
+msgid "Search %(store)s."
+msgstr "Pretražite %(store)s."
+
+#, python-format
+msgid "About %(store)s."
+msgstr "O nama — %(store)s."
+
+#, python-format
+msgid "Get in touch with %(store)s — questions about an order, or anything else. We read every message."
+msgstr "Kontaktirajte %(store)s — pitanja o porudžbini ili bilo šta drugo. Čitamo svaku poruku."
+
+#, python-format
+msgid "Notes and stories from %(store)s."
+msgstr "Bilješke i priče — %(store)s."
+
+msgid "Delivery options, estimated times and shipping rates."
+msgstr "Načini dostave, procijenjeno vrijeme i cijene dostave."
+
+#, python-format
+msgid "How returns, cancellations and refunds work at %(store)s."
+msgstr "Kako funkcionišu povraćaji, otkazivanja i povrat novca — %(store)s."
+
+msgid "All books"
+msgstr "Sve knjige"
+
+msgid "All products"
+msgstr "Svi proizvodi"
+
+#, python-format
+msgid "The %(nouns)s behind everything %(store)s offers."
+msgstr "Lokalni %(nouns)s koji stoje iza svega što nudi %(store)s."
+
+#, python-format
+msgid "Everything %(name)s offers on %(store)s."
+msgstr "Sve što %(name)s nudi na platformi %(store)s."
+
+msgid "Marketplace"
+msgstr "Platforma"
+
+#, python-format
+msgid "Every %(noun)s on %(store)s, in one place."
+msgstr "Svaki %(noun)s na platformi %(store)s, na jednom mjestu."
+
+msgid "Looking for a recommendation? Want to suggest an experience? Need help with a booking? We read every message."
+msgstr "Tražite preporuku? Želite da predložite doživljaj? Treba vam pomoć oko rezervacije? Čitamo svaku poruku."
+
+msgid "Best time"
+msgstr "Najbolje vrijeme"
+
+msgid "Time needed"
+msgstr "Potrebno vrijeme"
+
+msgid "Getting there"
+msgstr "Kako stići"
+
+msgid "Nearest airport"
+msgstr "Najbliži aerodrom"

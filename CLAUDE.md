@@ -648,8 +648,11 @@ left Serbian on the first click and every Serbian page linked only to English
 ones, while each page looked right on its own. `core/i18n_links.py`
 (`LocalizedLinksMiddleware`, inside GZip) now rewrites `<a href>`/`<form action>`
 on a prefixed page when the URL resolver says the target is a language-routed
-page; `<link>` tags (hreflang alternates, manifest) and chrome routes (`/auth/`,
-`/dashboard/`, files) are never touched. The same crawl found 520-odd strings the
+page — relative paths AND absolute links to the same host (views build breadcrumbs
+with `build_absolute_uri('/')`; the first deploy fixed only relative ones, and the
+JSON-LD BreadcrumbList goes through the same `localize_url`); `<link>` tags
+(hreflang alternates, manifest), chrome routes (`/auth/`, `/dashboard/`, files) and
+anchors carrying `hreflang`/`lang` (a switcher's way back) are never touched. The same crawl found 520-odd strings the
 montenegro theme wraps in `{% trans %}` with no Serbian entry, English written
 straight into markup, `|pluralize` (an English "s"), choice labels that weren't
 `gettext_lazy`, and an about page still carrying the bookshop's copy ("we don't

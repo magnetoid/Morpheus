@@ -1,6 +1,6 @@
 # Professional SEO + 404 handling across all three stores (v0.80.0)
 
-**Status: shipped in v0.80.0 (2026-10-08), follow-up v0.80.1.** Every step below is
+**Status: shipped in v0.80.0 (2026-10-08), follow-ups v0.80.1 and v0.80.2.** Every step below is
 done; the guards are listed in the release notes. Left for the owner: the publisher
 value "DotBooks" vs "DotBooks.store" on dotbooks (two publisher pages).
 
@@ -18,6 +18,13 @@ owner: database content (experience names, descriptions, journal posts, place FA
 is English on `/sr/` until the content-translation phase; `/auth/` is outside the
 language tree, so sign-in stays English; the imprint page still has its template
 placeholder; `/marketplace/` on montenegro is an orphan page in the bookshop's voice.
+
+**v0.80.2 — what the check after v0.80.1 found.** English on `/sr/` fell from 456
+visible segments to 355, nearly all of them database content, the English-only `/auth/`
+pages or the orphan `/marketplace/`. Fixed: breadcrumbs (absolute links built with
+`build_absolute_uri('/')`) and the BreadcrumbList still named English URLs; the shell's
+page descriptions and breadcrumb names were English f-strings; place key-fact labels
+were English; montenegro's contact copy asked visitors to "suggest a title".
 
 Owner request (2026-10-08): "fix everything — the stores must look like
 professional e-commerce sites and the platform must work without these gaps".

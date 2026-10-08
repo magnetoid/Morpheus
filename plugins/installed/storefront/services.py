@@ -75,9 +75,13 @@ def catalogue_label() -> str:
     product listing was titled "All books" with a breadcrumb to match. The book
     vertical owns that word; every other store gets the neutral one.
     """
+    from django.utils.translation import gettext
+
     from plugins.registry import app_registry
 
-    return 'All books' if app_registry.is_active('book_product') else 'All products'
+    return (
+        gettext('All books') if app_registry.is_active('book_product') else gettext('All products')
+    )
 
 
 def staff_picks_collection():

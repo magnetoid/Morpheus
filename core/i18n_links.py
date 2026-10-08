@@ -21,7 +21,9 @@ import re
 from functools import lru_cache
 
 _TAG = re.compile(r'<(?:a|form)\b[^>]*>', re.IGNORECASE)
-_TARGET = re.compile(r'(\s(?:href|action)=")(/(?!/)[^"]*)(")', re.IGNORECASE)
+# href="/path" or href="https://<this host>/path" (breadcrumbs are absolute).
+_TARGET = re.compile(r'(\s(?:href|action)=")([^"]*)(")', re.IGNORECASE)
+_URL = re.compile(r'((?:https?://[^/"]+)?)(/(?!/)[^"]*)', re.IGNORECASE)
 # A link that declares its language (a switcher's "English") names that tree.
 _DECLARES_LANGUAGE = re.compile(r'\s(?:hreflang|lang)=', re.IGNORECASE)
 
@@ -40,18 +42,36 @@ def _language_routed(language: str, path: str) -> bool:
     return True
 
 
-def localize_links(html: str, language: str) -> str:
-    """`html` with its internal page links moved into `language`'s tree."""
+def localize_url(url: str, language: str, host: str = '') -> str:
+    """`url` in `language`'s tree when it names a language-routed page.
+
+    A relative path qualifies; an absolute URL only when it names `host`.
+    Everything else — another site, a file, `/auth/`, a URL already in the
+    tree — comes back unchanged.
+    """
+    match = _URL.fullmatch(url or '')
+    if not match:
+        return url
+    origin, rest = match.group(1), match.group(2)
+    if origin and (not host or origin.split('://', 1)[1].lower() != host.lower()):
+        return url
     prefix = f'/{language}'
+    if rest == prefix or rest.startswith((f'{prefix}/', f'{prefix}?')):
+        return url
+    path = rest.split('#', 1)[0].split('?', 1)[0]
+    if not path or not _language_routed(language, path):
+        return url
+    return f'{origin}{prefix}{rest}'
+
+
+def localize_links(html: str, language: str, host: str = '') -> str:
+    """`html` with its internal page links moved into `language`'s tree.
+
+    An absolute link counts as internal only when it names `host`.
+    """
 
     def swap(match: re.Match) -> str:
-        url = match.group(2)
-        if url == prefix or url.startswith((f'{prefix}/', f'{prefix}?')):
-            return match.group(0)
-        path = url.split('#', 1)[0].split('?', 1)[0]
-        if not path or not _language_routed(language, path):
-            return match.group(0)
-        return f'{match.group(1)}{prefix}{url}{match.group(3)}'
+        return f'{match.group(1)}{localize_url(match.group(2), language, host)}{match.group(3)}'
 
     def tag(match: re.Match) -> str:
         if _DECLARES_LANGUAGE.search(match.group(0)):
@@ -92,7 +112,11 @@ class LocalizedLinksMiddleware:
             return response
         charset = response.charset or 'utf-8'
         content = response.content.decode(charset)
-        rewritten = localize_links(content, language)
+        try:
+            host = request.get_host()
+        except Exception:  # noqa: BLE001 — a host Django rejects: relative links only
+            host = ''
+        rewritten = localize_links(content, language, host=host)
         if rewritten != content:
             response.content = rewritten.encode(charset)
             if response.has_header('Content-Length'):

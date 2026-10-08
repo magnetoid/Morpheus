@@ -72,7 +72,7 @@ def build_graph(page: SeoPage, *, request=None, url: str = '') -> dict | None:
     if webpage:
         nodes.append(webpage)
 
-    breadcrumb = _safe(_breadcrumb, page, url)
+    breadcrumb = _safe(_breadcrumb, page, url, request)
     if breadcrumb:
         nodes.append(breadcrumb)
         if webpage:
@@ -171,12 +171,19 @@ def _webpage_type(page: SeoPage) -> str:
     return 'WebPage'
 
 
-def _breadcrumb(page: SeoPage, url: str) -> dict | None:
+def _breadcrumb(page: SeoPage, url: str, request=None) -> dict | None:
+    from core.i18n_links import localize_url, page_language
     from plugins.installed.seo.services import breadcrumb_jsonld
 
     items = [i for i in (page.breadcrumbs or []) if i and i.get('name')]
     if not items:
         return None
+    # On a /sr/ page the trail is the Serbian tree. Views build it with
+    # build_absolute_uri('/'), which names the English one.
+    language = page_language(request) if request is not None else ''
+    if language:
+        host = request.get_host()
+        items = [{**i, 'url': localize_url(i.get('url') or '', language, host)} for i in items]
     node = _strip_context(breadcrumb_jsonld(items))
     if node:
         node['@id'] = f'{url}#breadcrumb'
