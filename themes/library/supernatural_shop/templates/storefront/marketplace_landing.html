@@ -20,15 +20,14 @@
     </nav>
     <p class="eyebrow">The marketplace</p>
     <h1 class="display display-xl" style="margin: 1rem 0 1.25rem; max-width: 18ch;">
-      A marketplace of independent presses<span class="text-accent">.</span>
+      A marketplace of independent makers<span class="text-accent">.</span>
     </h1>
     <p class="lede" style="max-width: 64ch;">
-      Curated by readers. Sold by indie publishers, antiquarians, and small bookshops.
-      Every shop here was vetted by the Supernatural Shop desk before its first listing went live.
+      Small makers selling through one checkout. We read every application before a shop's first listing goes live.
     </p>
     <div style="margin-top: 2rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
       <a href="/vendors/" class="btn btn-primary">Browse every shop</a>
-      <a href="/products/" class="btn btn-ghost">Or browse all titles</a>
+      <a href="/products/" class="btn btn-ghost">Or browse all products</a>
     </div>
   </div>
 </section>
@@ -39,11 +38,11 @@
     <div class="mp-numbers__row">
       <div class="mp-numbers__cell">
         <p class="mp-numbers__big tabular-nums">{{ vendor_count }}</p>
-        <p class="eyebrow">{{ vendor_count|pluralize:"shop,shops" }} on the shelf</p>
+        <p class="eyebrow">{{ vendor_count|pluralize:"shop,shops" }} in the marketplace</p>
       </div>
       <div class="mp-numbers__cell">
         <p class="mp-numbers__big tabular-nums">{{ active_product_count }}</p>
-        <p class="eyebrow">{{ active_product_count|pluralize:"book,books" }} listed</p>
+        <p class="eyebrow">{{ active_product_count|pluralize:"product,products" }} listed</p>
       </div>
       <div class="mp-numbers__cell">
         <p class="mp-numbers__big tabular-nums">{{ titles_in_stock_now }}</p>
@@ -61,7 +60,7 @@
       <p class="eyebrow">Featured shops</p>
       <h2 class="display display-l" style="margin: 0.5rem 0 0;">Recently arrived<span class="text-accent">.</span></h2>
       <p class="lede" style="max-width: 56ch; margin-top: 0.85rem;">
-        A handful of the shops that joined the shelf most recently.
+        A handful of the shops that joined most recently.
         Click into a shop to see the full list they keep with us.
       </p>
     </div>
@@ -79,7 +78,7 @@
           <div>
             <h3 class="mp-card__name">{{ v.obj.name }}</h3>
             <p class="mp-card__count">
-              {{ v.product_count }} title{{ v.product_count|pluralize }}
+              {{ v.product_count }} product{{ v.product_count|pluralize }}
               {% if v.obj.created_at %}· Since {{ v.obj.created_at|date:"F Y" }}{% endif %}
             </p>
           </div>
@@ -104,7 +103,7 @@
       <div>
         <p class="eyebrow">Sell with us</p>
         <h2 class="display display-l" style="margin: 0.5rem 0 1rem; max-width: 20ch;">
-          Bring your shop to a quieter shelf<span class="text-accent">.</span>
+          Bring your shop to a quieter marketplace<span class="text-accent">.</span>
         </h2>
         <p class="lede" style="max-width: 52ch; margin-bottom: 1.5rem;">
           A three-step onboarding. Transparent commission. Your own dashboard
@@ -113,7 +112,7 @@
         <ul class="mp-sell__steps">
           <li><span class="mp-sell__num">1</span> Tell us about your shop.</li>
           <li><span class="mp-sell__num">2</span> We read it ourselves.</li>
-          <li><span class="mp-sell__num">3</span> List your first title.</li>
+          <li><span class="mp-sell__num">3</span> List your first product.</li>
         </ul>
         <a href="/vendor/apply/" class="btn btn-primary" style="margin-top: 1.75rem;">Apply to sell</a>
       </div>
@@ -136,7 +135,7 @@
       {% else %}
         <details class="mp-faq__item">
           <summary>Who decides which shops join the marketplace?</summary>
-          <p>We do, by hand. Each application is read at the desk. We look for shops with a clear voice and a list that lives somewhere — not on a spreadsheet of dropshipping.</p>
+          <p>We do, by hand. We read every application, and we look for makers who can show what goes into their products.</p>
         </details>
         <details class="mp-faq__item">
           <summary>How are orders shipped?</summary>
@@ -144,11 +143,11 @@
         </details>
         <details class="mp-faq__item">
           <summary>What about returns?</summary>
-          <p>Same return policy across every shop on the shelf. Thirty days, books in original condition, refund to the original card.</p>
+          <p>The same terms as the rest of the shop: see our <a href="/returns/">returns page</a>.</p>
         </details>
         <details class="mp-faq__item">
-          <summary>Is Supernatural Shop a publisher itself?</summary>
-          <p>No. We're the shelf. The presses are the publishers. Each title here was made by one of them.</p>
+          <summary>Does Supernatural Shop make its own products?</summary>
+          <p>No. The makers in the marketplace make and send their own products; we run the shop they sell through.</p>
         </details>
       {% endif %}
     </div>
@@ -160,7 +159,7 @@
     <div style="border-top: 1px solid var(--rule); padding-top: 2rem; max-width: 60ch;">
       <p class="eyebrow">Recommend our shop</p>
       <p class="lede" style="margin: .5rem 0 1rem;">
-        If you write about books — earn a commission on every order tracked through your link.
+        If you write about health and food, earn a commission on every order tracked through your link.
       </p>
       <a href="/affiliates/apply/" class="btn-link">Join our affiliate program</a>
     </div>

@@ -38,7 +38,15 @@ def _book_metafields(product) -> dict[str, str]:
     """Book attributes (synopsis / author / …) for the story panels.
 
     Model-first (BookProduct) with a legacy book.* metafield fallback; empty
-    when book_product/metafields aren't available."""
+    when book_product/metafields aren't available.
+
+    Empty while the book app is off, without asking it: a store that runs
+    without it has no `plugins_bookproduct` table, and on Postgres the failed
+    query aborted the product save's transaction even though it was caught."""
+    from plugins.registry import app_registry  # noqa: PLC0415
+
+    if not app_registry.is_active('book_product'):
+        return {}
     try:
         from plugins.installed.book_product.compat import book_attrs  # noqa: PLC0415
 

@@ -1,0 +1,121 @@
+{% comment %}
+The supply calculator and the readiness check run here, in the browser. The
+calculator stores nothing. The readiness answers live in this browser's
+localStorage under one key and never reach the server; a visitor who has not
+answered sees a dash, not an invented score. Figures follow the UK Government's
+Prepare guidance: 3 meals and at least 3 litres of drinking water per person per
+day, 10 litres to cook and wash as well. Include once per page.
+{% endcomment %}
+<script>
+(function () {
+  var KEY = 'irving.readiness.v1';
+  var SYSTEMS = {
+    water: ['water-drink', 'water-store'],
+    food: ['food-keep', 'food-cold'],
+    light: ['light-torch', 'light-bank'],
+    news: ['news-radio', 'news-numbers'],
+    aid: ['aid-kit', 'aid-meds']
+  };
+  var lang = document.documentElement.lang || 'en-GB';
+  function fmt(n) { try { return Number(n).toLocaleString(lang); } catch (e) { return String(n); } }
+  function load() {
+    try {
+      var s = JSON.parse(window.localStorage.getItem(KEY) || 'null');
+      return s && typeof s === 'object' ? s : null;
+    } catch (e) { return null; }
+  }
+  function save(s) { try { window.localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode */ } }
+  function each(sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); }
+
+  /* Readiness: ten items, ten points each, two per system. */
+  function paintReadiness() {
+    var state = load();
+    var total = 0;
+    Object.keys(SYSTEMS).forEach(function (sys) {
+      var ids = SYSTEMS[sys];
+      var have = 0;
+      ids.forEach(function (id) { if (state && state[id]) { have += 1; } });
+      total += have * 10;
+      var pct = Math.round((have / ids.length) * 100);
+      each('[data-ready-fill="' + sys + '"]', function (el) {
+        el.style.width = pct + '%';
+        el.classList.toggle('is-partial', pct > 0 && pct < 100);
+      });
+      each('[data-ready-pct="' + sys + '"]', function (el) { el.textContent = state ? pct : '–'; });
+    });
+    each('[data-ready-score]', function (el) {
+      el.textContent = state ? total : '–';
+      el.classList.toggle('is-empty', !state);
+    });
+    each('[data-ready-item]', function (cb) { cb.checked = !!(state && state[cb.value]); });
+    each('[data-ready-when-answered]', function (el) { el.hidden = !state; });
+    each('[data-ready-when-new]', function (el) { el.hidden = !!state; });
+  }
+  document.addEventListener('change', function (e) {
+    var cb = e.target;
+    if (!cb.matches || !cb.matches('[data-ready-item]')) { return; }
+    var state = load() || {};
+    state[cb.value] = cb.checked;
+    save(state);
+    paintReadiness();
+  });
+  each('[data-ready-reset]', function (btn) {
+    btn.addEventListener('click', function () {
+      try { window.localStorage.removeItem(KEY); } catch (e) { /* nothing stored */ }
+      paintReadiness();
+    });
+  });
+  paintReadiness();
+
+  /* Calculator: people (or adults + children) and days in; meals and water out. */
+  each('[data-calc]', function (root) {
+    function field(name) { return root.querySelector('[data-calc-value="' + name + '"]'); }
+    function get(name) {
+      var el = field(name);
+      if (!el) { return null; }
+      var raw = el.tagName === 'INPUT' ? el.value : el.textContent;
+      return parseInt(raw, 10) || 0;
+    }
+    function flag(name) { var el = root.querySelector('[data-calc-flag="' + name + '"]'); return !!(el && el.checked); }
+    function put(name, value) { Array.prototype.forEach.call(root.querySelectorAll('[data-calc-out="' + name + '"]'), function (el) { el.textContent = value; }); }
+    function show(name, on) { Array.prototype.forEach.call(root.querySelectorAll('[data-calc-row="' + name + '"]'), function (el) { el.hidden = !on; }); }
+    function recalc() {
+      var adults = get('adults');
+      var children = get('children');
+      var people = get('people');
+      if (people === null) { people = (adults || 0) + (children || 0); }
+      if (adults === null) { adults = people; }
+      var days = get('days') || 1;
+      var drink = people * days * 3;
+      var all = people * days * 10;
+      put('days', fmt(days));
+      put('people', fmt(people));
+      put('meals', fmt(people * days * 3));
+      put('drink', fmt(drink));
+      put('all', fmt(all));
+      put('extra', fmt(all - drink));
+      put('bottles', fmt(Math.ceil(drink / 5)));
+      put('torches', fmt(Math.max(1, adults)));
+      put('banks', fmt(Math.max(1, adults)));
+      show('notap', flag('notap'));
+      show('meds', flag('meds'));
+      show('baby', flag('baby'));
+      show('pets', flag('pets'));
+    }
+    root.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-calc-step]');
+      if (!b) { return; }
+      var out = field(b.getAttribute('data-calc-step'));
+      if (!out) { return; }
+      var min = parseInt(out.getAttribute('data-min'), 10) || 0;
+      var max = parseInt(out.getAttribute('data-max'), 10) || 99;
+      var next = (parseInt(out.textContent, 10) || 0) + (parseInt(b.getAttribute('data-delta'), 10) || 0);
+      out.textContent = Math.min(max, Math.max(min, next));
+      recalc();
+    });
+    root.addEventListener('input', recalc);
+    root.addEventListener('change', recalc);
+    recalc();
+  });
+})();
+</script>

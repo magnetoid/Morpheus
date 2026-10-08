@@ -1,112 +1,55 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}
-
+{% load morph %}{% load seo %}{% load i18n %}
+{% comment %}
+The theme's fallback shipping page — shown only while the merchant has no CMS
+page with the slug "shipping". Rates, thresholds, carriers and cut-off times
+belong to the shipping app and to checkout. The page that used to sit here
+promised "$5 flat, free over $40", USPS and same-day dispatch on a store whose
+checkout said none of that.
+{% endcomment %}
 {% block extra_head %}
 {% seo_breadcrumb_jsonld items=breadcrumb_items %}
+<style>
+.faq-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; }
+@media (min-width: 700px) { .faq-grid { grid-template-columns: repeat(2, 1fr); } }
+.faq-grid h2 { font-family: var(--serif); font-size: 1.2rem; font-weight: 500; margin: 0 0 .4rem; }
+.faq-grid p { font-size: .95rem; line-height: 1.6; color: var(--ink-2); margin: 0; }
+</style>
 {% endblock %}
-
 {% block content %}
 <section style="padding: 4rem 0 2rem;">
   <div class="wrap wrap-narrow">
     <p class="meta" style="margin-bottom: 1.25rem;">
-      <a href="/" style="color: var(--muted);">Home</a>
+      <a href="/" style="color: var(--muted);">{% translate "Home" %}</a>
       <span style="margin: 0 0.5rem;">/</span>
-      Shipping
+      {% translate "Shipping" %}
     </p>
-    <p class="eyebrow">How it gets to you</p>
-    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">Shipping<span class="text-accent">.</span></h1>
-    <p class="lede">
-      Here's how we get a bottle to you, what it costs, and when it arrives. Tracked delivery on every order.
-    </p>
+    <p class="eyebrow">{% translate "How it gets to you" %}</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">{% translate "Shipping" %}<span class="text-accent">.</span></h1>
+    <p class="lede">{% translate "Checkout shows the delivery options for your address, with their cost, before you pay." %}</p>
   </div>
 </section>
-
-<section style="padding: 1rem 0 4rem;">
-  <div class="wrap wrap-narrow">
-    <div class="shipping-grid">
-      <article class="shipping-card">
-        <p class="eyebrow">Domestic — US</p>
-        <h2>Standard</h2>
-        <p class="shipping-price">$5 flat</p>
-        <p>3-5 business days. USPS Priority Mail, tracked + insured. <strong>Free on orders over $40.</strong></p>
-      </article>
-      <article class="shipping-card">
-        <p class="eyebrow">Domestic — US</p>
-        <h2>Express</h2>
-        <p class="shipping-price">$14</p>
-        <p>1-2 business days. USPS Priority Express, signed-for. We ship same-day if you order by 12pm CT.</p>
-      </article>
-      <article class="shipping-card">
-        <p class="eyebrow">International</p>
-        <h2>Canada + Mexico</h2>
-        <p class="shipping-price">$18</p>
-        <p>5-10 business days. USPS International, tracked. Customs duties are <strong>your responsibility</strong>, not ours — most orders aren't held, but a $50 order might pay $5-10 in duty.</p>
-      </article>
-      <article class="shipping-card">
-        <p class="eyebrow">International</p>
-        <h2>Rest of world</h2>
-        <p class="shipping-price">$28</p>
-        <p>10-21 business days. We ship every country USPS will deliver to. UK / EU customers — email us before ordering if you have a question about customs.</p>
-      </article>
-    </div>
-  </div>
-</section>
-
 <section style="padding: 1rem 0 6rem;">
   <div class="wrap wrap-narrow">
     <hr class="rule" style="margin-bottom: 2.5rem;">
     <div class="faq-grid">
       <div>
-        <h3>When does my order ship?</h3>
-        <p>Orders placed by 12pm Central time ship the same business day. After 12pm we batch into the next morning's pickup. We don't ship Saturdays, Sundays, or US federal holidays.</p>
+        <h2>{% translate "When will it arrive?" %}</h2>
+        <p>{% translate "We email you when your order ships, with tracking whenever the carrier provides it." %}</p>
       </div>
       <div>
-        <h3>What if my order arrives damaged?</h3>
-        <p>Photograph the damage, email us, and we'll either send a replacement or refund — your call. We don't make you mail it back.</p>
+        <h2>{% translate "Where do you ship?" %}</h2>
+        <p>{% blocktranslate trimmed %}To the addresses checkout accepts. If yours is not offered, <a href="/contact/" class="btn-link" style="display:inline;">contact us</a> before you order.{% endblocktranslate %}</p>
       </div>
       <div>
-        <h3>Can you ship to a PO box?</h3>
-        <p>Yes for USPS routes (every domestic + most international). Not for shipments that need a signature on delivery — those need a street address.</p>
+        <h2>{% translate "It arrived damaged" %}</h2>
+        <p>{% blocktranslate trimmed %}Take a photo and <a href="/contact/" class="btn-link" style="display:inline;">contact us</a> with your order number. See <a href="/returns/" class="btn-link" style="display:inline;">returns</a> for what happens next.{% endblocktranslate %}</p>
       </div>
       <div>
-        <h3>Do you gift-wrap?</h3>
-        <p>Yes, free with any order. Tick the gift-wrap box at checkout. We use unbleached kraft paper and a length of jute twine. No card unless you write one — leave a note at checkout.</p>
-      </div>
-      <div>
-        <h3>My tracking hasn't moved.</h3>
-        <p>USPS scans are inconsistent — a package can go from "label printed" to "out for delivery" with nothing in between. Wait 3 business days from ship date before worrying, then <a href="/contact/" class="btn-link" style="display:inline;">drop us a line</a>.</p>
-      </div>
-      <div>
-        <h3>How do I claim free shipping?</h3>
-        <p>Automatic — once your cart subtotal hits $40, the standard rate drops to $0 at checkout. Promo codes apply to subtotal before shipping, so the threshold uses the discounted amount.</p>
+        <h2>{% translate "Heat and light" %}</h2>
+        <p>{% translate "Oils, fish oil and matcha keep best somewhere cool and dark. Put them away when they arrive." %}</p>
       </div>
     </div>
   </div>
 </section>
-
-<style>
-.shipping-grid {
-  display: grid; gap: 1.25rem;
-  grid-template-columns: 1fr;
-}
-@media (min-width: 640px) { .shipping-grid { grid-template-columns: repeat(2, 1fr); } }
-.shipping-card {
-  padding: 1.5rem;
-  background: var(--paper);
-  border: 1px solid var(--rule); border-radius: 10px;
-}
-.shipping-card h2 { font-family: var(--serif); font-size: 1.35rem; font-weight: 500; margin: .5rem 0 .25rem; }
-.shipping-card .shipping-price {
-  font-family: var(--serif); font-size: 1.5rem; font-weight: 600;
-  color: var(--ink); margin: 0 0 .65rem;
-}
-.shipping-card p { font-size: .9rem; line-height: 1.6; color: var(--ink-2); margin: 0; }
-.faq-grid {
-  display: grid; gap: 2rem;
-  grid-template-columns: 1fr;
-}
-@media (min-width: 700px) { .faq-grid { grid-template-columns: repeat(2, 1fr); } }
-.faq-grid h3 { font-family: var(--serif); font-size: 1.1rem; font-weight: 500; margin: 0 0 .5rem; }
-.faq-grid p { font-size: .92rem; line-height: 1.6; color: var(--ink-2); margin: 0; }
-</style>
 {% endblock %}

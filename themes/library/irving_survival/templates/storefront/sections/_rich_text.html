@@ -1,0 +1,12 @@
+<section style="padding: 3rem 0;">
+  <div class="wrap" style="max-width: 720px; {% if settings.align == 'center' %}text-align: center;{% endif %}">
+    {% if settings.heading %}
+    <h2 class="display display-l" style="margin: 0 0 1.5rem;">{{ settings.heading }}</h2>
+    {% endif %}
+    {% if settings.body %}
+    <div style="font-size: 1.05rem; line-height: 1.7; color: var(--ink-2);">
+      {{ settings.body|safe }}
+    </div>
+    {% endif %}
+  </div>
+</section>

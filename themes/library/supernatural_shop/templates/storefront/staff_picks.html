@@ -5,7 +5,7 @@
 {% load i18n %}
 
 {% block extra_head %}
-{% seo_collection_jsonld items=pick_items name="Staff picks" description="A small rotating shelf of titles the Supernatural Shop staff would hand a friend without hesitation." %}
+{% seo_collection_jsonld items=pick_items name=collection.name|default:"Start here" description=collection.description|default:"A short list we would hand a friend who is just starting." %}
 {% seo_breadcrumb_jsonld items=breadcrumb_items %}
 {% endblock %}
 
@@ -22,12 +22,12 @@
         {% endif %}
       {% endfor %}
     </nav>
-    <p class="eyebrow">Editor's notebook</p>
+    <p class="eyebrow">Start here</p>
     <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
-      Staff picks<span class="text-accent">.</span>
+      {{ collection.name|default:"Start here" }}<span class="text-accent">.</span>
     </h1>
     <p class="lede">
-      {% if collection.description %}{{ collection.description }}{% else %}A small rotating shelf of titles we'd hand a friend without hesitation. Updated when there's a reason — never on a schedule.{% endif %}
+      {% if collection.description %}{{ collection.description }}{% else %}A short list we would hand a friend who is just starting.{% endif %}
     </p>
   </div>
 </section>
@@ -42,8 +42,8 @@
     </div>
     {% else %}
     <div style="text-align: center; padding: 6rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
-      <p class="display display-m" style="margin: 0 0 1rem;">No picks live yet<span class="text-accent">.</span></p>
-      <p class="lede" style="margin: 0 auto;">The editor is still drafting. Check the <a href="{% url 'storefront:product_list' %}" style="border-bottom: 1px dotted var(--rule);">full shelf</a> for what's currently in.</p>
+      <p class="display display-m" style="margin: 0 0 1rem;">Nothing here yet<span class="text-accent">.</span></p>
+      <p class="lede" style="margin: 0 auto;">Browse the <a href="{% url 'storefront:product_list' %}" style="border-bottom: 1px dotted var(--rule);">whole shop</a> for what's in stock.</p>
     </div>
     {% endif %}
   </div>

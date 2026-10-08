@@ -9,13 +9,17 @@ Two receivers, both fail-soft:
     the merchant to re-save the product.
 
 Failures only log; we never want a story-build crash to block a
-product save.
+product save. Each build runs in its own savepoint: on Postgres a query that
+fails inside the caller's transaction aborts it even when the error is caught,
+and the rest of the caller's save then raises. Rolling back to the savepoint
+confines a failed story to the story.
 """
 
 from __future__ import annotations
 
 import logging
 
+from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
@@ -31,7 +35,8 @@ def _regenerate_on_product_save(sender, instance, created, **kwargs):  # noqa: A
             return
         from plugins.installed.webstories.services import ensure_story  # noqa: PLC0415
 
-        ensure_story(instance)
+        with transaction.atomic():
+            ensure_story(instance)
     except Exception:  # noqa: BLE001
         logger.warning('webstories: ensure_story(%s) failed', instance.pk, exc_info=True)
 
@@ -44,7 +49,8 @@ def _regenerate_on_image_save(sender, instance, created, **kwargs):  # noqa: ARG
     try:
         from plugins.installed.webstories.services import ensure_story  # noqa: PLC0415
 
-        ensure_story(product)
+        with transaction.atomic():
+            ensure_story(product)
     except Exception:  # noqa: BLE001
         logger.warning('webstories: ensure_story-on-image(%s) failed', product.pk, exc_info=True)
 
@@ -57,7 +63,8 @@ def _regenerate_on_image_delete(sender, instance, **kwargs):  # noqa: ARG001
     try:
         from plugins.installed.webstories.services import ensure_story  # noqa: PLC0415
 
-        ensure_story(product)
+        with transaction.atomic():
+            ensure_story(product)
     except Exception:  # noqa: BLE001
         logger.warning(
             'webstories: ensure_story-on-img-delete(%s) failed', product.pk, exc_info=True

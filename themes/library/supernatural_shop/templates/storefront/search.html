@@ -42,18 +42,18 @@
     {% if not query %}
     <div style="margin-top: 2.5rem; max-width: 620px;">
       <p class="eyebrow" style="margin-bottom: .5rem;">Not sure what to search?</p>
-      <h2 style="font-family: var(--serif); font-weight: 500; font-size: 1.5rem; margin: 0 0 1rem;">Describe the work on the bench.</h2>
+      <h2 style="font-family: var(--serif); font-weight: 500; font-size: 1.5rem; margin: 0 0 1rem;">Describe what you are looking for.</h2>
       <form method="get" action="/search/">
         <input type="hidden" name="mode" value="semantic">
         <label for="mood-q" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Describe what you want</label>
         <textarea id="mood-q" name="q" rows="2"
-                  placeholder="e.g. “a citrus oil for evening”, or “a hydrosol for skin”"
+                  placeholder="e.g. “magnesium that is easy on the stomach”, or “a caffeine-free evening tea”"
                   style="width:100%; padding: .85rem 1.1rem; border: 1px solid var(--rule); border-radius: 12px; background: var(--paper); font-family: var(--sans); font-size: 1rem; resize: vertical;"></textarea>
         <button class="btn btn-primary" style="margin-top: .75rem;">Find it</button>
       </form>
       <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-top: 1rem;">
-        <a href="/search/?mode=semantic&q=citrus+oil+for+diffusion" style="font-size:.82rem; color: var(--ink-2); padding: .4rem .8rem; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;">“citrus oil for diffusion”</a>
-        <a href="/search/?mode=semantic&q=a+quiet+hydrosol+for+skin" style="font-size:.82rem; color: var(--ink-2); padding: .4rem .8rem; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;">“a quiet hydrosol for skin”</a>
+        <a href="/search/?mode=semantic&q=caffeine-free+evening+tea" style="font-size:.82rem; color: var(--ink-2); padding: .4rem .8rem; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;">“caffeine-free evening tea”</a>
+        <a href="/search/?mode=semantic&q=mushroom+powder+for+coffee" style="font-size:.82rem; color: var(--ink-2); padding: .4rem .8rem; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;">“mushroom powder for coffee”</a>
         <a href="/search/?mode=semantic&q=resin+for+the+censer" style="font-size:.82rem; color: var(--ink-2); padding: .4rem .8rem; border: 1px solid var(--rule); border-radius: 999px; text-decoration: none;">“resin for the censer”</a>
       </div>
     </div>

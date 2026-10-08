@@ -1,0 +1,72 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load i18n %}
+{% comment %}
+The theme's fallback returns page — shown only while the merchant has no CMS
+page with the slug "returns" (storefront/views/content.py:_policy). It states
+the customer's statutory rights in the UK and nothing the store has not
+decided: no carrier, no prepaid label, no window longer than the law's.
+{% endcomment %}
+{% block extra_head %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+<style>
+  .policy-head { padding: clamp(3rem, 6vw, 4.5rem) 0 2rem; }
+  .policy-head .wrap { max-width: 860px; display: flex; flex-direction: column; gap: 1rem; }
+  .policy-steps { display: grid; gap: 1rem; }
+  @media (min-width: 900px) { .policy-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .policy-step { background: var(--surface); border-radius: 24px; padding: 1.75rem; display: flex; flex-direction: column; gap: .6rem; }
+  .policy-step h2 { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -.01em; }
+  .policy-step p, .policy-faq p { margin: 0; color: var(--ink2); line-height: 1.6; }
+  .policy-faq { display: grid; gap: 2rem; padding-top: 2.5rem; border-top: 1px solid var(--line); }
+  @media (min-width: 760px) { .policy-faq { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .policy-faq h3 { margin: 0 0 .4rem; font-size: 1.0625rem; font-weight: 600; }
+  .policy-faq a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+</style>
+{% endblock %}
+{% block content %}
+<section class="policy-head">
+  <div class="wrap">
+    <p class="eyebrow">{% translate "Returns" %}</p>
+    <h1 class="display display-l">{% translate "Changed your mind? You have 14 days." %}</h1>
+    <p class="lede">{% translate "You can cancel an online order within 14 days of receiving it, then send it back within 14 days of telling us. That is your right under UK consumer law. Here is how it works." %}</p>
+  </div>
+</section>
+<section style="padding-top: 1rem;">
+  <div class="wrap" style="max-width: 1100px;">
+    <div class="policy-steps">
+      <div class="policy-step">
+        <p class="eyebrow">{% translate "Step 1" %}</p>
+        <h2>{% translate "Tell us" %}</h2>
+        <p>{% blocktranslate trimmed %}Within 14 days of delivery, from <a href="/account/orders/">your orders</a> or our <a href="/contact/">contact form</a>, with your order number. You do not need to give a reason.{% endblocktranslate %}</p>
+      </div>
+      <div class="policy-step">
+        <p class="eyebrow">{% translate "Step 2" %}</p>
+        <h2>{% translate "Send it back" %}</h2>
+        <p>{% translate "Within 14 days of telling us, in the condition it arrived. Keep proof of postage until your refund arrives." %}</p>
+      </div>
+      <div class="policy-step">
+        <p class="eyebrow">{% translate "Step 3" %}</p>
+        <h2>{% translate "Your refund" %}</h2>
+        <p>{% translate "Within 14 days of the item reaching us, or of your proof of postage, to the card you paid with. It includes the original standard delivery charge." %}</p>
+      </div>
+    </div>
+    <div class="policy-faq" style="margin-top: 3rem;">
+      <div>
+        <h3>{% translate "Faulty or not what you ordered" %}</h3>
+        <p>{% translate "Under the Consumer Rights Act you can reject a faulty item within 30 days for a full refund. Contact us with a photo and your order number and we will put it right." %}</p>
+      </div>
+      <div>
+        <h3>{% translate "Food, water and sealed items" %}</h3>
+        <p>{% translate "Food cannot be returned, and nor can sealed items that are unsuitable for return once opened for health or hygiene reasons, unless they are faulty." %}</p>
+      </div>
+      <div>
+        <h3>{% translate "Used items" %}</h3>
+        <p>{% translate "Handle an item as you would in a shop. If it has been used beyond that, we may reduce the refund by the drop in its value." %}</p>
+      </div>
+      <div>
+        <h3>{% translate "Anything else" %}</h3>
+        <p>{% blocktranslate trimmed %}<a href="/contact/">Contact us</a> and we will reply with the next step.{% endblocktranslate %}</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

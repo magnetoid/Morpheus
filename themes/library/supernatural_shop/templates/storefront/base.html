@@ -453,7 +453,10 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   footer .signoff .footer-legal:empty { display: none; }
   footer .signoff .footer-legal a { color: var(--muted); }
   footer .signoff .footer-legal a:hover { color: var(--accent-ink); }
-  footer .signoff { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 0; border-top: 1px solid var(--rule); font-size: 0.8rem; color: var(--muted); flex-wrap: wrap; gap: 1rem; }
+  /* The supplement disclaimer: small, but at body contrast — it is a notice, not decoration. */
+  footer .disclaimer { padding-bottom: 2rem; }
+  footer .disclaimer p { margin: 0; max-width: 80ch; font-size: 0.78rem; line-height: 1.55; color: var(--ink-2); }
+  footer .signoff { display: flex; justify-content: space-between; align-items: center; padding-top: 1.5rem; padding-bottom: 1.5rem; border-top: 1px solid var(--rule); font-size: 0.8rem; color: var(--muted); flex-wrap: wrap; gap: 1rem; }
 
   /* Newsletter */
   .newsletter { display: flex; gap: 0.5rem; max-width: 460px; margin-top: 0.75rem; }
@@ -710,15 +713,17 @@ defaults.
       {% if header_menu and header_menu.items %}
         {% for item in header_menu.items %}
           {% if item.kind == 'mega_categories' %}<a href="/products/">Shop</a>
-          {% elif item.kind == 'mega_topics' %}<a href="/category/wellness/">Wellness</a>
+          {% elif item.kind == 'mega_topics' %}<a href="/category/wellness/">Longevity</a>
           {% elif item.kind == 'mega_authors' %}<a href="/category/aromatherapy-blends/">Aromatherapy</a>
           {% else %}<a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
         {% endfor %}
       {% else %}
         <a href="/products/">Shop</a>
+        <a href="/category/wellness-vitamins/">Daily staples</a>
+        <a href="/category/wellness-adaptogens/">Mushrooms</a>
+        <a href="/category/wellness-superfoods/">Pantry</a>
         <a href="/category/aromatherapy-blends/">Aromatherapy</a>
-        <a href="/category/wellness/">Wellness</a>
-        <a href="/journal/">Journal</a>
+        <a href="/journal/">Guides</a>
       {% endif %}
       {% storefront_blocks "nav_primary_extra" %}
     </nav>
@@ -971,19 +976,22 @@ defaults.
     {% if mobile_menu and mobile_menu.items %}
       {% for item in mobile_menu.items %}
         {% if item.kind == 'mega_categories' %}<a href="{{ item.url|default:'/products/' }}">{{ item.label|default:"Shop" }}</a>
-        {% elif item.kind == 'mega_topics' %}<a href="{{ item.url|default:'/journal/' }}">{{ item.label|default:"Journal" }}</a>
+        {% elif item.kind == 'mega_topics' %}<a href="{{ item.url|default:'/journal/' }}">{{ item.label|default:"Guides" }}</a>
         {% elif item.kind == 'mega_authors' %}<a href="{{ item.url|default:'/category/aromatherapy-blends/' }}">{{ item.label|default:"Aromatherapy" }}</a>
         {% else %}<a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
       {% endfor %}
       <a href="/account/">Account</a>
     {% else %}
       <a href="/products/">Shop</a>
-      <a href="/products/?featured=true">New &amp; notable</a>
+      <a href="/staff-picks/">Start here</a>
+      <a href="/category/wellness-vitamins/">Daily staples</a>
+      <a href="/category/wellness-adaptogens/">Mushrooms &amp; adaptogens</a>
+      <a href="/category/wellness-superfoods/">Pantry</a>
+      <a href="/category/wellness-herbal/">Herbal tinctures</a>
       <a href="/category/aromatherapy-blends/">Aromatherapy</a>
-      <a href="/category/wellness/">Wellness</a>
       <a href="/category/arcana/">Arcana</a>
-      <a href="/journal/">Journal</a>
-      <a href="/staff-picks/">Staff picks</a>
+      <a href="/journal/">Guides</a>
+      <a href="/p/standards/">Our standards</a>
       {% storefront_blocks "nav_primary_extra" %}
       <a href="/account/">Account</a>
     {% endif %}
@@ -1003,7 +1011,7 @@ defaults.
   <div class="wrap grid">
     <div class="col">
       <a href="/" class="wordmark" style="font-size:1.6rem">{% if STORE_LOGO_URL %}<img src="{{ STORE_LOGO_URL }}" alt="{{ STORE_NAME }}" style="height:1.6rem;width:auto;vertical-align:middle;">{% elif STORE_NAME %}{{ STORE_NAME }}<span class="dot">.</span>{% else %}Supernatural Shop<span class="dot">.</span>{% endif %}</a>
-      <p class="lede" style="margin-top:0.85rem; font-size: 1rem;">Oils, hydrosols, and ritual goods — curated, modern, independent.</p>
+      <p class="lede" style="margin-top:0.85rem; font-size: 1rem;">Daily staples, mushrooms and a food-first pantry, with guides that cite their sources.</p>
       <form class="newsletter" id="footer-newsletter" method="post" action="/newsletter/subscribe/">
         {% csrf_token %}
         <input type="email" name="email" placeholder="your@email.com" aria-label="Email" required>
@@ -1044,16 +1052,19 @@ defaults.
     </div>
     <div class="col">
       <h2>Shop</h2>
-      <a href="/products/">Shop</a>
-      <a href="/products/?featured=true">New &amp; notable</a>
+      <a href="/category/wellness-vitamins/">Daily staples</a>
+      <a href="/category/wellness-adaptogens/">Mushrooms &amp; adaptogens</a>
+      <a href="/category/wellness-superfoods/">Pantry</a>
+      <a href="/category/wellness-teas/">Teas</a>
+      <a href="/category/wellness-herbal/">Herbal tinctures</a>
       <a href="/category/aromatherapy-blends/">Aromatherapy</a>
-      <a href="/category/wellness/">Wellness</a>
       <a href="/category/arcana/">Arcana</a>
     </div>
     <div class="col">
-      <h2>Explore</h2>
-      <a href="/journal/">Journal</a>
-      <a href="/staff-picks/">Staff picks</a>
+      <h2>Learn</h2>
+      <a href="/staff-picks/">Start here</a>
+      <a href="/journal/">Guides</a>
+      <a href="/p/standards/">Our standards</a>
       <a href="/about/">About</a>
       {% storefront_blocks "footer_extra" %}
     </div>
@@ -1077,7 +1088,13 @@ defaults.
     <span>© {{ now|default:"2026" }} Supernatural Shop<span class="text-accent">.</span> All rights reserved.</span>
     <span class="footer-legal">{% storefront_blocks "footer_legal" %}</span>
     <span style="font-family: var(--serif); font-style: italic;">Set in Cormorant &amp; Outfit<span class="text-accent">.</span></span>
-    <span>Made for the workbench, not the bookshelf<span class="text-accent">.</span></span>
+    <span>A pantry, not a pharmacy<span class="text-accent">.</span></span>
+  </div>
+  {% comment %}The supplement disclaimer (21 CFR 101.93). Products here are described
+  with structure/function language, which in the US carries this notice; it sits
+  on every page because every page can show one.{% endcomment %}
+  <div class="wrap disclaimer">
+    <p>These statements have not been evaluated by the Food and Drug Administration. Products sold here are not intended to diagnose, treat, cure or prevent any disease. Talk to your doctor before starting a supplement, especially if you are pregnant or nursing, take medication or have a medical condition.</p>
   </div>
 </footer>
 

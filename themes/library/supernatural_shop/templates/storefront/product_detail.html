@@ -18,246 +18,7 @@ so the PDP must NOT declare them as its rel=amphtml pairing — that contradicts
 story's self-canonical and triggers the GSC "amp-story canonical error". The story
 stays discoverable via its own embed block + the sitemap.{% endcomment %}
 {% dl_view_item product %}
-{% endblock %}
-
-{% block content %}
-<section style="padding: 2.5rem 0 5rem;">
-  <div class="wrap">
-    <p class="meta" style="margin-bottom: 1.25rem;">
-      <a href="/" style="color: var(--muted);">Home</a>
-      <span style="margin: 0 0.5rem;">/</span>
-      <a href="/products/" style="color: var(--muted);">Shop</a>
-      {% if product.category %}
-      <span style="margin: 0 0.5rem;">/</span>
-      <a href="/category/{{ product.category.slug }}/" style="color: var(--muted);">{{ product.category.name }}</a>
-      {% endif %}
-    </p>
-
-    <div style="display:grid; gap: 3.5rem; grid-template-columns: 1fr;" class="pdp-grid">
-      <!-- Cover hero — PDP slider (Phase 1 of docs/plans/product-slider.md).
-           Renders every ProductImage (up to 15) as a horizontal slider with
-           arrows, thumbnail strip, and keyboard nav. CSS scroll-snap is the
-           no-JS baseline; the small inline script enhances. -->
-      <div>
-        {% include "product_gallery/_pdp_hero_slider.html" with product=product images=images videos=videos alt=product.name %}
-        {% comment %}
-        Media that belongs WITH the gallery rather than below the fold —
-        media_3d's 3D/AR viewer and ugc_reviews' customer-photo strip.
-        {% endcomment %}
-        {% storefront_blocks "pdp_below_gallery" %}
-      </div>
-
-      <!-- Details -->
-      <div>
-        <p class="eyebrow">{% firstof product.category.name "Shop" %}</p>
-        <h1 class="display display-l" style="margin: 1rem 0 0.75rem;">{{ product.name }}<span class="text-accent">.</span></h1>
-
-        {% if review_summary %}
-        <a href="#reviews" class="pdp-rating" aria-label="{{ review_summary.avg }} out of 5 from {{ review_summary.count }} review{{ review_summary.count|pluralize }} — jump to reviews">
-          <span class="pdp-rating__stars" aria-hidden="true">
-            {% for i in "12345" %}{% if forloop.counter <= review_summary.avg_int %}★{% elif forloop.counter == review_summary.avg_int|add:1 and review_summary.has_half %}★{% else %}☆{% endif %}{% endfor %}
-          </span>
-          <span class="pdp-rating__num"><strong>{{ review_summary.avg }}</strong></span>
-          <span class="pdp-rating__count">·  {{ review_summary.count }} review{{ review_summary.count|pluralize }}</span>
-        </a>
-        {% endif %}
-
-        {# shortDescription is HTML from the TipTap editor; render unescaped. #}
-        <p class="lede" style="margin-bottom: 1.5rem;">{{ product.shortDescription|default:""|safe }}</p>
-
-        <div style="display:flex; align-items:baseline; gap: 0.6rem; margin: 1.5rem 0 0.5rem;">
-          <span data-pdp-price style="display:inline-block; font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{% if product.priceStartsFrom %}<span style="font-family: var(--sans); font-size: .85rem; font-weight: 400; color: var(--muted);">{% translate "From" %} </span>{% endif %}{{ product.price|money }}</span>
-          <span data-pdp-compare class="meta" style="text-decoration: line-through;{% if not product.isOnSale %} display:none;{% endif %}">{% if product.isOnSale %}{{ product.compareAtPrice|money }}{% endif %}</span>
-        </div>
-        {% if last_reviewed %}<p class="meta" style="margin: 0 0 1rem; color: var(--muted); font-size: .75rem;">Last reviewed <time datetime="{{ last_reviewed|date:'c' }}">{{ last_reviewed|date:"M j, Y" }}</time></p>{% endif %}
-
-        {% storefront_blocks "pdp_below_price" %}
-
-        {% if product.variants %}
-        {# Variant picker: card shows name+size+badge+price+desc, selecting one swaps the price + hidden variant_id sent to /cart/add/. #}
-        <div class="pdp-variants-wrap" data-pdp-variant-picker style="margin: 1.5rem 0;">
-          <p class="eyebrow" style="margin-bottom: 0.75rem;" id="pdp-variants-label">Choose a size</p>
-          <div class="pdp-variants" role="radiogroup" aria-labelledby="pdp-variants-label">
-            {% for v in product.variants %}{% if v.isActive %}
-            <button type="button"
-                    class="pdp-variant{% if forloop.first %} is-selected{% endif %}{% if v.isOnSale %} is-on-sale{% endif %}"
-                    role="radio"
-                    aria-checked="{% if forloop.first %}true{% else %}false{% endif %}"
-                    tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
-                    data-variant-id="{{ v.id }}"
-                    data-variant-type="{{ v.variantType|default:'physical' }}"
-                    data-variant-price="{% if v.price %}{{ v.price|money }}{% endif %}"
-                    data-variant-compare="{% if v.isOnSale and v.compareAtPrice %}{{ v.compareAtPrice|money }}{% endif %}"
-                    data-variant-on-sale="{% if v.isOnSale %}1{% else %}0{% endif %}"
-                    data-variant-image="{{ v.imageUrl|default:'' }}"
-                    data-variant-desc="{{ v.shortDescription|default:''|escape }}">
-              {% if v.imageUrl %}<span class="pdp-variant__thumb"><img src="{{ v.imageUrl }}" alt="" loading="lazy"></span>{% endif %}
-              <span class="pdp-variant__badge pdp-variant__badge--{{ v.variantType|default:'physical' }}">
-                {% if v.variantType == 'digital' %}Digital{% elif v.variantType == 'virtual' %}Access{% else %}Bottle{% endif %}
-              </span>
-              {% if v.isOnSale and v.discountPercentage %}
-                <span class="pdp-variant__sale-pill" title="On sale">−{{ v.discountPercentage }}%</span>
-              {% endif %}
-              <span class="pdp-variant__name">{{ v.name }}{% if v.size %} <span class="pdp-variant__size">· {{ v.size }}</span>{% endif %}</span>
-              {% if v.price %}
-              <span class="pdp-variant__price-line">
-                <span class="pdp-variant__price">{{ v.price|money }}</span>
-                {% if v.isOnSale and v.compareAtPrice %}<span class="pdp-variant__compare">{{ v.compareAtPrice|money }}</span>{% endif %}
-              </span>
-              {% endif %}
-              {% if v.shortDescription %}<span class="pdp-variant__desc">{{ v.shortDescription|truncatewords:14 }}</span>{% endif %}
-            </button>
-            {% endif %}{% endfor %}
-          </div>
-        </div>
-        {% endif %}
-
-        <form method="post" action="/cart/add/{{ product.id }}/" style="display:flex; gap: 0.6rem; align-items:center; margin: 1.5rem 0 1rem;">
-          {% csrf_token %}
-          {% with product.variants|first as first_v %}
-          <input type="hidden" name="variant_id" value="{{ first_v.id|default:'' }}" data-pdp-variant-input>
-          {% endwith %}
-          <label for="pdp-qty" class="sr-only">Quantity</label>
-          <input id="pdp-qty" type="number" name="quantity" value="1" min="1" max="20"
-                 inputmode="numeric" autocomplete="off"
-                 style="width: 80px; height: 48px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
-          <button type="submit" class="btn btn-primary" style="height: 48px;" data-pdp-cta>Add to cart</button>
-        </form>
-
-        {% if out_of_stock %}
-        <form method="post" action="/back-in-stock/subscribe/{{ product.id }}/"
-              class="bis-form"
-              style="margin: 1rem 0 1.25rem; padding: 1rem 1.1rem; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 10px;">
-          {% csrf_token %}
-          <p class="eyebrow" style="margin-bottom: .35rem;">Out of stock</p>
-          <p class="lede" style="font-size: .95rem; margin: 0 0 .75rem;">Drop your email — we'll write the moment this is back in stock.</p>
-          <div style="display:flex; gap:.5rem; align-items:center; flex-wrap: wrap;">
-            <label for="bis-email" class="sr-only">Email address</label>
-            <input id="bis-email" type="email" name="email" required
-                   placeholder="your@email.com"
-                   value="{% if request.user.is_authenticated %}{{ request.user.email|default:'' }}{% endif %}"
-                   autocomplete="email"
-                   style="flex:1; min-width: 180px; height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: .92rem;">
-            <button type="submit" class="btn btn-ghost" style="height: 44px;">Notify me</button>
-          </div>
-        </form>
-        {% endif %}
-
-        {% storefront_blocks "pdp_below_form" %}
-
-        {# Trust strip: 3 icon+copy cells near the CTA. Sourced from Baymard 2026 PDP research. #}
-        <div class="trust-strip">
-          <div class="trust-strip__item" data-reveal>
-            <span class="trust-strip__icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12h6M12 9v6"/></svg>
-            </span>
-            <div>
-              <strong>Free shipping over $40</strong>
-              <p>Tracked, signed-for delivery on every order</p>
-            </div>
-          </div>
-          <div class="trust-strip__item" data-reveal style="--reveal-delay: 90ms;">
-            <span class="trust-strip__icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-2"/><path d="M4 12l3 3 5-7"/></svg>
-            </span>
-            <div>
-              <strong>30-day returns</strong>
-              <p>Send it back if it didn't land</p>
-            </div>
-          </div>
-          <div class="trust-strip__item" data-reveal style="--reveal-delay: 180ms;">
-            <span class="trust-strip__icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-4z"/></svg>
-            </span>
-            <div>
-              <strong>Always read first</strong>
-              <p>Every bottle is one we would use ourselves</p>
-            </div>
-          </div>
-        </div>
-
-        {% if pdp_vendor %}
-        <div style="margin: 1.25rem 0; padding: .9rem 1rem; background: var(--surface-2, rgba(0,0,0,.025)); border-radius: 8px; display: flex; align-items: center; gap: .85rem;">
-          {% if pdp_vendor.logo %}
-            <img src="{{ pdp_vendor.logo.url }}" alt="" loading="lazy" decoding="async"
-                 style="width: 44px; height: 44px; border-radius: 6px; object-fit: contain; background: var(--paper); padding: 4px; border: 1px solid var(--rule); flex-shrink: 0;">
-          {% endif %}
-          <div style="min-width: 0; flex: 1;">
-            <p class="meta" style="font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; margin: 0;">Published by</p>
-            <a href="/vendor/{{ pdp_vendor.slug }}/" style="font-family: var(--serif); font-size: 1.05rem; color: var(--ink); border-bottom: 1px dotted var(--rule);">{{ pdp_vendor.name }}</a>
-          </div>
-          <a href="/vendor/{{ pdp_vendor.slug }}/" class="btn btn-ghost" style="font-size: .75rem; padding: .35rem .75rem; flex-shrink: 0;">More from {{ pdp_vendor.name }} →</a>
-        </div>
-        {% endif %}
-
-        {% if book_specs %}
-        <hr class="rule">
-        <div style="margin: 1.5rem 0;">
-          <p class="eyebrow" style="margin-bottom: 0.75rem;">Edition details</p>
-          <dl style="display:grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.5rem; font-size: 0.92rem; color: var(--ink-2); line-height: 1.5;">
-            {% for spec in book_specs %}
-            <dt class="meta" style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; align-self: center;">{{ spec.label }}</dt>
-            <dd style="margin: 0;">
-              {% if spec.link %}<a href="{{ spec.link }}" style="border-bottom: 1px dotted var(--rule);">{{ spec.value }}</a>{% else %}{{ spec.value }}{% endif %}
-            </dd>
-            {% endfor %}
-          </dl>
-        </div>
-        {% endif %}
-
-        {% if product_codes %}
-        <div style="margin: 1.5rem 0;">
-          <p class="eyebrow" style="margin-bottom: 0.75rem;">Product codes</p>
-          <dl style="display:grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.5rem; font-size: 0.92rem; color: var(--ink-2); line-height: 1.5;">
-            {% for c in product_codes %}
-            <dt class="meta" style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; align-self: center;">{{ c.label }}</dt>
-            <dd style="margin: 0; font-variant-numeric: tabular-nums;">{{ c.value }}</dd>
-            {% endfor %}
-          </dl>
-        </div>
-        {% endif %}
-
-        {% if product.collections %}
-        <div class="pdp-collections" style="margin: 1.25rem 0;">
-          <p class="eyebrow" style="margin-bottom: 0.6rem;">Featured in</p>
-          <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-            {% for col in product.collections %}
-            <a href="/collection/{{ col.slug }}/" class="pdp-collection-chip">{{ col.name }}</a>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-
-        {% if product.tags %}
-        <div style="margin-top: 2rem; display:flex; flex-wrap: wrap; gap: 0.4rem;">
-          {% for tag in product.tags %}
-          <a href="/products/?tag={% firstof tag.slug tag.name tag %}" style="font-size: 0.75rem; padding: 0.3rem 0.65rem; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted);">{% firstof tag.name tag %}</a>
-          {% endfor %}
-        </div>
-        {% endif %}
-      </div>
-    </div>
-
-    {% storefront_blocks "pdp_above_long_description" %}
-
-    {# PDP TOC removed (10762f1) — position:fixed math overlapped the wrap; #about / #reviews / #faqs / #related anchors below still work. #}
-
-    {% if product.description %}
-    <section class="pdp-about wrap-narrow" id="about" style="scroll-margin-top: 80px;">
-      <p class="eyebrow" style="margin-bottom: 0.75rem;">About this product</p>
-      <hr class="rule" style="margin-bottom: 1.5rem;">
-      <div itemprop="description" class="pdp-long-desc">
-        {# description is HTML from the TipTap editor; render unescaped. #}
-        {{ product.description|safe }}
-      </div>
-    </section>
-    {% endif %}
-
-    {# Story (web-story player) renders here — below the long description. #}
-    {% storefront_blocks "pdp_below_long_description" %}
-  </div>
-</section>
-
+{% comment %}Page CSS lives in the head: below the markup, the two-column .pdp-grid rule arrived after the content streamed in and the details column jumped up beside the gallery (the dot_books CLS landmine, CLAUDE.md).{% endcomment %}
 <style>
 .pdp-about {
   margin: 4rem auto 0;
@@ -506,6 +267,248 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 }
 .pdp-sticky-cart__btn { white-space: nowrap; height: 42px; }
 </style>
+{% endblock %}
+
+{% block content %}
+<section style="padding: 2.5rem 0 5rem;">
+  <div class="wrap">
+    <p class="meta" style="margin-bottom: 1.25rem;">
+      <a href="/" style="color: var(--muted);">Home</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      <a href="/products/" style="color: var(--muted);">Shop</a>
+      {% if product.category %}
+      <span style="margin: 0 0.5rem;">/</span>
+      <a href="/category/{{ product.category.slug }}/" style="color: var(--muted);">{{ product.category.name }}</a>
+      {% endif %}
+    </p>
+
+    <div style="display:grid; gap: 3.5rem; grid-template-columns: 1fr;" class="pdp-grid">
+      <!-- Cover hero — PDP slider (Phase 1 of docs/plans/product-slider.md).
+           Renders every ProductImage (up to 15) as a horizontal slider with
+           arrows, thumbnail strip, and keyboard nav. CSS scroll-snap is the
+           no-JS baseline; the small inline script enhances. -->
+      <div>
+        {% include "product_gallery/_pdp_hero_slider.html" with product=product images=images videos=videos alt=product.name %}
+        {% comment %}
+        Media that belongs WITH the gallery rather than below the fold —
+        media_3d's 3D/AR viewer and ugc_reviews' customer-photo strip.
+        {% endcomment %}
+        {% storefront_blocks "pdp_below_gallery" %}
+      </div>
+
+      <!-- Details -->
+      <div>
+        <p class="eyebrow">{% firstof product.category.name "Shop" %}</p>
+        <h1 class="display display-l" style="margin: 1rem 0 0.75rem;">{{ product.name }}<span class="text-accent">.</span></h1>
+
+        {% if review_summary %}
+        <a href="#reviews" class="pdp-rating" aria-label="{{ review_summary.avg }} out of 5 from {{ review_summary.count }} review{{ review_summary.count|pluralize }} — jump to reviews">
+          <span class="pdp-rating__stars" aria-hidden="true">
+            {% for i in "12345" %}{% if forloop.counter <= review_summary.avg_int %}★{% elif forloop.counter == review_summary.avg_int|add:1 and review_summary.has_half %}★{% else %}☆{% endif %}{% endfor %}
+          </span>
+          <span class="pdp-rating__num"><strong>{{ review_summary.avg }}</strong></span>
+          <span class="pdp-rating__count">·  {{ review_summary.count }} review{{ review_summary.count|pluralize }}</span>
+        </a>
+        {% endif %}
+
+        {# shortDescription is HTML from the TipTap editor; render unescaped. #}
+        <p class="lede" style="margin-bottom: 1.5rem;">{{ product.shortDescription|default:""|safe }}</p>
+
+        <div style="display:flex; align-items:baseline; gap: 0.6rem; margin: 1.5rem 0 0.5rem;">
+          <span data-pdp-price style="display:inline-block; font-family: var(--serif); font-size: 1.75rem; font-weight: 600;">{% if product.priceStartsFrom %}<span style="font-family: var(--sans); font-size: .85rem; font-weight: 400; color: var(--muted);">{% translate "From" %} </span>{% endif %}{{ product.price|money }}</span>
+          <span data-pdp-compare class="meta" style="text-decoration: line-through;{% if not product.isOnSale %} display:none;{% endif %}">{% if product.isOnSale %}{{ product.compareAtPrice|money }}{% endif %}</span>
+        </div>
+        {% if last_reviewed %}<p class="meta" style="margin: 0 0 1rem; color: var(--muted); font-size: .75rem;">Last reviewed <time datetime="{{ last_reviewed|date:'c' }}">{{ last_reviewed|date:"M j, Y" }}</time></p>{% endif %}
+
+        {% storefront_blocks "pdp_below_price" %}
+
+        {% if product.variants %}
+        {# Variant picker: card shows name+size+badge+price+desc, selecting one swaps the price + hidden variant_id sent to /cart/add/. #}
+        <div class="pdp-variants-wrap" data-pdp-variant-picker style="margin: 1.5rem 0;">
+          <p class="eyebrow" style="margin-bottom: 0.75rem;" id="pdp-variants-label">Choose a size</p>
+          <div class="pdp-variants" role="radiogroup" aria-labelledby="pdp-variants-label">
+            {% for v in product.variants %}{% if v.isActive %}
+            <button type="button"
+                    class="pdp-variant{% if forloop.first %} is-selected{% endif %}{% if v.isOnSale %} is-on-sale{% endif %}"
+                    role="radio"
+                    aria-checked="{% if forloop.first %}true{% else %}false{% endif %}"
+                    tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+                    data-variant-id="{{ v.id }}"
+                    data-variant-type="{{ v.variantType|default:'physical' }}"
+                    data-variant-price="{% if v.price %}{{ v.price|money }}{% endif %}"
+                    data-variant-compare="{% if v.isOnSale and v.compareAtPrice %}{{ v.compareAtPrice|money }}{% endif %}"
+                    data-variant-on-sale="{% if v.isOnSale %}1{% else %}0{% endif %}"
+                    data-variant-image="{{ v.imageUrl|default:'' }}"
+                    data-variant-desc="{{ v.shortDescription|default:''|escape }}">
+              {% if v.imageUrl %}<span class="pdp-variant__thumb"><img src="{{ v.imageUrl }}" alt="" loading="lazy"></span>{% endif %}
+              {% if v.variantType == 'digital' or v.variantType == 'virtual' %}<span class="pdp-variant__badge pdp-variant__badge--{{ v.variantType }}">{% if v.variantType == 'digital' %}{% translate "Digital" %}{% else %}{% translate "Access" %}{% endif %}</span>{% endif %}
+              {% if v.isOnSale and v.discountPercentage %}
+                <span class="pdp-variant__sale-pill" title="On sale">−{{ v.discountPercentage }}%</span>
+              {% endif %}
+              <span class="pdp-variant__name">{{ v.name }}{% if v.size %} <span class="pdp-variant__size">· {{ v.size }}</span>{% endif %}</span>
+              {% if v.price %}
+              <span class="pdp-variant__price-line">
+                <span class="pdp-variant__price">{{ v.price|money }}</span>
+                {% if v.isOnSale and v.compareAtPrice %}<span class="pdp-variant__compare">{{ v.compareAtPrice|money }}</span>{% endif %}
+              </span>
+              {% endif %}
+              {% if v.shortDescription %}<span class="pdp-variant__desc">{{ v.shortDescription|truncatewords:14 }}</span>{% endif %}
+            </button>
+            {% endif %}{% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <form method="post" action="/cart/add/{{ product.id }}/" style="display:flex; gap: 0.6rem; align-items:center; margin: 1.5rem 0 1rem;">
+          {% csrf_token %}
+          {% with product.variants|first as first_v %}
+          <input type="hidden" name="variant_id" value="{{ first_v.id|default:'' }}" data-pdp-variant-input>
+          {% endwith %}
+          <label for="pdp-qty" class="sr-only">Quantity</label>
+          <input id="pdp-qty" type="number" name="quantity" value="1" min="1" max="20"
+                 inputmode="numeric" autocomplete="off"
+                 style="width: 80px; height: 48px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
+          <button type="submit" class="btn btn-primary" style="height: 48px;" data-pdp-cta>Add to cart</button>
+        </form>
+
+        {% if out_of_stock %}
+        <form method="post" action="/back-in-stock/subscribe/{{ product.id }}/"
+              class="bis-form"
+              style="margin: 1rem 0 1.25rem; padding: 1rem 1.1rem; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 10px;">
+          {% csrf_token %}
+          <p class="eyebrow" style="margin-bottom: .35rem;">Out of stock</p>
+          <p class="lede" style="font-size: .95rem; margin: 0 0 .75rem;">Drop your email — we'll write the moment this is back in stock.</p>
+          <div style="display:flex; gap:.5rem; align-items:center; flex-wrap: wrap;">
+            <label for="bis-email" class="sr-only">Email address</label>
+            <input id="bis-email" type="email" name="email" required
+                   placeholder="your@email.com"
+                   value="{% if request.user.is_authenticated %}{{ request.user.email|default:'' }}{% endif %}"
+                   autocomplete="email"
+                   style="flex:1; min-width: 180px; height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: .92rem;">
+            <button type="submit" class="btn btn-ghost" style="height: 44px;">Notify me</button>
+          </div>
+        </form>
+        {% endif %}
+
+        {% storefront_blocks "pdp_below_form" %}
+
+        {% comment %}Trust strip: three short facts near the CTA. Each one is a promise the store keeps
+           (checkout shows delivery before payment; returns and certificates as the
+           returns and standards pages state them) — never a rate or threshold this
+           template cannot know.{% endcomment %}
+        <div class="trust-strip">
+          <div class="trust-strip__item" data-reveal>
+            <span class="trust-strip__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12h6M12 9v6"/></svg>
+            </span>
+            <div>
+              <strong>{% translate "Delivery shown at checkout" %}</strong>
+              <p>{% translate "Options and costs for your address, before you pay" %}</p>
+            </div>
+          </div>
+          <div class="trust-strip__item" data-reveal style="--reveal-delay: 90ms;">
+            <span class="trust-strip__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-2"/><path d="M4 12l3 3 5-7"/></svg>
+            </span>
+            <div>
+              <strong>{% translate "30-day returns, unopened" %}</strong>
+              <p><a href="/returns/">{% translate "How returns work" %}</a></p>
+            </div>
+          </div>
+          <div class="trust-strip__item" data-reveal style="--reveal-delay: 180ms;">
+            <span class="trust-strip__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-4z"/></svg>
+            </span>
+            <div>
+              <strong>{% translate "Certificate on request" %}</strong>
+              <p><a href="/p/standards/">{% translate "What we ask of every maker" %}</a></p>
+            </div>
+          </div>
+        </div>
+
+        {% if pdp_vendor %}
+        <div style="margin: 1.25rem 0; padding: .9rem 1rem; background: var(--surface-2, rgba(0,0,0,.025)); border-radius: 8px; display: flex; align-items: center; gap: .85rem;">
+          {% if pdp_vendor.logo %}
+            <img src="{{ pdp_vendor.logo.url }}" alt="" loading="lazy" decoding="async"
+                 style="width: 44px; height: 44px; border-radius: 6px; object-fit: contain; background: var(--paper); padding: 4px; border: 1px solid var(--rule); flex-shrink: 0;">
+          {% endif %}
+          <div style="min-width: 0; flex: 1;">
+            <p class="meta" style="font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; margin: 0;">{% translate "Made by" %}</p>
+            <a href="/vendor/{{ pdp_vendor.slug }}/" style="font-family: var(--serif); font-size: 1.05rem; color: var(--ink); border-bottom: 1px dotted var(--rule);">{{ pdp_vendor.name }}</a>
+          </div>
+          <a href="/vendor/{{ pdp_vendor.slug }}/" class="btn btn-ghost" style="font-size: .75rem; padding: .35rem .75rem; flex-shrink: 0;">More from {{ pdp_vendor.name }} →</a>
+        </div>
+        {% endif %}
+
+        {% if book_specs %}
+        <hr class="rule">
+        <div style="margin: 1.5rem 0;">
+          <p class="eyebrow" style="margin-bottom: 0.75rem;">Details</p>
+          <dl style="display:grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.5rem; font-size: 0.92rem; color: var(--ink-2); line-height: 1.5;">
+            {% for spec in book_specs %}
+            <dt class="meta" style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; align-self: center;">{{ spec.label }}</dt>
+            <dd style="margin: 0;">
+              {% if spec.link %}<a href="{{ spec.link }}" style="border-bottom: 1px dotted var(--rule);">{{ spec.value }}</a>{% else %}{{ spec.value }}{% endif %}
+            </dd>
+            {% endfor %}
+          </dl>
+        </div>
+        {% endif %}
+
+        {% if product_codes %}
+        <div style="margin: 1.5rem 0;">
+          <p class="eyebrow" style="margin-bottom: 0.75rem;">Product codes</p>
+          <dl style="display:grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.5rem; font-size: 0.92rem; color: var(--ink-2); line-height: 1.5;">
+            {% for c in product_codes %}
+            <dt class="meta" style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; align-self: center;">{{ c.label }}</dt>
+            <dd style="margin: 0; font-variant-numeric: tabular-nums;">{{ c.value }}</dd>
+            {% endfor %}
+          </dl>
+        </div>
+        {% endif %}
+
+        {% if product.collections %}
+        <div class="pdp-collections" style="margin: 1.25rem 0;">
+          <p class="eyebrow" style="margin-bottom: 0.6rem;">Featured in</p>
+          <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+            {% for col in product.collections %}
+            <a href="/collection/{{ col.slug }}/" class="pdp-collection-chip">{{ col.name }}</a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if product.tags %}
+        <div style="margin-top: 2rem; display:flex; flex-wrap: wrap; gap: 0.4rem;">
+          {% for tag in product.tags %}
+          <a href="/products/?tag={% firstof tag.slug tag.name tag %}" style="font-size: 0.75rem; padding: 0.3rem 0.65rem; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted);">{% firstof tag.name tag %}</a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% storefront_blocks "pdp_above_long_description" %}
+
+    {# PDP TOC removed (10762f1) — position:fixed math overlapped the wrap; #about / #reviews / #faqs / #related anchors below still work. #}
+
+    {% if product.description %}
+    <section class="pdp-about wrap-narrow" id="about" style="scroll-margin-top: 80px;">
+      <p class="eyebrow" style="margin-bottom: 0.75rem;">About this product</p>
+      <hr class="rule" style="margin-bottom: 1.5rem;">
+      <div itemprop="description" class="pdp-long-desc">
+        {# description is HTML from the TipTap editor; render unescaped. #}
+        {{ product.description|safe }}
+      </div>
+    </section>
+    {% endif %}
+
+    {# Story (web-story player) renders here — below the long description. #}
+    {% storefront_blocks "pdp_below_long_description" %}
+  </div>
+</section>
+
+
 
 <script>
 /* Variant picker — swaps the displayed price, the hidden variant_id sent

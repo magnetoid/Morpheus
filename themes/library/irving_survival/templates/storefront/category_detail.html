@@ -1,0 +1,82 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% load seo %}
+{% load caching %}
+{% load i18n %}
+{% comment %}A category, on the direction-1a category design: breadcrumb in mono, the
+category name large with its description and count beside it, sort, then the
+grid. The category's own description (Products → Categories) is the lede.{% endcomment %}
+{% block extra_head %}
+  {% seo_breadcrumb_jsonld items=breadcrumb_items %}
+  {% seo_collection_jsonld items=collection_items name=category.name description=category.description %}
+<style>
+  .plp-head { padding: clamp(2.5rem, 5vw, 3.5rem) 0 clamp(1.5rem, 3vw, 2.5rem); }
+  .plp-crumbs { font: 400 .8125rem var(--mono); color: var(--ink2); margin: 0 0 .75rem; }
+  .plp-crumbs a { color: var(--ink2); }
+  .plp-crumbs span[aria-hidden] { margin: 0 .4rem; }
+  .plp-title { display: grid; gap: 1rem; align-items: end; }
+  @media (min-width: 900px) { .plp-title { grid-template-columns: minmax(0, 1fr) minmax(0, 26rem); } .plp-title .plp-aside { text-align: right; } .plp-title .lede { margin-left: auto; } }
+  .plp-title h1 { font-size: clamp(2.6rem, 6vw, 4.5rem); letter-spacing: -.04em; }
+  .plp-title .lede { font-size: 1rem; max-width: 26rem; }
+  .plp-bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; font-size: .875rem; margin-bottom: 1.5rem; color: var(--ink2); }
+  .plp-bar select { height: 42px; padding: 0 .9rem; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: .875rem; }
+  .plp-pagination { display: flex; justify-content: center; align-items: center; gap: .5rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); flex-wrap: wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="plp-head">
+  <div class="wrap">
+    <nav aria-label="{% translate 'Breadcrumb' %}" class="plp-crumbs">
+      {% for item in breadcrumb_items %}
+        {% if forloop.last %}<span aria-current="page">{{ item.name }}</span>{% else %}<a href="{{ item.url }}">{{ item.name }}</a><span aria-hidden="true">/</span>{% endif %}
+      {% endfor %}
+    </nav>
+    <div class="plp-title">
+      <h1 class="display">{{ category.name }}</h1>
+      <div class="plp-aside">
+        <p class="lede">{% if intro_lede %}{{ intro_lede|linebreaksbr }} {% endif %}{% if products %}{% blocktranslate count counter=page_obj.paginator.count %}{{ counter }} product.{% plural %}{{ counter }} products.{% endblocktranslate %}{% endif %}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top: 0;">
+  <div class="wrap">
+    {% if products %}
+    <div class="plp-bar">
+      <span>{{ intro_eyebrow|default:_("Category") }}</span>
+      <form method="get" style="display:flex; align-items:center; gap:.5rem; margin:0;">
+        <label for="sort">{% translate "Sort" %}</label>
+        <select name="sort" id="sort" onchange="this.form.submit()">
+          {% for value, label in sort_options %}
+          <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+    <div class="grid-books">
+      {% for p in products %}
+      {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="{% translate 'Pages' %}" class="plp-pagination">
+      {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="btn btn-ghost">{% translate "Previous" %}</a>{% endif %}
+      <span class="meta" style="padding: 0 1rem;">{% blocktranslate trimmed with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktranslate %}</span>
+      {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="btn btn-ghost">{% translate "Next" %}</a>{% endif %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="tile empty-shelf">
+      <h2>{% translate "Nothing here yet." %}</h2>
+      <p>{% blocktranslate trimmed with name=category.name %}Nothing in {{ name }} is in stock right now.{% endblocktranslate %}</p>
+      <div class="actions">
+        <a href="/products/" class="btn btn-primary">{% translate "See all products" %}</a>
+        <a href="/p/calculator/" class="btn btn-ghost">{% translate "Supply calculator" %}</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

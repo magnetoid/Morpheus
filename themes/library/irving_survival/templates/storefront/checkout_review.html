@@ -1,0 +1,68 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}
+
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 1240px;">
+    <p class="eyebrow">Checkout · 3 of 3</p>
+    <h1 class="display display-l" style="margin: 1rem 0 2rem;">Final look<span class="text-accent">.</span></h1>
+
+    {% if error %}<p style="color:#b00; margin-bottom:1.5rem;">{{ error }}</p>{% endif %}
+
+    <form method="post" style="display:grid; gap: 3rem; grid-template-columns: 1fr;" class="checkout-grid">
+      {% csrf_token %}
+      <div class="stack-6">
+        <div style="border:1px solid var(--rule); border-radius:6px; padding:1.25rem; background:var(--paper);">
+          <p class="eyebrow" style="margin-bottom:.5rem;">Ships to</p>
+          <p style="margin:0;">{{ address.first_name }} {{ address.last_name }}<br>
+          {{ address.address_line1 }}{% if address.address_line2 %}, {{ address.address_line2 }}{% endif %}<br>
+          {{ address.city }}{% if address.state %}, {{ address.state }}{% endif %} {{ address.postal_code }} {{ address.country }}</p>
+          <p style="margin-top:.5rem;"><a href="/checkout/" style="text-decoration:underline;">Edit</a></p>
+        </div>
+
+        <div style="border:1px solid var(--rule); border-radius:6px; padding:1.25rem; background:var(--paper);">
+          <p class="eyebrow" style="margin-bottom:.5rem;">Shipping</p>
+          <p style="margin:0;">{{ rate_label }}</p>
+          <p style="margin-top:.5rem;"><a href="/checkout/shipping/" style="text-decoration:underline;">Change</a></p>
+        </div>
+
+        <div style="border:1px solid var(--rule); border-radius:6px; padding:1.25rem; background:var(--paper);">
+          <p class="eyebrow" style="margin-bottom:.5rem;">Payment</p>
+          <p class="meta">After you place the order we'll redirect to a secure payment page (Stripe). Your card never touches our server.</p>
+        </div>
+
+        {% if show_withdrawal_waiver %}
+        <label style="display:flex; align-items:flex-start; gap:.6rem; padding:.85rem 1rem; border:1px solid var(--rule); border-radius:8px; font-size:.88rem; line-height:1.4;">
+          <input type="checkbox" name="digital_withdrawal_waiver" value="1" required style="margin-top:.2rem;">
+          <span>{{ withdrawal_waiver_text }}</span>
+        </label>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary" style="height: 52px; padding: 0 2rem; align-self: flex-start;" {% if not cart.items %}disabled{% endif %}>Place order</button>
+      </div>
+
+      <aside style="border:1px solid var(--rule); border-radius:4px; padding:2rem; background:var(--paper-2);">
+        <p class="eyebrow">Your order</p>
+        {% if cart.items %}
+        <div style="margin: 1rem 0;">
+          {% for it in cart.items %}
+          <div style="display:flex; justify-content:space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--rule); font-size: .9rem;">
+            <span>{{ it.product.name }} <span style="color:var(--muted);">× {{ it.quantity }}</span></span>
+            <span>{{ it.totalPrice|money }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <hr class="rule" style="margin: 1rem 0;">
+        <div style="display:flex; justify-content:space-between;">
+          <span>Subtotal</span><span>{{ cart.subtotal|money }}</span>
+        </div>
+        {% endif %}
+      </aside>
+    </form>
+  </div>
+</section>
+
+<style>
+@media (min-width: 900px) { .checkout-grid { grid-template-columns: 1.4fr 0.6fr !important; gap: 4rem !important; align-items: start; } }
+</style>
+{% endblock %}

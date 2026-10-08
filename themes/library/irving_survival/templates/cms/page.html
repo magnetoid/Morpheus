@@ -1,0 +1,67 @@
+{% extends "storefront/base.html" %}
+{% load cms %}{% load i18n %}
+
+{% comment %}
+CMS pages in the Irving style. Two slugs carry this theme's planning tools:
+"calculator" renders the supply calculator and "readiness" the readiness check,
+each under the page's own title and excerpt, with the page body below as the
+merchant's own words (sources, an introduction). Any other page renders its body.
+{% endcomment %}
+
+{% block extra_head %}
+<style>
+  .page-head { padding: clamp(3rem, 6vw, 4.5rem) 0 clamp(2rem, 4vw, 3rem); text-align: center; }
+  .page-head .wrap { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+  .page-head .display { max-width: 18ch; text-wrap: balance; }
+  .page-head .lede { max-width: 38rem; }
+  .page-prose { font-size: 1.0625rem; line-height: 1.7; color: var(--ink2); max-width: 46rem; }
+  .page-prose h2, .page-prose h3 { color: var(--ink); letter-spacing: -.02em; line-height: 1.2; margin: 2rem 0 .75rem; }
+  .page-prose a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+  .calc-page { display: grid; gap: 1rem; }
+  @media (min-width: 1024px) { .calc-page { grid-template-columns: 440px minmax(0, 1fr); align-items: start; } }
+  .calc-page__inputs { display: flex; flex-direction: column; gap: 1.5rem; }
+  .calc-page__days { display: flex; justify-content: space-between; font-size: .9375rem; margin-bottom: .5rem; }
+  .calc-page__days label { color: var(--ink2); }
+  .calc-page__days output { font-weight: 600; }
+  .calc-page__assume { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .65rem; }
+  .calc-page__out { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+  .calc-page__listhead { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: .75rem; }
+  .calc-page__actions { display: flex; gap: .75rem; flex-wrap: wrap; padding: 1.5rem 0 1.25rem; border-top: 1px solid var(--ink); margin-top: .5rem; }
+  .ready-page { display: grid; gap: 1rem; }
+  @media (min-width: 1024px) { .ready-page { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: start; } .ready-page__score { position: sticky; top: 92px; } }
+  .ready-page__group { border: 0; margin: 0 0 1.5rem; padding: 0; }
+  .ready-page__group legend { margin-bottom: .5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% render_page_sections page as sections_html %}
+{% if page.slug == 'calculator' or page.slug == 'readiness' %}
+<section class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">{% if page.slug == 'calculator' %}{% translate "Supply calculator" %}{% else %}{% translate "Readiness check" %}{% endif %}</p>
+    <h1 class="display display-l">{{ page.title }}</h1>
+    {% if page.excerpt %}<p class="lede">{{ page.excerpt }}</p>{% endif %}
+  </div>
+</section>
+<div class="wrap">
+  {% if page.slug == 'calculator' %}{% include "storefront/_irving_calculator.html" %}{% else %}{% include "storefront/_irving_readiness.html" %}{% endif %}
+  {% if sections_html %}{{ sections_html }}{% elif page.body %}<div class="page-prose" style="margin-top:3rem">{{ page.body|safe }}</div>{% endif %}
+</div>
+{% include "storefront/_irving_tools_script.html" %}
+{% elif sections_html %}
+{{ sections_html }}
+{% else %}
+<article>
+  <section class="page-head">
+    <div class="wrap">
+      <h1 class="display display-l">{{ page.title }}</h1>
+      {% if page.excerpt %}<p class="lede">{{ page.excerpt }}</p>{% endif %}
+    </div>
+  </section>
+  <div class="wrap">
+    <div class="page-prose" style="margin: 0 auto;">{{ page.body|safe }}</div>
+  </div>
+</article>
+{% endif %}
+{% endblock %}

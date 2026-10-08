@@ -1,0 +1,231 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load caching %}{% load i18n %}{% load pricing %}
+{% comment %}
+Home — direction 1a ("product hero") from the owner's design canvases, in
+Irving's voice. Order: centred hero; the stage (the lead featured product, or
+the household kit list when nothing is featured) with four official figures;
+shop by system (top-level categories, shown from three); featured products; the
+two planning cards; bundles (the "staff-picks" collection, under its own name);
+the guides band. Every product section hides itself when it has nothing to
+show, so an empty catalogue still reads as a finished page.
+{% endcomment %}
+{% block seo %}{% trans "Irving Survival — calm, practical household preparedness" as home_title %}{% trans "Water, food, light, power and first aid for UK households, with a free supply calculator and readiness check based on official guidance." as home_desc %}{% storefront_head title=home_title description=home_desc %}{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Home — in the head so nothing re-flows when the stylesheet arrives late. */
+  .h-hero { padding: clamp(3.5rem, 7vw, 5.5rem) 0 0; }
+  .h-hero .wrap { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.5rem; }
+  .h-hero h1 { max-width: 13ch; text-wrap: balance; }
+  .h-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; margin-top: .5rem; }
+  .h-stage { padding-top: clamp(2.5rem, 5vw, 4rem); padding-bottom: 0; }
+  .h-panel { display: block; position: relative; overflow: hidden; border-radius: var(--r-lg); background: var(--surface); min-height: clamp(320px, 44vw, 640px); }
+  .h-panel img { width: 100%; height: clamp(320px, 44vw, 640px); object-fit: contain; padding: 4%; }
+  .h-panel__cap { position: absolute; left: 1.5rem; bottom: 1.5rem; display: flex; gap: .75rem; align-items: center; font: 400 .8125rem var(--mono); color: var(--ink2); }
+  .h-panel__cap strong { color: var(--ink); font-weight: 500; }
+  a.h-panel:hover { color: inherit; }
+  .h-kit { min-height: 0; padding: clamp(2rem, 5vw, 4rem); display: grid; gap: 2rem; }
+  @media (min-width: 1024px) { .h-kit { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: start; } }
+  .h-kit__head { display: flex; flex-direction: column; gap: 1rem; max-width: 30rem; }
+  .h-kit__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0 2rem; }
+  @media (min-width: 640px) { .h-kit__list { grid-template-columns: 1fr 1fr; } }
+  .h-kit__list li { display: flex; gap: .75rem; padding: .85rem 0; border-top: 1px solid var(--line); font-size: .9375rem; }
+  .h-kit__list li::before { content: ''; width: 10px; height: 10px; border: 1.5px solid var(--ink); border-radius: 3px; flex: none; margin-top: .4rem; }
+  .h-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+  @media (min-width: 900px) { .h-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .h-stat { padding: 2rem 1.25rem 2rem 0; display: flex; flex-direction: column; gap: .35rem; }
+  .h-stat__n { margin: 0; font-size: clamp(1.75rem, 3vw, 2.25rem); font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+  .h-stat__t { margin: 0; font-size: .9375rem; color: var(--ink2); max-width: 22rem; }
+  .h-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+  .h-head .display { font-size: clamp(2rem, 3.6vw, 2.75rem); }
+  .h-systems { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 768px) { .h-systems { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (min-width: 1200px) { .h-systems { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  .h-system { display: flex; flex-direction: column; gap: .75rem; }
+  .h-system__img { aspect-ratio: 1; border-radius: 20px; background: var(--surface); overflow: hidden; }
+  .h-system__img img { width: 100%; height: 100%; object-fit: cover; }
+  .h-system__name { font-size: 1.0625rem; font-weight: 500; }
+  .h-tools { display: grid; gap: 1rem; }
+  @media (min-width: 1024px) { .h-tools { grid-template-columns: 1fr 1fr; } }
+  .h-bundles { display: grid; gap: 1rem; }
+  @media (min-width: 900px) { .h-bundles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .h-bundle { background: var(--surface); border-radius: var(--r-lg); padding: 2rem; display: flex; flex-direction: column; gap: 1rem; }
+  .h-bundle__img { display: block; height: 260px; border-radius: 16px; background: var(--surface2); overflow: hidden; }
+  .h-bundle__img img { width: 100%; height: 100%; object-fit: contain; padding: 6%; }
+  .h-bundle__name { margin: 0; font-size: 1.75rem; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+  .h-bundle__foot { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: auto; }
+  .h-bundle__price { font-size: 1.25rem; }
+  .h-bundle__add { margin: 0; }
+  .h-bundle__add button { background: none; border: 0; padding: .25rem 0; font: 500 .9375rem var(--sans); color: var(--ink); cursor: pointer; }
+  .h-bundle__add button:hover { color: var(--accentText); }
+  .h-band { display: grid; gap: 2.5rem; align-items: center; padding: clamp(2rem, 4.5vw, 3.5rem); }
+  @media (min-width: 1024px) { .h-band { grid-template-columns: 1.2fr 1fr; gap: 3rem; } }
+  .h-band__copy { display: flex; flex-direction: column; gap: 1rem; }
+  .h-band__copy .display { font-size: clamp(2rem, 3.6vw, 2.75rem); }
+  .h-band__list { list-style: none; margin: 0; padding: 0; }
+  .h-band__list li { border-top: 1px solid rgba(243, 242, 238, .18); }
+  .h-band__list a { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem 0; color: var(--inv); font-size: 1.0625rem; }
+  .h-band__list a:hover { color: var(--accent); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% with hero=hero_products|first %}
+<section class="h-hero">
+  <div class="wrap">
+    <p class="eyebrow eyebrow--signal">{% translate "Household preparedness · UK" %}</p>
+    <h1 class="display display-xl">{% translate "Normal life can stop. Your needs don't." %}</h1>
+    <p class="lede">{% translate "Water, food, light, power and first aid for your household. Clear choices, honest limits, and the official guidance to plan with." %}</p>
+    <div class="h-actions">
+      <a href="/products/" class="btn btn-primary">{% translate "Shop the essentials" %}</a>
+      <a href="/p/calculator/" class="btn btn-ghost">{% translate "Work out what you need" %}</a>
+    </div>
+  </div>
+</section>
+
+<section class="h-stage">
+  <div class="wrap">
+    {% if hero and hero.primaryImage.url %}
+    <a class="h-panel" href="/products/{{ hero.slug }}/">
+      {% seo_responsive_image hero.primaryImage.url alt=hero.primaryImage.altText|default:hero.name widths="800,1200,1600" sizes="(min-width: 1440px) 1344px, 94vw" priority=True %}
+      <span class="h-panel__cap"><strong>{{ hero.name }}</strong><span>{% if hero.priceStartsFrom %}{% translate "From" %} {% endif %}{{ hero.price|money }}</span></span>
+    </a>
+    {% else %}
+    <div class="h-panel h-kit">
+      <div class="h-kit__head">
+        <p class="eyebrow">{% translate "The household kit" %}</p>
+        <h2 class="display display-m">{% translate "What to keep at home, in one list." %}</h2>
+        <p class="meta" style="margin:0">{% translate "From the UK Government's guidance. Build it up over time; you do not need to buy it all at once." %}</p>
+      </div>
+      <ul class="h-kit__list">
+        <li>{% translate "Bottled drinking water" %}</li>
+        <li>{% translate "Food that keeps" %}</li>
+        <li>{% translate "Battery or wind-up torch" %}</li>
+        <li>{% translate "Battery or wind-up radio" %}</li>
+        <li>{% translate "Power bank for your phone" %}</li>
+        <li>{% translate "Spare batteries" %}</li>
+        <li>{% translate "First aid kit" %}</li>
+        <li>{% translate "Several days of medicines" %}</li>
+        <li>{% translate "Hand sanitiser and wet wipes" %}</li>
+        <li>{% translate "Important numbers on paper" %}</li>
+      </ul>
+    </div>
+    {% endif %}
+    <div class="h-stats">
+      <div class="h-stat"><p class="h-stat__n">{% translate "2.5–3 L" %}</p><p class="h-stat__t">{% translate "Drinking water per person per day, at the least" %}</p></div>
+      <div class="h-stat"><p class="h-stat__n">{% translate "10 L" %}</p><p class="h-stat__t">{% translate "Per person per day to cook and wash as well" %}</p></div>
+      <div class="h-stat"><p class="h-stat__n">105</p><p class="h-stat__t">{% translate "Free number for a power cut in England, Scotland and Wales" %}</p></div>
+      <div class="h-stat"><p class="h-stat__n">{% translate "Several days" %}</p><p class="h-stat__t">{% translate "Of everyone's regular medicines" %}</p></div>
+    </div>
+  </div>
+</section>
+{% endwith %}
+
+{% if categories|length >= 3 %}
+<section>
+  <div class="wrap">
+    <div class="h-head">
+      <h2 class="display">{% translate "Shop by system" %}</h2>
+      <a href="/products/" class="btn-link">{% translate "All products" %}</a>
+    </div>
+    <div class="h-systems">
+      {% for c in categories|slice:":6" %}
+      <a class="h-system" href="/category/{{ c.slug }}/">
+        <span class="h-system__img">{% if c.image.url %}{% seo_responsive_image c.image.url alt="" widths="300,600" sizes="(min-width: 1200px) 220px, 45vw" %}{% endif %}</span>
+        <span class="h-system__name">{{ c.name }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if featured_products %}
+<section>
+  <div class="wrap">
+    <div class="h-head">
+      <h2 class="display">{% translate "Featured" %}</h2>
+      <a href="/products/?featured=true" class="btn-link">{% translate "See all" %}</a>
+    </div>
+    <div class="grid-books">
+      {% for product in featured_products|slice:":4" %}
+      {% include "storefront/_product_card.html" with product=product %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section>
+  <div class="wrap">
+    {% include "storefront/_irving_tool_cards.html" %}
+  </div>
+</section>
+
+{% if staff_picks %}
+<section>
+  <div class="wrap">
+    <div class="h-head">
+      <div>
+        <h2 class="display">{{ staff_picks_collection.name|default:_("Ready-made bundles") }}</h2>
+        {% if staff_picks_collection.description %}<p class="meta" style="margin:.5rem 0 0; max-width: 50ch;">{{ staff_picks_collection.description }}</p>{% endif %}
+      </div>
+      <a href="/staff-picks/" class="btn-link">{% translate "Compare them" %}</a>
+    </div>
+    <div class="h-bundles">
+      {% for product in staff_picks|slice:":3" %}
+      {% storefront_price product as bundle_price %}
+      <article class="h-bundle">
+        <a class="h-bundle__img" href="/products/{{ product.slug }}/" tabindex="-1" aria-hidden="true">
+          {% if product.primary_image.image %}{% seo_responsive_image product.primary_image.image alt="" widths="400,600,800" sizes="(min-width: 900px) 420px, 92vw" %}{% endif %}
+        </a>
+        {% if product.category %}<p class="eyebrow">{{ product.category.name }}</p>{% endif %}
+        <h3 class="h-bundle__name"><a href="/products/{{ product.slug }}/">{{ product.name }}</a></h3>
+        {% if product.short_description %}<p class="meta" style="margin:0">{{ product.short_description|first_sentence }}</p>{% endif %}
+        <div class="h-bundle__foot">
+          <span class="h-bundle__price">{% if bundle_price %}{{ bundle_price|money }}{% endif %}</span>
+          <form method="post" action="/cart/add/{{ product.id }}/" class="h-bundle__add">
+            {% csrf_token %}
+            <input type="hidden" name="quantity" value="1">
+            <button type="submit">{% translate "Add" %} <span aria-hidden="true">→</span><span class="sr-only"> {{ product.name }} {% translate "to the cart" %}</span></button>
+          </form>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# Plugin-contributed shoppable rails (e.g. advanced_ecommerce featured-collection sliders). #}
+{% storefront_blocks "home_after_rails" %}
+
+<section>
+  <div class="wrap">
+    <div class="tile tile--ink h-band">
+      <div class="h-band__copy">
+        <p class="eyebrow">{% translate "Guides" %}</p>
+        <h2 class="display">{% translate "A little knowledge. A more prepared home." %}</h2>
+        <p class="lede">{% translate "Practical guides, one step at a time: what to do in a power cut, how much water to keep, and what goes in a grab bag." %}</p>
+      </div>
+      {% if journal_teasers %}
+      <div>
+        <ul class="h-band__list">
+          {% for entry in journal_teasers %}
+          <li><a href="/journal/{{ entry.slug }}/"><span>{{ entry.title }}</span><span aria-hidden="true">→</span></a></li>
+          {% endfor %}
+        </ul>
+        <a href="/journal/" class="btn btn-signal" style="margin-top:1.5rem">{% translate "All guides" %}</a>
+      </div>
+      {% else %}
+      <div>
+        <a href="https://prepare.campaign.gov.uk/" class="btn btn-signal" target="_blank" rel="noopener">{% translate "Read the official guidance" %}<span class="sr-only"> {% translate "(opens in a new tab)" %}</span></a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% storefront_blocks "home_below_grid" %}
+{% include "storefront/_irving_tools_script.html" %}
+{% endblock %}

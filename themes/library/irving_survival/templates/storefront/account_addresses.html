@@ -1,0 +1,51 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="meta" style="margin-bottom: 1rem;">
+      <a href="/account/" style="color: var(--muted);">Account</a> / Addresses
+    </p>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+      <h1 class="display display-l" style="margin: .5rem 0 1.5rem;">Addresses<span class="text-accent">.</span></h1>
+      <a href="/account/addresses/new/" class="btn btn-primary">+ Add address</a>
+    </div>
+
+    {% if addresses %}
+    <div style="display: grid; gap: 1rem;">
+      {% for a in addresses %}
+      <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1.5rem;">
+        <div style="display:flex; justify-content:space-between; gap:1rem;">
+          <div>
+            <p style="font-family: var(--serif); font-size: 1.1rem;">
+              {{ a.first_name }} {{ a.last_name }}
+              {% if a.is_default %}<span class="meta" style="margin-left:.5rem;">(default)</span>{% endif %}
+            </p>
+            {% if a.company %}<p class="meta">{{ a.company }}</p>{% endif %}
+            <p class="meta" style="margin-top: .5rem;">
+              {{ a.address_line1 }}{% if a.address_line2 %}, {{ a.address_line2 }}{% endif %}<br>
+              {{ a.city }}, {{ a.state }} {{ a.postal_code }}, {{ a.country }}
+              {% if a.phone %}<br>{{ a.phone }}{% endif %}
+            </p>
+          </div>
+          <div style="display:flex; flex-direction: column; gap: .25rem; align-items:flex-end;">
+            <a href="/account/addresses/{{ a.id }}/edit/" class="btn-link">Edit</a>
+            <form method="post" action="/account/addresses/{{ a.id }}/delete/" onsubmit="return confirm('Delete address?')">
+              {% csrf_token %}
+              <button type="submit" class="btn-link" style="color: var(--accent-ink, var(--muted));">Delete</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px;">
+      <p class="lede" style="margin: 0 auto 1rem;">No addresses saved yet.</p>
+      <a href="/account/addresses/new/" class="btn btn-primary">Add your first address</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

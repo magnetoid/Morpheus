@@ -1,0 +1,46 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load tracking %}{% load seo %}
+
+
+{% block extra_head %}
+{% dl_purchase order %}
+{% gads_purchase_conversion order %}
+{% endblock %}
+{% block content %}
+<section style="padding: 5rem 0;">
+  <div class="wrap" style="max-width: 640px; text-align: center;">
+    <p class="eyebrow">Order received</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
+      Thank you<span class="text-accent">.</span>
+    </h1>
+    <p class="lede" style="margin-bottom: 2rem;">
+      We got your order <strong>#{{ order.order_number }}</strong>. A confirmation
+      email is on its way.
+    </p>
+
+    <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.5rem; text-align: left;">
+      {% for item in order.items.all %}
+      <div style="display: flex; justify-content: space-between; padding: .65rem 0; border-bottom: 1px solid var(--rule);">
+        <div>
+          <p style="font-family: var(--serif); font-size: 1.05rem;">
+            {% if item.product %}{{ item.product.name }}{% else %}{{ item.product_name }}{% endif %}
+          </p>
+          <p class="meta">{{ item.quantity }} × {{ item.unit_price|money }}</p>
+        </div>
+        <p style="font-family: var(--serif); font-weight: 600;">{{ item.total_price|money }}</p>
+      </div>
+      {% endfor %}
+      <div style="display:flex; justify-content: space-between; padding-top: 1rem;">
+        <p style="font-family: var(--serif); font-size: 1.15rem;">Total</p>
+        <p style="font-family: var(--serif); font-size: 1.5rem; font-weight: 600;">{{ order.total|money }}</p>
+      </div>
+    </div>
+
+    {% storefront_blocks "order_receipt_extra" %}
+
+    <div style="margin-top: 2rem;">
+      <a href="{% url 'storefront:product_list' %}" class="btn btn-primary">Keep browsing</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

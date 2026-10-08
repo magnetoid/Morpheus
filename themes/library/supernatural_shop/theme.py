@@ -7,6 +7,10 @@ Design notes
 - One brass accent (#c9a227) on the wordmark period and primary CTA.
 - Display in Cormorant Garamond. Body in Outfit.
 - Same layout contract as dot_books (topbar, window hero, cards, PDP).
+- Copy (2026-10): a food-first longevity shop — daily staples, mushrooms and
+  adaptogens, a pantry — with the aromatherapy and arcana shelves kept. The
+  footer carries the US supplement disclaimer; no page states a shipping
+  rate, a threshold or a carrier (checkout owns those).
 - Activate only via instance env. Do not commit MORPHEUS_ACTIVE_THEME.
 """
 
@@ -18,10 +22,10 @@ from themes.base import MorpheusTheme
 class SupernaturalShopTheme(MorpheusTheme):
     name = 'supernatural_shop'
     label = 'Supernatural Shop'
-    version = '0.1.3'
+    version = '0.2.0'
     description = (
-        'Light editorial shop theme. Linen paper, dark ink, a single brass mark. '
-        'Built on the dot_books storefront contract.'
+        'Light editorial theme for a food-first longevity shop. Linen paper, dark '
+        'ink, a single brass mark. Built on the dot_books storefront contract.'
     )
     author = 'Morph Team'
     supports_plugins = ['storefront', 'catalog', 'orders']

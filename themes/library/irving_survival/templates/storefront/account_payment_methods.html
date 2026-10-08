@@ -1,0 +1,158 @@
+{% extends "storefront/base.html" %}
+
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 760px;">
+
+    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.5rem;">
+      <a href="/" style="color: var(--muted);">Home</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <a href="/account/" style="color: var(--muted);">Account</a>
+      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+      <span aria-current="page">Saved cards</span>
+    </nav>
+
+    <p class="eyebrow">Payment methods</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">Your saved cards<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 0;">
+      Cards you've chosen to keep on file for faster checkout. We never see the numbers — Stripe holds them, we hold a reference. Remove one any time; we'll forget it immediately.
+    </p>
+
+  </div>
+</section>
+
+<section style="padding: 0 0 4rem;">
+  <div class="wrap" style="max-width: 760px;">
+
+    {% if notice %}
+    <div class="card card-padded" style="background: var(--paper-2); padding: 1rem 1.25rem; border-radius: 6px; border-left: 3px solid var(--accent); margin-bottom: 1.5rem;">
+      <p style="margin: 0; color: var(--ink-2);">{{ notice }}</p>
+    </div>
+    {% endif %}
+    {% if error %}
+    <div class="card card-padded" style="background:#fde7e9; color:#b3261e; padding:1rem 1.25rem; border-radius:6px; margin-bottom: 1.5rem;">
+      <p style="margin: 0;">{{ error }}</p>
+    </div>
+    {% endif %}
+
+    {% comment %}── Saved cards list ────────────────────────────────────{% endcomment %}
+    <div style="margin: 1rem 0 3rem;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">On file</h2>
+
+      {% if cards %}
+      <ul style="list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem;">
+        {% for pm in cards %}
+        <li style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper);">
+          <div style="display:flex; align-items:center; gap: 1rem;">
+            <div style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; text-transform: capitalize; font-size: 1.1rem;">
+              {{ pm.card.brand }}
+            </div>
+            <div style="color: var(--ink-2);">
+              <span style="letter-spacing: .1em;">•••• {{ pm.card.last4 }}</span>
+              <span style="margin: 0 .5rem; color: var(--muted);">·</span>
+              <span style="color: var(--muted); font-size: .9rem;">
+                Expires {{ pm.card.exp_month|stringformat:"02d" }}/{{ pm.card.exp_year }}
+              </span>
+            </div>
+          </div>
+          <form method="post" action="/account/payment-methods/" style="margin: 0;"
+                onsubmit="return confirm('Remove this card from your account?');">
+            {% csrf_token %}
+            <input type="hidden" name="delete_id" value="{{ pm.id }}">
+            <button type="submit" class="btn-link" style="color: var(--muted); background: none; border: 0; cursor: pointer; font-size: .9rem;">
+              Remove
+            </button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p style="color: var(--ink-2); margin: 0;">No cards on file yet. Add one below to speed through future checkouts.</p>
+      {% endif %}
+    </div>
+
+    {% comment %}── Add new card ───────────────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0; padding: 2rem; border: 1px solid var(--rule); border-radius: 8px;">
+      <h2 class="display display-m" style="margin: 0 0 .5rem;">Add a card</h2>
+      <p style="color: var(--ink-2); margin: 0 0 1.5rem;">
+        We collect the card now, charge nothing, and have it ready for your next order. Authentication (3-D Secure) happens here once so checkout stays one tap.
+      </p>
+
+      {% if not stripe_publishable_key or not setup_client_secret %}
+      <p style="color: var(--muted); margin: 0;">
+        Card-on-file isn't available right now. Refresh in a moment, or
+        just enter your card at checkout — we'll offer to save it there too.
+      </p>
+      {% else %}
+      <div id="setup-element" style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem; background: var(--paper);"></div>
+      <div id="setup-message" style="margin-top: .75rem; font-size: .9rem;"></div>
+      <button id="submit-setup" class="btn btn-primary"
+              style="margin-top: 1.25rem; height: 48px; padding: 0 1.75rem;">
+        Save this card
+      </button>
+
+      <script src="https://js.stripe.com/v3/"></script>
+      <script>
+      (function () {
+        var stripe = Stripe('{{ stripe_publishable_key|escapejs }}');
+        var elements = stripe.elements({
+          clientSecret: '{{ setup_client_secret|escapejs }}',
+          appearance: {
+            theme: 'stripe',
+            variables: {
+              colorPrimary: '#0e0e0e',
+              fontFamily: 'system-ui, sans-serif',
+              borderRadius: '8px',
+            },
+          },
+        });
+        var paymentElement = elements.create('payment');
+        paymentElement.mount('#setup-element');
+
+        var btn = document.getElementById('submit-setup');
+        var msg = document.getElementById('setup-message');
+
+        btn.addEventListener('click', async function () {
+          btn.disabled = true;
+          msg.textContent = '';
+          var result = await stripe.confirmSetup({
+            elements: elements,
+            confirmParams: {
+              return_url: '{{ return_url|escapejs }}',
+            },
+          });
+          if (result.error) {
+            msg.textContent = result.error.message || 'We could not save that card — please try again.';
+            msg.style.color = '#b00020';
+            btn.disabled = false;
+          }
+        });
+      })();
+      </script>
+      {% endif %}
+    </div>
+
+    {% comment %}── Reassurance ───────────────────────────────────────{% endcomment %}
+    <div style="margin: 3rem 0 0;">
+      <h2 class="display display-m" style="margin: 0 0 1rem;">A few honest notes</h2>
+
+      <details style="border-bottom: 1px solid var(--rule); padding: 1rem 0;">
+        <summary style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; cursor: pointer;">Where is my card actually stored?</summary>
+        <p style="color: var(--ink-2); margin: .75rem 0 0;">On Stripe's servers, under their PCI-DSS Level 1 vault. We only keep a reference token (<code>pm_…</code>) — useless to anyone who isn't Stripe.</p>
+      </details>
+
+      <details style="border-bottom: 1px solid var(--rule); padding: 1rem 0;">
+        <summary style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; cursor: pointer;">What happens when I click Remove?</summary>
+        <p style="color: var(--ink-2); margin: .75rem 0 0;">We detach the card from your account immediately. Open orders aren't affected — they keep the charge that already went through.</p>
+      </details>
+
+      <details style="border-bottom: 1px solid var(--rule); padding: 1rem 0;">
+        <summary style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; cursor: pointer;">Will you ever charge a saved card without me?</summary>
+        <p style="color: var(--ink-2); margin: .75rem 0 0;">Only on a subscription renewal or a pre-authorised back-order — and only after you've explicitly opted in to that specific arrangement. Never out of the blue.</p>
+      </details>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

@@ -3,12 +3,21 @@
 {% comment %}The home page is the one page whose copy is the theme's own: there is no
 product or category to describe it. Everything else resolves centrally, so this block
 passes only the fallbacks — a merchant who fills in Settings → SEO overrides them.{% endcomment %}
-{% block seo %}{% storefront_head title="Supernatural Shop — a curated shop" description="Oils, hydrosols, and ritual goods — curated, modern, independent." %}{% endblock %}
+{% block seo %}{% storefront_head title="Supernatural Shop — daily staples, mushrooms and a longevity pantry" description="Magnesium, omega-3, fiber, mushrooms, matcha and pantry foods, chosen on evidence and modestly priced, with plain guides that cite their sources." %}{% endblock %}
 
 {% block extra_head %}
 {% with hero_products|first as pick %}
 {# No <link rel=preload> of the raw original — the hero renders through the responsive proxy. #}
 {% endwith %}
+<style>
+  /* Shelf index: a one-line description under each shelf name. In the head, so
+     the rows never re-flow when the stylesheet arrives after the markup. */
+  .shelf-index .genre-index__item small {
+    display: block; margin-top: .3rem;
+    font-family: var(--sans); font-size: .85rem; font-weight: 400; letter-spacing: 0;
+    line-height: 1.45; color: var(--ink-2);
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -42,18 +51,18 @@ line. What stays deleted stays deleted: no autoplay, no decode, no JS
 measurement — the stacked-panel stage still gives every slide the same
 geometry, so the dots and cover never move between books.
 {% endcomment %}
-<section id="editors-pick" class="window" data-home-hero aria-label="This weeks">
+<section id="editors-pick" class="window" data-home-hero aria-label="Featured products">
   <div class="wrap">
     {% comment %}The home page has no other h1 — the hero used to open with an h2
     and nothing above it. The shop name is the page's heading; the visible
-    hierarchy starts at the book title.{% endcomment %}
-    <h1 class="sr-only">Supernatural Shop — a curated shop</h1>
+    hierarchy starts at the product name.{% endcomment %}
+    <h1 class="sr-only">Supernatural Shop — daily staples, mushrooms and a longevity pantry</h1>
 
     <div class="window__shell">
       <div class="window__copy">
         <header class="window__lead">
-          <p class="eyebrow">This week</p>
-          <h2 class="display display-l window__headline">Chosen<br>this week<span class="text-accent">.</span></h2>
+          <p class="eyebrow">Daily staples</p>
+          <h2 class="display display-l window__headline">Start with<br>the staples<span class="text-accent">.</span></h2>
         </header>
         <div class="window__copy-stage">
           {% for pick in hero_products %}
@@ -83,7 +92,7 @@ geometry, so the dots and cover never move between books.
         </div>
 
         {% if hero_products|length > 1 %}
-        <div class="window__dots" role="tablist" aria-label="Choose a featured book">
+        <div class="window__dots" role="tablist" aria-label="Choose a featured product">
           {% for pick in hero_products %}
           <button
             type="button"
@@ -426,8 +435,8 @@ geometry, so the dots and cover never move between books.
   <div class="wrap">
     <div style="display:flex; align-items:end; justify-content:space-between; margin-bottom: 2.5rem; gap: 1rem;" data-reveal>
       <div>
-        <p class="eyebrow">Just in</p>
-        <h2 class="display display-m" style="margin-top: 0.6rem;">New &amp; notable<span class="text-accent">.</span></h2>
+        <p class="eyebrow">Featured</p>
+        <h2 class="display display-m" style="margin-top: 0.6rem;">The shortlist<span class="text-accent">.</span></h2>
       </div>
       <a href="/products/?featured=true" class="btn-link">See all</a>
     </div>
@@ -438,7 +447,7 @@ geometry, so the dots and cover never move between books.
         {% include "storefront/_product_card.html" with product=product %}
         {% empty %}
         <div style="padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px; flex: 1 1 100%;">
-          <p class="lede" style="margin: 0 auto;">The shelf is being restocked. Check back tomorrow.</p>
+          <p class="lede" style="margin: 0 auto;">Nothing is featured right now. <a href="/products/">Browse the whole shop</a>.</p>
         </div>
         {% endfor %}
       </div>
@@ -453,11 +462,11 @@ geometry, so the dots and cover never move between books.
   <div class="wrap">
     <div style="display:flex; align-items:end; justify-content:space-between; margin-bottom: 2.5rem; gap: 1rem;" data-reveal>
       <div>
-        <p class="eyebrow">From the editor</p>
-        <h2 class="display display-m" style="margin-top: 0.6rem;">Staff picks<span class="text-accent">.</span></h2>
+        <p class="eyebrow">A first basket</p>
+        <h2 class="display display-m" style="margin-top: 0.6rem;">{{ staff_picks_collection.name|default:"Start here" }}<span class="text-accent">.</span></h2>
         {% if staff_picks_collection.description %}<p class="meta" style="margin-top: 0.5rem; max-width: 50ch;">{{ staff_picks_collection.description }}</p>{% endif %}
       </div>
-      <a href="/staff-picks/" class="btn-link">All picks</a>
+      <a href="/staff-picks/" class="btn-link">See the basket</a>
     </div>
     <div class="book-rail-wrap" data-reveal>
       <button class="book-rail-nav book-rail-nav--prev" type="button" aria-label="Scroll left" data-rail-prev>&larr;</button>
@@ -496,38 +505,59 @@ geometry, so the dots and cover never move between books.
     </div>
   </div>
 </section>
-{% elif categories|length >= 3 %}
+{% else %}
+{% comment %}The shop's shelves, in the order the shop is built: the staples first,
+then mushrooms, then food. Curated rather than every top-level category — the
+imported aromatherapy catalogue alone has two dozen of those.{% endcomment %}
 <section class="tight">
   <div class="wrap">
     <div data-reveal>
-      <p class="eyebrow">Find your section</p>
+      <p class="eyebrow">Shop by shelf</p>
       <h2 class="display display-m" style="margin-top: 0.6rem;">Browse the shop<span class="text-accent">.</span></h2>
     </div>
-    <div class="genre-index" data-reveal>
-      {% for c in categories %}
-      <a class="genre-index__item" href="/category/{{ c.slug }}/">
-        <span>{{ c.name }}</span>
+    <div class="genre-index shelf-index" data-reveal>
+      <a class="genre-index__item" href="/category/wellness-vitamins/">
+        <span>Daily staples<small>Magnesium, omega-3, vitamin D with K2, B12, fiber and collagen.</small></span>
         <span class="genre-index__arrow" aria-hidden="true">→</span>
       </a>
-      {% endfor %}
+      <a class="genre-index__item" href="/category/wellness-adaptogens/">
+        <span>Mushrooms &amp; adaptogens<small>Lion's mane, reishi, cordyceps, rhodiola and tulsi.</small></span>
+        <span class="genre-index__arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="genre-index__item" href="/category/wellness-superfoods/">
+        <span>Pantry<small>Matcha, cacao, ground flax, seaweed and loose-leaf tea.</small></span>
+        <span class="genre-index__arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="genre-index__item" href="/category/wellness-herbal/">
+        <span>Herbal tinctures<small>Single herbs, bitters and syrups, with interaction notes.</small></span>
+        <span class="genre-index__arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="genre-index__item" href="/category/aromatherapy-blends/">
+        <span>Aromatherapy<small>Blends, single oils and hydrosols for the diffuser.</small></span>
+        <span class="genre-index__arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="genre-index__item" href="/category/arcana/">
+        <span>Arcana<small>Crystals, incense and curiosities, the shop's first shelf.</small></span>
+        <span class="genre-index__arrow" aria-hidden="true">→</span>
+      </a>
     </div>
   </div>
 </section>
 {% endif %}
 
-<!-- Manifesto block — placed after the shoppable rails so product density leads. -->
+<!-- Standards — after the shoppable rails so products lead the page. -->
 <section style="background: var(--paper-2); padding: 6rem 0;">
   <div class="wrap" style="text-align: center;">
-    <p class="eyebrow" data-reveal>A note from us</p>
+    <p class="eyebrow" data-reveal>Our standards</p>
     <h2 class="display display-l" style="margin: 1.5rem auto; max-width: 22ch;">
-      We don't sell oils we wouldn't use ourselves<span class="text-accent">.</span>
+      Named for the natural, sold on the tested<span class="text-accent">.</span>
     </h2>
     <p class="lede" style="margin: 0 auto;" data-reveal>
-      Every bottle here is chosen for the workbench — not the bookshelf. If we put it in front of you, it earned the spot.
+      Every dose on the label, an independent lab result for the batch, and no promise a product can't keep. If a maker can't show us the certificate, the product doesn't go on the shelf.
     </p>
     <div style="margin-top: 2rem; display:flex; gap: 1.5rem; justify-content:center; flex-wrap: wrap;" data-reveal>
-      <a href="/about/" class="btn-link">Read the manifesto</a>
-      <a href="/vendors/" class="btn-link">Meet the publishers</a>
+      <a href="/p/standards/" class="btn-link">Read our standards</a>
+      <a href="/journal/a-simple-daily-stack/" class="btn-link">A simple daily stack</a>
     </div>
   </div>
 </section>
@@ -540,10 +570,10 @@ geometry, so the dots and cover never move between books.
   <div class="wrap">
     <div style="display:grid; grid-template-columns: 1fr; gap: 2rem; align-items: end;">
       <div>
-        <p class="eyebrow">From the journal</p>
-        <h2 class="display display-m" style="margin-top: 0.6rem;">From the journal<span class="text-accent">.</span></h2>
+        <p class="eyebrow">Guides</p>
+        <h2 class="display display-m" style="margin-top: 0.6rem;">Read before you buy<span class="text-accent">.</span></h2>
       </div>
-      <a href="/journal/" class="btn-link">All entries</a>
+      <a href="/journal/" class="btn-link">All guides</a>
     </div>
 
     <div style="display:grid; gap: 2rem; grid-template-columns: 1fr; margin-top: 2rem;" class="journal-grid">

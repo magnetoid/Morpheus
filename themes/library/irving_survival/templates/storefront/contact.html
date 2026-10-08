@@ -1,0 +1,48 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+
+{% block extra_head %}
+{% seo_contactpage_jsonld name="Contact us" description="Questions about kit, an order or your household plan: get in touch." %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 600px;">
+    <p class="eyebrow">Get in touch</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
+      Say hello<span class="text-accent">.</span>
+    </h1>
+    <p class="lede" style="margin-bottom: 2rem;">
+      A question about kit, an order or your household plan? We read every message.
+    </p>
+
+    {% if sent %}
+    <div style="background: var(--paper-2); padding: 1.5rem; border-radius: 6px; border: 1px solid var(--rule); margin-bottom: 2rem;">
+      <p style="font-family: var(--serif); font-size: 1.1rem;">
+        Thanks — we got your note and will reply soon.
+      </p>
+    </div>
+    {% else %}
+    <form method="post" action="/contact/" style="display: grid; gap: 1rem;">
+      {% csrf_token %}
+      <div>
+        <label class="meta" style="display:block; margin-bottom: .35rem;">Name</label>
+        <input type="text" name="name" required style="width: 100%; height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); font-family: var(--sans);">
+      </div>
+      <div>
+        <label class="meta" style="display:block; margin-bottom: .35rem;">Email</label>
+        <input type="email" name="email" required style="width: 100%; height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); font-family: var(--sans);">
+      </div>
+      <div>
+        <label class="meta" style="display:block; margin-bottom: .35rem;">Message</label>
+        <textarea name="message" required rows="6" style="width: 100%; padding: .85rem 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); font-family: var(--sans); resize: vertical;"></textarea>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary" style="height: 48px;">Send</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

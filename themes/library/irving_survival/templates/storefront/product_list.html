@@ -1,0 +1,161 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% load i18n %}{% load seo %}{% load tracking %}
+{% comment %}
+The shop and its filtered views, on the direction-1a category design: a large
+title with its description beside it, filters in a sidebar (search, category,
+sort and every attribute facet in ONE form, so no control drops another's
+selection), active filters as removable chips above a three-column grid.
+{% endcomment %}
+
+{% block extra_head %}
+{% seo_collection_jsonld items=plp_items name=plp_name description=seo_description %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% seo_pagination_links page_obj=page_obj %}
+{% dl_view_item_list products list_id=selected_category|default:'all' list_name=plp_name %}
+<style>
+  .plp-head { padding: clamp(2.5rem, 5vw, 3.5rem) 0 clamp(1.5rem, 3vw, 2.5rem); }
+  .plp-crumbs { font: 400 .8125rem var(--mono); color: var(--ink2); margin: 0 0 .75rem; }
+  .plp-crumbs a { color: var(--ink2); }
+  .plp-crumbs span[aria-hidden] { margin: 0 .4rem; }
+  .plp-title { display: grid; gap: 1rem; align-items: end; }
+  @media (min-width: 900px) { .plp-title { grid-template-columns: minmax(0, 1fr) minmax(0, 26rem); } .plp-title .plp-aside { text-align: right; } }
+  .plp-title h1 { font-size: clamp(2.6rem, 6vw, 4.5rem); letter-spacing: -.04em; }
+  .plp-title .lede { font-size: 1rem; max-width: 26rem; margin-left: auto; }
+  .plp-layout { display: grid; gap: 2rem; }
+  @media (min-width: 1024px) { .plp-layout--side { grid-template-columns: 260px minmax(0, 1fr); gap: 3rem; } }
+  .plp-side { display: flex; flex-direction: column; gap: 1.75rem; font-size: .9375rem; }
+  @media (min-width: 1024px) { .plp-side { position: sticky; top: 96px; align-self: start; } }
+  .plp-group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .65rem; }
+  .plp-group legend, .plp-group > .label { font: 500 .75rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink2); margin-bottom: .35rem; padding: 0; }
+  .plp-field { width: 100%; height: 46px; padding: 0 1rem; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; font-size: .9375rem; }
+  .plp-check { display: flex; align-items: center; gap: .65rem; cursor: pointer; }
+  .plp-check input { width: 16px; height: 16px; margin: 0; accent-color: var(--ink); }
+  .plp-swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--line-strong); }
+  .plp-bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; font-size: .875rem; margin-bottom: 1.5rem; }
+  .plp-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .chip { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .8rem; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--ink); font-size: .875rem; }
+  .chip:hover { border-color: var(--ink); color: var(--ink); }
+  .chip-clear { color: var(--ink2); border-style: dashed; }
+  @media (min-width: 1024px) { .plp-layout--side .grid-books { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .plp-pagination { display: flex; justify-content: center; align-items: center; gap: .5rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); flex-wrap: wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="plp-head">
+  <div class="wrap">
+    <nav aria-label="{% translate 'Breadcrumb' %}" class="plp-crumbs">
+      {% for item in breadcrumb_items %}
+        {% if forloop.last %}<span aria-current="page">{{ item.name }}</span>{% else %}<a href="{{ item.url }}">{{ item.name }}</a><span aria-hidden="true">/</span>{% endif %}
+      {% endfor %}
+    </nav>
+    <div class="plp-title">
+      <h1 class="display">
+        {% if selected_author %}{{ selected_author }}
+        {% elif selected_publisher %}{{ selected_publisher }}
+        {% elif selected_category_obj %}{{ selected_category_obj.name }}
+        {% elif selected_tag %}{{ selected_tag_obj.name|default:selected_tag }}
+        {% elif search_query %}{% blocktranslate trimmed %}Results for “{{ search_query }}”{% endblocktranslate %}
+        {% else %}{% translate "All products" %}{% endif %}
+      </h1>
+      <div class="plp-aside">
+        {% comment %}Ledes prefer the dashboard-editable description for the term
+           (tags: Tag descriptions; categories on their own pages), falling back
+           to house copy.{% endcomment %}
+        <p class="lede">{% if selected_author %}{% if not author_lede %}{% blocktranslate trimmed with name=selected_author %}Products from {{ name }}.{% endblocktranslate %}{% endif %}{% elif selected_publisher %}{% if not publisher_lede %}{% blocktranslate trimmed with name=selected_publisher %}From {{ name }}.{% endblocktranslate %}{% endif %}{% elif selected_tag %}{% if selected_tag_obj.description %}{{ selected_tag_obj.description|linebreaksbr }}{% else %}{% blocktranslate trimmed with tag=selected_tag %}Everything tagged “{{ tag }}”.{% endblocktranslate %}{% endif %}{% elif selected_category_obj.description %}{{ selected_category_obj.description|linebreaksbr }}{% elif page_intro %}{{ page_intro|linebreaksbr }}{% else %}{% translate "Water, food, light, power and first aid for your household." %}{% endif %}{% if page_obj %} <span class="plp-count">{% blocktranslate count counter=page_obj.paginator.count %}{{ counter }} product.{% plural %}{{ counter }} products.{% endblocktranslate %}</span>{% endif %}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap plp-layout{% if facets or categories|length > 1 %} plp-layout--side{% endif %}">
+  <aside class="plp-side" aria-label="{% translate 'Filters' %}">
+    <form method="get" id="plp-filters" class="plp-side" role="search">
+      <div class="plp-group">
+        <label class="label" for="plp-q">{% translate "Search" %}</label>
+        <input id="plp-q" class="plp-field" name="q" value="{{ search_query }}" placeholder="{% translate 'Search products' %}">
+      </div>
+      {% if categories|length > 1 %}
+      <div class="plp-group">
+        <label class="label" for="plp-category">{% translate "Category" %}</label>
+        <select id="plp-category" class="plp-field" name="category" onchange="this.form.requestSubmit()">
+          <option value="">{% translate "All categories" %}</option>
+          {% for c in categories %}<option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      {% if available_authors %}
+      <div class="plp-group">
+        <label class="label" for="plp-author">{% translate "Brand" %}</label>
+        <input id="plp-author" class="plp-field" name="author" list="plp-author-list" value="{{ selected_author }}" autocomplete="off">
+        <datalist id="plp-author-list">{% for a in available_authors %}<option value="{{ a }}"></option>{% endfor %}</datalist>
+      </div>
+      {% endif %}
+      {% for f in facets %}
+      <fieldset class="plp-group">
+        <legend>{{ f.attr.name }}</legend>
+        {% for v in f.values %}
+        <label class="plp-check">
+          <input type="checkbox" name="attr_{{ f.attr.slug }}" value="{{ v.slug }}" {% if v.slug in f.selected %}checked{% endif %} onchange="this.form.requestSubmit()">
+          {% if f.attr.input_type == 'color' and v.value %}<span class="plp-swatch" style="background:{{ v.value }};" aria-hidden="true"></span>{% endif %}
+          <span>{{ v.name }}</span>
+        </label>
+        {% endfor %}
+      </fieldset>
+      {% endfor %}
+      <div class="plp-group">
+        <label class="label" for="plp-sort">{% translate "Sort" %}</label>
+        <select id="plp-sort" class="plp-field" name="sort" onchange="this.form.requestSubmit()">
+          <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>{% translate "Newest" %}</option>
+          <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>{% translate "Price, low to high" %}</option>
+          <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>{% translate "Price, high to low" %}</option>
+          <option value="name" {% if selected_sort == 'name' %}selected{% endif %}>{% translate "Name" %}</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="align-self:flex-start">{% translate "Apply" %}</button>
+    </form>
+  </aside>
+
+  <div class="plp-main">
+    {% if selected_author or selected_publisher or selected_category or selected_tag or search_query %}
+    <div class="plp-bar">
+      <div class="plp-chips">
+        {% if search_query %}<a href="?{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">{{ search_query }} <span aria-hidden="true">×</span><span class="sr-only">{% translate "remove" %}</span></a>{% endif %}
+        {% if selected_author %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">{{ selected_author }} <span aria-hidden="true">×</span><span class="sr-only">{% translate "remove" %}</span></a>{% endif %}
+        {% if selected_publisher %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">{{ selected_publisher }} <span aria-hidden="true">×</span><span class="sr-only">{% translate "remove" %}</span></a>{% endif %}
+        {% if selected_category %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">{{ selected_category_obj.name|default:selected_category }} <span aria-hidden="true">×</span><span class="sr-only">{% translate "remove" %}</span></a>{% endif %}
+        {% if selected_tag %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}" class="chip">{{ selected_tag }} <span aria-hidden="true">×</span><span class="sr-only">{% translate "remove" %}</span></a>{% endif %}
+        <a href="/products/" class="chip chip-clear">{% translate "Clear all" %}</a>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if products %}
+    <div class="grid-books">
+      {% for p in products %}
+      {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+
+    {% if page_obj and page_obj.paginator.num_pages > 1 %}
+    <nav class="plp-pagination" aria-label="{% translate 'Pages' %}">
+      {% if page_obj.has_previous %}<a class="btn btn-ghost" href="{% page_href page_obj.previous_page_number %}" rel="prev">{% translate "Previous" %}</a>{% endif %}
+      <span class="meta" style="padding: 0 1rem;">{% blocktranslate trimmed with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktranslate %}</span>
+      {% if page_obj.has_next %}<a class="btn btn-ghost" href="{% page_href page_obj.next_page_number %}" rel="next">{% translate "Next" %}</a>{% endif %}
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="tile empty-shelf">
+      <h2>{% translate "Nothing here yet." %}</h2>
+      <p>{% translate "Nothing matches these filters right now. Clear them, or work out what your household needs first." %}</p>
+      <div class="actions">
+        <a href="/products/" class="btn btn-primary">{% translate "See all products" %}</a>
+        <a href="/p/calculator/" class="btn btn-ghost">{% translate "Supply calculator" %}</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

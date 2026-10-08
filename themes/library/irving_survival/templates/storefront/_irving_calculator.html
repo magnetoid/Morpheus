@@ -1,0 +1,78 @@
+{% load i18n %}
+{% comment %}The full supply calculator (/p/calculator/ — the CMS page with slug
+"calculator", rendered by this theme's cms/page.html). Inner-page design on
+direction 1a: inputs on the left, four result cards and the list on the right.
+Defaults: 2 adults, 0 children, 3 days. The list names quantities, not products:
+the theme cannot know which product in this catalogue answers each line.{% endcomment %}
+<div class="calc-page" data-calc>
+  <div class="tile calc-page__inputs">
+    <div class="stepper">
+      <span class="stepper__label" id="calc-adults-label">{% translate "Adults" %}</span>
+      <span class="stepper__ctl">
+        <button type="button" class="stepper__btn" data-calc-step="adults" data-delta="-1" aria-label="{% translate 'One adult fewer' %}">−</button>
+        <output class="stepper__val" data-calc-value="adults" data-min="1" data-max="12" aria-labelledby="calc-adults-label">2</output>
+        <button type="button" class="stepper__btn" data-calc-step="adults" data-delta="1" aria-label="{% translate 'One adult more' %}">+</button>
+      </span>
+    </div>
+    <div class="stepper">
+      <span class="stepper__label" id="calc-children-label">{% translate "Children" %}</span>
+      <span class="stepper__ctl">
+        <button type="button" class="stepper__btn" data-calc-step="children" data-delta="-1" aria-label="{% translate 'One child fewer' %}">−</button>
+        <output class="stepper__val" data-calc-value="children" data-min="0" data-max="12" aria-labelledby="calc-children-label">0</output>
+        <button type="button" class="stepper__btn" data-calc-step="children" data-delta="1" aria-label="{% translate 'One child more' %}">+</button>
+      </span>
+    </div>
+    <div>
+      <div class="calc-page__days"><label for="calc-days">{% translate "Days" %}</label><output data-calc-out="days" for="calc-days">3</output></div>
+      <input class="range" type="range" id="calc-days" min="1" max="90" value="3" data-calc-value="days">
+      <div class="range-ticks" aria-hidden="true"><span>1</span><span>30</span><span>60</span><span>90</span></div>
+    </div>
+    <fieldset class="calc-page__assume">
+      <legend class="stepper__label">{% translate "Plan for" %}</legend>
+      <div class="chips">
+        <label class="chip-toggle"><input type="checkbox" data-calc-flag="notap" checked><span>{% translate "No tap water" %}</span></label>
+        <label class="chip-toggle"><input type="checkbox" data-calc-flag="meds"><span>{% translate "Regular medicines" %}</span></label>
+        <label class="chip-toggle"><input type="checkbox" data-calc-flag="baby"><span>{% translate "A baby" %}</span></label>
+        <label class="chip-toggle"><input type="checkbox" data-calc-flag="pets"><span>{% translate "Pets" %}</span></label>
+      </div>
+    </fieldset>
+  </div>
+
+  <div class="calc-page__out">
+    <div class="result-cards" aria-live="polite">
+      <div class="result-card"><p class="results__n" data-calc-out="meals">18</p><p class="results__t">{% translate "meals" %}</p></div>
+      <div class="result-card"><p class="results__n"><span data-calc-out="drink">18</span> L</p><p class="results__t">{% translate "drinking water" %}</p></div>
+      <div class="result-card"><p class="results__n"><span data-calc-out="all">60</span> L</p><p class="results__t">{% translate "water to cook and wash too" %}</p></div>
+      <div class="result-card"><p class="results__n" data-calc-out="torches">2</p><p class="results__t">{% translate "torches, one per adult" %}</p></div>
+    </div>
+
+    <div class="tile">
+      <div class="calc-page__listhead">
+        <h2 class="display display-m" style="font-size:1.75rem">{% translate "Your list" %}</h2>
+        <p class="meta" style="margin:0">{% blocktranslate trimmed %}For <span data-calc-out="people">2</span> people, <span data-calc-out="days">3</span> days{% endblocktranslate %}</p>
+      </div>
+      <table class="list-table">
+        <tbody>
+          <tr><th scope="row">{% translate "Bottled drinking water" %}</th><td><span data-calc-out="drink">18</span> L · <span data-calc-out="bottles">4</span> × 5 L</td></tr>
+          <tr data-calc-row="notap"><th scope="row">{% translate "Extra water to cook and wash" %}</th><td><span data-calc-out="extra">42</span> L</td></tr>
+          <tr><th scope="row">{% translate "Food that keeps and needs little or no cooking" %}</th><td><span data-calc-out="meals">18</span> {% translate "meals" %}</td></tr>
+          <tr><th scope="row">{% translate "Manual tin opener" %}</th><td>1</td></tr>
+          <tr><th scope="row">{% translate "Battery or wind-up torch, with spare batteries" %}</th><td data-calc-out="torches">2</td></tr>
+          <tr><th scope="row">{% translate "Power bank, kept charged" %}</th><td data-calc-out="banks">2</td></tr>
+          <tr><th scope="row">{% translate "Battery or wind-up radio" %}</th><td>1</td></tr>
+          <tr><th scope="row">{% translate "First aid kit" %}</th><td>1</td></tr>
+          <tr><th scope="row">{% translate "Hand sanitiser and wet wipes" %}</th><td>1 + 1</td></tr>
+          <tr data-calc-row="meds" hidden><th scope="row">{% translate "Regular medicines, with paper instructions for any device" %}</th><td><span data-calc-out="days">3</span> {% translate "days" %}</td></tr>
+          <tr data-calc-row="baby" hidden><th scope="row">{% translate "Baby supplies: nappies, ready-made formula" %}</th><td><span data-calc-out="days">3</span> {% translate "days" %}</td></tr>
+          <tr data-calc-row="pets" hidden><th scope="row">{% translate "Pet food and water" %}</th><td><span data-calc-out="days">3</span> {% translate "days" %}</td></tr>
+          <tr><th scope="row">{% translate "Important numbers on paper, including 105 for a power cut" %}</th><td>1</td></tr>
+        </tbody>
+      </table>
+      <div class="calc-page__actions no-print">
+        <a href="/products/" class="btn btn-primary">{% translate "Shop the essentials" %}</a>
+        <button type="button" class="btn btn-ghost" onclick="window.print()">{% translate "Print the list" %}</button>
+      </div>
+      <p class="tool__note">{% blocktranslate trimmed %}Water: at least 2.5 to 3 litres of drinking water per person per day, and about 10 litres to cook and wash as well. The kit follows the same guidance. Build it up over time; you do not need to buy it all at once.{% endblocktranslate %} <a href="https://prepare.campaign.gov.uk/" target="_blank" rel="noopener">{% translate "UK Government, Prepare" %}<span class="sr-only"> {% translate "(opens in a new tab)" %}</span></a></p>
+    </div>
+  </div>
+</div>

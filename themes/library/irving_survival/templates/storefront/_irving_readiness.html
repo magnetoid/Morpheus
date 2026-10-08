@@ -1,0 +1,62 @@
+{% load i18n %}
+{% comment %}The full readiness check (/p/readiness/ — the CMS page with slug
+"readiness", rendered by this theme's cms/page.html). Ten items from the UK
+Government's Prepare kit list, two per system, ten points each. Answers live in
+this browser only (_irving_tools_script.html); the home card reads the same key.{% endcomment %}
+<div class="ready-page">
+  <div class="tile tool ready-page__score">
+    <p class="eyebrow">{% translate "Your score" %}</p>
+    <p class="ready__score"><span class="ready__n is-empty" data-ready-score>–</span><span class="ready__of">/100</span></p>
+    <ul class="ready__bars">
+      <li class="ready__bar"><span>{% translate "Water" %}</span><span class="ready__track"><span class="ready__fill" data-ready-fill="water"></span></span><span class="ready__pct" data-ready-pct="water">–</span></li>
+      <li class="ready__bar"><span>{% translate "Food" %}</span><span class="ready__track"><span class="ready__fill" data-ready-fill="food"></span></span><span class="ready__pct" data-ready-pct="food">–</span></li>
+      <li class="ready__bar"><span>{% translate "Light & power" %}</span><span class="ready__track"><span class="ready__fill" data-ready-fill="light"></span></span><span class="ready__pct" data-ready-pct="light">–</span></li>
+      <li class="ready__bar"><span>{% translate "Radio & numbers" %}</span><span class="ready__track"><span class="ready__fill" data-ready-fill="news"></span></span><span class="ready__pct" data-ready-pct="news">–</span></li>
+      <li class="ready__bar"><span>{% translate "First aid" %}</span><span class="ready__track"><span class="ready__fill" data-ready-fill="aid"></span></span><span class="ready__pct" data-ready-pct="aid">–</span></li>
+    </ul>
+    <p class="meta" style="margin:0">{% translate "Your answers stay in this browser. Nothing is sent to us." %}</p>
+    <div class="no-print" style="display:flex; gap:.75rem; flex-wrap:wrap">
+      <a href="/p/calculator/" class="btn btn-primary">{% translate "Work out quantities" %}</a>
+      <button type="button" class="btn btn-ghost" data-ready-reset>{% translate "Start again" %}</button>
+    </div>
+  </div>
+
+  <div class="tile ready-page__list">
+    <fieldset class="ready-page__group">
+      <legend class="eyebrow">{% translate "Water" %}</legend>
+      <ul class="checklist">
+        <li><label><input type="checkbox" value="water-drink" data-ready-item><span>{% translate "Bottled drinking water for three days" %}<small>{% translate "At least 2.5 to 3 litres per person per day." %}</small></span></label></li>
+        <li><label><input type="checkbox" value="water-store" data-ready-item><span>{% translate "Extra water to cook and wash" %}<small>{% translate "About 10 litres per person per day makes a few days far more comfortable." %}</small></span></label></li>
+      </ul>
+    </fieldset>
+    <fieldset class="ready-page__group">
+      <legend class="eyebrow">{% translate "Food" %}</legend>
+      <ul class="checklist">
+        <li><label><input type="checkbox" value="food-keep" data-ready-item><span>{% translate "Food that keeps, for everyone, for three days" %}<small>{% translate "Things you already eat, that need little or no cooking." %}</small></span></label></li>
+        <li><label><input type="checkbox" value="food-cold" data-ready-item><span>{% translate "A manual tin opener and food you can eat cold" %}<small>{% translate "So a meal does not depend on the cooker or the microwave." %}</small></span></label></li>
+      </ul>
+    </fieldset>
+    <fieldset class="ready-page__group">
+      <legend class="eyebrow">{% translate "Light & power" %}</legend>
+      <ul class="checklist">
+        <li><label><input type="checkbox" value="light-torch" data-ready-item><span>{% translate "A battery or wind-up torch, with spare batteries" %}<small>{% translate "Candles are a fire risk; keep them for last." %}</small></span></label></li>
+        <li><label><input type="checkbox" value="light-bank" data-ready-item><span>{% translate "A charged power bank for each phone" %}<small>{% translate "Top them up every few months." %}</small></span></label></li>
+      </ul>
+    </fieldset>
+    <fieldset class="ready-page__group">
+      <legend class="eyebrow">{% translate "Radio & numbers" %}</legend>
+      <ul class="checklist">
+        <li><label><input type="checkbox" value="news-radio" data-ready-item><span>{% translate "A battery or wind-up radio" %}<small>{% translate "For news and instructions if phones and the internet are down." %}</small></span></label></li>
+        <li><label><input type="checkbox" value="news-numbers" data-ready-item><span>{% translate "Important numbers written on paper" %}<small>{% translate "Family, your GP, your insurer, and 105 for a power cut." %}</small></span></label></li>
+      </ul>
+    </fieldset>
+    <fieldset class="ready-page__group">
+      <legend class="eyebrow">{% translate "First aid" %}</legend>
+      <ul class="checklist">
+        <li><label><input type="checkbox" value="aid-kit" data-ready-item><span>{% translate "A first aid kit" %}<small>{% translate "Plasters, bandages, antiseptic, sterile dressings, gloves and a thermometer." %}</small></span></label></li>
+        <li><label><input type="checkbox" value="aid-meds" data-ready-item><span>{% translate "Several days of everyone's regular medicines" %}<small>{% translate "With paper instructions for any medical device." %}</small></span></label></li>
+      </ul>
+    </fieldset>
+    <p class="tool__note">{% translate "The list follows the UK Government's guidance on what to keep at home." %} <a href="https://prepare.campaign.gov.uk/" target="_blank" rel="noopener">{% translate "UK Government, Prepare" %}<span class="sr-only"> {% translate "(opens in a new tab)" %}</span></a></p>
+  </div>
+</div>

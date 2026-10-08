@@ -1,0 +1,50 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load seo %}{% load i18n %}
+{% comment %}
+The theme's fallback delivery page — shown only while the merchant has no CMS
+page with the slug "shipping". Rates, thresholds and carriers belong to the
+shipping app and to checkout, so this page names none of them.
+{% endcomment %}
+{% block extra_head %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+<style>
+  .policy-head { padding: clamp(3rem, 6vw, 4.5rem) 0 2rem; }
+  .policy-head .wrap { max-width: 860px; display: flex; flex-direction: column; gap: 1rem; }
+  .policy-faq { display: grid; gap: 2rem; padding-top: 2.5rem; border-top: 1px solid var(--line); }
+  @media (min-width: 760px) { .policy-faq { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .policy-faq h2 { margin: 0 0 .4rem; font-size: 1.0625rem; font-weight: 600; }
+  .policy-faq p { margin: 0; color: var(--ink2); line-height: 1.6; }
+  .policy-faq a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+</style>
+{% endblock %}
+{% block content %}
+<section class="policy-head">
+  <div class="wrap">
+    <p class="eyebrow">{% translate "Delivery" %}</p>
+    <h1 class="display display-l">{% translate "Delivery, before you pay." %}</h1>
+    <p class="lede">{% translate "Checkout shows the delivery options for your address, with their cost, before you pay." %}</p>
+  </div>
+</section>
+<section style="padding-top: 1rem;">
+  <div class="wrap" style="max-width: 1100px;">
+    <div class="policy-faq">
+      <div>
+        <h2>{% translate "When will it arrive?" %}</h2>
+        <p>{% translate "We email you when your order is on its way, with tracking whenever the carrier provides it." %}</p>
+      </div>
+      <div>
+        <h2>{% translate "Where do you deliver?" %}</h2>
+        <p>{% blocktranslate trimmed %}To the addresses checkout accepts. If yours is not offered, <a href="/contact/">contact us</a> before you order.{% endblocktranslate %}</p>
+      </div>
+      <div>
+        <h2>{% translate "It arrived damaged" %}</h2>
+        <p>{% blocktranslate trimmed %}Keep the packaging, take a photo and <a href="/contact/">contact us</a> with your order number. See <a href="/returns/">returns</a> for your rights.{% endblocktranslate %}</p>
+      </div>
+      <div>
+        <h2>{% translate "Building a kit over time?" %}</h2>
+        <p>{% blocktranslate trimmed %}The <a href="/p/calculator/">supply calculator</a> turns your household into a list, so each order adds the next useful thing.{% endblocktranslate %}</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

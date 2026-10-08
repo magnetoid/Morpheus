@@ -762,6 +762,19 @@ and a fail-soft card collector turns that into a feature that is simply absent,
 with a 200 and nothing in the page to say why. Guarded by
 `seo/tests/test_panel_contributions.py`.
 
+**Landmine — a fail-soft `except` does not save a Postgres transaction.**
+webstories rebuilt a product's story on every save and asked the book app for an
+author line; on the three stores that run without it, the `plugins_bookproduct`
+query failed and was caught — but Postgres had already aborted the caller's
+transaction, so the next query of any product save inside `transaction.atomic()`
+(a bulk edit, an import, a script) raised `InFailedSqlTransaction`. sqlite never
+aborts a transaction on a failed statement, so every test passed. A side effect
+that queries (a signal receiver, a hook subscriber) runs inside its own
+`with transaction.atomic():`, so a failure rolls back to its savepoint and no
+further; and an optional app's data is read only after `app_registry.is_active()`
+— catching its absence is not checking that it is on. Guarded by
+`webstories/tests/test_story_signals.py` (v0.82.0).
+
 **Landmine — `QuerySet.update()` and `QuerySet.delete()` skip `save()` and
 `post_save`, so anything hung off them silently doesn't run.** The redirect
 resolver reads a compiled ruleset out of the cache; the dashboard edited rows

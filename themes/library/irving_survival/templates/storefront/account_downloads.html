@@ -1,0 +1,48 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+
+{% block content %}
+<section style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="eyebrow">Account</p>
+    <h1 class="display display-l" style="margin: 1.25rem 0 .5rem;">
+      Your downloads<span class="text-accent">.</span>
+    </h1>
+    <p class="meta" style="margin-bottom: 2rem;">
+      <a href="/account/" style="text-decoration: underline;">&larr; Back to account</a>
+    </p>
+
+    {% if tokens %}
+    <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
+      {% for t in tokens %}
+      <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1.5rem; {% if t.is_expired or t.is_exhausted %}opacity: .55;{% endif %}">
+        <div style="display:flex; justify-content:space-between; gap: 1rem; align-items:flex-start; flex-wrap:wrap;">
+          <div style="flex: 1; min-width: 0;">
+            <p class="title" style="margin: 0;">{{ t.product.name }}</p>
+            <p class="meta" style="margin-top: .25rem;">
+              Order #{{ t.order.order_number }}
+              · {{ t.downloads_used }} of {{ t.max_downloads }} used
+              {% if t.expires_at %} · expires {{ t.expires_at|date:"M j, Y" }}{% endif %}
+            </p>
+          </div>
+          <div>
+            {% if t.is_expired %}
+              <span style="color: var(--muted);">Expired</span>
+            {% elif t.is_exhausted %}
+              <span style="color: var(--muted);">Limit reached</span>
+            {% else %}
+              <a href="/digital/download/{{ t.token }}/" class="btn btn-primary" style="white-space: nowrap;">Download</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="meta" style="padding: 2rem; border: 1px dashed var(--rule); border-radius: 6px; text-align: center;">
+      No active downloads. Digital purchases will appear here with a button to grab the file.
+    </p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

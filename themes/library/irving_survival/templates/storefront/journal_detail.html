@@ -1,0 +1,34 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+
+{% block extra_head %}
+<link rel="amphtml" href="/journal/{{ entry.slug }}/amp/">
+{% seo_article_jsonld headline=entry.title body=entry.body|striptags|truncatechars:5000 kind="BlogPosting" description=entry.excerpt author=entry.author|default:"Supernatural Shop staff" published=entry.published_at modified=entry.updated_at|default:entry.published_at image=entry.image word_count=entry.word_count author_same_as=entry.author_same_as citations=entry.citations %}
+{% seo_article_og entry %}
+{% seo_speakable_jsonld %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% endblock %}
+
+{% block content %}
+<article style="padding: 4rem 0 5rem;">
+  <div class="wrap" style="max-width: 640px;">
+    <p class="meta" style="margin-bottom: 1.25rem;">
+      <a href="/journal/" style="color: var(--muted);">Journal</a>
+    </p>
+    <p class="meta">{% if entry.published_at %}<time datetime="{{ entry.published_at|date:'c' }}">{{ entry.date_label }}</time>{% else %}{{ entry.date_label }}{% endif %}</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">
+      {{ entry.title }}<span class="text-accent">.</span>
+    </h1>
+    <div itemprop="articleBody" class="journal-prose" style="font-family: var(--serif); font-size: 1.1rem; line-height: 1.7; color: var(--ink-2);">
+      {% if entry.is_html %}
+        {{ entry.body|safe }}
+      {% else %}
+        {{ entry.body|linebreaks }}
+      {% endif %}
+    </div>
+
+    <hr class="rule" style="margin: 3rem 0;">
+    <a href="/journal/" class="btn-link">All entries</a>
+  </div>
+</article>
+{% endblock %}

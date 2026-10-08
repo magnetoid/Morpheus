@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.82.0 — 2026-10-08
+
+**Supernatural Shop becomes a longevity pantry; a new Irving Survival theme**
+
+- Supernatural Shop's storefront follows the owner's content analysis: shopping by shelf (Daily staples, Mushrooms, Pantry, Aromatherapy, Guides), a home page that starts with the staples, an Our standards block, a new About page, and the US supplement disclaimer in the footer.
+- No storefront page states a shipping rate or a threshold any more: 'Free shipping over $40' left supernatural_shop's product page and cart, and the shipping and returns fallbacks say only what checkout and the store's terms do. A merchant's own CMS pages still replace them.
+- New theme irving_survival, direction 1a from the owner's design canvases: Geist, warm grey and ink with one orange signal, a supply calculator and a readiness check built from the UK Government's Prepare guidance that run in the browser, and UK statutory returns wording. Active on beta.irvingsurvival.com.
+- Fixed: saving a product with images inside a transaction failed on stores without the book app. The web-story builder asked that app for an author, the query failed and Postgres aborted the caller's transaction. The story now builds in its own savepoint and skips the book app while it is off.
+- supernatural_shop's product page CSS moved into the head, so the details column no longer jumps beside the gallery on slow connections.
+- A multi-line {# #} comment, which Django prints as page text, now fails the build.
+
 ## v0.81.0 — 2026-10-08
 
 **The dashboard is sections, tabs and cards**

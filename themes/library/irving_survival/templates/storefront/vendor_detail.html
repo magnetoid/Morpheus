@@ -1,0 +1,121 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load caching %}{% load i18n %}
+{% comment %}A vendor's page: header, then everything the vendor offers — the
+sections other apps contribute (`vendor_sections`) and the catalog products,
+paginated. Title, breadcrumbs and the ItemList are the head document's; the
+words for "vendor" are the theme's (`vendor_noun`, from MorpheusTheme), so this
+template no longer calls every maker a "Publisher". The page CSS sits in
+`extra_head`: below the markup it was a layout shift on a slow connection.{% endcomment %}
+
+{% block extra_head %}
+<style>
+.vendor-hero {
+  display: flex; gap: 2rem; align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.vendor-hero__logo {
+  width: 120px; height: 120px; flex-shrink: 0;
+  border-radius: 12px;
+  object-fit: contain;
+  background: var(--paper);
+  padding: 12px;
+  border: 1px solid var(--rule);
+}
+.vendor-hero__monogram {
+  width: 120px; height: 120px; flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--ink); color: var(--paper);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 3.5rem; font-weight: 500;
+}
+.vendor-hero__meta { min-width: 0; flex: 1; }
+.vendor-hero__stats {
+  display: flex; gap: 1.5rem; flex-wrap: wrap;
+  font-size: .9rem; color: var(--muted);
+}
+.vendor-hero__stats strong { color: var(--ink); font-weight: 500; }
+.vendor-hero__lede { max-width: 70ch; margin: 0; }
+
+.vendor-products {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem 1.5rem;
+}
+@media (min-width: 640px)  { .vendor-products { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1000px) { .vendor-products { grid-template-columns: repeat(4, 1fr); } }
+.vendor-pages { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 3rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section style="padding: 3rem 0 2.5rem;">
+  <div class="wrap">
+    <p class="meta" style="margin-bottom: 1.5rem;">
+      {% for item in breadcrumb_items %}{% if forloop.last %}{{ item.name }}{% else %}<a href="{{ item.url }}" style="color: var(--muted);">{{ item.name }}</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      {% endif %}{% endfor %}
+    </p>
+
+    <div class="vendor-hero">
+      {% if vendor.logo %}
+      <img src="{{ vendor.logo.url }}" alt="{{ vendor.name }} logo"
+           loading="eager" decoding="async" fetchpriority="high"
+           class="vendor-hero__logo">
+      {% else %}
+      <div class="vendor-hero__monogram" aria-hidden="true">
+        {{ vendor.name|slice:":1" }}
+      </div>
+      {% endif %}
+      <div class="vendor-hero__meta">
+        <p class="eyebrow">{{ vendor_noun }}</p>
+        <h1 class="display display-l" style="margin: 1rem 0 .75rem;">{{ vendor.name }}<span class="text-accent">.</span></h1>
+        <div class="vendor-hero__stats">
+          <span><strong class="tabular-nums">{{ listing_count }}</strong> product{{ listing_count|pluralize }}</span>
+          {% if category_count %}<span>across <strong class="tabular-nums">{{ category_count }}</strong> categor{{ category_count|pluralize:"y,ies" }}</span>{% endif %}
+          {% if books_sold %}<span><strong class="tabular-nums">{{ books_sold }}+</strong> sold</span>{% endif %}
+          {% if vendor.created_at %}<span>Since {{ vendor.created_at|date:"F Y" }}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if intro_text %}<p class="lede vendor-hero__lede">{{ intro_text }}</p>{% endif %}
+  </div>
+</section>
+
+{% if vendor_sections %}
+<section style="padding: 0 0 2rem;">
+  <div class="wrap">
+    {% for section in vendor_sections %}{% include section.template %}{% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if products %}
+<section style="padding: 0 0 5rem;">
+  <div class="wrap">
+    <hr class="rule">
+    <p class="eyebrow" style="margin: 2.5rem 0 1.5rem;">From this supplier</p>
+
+    <div class="vendor-products">
+      {% for p in products %}
+      {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav class="vendor-pages" aria-label="Pages">
+      {% if page_obj.has_previous %}<a class="btn" href="{% page_href page_obj.previous_page_number %}" rel="prev">&larr; Previous</a>{% else %}<span></span>{% endif %}
+      <span class="meta">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}<a class="btn" href="{% page_href page_obj.next_page_number %}" rel="next">Next &rarr;</a>{% else %}<span></span>{% endif %}
+    </nav>
+    {% endif %}
+  </div>
+</section>
+{% elif not listing_count %}
+<section style="padding: 0 0 5rem;">
+  <div class="wrap">
+    <p class="lede">Nothing listed here right now. <a href="{% url 'storefront:vendors' %}" style="border-bottom: 1px dotted var(--rule);">See everyone else</a>.</p>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

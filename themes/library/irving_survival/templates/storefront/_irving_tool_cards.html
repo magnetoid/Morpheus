@@ -1,0 +1,51 @@
+{% load i18n %}
+{% comment %}The home page's two planning cards (direction 1a): a compact supply
+calculator and the readiness score. Both run in the browser
+(_irving_tools_script.html); the full versions live at /p/calculator/ and
+/p/readiness/. Server-rendered numbers are the defaults: 2 people, 3 days.{% endcomment %}
+<div class="h-tools">
+  <div class="tile tool" data-calc id="calculator">
+    <p class="eyebrow">{% translate "Supply calculator" %}</p>
+    <h2 class="display display-m">{% translate "How much do you actually need?" %}</h2>
+    <div class="stepper-row">
+      <div class="stepper">
+        <span class="stepper__label" id="calc-people-label">{% translate "People" %}</span>
+        <span class="stepper__ctl">
+          <button type="button" class="stepper__btn" data-calc-step="people" data-delta="-1" aria-label="{% translate 'One person fewer' %}">−</button>
+          <output class="stepper__val" data-calc-value="people" data-min="1" data-max="12" aria-labelledby="calc-people-label">2</output>
+          <button type="button" class="stepper__btn" data-calc-step="people" data-delta="1" aria-label="{% translate 'One person more' %}">+</button>
+        </span>
+      </div>
+      <div class="stepper">
+        <span class="stepper__label" id="calc-days-label">{% translate "Days" %}</span>
+        <span class="stepper__ctl">
+          <button type="button" class="stepper__btn" data-calc-step="days" data-delta="-1" aria-label="{% translate 'One day fewer' %}">−</button>
+          <output class="stepper__val" data-calc-value="days" data-min="1" data-max="30" aria-labelledby="calc-days-label">3</output>
+          <button type="button" class="stepper__btn" data-calc-step="days" data-delta="1" aria-label="{% translate 'One day more' %}">+</button>
+        </span>
+      </div>
+    </div>
+    <div class="results" aria-live="polite">
+      <div><p class="results__n" data-calc-out="meals">18</p><p class="results__t">{% translate "meals" %}</p></div>
+      <div><p class="results__n"><span data-calc-out="drink">18</span> L</p><p class="results__t">{% translate "drinking water" %}</p></div>
+      <div><p class="results__n"><span data-calc-out="all">60</span> L</p><p class="results__t">{% translate "to cook and wash too" %}</p></div>
+    </div>
+    <p class="tool__note">{% blocktranslate trimmed %}Three meals and 3 litres of drinking water per person per day; 10 litres covers cooking and washing too.{% endblocktranslate %} <a href="https://prepare.campaign.gov.uk/" target="_blank" rel="noopener">{% translate "UK Government, Prepare" %}<span class="sr-only"> {% translate "(opens in a new tab)" %}</span></a></p>
+    <a href="/p/calculator/" class="btn btn-primary" style="align-self:flex-start">{% translate "Build my list" %}</a>
+  </div>
+
+  <div class="tile tool">
+    <p class="eyebrow">{% translate "Readiness check" %}</p>
+    <p class="ready__score"><span class="ready__n is-empty" data-ready-score>–</span><span class="ready__of">/100</span></p>
+    <ul class="ready__bars">
+      <li class="ready__bar"><span>{% translate "Water" %}</span><span class="ready__track"><span class="ready__fill" data-ready-fill="water"></span></span><span class="ready__pct" data-ready-pct="water">–</span></li>
+      <li class="ready__bar"><span>{% translate "Food" %}</span><span class="ready__track"><span class="ready__fill" data-ready-fill="food"></span></span><span class="ready__pct" data-ready-pct="food">–</span></li>
+      <li class="ready__bar"><span>{% translate "Light & power" %}</span><span class="ready__track"><span class="ready__fill" data-ready-fill="light"></span></span><span class="ready__pct" data-ready-pct="light">–</span></li>
+      <li class="ready__bar"><span>{% translate "Radio & numbers" %}</span><span class="ready__track"><span class="ready__fill" data-ready-fill="news"></span></span><span class="ready__pct" data-ready-pct="news">–</span></li>
+      <li class="ready__bar"><span>{% translate "First aid" %}</span><span class="ready__track"><span class="ready__fill" data-ready-fill="aid"></span></span><span class="ready__pct" data-ready-pct="aid">–</span></li>
+    </ul>
+    <p class="meta" data-ready-when-new style="margin:0">{% translate "Ten questions, two minutes. Your answers stay in this browser." %}</p>
+    <p class="meta" data-ready-when-answered hidden style="margin:0">{% translate "Your score from the last check on this device." %}</p>
+    <a href="/p/readiness/" class="btn btn-ghost" style="align-self:flex-start">{% translate "Take the 2-minute check" %}</a>
+  </div>
+</div>

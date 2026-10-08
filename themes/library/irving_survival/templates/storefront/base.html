@@ -1,0 +1,1057 @@
+{% load morph %}{% load seo %}{% load tracking %}{% load caching %}{% load i18n %}<!DOCTYPE html>
+<html lang="{% get_current_language as LANG %}{{ LANG|default:'en' }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#F3F2EE">
+<link rel="icon" href="/favicon.ico" type="image/svg+xml">
+{% comment %}The entire SEO head — title, description, canonical, robots, Open Graph,
+Twitter, hreflang, pagination, verification metas and the JSON-LD graph — comes from
+one core tag (ADR 0036). The theme supplies fallback copy for a store that has not
+filled in its SEO settings; everything else is resolved per page by the seo app, so
+this template never needs to know what kind of page it is rendering. Do NOT add a
+<title>, canonical or og:* tag alongside this call: they would duplicate.{% endcomment %}
+{% image_frame_style %}
+{% block seo %}
+{% storefront_head title=seo_title description=seo_description %}
+{% endblock %}
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+{% seo_preconnect %}
+{% caching_resource_hints %}
+{% caching_preload_fonts %}
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+{% caching_font_display %}
+{% caching_service_worker_register %}
+
+<style>
+  /* ── Irving Survival — direction 1a ───────────────────────────────────────
+     Warm grey ground, white surfaces, near-black ink and one orange signal.
+     Geist carries everything; Geist Mono carries labels and figures. The
+     legacy token names below (--paper, --rule, --serif…) are kept as aliases
+     because the shared page templates style themselves with them. */
+  :root {
+    --bg:         #F3F2EE;
+    --surface:    #FFFFFF;
+    --surface2:   #E7E6E1;
+    --ink:        #121311;
+    --ink2:       #5B5D58;
+    --line:       rgba(18, 19, 17, .12);
+    --line-strong: rgba(18, 19, 17, .22);
+    --accent:     #E8590C;
+    --accentText: #B93D06;
+    --ok:         #2B8A3E;
+    --inv:        #F3F2EE;
+
+    --paper:      var(--bg);
+    --paper-2:    var(--surface2);
+    --ink-2:      var(--ink2);
+    --muted:      var(--ink2);
+    --rule:       var(--line);
+    --accent-ink: var(--accentText);
+
+    --sans:  'Geist', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --serif: var(--sans);
+    --mono:  'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --r-sm: 14px;
+    --r-md: 20px;
+    --r-lg: 28px;
+    --max: 1440px;
+    --gutter: 20px;
+    /* PDP chrome above the product_gallery hero: status 40 + topbar 76 +
+       section padding 40. The gallery caps its height against the viewport
+       minus this; re-measure if the header changes. */
+    --pdp-hero-offset: 156px;
+    --motion-fast: 140ms;
+    --motion-med:  240ms;
+    --motion-slow: 420ms;
+    --ease-out:    cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @media (min-width: 768px)  { :root { --gutter: 32px; } }
+  @media (min-width: 1200px) { :root { --gutter: 48px; } }
+
+  @keyframes ko-reveal-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes ko-pop       { 0% { transform: scale(1); } 30% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  @keyframes ko-shimmer   { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .ko-reveal { animation: ko-reveal-up var(--motion-med) var(--ease-out) both; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+      view-transition-name: none !important;
+    }
+  }
+  @view-transition { navigation: auto; }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { background: var(--bg); color: var(--ink); color-scheme: light; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  a { color: inherit; text-decoration: none; transition: color var(--motion-fast) var(--ease-out); }
+  a:hover { color: var(--accentText); }
+  img { max-width: 100%; display: block; }
+  ::selection { background: var(--ink); color: var(--inv); }
+  a:focus-visible, button:focus-visible, input:focus-visible,
+  textarea:focus-visible, select:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  img.ko-fade-img { opacity: 0; transition: opacity 400ms var(--ease-out); }
+  img.ko-fade-img.is-loaded { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { img.ko-fade-img { opacity: 1; } }
+
+  .skip-link {
+    position: fixed; top: .5rem; left: .5rem; z-index: 200;
+    transform: translateY(-150%);
+    background: var(--ink); color: var(--inv);
+    padding: .6rem 1rem; border-radius: 999px; font-weight: 500; font-size: .9rem;
+    transition: transform var(--motion-fast) var(--ease-out);
+  }
+  .skip-link:focus { transform: translateY(0); }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+
+  /* Toast */
+  .sf-toast { position: fixed; left: 50%; bottom: 1.25rem; transform: translateX(-50%); z-index: 1200; display: flex; flex-direction: column; gap: .5rem; width: min(92vw, 30rem); pointer-events: none; }
+  .sf-toast:empty { display: none; }
+  .sf-toast__msg { pointer-events: auto; background: var(--ink); color: var(--inv); padding: .85rem 1.15rem; border-radius: var(--r-sm); font-size: .92rem; line-height: 1.4; transition: opacity .3s ease; animation: sf-toast-in .25s var(--ease-out) both; }
+  .sf-toast__msg--error, .sf-toast__msg--danger, .sf-toast__msg--warning { background: var(--accentText); }
+  @keyframes sf-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* Layout */
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
+  section { padding: 3.5rem 0; }
+  @media (min-width: 1024px) { section { padding: 5rem 0; } }
+  section.tight { padding: 3rem 0; }
+  hr.rule { border: 0; border-top: 1px solid var(--line); margin: 0; }
+
+  /* Type */
+  h1.hero, .display { font-family: var(--sans); font-weight: 600; letter-spacing: -.035em; line-height: 1.02; margin: 0; }
+  .display-xl { font-size: clamp(2.6rem, 7vw, 6.5rem); letter-spacing: -.045em; line-height: .96; }
+  .display-l  { font-size: clamp(2.2rem, 5.2vw, 5rem); letter-spacing: -.04em; line-height: 1; }
+  .display-m  { font-size: clamp(1.75rem, 3.2vw, 2.75rem); letter-spacing: -.03em; line-height: 1.05; }
+  /* Shared templates end headings with a brand period; here it is plain punctuation. */
+  .display .text-accent, h1 .text-accent, h2 .text-accent { color: inherit; }
+  .lede { font-size: clamp(1.05rem, 1.4vw, 1.375rem); line-height: 1.45; color: var(--ink2); max-width: 40rem; margin: 0; text-wrap: pretty; }
+  .eyebrow, .label { font: 500 .8rem/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink2); margin: 0; }
+  .eyebrow--signal { color: var(--accentText); }
+  .meta { font-size: .875rem; color: var(--ink2); }
+  .mono { font-family: var(--mono); }
+  .text-accent { color: var(--accentText); }
+  .center { text-align: center; }
+  .stack-3 > * + * { margin-top: .75rem; }
+  .stack-6 > * + * { margin-top: 1.5rem; }
+
+  /* Buttons — pills. Ink is the primary action; orange is kept for the one
+     signal a page needs. */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    padding: .95rem 1.6rem; border-radius: 999px;
+    font: 500 1rem/1.2 var(--sans); cursor: pointer;
+    border: 1px solid transparent; background: transparent; color: var(--ink);
+    transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out), transform 80ms var(--ease-out);
+  }
+  .btn:active, button:not(.ck-input):active { transform: scale(.97); }
+  .btn-primary { background: var(--ink); color: var(--inv); border-color: var(--ink); }
+  .btn-primary:hover { background: #2B2C29; border-color: #2B2C29; color: var(--inv); }
+  .btn-ghost { border-color: var(--line-strong); }
+  .btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+  .btn-signal { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+  .btn-signal:hover { background: #F06A1F; color: var(--ink); }
+  .btn-sm { padding: .6rem 1rem; font-size: .875rem; }
+  .btn-link { display: inline-flex; align-items: center; gap: .35rem; font-size: .95rem; font-weight: 500; }
+  .btn-link::after { content: '→'; transition: transform var(--motion-fast) var(--ease-out); }
+  .btn-link:hover::after { transform: translateX(3px); }
+  .btn.is-added, .btn.is-added:hover { background: var(--ok); border-color: var(--ok); color: #fff; transform: none; }
+
+  /* Float-label fields */
+  .field { position: relative; }
+  .field > input, .field > textarea { padding-top: 1.25rem; }
+  .field > label { position: absolute; top: 50%; left: 1rem; transform: translateY(-50%); transform-origin: 0 50%; color: var(--ink2); pointer-events: none; transition: transform var(--motion-fast) var(--ease-out); font-size: .95rem; }
+  .field > input:focus + label, .field > textarea:focus + label,
+  .field > input:not(:placeholder-shown) + label, .field > textarea:not(:placeholder-shown) + label { transform: translateY(-150%) scale(.78); color: var(--ink); }
+
+  /* Status line + header */
+  .statusbar {
+    border-bottom: 1px solid var(--line);
+    font: 400 .75rem/1.4 var(--mono); letter-spacing: .04em; color: var(--ink2);
+  }
+  .statusbar .wrap { min-height: 40px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: .45rem; padding-bottom: .45rem; }
+  .statusbar__now { display: flex; align-items: center; gap: .6rem; color: var(--ink); }
+  .statusbar__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+  .statusbar__aside { display: none; }
+  @media (min-width: 768px) { .statusbar__aside { display: block; } }
+
+  .topbar { position: sticky; top: 0; z-index: 50; background: var(--bg); border-bottom: 1px solid transparent; transition: border-color var(--motion-med) var(--ease-out), background var(--motion-med) var(--ease-out); }
+  .topbar.is-scrolled { border-bottom-color: var(--line); background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); }
+  .topbar-row { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; min-height: 76px; }
+  .wordmark { display: inline-flex; align-items: center; gap: .65rem; font-weight: 600; font-size: 1.0625rem; letter-spacing: .24em; text-transform: uppercase; line-height: 1; white-space: nowrap; }
+  .wordmark__mark { width: 14px; height: 14px; border-radius: 3px; background: var(--ink); flex: none; }
+  .wordmark:hover { color: var(--ink); }
+  .nav { display: none; gap: 2.25rem; font-size: .9375rem; }
+  .nav a { color: var(--ink); }
+  .nav a:hover, .nav a[aria-current="page"] { color: var(--accentText); }
+  @media (min-width: 1024px) { .nav { display: flex; } }
+  .icons { display: flex; align-items: center; gap: 1.25rem; font-size: .9375rem; }
+  .icons__link { background: none; border: 0; padding: .25rem 0; color: var(--ink); font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: .5rem; }
+  .icons__link:hover { color: var(--accentText); }
+  .icons__account { display: none; }
+  @media (min-width: 640px) { .icons__account { display: inline-flex; } }
+  .cart-icon { position: relative; }
+  .cart-badge { min-width: 22px; height: 20px; padding: 0 7px; border-radius: 10px; background: var(--ink); color: var(--inv); font: 500 .75rem/20px var(--sans); text-align: center; display: inline-block; }
+  .cart-badge[hidden] { display: none; }
+  .icon-btn { width: 44px; height: 44px; border-radius: 999px; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; background: none; color: var(--ink); cursor: pointer; }
+  .icon-btn:hover { background: var(--surface2); }
+  .nav-burger { display: inline-flex; }
+  @media (min-width: 1024px) { .icon-btn.nav-burger { display: none; } }
+  .fly-cart-clone { position: fixed; z-index: 1000; pointer-events: none; border-radius: var(--r-sm); will-change: transform, opacity; }
+
+  /* Mobile drawer */
+  .drawer { position: fixed; inset: 0; background: var(--bg); z-index: 100; transform: translateY(-100%); transition: transform .25s ease-out; padding: 1.25rem var(--gutter); overflow-y: auto; }
+  .drawer.open { transform: translateY(0); }
+  .drawer .nav-mobile { margin-top: 2.5rem; display: flex; flex-direction: column; gap: .35rem; font-size: 1.75rem; font-weight: 600; letter-spacing: -.03em; }
+  .drawer .nav-mobile a { padding: .2rem 0; }
+
+  /* Product card — a white tile, the name and price on one row beneath it. */
+  .book { display: flex; flex-direction: column; gap: .85rem; min-width: 0; }
+  .book__hit { display: flex; flex-direction: column; gap: .85rem; color: inherit; }
+  .book__hit:hover { color: inherit; }
+  .book__hit:hover .title { color: var(--accentText); }
+  .book .cover-wrap {
+    position: relative; overflow: hidden; width: 100%;
+    aspect-ratio: var(--img-ratio, 1 / 1);
+    border-radius: 24px; background: var(--surface);
+  }
+  .book .cover-wrap img { width: 100%; height: 100%; object-fit: contain; padding: 6%; transition: transform 600ms var(--ease-out); }
+  @media (hover: hover) { .book:hover .cover-wrap img { transform: scale(1.03); } }
+  .book .cover-wrap .placeholder,
+  .placeholder {
+    width: 100%; height: 100%; display: flex; align-items: flex-end; padding: 1.1rem;
+    font: 400 .8125rem/1.4 var(--mono); color: var(--ink2);
+    background: repeating-linear-gradient(135deg, transparent 0 13px, var(--line) 13px 14px), var(--surface);
+  }
+  .card__tag, .book .ribbon {
+    position: absolute; top: 14px; left: 14px; z-index: 1;
+    font: 500 .6875rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase;
+    border: 1px solid var(--line-strong); border-radius: 999px; padding: .4rem .65rem;
+    background: var(--surface); color: var(--ink);
+  }
+  .book .ribbon { left: auto; right: 14px; background: var(--ink); color: var(--inv); border-color: var(--ink); }
+  .card__row { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; }
+  .card__text { min-width: 0; }
+  .book .title { margin: 0; font-size: 1.0625rem; font-weight: 500; line-height: 1.3; letter-spacing: -.01em; }
+  .book .author, .card__spec { margin: .15rem 0 0; font-size: .875rem; line-height: 1.4; color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .book__excerpt { display: none; }
+  .book .price { margin: 0; font-size: 1.0625rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .book .price .compare { color: var(--ink2); text-decoration: line-through; margin-left: .35rem; }
+  .book__cover, .book__titlelink { display: block; color: inherit; }
+  .book__body { display: flex; flex-direction: column; flex: 1; }
+  .book__actions { display: grid; gap: .4rem; margin-top: auto; padding-top: .25rem; }
+  .book__add { margin: 0; }
+  .book__add .btn { width: 100%; }
+
+  .grid-books { display: grid; gap: 2.25rem 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 768px)  { .grid-books { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (min-width: 1280px) { .grid-books { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+  /* Horizontal rail */
+  .book-rail-wrap { position: relative; }
+  .grid-books--rail {
+    display: flex; grid-template-columns: none; gap: 1rem;
+    overflow-x: auto; scroll-snap-type: x proximity; scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    padding: .25rem 0 1rem;
+  }
+  .grid-books--rail::-webkit-scrollbar { display: none; }
+  .grid-books--rail > .book { flex: 0 0 auto; width: 70vw; max-width: 300px; scroll-snap-align: start; }
+  @media (min-width: 768px) { .grid-books--rail > .book { width: 280px; } }
+  .book-rail-nav {
+    position: absolute; top: 34%; z-index: 3; width: 46px; height: 46px; border-radius: 999px;
+    display: none; align-items: center; justify-content: center;
+    background: var(--ink); color: var(--inv); border: none; cursor: pointer; font-size: 1.1rem;
+  }
+  .book-rail-nav--prev { left: -14px; }
+  .book-rail-nav--next { right: -14px; }
+  .book-rail-nav[disabled] { opacity: 0; pointer-events: none; }
+  @media (min-width: 1024px) and (hover: hover) { .book-rail-nav { display: flex; } }
+
+  /* Tiles and panels used across pages */
+  .tile { background: var(--surface); border-radius: var(--r-lg); padding: clamp(1.5rem, 3vw, 3rem); }
+  .tile--ink { background: var(--ink); color: var(--inv); }
+  .tile--ink .lede, .tile--ink .meta, .tile--ink .eyebrow { color: rgba(243, 242, 238, .72); }
+  .hatch { background: repeating-linear-gradient(135deg, transparent 0 13px, var(--line) 13px 14px), var(--surface); }
+
+  /* Empty states */
+  .empty-shelf { text-align: center; padding: 4rem 1.5rem; max-width: 38rem; margin: 0 auto; }
+  .empty-shelf .glyph { display: none; }
+  .empty-shelf h2 { font-size: 1.6rem; font-weight: 600; letter-spacing: -.02em; margin: 0 0 .5rem; }
+  .empty-shelf p { color: var(--ink2); margin: 0 auto 1.5rem; max-width: 30rem; }
+  .empty-shelf .actions { display: flex; gap: .65rem; justify-content: center; flex-wrap: wrap; }
+  blockquote.editorial { font-size: 1.2rem; line-height: 1.45; padding: .25rem 0 .25rem 1.25rem; margin: 1.5rem 0; border-left: 2px solid var(--accent); color: var(--ink2); }
+
+  /* Footer */
+  footer { border-top: 1px solid var(--line); margin-top: 6rem; font-size: .875rem; color: var(--ink2); }
+  footer .grid { display: grid; gap: 2.25rem; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 4rem; padding-bottom: 3rem; }
+  footer .grid > .col:first-child { grid-column: 1 / -1; }
+  @media (min-width: 1024px) {
+    footer .grid { grid-template-columns: 2fr 1fr 1fr 1fr; }
+    footer .grid > .col:first-child { grid-column: auto; }
+  }
+  footer .col { display: flex; flex-direction: column; gap: .65rem; }
+  footer .col h2 { margin: 0 0 .15rem; font-size: .9375rem; font-weight: 500; color: var(--ink); letter-spacing: 0; text-transform: none; }
+  footer .col a { color: var(--ink2); }
+  footer .col a:hover { color: var(--accentText); }
+  footer .wordmark { font-size: .9375rem; color: var(--ink); }
+  footer .tagline { margin: .25rem 0 0; max-width: 26rem; }
+  footer .signoff { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem 1.5rem; padding: 1.5rem 0 2rem; border-top: 1px solid var(--line); font-size: .8125rem; }
+  footer .signoff .footer-legal { display: flex; flex-wrap: wrap; gap: .25rem 1.15rem; }
+  footer .signoff .footer-legal:empty { display: none; }
+  footer .signoff .footer-legal a { color: var(--ink2); }
+
+  /* Newsletter */
+  .newsletter { display: flex; gap: .5rem; max-width: 26rem; margin-top: .75rem; }
+  .newsletter input { flex: 1; min-width: 0; height: 46px; padding: 0 1.1rem; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font: inherit; font-size: .9375rem; }
+  .newsletter input:focus { outline: none; border-color: var(--ink); }
+  .newsletter button { height: 46px; padding: 0 1.3rem; border-radius: 999px; background: var(--ink); color: var(--inv); border: none; font: 500 .9375rem var(--sans); cursor: pointer; }
+
+  /* Scroll reveal — content is never hidden without JS (html.has-motion). */
+  @media (prefers-reduced-motion: no-preference) {
+    html.has-motion .will-reveal { opacity: 0; transform: translateY(14px); transition: opacity 520ms var(--ease-out), transform 520ms var(--ease-out); transition-delay: var(--reveal-delay, 0ms); }
+    html.has-motion .will-reveal.is-in { opacity: 1; transform: none; }
+    .quicksearch__hit { animation: ko-reveal-up 220ms var(--ease-out) both; }
+    .drawer .nav-mobile a { opacity: 0; transform: translateY(10px); transition: opacity 300ms var(--ease-out), transform 300ms var(--ease-out); }
+    .drawer.open .nav-mobile a { opacity: 1; transform: none; }
+  }
+
+  .pdp-hero__slide { position: relative; aspect-ratio: var(--img-ratio, 1 / 1) !important; max-width: 100%; }
+  .pdp-hero__thumbs img, .pdp-hero__thumb { aspect-ratio: var(--img-ratio, 1 / 1) !important; }
+
+  /* Planning tools — the supply calculator and the readiness check, on the
+     home page and on /p/calculator/ and /p/readiness/. Shared here so neither
+     page re-flows when a later stylesheet arrives. */
+  .tool { display: flex; flex-direction: column; gap: 1.75rem; }
+  .tool .display { max-width: 18ch; }
+  .stepper-row { display: grid; gap: .75rem; grid-template-columns: 1fr; }
+  @media (min-width: 560px) { .stepper-row { grid-template-columns: 1fr 1fr; } }
+  .stepper { border: 1px solid var(--line-strong); border-radius: 16px; padding: .7rem .75rem .7rem 1.25rem; display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+  .stepper__label { color: var(--ink2); font-size: .9375rem; }
+  .stepper__ctl { display: flex; align-items: center; gap: .25rem; }
+  .stepper__btn { width: 40px; height: 40px; border-radius: 999px; border: 0; background: none; color: var(--ink2); font: 500 1.35rem/1 var(--sans); cursor: pointer; }
+  .stepper__btn:hover { background: var(--surface2); color: var(--ink); }
+  .stepper__val { min-width: 2.4ch; text-align: center; font-size: 1.375rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .range { width: 100%; accent-color: var(--ink); }
+  .range-ticks { display: flex; justify-content: space-between; font: 400 .75rem var(--mono); color: var(--ink2); }
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .chip-toggle { position: relative; }
+  .chip-toggle input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .chip-toggle span { display: inline-block; border: 1px solid var(--line-strong); border-radius: 999px; padding: .5rem .9rem; font-size: .875rem; }
+  .chip-toggle input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--inv); }
+  .chip-toggle input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .results { display: grid; gap: .75rem; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); padding-top: 1.5rem; }
+  .results__n { margin: 0; font-size: clamp(1.4rem, 2.4vw, 1.875rem); font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .results__t { margin: .15rem 0 0; font-size: .875rem; color: var(--ink2); }
+  .result-cards { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 1024px) { .result-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .result-card { background: var(--surface); border-radius: 24px; padding: 1.5rem 1.75rem; }
+  .result-card .results__n { font-size: clamp(2rem, 3.4vw, 2.75rem); letter-spacing: -.03em; }
+  .tool__note { margin: 0; font: 400 .75rem/1.55 var(--mono); color: var(--ink2); }
+  .tool__note a { text-decoration: underline; text-underline-offset: 2px; }
+  .ready__score { margin: 0; display: flex; align-items: baseline; gap: .4rem; }
+  .ready__n { font-size: clamp(4.5rem, 9vw, 7.5rem); font-weight: 600; letter-spacing: -.05em; line-height: .9; font-variant-numeric: tabular-nums; }
+  .ready__n.is-empty { color: var(--line-strong); }
+  .ready__of { font-size: 1.75rem; color: var(--ink2); }
+  .ready__bars { display: flex; flex-direction: column; gap: .75rem; margin: 0; padding: 0; list-style: none; }
+  .ready__bar { display: grid; grid-template-columns: minmax(7rem, 9rem) 1fr 2.75rem; gap: 1rem; align-items: center; font-size: .875rem; }
+  .ready__track { height: 6px; border-radius: 3px; background: var(--surface2); overflow: hidden; }
+  .ready__fill { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 3px; transition: width var(--motion-slow) var(--ease-out); }
+  .ready__fill.is-partial { background: var(--accent); }
+  .ready__pct { color: var(--ink2); text-align: right; font-variant-numeric: tabular-nums; }
+  .checklist { list-style: none; margin: 0; padding: 0; }
+  .checklist li { border-top: 1px solid var(--line); }
+  .checklist label { display: flex; gap: .9rem; align-items: flex-start; padding: 1rem 0; cursor: pointer; }
+  .checklist input { width: 20px; height: 20px; margin: .15rem 0 0; accent-color: var(--ink); flex: none; }
+  .checklist small { display: block; color: var(--ink2); font-size: .875rem; margin-top: .15rem; }
+  .list-table { width: 100%; border-collapse: collapse; }
+  .list-table th, .list-table td { padding: 1rem 0; border-top: 1px solid var(--line); vertical-align: top; text-align: left; font-weight: 400; }
+  .list-table td { text-align: right; white-space: nowrap; color: var(--ink2); padding-left: 1rem; font-variant-numeric: tabular-nums; }
+  @media print { .statusbar, .topbar, footer, .drawer, .no-print { display: none !important; } }
+</style>
+{% block extra_head %}{% endblock %}
+
+{% comment %}Consent Mode v2 defaults must run BEFORE the GTM container loads, otherwise the first hit goes out with implicit-granted state — that's the #1 EEA-compliance bug per Google's own docs.{% endcomment %}
+{% gtm_consent_default %}
+{% gtm_head %}
+
+{% comment %}Site-wide JSON-LD, verification metas, hreflang, the OpenSearch link and
+the LLM hint now arrive in the single storefront_head call at the top of this file.
+Journal RSS/Atom autodiscovery still arrives via seo's global_head block — a hard
+url tag for the seo namespace here 500'd every page once seo was disabled.{% endcomment %}
+
+{# PWA manifest + apple-touch-icon are injected by the pwa plugin's storefront block (global_below_body), which also registers the service worker. #}
+
+{# Speculation Rules API — hover-prerenders PDP/category/vendor links. Skips side-effect-y paths. #}
+<script type="speculationrules">
+{
+  "prerender": [{
+    "where": {
+      "and": [
+        { "href_matches": "/*" },
+        { "not": { "href_matches": "/cart/*" } },
+        { "not": { "href_matches": "/checkout/*" } },
+        { "not": { "href_matches": "/account/*" } },
+        { "not": { "href_matches": "/auth/*" } },
+        { "not": { "href_matches": "/api/*" } },
+        { "not": { "href_matches": "/r/*" } }
+      ]
+    },
+    "eagerness": "moderate"
+  }]
+}
+</script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="{{ STORE_NAME|default:'Irving Survival' }}">
+{# apple-touch-icon now provided by the pwa plugin block (real icon, was a 404). #}
+
+{# Catch unhandled JS errors + unhandledrejection → /api/errors/client/. #}
+{% load static %}
+<script src="{% static 'core/error-capture.js' %}" defer></script>
+
+{# Motion One — ~3kb vanilla animator with spring built-in. Exposed as window.__motion #}
+<script type="module">
+  import { animate, stagger } from 'https://cdn.jsdelivr.net/npm/motion@10/+esm';
+  window.__motion = { animate, stagger };
+  window.dispatchEvent(new CustomEvent('motion:ready'));
+</script>
+
+{% comment %}
+Plugin-contributed <head> content — brand_kit's design tokens (palette +
+typography the rest of the surface runs on) and motion's animation CSS both
+arrive here. Must stay LAST in <head> so tokens override the theme's own
+defaults.
+{% endcomment %}
+{% storefront_blocks "global_head" %}
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+{% gtm_noscript_body %}
+{% tracking_consent_banner %}
+
+{% include "storefront/_admin_bar.html" %}
+
+{% if theme_config.show_status_bar is not False %}
+<div class="statusbar">
+  <div class="wrap">
+    <p class="statusbar__now" style="margin:0"><span class="statusbar__dot" aria-hidden="true"></span><span>{% if theme_config.status_text %}{{ theme_config.status_text }}{% else %}{% translate "Power cut in England, Scotland or Wales? Call 105, free." %}{% endif %}</span></p>
+    <a class="statusbar__aside" href="https://prepare.campaign.gov.uk/" target="_blank" rel="noopener">{% translate "Official guidance: UK Government, Prepare" %}<span aria-hidden="true"> ↗</span><span class="sr-only"> {% translate "(opens in a new tab)" %}</span></a>
+  </div>
+</div>
+{% endif %}
+
+<header class="topbar">
+  <div class="wrap topbar-row">
+    <a href="/" class="wordmark">{% if STORE_LOGO_URL %}<img src="{{ STORE_LOGO_URL }}" alt="{{ STORE_NAME }}" style="height:1.6rem;width:auto;">{% else %}<span class="wordmark__mark" aria-hidden="true"></span>{{ STORE_NAME|default:"Irving Survival" }}{% endif %}</a>
+    <nav class="nav" aria-label="{% translate 'Primary' %}">
+      {% comment %}Menu-driven (dashboard → CMS → Menus, key "header"). Falls back to the theme's own five when no header menu is configured: the shop, the bundles collection (/staff-picks/, named in Products → Collections), the two planning tools (CMS pages "calculator" and "readiness", rendered by this theme's cms/page.html) and the guides.{% endcomment %}
+      {% if header_menu and header_menu.items %}
+        {% for item in header_menu.items %}
+          {% if item.kind == 'mega_categories' or item.kind == 'mega_topics' or item.kind == 'mega_authors' %}<a href="{{ item.url|default:'/products/' }}">{{ item.label|default:_("Shop") }}</a>
+          {% else %}<a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
+        {% endfor %}
+      {% else %}
+        <a href="/products/">{% translate "Shop" %}</a>
+        <a href="/staff-picks/">{% translate "Bundles" %}</a>
+        <a href="/p/calculator/">{% translate "Calculator" %}</a>
+        <a href="/p/readiness/">{% translate "Readiness" %}</a>
+        <a href="/journal/">{% translate "Guides" %}</a>
+      {% endif %}
+      {% storefront_blocks "nav_primary_extra" %}
+    </nav>
+    <div class="icons">
+      <button type="button" id="quicksearch-toggle" class="icons__link" aria-expanded="false" aria-controls="quicksearch-panel">{% translate "Search" %}</button>
+      <a href="/account/" class="icons__link icons__account">{% translate "Account" %}</a>
+      <a href="/cart/" class="icons__link cart-icon" id="cart-icon-link">{% translate "Cart" %} <span class="cart-badge" id="cart-badge" hidden></span></a>
+      <button id="drawer-open" class="icon-btn nav-burger" aria-label="{% translate 'Menu' %}" aria-controls="drawer" aria-expanded="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="17" x2="21" y2="17"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Quick search overlay — opened by the topbar search icon. Search-as-
+     you-type with a debounced fetch to /api/quick-search/. ESC or
+     backdrop click closes; Enter submits to /products/?q=. -->
+<div id="quicksearch-panel" class="quicksearch" hidden>
+  <button type="button" class="quicksearch__backdrop" data-quicksearch-close aria-label="Close search"></button>
+  <form class="quicksearch__panel" role="search" action="/products/" method="get">
+    <div class="quicksearch__head">
+      <svg class="quicksearch__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path>
+      </svg>
+      <input type="search" name="q" id="quicksearch-input" autocomplete="off" spellcheck="false"
+             placeholder="Search the shop…" aria-label="Search the shop"
+             role="combobox" aria-expanded="false"
+             aria-autocomplete="list" aria-controls="quicksearch-results">
+      <button type="button" class="quicksearch__close" data-quicksearch-close aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="quicksearch-results" class="quicksearch__results" role="listbox" aria-label="Search suggestions"></div>
+    <div class="quicksearch__foot">
+      <span class="meta">Press <kbd>Enter</kbd> for all results · <kbd>Esc</kbd> to close</span>
+    </div>
+  </form>
+</div>
+
+<style>
+.quicksearch {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 4rem 1rem 1rem;
+  animation: quicksearch-fade .15s ease-out;
+}
+/* Critical: CSS display: flex above would override the [hidden] attribute's
+   default display: none. Without this rule, the panel is permanently
+   visible and the toggle button can't dismiss it. */
+.quicksearch[hidden] { display: none; }
+@keyframes quicksearch-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .quicksearch { animation: none; } }
+.quicksearch__backdrop {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  background: rgba(20, 20, 18, .55);
+  backdrop-filter: blur(3px);
+  border: 0; padding: 0; cursor: pointer;
+}
+.quicksearch__panel {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 600px;
+  background: var(--paper);
+  border-radius: var(--r-md);
+  box-shadow: 0 30px 60px -20px rgba(18,19,17,.35);
+  overflow: hidden;
+}
+.quicksearch__head {
+  display: flex; align-items: center; gap: .65rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--rule);
+}
+.quicksearch__icon { color: var(--muted); flex-shrink: 0; }
+#quicksearch-input {
+  flex: 1; min-width: 0;
+  background: transparent; border: 0; outline: 0;
+  font-family: var(--sans); font-size: 1.15rem;
+  color: var(--ink);
+}
+.quicksearch__close {
+  background: transparent; border: 0; padding: .25rem; cursor: pointer;
+  color: var(--muted); border-radius: 4px;
+}
+.quicksearch__close:hover { color: var(--ink); background: rgba(0,0,0,.04); }
+.quicksearch__results {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.quicksearch__hit {
+  display: flex; gap: .75rem; align-items: center;
+  padding: .75rem 1.25rem;
+  border-bottom: 1px solid var(--rule);
+  color: inherit; text-decoration: none;
+}
+.quicksearch__hit:last-child { border-bottom: 0; }
+.quicksearch__hit:hover, .quicksearch__hit.is-focused {
+  background: var(--paper-2, rgba(0,0,0,.03));
+}
+.quicksearch__hit-cover {
+  width: 40px; height: 56px; flex-shrink: 0;
+  object-fit: cover;
+  border: 1px solid var(--rule);
+  background: var(--surface, var(--paper));
+}
+.quicksearch__hit-meta { flex: 1; min-width: 0; }
+.quicksearch__hit-name {
+  font-family: var(--serif); font-size: 1rem; line-height: 1.25;
+  color: var(--ink); margin: 0 0 .15rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.quicksearch__hit-price {
+  font-size: .8rem; color: var(--muted); margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.quicksearch__empty {
+  padding: 2rem 1.25rem;
+  text-align: center; color: var(--muted); font-size: .9rem;
+}
+.quicksearch__foot {
+  padding: .65rem 1.25rem;
+  background: var(--paper-2, rgba(0,0,0,.02));
+  border-top: 1px solid var(--rule);
+}
+.quicksearch__foot kbd {
+  font-family: var(--sans); font-size: .7rem;
+  padding: .1rem .35rem; border-radius: 3px;
+  background: var(--paper); border: 1px solid var(--rule);
+}
+</style>
+
+<script>
+/* Topbar quick-search overlay — opens on icon click, fetches results
+   via /api/quick-search/?q=… (250ms debounce), arrow-key + Enter
+   navigation, ESC + backdrop close. Submitting the form jumps to the
+   full /products/?q=… results page. */
+(function () {
+  var toggle = document.getElementById('quicksearch-toggle');
+  var panel  = document.getElementById('quicksearch-panel');
+  if (!toggle || !panel) return;
+  var input   = document.getElementById('quicksearch-input');
+  var results = document.getElementById('quicksearch-results');
+  var ctrl    = null;
+  var debounce;
+
+  function open() {
+    panel.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function () { input.focus(); }, 50);
+  }
+  function close() {
+    panel.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
+    document.body.style.overflow = '';
+    input.value = '';
+    results.innerHTML = '';
+    toggle.focus();
+  }
+  function escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function render(items) {
+    input.removeAttribute('aria-activedescendant');
+    if (!items.length) {
+      input.setAttribute('aria-expanded', 'false');
+      results.innerHTML = '<div class="quicksearch__empty">No matches yet. Try a different word.</div>';
+      return;
+    }
+    input.setAttribute('aria-expanded', 'true');
+    results.innerHTML = items.map(function (r, i) {
+      var img = r.image_url
+        ? '<img class="quicksearch__hit-cover" src="' + escapeHTML(r.image_url) + '" alt="" loading="lazy" decoding="async">'
+        : '<div class="quicksearch__hit-cover" aria-hidden="true"></div>';
+      return ''
+        + '<a class="quicksearch__hit" role="option" id="qs-opt-' + i + '" aria-selected="false" href="/products/' + encodeURIComponent(r.slug) + '/">'
+        +   img
+        +   '<div class="quicksearch__hit-meta">'
+        +     '<p class="quicksearch__hit-name">' + escapeHTML(r.name) + '</p>'
+        +     '<p class="quicksearch__hit-price">' + escapeHTML(r.price || '') + '</p>'
+        +   '</div>'
+        + '</a>';
+    }).join('');
+  }
+  function fetchResults(q) {
+    if (ctrl) ctrl.abort();
+    if (!q || q.length < 2) { results.innerHTML = ''; return; }
+    ctrl = new AbortController();
+    fetch('/api/quick-search/?q=' + encodeURIComponent(q), { signal: ctrl.signal, credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : { results: [] }; })
+      .then(function (d) { render(d.results || []); })
+      .catch(function (e) { if (e.name !== 'AbortError') results.innerHTML = ''; });
+  }
+
+  toggle.addEventListener('click', function () {
+    if (panel.hidden) open(); else close();
+  });
+  panel.addEventListener('click', function (e) {
+    if (e.target.matches('[data-quicksearch-close]')) close();
+  });
+  input.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(function () { fetchResults(input.value.trim()); }, 250);
+  });
+  /* Arrow-key navigation through the results list. */
+  input.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter' && e.key !== 'Escape') return;
+    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+    var hits = Array.prototype.slice.call(results.querySelectorAll('.quicksearch__hit'));
+    if (!hits.length) return;
+    var idx = hits.findIndex(function (h) { return h.classList.contains('is-focused'); });
+    if (e.key === 'ArrowDown') { e.preventDefault(); idx = (idx + 1) % hits.length; }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); idx = (idx <= 0 ? hits.length - 1 : idx - 1); }
+    else if (e.key === 'Enter' && idx >= 0) { e.preventDefault(); window.location.href = hits[idx].href; return; }
+    hits.forEach(function (h, i) {
+      var on = i === idx;
+      h.classList.toggle('is-focused', on);
+      h.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if (idx >= 0 && hits[idx].id) { input.setAttribute('aria-activedescendant', hits[idx].id); }
+    else { input.removeAttribute('aria-activedescendant'); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !panel.hidden) close();
+    /* Cmd/Ctrl+K opens the panel — power-user shortcut. */
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); open(); }
+  });
+})();
+</script>
+
+<!-- Mobile drawer -->
+<div id="drawer" class="drawer" role="dialog" aria-modal="true" aria-label="Menu" aria-hidden="true">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <a href="/" class="wordmark"><span class="wordmark__mark" aria-hidden="true"></span>{{ STORE_NAME|default:"Irving Survival" }}</a>
+    <button id="drawer-close" class="icon-btn" aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m18 6-12 12"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <nav class="nav-mobile" aria-label="{% translate 'Menu' %}">
+    {% if mobile_menu and mobile_menu.items %}
+      {% for item in mobile_menu.items %}
+        {% if item.kind == 'mega_categories' or item.kind == 'mega_topics' or item.kind == 'mega_authors' %}<a href="{{ item.url|default:'/products/' }}">{{ item.label|default:_("Shop") }}</a>
+        {% else %}<a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
+      {% endfor %}
+      <a href="/account/">{% translate "Account" %}</a>
+    {% else %}
+      <a href="/products/">{% translate "Shop" %}</a>
+      <a href="/staff-picks/">{% translate "Bundles" %}</a>
+      <a href="/p/calculator/">{% translate "Supply calculator" %}</a>
+      <a href="/p/readiness/">{% translate "Readiness check" %}</a>
+      <a href="/journal/">{% translate "Guides" %}</a>
+      {% storefront_blocks "nav_primary_extra" %}
+      <a href="/account/">{% translate "Account" %}</a>
+    {% endif %}
+  </nav>
+</div>
+
+<!-- Global feedback toast: a polite live-region for post-redirect flashes
+     (cart/coupon/subscribe) + JS-driven notices, replacing native alert(). -->
+<div id="sf-toast" class="sf-toast" role="status" aria-live="polite" aria-atomic="true">
+  {% if messages %}{% for message in messages %}<div class="sf-toast__msg{% if message.tags %} sf-toast__msg--{{ message.tags }}{% endif %}">{{ message }}</div>{% endfor %}{% endif %}
+</div>
+<main id="main-content" tabindex="-1">
+  {% block content %}{% endblock %}
+</main>
+
+<footer>
+  <div class="wrap grid">
+    <div class="col">
+      <a href="/" class="wordmark"><span class="wordmark__mark" aria-hidden="true"></span>{{ STORE_NAME|default:"Irving Survival" }}</a>
+      <p class="tagline">{% if theme_config.tagline %}{{ theme_config.tagline }}{% else %}{% translate "Calm, practical preparedness for UK households." %}{% endif %}</p>
+      {% plugin_enabled "newsletter" as has_newsletter %}
+      {% if has_newsletter %}
+      <form class="newsletter" id="footer-newsletter" method="post" action="/newsletter/subscribe/">
+        {% csrf_token %}
+        <input type="email" name="email" placeholder="{% translate 'your@email.com' %}" aria-label="{% translate 'Email' %}" required>
+        <button type="submit">{% translate "Subscribe" %}</button>
+      </form>
+      <p id="footer-newsletter-msg" class="meta" style="margin:.25rem 0 0;" aria-live="polite"></p>
+      <script>
+      (function () {
+        var f = document.getElementById('footer-newsletter');
+        var msg = document.getElementById('footer-newsletter-msg');
+        if (!f || !msg) return;
+        f.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var btn = f.querySelector('button[type=submit]');
+          if (btn) { btn.disabled = true; }
+          fetch(f.action, { method: 'POST', credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' }, body: new FormData(f) })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+            .then(function (res) {
+              if (btn) { btn.disabled = false; }
+              if (res.ok) { msg.textContent = "{% translate 'Thanks. You are on the list.' %}"; f.reset(); }
+              else { msg.textContent = (res.data && res.data.error) || "{% translate 'That did not work. Please check the address.' %}"; }
+            })
+            .catch(function () { if (btn) { btn.disabled = false; } f.submit(); });
+        });
+      })();
+      </script>
+      {% endif %}
+    </div>
+    <div class="col">
+      <h2>{% translate "Shop" %}</h2>
+      <a href="/products/">{% translate "All products" %}</a>
+      <a href="/staff-picks/">{% translate "Bundles" %}</a>
+      {% storefront_blocks "footer_extra" %}
+    </div>
+    <div class="col">
+      <h2>{% translate "Tools" %}</h2>
+      <a href="/p/calculator/">{% translate "Supply calculator" %}</a>
+      <a href="/p/readiness/">{% translate "Readiness check" %}</a>
+      <a href="/journal/">{% translate "Guides" %}</a>
+    </div>
+    <div class="col">
+      <h2>{% translate "Help" %}</h2>
+      <a href="/p/faq/">{% translate "FAQ" %}</a>
+      <a href="/shipping/">{% translate "Shipping" %}</a>
+      <a href="/returns/">{% translate "Returns" %}</a>
+      <a href="/contact/">{% translate "Contact" %}</a>
+      <a href="/account/">{% translate "Account" %}</a>
+    </div>
+  </div>
+  <div class="wrap signoff">
+    <span>© {{ now|default:"2026" }} {{ STORE_NAME|default:"Irving Survival" }}. {% translate "All rights reserved." %}</span>
+    <span class="footer-legal">{% storefront_blocks "footer_legal" %}</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const dr = document.getElementById('drawer');
+  const openBtn = document.getElementById('drawer-open');
+  const closeBtn = document.getElementById('drawer-close');
+  if (!dr || !openBtn) return;
+  let lastFocus = null;
+  const focusable = () => dr.querySelectorAll('a[href], button:not([disabled])');
+  function open() {
+    lastFocus = document.activeElement;
+    dr.classList.add('open');
+    dr.setAttribute('aria-hidden', 'false');
+    openBtn.setAttribute('aria-expanded', 'true');
+    (closeBtn || focusable()[0])?.focus();
+    document.addEventListener('keydown', onKey);
+  }
+  function close() {
+    dr.classList.remove('open');
+    dr.setAttribute('aria-hidden', 'true');
+    openBtn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('keydown', onKey);
+    (lastFocus || openBtn)?.focus();
+  }
+  function onKey(e) {
+    if (e.key === 'Escape') { close(); return; }
+    if (e.key !== 'Tab') return;
+    const items = focusable(); if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  openBtn.addEventListener('click', open);
+  closeBtn?.addEventListener('click', close);
+})();
+
+// Global feedback toast — append a polite live-region notice; auto-dismiss.
+window.sfToast = function (msg, kind) {
+  var root = document.getElementById('sf-toast');
+  if (!root || !msg) return;
+  var el = document.createElement('div');
+  el.className = 'sf-toast__msg' + (kind ? ' sf-toast__msg--' + kind : '');
+  el.textContent = msg;
+  root.appendChild(el);
+  setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 300); }, 4000);
+};
+document.querySelectorAll('#sf-toast .sf-toast__msg').forEach(function (el) {
+  setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 300); }, 5000);
+});
+</script>
+{% comment %}The mega-menu panel now anchors to the topbar via pure CSS
+(top:100% inside .topbar's backdrop-filter containing block), so the old
+JS that measured a viewport pixel into --mega-menu-top is gone — it
+mis-measured under the staff admin bar and opened a gap.{% endcomment %}
+{% storefront_blocks "global_below_body" %}
+
+
+{% include "storefront/_cart_drawer.html" %}
+
+<script type="module">
+  import {onCLS, onINP, onLCP, onFCP, onTTFB} from 'https://cdn.jsdelivr.net/npm/web-vitals@4/+esm';
+  function beacon(m) {
+    try {
+      navigator.sendBeacon('/web-vitals/', JSON.stringify({
+        name: m.name, value: m.value, id: m.id, delta: m.delta,
+        rating: m.rating, navigationType: m.navigationType,
+        url: location.pathname,
+      }));
+    } catch (e) { /* never block paint */ }
+  }
+  onLCP(beacon); onINP(beacon); onCLS(beacon); onFCP(beacon); onTTFB(beacon);
+</script>
+
+<script>
+(function () {
+  function tagFade(img) {
+    if (img.classList.contains('is-loaded') || img.classList.contains('ko-fade-img')) return;
+    // Already decoded (cache / eager) — never hide the cover for a paint frame.
+    if (img.complete && img.naturalWidth > 0) {
+      img.classList.add('is-loaded');
+      return;
+    }
+    img.classList.add('ko-fade-img');
+    img.addEventListener('load', function () { img.classList.add('is-loaded'); }, {once: true});
+    img.addEventListener('error', function () { img.classList.add('is-loaded'); }, {once: true});
+  }
+  document.querySelectorAll('img[loading="lazy"]').forEach(tagFade);
+  // Catch images added dynamically (e.g. cart drawer, infinite scroll later).
+  new MutationObserver(function (records) {
+    records.forEach(function (r) {
+      r.addedNodes.forEach(function (n) {
+        if (n.nodeType !== 1) return;
+        if (n.tagName === 'IMG' && n.getAttribute('loading') === 'lazy') tagFade(n);
+        n.querySelectorAll && n.querySelectorAll('img[loading="lazy"]').forEach(tagFade);
+      });
+    });
+  }).observe(document.documentElement, {childList: true, subtree: true});
+})();
+</script>
+
+<script>
+/* Motion II — scroll-reveal engine, dot-stamp trigger, topbar elevation,
+   and PLP→PDP cover-morph wiring. Kept as one small IIFE at the end of
+   <body> so it runs after the DOM exists and before first user scroll. */
+(function () {
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Gates the CSS initial-hidden states — without JS nothing is ever hidden.
+  document.documentElement.classList.add('has-motion');
+
+  /* Scroll reveal. Targets: manual [data-reveal] hooks, every .grid-books
+     child present now (staggered per row position), and .display headings
+     (which only stamp their brand period — the heading itself never hides).
+     Elements already in the viewport get .is-in in this same synchronous
+     pass so they never paint hidden (LCP-safe); the rest reveal on entry. */
+  var reveal = [];
+  var stamp = [];
+  document.querySelectorAll('[data-reveal]').forEach(function (el) { reveal.push(el); });
+  // Skip rail (.grid-books--rail) children: in a horizontal scroller the
+  // off-screen-right cards would never satisfy the vertical in-view check and
+  // could stay hidden. The rail wrapper carries its own [data-reveal] instead.
+  document.querySelectorAll('.grid-books:not(.grid-books--rail)').forEach(function (grid) {
+    Array.prototype.forEach.call(grid.children, function (el, i) {
+      el.style.setProperty('--reveal-delay', (i % 12 < 8 ? i % 12 : 8) * 55 + 'ms');
+      reveal.push(el);
+    });
+  });
+  
+
+  reveal.forEach(function (el) { el.classList.add('will-reveal'); });
+  var all = reveal.concat(stamp);
+  if (reduced || !('IntersectionObserver' in window)) {
+    all.forEach(function (el) { el.classList.add('is-in'); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        en.target.classList.add('is-in');
+        io.unobserve(en.target);
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+    all.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight * 0.95 && r.bottom > 0) el.classList.add('is-in');
+      else io.observe(el);
+    });
+  }
+
+  /* Book-rail carousels — prev/next scroll + fade the arrow at each end. */
+  document.querySelectorAll('[data-book-rail]').forEach(function (rail) {
+    var wrap = rail.closest('.book-rail-wrap');
+    if (!wrap) return;
+    var prev = wrap.querySelector('[data-rail-prev]');
+    var next = wrap.querySelector('[data-rail-next]');
+    var step = function () { return Math.max(rail.clientWidth * 0.8, 240); };
+    var sync = function () {
+      var max = rail.scrollWidth - rail.clientWidth - 2;
+      if (prev) prev.disabled = rail.scrollLeft <= 2;
+      if (next) next.disabled = rail.scrollLeft >= max;
+    };
+    if (prev) prev.addEventListener('click', function () { rail.scrollBy({ left: -step(), behavior: 'smooth' }); });
+    if (next) next.addEventListener('click', function () { rail.scrollBy({ left: step(), behavior: 'smooth' }); });
+    rail.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync, { passive: true });
+    sync();
+  });
+
+  /* Topbar elevation once the page has scrolled a beat. */
+  var bar = document.querySelector('.topbar');
+  if (bar) {
+    var scrolled = null;
+    var onScroll = function () {
+      var s = window.scrollY > 12;
+      if (s !== scrolled) { scrolled = s; bar.classList.toggle('is-scrolled', s); }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* Cover morph — the PDP gallery already names its hero image
+     `cover-<slug>` for cross-document view transitions; give the clicked
+     card's cover the matching name at click time (not statically, so a
+     product repeated across two rails never creates a duplicate name,
+     which would abort the whole transition). */
+  if (!reduced) {
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href^="/products/"]');
+      if (!a) return;
+      var m = (a.getAttribute('href') || '').match(/^\/products\/([\w-]+)\/$/);
+      if (!m) return;
+      var img = a.querySelector('.cover-wrap img');
+      if (img) img.style.viewTransitionName = 'cover-' + m[1];
+    }, true);
+  }
+})();
+</script>
+
+<script>
+/* A product row can outlive its image FILE — an import that carried rows but not
+   uploads, or media restored without its objects. The template can only test
+   whether a primaryImage row exists, so a missing file reaches the browser as a
+   broken <img> with its alt text showing. Degrade to the same title-card
+   placeholder an image-less product already gets.
+   Capture phase: `error` does not bubble. With <picture>, this fires only once
+   every candidate source has failed, so a working webp still wins over a
+   missing avif. */
+(function () {
+  function swap(img) {
+    if (!img || img.tagName !== 'IMG') return;
+    var wrap = img.closest('.cover-wrap, .window__cover, .pdp-hero__slide');
+    if (!wrap || wrap.querySelector('.placeholder')) return;
+    var ph = document.createElement('div');
+    ph.className = 'placeholder';
+    ph.textContent = img.getAttribute('alt') || '';
+    (img.closest('picture') || img).replaceWith(ph);
+  }
+  document.addEventListener('error', function (e) { swap(e.target); }, true);
+  /* A listener added at the end of <body> cannot see an error that already
+     fired. The hero is loading="eager" fetchpriority="high", so a 404 on it
+     resolves while the parser is still working through the page — the lazy
+     card images below error later and are caught, the hero never was. Sweep
+     whatever has already failed, and again once decoding settles. */
+  function sweep() {
+    var imgs = document.querySelectorAll('img');
+    for (var i = 0; i < imgs.length; i++) {
+      if (imgs[i].complete && imgs[i].naturalWidth === 0) swap(imgs[i]);
+    }
+  }
+  sweep();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', sweep);
+  }
+  window.addEventListener('load', sweep);
+})();
+</script>
+
+{# Speculation Rules — Chrome 122+ prefetches/prerenders PDPs on hover. #}
+{# No-op on browsers without support. Eagerness 'moderate' = on hover/touchstart. #}
+<script type="speculationrules">
+{
+  "prefetch": [{
+    "source": "document",
+    "where": { "href_matches": "/products/*" },
+    "eagerness": "moderate"
+  }]
+}
+</script>
+</body>
+</html>

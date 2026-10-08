@@ -1,0 +1,42 @@
+{% extends "storefront/base.html" %}
+{% load seo %}{% load i18n %}
+
+{% block extra_head %}
+{% seo_aboutpage_jsonld name="About Irving Survival" description="Irving Survival helps UK households prepare for ordinary emergencies, with useful supplies, clear expectations and planning tools based on official guidance." %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+<style>
+  .about { padding: clamp(3rem, 6vw, 4.5rem) 0 4rem; }
+  .about .wrap { max-width: 860px; display: flex; flex-direction: column; gap: 1.25rem; }
+  .about__points { display: grid; gap: 1rem; margin-top: 1.5rem; }
+  @media (min-width: 760px) { .about__points { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .about__point { background: var(--surface); border-radius: 24px; padding: 1.75rem; display: flex; flex-direction: column; gap: .5rem; }
+  .about__point h2 { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -.01em; }
+  .about__point p { margin: 0; color: var(--ink2); line-height: 1.6; }
+  .about__point a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="about">
+  <div class="wrap">
+    <p class="eyebrow">{% translate "About us" %}</p>
+    <h1 class="display display-l">{% translate "Calm, practical preparedness." %}</h1>
+    <p class="lede">{% blocktranslate trimmed with name=STORE_NAME|default:"Irving Survival" %}{{ name }} helps UK households get ready for ordinary emergencies: a power cut, a flood warning, a few days without water. Useful supplies, clear expectations and honest limits.{% endblocktranslate %}</p>
+    <div class="about__points">
+      <div class="about__point">
+        <h2>{% translate "Official guidance first" %}</h2>
+        <p>{% blocktranslate trimmed %}The <a href="/p/calculator/">supply calculator</a> and the <a href="/p/readiness/">readiness check</a> use the UK Government's figures, and say where they come from.{% endblocktranslate %}</p>
+      </div>
+      <div class="about__point">
+        <h2>{% translate "Kit, described plainly" %}</h2>
+        <p>{% translate "What it does, what it does not, and what it weighs. If something has a limit, the product page says so." %}</p>
+      </div>
+      <div class="about__point">
+        <h2>{% translate "One step at a time" %}</h2>
+        <p>{% translate "You do not need to buy everything at once. Start with water, light and a radio, and add to it over time." %}</p>
+      </div>
+    </div>
+    <p class="lede" style="margin-top: 1.5rem;">{% blocktranslate trimmed %}Questions? <a href="/contact/" class="btn-link" style="display:inline-flex;">Contact us</a> or <a href="/products/" class="btn-link" style="display:inline-flex;">browse the shop</a>.{% endblocktranslate %}</p>
+  </div>
+</section>
+{% endblock %}

@@ -28,18 +28,18 @@
     <p class="eyebrow">{% if selected_author %}Maker{% elif selected_publisher %}Maker{% elif selected_category_obj %}Category{% elif selected_tag %}Tag{% elif search_query %}Search{% else %}The shop{% endif %}</p>
     <h1 class="display display-l" style="margin: 1rem 0;">
       {% if selected_author %}{{ selected_author }}<span class="text-accent">.</span>
-      {% elif selected_publisher %}{{ selected_publisher }} titles<span class="text-accent">.</span>
+      {% elif selected_publisher %}{{ selected_publisher }}<span class="text-accent">.</span>
       {% elif selected_category_obj %}{{ selected_category_obj.name }}<span class="text-accent">.</span>
       {% elif selected_tag %}{{ selected_tag_obj.name|default:selected_tag }}<span class="text-accent">.</span>
       {% elif search_query %}Results for "<em>{{ search_query }}</em>"<span class="text-accent">.</span>
-      {% else %}Every bottle on the bench<span class="text-accent">.</span>{% endif %}
+      {% else %}The whole shop<span class="text-accent">.</span>{% endif %}
     </h1>
     {% comment %}Ledes prefer the dashboard-editable description for the term
        (authors + publishers: Products → Book taxonomies; tags: Tag descriptions;
        categories + collections on their own pages), falling back to house
        copy.{% endcomment %}
-    <p class="lede">{% if selected_author %}{% if not author_lede %}Products from {{ selected_author }}.{% endif %}{% elif selected_publisher %}{% if not publisher_lede %}From {{ selected_publisher }}.{% endif %}{% elif selected_tag %}{% if selected_tag_obj.description %}{{ selected_tag_obj.description|linebreaksbr }}{% else %}Everything tagged &ldquo;{{ selected_tag }}&rdquo;.{% endif %}{% elif selected_category_obj.description %}{{ selected_category_obj.description|linebreaksbr }}{% elif page_intro %}{{ page_intro|linebreaksbr }}{% else %}Essential oils, hydrosols, and ritual goods. Filter by category. The bench rotates when something earns a spot.{% endif %}</p>
-    {% if page_obj %}<p class="meta plp-count">{{ page_obj.paginator.count }} product{{ page_obj.paginator.count|pluralize }}</p>{% endif %}
+    <p class="lede">{% if selected_author %}{% if not author_lede %}Products from {{ selected_author }}.{% endif %}{% elif selected_publisher %}{% if not publisher_lede %}From {{ selected_publisher }}.{% endif %}{% elif selected_tag %}{% if selected_tag_obj.description %}{{ selected_tag_obj.description|linebreaksbr }}{% else %}Everything tagged &ldquo;{{ selected_tag }}&rdquo;.{% endif %}{% elif selected_category_obj.description %}{{ selected_category_obj.description|linebreaksbr }}{% elif page_intro %}{{ page_intro|linebreaksbr }}{% else %}Daily staples, mushrooms and adaptogens, pantry foods and teas, with the aromatherapy and arcana shelves.{% endif %}</p>
+    {% if page_obj %}<p class="meta plp-count">{% blocktranslate count counter=page_obj.paginator.count %}{{ counter }} product{% plural %}{{ counter }} products{% endblocktranslate %}</p>{% endif %}
 
     {# Active filter chips — clickable to remove. Shown when any filter is active. #}
     {% if selected_author or selected_publisher or selected_category or selected_tag or search_query %}
@@ -47,7 +47,7 @@
       {% if search_query %}<a href="?{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Search: {{ search_query }} ✕</a>{% endif %}
       {% if selected_author %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Author: {{ selected_author }} ✕</a>{% endif %}
       {% if selected_publisher %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Publisher: {{ selected_publisher }} ✕</a>{% endif %}
-      {% if selected_category %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Genre: {{ selected_category_obj.name|default:selected_category }} ✕</a>{% endif %}
+      {% if selected_category %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}{% if selected_tag %}tag={{ selected_tag }}&{% endif %}" class="chip">Category: {{ selected_category_obj.name|default:selected_category }} ✕</a>{% endif %}
       {% if selected_tag %}<a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_author %}author={{ selected_author }}&{% endif %}{% if selected_publisher %}publisher={{ selected_publisher }}&{% endif %}" class="chip">Tag: {{ selected_tag }} ✕</a>{% endif %}
       <a href="/products/" class="chip chip-clear">Clear all</a>
     </div>
@@ -152,7 +152,7 @@
 
       <span class="text-meta" style="padding: 0 1rem;">
         Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-        &middot; {{ page_obj.paginator.count }} book{{ page_obj.paginator.count|pluralize }}
+        &middot; {% blocktranslate count counter=page_obj.paginator.count %}{{ counter }} product{% plural %}{{ counter }} products{% endblocktranslate %}
       </span>
 
       {% if page_obj.has_next %}

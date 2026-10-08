@@ -1,0 +1,6 @@
+/* irving_survival — tokens live in templates/storefront/base.html :root. */
+:root {
+  --bg: #F3F2EE;
+  --fg: #121311;
+  --accent: #E8590C;
+}
