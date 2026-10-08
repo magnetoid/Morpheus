@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.80.1 — 2026-10-08
+
+**Montenegro in Serbian end to end — links stay in the visitor's language, the interface is translated, every indexed page describes itself**
+
+- Serbian pages keep visitors in Serbian: on a /sr/ page every internal link to a page gets the /sr/ prefix (core/i18n_links.LocalizedLinksMiddleware). On montenegro-experience.me 106 of the 108 links on the Serbian home pointed into the English tree, so the first click left Serbian and the Serbian pages linked only to English ones. Links to sign-in, the dashboard, files, the hreflang alternates and a language switcher's own links are left as they are.
+- The montenegro interface is translated: about 650 strings that rendered in English under /sr/ — the booking and enquiry forms, stay pages, sign-in, account, cart and checkout, footer and menus, the host and vendor back office, region, place, hotel, amenity and event labels, the hotel 'Staying in…' paragraph and page titles. Counts use real plural forms ('37 experiences', '2 gift cards' were English suffixes).
+- montenegro's About page described a bookshop ('we don't carry books we haven't read', 'free shipping on orders over $40'); it now describes the travel marketplace using only what the site states elsewhere. Shipping, cancellations, search, checkout and empty-category copy is translatable, and the 'Browse books' / 'whole shelf' links point at the experiences instead of the empty product grid.
+- Region pages and the regions index have meta descriptions written from what they list (all ten were missing after v0.80.0 put them in the sitemap); a category nobody described gets one from its products (dotbooks /category/books/).
+- Web Stories name a square raster publisher logo — the merchant's when it qualifies, else the store's app icon — instead of the SVG favicon Google's rich results reject.
+- Guards: core/tests/test_localized_links.py, booking_marketplace/tests/test_serbian_catalog.py (every string montenegro's templates mark for translation has a Serbian entry), region and category description tests, Web Story logo tests.
+
 ## v0.80.0 — 2026-10-08
 
 **Every page answers for what is on it — real 404s, honest sitemaps, one head, store-branded sign-in**

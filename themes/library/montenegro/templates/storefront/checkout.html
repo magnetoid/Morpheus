@@ -89,7 +89,7 @@
                      pattern="[A-Za-z]{2}"
                      style="text-transform: uppercase;"
                      required class="ck-input">
-              <p class="ck-hint">Two-letter ISO code (e.g. <code>US</code>, <code>DE</code>, <code>GB</code>).</p>
+              <p class="ck-hint">{% blocktrans trimmed %}Two-letter ISO code (e.g. <code>US</code>, <code>DE</code>, <code>GB</code>).{% endblocktrans %}</p>
             </div>
             <div class="ck-field">
               <label for="ck-phone">{% trans "Phone" %} <span class="ck-opt">{% trans "(optional)" %}</span></label>
@@ -107,7 +107,7 @@
         </button>
       </div>
 
-      <aside style="border: 1px solid var(--rule); border-radius: 4px; padding: 2rem; background: var(--paper-2);" aria-label="Order summary">
+      <aside style="border: 1px solid var(--rule); border-radius: 4px; padding: 2rem; background: var(--paper-2);" aria-label="{% trans 'Order summary' %}">
         <p class="eyebrow">{% trans "Your order" %}</p>
         {% if cart.items %}
         <div style="margin: 1rem 0;">
@@ -128,10 +128,10 @@
         <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule);">
           {% if cart.giftCard %}
           <div style="display:flex; justify-content:space-between; align-items:center; gap:.5rem; font-size:.9rem;">
-            <span><strong>Gift card</strong> <code style="font-size:.85em;">{{ cart.giftCard.code }}</code></span>
+            <span><strong>{% trans "Gift card" %}</strong> <code style="font-size:.85em;">{{ cart.giftCard.code }}</code></span>
             <form method="post" action="/checkout/gift-card/remove/" style="margin:0;">{% csrf_token %}<button class="btn btn-ghost text-xs" style="padding:.2rem .4rem;">{% trans "Remove" %}</button></form>
           </div>
-          <p class="meta" style="margin-top:.3rem;">Balance: {{ cart.giftCard.balance }} {{ cart.giftCard.currency }}. Applied at order time.</p>
+          <p class="meta" style="margin-top:.3rem;">{% blocktrans with balance=cart.giftCard.balance currency=cart.giftCard.currency %}Balance: {{ balance }} {{ currency }}. Applied at order time.{% endblocktrans %}</p>
           {% else %}
           <details>
             <summary style="cursor:pointer; font-size:.9rem; color:var(--ink-2);">{% trans "Have a gift card?" %}</summary>
@@ -145,7 +145,8 @@
           {% endif %}
         </div>
         {% else %}
-        <p class="meta" style="margin: 1rem 0 0;">Your cart is empty. <a href="/products/" style="text-decoration:underline;">Browse books</a>.</p>
+        {% url 'booking_marketplace:list' as experiences_url %}
+        <p class="meta" style="margin: 1rem 0 0;">{% blocktrans trimmed %}Your cart is empty. <a href="{{ experiences_url }}" style="text-decoration:underline;">Browse experiences</a>.{% endblocktrans %}</p>
         {% endif %}
       </aside>
     </form>

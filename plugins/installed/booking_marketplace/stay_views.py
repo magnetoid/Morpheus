@@ -63,7 +63,7 @@ def _amenities(slugs):
     out = []
     for s in slugs or []:
         label, icon = AMENITY_LABELS.get(s, (s.replace('_', ' ').title(), 'check'))
-        out.append({'slug': s, 'label': label, 'icon': icon})
+        out.append({'slug': s, 'label': str(label), 'icon': icon})
     return out
 
 
@@ -79,7 +79,7 @@ def _policies(policies):
         if not value:
             continue
         label = POLICY_LABELS.get(key) or key.replace('_', ' ').capitalize()
-        out.append({'key': key, 'label': label, 'value': value})
+        out.append({'key': key, 'label': str(label), 'value': value})
     return out
 
 
@@ -149,7 +149,7 @@ def stay_detail(request, slug):
             'listing_mode': listing_mode(),
             # Per-page SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
             'seo_object': prop,
-            'seo_title': f'{prop.name} · {prop.location or "Montenegro"}',
+            'seo_title': f'{prop.name} · {prop.location or _("Montenegro")}',
             'seo_description': (prop.short_description or prop.description)[:155],
             'seo_image': prop.image.url if prop.image else '',
             'seo_og_type': 'product',

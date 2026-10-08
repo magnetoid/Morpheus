@@ -178,6 +178,8 @@ Django middleware stack:
    - market resolution (per-country pricing/currency)
    - TrustedAgentMiddleware (attaches request.trusted_agent)
    - auth / session
+   - LocaleMiddleware → LocalizedLinksMiddleware (on a /sr/ page, internal
+     links that are pages get the /sr/ prefix — core/i18n_links.py)
    ↓
 Routing:
    - /                   → storefront

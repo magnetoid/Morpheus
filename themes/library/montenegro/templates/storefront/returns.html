@@ -8,29 +8,48 @@ rendered (no base defines that block).{% endcomment %}
 {% block seo %}{% trans "Cancellations & refunds" as theme_title %}{% with seo_title=theme_title %}{{ block.super }}{% endwith %}{% endblock %}
 
 {% block content %}
+{% url 'storefront:home' as home_url %}{% url 'storefront:contact' as contact_url %}
 <section style="padding: 4rem 0 2rem;">
   <div class="wrap" style="max-width: 760px;">
     <p class="meta" style="margin-bottom: 1.25rem;">
-      <a href="/" style="color: var(--muted);">Home</a>
+      <a href="{{ home_url }}" style="color: var(--muted);">{% trans "Home" %}</a>
       <span style="margin: 0 0.5rem;">/</span>
-      <span>Cancellations &amp; refunds</span>
+      <span>{% trans "Cancellations & refunds" %}</span>
     </p>
-    <h1 class="display display-l" style="margin: .5rem 0 1.5rem;">Cancellations &amp; refunds<span class="text-accent">.</span></h1>
-    <p class="lede" style="margin-bottom: 2rem;">Plans change. Here’s how cancellations work across Montenegro Experience.</p>
+    <h1 class="display display-l" style="margin: .5rem 0 1.5rem;">{% trans "Cancellations & refunds" %}<span class="text-accent">.</span></h1>
+    <p class="lede" style="margin-bottom: 2rem;">{% trans "Plans change. Here’s how cancellations work across Montenegro Experience." %}</p>
 
-    <h2 class="display display-m" style="margin: 2rem 0 .75rem;">Free cancellation</h2>
-    <p style="color:var(--ink-2); line-height:1.7;">Most experiences can be cancelled up to <strong>24 hours before</strong> the start time for a full refund. Each listing shows its own cancellation policy on the experience page — always check it before you book.</p>
+    <h2 class="display display-m" style="margin: 2rem 0 .75rem;">{% trans "Free cancellation" %}</h2>
+    <p style="color:var(--ink-2); line-height:1.7;">{% blocktrans trimmed %}
+      Most experiences can be cancelled up to <strong>24 hours before</strong> the start time for a
+      full refund. Each listing shows its own cancellation policy on the experience page — always
+      check it before you book.
+    {% endblocktrans %}</p>
 
-    <h2 class="display display-m" style="margin: 2rem 0 .75rem;">Inside 24 hours</h2>
-    <p style="color:var(--ink-2); line-height:1.7;">Cancellations made less than 24 hours before the start are at the host’s discretion, as they’ve already reserved your spot and prepared. Reach out to your host first — most will do their best to help.</p>
+    <h2 class="display display-m" style="margin: 2rem 0 .75rem;">{% trans "Inside 24 hours" %}</h2>
+    <p style="color:var(--ink-2); line-height:1.7;">{% blocktrans trimmed %}
+      Cancellations made less than 24 hours before the start are at the host’s discretion, as
+      they’ve already reserved your spot and prepared. Reach out to your host first — most will do
+      their best to help.
+    {% endblocktrans %}</p>
 
-    <h2 class="display display-m" style="margin: 2rem 0 .75rem;">Weather &amp; host cancellations</h2>
-    <p style="color:var(--ink-2); line-height:1.7;">If a host cancels — for weather, safety, or any reason — you’ll be offered a new date or a full refund, your choice. Outdoor experiences (kayaking, sailing, hiking) may be rescheduled for conditions.</p>
+    <h2 class="display display-m" style="margin: 2rem 0 .75rem;">{% trans "Weather & host cancellations" %}</h2>
+    <p style="color:var(--ink-2); line-height:1.7;">{% blocktrans trimmed %}
+      If a host cancels — for weather, safety, or any reason — you’ll be offered a new date or a
+      full refund, your choice. Outdoor experiences (kayaking, sailing, hiking) may be rescheduled
+      for conditions.
+    {% endblocktrans %}</p>
 
-    <h2 class="display display-m" style="margin: 2rem 0 .75rem;">How refunds are paid</h2>
-    <p style="color:var(--ink-2); line-height:1.7;">Refunds go back to your original payment method, including the service fee, typically within 3–5 business days.</p>
+    <h2 class="display display-m" style="margin: 2rem 0 .75rem;">{% trans "How refunds are paid" %}</h2>
+    <p style="color:var(--ink-2); line-height:1.7;">{% blocktrans trimmed %}
+      Refunds go back to your original payment method, including the service fee, typically within
+      3–5 business days.
+    {% endblocktrans %}</p>
 
-    <p class="meta" style="margin-top:2.5rem;">Need help with a booking? <a href="/contact/" style="text-decoration:underline;">Contact us</a> and we’ll sort it out.</p>
+    <p class="meta" style="margin-top:2.5rem;">{% blocktrans trimmed %}
+      Need help with a booking? <a href="{{ contact_url }}" style="text-decoration:underline;">Contact us</a>
+      and we’ll sort it out.
+    {% endblocktrans %}</p>
   </div>
 </section>
 {% endblock %}

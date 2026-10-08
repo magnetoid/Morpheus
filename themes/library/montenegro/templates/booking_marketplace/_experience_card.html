@@ -5,7 +5,7 @@ Expects `s` (BookableService) and `listing_mode` (bool).{% endcomment %}
   <div>
     <div class="relative aspect-[4/3] rounded-xl overflow-hidden mb-3 bg-muted">
       {% if s.image %}
-        <img src="{{ s.image.url }}" alt="{{ s.name }}{% if s.location %} in {{ s.location }}, Montenegro{% endif %}" class="w-full h-full object-cover img-zoom" loading="lazy" decoding="async">
+        <img src="{{ s.image.url }}" alt="{% if s.location %}{% blocktrans with name=s.name location=s.location %}{{ name }} in {{ location }}, Montenegro{% endblocktrans %}{% else %}{{ s.name }}{% endif %}" class="w-full h-full object-cover img-zoom" loading="lazy" decoding="async">
       {% else %}
         <div class="w-full h-full flex items-center justify-center text-muted-foreground text-sm p-4 text-center">{{ s.name|truncatewords:4 }}</div>
       {% endif %}
@@ -20,7 +20,7 @@ Expects `s` (BookableService) and `listing_mode` (bool).{% endcomment %}
 
     <div class="space-y-1">
       <div class="flex items-center justify-between">
-        <h3 class="font-medium text-foreground truncate pr-2">{% if s.location %}{{ s.location }}, Montenegro{% else %}{{ s.name }}{% endif %}</h3>
+        <h3 class="font-medium text-foreground truncate pr-2">{% if s.location %}{% blocktrans with location=s.location %}{{ location }}, Montenegro{% endblocktrans %}{% else %}{{ s.name }}{% endif %}</h3>
         <div class="flex items-center gap-1 shrink-0">
           <svg class="w-3.5 h-3.5 fill-foreground text-foreground" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           <span class="text-sm font-medium">{% if s.rating %}{{ s.rating }}{% else %}{% trans "New" %}{% endif %}</span>

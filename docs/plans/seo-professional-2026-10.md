@@ -1,8 +1,23 @@
 # Professional SEO + 404 handling across all three stores (v0.80.0)
 
-**Status: shipped in v0.80.0 (2026-10-08).** Every step below is done; the
-guards are listed in the release notes. Left for the owner: the publisher
+**Status: shipped in v0.80.0 (2026-10-08), follow-up v0.80.1.** Every step below is
+done; the guards are listed in the release notes. Left for the owner: the publisher
 value "DotBooks" vs "DotBooks.store" on dotbooks (two publisher pages).
+
+**v0.80.1 — what the post-deploy crawl found.** All 520 montenegro sitemap URLs answer
+200, indexable, self-canonical, en/sr/x-default hreflang, one graph; dotbooks and
+supernatural clean. Remaining and fixed in v0.80.1: the 10 region pages (new in the
+sitemap) had no meta description; dotbooks `/category/books/` had none; Web Stories
+named the SVG favicon as publisher logo (Google wants a square raster ≥ 96 px). And the
+Serbian tree was only half a translation: 106 of 108 internal links on `/sr/` pointed
+into the English tree (`core/i18n_links.LocalizedLinksMiddleware` now prefixes page
+links on prefixed pages), ~650 interface strings had no Serbian entry or were not
+marked for translation (theme, booking labels, hotel copy, view titles), and
+montenegro's About page carried the bookshop's copy. Not in scope, reported to the
+owner: database content (experience names, descriptions, journal posts, place FAQs)
+is English on `/sr/` until the content-translation phase; `/auth/` is outside the
+language tree, so sign-in stays English; the imprint page still has its template
+placeholder; `/marketplace/` on montenegro is an orphan page in the bookshop's voice.
 
 Owner request (2026-10-08): "fix everything — the stores must look like
 professional e-commerce sites and the platform must work without these gaps".

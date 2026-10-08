@@ -639,6 +639,28 @@ working code and does nothing. Guarded by `seo/tests/test_head_rules.py`,
 theme, no raw ld+json/hreflang, no dead blocks) and the site audit's not-found
 probe.
 
+**Landmine — a translated URL tree whose links are plain paths is a one-page
+translation, and a missing msgid fails silently.** After v0.80.0 shipped hreflang
+for `/sr/`, the crawl found 106 of the 108 internal links on montenegro's Serbian
+home pointing into the English tree: themes, apps and CMS copy write
+`href="/bookings/"`, and only `{% url %}` adds the prefix — so a Serbian visitor
+left Serbian on the first click and every Serbian page linked only to English
+ones, while each page looked right on its own. `core/i18n_links.py`
+(`LocalizedLinksMiddleware`, inside GZip) now rewrites `<a href>`/`<form action>`
+on a prefixed page when the URL resolver says the target is a language-routed
+page; `<link>` tags (hreflang alternates, manifest) and chrome routes (`/auth/`,
+`/dashboard/`, files) are never touched. The same crawl found 520-odd strings the
+montenegro theme wraps in `{% trans %}` with no Serbian entry, English written
+straight into markup, `|pluralize` (an English "s"), choice labels that weren't
+`gettext_lazy`, and an about page still carrying the bookshop's copy ("we don't
+carry books we haven't read", "free shipping over $40"). Lazy labels must be
+`str()`'d before they reach JSON (`json.dumps` cannot encode them — the amenity
+`LocationFeatureSpecification`, the region breadcrumb). `makemessages` cuts
+`{% trans "…\"…" %}` at the escaped quote, so measure coverage with the template
+engine, not its output. Auth (`/auth/`) is deliberately outside the language tree
+and stays English. Guarded by `core/tests/test_localized_links.py` and
+`booking_marketplace/tests/test_serbian_catalog.py`.
+
 **Landmine — a machine-readable file is read for what it IMPLIES, and all of
 this shipped as valid syntax.** Three defects on one live store, none visible in
 a browser, none caught by the suite, all found only by crawling 346 URLs.

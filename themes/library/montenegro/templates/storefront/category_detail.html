@@ -11,7 +11,7 @@
 {% block content %}
 <section style="padding: 4rem 0 2rem;">
   <div class="wrap" style="max-width: 720px;">
-    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem;">
+    <nav aria-label="{% trans 'Breadcrumb' %}" class="breadcrumb" style="margin-bottom: 1.25rem;">
       {% for item in breadcrumb_items %}
         {% if forloop.last %}
           <span aria-current="page">{{ item.name }}</span>
@@ -33,7 +33,7 @@
   <div class="wrap">
     {% if products %}
     <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:2rem; flex-wrap:wrap;">
-      <p class="meta" style="margin:0;">{{ page_obj.paginator.count }} experience{{ page_obj.paginator.count|pluralize }}</p>
+      <p class="meta" style="margin:0;">{% blocktrans count c=page_obj.paginator.count %}{{ c }} experience{% plural %}{{ c }} experiences{% endblocktrans %}</p>
       <form method="get" style="display:flex; align-items:center; gap:0.5rem; margin:0;">
         <label for="sort" class="meta" style="margin:0;">{% translate "Sort" %}</label>
         <select name="sort" id="sort" onchange="this.form.submit()"
@@ -50,16 +50,19 @@
       {% endfor %}
     </div>
     {% if page_obj.has_other_pages %}
-    <nav aria-label="Pages" style="display:flex; gap:0.75rem; justify-content:center; align-items:center; margin-top:3rem; flex-wrap:wrap;">
+    <nav aria-label="{% trans 'Pages' %}" style="display:flex; gap:0.75rem; justify-content:center; align-items:center; margin-top:3rem; flex-wrap:wrap;">
       {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="btn btn-ghost">{% trans "← Prev" %}</a>{% endif %}
-      <span class="meta" style="margin:0;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      <span class="meta" style="margin:0;">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
       {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="btn btn-ghost">{% trans "Next →" %}</a>{% endif %}
     </nav>
     {% endif %}
     {% else %}
     <div style="text-align: center; padding: 5rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
-      <p class="display display-m" style="margin: 0 0 1rem;">Nothing here yet<span class="text-accent">.</span></p>
-      <p class="lede" style="margin: 0 auto;">We're between issues for {{ category.name|lower }}. Try the <a href="/products/" style="border-bottom: 1px dotted var(--rule);">full catalog</a> in the meantime.</p>
+      <p class="display display-m" style="margin: 0 0 1rem;">{% trans "Nothing here yet" %}<span class="text-accent">.</span></p>
+      {% url 'booking_marketplace:list' as experiences_url %}
+      <p class="lede" style="margin: 0 auto;">{% blocktrans trimmed with name=category.name %}
+        There is nothing in {{ name }} right now. Browse <a href="{{ experiences_url }}" style="border-bottom: 1px dotted var(--rule);">all experiences</a> in the meantime.
+      {% endblocktrans %}</p>
     </div>
     {% endif %}
   </div>

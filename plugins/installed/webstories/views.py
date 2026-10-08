@@ -49,6 +49,41 @@ def _site_base_url(request: HttpRequest) -> str:
     return f'{request.scheme}://{request.get_host()}'.rstrip('/')
 
 
+_RASTER = ('.png', '.jpg', '.jpeg', '.gif')
+
+
+def _square_raster_url(img) -> str:
+    """`img`'s URL when Google accepts it as a story's publisher logo, else ``''``."""
+    try:
+        if img and img.name.lower().endswith(_RASTER) and img.width == img.height >= 96:
+            return img.url
+    except Exception:  # noqa: BLE001, S110 — a row whose file is gone
+        pass
+    return ''
+
+
+def _publisher_logo_url(settings_row, base: str) -> str:
+    """A square raster image of at least 96 px — Google's rule for a story's logo.
+
+    The merchant's logo (or uploaded favicon) when it qualifies, else the
+    store's app icon: the PNG the PWA manifest and apple-touch-icon already
+    use. The old fallback, `/favicon.ico`, is an SVG on every store that never
+    uploaded a favicon, so those stores' stories all carried a logo the rich
+    results reject.
+    """
+    url = _square_raster_url(getattr(settings_row, 'logo', None)) or _square_raster_url(
+        getattr(settings_row, 'favicon', None)
+    )
+    if not url:
+        from django.templatetags.static import static  # noqa: PLC0415
+
+        try:
+            url = static('pwa/icon-192.png')
+        except ValueError:  # the pwa app's files are not collected on this deployment
+            url = '/favicon.ico'
+    return url if url.startswith(('http://', 'https://')) else f'{base}{url}'
+
+
 @xframe_options_sameorigin
 def story_page(request: HttpRequest, slug: str) -> HttpResponse:
     """Render the AMP Web Story document for a product.
@@ -81,11 +116,7 @@ def story_page(request: HttpRequest, slug: str) -> HttpResponse:
     # in the tree, so every story on every store pointed publisher-logo-src at
     # a 404. An empty ImageField is falsy, so the truthy check guards the
     # `.url` access (an empty FileField raises ValueError on `.url`).
-    logo = getattr(settings_row, 'logo', None)
-    logo_url = logo.url if logo else ''
-    if logo_url and not logo_url.startswith(('http://', 'https://')):
-        logo_url = f'{base}{logo_url}'
-    publisher_logo = logo_url or f'{base}/favicon.ico'
+    publisher_logo = _publisher_logo_url(settings_row, base)
 
     context = {
         'story': story,

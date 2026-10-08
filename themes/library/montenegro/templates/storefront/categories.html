@@ -10,7 +10,7 @@
 {% block content %}
 <section style="padding: 4rem 0 5rem;">
   <div class="wrap">
-    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem;">
+    <nav aria-label="{% trans 'Breadcrumb' %}" class="breadcrumb" style="margin-bottom: 1.25rem;">
       {% for item in breadcrumb_items %}
         {% if forloop.last %}
           <span aria-current="page">{{ item.name }}</span>
@@ -22,7 +22,7 @@
     </nav>
     <p class="eyebrow">{% trans "Browse experiences" %}</p>
     <h1 class="display display-xl" style="margin: 1.5rem 0 2rem;">
-      Categories<span class="text-accent">.</span>
+      {% trans "Categories" %}<span class="text-accent">.</span>
     </h1>
 
     {% if categories %}

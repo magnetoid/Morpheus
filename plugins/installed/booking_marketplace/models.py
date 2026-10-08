@@ -19,29 +19,30 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext_lazy as _l
 from djmoney.models.fields import MoneyField
 
 # Montenegro regions — used to browse experiences by area (parity with the
 # reference site's region tiles). Stored as a slug-ish key; label shown in UI.
 REGIONS = [
-    ('kotor', 'Kotor Bay'),
-    ('budva', 'Budva Riviera'),
-    ('durmitor', 'Durmitor & the North'),
-    ('skadar', 'Lake Skadar'),
-    ('podgorica', 'Podgorica'),
-    ('ulcinj', 'Ulcinj & the south coast'),
-    ('tivat', 'Tivat & Luštica'),
-    ('cetinje', 'Cetinje & the Old Royal Capital'),
-    ('other', 'Elsewhere in Montenegro'),
+    ('kotor', _l('Kotor Bay')),
+    ('budva', _l('Budva Riviera')),
+    ('durmitor', _l('Durmitor & the North')),
+    ('skadar', _l('Lake Skadar')),
+    ('podgorica', _l('Podgorica')),
+    ('ulcinj', _l('Ulcinj & the south coast')),
+    ('tivat', _l('Tivat & Luštica')),
+    ('cetinje', _l('Cetinje & the Old Royal Capital')),
+    ('other', _l('Elsewhere in Montenegro')),
 ]
 
 PLACE_TYPES = [
-    ('coastal', 'Coastal'),
-    ('mountains', 'Mountains'),
-    ('national_parks', 'National Parks'),
-    ('cultural', 'Cultural Sites'),
-    ('lakes', 'Lakes & Rivers'),
-    ('cities', 'Cities & Towns'),
+    ('coastal', _l('Coastal')),
+    ('mountains', _l('Mountains')),
+    ('national_parks', _l('National Parks')),
+    ('cultural', _l('Cultural Sites')),
+    ('lakes', _l('Lakes & Rivers')),
+    ('cities', _l('Cities & Towns')),
 ]
 
 
@@ -426,38 +427,38 @@ class AddOn(models.Model):
 # ---------------------------------------------------------------------------
 
 PROPERTY_TYPES = [
-    ('hotel', 'Hotel'),
-    ('resort', 'Resort'),
-    ('boutique', 'Boutique hotel'),
-    ('apartment', 'Apartment'),
-    ('villa', 'Villa'),
-    ('guesthouse', 'Guesthouse'),
-    ('hostel', 'Hostel'),
-    ('mountain_lodge', 'Mountain lodge'),
+    ('hotel', _l('Hotel')),
+    ('resort', _l('Resort')),
+    ('boutique', _l('Boutique hotel')),
+    ('apartment', _l('Apartment')),
+    ('villa', _l('Villa')),
+    ('guesthouse', _l('Guesthouse')),
+    ('hostel', _l('Hostel')),
+    ('mountain_lodge', _l('Mountain lodge')),
 ]
 
 # amenity slug -> (label, lucide-icon-name) — drives the amenities grid.
 AMENITY_LABELS = {
-    'pool': ('Swimming pool', 'waves'),
-    'spa': ('Spa & wellness', 'sparkles'),
-    'wifi': ('Free WiFi', 'wifi'),
-    'parking': ('Parking', 'square-parking'),
-    'restaurant': ('Restaurant', 'utensils'),
-    'bar': ('Bar', 'wine'),
-    'gym': ('Fitness centre', 'dumbbell'),
-    'airport_shuttle': ('Airport shuttle', 'plane'),
-    'beachfront': ('Beachfront', 'umbrella'),
-    'pet_friendly': ('Pet friendly', 'paw-print'),
-    'family_rooms': ('Family rooms', 'users'),
-    'room_service': ('Room service', 'concierge-bell'),
-    'concierge': ('Concierge', 'bell'),
-    'ev_charging': ('EV charging', 'plug-zap'),
-    'air_conditioning': ('Air conditioning', 'wind'),
-    'sea_view': ('Sea view', 'eye'),
-    'balcony': ('Balcony', 'door-open'),
-    'minibar': ('Minibar', 'refrigerator'),
-    'kitchenette': ('Kitchenette', 'cooking-pot'),
-    'bathtub': ('Bathtub', 'bath'),
+    'pool': (_l('Swimming pool'), 'waves'),
+    'spa': (_l('Spa & wellness'), 'sparkles'),
+    'wifi': (_l('Free WiFi'), 'wifi'),
+    'parking': (_l('Parking'), 'square-parking'),
+    'restaurant': (_l('Restaurant'), 'utensils'),
+    'bar': (_l('Bar'), 'wine'),
+    'gym': (_l('Fitness centre'), 'dumbbell'),
+    'airport_shuttle': (_l('Airport shuttle'), 'plane'),
+    'beachfront': (_l('Beachfront'), 'umbrella'),
+    'pet_friendly': (_l('Pet friendly'), 'paw-print'),
+    'family_rooms': (_l('Family rooms'), 'users'),
+    'room_service': (_l('Room service'), 'concierge-bell'),
+    'concierge': (_l('Concierge'), 'bell'),
+    'ev_charging': (_l('EV charging'), 'plug-zap'),
+    'air_conditioning': (_l('Air conditioning'), 'wind'),
+    'sea_view': (_l('Sea view'), 'eye'),
+    'balcony': (_l('Balcony'), 'door-open'),
+    'minibar': (_l('Minibar'), 'refrigerator'),
+    'kitchenette': (_l('Kitchenette'), 'cooking-pot'),
+    'bathtub': (_l('Bathtub'), 'bath'),
 }
 
 
@@ -467,10 +468,10 @@ AMENITY_LABELS = {
 # unknown key still renders — the view humanises it — so a new policy needs no
 # theme edit.
 POLICY_LABELS = {
-    'cancellation': 'Cancellation',
-    'children': 'Children',
-    'pets': 'Pets',
-    'payment': 'Payment',
+    'cancellation': _l('Cancellation'),
+    'children': _l('Children'),
+    'pets': _l('Pets'),
+    'payment': _l('Payment'),
 }
 
 
@@ -660,11 +661,11 @@ class PropertyImage(models.Model):
 
 
 EVENT_CATEGORIES = [
-    ('music', 'Music & festivals'),
-    ('culture', 'Culture & arts'),
-    ('food', 'Food & wine'),
-    ('tradition', 'Tradition & carnival'),
-    ('sport', 'Sport & outdoors'),
+    ('music', _l('Music & festivals')),
+    ('culture', _l('Culture & arts')),
+    ('food', _l('Food & wine')),
+    ('tradition', _l('Tradition & carnival')),
+    ('sport', _l('Sport & outdoors')),
 ]
 
 

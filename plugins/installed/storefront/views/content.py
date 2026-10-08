@@ -7,6 +7,7 @@ newsletter capture, and the generic coming-soon placeholder.
 from __future__ import annotations
 
 from django.http import HttpResponse
+from django.utils.translation import gettext
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from morpheus.app.views import render
@@ -59,7 +60,7 @@ def about(request):
         'storefront/about.html',
         {
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'About',
+            'seo_title': gettext('About'),
             # The merchant's own words when they have written any; otherwise
             # nothing, and the seo app derives one from the page. The shell
             # used to hardcode dot books' own copy here, so every other store
@@ -115,7 +116,7 @@ def contact(request):
         {
             'sent': sent,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'Contact',
+            'seo_title': gettext('Contact'),
             'seo_description': (
                 f'Get in touch with {store_name()} — questions about an order, '
                 'or anything else. We read every message.'
@@ -170,7 +171,7 @@ def journal_index(request):
             'post_items': post_items,
             'breadcrumb_items': breadcrumb_items,
             'page_intro': intro['body'],
-            'seo_title': 'Journal',
+            'seo_title': gettext('Journal'),
             'seo_description': (
                 intro['meta_description']
                 or intro['body']
@@ -215,7 +216,7 @@ def journal_detail(request, slug):
             'entry': entry,
             'seo_object': seo_object,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': f'{entry["title"]} — Journal',
+            'seo_title': gettext('%(title)s — Journal') % {'title': entry['title']},
             'seo_description': entry.get('excerpt', '')[:160],
             'seo_image': entry.get('image', ''),
             'seo_og_type': 'article',
@@ -405,7 +406,7 @@ def do_not_sell(request):
         {
             'submitted': submitted,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'Do not sell my info',
+            'seo_title': gettext('Do not sell my info'),
             # Describes the RIGHT, not the store's data practices. The old
             # copy asserted "DotBooks doesn't sell personal data" on every
             # store — another business's name attached to a privacy claim the
@@ -432,7 +433,7 @@ def affiliate_terms(request):
     return render(
         request,
         'storefront/affiliate_terms.html',
-        {'seo_title': 'Affiliate programme terms'},
+        {'seo_title': gettext('Affiliate programme terms')},
     )
 
 

@@ -92,7 +92,7 @@
       <a href="{{ c.href }}" class="group flex flex-col items-center gap-2 py-6 min-w-[96px] rounded-xl hover:bg-muted transition-colors">
         <span class="text-muted-foreground group-hover:text-primary transition-colors">{{ c.icon|safe }}</span>
         <span class="text-sm font-medium text-foreground">{{ c.label }}</span>
-        <span class="text-xs text-muted-foreground">{{ c.count }} experience{{ c.count|pluralize }}</span>
+        <span class="text-xs text-muted-foreground">{% blocktrans count c=c.count %}{{ c }} experience{% plural %}{{ c }} experiences{% endblocktrans %}</span>
       </a>
       {% endfor %}
     </div>

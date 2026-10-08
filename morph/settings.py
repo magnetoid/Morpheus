@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.80.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.80.1')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -330,6 +330,9 @@ MIDDLEWARE = [
     # storefront pages. Must sit after SessionMiddleware and before
     # CommonMiddleware. The core language (LANGUAGE_CODE) is served unprefixed.
     'django.middleware.locale.LocaleMiddleware',
+    # On a /sr/ page, internal links that are pages get the /sr/ prefix — themes
+    # and CMS copy write plain paths. Inside GZip: it rewrites the body.
+    'core.i18n_links.LocalizedLinksMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

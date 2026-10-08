@@ -17,7 +17,7 @@ import json
 import re
 
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from djmoney.money import Money
 
 from plugins.installed.booking_marketplace.models import BookableService, Property
@@ -158,6 +158,93 @@ class ListingRulesTests(MontenegroThemeMixin, TestCase):
         h1 = re.search(r'<h1[^>]*>(.*?)</h1>', body, re.S).group(1)
         self.assertIn('Shop Montenegro', h1)
         self.assertNotIn('Experiences', h1)
+
+
+class RegionDescriptionTests(MontenegroThemeMixin, TestCase):
+    """The region pages joined the sitemap in v0.80.0 with no meta description.
+
+    A crawl after the deploy found all ten of them without one — the only
+    indexable pages on the store missing it. The description is built from what
+    the page lists, so it can never describe a region the page does not show.
+    """
+
+    _DESCRIPTION = re.compile(r'<meta[^>]+name="description"[^>]+content="([^"]*)"', re.I)
+
+    def setUp(self):
+        cache.clear()
+
+    def _description(self, path) -> str:
+        import html
+
+        found = self._DESCRIPTION.findall(_head(self.client.get(path)))
+        self.assertEqual(len(found), 1, f'{path}: {found}')
+        return html.unescape(found[0])
+
+    def test_a_region_page_describes_what_it_lists(self):
+        host = _host()
+        _experience(host, 'bay-kayak', name='Bay Kayak', region='kotor')
+        _experience(host, 'perast-boat', name='Perast Boat', region='kotor')
+        _experience(host, 'budva-sail', name='Budva Sail', region='budva')
+        description = self._description('/regions/kotor/')
+        self.assertIn('Kotor Bay', description)
+        self.assertIn('2 experiences', description)
+        self.assertIn('Bay Kayak', description)
+        self.assertNotIn('Budva Sail', description)
+
+    def test_a_long_region_description_stays_snippet_length(self):
+        host = _host()
+        for i in range(12):
+            _experience(
+                host,
+                f'long-experience-{i}',
+                name=f'A Very Long Experience Name Number {i} Above the Bay',
+                region='kotor',
+            )
+        description = self._description('/regions/kotor/')
+        self.assertLessEqual(len(description), 160, description)
+        self.assertIn('12 experiences', description)
+
+    def test_the_regions_index_names_the_regions_it_lists(self):
+        host = _host()
+        _experience(host, 'bay-kayak', region='kotor')
+        _experience(host, 'budva-sail', region='budva')
+        description = self._description('/regions/')
+        self.assertIn('Kotor Bay', description)
+        self.assertIn('Budva Riviera', description)
+        self.assertNotIn('Lake Skadar', description)
+
+
+@override_settings(LANGUAGES=[('en', 'English'), ('sr', 'Srpski')], LANGUAGE_CODE='en')
+class SerbianChromeTests(MontenegroThemeMixin, TestCase):
+    """The header menu and region names were English on every `/sr/` page."""
+
+    def test_the_menu_counts_are_translated(self):
+        from django.utils import translation
+
+        from plugins.installed.booking_marketplace.context_processors import _nav_categories
+        from plugins.installed.catalog.models import Category
+
+        category = Category.objects.create(name='Sea Trips', slug='sea-trips')
+        host = _host()
+        _experience(host, 'bay-kayak', category=category)
+        _experience(host, 'bay-sail', category=category)
+        with translation.override('sr'):
+            tiles = _nav_categories()
+        self.assertEqual(
+            next(t for t in tiles if t['label'] == 'Sea Trips')['desc'], '2 doživljaja'
+        )
+
+    def test_region_names_are_translated(self):
+        from django.utils import translation
+
+        _experience(_host(), 'bay-kayak', region='kotor')
+        with translation.override('sr'):
+            self.assertEqual(
+                BookableService.objects.get(slug='bay-kayak').get_region_display(), 'Boka Kotorska'
+            )
+        body = self.client.get('/sr/regions/').content.decode()
+        self.assertIn('Boka Kotorska', body)
+        self.assertNotIn('Kotor Bay', body.split('</head>', 1)[1])
 
 
 class InactiveHostTests(MontenegroThemeMixin, TestCase):

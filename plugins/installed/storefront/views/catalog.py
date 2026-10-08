@@ -19,6 +19,7 @@ _metafield_search_ids). They're consumed by other modules in this package.
 from __future__ import annotations
 
 import contextlib
+from django.utils.translation import gettext
 
 from api.client import internal_graphql
 from morpheus.core import MorpheusEvents, hook_registry
@@ -1114,7 +1115,9 @@ def search(request):
             'semantic': use_semantic,
             'search_items': search_items,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': f'Search results for {q}' if q else 'Search',
+            'seo_title': (
+                gettext('Search results for %(q)s') % {'q': q} if q else gettext('Search')
+            ),
             'seo_description': f'Search results for "{q}" at {store_name()}.'
             if q
             else f'Search {store_name()}.',
@@ -1193,6 +1196,20 @@ def _attach_book_authors(products) -> None:
                     target.author_name = m.typed_value or ''
         except Exception:  # noqa: BLE001 — card metadata is best-effort
             pass
+
+
+def _listing_description(name: str, products, limit: int = 155) -> str:
+    """`<name>: <first products>.` — for a listing nobody described.
+
+    Built from what the page lists, so it never promises more than it shows;
+    empty when even one product name will not fit a search snippet.
+    """
+    shown: list[str] = []
+    for product in products:
+        if len(name) + 2 + len(', '.join([*shown, product.name])) + 1 > limit:
+            break
+        shown.append(product.name)
+    return f'{name}: {", ".join(shown)}.' if shown else ''
 
 
 def category_detail(request, slug):
@@ -1312,7 +1329,11 @@ def category_detail(request, slug):
             'collection_items': collection_items,
             'seo_object': category,
             'seo_title': f'{category.name}',
-            'seo_description': category.description or intro.get('lede', '')[:160],
+            'seo_description': (
+                category.description
+                or intro.get('lede', '')[:160]
+                or _listing_description(category.name, products)
+            ),
             'seo_og_type': 'website',
         },
     )
@@ -1557,7 +1578,7 @@ def staff_picks(request):
             'pick_items': pick_items,
             'breadcrumb_items': breadcrumb_items,
             'seo_object': collection,
-            'seo_title': 'Staff picks',
+            'seo_title': gettext('Staff picks'),
             'seo_description': description[:160],
             'seo_og_type': 'website',
             # A shelf with nothing on it is held out of the index (and the
@@ -1635,7 +1656,7 @@ def categories(request):
             'breadcrumb_items': breadcrumb_items,
             # Clean page name only — the head document applies the brand
             # (ADR 0007); the old view hardcoded "Categories — dot books".
-            'seo_title': 'Categories',
+            'seo_title': gettext('Categories'),
             'seo_description': 'Browse every category in the shop.',
             'seo_og_type': 'website',
             'seo_item_count': len(cats),

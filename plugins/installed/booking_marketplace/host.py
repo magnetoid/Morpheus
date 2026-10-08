@@ -15,6 +15,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.text import slugify
+from django.utils.translation import gettext
 from django.views.decorators.http import require_http_methods
 from djmoney.money import Money
 
@@ -40,7 +41,9 @@ def _host_vendor(user):
 
 
 def _not_host(request):
-    return render(request, 'booking_marketplace/host/not_host.html', {'seo_title': 'Become a host'})
+    return render(
+        request, 'booking_marketplace/host/not_host.html', {'seo_title': gettext('Become a host')}
+    )
 
 
 def _int(value, default):
@@ -77,7 +80,7 @@ def host_services(request):
                 service__vendor=vendor, status='pending'
             ).count(),
             'new_enquiries': Enquiry.objects.filter(service__vendor=vendor, status='new').count(),
-            'seo_title': 'Your experiences',
+            'seo_title': gettext('Your experiences'),
         },
     )
 
@@ -232,7 +235,7 @@ def host_service_form(request, slug=None):  # noqa: PLR0912, PLR0915 — one bra
             'selected_wd': selected,
             'start_times': start_times,
             'listing_kinds': BookableService.LISTING_KINDS,
-            'seo_title': 'Edit experience' if svc else 'New experience',
+            'seo_title': gettext('Edit experience') if svc else gettext('New experience'),
         },
     )
 
@@ -265,7 +268,7 @@ def host_bookings(request):
     return render(
         request,
         'booking_marketplace/host/bookings.html',
-        {'vendor': vendor, 'bookings': bookings, 'seo_title': 'Your bookings'},
+        {'vendor': vendor, 'bookings': bookings, 'seo_title': gettext('Your bookings')},
     )
 
 
@@ -282,7 +285,7 @@ def host_enquiries(request):
     return render(
         request,
         'booking_marketplace/host/enquiries.html',
-        {'vendor': vendor, 'enquiries': enquiries, 'seo_title': 'Your enquiries'},
+        {'vendor': vendor, 'enquiries': enquiries, 'seo_title': gettext('Your enquiries')},
     )
 
 
@@ -314,6 +317,6 @@ def host_earnings(request):
             'net': net,
             'count': paid.count(),
             'recent': paid.select_related('service').order_by('-booking_date')[:50],
-            'seo_title': 'Earnings',
+            'seo_title': gettext('Earnings'),
         },
     )

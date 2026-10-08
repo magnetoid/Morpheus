@@ -88,7 +88,7 @@ gift_card_count) and the {% templatetag openblock %} storefront_blocks "account_
           <p class="font-semibold text-foreground">{% trans "Store credit &amp; gift cards" %}</p>
         </div>
         <p class="text-sm text-muted-foreground">
-          {% if summary.store_credit_balance %}{% trans "Credit:" %} {{ summary.store_credit_balance|money }}{% endif %}{% if summary.store_credit_balance and summary.gift_card_count %} · {% endif %}{% if summary.gift_card_count %}{{ summary.gift_card_count }} {% trans "gift card" %}{{ summary.gift_card_count|pluralize }}{% endif %}.
+          {% if summary.store_credit_balance %}{% trans "Credit:" %} {{ summary.store_credit_balance|money }}{% endif %}{% if summary.store_credit_balance and summary.gift_card_count %} · {% endif %}{% if summary.gift_card_count %}{% blocktrans count counter=summary.gift_card_count %}{{ counter }} gift card{% plural %}{{ counter }} gift cards{% endblocktrans %}{% endif %}.
         </p>
       </a>
       {% endif %}

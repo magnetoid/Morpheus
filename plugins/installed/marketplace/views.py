@@ -18,6 +18,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.utils.translation import gettext
 from django.views.decorators.http import require_http_methods
 from djmoney.money import Money
 
@@ -53,7 +54,7 @@ def apply(request: HttpRequest) -> HttpResponse:
                 {
                     'error': 'Business name is required.',
                     'existing': existing,
-                    'seo_title': 'Sell with us',
+                    'seo_title': gettext('Sell with us'),
                 },
             )
 
@@ -72,7 +73,7 @@ def apply(request: HttpRequest) -> HttpResponse:
         'marketplace/vendor_apply.html',
         {
             'existing': existing,
-            'seo_title': 'Sell with us',
+            'seo_title': gettext('Sell with us'),
             'seo_description': 'Apply to become a vendor on dot books. Reach our readership.',
         },
     )
@@ -144,7 +145,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
             'open_orders_count': open_orders_count,
             'active_products_count': active_products_count,
             'month_sales': month_sales,
-            'seo_title': 'Vendor dashboard',
+            'seo_title': gettext('Vendor dashboard'),
         },
     )
 
@@ -171,7 +172,7 @@ def vendor_products(request: HttpRequest) -> HttpResponse:
             {
                 'vendor': None,
                 'products': [],
-                'seo_title': 'Your products',
+                'seo_title': gettext('Your products'),
             },
         )
 
@@ -182,7 +183,7 @@ def vendor_products(request: HttpRequest) -> HttpResponse:
         {
             'vendor': vendor,
             'products': products,
-            'seo_title': 'Your products',
+            'seo_title': gettext('Your products'),
         },
     )
 
@@ -254,7 +255,7 @@ def vendor_product_edit(request: HttpRequest, product_id) -> HttpResponse:
             'vendor': vendor,
             'product': product,
             'error': error,
-            'seo_title': f'Edit {product.name}',
+            'seo_title': gettext('Edit %(name)s') % {'name': product.name},
         },
     )
 
@@ -339,7 +340,7 @@ def vendor_order_detail(request: HttpRequest, vendor_order_id) -> HttpResponse:
                 ('delivered', 'Delivered'),
                 ('cancelled', 'Cancelled'),
             ],
-            'seo_title': f'Vendor order {parent.order_number}',
+            'seo_title': gettext('Vendor order %(number)s') % {'number': parent.order_number},
         },
     )
 
@@ -406,7 +407,7 @@ def vendor_payouts(request: HttpRequest) -> HttpResponse:
             'threshold': threshold,
             'can_request': can_request,
             'history': history,
-            'seo_title': 'Payouts',
+            'seo_title': gettext('Payouts'),
         },
     )
 
@@ -482,6 +483,6 @@ def vendor_settings(request: HttpRequest) -> HttpResponse:
                 ('paypal', 'PayPal'),
                 ('other', 'Other'),
             ],
-            'seo_title': 'Vendor settings',
+            'seo_title': gettext('Vendor settings'),
         },
     )

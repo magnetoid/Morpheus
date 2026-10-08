@@ -185,8 +185,10 @@ def _hotel_node(prop, *, url: str, request=None, with_prices=True) -> dict:
         }
     if prop.star_rating:
         node['starRating'] = {'@type': 'Rating', 'ratingValue': prop.star_rating, 'bestRating': 5}
+    # str(): the labels are lazy translations, which json.dumps cannot encode.
     amenities = [
-        AMENITY_LABELS.get(s, (s.replace('_', ' ').title(),))[0] for s in (prop.amenities or [])
+        str(AMENITY_LABELS.get(s, (s.replace('_', ' ').title(),))[0])
+        for s in (prop.amenities or [])
     ]
     if amenities:
         node['amenityFeature'] = [

@@ -1,51 +1,68 @@
 {% extends "storefront/base.html" %}
-{% load seo %}
+{% load seo i18n %}
 
 {% block extra_head %}
 {% seo_aboutpage_jsonld name="About Montenegro Experience" description="Montenegro Experience is an independent travel marketplace, run by locals, for travellers. We list experiences from independent local hosts across Montenegro." %}
 {% seo_breadcrumb_jsonld items=breadcrumb_items %}
 {% endblock %}
 
+{% comment %}
+Every claim on this page is one the site already makes on the page that owns
+it — host review (vendor apply), per-guest euro prices and the 12% service fee
+(the experience page, "What to expect"), the 24-hour cancellation rule
+(cancellations & refunds). It used to carry the bookshop's copy ("we don't carry
+books we haven't read", "free shipping on orders over $40") and linked "the
+shelf" — the catalog's product grid, which this store leaves empty.
+{% endcomment %}
 {% block content %}
+{% url 'storefront:contact' as contact_url %}{% url 'booking_marketplace:list' as experiences_url %}{% url 'storefront:returns' as cancellations_url %}
 <section style="padding: 4rem 0 5rem;">
   <div class="wrap" style="max-width: 720px;">
-    <p class="eyebrow">A note from us</p>
+    <p class="eyebrow">{% trans "A note from us" %}</p>
     <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
-      The Montenegro<br>locals would show you<span class="text-accent">.</span>
+      {% trans "The Montenegro locals would show you" %}<span class="text-accent">.</span>
     </h1>
     <p class="lede" style="margin-bottom: 2rem;">
-      Montenegro Experience is an independent travel marketplace, run by locals, for travellers. We
-      list experiences from independent local hosts across Montenegro. We don't carry
-      books we haven't read. We don't take placements from publishers. The
-      list is small on purpose.
+      {% blocktrans trimmed %}
+      Montenegro Experience is an independent travel marketplace, run by locals, for travellers.
+      We list experiences from independent local hosts across Montenegro — guides, small
+      operators and family businesses.
+      {% endblocktrans %}
     </p>
 
     <hr class="rule" style="margin: 2.5rem 0;">
 
-    <h2 class="display display-m" style="margin-bottom: 1rem;">How it works<span class="text-accent">.</span></h2>
+    <h2 class="display display-m" style="margin-bottom: 1rem;">{% trans "How it works" %}<span class="text-accent">.</span></h2>
     <div style="font-size: 1rem; line-height: 1.7; color: var(--ink-2); max-width: 60ch;">
       <p style="margin-bottom: 1rem;">
-        Every title here was read by at least one of us before it made it
-        onto the list. That's both a constraint and a promise. The list
-        will always be small. Promise: if it's here, it earned the spot.
+        {% blocktrans trimmed %}
+        Every host applies to join, and our team reviews each application before their
+        experiences go live.
+        {% endblocktrans %}
       </p>
       <p style="margin-bottom: 1rem;">
-        We pay attention to small operators. We pay attention to local guides.
-        We pay attention to the books that don't have a marketing budget
-        but have an editor who fought for them. Those are usually the
-        books worth keeping.
+        {% blocktrans trimmed %}
+        Prices are shown per guest in euros. A 12% service fee is added at confirmation, and
+        you always see the full total before you confirm.
+        {% endblocktrans %}
       </p>
       <p>
-        Free shipping on orders over $40. Always read first.
+        {% blocktrans trimmed %}
+        Most experiences can be cancelled up to 24 hours before the start for a full refund —
+        each listing shows its own policy, and <a href="{{ cancellations_url }}" class="btn-link" style="display:inline-flex;">cancellations &amp; refunds</a>
+        explains the rest.
+        {% endblocktrans %}
       </p>
     </div>
 
     <hr class="rule" style="margin: 2.5rem 0;">
 
-    <h2 class="display display-m" style="margin-bottom: 1rem;">Find us<span class="text-accent">.</span></h2>
+    <h2 class="display display-m" style="margin-bottom: 1rem;">{% trans "Find us" %}<span class="text-accent">.</span></h2>
     <p class="lede">
-      Drop a line at <a href="{% url 'storefront:contact' %}" class="btn-link" style="display:inline-flex;">contact</a>
-      or browse the <a href="{% url 'storefront:product_list' %}" class="btn-link" style="display:inline-flex;">shelf</a>.
+      {% blocktrans trimmed %}
+      Drop a line at <a href="{{ contact_url }}" class="btn-link" style="display:inline-flex;">contact</a>
+      or browse the <a href="{{ experiences_url }}" class="btn-link" style="display:inline-flex;">experiences</a>.
+      {% endblocktrans %}
     </p>
   </div>
 </section>

@@ -510,12 +510,27 @@ they get caught.
 | Use `{% page_href page_obj.next_page_number %}` for pagination links | Build `?page={{ n }}` by hand — page 1 then costs a 301 hop |
 | Set `<html lang="{% get_current_language as L %}{{ L }}">` | Hardcode `lang="en"` on a theme any store may run in another language |
 | Let the head document emit hreflang and JSON-LD | Paste `<script type="application/ld+json">` or `hreflang` links — apps contribute through `SEO_JSONLD_GRAPH` / `STOREFRONT_HEAD` |
+| Wrap every visible word — headings, buttons, `alt`, `aria-label`, placeholders — in `{% trans %}` / `{% blocktrans trimmed %}`, counts in `{% blocktrans count %}` | Write English straight into markup or pluralise with `\|pluralize` (it appends an English "s") — a `/sr/` page then shows it in English |
+| Link with `{% url %}`; plain `href` paths are moved into the visitor's language for you | Build a URL that never becomes an `<a href>` (a redirect, a JSON-LD `url`, a link assembled in JavaScript) without `core.utils.i18n.localized_path()` |
 
 **Error pages.** A theme's `404.html` overrides no head block and passes no
 title: the seo app recognises Django's error render and emits the title
 ("Page not found", translated), the description and `noindex, follow` — no
 canonical, no hreflang, no Open Graph, no structured data, because each of
 those would name a page that does not exist.
+
+**A second language.** A store with more than one language serves the others
+under a prefix (`/sr/…`). Your template's strings are translated through the
+project catalog, `locale/<lang>/LC_MESSAGES/django.po` — a string with no entry
+silently renders in English. Internal links stay in the visitor's language
+without any work in the template: on a prefixed page,
+`core/i18n_links.LocalizedLinksMiddleware` gives every `<a href>` and
+`<form action>` that names a language-routed page the prefix, and leaves
+`/auth/`, `/dashboard/`, files and `<link>` tags alone. For montenegro,
+`booking_marketplace/tests/test_serbian_catalog.py` parses every template with
+the real engine and fails on any string without a Serbian entry — copy it for a
+theme of your own (`makemessages` misreads `{% trans "…\"…" %}`, so don't build
+the check on its output).
 
 **Words for the marketplace.** Set `vendor_noun` / `vendor_noun_plural` on your
 theme class ("Publisher"/"Publishers" on a bookshop, "Host"/"Hosts" on a travel

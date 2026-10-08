@@ -17,6 +17,7 @@ from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
+from django.utils.translation import ngettext
 
 from core.utils.i18n import localized_path
 from core.utils.pagination import paginate_or_404
@@ -210,14 +211,14 @@ def places_index(request):
     for p in places:
         by_region.setdefault(p.region, []).append(p)
     region_groups = [
-        {'key': key, 'label': label, 'places': by_region[key]}
+        {'key': key, 'label': str(label), 'places': by_region[key]}
         for key, label in REGIONS
         if key in by_region
     ]
     for key, group_places in by_region.items():
         if key not in region_labels:
             region_groups.append(
-                {'key': key, 'label': key or 'Elsewhere in Montenegro', 'places': group_places}
+                {'key': key, 'label': key or _('Elsewhere in Montenegro'), 'places': group_places}
             )
 
     used = set(
@@ -225,7 +226,7 @@ def places_index(request):
         .exclude(place_type='')
         .values_list('place_type', flat=True)
     )
-    type_filters = [{'key': k, 'label': v} for k, v in PLACE_TYPES if k in used]
+    type_filters = [{'key': k, 'label': str(v)} for k, v in PLACE_TYPES if k in used]
     return render(
         request,
         'booking_marketplace/places/index.html',
@@ -285,7 +286,7 @@ def place_detail(request, slug):
             'good_for_cards': good_for_cards(place.good_for),
             'listing_mode': listing_mode(),
             # Per-place SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
-            'seo_title': f'{place.name} Travel Guide, Tours & Hotels',
+            'seo_title': _('%(name)s Travel Guide, Tours & Hotels') % {'name': place.name},
             'seo_description': _place_meta_description(place),
             'seo_image': place.image.url if place.image else '',
             'seo_og_type': 'article',
@@ -294,6 +295,20 @@ def place_detail(request, slug):
             ),
         },
     )
+
+
+def _lead_with_names(lead: str, names, limit: int = 155) -> str:
+    """`lead` followed by as many of `names` as fit a search snippet.
+
+    The region pages' descriptions are built from what each page lists, so
+    they can never mention something the page does not show.
+    """
+    shown: list[str] = []
+    for name in names:
+        if len(lead) + len(' — ') + len(', '.join([*shown, name])) + 1 > limit:
+            break
+        shown.append(name)
+    return f'{lead} — {", ".join(shown)}.' if shown else f'{lead}.'
 
 
 def regions_index(request):
@@ -321,7 +336,7 @@ def regions_index(request):
         regions.append(
             {
                 'key': key,
-                'label': label,
+                'label': str(label),
                 'count': counts.get(key, 0),
                 'image': cover.image.url if cover and cover.image else None,
             }
@@ -332,6 +347,15 @@ def regions_index(request):
         {
             'regions': regions,
             'seo_title': _('Explore Montenegro by region'),
+            'seo_description': _lead_with_names(
+                ngettext(
+                    'Experiences to book in %(count)d region of Montenegro',
+                    'Experiences to book in %(count)d regions of Montenegro',
+                    len(regions),
+                )
+                % {'count': len(regions)},
+                [r['label'] for r in regions],
+            ),
             'breadcrumb_items': _crumbs(request, (_('Regions'), '/regions/')),
             'jsonld_items': seo_jsonld.listing_items(
                 [(r['label'], f'/regions/{r["key"]}/', r['image'] or '') for r in regions],
@@ -343,7 +367,9 @@ def regions_index(request):
 
 
 def region_detail(request, region):
-    labels = dict(REGIONS)
+    # str() now, in the visitor's language: a lazy label cannot be JSON-encoded
+    # (the breadcrumb) and must not be re-translated later.
+    labels = {key: str(label) for key, label in REGIONS}
     if region not in labels:
         raise Http404('Unknown region')
     services = list(
@@ -360,6 +386,22 @@ def region_detail(request, region):
             'services': services,
             'listing_mode': listing_mode(),
             'seo_title': _('%(region)s experiences') % {'region': labels[region]},
+            # Named in the order /bookings/ recommends them, not the page's A–Z.
+            'seo_description': _lead_with_names(
+                ngettext(
+                    '%(region)s: %(count)d experience to book with a local host',
+                    '%(region)s: %(count)d experiences to book with local hosts',
+                    len(services),
+                )
+                % {'region': labels[region], 'count': len(services)},
+                [
+                    s.name
+                    for s in sorted(
+                        services,
+                        key=lambda s: (not s.is_bestseller, -(s.rating or 0), s.name),
+                    )
+                ],
+            ),
             'breadcrumb_items': _crumbs(
                 request, (_('Regions'), '/regions/'), (labels[region], f'/regions/{region}/')
             ),
@@ -408,7 +450,7 @@ def service_detail(request, slug):
         'has_map': service.latitude is not None and service.longitude is not None,
         # Per-page SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
         'seo_object': service,
-        'seo_title': f'{service.name} · {service.location or "Montenegro"}',
+        'seo_title': f'{service.name} · {service.location or _("Montenegro")}',
         'seo_description': (service.short_description or service.description)[:155],
         'seo_image': service.image.url if service.image else '',
         'seo_og_type': 'product',
@@ -578,7 +620,9 @@ def events_index(request):
         {
             'events': events,
             'month_groups': month_groups,
-            'category_filters': [{'key': k, 'label': v} for k, v in EVENT_CATEGORIES if k in used],
+            'category_filters': [
+                {'key': k, 'label': str(v)} for k, v in EVENT_CATEGORIES if k in used
+            ],
             'selected_category': category,
             'seo_title': _('Montenegro Events Calendar'),
             'seo_description': _(
@@ -629,7 +673,7 @@ def event_detail(request, slug):
             'same_month': same_month,
             'services': services,
             'listing_mode': listing_mode(),
-            'seo_title': f'{event.name} — {event.when_display or "Montenegro"}'.strip(' —'),
+            'seo_title': f'{event.name} — {event.when_display or _("Montenegro")}'.strip(' —'),
             'seo_description': (
                 event.summary or f'{event.name} in Montenegro. Dates, location and what to expect.'
             )[:300],

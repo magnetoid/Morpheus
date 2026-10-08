@@ -1,9 +1,15 @@
-"""`/story/<slug>/` names a publisher logo that exists.
+"""`/story/<slug>/` names a publisher logo that exists — and that Google accepts.
 
 `publisher-logo-src` is mandatory on an `<amp-story>`. The view read
 `StoreSettings.logo_url` — a field that has never existed (the model has
 `logo`) — so a merchant's uploaded logo was ignored, and every story on every
 store pointed at `/static/img/logo-1x1.png`, a file that is nowhere in the tree.
+
+The fix after that fell back to `/favicon.ico`, which every store without an
+uploaded favicon serves as a small SVG. Google requires a story's publisher
+logo to be a square raster image of at least 96 px, so every story on dotbooks
+and supernatural carried a logo the rich results reject (found by the crawl
+after v0.80.0).
 """
 
 from __future__ import annotations
@@ -25,11 +31,11 @@ from plugins.installed.webstories.models import WebStory
 _MEDIA = tempfile.mkdtemp(prefix='webstories-tests-')
 
 
-def _png(name='logo.png'):
+def _png(name='logo.png', size=(128, 128)):
     from PIL import Image
 
     buf = io.BytesIO()
-    Image.new('RGB', (8, 8), (20, 120, 110)).save(buf, 'PNG')
+    Image.new('RGB', size, (20, 120, 110)).save(buf, 'PNG')
     return SimpleUploadedFile(name, buf.getvalue(), content_type='image/png')
 
 
@@ -79,3 +85,35 @@ class StoryPublisherLogoTests(TestCase):
             self.assertIsNotNone(finders.find(path[len(settings.STATIC_URL) :]), path)
         else:
             self.assertIn(self.client.get(path).status_code, (200, 302), path)
+
+    def _assert_square_raster(self, src: str) -> None:
+        from django.conf import settings
+        from django.contrib.staticfiles import finders
+        from PIL import Image
+
+        path = urlsplit(src).path
+        self.assertTrue(path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')), src)
+        self.assertTrue(path.startswith(settings.STATIC_URL), src)
+        with Image.open(finders.find(path[len(settings.STATIC_URL) :])) as img:
+            self.assertEqual(img.width, img.height, src)
+            self.assertGreaterEqual(img.width, 96, src)
+
+    def test_without_a_logo_the_publisher_logo_is_a_square_raster_image(self):
+        from core.models import StoreSettings
+
+        StoreSettings.objects.all().delete()
+        StoreSettings.objects.create(store_name='Probe Store')
+        src = self._logo_src()
+        self.assertNotIn('favicon', src)
+        self._assert_square_raster(src)
+
+    def test_a_logo_google_would_reject_is_not_the_publisher_logo(self):
+        from core.models import StoreSettings
+
+        StoreSettings.objects.all().delete()
+        store = StoreSettings.objects.create(store_name='Probe Store')
+        store.logo = _png('wordmark.png', size=(400, 100))
+        store.save()
+        src = self._logo_src()
+        self.assertNotIn('wordmark', src)
+        self._assert_square_raster(src)

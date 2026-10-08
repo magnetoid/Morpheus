@@ -9,9 +9,11 @@
       {{ page_title }}<span class="text-accent">.</span>
     </h1>
     <p class="lede">
+      {% url 'storefront:contact' as contact_url %}{% blocktrans trimmed %}
       We're putting this page together. Drop us a line at
-      <a href="/contact/" class="btn-link" style="display: inline-flex;">contact</a>
+      <a href="{{ contact_url }}" class="btn-link" style="display: inline-flex;">contact</a>
       if you need this answered today.
+      {% endblocktrans %}
     </p>
     <div style="margin-top: 2.5rem;">
       <a href="/" class="btn btn-primary">{% trans "Back home" %}</a>

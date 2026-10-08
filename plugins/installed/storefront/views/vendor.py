@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.db.models import Count, Prefetch, Q, Sum
+from django.utils.translation import gettext
 
 from morpheus.app.views import Http404, render
 from plugins.installed.catalog.models import Product, Vendor
@@ -327,7 +328,7 @@ def marketplace_landing(request):
             'featured_vendors': featured_vendors,
             'faqs': faqs,
             'breadcrumb_items': breadcrumb_items,
-            'seo_title': 'The Marketplace',
+            'seo_title': gettext('The Marketplace'),
             # "Independent presses and bookshops, in one shelf." was this
             # description on the apothecary and the travel store too.
             'seo_description': f'Every {single.lower()} on {store_name()}, in one place.',

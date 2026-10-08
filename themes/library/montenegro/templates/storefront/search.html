@@ -13,8 +13,8 @@
   <div class="wrap">
     <p class="eyebrow">{% trans "Search" %}</p>
     <h1 class="display display-l" style="margin: 1rem 0;">
-      {% if query %}Results for "<em>{{ query }}</em>"<span class="text-accent">.</span>
-      {% else %}Find what you're after<span class="text-accent">.</span>{% endif %}
+      {% if query %}{% blocktrans with q=query %}Results for “<em>{{ q }}</em>”{% endblocktrans %}<span class="text-accent">.</span>
+      {% else %}{% trans "Find what you're after" %}<span class="text-accent">.</span>{% endif %}
     </h1>
 
     <form method="get" action="/search/" style="display:flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.5rem; align-items: center;">
@@ -52,8 +52,11 @@
     </div>
     {% elif query %}
     <div style="text-align: center; padding: 5rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
-      <p class="display display-m" style="margin: 0 0 1rem;">Nothing found<span class="text-accent">.</span></p>
-      <p class="lede" style="margin: 0 auto;">Try a different keyword, or browse the <a href="/products/" style="text-decoration: underline;">whole shelf</a>.</p>
+      <p class="display display-m" style="margin: 0 0 1rem;">{% trans "Nothing found" %}<span class="text-accent">.</span></p>
+      {% url 'booking_marketplace:list' as experiences_url %}
+      <p class="lede" style="margin: 0 auto;">{% blocktrans trimmed %}
+        Try a different keyword, or browse <a href="{{ experiences_url }}" style="text-decoration: underline;">all experiences</a>.
+      {% endblocktrans %}</p>
     </div>
     {% endif %}
   </div>

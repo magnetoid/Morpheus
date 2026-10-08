@@ -51,6 +51,7 @@ def _nav_places():
 def _nav_categories():
     """Mega-menu category tiles, derived from live categories (fail-soft)."""
     from django.utils.text import slugify
+    from django.utils.translation import ngettext
 
     from plugins.installed.booking_marketplace.services import active_categories
     from plugins.installed.booking_marketplace.templatetags.booking_tags import (
@@ -65,7 +66,7 @@ def _nav_categories():
         tiles.append(
             {
                 'label': c['name'],
-                'desc': f'{n} experience{"s" if n != 1 else ""}',
+                'desc': ngettext('%(c)s experience', '%(c)s experiences', n) % {'c': n},
                 'href': _cat_href(c['name']),
                 'icon': _CAT_ICONS.get(slugify(c['name']), _CAT_ICON_DEFAULT),
             }
