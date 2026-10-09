@@ -135,10 +135,6 @@
     },
     {
       "importer": "catalog",
-      "target": "agent_mcp"
-    },
-    {
-      "importer": "catalog",
       "target": "ai_assistant"
     },
     {

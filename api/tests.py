@@ -46,14 +46,14 @@ class GraphQLAgentAuthTests(TestCase):
             scopes=['catalog.write'],
             channel=channel,
         )
-        query = '''
+        query = """
             mutation {
               createCategory(input: {name: "Agent category", slug: "agent-category"}) {
                 slug
                 error
               }
             }
-        '''
+        """
 
         resp = self.client.post(
             '/graphql/agent/',

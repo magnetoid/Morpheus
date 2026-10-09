@@ -161,6 +161,13 @@ The MCP **admin** server (`/mcp/admin/v1/`) and GraphQL endpoint
 | `catalog.create_variant` / `createVariant` | Add a new variant to a product | no |
 | `catalog.update_variant` / `updateVariant` | Update any variant field (matched by SKU) | no |
 
+**GraphQL scopes.** Every catalog mutation needs `catalog.write`;
+`deleteProduct` and `archiveCategory` need `catalog.delete`. A staff
+dashboard session needs neither. A token is held to its own scopes, as on
+the CMS mutations: an MCP token by its GraphQL scopes, a core `APIKey`
+(`/graphql/agent/` only) by the key's `scopes` list (`admin` covers all).
+The Approval column applies to the MCP tools.
+
 #### Variant fields
 
 `create_variant` and `update_variant` accept (every field optional except

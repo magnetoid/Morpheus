@@ -524,7 +524,12 @@ Mirror rule on the GraphQL side: a Bearer token resolves to a shared
 `is_staff=True` service user, so `has_scope` must authorize a token against its
 OWN stashed scope set and never fall through to the is_staff shortcut (that
 shortcut is for genuine session-staff, who carry no token). (v0.55.0,
-`docs/plans/mcp-graphql-hardening-2026-08.md`.)
+`docs/plans/mcp-graphql-hardening-2026-08.md`.) The deny-first stash also lands
+on a core `APIKey`, because `graphql_view` runs `apply_bearer_user` for every
+Bearer token: a resolver that reads `_morph_token_scopes_graphql` itself refuses
+every API key (catalog did until v0.83.5). Authorize through `has_scope`, which
+checks the key's own scopes first; inventory, orders and book_product still read
+the stash directly.
 
 **Landmine — a `migrations/` dir without `__init__.py` is invisible to Django,
 and ONLY production notices.** Five plugins (brand_kit, lookbook, media_3d,

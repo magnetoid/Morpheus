@@ -3,10 +3,12 @@
 Every mutation delegates to ``plugins.installed.catalog.services`` so
 the MCP tool layer and the GraphQL layer stay shape-aligned.
 
-Auth: ``info.context.request.user.is_staff`` must be True. Bearer
-tokens minted at ``/dashboard/apps/agent_mcp/tokens/`` resolve to a
-staff service user (see ``plugins.installed.agent_mcp.auth``) so the
-same token can be used from either MCP or GraphQL.
+Auth: a staff dashboard session, or a token holding the mutation's scope
+(``catalog.write``; ``catalog.delete`` for archive/delete). Bearer tokens
+minted at ``/dashboard/apps/agent_mcp/tokens/`` resolve to a staff service
+user (see ``plugins.installed.agent_mcp.auth``) but are held to their own
+scopes; a core ``APIKey`` on ``/graphql/agent/`` is held to the key's scopes.
+See ``_check_scope``.
 """
 
 from __future__ import annotations
@@ -67,26 +69,25 @@ def _check_scope(info, required: list[str]) -> str:
     """Return '' when the request is authorised for the given scope(s),
     otherwise a human-friendly error string. Session-authenticated
     staff bypass scope checks (no token means no scope restriction).
-    Bearer-authed requests must have at least one of the required
-    scopes (or the wildcard) on the GraphQL surface."""
-    # Dashboard sessions and Bearer MCP tokens resolve to staff. Core API keys,
-    # however, deliberately authenticate as scoped agents and have no Django
-    # staff user; they must be admitted only when they explicitly hold one of
-    # the mutation scopes below.
-    if not _is_staff(info) and not any(_has_scope(info, scope) for scope in required):
-        return 'Forbidden — staff only.'
+    A Bearer token must hold at least one of the required scopes.
+
+    Tokens are judged by ``has_scope``, as the CMS mutations are: an MCP token
+    by its own GraphQL scopes, a core API key (no user; it authenticates on
+    ``/graphql/agent/``) by the key's scopes. Reading the token stash here
+    instead denied every API key, because ``graphql_view`` runs
+    ``apply_bearer_user`` for any Bearer token and leaves the empty deny-first
+    set behind when the token is not an MCP one."""
     request = getattr(info.context, 'request', None) or (
         info.context.get('request') if isinstance(info.context, dict) else None
     )
     granted = getattr(request, '_morph_token_scopes_graphql', None)
-    if granted is None:
-        # No bearer scope set → session auth → bypass scope check.
+    if granted is None and _is_staff(info):
         return ''
-    from plugins.installed.agent_mcp.scopes import has_any
-
-    if not has_any(granted, required):
+    if any(_has_scope(info, scope) for scope in required):
+        return ''
+    if granted is not None:
         return f'token missing scope: needs one of {sorted(required)}'
-    return ''
+    return 'Forbidden — staff only.'
 
 
 def _err_publish(msg: str) -> PublishDigitalProductResult:
