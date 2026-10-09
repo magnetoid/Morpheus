@@ -1,15 +1,14 @@
 {% extends "storefront/base.html" %}
-{% block extra_head %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
 <section class="flipbook-wrap" data-theme="{{ theme }}">
   <header class="flipbook-head">
     <div>
       <p class="eyebrow">Preview</p>
-      <h1 class="display display-m" style="margin: .25rem 0 .15rem;">{{ product.name }}<span class="text-accent">.</span></h1>
+      <h1 class="display display-m" style="margin: .25rem 0 .15rem;">{{ book.name }}<span class="text-accent">.</span></h1>
       <p class="meta">A {{ max_pages }}-page preview. Buy the full book to read on.</p>
     </div>
-    <a href="/products/{{ product.slug }}/" class="btn">
+    <a href="/products/{{ book.slug }}/" class="btn">
       <i data-lucide="arrow-left" class="h-4 w-4" aria-hidden="true"></i> Back to product
     </a>
   </header>

@@ -8,6 +8,8 @@ is missing, or the source isn't a PDF.
 
 from __future__ import annotations
 
+from django.utils.translation import gettext
+
 from morpheus.app.views import Http404, render
 
 
@@ -62,13 +64,24 @@ def flipbook(request, slug: str):
     if not source_url or not source_name.lower().endswith('.pdf'):
         raise Http404
 
+    max_pages = int(cfg.get('max_preview_pages') or 20)
+    cover = product.primary_image
     return render(
         request,
         'flipbook/reader.html',
         {
-            'product': product,
+            # Not `product`: the SEO head takes a `product` in the context as
+            # the page's subject and gives it the product page's own title and
+            # description, so two indexable URLs would share one title.
+            'book': product,
             'source_url': source_url,
-            'max_pages': int(cfg.get('max_preview_pages') or 20),
+            'max_pages': max_pages,
+            'seo_title': gettext('Read a preview of %(name)s') % {'name': product.name},
+            'seo_description': gettext(
+                'Read the first %(pages)s pages of %(name)s in your browser.'
+            )
+            % {'pages': max_pages, 'name': product.name},
+            'seo_image': cover.image.url if cover and cover.image else '',
             'theme': (cfg.get('theme') or 'paper').lower(),
             'breadcrumb_items': [
                 {'name': 'Home', 'url': request.build_absolute_uri('/')},
