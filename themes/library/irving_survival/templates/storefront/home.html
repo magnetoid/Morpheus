@@ -45,6 +45,11 @@ show, so an empty catalogue still reads as a finished page.
   .h-system__img { aspect-ratio: 1; border-radius: 20px; background: var(--surface); overflow: hidden; }
   .h-system__img img { width: 100%; height: 100%; object-fit: cover; }
   .h-system__name { font-size: 1.0625rem; font-weight: 500; }
+  .h-system__img--index { display: flex; flex-direction: column; justify-content: space-between; padding: 1.1rem 1.25rem; }
+  .h-system__no { font: 500 clamp(1.75rem, 3vw, 2.5rem)/1 var(--mono); letter-spacing: -.02em; color: var(--ink); }
+  .h-system__go { align-self: flex-end; font-size: 1.5rem; line-height: 1; color: var(--ink2); transition: transform .2s, color .2s; }
+  a.h-system:hover .h-system__go, a.h-system:focus-visible .h-system__go { transform: translateX(4px); color: var(--accentText); }
+  @media (prefers-reduced-motion: reduce) { .h-system__go { transition: none; } }
   .h-tools { display: grid; gap: 1rem; }
   @media (min-width: 1024px) { .h-tools { grid-template-columns: 1fr 1fr; } }
   .h-bundles { display: grid; gap: 1rem; }
@@ -131,7 +136,13 @@ show, so an empty catalogue still reads as a finished page.
     <div class="h-systems">
       {% for c in categories|slice:":6" %}
       <a class="h-system" href="/category/{{ c.slug }}/">
-        <span class="h-system__img">{% if c.image.url %}{% seo_responsive_image c.image.url alt="" widths="300,600" sizes="(min-width: 1200px) 220px, 45vw" %}{% endif %}</span>
+        {% if c.image.url %}
+        <span class="h-system__img">{% seo_responsive_image c.image.url alt="" widths="300,600" sizes="(min-width: 1200px) 220px, 45vw" %}</span>
+        {% else %}
+        {% comment %}No category photo yet: an index tile (number + arrow) instead of an
+           empty white square, so the row reads as a deliberate list of systems.{% endcomment %}
+        <span class="h-system__img h-system__img--index" aria-hidden="true"><span class="h-system__no">{{ forloop.counter|stringformat:"02d" }}</span><span class="h-system__go">→</span></span>
+        {% endif %}
         <span class="h-system__name">{{ c.name }}</span>
       </a>
       {% endfor %}
