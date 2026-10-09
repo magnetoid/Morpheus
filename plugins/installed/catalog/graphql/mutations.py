@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import strawberry
 
+from api.graphql_permissions import has_scope as _has_scope
 from api.graphql_permissions import is_staff as _is_staff
 
 # ─── shared types / helpers ─────────────────────────────────────────────
@@ -68,7 +69,11 @@ def _check_scope(info, required: list[str]) -> str:
     staff bypass scope checks (no token means no scope restriction).
     Bearer-authed requests must have at least one of the required
     scopes (or the wildcard) on the GraphQL surface."""
-    if not _is_staff(info):
+    # Dashboard sessions and Bearer MCP tokens resolve to staff. Core API keys,
+    # however, deliberately authenticate as scoped agents and have no Django
+    # staff user; they must be admitted only when they explicitly hold one of
+    # the mutation scopes below.
+    if not _is_staff(info) and not any(_has_scope(info, scope) for scope in required):
         return 'Forbidden — staff only.'
     request = getattr(info.context, 'request', None) or (
         info.context.get('request') if isinstance(info.context, dict) else None

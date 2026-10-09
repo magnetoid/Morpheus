@@ -32,6 +32,40 @@ class GraphQLAgentAuthTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json().get('data', {}).get('ping'), 'pong')
 
+    def test_graphql_agent_catalog_write_key_can_create_category(self):
+        """Core API keys authenticate as agents, not Django staff users.
+
+        A valid catalog.write key must therefore be accepted by catalog mutations
+        through its scoped agent capabilities rather than the staff-only branch.
+        """
+        from core.models import APIKey, StoreChannel
+
+        channel = StoreChannel.objects.create(name='Agent catalog', domain='agent-catalog.test')
+        api_key = APIKey.objects.create(
+            name='Catalog writer',
+            scopes=['catalog.write'],
+            channel=channel,
+        )
+        query = '''
+            mutation {
+              createCategory(input: {name: "Agent category", slug: "agent-category"}) {
+                slug
+                error
+              }
+            }
+        '''
+
+        resp = self.client.post(
+            '/graphql/agent/',
+            data=json.dumps({'query': query}),
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {api_key._raw_key}',
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['data']['createCategory']['slug'], 'agent-category')
+        self.assertEqual(resp.json()['data']['createCategory']['error'], '')
+
 
 class WebhookSignatureTests(TestCase):
     """The HMAC helper must produce stable, verifiable signatures."""
