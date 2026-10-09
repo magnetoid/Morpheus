@@ -49,6 +49,8 @@ class JanusSettingsForm(forms.Form):
     )
     bundled_skills = forms.BooleanField(required=False)
     learning = forms.BooleanField(required=False)
+    web_search = forms.BooleanField(required=False)
+    auto_update = forms.BooleanField(required=False)
     reasoning_effort = forms.ChoiceField(
         choices=[
             ('low', 'Quick — best for everyday questions'),

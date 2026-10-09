@@ -18,12 +18,12 @@ from typing import Any
 
 APP = 'janus'
 
-#: Hard bounds. The timeout cap stays under three minutes: the chat streams
-#: progress while a turn runs (core/assistant/janus_engine.py), but a merchant
-#: waiting longer than that for one answer should split the job.
-MAX_TURN_TIMEOUT_S = 170
+#: Hard bounds. Five minutes per message at most: the chat shows each step while
+#: Linda works (core/assistant/activity.py), so a long job is visible rather than
+#: a silent wait, and anything bigger belongs to a background Worker.
+MAX_TURN_TIMEOUT_S = 300
 MIN_TURN_TIMEOUT_S = 10
-MAX_TOOL_TURNS = 20
+MAX_TOOL_TURNS = 60
 MAX_EXTRA_INSTRUCTIONS = 4000
 
 
@@ -82,6 +82,18 @@ def reasoning_effort() -> str:
 def learning_enabled() -> bool:
     """Whether Janus keeps what it learns (core/assistant/janus_learning.py)."""
     return bool(_read('learning', True))
+
+
+def web_search_enabled() -> bool:
+    """Whether Linda may search the web. Her queries go to a public search engine."""
+    return bool(_read('web_search', True))
+
+
+def auto_update_enabled() -> bool:
+    """Whether Janus installs newer commits from its GitHub branch by itself
+    (core/assistant/janus_runtime.py). Never chooses WHICH repository: that comes
+    from the image's build record, out of reach of any setting."""
+    return bool(_read('auto_update', True))
 
 
 def custom_provider() -> dict[str, str] | None:

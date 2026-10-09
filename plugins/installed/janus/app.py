@@ -19,7 +19,8 @@ class JanusPlugin(Plugin):
     description = (
         'Settings for Janus, the engine behind Linda: switch Linda on or off, choose '
         'the model, cap tool steps and turn time, add standing instructions, toggle '
-        'the bundled store skills, review what Linda has learned, and test the connection.'
+        'the bundled store skills and web search, review what Linda has learned, see '
+        'which Janus build runs and whether GitHub has a newer one, and test the connection.'
     )
     has_models = False
     # The only place Linda can be switched back on or re-pinned to a provider.
@@ -41,11 +42,13 @@ class JanusPlugin(Plugin):
                 'model': {'type': 'string', 'default': ''},
                 'base_url': {'type': 'string', 'default': ''},
                 'api_key': {'type': 'string', 'format': 'password', 'default': ''},
-                'max_tool_turns': {'type': 'integer', 'minimum': 1, 'maximum': 20},
-                'turn_timeout_s': {'type': 'integer', 'minimum': 10, 'maximum': 170},
+                'max_tool_turns': {'type': 'integer', 'minimum': 1, 'maximum': 60},
+                'turn_timeout_s': {'type': 'integer', 'minimum': 10, 'maximum': 300},
                 'extra_instructions': {'type': 'string', 'default': ''},
                 'bundled_skills': {'type': 'boolean', 'default': True},
                 'learning': {'type': 'boolean', 'default': True},
+                'web_search': {'type': 'boolean', 'default': True},
+                'auto_update': {'type': 'boolean', 'default': True},
                 'reasoning_effort': {
                     'type': 'string',
                     'enum': ['low', 'medium', 'high'],

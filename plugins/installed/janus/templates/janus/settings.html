@@ -26,11 +26,58 @@
     </div>
     <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
       <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Version</dt><dd>{{ status.version|default:"—" }}</dd></div>
+      {% with b=status.build %}
+      <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Build</dt>
+        <dd data-janus-build>{% if b.commit %}{% if b.repo %}<a class="underline underline-offset-2" href="https://github.com/{{ b.repo }}/commit/{{ b.commit }}" target="_blank" rel="noopener"><code class="text-xs">{{ b.commit|slice:":7" }}</code></a>{% else %}<code class="text-xs">{{ b.commit|slice:":7" }}</code>{% endif %}{% if b.ref and b.tracks_branch %} from {{ b.ref }}{% endif %}{% if b.repo %} · {{ b.repo }}{% endif %}{% else %}—{% endif %}</dd></div>
+      {% if b.commit %}
+      <div class="md:col-span-2"><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">On GitHub</dt>
+        <dd data-janus-upstream>
+          {% if b.state == 'current' %}Up to date: this is the newest commit{% if b.tracks_branch %} on {{ b.ref }}{% endif %}.
+          {% elif b.state == 'behind' %}A newer Janus is on GitHub: {% if b.repo %}<a class="underline underline-offset-2" href="https://github.com/{{ b.repo }}/commit/{{ b.latest.sha }}" target="_blank" rel="noopener"><code class="text-xs">{{ b.latest.sha|slice:":7" }}</code></a>{% else %}<code class="text-xs">{{ b.latest.sha|slice:":7" }}</code>{% endif %}{% if b.latest.date %} from {{ b.latest.date }}{% endif %}{% if b.latest.title %}, “{{ b.latest.title }}”{% endif %}.
+            {% if b.tracks_branch and status.updates.enabled %}Janus installs it beside the current one and Linda moves to it once it passes the compatibility check.{% elif b.tracks_branch %}The next deploy installs it.{% else %}This server is pinned to <code class="text-xs">{{ b.ref|slice:":7" }}</code>; change <code class="text-xs">JANUS_REF</code> to update.{% endif %}
+          {% else %}Couldn't check GitHub right now. It is checked once a day.{% endif %}
+        </dd></div>
+      {% endif %}
+      {% endwith %}
       <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Model</dt><dd>{{ status.provider }}</dd></div>
       <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Tools Linda can use</dt><dd><code class="text-xs">{{ status.toolsets }}</code></dd></div>
       <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Working files</dt><dd><code class="text-xs">{{ status.home }}</code></dd></div>
     </dl>
   </div>
+
+  {# ── Updates from GitHub ───────────────────────────────────────────────── #}
+  {% with u=status.updates %}
+  <div class="card card-padded space-y-3" data-janus-updates>
+    <div class="flex items-start justify-between gap-3 flex-wrap">
+      <div>
+        <h2 class="font-semibold">Updates from GitHub</h2>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">
+          {% if u.source %}Every {{ u.every_hours }} hours Janus looks for a newer commit on <code class="text-xs">{{ u.source.repo }}</code> ({{ u.source.ref }}). A newer one is installed beside the current Janus and used only after it passes Morpheus's compatibility check; if real messages then keep failing, Linda goes back to the previous one.
+          {% else %}This server's Janus is pinned to one commit, or its source is unknown, so it changes only when the server is rebuilt.{% endif %}
+        </p>
+      </div>
+      {% if u.source %}
+      <form method="post" class="m-0 shrink-0">{% csrf_token %}<input type="hidden" name="action" value="check_updates"><button type="submit" class="btn btn-secondary btn-sm">Check now</button></form>
+      {% endif %}
+    </div>
+    <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+      <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">In use</dt>
+        <dd data-janus-in-use>{% if u.using == 'auto' and u.active %}Installed by the updater: <code class="text-xs">{{ u.active.commit|slice:":7" }}</code>{% if u.active.title %}, “{{ u.active.title }}”{% endif %}{% if u.active.installed %} ({{ u.active.installed|timesince }} ago){% endif %}{% else %}The Janus the server was built with{% endif %}</dd></div>
+      <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Compatibility</dt>
+        <dd data-janus-contract>{% if u.contract %}{% if u.contract.failing %}<span class="text-[color:var(--danger)]">Fails: {{ u.contract.failing|join:", " }}</span>{% else %}{{ u.contract.passed }} of {{ u.contract.total }} checks pass{% endif %}{% if u.contract.warnings %}<span class="block text-xs text-[color:var(--text-muted)]">Display only: {{ u.contract.warnings|join:", " }}</span>{% endif %}{% else %}Not recorded for this Janus{% endif %}</dd></div>
+      <div class="md:col-span-2"><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Last check</dt>
+        <dd data-janus-last-check>{% if u.last %}{{ u.last.text|default:u.last.result }}{% if u.last.detail %} <span class="text-[color:var(--text-muted)]">{{ u.last.detail|truncatechars:200 }}</span>{% endif %}{% if u.last.when %} <span class="text-[color:var(--text-muted)]">({{ u.last.when|timesince }} ago)</span>{% endif %}{% else %}Not yet{% if not u.enabled %}: updates are off{% endif %}.{% endif %}</dd></div>
+      {% if u.failed %}
+      <div class="md:col-span-2"><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Commits it would not use</dt>
+        <dd><ul class="space-y-1">{% for f in u.failed %}<li><code class="text-xs">{{ f.commit|slice:":7" }}</code> <span class="text-[color:var(--text-muted)]">{{ f.reason|truncatechars:160 }}</span></li>{% endfor %}</ul></dd></div>
+      {% endif %}
+      {% if u.contract.notes %}
+      <div class="md:col-span-2"><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Waiting on Janus</dt>
+        <dd><ul class="space-y-1 text-[color:var(--text-muted)]">{% for n in u.contract.notes %}<li>{{ n }}</li>{% endfor %}</ul></dd></div>
+      {% endif %}
+    </dl>
+  </div>
+  {% endwith %}
 
   {# ── Settings form ─────────────────────────────────────────────────────── #}
   <form method="post" class="card card-padded space-y-6" data-janus-form>
@@ -104,14 +151,14 @@
       </div>
       <div class="space-y-1.5">
         <label for="f-max_tool_turns" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Tool steps per message</label>
-        <input id="f-max_tool_turns" name="max_tool_turns" type="number" min="1" max="20" class="input" value="{{ form.max_tool_turns.value }}">
-        <p class="text-xs text-[color:var(--text-muted)]">1 to 20. Each step takes a few seconds; more steps need a longer time limit.</p>
+        <input id="f-max_tool_turns" name="max_tool_turns" type="number" min="1" max="{{ limits.max_steps }}" class="input" value="{{ form.max_tool_turns.value }}">
+        <p class="text-xs text-[color:var(--text-muted)]">1 to {{ limits.max_steps }}. Each step takes a few seconds; more steps need a longer time limit.</p>
         {{ form.max_tool_turns.errors }}
       </div>
       <div class="space-y-1.5">
         <label for="f-turn_timeout_s" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Time limit per message (seconds)</label>
-        <input id="f-turn_timeout_s" name="turn_timeout_s" type="number" min="10" max="170" class="input" value="{{ form.turn_timeout_s.value }}">
-        <p class="text-xs text-[color:var(--text-muted)]">10 to 170. The chat shows Linda's progress while she works.</p>
+        <input id="f-turn_timeout_s" name="turn_timeout_s" type="number" min="{{ limits.min_time }}" max="{{ limits.max_time }}" class="input" value="{{ form.turn_timeout_s.value }}">
+        <p class="text-xs text-[color:var(--text-muted)]">{{ limits.min_time }} to {{ limits.max_time }}. The chat shows each step while Linda works.</p>
         {{ form.turn_timeout_s.errors }}
       </div>
     </section>
@@ -134,6 +181,20 @@
           <span class="text-sm">Linda keeps what she learns</span>
         </label>
         <p class="text-xs text-[color:var(--text-muted)] mt-1">Notes, skills and lessons she saves are kept in the store's database and used in every conversation. Turn this off and she starts each conversation fresh; what she already learned stays below until you delete it.</p>
+      </div>
+      <div>
+        <label class="inline-flex items-center gap-2">
+          <input type="checkbox" name="web_search" {% if form.web_search.value %}checked{% endif %}>
+          <span class="text-sm">Linda can search the web</span>
+        </label>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">For facts from outside the store, such as market prices, trends or regulations. Her searches go to DuckDuckGo; she is told never to put customer details in one. She cannot open web pages.</p>
+      </div>
+      <div>
+        <label class="inline-flex items-center gap-2">
+          <input type="checkbox" name="auto_update" {% if form.auto_update.value %}checked{% endif %}>
+          <span class="text-sm">Keep Janus up to date from GitHub</span>
+        </label>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Off keeps the Janus this server was built with until the next deploy. Either way a Janus that fails the compatibility check is never used.</p>
       </div>
     </section>
 
@@ -232,7 +293,7 @@
     <h2 class="font-semibold">Always on, not configurable here</h2>
     <ul class="text-sm space-y-1.5 text-[color:var(--text-muted)]">
       <li><strong class="text-[color:var(--text)]">Your approval for changes.</strong> Linda asks before any change that needs approval, and only your own reply in the chat approves it.</li>
-      <li><strong class="text-[color:var(--text)]">No shell, file, code or browser access.</strong> Janus reaches the store only through its tools, which check the conversation's mode and record every change in the audit log.</li>
+      <li><strong class="text-[color:var(--text)]">No shell, file, code or browser access, and no subagents.</strong> Janus reaches the store only through its tools, which check the conversation's mode and record every change in the audit log. Subagents stay off until Janus can start them without running a program the model names.</li>
       <li><strong class="text-[color:var(--text)]">Auto-approve {% if status.auto_approve %}is ON for this server{% else %}is off{% endif %}.</strong> It can only be changed by whoever runs the server, never from the dashboard or by Linda.</li>
     </ul>
   </div>

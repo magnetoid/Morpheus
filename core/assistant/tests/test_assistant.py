@@ -119,6 +119,39 @@ class AssistantStreamTests(TestCase):
         self.assertEqual((started['name'], finished['output']), ('orders.search', {'total': 3}))
         self.assertEqual(events[-1]['result'].tool_call_count, 1)
 
+    def test_steps_and_the_plan_reach_the_chat(self):
+        plan = {'type': 'plan', 'items': [{'id': '1', 'text': 'Check stock', 'status': 'pending'}]}
+        step = {'type': 'step', 'id': 's1', 'state': 'running', 'label': 'Searching the web'}
+
+        def fake(**kw):
+            yield plan
+            yield None
+            yield step
+            yield {'text': 'Done.', 'error': '', 'duration_ms': 5}
+
+        events = self._stream(fake)
+        self.assertIn(plan, events)
+        self.assertIn(step, events)
+        self.assertEqual(events[-1]['result'].text, 'Done.')
+        # A step is not a message: the stored conversation stays question + answer.
+        from core.assistant.persistence import get_default_store
+
+        rows = get_default_store().history(conversation_key='t:stream')
+        self.assertEqual([r.role for r in rows], ['user', 'assistant'])
+
+    def test_the_prompt_teaches_only_the_janus_tools_the_turn_has(self):
+        from unittest import mock
+
+        from core.assistant import janus_settings
+
+        prompt = Assistant()._system_prompt(context={})
+        for tool in ('todo', 'web_search', 'session_search'):
+            self.assertIn(f'`{tool}`', prompt)
+        with mock.patch.object(janus_settings, 'web_search_enabled', return_value=False):
+            prompt = Assistant()._system_prompt(context={})
+        self.assertNotIn('web_search', prompt)
+        self.assertIn('`todo`', prompt)
+
     def test_the_reply_records_tokens_and_counts_toward_the_spend_cap(self):
         from core.agents.guardrails import daily_spend_usd
         from core.assistant.models import AssistantConversation

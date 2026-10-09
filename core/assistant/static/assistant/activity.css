@@ -1,0 +1,176 @@
+/* What Linda is doing while she works: one block per turn, shared by the Linda
+   page and the floating widget (activity.js builds it). Neutral colours only,
+   from the dashboard tokens, so it reads the same in light and dark mode. While
+   she works the avatar breathes and the status line shimmers; when the answer
+   arrives the block folds into one line that can be opened again. */
+
+.lt {
+  max-width: 44rem;
+  margin: 1.1rem auto 0;
+  font-size: .86rem;
+  color: var(--text-muted);
+}
+.lt + .linda-msg { margin-top: .9rem; }
+
+.lt-head {
+  display: flex; align-items: center; gap: .6rem;
+  width: 100%;
+  padding: .2rem 0;
+  border: 0; background: none;
+  font: inherit; color: inherit; text-align: left;
+  cursor: default;
+}
+.lt[data-state="done"] .lt-head,
+.lt[data-state="error"] .lt-head { cursor: pointer; }
+.lt-head:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 3px; border-radius: 6px; }
+
+.lt-avatar {
+  position: relative;
+  flex: none;
+  width: 24px; height: 24px;
+}
+.lt-avatar img {
+  position: relative; z-index: 1;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+/* The breathing halo: a soft ring that swells and fades while she works. */
+.lt-avatar::after {
+  content: '';
+  position: absolute; inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-subtle);
+  opacity: 0;
+}
+.lt[data-state="working"] .lt-avatar::after { animation: lt-breathe 2.2s ease-in-out infinite; }
+@keyframes lt-breathe {
+  0%, 100% { opacity: .15; transform: scale(.92); }
+  50% { opacity: .55; transform: scale(1.06); }
+}
+
+.lt-now {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text);
+}
+.lt[data-state="working"] .lt-now {
+  background: linear-gradient(90deg, var(--text-muted) 0%, var(--text) 45%, var(--text-muted) 90%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  animation: lt-shimmer 2.4s linear infinite;
+}
+@keyframes lt-shimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -100% 0; }
+}
+/* Folded, the summary and its chevron sit together, so the line reads as one control. */
+.lt[data-state="done"] .lt-now,
+.lt[data-state="error"] .lt-now { flex: 0 1 auto; color: var(--text-muted); }
+.lt[data-state="done"] .lt-head:hover .lt-now,
+.lt[data-state="error"] .lt-head:hover .lt-now { color: var(--text); }
+.lt[data-state="error"] .lt-now { color: var(--danger); }
+
+.lt-time { flex: none; font-variant-numeric: tabular-nums; color: var(--text-subtle); }
+.lt-chevron {
+  flex: none; width: 14px; height: 14px;
+  transition: transform var(--motion-fast, 140ms) ease;
+}
+.lt[data-state="working"] .lt-chevron { display: none; }
+.lt[data-open="true"] .lt-chevron { transform: rotate(90deg); }
+
+.lt-body {
+  margin: .35rem 0 0 calc(24px + .6rem);
+  padding-left: .75rem;
+  border-left: 1px solid var(--border);
+}
+.lt[data-open="false"] .lt-body { display: none; }
+.lt-body:empty { display: none; }
+
+/* Her plan, from the todo tool: a checklist that fills in as she goes. */
+.lt-plan { list-style: none; margin: .1rem 0 .55rem; padding: 0; }
+.lt-plan li {
+  display: flex; gap: .5rem; align-items: baseline;
+  padding: .12rem 0;
+  color: var(--text-muted);
+}
+.lt-plan li::before {
+  content: '';
+  flex: none;
+  width: .7rem; height: .7rem;
+  transform: translateY(.08rem);
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+}
+.lt-plan li[data-status="in_progress"] { color: var(--text); }
+.lt-plan li[data-status="in_progress"]::before { border-color: var(--text); border-right-color: transparent; }
+.lt[data-state="working"] .lt-plan li[data-status="in_progress"]::before { animation: lt-spin 1s linear infinite; }
+.lt-plan li[data-status="completed"]::before {
+  border-color: var(--success);
+  background: var(--success);
+  box-shadow: inset 0 0 0 2px var(--surface);
+}
+.lt-plan li[data-status="cancelled"] { text-decoration: line-through; color: var(--text-subtle); }
+
+.lt-steps { list-style: none; margin: 0; padding: 0; }
+.lt-step { padding: .14rem 0; }
+.lt-step-row { display: flex; gap: .5rem; align-items: center; min-width: 0; }
+.lt-mark {
+  flex: none;
+  width: .7rem; height: .7rem;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.lt-step[data-state="running"] .lt-mark::before {
+  content: '';
+  width: .55rem; height: .55rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  border-top-color: transparent;
+  animation: lt-spin .8s linear infinite;
+}
+.lt-step[data-state="done"] .lt-mark,
+.lt-step[data-state="error"] .lt-mark { font-size: .7rem; line-height: 1; }
+.lt-step[data-state="done"] .lt-mark::before { content: '\2713'; color: var(--text-subtle); }
+.lt-step[data-state="error"] .lt-mark::before { content: '\2715'; color: var(--danger); }
+.lt-label { color: var(--text-muted); white-space: nowrap; }
+.lt-step[data-state="running"] .lt-label { color: var(--text); }
+.lt-detail {
+  min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text-subtle);
+}
+.lt-ms { margin-left: auto; flex: none; color: var(--text-subtle); font-variant-numeric: tabular-nums; }
+.lt-more {
+  flex: none;
+  border: 0; background: none; padding: 0;
+  font: inherit; font-size: .78rem;
+  color: var(--text-subtle);
+  text-decoration: underline; text-underline-offset: 2px;
+  cursor: pointer;
+}
+.lt-more:hover { color: var(--text); }
+.lt-data {
+  margin: .3rem 0 .2rem 1.2rem;
+  padding: .5rem .7rem;
+  max-height: 16rem; overflow: auto;
+  background: var(--surface-2);
+  border-radius: 6px;
+  font-family: ui-monospace, Menlo, monospace; font-size: .72rem;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--text-muted);
+}
+
+@keyframes lt-spin { to { transform: rotate(360deg); } }
+
+/* Compact variant for the 380px floating widget. */
+.lt--compact { margin: .5rem 0 0; font-size: .8rem; }
+.lt--compact .lt-avatar { width: 20px; height: 20px; }
+.lt--compact .lt-body { margin-left: calc(20px + .6rem); padding-left: .6rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lt[data-state="working"] .lt-avatar::after { animation: none; opacity: .4; transform: none; }
+  .lt[data-state="working"] .lt-now { animation: none; background: none; color: var(--text); }
+  .lt-step[data-state="running"] .lt-mark::before,
+  .lt[data-state="working"] .lt-plan li[data-status="in_progress"]::before { animation: none; }
+}

@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.83.0 — 2026-10-09
+
+**Linda works like an agent, and Janus keeps itself current**
+
+- Linda takes a job all the way: she plans multi-step work, searches the web for facts from outside the store, and looks back through earlier parts of a conversation, then checks her result before she answers. Every change still needs your yes in the chat.
+- She may take up to 30 steps and four minutes on one message by default, and up to 60 steps and five minutes on Settings → AI → Janus. Stores that had the old 10 steps and 120 seconds saved were moved to the new defaults.
+- While she works, the chat shows what she is doing: her plan as a checklist, each step with its time, and what each store tool was asked and answered. When the answer arrives it folds into one line, such as 'Worked for 42s · 6 steps', which opens again on click. The floating Linda panel shows the same.
+- The purple ring around the chat box is gone. The box shows focus with a firmer grey border.
+- Janus keeps itself current from GitHub. Every three hours a store installs the newest commit beside the current Janus and switches to it only after it passes Morpheus's compatibility check; if real messages then keep failing, Linda goes back to the previous Janus. Every build runs the same check and falls back to the last known-good Janus.
+- Settings → AI → Janus shows the Janus build in use, its check result and the newest commit on GitHub, with a Check now button. Web search and automatic updates can each be switched off there.
+- Subagents stay off: Janus's delegate tool can start any program the model names, so they wait for a fix in Janus.
+
 ## v0.82.1 — 2026-10-09
 
 **Dashboard icons sit centred again**

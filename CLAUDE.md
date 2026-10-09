@@ -354,10 +354,11 @@ naming the human. **Never re-add a static Linda MCP token** — its
 nothing but that endpoint: `apply_bearer_user` (GraphQL) treats it as invalid.
 When you change a gate, change `gates.py`; a second copy drifts and the looser one
 wins. Merchant knobs (on/off, pinned provider, tool-step cap, turn time limit,
-standing instructions, bundled skills) live on Settings → AI → Janus — the protected
-`janus` app — and core reads them only through `core/assistant/janus_settings.py`
-(cross-process fresh, clamped, fail-soft to defaults); the timeout never exceeds
-55s whatever is stored. The page's slug is `engine`, not `settings`:
+standing instructions, bundled skills, web search, auto-update) live on Settings → AI →
+Janus — the protected `janus` app — and core reads them only through
+`core/assistant/janus_settings.py` (cross-process fresh, clamped, fail-soft to
+defaults); the timeout never exceeds 300s whatever is stored, and the unset default
+(240s) is `LINDA_JANUS_TIMEOUT_S` in `morph/settings.py`, not the engine constant. The page's slug is `engine`, not `settings`:
 `/dashboard/apps/<app>/settings/` is the legacy settings deep link and silently
 wins the route. Remaining fences: tests force `'legacy'` and must never spawn a real model;
 YOLO/`LINDA_JANUS_AUTO_APPROVE` stays **off**; the child gets an env
@@ -381,8 +382,9 @@ per-conversation Janus home. **Four CLI traps shipped live in v0.63.0 and each
 looked fine in tests** (v0.63.1): (1) without `-t`, `janus chat` loads its
 default 56-tool `janus-cli` set — terminal, `write_file`, `execute_code`, browser
 — as the user that owns `/app` and can read the web process's env via `/proc`,
-so `TURN_TOOLSETS` (store MCP server + `skills`) is the real boundary, not the
-env allowlist; (2) bare `--continue` resumes the newest `cli`-sourced session,
+so the toolsets a turn loads (`janus_engine.turn_toolsets()`: store MCP server,
+`skills`, `todo`, `session_search`, plus `search` and `memory` while switched on) are
+the real boundary, not the env allowlist; (2) bare `--continue` resumes the newest `cli`-sourced session,
 never `linda`, so every follow-up exited 1 — store the stderr `session_id:` and
 `--resume` it; (3) `janus-agent` without the `[mcp]` extra has a silently inert
 MCP client, so the store had zero tools; (4) provider `auto` routes to OpenRouter
@@ -411,6 +413,35 @@ the reply and `session_id` went to /dev/null and the merchant got "no reply"
 reply from the home's `state.db` (`_recover_reply`).
 Guarded by `core/assistant/tests/test_janus_engine.py`, `test_turn_identity.py`
 and `agent_mcp/tests/test_linda_turn.py`.
+
+**Landmine — a Janus toolset is a bundle, and one argument of one tool can be a
+shell.** Before adding a toolset to a turn, read every tool in it down to what its
+arguments reach. `delegation` looks like "subagents", but `delegate_task` passes a
+model-supplied `acp_command` + `acp_args` to `subprocess.Popen`
+(`agent/copilot_acp_client.py`), so anything Linda reads could start a program as the
+app user, who can read the web process's environment through `/proc`; it stays off
+until Janus can drop those arguments. A Janus pre-tool hook cannot guard it: hooks
+**fail open** (a crashed or slow hook lets the call through). `web` and `vision`
+stay off too (a URL the model picks is an outbound channel); `search` is web_search
+only. The hooks are still useful as a **display**: `pre_tool_call`/`post_tool_call`
+run `core/assistant/janus_progress_hook.py`, which appends a line per step to the
+home's `progress.jsonl`, and the turn streams those as `step`/`plan` events
+(`core/assistant/activity.py`) — verified live before building (both hooks fire for
+agent-loop tools, ~65 ms each). **Janus also updates itself** while the image tracks a
+branch (`core/assistant/janus_runtime.py`): every 3 hours a turn or the Janus page
+starts the detached `janus_updater.py`, which installs GitHub's archive of the newest
+commit beside the current Janus (the image has no git) and switches only when
+`core/assistant/janus_contract.py` passes — the contract checks that each toolset
+holds only the reviewed tools, that Janus still reads every config key Morpheus writes,
+and the env vars, CLI options and state.db columns the integration uses; three engine
+failures in a row on an auto-installed Janus roll back. The Docker build runs the same
+contract and falls back to `JANUS_KNOWN_GOOD`. The repository and branch come from the
+image's build record, **never from a setting**: Linda can write settings through her
+tools, and a setting that names the code to install is remote code execution. When
+Morpheus starts relying on a new Janus surface, add it to the contract in the same
+change (`test_janus_contract.py` fails until you do). Guarded by
+`core/assistant/tests/test_janus_engine.py::AgentToolsetTests`, `test_janus_contract.py`,
+`test_janus_updates.py` and `test_janus_activity.py`.
 
 **Landmine — what Janus learns lives in files a redeploy deletes, and "add a disk
 volume" only fixes it on one host.** Janus writes its memory notes, the skills it

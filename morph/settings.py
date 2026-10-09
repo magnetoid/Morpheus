@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.82.1')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.83.0')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this
@@ -708,10 +708,14 @@ JANUS_ENGINE_ROOT = config('JANUS_ENGINE_ROOT', default='')
 # OFF by default: the subprocess runs as `morpheus` with write access to /app,
 # so auto-approval makes core/safety.py's FORBIDDEN_PATHS unenforceable there.
 LINDA_JANUS_AUTO_APPROVE = config('LINDA_JANUS_AUTO_APPROVE', default=False, cast=bool)
-# Seconds per Linda message. The chat streams progress while the turn runs, so
-# this may exceed GUNICORN_TIMEOUT under gthread workers; capped at 170s by
+# Seconds per Linda message. The chat streams each step while the turn runs, so
+# this may exceed GUNICORN_TIMEOUT under gthread workers; capped at 300s by
 # core/assistant/janus_settings.py. Settings → AI → Janus overrides it.
-LINDA_JANUS_TIMEOUT_S = config('LINDA_JANUS_TIMEOUT_S', default=120, cast=int)
+LINDA_JANUS_TIMEOUT_S = config('LINDA_JANUS_TIMEOUT_S', default=240, cast=int)
+# Janus installs newer commits of the branch the image was built from, beside the
+# image's copy, and switches only after Morpheus's contract passes
+# (core/assistant/janus_runtime.py). False keeps the image's Janus until redeploy.
+LINDA_JANUS_AUTO_UPDATE = config('LINDA_JANUS_AUTO_UPDATE', default=True, cast=bool)
 # No LINDA_MCP_TOKEN: each Janus turn carries a signed per-turn identity instead
 # (core/assistant/turn_identity.py). A standing token was the consent hole.
 LINDA_MCP_URL = config('LINDA_MCP_URL', default='')
@@ -733,6 +737,9 @@ if _RUNNING_TESTS:
     # No test may spawn a real Janus (a model call). A missing binary makes every
     # unmocked turn a reported spawn failure; tests that need a turn mock it.
     JANUS_BIN = '/nonexistent/janus-disabled-under-tests'
+    # Nor install one: with `janus` on a developer's PATH, a turn would start the
+    # updater (pip, GitHub). Updater tests switch it on with override_settings.
+    LINDA_JANUS_AUTO_UPDATE = False
 
 # ── Email ──────────────────────────────────────────────────────────────────────
 # Always use the Morpheus Custom backend so admins can configure via dashboard

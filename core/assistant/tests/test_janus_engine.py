@@ -130,6 +130,14 @@ class ConfigTests(SimpleTestCase):
         body = eng._config_text('https://s/mcp/')
         self.assertIn('security:\n  tirith_enabled: false', body)
 
+    def test_config_reports_each_step_to_the_conversation_home(self):
+        with TemporaryDirectory() as tmp:
+            body = _ensure_config(Path(tmp), mcp_url='https://s/mcp/').read_text(encoding='utf-8')
+            self.assertIn(str(Path(tmp) / 'progress.jsonl'), body)
+        self.assertIn('hooks_auto_accept: true', body)
+        self.assertIn('  pre_tool_call:', body)
+        self.assertIn('janus_progress_hook.py', body)
+
     def test_config_points_at_bundled_ecommerce_skills(self):
         with TemporaryDirectory() as tmp:
             cfg = _ensure_config(Path(tmp), mcp_url='https://s/mcp/')
@@ -313,8 +321,28 @@ class TurnInvocationTests(SimpleTestCase):
         self.assertIn('-t', argv)
         toolsets = argv[argv.index('-t') + 1].split(',')
         self.assertEqual(toolsets, list(eng.turn_toolsets()))
-        self.assertEqual(set(toolsets) - set(eng.TURN_TOOLSETS), set(eng.LEARNING_TOOLSETS))
-        for forbidden in ('terminal', 'file', 'code_execution', 'web', 'browser', 'janus-cli'):
+        # An allowlist, so a new toolset is a decision made here, with a reason.
+        self.assertLessEqual(
+            set(toolsets),
+            {eng.MCP_SERVER_NAME, 'skills', 'memory', 'todo', 'session_search', 'search'},
+        )
+        for forbidden in (
+            'terminal',
+            'file',
+            'code_execution',
+            'browser',
+            'janus-cli',
+            # web_extract and vision fetch a URL the model chooses: an outbound
+            # channel for anything she has read.
+            'web',
+            'vision',
+            # delegate_task runs a model-supplied acp_command (subprocess.Popen).
+            'delegation',
+            'messaging',
+            'cronjob',
+            'tool_synthesis',
+            'computer_use',
+        ):
             self.assertNotIn(forbidden, toolsets)
 
     def test_toolset_names_the_configured_mcp_server(self):
@@ -346,8 +374,16 @@ class TurnInvocationTests(SimpleTestCase):
         self.assertTrue(env['HOME'].startswith(str(self.home)))
 
     def test_tool_iterations_fit_the_turn_timeout(self):
+        from core.assistant import janus_settings
+
         self.assertIn(f'max_turns: {eng.MAX_TOOL_TURNS}', eng._config_text('https://s/mcp/'))
-        self.assertLessEqual(eng.MAX_TOOL_TURNS, 10)
+        # Room for real work (the owner found 10 steps in 120s constraining),
+        # and the steps still fit the time: ~7s each measured on prod.
+        self.assertEqual((eng.MAX_TOOL_TURNS, eng._DEFAULT_TIMEOUT_S), (30, 240))
+        self.assertLessEqual(eng.MAX_TOOL_TURNS * 7, eng._DEFAULT_TIMEOUT_S)
+        self.assertEqual(
+            (janus_settings.MAX_TOOL_TURNS, janus_settings.MAX_TURN_TIMEOUT_S), (60, 300)
+        )
 
     def test_quiet_mode_is_used(self):
         _, calls = self._turn(_FakeProc(stdout='ok'))
@@ -602,6 +638,91 @@ class SessionAndProgressTests(SimpleTestCase):
         self.assertGreaterEqual(items.count(None), 2)
         self.assertEqual(items[-1]['text'], 'done')
 
+    @staticmethod
+    def _works_with_steps(argv, **kwargs):
+        import json as _json
+        import time as _time
+
+        progress = Path(kwargs['env']['JANUS_HOME']) / 'progress.jsonl'
+        with progress.open('a', encoding='utf-8') as fh:
+            fh.write(
+                _json.dumps(
+                    {'ev': 'start', 'tool': 'web_search', 'id': 'c1', 'args': {'query': 'tea'}}
+                )
+                + '\n'
+            )
+        _time.sleep(0.3)
+        with progress.open('a', encoding='utf-8') as fh:
+            fh.write(_json.dumps({'ev': 'end', 'tool': 'web_search', 'id': 'c1', 'status': 'ok'}))
+            fh.write('\n')
+        return _FakeProc(stdout='done')
+
+    def _items(self, side_effect):
+        with (
+            mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
+            mock.patch.object(eng, 'linda_janus_home', return_value=self.home),
+            mock.patch.object(eng.subprocess, 'run', side_effect=side_effect),
+        ):
+            return list(
+                eng.iter_janus_turn(
+                    message='hi', conversation_key='conv-1', system_prompt='p', tick_s=0.05
+                )
+            )
+
+    def test_steps_stream_while_janus_works(self):
+        items = self._items(self._works_with_steps)
+        steps = [i for i in items if isinstance(i, dict) and i.get('type') == 'step']
+        self.assertEqual([s['state'] for s in steps], ['running', 'done'])
+        self.assertEqual(steps[0]['label'], 'Searching the web')
+        # The last line, written just before Janus exited, still arrives.
+        self.assertEqual(items[-1]['text'], 'done')
+        self.assertLess(items.index(steps[-1]), len(items) - 1)
+
+    def test_a_turn_never_replays_the_last_turns_steps(self):
+        self.conv.mkdir(parents=True, exist_ok=True)
+        (self.conv / 'progress.jsonl').write_text(
+            '{"ev": "start", "tool": "web_search", "id": "old"}\n', encoding='utf-8'
+        )
+        items = self._items(lambda argv, **kw: _FakeProc(stdout='done'))
+        self.assertFalse([i for i in items if isinstance(i, dict) and i.get('type')])
+
+    def test_the_blocking_call_returns_the_reply_not_a_step(self):
+        with (
+            mock.patch.object(eng, 'janus_cmd', return_value=['/opt/janus/bin/janus']),
+            mock.patch.object(eng, 'linda_janus_home', return_value=self.home),
+            mock.patch.object(eng.subprocess, 'run', side_effect=self._works_with_steps),
+        ):
+            out = run_janus_turn(message='hi', conversation_key='conv-1', system_prompt='p')
+        self.assertEqual(out['text'], 'done')
+
+
+class AgentToolsetTests(SimpleTestCase):
+    """What Linda can do beyond the store's tools, and what stays out on purpose."""
+
+    def test_she_can_plan_recall_and_search_the_web(self):
+        self.assertLessEqual({'todo', 'session_search', 'search'}, set(eng.turn_toolsets()))
+
+    def test_web_search_comes_without_page_fetching(self):
+        # 'web' would add web_extract: a fetch of a URL the model picks is an
+        # outbound channel for whatever she has read (customers, orders).
+        self.assertIn('search', eng.turn_toolsets())
+        self.assertNotIn('web', eng.turn_toolsets())
+
+    def test_subagents_stay_off_while_delegate_task_can_launch_a_program(self):
+        # Janus 0.18.0: delegate_task hands model-supplied acp_command/acp_args
+        # to subprocess.Popen (agent/copilot_acp_client.py). A prompt injection
+        # in anything she reads could start any program as the app user. Hooks
+        # can't guard it: Janus lets a call through when a hook fails.
+        self.assertNotIn('delegation', eng.turn_toolsets())
+
+    def test_the_merchant_can_switch_web_search_off(self):
+        from core.assistant import janus_settings
+
+        with mock.patch.object(janus_settings, 'web_search_enabled', return_value=False):
+            toolsets = eng.turn_toolsets()
+        self.assertNotIn('search', toolsets)
+        self.assertIn('todo', toolsets)
+
 
 class ProviderWiringTests(SimpleTestCase):
     """Janus's `auto` picks OpenRouter whenever OPENAI_API_KEY is set and never
@@ -657,6 +778,12 @@ class AssistantEngineTests(SimpleTestCase):
 
         self.assertFalse(Path(settings.JANUS_BIN).exists())
 
+    def test_tests_can_never_install_a_janus(self):
+        # With `janus` on a developer's PATH, a turn would start the updater.
+        from django.conf import settings
+
+        self.assertFalse(settings.LINDA_JANUS_AUTO_UPDATE)
+
     def test_no_engine_switch_remains(self):
         from django.conf import settings
 
@@ -667,6 +794,15 @@ class AssistantEngineTests(SimpleTestCase):
 
         self.assertIn('You are Linda', LINDA_BASE_PROMPT)
         self.assertIn('never needs the name of your engine', LINDA_BASE_PROMPT)
+
+    def test_the_prompt_no_longer_rations_her_work(self):
+        # The owner found Linda constrained (2026-10-09): she was told she had
+        # "a few tool steps and well under a minute", and to stop at a sample.
+        from core.assistant.prompts import LINDA_BASE_PROMPT
+
+        for rationing in ('a few tool steps', 'well under a minute', 'do a sample'):
+            self.assertNotIn(rationing, LINDA_BASE_PROMPT)
+        self.assertIn("Every change needs the merchant's yes", LINDA_BASE_PROMPT)
 
 
 class BundledEcommerceSkillsTests(SimpleTestCase):

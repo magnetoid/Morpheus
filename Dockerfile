@@ -69,19 +69,35 @@ RUN mkdir -p /app/backups && chown morpheus:morpheus /app/backups
 # Janus is the store agent (Linda is brand only). Always install into an
 # isolated venv so Django and Janus do not share `plugins/` / `tools/` on
 # sys.path. ARG LINDA_JANUS is ignored (kept so old Coolify build-args still
-# parse). Default JANUS_REF=main = latest magnetoid/janus; pin a SHA to freeze.
-# The [mcp] extra is load-bearing: without the `mcp` package Janus's MCP client
-# silently does nothing and Linda has no store tools at all (shipped that way in
-# v0.63.0). The import check fails the build instead of the merchant's chat.
+# parse). JANUS_REF=main installs the newest Janus on every build, and a running
+# store keeps up between deploys by itself (core/assistant/janus_runtime.py);
+# pin a commit to freeze both. ddgs + primp are Linda's free web search backend
+# (pinned in janus_runtime.PINS too). The [mcp] extra is load-bearing: without
+# the `mcp` package Janus's MCP client silently does nothing and Linda has no
+# store tools at all (shipped that way in v0.63.0).
+# Every build checks Janus against Morpheus's contract
+# (core/assistant/janus_contract.py: the toolsets, config keys, env vars, CLI
+# options and state columns the integration relies on, mcp included). When the
+# newest Janus breaks it, the build installs JANUS_KNOWN_GOOD instead, so an
+# image never ships an engine Linda cannot use. The report stays at
+# /opt/janus/morpheus-contract.json for Settings → AI → Janus.
 ARG LINDA_JANUS=1
 ARG JANUS_REF=main
+ARG JANUS_KNOWN_GOOD=eafb7aba34db8645401ce285edf987054c5d37d5
+ARG JANUS_REPO=https://github.com/magnetoid/Janus-Agent.git
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git \
  && python -m venv /opt/janus \
  && /opt/janus/bin/pip install --upgrade pip \
  && /opt/janus/bin/pip install --no-cache-dir \
-      "janus-agent[mcp] @ git+https://github.com/magnetoid/janus.git@${JANUS_REF}" \
- && /opt/janus/bin/python -c "import mcp" \
+      "janus-agent[mcp] @ git+${JANUS_REPO}@${JANUS_REF}" ddgs==9.16.0 primp==2.0.1 \
+ && if ! /opt/janus/bin/python -I /app/core/assistant/janus_contract.py > /opt/janus/morpheus-contract.json; then \
+      echo "Janus ${JANUS_REF} breaks the Morpheus contract; installing ${JANUS_KNOWN_GOOD}" >&2; \
+      cat /opt/janus/morpheus-contract.json >&2; \
+      /opt/janus/bin/pip install --no-cache-dir --force-reinstall \
+        "janus-agent[mcp] @ git+${JANUS_REPO}@${JANUS_KNOWN_GOOD}" ddgs==9.16.0 primp==2.0.1 \
+      && /opt/janus/bin/python -I /app/core/assistant/janus_contract.py > /opt/janus/morpheus-contract.json; \
+    fi \
  && ln -sf /opt/janus/bin/janus /usr/local/bin/janus \
  && apt-get purge -y git \
  && apt-get autoremove -y \

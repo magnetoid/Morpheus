@@ -113,9 +113,18 @@ plugins/installed/ai_assistant/       ← Pulse insights, embeddings, search
 ```
 
 - **Linda** ([core/assistant/](../core/assistant/)) is hard-coded; her
-  ~30 tools live in `core/assistant/tools/`. For parallel work she
-  spawns copies of the generic **Worker** through the agents kernel
-  (`delegate.spawn_workers`) — not named specialist sub-agents.
+  store tools live in `core/assistant/tools/` and in the apps that register
+  them. Her engine is **Janus**, run as a subprocess per message
+  ([janus_engine.py](../core/assistant/janus_engine.py)) that reaches the store's
+  tools over MCP, where [gates.py](../core/assistant/gates.py) enforces scope,
+  mode and the merchant's consent. Janus's own tools give her a plan, web search
+  and recall of earlier sessions; the chat shows each step as it happens
+  ([activity.py](../core/assistant/activity.py)), and Janus keeps itself current
+  from GitHub, switching only to a build that passes Morpheus's contract
+  ([janus_runtime.py](../core/assistant/janus_runtime.py),
+  [janus_contract.py](../core/assistant/janus_contract.py)). For jobs bigger than
+  one message she spawns copies of the generic **Worker** through the agents
+  kernel (`delegate.spawn_workers`) — not named specialist sub-agents.
 - **The kernel** ([core/agents/](../core/agents/)) ships exactly **one**
   agent: `Worker`
   ([core/agents/builtin/worker.py](../core/agents/builtin/worker.py)).

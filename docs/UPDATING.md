@@ -168,6 +168,47 @@ artifact is a `.tar.gz` with **one** top-level directory (`my_app/` or
 
 ---
 
+## Janus, the engine behind Linda (v0.83.0)
+
+Janus is installed from its own repository, not shipped in this tree, and it moves
+faster than Morpheus deploys. The owner asked for it to follow upstream closely and
+stay compatible (2026-10-09), so it has its own path, separate from the core and
+per-app channels above:
+
+1. **At build.** The Dockerfile installs `JANUS_REPO@JANUS_REF` (`main` by default)
+   into `/opt/janus`, then runs `core/assistant/janus_contract.py` with that venv's
+   Python. If the newest Janus breaks the contract, the build installs
+   `JANUS_KNOWN_GOOD` instead. The report is kept at `/opt/janus/morpheus-contract.json`.
+2. **While running.** Every 3 hours a Linda turn (or a visit to Settings → AI → Janus)
+   starts `core/assistant/janus_updater.py` in the background. It asks GitHub for the
+   branch's newest commit, pip-installs GitHub's archive of exactly that commit into
+   `<janus home>/engine/venvs/<sha12>/`, runs the contract with it, and only then
+   records it in `engine/state.json` as the Janus to use. The image's copy stays as the
+   fallback; the replaced copy is kept for a rollback, older ones are deleted.
+3. **After switching.** Three engine failures in a row on an auto-installed Janus
+   (provider errors and timeouts do not count) put the previous one back and mark that
+   commit failed, so it is not retried until a newer commit appears.
+
+The contract is what "compatible" means: each toolset Linda loads holds only the tools
+reviewed for her boundary, Janus still reads every config key Morpheus writes (several
+are safety settings), and the env vars, `janus chat` options and `state.db` columns the
+integration uses still exist. When Morpheus starts relying on something new in Janus,
+add it to the contract in the same change; `core/assistant/tests/test_janus_contract.py`
+fails until you do.
+
+Switches: `LINDA_JANUS_AUTO_UPDATE=False` (deployment) or the "Keep Janus up to date"
+box on the Janus page (merchant) keep the image's Janus until the next deploy. A build
+with `JANUS_REF` pinned to a commit is never auto-updated. The repository and branch
+always come from the image's build record, never from a setting, because Linda can
+change settings through her tools. Nothing here needs a volume: the engine dir lives in
+the container and a redeploy starts again from the image, which installs the newest
+commit anyway. Raise `JANUS_KNOWN_GOOD` to a commit the stores have run without trouble.
+
+This is unattended, unlike the core rule below, because Janus is not this tree's code:
+an update cannot change a Morpheus file, it is checked before use, and it rolls back.
+
+---
+
 ## What does not work, and why
 
 ### The updater is inert on this production deployment

@@ -33,6 +33,8 @@ _VALID = {
     'extra_instructions': '',
     'bundled_skills': 'on',
     'learning': 'on',
+    'web_search': 'on',
+    'auto_update': 'on',
     'reasoning_effort': 'low',
 }
 
@@ -90,19 +92,28 @@ class JanusPageSaveTests(TestCase):
             extra_instructions='Prices include VAT.',
             bundled_skills='',
             learning='',
+            web_search='',
+            auto_update='',
         )
         self.assertEqual(response.status_code, 302)
         stored = _stored()
         self.assertFalse(stored['learning'])
+        self.assertFalse(stored['web_search'])
+        self.assertFalse(stored['auto_update'])
         self.assertEqual(stored['max_tool_turns'], 4)
         self.assertEqual(stored['turn_timeout_s'], 30)
         self.assertEqual(stored['extra_instructions'], 'Prices include VAT.')
         self.assertFalse(stored['bundled_skills'])
 
     def test_limits_are_enforced(self):
-        self.assertEqual(self._post(turn_timeout_s='999').status_code, 200)
-        self.assertEqual(self._post(max_tool_turns='50').status_code, 200)
+        self.assertEqual(self._post(turn_timeout_s='301').status_code, 200)
+        self.assertEqual(self._post(max_tool_turns='61').status_code, 200)
         self.assertNotIn('turn_timeout_s', _stored())
+
+    def test_the_new_upper_limits_can_be_saved(self):
+        # The owner asked for an agent that can take on real jobs (2026-10-09).
+        self.assertEqual(self._post(max_tool_turns='60', turn_timeout_s='300').status_code, 302)
+        self.assertEqual((_stored()['max_tool_turns'], _stored()['turn_timeout_s']), (60, 300))
 
     def test_pinned_provider_needs_provider_model_and_key(self):
         response = self._post(model_source='custom')
@@ -211,11 +222,22 @@ class JanusSettingConsumerTests(TestCase):
         _set(reasoning_effort='xhigh; rm -rf')
         self.assertIn('reasoning_effort: low', eng._config_text('https://s/mcp/'))
 
+    def test_web_search_toggle_reaches_the_engine_and_the_prompt(self):
+        self.assertIn('search', eng.turn_toolsets())
+        _set(web_search=False)
+        self.assertNotIn('search', eng.turn_toolsets())
+        self.assertNotIn('web_search', Assistant()._system_prompt(context={}))
+
     def test_learning_toggle_reaches_the_engine(self):
         self.assertIn('memory', eng.turn_toolsets())
         _set(learning=False)
         self.assertNotIn('memory', eng.turn_toolsets())
         self.assertIn('memory_enabled: false', eng._config_text('https://s/mcp/'))
+
+    def test_unset_time_limit_is_four_minutes(self):
+        # morph/settings.py's LINDA_JANUS_TIMEOUT_S default once held it at 120s
+        # whatever the engine's own default said.
+        self.assertEqual(eng.turn_timeout_s(), 240)
 
     def test_time_limit_reaches_the_engine(self):
         _set(turn_timeout_s=20)

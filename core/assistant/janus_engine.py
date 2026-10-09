@@ -7,9 +7,11 @@ with bundled Morpheus ecommerce skills (``core/assistant/janus_skills``).
 
 Discovery order for the binary:
   1. ``settings.JANUS_BIN`` / ``JANUS_BIN``
-  2. ``janus`` on PATH
-  3. ``<JANUS_ENGINE_ROOT>/.venv/bin/janus`` then ``venv/bin/janus``
-  4. ``~/.janus/janus-agent`` source checkout (``python cli.py``)
+  2. a newer Janus the store installed itself from GitHub, after it passed the
+     contract (:mod:`core.assistant.janus_runtime`)
+  3. ``janus`` on PATH (the image's)
+  4. ``<JANUS_ENGINE_ROOT>/.venv/bin/janus`` then ``venv/bin/janus``
+  5. ``~/.janus/janus-agent`` source checkout (``python cli.py``)
 
 SAFETY — read this before widening anything below. Janus runs its own tool loop
 in a subprocess and reaches Morpheus over MCP, so NONE of the in-process gates in
@@ -43,7 +45,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from core.assistant import janus_settings
+from core.assistant import activity, janus_settings
 from core.assistant.turn_identity import ENV_VAR as TURN_TOKEN_ENV
 
 logger = logging.getLogger('morpheus.assistant.janus')
@@ -54,7 +56,8 @@ logger = logging.getLogger('morpheus.assistant.janus')
 # streaming request is not killed at GUNICORN_TIMEOUT, and the steady bytes keep
 # Cloudflare and nginx from closing an idle connection. A caller that does NOT
 # stream (the settings page's connection test) must pass its own short timeout.
-_DEFAULT_TIMEOUT_S = 120
+# Four minutes leaves room for real jobs; the chat shows every step meanwhile.
+_DEFAULT_TIMEOUT_S = 240
 
 # The MCP server name in the generated config, and the ONLY toolsets a turn may
 # use. Without an explicit ``-t``, ``janus chat`` loads its default ``janus-cli``
@@ -63,19 +66,31 @@ _DEFAULT_TIMEOUT_S = 120
 # process's environment through /proc. So the env allowlist below is not the
 # boundary; this list is. ``skills`` is list/view/manage of skill documents under
 # JANUS_HOME only (no execution), and is what injects the bundled ecommerce
-# skills into the prompt.
+# skills into the prompt. ``todo`` is an in-memory plan, and ``session_search``
+# is a full-text search over this conversation's own earlier sessions in its
+# home's state.db (no model call).
+#
+# Kept out on purpose (verified against Janus 0.18.0):
+#   * ``delegation`` — delegate_task passes a model-supplied ``acp_command`` and
+#     ``acp_args`` to subprocess.Popen, so anything Linda reads could start a
+#     program. A pre-tool hook cannot guard it: Janus lets a call through when a
+#     hook fails. Needs an upstream switch that drops those arguments.
+#   * ``web`` and ``vision`` — they fetch a URL the model picks, which is an
+#     outbound channel for whatever she has read. ``search`` is web_search only.
 MCP_SERVER_NAME = 'morpheus_admin'
-TURN_TOOLSETS = (MCP_SERVER_NAME, 'skills')
+TURN_TOOLSETS = (MCP_SERVER_NAME, 'skills', 'todo', 'session_search')
+# Added while the merchant allows it (Settings → AI → Janus): queries go to a
+# public search engine through the ``ddgs`` package installed in the Janus venv.
+WEB_SEARCH_TOOLSETS = ('search',)
 # Added while learning is on: ``memory`` is Janus's notes, recall and agreement
 # tools, all confined to JANUS_HOME. What they write outlives the home through
 # core/assistant/janus_learning.py.
 LEARNING_TOOLSETS = ('memory',)
 
-# Tool-calling iterations per message. Janus defaults to 90, but a turn must end
-# inside its time limit: a step measured ~7s on prod at the provider's default
-# reasoning effort (DeepSeek plus an MCP call), and a curious model once explored
-# seven tools and timed out without answering.
-MAX_TOOL_TURNS = 10
+# Tool-calling iterations per message. Janus defaults to 90; a turn must still end
+# inside its time limit, and a step measured ~7s on prod (DeepSeek plus an MCP
+# call), so 30 steps fit the four-minute default.
+MAX_TOOL_TURNS = 30
 
 # Janus prints ``session_id: <id>`` to stderr in quiet mode. Stored per
 # conversation and passed back with ``--resume``: a bare ``--continue`` looks up
@@ -154,9 +169,18 @@ def janus_cmd() -> list[str] | None:
     explicit = (getattr(s, 'JANUS_BIN', '') if s else '') or os.environ.get('JANUS_BIN', '')
     if explicit:
         return [explicit]
-    which = shutil.which('janus')
-    if which:
-        return [which]
+    # A newer Janus the store installed from GitHub and checked against the
+    # contract (core/assistant/janus_runtime.py); else the image's.
+    from core.assistant import janus_runtime
+
+    found = janus_runtime.active_bin() or shutil.which('janus')
+    if found:
+        return [found]
+    return _source_checkout_cmd()
+
+
+def _source_checkout_cmd() -> list[str] | None:
+    """A Janus source checkout (``JANUS_ENGINE_ROOT``, ``~/.janus/janus-agent``)."""
     root = engine_root()
     if root is None:
         return None
@@ -190,14 +214,17 @@ def auto_approve_enabled() -> bool:
 
 
 def turn_toolsets() -> tuple[str, ...]:
-    """The toolsets a turn loads: the base set, plus memory while learning is on."""
+    """The toolsets a turn loads: the base set, web search and memory while allowed."""
+    toolsets = TURN_TOOLSETS
+    if janus_settings.web_search_enabled():
+        toolsets += WEB_SEARCH_TOOLSETS
     if janus_settings.learning_enabled():
-        return TURN_TOOLSETS + LEARNING_TOOLSETS
-    return TURN_TOOLSETS
+        toolsets += LEARNING_TOOLSETS
+    return toolsets
 
 
 def turn_timeout_s() -> int:
-    """Settings → AI → Janus, else ``LINDA_JANUS_TIMEOUT_S``; never above 55s."""
+    """Settings → AI → Janus, else ``LINDA_JANUS_TIMEOUT_S``; never above the cap."""
     s = _settings()
     raw = getattr(s, 'LINDA_JANUS_TIMEOUT_S', _DEFAULT_TIMEOUT_S) if s else _DEFAULT_TIMEOUT_S
     try:
@@ -280,7 +307,9 @@ def _child_env(overrides: dict[str, str]) -> dict[str, str]:
     return env
 
 
-def _config_text(mcp_url: str, headers: dict[str, str] | None = None) -> str:
+def _config_text(
+    mcp_url: str, headers: dict[str, str] | None = None, progress_path: Path | None = None
+) -> str:
     mcp_block = ''
     if mcp_url:
         # JSON strings are valid YAML scalars, so values need no hand-escaping.
@@ -325,6 +354,11 @@ mcp_servers:
     # reasoning_effort: the provider default for a reasoning model is "high".
     # api_max_retries: Janus retries 3x with backoff, which spends the whole turn
     #   budget on a provider that is down.
+    # web.backend: DuckDuckGo through the free ddgs package, named so a key that
+    #   reaches the engine some other way can never switch Linda to a paid backend.
+    # hooks: one line per step into the home's progress file, for the chat
+    #   (core/assistant/activity.py). A display only: Janus ignores a failed hook.
+    hooks = activity.hooks_config(progress_path) if progress_path is not None else ''
     return f"""# Auto-generated store agent home. Merchant-facing name is Linda.
 security:
   tirith_enabled: false
@@ -345,7 +379,9 @@ memory:
   memory_enabled: {learning}
   user_profile_enabled: {learning}
   nudge_interval: 0
-"""
+web:
+  backend: ddgs
+{hooks}"""
 
 
 # Janus reads its identity from SOUL.md in the home and seeds its own ("You are
@@ -384,7 +420,7 @@ def _ensure_config(
     would sit on disk in one copy per conversation.
     """
     cfg_path = home / 'config.yaml'
-    desired = _config_text(mcp_url, mcp_headers)
+    desired = _config_text(mcp_url, mcp_headers, home / activity.PROGRESS_FILE)
     try:
         current = cfg_path.read_text(encoding='utf-8')
     except OSError:
@@ -619,7 +655,7 @@ def _strip_notices(stdout: str) -> str:
 def run_janus_turn(**kwargs: Any) -> dict[str, Any]:
     """Run one store-agent turn on Janus and wait for it. See :func:`iter_janus_turn`."""
     for item in iter_janus_turn(**kwargs):
-        if item is not None:
+        if item is not None and not item.get('type'):
             return item
     return {'text': '', 'error': 'janus turn produced no result', 'duration_ms': 0}
 
@@ -636,11 +672,13 @@ def iter_janus_turn(
     history: str = '',
     tick_s: float = 1.0,
 ):
-    """Run one store-agent turn on Janus, yielding ``None`` about every ``tick_s``.
+    """Run one store-agent turn on Janus, yielding about every ``tick_s``.
 
-    The last item is the result: ``{text, error, duration_ms, usage}``. The ticks
-    let a streaming caller report progress and keep proxies from closing an idle
-    connection while the subprocess works.
+    Each tick yields the steps Janus reported since the last one (``step`` and
+    ``plan`` events, see :mod:`core.assistant.activity`), or ``None`` when there
+    were none. The last item is the result: ``{text, error, duration_ms, usage}``,
+    the only item without a ``type``. The ticks let a streaming caller show what
+    Linda is doing and keep proxies from closing an idle connection.
 
     ``system_prompt`` should be stable from turn to turn: Janus appends it to the
     system message, ahead of the whole transcript, so a prompt that changes every
@@ -670,6 +708,8 @@ def iter_janus_turn(
     mcp_url, mcp_headers = _mcp_endpoint(context)
     _ensure_config(conv_home, mcp_url=mcp_url, mcp_headers=mcp_headers)
     _prepare_home(conv_home)
+    progress = activity.ProgressReader(conv_home / activity.PROGRESS_FILE)
+    progress.reset()
 
     from core.assistant import janus_learning
 
@@ -699,8 +739,12 @@ def iter_janus_turn(
     # on this one (hydrate above, harvest below), where the request's connection is.
     payload = None
     try:
-        payload = yield from _wait_ticking(
-            lambda: _spawn(argv_for, env, conv_home, timeout, started, conversation_key), tick_s
+        payload = yield from _relay_steps(
+            _wait_ticking(
+                lambda: _spawn(argv_for, env, conv_home, timeout, started, conversation_key),
+                tick_s,
+            ),
+            progress,
         )
     finally:
         if snapshot is not None:
@@ -716,6 +760,24 @@ def iter_janus_turn(
                     'janus: turn abandoned; learning not harvested key=%s', conversation_key
                 )
     yield payload
+
+
+def _relay_steps(ticks, progress: activity.ProgressReader):
+    """Pass the ticks on, each one carrying the steps Janus reported since the last."""
+    while True:
+        try:
+            next(ticks)
+        except StopIteration as done:
+            payload = done.value
+            break
+        events = progress.read()
+        if events:
+            yield from events
+        else:
+            yield None
+    # Steps written in the moment before Janus exited.
+    yield from progress.read()
+    return payload
 
 
 def _wait_ticking(run, tick_s: float):

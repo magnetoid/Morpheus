@@ -11,6 +11,7 @@ import logging
 import shutil
 import subprocess
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 
 from django.contrib import messages
@@ -19,7 +20,9 @@ from django.core.cache import cache
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
+from core.assistant import janus_runtime, janus_settings
 from core.authz import require_capability
+from plugins.installed.janus import upstream
 from plugins.installed.janus.forms import JanusSettingsForm
 
 logger = logging.getLogger('morpheus.janus')
@@ -35,6 +38,8 @@ _SETTINGS_KEYS = (
     'extra_instructions',
     'bundled_skills',
     'learning',
+    'web_search',
+    'auto_update',
     'reasoning_effort',
 )
 _REVIEW_ACTIONS = ('forget_note', 'delete_skill', 'clear_lessons')
@@ -88,6 +93,8 @@ def _initial(config: dict) -> dict:
         'extra_instructions': config.get('extra_instructions', ''),
         'bundled_skills': config.get('bundled_skills', True),
         'learning': config.get('learning', True),
+        'web_search': config.get('web_search', True),
+        'auto_update': config.get('auto_update', True),
         'reasoning_effort': config.get('reasoning_effort', 'low'),
     }
 
@@ -143,10 +150,70 @@ def _status() -> dict:
         'installed': installed,
         'binary': ' '.join(cmd) if cmd else '',
         'version': _installed_version(cmd, home) if installed and home else '',
+        # The exact commit, and whether GitHub has moved on (checked once a day).
+        'build': upstream.build_status(cmd),
+        'updates': _updates(cmd),
         'home': home_text,
         'provider': provider,
         'toolsets': ', '.join(eng.turn_toolsets()),
         'auto_approve': eng.auto_approve_enabled(),
+    }
+
+
+_CHECK_RESULTS = {
+    'current': 'Up to date with GitHub.',
+    'installed': 'Installed a newer Janus; Linda uses it from her next message.',
+    'failed': 'Found a newer Janus but kept the current one: it did not pass.',
+    'skipped': 'The newest commit failed before, so it was not tried again.',
+    'error': "Couldn't reach GitHub.",
+    'rolled_back': 'Went back to the previous Janus after repeated failures.',
+}
+
+
+def _when(epoch) -> datetime | None:
+    try:
+        return datetime.fromtimestamp(float(epoch), tz=UTC)
+    except (TypeError, ValueError, OverflowError, OSError):
+        return None
+
+
+def _updates(cmd: list[str] | None) -> dict:
+    """What the page shows about keeping Janus current (core/assistant/janus_runtime.py)."""
+    summary = janus_runtime.summary()
+    report = janus_runtime.contract_report(cmd[0] if cmd else None)
+    checks = report.get('checks') or []
+    last = summary.get('last_check') or {}
+    active = summary.get('active') or {}
+    failed = sorted(
+        (
+            {'commit': sha, 'reason': str(v.get('reason') or ''), 'at': _when(v.get('at'))}
+            for sha, v in (summary.get('failed') or {}).items()
+        ),
+        key=lambda f: f['at'] or datetime.min.replace(tzinfo=UTC),
+        reverse=True,
+    )[:3]
+    return {
+        **summary,
+        'active': {**active, 'installed': _when(active.get('installed_at'))} if active else None,
+        'last': {
+            **last,
+            'when': _when(last.get('at')),
+            'text': _CHECK_RESULTS.get(str(last.get('result') or ''), ''),
+        }
+        if last
+        else None,
+        'failed': failed,
+        'contract': {
+            'total': len(checks),
+            'passed': sum(1 for c in checks if c.get('ok')),
+            'failing': [c.get('name') for c in checks if c.get('required') and not c.get('ok')],
+            'warnings': [
+                c.get('name') for c in checks if not c.get('required') and not c.get('ok')
+            ],
+            'notes': report.get('notes') or [],
+        }
+        if checks
+        else None,
     }
 
 
@@ -227,6 +294,24 @@ def settings_view(request):
     if request.method == 'POST' and request.POST.get('action') in _REVIEW_ACTIONS:
         _review(request, request.POST['action'])
         return redirect(request.path)
+    if request.method == 'POST' and request.POST.get('action') == 'check_updates':
+        if janus_runtime.maybe_update(force=True):
+            messages.success(
+                request,
+                'Checking GitHub for a newer Janus. Installing and checking one takes about '
+                'a minute; reload this page to see the result.',
+            )
+        else:
+            messages.error(
+                request,
+                'Updates are off here: switched off below or by the server, or this '
+                'server is pinned to one Janus commit.',
+            )
+        return redirect(request.path)
+    if request.method == 'GET':
+        # The periodic check also runs from Linda's turns; this keeps it going
+        # on a store where the page is visited but Linda is not.
+        janus_runtime.maybe_update()
     if request.method == 'POST' and request.POST.get('action') == 'test':
         test_result = _run_test(request.user)
         form = JanusSettingsForm(initial=_initial(config), has_stored_key=has_stored_key)
@@ -257,6 +342,11 @@ def settings_view(request):
             'status': _status(),
             'learned': _learned(request.user),
             'test_result': test_result,
+            'limits': {
+                'max_steps': janus_settings.MAX_TOOL_TURNS,
+                'min_time': janus_settings.MIN_TURN_TIMEOUT_S,
+                'max_time': janus_settings.MAX_TURN_TIMEOUT_S,
+            },
             'active_nav': 'settings',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
