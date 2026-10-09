@@ -127,3 +127,79 @@ class VersionedChangesTests(TestCase):
             ),
             [],
         )
+
+
+class DiffBaseTests(TestCase):
+    """`_diff_base` on main itself: the origin/main merge-base IS HEAD, so the
+    old logic diffed HEAD against HEAD, saw nothing, and a direct push that
+    skipped the bump went green (02f239f shipped a theme change unversioned).
+    Runs against a throwaway repo so it never depends on this checkout's state.
+    """
+
+    def setUp(self) -> None:
+        import os
+        import subprocess
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        repo = Path(self._tmp.name)
+
+        def git(*args: str) -> str:
+            return subprocess.run(
+                ['git', *args],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    'GIT_AUTHOR_NAME': 't',
+                    'GIT_AUTHOR_EMAIL': 't@t',
+                    'GIT_COMMITTER_NAME': 't',
+                    'GIT_COMMITTER_EMAIL': 't@t',
+                },
+            ).stdout.strip()
+
+        git('init', '-q', '-b', 'main')
+        (repo / 'a.txt').write_text('1')
+        git('add', '.')
+        git('commit', '-qm', 'one')
+        self.first = git('rev-parse', 'HEAD')
+        (repo / 'a.txt').write_text('2')
+        git('commit', '-qam', 'two')
+        # Make origin/main point at HEAD — the on-main-after-push situation.
+        git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+
+        p = mock.patch('core.management.commands.release._base_dir', return_value=repo)
+        p.start()
+        self.addCleanup(p.stop)
+        env = mock.patch.dict(os.environ, {'RELEASE_CHECK_BASE': ''})
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_on_main_diffs_against_parent_not_itself(self) -> None:
+        from core.management.commands.release import _diff_base
+
+        self.assertEqual(_diff_base(), 'HEAD~1')
+
+    def test_explicit_push_base_wins(self) -> None:
+        import os
+        from unittest import mock
+
+        from core.management.commands.release import _diff_base
+
+        with mock.patch.dict(os.environ, {'RELEASE_CHECK_BASE': self.first}):
+            self.assertEqual(_diff_base(), self.first)
+
+    def test_zero_or_unknown_push_base_is_ignored(self) -> None:
+        import os
+        from unittest import mock
+
+        from core.management.commands.release import _diff_base
+
+        for bogus in ('0' * 40, 'deadbeef' * 5):
+            with mock.patch.dict(os.environ, {'RELEASE_CHECK_BASE': bogus}):
+                self.assertEqual(_diff_base(), 'HEAD~1', bogus)

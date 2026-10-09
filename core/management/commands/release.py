@@ -27,6 +27,7 @@ prod/Coolify/deploy-smoke changes.
 from __future__ import annotations
 
 import datetime
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -156,12 +157,30 @@ def _git(*args: str) -> str | None:
     return out.stdout if out.returncode == 0 else None
 
 
+def _resolves(ref: str) -> bool:
+    return _git('rev-parse', '--verify', '--quiet', f'{ref}^{{commit}}') is not None
+
+
 def _diff_base() -> str | None:
-    """The ref to diff HEAD against: origin/main if present, else its merge-base."""
-    if _git('rev-parse', '--verify', '--quiet', 'origin/main') is not None:
-        mb = _git('merge-base', 'origin/main', 'HEAD')
-        return mb.strip() if mb else 'origin/main'
-    return None
+    """The ref to diff HEAD against.
+
+    ``RELEASE_CHECK_BASE`` wins when it names a real commit — CI sets it to the
+    push's ``before`` SHA. Otherwise the merge-base with origin/main (a PR or
+    feature branch). When that merge-base IS HEAD — i.e. we are on main itself,
+    which is exactly where a direct push lands — diffing HEAD against itself
+    finds nothing, so a push that skipped the bump passed the check and shipped
+    unversioned (v0.83.4 → 02f239f). Fall back to the parent commit there.
+    """
+    explicit = os.environ.get('RELEASE_CHECK_BASE', '').strip()
+    if explicit and set(explicit) != {'0'} and _resolves(explicit):
+        return explicit
+    if _git('rev-parse', '--verify', '--quiet', 'origin/main') is None:
+        return None
+    mb = (_git('merge-base', 'origin/main', 'HEAD') or '').strip()
+    head = (_git('rev-parse', 'HEAD') or '').strip()
+    if mb and mb == head:
+        return 'HEAD~1' if _resolves('HEAD~1') else None
+    return mb or 'origin/main'
 
 
 def versioned_changes(changed_paths: list[str]) -> list[str]:

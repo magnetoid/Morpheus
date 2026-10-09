@@ -140,6 +140,11 @@ jobs:
         # Fails when app/theme code changed vs main without a MORPHEUS_VERSION
         # bump, or when the version and the newest RELEASE_NOTES entry desync —
         # catching a forgotten bump on the PR instead of as a post-deploy 503.
+        # On a push, diff against the push's `before` SHA: on main itself the
+        # origin/main merge-base IS HEAD, so the check saw no changes and a
+        # direct push without a bump went green (02f239f).
+        env:
+          RELEASE_CHECK_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
         run: python manage.py release --check
       - name: Django system checks (BLOCKING — catches model errors that crash prod boot)
         # Plain `check` fails on Error-level issues (e.g. fields.E301/E300/E307 —
