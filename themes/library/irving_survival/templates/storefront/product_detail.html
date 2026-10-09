@@ -374,6 +374,11 @@ form[action^="/cart/add/"] [data-pdp-cta] { flex: 1; height: 56px !important; fo
         </div>
         {% endif %}
 
+        {% if product.noindex %}
+        <p class="lede" role="status" style="margin: 1.5rem 0 1rem; padding: 1rem 1.1rem; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 10px;">
+          <strong>Pre-launch preview — not available to order.</strong> Final supplier, specification and availability are still being confirmed.
+        </p>
+        {% else %}
         <form method="post" action="/cart/add/{{ product.id }}/" style="display:flex; gap: 0.6rem; align-items:center; margin: 1.5rem 0 1rem;">
           {% csrf_token %}
           {% with product.variants|first as first_v %}
@@ -385,6 +390,7 @@ form[action^="/cart/add/"] [data-pdp-cta] { flex: 1; height: 56px !important; fo
                  style="width: 80px; height: 48px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
           <button type="submit" class="btn btn-primary" style="height: 48px;" data-pdp-cta>Add to cart</button>
         </form>
+        {% endif %}
 
         {% if out_of_stock %}
         <form method="post" action="/back-in-stock/subscribe/{{ product.id }}/"
