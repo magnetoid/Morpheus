@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.83.2 — 2026-10-09
+
+**Dependencies and CI brought up to date**
+
+- The minimum versions in requirements.txt and the lock file CI tests against now match what the live stores already run, such as Django 6.1, the OpenAI SDK 3 and the Anthropic SDK 1. The stores themselves do not change: every build already installs the newest versions.
+- CI uses the current versions of the GitHub actions it relies on: checkout, setup-python, setup-node, upload-artifact and docker build-push.
+- An early Janus settings branch is recorded as merged with none of its code taken. Its work shipped differently in v0.65.0, and its migration would have stopped every store from starting.
+
 ## v0.83.1 — 2026-10-09
 
 **Uploads work on new stores again**
