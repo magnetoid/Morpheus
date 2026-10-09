@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.83.5 — 2026-10-09
+
+**Irving pre-launch products hide their buy button, and a push without a version bump no longer passes CI**
+
+- Irving Survival: a product that is still pre-launch (marked noindex) shows a "Pre-launch preview — not available to order" notice in place of its add-to-cart form. The cart itself does not refuse these products yet, so this is a page change, not an order block. It shipped in 02f239f without a version number of its own; this release gives it one.
+- The version check that guards every deploy missed a direct push to main: on main the comparison point was the commit itself, so it saw no changes and passed. On a push it now compares against the commit before the push (and against the parent when run on main by hand), so a code change without a version bump fails CI as it does on a pull request. Replaying 02f239f through the new check fails it and names the changed template.
+
 ## v0.83.4 — 2026-10-09
 
 **CI installs its locked dependencies again**

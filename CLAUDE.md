@@ -1276,7 +1276,9 @@ bump (PATCH = fix/polish/theme tweak, MINOR = feature, MAJOR = breaking).
 `MORPHEUS_VERSION` *and* prepends the dated `docs/RELEASE_NOTES.md` entry
 atomically (add `--commit` to also commit; `--set vX.Y.Z` for an explicit
 version). `release --check` (a blocking CI step + usable pre-push) fails when
-app/theme code changed vs `main` without a bump, or when the version and the
+app/theme code changed vs `main` without a bump (on a push it diffs
+against the push's `before` SHA via `RELEASE_CHECK_BASE` — on `main` the
+merge-base is HEAD itself, which once let an unversioned direct push pass), or when the version and the
 newest notes entry desync — so a forgotten bump is caught on the PR, not as a
 post-deploy 503. On push to main the **`release` workflow** mirrors the version
 to GitHub (annotated tag `vX.Y.Z` + a GitHub Release whose body is that notes
