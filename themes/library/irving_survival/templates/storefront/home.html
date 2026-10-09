@@ -195,11 +195,15 @@ show, so an empty catalogue still reads as a finished page.
         {% if product.short_description %}<p class="meta" style="margin:0">{{ product.short_description|first_sentence }}</p>{% endif %}
         <div class="h-bundle__foot">
           <span class="h-bundle__price">{% if bundle_price %}{{ bundle_price|money }}{% endif %}</span>
+          {% if product.noindex %}
+          <span class="meta">{% translate "Pre-launch preview" %}</span>
+          {% else %}
           <form method="post" action="/cart/add/{{ product.id }}/" class="h-bundle__add">
             {% csrf_token %}
             <input type="hidden" name="quantity" value="1">
             <button type="submit">{% translate "Add" %} <span aria-hidden="true">→</span><span class="sr-only"> {{ product.name }} {% translate "to the cart" %}</span></button>
           </form>
+          {% endif %}
         </div>
       </article>
       {% endfor %}

@@ -374,7 +374,9 @@ form[action^="/cart/add/"] [data-pdp-cta] { flex: 1; height: 56px !important; fo
         </div>
         {% endif %}
 
-        {% if product.noindex %}
+        {% comment %}Pre-launch preview: `product` is the PDP's GraphQL dict, which carries no
+           `noindex`, so the flag is read from the Product row (seo_object) as well.{% endcomment %}
+        {% if product.noindex or seo_object.noindex %}
         <p class="lede" role="status" style="margin: 1.5rem 0 1rem; padding: 1rem 1.1rem; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 10px;">
           <strong>Pre-launch preview — not available to order.</strong> Final supplier, specification and availability are still being confirmed.
         </p>
@@ -785,6 +787,8 @@ form[action^="/cart/add/"] [data-pdp-cta] { flex: 1; height: 56px !important; fo
 </style>
 
 {# Mobile-only sticky add-to-cart bar — mirrors the inline form and proxies clicks to the inline submit. #}
+{# A pre-launch preview has no inline form, so it gets no sticky bar either. #}
+{% if not product.noindex and not seo_object.noindex %}
 <div class="pdp-sticky-cart" data-pdp-sticky aria-hidden="false">
   <span class="pdp-sticky-cart__price">
     {% if product.priceStartsFrom %}<span class="pdp-sticky-cart__starts">{% load i18n %}{% translate "From" %}</span>{% endif %}
@@ -792,6 +796,7 @@ form[action^="/cart/add/"] [data-pdp-cta] { flex: 1; height: 56px !important; fo
   </span>
   <button type="button" class="btn btn-primary pdp-sticky-cart__btn" data-pdp-sticky-cta>Add to cart</button>
 </div>
+{% endif %}
 
 <script>
 /* Sticky cart wiring — mirrors data-pdp-price + data-pdp-cta into the

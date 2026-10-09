@@ -46,11 +46,16 @@ both shapes.
   </a>
   <div class="book__body">
     <div class="book__actions">
+      {% if product.noindex %}
+      {# Pre-launch preview (ORM rows carry noindex; GraphQL dicts do not and keep the button). #}
+      <p class="meta" style="margin: 0;">{% translate "Pre-launch preview" %}</p>
+      {% else %}
       <form method="post" action="/cart/add/{{ product.id }}/" class="book__add">
         {% csrf_token %}
         <input type="hidden" name="quantity" value="1">
         <button type="submit" class="btn btn-ghost btn-sm">{% translate "Add to cart" %}<span class="sr-only">: {{ product.name }}</span></button>
       </form>
+      {% endif %}
     </div>
   </div>
 </div>
