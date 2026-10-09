@@ -119,8 +119,6 @@ class ResolvedMeta:
         if og_image_abs:
             parts.append(f'<meta property="og:image" content="{escape(og_image_abs)}">')
             parts.append(f'<meta property="og:image:secure_url" content="{escape(og_image_abs)}">')
-            parts.append('<meta property="og:image:width" content="1200">')
-            parts.append('<meta property="og:image:height" content="630">')
             if og_title:
                 parts.append(f'<meta property="og:image:alt" content="{escape(og_title)}">')
 

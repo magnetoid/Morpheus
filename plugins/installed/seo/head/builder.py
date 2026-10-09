@@ -280,8 +280,6 @@ def _apply_social(doc, page: SeoPage, meta) -> None:
     if meta.og_image:
         doc.meta(meta.og_image, property='og:image', source='seo')
         doc.meta(meta.og_image, property='og:image:secure_url', source='seo')
-        doc.meta('1200', property='og:image:width', source='seo')
-        doc.meta('630', property='og:image:height', source='seo')
         doc.meta(og_title, property='og:image:alt', source='seo')
 
     doc.meta(meta.twitter_card or 'summary_large_image', name='twitter:card', source='seo')

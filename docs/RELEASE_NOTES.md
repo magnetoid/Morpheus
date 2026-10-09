@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.83.6 — 2026-10-09
+
+**Share cards no longer claim every image is 1200×630**
+
+- Every page's Open Graph tags declared its image 1200 by 630 pixels, whatever the picture really was: a square product photo, a square default social image, a journal cover. Facebook, LinkedIn and others lay out the share card from those numbers before they fetch the image, so a square picture got a card shaped for a wide one. The size isn't known where the image is chosen, so the two tags are now left out and each platform reads the real size from the image. Both head renderers did this (the storefront head and the older meta block).
+
 ## v0.83.5 — 2026-10-09
 
 **API keys can write the catalog, book previews can be indexed, Irving pre-launch products hide their buy button, and a push without a version bump no longer passes CI**

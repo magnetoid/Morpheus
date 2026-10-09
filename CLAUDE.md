@@ -856,7 +856,8 @@ nodes filtered to approved, advertising a rating built from reviews the page doe
 not show. The rule: **a property whose value you cannot source from the app that
 owns it must be OMITTED, not defaulted.** A missing recommended property costs a
 Search Console warning; an invented one is a Merchant Center policy violation and
-a promise checkout will break. Shipping and returns are contributed by their
+a promise checkout will break. (Same for Open Graph: every `og:image` was declared
+1200×630 until v0.83.6, square product photos included.) Shipping and returns are contributed by their
 owners now (`shipping/seo_graph.py`, `returns_portal/seo_graph.py` on
 `SEO_JSONLD_GRAPH`), availability comes from `inventory.product_availability`
 through the one shared vocabulary in `plugins/feed_mapping.py`, and the head
