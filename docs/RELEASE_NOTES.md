@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.83.4 — 2026-10-09
+
+**CI installs its locked dependencies again**
+
+- The dependency lock CI installs had become incomplete: the Anthropic SDK pinned there needs httpx2, which the lock left out, so every CI test run stopped at the install step. The lock is regenerated with the same tool and the same pins, plus what was missing. The stores are unchanged; they install from requirements.txt.
+
 ## v0.83.3 — 2026-10-09
 
 **Linda's chat is simpler, product deletes work, CI checks run again**
