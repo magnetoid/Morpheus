@@ -2,10 +2,10 @@
 
 Each app contributes the checks only it can make through the ``HEALTH_CHECKS``
 filter (payments: a payment method is offered; orders: a cart can be priced;
-storefront: the public pages load). Core adds its own: outgoing email is set up
-and the order-email templates load. Every one of those broke on a live store in
-2026 without anyone being told; a failure is now recorded as an ErrorEvent and
-emailed the same night.
+storefront: the public pages load). Core adds its own: outgoing email is set up,
+the order-email templates load, and uploads can be saved. Every one of those
+broke on a live store in 2026 without anyone being told; a failure is now
+recorded as an ErrorEvent and emailed the same night.
 """
 
 from __future__ import annotations
@@ -46,6 +46,31 @@ _EMAIL_TEMPLATES = (
 )  # fmt: skip
 
 
+def _uploads_check() -> dict:
+    """Save and delete a tiny file in the media storage, as an upload would.
+
+    beta.irvingsurvival.com's media volume was created root-owned while the app
+    runs as `morpheus`, so every upload failed with PermissionError, and the
+    upload view only showed the merchant a message (2026-10-09).
+    """
+    import uuid
+
+    from django.core.files.base import ContentFile
+    from django.core.files.storage import default_storage
+
+    try:
+        saved = default_storage.save(f'health-check-{uuid.uuid4().hex}.txt', ContentFile(b'ok'))
+        default_storage.delete(saved)
+    except Exception as e:  # noqa: BLE001 — any failure here is the finding
+        detail = (
+            f"Images and files can't be uploaded: the store can't write to its media "
+            f'storage ({type(e).__name__}: {e}). In Docker, the media volume must '
+            f'belong to the user the app runs as.'
+        )
+        return {'name': 'Uploads can be saved', 'ok': False, 'detail': detail[:500]}
+    return {'name': 'Uploads can be saved', 'ok': True, 'detail': ''}
+
+
 def _core_checks() -> list[dict]:
     from django.template.loader import get_template
 
@@ -59,6 +84,7 @@ def _core_checks() -> list[dict]:
             missing.append(base)
     email_ok = smtp_configured()
     return [
+        _uploads_check(),
         {
             'name': 'Outgoing email is set up',
             'ok': email_ok,

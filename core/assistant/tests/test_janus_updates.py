@@ -249,6 +249,14 @@ class RollbackTests(_EngineDirMixin, TestCase):
                 rt.record_turn(error=error)
         self.assertEqual(self._state()['active']['commit'], NEW)
 
+    def test_an_engine_failure_that_mentions_generating_still_counts(self):
+        # 'generate' contains 'rate'; a rate-limit filter on the bare word let
+        # every "failed to generate" crash through without a rollback.
+        self._activate(previous={'commit': OLD, 'bin': '/elsewhere/janus'})
+        for _ in range(rt.ROLLBACK_AFTER):
+            rt.record_turn(error='janus exit 1: failed to generate a reply')
+        self.assertEqual(self._state()['active']['commit'], OLD)
+
     def test_the_image_janus_is_never_rolled_back(self):
         rt.record_turn(error='janus exit 1')
         self.assertFalse((self.root / 'state.json').exists())

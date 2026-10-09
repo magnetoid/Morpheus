@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.83.1 — 2026-10-09
+
+**Uploads work on new stores again**
+
+- On beta.irvingsurvival.com every image and file upload failed with 'Permission denied'. The store's media volume had been created owned by the system instead of the app, because the server image had no media folder to copy the owner from. It is fixed on that store, and the image now creates the media folder with the right owner, so a new store starts with working uploads.
+- The nightly health check now saves and deletes a small test file and emails the owner when uploads would fail. The upload page only showed a message, so the error reached nobody.
+- Janus's rollback now counts an engine error that mentions generating a reply as a real failure. A filter for rate limits matched the 'rate' inside 'generate'.
+
 ## v0.83.0 — 2026-10-09
 
 **Linda works like an agent, and Janus keeps itself current**

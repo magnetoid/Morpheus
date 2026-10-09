@@ -55,13 +55,16 @@ CONTRACT_FILE = 'morpheus-contract.json'
 _GITHUB = re.compile(r'^https://github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?/?$')
 _ARCHIVE = re.compile(r'^https://github\.com/([\w.-]+)/([\w.-]+)/archive/([0-9a-f]{40})\.tar\.gz$')
 _SHA = re.compile(r'^[0-9a-f]{40}$')
-# Engine failures that say nothing about the Janus build itself.
+# Engine failures that say nothing about the Janus build itself. Never the bare
+# word 'rate': 'generate' contains it.
 _NOT_THE_BUILD = (
     'timed out',
     '401',
     '402',
     '429',
-    'rate',
+    'rate limit',
+    'rate_limit',
+    'ratelimit',
     'quota',
     'insufficient',
     'unauthorized',

@@ -51,6 +51,25 @@ class HealthCheckTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn('Probe: probe says no', mail.outbox[0].body)
 
+    def test_a_store_that_cannot_save_uploads_fails(self):
+        # beta.irvingsurvival.com (2026-10-09): its new media volume was created
+        # root-owned, every upload failed with PermissionError, and the upload
+        # view's warning reached nobody.
+        refused = mock.Mock(save=mock.Mock(side_effect=PermissionError(13, 'Permission denied')))
+        with PAGES_OK, mock.patch('django.core.files.storage.default_storage', new=refused):
+            media = next(r for r in run_checks() if r['name'] == 'Uploads can be saved')
+        self.assertFalse(media['ok'])
+        self.assertIn('Permission denied', media['detail'])
+
+    def test_the_uploads_check_leaves_nothing_behind(self):
+        import os
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp, override_settings(MEDIA_ROOT=tmp), PAGES_OK:
+            media = next(r for r in run_checks() if r['name'] == 'Uploads can be saved')
+            self.assertTrue(media['ok'], media['detail'])
+            self.assertEqual(os.listdir(tmp), [])
+
     def test_a_page_that_errors_fails_the_check(self):
         def fake_get(url, **kwargs):
             return mock.Mock(status_code=500 if url.endswith('/cart/') else 200)

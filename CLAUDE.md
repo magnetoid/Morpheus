@@ -1295,6 +1295,18 @@ Ship the `requirements.txt` pin in the same commit or the deploy boots 503
 a *longer* 503 window while the image rebuilds the native wheels; wait it out,
 don't mistake the gap for a boot failure.
 
+**Landmine — a named volume takes the ownership of the image directory it is
+first mounted on, and a directory the image lacks is created as root's.** The app
+runs as `morpheus`, so a root-owned mount fails every write: `/app/backups` did
+(every nightly backup), then `/app/media` on the first store created after
+`/media/` entered `.dockerignore` (every upload on beta.irvingsurvival.com,
+2026-10-09; the upload view only showed the merchant a message). The Dockerfile now
+creates both owned by `morpheus`; put any new mount point in that same
+`mkdir`+`chown`. An existing root-owned volume needs a one-time
+`docker exec -u 0 <web> chown morpheus:morpheus /app/media`. The nightly health
+check ("Uploads can be saved") saves and deletes a file in the media storage and
+emails when it can't.
+
 CI gates a change with `ruff check .`, `ruff format --check .`,
 `python manage.py check` (blocking — fails on model-relation errors like
 `fields.E301/E300/E307` that crash the prod boot; PR #62 once 503'd prod

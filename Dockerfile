@@ -61,10 +61,14 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --chown=morpheus:morpheus . /app
 
 # The worker mounts its persistent backup volume here (docker-compose
-# `backup_data`). Docker creates a missing mount point as root:root and the
-# worker runs as morpheus, so every nightly backup failed with
-# PermissionError. An empty named volume takes this directory's ownership.
-RUN mkdir -p /app/backups && chown morpheus:morpheus /app/backups
+# `backup_data`), and web and worker mount the media volume at /app/media
+# (`media_data`). Docker creates a missing mount point as root:root and the app
+# runs as morpheus, so every nightly backup failed with PermissionError, and on
+# a store created later every upload did (beta.irvingsurvival.com, 2026-10-09;
+# /media/ is in .dockerignore, so the image had no /app/media at all). An empty
+# named volume takes the ownership of the directory it is first mounted on.
+RUN mkdir -p /app/backups /app/media \
+ && chown morpheus:morpheus /app/backups /app/media
 
 # Janus is the store agent (Linda is brand only). Always install into an
 # isolated venv so Django and Janus do not share `plugins/` / `tools/` on
