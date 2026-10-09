@@ -66,7 +66,7 @@ def latest_commit(repo: str, ref: str) -> dict:
         f'https://api.github.com/repos/{repo}/commits/{ref}',
         headers={'Accept': 'application/vnd.github+json', 'User-Agent': 'morpheus-janus-updater'},
     )
-    with urlopen(request, timeout=20) as resp:  # noqa: S310
+    with urlopen(request, timeout=20) as resp:  # noqa: S310  # nosec B310 — fixed https host
         data = json.loads(resp.read().decode('utf-8'))
     sha = str(data.get('sha') or '')
     if not _SHA.match(sha):

@@ -811,8 +811,14 @@ aborts a transaction on a failed statement, so every test passed. A side effect
 that queries (a signal receiver, a hook subscriber) runs inside its own
 `with transaction.atomic():`, so a failure rolls back to its savepoint and no
 further; and an optional app's data is read only after `app_registry.is_active()`
-— catching its absence is not checking that it is on. Guarded by
-`webstories/tests/test_story_signals.py` (v0.82.0).
+— catching its absence is not checking that it is on. The same receivers had a
+second hole (v0.83.3): **a delete receiver that rebuilds a row for its parent runs
+inside the parent's own cascade delete.** Deleting a product deletes its images
+first, the image `post_delete` re-created the product's `WebStory`, and Postgres
+rejected the whole product delete at commit on the deferred foreign key; sqlite
+shows it only when the test calls `connection.check_constraints()`. Rebuild on
+`transaction.on_commit`, re-read the parent and skip it if it is gone. Guarded by
+`webstories/tests/test_story_signals.py` (v0.82.0, `ProductDeleteTests` v0.83.3).
 
 **Landmine — `QuerySet.update()` and `QuerySet.delete()` skip `save()` and
 `post_save`, so anything hung off them silently doesn't run.** The redirect

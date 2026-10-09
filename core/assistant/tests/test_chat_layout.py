@@ -47,12 +47,21 @@ class LindaChatLayoutTests(TestCase):
         self.assertGreater(form, dock)
         self.assertLess(log_open, dock)
 
-    def test_the_chip_row_is_a_single_scrolling_line(self):
+    def test_no_suggested_prompts_are_shown(self):
+        # The owner had the suggestion chips removed (2026-10-09).
         html = self._html()
-        # nowrap + horizontal overflow is what keeps it to one line.
-        self.assertIn('id="linda-suggested"', html)
-        self.assertIn('flex-wrap: nowrap', html)
-        self.assertIn('overflow-x: auto', html)
+        self.assertNotIn('linda-suggested', html)
+        self.assertNotIn('linda-chip', html)
+
+    def test_the_typing_field_has_no_border_or_ring(self):
+        # The owner asked twice: first the indigo focus ring, then the border.
+        import re
+
+        html = self._html()
+        rules = ' '.join(re.findall(r'\.linda-form(?::focus-within)?\s*\{([^}]*)\}', html))
+        self.assertIn('border: 0', rules)
+        self.assertNotIn('box-shadow', rules)
+        self.assertNotIn('--brand', rules)
 
     def test_the_floating_launcher_is_not_rendered_on_lindas_own_page(self):
         html = self._html()

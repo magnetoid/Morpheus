@@ -45,6 +45,23 @@ jobs:
       - name: Install axe-core CLI
         run: npm install -g @axe-core/cli@4.10.x
 
+      # axe fetches the newest ChromeDriver, which runs one Chrome version ahead
+      # of the runner's preinstalled Chrome as soon as Chrome releases: "This
+      # version of ChromeDriver only supports Chrome version 155 / Current browser
+      # version is 154". Every URL then failed before it was audited, and the job
+      # reported that as WCAG violations (red on every run until 2026-10-09).
+      # Install the driver built for the Chrome that is actually on the runner.
+      - name: ChromeDriver for the runner's Chrome
+        run: |
+          set -euo pipefail
+          CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+(\.[0-9]+){3}')
+          # The exact build when Chrome for Testing has it, else the newest of its major.
+          npx --yes @puppeteer/browsers install "chromedriver@${CHROME_VERSION}" --path "$RUNNER_TEMP/browsers" \
+            || npx --yes @puppeteer/browsers install "chromedriver@${CHROME_VERSION%%.*}" --path "$RUNNER_TEMP/browsers"
+          DRIVER=$(find "$RUNNER_TEMP/browsers" -type f -name chromedriver | head -1)
+          test -x "$DRIVER"
+          echo "CHROMEDRIVER_PATH=$DRIVER" >> "$GITHUB_ENV"
+
       - name: Run axe against 5 representative URLs
         run: |
           set -euo pipefail
@@ -65,6 +82,7 @@ jobs:
             # button that settles at 4.5:1 — 42 such "violations" on one run.
             # Audit the settled page.
             if ! axe "$URL" \
+              --chromedriver-path "$CHROMEDRIVER_PATH" \
               --tags wcag2a,wcag2aa,wcag21a,wcag21aa,wcag22aa,best-practice \
               --load-delay=2000 \
               --dir a11y-reports --save "${SAFE}.json" \

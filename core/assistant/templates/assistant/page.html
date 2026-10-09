@@ -31,11 +31,6 @@ chat would cover them.{% endcomment %}
   </div>
 
   <div class="linda-dock">
-    <div id="linda-suggested" class="linda-suggested">
-      {% for s in starters %}
-      <button type="button" class="linda-chip" data-prefill="{{ s }}">{{ s }}</button>
-      {% endfor %}
-    </div>
     <form id="linda-form" class="linda-form" autocomplete="off">
       {% csrf_token %}
       <textarea name="message" rows="1" placeholder="Ask Linda…" class="linda-input" required></textarea>
@@ -197,7 +192,7 @@ chat would cover them.{% endcomment %}
     font-size: .78rem;
   }
 
-  /* ── Dock — suggested chips + pinned chat form ─────────────────────── */
+  /* ── Dock — the pinned chat form ─────────────────────────────────────── */
   /* The dock is the last flex child of a full-height column with the log
      above it, so it stays pinned to the bottom of the panel while only the
      transcript scrolls. `position: sticky` would drift once the log's own
@@ -215,69 +210,21 @@ chat would cover them.{% endcomment %}
     );
     display: flex; flex-direction: column; align-items: stretch; gap: .55rem;
   }
-  /* Suggested-next chips: ONE line that scrolls left/right, never wraps.
-     Scroll-snap keeps a half-visible chip from looking broken, and the
-     horizontal scrollbar is hidden because the row already reads as
-     scrollable from the clipped chip at the edge. */
-  .linda-suggested {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: .4rem;
-    width: 100%; max-width: 48rem;
-    margin: 0 auto;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-    padding: .1rem .1rem .2rem;
-    /* Fade both ends so clipped chips read as "more this way". */
-    mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
-    transition: opacity var(--motion-fast, 140ms) ease;
-  }
-  .linda-suggested::-webkit-scrollbar { display: none; }
-  .linda-suggested:empty { display: none; }
-  .linda-chip {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: .4rem .85rem;
-    font-size: .78rem; color: var(--text);
-    cursor: pointer; white-space: nowrap;
-    transition:
-      background var(--motion-fast, 140ms) ease,
-      border-color var(--motion-fast, 140ms) ease,
-      transform var(--motion-fast, 140ms) ease;
-  }
-  .linda-chip:hover { background: var(--surface-2); border-color: var(--border-strong); transform: translateY(-1px); }
-  .linda-chip:active { transform: translateY(0); }
-
-  /* Pinned chat form — pill-shaped with a soft elevation shadow. */
+  /* Pinned chat form: a filled pill with no border or ring (the owner asked
+     for the border round the typing field to go, 2026-10-09). The fill marks
+     the field; a deeper fill marks focus. */
   .linda-form {
     width: 100%; max-width: 48rem;
     margin: 0 auto;
     display: flex; align-items: flex-end; gap: .5rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--surface-2);
+    border: 0;
     border-radius: 28px;
     padding: .5rem .5rem .5rem .75rem;
-    box-shadow:
-      0 1px 2px rgba(0,0,0,.04),
-      0 8px 24px -8px rgba(0,0,0,.08),
-      0 24px 48px -16px rgba(0,0,0,.06);
-    transition: box-shadow var(--motion-fast, 140ms) ease, border-color var(--motion-fast, 140ms) ease;
+    transition: background var(--motion-fast, 140ms) ease;
   }
-  /* Focus shows as a firmer border and a deeper shadow, in the neutral palette:
-     the old indigo --brand ring read as a purple frame round the whole chat. */
   .linda-form:focus-within {
-    border-color: var(--border-strong);
-    box-shadow:
-      0 1px 2px rgba(0,0,0,.05),
-      0 12px 32px -10px rgba(0,0,0,.16);
+    background: color-mix(in srgb, var(--surface-2) 94%, var(--text));
   }
   .linda-input {
     flex: 1 1 auto;
@@ -309,17 +256,6 @@ chat would cover them.{% endcomment %}
   @media (max-width: 640px) {
     .linda-dock { padding: .5rem 1rem 1rem; }
     .linda-form { border-radius: 24px; }
-    /* Tighter fades on narrow screens — the mask eats more of a short row. */
-    .linda-suggested {
-      mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
-      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
-    }
-  }
-  /* Without JS the chip row cannot be dragged with a mouse, so show a real
-     scrollbar instead of hiding it. */
-  @media (scripting: none) {
-    .linda-suggested { scrollbar-width: thin; }
-    .linda-suggested::-webkit-scrollbar { display: initial; }
   }
 </style>
 
@@ -329,7 +265,6 @@ chat would cover them.{% endcomment %}
 (function () {
   var form = document.getElementById('linda-form');
   var log = document.getElementById('linda-log');
-  var suggested = document.getElementById('linda-suggested');
   var input = form ? form.querySelector('textarea[name="message"]') : null;
   if (!form || !log || !input) return;
 
@@ -384,63 +319,6 @@ chat would cover them.{% endcomment %}
     log.scrollTop = log.scrollHeight;
     return wrap;
   }
-
-  /* ── Chip row: horizontal scroll affordances ───────────────────────────
-     The row is one line that scrolls sideways. Native overflow already
-     covers trackpads and touch; these add the two cases it misses:
-     shift-free mouse-wheel scrolling, and click-drag panning. */
-  (function initChipScroller() {
-    if (!suggested) return;
-
-    // Mouse wheel: a vertical wheel over the row pans it horizontally, but
-    // only while there is somewhere to go — otherwise the page keeps its
-    // normal scroll and the row never becomes a scroll trap.
-    suggested.addEventListener('wheel', function (e) {
-      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return; // real horizontal gesture
-      var max = suggested.scrollWidth - suggested.clientWidth;
-      if (max <= 0) return;
-      var next = suggested.scrollLeft + e.deltaY;
-      if ((e.deltaY < 0 && suggested.scrollLeft <= 0) || (e.deltaY > 0 && suggested.scrollLeft >= max)) return;
-      e.preventDefault();
-      suggested.scrollLeft = next;
-    }, { passive: false });
-
-    // Click-drag panning for mouse users (touch already works natively).
-    var dragging = false, startX = 0, startLeft = 0, moved = false;
-    suggested.addEventListener('pointerdown', function (e) {
-      if (e.pointerType !== 'mouse' || e.button !== 0) return;
-      var max = suggested.scrollWidth - suggested.clientWidth;
-      if (max <= 0) return;
-      dragging = true; moved = false;
-      startX = e.clientX; startLeft = suggested.scrollLeft;
-      suggested.style.cursor = 'grabbing';
-      // Capture the pointer so the pan keeps tracking once the cursor leaves
-      // the row — without this, dragging past either edge drops the gesture.
-      try { suggested.setPointerCapture(e.pointerId); } catch (_) { /* unsupported */ }
-      e.preventDefault();
-    });
-    suggested.addEventListener('pointermove', function (e) {
-      if (!dragging) return;
-      var dx = e.clientX - startX;
-      if (Math.abs(dx) > 3) moved = true;
-      suggested.scrollLeft = startLeft - dx;
-    });
-    var endDrag = function (e) {
-      if (!dragging) return;
-      dragging = false;
-      suggested.style.cursor = '';
-      try { suggested.releasePointerCapture(e.pointerId); } catch (_) { /* already released */ }
-    };
-    suggested.addEventListener('pointerup', endDrag);
-    suggested.addEventListener('pointercancel', endDrag);
-    // NB: no pointerleave handler — with capture active the pointer legitimately
-    // leaves the element mid-drag, and killing the gesture there made dragging
-    // stop the moment the cursor crossed the row's edge.
-    // ...but a drag must never fire the chip underneath it.
-    suggested.addEventListener('click', function (e) {
-      if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; }
-    }, true);
-  })();
 
   /* Minimal Markdown renderer — covers the 90% Linda actually emits:
      **bold**, *italic*, `inline code`, ```code blocks```, > blockquote,
@@ -540,33 +418,6 @@ chat would cover them.{% endcomment %}
     };
   }
 
-  /* Suggested-next chips: prefill the textarea on click + focus. After
-     Linda responds we swap in a contextual set. */
-  function setSuggestions(list) {
-    if (!suggested) return;
-    suggested.innerHTML = '';
-    list.forEach(function (text) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'linda-chip';
-      b.textContent = text;
-      b.addEventListener('click', function () {
-        input.value = text;
-        input.focus();
-        autoresize();
-      });
-      suggested.appendChild(b);
-    });
-  }
-
-  var FOLLOWUPS = [
-    'Compare this to last week',
-    'Drill into the top 3',
-    'What can I do about it?',
-    'Show me the customers behind this',
-    'Export as a CSV',
-  ];
-
   // Auto-grow the textarea up to its max-height.
   function autoresize() {
     input.style.height = 'auto';
@@ -592,17 +443,6 @@ chat would cover them.{% endcomment %}
       form.dispatchEvent(new Event('submit', {cancelable: true}));
     }
   });
-
-  // Initial wire-up for the server-rendered starter chips.
-  if (suggested) {
-    suggested.querySelectorAll('.linda-chip').forEach(function (b) {
-      b.addEventListener('click', function () {
-        input.value = b.dataset.prefill || b.textContent;
-        input.focus();
-        autoresize();
-      });
-    });
-  }
 
   /* Mode is sent with every stream POST so the server-side tool
      filter applies (core/assistant/modes.py). The chip selector UI
@@ -652,8 +492,6 @@ chat would cover them.{% endcomment %}
         return reader.read().then(function (chunk) {
           if (chunk.done) {
             turn.finish(assistantEl ? 'done' : 'error');
-            // Once the model has replied, swap in contextual follow-ups.
-            setSuggestions(FOLLOWUPS);
             return;
           }
           buf += decoder.decode(chunk.value, {stream: true});

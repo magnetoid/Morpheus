@@ -90,12 +90,29 @@ class StoryBuildSavepointTests(TestCase):
 
     def test_an_image_delete_builds_the_story_in_its_own_savepoint(self):
         outer = len(connection.savepoint_ids)
-        image = SimpleNamespace(product=_product())
-        seen = self._depth_inside_build(
-            signals._regenerate_on_image_delete, sender=None, instance=image
-        )
+        seen = []
+        with (
+            mock.patch.object(signals, '_live_product', return_value=_product()),
+            mock.patch(
+                'plugins.installed.webstories.services.ensure_story',
+                side_effect=lambda product: seen.append(len(connection.savepoint_ids)),
+            ),
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            signals._regenerate_on_image_delete(sender=None, instance=SimpleNamespace(product_id=1))
+            self.assertEqual(seen, [])  # nothing is built before the commit
         self.assertEqual(len(seen), 1)
         self.assertGreater(seen[0], outer)
+
+    def test_an_image_deleted_from_a_product_not_on_sale_builds_nothing(self):
+        image = SimpleNamespace(product_id=1)
+        with (
+            mock.patch.object(signals, '_live_product', return_value=None),
+            mock.patch('plugins.installed.webstories.services.ensure_story') as build,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            signals._regenerate_on_image_delete(sender=None, instance=image)
+        build.assert_not_called()
 
     def test_a_failed_story_never_fails_the_save(self):
         with mock.patch(
@@ -107,3 +124,73 @@ class StoryBuildSavepointTests(TestCase):
         with connection.cursor() as cur:
             cur.execute('SELECT 1')
             self.assertEqual(cur.fetchone()[0], 1)
+
+
+_PNG = bytes.fromhex(
+    '89504e470d0a1a0a0000000d4948445200000001000000010806000000'
+    '1f15c4890000000d49444154789c63f8cfc0f01f0005000201a5f1a4d8'
+    '0000000049454e44ae426082'
+)
+
+
+class ProductDeleteTests(TestCase):
+    """Deleting a product deletes its images first. The image-delete receiver
+    used to rebuild the story right there, for the product being deleted; the
+    new story row then pointed at a product gone by commit, and Postgres
+    rejected the whole delete on its deferred foreign key. Found on
+    beta.irvingsurvival.com (2026-10-09) deleting a draft product with one photo."""
+
+    def setUp(self):
+        import tempfile
+
+        from django.test import override_settings
+
+        self._media = tempfile.TemporaryDirectory()
+        self.addCleanup(self._media.cleanup)
+        media = override_settings(MEDIA_ROOT=self._media.name)
+        media.enable()
+        self.addCleanup(media.disable)
+
+    def _product_with_image(self, status):
+        from django.apps import apps
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from djmoney.money import Money
+
+        product_model = apps.get_model('catalog', 'Product')
+        image_model = apps.get_model('catalog', 'ProductImage')
+        product = product_model.objects.create(
+            name='Lamp',
+            slug=f'lamp-{status}',
+            sku=f'LAMP-{status}',
+            price=Money(5, 'USD'),
+            status=status,
+        )
+        image_model.objects.create(
+            product=product, image=SimpleUploadedFile('lamp.png', _PNG, content_type='image/png')
+        )
+        return product
+
+    def test_a_product_with_images_can_be_deleted(self):
+        from plugins.installed.webstories.models import WebStory
+
+        for status in ('active', 'draft'):
+            with self.subTest(status=status):
+                product = self._product_with_image(status)
+                pk = product.pk
+                with self.captureOnCommitCallbacks(execute=True):
+                    product.delete()
+                self.assertFalse(WebStory.objects.filter(product_id=pk).exists())
+                # What Postgres checks at commit: no row may point at the
+                # deleted product.
+                connection.check_constraints()
+
+    def test_deleting_one_image_of_a_live_product_rebuilds_its_story(self):
+        product = self._product_with_image('active')
+        image = product.images.first()
+        with (
+            mock.patch('plugins.installed.webstories.services.ensure_story') as build,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            image.delete()
+        build.assert_called_once()
+        self.assertEqual(build.call_args.args[0].pk, product.pk)

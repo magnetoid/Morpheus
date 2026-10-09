@@ -40,11 +40,8 @@ def assistant_page(request):
     Always starts with a clean conversation — prior session messages are NOT
     pre-loaded into the chat area. The merchant can reach previous turns via
     the conversation history API (``/dashboard/assistant/history/``); the
-    page itself opens fresh every time, like a new browser tab.
-
-    Suggested follow-up prompts ("starters") render as chips ABOVE the
-    chat form. They prefill the textarea on click; the same set updates
-    contextually after Linda's first response (handled in the JS).
+    page itself opens fresh every time, like a new browser tab. No suggested
+    prompts: the owner had them removed (2026-10-09).
     """
     memories: list = []
     try:
@@ -53,16 +50,6 @@ def assistant_page(request):
         memories = list(LindaMemory.objects.all()[:20])
     except Exception:  # noqa: BLE001, S110
         pass
-
-    # Suggested first prompts — same set used by the floating widget. After
-    # the first turn, the JS swaps in context-aware follow-ups.
-    starters = [
-        'Show me a snapshot of the store right now',
-        'Which products are low on stock?',
-        'Top 5 customers by lifetime spend',
-        'Pending returns I need to look at',
-        'Summarise this week vs last week',
-    ]
 
     # Tool-palette modes shown as chips at the top of the page. The
     # JS picks one (default 'general'), threads it into every stream
@@ -76,7 +63,6 @@ def assistant_page(request):
             # Intentionally empty — the redesigned page starts clean.
             'history': [],
             'memories': memories,
-            'starters': starters,
             'assistant_modes': [
                 {'slug': m.slug, 'label': m.label, 'description': m.description, 'icon': m.icon}
                 for m in MODES

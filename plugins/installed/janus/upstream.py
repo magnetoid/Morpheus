@@ -37,7 +37,7 @@ def latest_commit(repo: str, ref: str) -> dict | None:
         headers={'Accept': 'application/vnd.github+json', 'User-Agent': 'morpheus-janus-check'},
     )
     try:
-        with urlopen(request, timeout=4) as resp:  # noqa: S310
+        with urlopen(request, timeout=4) as resp:  # noqa: S310  # nosec B310 — fixed https host
             data = json.loads(resp.read().decode('utf-8'))
         commit = data.get('commit') or {}
         latest = {

@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.83.3 — 2026-10-09
+
+**Linda's chat is simpler, product deletes work, CI checks run again**
+
+- Linda's chat has no border round the typing field: it is a quiet filled box, a shade darker while you type. The suggested prompts are gone. The floating Linda panel matches.
+- Deleting a product that has photos works again. While the photos were removed, the web story was rebuilt for the product being deleted, and the database refused the whole delete. The story is now rebuilt only after the delete, and only for a product that still exists.
+- Photo uploads on beta.irvingsurvival.com work. The server's front proxy for that address accepted at most 1 MB per request, so every photo failed before it reached the store; it now accepts up to 128 MB, like the other stores.
+- CI checks run again: the security scan accepts the two fixed GitHub addresses Janus's updater reads, and the accessibility audit installs a browser driver that matches the test machine's Chrome.
+
 ## v0.83.2 — 2026-10-09
 
 **Dependencies and CI brought up to date**

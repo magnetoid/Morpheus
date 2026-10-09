@@ -71,12 +71,12 @@
         0%, 50% { opacity: .5; }
         50.01%, 100% { opacity: 0; }
       }
-      /* Focus in the neutral palette, like the Linda page's composer. */
-      #morph-assistant-form input:focus { outline: none; border-color: var(--border-strong, #c9cccf); box-shadow: 0 0 0 1px var(--border-strong, #c9cccf); }
+      /* No border, like the Linda page's composer: a deeper fill marks focus. */
+      #morph-assistant-form input:focus { outline: none; background: color-mix(in srgb, var(--surface-2, #f3f3f5) 94%, var(--text, #1a1a1a)); }
     </style>
     <form id="morph-assistant-form" style="display:flex; gap:.5rem; padding: .65rem; border-top: 1px solid var(--border, #e3e3e3);">
       <input type="text" name="message" placeholder="Ask Linda…"
-        autocomplete="off" required style="flex:1; padding:.5rem .75rem; border: 1px solid var(--border, #e3e3e3); border-radius: 6px; font-size:.85rem;">
+        autocomplete="off" required style="flex:1; padding:.5rem .75rem; border: 0; background: var(--surface-2, #f3f3f5); color: var(--text, #1a1a1a); border-radius: 6px; font-size:.85rem;">
       <button type="submit" style="border:none; background: var(--primary, #1a1a1a); color: var(--primary-fg, #fff); border-radius: 6px; padding:.5rem .85rem; font-size:.85rem; cursor:pointer;">Send</button>
     </form>
   </div>
