@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.82.1 — 2026-10-09
+
+**Dashboard icons sit centred again**
+
+- A note in the dashboard's stylesheet contained '*/', which ends a CSS comment. Its tail became the selector of the rule below it, so the browser dropped the rule that centres every dashboard icon in its box. Since 2026-09-23, icons outside buttons and the sidebar (settings tiles, cards, help marks, the search field) sat slightly low and to the right. They are centred again.
+- A test now fails the build when any stylesheet or <style> block has a comment that closes early.
+
 ## v0.82.0 — 2026-10-08
 
 **Supernatural Shop becomes a longevity pantry; a new Irving Survival theme**

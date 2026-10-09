@@ -762,6 +762,14 @@ and a fail-soft card collector turns that into a feature that is simply absent,
 with a 200 and nothing in the page to say why. Guarded by
 `seo/tests/test_panel_contributions.py`.
 
+**Landmine — a `*/` inside a CSS comment deletes the next rule, silently.** CSS
+comments end at the first `*/`, so a note reading "the Tailwind h-*/w-* classes"
+closed early, its tail became the next rule's selector, and the browser dropped
+`i[data-lucide] { display:inline-flex; line-height:1; … }` — the rule that centres
+every dashboard icon — from 2026-09-23 until v0.82.1: icons outside buttons and the
+sidebar sat low and to the right, and nothing anywhere errored. Never write `*/`
+in a comment; `core/tests/test_css_comments.py` scans every `<style>` and `.css`.
+
 **Landmine — a fail-soft `except` does not save a Postgres transaction.**
 webstories rebuilt a product's story on every save and asked the book app for an
 author line; on the three stores that run without it, the `plugins_bookproduct`
