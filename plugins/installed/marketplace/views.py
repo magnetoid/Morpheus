@@ -28,6 +28,7 @@ from djmoney.money import Money
 
 from morpheus.app.views import HttpRequest, HttpResponse
 from plugins import partner_portal as pp
+from plugins.dropshipping.countries import country_name
 from plugins.installed.catalog.models import Product, Vendor
 from plugins.installed.marketplace import portal, services
 from plugins.installed.marketplace.models import (
@@ -466,6 +467,7 @@ def vendor_order_detail(request: HttpRequest, vendor_order_id) -> HttpResponse:
             vendor_order=row,
             parent_order_number=parent.order_number,
             shipping_address=parent.shipping_address or {},
+            ship_country=country_name((parent.shipping_address or {}).get('country')),
             lines=_order_lines(vendor_order),
             status_choices=[
                 ('confirmed', gettext('Preparing')),

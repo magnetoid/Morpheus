@@ -84,7 +84,7 @@
               {% endwith %}
             </details>
           </td>
-          <td class="pp-hide-sm"><a class="aff-dest pp-link" href="{{ link.landing_url }}" title="{{ link.landing_url }}">{{ link.landing_url }}</a></td>
+          <td class="pp-hide-sm"><a class="aff-dest pp-link" href="{{ link.landing_url }}" title="{{ link.landing_url }}">{% if link.landing_url == '/' %}{% translate "Home page" %}{% else %}{{ link.landing_url }}{% endif %}</a></td>
           <td class="num pp-hide-sm">{{ link.period_clicks }}</td>
           <td class="num">{{ link.period_orders }}</td>
           <td class="num">{{ link.commission|money }}</td>

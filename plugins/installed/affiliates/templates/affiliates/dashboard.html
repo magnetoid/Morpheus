@@ -116,6 +116,20 @@
     <div class="pp-card__head"><h2 class="pp-card__title" id="aff-builder-title">{% translate "Make a tracked link" %}</h2><a class="pp-link" href="/affiliates/me/links/">{% translate "All links" %}</a></div>
     {% include "affiliates/_builder.html" with return_to="/affiliates/me/" %}
     {% if new_link %}{% include "affiliates/_new_link.html" %}{% endif %}
+    {% if latest_links %}
+    <p class="pp-label" style="margin: 1.5rem 0 .6rem;">{% translate "Your latest links" %}</p>
+    <ul class="pp-list" data-latest-links>
+      {% for link in latest_links %}
+      <li>
+        <div class="pp-list__main">
+          <p class="pp-list__title">{% include "affiliates/_link_name.html" %}</p>
+          <p class="pp-list__meta">/r/{{ link.code }}</p>
+        </div>
+        {% include "partner_portal/_copy.html" with text=site_base|add:"/r/"|add:link.code label_for=link.code %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
   </section>
 
   <section class="pp-card aff-a-rate" aria-labelledby="aff-rate-title">
@@ -154,7 +168,7 @@
         <tbody>
           {% for link in top_links %}
           <tr data-top-link="{{ link.code }}">
-            <td><span class="pp-table__primary">{{ link.label|default:link.landing_url }}</span><span class="pp-table__secondary">/r/{{ link.code }}</span></td>
+            <td><span class="pp-table__primary">{% include "affiliates/_link_name.html" %}</span><span class="pp-table__secondary">/r/{{ link.code }}</span></td>
             <td class="num pp-hide-sm">{{ link.period_clicks }}</td>
             <td class="num">{{ link.period_orders }}</td>
             <td class="num">{{ link.commission|money }}</td>
@@ -200,7 +214,7 @@
           {% for c in recent %}
           <tr>
             <td class="nowrap">{{ c.created_at|date:"M j" }}</td>
-            <td><span class="pp-table__primary">#{{ c.order.order_number|default:c.order_id }}</span>{% if c.link %}<span class="pp-table__secondary">{% if c.link.coupon_code %}{% translate "coupon" %} {{ c.link.coupon_code }}{% else %}{{ c.link.label|default:c.link.landing_url }}{% endif %}</span>{% endif %}</td>
+            <td><span class="pp-table__primary">#{{ c.order.order_number|default:c.order_id }}</span>{% if c.link %}<span class="pp-table__secondary">{% include "affiliates/_link_name.html" with link=c.link %}</span>{% endif %}</td>
             <td class="num pp-hide-sm">{{ c.order.total|money }}</td>
             <td class="num">{{ c.commission|money }}</td>
             <td>{% include "affiliates/_state.html" with state=c.state %}</td>

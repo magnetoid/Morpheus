@@ -21,7 +21,7 @@
 <section class="pp-card" aria-label="{% translate 'Orders' %}">
   {% if orders %}
   <div class="pp-table-wrap">
-    <table class="pp-table">
+    <table class="pp-table pp-table--stack">
       <thead>
         <tr>
           <th scope="col">{% translate "Order" %}</th>
@@ -35,12 +35,12 @@
       <tbody>
         {% for vo in orders %}
         <tr data-vendor-order="{{ vo.parent_order.order_number }}">
-          <td class="nowrap"><a class="pp-link pp-table__primary" href="/vendor/me/orders/{{ vo.id }}/">#{{ vo.parent_order.order_number }}</a><span class="pp-table__secondary">{{ vo.created_at|date:"M j, Y" }}{% if vo.ship_to %} · {{ vo.ship_to }}{% endif %}</span></td>
+          <td class="nowrap pp-cell-main"><a class="pp-link pp-table__primary" href="/vendor/me/orders/{{ vo.id }}/">#{{ vo.parent_order.order_number }}</a><span class="pp-table__secondary">{{ vo.created_at|date:"M j, Y" }}{% if vo.ship_to %} · {{ vo.ship_to }}{% endif %}</span></td>
           <td class="pp-hide-sm">{{ vo.first_item }}{% if vo.extra_items %} <span class="pp-muted">+{{ vo.extra_items }}</span>{% endif %}<span class="pp-table__secondary">{% blocktranslate count n=vo.units %}{{ n }} item{% plural %}{{ n }} items{% endblocktranslate %}</span></td>
           <td class="pp-hide-sm">{% include "marketplace/_payment.html" with payment=vo.payment %}</td>
           <td>{% include "marketplace/_order_state.html" with state=vo.state %}{% if vo.tracking_number %}<span class="pp-table__secondary">{{ vo.tracking_number }}</span>{% endif %}</td>
-          <td class="num">{{ vo.net|money }}<span class="pp-table__secondary">{% blocktranslate with gross=vo.gross|money %}of {{ gross }}{% endblocktranslate %}</span></td>
-          <td class="num">{% if vo.state == 'pending' or vo.state == 'confirmed' %}{% if vo.ready %}{% include "marketplace/_ship_form.html" with next=request.get_full_path %}{% else %}<span class="pp-field__help">{% translate "Awaiting payment" %}</span>{% endif %}{% else %}<a class="pp-link" href="/vendor/me/orders/{{ vo.id }}/">{% translate "Open" %}</a>{% endif %}</td>
+          <td class="num" data-label="{% translate 'You earn' %}">{{ vo.net|money }}<span class="pp-table__secondary">{% blocktranslate with gross=vo.gross|money %}of {{ gross }}{% endblocktranslate %}</span></td>
+          <td class="num pp-cell-end">{% if vo.state == 'pending' or vo.state == 'confirmed' %}{% if vo.ready %}{% include "marketplace/_ship_form.html" with next=request.get_full_path %}{% else %}<span class="pp-field__help">{% translate "Ship once it is paid" %}</span>{% endif %}{% else %}<a class="pp-link" href="/vendor/me/orders/{{ vo.id }}/">{% translate "Open" %}</a>{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>

@@ -64,7 +64,7 @@
         <tbody>
           {% for link in link_rows %}
           <tr>
-            <td><span class="pp-table__primary">{% if link.coupon_code %}{% translate "Coupon" %} {{ link.coupon_code }}{% else %}{{ link.label|default:link.landing_url }}{% endif %}</span><span class="pp-table__secondary">/r/{{ link.code }}{% if link.epc %} · {% blocktranslate with epc=link.epc|money %}{{ epc }} per click{% endblocktranslate %}{% endif %}</span></td>
+            <td><span class="pp-table__primary">{% include "affiliates/_link_name.html" %}</span><span class="pp-table__secondary">/r/{{ link.code }}{% if link.epc %} · {% blocktranslate with epc=link.epc|money %}{{ epc }} per click{% endblocktranslate %}{% endif %}</span></td>
             <td class="num">{{ link.period_clicks }}</td>
             <td class="num">{{ link.period_orders }}</td>
             <td class="num pp-hide-sm">{{ link.cr }}%</td>

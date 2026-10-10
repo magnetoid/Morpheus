@@ -25,6 +25,7 @@ from django.utils.translation import gettext as _
 from djmoney.money import Money
 
 from plugins import partner_portal as pp
+from plugins.dropshipping.countries import country_name
 
 # A vendor slice still to be sent, and the slices that count as a sale.
 OPEN = ('pending', 'confirmed')
@@ -147,7 +148,8 @@ def decorate(vendor_orders) -> list:
         vo.first_item = next((i.get('name') for i in items if isinstance(i, dict)), '')
         vo.extra_items = max(0, len(items) - 1)
         address = parent.shipping_address if isinstance(parent.shipping_address, dict) else {}
-        vo.ship_to = ', '.join(p for p in (address.get('city'), address.get('country')) if p)
+        place = (address.get('city'), country_name(address.get('country')))
+        vo.ship_to = ', '.join(p for p in place if p)
         vo.waiting_days = (now - vo.created_at).days
         vo.ready = vo.payment in ('paid', 'cod')
     return rows

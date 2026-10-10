@@ -36,6 +36,7 @@ with a fallback, so the one stylesheet looks native under each theme.
 @media (min-width: 768px) { .pp { padding: 2.75rem 0 6rem; } }
 .pp-frame { max-width: 1180px; margin: 0 auto; }
 .pp p { margin: 0; }
+.pp [hidden] { display: none !important; }
 .pp-sr {
   position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
@@ -143,13 +144,14 @@ with a fallback, so the one stylesheet looks native under each theme.
 .pp-delta--flat { color: var(--muted); }
 
 /* Bar chart */
-.pp-chart__plot { position: relative; height: 190px; margin-top: 1.4rem; border-bottom: 1px solid var(--pp-line-strong); }
+.pp-chart { --pp-gutter: 3.4rem; }
+.pp-chart__plot { position: relative; height: 190px; margin-top: 1.2rem; border-bottom: 1px solid var(--pp-line-strong); }
 .pp-chart__tick { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--pp-line); pointer-events: none; }
 .pp-chart__tick span {
-  position: absolute; right: 0; bottom: 3px; padding-left: .35rem;
-  font: 500 .7rem/1 var(--pp-label); color: var(--muted); background: var(--pp-surface);
+  position: absolute; right: 0; top: -.5rem; width: calc(var(--pp-gutter) - .4rem); text-align: right;
+  font: 500 .7rem/1 var(--pp-label); color: var(--muted); background: var(--pp-surface); white-space: nowrap;
 }
-.pp-chart__bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: clamp(1px, .35vw, 4px); list-style: none; margin: 0; padding: 0; }
+.pp-chart__bars { position: absolute; inset: 0 var(--pp-gutter) 0 0; display: flex; align-items: flex-end; gap: clamp(1px, .35vw, 4px); list-style: none; margin: 0; padding: 0; }
 .pp-chart__bars > li {
   position: relative; flex: 1 1 0; min-width: 0; height: var(--h); min-height: 3px;
   background: var(--pp-mark); opacity: .82; border-radius: 3px 3px 0 0;
@@ -166,7 +168,7 @@ with a fallback, so the one stylesheet looks native under each theme.
 }
 .pp-chart__bars > li:nth-child(-n+5):hover::after { left: 0; transform: none; }
 .pp-chart__bars > li:nth-last-child(-n+5):hover::after { left: auto; right: 0; transform: none; }
-.pp-chart__axis { display: flex; justify-content: space-between; margin-top: .5rem; font: 500 .72rem/1.2 var(--pp-label); color: var(--muted); }
+.pp-chart__axis { display: flex; justify-content: space-between; margin-top: .5rem; padding-right: var(--pp-gutter); font: 500 .72rem/1.2 var(--pp-label); color: var(--muted); }
 .pp-chart__empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 1rem; color: var(--muted); font-size: .9rem; }
 .pp-legend { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; margin-top: .85rem; font-size: .8rem; color: var(--ink-2); }
 .pp-legend__swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: .4rem; vertical-align: -1px; background: var(--pp-mark); opacity: .82; }
@@ -236,7 +238,22 @@ with a fallback, so the one stylesheet looks native under each theme.
 .pp-table__primary { font-weight: 600; color: var(--ink); }
 .pp-table__secondary { display: block; margin-top: .15rem; font-size: .8rem; color: var(--muted); }
 .pp-table tbody tr.is-highlight td { background: var(--pp-ok-bg); }
-@media (max-width: 640px) { .pp-hide-sm { display: none; } }
+@media (max-width: 640px) {
+  .pp-hide-sm { display: none; }
+  .pp-table--stack thead { display: none; }
+  .pp-table--stack, .pp-table--stack tbody { display: block; width: 100%; }
+  .pp-table--stack tr { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem 1.25rem; padding: .95rem 0; border-bottom: 1px solid var(--pp-line); }
+  .pp-table--stack tr:last-child { border-bottom: 0; }
+  .pp-table--stack td { display: block; padding: 0 !important; border: 0; text-align: left; }
+  .pp-table--stack td.pp-hide-sm { display: none; }
+  .pp-table--stack td.num { text-align: left; }
+  .pp-table--stack td.pp-cell-main { flex: 1 0 100%; order: -1; }
+  .pp-table--stack td.pp-cell-end { margin-left: auto; }
+  .pp-table--stack td[data-label]::before {
+    content: attr(data-label); display: block; margin-bottom: .15rem;
+    font: 600 .64rem/1.2 var(--pp-label); letter-spacing: .09em; text-transform: uppercase; color: var(--muted);
+  }
+}
 
 /* Lists */
 .pp-list { list-style: none; margin: 0; padding: 0; }
@@ -336,6 +353,7 @@ select.pp-input {
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--pp-sunken); font: 600 .85rem/1 var(--sans); color: var(--ink);
 }
+.pp-card--sunken .pp-steps > li::before { background: var(--pp-surface); }
 .pp-steps__title { font-weight: 600; }
 .pp-steps__text { color: var(--ink-2); font-size: .92rem; }
 

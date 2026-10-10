@@ -89,7 +89,7 @@
       {% if shipping_address.address_line1 %}{{ shipping_address.address_line1 }}<br>{% endif %}
       {% if shipping_address.address_line2 %}{{ shipping_address.address_line2 }}<br>{% endif %}
       {{ shipping_address.city }}{% if shipping_address.state %}, {{ shipping_address.state }}{% endif %} {{ shipping_address.postal_code }}<br>
-      {{ shipping_address.country }}
+      {{ ship_country }}
       {% if shipping_address.phone %}<br><span class="pp-muted">{{ shipping_address.phone }}</span>{% endif %}
     </address>
     {% else %}

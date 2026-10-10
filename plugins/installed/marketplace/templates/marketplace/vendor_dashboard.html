@@ -4,18 +4,18 @@
 {% block portal_head %}
 {% include "marketplace/_vendor_styles.html" %}
 <style>
-.vd-overview { display: grid; gap: 1.25rem; grid-template-areas: "send" "balance" "chart" "stock" "best" "recent"; }
+.vd-overview { display: grid; gap: 1.25rem; grid-template-areas: "send" "side" "chart" "best" "recent"; }
 .vd-overview > * { min-width: 0; }
 .vd-a-send { grid-area: send; }
-.vd-a-balance { grid-area: balance; }
+.vd-a-side { grid-area: side; }
 .vd-a-chart { grid-area: chart; }
-.vd-a-stock { grid-area: stock; }
 .vd-a-best { grid-area: best; }
 .vd-a-recent { grid-area: recent; }
 @media (min-width: 960px) {
   .vd-overview {
     grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
-    grid-template-areas: "send balance" "chart stock" "best recent";
+    grid-template-areas: "send side" "chart side" "best recent";
+    align-items: start;
   }
 }
 </style>
@@ -110,23 +110,46 @@
     {% endif %}
   </section>
 
-  <section class="pp-card vd-a-balance" aria-labelledby="vd-balance-title">
-    <h2 class="pp-label" id="vd-balance-title">{% translate "Your balance" %}</h2>
-    <p class="pp-money" data-balance="available">{{ balance.available|money }}</p>
-    <div class="pp-progress{% if balance.reached %} pp-progress--done{% endif %}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ balance.progress }}" aria-label="{% translate 'Progress to the minimum payout' %}"><span class="pp-progress__fill" style="--pct: {{ balance.progress }}%;"></span></div>
-    <p class="pp-progress__caption">
-      {% if balance.blocker == 'open' %}{% blocktranslate with amount=balance.in_flight|money %}A payout of {{ amount }} is being processed.{% endblocktranslate %}
-      {% elif balance.blocker == 'threshold' %}{% blocktranslate with remaining=balance.remaining|money threshold=balance.threshold|money %}{{ remaining }} to go until the {{ threshold }} minimum.{% endblocktranslate %}
-      {% elif balance.blocker == 'method' %}{% translate "Add a payout method to get paid." %}
-      {% else %}{% translate "You can request a payout." %}{% endif %}
-    </p>
-    <dl class="pp-stats" style="margin-top: 1.1rem;">
-      <div><dt>{% blocktranslate with days=period.days %}Store commission, {{ days }} days{% endblocktranslate %}</dt><dd>{{ commission|money }}</dd></div>
-      {% if balance.open_payout %}<div><dt>{% translate "Requested" %}</dt><dd>{{ balance.in_flight|money }}</dd></div>{% endif %}
-      <div><dt>{% translate "Paid to you" %}</dt><dd data-balance="paid">{{ balance.paid|money }}</dd></div>
-    </dl>
-    <div class="pp-card__foot"><a class="btn {% if balance.can_request %}btn-primary{% else %}btn-ghost{% endif %} btn-sm" href="{% if balance.blocker == 'method' %}/vendor/me/settings/{% else %}/vendor/me/payouts/{% endif %}">{% if balance.can_request %}{% translate "Request a payout" %}{% elif balance.blocker == 'method' %}{% translate "Add a payout method" %}{% else %}{% translate "Payouts" %}{% endif %}</a></div>
-  </section>
+  <div class="pp-stack vd-a-side">
+    <section class="pp-card" aria-labelledby="vd-balance-title">
+      <h2 class="pp-label" id="vd-balance-title">{% translate "Your balance" %}</h2>
+      <p class="pp-money" data-balance="available">{{ balance.available|money }}</p>
+      <div class="pp-progress{% if balance.reached %} pp-progress--done{% endif %}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ balance.progress }}" aria-label="{% translate 'Progress to the minimum payout' %}"><span class="pp-progress__fill" style="--pct: {{ balance.progress }}%;"></span></div>
+      <p class="pp-progress__caption">
+        {% if balance.blocker == 'open' %}{% blocktranslate with amount=balance.in_flight|money %}A payout of {{ amount }} is being processed.{% endblocktranslate %}
+        {% elif balance.blocker == 'threshold' %}{% blocktranslate with remaining=balance.remaining|money threshold=balance.threshold|money %}{{ remaining }} to go until the {{ threshold }} minimum.{% endblocktranslate %}
+        {% elif balance.blocker == 'method' %}{% translate "Add a payout method to get paid." %}
+        {% else %}{% translate "You can request a payout." %}{% endif %}
+      </p>
+      <dl class="pp-stats" style="margin-top: 1.1rem;">
+        <div><dt>{% blocktranslate with days=period.days %}Store commission, {{ days }} days{% endblocktranslate %}</dt><dd>{{ commission|money }}</dd></div>
+        {% if balance.open_payout %}<div><dt>{% translate "Requested" %}</dt><dd>{{ balance.in_flight|money }}</dd></div>{% endif %}
+        <div><dt>{% translate "Paid to you" %}</dt><dd data-balance="paid">{{ balance.paid|money }}</dd></div>
+      </dl>
+      <div class="pp-card__foot"><a class="btn {% if balance.can_request %}btn-primary{% else %}btn-ghost{% endif %} btn-sm" href="{% if balance.blocker == 'method' %}/vendor/me/settings/{% else %}/vendor/me/payouts/{% endif %}">{% if balance.can_request %}{% translate "Request a payout" %}{% elif balance.blocker == 'method' %}{% translate "Add a payout method" %}{% else %}{% translate "Payouts" %}{% endif %}</a></div>
+    </section>
+
+    <section class="pp-card" aria-labelledby="vd-stock-title">
+      <div class="pp-card__head"><h2 class="pp-card__title" id="vd-stock-title">{% translate "Stock" %}</h2><a class="pp-link" href="/vendor/me/products/">{% blocktranslate count n=active_products %}{{ n }} product on sale{% plural %}{{ n }} products on sale{% endblocktranslate %}</a></div>
+      {% if stock.attention %}
+      <ul class="pp-list">
+        {% for p in stock.attention|slice:":5" %}
+        <li data-low-stock="{{ p.sku|default:p.pk }}">
+          <div class="pp-list__main"><p class="pp-list__title">{{ p.name }}</p>{% if p.sku %}<p class="pp-list__meta">{{ p.sku }}</p>{% endif %}</div>
+          {% if p.stock.out %}<span class="pp-badge pp-badge--bad">{% translate "Sold out" %}</span>{% else %}<span class="pp-badge pp-badge--wait">{% blocktranslate count n=p.stock.available %}{{ n }} left{% plural %}{{ n }} left{% endblocktranslate %}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% if stock.attention|length > 5 %}<p class="pp-card__foot"><a class="pp-link" href="/vendor/me/products/?view=attention">{% blocktranslate count n=stock.attention|length %}See all {{ n }} product that need stock{% plural %}See all {{ n }} products that need stock{% endblocktranslate %}</a></p>{% endif %}
+      {% elif stock.tracked %}
+        {% translate "Everything is in stock" as e_title %}{% translate "Products running low appear here." as e_text %}
+        {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" compact=True %}
+      {% else %}
+        {% translate "Stock isn't tracked yet" as e_title %}{% translate "When the store tracks stock for your products, the ones running low appear here." as e_text %}
+        {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" compact=True %}
+      {% endif %}
+    </section>
+  </div>
 
   <section class="pp-card vd-a-chart" aria-labelledby="vd-chart-title">
     <div class="pp-card__head">
@@ -137,27 +160,6 @@
     </div>
     {% translate "No sales in this period yet." as chart_empty %}
     {% include "partner_portal/_chart.html" %}
-  </section>
-
-  <section class="pp-card vd-a-stock" aria-labelledby="vd-stock-title">
-    <div class="pp-card__head"><h2 class="pp-card__title" id="vd-stock-title">{% translate "Stock" %}</h2><a class="pp-link" href="/vendor/me/products/">{% blocktranslate count n=active_products %}{{ n }} product on sale{% plural %}{{ n }} products on sale{% endblocktranslate %}</a></div>
-    {% if stock.attention %}
-    <ul class="pp-list">
-      {% for p in stock.attention|slice:":5" %}
-      <li data-low-stock="{{ p.sku|default:p.pk }}">
-        <div class="pp-list__main"><p class="pp-list__title">{{ p.name }}</p>{% if p.sku %}<p class="pp-list__meta">{{ p.sku }}</p>{% endif %}</div>
-        {% if p.stock.out %}<span class="pp-badge pp-badge--bad">{% translate "Sold out" %}</span>{% else %}<span class="pp-badge pp-badge--wait">{% blocktranslate count n=p.stock.available %}{{ n }} left{% plural %}{{ n }} left{% endblocktranslate %}</span>{% endif %}
-      </li>
-      {% endfor %}
-    </ul>
-    {% if stock.attention|length > 5 %}<p class="pp-card__foot"><a class="pp-link" href="/vendor/me/products/?view=attention">{% blocktranslate count n=stock.attention|length %}See all {{ n }} product that need stock{% plural %}See all {{ n }} products that need stock{% endblocktranslate %}</a></p>{% endif %}
-    {% elif stock.tracked %}
-      {% translate "Everything is in stock" as e_title %}{% translate "Products running low appear here." as e_text %}
-      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" compact=True %}
-    {% else %}
-      {% translate "Stock isn't tracked yet" as e_title %}{% translate "When the store tracks stock for your products, the ones running low appear here." as e_text %}
-      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" compact=True %}
-    {% endif %}
   </section>
 
   <section class="pp-card vd-a-best" aria-labelledby="vd-best-title">

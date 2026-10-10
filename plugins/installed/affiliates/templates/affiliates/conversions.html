@@ -19,7 +19,7 @@
 <section class="pp-card" aria-label="{% translate 'Referred orders' %}">
   {% if conversions %}
   <div class="pp-table-wrap">
-    <table class="pp-table">
+    <table class="pp-table pp-table--stack">
       <thead>
         <tr>
           <th scope="col">{% translate "Date" %}</th>
@@ -34,11 +34,11 @@
         {% for c in conversions %}
         <tr data-conversion="{{ c.order.order_number|default:c.order_id }}">
           <td class="nowrap">{{ c.created_at|date:"M j, Y" }}<span class="pp-table__secondary">{{ c.created_at|time:"H:i" }}</span></td>
-          <td><span class="pp-table__primary">#{{ c.order.order_number|default:c.order_id }}</span></td>
-          <td class="pp-hide-sm">{% if c.link %}{% if c.link.coupon_code %}{% translate "Coupon" %} <code class="pp-code">{{ c.link.coupon_code }}</code>{% else %}{{ c.link.label|default:c.link.landing_url }}{% endif %}{% else %}<span class="pp-muted">—</span>{% endif %}</td>
+          <td class="pp-cell-main"><span class="pp-table__primary">#{{ c.order.order_number|default:c.order_id }}</span></td>
+          <td class="pp-hide-sm">{% if c.link %}{% include "affiliates/_link_name.html" with link=c.link %}{% else %}<span class="pp-muted">—</span>{% endif %}</td>
           <td class="num pp-hide-sm">{{ c.order.total|money }}</td>
-          <td class="num">{{ c.commission|money }}</td>
-          <td>{% include "affiliates/_state.html" with state=c.state %}</td>
+          <td class="num" data-label="{% translate 'Commission' %}">{{ c.commission|money }}</td>
+          <td class="pp-cell-end">{% include "affiliates/_state.html" with state=c.state %}</td>
         </tr>
         {% endfor %}
       </tbody>

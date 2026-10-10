@@ -44,7 +44,7 @@
 <section class="pp-card" aria-label="{% translate 'Products' %}">
   {% if products %}
   <div class="pp-table-wrap">
-    <table class="pp-table">
+    <table class="pp-table pp-table--stack">
       <thead>
         <tr>
           <th scope="col">{% translate "Product" %}</th>
@@ -59,20 +59,20 @@
       <tbody>
         {% for p in products %}
         <tr data-product="{{ p.sku|default:p.pk }}">
-          <td>
+          <td class="pp-cell-main">
             <a class="vd-product" href="/vendor/me/products/{{ p.id }}/">
               {% if p.thumb %}<img class="pp-thumb" src="{{ p.thumb }}" alt="" width="44" height="44" loading="lazy">{% else %}<span class="pp-thumb" aria-hidden="true"></span>{% endif %}
               <span><span class="vd-product__name">{{ p.name }}</span>{% if p.sku %}<span class="vd-product__sku">{{ p.sku }}</span>{% endif %}</span>
             </a>
           </td>
           <td>{% if p.status == 'active' %}<span class="pp-badge pp-badge--ok">{% translate "On sale" %}</span>{% elif p.status == 'draft' %}<span class="pp-badge pp-badge--wait">{% translate "Draft" %}</span>{% else %}<span class="pp-badge">{% translate "Archived" %}</span>{% endif %}</td>
-          <td class="num">{{ p.price|money }}</td>
+          <td class="num" data-label="{% translate 'Price' %}">{{ p.price|money }}</td>
           {% if stock_known %}
-          <td class="num" data-stock="{% if p.stock %}{{ p.stock.available }}{% endif %}">{% if p.stock %}{% if p.stock.out %}<span class="pp-badge pp-badge--bad">{% translate "Sold out" %}</span>{% elif p.stock.low %}<span class="pp-badge pp-badge--wait">{% blocktranslate count n=p.stock.available %}{{ n }} left{% plural %}{{ n }} left{% endblocktranslate %}</span>{% else %}{{ p.stock.available }}{% endif %}{% else %}<span class="pp-muted" title="{% translate 'Stock is not tracked for this product' %}">—</span>{% endif %}</td>
+          <td class="num" data-label="{% translate 'Stock' %}" data-stock="{% if p.stock %}{{ p.stock.available }}{% endif %}">{% if p.stock %}{% if p.stock.out %}<span class="pp-badge pp-badge--bad">{% translate "Sold out" %}</span>{% elif p.stock.low %}<span class="pp-badge pp-badge--wait">{% blocktranslate count n=p.stock.available %}{{ n }} left{% plural %}{{ n }} left{% endblocktranslate %}</span>{% else %}{{ p.stock.available }}{% endif %}{% else %}<span class="pp-muted" title="{% translate 'Stock is not tracked for this product' %}">—</span>{% endif %}</td>
           {% endif %}
           <td class="num pp-hide-sm">{{ p.sold_30 }}</td>
           <td class="pp-hide-sm nowrap">{{ p.updated_at|date:"M j, Y" }}</td>
-          <td class="num"><a class="btn btn-ghost btn-sm" href="/vendor/me/products/{{ p.id }}/">{% translate "Edit" %}</a></td>
+          <td class="num pp-cell-end"><a class="btn btn-ghost btn-sm" href="/vendor/me/products/{{ p.id }}/">{% translate "Edit" %}</a></td>
         </tr>
         {% endfor %}
       </tbody>

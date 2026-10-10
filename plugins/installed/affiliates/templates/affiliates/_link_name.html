@@ -1,0 +1,1 @@
+{% load i18n %}{% if link.coupon_code %}{% blocktranslate with code=link.coupon_code %}Coupon {{ code }}{% endblocktranslate %}{% elif link.label %}{{ link.label }}{% elif link.landing_url == '/' %}{% translate "Home page" %}{% else %}{{ link.landing_url }}{% endif %}

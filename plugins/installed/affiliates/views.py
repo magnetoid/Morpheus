@@ -286,7 +286,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 
     from plugins import partner_portal as pp
     from plugins.installed.affiliates import portal
-    from plugins.installed.affiliates.models import Affiliate, AffiliateConversion
+    from plugins.installed.affiliates.models import Affiliate, AffiliateConversion, AffiliateLink
     from plugins.installed.affiliates.services import affiliate_coupon, commission_summary
 
     accounts = list(
@@ -327,6 +327,11 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         coupon=affiliate_coupon(affiliate),
         site_base=_site_base(request),
         new_link=_highlighted_link(request, affiliate),
+        latest_links=list(
+            AffiliateLink.objects.filter(
+                affiliate=affiliate, is_active=True, coupon_code=''
+            ).order_by('-created_at')[:3]
+        ),
         product_choices=_product_choices(),
         other_accounts=[a for a in accounts if a.pk != affiliate.pk],
     )

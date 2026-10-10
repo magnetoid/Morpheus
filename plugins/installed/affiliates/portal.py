@@ -198,7 +198,8 @@ def performance(affiliate, period: pp.Period) -> dict:
             'key': 'conversion',
             'label': _('Conversion rate'),
             'value': f'{number_format(n_rate, decimal_pos=1)}%',
-            'delta': pp.change_points(n_rate, p_rate),
+            # A rate against a period with no clicks compares with nothing.
+            'delta': pp.change_points(n_rate, p_rate) if p_clicks else None,
             'compare': compare,
             'spark': {},
         },
