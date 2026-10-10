@@ -96,6 +96,18 @@ def auto_update_enabled() -> bool:
     return bool(_read('auto_update', True))
 
 
+def fallback_providers() -> list[str]:
+    """Backup providers, in order, for when the main one fails (provider names).
+
+    The engine keeps only the ones Janus can run that have a key and a priced
+    model (:func:`core.assistant.janus_engine._fallback_wiring`).
+    """
+    value = _read('fallback_providers', [])
+    if not isinstance(value, list):
+        return []
+    return [str(v) for v in value if isinstance(v, str)][:5]
+
+
 def custom_provider() -> dict[str, str] | None:
     """The merchant's pinned provider for Janus, or None to use the store's AI provider."""
     if _read('model_source', 'store') != 'custom':

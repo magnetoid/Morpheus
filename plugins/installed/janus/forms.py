@@ -51,6 +51,8 @@ class JanusSettingsForm(forms.Form):
     learning = forms.BooleanField(required=False)
     web_search = forms.BooleanField(required=False)
     auto_update = forms.BooleanField(required=False)
+    # Backups for when the main provider fails a call, in provider-list order.
+    fallback_providers = forms.MultipleChoiceField(required=False)
     reasoning_effort = forms.ChoiceField(
         choices=[
             ('low', 'Quick — best for everyday questions'),
@@ -63,6 +65,11 @@ class JanusSettingsForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.has_stored_key = has_stored_key
         self.fields['provider'].choices = _provider_choices()
+        self.fields['fallback_providers'].choices = _provider_choices()[1:]
+
+    def clean_fallback_providers(self) -> list[str]:
+        picked = set(self.cleaned_data.get('fallback_providers') or [])
+        return [name for name, _ in _provider_choices()[1:] if name in picked]
 
     def clean_model(self) -> str:
         model = (self.cleaned_data.get('model') or '').strip()

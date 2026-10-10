@@ -85,6 +85,18 @@ class JanusPageSaveTests(TestCase):
     def _post(self, **overrides):
         return self.client.post(URL, {**_VALID, **overrides})
 
+    def test_backup_providers_are_saved_in_order_and_shown(self):
+        response = self.client.post(URL, {**_VALID, 'fallback_providers': ['deepseek', 'openai']})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(_stored()['fallback_providers'], ['openai', 'deepseek'])
+        html = self.client.get(URL).content.decode()
+        self.assertIn('name="fallback_providers" value="deepseek" checked', html)
+        self.assertNotIn('name="fallback_providers" value="grok" checked', html)
+
+    def test_an_unknown_backup_provider_is_refused(self):
+        self.client.post(URL, {**_VALID, 'fallback_providers': ['made-up']})
+        self.assertNotIn('fallback_providers', _stored())
+
     def test_save_persists_every_field(self):
         response = self._post(
             max_tool_turns='4',

@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.86.0 — 2026-10-10
+
+**Pick Linda's model per message, with backups**
+
+- Linda's typing field has a model picker when more than one AI provider is set up: choose, for example, Grok or DeepSeek for the next message and the chat simply continues. It lists providers that have a key in Settings → AI and a known price, so the daily spend limit can count them; "Default model" uses the store's usual one.
+- Backups: Settings → AI → Janus → "If the provider fails". When the main provider refuses a call — out of credit, rate-limited, overloaded — Linda switches to the next one you ticked, within the same answer, instead of telling you she couldn't reach the model.
+- Product pictures on product pages now follow Settings → Products → Image shape on every theme — the main picture, the thumbnails and the empty frame of a product with no photos — and a product without photos shows your placeholder image from Settings → General → Default images. Irving Survival's product pages were still portrait although the setting says square; they are square now. Stores that never chose a shape look exactly as before.
+
 ## v0.85.0 — 2026-10-10
 
 **Linda keeps your chats**

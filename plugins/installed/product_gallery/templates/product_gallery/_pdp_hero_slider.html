@@ -35,7 +35,8 @@ Backward compatible with single-image / no-image products:
     width: 100%;
     margin: 0 auto;
     /* Keep the whole gallery inside one screen.
-       `.pdp-hero__slide` is `aspect-ratio: 2/3`, so its height is derived
+       `.pdp-hero__slide` is portrait (2:3) unless the store picks another shape
+       (Settings → Products → Image shape, `--img-ratio`), so its height is derived
        ENTIRELY from the column width — nothing here was bounded by viewport
        height, and at 1440x900 the cover rendered 763px tall with the thumbnail
        strip landing below the fold (763 + 16 gap + 92 thumbs = 871 against 835
@@ -70,7 +71,7 @@ Backward compatible with single-image / no-image products:
   }
   .pdp-hero__track::-webkit-scrollbar { display: none; }
   .pdp-hero__slide {
-    aspect-ratio: 2 / 3;
+    aspect-ratio: var(--img-ratio, 2 / 3);
     scroll-snap-align: center;
     scroll-snap-stop: always;
     margin: 0;
@@ -162,7 +163,7 @@ Backward compatible with single-image / no-image products:
   .pdp-hero__thumb {
     flex: 0 0 auto;
     width: 56px;
-    aspect-ratio: 2 / 3;
+    aspect-ratio: var(--img-ratio, 2 / 3);
     border-radius: 4px;
     border: 2px solid transparent;
     background: var(--paper-2, #f4f1ea);
@@ -185,7 +186,8 @@ Backward compatible with single-image / no-image products:
   .pdp-hero__thumb:focus { outline: 2px solid var(--accent, #c5694e); outline-offset: 2px; }
 
   .pdp-hero__placeholder {
-    aspect-ratio: 2 / 3;
+    aspect-ratio: var(--img-ratio, 2 / 3);
+    overflow: hidden;
     max-width: 480px;
     background: var(--paper-2, #f4f1ea);
     border-radius: 8px;
@@ -282,7 +284,11 @@ Backward compatible with single-image / no-image products:
 
   {% else %}
   <div class="pdp-hero__placeholder">
+    {% if PRODUCT_PLACEHOLDER_IMAGE %}
+    <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ alt|default:product.name }}" style="width:100%;height:100%;object-fit:cover;display:block;">
+    {% else %}
     <span>No image yet</span>
+    {% endif %}
   </div>
   {% endif %}
 </div>

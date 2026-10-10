@@ -794,6 +794,79 @@ class ProviderWiringTests(SimpleTestCase):
         self.assertEqual(env['DEEPSEEK_API_KEY'], 'from-dashboard')
 
 
+class ModelChoiceTests(SimpleTestCase):
+    """Several models in one chat (owner's ask, 2026-10-10): a model picked for
+    one message, and backup providers Janus switches to when the main one fails
+    (quota, rate limit, overload) — `fallback_providers` in its config."""
+
+    def _conf(self, name):
+        from core.agents.provider_registry import ProviderConfig
+
+        models = {'grok': 'grok-4', 'deepseek': 'deepseek-v4-pro', 'openai': 'gpt-4o-mini'}
+        return ProviderConfig(
+            provider=name,
+            api_key=f'sk-{name}' if name in models else '',
+            base_url='',
+            model=models.get(name, ''),
+            embedding_model='',
+        )
+
+    def _patched(self, active='grok', fallbacks=()):
+        return (
+            mock.patch(
+                'core.agents.provider_registry.get_active_provider_name', return_value=active
+            ),
+            mock.patch('core.agents.provider_registry.get_provider_config', side_effect=self._conf),
+            mock.patch.object(eng.janus_settings, 'custom_provider', return_value=None),
+            mock.patch.object(
+                eng.janus_settings, 'fallback_providers', return_value=list(fallbacks)
+            ),
+        )
+
+    def test_a_model_picked_for_a_message_wins_over_the_default(self):
+        a, b, c, d = self._patched(active='grok')
+        with a, b, c, d:
+            args, env = eng._provider_wiring(choice='deepseek')
+        self.assertEqual(args, ['--provider', 'deepseek', '-m', 'deepseek-v4-pro'])
+        self.assertEqual(env, {'DEEPSEEK_API_KEY': 'sk-deepseek'})
+
+    def test_an_unusable_pick_falls_back_to_the_default(self):
+        a, b, c, d = self._patched(active='grok')
+        with a, b, c, d:
+            for pick in ('anthropic', 'no-such-provider', '../etc'):
+                args, _ = eng._provider_wiring(choice=pick)
+                self.assertEqual(args[:2], ['--provider', 'xai'], pick)
+
+    def test_backup_providers_go_into_the_config_with_their_keys(self):
+        a, b, c, d = self._patched(active='grok', fallbacks=('deepseek', 'grok', 'openai'))
+        with a, b, c, d:
+            _, primary_env = eng._provider_wiring()
+            entries, env = eng._fallback_wiring(primary_env)
+        # The main provider is never its own backup.
+        self.assertEqual(
+            entries,
+            [
+                {'provider': 'deepseek', 'model': 'deepseek-v4-pro'},
+                {'provider': 'openai-api', 'model': 'gpt-4o-mini'},
+            ],
+        )
+        self.assertEqual(env, {'DEEPSEEK_API_KEY': 'sk-deepseek', 'OPENAI_API_KEY': 'sk-openai'})
+        text = eng._config_text('', fallbacks=entries)
+        self.assertIn('fallback_providers:', text)
+        self.assertIn('provider: "deepseek"', text)
+
+    def test_the_picker_lists_priced_providers_that_have_a_key(self):
+        a, b, c, d = self._patched()
+        with a, b, c, d:
+            names = [p['name'] for p in eng.selectable_providers()]
+        self.assertEqual(names, ['openai', 'deepseek', 'grok'])
+
+    def test_the_contract_covers_the_new_config_key(self):
+        from core.assistant import janus_contract
+
+        self.assertIn('fallback_providers', janus_contract.CONFIG_KEYS)
+
+
 class AssistantEngineTests(SimpleTestCase):
     """Janus is the only engine."""
 

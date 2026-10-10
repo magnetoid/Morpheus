@@ -45,6 +45,12 @@ def assistant_page(request):
     from core.assistant.chats import owned_chat, transcript
 
     chat = owned_chat(request.user, request.GET['c']) if request.GET.get('c') else None
+    try:
+        from core.assistant import janus_engine
+
+        models = janus_engine.selectable_providers()
+    except Exception:  # noqa: BLE001 — the picker is optional; the chat is not
+        models = []
     memories: list = []
     try:
         from core.assistant.models import LindaMemory
@@ -64,6 +70,8 @@ def assistant_page(request):
         {
             'history': transcript(chat) if chat else [],
             'conversation_id': str(chat.pk) if chat else '',
+            # More than one usable model: the composer offers a choice.
+            'models': models if len(models) > 1 else [],
             'memories': memories,
             'assistant_modes': [
                 {'slug': m.slug, 'label': m.label, 'description': m.description, 'icon': m.icon}
@@ -144,6 +152,9 @@ def assistant_stream(request):
                     'page_url': page_url,
                     'page_title': page_title,
                     'mode': mode,
+                    # A model picked for this message; the engine uses it only
+                    # when it is one of janus_engine.selectable_providers().
+                    'provider': str(body.get('provider') or '')[:32],
                 },
             ):
                 # Final/error events carry an AssistantRunResult which isn't

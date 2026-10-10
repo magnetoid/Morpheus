@@ -22,9 +22,11 @@ class _FakeAssistant:
     """Stands in for the engine: records the key it was given, answers once."""
 
     keys: list[str] = []
+    contexts: list[dict] = []
 
     def stream(self, *, message, conversation_key, context):
         type(self).keys.append(conversation_key)
+        type(self).contexts.append(context)
         yield {'type': 'assistant_text', 'text': 'ok'}
 
 
@@ -129,3 +131,46 @@ class ChatsTests(TestCase):
     def test_chats_is_a_tab_of_lindas_section(self):
         html = self.client.get('/dashboard/assistant/chats/').content.decode()
         self.assertIn('href="/dashboard/assistant/chats/"', html)
+
+
+class ModelPickerTests(TestCase):
+    """A model can be picked for the next message (owner's ask, 2026-10-10)."""
+
+    _MODELS = [
+        {'name': 'grok', 'model': 'grok-4', 'label': 'Grok · grok-4'},
+        {'name': 'deepseek', 'model': 'deepseek-chat', 'label': 'DeepSeek · deepseek-chat'},
+    ]
+
+    def setUp(self):
+        user = get_user_model().objects.create_user(
+            username='picker', email='picker@x.io', password='pw', is_staff=True
+        )
+        self.client.force_login(user)
+        _FakeAssistant.keys, _FakeAssistant.contexts = [], []
+        for target, value in (
+            ('core.assistant.views.Assistant', _FakeAssistant),
+            ('core.assistant.janus_engine.selectable_providers', lambda: self._MODELS),
+        ):
+            patcher = mock.patch(target, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_the_composer_offers_the_models_with_a_key(self):
+        html = self.client.get('/dashboard/assistant/').content.decode()
+        self.assertIn('<select name="provider"', html)
+        self.assertIn('<option value="deepseek">DeepSeek · deepseek-chat</option>', html)
+
+    def test_the_pick_rides_on_the_message(self):
+        body = {'message': 'Hi', 'conversation': '', 'provider': 'deepseek'}
+        response = self.client.post(
+            '/dashboard/assistant/stream/', data=json.dumps(body), content_type='application/json'
+        )
+        _events(response)
+        self.assertEqual(_FakeAssistant.contexts[0]['provider'], 'deepseek')
+
+    def test_one_model_needs_no_picker(self):
+        with mock.patch(
+            'core.assistant.janus_engine.selectable_providers', lambda: self._MODELS[:1]
+        ):
+            html = self.client.get('/dashboard/assistant/').content.decode()
+        self.assertNotIn('<select name="provider"', html)

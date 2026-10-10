@@ -40,6 +40,7 @@ _SETTINGS_KEYS = (
     'learning',
     'web_search',
     'auto_update',
+    'fallback_providers',
     'reasoning_effort',
 )
 _REVIEW_ACTIONS = ('forget_note', 'delete_skill', 'clear_lessons')
@@ -95,6 +96,7 @@ def _initial(config: dict) -> dict:
         'learning': config.get('learning', True),
         'web_search': config.get('web_search', True),
         'auto_update': config.get('auto_update', True),
+        'fallback_providers': list(config.get('fallback_providers') or []),
         'reasoning_effort': config.get('reasoning_effort', 'low'),
     }
 

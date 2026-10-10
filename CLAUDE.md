@@ -381,7 +381,11 @@ Janus home and session, and its own consent context — an "ok" in one chat neve
 approves a change proposed in another. A chat id from the browser is never trusted:
 `core/assistant/chats.py:owned_chat` checks the owner on every read and write; the
 widget keeps its one `user:<pk>` thread. Homes idle for a week are pruned
-(`janus_engine.prune_idle_homes`). Bundled ecommerce skills live in
+(`janus_engine.prune_idle_homes`). A message may pick its model
+(`janus_engine.selectable_providers`: Janus can run it, it has a key, its model is
+priced — an unpriced pick would escape the spend cap), and backups go into the
+generated config as `fallback_providers` with their keys in the turn env (v0.86.0;
+the key is in `janus_contract.CONFIG_KEYS`). Bundled ecommerce skills live in
 `core/assistant/janus_skills/` and are wired via `skills.external_dirs` in the
 per-conversation Janus home. **Four CLI traps shipped live in v0.63.0 and each
 looked fine in tests** (v0.63.1): (1) without `-t`, `janus chat` loads its

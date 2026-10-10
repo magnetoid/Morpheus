@@ -348,7 +348,11 @@ def _child_env(overrides: dict[str, str]) -> dict[str, str]:
 
 
 def _config_text(
-    mcp_url: str, headers: dict[str, str] | None = None, progress_path: Path | None = None
+    mcp_url: str,
+    headers: dict[str, str] | None = None,
+    progress_path: Path | None = None,
+    *,
+    fallbacks: list[dict[str, str]] | None = None,
 ) -> str:
     mcp_block = ''
     if mcp_url:
@@ -399,6 +403,15 @@ mcp_servers:
     # hooks: one line per step into the home's progress file, for the chat
     #   (core/assistant/activity.py). A display only: Janus ignores a failed hook.
     hooks = activity.hooks_config(progress_path) if progress_path is not None else ''
+    # fallback_providers: backups Janus switches to when the main provider fails
+    #   a call (see _fallback_wiring); their keys come with the turn's env.
+    fallback_block = ''
+    if fallbacks:
+        rows = ''.join(
+            f'\n  - provider: {json.dumps(f["provider"])}\n    model: {json.dumps(f["model"])}'
+            for f in fallbacks
+        )
+        fallback_block = f'fallback_providers:{rows}\n'
     return f"""# Auto-generated store agent home. Merchant-facing name is Linda.
 security:
   tirith_enabled: false
@@ -421,7 +434,7 @@ memory:
   nudge_interval: 0
 web:
   backend: ddgs
-{hooks}"""
+{fallback_block}{hooks}"""
 
 
 # Janus reads its identity from SOUL.md in the home and seeds its own ("You are
@@ -450,7 +463,11 @@ def _prepare_home(home: Path) -> None:
 
 
 def _ensure_config(
-    home: Path, *, mcp_url: str = '', mcp_headers: dict[str, str] | None = None
+    home: Path,
+    *,
+    mcp_url: str = '',
+    mcp_headers: dict[str, str] | None = None,
+    fallbacks: list[dict[str, str]] | None = None,
 ) -> Path:
     """Write (or REWRITE) the store-agent Janus config.
 
@@ -460,7 +477,7 @@ def _ensure_config(
     would sit on disk in one copy per conversation.
     """
     cfg_path = home / 'config.yaml'
-    desired = _config_text(mcp_url, mcp_headers, home / activity.PROGRESS_FILE)
+    desired = _config_text(mcp_url, mcp_headers, home / activity.PROGRESS_FILE, fallbacks=fallbacks)
     try:
         current = cfg_path.read_text(encoding='utf-8')
     except OSError:
@@ -539,14 +556,93 @@ def pinnable_providers() -> tuple[str, ...]:
     return tuple(_JANUS_PROVIDERS)
 
 
-def _provider_wiring() -> tuple[list[str], dict[str, str]]:
+_PROVIDER_LABELS = {
+    'openai': 'OpenAI',
+    'anthropic': 'Anthropic',
+    'gemini': 'Gemini',
+    'deepseek': 'DeepSeek',
+    'grok': 'Grok',
+}
+
+
+def _configured(name: str):
+    """(Janus spec, provider config) for a provider Janus can run that has a key."""
+    spec = _JANUS_PROVIDERS.get(name)
+    if spec is None:
+        return None
+    try:
+        from core.agents.provider_registry import get_provider_config
+
+        cfg = get_provider_config(name)
+    except Exception:  # noqa: BLE001 — an unreadable provider is simply not offered
+        return None
+    return (spec, cfg) if cfg.api_key and cfg.model else None
+
+
+def selectable_providers() -> list[dict[str, str]]:
+    """Providers a message can be sent to: Janus runs them, they have a key, and
+    their model is priced — an unpriced model would escape the daily spend cap."""
+    from core.agents.pricing import is_priced
+
+    out = []
+    for name in _JANUS_PROVIDERS:
+        found = _configured(name)
+        if found is None or not is_priced(found[1].model):
+            continue
+        model = found[1].model
+        out.append(
+            {'name': name, 'model': model, 'label': f'{_PROVIDER_LABELS.get(name, name)} · {model}'}
+        )
+    return out
+
+
+def _fallback_wiring(primary_env: dict[str, str]) -> tuple[list[dict[str, str]], dict[str, str]]:
+    """Backup providers for `fallback_providers` (Settings → AI → Janus) and their keys.
+
+    Janus switches to the next one when the main provider fails a call (quota,
+    rate limit, overload). Keys stored in the dashboard never reach Janus's own
+    environment, so each backup's key travels with the turn like the main one.
+    The main provider is never its own backup.
+    """
+    from core.agents.pricing import is_priced
+
+    entries: list[dict[str, str]] = []
+    env: dict[str, str] = {}
+    for name in janus_settings.fallback_providers():
+        found = _configured(name)
+        if found is None:
+            continue
+        (janus_id, key_var, base_var), cfg = found
+        if key_var in primary_env or key_var in env or not is_priced(cfg.model):
+            continue
+        entries.append({'provider': janus_id, 'model': cfg.model})
+        env[key_var] = cfg.api_key
+        if cfg.base_url:
+            env[base_var] = cfg.base_url
+    return entries, env
+
+
+def _provider_wiring(choice: str = '') -> tuple[list[str], dict[str, str]]:
     """CLI args + env that pin Janus to its provider.
 
-    The provider pinned on Settings → AI → Janus when the merchant chose one,
-    otherwise the store's active AI provider.
+    The provider picked for this message in the composer (when it is one of
+    :func:`selectable_providers`), else the one pinned on Settings → AI → Janus,
+    else the store's active AI provider.
     """
     custom = janus_settings.custom_provider()
-    if custom is not None:
+    picked = (
+        _configured(choice)
+        if choice and choice in {p['name'] for p in selectable_providers()}
+        else None
+    )
+    if picked is not None:
+        name, model, api_key, base_url = (
+            choice,
+            picked[1].model,
+            picked[1].api_key,
+            picked[1].base_url,
+        )
+    elif custom is not None:
         name, model, api_key, base_url = (
             custom['provider'],
             custom['model'],
@@ -765,7 +861,11 @@ def iter_janus_turn(
         yield {'text': '', 'error': f'janus home unavailable: {e}', 'duration_ms': 0}
         return
     mcp_url, mcp_headers = _mcp_endpoint(context)
-    _ensure_config(conv_home, mcp_url=mcp_url, mcp_headers=mcp_headers)
+    # The model picked for this message (validated in _provider_wiring), and the
+    # backups Janus may switch to when that provider fails.
+    provider_args, provider_env = _provider_wiring(str((context or {}).get('provider') or ''))
+    fallbacks, fallback_env = _fallback_wiring(provider_env)
+    _ensure_config(conv_home, mcp_url=mcp_url, mcp_headers=mcp_headers, fallbacks=fallbacks)
     _prepare_home(conv_home)
     progress = activity.ProgressReader(conv_home / activity.PROGRESS_FILE)
     progress.reset()
@@ -779,8 +879,7 @@ def iter_janus_turn(
     else:
         janus_learning.clear(conv_home)
 
-    provider_args, provider_env = _provider_wiring()
-    env = _turn_env(conv_home, system_prompt, turn_token, provider_env)
+    env = _turn_env(conv_home, system_prompt, turn_token, {**fallback_env, **provider_env})
 
     # Read here, not in argv_for: that runs on the worker thread, which has no view
     # of this request's database connection (and so of the merchant's settings).

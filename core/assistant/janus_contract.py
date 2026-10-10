@@ -65,6 +65,7 @@ CONFIG_KEYS = {
     'memory.nudge_interval': r'[^_]nudge_interval',
     'web.backend': r'get\(\s*["\']backend["\']',
     'hooks_auto_accept': r'hooks_auto_accept',
+    'fallback_providers': r'fallback_providers',
 }
 
 # Environment variables and home files janus_engine relies on.

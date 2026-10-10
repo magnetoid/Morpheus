@@ -53,7 +53,13 @@ def _config_keys(text: str) -> set[str]:
             parts = parts[:4] if parts[2:3] == ['tools'] else parts[:3]
         if parts[0] == 'hooks':
             parts = parts[:2]
-        special = parts[0] == 'hooks' or parts[-1] in ('external_dirs', 'headers')
+        if parts[0] == 'fallback_providers':  # a list of {provider, model}: one key
+            parts = parts[:1]
+        special = parts[0] == 'hooks' or parts[-1] in (
+            'external_dirs',
+            'headers',
+            'fallback_providers',
+        )
         if m.group(3).strip() or special:
             keys.add('.'.join(parts))
     return keys - {'hooks', 'mcp_servers.*'}
@@ -65,7 +71,13 @@ class ContractInStepTests(SimpleTestCase):
         self.assertEqual(set(contract.TOOLSETS), loadable - {eng.MCP_SERVER_NAME})
 
     def test_every_config_key_morpheus_writes_is_proved_or_waived(self):
-        text = eng._config_text('https://s/mcp/', {'Host': 'x'}, Path('/tmp/p.jsonl'))
+        # With a backup provider configured, so `fallback_providers` is written too.
+        text = eng._config_text(
+            'https://s/mcp/',
+            {'Host': 'x'},
+            Path('/tmp/p.jsonl'),
+            fallbacks=[{'provider': 'deepseek', 'model': 'deepseek-chat'}],
+        )
         written = _config_keys(text)
         self.assertIn('skills.inline_shell', written)  # the parser works
         unproved = written - set(contract.CONFIG_KEYS) - _NOT_PROVED
@@ -123,6 +135,7 @@ def _fake_janus(root: Path, *, search_tools=('web_search',), drop: str = '') -> 
         'tirith_enabled max_turns reasoning_effort api_max_retries supports_parallel_tool_calls',
         'guard_agent_created inline_shell creation_nudge_interval external_dirs',
         'memory_enabled user_profile_enabled cfg.nudge_interval hooks_auto_accept',
+        'fallback_providers',
         'cfg.get("curator") web.get("backend")',
         'JANUS_HOME JANUS_EPHEMERAL_SYSTEM_PROMPT JANUS_YOLO_MODE SOUL.md .no-bundled-skills',
         'print(f"\\nsession_id: {cli.session_id}", file=sys.stderr)',

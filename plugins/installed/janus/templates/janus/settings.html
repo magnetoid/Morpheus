@@ -135,6 +135,16 @@
       <p class="text-xs text-[color:var(--text-muted)] md:col-span-2">
         Provider, model and key apply only when you pin a provider. Otherwise Janus uses the store's AI provider from Settings → AI.
       </p>
+      <div class="md:col-span-2 space-y-1">
+        <p class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">If the provider fails</p>
+        <p class="text-xs text-[color:var(--text-muted)]">When the main provider refuses a call — out of credit, rate-limited, overloaded — Janus switches to these, in this order, within the same answer. Only providers with a key in Settings → AI and a known price are used.</p>
+        <div class="flex flex-wrap gap-x-5 gap-y-2">
+          {% for value, label in form.fields.fallback_providers.choices %}
+          <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" name="fallback_providers" value="{{ value }}"{% if value in form.fallback_providers.value %} checked{% endif %}> {{ label }}</label>
+          {% endfor %}
+        </div>
+        {{ form.fallback_providers.errors }}
+      </div>
     </section>
 
     <section class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pt-4 border-t border-[color:var(--border)]">

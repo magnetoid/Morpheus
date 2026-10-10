@@ -33,6 +33,12 @@ chat would cover them.{% endcomment %}
   <div class="linda-dock">
     <form id="linda-form" class="linda-form" autocomplete="off">
       {% csrf_token %}
+      {% if models %}
+      <select name="provider" class="linda-model" aria-label="Model for the next message" title="Model for the next message">
+        <option value="">Default model</option>
+        {% for m in models %}<option value="{{ m.name }}">{{ m.label }}</option>{% endfor %}
+      </select>
+      {% endif %}
       <textarea name="message" rows="1" placeholder="Ask Linda…" class="linda-input" required></textarea>
       <button type="submit" class="linda-send" aria-label="Send">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l5-5 5 5M12 6v13"/></svg>
@@ -242,6 +248,13 @@ chat would cover them.{% endcomment %}
     color: var(--text);
   }
   .linda-input::placeholder { color: var(--text-muted); }
+  .linda-model {
+    flex: none; align-self: center; max-width: 9.5rem;
+    border: 0; border-radius: 999px; padding: .35rem .5rem;
+    background: transparent; color: var(--text-muted); font: inherit; font-size: .78rem;
+    cursor: pointer;
+  }
+  .linda-model:hover, .linda-model:focus { color: var(--text); background: color-mix(in srgb, var(--surface-2) 90%, var(--text)); outline: none; }
   .linda-cost { margin: .4rem 0 0; text-align: center; font-size: .72rem; color: var(--text-muted); }
   .linda-send {
     flex: 0 0 auto;
@@ -292,6 +305,15 @@ chat would cover them.{% endcomment %}
   // Which chat this page is: '' until the first message starts one, then its
   // id (the server answers with a `conversation` event and the URL follows).
   var conversationId = JSON.parse(document.getElementById('linda-conversation').textContent || '""');
+  // The model picked for the next message, remembered on this browser.
+  var providerPick = form.querySelector('select[name="provider"]');
+  if (providerPick) {
+    try { var saved = localStorage.getItem('linda:provider'); if (saved !== null) providerPick.value = saved; } catch (_) {}
+    if (providerPick.selectedIndex < 0) providerPick.value = '';
+    providerPick.addEventListener('change', function () {
+      try { localStorage.setItem('linda:provider', providerPick.value); } catch (_) {}
+    });
+  }
   function refreshCost() {
     if (!conversationId) return;
     fetch('/dashboard/assistant/history/?conversation=' + encodeURIComponent(conversationId), { credentials: 'same-origin' })
@@ -492,6 +514,7 @@ chat would cover them.{% endcomment %}
         page_title: document.title || '',
         mode: currentMode,
         conversation: conversationId,
+        provider: providerPick ? providerPick.value : '',
       }),
     }).then(function (resp) {
       if (!resp.ok || !resp.body) throw new Error('stream HTTP ' + resp.status);
