@@ -28,7 +28,7 @@ show, so an empty catalogue still reads as a finished page.
   .h-stage__pair > .h-panel:only-child img { height: clamp(320px, 44vw, 640px); }
   .h-panel { display: block; position: relative; overflow: hidden; border-radius: var(--r-lg); background: var(--surface); min-height: clamp(320px, 44vw, 640px); }
   .h-panel img { width: 100%; height: clamp(320px, 44vw, 640px); object-fit: contain; padding: 4%; }
-  .h-panel__cap { position: absolute; left: 1.5rem; bottom: 1.5rem; display: flex; gap: .75rem; align-items: center; font: 400 .8125rem var(--mono); color: var(--ink2); }
+  .h-panel__cap { position: absolute; left: 1.5rem; right: 1.5rem; bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: .25rem .75rem; align-items: center; justify-content: center; text-align: center; font: 400 .8125rem var(--mono); color: var(--ink2); }
   .h-panel__cap strong { color: var(--ink); font-weight: 500; }
   a.h-panel:hover { color: inherit; }
   .h-kit { min-height: 0; padding: clamp(2rem, 5vw, 4rem); display: grid; gap: 2rem; }

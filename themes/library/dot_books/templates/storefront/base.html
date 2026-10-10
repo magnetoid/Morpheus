@@ -1011,9 +1011,9 @@ defaults.
     <div class="col">
       <a href="/" class="wordmark" style="font-size:1.6rem">{% if STORE_LOGO_URL %}<img src="{{ STORE_LOGO_URL }}" alt="{{ STORE_NAME }}" style="height:1.6rem;width:auto;vertical-align:middle;">{% elif STORE_NAME %}{{ STORE_NAME }}<span class="dot">.</span>{% else %}dot books<span class="dot">.</span>{% endif %}</a>
       <p class="lede" style="margin-top:0.85rem; font-size: 1rem;">A quieter shelf for louder books. Independently curated, mostly independent presses, always handpicked.</p>
-      <form class="newsletter" id="footer-newsletter" method="post" action="/newsletter/subscribe/">
+      <form class="newsletter" id="footer-newsletter" method="post" action="/newsletter/subscribe/" toolname="subscribe_to_newsletter" tooldescription="Subscribe an email address to the shop newsletter">
         {% csrf_token %}
-        <input type="email" name="email" placeholder="your@email.com" aria-label="Email" required>
+        <input type="email" name="email" placeholder="your@email.com" aria-label="Email" required toolparamdescription="The email address to subscribe">
         <button type="submit">Subscribe</button>
       </form>
       <p id="footer-newsletter-msg" class="meta" style="margin-top:.65rem;" aria-live="polite"></p>

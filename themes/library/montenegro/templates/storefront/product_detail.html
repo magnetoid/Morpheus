@@ -154,7 +154,7 @@ POST: /cart/add/{{ product.id }}/  ·  /back-in-stock/subscribe/{{ product.id }}
       {% endif %}
 
       <!-- Qty + Add to cart -->
-      <form method="post" action="/cart/add/{{ product.id }}/" class="flex items-center gap-3">
+      <form method="post" action="/cart/add/{{ product.id }}/" class="flex items-center gap-3" toolname="add_this_product_to_cart" tooldescription="Add the product on this page to the cart" toolautosubmit>
         {% csrf_token %}
         {% with product.variants|first as first_v %}
         <input type="hidden" name="variant_id" value="{{ first_v.id|default:'' }}" data-pdp-variant-input>
@@ -164,7 +164,7 @@ POST: /cart/add/{{ product.id }}/  ·  /back-in-stock/subscribe/{{ product.id }}
           <button type="button" onclick="var i=document.getElementById('pdp-qty');i.value=Math.max(1,(parseInt(i.value,10)||1)-1);" class="w-11 h-full flex items-center justify-center text-foreground hover:bg-muted rounded-l-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" aria-label="{% trans 'Decrease quantity' %}">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
           </button>
-          <input id="pdp-qty" type="number" name="quantity" value="1" min="1" max="20" inputmode="numeric" autocomplete="off" class="w-12 h-full text-center font-medium text-foreground bg-transparent outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
+          <input id="pdp-qty" type="number" name="quantity" value="1" min="1" max="20" inputmode="numeric" toolparamdescription="Number of units to add (1-20)" autocomplete="off" class="w-12 h-full text-center font-medium text-foreground bg-transparent outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
           <button type="button" onclick="var i=document.getElementById('pdp-qty');i.value=Math.min(20,(parseInt(i.value,10)||1)+1);" class="w-11 h-full flex items-center justify-center text-foreground hover:bg-muted rounded-r-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" aria-label="{% trans 'Increase quantity' %}">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>
           </button>

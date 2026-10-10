@@ -290,6 +290,26 @@ that owns an agent-facing surface appends its own section, and a disabled owner'
 section (and endpoints) vanish together — so the manifest never advertises a dead
 endpoint. Gated by the same *expose-to-AI* toggle as `/llms.txt`.
 
+## 7. WebMCP (tools inside the visitor's browser)
+
+For an agent that drives the shopper's own browser (Chrome 149+ origin trial)
+the storefront offers tools two ways, both on every page:
+
+- **Imperative** — the `agent_mcp` block registers `search_products`,
+  `add_to_cart` and `get_cart` with `document.modelContext` (JSON Schema inputs,
+  execution over the store's GraphQL endpoint, results returned as strings).
+  Browsers without `modelContext` see nothing.
+- **Declarative** — the theme's forms carry `toolname` / `tooldescription`
+  (and `toolparamdescription` on their fields): `search_shop` and
+  `search_by_description` on the search page, `add_this_product_to_cart` on a
+  product page, `subscribe_to_newsletter` in the footer. The browser derives
+  each tool's schema from the form controls and submits the form when the
+  agent calls it (`toolautosubmit` on search and add-to-cart; the newsletter
+  form waits for the person). One name per intent, never on a per-product
+  card, never a name the imperative tools use — guarded by
+  `agent_mcp/tests/test_webmcp_forms.py`. Lighthouse's "Agentic Browsing"
+  category audits exactly this.
+
 See [`docs/MCP_SERVER.md`](MCP_SERVER.md) for the full tool catalog,
 [`docs/COMPLIANCE.md`](COMPLIANCE.md) for the AI Act audit-trail
 export.

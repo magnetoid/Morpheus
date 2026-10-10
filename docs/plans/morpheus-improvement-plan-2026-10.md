@@ -622,11 +622,14 @@ shape with minor-unit prices and the seller block), 4c (the `openai_shopping`
 app: JSONL feed, six-hourly push, Channels tab, settings panel) and the first
 half of 4e (the WebMCP block on `global_below_body`: three imperative tools over
 GraphQL, declared where `document.modelContext` exists; the declarative form
-annotations and the Lighthouse run are still open — a Lighthouse run on
-dotbooks after v0.89.0 scores Agentic Browsing 100 but reports the three WebMCP
-audits "not applicable": the audit's Chrome has no `modelContext`, so imperative
-registration is invisible to it and only the declarative `toolname` /
-`tooldescription` form attributes will make `webmcp-form-coverage` count).
+annotations shipped as v0.92.0: every theme's search form, "describe what you
+need" form, product-page add-to-cart form and footer newsletter form carry
+`toolname` / `tooldescription` / `toolparamdescription`, one vocabulary guarded
+by `agent_mcp/tests/test_webmcp_forms.py`, never on a per-product card. A
+Lighthouse run on dotbooks after v0.89.0 scored Agentic Browsing 100 with the
+three WebMCP audits "not applicable" — the audit's Chrome has no
+`modelContext`, so only the declarative attributes can make
+`webmcp-form-coverage` count; re-run after v0.92.0).
 **Round 2 shipped as v0.90.0** — 4d (every MCP endpoint is a dual-era server: the 2026-07-28
 stateless envelope with mirrored headers, `server/discover`, `resultType`,
 `ttlMs`/`cacheScope`, the reserved error codes, Origin validation; the

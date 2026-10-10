@@ -16,13 +16,13 @@
       {% else %}Find what you're after<span class="text-accent">.</span>{% endif %}
     </h1>
 
-    <form method="get" action="/search/" style="display:flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.5rem; align-items: center;">
+    <form method="get" action="/search/" style="display:flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.5rem; align-items: center;" toolname="search_shop" tooldescription="Search this shop's products by keyword" toolautosubmit>
       <div style="position: relative; flex: 1; min-width: 240px; max-width: 480px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
              style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--muted);">
           <circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path>
         </svg>
-        <input name="q" value="{{ query }}" placeholder="Oil, blend, plant…"
+        <input name="q" value="{{ query }}" placeholder="Oil, blend, plant…" toolparamdescription="What to search for: a product name, brand, category or need"
                autofocus
                style="width:100%; height: 44px; padding: 0 1rem 0 2.6rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
       </div>
@@ -43,10 +43,10 @@
     <div style="margin-top: 2.5rem; max-width: 620px;">
       <p class="eyebrow" style="margin-bottom: .5rem;">Not sure what to search?</p>
       <h2 style="font-family: var(--serif); font-weight: 500; font-size: 1.5rem; margin: 0 0 1rem;">Describe what you are looking for.</h2>
-      <form method="get" action="/search/">
+      <form method="get" action="/search/" toolname="search_by_description" tooldescription="Describe what you are looking for in your own words; the shop suggests matching products" toolautosubmit>
         <input type="hidden" name="mode" value="semantic">
         <label for="mood-q" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Describe what you want</label>
-        <textarea id="mood-q" name="q" rows="2"
+        <textarea id="mood-q" name="q" rows="2" toolparamdescription="A few words about what you need or the occasion"
                   placeholder="e.g. “magnesium that is easy on the stomach”, or “a caffeine-free evening tea”"
                   style="width:100%; padding: .85rem 1.1rem; border: 1px solid var(--rule); border-radius: 12px; background: var(--paper); font-family: var(--sans); font-size: 1rem; resize: vertical;"></textarea>
         <button class="btn btn-primary" style="margin-top: .75rem;">Find it</button>

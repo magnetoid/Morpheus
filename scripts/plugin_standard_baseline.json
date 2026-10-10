@@ -25,7 +25,6 @@
     "booking_marketplace:settings.not_registered",
     "checkout_experience:tests.missing",
     "consent:models.has_models_flag",
-    "consent:tests.missing",
     "demo_data:settings.not_registered",
     "discovery_quiz:tests.missing",
     "drops:tests.missing",

@@ -359,13 +359,13 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
         </div>
         {% endif %}
 
-        <form method="post" action="/cart/add/{{ product.id }}/" style="display:flex; gap: 0.6rem; align-items:center; margin: 1.5rem 0 1rem;">
+        <form method="post" action="/cart/add/{{ product.id }}/" style="display:flex; gap: 0.6rem; align-items:center; margin: 1.5rem 0 1rem;" toolname="add_this_product_to_cart" tooldescription="Add the product on this page to the cart" toolautosubmit>
           {% csrf_token %}
           {% with product.variants|first as first_v %}
           <input type="hidden" name="variant_id" value="{{ first_v.id|default:'' }}" data-pdp-variant-input>
           {% endwith %}
           <label for="pdp-qty" class="sr-only">Quantity</label>
-          <input id="pdp-qty" type="number" name="quantity" value="1" min="1" max="20"
+          <input id="pdp-qty" type="number" name="quantity" value="1" min="1" max="20" toolparamdescription="Number of units to add (1-20)"
                  inputmode="numeric" autocomplete="off"
                  style="width: 80px; height: 48px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans);">
           <button type="submit" class="btn btn-primary" style="height: 48px;" data-pdp-cta>Add to cart</button>

@@ -1425,7 +1425,12 @@ import another only if it declares it in `requires`; blocks any *new* undeclared
 `scripts/plugin_boundary_baseline.json`, which starts at 122 pairs and can only
 shrink — repay a pair by declaring the dep or inverting it via `core.hooks`),
 and the **disable-test gate** (runs
-`admin_dashboard/tests/test_disable_guards.py` as its own fast step).
+`admin_dashboard/tests/test_disable_guards.py` as its own fast step). The
+**plugin-standard ratchet** (`scripts/check_plugin_standard.py`) fails in BOTH
+directions: a new contract violation, and a baseline entry that no longer
+reproduces — give a thin app its first tests or migrations and CI goes red
+until `--save` shrinks `scripts/plugin_standard_baseline.json` in the same
+commit (v0.91.0 gave `consent` tests and lint went red for one release).
 
 ---
 

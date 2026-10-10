@@ -759,9 +759,9 @@ defaults.
       <p class="tagline">{% if theme_config.tagline %}{{ theme_config.tagline }}{% else %}{% translate "Calm, practical preparedness for UK households." %}{% endif %}</p>
       {% plugin_enabled "newsletter" as has_newsletter %}
       {% if has_newsletter %}
-      <form class="newsletter" id="footer-newsletter" method="post" action="/newsletter/subscribe/">
+      <form class="newsletter" id="footer-newsletter" method="post" action="/newsletter/subscribe/" toolname="subscribe_to_newsletter" tooldescription="Subscribe an email address to the shop newsletter">
         {% csrf_token %}
-        <input type="email" name="email" placeholder="{% translate 'your@email.com' %}" aria-label="{% translate 'Email' %}" required>
+        <input type="email" name="email" placeholder="{% translate 'your@email.com' %}" aria-label="{% translate 'Email' %}" required toolparamdescription="The email address to subscribe">
         <button type="submit">{% translate "Subscribe" %}</button>
       </form>
       <p id="footer-newsletter-msg" class="meta" style="margin:.25rem 0 0;" aria-live="polite"></p>

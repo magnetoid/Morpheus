@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.92.0 — 2026-10-10
+
+**Forms agents can drive in the browser, Irving's centred stage captions, and the plugin-contract check green again**
+
+- Declarative WebMCP: the search form, the describe-what-you-need form, the product page's add-to-cart form and the footer newsletter form in every theme carry tool names and descriptions, so an agent driving the shopper's browser can use them; one vocabulary, never on a per-product card
+- Irving Survival: the captions under the two lead products on the home stage are centred
+- Irving Survival's search box suggests what the shop sells (water, torch, radio, first aid) instead of the pantry's oils
+- CI: the plugin-contract baseline drops the entry the consent app's new tests repaid, so the lint job is green again
+
 ## v0.91.0 — 2026-10-10
 
 **Consent that gates the tags, the montenegro theme's missing global slots, a sender-domain check and Irving's two-product stage**

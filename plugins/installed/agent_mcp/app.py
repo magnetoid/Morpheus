@@ -86,7 +86,10 @@ class AgentMcpPlugin(Plugin):
         # add-to-cart and cart tools with the agent driving the visitor's
         # browser, backed by the store's own GraphQL endpoint. Renders only the
         # definitions plus a guarded script; browsers without modelContext see
-        # nothing. Lighthouse's "Agentic Browsing" category scores this.
+        # nothing. The themes' search, add-to-cart and newsletter forms carry
+        # the declarative counterpart (toolname/tooldescription, vocabulary in
+        # tests/test_webmcp_forms.py). Lighthouse's "Agentic Browsing" category
+        # scores the declarative half; its Chrome cannot see this script.
         from morpheus.app import StorefrontBlock
 
         return [
