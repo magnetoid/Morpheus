@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.95.0 — 2026-10-10
+
+**Account menu with partner logins, product photos named after the product, Irving written for a worldwide audience**
+
+- Supernatural Shop and Irving Survival: the account icon opens a menu. A visitor gets Sign in, Create an account, and the affiliate and vendor (on Irving: supplier) logins; a signed-in shopper gets My account, Orders, the two partner dashboards and Sign out. The menu names links, never the shopper, so a cached page carries nothing personal; without JavaScript the icon is still a link to the account page.
+- Both themes: a Partners column in the footer and partner links in the mobile menu lead to the affiliate and vendor dashboards (each sends a visitor to sign in and back). Each link disappears with its app, and supernatural's footer links are now guarded the same way.
+- Catalogue: a new product photo is stored under the product's title (wind-up-emergency-radio.jpg, then -2, -3) instead of the camera's or supplier's file name, for image search. Stored photos keep their names, so no published link changes; a dashboard upload without alt text takes the product's title.
+- Irving Survival: the home page title and description, tagline, about page and guides intro now speak to households worldwide instead of UK households. The calculator still cites the UK Government figures it uses, and the returns page still states UK consumer law.
+
 ## v0.94.0 — 2026-10-10
 
 **CJdropshipping and AliExpress dropshipping apps, New category in the dashboard, GraphQL open to external agents, a larger Supernatural hero**

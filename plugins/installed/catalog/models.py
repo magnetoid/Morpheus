@@ -475,6 +475,47 @@ class ProductAttribute(models.Model):
         unique_together = ('product', 'attribute')
 
 
+def product_image_upload_to(instance, filename: str) -> str:
+    """``products/<product title>.<ext>``: a file name that says what the photo is.
+
+    Image search reads the file name (owner's ask, 2026-10-10), and a phone's
+    ``IMG_4821.JPG`` or a supplier's numeric id says nothing. Only a NEW file is
+    named here: Django never renames a stored file, so every link already
+    published keeps working. A second photo of the same product counts up
+    (``-2``, ``-3``); a title with no usable letters falls back to the slug.
+
+    A name is taken when the photo OR its optimised copy exists: the copy is
+    named from the photo's name without its extension
+    (``image_pipeline.generate_pdp_variant``), so ``radio.jpg`` and ``radio.png``
+    would share one copy and the second would be re-encoded on every save.
+    """
+    import re
+
+    from django.utils.text import slugify
+
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in (filename or '') else ''
+    ext = re.sub(r'[^a-z0-9]', '', ext)[:5] or 'jpg'
+    product = getattr(instance, 'product', None)
+    base = (
+        slugify(getattr(product, 'name', '') or '')[:80].strip('-')
+        or slugify(getattr(product, 'slug', '') or '')[:80].strip('-')
+        or 'product'
+    )
+    storage = instance._meta.get_field('image').storage
+
+    def taken(stem: str) -> bool:
+        if storage.exists(f'products/{stem}.{ext}'):
+            return True
+        return any(storage.exists(f'products/webp/{stem}.{v}') for v in ('webp', 'avif', 'jpg'))
+
+    stem = base
+    for n in range(2, 100):
+        if not taken(stem):
+            break
+        stem = f'{base}-{n}'
+    return f'products/{stem}.{ext}'
+
+
 class ProductImage(models.Model):
     """Product images with ordering and alt text.
 
@@ -486,7 +527,7 @@ class ProductImage(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='products/')
+    image = models.ImageField(upload_to=product_image_upload_to)
     webp_image = models.ImageField(upload_to='products/webp/', blank=True, null=True)
     alt_text = models.CharField(max_length=255, blank=True)
     is_primary = models.BooleanField(default=False)

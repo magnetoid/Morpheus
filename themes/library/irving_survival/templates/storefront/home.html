@@ -10,7 +10,7 @@ two planning cards; bundles (the "staff-picks" collection, under its own name);
 the guides band. Every product section hides itself when it has nothing to
 show, so an empty catalogue still reads as a finished page.
 {% endcomment %}
-{% block seo %}{% trans "Irving Survival — calm, practical household preparedness" as home_title %}{% trans "Water, food, light, power and first aid for UK households, with a free supply calculator and readiness check based on official guidance." as home_desc %}{% storefront_head title=home_title description=home_desc %}{% endblock %}
+{% block seo %}{% trans "Irving Survival — calm, practical survival and preparedness" as home_title %}{% trans "Survival and preparedness for households worldwide: water, food, light, power and first aid, with a free supply calculator, a readiness check and plain guides." as home_desc %}{% storefront_head title=home_title description=home_desc %}{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -85,7 +85,7 @@ show, so an empty catalogue still reads as a finished page.
 {% with hero=hero_products|first %}
 <section class="h-hero">
   <div class="wrap">
-    <p class="eyebrow eyebrow--signal">{% translate "Household preparedness · UK" %}</p>
+    <p class="eyebrow eyebrow--signal">{% translate "Survival and preparedness, worldwide" %}</p>
     <h1 class="display display-xl">{% translate "Normal life can stop. Your needs don't." %}</h1>
     <p class="lede">{% translate "Water, food, light, power and first aid for your household. Clear choices, honest limits, and the official guidance to plan with." %}</p>
     <div class="h-actions">

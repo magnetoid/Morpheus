@@ -2,7 +2,7 @@
 {% load seo %}{% load i18n %}
 
 {% block extra_head %}
-{% seo_aboutpage_jsonld name="About Irving Survival" description="Irving Survival helps UK households prepare for ordinary emergencies, with useful supplies, clear expectations and planning tools based on official guidance." %}
+{% seo_aboutpage_jsonld name="About Irving Survival" description="Irving Survival helps households around the world prepare for emergencies, with practical survival information, useful supplies and planning tools based on official guidance." %}
 {% seo_breadcrumb_jsonld items=breadcrumb_items %}
 <style>
   .about { padding: clamp(3rem, 6vw, 4.5rem) 0 4rem; }
@@ -21,7 +21,7 @@
   <div class="wrap">
     <p class="eyebrow">{% translate "About us" %}</p>
     <h1 class="display display-l">{% translate "Calm, practical preparedness." %}</h1>
-    <p class="lede">{% blocktranslate trimmed with name=STORE_NAME|default:"Irving Survival" %}{{ name }} helps UK households get ready for ordinary emergencies: a power cut, a flood warning, a few days without water. Useful supplies, clear expectations and honest limits.{% endblocktranslate %}</p>
+    <p class="lede">{% blocktranslate trimmed with name=STORE_NAME|default:"Irving Survival" %}{{ name }} helps households around the world get ready for emergencies: a power cut, a storm or a flood, a few days without water. Practical survival information, useful supplies, clear expectations and honest limits.{% endblocktranslate %}</p>
     <div class="about__points">
       <div class="about__point">
         <h2>{% translate "Official guidance first" %}</h2>

@@ -211,6 +211,16 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   .icons__link:hover { color: var(--accentText); }
   .icons__account { display: none; }
   @media (min-width: 640px) { .icons__account { display: inline-flex; } }
+  /* Account menu: "Account" opens it (owner's ask, 2026-10-10). It names links,
+     never the shopper, so a cached page can carry nothing personal. */
+  .acct { position: relative; display: inline-flex; }
+  .acct__menu { position: absolute; top: calc(100% + .6rem); right: 0; z-index: 60; width: max-content; min-width: 15rem; max-width: calc(100vw - 2rem); display: grid; gap: 2px; padding: .5rem; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-sm); box-shadow: 0 18px 40px -18px rgba(18, 19, 17, .35); font-size: .9375rem; }
+  .acct__menu[hidden] { display: none; }
+  .acct__menu a { display: block; padding: .6rem .8rem; border-radius: 10px; color: var(--ink); text-decoration: none; }
+  .acct__menu a:hover, .acct__menu a:focus-visible { background: var(--surface2); }
+  .acct__menu .acct__primary, .acct__menu .acct__primary:hover { background: var(--ink); color: var(--inv); text-align: center; font-weight: 600; }
+  .acct__label { margin: .55rem .8rem .15rem; font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink2); }
+  .acct__sep { border: 0; border-top: 1px solid var(--line); margin: .35rem .25rem; }
   .cart-icon { position: relative; }
   .cart-badge { min-width: 22px; height: 20px; padding: 0 7px; border-radius: 10px; background: var(--ink); color: var(--inv); font: 500 .75rem/20px var(--sans); text-align: center; display: inline-block; }
   .cart-badge[hidden] { display: none; }
@@ -486,7 +496,28 @@ defaults.
     </nav>
     <div class="icons">
       <button type="button" id="quicksearch-toggle" class="icons__link" aria-expanded="false" aria-controls="quicksearch-panel">{% translate "Search" %}</button>
-      <a href="/account/" class="icons__link icons__account">{% translate "Account" %}</a>
+      {% plugin_enabled "marketplace" as marketplace_on %}{% plugin_enabled "affiliates" as affiliates_on %}
+      <div class="acct">
+        <a href="/account/" class="icons__link icons__account" aria-expanded="false" aria-controls="acct-menu" data-acct-toggle>{% translate "Account" %}</a>
+        <div class="acct__menu" id="acct-menu" hidden>
+          {% if user.is_authenticated %}
+          <a href="/account/" data-acct-item="account">{% translate "My account" %}</a>
+          <a href="/account/orders/" data-acct-item="orders">{% translate "Orders" %}</a>
+          {% else %}
+          <a href="/auth/login/" class="acct__primary" data-acct-item="sign-in">{% translate "Sign in" %}</a>
+          <a href="/auth/signup/" data-acct-item="sign-up">{% translate "Create an account" %}</a>
+          {% endif %}
+          {% if affiliates_on or marketplace_on %}
+          <p class="acct__label">{% translate "Partners" %}</p>
+          {% if affiliates_on %}<a href="/affiliates/me/" data-acct-item="affiliate">{% if user.is_authenticated %}{% translate "Affiliate dashboard" %}{% else %}{% translate "Affiliate login" %}{% endif %}</a>{% endif %}
+          {% if marketplace_on %}<a href="/vendor/me/" data-acct-item="vendor">{% if user.is_authenticated %}{% translate "Supplier dashboard" %}{% else %}{% translate "Supplier login" %}{% endif %}</a>{% endif %}
+          {% endif %}
+          {% if user.is_authenticated %}
+          <hr class="acct__sep">
+          <a href="/auth/logout/" data-acct-item="sign-out">{% translate "Sign out" %}</a>
+          {% endif %}
+        </div>
+      </div>
       <a href="/cart/" class="icons__link cart-icon" id="cart-icon-link">{% translate "Cart" %} <span class="cart-badge" id="cart-badge" hidden></span></a>
       <button id="drawer-open" class="icon-btn nav-burger" aria-label="{% translate 'Menu' %}" aria-controls="drawer" aria-expanded="false">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="17" x2="21" y2="17"/></svg>
@@ -728,6 +759,7 @@ defaults.
         {% else %}<a href="{{ item.url }}"{% if item.target == '_blank' %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
       {% endfor %}
       <a href="/account/">{% translate "Account" %}</a>
+      {% plugin_enabled "marketplace" as marketplace_on %}{% plugin_enabled "affiliates" as affiliates_on %}{% if affiliates_on %}<a href="/affiliates/me/">{% if user.is_authenticated %}{% translate "Affiliate dashboard" %}{% else %}{% translate "Affiliate login" %}{% endif %}</a>{% endif %}{% if marketplace_on %}<a href="/vendor/me/">{% if user.is_authenticated %}{% translate "Supplier dashboard" %}{% else %}{% translate "Supplier login" %}{% endif %}</a>{% endif %}
     {% else %}
       <a href="/products/">{% translate "Shop" %}</a>
       <a href="/staff-picks/">{% translate "Bundles" %}</a>
@@ -739,6 +771,7 @@ defaults.
       {% if affiliates_on %}<a href="/affiliates/">{% translate "Affiliates" %}</a>{% endif %}
       {% storefront_blocks "nav_primary_extra" %}
       <a href="/account/">{% translate "Account" %}</a>
+      {% if affiliates_on %}<a href="/affiliates/me/">{% if user.is_authenticated %}{% translate "Affiliate dashboard" %}{% else %}{% translate "Affiliate login" %}{% endif %}</a>{% endif %}{% if marketplace_on %}<a href="/vendor/me/">{% if user.is_authenticated %}{% translate "Supplier dashboard" %}{% else %}{% translate "Supplier login" %}{% endif %}</a>{% endif %}
     {% endif %}
   </nav>
 </div>
@@ -756,7 +789,7 @@ defaults.
   <div class="wrap grid">
     <div class="col">
       <a href="/" class="wordmark"><span class="wordmark__mark" aria-hidden="true"></span>{{ STORE_NAME|default:"Irving Survival" }}</a>
-      <p class="tagline">{% if theme_config.tagline %}{{ theme_config.tagline }}{% else %}{% translate "Calm, practical preparedness for UK households." %}{% endif %}</p>
+      <p class="tagline">{% if theme_config.tagline %}{{ theme_config.tagline }}{% else %}{% translate "Calm, practical preparedness for households everywhere." %}{% endif %}</p>
       {% plugin_enabled "newsletter" as has_newsletter %}
       {% if has_newsletter %}
       <form class="newsletter" id="footer-newsletter" method="post" action="/newsletter/subscribe/" toolname="subscribe_to_newsletter" tooldescription="Subscribe an email address to the shop newsletter">
@@ -811,9 +844,11 @@ defaults.
     {% if marketplace_on or affiliates_on %}
     <div class="col">
       <h2>{% translate "Work with us" %}</h2>
-      {% if marketplace_on %}<a href="/vendors/">{% translate "Our suppliers" %}</a>
+      {% if marketplace_on %}<a href="/vendor/me/" data-partner-link="vendor">{% if user.is_authenticated %}{% translate "Supplier dashboard" %}{% else %}{% translate "Supplier login" %}{% endif %}</a>
+      <a href="/vendors/">{% translate "Our suppliers" %}</a>
       <a href="/marketplace/">{% translate "Sell with us" %}</a>{% endif %}
-      {% if affiliates_on %}<a href="/affiliates/">{% translate "Affiliate program" %}</a>{% endif %}
+      {% if affiliates_on %}<a href="/affiliates/me/" data-partner-link="affiliate">{% if user.is_authenticated %}{% translate "Affiliate dashboard" %}{% else %}{% translate "Affiliate login" %}{% endif %}</a>
+      <a href="/affiliates/">{% translate "Affiliate program" %}</a>{% endif %}
     </div>
     {% endif %}
   </div>
@@ -823,6 +858,35 @@ defaults.
   </div>
 </footer>
 
+<script>
+(() => {
+  // The account menu (owner's ask, 2026-10-10). Without this script the icon is a
+  // plain link to /account/, so nothing is lost when it does not run.
+  const toggle = document.querySelector('[data-acct-toggle]');
+  const menu = document.getElementById('acct-menu');
+  if (!toggle || !menu) return;
+  const setOpen = (open) => {
+    menu.hidden = !open;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  toggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    const open = menu.hidden;
+    setOpen(open);
+    if (open && e.detail === 0) menu.querySelector('a')?.focus();
+  });
+  document.addEventListener('click', (e) => {
+    if (!menu.hidden && !menu.contains(e.target) && !toggle.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !menu.hidden) { setOpen(false); toggle.focus(); }
+  });
+  menu.addEventListener('focusout', (e) => {
+    const next = e.relatedTarget;
+    if (next && !menu.contains(next) && next !== toggle) setOpen(false);
+  });
+})();
+</script>
 <script>
 (() => {
   const dr = document.getElementById('drawer');

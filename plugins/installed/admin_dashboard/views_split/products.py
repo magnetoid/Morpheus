@@ -603,7 +603,8 @@ def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:  # noqa
     # clearer error if someone uploads a PDF or .txt by accident.
     if not (upload.content_type or '').startswith('image/'):
         return _fail('That file is not an image.')
-    alt = (request.POST.get('alt_text') or '').strip()[:255]
+    # An empty alt text takes the product's title: it is what the photo shows.
+    alt = ((request.POST.get('alt_text') or '').strip() or product.name or '')[:255]
 
     # 15-image cap (Phase 1 of docs/plans/product-slider.md).
     # Slider only renders 15 anyway; refuse to accept more so the DB

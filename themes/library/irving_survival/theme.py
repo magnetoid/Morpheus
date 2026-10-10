@@ -9,9 +9,11 @@ Design notes
 - Warm grey ground (#F3F2EE), white surfaces, near-black ink (#121311), one
   orange signal (#E8590C) used sparingly. Geist for everything, Geist Mono
   for labels and figures. Pill buttons, 24-28px tiles, no shadows.
-- The copy is Irving's own voice: calm, UK-specific, honest about limits.
-  Numbers the theme prints (water per person, the 105 power-cut line) come
-  from the UK Government's Prepare guidance and say so.
+- The copy is Irving's own voice: calm, written for households anywhere in the
+  world (owner, 2026-10-10: worldwide survival and preparedness information
+  and products), honest about limits. Numbers the theme prints (water per
+  person, the 105 power-cut line) come from the UK Government's Prepare
+  guidance and say so.
 - The supply calculator and the readiness check run in the browser and
   store nothing on the server; neither invents a figure about the visitor.
 - Same storefront contract as supernatural_shop (slots, head contract,
@@ -68,7 +70,7 @@ class IrvingSurvivalTheme(MorpheusTheme):
             'properties': {
                 'tagline': {
                     'type': 'string',
-                    'default': 'Calm, practical preparedness for UK households.',
+                    'default': 'Calm, practical preparedness for households everywhere.',
                     'title': 'Tagline (single line)',
                 },
                 'show_status_bar': {
