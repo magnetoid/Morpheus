@@ -27,6 +27,8 @@ class InventoryPlugin(Plugin):
         self.register_hook(events.ORDER_RESERVE_STOCK, self.reserve_stock_filter, priority=5)
         # Dashboard-home low-stock tile.
         self.register_hook(events.DASHBOARD_HOME_PANELS, self.on_dashboard_panels, priority=50)
+        # Stock for surfaces that show it without owning it (the vendor portal).
+        self.register_hook(events.PRODUCT_STOCK_SUMMARY, self.on_stock_summary, priority=50)
         self.register_hook('order.paid', self.on_order_paid, priority=5)
         self.register_hook('order.cancelled', self.on_order_cancelled, priority=5)
         self.register_hook('return.refunded', self.on_return_refunded, priority=5)
@@ -83,10 +85,9 @@ class InventoryPlugin(Plugin):
         filter in-memory rather than denormalising a column for one tile.
         """
         from plugins.installed.inventory.models import StockLevel  # noqa: PLC0415
-        from plugins.registry import app_registry  # noqa: PLC0415
+        from plugins.installed.inventory.services import low_stock_threshold  # noqa: PLC0415
 
-        ae_plugin = app_registry.get('advanced_ecommerce')
-        threshold = int(ae_plugin.get_config_value('low_stock_threshold', 5)) if ae_plugin else 5
+        threshold = low_stock_threshold()
         candidates = list(
             StockLevel.objects.select_related('variant', 'variant__product', 'warehouse').filter(
                 quantity__lte=threshold + 50
@@ -98,6 +99,14 @@ class InventoryPlugin(Plugin):
         )[:6]
         value['low_stock_threshold'] = threshold
         return value
+
+    def on_stock_summary(self, value=None, product_ids=None, **kwargs):
+        """PRODUCT_STOCK_SUMMARY: add this app's stock answer for ``product_ids``."""
+        from plugins.installed.inventory.services import stock_summary  # noqa: PLC0415
+
+        answer = dict(value or {})
+        answer.update(stock_summary(product_ids))
+        return answer
 
     def reserve_stock_filter(self, value=0, order=None, **kwargs):
         # Reserve stock when the order is created (before payment). Raises

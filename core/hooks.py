@@ -551,6 +551,14 @@ class MorpheusEvents:
     #   column). The subscriber may annotate `products` in place for its cell
     #   template to read; the view pre-renders one cell per product.
     PRODUCT_LIST_COLUMNS = 'product.list_columns'  # filter
+    # PRODUCT_STOCK_SUMMARY — filter, value=dict, kwargs: product_ids=list.
+    #   Fired by a surface that shows stock for products it does not own (the
+    #   marketplace's vendor portal). The inventory app answers with
+    #   {str(product_id): {'available': int, 'low': bool, 'out': bool}} for
+    #   every product whose stock it tracks. A product with no stock records is
+    #   untracked and left out — never reported as zero. With inventory off
+    #   nothing answers, the value stays {} and the surface shows no stock.
+    PRODUCT_STOCK_SUMMARY = 'product.stock_summary'  # filter
     # CATEGORY_FORM_CARDS / COLLECTION_FORM_CARDS / PAGE_FORM_CARDS — filters,
     #   value=list[dict], kwargs: category= / collection= / page= (the object, or
     #   None while creating). CATEGORY_FORM_SAVED / COLLECTION_FORM_SAVED /

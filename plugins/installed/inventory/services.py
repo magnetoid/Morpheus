@@ -437,3 +437,52 @@ def variant_availability(variant) -> str:
     if qty is None or qty > 0:
         return 'in_stock'  # None = untracked, not empty
     return 'backorder' if getattr(variant, 'inventory_policy', '') == 'continue' else 'out_of_stock'
+
+
+# ── Stock for surfaces that do not own it ────────────────────────────────
+
+
+def low_stock_threshold() -> int:
+    """Units at or below which a product counts as low on stock — the number the
+    dashboard's low-stock tile uses (advanced e-commerce settings)."""
+    from plugins.registry import app_registry
+
+    plugin = app_registry.get('advanced_ecommerce')
+    try:
+        return int(plugin.get_config_value('low_stock_threshold', 5)) if plugin else 5
+    except (TypeError, ValueError):
+        return 5
+
+
+def stock_summary(product_ids) -> dict:
+    """Sellable units per product, for the ``PRODUCT_STOCK_SUMMARY`` filter.
+
+    ``{str(product_id): {'available', 'low', 'out'}}``, summed over the active
+    variants' stock rows (quantity less reserved). A product whose merchant
+    switched tracking off, or whose variants have no stock rows, is untracked
+    and left out of the answer — absence of a measurement is not a measurement
+    of absence (``_availability_from_stock``).
+    """
+    from django.db.models import F, Sum
+
+    from plugins.installed.catalog.models import Product
+
+    ids = [pk for pk in product_ids or [] if pk]
+    if not ids:
+        return {}
+    tracked = Product.objects.filter(pk__in=ids, track_inventory=True).values('pk')
+    rows = (
+        StockLevel.objects.filter(variant__product_id__in=tracked, variant__is_active=True)
+        .values('variant__product_id')
+        .annotate(qty=Sum(F('quantity') - F('reserved_quantity')))
+    )
+    threshold = low_stock_threshold()
+    summary = {}
+    for row in rows:
+        available = max(0, int(row['qty'] or 0))
+        summary[str(row['variant__product_id'])] = {
+            'available': available,
+            'out': available <= 0,
+            'low': 0 < available <= threshold,
+        }
+    return summary
