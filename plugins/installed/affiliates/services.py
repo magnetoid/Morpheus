@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from decimal import Decimal
 
 from django.db import transaction
@@ -69,6 +70,69 @@ def generate_unique_handle(customer, *, suggested: str = '', max_tries: int = 50
         if idx > max_tries:
             raise HandleUnavailable(seed)
     return handle
+
+
+def _bare_host(netloc: str) -> str:
+    host = (netloc or '').strip().lower()
+    return host[4:] if host.startswith('www.') else host
+
+
+def store_path(raw: str, host: str) -> str:
+    """The site-relative path a tracked link may land on, from what a partner pasted.
+
+    Accepts a path (``/products/x/``, ``products/x``) or a full URL on this
+    store's own host (``https://<host>/products/x/?utm_source=blog``) and returns
+    ``/path?query#fragment``. Anything else raises ``ValueError`` with a message
+    for the partner: ``/r/<code>`` redirects to whatever is stored, and a link an
+    affiliate could point at another site turns the store's domain into a
+    phishing hop. ``/r/`` itself is refused too (a redirect loop).
+    """
+    from urllib.parse import urlsplit, urlunsplit
+
+    from django.utils.http import url_has_allowed_host_and_scheme
+    from django.utils.translation import gettext as _
+
+    text = (raw or '').strip()
+    if not text:
+        return '/'
+    if len(text) > 500:
+        raise ValueError(_('That address is too long.'))
+    own = _bare_host(host)
+    if '://' not in text and not text.startswith('/'):
+        first = text.split('/', 1)[0]
+        if own and _bare_host(first) == own:
+            text = f'https://{text}'
+        elif re.match(r'^[a-z][a-z0-9+.-]*:', text, re.I):
+            # mailto:, javascript:, data: … — an address, but not a page here.
+            raise ValueError(_('Use the address of a page on this store.'))
+        else:
+            text = f'/{text}'
+    parts = urlsplit(text)
+    if (parts.scheme or parts.netloc) and (
+        parts.scheme not in ('http', 'https') or _bare_host(parts.netloc) != own
+    ):
+        raise ValueError(_('Use the address of a page on this store.'))
+    path = urlunsplit(('', '', parts.path or '/', parts.query, parts.fragment))
+    allowed = {host} if host else set()
+    if (
+        not path.startswith('/')
+        or path.startswith('//')
+        or '\\' in path
+        or not url_has_allowed_host_and_scheme(path, allowed_hosts=allowed)
+    ):
+        raise ValueError(_('Use the address of a page on this store.'))
+    if path == '/r' or path.startswith('/r/'):
+        raise ValueError(_('That is already a tracked link. Paste the page it leads to instead.'))
+    return path
+
+
+def redirect_target(landing_url: str, host: str) -> str:
+    """Where ``/r/<code>`` sends a visitor: the stored landing page when it is a
+    page of this store, else the home page (rows saved before the guard)."""
+    try:
+        return store_path(landing_url, host)
+    except ValueError:
+        return '/'
 
 
 def record_click(
@@ -357,6 +421,80 @@ def _base_percent(*, program, affiliate) -> Decimal:
     if tier is not None:
         return tier['percent']
     return Decimal(str(program.commission_value or 0))
+
+
+def _next_tier(program, approved: int, percent: Decimal) -> dict | None:
+    """The nearest tier above ``approved`` approved orders that pays more."""
+    ahead = []
+    for t in program.tiers if isinstance(program.tiers, list) else []:
+        if not isinstance(t, dict):
+            continue
+        try:
+            need = int(t.get('min_conversions', 0))
+            pct = Decimal(str(t.get('percent')))
+        except (TypeError, ValueError, ArithmeticError):
+            continue
+        if need > approved and pct > percent:
+            ahead.append((need, pct, str(t.get('name', ''))))
+    if not ahead:
+        return None
+    need, pct, name = min(ahead)
+    return {
+        'name': name,
+        'percent': pct,
+        'needed': need - approved,
+        'progress': f'{min(100, approved * 100 / need):.0f}',
+    }
+
+
+def _category_rates(program) -> list[dict]:
+    """The program's per-category rates, named, highest first."""
+    overrides = program.category_commission_overrides
+    if not isinstance(overrides, dict) or not overrides:
+        return []
+    from plugins.installed.catalog.models import Category
+
+    names = dict(
+        Category.objects.filter(slug__in=[str(k) for k in overrides]).values_list('slug', 'name')
+    )
+    rates = []
+    for slug, value in overrides.items():
+        pct = _safe_decimal(value)
+        if pct is not None and str(slug) in names:
+            rates.append({'name': names[str(slug)], 'percent': pct})
+    return sorted(rates, key=lambda c: (-c['percent'], c['name']))
+
+
+def commission_summary(affiliate) -> dict:
+    """The rate this affiliate earns now and what would lift it.
+
+    Read from the same signals ``_calculate_commission`` uses (flat override >
+    tier > program rate; category overrides per line), so the portal never
+    quotes a rate an order will not pay.
+    """
+    from djmoney.money import Money
+
+    program = affiliate.program
+    if program.commission_type == 'fixed':
+        currency = str(program.minimum_payout.currency)
+        return {'kind': 'fixed', 'amount': Money(program.commission_value or 0, currency)}
+
+    flat = _affiliate_flat_override_percent(affiliate)
+    if flat is not None:
+        # A negotiated rate wins outright: no tiers, no category rates.
+        return {'kind': 'percent', 'percent': flat, 'negotiated': True}
+
+    approved = affiliate.conversions.filter(status='approved').count()
+    tier = effective_tier(program, approved)
+    percent = tier['percent'] if tier else Decimal(str(program.commission_value or 0))
+    return {
+        'kind': 'percent',
+        'percent': percent,
+        'tier': tier,
+        'next_tier': _next_tier(program, approved, percent),
+        'categories': _category_rates(program),
+        'approved': approved,
+    }
 
 
 def _product_category_slugs(product) -> list[str]:

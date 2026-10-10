@@ -1,203 +1,113 @@
-{% extends "storefront/base.html" %}
-{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% extends "partner_portal/base.html" %}
+{% load i18n morph %}
 
-{% block content %}
-<section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 1100px;">
+{% block portal_head %}
+<style>
+.aff-links td { vertical-align: top; }
+.aff-link-url { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .5rem; margin-top: .35rem; }
+.aff-link-url .pp-code { font-size: .8rem; }
+.aff-dest { display: block; max-width: 28ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); font-size: .85rem; }
+.aff-share { margin-top: .5rem; }
+.aff-share summary { font-size: .8rem; color: var(--ink-2); }
+.aff-share .pp-share { margin-top: .45rem; }
+</style>
+{% endblock %}
 
-    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem; font-size: .85rem;">
-      <a href="/affiliates/me/" style="color: var(--muted);">Dashboard</a>
-      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
-      <span aria-current="page">Links</span>
-    </nav>
+{% block portal_title %}{% translate "Links" %}{% endblock %}
+{% block portal_lede %}<p class="pp-lede">{% translate "Every link you share, and what each one earned. Pause a link when a campaign ends: it still opens the page, but it stops earning." %}</p>{% endblock %}
 
-    <header style="display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:1rem; margin: 0 0 1.5rem;">
-      <div>
-        <p class="eyebrow">@{{ affiliate.handle }}</p>
-        <h1 class="display display-l" style="margin: .5rem 0 .25rem;">Tracked links<span class="text-accent">.</span></h1>
-        <p class="lede" style="margin: 0; max-width: 56ch;">Every link you've spun up, with its click and conversion history. Toggle a link off when a campaign ends; the URL still resolves but stops accruing.</p>
-      </div>
-      <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
-        <a href="/affiliates/me/coupon/" class="btn">🏷️ Coupon</a>
-        <a href="/affiliates/me/analytics/" class="btn">📊 Analytics</a>
-        <a href="/affiliates/me/creatives/" class="btn">🎨 Creatives</a>
-        <a href="/affiliates/me/leaderboard/" class="btn">🏆 Leaderboard</a>
-      </div>
-    </header>
-
-    {% comment %}── Filters + new-link form ───────────────────────────{% endcomment %}
-    <div class="aff-toolbar">
-      <form method="get" class="aff-toolbar__filters">
-        <input type="text" name="q" value="{{ q }}" placeholder="Search by code or label" class="input">
-        <select name="status" class="input">
-          <option value="">All statuses</option>
-          <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
-          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
-        </select>
-        <button type="submit" class="btn">Filter</button>
-      </form>
-
-      <form method="post" action="/affiliates/me/links/new/" class="aff-toolbar__new">
-        {% csrf_token %}
-        <input type="hidden" name="affiliate_id" value="{{ affiliate.id }}">
-        <input type="hidden" name="return_to" value="/affiliates/me/links/">
-        <input type="text" name="landing_url" value="/" required placeholder="/products/example-book/" class="input">
-        <input type="text" name="label" maxlength="100" placeholder="Label (optional)" class="input">
-        <button type="submit" class="btn btn-primary">+ New link</button>
-      </form>
-    </div>
-
-    {% if not links %}
-      <div class="aff-empty">
-        <p style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 .5rem;">No links yet.</p>
-        <p style="color: var(--muted); margin: 0 0 1rem;">Create your first one above — pick a landing path, add an optional label, share the link.</p>
-      </div>
-    {% else %}
-      <div class="aff-links-table-wrap">
-        <table class="aff-table aff-table--wide">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Label</th>
-              <th>Target</th>
-              <th>Clicks</th>
-              <th>Conv.</th>
-              <th>Active</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for link in links %}
-            {% with full_url=site_base|add:"/r/"|add:link.code %}
-            <tr>
-              <td>
-                <button type="button" class="aff-link__copy" data-aff-copy="{{ full_url }}" aria-label="Copy {{ link.code }} to clipboard">
-                  <code>/r/{{ link.code }}</code>
-                  <span class="aff-link__copy-icon" aria-hidden="true">⧉</span>
-                </button>
-                <div class="aff-share" role="group" aria-label="Share this link">
-                  <a class="aff-share__btn" href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&url={{ full_url|urlencode }}" target="_blank" rel="noopener" title="Share on X" aria-label="Share on X">𝕏</a>
-                  <a class="aff-share__btn" href="https://wa.me/?text={{ share_text|urlencode }}%20{{ full_url|urlencode }}" target="_blank" rel="noopener" title="Share on WhatsApp" aria-label="Share on WhatsApp">✆</a>
-                  <a class="aff-share__btn" href="https://www.facebook.com/sharer/sharer.php?u={{ full_url|urlencode }}" target="_blank" rel="noopener" title="Share on Facebook" aria-label="Share on Facebook">f</a>
-                  <a class="aff-share__btn" href="mailto:?subject={{ share_subject|urlencode }}&body={{ share_text|urlencode }}%20{{ full_url|urlencode }}" title="Share by email" aria-label="Share by email">✉</a>
-                </div>
-              </td>
-              <td>
-                <details class="aff-inline-edit">
-                  <summary>{{ link.label|default:"—" }}</summary>
-                  <form method="post" action="/affiliates/me/links/{{ link.id }}/edit/" class="aff-inline-edit__form">
-                    {% csrf_token %}
-                    <input type="text" name="label" value="{{ link.label }}" maxlength="100" placeholder="Label" class="input">
-                    <input type="hidden" name="is_active" value="{% if link.is_active %}1{% else %}0{% endif %}">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                  </form>
-                </details>
-              </td>
-              <td><span style="color: var(--muted); font-size: .85rem;">{{ link.landing_url }}</span></td>
-              <td>{{ link.click_count }}</td>
-              <td>{{ link.conversion_count }}</td>
-              <td>
-                <form method="post" action="/affiliates/me/links/{{ link.id }}/edit/" style="margin:0;">
-                  {% csrf_token %}
-                  <input type="hidden" name="is_active" value="{% if link.is_active %}0{% else %}1{% endif %}">
-                  <button type="submit" class="aff-toggle aff-toggle--{% if link.is_active %}on{% else %}off{% endif %}">
-                    {% if link.is_active %}On{% else %}Off{% endif %}
-                  </button>
-                </form>
-              </td>
-              <td><a href="/affiliates/me/" style="font-size: .85rem;">Dashboard →</a></td>
-            </tr>
-            {% endwith %}
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% endif %}
-
-  </div>
+{% block portal_content %}
+<section class="pp-card" id="builder" aria-labelledby="aff-builder-title">
+  <div class="pp-card__head"><h2 class="pp-card__title" id="aff-builder-title">{% translate "Make a tracked link" %}</h2></div>
+  {% include "affiliates/_builder.html" with return_to="/affiliates/me/links/" %}
+  {% if new_link %}{% include "affiliates/_new_link.html" %}{% endif %}
 </section>
 
-<style>
-.aff-toolbar {
-  display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between;
-  margin-bottom: 1.5rem; padding: 1rem; background: var(--paper-2); border-radius: 8px;
-}
-.aff-toolbar__filters, .aff-toolbar__new { display: flex; gap: .5rem; flex-wrap: wrap; }
-.aff-toolbar__filters .input, .aff-toolbar__new .input { padding: .45rem .65rem; font-size: .9rem; }
+<section class="pp-card" aria-labelledby="aff-links-title">
+  <div class="pp-toolbar">
+    <h2 class="pp-card__title" id="aff-links-title">{% translate "Your links" %}</h2>
+    <div class="pp-scroll-x">
+      <nav class="pp-seg" aria-label="{% translate 'Filter links' %}">
+        <a href="?{% if q %}q={{ q|urlencode }}{% endif %}"{% if not status %} aria-current="true"{% endif %}>{% translate "All" %} <span class="pp-seg__count">{{ counts.all }}</span></a>
+        <a href="?status=active{% if q %}&q={{ q|urlencode }}{% endif %}"{% if status == 'active' %} aria-current="true"{% endif %}>{% translate "Active" %} <span class="pp-seg__count">{{ counts.active }}</span></a>
+        <a href="?status=inactive{% if q %}&q={{ q|urlencode }}{% endif %}"{% if status == 'inactive' %} aria-current="true"{% endif %}>{% translate "Paused" %} <span class="pp-seg__count">{{ counts.inactive }}</span></a>
+      </nav>
+    </div>
+  </div>
+  <form method="get" class="pp-search" role="search" style="margin-bottom: 1rem;">
+    {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+    <label class="pp-sr" for="aff-link-q">{% translate "Search links" %}</label>
+    <input class="pp-input" id="aff-link-q" type="search" name="q" value="{{ q }}" placeholder="{% translate 'Search by label, code or page' %}">
+    <button type="submit" class="btn btn-ghost btn-sm">{% translate "Search" %}</button>
+  </form>
 
-.aff-empty {
-  text-align: center; padding: 3rem 2rem;
-  background: var(--paper-2);
-  border-radius: 12px;
-}
-
-.aff-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-.aff-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; padding: .5rem .6rem; border-bottom: 1px solid var(--rule); }
-.aff-table td { padding: .6rem; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; vertical-align: middle; }
-.aff-table tr:last-child td { border-bottom: 0; }
-.aff-links-table-wrap { overflow-x: auto; }
-
-.aff-link__copy {
-  display: inline-flex; align-items: center; gap: .35rem;
-  background: var(--paper-2);
-  padding: .3rem .55rem; border-radius: 6px;
-  border: 1px solid transparent;
-  cursor: pointer; font-family: inherit; color: inherit;
-  transition: border-color .15s ease;
-}
-.aff-link__copy:hover { border-color: var(--rule); }
-.aff-link__copy.is-copied { background: rgba(16,185,129,.12); color: #047857; }
-.aff-link__copy.is-copied::after { content: ' copied'; font-size: .7rem; }
-.aff-link__copy code { font-size: .82rem; }
-.aff-link__copy-icon { font-size: .85rem; color: var(--muted); }
-
-.aff-share { display: inline-flex; gap: .25rem; margin-left: .4rem; vertical-align: middle; }
-.aff-share__btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px; border-radius: 6px;
-  background: var(--paper-2); color: var(--muted); font-size: .8rem;
-  text-decoration: none; border: 1px solid transparent;
-  transition: border-color .15s ease, color .15s ease;
-}
-.aff-share__btn:hover { border-color: var(--rule); color: var(--ink); }
-
-.aff-inline-edit { display: inline; }
-.aff-inline-edit summary { cursor: pointer; list-style: none; }
-.aff-inline-edit summary::-webkit-details-marker { display: none; }
-.aff-inline-edit summary:hover { color: var(--accent-ink); }
-.aff-inline-edit__form { display: flex; gap: .35rem; margin-top: .35rem; }
-.aff-inline-edit__form .input { padding: .35rem .5rem; font-size: .85rem; }
-
-.aff-toggle {
-  padding: .25rem .65rem; border-radius: 999px; font-size: .75rem; font-weight: 600;
-  border: none; cursor: pointer;
-}
-.aff-toggle--on  { background: rgba(16,185,129,.15); color: #047857; }
-.aff-toggle--off { background: rgba(0,0,0,.06); color: var(--muted); }
-</style>
-
-<script>
-(function () {
-  function copy(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-      return navigator.clipboard.writeText(text);
-    }
-    return new Promise(function (resolve, reject) {
-      var ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); ta.remove(); resolve(); }
-      catch (e) { ta.remove(); reject(e); }
-    });
-  }
-  document.querySelectorAll('[data-aff-copy]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      copy(btn.dataset.affCopy).then(function () {
-        btn.classList.add('is-copied');
-        setTimeout(function () { btn.classList.remove('is-copied'); }, 1500);
-      }).catch(function () {});
-    });
-  });
-})();
-</script>
+  {% if links %}
+  <div class="pp-table-wrap">
+    <table class="pp-table aff-links">
+      <thead>
+        <tr>
+          <th scope="col">{% translate "Link" %}</th>
+          <th scope="col" class="pp-hide-sm">{% translate "Leads to" %}</th>
+          <th scope="col" class="num pp-hide-sm">{% translate "Clicks" %}</th>
+          <th scope="col" class="num">{% translate "Orders" %}</th>
+          <th scope="col" class="num">{% translate "Commission" %}</th>
+          <th scope="col">{% translate "Status" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for link in links %}
+        {% with full_url=site_base|add:"/r/"|add:link.code %}
+        <tr{% if new_link and new_link.pk == link.pk %} class="is-highlight"{% endif %} data-link-row="{{ link.code }}">
+          <td>
+            <details class="pp-edit">
+              <summary><span class="pp-table__primary">{% if link.coupon_code %}{% translate "Coupon" %} {{ link.coupon_code }}{% else %}{{ link.label|default:_("Untitled link") }}{% endif %}</span> <span class="pp-muted" aria-hidden="true">✎</span><span class="pp-sr">{% translate "Rename" %}</span></summary>
+              <form method="post" action="/affiliates/me/links/{{ link.id }}/edit/" class="pp-edit__form">
+                {% csrf_token %}
+                <label class="pp-sr" for="aff-label-{{ link.id }}">{% translate "Label" %}</label>
+                <input class="pp-input" id="aff-label-{{ link.id }}" type="text" name="label" value="{{ link.label }}" maxlength="100">
+                <button type="submit" class="btn btn-primary btn-sm">{% translate "Save" %}</button>
+              </form>
+            </details>
+            <div class="aff-link-url">
+              <code class="pp-code">/r/{{ link.code }}</code>
+              {% include "partner_portal/_copy.html" with text=full_url label_for=link.code %}
+            </div>
+            <details class="pp-edit aff-share">
+              <summary>{% translate "Share" %}</summary>
+              {% with share_text=link.label|default:STORE_NAME %}
+              <div class="pp-share" role="group" aria-label="{% translate 'Share this link' %}">
+                <a href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&amp;url={{ full_url|urlencode }}" target="_blank" rel="noopener">X</a>
+                <a href="https://wa.me/?text={{ share_text|urlencode }}%20{{ full_url|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+                <a href="https://www.facebook.com/sharer/sharer.php?u={{ full_url|urlencode }}" target="_blank" rel="noopener">Facebook</a>
+                <a href="mailto:?subject={{ share_text|urlencode }}&amp;body={{ full_url|urlencode }}">{% translate "Email" %}</a>
+              </div>
+              {% endwith %}
+            </details>
+          </td>
+          <td class="pp-hide-sm"><a class="aff-dest pp-link" href="{{ link.landing_url }}" title="{{ link.landing_url }}">{{ link.landing_url }}</a></td>
+          <td class="num pp-hide-sm">{{ link.period_clicks }}</td>
+          <td class="num">{{ link.period_orders }}</td>
+          <td class="num">{{ link.commission|money }}</td>
+          <td>
+            <form method="post" action="/affiliates/me/links/{{ link.id }}/edit/" class="pp-inline-form">
+              {% csrf_token %}
+              <input type="hidden" name="is_active" value="{% if link.is_active %}0{% else %}1{% endif %}">
+              <button type="submit" class="pp-switch" aria-pressed="{% if link.is_active %}true{% else %}false{% endif %}" title="{% if link.is_active %}{% translate 'Pause this link' %}{% else %}{% translate 'Turn this link back on' %}{% endif %}">{% if link.is_active %}{% translate "Active" %}{% else %}{% translate "Paused" %}{% endif %}</button>
+            </form>
+          </td>
+        </tr>
+        {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="pp-card__foot">{% translate "Clicks, orders and commission are lifetime totals for each link." %}</p>
+  {% elif q or status %}
+    {% translate "No links match" as e_title %}{% translate "Try another search, or clear the filter." as e_text %}
+    {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="link" compact=True %}
+  {% else %}
+    {% translate "No links yet" as e_title %}{% translate "Make your first one above: pick a page or a product, add a label if you like, and share it." as e_text %}
+    {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="link" compact=True %}
+  {% endif %}
+</section>
 {% endblock %}

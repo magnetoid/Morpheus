@@ -1,185 +1,123 @@
-{% extends "storefront/base.html" %}
-{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% extends "partner_portal/base.html" %}
+{% load i18n %}
 
-{% block content %}
-<section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 1100px;">
+{% block portal_head %}
+<style>
+.aff-widget-form { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); align-items: start; }
+.aff-widget-form .pp-field--wide { grid-column: 1 / -1; }
+.aff-embed { display: grid; gap: .45rem; margin-top: 1rem; }
+.aff-embed textarea { min-height: 76px; font-size: .8rem; }
+.aff-widget-meta { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .45rem; }
+</style>
+{% endblock %}
 
-    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem; font-size: .85rem;">
-      <a href="/affiliates/me/" style="color: var(--muted);">Dashboard</a>
-      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
-      <span aria-current="page">Widgets</span>
-    </nav>
+{% block portal_title %}{% translate "Widgets" %}{% endblock %}
+{% block portal_lede %}<p class="pp-lede">{% translate "Put a row of the store's products on your own site or blog. Every product links back through your referral code, so the clicks and orders are credited to you." %}</p>{% endblock %}
 
-    <header style="margin: 0 0 1.5rem;">
-      <p class="eyebrow">@{{ affiliate.handle }}</p>
-      <h1 class="display display-l" style="margin: .5rem 0 .25rem;">Embeddable widgets<span class="text-accent">.</span></h1>
-      <p class="lede" style="margin: 0; max-width: 60ch;">Drop a slice of the shop onto your blog or site. Every product links back through your referral code, so clicks and conversions are attributed to you automatically.</p>
-    </header>
-
-    {% comment %}── Create form ───────────────────────────────────────{% endcomment %}
-    <form method="post" action="/affiliates/me/widgets/" class="aff-card aff-widget-form">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="create">
-      <h2 class="aff-card__h">New widget</h2>
-      <div class="aff-widget-grid">
-        <label class="aff-field">
-          <span>Title (optional)</span>
-          <input type="text" name="title" maxlength="120" class="input" placeholder="My picks">
-        </label>
-        <label class="aff-field">
-          <span>Products to show</span>
-          <select name="source" class="input" data-aff-source>
-            <option value="featured">Featured products</option>
-            <option value="category">A category</option>
-            <option value="products">Specific products</option>
-          </select>
-        </label>
-        <label class="aff-field" data-aff-when="category" hidden>
-          <span>Category</span>
-          <select name="category_slug" class="input">
-            <option value="">— pick a category —</option>
-            {% for c in categories %}<option value="{{ c.slug }}">{{ c.name }}</option>{% endfor %}
-          </select>
-        </label>
-        <label class="aff-field aff-field--wide" data-aff-when="products" hidden>
-          <span>Product slugs (comma or newline separated)</span>
-          <textarea name="product_slugs" class="input" rows="2" placeholder="my-first-book, another-title"></textarea>
-        </label>
-        <label class="aff-field">
-          <span>Max items</span>
-          <input type="number" name="limit" min="1" max="24" value="6" class="input">
-        </label>
-        <label class="aff-field">
-          <span>Theme</span>
-          <select name="theme" class="input">
-            <option value="auto">Auto (match visitor)</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
-        <label class="aff-field">
-          <span>Layout</span>
-          <select name="layout" class="input">
-            <option value="grid">Grid</option>
-            <option value="carousel">Carousel</option>
-          </select>
-        </label>
-      </div>
-      <div style="margin-top: 1rem;">
-        <button type="submit" class="btn btn-primary">Create widget</button>
-      </div>
-    </form>
-
-    {% comment %}── Existing widgets ──────────────────────────────────{% endcomment %}
-    {% if not widgets %}
-      <div class="aff-empty" style="margin-top:1.5rem;">
-        <p style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 .5rem;">No widgets yet.</p>
-        <p style="color: var(--muted); margin: 0;">Create one above, then copy the embed code onto any external site.</p>
-      </div>
-    {% else %}
-      <div style="margin-top: 2rem; display: grid; gap: 1.25rem;">
-        {% for w in widgets %}
-        <div class="aff-card aff-widget">
-          <div class="aff-widget__head">
-            <div>
-              <strong>{{ w.title|default:w.get_source_display }}</strong>
-              <span class="aff-widget__meta">
-                {{ w.get_source_display }}{% if w.source == 'category' and w.category_slug %} · {{ w.category_slug }}{% endif %} · {{ w.limit }} max · {{ w.get_theme_display }} · {{ w.get_layout_display }}
-                {% if not w.is_active %}<span class="pill pill-neutral">Paused</span>{% endif %}
-              </span>
-            </div>
-            <div class="aff-widget__actions">
-              <a href="{{ w.iframe_src }}" target="_blank" rel="noopener" class="btn btn-ghost">Preview</a>
-              <form method="post" action="/affiliates/me/widgets/{{ w.id }}/edit/" style="display:inline-block;margin:0;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="toggle">
-                <button type="submit" class="btn btn-ghost">{% if w.is_active %}Pause{% else %}Resume{% endif %}</button>
-              </form>
-              <form method="post" action="/affiliates/me/widgets/{{ w.id }}/edit/" style="display:inline-block;margin:0;" data-confirm="Delete this widget? The embed code will stop working." data-confirm-cta="Delete" data-confirm-danger>
-                {% csrf_token %}
-                <input type="hidden" name="action" value="delete">
-                <button type="submit" class="btn btn-ghost">Delete</button>
-              </form>
-            </div>
-          </div>
-
-          <div class="aff-embed">
-            <div class="aff-embed__label">iframe embed</div>
-            <textarea readonly rows="2" class="aff-embed__code" data-aff-embed>&lt;iframe src="{{ w.iframe_src }}" width="100%" height="420" style="border:0;overflow:hidden" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="{{ w.title|default:'Shop' }}"&gt;&lt;/iframe&gt;</textarea>
-            <button type="button" class="btn aff-embed__copy" data-aff-copy-target>Copy iframe</button>
-          </div>
-
-          <div class="aff-embed">
-            <div class="aff-embed__label">JavaScript snippet</div>
-            <textarea readonly rows="2" class="aff-embed__code" data-aff-embed>&lt;div id="morph-aff-{{ w.key }}"&gt;&lt;/div&gt;
-&lt;script src="{{ w.js_src }}" data-target="morph-aff-{{ w.key }}" async&gt;&lt;/script&gt;</textarea>
-            <button type="button" class="btn aff-embed__copy" data-aff-copy-target>Copy script</button>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-
-  </div>
+{% block portal_content %}
+<section class="pp-card" aria-labelledby="aff-new-widget">
+  <div class="pp-card__head"><h2 class="pp-card__title" id="aff-new-widget">{% translate "New widget" %}</h2></div>
+  <form method="post" action="/affiliates/me/widgets/" class="aff-widget-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <div class="pp-field">
+      <label for="w-title">{% translate "Title" %} <span class="pp-muted">({% translate "optional" %})</span></label>
+      <input class="pp-input" id="w-title" type="text" name="title" maxlength="120" placeholder="{% translate 'My picks' %}">
+    </div>
+    <div class="pp-field">
+      <label for="w-source">{% translate "Products to show" %}</label>
+      <select class="pp-input" id="w-source" name="source" data-aff-source>
+        <option value="featured">{% translate "Featured products" %}</option>
+        <option value="category">{% translate "A category" %}</option>
+        <option value="products">{% translate "Products I pick" %}</option>
+      </select>
+    </div>
+    <div class="pp-field" data-aff-when="category" hidden>
+      <label for="w-category">{% translate "Category" %}</label>
+      <select class="pp-input" id="w-category" name="category_slug">
+        <option value="">{% translate "Choose a category" %}</option>
+        {% for c in categories %}<option value="{{ c.slug }}">{{ c.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="pp-field pp-field--wide" data-aff-when="products" hidden>
+      <label for="w-products">{% translate "Products (their web addresses' last part, separated by commas)" %}</label>
+      <textarea class="pp-input" id="w-products" name="product_slugs" rows="2" placeholder="first-product, second-product"></textarea>
+    </div>
+    <div class="pp-field">
+      <label for="w-limit">{% translate "How many" %}</label>
+      <input class="pp-input" id="w-limit" type="number" name="limit" min="1" max="24" value="6">
+    </div>
+    <div class="pp-field">
+      <label for="w-theme">{% translate "Colours" %}</label>
+      <select class="pp-input" id="w-theme" name="theme">
+        <option value="auto">{% translate "Match the visitor" %}</option>
+        <option value="light">{% translate "Light" %}</option>
+        <option value="dark">{% translate "Dark" %}</option>
+      </select>
+    </div>
+    <div class="pp-field">
+      <label for="w-layout">{% translate "Layout" %}</label>
+      <select class="pp-input" id="w-layout" name="layout">
+        <option value="grid">{% translate "Grid" %}</option>
+        <option value="carousel">{% translate "Carousel" %}</option>
+      </select>
+    </div>
+    <div class="pp-field--wide pp-actions"><button type="submit" class="btn btn-primary">{% translate "Create widget" %}</button></div>
+  </form>
 </section>
 
-<style>
-.aff-card { background: var(--paper-2); border-radius: 12px; padding: 1.25rem 1.4rem; }
-.aff-card__h { font-size: 1rem; margin: 0 0 1rem; }
-.aff-widget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .9rem; }
-.aff-field { display: flex; flex-direction: column; gap: .3rem; font-size: .85rem; }
-.aff-field span { color: var(--muted); font-weight: 600; }
-.aff-field--wide { grid-column: 1 / -1; }
-.aff-field .input { padding: .5rem .65rem; }
-
-.aff-empty { text-align: center; padding: 3rem 2rem; background: var(--paper-2); border-radius: 12px; }
-
-.aff-widget__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-.aff-widget__meta { display: block; font-size: .78rem; color: var(--muted); margin-top: .25rem; }
-.aff-widget__actions { display: flex; gap: .35rem; flex-wrap: wrap; }
-.aff-widget__actions .btn { font-size: .78rem; padding: .35rem .7rem; }
-
-.aff-embed { margin-top: .85rem; }
-.aff-embed__label { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .3rem; }
-.aff-embed__code { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; padding: .55rem .65rem; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper); resize: vertical; }
-.aff-embed__copy { margin-top: .4rem; font-size: .78rem; padding: .35rem .8rem; }
-.aff-embed__copy.is-copied { background: rgba(16,185,129,.15); color: #047857; }
-</style>
+{% if widgets %}
+  {% for w in widgets %}
+  <section class="pp-card" data-widget="{{ w.key }}" aria-label="{{ w.title|default:w.get_source_display }}">
+    <div class="pp-card__head">
+      <div>
+        <h2 class="pp-card__title">{{ w.title|default:w.get_source_display }}</h2>
+        <div class="aff-widget-meta">
+          {% if w.is_active %}<span class="pp-badge pp-badge--ok">{% translate "Live" %}</span>{% else %}<span class="pp-badge">{% translate "Paused" %}</span>{% endif %}
+          <span class="pp-badge">{{ w.get_source_display }}{% if w.source == 'category' and w.category_slug %}: {{ w.category_slug }}{% endif %}</span>
+          <span class="pp-badge">{% blocktranslate count n=w.effective_limit %}up to {{ n }} product{% plural %}up to {{ n }} products{% endblocktranslate %}</span>
+          <span class="pp-badge">{{ w.get_layout_display }}</span>
+        </div>
+      </div>
+      <div class="pp-actions">
+        <a class="btn btn-ghost btn-sm" href="{{ w.iframe_src }}" target="_blank" rel="noopener">{% translate "Preview" %}</a>
+        <form method="post" action="/affiliates/me/widgets/{{ w.id }}/edit/" class="pp-inline-form">{% csrf_token %}<input type="hidden" name="action" value="toggle"><button type="submit" class="btn btn-ghost btn-sm">{% if w.is_active %}{% translate "Pause" %}{% else %}{% translate "Resume" %}{% endif %}</button></form>
+        <form method="post" action="/affiliates/me/widgets/{{ w.id }}/edit/" class="pp-inline-form" data-pp-confirm="{% translate 'Delete this widget? Sites that embed it will show nothing.' %}">{% csrf_token %}<input type="hidden" name="action" value="delete"><button type="submit" class="btn btn-ghost btn-sm">{% translate "Delete" %}</button></form>
+      </div>
+    </div>
+    <div class="pp-halves">
+      <div class="aff-embed">
+        <label class="pp-field__label" for="w-iframe-{{ w.key }}">{% translate "Embed with an iframe" %}</label>
+        <textarea class="pp-input pp-input--mono" id="w-iframe-{{ w.key }}" readonly data-pp-select>&lt;iframe src="{{ w.iframe_src }}" width="100%" height="420" style="border:0;overflow:hidden" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="{{ w.title|default:'Shop' }}"&gt;&lt;/iframe&gt;</textarea>
+        <div>{% include "partner_portal/_copy.html" with source="#w-iframe-"|add:w.key label_for=_("the iframe code") %}</div>
+      </div>
+      <div class="aff-embed">
+        <label class="pp-field__label" for="w-js-{{ w.key }}">{% translate "Embed with a script" %}</label>
+        <textarea class="pp-input pp-input--mono" id="w-js-{{ w.key }}" readonly data-pp-select>&lt;div id="morph-aff-{{ w.key }}"&gt;&lt;/div&gt;
+&lt;script src="{{ w.js_src }}" data-target="morph-aff-{{ w.key }}" async&gt;&lt;/script&gt;</textarea>
+        <div>{% include "partner_portal/_copy.html" with source="#w-js-"|add:w.key label_for=_("the script") %}</div>
+      </div>
+    </div>
+  </section>
+  {% endfor %}
+{% else %}
+<section class="pp-card">
+  {% translate "No widgets yet" as e_title %}{% translate "Create one above, then paste its code into any page of your site." as e_text %}
+  {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="code" compact=True %}
+</section>
+{% endif %}
 
 <script>
 (function () {
-  // Toggle source-specific fields in the create form.
-  var sel = document.querySelector('[data-aff-source]');
-  function syncSource() {
-    var val = sel ? sel.value : 'featured';
-    document.querySelectorAll('[data-aff-when]').forEach(function (f) {
-      f.hidden = (f.getAttribute('data-aff-when') !== val);
+  var source = document.querySelector('[data-aff-source]');
+  if (!source) return;
+  function sync() {
+    document.querySelectorAll('[data-aff-when]').forEach(function (field) {
+      field.hidden = field.getAttribute('data-aff-when') !== source.value;
     });
   }
-  if (sel) { sel.addEventListener('change', syncSource); syncSource(); }
-
-  // Copy embed code from the adjacent textarea.
-  function copy(text) {
-    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
-    return new Promise(function (resolve, reject) {
-      var ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); ta.remove(); resolve(); } catch (e) { ta.remove(); reject(e); }
-    });
-  }
-  document.querySelectorAll('[data-aff-copy-target]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var box = btn.closest('.aff-embed').querySelector('[data-aff-embed]');
-      if (!box) return;
-      copy(box.value).then(function () {
-        var label = btn.textContent;
-        btn.classList.add('is-copied'); btn.textContent = 'Copied!';
-        setTimeout(function () { btn.classList.remove('is-copied'); btn.textContent = label; }, 1500);
-      }).catch(function () {});
-    });
-  });
+  source.addEventListener('change', sync);
+  sync();
 })();
 </script>
 {% endblock %}

@@ -1,0 +1,19 @@
+{% load i18n %}{% comment %}The link builder: a page of this store in, a tracked link out.
+Include with return_to=. The server accepts a path or a full address on this
+store's own host and refuses anything else (services.store_path).{% endcomment %}
+<form method="post" action="/affiliates/me/links/new/" class="pp-builder" data-pp-builder>
+  {% csrf_token %}
+  <input type="hidden" name="affiliate_id" value="{{ affiliate.id }}">
+  <input type="hidden" name="return_to" value="{{ return_to }}">
+  <div class="pp-field">
+    <label for="pp-landing">{% translate "Page or product" %}</label>
+    <input class="pp-input" id="pp-landing" name="landing_url" type="text" inputmode="url" autocomplete="off" spellcheck="false" required list="pp-products" placeholder="{{ site_base }}/products/…" value="{{ prefill }}" aria-describedby="pp-landing-help">
+  </div>
+  <div class="pp-field">
+    <label for="pp-link-label">{% translate "Label" %} <span class="pp-muted">({% translate "optional" %})</span></label>
+    <input class="pp-input" id="pp-link-label" name="label" type="text" maxlength="100" placeholder="{% translate 'e.g. Newsletter, spring' %}">
+  </div>
+  <button type="submit" class="btn btn-primary">{% translate "Create link" %}</button>
+  <datalist id="pp-products">{% for p in product_choices %}<option value="{{ p.path }}">{{ p.name }}</option>{% endfor %}</datalist>
+</form>
+<p class="pp-field__help" id="pp-landing-help" style="margin-top: .6rem;">{% translate "Paste the address of any page on this store, or start typing a product name and pick it from the list." %}</p>

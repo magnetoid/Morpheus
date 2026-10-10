@@ -1,0 +1,10 @@
+{% load i18n %}{% with url=site_base|add:"/r/"|add:new_link.code %}
+<div class="pp-note pp-note--ok" style="margin-top: 1rem; display: grid; gap: .65rem;" data-new-link="{{ new_link.code }}">
+  <strong>{% translate "Your link is ready to share" %}</strong>
+  <div class="pp-copyfield">
+    <input class="pp-input pp-input--mono" id="pp-new-link" type="text" readonly value="{{ url }}" data-pp-select aria-label="{% translate 'Your tracked link' %}">
+    {% include "partner_portal/_copy.html" with source="#pp-new-link" label_for=_("your link") %}
+  </div>
+  <span style="font-size: .85rem;">{% blocktranslate with page=new_link.landing_url %}Leads to {{ page }}{% endblocktranslate %}</span>
+</div>
+{% endwith %}

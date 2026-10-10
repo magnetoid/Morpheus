@@ -27,7 +27,8 @@ class AffiliateLeaderboardTests(TestCase):
         r = self.client.get('/affiliates/me/leaderboard/')
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'Leaderboard')
-        self.assertContains(r, '0 sale')  # my_sales == 0, empty board
+        self.assertContains(r, 'data-my-rank')
+        self.assertContains(r, '0 confirmed orders')  # my_sales == 0, empty board
 
     def test_links_page_has_leaderboard_link(self):
         r = self.client.get('/affiliates/me/links/')

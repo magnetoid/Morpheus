@@ -1,14 +1,16 @@
 """Storefront-side affiliate flows.
 
-Affiliate self-service surface (``/affiliates/me/...``):
+Affiliate self-service surface (``/affiliates/me/...``), rendered in the shared
+partner-portal shell (``plugins.partner_portal``; the numbers in ``portal.py``):
 
   - ``affiliate_redirect``  /r/<code>             — anonymous click → cookie + 302
   - ``apply``               /affiliates/apply/    — signed-in customer applies
-  - ``dashboard``           /affiliates/me/       — KPI overview + recent activity
-  - ``links``               /affiliates/me/links/ — full link inventory + edit
+  - ``dashboard``           /affiliates/me/       — period KPIs, balance, link builder
+  - ``links``               /affiliates/me/links/ — link builder + inventory + edit
   - ``edit_link``           /affiliates/me/links/<id>/edit/
   - ``create_link``         /affiliates/me/links/new/
-  - ``conversions``         /affiliates/me/conversions/   — log + CSV export
+  - ``conversions``         /affiliates/me/conversions/   — referred orders + CSV export
+  - ``analytics``           /affiliates/me/analytics/     — traffic, funnel, products
   - ``payouts``             /affiliates/me/payouts/       — request + history
   - ``settings``            /affiliates/me/settings/      — profile + payout prefs
 """
@@ -41,7 +43,11 @@ def affiliate_redirect(request: HttpRequest, code: str) -> HttpResponseRedirect:
     )
 
     link = record_click(code=code, referer=referer, user_agent=user_agent, ip=ip)
-    landing = link.landing_url if link else '/'
+    # Only ever a page of this store: the landing URL is partner-written, and a
+    # redirect to another host would make /r/ a phishing hop (services.store_path).
+    from plugins.installed.affiliates.services import redirect_target
+
+    landing = redirect_target(link.landing_url, request.get_host()) if link else '/'
 
     # Embeddable widgets link to /r/<code>?next=<pdp> so a click on an
     # external site still flows through record_click + the cookie set below.
@@ -209,7 +215,7 @@ def apply(request: HttpRequest) -> HttpResponse:
             'existing': existing,
             'programs': list(AffiliateProgram.objects.filter(is_active=True).order_by('name')),
             'seo_title': 'Become an affiliate',
-            'seo_description': 'Earn a commission for every reader you send our way.',
+            'seo_description': 'Earn a commission on every order that arrives through your links.',
         },
     )
 
@@ -227,6 +233,7 @@ def _affiliate_or_redirect(request):
     aff = (
         Affiliate.objects.filter(user=request.user, status='approved')
         .select_related('program')
+        .order_by('created_at')
         .first()
     )
     if aff is not None:
@@ -238,149 +245,147 @@ def _affiliate_or_redirect(request):
     return None, redirect('/affiliates/apply/')
 
 
+def _shell(affiliate, active: str, title: str, **extra) -> dict:
+    from plugins.installed.affiliates import portal
+
+    context = portal.shell(affiliate, active=active, title=title)
+    context['affiliate'] = affiliate
+    context.update(extra)
+    return context
+
+
+def _site_base(request) -> str:
+    return request.build_absolute_uri('/').rstrip('/')
+
+
+def _highlighted_link(request, affiliate):
+    """The link named by ``?new=<code>`` — the one the builder just made."""
+    from plugins.installed.affiliates.models import AffiliateLink
+
+    code = (request.GET.get('new') or '').strip()
+    if not code:
+        return None
+    return AffiliateLink.objects.filter(affiliate=affiliate, code=code).first()
+
+
+def _product_choices(limit: int = 300) -> list[dict]:
+    """Active products for the link builder's suggestions: name → page path."""
+    from plugins.installed.affiliates.widgets import product_pdp_path
+    from plugins.installed.catalog.models import Product
+
+    products = Product.objects.filter(status='active').only('id', 'name', 'slug').order_by('name')
+    return [{'name': p.name, 'path': product_pdp_path(p)} for p in products[:limit]]
+
+
 @login_required(login_url='/auth/login/')
 def dashboard(request: HttpRequest) -> HttpResponse:
-    """Affiliate dashboard overview.
+    """The affiliate's overview: period KPIs against the period before, the
+    commission chart, balance and payout progress, the link builder, the rate
+    they earn, their best links and products, and the latest orders."""
+    from django.utils.translation import gettext as _
 
-    Refreshed layout — Rewardful/Tapfiliate-style:
-      * KPI row (lifetime): clicks · conversions · earned · pending · CR
-      * 7-day activity strip
-      * Quick actions
-      * Recent conversions (last 10)
-      * Top performing links (top 5 by clicks)
-    """
-    from datetime import timedelta
+    from plugins import partner_portal as pp
+    from plugins.installed.affiliates import portal
+    from plugins.installed.affiliates.models import Affiliate, AffiliateConversion
+    from plugins.installed.affiliates.services import affiliate_coupon, commission_summary
 
-    from django.db.models import Sum
-    from django.utils import timezone
-
-    from plugins.installed.affiliates.models import (
-        Affiliate,
-        AffiliateClick,
-        AffiliateConversion,
-        AffiliateLink,
+    accounts = list(
+        Affiliate.objects.filter(user=request.user).select_related('program').order_by('created_at')
     )
-    from plugins.installed.affiliates.services import pending_payout_amount
-
-    accounts = list(Affiliate.objects.filter(user=request.user).select_related('program'))
-    now = timezone.now()
-
-    for a in accounts:
-        if a.status != 'approved':
-            a.tracked_links = []
-            a.stats = None
-            a.recent_conversions = []
-            a.top_links = []
-            a.spark = []
-            a.pending_earnings = None
-            continue
-
-        link_qs = AffiliateLink.objects.filter(affiliate=a)
-        click_qs = AffiliateClick.objects.filter(link__affiliate=a)
-        conv_qs = AffiliateConversion.objects.filter(affiliate=a)
-
-        clicks_total = click_qs.count()
-        convs_total = conv_qs.count()
-        approved_conv_total = conv_qs.filter(status='approved').count()
-        cr = round((convs_total / clicks_total * 100), 1) if clicks_total else 0.0
-
-        # Pending earnings = approved-but-unpaid commission.
-        try:
-            pending = pending_payout_amount(a)
-        except Exception:  # noqa: BLE001
-            pending = None
-
-        # 7-day activity bins (per-day counts for clicks/conversions).
-        spark = []
-        for i in range(6, -1, -1):
-            day_start = (now - timedelta(days=i)).replace(
-                hour=0,
-                minute=0,
-                second=0,
-                microsecond=0,
-            )
-            day_end = day_start + timedelta(days=1)
-            spark.append(
-                {
-                    'date': day_start,
-                    'clicks': click_qs.filter(
-                        occurred_at__gte=day_start,
-                        occurred_at__lt=day_end,
-                    ).count(),
-                    'conversions': conv_qs.filter(
-                        created_at__gte=day_start,
-                        created_at__lt=day_end,
-                    ).count(),
-                }
-            )
-
-        clicks_7d = sum(b['clicks'] for b in spark)
-        convs_7d = sum(b['conversions'] for b in spark)
-
-        a.stats = {
-            'clicks_total': clicks_total,
-            'convs_total': convs_total,
-            'approved_conv_total': approved_conv_total,
-            'cr': cr,
-            'clicks_7d': clicks_7d,
-            'convs_7d': convs_7d,
-        }
-        a.pending_earnings = pending
-        a.recent_conversions = list(
-            conv_qs.select_related('order').order_by('-created_at')[:10],
+    affiliate = next((a for a in accounts if a.status == 'approved'), None) or (
+        accounts[0] if accounts else None
+    )
+    title = _('Affiliate dashboard')
+    if affiliate is None:
+        name = getattr(request.user, 'full_name', '') or request.user.get_username()
+        context = pp.portal_context(
+            kind='affiliate', kicker=_('Affiliate portal'), name=name, title=title
         )
-        # Top performing links by click_count.
-        top = list(link_qs.order_by('-click_count', '-conversion_count')[:5])
-        for tl in top:
-            tl.cr = (
-                round((tl.conversion_count / tl.click_count * 100), 1) if tl.click_count else 0.0
-            )
-        a.top_links = top
-        a.spark = spark
-        # Keep a small tracked_links slice for the dashboard sidebar (if any
-        # template needs it). The full inventory lives on /links/.
-        a.tracked_links = list(link_qs.order_by('-created_at')[:8])
-        # Aggregate lifetime commission across all conversions (approved
-        # contributes to accrued_balance; this is a display total).
-        agg = conv_qs.exclude(status='rejected').aggregate(total=Sum('commission'))
-        a.lifetime_earned_amount = agg['total']
+        return render(request, 'affiliates/dashboard.html', context)
+    if affiliate.status != 'approved':
+        return render(request, 'affiliates/dashboard.html', _shell(affiliate, 'overview', title))
 
-    return render(
-        request,
-        'affiliates/dashboard.html',
-        {
-            'accounts': accounts,
-            'site_base': request.build_absolute_uri('/').rstrip('/'),
-            'seo_title': 'Your affiliate dashboard',
-        },
+    period = pp.period_from(request)
+    recent = list(
+        AffiliateConversion.objects.filter(affiliate=affiliate)
+        .select_related('order', 'link', 'payout')
+        .order_by('-created_at')[:8]
     )
+    for conversion in recent:
+        conversion.state = portal.payout_state(conversion)
+    context = _shell(
+        affiliate,
+        'overview',
+        title,
+        period=period,
+        periods=pp.period_links(period),
+        balance=portal.balances(affiliate),
+        terms=commission_summary(affiliate),
+        top_links=portal.top_links(affiliate, period),
+        top_products=portal.top_products(affiliate, period),
+        recent=recent,
+        coupon=affiliate_coupon(affiliate),
+        site_base=_site_base(request),
+        new_link=_highlighted_link(request, affiliate),
+        product_choices=_product_choices(),
+        other_accounts=[a for a in accounts if a.pk != affiliate.pk],
+    )
+    context.update(portal.performance(affiliate, period))
+    return render(request, 'affiliates/dashboard.html', context)
 
 
 @login_required(login_url='/auth/login/')
 @require_http_methods(['POST'])
 def create_link(request: HttpRequest) -> HttpResponseRedirect:
-    """Create a tracked affiliate link from the dashboard's inline form."""
+    """The link builder: turn a page of the store into a tracked link.
+
+    The landing page must be on this store (``services.store_path``). Making
+    the same untitled link twice returns the first one instead of a duplicate.
+    """
+    from django.contrib import messages
+    from django.utils.translation import gettext as _
+
     from plugins.installed.affiliates.models import Affiliate, AffiliateLink
+    from plugins.installed.affiliates.services import store_path
 
-    affiliate_id = request.POST.get('affiliate_id') or ''
-    landing_url = (request.POST.get('landing_url') or '/')[:500]
+    affiliate_id = (request.POST.get('affiliate_id') or '').strip()
     label = (request.POST.get('label') or '').strip()[:100]
-    return_to = request.POST.get('return_to') or '/affiliates/me/'
-    if not return_to.startswith('/affiliates/'):
-        return_to = '/affiliates/me/'
+    return_to = request.POST.get('return_to') or '/affiliates/me/links/'
+    if not return_to.startswith('/affiliates/me/') or '//' in return_to:
+        return_to = '/affiliates/me/links/'
 
-    try:
-        affiliate = Affiliate.objects.get(pk=affiliate_id, user=request.user)
-    except Affiliate.DoesNotExist:
+    mine = Affiliate.objects.filter(user=request.user, status='approved')
+    affiliate = None
+    if affiliate_id:
+        with contextlib.suppress(Exception):  # a malformed id is simply "not yours"
+            affiliate = mine.filter(pk=affiliate_id).first()
+    if affiliate is None:
+        affiliate = mine.order_by('created_at').first()
+    if affiliate is None:
         return HttpResponseRedirect('/affiliates/me/')
 
-    if affiliate.status == 'approved':
-        AffiliateLink.objects.create(
-            affiliate=affiliate,
-            landing_url=landing_url or '/',
-            label=label,
+    try:
+        landing = store_path(request.POST.get('landing_url') or '', request.get_host())
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return HttpResponseRedirect(return_to)
+
+    link = None
+    if not label:
+        link = (
+            AffiliateLink.objects.filter(
+                affiliate=affiliate, landing_url=landing, is_active=True, coupon_code=''
+            )
+            .order_by('created_at')
+            .first()
         )
-    return HttpResponseRedirect(return_to)
+    if link is None:
+        link = AffiliateLink.objects.create(affiliate=affiliate, landing_url=landing, label=label)
+        messages.success(request, _('Your tracked link is ready.'))
+    else:
+        messages.info(request, _('You already had a link to that page — here it is.'))
+    joiner = '&' if '?' in return_to else '?'
+    return HttpResponseRedirect(f'{return_to}{joiner}new={link.code}')
 
 
 # ─── Links inventory ──────────────────────────────────────────────────
@@ -388,8 +393,13 @@ def create_link(request: HttpRequest) -> HttpResponseRedirect:
 
 @login_required(login_url='/auth/login/')
 def links(request: HttpRequest) -> HttpResponse:
-    """Full inventory of an affiliate's tracked links + search/filter."""
+    """The link builder and every tracked link, with what each one earned."""
+    from django.db.models import Q
+    from django.utils.translation import gettext as _
+
+    from plugins.installed.affiliates import portal
     from plugins.installed.affiliates.models import AffiliateLink
+    from plugins.installed.affiliates.services import store_path
 
     affiliate, bounce = _affiliate_or_redirect(request)
     if bounce is not None:
@@ -397,31 +407,43 @@ def links(request: HttpRequest) -> HttpResponse:
 
     q = (request.GET.get('q') or '').strip()
     status = (request.GET.get('status') or '').strip()
-
-    qs = AffiliateLink.objects.filter(affiliate=affiliate)
+    base = AffiliateLink.objects.filter(affiliate=affiliate)
+    qs = base
     if q:
-        from django.db.models import Q
-
-        qs = qs.filter(Q(code__icontains=q) | Q(label__icontains=q))
+        qs = qs.filter(Q(code__icontains=q) | Q(label__icontains=q) | Q(landing_url__icontains=q))
     if status == 'active':
         qs = qs.filter(is_active=True)
     elif status == 'inactive':
         qs = qs.filter(is_active=False)
-    qs = qs.order_by('-created_at')
+    rows = list(qs.order_by('-created_at')[:200])
+    portal.link_stats(affiliate, rows)
+
+    # ?url= prefills the builder ("share this product again" from the overview).
+    prefill = ''
+    if request.GET.get('url'):
+        with contextlib.suppress(ValueError):
+            prefill = store_path(request.GET['url'], request.get_host())
 
     return render(
         request,
         'affiliates/links.html',
-        {
-            'affiliate': affiliate,
-            'links': list(qs[:200]),
-            'q': q,
-            'status': status,
-            'site_base': request.build_absolute_uri('/').rstrip('/'),
-            'share_text': 'Books worth your shelf — take a look:',
-            'share_subject': 'A book recommendation',
-            'seo_title': 'Your tracked links',
-        },
+        _shell(
+            affiliate,
+            'links',
+            _('Your tracked links'),
+            links=rows,
+            q=q,
+            status=status,
+            counts={
+                'all': base.count(),
+                'active': base.filter(is_active=True).count(),
+                'inactive': base.filter(is_active=False).count(),
+            },
+            site_base=_site_base(request),
+            new_link=_highlighted_link(request, affiliate),
+            prefill=prefill,
+            product_choices=_product_choices(),
+        ),
     )
 
 
@@ -451,12 +473,33 @@ def edit_link(request: HttpRequest, link_id) -> HttpResponseRedirect:
     return HttpResponseRedirect('/affiliates/me/links/')
 
 
-# ─── Conversions log ──────────────────────────────────────────────────
+# ─── Referred orders ──────────────────────────────────────────────────
+
+_ORDER_FILTERS = ('pending', 'approved', 'paid', 'rejected')
+
+
+def _filter_orders(qs, status: str):
+    """Filter conversions by where their commission stands. "Paid" includes an
+    approved conversion whose bundling payout has been paid."""
+    from django.db.models import Q
+
+    paid = Q(status='paid') | Q(status='approved', payout__status='paid')
+    if status == 'paid':
+        return qs.filter(paid)
+    if status == 'approved':
+        return qs.filter(status='approved').exclude(paid)
+    if status in ('pending', 'rejected'):
+        return qs.filter(status=status)
+    return qs
 
 
 @login_required(login_url='/auth/login/')
 def conversions(request: HttpRequest) -> HttpResponse:
-    """Conversion log + optional CSV export."""
+    """Every referred order, filterable by where its commission stands, + CSV export."""
+    from django.core.paginator import Paginator
+    from django.utils.translation import gettext as _
+
+    from plugins.installed.affiliates import portal
     from plugins.installed.affiliates.models import AffiliateConversion
 
     affiliate, bounce = _affiliate_or_redirect(request)
@@ -464,13 +507,12 @@ def conversions(request: HttpRequest) -> HttpResponse:
         return bounce
 
     status = (request.GET.get('status') or '').strip()
-    qs = (
-        AffiliateConversion.objects.filter(affiliate=affiliate)
-        .select_related('order')
-        .order_by('-created_at')
+    if status not in _ORDER_FILTERS:
+        status = ''
+    base = AffiliateConversion.objects.filter(affiliate=affiliate).select_related(
+        'order', 'link', 'payout'
     )
-    if status in ('approved', 'pending', 'rejected', 'refunded', 'paid'):
-        qs = qs.filter(status=status)
+    qs = _filter_orders(base, status).order_by('-created_at')
 
     if request.GET.get('export') == 'csv':
         import csv
@@ -478,57 +520,55 @@ def conversions(request: HttpRequest) -> HttpResponse:
 
         buf = StringIO()
         w = csv.writer(buf)
-        w.writerow(['date', 'order_number', 'gross', 'commission', 'status'])
-        for c in qs[:1000]:
-            order_number = getattr(c.order, 'order_number', str(c.order_id))
-            gross = getattr(c.order, 'total', '')
+        w.writerow(['date', 'order_number', 'order_total', 'commission', 'status', 'link'])
+        for c in qs[:5000]:
             w.writerow(
                 [
                     c.created_at.isoformat(),
-                    order_number,
-                    str(gross),
+                    getattr(c.order, 'order_number', str(c.order_id)),
+                    str(getattr(c.order, 'total', '')),
                     str(c.commission),
-                    c.status,
+                    portal.payout_state(c),
+                    c.link.code if c.link_id and c.link else '',
                 ]
             )
         response = HttpResponse(buf.getvalue(), content_type='text/csv')
-        response['Content-Disposition'] = (
-            f'attachment; filename="conversions-{affiliate.handle}.csv"'
-        )
+        response['Content-Disposition'] = f'attachment; filename="orders-{affiliate.handle}.csv"'
         return response
 
+    page = Paginator(qs, 50).get_page(request.GET.get('page'))
+    for c in page.object_list:
+        c.state = portal.payout_state(c)
+    counts = {key: _filter_orders(base, key).count() for key in _ORDER_FILTERS}
+    counts['all'] = base.count()
     return render(
         request,
         'affiliates/conversions.html',
-        {
-            'affiliate': affiliate,
-            'conversions': list(qs[:100]),
-            'status': status,
-            'seo_title': 'Conversions',
-        },
+        _shell(
+            affiliate,
+            'orders',
+            _('Referred orders'),
+            conversions=page.object_list,
+            page_obj=page,
+            status=status,
+            counts=counts,
+        ),
     )
 
 
 # ─── Payouts ──────────────────────────────────────────────────────────
 
 
-def _min_payout_threshold(affiliate):
-    """The number the page shows is the number the service enforces."""
-    from plugins.installed.affiliates.services import min_payout_threshold
-
-    return min_payout_threshold(affiliate)
-
-
 @login_required(login_url='/auth/login/')
 @require_http_methods(['GET', 'POST'])
 def payouts(request: HttpRequest) -> HttpResponse:
-    """Pending earnings card + request-payout form + past payouts table."""
-    from plugins.installed.affiliates.models import AffiliatePayout
-    from plugins.installed.affiliates.services import (
-        has_pending_payout,
-        pending_payout_amount,
-        request_affiliate_payout,
-    )
+    """Balance, progress to the minimum payout, the request form and the history."""
+    from django.db.models import Count
+    from django.utils.translation import gettext as _
+
+    from plugins.installed.affiliates import portal
+    from plugins.installed.affiliates.models import Affiliate, AffiliatePayout
+    from plugins.installed.affiliates.services import request_affiliate_payout
 
     affiliate, bounce = _affiliate_or_redirect(request)
     if bounce is not None:
@@ -536,42 +576,43 @@ def payouts(request: HttpRequest) -> HttpResponse:
 
     error = ''
     success = ''
+    methods = dict(Affiliate.PAYOUT_METHOD_CHOICES)
 
     if request.method == 'POST':
         method = (request.POST.get('method') or '').strip()[:40]
-        try:
-            payout = request_affiliate_payout(affiliate, method=method)
-            success = (
-                f'Payout request for {payout.amount} submitted. '
-                'We process requests on the 1st of the following month.'
-            )
-        except ValueError as exc:
-            error = str(exc)
-
-    pending = pending_payout_amount(affiliate)
-    threshold = _min_payout_threshold(affiliate)
-    pending_exists = has_pending_payout(affiliate)
-
-    can_request = not pending_exists and pending.amount >= threshold.amount and pending.amount > 0
+        if method and method not in methods:
+            error = _('Pick a payout method from the list.')
+        else:
+            try:
+                payout = request_affiliate_payout(affiliate, method=method)
+                success = _(
+                    'Payout request for %(amount)s sent. The store team processes it '
+                    'and marks it paid here.'
+                ) % {'amount': portal.money_text(payout.amount)}
+            except ValueError as exc:
+                error = str(exc)
 
     history = list(
-        AffiliatePayout.objects.filter(affiliate=affiliate).order_by('-requested_at')[:50]
+        AffiliatePayout.objects.filter(affiliate=affiliate)
+        .annotate(orders=Count('bundled_conversions'))
+        .order_by('-requested_at')[:50]
     )
+    for p in history:
+        p.method_label = methods.get(p.method, p.method)
 
     return render(
         request,
         'affiliates/payouts.html',
-        {
-            'affiliate': affiliate,
-            'pending_earnings': pending,
-            'threshold': threshold,
-            'pending_exists': pending_exists,
-            'can_request': can_request,
-            'history': history,
-            'error': error,
-            'success': success,
-            'seo_title': 'Payouts',
-        },
+        _shell(
+            affiliate,
+            'payouts',
+            _('Payouts'),
+            balance=portal.balances(affiliate),
+            history=history,
+            method_choices=list(Affiliate.PAYOUT_METHOD_CHOICES),
+            error=error,
+            success=success,
+        ),
     )
 
 
@@ -642,6 +683,8 @@ def widgets(request: HttpRequest) -> HttpResponse:
     (via ``_affiliate_or_redirect``). Anonymous users hit ``@login_required``;
     a signed-in user with no approved affiliate is bounced to apply/dashboard.
     """
+    from django.utils.translation import gettext as _
+
     from plugins.installed.affiliates.models import AffiliateWidget
 
     affiliate, bounce = _affiliate_or_redirect(request)
@@ -655,7 +698,7 @@ def widgets(request: HttpRequest) -> HttpResponse:
         return HttpResponseRedirect('/affiliates/me/widgets/')
 
     rows = list(AffiliateWidget.objects.filter(affiliate=affiliate).order_by('-created_at')[:100])
-    site_base = request.build_absolute_uri('/').rstrip('/')
+    site_base = _site_base(request)
     for w in rows:
         w.iframe_src = f'{site_base}/affiliates/embed/{w.key}/'
         w.js_src = f'{site_base}/affiliates/embed/{w.key}.js'
@@ -664,13 +707,14 @@ def widgets(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         'affiliates/widgets.html',
-        {
-            'affiliate': affiliate,
-            'widgets': rows,
-            'categories': _widget_categories(),
-            'site_base': site_base,
-            'seo_title': 'Embeddable widgets',
-        },
+        _shell(
+            affiliate,
+            'widgets',
+            _('Embeddable widgets'),
+            widgets=rows,
+            categories=_widget_categories(),
+            site_base=site_base,
+        ),
     )
 
 
@@ -709,6 +753,8 @@ def edit_widget(request: HttpRequest, widget_id) -> HttpResponseRedirect:
 @require_http_methods(['GET', 'POST'])
 def settings(request: HttpRequest) -> HttpResponse:
     """Editable affiliate profile: display name, payout email, method, bio."""
+    from django.utils.translation import gettext as _
+
     from plugins.installed.affiliates.models import Affiliate
 
     affiliate, bounce = _affiliate_or_redirect(request)
@@ -726,9 +772,9 @@ def settings(request: HttpRequest) -> HttpResponse:
         method = (request.POST.get('preferred_payout_method') or 'paypal').strip()
         notes = (request.POST.get('notes') or '').strip()[:2000]
 
-        valid_methods = {k for k, _ in method_choices}
+        valid_methods = {k for k, _label in method_choices}
         if method not in valid_methods:
-            error = 'Pick a valid payout method.'
+            error = _('Pick a valid payout method.')
         else:
             affiliate.display_name = display_name
             affiliate.company = company
@@ -749,13 +795,15 @@ def settings(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         'affiliates/settings.html',
-        {
-            'affiliate': affiliate,
-            'method_choices': method_choices,
-            'saved': saved,
-            'error': error,
-            'seo_title': 'Affiliate settings',
-        },
+        _shell(
+            affiliate,
+            'settings',
+            _('Affiliate settings'),
+            method_choices=method_choices,
+            saved=saved,
+            error=error,
+            site_base=_site_base(request),
+        ),
     )
 
 
@@ -765,6 +813,7 @@ def leaderboard(request: HttpRequest) -> HttpResponse:
     pseudonymous @handles + sales counts (never others' earnings) and
     highlights the viewer's own position."""
     from django.db.models import Count, Q
+    from django.utils.translation import gettext as _
 
     from plugins.installed.affiliates.models import Affiliate, AffiliateConversion
 
@@ -781,24 +830,34 @@ def leaderboard(request: HttpRequest) -> HttpResponse:
     )
     rows = []
     my_rank = None
+    leader = ranked[0].sales if ranked else 0
     for i, a in enumerate(ranked, start=1):
         is_me = a.id == affiliate.id
         if is_me:
             my_rank = i
-        rows.append({'rank': i, 'name': f'@{a.handle}', 'sales': a.sales, 'is_me': is_me})
+        rows.append(
+            {
+                'rank': i,
+                'name': f'@{a.handle}',
+                'sales': a.sales,
+                'is_me': is_me,
+                'share': f'{a.sales * 100 / leader:.0f}' if leader else '0',
+            }
+        )
     my_sales = AffiliateConversion.objects.filter(
         affiliate=affiliate, status__in=['approved', 'paid']
     ).count()
     return render(
         request,
         'affiliates/leaderboard.html',
-        {
-            'affiliate': affiliate,
-            'rows': rows,
-            'my_rank': my_rank,
-            'my_sales': my_sales,
-            'seo_title': 'Affiliate leaderboard',
-        },
+        _shell(
+            affiliate,
+            'leaderboard',
+            _('Affiliate leaderboard'),
+            rows=rows,
+            my_rank=my_rank,
+            my_sales=my_sales,
+        ),
     )
 
 
@@ -806,6 +865,8 @@ def leaderboard(request: HttpRequest) -> HttpResponse:
 def creatives(request: HttpRequest) -> HttpResponse:
     """Affiliate-facing marketing creatives library — grab a banner/cover +
     swipe copy, then spin a tracked link to its target in one click."""
+    from django.utils.translation import gettext as _
+
     from plugins.installed.affiliates.models import AffiliateCreative
 
     affiliate, bounce = _affiliate_or_redirect(request)
@@ -815,89 +876,67 @@ def creatives(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         'affiliates/creatives.html',
-        {
-            'affiliate': affiliate,
-            'creatives': list(AffiliateCreative.objects.filter(is_active=True)),
-            'seo_title': 'Marketing creatives',
-        },
+        _shell(
+            affiliate,
+            'creatives',
+            _('Marketing creatives'),
+            creatives=list(AffiliateCreative.objects.filter(is_active=True)),
+        ),
     )
 
 
 @login_required(login_url='/auth/login/')
 def analytics(request: HttpRequest) -> HttpResponse:
-    """Affiliate's own performance: 30-day clicks/conversions trend, lifetime
-    KPIs (CR, earned, EPC) and a per-link breakdown. Read-only."""
-    from datetime import timedelta
-    from decimal import Decimal
+    """The affiliate's own performance over 7, 30 or 90 days: clicks per day,
+    the click → order → confirmed funnel, where clicks come from, what
+    customers bought and how every link did. Read-only."""
+    from django.utils.translation import gettext as _
 
-    from django.db.models import Count, Sum
-    from django.db.models.functions import TruncDate
-    from django.utils import timezone
-    from djmoney.money import Money
-
-    from plugins.installed.affiliates.models import (
-        AffiliateClick,
-        AffiliateConversion,
-        AffiliateLink,
-    )
+    from plugins import partner_portal as pp
+    from plugins.installed.affiliates import portal
+    from plugins.installed.affiliates.models import AffiliateLink
 
     affiliate, bounce = _affiliate_or_redirect(request)
     if bounce is not None:
         return bounce
 
-    since = (timezone.now() - timedelta(days=29)).date()
-    clicks_by_day = dict(
-        AffiliateClick.objects.filter(link__affiliate=affiliate, occurred_at__date__gte=since)
-        .annotate(d=TruncDate('occurred_at'))
-        .values('d')
-        .annotate(n=Count('id'))
-        .values_list('d', 'n')
+    period = pp.period_from(request)
+    perf = portal.performance(affiliate, period)
+    link_rows = list(AffiliateLink.objects.filter(affiliate=affiliate))
+    portal.link_stats(affiliate, link_rows, since=period.start)
+    link_rows = [lk for lk in link_rows if lk.period_clicks or lk.period_orders]
+    link_rows.sort(key=lambda lk: (lk.commission.amount, lk.period_clicks), reverse=True)
+    for lk in link_rows:
+        lk.epc = lk.commission / lk.period_clicks if lk.period_clicks else None
+    kpis = perf['kpis'][:3]
+    kpis.append(
+        {
+            'key': 'epc',
+            'label': _('Earnings per click'),
+            'value': portal.money_text(perf['epc']),
+            'foot': _('Commission ÷ clicks, %(period)s') % {'period': period.label},
+        }
     )
-    conv_by_day = dict(
-        AffiliateConversion.objects.filter(affiliate=affiliate, created_at__date__gte=since)
-        .annotate(d=TruncDate('created_at'))
-        .values('d')
-        .annotate(n=Count('id'))
-        .values_list('d', 'n')
-    )
-    series = []
-    peak = 1
-    for i in range(30):
-        day = since + timedelta(days=i)
-        c = clicks_by_day.get(day, 0)
-        peak = max(peak, c)
-        series.append({'day': day, 'clicks': c, 'convs': conv_by_day.get(day, 0)})
-    for s in series:
-        s['pct'] = round(100 * s['clicks'] / peak, 1)
-
-    agg = AffiliateLink.objects.filter(affiliate=affiliate).aggregate(
-        c=Sum('click_count'), v=Sum('conversion_count')
-    )
-    total_clicks = agg['c'] or 0
-    total_convs = agg['v'] or 0
-    cur = affiliate.accrued_balance.currency
-    earned_amount = (affiliate.accrued_balance.amount or Decimal('0')) + (
-        affiliate.lifetime_paid.amount or Decimal('0')
-    )
-    epc_amount = (
-        (earned_amount / total_clicks).quantize(Decimal('0.01')) if total_clicks else Decimal('0')
-    )
+    clicks_chart = perf['clicks_chart']
     return render(
         request,
         'affiliates/analytics.html',
-        {
-            'affiliate': affiliate,
-            'series': series,
-            'total_clicks': total_clicks,
-            'total_convs': total_convs,
-            'cr': round(100 * total_convs / total_clicks, 1) if total_clicks else 0,
-            'earned': Money(earned_amount, cur),
-            'epc': Money(epc_amount, cur),
-            'top_links': list(
-                AffiliateLink.objects.filter(affiliate=affiliate).order_by('-click_count')[:15]
-            ),
-            'seo_title': 'Your analytics',
-        },
+        _shell(
+            affiliate,
+            'analytics',
+            _('Your analytics'),
+            period=period,
+            periods=pp.period_links(period),
+            kpis=kpis,
+            chart=clicks_chart,
+            chart_label=_('Clicks per day, %(period)s. Total %(total)s.')
+            % {'period': period.label, 'total': clicks_chart['total']},
+            funnel=perf['funnel'],
+            aov=perf['aov'],
+            sources=portal.traffic_sources(affiliate, period),
+            top_products=portal.top_products(affiliate, period, limit=8),
+            link_rows=link_rows[:25],
+        ),
     )
 
 
@@ -906,6 +945,10 @@ def coupon(request: HttpRequest) -> HttpResponse:
     """The affiliate's personal coupon code — claim a handle-derived code, then
     share it. Customers who use it at checkout are attributed to the affiliate
     (via the existing coupon path); the store pairs it with a discount."""
+    from django.utils.translation import gettext as _
+
+    from plugins.installed.affiliates import portal
+    from plugins.installed.affiliates.models import AffiliateLink
     from plugins.installed.affiliates.services import affiliate_coupon
 
     affiliate, bounce = _affiliate_or_redirect(request)
@@ -916,14 +959,25 @@ def coupon(request: HttpRequest) -> HttpResponse:
         affiliate_coupon(affiliate, claim=True)
         return redirect('/affiliates/me/coupon/')
 
+    code = affiliate_coupon(affiliate)
+    coupon_link = None
+    if code:
+        coupon_link = (
+            AffiliateLink.objects.filter(affiliate=affiliate, coupon_code__iexact=code)
+            .order_by('created_at')
+            .first()
+        )
+        if coupon_link is not None:
+            portal.link_stats(affiliate, [coupon_link])
     return render(
         request,
         'affiliates/coupon.html',
-        {
-            'affiliate': affiliate,
-            'code': affiliate_coupon(affiliate),
-            'share_text': 'Use my code at dot books:',
-            'share_subject': 'A discount code for dot books',
-            'seo_title': 'Your coupon',
-        },
+        _shell(
+            affiliate,
+            'coupon',
+            _('Your coupon'),
+            code=code,
+            coupon_link=coupon_link,
+            site_base=_site_base(request),
+        ),
     )

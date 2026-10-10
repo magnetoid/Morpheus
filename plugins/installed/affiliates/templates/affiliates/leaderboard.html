@@ -1,66 +1,37 @@
-{% extends "storefront/base.html" %}
-{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% extends "partner_portal/base.html" %}
+{% load i18n %}
 
-{% block content %}
-<section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 760px;">
+{% block portal_title %}{% translate "Leaderboard" %}{% endblock %}
+{% block portal_lede %}<p class="pp-lede">{% translate "The affiliates who referred the most confirmed orders. Only handles and order counts are shown — earnings stay private." %}</p>{% endblock %}
 
-    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem; font-size: .85rem;">
-      <a href="/affiliates/me/" style="color: var(--muted);">Dashboard</a>
-      <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
-      <span aria-current="page">Leaderboard</span>
-    </nav>
-
-    <header style="margin: 0 0 1.5rem;">
-      <p class="eyebrow">@{{ affiliate.handle }}</p>
-      <h1 class="display display-l" style="margin: .5rem 0 .25rem;">Leaderboard<span class="text-accent">.</span></h1>
-      <p class="lede" style="margin: 0; max-width: 56ch;">Top affiliates by sales driven. Ranked by confirmed conversions — earnings stay private.</p>
-    </header>
-
-    <div class="lb-you">
-      <span>You{% if my_rank %} · rank #{{ my_rank }}{% endif %}</span>
-      <strong>{{ my_sales }} sale{{ my_sales|pluralize }}</strong>
-    </div>
-
+{% block portal_content %}
+<div class="pp-cols">
+  <section class="pp-card" aria-labelledby="aff-board-title">
+    <div class="pp-card__head"><h2 class="pp-card__title" id="aff-board-title">{% translate "Top affiliates" %}</h2></div>
     {% if rows %}
-    <ol class="lb-list">
+    <ol class="pp-list" data-leaderboard>
       {% for r in rows %}
-      <li class="lb-row{% if r.is_me %} lb-row--me{% endif %}">
-        <span class="lb-rank">{% if r.rank == 1 %}🥇{% elif r.rank == 2 %}🥈{% elif r.rank == 3 %}🥉{% else %}{{ r.rank }}{% endif %}</span>
-        <span class="lb-name">{{ r.name }}{% if r.is_me %} <span class="lb-tag">you</span>{% endif %}</span>
-        <span class="lb-sales">{{ r.sales }} sale{{ r.sales|pluralize }}</span>
+      <li class="{% if r.is_me %}pp-you{% endif %}" style="{% if r.is_me %}padding-inline: .75rem; border-radius: var(--pp-r-sm);{% endif %}"{% if r.is_me %} aria-current="true"{% endif %}>
+        <span class="pp-rank{% if r.rank == 1 %} pp-rank--1{% endif %}">{{ r.rank }}</span>
+        <div class="pp-list__main">
+          <p class="pp-list__title">{{ r.name }}{% if r.is_me %} <span class="pp-badge pp-badge--ok">{% translate "you" %}</span>{% endif %}</p>
+          <div class="pp-meter" style="margin-top: .4rem;"><span style="--pct: {{ r.share }}%;"></span></div>
+        </div>
+        <span class="pp-num">{% blocktranslate count n=r.sales %}{{ n }} order{% plural %}{{ n }} orders{% endblocktranslate %}</span>
       </li>
       {% endfor %}
     </ol>
     {% else %}
-    <div class="lb-empty">
-      <p style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 .5rem;">No sales on the board yet.</p>
-      <p style="color: var(--muted); margin: 0;">Be the first — share your links and drive a sale to claim the top spot.</p>
-    </div>
+      {% translate "The board is empty" as e_title %}{% translate "Nobody has a confirmed order yet. Share your links and take the first place." as e_text %}
+      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="trophy" compact=True %}
     {% endif %}
+  </section>
 
-    <p style="margin-top: 1.75rem;"><a href="/affiliates/me/links/" class="btn btn-primary">Share your links →</a></p>
-  </div>
-</section>
-
-<style>
-.lb-you {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: .9rem 1.1rem; margin-bottom: 1.25rem; border-radius: 10px;
-  background: var(--paper-2); border: 1px solid var(--rule);
-}
-.lb-you strong { font-variant-numeric: tabular-nums; }
-.lb-list { list-style: none; margin: 0; padding: 0; }
-.lb-row {
-  display: flex; align-items: center; gap: 1rem;
-  padding: .8rem 1.1rem; border-bottom: 1px solid var(--rule);
-}
-.lb-row:last-child { border-bottom: 0; }
-.lb-row--me { background: rgba(16,185,129,.08); border-radius: 8px; }
-.lb-rank { width: 2rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); }
-.lb-name { flex: 1; font-family: var(--serif); font-size: 1.05rem; }
-.lb-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: #047857; background: rgba(16,185,129,.15); padding: .1rem .4rem; border-radius: 999px; vertical-align: middle; }
-.lb-sales { font-variant-numeric: tabular-nums; color: var(--muted); }
-.lb-empty { text-align: center; padding: 3rem 2rem; background: var(--paper-2); border-radius: 12px; }
-</style>
+  <aside class="pp-card" aria-labelledby="aff-you-title">
+    <h2 class="pp-label" id="aff-you-title">{% translate "Your position" %}</h2>
+    <p class="pp-money" data-my-rank>{% if my_rank %}#{{ my_rank }}{% else %}—{% endif %}</p>
+    <p class="pp-progress__caption">{% blocktranslate count n=my_sales %}{{ n }} confirmed order{% plural %}{{ n }} confirmed orders{% endblocktranslate %}{% if not my_rank %} · {% translate "not in the top 20 yet" %}{% endif %}</p>
+    <p class="pp-card__foot"><a class="btn btn-primary btn-sm" href="/affiliates/me/links/">{% translate "Share your links" %}</a></p>
+  </aside>
+</div>
 {% endblock %}

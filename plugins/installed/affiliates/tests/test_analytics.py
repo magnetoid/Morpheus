@@ -27,17 +27,18 @@ class AffiliateAnalyticsTests(TestCase):
         r = self.client.get('/affiliates/me/analytics/')
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'Analytics')
-        self.assertContains(r, 'Per click')  # KPI label
+        self.assertContains(r, 'data-kpi="epc"')  # earnings-per-click tile
 
     def test_shows_link_in_top_links(self):
-        from plugins.installed.affiliates.models import AffiliateLink
+        # The period figures count click rows, not the link's denormalised
+        # click_count — a link with clicks in the period is listed with them.
+        from plugins.installed.affiliates.models import AffiliateClick, AffiliateLink
 
-        AffiliateLink.objects.create(
-            affiliate=self.aff, label='Promo', click_count=12, conversion_count=3
-        )
+        link = AffiliateLink.objects.create(affiliate=self.aff, label='Promo')
+        AffiliateClick.objects.bulk_create([AffiliateClick(link=link) for _ in range(12)])
         r = self.client.get('/affiliates/me/analytics/')
         self.assertContains(r, 'Promo')
-        self.assertContains(r, '12')  # clicks
+        self.assertContains(r, '<td class="num">12</td>', html=False)
 
     def test_links_header_has_analytics_link(self):
         r = self.client.get('/affiliates/me/links/')

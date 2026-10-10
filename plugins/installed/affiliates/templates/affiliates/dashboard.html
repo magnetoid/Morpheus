@@ -1,260 +1,218 @@
-{% extends "storefront/base.html" %}
-{% load morph %}
-{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% extends "partner_portal/base.html" %}
+{% load i18n morph %}
 
-{% block content %}
-<section style="padding: 4rem 0 2rem;">
-  <div class="wrap" style="max-width: 1100px;">
-
-    <p class="eyebrow">Your account</p>
-    <h1 class="display display-l" style="margin: 1rem 0 .5rem;">Affiliate dashboard<span class="text-accent">.</span></h1>
-    <p class="lede" style="max-width: 60ch; margin: 0 0 2.5rem;">
-      Clicks, conversions, earnings — what's happening with the readers you've sent our way, all in one place.
-    </p>
-
-    {% if not accounts %}
-      <div class="aff-empty">
-        <p style="font-family: var(--serif); font-size: 1.25rem; margin: 0 0 1rem;">You don't have an affiliate account yet.</p>
-        <p style="color: var(--muted); max-width: 50ch; margin: 0 auto 1.5rem;">
-          Apply once, get approved, then earn commission every time a reader you sent us buys a book.
-        </p>
-        <a href="/affiliates/apply/" class="btn btn-primary">Apply to join →</a>
-      </div>
-    {% endif %}
-
-    {% for a in accounts %}
-    <article class="aff-card">
-      <header class="aff-card__head">
-        <div>
-          <p class="eyebrow">{{ a.program.name }}</p>
-          <h2 class="aff-card__handle">@{{ a.handle }}</h2>
-        </div>
-        <div class="aff-card__status">
-          {% if a.status == 'approved' %}<span class="aff-pill aff-pill--ok">Approved</span>
-          {% elif a.status == 'pending' %}<span class="aff-pill aff-pill--wait">Pending review</span>
-          {% elif a.status == 'suspended' %}<span class="aff-pill aff-pill--bad">Suspended</span>
-          {% else %}<span class="aff-pill aff-pill--neutral">{{ a.get_status_display }}</span>{% endif %}
-        </div>
-      </header>
-
-      {% if a.status == 'approved' and a.stats %}
-      {% comment %}── KPI row · lifetime totals ─────────────────────{% endcomment %}
-      <div class="aff-kpis">
-        <div class="card card-padded aff-kpi">
-          <p class="aff-kpi__label">Clicks · lifetime</p>
-          <p class="aff-kpi__value">{{ a.stats.clicks_total }}</p>
-        </div>
-        <div class="card card-padded aff-kpi">
-          <p class="aff-kpi__label">Conversions · lifetime</p>
-          <p class="aff-kpi__value">{{ a.stats.convs_total }}</p>
-          {% if a.stats.approved_conv_total %}<p class="aff-kpi__sub">{{ a.stats.approved_conv_total }} approved</p>{% endif %}
-        </div>
-        <div class="card card-padded aff-kpi">
-          <p class="aff-kpi__label">Earned · lifetime</p>
-          <p class="aff-kpi__value">{% if a.lifetime_earned_amount %}{{ a.lifetime_earned_amount }}{% else %}{{ a.accrued_balance }}{% endif %}</p>
-        </div>
-        <div class="card card-padded aff-kpi">
-          <p class="aff-kpi__label">Pending payout</p>
-          <p class="aff-kpi__value">{% if a.pending_earnings %}{{ a.pending_earnings }}{% else %}—{% endif %}</p>
-          <p class="aff-kpi__sub">approved, not yet paid</p>
-        </div>
-        <div class="card card-padded aff-kpi" title="Conversion rate — conversions divided by clicks.">
-          <p class="aff-kpi__label">Conversion rate</p>
-          <p class="aff-kpi__value">{{ a.stats.cr }}%</p>
-        </div>
-      </div>
-
-      {% comment %}── 7-day strip ───────────────────────────────────{% endcomment %}
-      <div class="aff-section">
-        <p class="eyebrow">Last 7 days</p>
-        <div class="aff-week">
-          <div class="aff-week__summary">
-            <span><strong>{{ a.stats.clicks_7d }}</strong> click{{ a.stats.clicks_7d|pluralize }}</span>
-            <span class="aff-sep">·</span>
-            <span><strong>{{ a.stats.convs_7d }}</strong> conversion{{ a.stats.convs_7d|pluralize }}</span>
-          </div>
-          <div class="aff-week__bars" role="presentation" aria-hidden="true">
-            {% for d in a.spark %}
-            <div class="aff-week__bar" title="{{ d.date|date:'D M j' }} · {{ d.clicks }} clicks · {{ d.conversions }} conv.">
-              <span class="aff-week__seg aff-week__seg--clicks" style="height: {% if d.clicks %}{{ d.clicks|stringformat:'s' }}{% else %}0{% endif %}px;"></span>
-              <span class="aff-week__day">{{ d.date|date:"D"|slice:":1" }}</span>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-
-      {% comment %}── Quick actions ─────────────────────────────────{% endcomment %}
-      <div class="aff-section aff-actions">
-        <a href="/affiliates/me/links/" class="btn">All links</a>
-        <a href="/affiliates/me/widgets/" class="btn">Widgets</a>
-        <a href="/affiliates/me/conversions/" class="btn">Conversions</a>
-        <a href="/affiliates/me/payouts/" class="btn">Request payout</a>
-        <a href="/affiliates/me/settings/" class="btn">Settings</a>
-        <form method="post" action="/affiliates/me/links/new/" class="aff-actions__new">
-          {% csrf_token %}
-          <input type="hidden" name="affiliate_id" value="{{ a.id }}">
-          <input type="hidden" name="return_to" value="/affiliates/me/">
-          <input type="text" name="landing_url" value="/" required class="input"
-                 placeholder="/products/your-book/" aria-label="Landing path">
-          <input type="text" name="label" maxlength="100" placeholder="Label (optional)"
-                 class="input" aria-label="Label">
-          <button type="submit" class="btn btn-primary">+ New link</button>
-        </form>
-      </div>
-
-      {% comment %}── Recent conversions ────────────────────────────{% endcomment %}
-      <div class="aff-section">
-        <p class="eyebrow">Recent conversions</p>
-        {% if a.recent_conversions %}
-          <table class="aff-table">
-            <thead>
-              <tr>
-                <th>When</th><th>Order</th><th>Gross</th><th>Commission</th><th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for c in a.recent_conversions %}
-              <tr>
-                <td>{{ c.created_at|date:"M j, H:i" }}</td>
-                <td><code>#{{ c.order.order_number|default:c.order_id }}</code></td>
-                <td>{{ c.order.total }}</td>
-                <td>+{{ c.commission }}</td>
-                <td><span class="aff-conversions__status aff-conversions__status--{{ c.status }}">{{ c.get_status_display }}</span></td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          <p class="aff-section__more"><a href="/affiliates/me/conversions/">See all conversions →</a></p>
-        {% else %}
-          <p class="aff-empty-inline">No conversions yet — share your links and check back.</p>
-        {% endif %}
-      </div>
-
-      {% comment %}── Top performing links ──────────────────────────{% endcomment %}
-      <div class="aff-section">
-        <p class="eyebrow">Top performing links</p>
-        {% if a.top_links %}
-          <table class="aff-table">
-            <thead>
-              <tr><th>Link</th><th>Clicks</th><th>Conversions</th><th>CR</th></tr>
-            </thead>
-            <tbody>
-              {% for link in a.top_links %}
-              <tr>
-                <td><code>/r/{{ link.code }}</code>{% if link.label %} · <span style="color:var(--muted);">{{ link.label }}</span>{% endif %}</td>
-                <td>{{ link.click_count }}</td>
-                <td>{{ link.conversion_count }}</td>
-                <td>{{ link.cr }}%</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        {% else %}
-          <p class="aff-empty-inline">No clicks recorded yet.</p>
-        {% endif %}
-      </div>
-
-      <p class="aff-footnote">
-        Cookie window: <strong>30 days</strong>. A reader who clicks your link and buys anything inside that window is attributed to you, even if they leave and come back later.
-      </p>
-
-      {% elif a.status == 'pending' %}
-        <p class="aff-section-text">We're reviewing your application. You'll be able to create tracked links here once it is approved.</p>
-      {% elif a.status == 'suspended' %}
-        <p class="aff-section-text">Your account is suspended. Email us if you think this is an error.</p>
-      {% endif %}
-    </article>
-    {% endfor %}
-
-  </div>
-</section>
-
+{% block portal_head %}
 <style>
-.aff-empty {
-  text-align: center; padding: 3.5rem 2rem;
-  background: var(--paper-2);
-  border-radius: 12px;
+.aff-overview { display: grid; gap: 1.25rem; grid-template-areas: "chart" "balance" "builder" "rate" "links" "products" "recent"; }
+.aff-overview > * { min-width: 0; }
+.aff-a-chart { grid-area: chart; }
+.aff-a-balance { grid-area: balance; }
+.aff-a-builder { grid-area: builder; }
+.aff-a-rate { grid-area: rate; }
+.aff-a-links { grid-area: links; }
+.aff-a-products { grid-area: products; }
+.aff-a-recent { grid-area: recent; }
+@media (min-width: 960px) {
+  .aff-overview {
+    grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+    grid-template-areas: "chart balance" "builder rate" "links products" "recent recent";
+  }
 }
-.aff-card {
-  padding: 1.75rem;
-  border: 1px solid var(--rule); border-radius: 12px;
-  background: var(--paper);
-  margin-bottom: 1.75rem;
-}
-.aff-card__head {
-  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
-  gap: 1rem; margin-bottom: 1.5rem;
-}
-.aff-card__handle {
-  font-family: var(--serif); font-size: 1.5rem; font-weight: 500;
-  margin: .25rem 0 0;
-}
-.aff-pill {
-  display: inline-block; padding: .25rem .65rem;
-  border-radius: 999px; font-size: .75rem; font-weight: 600;
-}
-.aff-pill--ok      { background: rgba(16,185,129,.15); color: #047857; }
-.aff-pill--wait    { background: rgba(245,158,11,.15); color: #b45309; }
-.aff-pill--bad     { background: rgba(239,68,68,.15);  color: #b91c1c; }
-.aff-pill--neutral { background: rgba(0,0,0,.06);      color: var(--muted); }
-
-.aff-kpis {
-  display: grid; gap: .85rem;
-  grid-template-columns: repeat(2, 1fr);
-  margin-bottom: 1.5rem;
-}
-@media (min-width: 700px) { .aff-kpis { grid-template-columns: repeat(5, 1fr); } }
-.aff-kpi { padding: 1rem 1.1rem; }
-.aff-kpi__label {
-  font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
-  color: var(--muted); margin: 0;
-}
-.aff-kpi__value {
-  font-family: var(--serif); font-size: 1.55rem; font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1; margin: .35rem 0 0;
-}
-.aff-kpi__sub { font-size: .7rem; color: var(--muted); margin: .15rem 0 0; }
-
-.aff-section { margin-top: 1.75rem; }
-.aff-section-text { color: var(--muted); font-size: .9rem; margin: 1.5rem 0 0; }
-.aff-section__more { font-size: .85rem; margin: .85rem 0 0; }
-.aff-section__more a { color: var(--accent-ink); }
-
-.aff-week { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
-.aff-week__summary { font-size: .95rem; color: var(--ink-2); }
-.aff-week__summary strong { color: var(--ink); font-variant-numeric: tabular-nums; }
-.aff-sep { color: var(--muted); margin: 0 .35rem; }
-.aff-week__bars { display: flex; gap: .35rem; align-items: end; height: 40px; }
-.aff-week__bar { display: flex; flex-direction: column; align-items: center; width: 18px; }
-.aff-week__seg { display: block; width: 100%; background: var(--accent-ink); border-radius: 2px 2px 0 0; min-height: 2px; max-height: 28px; }
-.aff-week__day { font-size: .65rem; color: var(--muted); margin-top: 2px; }
-
-.aff-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch; }
-.aff-actions__new { display: flex; gap: .5rem; flex-wrap: wrap; margin-left: auto; }
-.aff-actions__new .input { padding: .4rem .65rem; font-size: .85rem; }
-
-.aff-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-.aff-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; padding: .4rem .6rem .4rem 0; border-bottom: 1px solid var(--rule); }
-.aff-table td { padding: .55rem .6rem .55rem 0; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
-.aff-table tr:last-child td { border-bottom: 0; }
-
-.aff-conversions__status {
-  font-size: .7rem; padding: .15rem .55rem; border-radius: 999px; font-weight: 500;
-  display: inline-block;
-}
-.aff-conversions__status--approved  { background: rgba(16,185,129,.12); color: #047857; }
-.aff-conversions__status--pending   { background: rgba(245,158,11,.12); color: #b45309; }
-.aff-conversions__status--rejected,
-.aff-conversions__status--refunded  { background: rgba(239,68,68,.12);  color: #b91c1c; }
-.aff-conversions__status--paid      { background: rgba(99,102,241,.12); color: #4338ca; }
-
-.aff-empty-inline { color: var(--muted); font-size: .9rem; padding: 1rem 0; margin: 0; }
-
-.aff-footnote {
-  margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--rule);
-  font-size: .8rem; color: var(--muted);
-}
+.aff-rate-line { margin-top: .35rem !important; color: var(--ink-2); font-size: .92rem; }
+.aff-coupon { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
 </style>
+{% endblock %}
+
+{% block portal_body %}
+{% if not affiliate %}
+  <div class="pp-page-head"><div class="pp-page-head__text">
+    <h1 class="display display-m pp-title">{% translate "Become an affiliate" %}</h1>
+    <p class="pp-lede">{% translate "Recommend this store and earn a commission on every order that arrives through your link or your code." %}</p>
+  </div></div>
+  <div class="pp-card" data-affiliate-state="none">
+    {% translate "You're not an affiliate yet" as empty_title %}
+    {% translate "Apply once. When the store approves you, this page becomes your dashboard: tracked links, your own coupon code, orders as they come in, and payouts." as empty_text %}
+    {% translate "Apply to join" as empty_cta %}
+    {% include "partner_portal/_empty.html" with title=empty_title text=empty_text icon="link" cta_url="/affiliates/apply/" cta_label=empty_cta %}
+    <p style="text-align: center; margin-top: -.5rem !important;"><a class="pp-link" href="/affiliates/">{% translate "See what the program pays" %}</a></p>
+  </div>
+{% elif affiliate.status != 'approved' %}
+  <div class="pp-page-head"><div class="pp-page-head__text">
+    <h1 class="display display-m pp-title">{% translate "Your application" %}</h1>
+  </div></div>
+  <div class="pp-cols" data-affiliate-state="{{ affiliate.status }}">
+    <section class="pp-card">
+      {% if affiliate.status == 'pending' %}
+        <p class="pp-note pp-note--wait"><span><strong>{% translate "We're reviewing your application." %}</strong> {% translate "You'll get your links and coupon code here as soon as it is approved." %}</span></p>
+        <h2 class="pp-card__title" style="margin: 1.5rem 0 1rem;">{% translate "What happens next" %}</h2>
+        <ol class="pp-steps">
+          <li><span class="pp-steps__title">{% translate "Review" %}</span><span class="pp-steps__text">{% translate "The store team reads every application before approving it." %}</span></li>
+          <li><span class="pp-steps__title">{% translate "Approval" %}</span><span class="pp-steps__text">{% translate "This page becomes your dashboard: tracked links, your coupon code, orders and payouts." %}</span></li>
+          <li><span class="pp-steps__title">{% translate "Share and earn" %}</span><span class="pp-steps__text">{% translate "Every order that arrives through your link or code earns your commission." %}</span></li>
+        </ol>
+      {% elif affiliate.status == 'suspended' %}
+        <p class="pp-note pp-note--error"><span><strong>{% translate "Your affiliate account is paused." %}</strong> {% translate "Your links don't earn while it is. Contact the store if you think this is a mistake." %}</span></p>
+      {% else %}
+        <p class="pp-note pp-note--error"><span><strong>{% translate "Your application wasn't approved." %}</strong> {% translate "Contact the store if you'd like to know more." %}</span></p>
+      {% endif %}
+    </section>
+    <aside class="pp-card">
+      <h2 class="pp-card__title" style="margin-bottom: 1rem;">{{ affiliate.program.name }}</h2>
+      <dl class="pp-stats">
+        <div><dt>{% translate "Commission" %}</dt><dd>{% if affiliate.program.commission_type == 'percent' %}{{ affiliate.program.commission_value|floatformat }}%{% else %}{{ affiliate.program.commission_value|floatformat:2 }} {{ affiliate.program.minimum_payout.currency }}{% endif %}</dd></div>
+        <div><dt>{% translate "Orders count for" %}</dt><dd>{% blocktranslate count days=affiliate.program.cookie_window_days %}{{ days }} day after a click{% plural %}{{ days }} days after a click{% endblocktranslate %}</dd></div>
+        <div><dt>{% translate "Minimum payout" %}</dt><dd>{{ affiliate.program.minimum_payout|money }}</dd></div>
+      </dl>
+      <p class="pp-card__foot"><a class="pp-link" href="/affiliates/">{% translate "Program terms" %}</a></p>
+    </aside>
+  </div>
+{% else %}
+  {{ block.super }}
+{% endif %}
+{% endblock %}
+
+{% block portal_title %}{% translate "Overview" %}{% endblock %}
+{% block portal_lede %}<p class="pp-lede">{% blocktranslate count days=period.days %}Your last day, compared with the day before.{% plural %}Your last {{ days }} days, compared with the {{ days }} before.{% endblocktranslate %}</p>{% endblock %}
+{% block portal_actions %}{% include "partner_portal/_period.html" %}{% endblock %}
+
+{% block portal_content %}
+{% if other_accounts %}
+<p class="pp-note">{% translate "You are also in:" %} {% for a in other_accounts %}{{ a.program.name }} ({{ a.get_status_display|lower }}){% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+{% endif %}
+
+<div class="pp-kpis">{% for kpi in kpis %}{% include "partner_portal/_kpi.html" %}{% endfor %}</div>
+
+<div class="aff-overview">
+  <section class="pp-card aff-a-chart" aria-labelledby="aff-chart-title">
+    <div class="pp-card__head">
+      <div>
+        <h2 class="pp-card__title" id="aff-chart-title">{% translate "Commission" %}</h2>
+        <p class="pp-card__sub">{% blocktranslate with total=chart.total %}{{ total }} in this period, by the day each order was placed.{% endblocktranslate %}</p>
+      </div>
+      <a class="pp-link" href="/affiliates/me/analytics/?days={{ period.days }}">{% translate "Analytics" %}</a>
+    </div>
+    {% translate "No commission in this period yet. Orders through your links show up here the day they are placed." as chart_empty %}
+    {% include "partner_portal/_chart.html" %}
+  </section>
+
+  <section class="pp-card aff-a-balance" aria-labelledby="aff-balance-title">
+    <h2 class="pp-label" id="aff-balance-title">{% translate "Ready to pay out" %}</h2>
+    <p class="pp-money" data-balance="ready">{{ balance.ready|money }}</p>
+    <div class="pp-progress{% if balance.reached %} pp-progress--done{% endif %}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ balance.progress }}" aria-label="{% translate 'Progress to the minimum payout' %}"><span class="pp-progress__fill" style="--pct: {{ balance.progress }}%;"></span></div>
+    <p class="pp-progress__caption">
+      {% if balance.open_payout %}{% blocktranslate with amount=balance.in_flight|money %}A payout of {{ amount }} is being processed.{% endblocktranslate %}
+      {% elif balance.reached %}{% translate "You've reached the minimum — you can request a payout." %}
+      {% else %}{% blocktranslate with remaining=balance.remaining|money threshold=balance.threshold|money %}{{ remaining }} to go until the {{ threshold }} minimum.{% endblocktranslate %}{% endif %}
+    </p>
+    <dl class="pp-stats" style="margin-top: 1.1rem;">
+      <div><dt>{% translate "In review" %}</dt><dd data-balance="review">{{ balance.in_review|money }}</dd></div>
+      {% if balance.open_payout %}<div><dt>{% translate "Requested" %}</dt><dd>{{ balance.in_flight|money }}</dd></div>{% endif %}
+      <div><dt>{% translate "Paid to you" %}</dt><dd data-balance="paid">{{ balance.paid|money }}</dd></div>
+    </dl>
+    <div class="pp-card__foot"><a class="btn {% if balance.can_request %}btn-primary{% else %}btn-ghost{% endif %} btn-sm" href="/affiliates/me/payouts/">{% if balance.can_request %}{% translate "Request a payout" %}{% else %}{% translate "Payouts" %}{% endif %}</a></div>
+  </section>
+
+  <section class="pp-card aff-a-builder" id="builder" aria-labelledby="aff-builder-title">
+    <div class="pp-card__head"><h2 class="pp-card__title" id="aff-builder-title">{% translate "Make a tracked link" %}</h2><a class="pp-link" href="/affiliates/me/links/">{% translate "All links" %}</a></div>
+    {% include "affiliates/_builder.html" with return_to="/affiliates/me/" %}
+    {% if new_link %}{% include "affiliates/_new_link.html" %}{% endif %}
+  </section>
+
+  <section class="pp-card aff-a-rate" aria-labelledby="aff-rate-title">
+    <h2 class="pp-label" id="aff-rate-title">{% translate "Your commission" %}</h2>
+    {% if terms.kind == 'fixed' %}
+      <p class="pp-money" data-rate>{{ terms.amount|money }}</p>
+      <p class="aff-rate-line">{% translate "for every order you refer" %}</p>
+    {% else %}
+      <p class="pp-money" data-rate>{{ terms.percent|floatformat }}%</p>
+      <p class="aff-rate-line">{% translate "of every order you refer" %}{% if terms.tier.name %} · {% blocktranslate with name=terms.tier.name %}{{ name }} tier{% endblocktranslate %}{% endif %}{% if terms.negotiated %} · {% translate "your agreed rate" %}{% endif %}</p>
+      {% if terms.next_tier %}
+        <div class="pp-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ terms.next_tier.progress }}" aria-label="{% translate 'Progress to the next tier' %}"><span class="pp-progress__fill" style="--pct: {{ terms.next_tier.progress }}%;"></span></div>
+        <p class="pp-progress__caption">{% blocktranslate with name=terms.next_tier.name pct=terms.next_tier.percent|floatformat count n=terms.next_tier.needed %}{{ n }} more approved order to reach {{ name }} ({{ pct }}%).{% plural %}{{ n }} more approved orders to reach {{ name }} ({{ pct }}%).{% endblocktranslate %}</p>
+      {% endif %}
+      {% if terms.categories %}
+        <p class="aff-rate-line">{% translate "Higher rates on:" %} {% for c in terms.categories %}{{ c.name }} {{ c.percent|floatformat }}%{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      {% endif %}
+    {% endif %}
+    <p class="aff-rate-line">{% blocktranslate count days=affiliate.program.cookie_window_days %}An order counts for {{ days }} day after a click on your link.{% plural %}An order counts for {{ days }} days after a click on your link.{% endblocktranslate %}</p>
+    <div class="pp-card__foot aff-coupon">
+      {% if coupon %}
+        <span>{% translate "Your coupon" %}</span> <code class="pp-code" data-coupon>{{ coupon }}</code>
+        {% include "partner_portal/_copy.html" with text=coupon label_for=_("your coupon code") %}
+      {% else %}
+        <a class="pp-link" href="/affiliates/me/coupon/">{% translate "Claim your own coupon code" %}</a>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="pp-card aff-a-links" aria-labelledby="aff-links-title">
+    <div class="pp-card__head"><h2 class="pp-card__title" id="aff-links-title">{% translate "Best links" %}</h2><a class="pp-link" href="/affiliates/me/links/">{% translate "All links" %}</a></div>
+    {% if top_links %}
+    <div class="pp-table-wrap">
+      <table class="pp-table">
+        <thead><tr><th scope="col">{% translate "Link" %}</th><th scope="col" class="num pp-hide-sm">{% translate "Clicks" %}</th><th scope="col" class="num">{% translate "Orders" %}</th><th scope="col" class="num">{% translate "Commission" %}</th></tr></thead>
+        <tbody>
+          {% for link in top_links %}
+          <tr data-top-link="{{ link.code }}">
+            <td><span class="pp-table__primary">{{ link.label|default:link.landing_url }}</span><span class="pp-table__secondary">/r/{{ link.code }}</span></td>
+            <td class="num pp-hide-sm">{{ link.period_clicks }}</td>
+            <td class="num">{{ link.period_orders }}</td>
+            <td class="num">{{ link.commission|money }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      {% translate "No clicks in this period" as e_title %}{% translate "Share a link and its clicks and orders show up here." as e_text %}
+      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="link" compact=True %}
+    {% endif %}
+  </section>
+
+  <section class="pp-card aff-a-products" aria-labelledby="aff-products-title">
+    <div class="pp-card__head"><h2 class="pp-card__title" id="aff-products-title">{% translate "What your customers buy" %}</h2></div>
+    {% if top_products %}
+    <ul class="pp-list">
+      {% for p in top_products %}
+      <li data-top-product>
+        <div class="pp-list__main">
+          <p class="pp-list__title">{% if p.path %}<a class="pp-link" href="{{ p.path }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}</p>
+          <p class="pp-list__meta">{% blocktranslate count units=p.units %}{{ units }} sold{% plural %}{{ units }} sold{% endblocktranslate %} · {{ p.revenue|money }}</p>
+          <div class="pp-meter" style="margin-top: .45rem;"><span style="--pct: {{ p.share }}%;"></span></div>
+        </div>
+        {% if p.path %}<a class="btn btn-ghost btn-sm" href="/affiliates/me/links/?url={{ p.path|urlencode }}#builder">{% translate "Share" %}</a>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      {% translate "Nothing yet" as e_title %}{% translate "The products in the orders you refer appear here, best sellers first." as e_text %}
+      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" compact=True %}
+    {% endif %}
+  </section>
+
+  <section class="pp-card aff-a-recent" aria-labelledby="aff-recent-title">
+    <div class="pp-card__head"><h2 class="pp-card__title" id="aff-recent-title">{% translate "Latest orders" %}</h2><a class="pp-link" href="/affiliates/me/conversions/">{% translate "All orders" %}</a></div>
+    {% if recent %}
+    <div class="pp-table-wrap">
+      <table class="pp-table">
+        <thead><tr><th scope="col">{% translate "Date" %}</th><th scope="col">{% translate "Order" %}</th><th scope="col" class="num pp-hide-sm">{% translate "Order total" %}</th><th scope="col" class="num">{% translate "Commission" %}</th><th scope="col">{% translate "Status" %}</th></tr></thead>
+        <tbody>
+          {% for c in recent %}
+          <tr>
+            <td class="nowrap">{{ c.created_at|date:"M j" }}</td>
+            <td><span class="pp-table__primary">#{{ c.order.order_number|default:c.order_id }}</span>{% if c.link %}<span class="pp-table__secondary">{% if c.link.coupon_code %}{% translate "coupon" %} {{ c.link.coupon_code }}{% else %}{{ c.link.label|default:c.link.landing_url }}{% endif %}</span>{% endif %}</td>
+            <td class="num pp-hide-sm">{{ c.order.total|money }}</td>
+            <td class="num">{{ c.commission|money }}</td>
+            <td>{% include "affiliates/_state.html" with state=c.state %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      {% translate "No orders yet" as e_title %}{% translate "When someone buys through one of your links or with your code, the order appears here." as e_text %}
+      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="inbox" compact=True %}
+    {% endif %}
+  </section>
+</div>
 {% endblock %}

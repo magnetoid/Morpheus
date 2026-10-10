@@ -5,8 +5,8 @@
   <div>
     <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Your handle *</label>
     <input type="text" name="handle" required class="input" maxlength="80"
-           placeholder="e.g. anna-reads — lower-case, dashes only">
-    <p style="font-size: .8rem; color: var(--muted); margin-top: .35rem;">Shows up in your tracked links: <code>/r/&lt;handle&gt;-abc123</code>.</p>
+           placeholder="e.g. jane-doe — lower-case letters, numbers and dashes">
+    <p style="font-size: .8rem; color: var(--muted); margin-top: .35rem;">Your public name in the program; your coupon code is made from it.</p>
   </div>
   {% if programs|length > 1 %}
   <div>
@@ -30,7 +30,7 @@
   </div>
   <div>
     <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Tell us about your audience</label>
-    <textarea name="notes" rows="5" class="input" placeholder="What kinds of books do you recommend? Roughly how many people will see your links?"></textarea>
+    <textarea name="notes" rows="5" class="input" placeholder="What do you recommend, and where? Roughly how many people will see your links?"></textarea>
   </div>
   {% turnstile %}
   <div style="margin-top: 1rem;">

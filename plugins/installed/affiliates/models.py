@@ -125,7 +125,7 @@ class Affiliate(models.Model):
     PAYOUT_METHOD_CHOICES = [
         ('paypal', 'PayPal'),
         ('wire', 'Bank wire'),
-        ('credit', 'Store credit (+10%)'),
+        ('credit', 'Store credit'),
     ]
     preferred_payout_method = models.CharField(
         max_length=12,
