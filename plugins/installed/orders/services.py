@@ -24,6 +24,23 @@ from plugins.installed.orders.models import Cart, CartItem, Order, OrderItem
 logger = logging.getLogger('morpheus.orders')
 
 
+def _is_prelaunch_preview(product) -> bool:
+    """A noindex product while the store sells no noindex product (pre-launch).
+
+    The setting is read fresh: the config cache is per process, and the
+    merchant flips it in one worker. Only a noindex product pays for the read.
+    """
+    if not getattr(product, 'noindex', False):
+        return False
+    from plugins.registry import app_registry
+
+    orders = app_registry.get('orders')
+    if orders is None:
+        return False
+    orders.invalidate_config_cache()
+    return bool(orders.get_config_value('prelaunch_noindex_not_for_sale', False))
+
+
 class CouponNoLongerValid(ValueError):
     """Raised at capture time when a coupon's usage limit is reached, so the
     order rolls back instead of shipping the discount without recording a use
@@ -103,6 +120,8 @@ class CartService:
         product = Product.objects.get(id=product_id)
         if getattr(product, 'status', 'active') != 'active':
             raise ValueError('Product is not available.')
+        if _is_prelaunch_preview(product):
+            raise ValueError('This product is not available to buy yet.')
         variant = ProductVariant.objects.get(id=variant_id) if variant_id else None
         if variant is not None and not getattr(variant, 'is_active', True):
             raise ValueError('Variant is not available.')
@@ -378,6 +397,10 @@ class OrderService:
             raise ValueError('Cannot place an order from an empty cart.')
 
         items = list(cart.items.select_related('product', 'variant').all())
+        # A cart filled before the store went pre-launch can still hold one.
+        previews = [it.product.name for it in items if _is_prelaunch_preview(it.product)]
+        if previews:
+            raise ValueError(f'Not available to buy yet: {", ".join(previews)}.')
         currency = str(items[0].unit_price.currency)
         subtotal = Money(
             sum((Decimal(it.unit_price.amount) * it.quantity for it in items), Decimal('0')),

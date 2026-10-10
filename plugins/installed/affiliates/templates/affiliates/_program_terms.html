@@ -1,0 +1,65 @@
+{% load i18n %}
+{% comment %}What the affiliate program offers. Every term is read from the program
+rows — never written into the copy — and every feature named here exists in the
+affiliate dashboard (links, coupon, live stats, creatives and widgets). Shared by
+the public program page and the apply page.{% endcomment %}
+<div style="margin: 1rem 0 3rem;">
+  <h2 class="display display-m" style="margin: 0 0 1.5rem;">{% translate "How it works" %}</h2>
+  <ol style="list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+    <li>
+      <h3 style="font-size: 1.15rem; margin: 0 0 .4rem;">1. {% translate "Apply" %}</h3>
+      <p style="color: var(--ink-2); margin: 0;">{% translate "Tell us where you recommend things. We read every application before approving it." %}</p>
+    </li>
+    <li>
+      <h3 style="font-size: 1.15rem; margin: 0 0 .4rem;">2. {% translate "Share" %}</h3>
+      <p style="color: var(--ink-2); margin: 0;">{% translate "Your dashboard makes tracked links to any page of the store, and gives you your own coupon code." %}</p>
+    </li>
+    <li>
+      <h3 style="font-size: 1.15rem; margin: 0 0 .4rem;">3. {% translate "Earn" %}</h3>
+      <p style="color: var(--ink-2); margin: 0;">{% translate "An order that arrives through your link or code earns your commission." %}</p>
+    </li>
+  </ol>
+</div>
+
+{% if programs %}
+<div style="margin: 3rem 0; padding: 2rem; background: var(--paper-2); border-radius: 8px;">
+  <h2 class="display display-m" style="margin: 0 0 1.25rem;">{% translate "What you earn" %}</h2>
+  {% for p in programs %}
+  <div style="padding: 1rem 0;{% if not forloop.last %} border-bottom: 1px solid var(--rule);{% endif %}">
+    <p style="font-weight: 600; margin: 0 0 .6rem;">{{ p.name }}</p>
+    <dl style="display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1.25rem; margin: 0;">
+      <dt style="color: var(--muted);">{% translate "Commission" %}</dt>
+      <dd style="margin: 0;"><strong style="color: var(--accent-ink);">{% if p.commission_type == 'percent' %}{{ p.commission_value|floatformat }}%{% else %}{{ p.commission_value|floatformat:2 }} {{ p.minimum_payout.currency }}{% endif %}</strong> {% translate "per order" %}</dd>
+      <dt style="color: var(--muted);">{% translate "Orders count for" %}</dt>
+      <dd style="margin: 0;">{% blocktranslate count days=p.cookie_window_days %}{{ days }} day after a click{% plural %}{{ days }} days after a click{% endblocktranslate %}</dd>
+      <dt style="color: var(--muted);">{% translate "Paid out from" %}</dt>
+      <dd style="margin: 0;">{{ p.minimum_payout }}</dd>
+    </dl>
+    {% if p.description %}<p style="color: var(--ink-2); margin: .75rem 0 0;">{{ p.description }}</p>{% endif %}
+  </div>
+  {% endfor %}
+  <p style="font-size: .85rem; color: var(--muted); margin: 1rem 0 0;">{% translate "Paid by PayPal, bank wire or store credit — you choose in your affiliate settings. A refunded order reverses its commission." %}</p>
+</div>
+{% endif %}
+
+<div style="margin: 3rem 0;">
+  <h2 class="display display-m" style="margin: 0 0 1.5rem;">{% translate "What you get" %}</h2>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+    <div>
+      <h3 style="font-size: 1.05rem; margin: 0 0 .35rem;">{% translate "Tracked links" %}</h3>
+      <p style="color: var(--ink-2); margin: 0;">{% translate "To any page of the store — a product, a list, the home page — under your own handle." %}</p>
+    </div>
+    <div>
+      <h3 style="font-size: 1.05rem; margin: 0 0 .35rem;">{% translate "Your own coupon code" %}</h3>
+      <p style="color: var(--ink-2); margin: 0;">{% translate "Shoppers who use it at checkout are credited to you, link or no link." %}</p>
+    </div>
+    <div>
+      <h3 style="font-size: 1.05rem; margin: 0 0 .35rem;">{% translate "A live dashboard" %}</h3>
+      <p style="color: var(--ink-2); margin: 0;">{% translate "Clicks, orders and earnings as they happen." %}</p>
+    </div>
+    <div>
+      <h3 style="font-size: 1.05rem; margin: 0 0 .35rem;">{% translate "Creatives and widgets" %}</h3>
+      <p style="color: var(--ink-2); margin: 0;">{% translate "Banners, product images and product cards to place on your own site." %}</p>
+    </div>
+  </div>
+</div>

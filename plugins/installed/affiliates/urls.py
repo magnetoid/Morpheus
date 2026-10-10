@@ -8,6 +8,8 @@ app_name = 'affiliates'
 
 urlpatterns = [
     path('r/<str:code>', views.affiliate_redirect, name='redirect'),
+    # Public program page — what the store's menu links to.
+    path('affiliates/', views.program_page, name='program'),
     # Customer self-service flow
     path('affiliates/apply/', views.apply, name='apply'),
     path('affiliates/me/', views.dashboard, name='dashboard'),

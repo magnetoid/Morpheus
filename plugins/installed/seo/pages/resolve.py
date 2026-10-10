@@ -290,6 +290,7 @@ def _finish(page: SeoPage, request, context) -> SeoPage:
         page.kind = KIND_SEARCH
         page.query = page.query or query
         page.deny_index('internal search results')
+    _deny_before_launch(page)
     # A view that knows its page should stay out (a placeholder, a preview)
     # says so with a reason, and the reason surfaces in the head inspector.
     reason = _clean(context.get('seo_noindex_reason'))
@@ -301,6 +302,19 @@ def _finish(page: SeoPage, request, context) -> SeoPage:
     if page.kind == KIND_LISTING and _item_count(page, context) == 0:
         page.deny_index('empty listing')
     return page
+
+
+def _deny_before_launch(page: SeoPage) -> None:
+    """A store that has not launched keeps every page out of the index.
+
+    An error page keeps its own `noindex, follow`.
+    """
+    if is_error_page(page):
+        return
+    from plugins.installed.seo.services.launch import hidden_until_launch
+
+    if hidden_until_launch():
+        page.deny_index('the store is hidden until launch (Settings → SEO)', nofollow=True)
 
 
 def _search_query(request) -> str:

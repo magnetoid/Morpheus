@@ -131,7 +131,12 @@ def render_robots_txt() -> str:
             '',
         ]
     )
-    lines.extend(f'Sitemap: {url}' for url in doc.sitemaps)
+    # A store hidden until launch names no sitemap; crawling stays allowed so
+    # its pages' noindex is read (a Disallow would freeze indexed URLs).
+    from plugins.installed.seo.services.launch import hidden_until_launch
+
+    if not hidden_until_launch():
+        lines.extend(f'Sitemap: {url}' for url in doc.sitemaps)
 
     return '\n'.join(lines).rstrip() + '\n'
 

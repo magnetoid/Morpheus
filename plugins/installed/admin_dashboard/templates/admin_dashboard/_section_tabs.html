@@ -4,7 +4,7 @@ ads) is one tab whose pages show as sub-tabs while you are in it. Navigation, so
 is drawn as pills — the underlined `.tab-list` below a page heading stays a filter
 of that page (status, source).{% endcomment %}
 {% if dashboard_nav.tabs %}
-<nav class="hub-tabs" aria-label="{{ dashboard_nav.section_label }}">
+<nav class="hub-tabs{% if dashboard_nav.tabs_centered %} hub-tabs--centered{% endif %}" aria-label="{{ dashboard_nav.section_label }}">
   <div class="hub-tabs__row">
     {% for t in dashboard_nav.tabs %}
     <a href="{{ t.url }}" class="hub-tab{% if t.active %} is-active{% endif %}"{% if t.active %} aria-current="page"{% endif %}>{{ t.label }}{% if t.badge %}<span class="pill pill-warn pill-xs">{{ t.badge }}</span>{% endif %}</a>

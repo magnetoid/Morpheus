@@ -535,6 +535,18 @@ class SeoPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
+                'hide_until_launch': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Hide the store from search engines until launch',
+                    'description': (
+                        'While the store is being set up: every page asks not '
+                        'to be indexed or followed, the sitemaps list nothing, '
+                        'the AI discovery files are switched off and nothing '
+                        'pings IndexNow. Visitors still see the store. Turn it '
+                        'off on launch day.'
+                    ),
+                },
                 # ── Search-engine ping fan-out ────────────────────────
                 'indexnow_enabled': {
                     'type': 'boolean',

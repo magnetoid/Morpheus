@@ -15,6 +15,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.84.0 — 2026-10-09
+
+**Pre-launch mode, an affiliate program page, and vendors and affiliates up front**
+
+- A store can stay out of search engines until it launches: Settings → SEO → "Hide the store from search engines until launch". Every page then asks not to be indexed, the sitemaps are empty, the AI discovery files are off and nothing pings IndexNow; visitors still see the store. Turn it off on launch day.
+- Products can be shown before they are for sale: with Settings → Payments → Checkout & cart → "Products hidden from search are pre-launch previews" on, a product marked noindex can be viewed but not added to a cart or ordered, whichever way the order comes in. Irving's theme already hid the buy button; until now the cart still accepted them.
+- A public affiliate program page at /affiliates/: what each open program pays, how long an order counts after a click, the payout minimum, and a button that fits the visitor (sign in, apply, or open the affiliate dashboard). The apply page no longer promises terms nothing backs (payouts on the 1st, a $25 carry-over, +10% for store credit, a review within days) or talks about books on every store; its terms come from the program.
+- Dashboard: Vendors and Affiliates now sit right after Customers in the sidebar, and Affiliates is a section of its own instead of a tab inside Marketing. Each appears only on a store running its app.
+- Irving Survival: Suppliers and Affiliates in the header and mobile menus, and a "Work with us" footer column (our suppliers, sell with us, affiliate program).
+- Supernatural Shop: the product picture in the home page slider is as large as the window allows — up to 600px beside the text on a computer (it was 360px) and twice as wide on a phone — without making the slider any taller.
+- Linda: the typing field has a soft drop shadow, and the tabs above her (Chat, Activity, Automations…) are centred like the chat.
+- Security: running, pausing, resuming or deleting an automation now needs the same permission as the Automations page itself; a read-only role could do it by posting to the button's address.
+
 ## v0.83.6 — 2026-10-09
 
 **Share cards no longer claim every image is 1200×630**

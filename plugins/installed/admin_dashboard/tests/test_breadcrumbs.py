@@ -53,15 +53,18 @@ class NavBreadcrumbTests(TestCase):
         # 'Vendors' is a link back to the list (it is not the leaf here).
         self.assertEqual(trail[-1]['url'], '/dashboard/apps/marketplace/vendors/')
 
-    def test_group_label_is_not_repeated(self):
-        # The affiliates list is the first page of the "Affiliates" tab group
-        # in Marketing: "Marketing › Affiliates", not "… › Affiliates › Affiliates".
-        self.assertEqual(
-            _labels('/dashboard/apps/affiliates/list/'), ['Dashboard', 'Marketing', 'Affiliates']
-        )
+    def test_a_label_is_not_repeated(self):
+        # The affiliates list is the first tab of the Affiliates section:
+        # "Affiliates", not "Affiliates › Affiliates".
+        self.assertEqual(_labels('/dashboard/apps/affiliates/list/'), ['Dashboard', 'Affiliates'])
         self.assertEqual(
             _labels('/dashboard/apps/affiliates/programs/'),
-            ['Dashboard', 'Marketing', 'Affiliates', 'Programs'],
+            ['Dashboard', 'Affiliates', 'Programs'],
+        )
+        # A tab group still reads section › group › page.
+        self.assertEqual(
+            _labels('/dashboard/apps/crm/pipeline/'),
+            ['Dashboard', 'Customers', 'CRM', 'Pipeline'],
         )
 
     def test_settings_tool_reads_as_settings(self):

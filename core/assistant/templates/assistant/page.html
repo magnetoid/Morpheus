@@ -212,7 +212,8 @@ chat would cover them.{% endcomment %}
   }
   /* Pinned chat form: a filled pill with no border or ring (the owner asked
      for the border round the typing field to go, 2026-10-09). The fill marks
-     the field; a deeper fill marks focus. */
+     the field; a deeper fill marks focus; a drop shadow that falls a little
+     below lifts it off the page (asked for 2026-10-10). */
   .linda-form {
     width: 100%; max-width: 48rem;
     margin: 0 auto;
@@ -221,6 +222,7 @@ chat would cover them.{% endcomment %}
     border: 0;
     border-radius: 28px;
     padding: .5rem .5rem .5rem .75rem;
+    box-shadow: var(--shadow-pop, 0 12px 24px -8px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08));
     transition: background var(--motion-fast, 140ms) ease;
   }
   .linda-form:focus-within {

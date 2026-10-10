@@ -890,6 +890,9 @@
   .hub-tab:hover { color: var(--text); background: var(--nav-hover-bg); }
   .hub-tab.is-active { color: var(--text); background: var(--surface); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
   .hub-subtabs { gap: 1.1rem; margin-top: .6rem; padding: 0 .85rem; }
+  /* A section whose page is centred (Linda's chat) centres its tabs too. */
+  .hub-tabs--centered .hub-tabs__row { margin-inline: auto; }
+  .hub-tabs--centered .hub-subtabs { justify-content: center; }
   .hub-subtab {
     display: inline-flex; align-items: center; gap: .35rem; flex: none; white-space: nowrap;
     font-size: .78rem; color: var(--text-muted); text-decoration: none; padding: .15rem 0;

@@ -66,6 +66,49 @@ def affiliate_redirect(request: HttpRequest, code: str) -> HttpResponseRedirect:
     return response
 
 
+@require_http_methods(['GET'])
+def program_page(request: HttpRequest) -> HttpResponse:
+    """The public affiliate program page: what each open program pays, how it
+    works, and the next step for whoever is looking.
+
+    Applying needs an account, so the call to action depends on the visitor:
+    sign in, apply, or open the dashboard of an existing affiliate.
+    """
+    from django.utils.translation import gettext as _
+
+    from plugins.installed.affiliates.models import Affiliate, AffiliateProgram
+
+    programs = list(AffiliateProgram.objects.filter(is_active=True).order_by('created_at'))
+    existing = None
+    if request.user.is_authenticated:
+        existing = Affiliate.objects.filter(user=request.user).first()
+    if existing is not None:
+        cta = {'url': '/affiliates/me/', 'label': _('Open your affiliate dashboard')}
+    elif not programs:
+        cta = None
+    elif request.user.is_authenticated:
+        cta = {'url': '/affiliates/apply/', 'label': _('Apply now')}
+    else:
+        cta = {'url': '/auth/login/?next=/affiliates/apply/', 'label': _('Sign in to apply')}
+    return render(
+        request,
+        'affiliates/program.html',
+        {
+            'programs': programs,
+            'cta': cta,
+            'seo_title': _('Affiliate program'),
+            'seo_description': _(
+                'Earn a commission on every order that arrives through your links. '
+                'See what each program pays and how to join.'
+            ),
+            'breadcrumb_items': [
+                {'name': _('Home'), 'url': request.build_absolute_uri('/')},
+                {'name': _('Affiliate program'), 'url': request.build_absolute_uri(request.path)},
+            ],
+        },
+    )
+
+
 @login_required(login_url='/auth/login/')
 @require_http_methods(['GET', 'POST'])
 def apply(request: HttpRequest) -> HttpResponse:

@@ -308,7 +308,7 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   footer .grid { display: grid; gap: 2.25rem; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 4rem; padding-bottom: 3rem; }
   footer .grid > .col:first-child { grid-column: 1 / -1; }
   @media (min-width: 1024px) {
-    footer .grid { grid-template-columns: 2fr 1fr 1fr 1fr; }
+    footer .grid { grid-template-columns: 2fr repeat(4, minmax(0, 1fr)); }
     footer .grid > .col:first-child { grid-column: auto; }
   }
   footer .col { display: flex; flex-direction: column; gap: .65rem; }
@@ -478,6 +478,9 @@ defaults.
         <a href="/p/calculator/">{% translate "Calculator" %}</a>
         <a href="/p/readiness/">{% translate "Readiness" %}</a>
         <a href="/journal/">{% translate "Guides" %}</a>
+        {% plugin_enabled "marketplace" as marketplace_on %}{% plugin_enabled "affiliates" as affiliates_on %}
+        {% if marketplace_on %}<a href="/marketplace/">{% translate "Suppliers" %}</a>{% endif %}
+        {% if affiliates_on %}<a href="/affiliates/">{% translate "Affiliates" %}</a>{% endif %}
       {% endif %}
       {% storefront_blocks "nav_primary_extra" %}
     </nav>
@@ -731,6 +734,9 @@ defaults.
       <a href="/p/calculator/">{% translate "Supply calculator" %}</a>
       <a href="/p/readiness/">{% translate "Readiness check" %}</a>
       <a href="/journal/">{% translate "Guides" %}</a>
+      {% plugin_enabled "marketplace" as marketplace_on %}{% plugin_enabled "affiliates" as affiliates_on %}
+      {% if marketplace_on %}<a href="/marketplace/">{% translate "Suppliers" %}</a>{% endif %}
+      {% if affiliates_on %}<a href="/affiliates/">{% translate "Affiliates" %}</a>{% endif %}
       {% storefront_blocks "nav_primary_extra" %}
       <a href="/account/">{% translate "Account" %}</a>
     {% endif %}
@@ -801,6 +807,15 @@ defaults.
       <a href="/contact/">{% translate "Contact" %}</a>
       <a href="/account/">{% translate "Account" %}</a>
     </div>
+    {% plugin_enabled "marketplace" as marketplace_on %}{% plugin_enabled "affiliates" as affiliates_on %}
+    {% if marketplace_on or affiliates_on %}
+    <div class="col">
+      <h2>{% translate "Work with us" %}</h2>
+      {% if marketplace_on %}<a href="/vendors/">{% translate "Our suppliers" %}</a>
+      <a href="/marketplace/">{% translate "Sell with us" %}</a>{% endif %}
+      {% if affiliates_on %}<a href="/affiliates/">{% translate "Affiliate program" %}</a>{% endif %}
+    </div>
+    {% endif %}
   </div>
   <div class="wrap signoff">
     <span>© {{ now|default:"2026" }} {{ STORE_NAME|default:"Irving Survival" }}. {% translate "All rights reserved." %}</span>

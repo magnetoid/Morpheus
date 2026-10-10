@@ -42,6 +42,37 @@
 - Expect a 1–3 minute 503 window while the container swaps; images that build
   native dependencies take several minutes longer. Don't panic-rollback during
   the window — confirm via the deployments API first.
+- **A deploy that died after "Removing old containers" leaves the store down**
+  (503 "no available server"): the compose-based apps stop the whole stack —
+  web, worker, beat, postgres, redis — before starting the new one, so a job
+  that dies in between (supernatural, 2026-10-10) leaves nothing running while
+  the row still says `in_progress` and the logs simply stop. If the image was
+  built (the log shows "Image … Built"), start the stack from the helper
+  container's artifacts instead of rebuilding:
+  `docker exec <deployment-uuid> sh -c 'cd /artifacts/<deployment-uuid> &&
+  docker compose --env-file .env --project-name <app-uuid>
+  --project-directory /artifacts/<deployment-uuid> -f docker-compose.yml up -d
+  --no-build'` — the helper (`coollabsio/coolify-helper`, named after the
+  deployment) has the compose file, the env and the docker socket. Then cancel
+  the row (above) so the queue moves; no fresh deploy is needed.
+
+## Launching a store (pre-launch switches)
+
+A store being set up can stay out of search engines and sell nothing that is
+not ready, while people can already browse it. Two settings, both off by default:
+
+- **Settings → SEO → "Hide the store from search engines until launch"**
+  (`seo.hide_until_launch`): every page is `noindex, nofollow`, the sitemaps
+  are empty, robots.txt names no sitemap (crawling stays allowed, so the
+  noindex is read), llms.txt / agents.md / the AI feed answer 404 and nothing
+  pings IndexNow.
+- **Settings → Payments → Checkout & cart → "Products hidden from search are
+  pre-launch previews"** (`orders.prelaunch_noindex_not_for_sale`): a product
+  marked noindex can be viewed but not added to a cart or ordered — by any path
+  (storefront, GraphQL, agents). To put one product on sale, clear its noindex.
+
+On launch day turn both off, then resubmit the sitemap in Search Console. Both
+are read fresh on every request, so a change applies to every worker at once.
 
 ## Error tracking (Sentry)
 

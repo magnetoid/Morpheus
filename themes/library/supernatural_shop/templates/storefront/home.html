@@ -123,9 +123,9 @@ geometry, so the dots and cover never move between books.
         >
           {% if pick.primaryImage and pick.primaryImage.url %}
             {% if forloop.first %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,800,1200" sizes="(min-width: 1200px) 360px, (min-width: 900px) 30vw, 70vw" priority=True %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,800,1200" sizes="(min-width: 1500px) 600px, (min-width: 900px) 40vw, 60vw" priority=True %}
             {% else %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,800,1200" sizes="(min-width: 1200px) 360px, (min-width: 900px) 30vw, 70vw" %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,800,1200" sizes="(min-width: 1500px) 600px, (min-width: 900px) 40vw, 60vw" %}
             {% endif %}
           {% elif PRODUCT_PLACEHOLDER_IMAGE %}
             <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ pick.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
@@ -160,7 +160,7 @@ geometry, so the dots and cover never move between books.
        copy: `1fr` for the copy pinned the cover to the far right edge, and a
        short title ("Dune.") then left a gulf the gap alone could not close. */
     .window__shell {
-      grid-template-columns: minmax(0, max-content) minmax(0, auto);
+      grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
       justify-content: start;
     }
     /* The copy column still needs a floor, or a one-word title collapses the
@@ -180,7 +180,7 @@ geometry, so the dots and cover never move between books.
     grid-area: 1 / 1;
     display: block;
     position: relative;
-    width: min(36vw, 120px);
+    width: min(60vw, 260px);
     aspect-ratio: 1 / 1;
     margin-inline: auto;
     border-radius: 4px;
@@ -195,8 +195,12 @@ geometry, so the dots and cover never move between books.
       transform var(--motion-slow) var(--ease-out),
       box-shadow var(--motion-med) var(--ease-out);
   }
+  /* As large as the window allows (owner's ask, 2026-10-10): the cover takes
+     the column beside the copy, up to 600px — still no taller than the copy,
+     so the hero keeps its height and the shelf below still peeks. `sizes` on
+     the <img> names the same widths, or the browser fetches a smaller file. */
   @media (min-width: 900px) {
-    .window__cover { width: clamp(260px, 24vw, 360px); margin-inline: 0; }
+    .window__cover { width: min(100%, clamp(320px, 40vw, 600px)); margin-inline: 0; }
   }
   .window__cover.is-active {
     opacity: 1;

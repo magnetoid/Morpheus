@@ -44,6 +44,7 @@ class NavSection:
     cards: bool = False  # the landing renders this section's DashboardCards
     always: bool = False  # listed even when no app contributes to it
     avatar: str = ''  # static path drawn instead of the icon
+    centered: bool = False  # the tab strip is centred (Linda's, like her chat)
 
 
 SECTIONS: tuple[NavSection, ...] = (
@@ -55,10 +56,15 @@ SECTIONS: tuple[NavSection, ...] = (
         '/dashboard/assistant/',
         always=True,
         avatar='assistant/linda-avatar.jpg',
+        centered=True,
     ),
     NavSection('orders', 'Orders', 'shopping-bag', '/dashboard/orders/', cards=True, always=True),
     NavSection('products', 'Products', 'package', '/dashboard/products/', cards=True, always=True),
     NavSection('customers', 'Customers', 'users', '/dashboard/customers/', cards=True, always=True),
+    # Vendors and affiliates right after the people who buy (owner's ask,
+    # 2026-10-10); each shows only on a store running its app.
+    NavSection('vendors', 'Vendors', 'store'),
+    NavSection('affiliates', 'Affiliates', 'link'),
     NavSection('marketing', 'Marketing', 'megaphone', '/dashboard/marketing/', cards=True),
     NavSection('channels', 'Channels', 'radio-tower'),
     NavSection('content', 'Content', 'book-open'),
@@ -66,7 +72,6 @@ SECTIONS: tuple[NavSection, ...] = (
         'analytics', 'Analytics', 'bar-chart-3', '/dashboard/analytics/', cards=True, always=True
     ),
     NavSection('seo', 'SEO', 'search'),
-    NavSection('vendors', 'Vendors', 'store'),
 )
 
 _SECTION_BY_KEY = {s.key: s for s in SECTIONS}
@@ -556,6 +561,7 @@ def build(request) -> dict:
         'category': loc.section if loc.mode == 'settings' else '',
         'tabs': strip,
         'subtabs': subtabs,
+        'tabs_centered': bool(strip) and bool(getattr(section(loc.section), 'centered', False)),
         'tab_root': bool(loc.tab and loc.exact),
         'location': loc,
         'badges': badges,

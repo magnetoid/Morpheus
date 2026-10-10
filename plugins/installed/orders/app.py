@@ -113,6 +113,17 @@ class OrdersPlugin(Plugin):
                         'their email.'
                     ),
                 },
+                'prelaunch_noindex_not_for_sale': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Products hidden from search are pre-launch previews',
+                    'description': (
+                        'While the store is being set up: a product marked '
+                        '"hide from search engines" (noindex) can be viewed but '
+                        'not added to a cart or ordered. Turn this off, or clear '
+                        "a product's noindex, to start selling it."
+                    ),
+                },
                 'digital_withdrawal_waiver_enabled': {
                     'type': 'boolean',
                     'default': False,

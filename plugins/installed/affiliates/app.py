@@ -188,8 +188,8 @@ class AffiliatesPlugin(Plugin):
         ]
 
     def contribute_dashboard_pages(self) -> list:
-        # One "Affiliates" tab in the Marketing section, its seven pages as
-        # sub-tabs (group=) — contributed, so a disable removes all of it.
+        # The Affiliates section of the sidebar, its seven pages as tabs —
+        # contributed, so a disable removes all of it.
         from morpheus.app import DashboardPage
 
         return [
@@ -198,69 +198,62 @@ class AffiliatesPlugin(Plugin):
                 slug='list',
                 view='plugins.installed.affiliates.dashboard.affiliates_list',
                 icon='link',
-                section='marketing',
+                section='affiliates',
                 order=50,
                 nav='main',
-                group='Affiliates',
             ),
             DashboardPage(
                 label='Programs',
                 slug='programs',
                 view='plugins.installed.affiliates.dashboard.programs_list',
                 icon='layers',
-                section='marketing',
+                section='affiliates',
                 order=51,
                 nav='main',
-                group='Affiliates',
             ),
             DashboardPage(
                 label='Links',
                 slug='links',
                 view='plugins.installed.affiliates.dashboard.links_list',
                 icon='link-2',
-                section='marketing',
+                section='affiliates',
                 order=53,
                 nav='main',
-                group='Affiliates',
             ),
             DashboardPage(
                 label='Creatives',
                 slug='creatives',
                 view='plugins.installed.affiliates.dashboard.creatives_list',
                 icon='image',
-                section='marketing',
+                section='affiliates',
                 order=52,
                 nav='main',
-                group='Affiliates',
             ),
             DashboardPage(
                 label='Conversions',
                 slug='conversions',
                 view='plugins.installed.affiliates.dashboard.conversions_list',
                 icon='trending-up',
-                section='marketing',
+                section='affiliates',
                 order=54,
                 nav='main',
-                group='Affiliates',
             ),
             DashboardPage(
                 label='Payouts',
                 slug='payouts',
                 view='plugins.installed.affiliates.dashboard.payouts_list',
                 icon='wallet',
-                section='marketing',
+                section='affiliates',
                 order=55,
                 nav='main',
-                group='Affiliates',
             ),
             DashboardPage(
                 label='Analytics',
                 slug='analytics',
                 view='plugins.installed.affiliates.dashboard.analytics',
                 icon='bar-chart-3',
-                section='marketing',
+                section='affiliates',
                 order=56,
                 nav='main',
-                group='Affiliates',
             ),
         ]

@@ -50,6 +50,10 @@ def ping_indexnow(urls: list[str]) -> dict:
     Yandex, Naver, Seznam, Yep. Fire-and-forget on the server; failures
     are silent so a slow IndexNow doesn't slow product saves.
     """
+    from plugins.installed.seo.services.launch import hidden_until_launch
+
+    if hidden_until_launch():
+        return {'ok': False, 'error': 'the store is hidden until launch'}
     import json as _json
     import urllib.request
 

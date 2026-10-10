@@ -38,6 +38,7 @@ from plugins.installed.seo.services import (
     suggest_redirect,
 )
 from plugins.installed.seo.services import site_audit
+from plugins.installed.seo.services.launch import hidden_until_launch
 from plugins.installed.seo.services.feeds import (
     render_journal_atom,
     render_journal_rss,
@@ -94,7 +95,26 @@ def _sitemap_last_modified():
         return None
 
 
+_EMPTY_URLSET = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>'
+)
+_EMPTY_SITEMAP_INDEX = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></sitemapindex>'
+)
+
+
+def _hidden_document(body: str) -> HttpResponse:
+    """An empty sitemap for a store hidden until launch — never cached long."""
+    resp = HttpResponse(body, content_type='application/xml; charset=utf-8')
+    resp['Cache-Control'] = 'no-cache'
+    return resp
+
+
 def sitemap_xml(request: HttpRequest) -> HttpResponse:
+    if hidden_until_launch():
+        return _hidden_document(_EMPTY_URLSET)
     resp = HttpResponse(render_sitemap_xml(), content_type='application/xml; charset=utf-8')
     return _cache_headers(resp, last_modified=_sitemap_last_modified())
 
@@ -108,7 +128,7 @@ def robots_txt(request: HttpRequest) -> HttpResponse:
 
 def llms_txt(request: HttpRequest) -> HttpResponse:
     s = site_settings()
-    if not s.llms_txt_enabled:
+    if not s.llms_txt_enabled or hidden_until_launch():
         return HttpResponse('Not enabled.', status=404, content_type='text/plain')
     resp = HttpResponse(render_llms_txt(full=False), content_type='text/plain; charset=utf-8')
     return _cache_headers(resp, last_modified=getattr(s, 'updated_at', None))
@@ -116,7 +136,7 @@ def llms_txt(request: HttpRequest) -> HttpResponse:
 
 def llms_full_txt(request: HttpRequest) -> HttpResponse:
     s = site_settings()
-    if not s.llms_txt_enabled:
+    if not s.llms_txt_enabled or hidden_until_launch():
         return HttpResponse('Not enabled.', status=404, content_type='text/plain')
     resp = HttpResponse(render_llms_txt(full=True), content_type='text/plain; charset=utf-8')
     return _cache_headers(resp, last_modified=getattr(s, 'updated_at', None))
@@ -126,7 +146,7 @@ def agents_md(request: HttpRequest) -> HttpResponse:
     """/agents.md — the agent-onboarding manifest (gated by the same
     expose-to-AI toggle as llms.txt)."""
     s = site_settings()
-    if not s.llms_txt_enabled:
+    if not s.llms_txt_enabled or hidden_until_launch():
         return HttpResponse('Not enabled.', status=404, content_type='text/plain')
     resp = HttpResponse(render_agents_md(), content_type='text/markdown; charset=utf-8')
     return _cache_headers(resp, last_modified=getattr(s, 'updated_at', None))
@@ -152,7 +172,7 @@ def journal_atom(request: HttpRequest) -> HttpResponse:
 
 def ai_products_feed(request: HttpRequest) -> JsonResponse:
     s = site_settings()
-    if not s.ai_shopping_feed_enabled:
+    if not s.ai_shopping_feed_enabled or hidden_until_launch():
         return JsonResponse({'error': 'Not enabled.'}, status=404)
     try:
         limit = int(request.GET.get('limit', 1000) or 1000)
@@ -185,6 +205,8 @@ def product_markdown(request: HttpRequest, slug: str) -> HttpResponse:
     """
     from plugins.installed.catalog.models import Product
 
+    if hidden_until_launch():
+        return HttpResponse('Not found.', status=404, content_type='text/plain; charset=utf-8')
     try:
         product = Product.objects.filter(slug=slug, status='active').first()
     except Exception:  # noqa: BLE001
@@ -206,7 +228,7 @@ def image_sitemap_xml(request: HttpRequest) -> HttpResponse:
     """
     from plugins.installed.seo.services import render_image_sitemap_xml
 
-    if not _seo_flag('image_sitemap_enabled', True):
+    if not _seo_flag('image_sitemap_enabled', True) or hidden_until_launch():
         from django.http import Http404
 
         raise Http404('Image sitemap disabled by store settings.')
@@ -223,6 +245,8 @@ def sitemap_index_xml(request: HttpRequest) -> HttpResponse:
     once the catalog crosses ~50k URLs."""
     from plugins.installed.seo.services import render_sitemap_index_xml
 
+    if hidden_until_launch():
+        return _hidden_document(_EMPTY_SITEMAP_INDEX)
     resp = HttpResponse(
         render_sitemap_index_xml(),
         content_type='application/xml; charset=utf-8',
@@ -240,7 +264,7 @@ def news_sitemap_xml(request: HttpRequest) -> HttpResponse:
     """
     from plugins.installed.seo.services import render_news_sitemap_xml
 
-    if not _seo_flag('news_sitemap_enabled', False):
+    if not _seo_flag('news_sitemap_enabled', False) or hidden_until_launch():
         from django.http import Http404
 
         raise Http404('News sitemap disabled by store settings.')

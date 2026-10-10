@@ -857,7 +857,10 @@ not show. The rule: **a property whose value you cannot source from the app that
 owns it must be OMITTED, not defaulted.** A missing recommended property costs a
 Search Console warning; an invented one is a Merchant Center policy violation and
 a promise checkout will break. (Same for Open Graph: every `og:image` was declared
-1200×630 until v0.83.6, square product photos included.) Shipping and returns are contributed by their
+1200×630 until v0.83.6, square product photos included. Same for copy: the
+affiliate apply page promised payouts on the 1st, a $25 carry-over — the model's
+default minimum is $50 — and +10% for store credit that nothing applies; its
+terms now render from the program row, v0.84.0.) Shipping and returns are contributed by their
 owners now (`shipping/seo_graph.py`, `returns_portal/seo_graph.py` on
 `SEO_JSONLD_GRAPH`), availability comes from `inventory.product_availability`
 through the one shared vocabulary in `plugins/feed_mapping.py`, and the head

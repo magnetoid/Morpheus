@@ -133,13 +133,24 @@ class WhereAmITests(_Staff):
         self.assertEqual(active, ['All orders'])
 
     def test_a_group_is_one_tab_with_sub_tabs(self):
-        nav = self._nav('/dashboard/apps/affiliates/programs/')
-        self.assertEqual(nav['section'], 'marketing')
+        nav = self._nav('/dashboard/apps/crm/pipeline/')
+        self.assertEqual(nav['section'], 'customers')
         labels = [t['label'] for t in nav['tabs']]
-        self.assertEqual(labels.count('Affiliates'), 1)
-        self.assertNotIn('Programs', labels)  # a sub-tab, not a tab
-        self.assertEqual([t['label'] for t in nav['subtabs'] if t['active']], ['Programs'])
-        self.assertTrue(next(t for t in nav['tabs'] if t['label'] == 'Affiliates')['active'])
+        self.assertEqual(labels.count('CRM'), 1)
+        self.assertNotIn('Pipeline', labels)  # a sub-tab, not a tab
+        self.assertEqual([t['label'] for t in nav['subtabs'] if t['active']], ['Pipeline'])
+        self.assertTrue(next(t for t in nav['tabs'] if t['label'] == 'CRM')['active'])
+
+    def test_affiliates_is_its_own_section_with_its_pages_as_tabs(self):
+        # Owner's ask (2026-10-10): out of Marketing, next to Vendors.
+        nav = self._nav('/dashboard/apps/affiliates/programs/')
+        self.assertEqual(nav['section'], 'affiliates')
+        self.assertEqual([t['label'] for t in nav['tabs'] if t['active']], ['Programs'])
+        keys = [s.key for s in navigation.SECTIONS]
+        self.assertEqual(
+            keys[keys.index('customers') + 1 : keys.index('customers') + 3],
+            ['vendors', 'affiliates'],
+        )
 
     def test_a_record_below_a_tab_belongs_to_it(self):
         nav = self._nav('/dashboard/marketplace/vendors/3f0c9d2e-0000-4000-8000-000000000001/')
@@ -212,7 +223,7 @@ class TabStripTests(_Staff):
     def test_linda_tabs_sit_inside_the_chat_layout(self):
         html = self.html('/dashboard/assistant/')
         self.assertIn('<div class="linda-page__tabs">', html)
-        self.assertEqual(html.count('class="hub-tabs"'), 1)
+        self.assertEqual(len(re.findall(r'<nav class="hub-tabs[ "]', html)), 1)
 
 
 class StorefrontPaysNothingTests(TestCase):

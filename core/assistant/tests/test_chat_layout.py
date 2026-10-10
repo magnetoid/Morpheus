@@ -53,15 +53,18 @@ class LindaChatLayoutTests(TestCase):
         self.assertNotIn('linda-suggested', html)
         self.assertNotIn('linda-chip', html)
 
-    def test_the_typing_field_has_no_border_or_ring(self):
-        # The owner asked twice: first the indigo focus ring, then the border.
+    def test_the_typing_field_has_a_drop_shadow_but_no_border_or_ring(self):
+        # The owner asked for the indigo focus ring to go, then the border
+        # (2026-10-09), then for a shadow falling a little below it (2026-10-10).
         import re
 
         html = self._html()
         rules = ' '.join(re.findall(r'\.linda-form(?::focus-within)?\s*\{([^}]*)\}', html))
         self.assertIn('border: 0', rules)
-        self.assertNotIn('box-shadow', rules)
         self.assertNotIn('--brand', rules)
+        self.assertIn('box-shadow: var(--shadow-pop', rules)
+        # A ring is a shadow with no offset and no blur (`0 0 0 2px …`).
+        self.assertIsNone(re.search(r'box-shadow:[^;]*\b0 0 0 \d', rules))
 
     def test_the_floating_launcher_is_not_rendered_on_lindas_own_page(self):
         html = self._html()

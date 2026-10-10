@@ -678,7 +678,7 @@ def background_agents_view(request):
 
 
 @staff_member_required
-@require_capability('system.read')
+@require_capability('system.write')
 def background_agent_action_view(request, bg_id: str, action: str):
     from django.utils import timezone
 
