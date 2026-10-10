@@ -5,6 +5,13 @@
   <p style="color: var(--muted); margin-bottom: 1.25rem;">
     Change how this shop uses cookies. Necessary cookies (cart, login) are always on.
   </p>
+  {% if consent.gpc and not consent.decided_by_cookie %}
+  <p style="color: var(--muted); margin-bottom: 1.25rem;">
+    Your browser sends the Global Privacy Control signal. We treat it as a refusal of
+    analytics, marketing and functional cookies, so nothing beyond the necessary ones is set
+    unless you choose otherwise here.
+  </p>
+  {% endif %}
   {% include 'storefront/blocks/_consent_banner.html' with force_show=True %}
 </section>
 {% endblock %}

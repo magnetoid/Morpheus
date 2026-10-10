@@ -56,9 +56,21 @@ def read_consent_from_cookie(request: HttpRequest) -> dict[str, bool]:
     }
 
 
+def is_gpc(request: HttpRequest) -> bool:
+    """The browser sent Global Privacy Control (``Sec-GPC: 1``)."""
+    return request is not None and request.META.get('HTTP_SEC_GPC', '').strip() == '1'
+
+
 def has_decided(request: HttpRequest) -> bool:
-    """Has the visitor seen + answered the banner?"""
-    return COOKIE_NAME in (request.COOKIES or {})
+    """Has the visitor seen + answered the banner?
+
+    A browser sending Global Privacy Control counts as having answered: the
+    signal is honoured as a refusal of everything non-essential (the default
+    the cookie-less read already returns), so the banner stays out of the way.
+    The preferences page still lets the visitor opt in; an explicit choice on
+    file beats the signal.
+    """
+    return COOKIE_NAME in (request.COOKIES or {}) or is_gpc(request)
 
 
 def _hash_ip(request: HttpRequest) -> str:

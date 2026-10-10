@@ -982,6 +982,24 @@ canonical for exactly that reason; policy is one `IndexRule` row per parameter
 and cached, invalidated on write. `page` is reserved and takes no rule.
 Guarded by `seo/tests/test_index_rules.py` + `test_pagination_policy.py`.
 
+**Landmine — a consent banner that nothing reads is a banner, not consent; and
+a theme that skips a global slot ships without the banner at all.** Until
+v0.91.0 the consent app recorded a per-category decision that only the `tracking`
+(GTM) app read: the seven ad-pixel blocks and the analytics beacon loaded on
+every page whatever the visitor chose. The decision now travels on every
+template context as `consent` (`consent/context_processors.py`, contributed via
+`register_context_processor`, so it vanishes with the app): an ad pixel renders
+inside `{% if not consent.managed or consent.marketing %}`, the beacon on
+`consent.analytics` — `managed` is the GDPR master switch, so a store that runs
+no consent keeps its tags, and a block that forgets the gate fails
+`consent/tests/test_gating.py`. `Sec-GPC: 1` counts as a refusal of everything
+non-essential until the visitor chooses otherwise. Same audit: the montenegro
+theme's base emitted none of `global_head` / `global_below_body` /
+`footer_legal` / `footer_extra` — a live bilingual store with no cookie banner,
+beacon, PWA, chat or GDPR footer links — and `core/tests/test_slot_parity.py`
+checks only the ACTIVE theme (dot_books under test). Every theme base and the
+storefront fallback must emit all four; guarded by `themes/test_global_slots.py`.
+
 **Landmine — a `StorefrontBlock` whose slot no template renders is silent.**
 The plugin is enabled, its tests pass, its block renders fine in isolation — and
 the merchant sees nothing, with no error anywhere. This had happened four times

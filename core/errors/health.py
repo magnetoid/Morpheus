@@ -71,6 +71,95 @@ def _uploads_check() -> dict:
     return {'name': 'Uploads can be saved', 'ok': True, 'detail': ''}
 
 
+_DOH_URL = 'https://cloudflare-dns.com/dns-query'
+_EMAIL_AUTH_NAME = 'Sender domain is authenticated (SPF, DMARC)'
+
+
+def smtp_configured() -> bool:
+    """Module-level seam (tests patch it); the import stays lazy."""
+    from core.email import smtp_configured as _configured  # noqa: PLC0415
+
+    return _configured()
+
+
+def _txt_records(name: str) -> list[str]:
+    """TXT records for ``name`` over DNS-over-HTTPS (no resolver dependency,
+    and the container has no ``dig``). Raises on any failure; callers treat
+    that as "could not verify", never as "missing"."""
+    import re  # noqa: PLC0415
+
+    import requests  # noqa: PLC0415
+
+    resp = requests.get(
+        _DOH_URL,
+        params={'name': name, 'type': 'TXT'},
+        headers={'accept': 'application/dns-json'},
+        timeout=5,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f'DNS-over-HTTPS answered {resp.status_code}')
+    records = []
+    for answer in resp.json().get('Answer') or []:
+        if answer.get('type') != 16:
+            continue
+        raw = str(answer.get('data') or '')
+        parts = re.findall(r'"((?:[^"\\]|\\.)*)"', raw)
+        records.append(''.join(parts) if parts else raw.strip('"'))
+    return records
+
+
+def _sender_domain() -> str:
+    """The domain mail goes out from: the merchant's sender, else the deployment's."""
+    from email.utils import parseaddr  # noqa: PLC0415
+
+    from django.conf import settings  # noqa: PLC0415
+
+    address = ''
+    try:
+        from core.models import StoreSettings  # noqa: PLC0415
+
+        row = StoreSettings.objects.first()
+        address = (getattr(row, 'default_from_email', '') or '') if row else ''
+    except Exception:  # noqa: BLE001 — a settings table outage is not a mail problem
+        address = ''
+    email = parseaddr(address or str(getattr(settings, 'DEFAULT_FROM_EMAIL', '') or ''))[1]
+    return email.rsplit('@', 1)[-1].lower() if '@' in email else ''
+
+
+def _email_auth_check() -> dict:
+    """SPF + DMARC published for the sending domain, or the mail is filtered."""
+    if not smtp_configured():
+        return {
+            'name': _EMAIL_AUTH_NAME,
+            'ok': True,
+            'detail': 'Not checked: no SMTP server is configured, so nothing is sent.',
+        }
+    domain = _sender_domain()
+    if not domain:
+        return {'name': _EMAIL_AUTH_NAME, 'ok': True, 'detail': 'Not checked: no sender address.'}
+    try:
+        spf = any(r.lower().startswith('v=spf1') for r in _txt_records(domain))
+        dmarc = any(r.lower().startswith('v=dmarc1') for r in _txt_records(f'_dmarc.{domain}'))
+    except Exception as e:  # noqa: BLE001 — unverifiable is not broken
+        return {
+            'name': _EMAIL_AUTH_NAME,
+            'ok': True,
+            'detail': f'{domain}: could not verify (DNS lookup failed: {e}).'[:500],
+        }
+    missing = [label for label, present in (('SPF', spf), ('DMARC', dmarc)) if not present]
+    if missing:
+        return {
+            'name': _EMAIL_AUTH_NAME,
+            'ok': False,
+            'detail': (
+                f'{domain} publishes no {" or ".join(missing)} record, so mail from it is '
+                f'likely to be filtered. Add a TXT record "v=spf1 …" at {domain} and '
+                f'"v=DMARC1; p=…" at _dmarc.{domain} with your DNS provider.'
+            ),
+        }
+    return {'name': _EMAIL_AUTH_NAME, 'ok': True, 'detail': f'{domain}: SPF and DMARC published.'}
+
+
 def _core_checks() -> list[dict]:
     from django.template.loader import get_template
 
@@ -85,6 +174,7 @@ def _core_checks() -> list[dict]:
     email_ok = smtp_configured()
     return [
         _uploads_check(),
+        _email_auth_check(),
         {
             'name': 'Outgoing email is set up',
             'ok': email_ok,

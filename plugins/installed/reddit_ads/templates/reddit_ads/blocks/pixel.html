@@ -1,1 +1,2 @@
-{% load reddit_ads %}{% reddit_pixel %}
+{# Ad pixels load only with marketing consent; a store that does not manage consent (GDPR features off, consent app off) keeps its tags. #}
+{% if not consent.managed or consent.marketing %}{% load reddit_ads %}{% reddit_pixel %}{% endif %}

@@ -28,6 +28,7 @@ which is exactly what this theme was relying on before it adopted the contract.{
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 {% seo_preconnect %}
+{% storefront_blocks "global_head" %}
 {% caching_resource_hints %}
 {% caching_preload_fonts %}
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -513,6 +514,7 @@ which is exactly what this theme was relying on before it adopted the contract.{
         <a href="/p/terms/" class="hover:underline">{% trans "Terms" %}</a>
         <span>·</span>
         <a href="/sitemap.xml" class="hover:underline">{% trans "Sitemap" %}</a>
+        {% storefront_blocks "footer_legal" %}
       </div>
       <div class="flex items-center gap-4">
         <form action="{% url 'set_language' %}" method="post" class="flex items-center gap-2 text-sm font-medium">
@@ -532,8 +534,10 @@ which is exactly what this theme was relying on before it adopted the contract.{
       </div>
     </div>
   </div>
+{% storefront_blocks "footer_extra" %}
 </footer>
 
+{% storefront_blocks "global_below_body" %}
 <script src="{% static 'core/error-capture.js' %}" defer></script>
 </body>
 </html>

@@ -2,7 +2,8 @@
 {% load morph %}{% load seo %}{% load caching %}{% load i18n %}{% load pricing %}
 {% comment %}
 Home — direction 1a ("product hero") from the owner's design canvases, in
-Irving's voice. Order: centred hero; the stage (the lead featured product, or
+Irving's voice. Order: centred hero; the stage (the two lead featured products
+side by side, straight under the copy — one alone keeps the full width — or
 the household kit list when nothing is featured) with four official figures;
 shop by system (top-level categories, shown from three); featured products; the
 two planning cards; bundles (the "staff-picks" collection, under its own name);
@@ -18,7 +19,13 @@ show, so an empty catalogue still reads as a finished page.
   .h-hero .wrap { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.5rem; }
   .h-hero h1 { max-width: 13ch; text-wrap: balance; }
   .h-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; margin-top: .5rem; }
-  .h-stage { padding-top: clamp(2.5rem, 5vw, 4rem); padding-bottom: 0; }
+  .h-stage { padding-top: clamp(1.25rem, 2.5vw, 2rem); padding-bottom: 0; }
+  .h-stage__pair { display: grid; gap: 1rem; }
+  @media (min-width: 900px) { .h-stage__pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .h-stage__pair .h-panel { min-height: clamp(280px, 32vw, 520px); }
+  .h-stage__pair .h-panel img { height: clamp(280px, 32vw, 520px); }
+  .h-stage__pair > .h-panel:only-child { grid-column: 1 / -1; min-height: clamp(320px, 44vw, 640px); }
+  .h-stage__pair > .h-panel:only-child img { height: clamp(320px, 44vw, 640px); }
   .h-panel { display: block; position: relative; overflow: hidden; border-radius: var(--r-lg); background: var(--surface); min-height: clamp(320px, 44vw, 640px); }
   .h-panel img { width: 100%; height: clamp(320px, 44vw, 640px); object-fit: contain; padding: 4%; }
   .h-panel__cap { position: absolute; left: 1.5rem; bottom: 1.5rem; display: flex; gap: .75rem; align-items: center; font: 400 .8125rem var(--mono); color: var(--ink2); }
@@ -91,10 +98,15 @@ show, so an empty catalogue still reads as a finished page.
 <section class="h-stage">
   <div class="wrap">
     {% if hero and hero.primaryImage.url %}
-    <a class="h-panel" href="/products/{{ hero.slug }}/">
-      {% seo_responsive_image hero.primaryImage.url alt=hero.primaryImage.altText|default:hero.name widths="800,1200,1600" sizes="(min-width: 1440px) 1344px, 94vw" priority=True %}
-      <span class="h-panel__cap"><strong>{{ hero.name }}</strong><span>{% if hero.priceStartsFrom %}{% translate "From" %} {% endif %}{{ hero.price|money }}</span></span>
-    </a>
+    {# The two lead products, side by side, straight under the hero copy. A lone product keeps the full width (:only-child). #}
+    <div class="h-stage__pair">
+      {% for pick in hero_products|slice:":2" %}{% if pick.primaryImage.url %}
+      <a class="h-panel" href="/products/{{ pick.slug }}/">
+        {% if forloop.first %}{% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,900,1400" sizes="(min-width: 1440px) 664px, (min-width: 900px) 46vw, 94vw" priority=True %}{% else %}{% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,900,1400" sizes="(min-width: 1440px) 664px, (min-width: 900px) 46vw, 94vw" %}{% endif %}
+        <span class="h-panel__cap"><strong>{{ pick.name }}</strong><span>{% if pick.priceStartsFrom %}{% translate "From" %} {% endif %}{{ pick.price|money }}</span></span>
+      </a>
+      {% endif %}{% endfor %}
+    </div>
     {% else %}
     <div class="h-panel h-kit">
       <div class="h-kit__head">

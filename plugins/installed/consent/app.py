@@ -14,7 +14,13 @@ This plugin ships:
 
 Tracking integration: ``plugins.installed.tracking`` gates its GTM
 container on ``analytics`` / ``marketing`` flags read from the cookie,
-so the banner controls real loading — not just downstream tags.
+so the banner controls real loading — not just downstream tags. Since
+v0.91.0 the decision also travels on every template context as ``consent``
+(``context_processors.consent_context``): every ad-pixel block renders only
+on ``consent.marketing`` and the analytics beacon only on
+``consent.analytics`` — until then the banner recorded a choice that no
+pixel read. ``Sec-GPC: 1`` (Global Privacy Control) counts as a refusal of
+everything non-essential until the visitor chooses otherwise.
 """
 
 from __future__ import annotations
@@ -38,6 +44,11 @@ class ConsentPlugin(Plugin):
         from plugins.installed.consent import gdpr  # noqa: PLC0415
 
         self.register_hook(events.CUSTOMER_DATA_EXPORT, gdpr.on_customer_export, priority=30)
+        from plugins.installed.consent.context_processors import consent_context  # noqa: PLC0415
+
+        # `consent` on every template context — the gate the tag blocks read.
+        # Contributed, so it vanishes with the app (an unmanaged store keeps its tags).
+        self.register_context_processor(consent_context)
         self.register_urls(
             'plugins.installed.consent.urls',
             prefix='consent/',

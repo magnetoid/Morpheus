@@ -622,8 +622,12 @@ shape with minor-unit prices and the seller block), 4c (the `openai_shopping`
 app: JSONL feed, six-hourly push, Channels tab, settings panel) and the first
 half of 4e (the WebMCP block on `global_below_body`: three imperative tools over
 GraphQL, declared where `document.modelContext` exists; the declarative form
-annotations and the Lighthouse run are still open). **Round 2 shipped as
-v0.90.0** — 4d (every MCP endpoint is a dual-era server: the 2026-07-28
+annotations and the Lighthouse run are still open — a Lighthouse run on
+dotbooks after v0.89.0 scores Agentic Browsing 100 but reports the three WebMCP
+audits "not applicable": the audit's Chrome has no `modelContext`, so imperative
+registration is invisible to it and only the declarative `toolname` /
+`tooldescription` form attributes will make `webmcp-form-coverage` count).
+**Round 2 shipped as v0.90.0** — 4d (every MCP endpoint is a dual-era server: the 2026-07-28
 stateless envelope with mirrored headers, `server/discover`, `resultType`,
 `ttlMs`/`cacheScope`, the reserved error codes, Origin validation; the
 2024-11-05 handshake kept for legacy clients) and 4f (Web Bot Auth verified at
@@ -678,6 +682,18 @@ visible to agents.
   write it into `OPERATIONS_RUNBOOK.md`.
 
 ### W5 — Compliance pack (1–2 weeks, M per item)
+
+**Status 2026-10-10:** round 1 shipped as v0.91.0 — two findings the audit
+had not listed and 5f/5g. (1) The consent decision gated nothing but the GTM
+container: every ad pixel and the analytics beacon loaded regardless; now
+`consent` is on every template context and each block gates on it. (2) The
+montenegro theme base emitted none of the global slots — no cookie banner,
+beacon, PWA, chat or GDPR footer links on a live bilingual store; fixed, with
+a guard over every theme base. 5f: `Sec-GPC` honoured as a refusal. 5g: the
+nightly health check resolves SPF + DMARC for the sending domain over
+DNS-over-HTTPS (live: irvingsurvival.com has no DMARC). Also the two
+unlabelled `<select>`s on montenegro's home (part of 5d). Open: 5a, 5b, 5c,
+the rest of 5d (needs a Lighthouse re-run), 5e.
 
 - **5a GPSR**: a `product_safety` app contributing a product-form card
   (`PRODUCT_FORM_CARDS`), a PDP block and feed attributes for manufacturer

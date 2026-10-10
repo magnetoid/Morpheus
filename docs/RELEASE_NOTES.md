@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.91.0 — 2026-10-10
+
+**Consent that gates the tags, the montenegro theme's missing global slots, a sender-domain check and Irving's two-product stage**
+
+- The cookie decision now gates what loads: every ad pixel (Google remarketing, Meta, Microsoft UET, Pinterest, Reddit, Snapchat, TikTok) renders only with marketing consent and the analytics beacon only with analytics consent — until now the banner recorded a choice that no pixel read; a store with GDPR features off keeps its tags
+- Global Privacy Control (Sec-GPC) counts as a refusal of everything non-essential until the visitor chooses otherwise, and the preferences page says so
+- The montenegro theme now emits the global storefront slots (head, body end, footer legal and extra): the store had been running without the cookie banner, the analytics beacon, the PWA registration, the chat widget and the GDPR footer links; a guard now checks every theme base; its home search selects carry labels
+- The nightly health check verifies SPF and DMARC for the sending domain over DNS-over-HTTPS and names what is missing
+- Irving Survival: the stage under the hero copy shows the two lead products side by side
+
 ## v0.90.0 — 2026-10-10
 
 **Agent-ready, round two: MCP 2026-07-28 on every endpoint and Web Bot Auth verified at the origin**

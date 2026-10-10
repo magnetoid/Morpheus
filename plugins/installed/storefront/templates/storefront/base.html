@@ -172,6 +172,7 @@
             </div>
             <div class="mt-8 border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
                 <p class="text-sm text-gray-500">&copy; 2026 Morpheus Store. All rights reserved.</p>
+                {% storefront_blocks "footer_legal" %}
                 <div class="flex space-x-6">
                     <a href="#" class="text-gray-500 hover:text-white transition-colors">
                         <span class="sr-only">Twitter</span>
@@ -180,6 +181,7 @@
                 </div>
             </div>
         </div>
+        {% storefront_blocks "footer_extra" %}
     </footer>
     {% storefront_blocks "global_below_body" %}
 </body>
