@@ -1089,7 +1089,8 @@
         </p>
         <a href="{% url 'admin_dashboard:my_account' %}" class="nav-link" style="font-size:.85rem;"><i data-lucide="user" class="h-4 w-4"></i> Your account</a>
         <a href="{% url 'admin_dashboard:settings' %}" class="nav-link" style="font-size:.85rem;"><i data-lucide="settings" class="h-4 w-4"></i> Store settings</a>
-        {% plugin_enabled "release_notes" as release_notes_on %}{% if release_notes_on %}<a href="/dashboard/apps/release_notes/about/" class="nav-link" style="font-size:.85rem;"><i data-lucide="info" class="h-4 w-4"></i> About Morpheus OS</a>{% endif %}
+        {% plugin_enabled "release_notes" as release_notes_on %}{% if release_notes_on %}<a href="/dashboard/apps/release_notes/help/" class="nav-link" style="font-size:.85rem;"><i data-lucide="help-circle" class="h-4 w-4"></i> Help</a>{% endif %}
+        {% if release_notes_on %}<a href="/dashboard/apps/release_notes/about/" class="nav-link" style="font-size:.85rem;"><i data-lucide="info" class="h-4 w-4"></i> About Morpheus OS</a>{% endif %}
         {% if release_notes_on %}<a href="/dashboard/apps/release_notes/version/" class="nav-link" style="font-size:.85rem;"><i data-lucide="git-commit-horizontal" class="h-4 w-4"></i> Version &amp; updates <span class="pill pill-info" style="font-size:.62rem; margin-left:auto;">{{ MORPHEUS_VERSION|default:"v0.1.0" }}</span></a>{% endif %}
         {% comment %}Contributed entries (DASHBOARD_USER_MENU). An app appends its
         own item rather than the shell hardcoding a link to it; the hook bus drops

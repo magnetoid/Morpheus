@@ -36,7 +36,12 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.84.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.84.1')
+
+# The project website. The dashboard's Help and About pages show its pages
+# (help.html, about.html) in their embed mode, so they are written once for
+# every store. A fork can point it at its own site.
+MORPHEUS_SITE_URL = config('MORPHEUS_SITE_URL', default='https://morpheus.direct')
 
 # Opt-in gate for the in-app platform self-updater (git fast-forward apply).
 # OFF by default — `manage.py morph_apply_update --confirm` refuses unless this

@@ -125,6 +125,18 @@ _CSP_DASHBOARD_ENFORCE = '; '.join(
 )
 
 
+def dashboard_csp(*, frame_src: tuple[str, ...] = ()) -> str:
+    """The enforced dashboard policy, letting one response frame `frame_src`.
+
+    A dashboard page that embeds another origin (Help and About show the
+    project website) sets this on its own response — the middleware leaves a
+    response's own policy alone — so every other page still frames nothing.
+    """
+    if not frame_src:
+        return _CSP_DASHBOARD_ENFORCE
+    return f"{_CSP_DASHBOARD_ENFORCE}; frame-src 'self' {' '.join(frame_src)}"
+
+
 class SecurityHeadersMiddleware:
     """Adds headers Django doesn't ship by default."""
 

@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.84.1 — 2026-10-10
+
+**Help and About open from the website**
+
+- The account menu (top right) has a Help page, and About Morpheus OS shows what the platform is and its licence. Both are pages of morpheus.direct shown inside the dashboard, in your light or dark theme, so they are written once and stay current for every store; Open in a new tab is above each. The old About page, with its list of installed apps, is gone; Settings → Apps lists every app on your store.
+
 ## v0.84.0 — 2026-10-09
 
 **Pre-launch mode, an affiliate program page, and vendors and affiliates up front**

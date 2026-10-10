@@ -1,0 +1,38 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ title }} · Morpheus{% endblock %}
+
+{% block content %}
+{% comment %}A page of the project website in its embed mode (no site header or
+footer). The theme goes along: the dashboard's own choice, or the OS setting when
+the choice is "system", so the page matches the dashboard around it.{% endcomment %}
+<div class="site-page">
+  <p class="site-page__open">
+    <a href="{{ page_url }}" target="_blank" rel="noopener">Open in a new tab <i data-lucide="external-link" class="h-3.5 w-3.5"></i></a>
+  </p>
+  <iframe id="site-page-frame" class="site-page__frame" title="{{ title }}"
+          data-site-page="{{ page_url }}"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+          referrerpolicy="no-referrer"></iframe>
+</div>
+<style>
+  .site-page { max-width: 72rem; margin: 0 auto; }
+  .site-page__open { display: flex; justify-content: flex-end; margin: 0 0 .5rem; font-size: .8rem; }
+  .site-page__open a { display: inline-flex; align-items: center; gap: .3rem; color: var(--text-muted); }
+  .site-page__open a:hover { color: var(--text); }
+  .site-page__frame {
+    display: block; width: 100%; height: calc(100vh - 12rem); min-height: 32rem;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+  }
+</style>
+<script>
+(function () {
+  var frame = document.getElementById('site-page-frame');
+  if (!frame) return;
+  var theme = document.documentElement.getAttribute('data-theme');
+  if (theme !== 'light' && theme !== 'dark') {
+    theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  frame.src = frame.getAttribute('data-site-page') + '?embed=1&theme=' + theme;
+})();
+</script>
+{% endblock %}

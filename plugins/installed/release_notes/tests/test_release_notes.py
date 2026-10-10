@@ -71,23 +71,46 @@ class VersionPageTests(TestCase):
         self.assertEqual(resp['Location'], '/dashboard/apps/release_notes/version/')
 
 
-class AboutPageTests(TestCase):
+class SitePageTests(TestCase):
+    """Help and About live on the project website and open embedded here.
+
+    Written once on morpheus.direct for every store (owner's call, 2026-10-10);
+    the dashboard frames the site's embed mode. Only these two pages may frame
+    that site — the dashboard's enforced CSP frames nothing else.
+    """
+
     def setUp(self):
         User = get_user_model()
         self.staff = User.objects.create_user(
             username='boss2', email='b2@x.io', password='pw', is_staff=True
         )
 
-    def test_page_renders_and_lists_apps(self):
+    def test_about_and_help_embed_the_website_pages(self):
         self.client.force_login(self.staff)
-        resp = self.client.get('/dashboard/apps/release_notes/about/')
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, 'About Morpheus')
-        self.assertContains(resp, 'Every app')
-        # The catalogue is data-driven from the plugin registry — the
-        # release_notes plugin lists itself, so its label appears.
-        self.assertContains(resp, 'Release notes')
+        for slug, page in (('about', 'about.html'), ('help', 'help.html')):
+            with self.subTest(page=slug):
+                resp = self.client.get(f'/dashboard/apps/release_notes/{slug}/')
+                self.assertEqual(resp.status_code, 200)
+                html = resp.content.decode()
+                self.assertIn('<iframe', html)
+                self.assertIn(f'data-site-page="https://morpheus.direct/{page}"', html)
+                self.assertIn(f'href="https://morpheus.direct/{page}"', html)
+                csp = resp['Content-Security-Policy']
+                self.assertIn("frame-src 'self' https://morpheus.direct", csp)
+                self.assertIn("frame-ancestors 'none'", csp)
+
+    def test_the_rest_of_the_dashboard_frames_nothing_external(self):
+        self.client.force_login(self.staff)
+        resp = self.client.get('/dashboard/apps/release_notes/version/')
+        self.assertNotIn('morpheus.direct', resp['Content-Security-Policy'])
+
+    def test_the_account_menu_links_help_and_about(self):
+        self.client.force_login(self.staff)
+        html = self.client.get('/dashboard/').content.decode()
+        self.assertIn('href="/dashboard/apps/release_notes/help/"', html)
+        self.assertIn('href="/dashboard/apps/release_notes/about/"', html)
 
     def test_anon_blocked(self):
-        resp = self.client.get('/dashboard/apps/release_notes/about/')
-        self.assertIn(resp.status_code, (302, 301, 403))
+        for slug in ('about', 'help'):
+            resp = self.client.get(f'/dashboard/apps/release_notes/{slug}/')
+            self.assertIn(resp.status_code, (302, 301, 403))

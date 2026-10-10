@@ -157,44 +157,41 @@ def version_updates(request):
     )
 
 
+def _site_page(request, page: str, title: str):
+    """A page of the project website, shown inside the dashboard.
+
+    Help and About are written once on the website (``MORPHEUS_SITE_URL``) for
+    every store; the dashboard frames the site's embed mode, which hides the
+    site's own header and footer and takes the dashboard's light or dark theme.
+    Only these responses may frame that site — every other dashboard page keeps
+    the enforced policy that frames nothing external.
+    """
+    from urllib.parse import urlsplit
+
+    from core.security_headers import dashboard_csp
+
+    site = getattr(settings, 'MORPHEUS_SITE_URL', 'https://morpheus.direct').rstrip('/')
+    parts = urlsplit(site)
+    response = render(
+        request,
+        'release_notes/site_page.html',
+        {'title': title, 'page_url': f'{site}/{page}', 'active_nav': 'settings'},
+    )
+    response['Content-Security-Policy'] = dashboard_csp(
+        frame_src=(f'{parts.scheme}://{parts.netloc}',)
+    )
+    return response
+
+
 @staff_member_required
 @require_capability('system.read')
 def about(request):
-    """About Morpheus — platform narrative + a live catalogue of every installed
-    app, read straight from the plugin registry so the list never drifts."""
-    from plugins.registry import app_registry
+    """About Morpheus OS — the website's About page."""
+    return _site_page(request, 'about.html', 'About Morpheus OS')
 
-    # Intended-enabled state from the DB (what a merchant last chose). A plugin
-    # with no PluginConfig row ships enabled, so default True.
-    db_enabled: dict[str, bool] = {}
-    try:
-        from plugins.models import PluginConfig
 
-        db_enabled = dict(PluginConfig.objects.values_list('plugin_name', 'is_enabled'))
-    except Exception:  # noqa: BLE001, S110 — never break the page on a DB hiccup
-        pass
-
-    apps = [
-        {
-            'name': name,
-            'label': getattr(cls, 'label', name) or name,
-            'description': getattr(cls, 'description', '') or '',
-            'version': getattr(cls, 'version', '') or '',
-            'requires': list(getattr(cls, 'requires', []) or []),
-            'active': db_enabled.get(name, True),
-        }
-        for name, cls in app_registry._classes.items()
-    ]
-    apps.sort(key=lambda a: a['label'].lower())
-
-    return render(
-        request,
-        'release_notes/about.html',
-        {
-            'version': getattr(settings, 'MORPHEUS_VERSION', 'v0.1.0'),
-            'apps': apps,
-            'app_total': len(apps),
-            'app_active': sum(1 for a in apps if a['active']),
-            'active_nav': 'settings',
-        },
-    )
+@staff_member_required
+@require_capability('system.read')
+def help_page(request):
+    """Help — the website's guide to the dashboard."""
+    return _site_page(request, 'help.html', 'Help')

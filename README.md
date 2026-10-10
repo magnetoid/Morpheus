@@ -122,7 +122,7 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 
 ## 📊 By the numbers
 
-Measured at **v0.76.0 (3 October 2026)** by a script over the tree, not from memory. Counts drift with every release — each row names its source of truth, and that source wins over this table. The dashboard's **Settings → About Morpheus** page is the always-current catalogue.
+Measured at **v0.76.0 (3 October 2026)** by a script over the tree, not from memory. Counts drift with every release — each row names its source of truth, and that source wins over this table. The dashboard's **Settings → Apps** page is the always-current catalogue.
 
 | Metric | Value | Source of truth |
 |---|---|---|
@@ -329,7 +329,7 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/PLUGIN_DEVELOPMENT.md`](doc
 
 ## 🧩 What's in the box: all 111 apps
 
-Every shipped capability is a toggleable app, and every app below is described from its own manifest at v0.76.0. The always-current version is **Settings → About Morpheus** in the dashboard; the source of truth for the count is `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`.
+Every shipped capability is a toggleable app, and every app below is described from its own manifest at v0.76.0. The always-current version is **Settings → Apps** in the dashboard; the source of truth for the count is `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`.
 
 > **Apps and plugins are the same thing.** "App" is the word the product uses — in the dashboard, in these docs, and at every seam you touch as an author (`app.py`, `morpheus.app`, `app_registry`). Two things still read "plugin" on purpose: the directory `plugins/installed/` and the base class `MorpheusPlugin`, because renaming them would rewrite roughly two thousand import paths for no user-visible gain. Upgrading an out-of-tree app: [`docs/MIGRATING.md`](docs/MIGRATING.md).
 
@@ -504,7 +504,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `importers` | Idempotent migration from Shopify, WooCommerce, Magento and BigCommerce, plus bulk CSV import and export |
 | `feature_adoption` | Per-install feature-usage aggregates and an install-health score, with no PII |
 | `feedback` | Staff bug reports with a screen capture and the recent JavaScript errors attached, as tickets under Settings |
-| `release_notes` | Settings → About Morpheus (a live catalogue of every installed app) and Version & updates |
+| `release_notes` | Help and About Morpheus OS (the project website's pages, shown in the dashboard) and Version & updates |
 
 </details>
 
