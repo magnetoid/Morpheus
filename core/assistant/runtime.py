@@ -268,6 +268,7 @@ class Assistant:
         from core.assistant.janus_engine import turn_timeout_s
         from core.assistant.turn_identity import mint
 
+        provider, model = self._turn_provider(context)
         # Margin past the subprocess timeout: a tool call issued in the turn's
         # final seconds must not be refused while the turn is still legitimate.
         return mint(
@@ -275,7 +276,25 @@ class Assistant:
             conversation_key=conversation_key,
             mode_slug=self._mode(context).slug,
             ttl_s=turn_timeout_s() + 30,
+            provider=provider,
+            model=model,
         )
+
+    @staticmethod
+    def _turn_provider(context) -> tuple[str, str]:
+        """The provider and model this turn is wired to (the message's pick, the
+        pinned one, or the store's), as names — for the turn token and the run
+        record. Fail-soft: an unresolvable wiring is simply unnamed."""
+        try:
+            from core.assistant.janus_engine import _provider_wiring
+
+            choice = str((context or {}).get('provider') or '') if isinstance(context, dict) else ''
+            args, _env = _provider_wiring(choice)
+        except Exception:  # noqa: BLE001 — provenance must never break a turn
+            return '', ''
+        provider = args[args.index('--provider') + 1] if '--provider' in args else ''
+        model = args[args.index('-m') + 1] if '-m' in args else ''
+        return str(provider), str(model)
 
     def _system_prompt(self, *, context) -> str:
         """What stays the same from message to message, so the provider can cache it."""
@@ -325,14 +344,22 @@ class Assistant:
         error: str = '',
         usage: dict | None = None,
         tool_calls: int = 0,
+        turn: dict | None = None,
     ):
-        """Store Linda's reply, with what the turn cost, and build the closing event."""
+        """Store Linda's reply, with what the turn cost, and build the closing event.
+
+        ``turn`` (the merchant's message, the user, the provider) is given when
+        the engine actually ran; the reply is then also recorded as an
+        ``AgentRun`` so Observability, the failure list and the AI-Act run
+        summary see Linda's turns (they read nothing else).
+        """
         usage = usage or {}
         prompt_tokens = sum(
             int(usage.get(k) or 0)
             for k in ('input_tokens', 'cache_read_tokens', 'cache_write_tokens')
         )
         completion_tokens = int(usage.get('output_tokens') or 0)
+        model = str(usage.get('model') or '')[:100]
         self.store.append(
             conversation_key=conversation_key,
             message=StoredMessage(
@@ -340,9 +367,10 @@ class Assistant:
                 content=text[:50_000],
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
-                model=str(usage.get('model') or '')[:100],
+                model=model,
             ),
         )
+        duration_ms = int((time.monotonic() - started) * 1000)
         result = AssistantRunResult(
             text=text,
             state='failed' if error else 'completed',
@@ -350,9 +378,66 @@ class Assistant:
             tool_call_count=tool_calls,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
-            duration_ms=int((time.monotonic() - started) * 1000),
+            duration_ms=duration_ms,
         )
+        if turn is not None:
+            self._record_run(
+                conversation_key=conversation_key,
+                turn=turn,
+                text=text,
+                error=error,
+                model=model,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                tool_calls=tool_calls,
+                duration_ms=duration_ms,
+            )
         return {'type': 'error' if error else 'final', 'result': result}
+
+    @staticmethod
+    def _record_run(
+        *,
+        conversation_key: str,
+        turn: dict,
+        text: str,
+        error: str,
+        model: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+        tool_calls: int,
+        duration_ms: int,
+    ) -> None:
+        """One ``AgentRun`` per Janus turn, ``agent_name='linda'``.
+
+        Her tokens already count toward the daily spend cap from her replies, so
+        ``core.agents.guardrails`` skips these rows. Fail-soft: a reporting row
+        must never cost the merchant the reply.
+        """
+        try:
+            from django.utils import timezone
+
+            from core.agents.models import AgentRun
+
+            user = turn.get('user')
+            AgentRun.objects.create(
+                agent_name='linda',
+                audience='merchant',
+                customer=user if getattr(user, 'pk', None) else None,
+                user_message=str(turn.get('message') or '')[:10_000],
+                final_text=text[:50_000],
+                state='failed' if error else 'completed',
+                error=error[:2_000],
+                provider=str(turn.get('provider') or '')[:50],
+                model=model,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                tool_call_count=tool_calls,
+                duration_ms=duration_ms,
+                ended_at=timezone.now(),
+                metadata={'engine': 'janus', 'conversation': conversation_key},
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning('assistant: could not record the turn as a run', exc_info=True)
 
     def stream(
         self,
@@ -456,6 +541,11 @@ class Assistant:
         usage = payload.get('usage') or {}
         # An auto-installed Janus that keeps failing real turns is rolled back.
         janus_runtime.record_turn(error=str(payload.get('error') or ''))
+        turn = {
+            'message': message,
+            'user': (context or {}).get('user') if isinstance(context, dict) else None,
+            'provider': payload.get('provider') or self._turn_provider(context)[0],
+        }
         if payload.get('error'):
             error = str(payload['error'])
             self._emit_failure_signal(
@@ -468,6 +558,7 @@ class Assistant:
                 error=error,
                 usage=usage,
                 tool_calls=tool_calls,
+                turn=turn,
             )
             return
         text = payload.get('text') or ''
@@ -478,6 +569,7 @@ class Assistant:
             started=started,
             usage=usage,
             tool_calls=tool_calls,
+            turn=turn,
         )
 
     def _emit_failure_signal(self, *, reason, conversation_key, detail=''):

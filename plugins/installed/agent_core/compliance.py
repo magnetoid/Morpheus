@@ -80,13 +80,49 @@ def build_ai_act_report(
             }
         )
 
+    # Linda's consent trail: every write she attempted through the MCP edge is
+    # an ``assistant.tool_write`` row — executed on the merchant's own "yes",
+    # or refused — and every call the edge turned down (consent, scope, mode) is
+    # an ``mcp.tool_denied`` row. Neither reached this report before v0.88.0,
+    # so "the trail of human approvals" left out all of her approvals.
+    trail = AuditEvent.objects.filter(event_type__in=('assistant.tool_write', 'mcp.tool_denied'))
+    if since is not None:
+        trail = trail.filter(created_at__gte=since)
+    if until is not None:
+        trail = trail.filter(created_at__lt=until)
+    consents: list[dict[str, Any]] = []
+    executed = refused = 0
+    for e in trail.order_by('created_at').iterator():
+        meta = e.metadata or {}
+        denied = e.event_type == 'mcp.tool_denied'
+        reason = str(meta.get('reason' if denied else 'error') or '')
+        outcome = 'refused' if denied or reason or e.severity == 'warning' else 'executed'
+        if outcome == 'refused':
+            refused += 1
+        else:
+            executed += 1
+        consents.append(
+            {
+                'timestamp': _iso(e.created_at),
+                'kind': 'denial' if denied else 'consent',
+                'tool': str(meta.get('tool') or (e.target or '').removeprefix('tool/')),
+                'outcome': outcome,
+                'reason': reason,
+                'actor': e.actor_label or '',
+                'conversation': str(meta.get('conversation') or ''),
+            }
+        )
+
     return {
         'period': {'since': _iso(since), 'until': _iso(until)},
         'decisions': decisions,
         'approvals': approval_rows,
+        'consents': consents,
         'summary': {
             'total_decisions': len(decisions),
             'total_approvals': len(approval_rows),
+            'total_consents': executed,
+            'total_refusals': refused,
             'decisions_by_tool': dict(by_tool.most_common()),
             'decisions_by_model': dict(by_model.most_common()),
             'approvals_by_state': dict(by_state),

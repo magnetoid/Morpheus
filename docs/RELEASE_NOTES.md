@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.88.0 — 2026-10-10
+
+**Linda's work is visible: every Janus turn is a run, refusals and consents reach the AI-Act export**
+
+- Every Janus turn is recorded as an AgentRun named linda (provider, model, tokens, tool calls, duration, error) so Observability, the runs list and the AI-Act export see Linda's work; the daily run cap skips those rows because her tokens already count toward the spend cap
+- The signed turn token names the provider and model the turn is wired to, and every decision row the MCP edge writes carries them
+- Refused writes (mcp.tool_denied) appear in Activity and Observability with a Refused writes count; the AI-Act export gains a consents sheet (consent and denial rows with tool, outcome, actor and conversation)
+- CI: the Dockerfile test follows the lock-based build and the postgres-only step names the dynamics test module correctly (the two v0.87.4 failures)
+
 ## v0.87.4 — 2026-10-10
 
 **The image installs the hashed lock CI tests; Janus pinned and cached; CI audits the lock weekly and runs the plugin contract check**

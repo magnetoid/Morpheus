@@ -54,6 +54,10 @@
     <p class="meta">Failing tools</p>
     <p class="display display-l">{{ failing_tools|length }}</p>
   </div>
+  <div class="card card-padded">
+    <p class="meta">Refused writes</p>
+    <p class="display display-l">{{ refusals|default:"0" }}</p>
+  </div>
 </div>
 
 {% if failing_tools %}

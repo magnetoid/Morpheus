@@ -96,7 +96,10 @@ def today_start() -> datetime:
 def _runs_today(exclude_id=None):
     from core.agents.models import AgentRun
 
-    qs = AgentRun.objects.filter(started_at__gte=today_start())
+    # Linda's turns are recorded as runs too (v0.88.0, for the dashboards), but
+    # her tokens reach the spend cap from her replies (_assistant_usage_today)
+    # and her turns are not Worker runs for the run cap — count her once.
+    qs = AgentRun.objects.filter(started_at__gte=today_start()).exclude(agent_name='linda')
     if exclude_id is not None:
         qs = qs.exclude(pk=exclude_id)
     return qs

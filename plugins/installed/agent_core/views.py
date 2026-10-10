@@ -424,6 +424,34 @@ def _janus_activity_log(limit: int = 60) -> dict:
     except Exception:  # noqa: BLE001
         logger.warning('runs dashboard: tool-call read failed', exc_info=True)
 
+    try:
+        # Refused writes: the MCP edge records every call the gate turned down
+        # (consent not given, scope, mode). They never reached the tool-call
+        # rows above, so a store with 83 refusals in a week showed none.
+        from core.audit.models import AuditEvent
+
+        for ev in AuditEvent.objects.filter(event_type='mcp.tool_denied').order_by('-created_at')[
+            :limit
+        ]:
+            meta = ev.metadata if isinstance(ev.metadata, dict) else {}
+            tool = (ev.target or '').removeprefix('tool/')
+            reason = str(meta.get('reason') or '').strip().replace('\n', ' ')
+            events.append(
+                {
+                    'at': ev.created_at,
+                    'day': ev.created_at.strftime('%Y-%m-%d'),
+                    'clock': ev.created_at.strftime('%H:%M'),
+                    'kind': 'refused',
+                    'verb': 'refused',
+                    'text': f'{ev.actor_label or "mcp"} → {tool}: {reason}'[:400],
+                    'source': 'audit',
+                    'failed': False,
+                    'refused': True,
+                }
+            )
+    except Exception:  # noqa: BLE001
+        logger.warning('runs dashboard: refusal read failed', exc_info=True)
+
     events.sort(key=lambda e: (e['day'], e['clock']), reverse=True)
 
     days = sorted({e['day'] for e in events}, reverse=True)
@@ -432,6 +460,7 @@ def _janus_activity_log(limit: int = 60) -> dict:
         'events': shown,
         'total': len(events),
         'failed': sum(1 for e in events if e.get('failed')),
+        'refused': sum(1 for e in events if e.get('refused')),
         'days': days,
         'active_days': len(days),
         'last_at': events[0]['at'] if events else None,
@@ -451,6 +480,19 @@ def _call_error(output) -> str:
     if isinstance(output, dict):
         return str(output.get('error', ''))
     return str(output)[len('error:') :] if isinstance(output, str) else ''
+
+
+def _refusals_since(since) -> int:
+    """Writes the MCP edge turned down in the window (consent, scope, mode) —
+    Linda's refusals, which no run row carries."""
+    try:
+        from core.audit.models import AuditEvent
+
+        return AuditEvent.objects.filter(
+            event_type='mcp.tool_denied', created_at__gte=since
+        ).count()
+    except Exception:  # noqa: BLE001
+        return 0
 
 
 def _describe_tool_call(meta: dict, output, failed: bool) -> str:
@@ -638,6 +680,7 @@ def observability_view(request):
             'by_state': by_state,
             'top_tools': top_tools,
             'failures': failures,
+            'refusals': _refusals_since(since),
             'active_nav': 'agents',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},

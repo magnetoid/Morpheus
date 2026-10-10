@@ -42,13 +42,20 @@ class TurnIdentity:
     conversation_key: str
     mode: str
     expires_at: int
+    # The provider and model the turn runs on, so the MCP edge can write them
+    # on every decision row (the AI-Act export had no model on any row: nothing
+    # at the edge knew which model made the call). Informational, never a gate.
+    provider: str = ''
+    model: str = ''
 
 
 def is_turn_token(token: str) -> bool:
     return bool(token) and token.startswith(PREFIX)
 
 
-def mint(*, user, conversation_key: str, mode_slug: str, ttl_s: int) -> str:
+def mint(
+    *, user, conversation_key: str, mode_slug: str, ttl_s: int, provider: str = '', model: str = ''
+) -> str:
     """Sign a token for one turn. ``ttl_s`` should cover the turn timeout."""
     payload = {
         'u': str(user.pk),
@@ -58,6 +65,10 @@ def mint(*, user, conversation_key: str, mode_slug: str, ttl_s: int) -> str:
         # Two turns minted in the same second must not produce identical tokens.
         'n': secrets.token_hex(8),
     }
+    if provider:
+        payload['p'] = str(provider)[:50]
+    if model:
+        payload['md'] = str(model)[:100]
     return PREFIX + signing.dumps(payload, salt=_SALT, compress=True)
 
 
@@ -82,7 +93,15 @@ def verify(token: str) -> TurnIdentity | None:
     )
     if not well_formed or expires < int(time.time()):
         return None
-    return TurnIdentity(user_id=user_id, conversation_key=conv, mode=mode, expires_at=expires)
+    provider, model = (payload.get('p'), payload.get('md'))
+    return TurnIdentity(
+        user_id=user_id,
+        conversation_key=conv,
+        mode=mode,
+        expires_at=expires,
+        provider=provider if isinstance(provider, str) else '',
+        model=model if isinstance(model, str) else '',
+    )
 
 
 def resolve_user(identity: TurnIdentity):

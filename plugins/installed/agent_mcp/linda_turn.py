@@ -35,6 +35,10 @@ class LindaTurn:
     user: Any
     conversation_key: str
     mode_slug: str
+    # Carried from the turn token so each decision row names the model that
+    # made the call (informational, never a gate).
+    provider: str = ''
+    model: str = ''
 
 
 def turn_for_request(request) -> LindaTurn | None:
@@ -69,7 +73,13 @@ def _resolve(request) -> LindaTurn | None:
     # The slug in the token was resolved when the turn started; resolve again so
     # a user who lost an entitlement mid-turn loses it on their next tool call.
     mode = resolve_mode(identity.mode, user)
-    return LindaTurn(user=user, conversation_key=identity.conversation_key, mode_slug=mode.slug)
+    return LindaTurn(
+        user=user,
+        conversation_key=identity.conversation_key,
+        mode_slug=mode.slug,
+        provider=identity.provider,
+        model=identity.model,
+    )
 
 
 # Janus keeps what Linda learns in its own memory (core/assistant/janus_learning.py),

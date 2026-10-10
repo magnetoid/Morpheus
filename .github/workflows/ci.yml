@@ -114,7 +114,7 @@ jobs:
         # every CI run since they were written. Run their modules here.
         env:
           DATABASE_URL: "postgres://postgres:postgres@localhost:5432/morph_ci?sslmode=disable"
-        run: python manage.py test plugins.installed.orders.tests.test_checkout plugins.installed.dynamics.test_dynamic_products --noinput
+        run: python manage.py test plugins.installed.orders.tests.test_checkout plugins.installed.dynamics.tests.test_dynamic_products --noinput
 
   test:
     runs-on: ubuntu-latest

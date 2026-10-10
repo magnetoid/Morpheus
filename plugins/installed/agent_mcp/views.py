@@ -262,6 +262,8 @@ def _audit_call(tool_name: str, args: dict, output: Any = None, error: str = '',
         else:
             out_blob = json.dumps(output, default=str)
             summary = output if len(out_blob) <= 1000 else {'_truncated': out_blob[:1000]}
+        # A Linda turn's token names the model and provider behind the call.
+        turn = getattr(_request_state, 'linda_turn', None)
         record_ai_decision(
             agent=_mcp_actor(),
             actor=_mcp_actor(),  # fills actor_label (agent= only lands in metadata)
@@ -269,6 +271,8 @@ def _audit_call(tool_name: str, args: dict, output: Any = None, error: str = '',
             args=capped_args,
             output=summary,
             duration_ms=int((time.monotonic() - t0) * 1000) if t0 is not None else None,
+            model=str(getattr(turn, 'model', '') or ''),
+            provider=str(getattr(turn, 'provider', '') or ''),
             target=f'tool/{tool_name}',
             request_id=getattr(_request_state, 'request_id', ''),
         )

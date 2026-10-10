@@ -426,8 +426,18 @@ class DockerfileTests(SimpleTestCase):
         text = (Path(settings.BASE_DIR) / 'Dockerfile').read_text(encoding='utf-8')
         for pin in rt.PINS:
             self.assertEqual(text.count(pin), 2, pin)  # the install and the fallback
-        self.assertEqual(text.count('/app/core/assistant/janus_contract.py'), 2)
-        self.assertIn('ARG JANUS_REF=main', text)
-        known = re.search(r'ARG JANUS_KNOWN_GOOD=(\S+)', text)
-        self.assertRegex(known.group(1), r'^[0-9a-f]{40}$')
+        # The contract file is copied in on its own (so the Janus layer caches
+        # across deploys), then run after the install and after the fallback.
+        self.assertEqual(text.count('/app/core/assistant/janus_contract.py'), 3)
+        # Both refs are reviewed commits (v0.87.4): the build is reproducible
+        # and the owner moves Janus by bumping the ARG, not by pushing to main.
+        for arg in ('JANUS_REF', 'JANUS_KNOWN_GOOD'):
+            found = re.search(rf'ARG {arg}=(\S+)', text)
+            self.assertRegex(found.group(1), r'^[0-9a-f]{40}$', arg)
         self.assertIn('ARG JANUS_REPO=https://github.com/magnetoid/Janus-Agent.git', text)
+        # The Janus layer runs before the application copy, or every push
+        # rebuilds it (216 MB a build, four builds a push).
+        self.assertLess(
+            text.index('/opt/janus/bin/pip install'),
+            text.index('COPY --chown=morpheus:morpheus . /app'),
+        )

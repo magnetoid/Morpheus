@@ -349,7 +349,12 @@ prefix `lt1.`, env `LINDA_TURN_TOKEN`, referenced from the config as
 `agent_mcp/linda_turn.py`: Linda's scope profile (never the token's), the mode
 re-resolved against the user on every call, consent spent only by the
 conversation's latest `role='user'` message, and an `assistant.tool_write` audit
-naming the human. **Never re-add a static Linda MCP token** — its
+naming the human. The token also names the provider and model the turn is wired
+to (v0.88.0), so every decision row the edge writes carries them — informational,
+never a gate — and each turn is also recorded as an `AgentRun` named `linda`
+(`runtime._record_run`) so Observability and the AI-Act export see her;
+`core/agents/guardrails.py` skips those rows because her tokens reach the spend
+cap from her replies. **Never re-add a static Linda MCP token** — its
 `approved_tools` grant is the standing-consent hole. A turn token authenticates
 nothing but that endpoint: `apply_bearer_user` (GraphQL) treats it as invalid.
 When you change a gate, change `gates.py`; a second copy drifts and the looser one

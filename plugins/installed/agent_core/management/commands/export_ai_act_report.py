@@ -43,6 +43,8 @@ class Command(BaseCommand):
             w.writerow(['decision', d['timestamp'], d['tool'], d['target'], d['model'], d['actor']])
         for a in report['approvals']:
             w.writerow(['approval', a['timestamp'], a['tool'], a['state'], '', a['decided_by']])
+        for c in report['consents']:
+            w.writerow([c['kind'], c['timestamp'], c['tool'], c['outcome'], '', c['actor']])
         # Summary to stderr so it doesn't pollute a piped CSV.
         s = report['summary']
         sys.stderr.write(
