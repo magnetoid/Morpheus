@@ -104,6 +104,8 @@ AVAILABLE_SCOPES: dict[str, tuple[str, str]] = {
         'SEO · write',
         'Set meta, apply templates + internal/external links, create redirects, regenerate sitemaps.',
     ),
+    # Agent runs (full tool arguments + outputs — read-only)
+    'agents.read': ('Agents · read', 'List agent runs and their steps.'),
     # CRM (leads, deals, support, tasks)
     'crm.read': ('CRM · read', 'View leads, deals, support threads, tasks, customer timelines.'),
     'crm.write': (

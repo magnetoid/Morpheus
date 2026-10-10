@@ -4,7 +4,7 @@
 <section style="max-width:60rem;margin:2.5rem auto;padding:0 1.25rem;">
   <header style="text-align:center;margin-bottom:2rem;">
     <h1 style="font-size:2rem;margin:0 0 .5rem;">Become a member</h1>
-    <p style="color:#666;max-width:38rem;margin:0 auto;">Join the bookstore membership and save on every order. Members get an automatic discount applied at checkout.</p>
+    <p style="color:#666;max-width:38rem;margin:0 auto;">Join the membership and save on every order. Members get an automatic discount applied at checkout.</p>
   </header>
 
   {% if messages %}
@@ -25,7 +25,7 @@
       <h2 style="margin:0 0 .25rem;font-size:1.25rem;">{{ plan.name }}</h2>
       <p style="font-size:1.6rem;font-weight:700;margin:.25rem 0;">{{ plan.price|money }}<span style="font-size:.9rem;font-weight:400;color:#888;">/{{ plan.interval }}</span></p>
       {% if plan.member_discount_percent %}
-      <p style="display:inline-block;background:#111;color:#fff;border-radius:999px;padding:.2rem .7rem;font-size:.85rem;align-self:flex-start;margin:.25rem 0 .5rem;">{{ plan.member_discount_percent }}% off books</p>
+      <p style="display:inline-block;background:#111;color:#fff;border-radius:999px;padding:.2rem .7rem;font-size:.85rem;align-self:flex-start;margin:.25rem 0 .5rem;">{{ plan.member_discount_percent }}% off every order</p>
       {% endif %}
       {% if plan.description %}<p style="color:#666;flex:1;">{{ plan.description }}</p>{% endif %}
       {% if plan.trial_days %}<p style="color:#888;font-size:.85rem;">{{ plan.trial_days }}-day free trial</p>{% endif %}

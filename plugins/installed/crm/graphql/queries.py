@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import strawberry
 
-from api.graphql_permissions import is_staff as _is_staff
+from api.graphql_permissions import has_scope
 
 
 @strawberry.type
@@ -48,7 +48,7 @@ class CrmQueryExtension:
         first: int = 25,
         status: str | None = None,
     ) -> list[CrmLeadType]:
-        if not _is_staff(info):
+        if not has_scope(info, 'crm.read'):
             return []
         from plugins.installed.crm.models import Lead
 
@@ -77,7 +77,7 @@ class CrmQueryExtension:
         email: str,
         first: int = 50,
     ) -> list[CrmInteractionType]:
-        if not _is_staff(info):
+        if not has_scope(info, 'crm.read'):
             return []
         from django.contrib.auth import get_user_model
 
@@ -106,7 +106,7 @@ class CrmQueryExtension:
         info: strawberry.Info,
         first: int = 50,
     ) -> list[CrmTaskType]:
-        if not _is_staff(info):
+        if not has_scope(info, 'crm.read'):
             return []
         from plugins.installed.crm.models import CrmTask
 

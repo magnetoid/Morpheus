@@ -67,8 +67,11 @@ class AgentAuthMiddleware(MiddlewareMixin):
 
             if apply_bearer_user(request):
                 gql_scopes = getattr(request, '_morph_token_scopes_graphql', set()) or set()
+                # Projected as-is: an explicitly empty scope list is "nothing",
+                # never a wildcard (token_scopes already turned an absent key
+                # into {'*'} for legacy tokens).
                 request.agent_capabilities = {
-                    'scopes': sorted(gql_scopes) if gql_scopes else ['*'],
+                    'scopes': sorted(gql_scopes),
                     'channel_id': None,
                     'is_agent': True,
                 }

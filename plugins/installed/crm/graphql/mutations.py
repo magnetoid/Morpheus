@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import strawberry
 
-from api.graphql_permissions import is_staff as _is_staff
+from api.graphql_permissions import mutation_scope_error
 
 
 @strawberry.type
@@ -33,12 +33,13 @@ class CrmMutationExtension:
         info: strawberry.Info,
         input: CrmCreateLeadInput,
     ) -> CrmLeadMutationResult:
-        if not _is_staff(info):
+        denied = mutation_scope_error(info, ['crm.write'])
+        if denied:
             return CrmLeadMutationResult(
                 id=strawberry.ID(''),
                 email=input.email,
                 status='',
-                error='Forbidden — staff only.',
+                error=denied,
             )
         from plugins.installed.crm.services import upsert_lead
 

@@ -546,7 +546,12 @@ Bearer token: a resolver that reads `_morph_token_scopes_graphql` itself refuses
 every API key (catalog did until v0.83.5). Authorize through `has_scope`, which
 checks the key's own scopes first. Since v0.87.1 every staff mutation (catalog,
 inventory, orders, book_product) goes through one check,
-`api.graphql_permissions.mutation_scope_error` — four copies had drifted.
+`api.graphql_permissions.mutation_scope_error` — four copies had drifted. And a
+resolver that asks `is_staff(info)` directly lets ANY valid token through,
+because a token's service user is staff whatever its scopes (crm leads and
+customer timelines, agent runs with full tool output, payment intents for any
+order did until v0.87.3): ask `has_scope` for the surface's own scope, and add
+the scope to `AVAILABLE_SCOPES` + `_CAPABILITY_FOR_SCOPE` in the same change.
 
 **Landmine — a `migrations/` dir without `__init__.py` is invisible to Django,
 and ONLY production notices.** Five plugins (brand_kit, lookbook, media_3d,

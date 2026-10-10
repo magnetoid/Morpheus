@@ -493,8 +493,13 @@ is what must be true on production before the next item starts.
 
 **Status 2026-10-10:** items 1–6, 8, 9, 11, 12 and 14 shipped as v0.87.2
 (plus the Linda automation run lock, the 15-minute floor and the unpriced-model
-refusal in the Janus form). Open: 7 (the remaining theme bits), 10, 13, and
-every infra and owner item below.
+refusal in the Janus form). Items 6 (bare `is_staff` gates, session staff
+through the RBAC seam, empty scope list), 10 (affiliates — which also found
+and fixed a live 500 on the payouts page: `pending_payout_amount` deferred a
+djmoney currency column), 13 (CSRF only exempt for Bearer requests) and the
+checkout country normalisation + store default from item 7 shipped as v0.87.3.
+Still open in W1: product cards built from GraphQL dicts on pre-launch previews,
+UK labels on the Irving checkout, and every infra and owner item below.
 
 Code, one release each or batched as one PATCH:
 

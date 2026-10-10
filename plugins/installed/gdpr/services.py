@@ -156,8 +156,8 @@ allow from the consent banner:</p>
 <ul style="padding-left:1.5rem; line-height:1.8;">
   <li><strong>Essential</strong> — needed for the cart, checkout, sign-in and
       security. These are always on; the store can't work without them.</li>
-  <li><strong>Analytics</strong> — help us understand which pages and titles
-      readers use, so we can improve the store. Only set with your consent.</li>
+  <li><strong>Analytics</strong> — help us understand which pages and products
+      visitors use, so we can improve the store. Only set with your consent.</li>
   <li><strong>Marketing</strong> — let us measure and tailor promotions. Only
       set with your consent.</li>
 </ul>
@@ -177,7 +177,7 @@ _ACCESSIBILITY_BODY = """\
 <p class="eyebrow">Accessibility</p>
 
 <h3>Our commitment</h3>
-<p>We want everyone to be able to browse and buy books here, whatever device or
+<p>We want everyone to be able to browse and buy here, whatever device or
 assistive technology you use. We aim to meet the Web Content Accessibility
 Guidelines (WCAG) 2.2 at level AA as a target across the storefront.</p>
 

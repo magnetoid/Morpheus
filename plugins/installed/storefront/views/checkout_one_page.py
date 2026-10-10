@@ -29,6 +29,7 @@ from typing import Any
 from django.shortcuts import redirect, render
 
 from api.client import internal_graphql
+from core.utils.countries import normalise_country
 from plugins.installed.storefront.views._queries import CART_QUERY
 from plugins.installed.storefront.views.checkout import (
     _available_shipping_rates,
@@ -221,7 +222,8 @@ def _shipping_input(addr: dict) -> dict:
         'city': addr.get('city', ''),
         'state': addr.get('state', ''),
         'postalCode': addr.get('postal_code', ''),
-        'country': addr.get('country', ''),
+        # 'uk' / 'United Kingdom' → 'GB'; zones and tax regions compare codes.
+        'country': normalise_country(addr.get('country', '')),
         'phone': addr.get('phone', ''),
     }
 

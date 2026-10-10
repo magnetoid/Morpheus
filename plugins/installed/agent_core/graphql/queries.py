@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import strawberry
 
+from api.graphql_permissions import has_scope
 from morpheus.core import agent_registry
 
 
@@ -65,11 +66,9 @@ class AgentCoreQueryExtension:
         first: int = 25,
         agent_name: str | None = None,
     ) -> list[AgentRunType]:
-        request = getattr(info.context, 'request', None) or (
-            info.context.get('request') if isinstance(info.context, dict) else None
-        )
-        user = getattr(request, 'user', None) if request else None
-        if user is None or not getattr(user, 'is_staff', False):
+        # Runs and steps carry full tool arguments and outputs. The scope, not
+        # is_staff: an MCP token's service user is staff, whatever its scopes.
+        if not has_scope(info, 'agents.read'):
             return []
         from plugins.installed.agent_core.models import AgentRun
 
@@ -100,11 +99,9 @@ class AgentCoreQueryExtension:
         info: strawberry.Info,
         run_id: strawberry.ID,
     ) -> list[AgentStepType]:
-        request = getattr(info.context, 'request', None) or (
-            info.context.get('request') if isinstance(info.context, dict) else None
-        )
-        user = getattr(request, 'user', None) if request else None
-        if user is None or not getattr(user, 'is_staff', False):
+        # Runs and steps carry full tool arguments and outputs. The scope, not
+        # is_staff: an MCP token's service user is staff, whatever its scopes.
+        if not has_scope(info, 'agents.read'):
             return []
         from plugins.installed.agent_core.models import AgentStep
 

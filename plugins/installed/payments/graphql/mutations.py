@@ -1,6 +1,6 @@
 import strawberry
 
-from api.graphql_permissions import get_request, is_staff
+from api.graphql_permissions import get_request, has_scope
 from plugins.installed.orders.models import Order
 from plugins.installed.payments.services.routing import create_payment_intent_for
 
@@ -31,7 +31,9 @@ class PaymentsMutationExtension:
                 and getattr(user, 'is_authenticated', False)
                 and order.customer_id == user.pk
             )
-            if not (owns or is_staff(info)):
+            # Staff reach any order through the orders scope (a token's
+            # service user is staff whatever its scopes, so never is_staff).
+            if not (owns or has_scope(info, 'orders.write')):
                 return PaymentResult(success=False, error='Order not found')
             # Route via the registry. None/unknown/disabled slug -> default
             # (stripe), so the existing Stripe behaviour is the fallback.

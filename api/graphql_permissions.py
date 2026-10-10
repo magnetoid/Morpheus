@@ -77,6 +77,15 @@ _CAPABILITY_FOR_SCOPE = {
     'admin:cloudflare': 'system.write',
     'admin:marketplace': 'system.write',
     'admin:affiliates': 'affiliates.write',
+    # The staff mutation scopes (v0.87.3): a dashboard session is judged by
+    # the same capability its role grants in the dashboard.
+    'catalog.delete': 'catalog.write',
+    'inventory.write': 'inventory.write',
+    'orders.write': 'orders.write',
+    'orders.cancel': 'orders.refund',
+    'crm.read': 'crm.read',
+    'crm.write': 'crm.write',
+    'agents.read': 'system.read',
 }
 
 
@@ -146,8 +155,10 @@ def mutation_scope_error(info: strawberry.Info, required: list[str]) -> str:
     """
     request = get_request(info)
     granted = getattr(request, '_morph_token_scopes_graphql', None)
-    if granted is None and is_staff(info):
-        return ''
+    # A dashboard session goes through has_scope too: for session staff it is
+    # the mode-aware RBAC check (log mode changes nothing; enforce mode denies
+    # a role that lost the capability). Returning '' on is_staff alone skipped
+    # the seam — a stripped role kept every GraphQL write.
     if any(has_scope(info, scope) for scope in required):
         return ''
     if granted is not None:

@@ -84,7 +84,7 @@
           <div class="ck-grid-2">
             <div class="ck-field">
               <label for="ck-country">Country <span class="ck-req" aria-hidden="true">*</span></label>
-              <input id="ck-country" name="country" value="{{ form.country|default:'US' }}"
+              <input id="ck-country" name="country" value="{{ form.country|default:'' }}"
                      autocomplete="country" maxlength="2"
                      pattern="[A-Za-z]{2}"
                      style="text-transform: uppercase;"

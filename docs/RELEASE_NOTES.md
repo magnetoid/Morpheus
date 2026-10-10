@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.87.3 — 2026-10-10
+
+**Scope gates on every staff GraphQL surface, CSRF kept for sessions, affiliate payout rules enforced, checkout stores country codes**
+
+- GraphQL: CRM leads, customer timelines and tasks, agent runs and steps, and payment intents for any order asked `is_staff` and so let any valid MCP token through whatever its scopes; they now ask `has_scope` for their own scope (`crm.read`, `crm.write`, `agents.read`, `orders.write`). A dashboard session is judged by the RBAC seam too, so a role that lost a capability loses the GraphQL write once `rbac` enforces. An explicitly empty token scope list is no longer projected as a wildcard
+- CSRF: the four JSON endpoints that serve both API clients and the dashboard (LLM tasks, agent invoke and stream) are exempt only for `Authorization: Bearer` requests; a staff session goes through the normal check (`core.auth.csrf.csrf_exempt_for_bearer`); the Ops console sends the token. `SESSION_COOKIE_SAMESITE='Lax'` is stated
+- Affiliates: the minimum payout is enforced in `request_affiliate_payout` (the page only hid the button), the referral cookie lives as long as the program's window, and the three Settings → Affiliates keys are read: new programs start from them, the fallback threshold comes from them. Found on the way: the payouts page 500'd for any affiliate with approved earnings — `pending_payout_amount` deferred a djmoney currency column (the CLAUDE.md landmine)
+- Checkout: the country is stored as a code — 'UK', 'United Kingdom', 'gb' become 'GB' (shipping zones compare codes, so a non-code matched no zone and shipping fell back to free); a fresh form starts from the store's own country instead of 'US' (Irving theme updated)
+- Copy: the membership page and the seeded accessibility and cookie pages no longer mention books or a bookstore
+
 ## v0.87.2 — 2026-10-10
 
 **Ten fixes from the improvement-plan scan: honest payment capture, COD orders no longer expire, Linda automations can't overlap, failed MCP calls show as failed**

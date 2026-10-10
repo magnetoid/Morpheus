@@ -307,15 +307,22 @@ def programs_list(request):
         if action == 'create':
             name = (request.POST.get('name') or '').strip()
             if name:
+                from plugins.installed.affiliates.services import program_defaults  # noqa: PLC0415
+
+                defaults = program_defaults()
                 ctype = request.POST.get('commission_type') or 'percent'
                 try:
-                    cvalue = Decimal(request.POST.get('commission_value') or '0')
+                    cvalue = Decimal(
+                        request.POST.get('commission_value') or defaults['commission_value']
+                    )
                 except (InvalidOperation, TypeError, ValueError):
                     cvalue = Decimal('0')
                 try:
-                    days = int(request.POST.get('cookie_window_days') or '30')
+                    days = int(
+                        request.POST.get('cookie_window_days') or defaults['cookie_window_days']
+                    )
                 except (TypeError, ValueError):
-                    days = 30
+                    days = defaults['cookie_window_days']
                 AffiliateProgram.objects.create(
                     name=name,
                     slug=slugify(name)[:100] or f'program-{int(timezone.now().timestamp())}',
@@ -898,16 +905,22 @@ def _save_program(request, program, *, is_new):
     if opt_err:
         return opt_err
 
+    from plugins.installed.affiliates.services import program_defaults  # noqa: PLC0415
+
+    defaults = program_defaults()
     slug_raw = (request.POST.get('slug') or '').strip()
     ctype = request.POST.get('commission_type') or 'percent'
     try:
-        cvalue = Decimal(request.POST.get('commission_value') or '0')
+        cvalue = Decimal(request.POST.get('commission_value') or defaults['commission_value'])
     except (InvalidOperation, TypeError, ValueError):
         cvalue = Decimal('0')
     try:
-        days = max(1, min(int(request.POST.get('cookie_window_days') or '30'), 365))
+        days = max(
+            1,
+            min(int(request.POST.get('cookie_window_days') or defaults['cookie_window_days']), 365),
+        )
     except (TypeError, ValueError):
-        days = 30
+        days = defaults['cookie_window_days']
     is_active = request.POST.get('is_active') == 'on'
     description = (request.POST.get('description') or '').strip()
 

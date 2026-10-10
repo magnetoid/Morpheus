@@ -17,6 +17,8 @@ Affiliate self-service surface (``/affiliates/me/...``):
 
 from __future__ import annotations
 
+import contextlib
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
@@ -55,11 +57,17 @@ def affiliate_redirect(request: HttpRequest, code: str) -> HttpResponseRedirect:
     ):
         landing = nxt
 
+    # The window the program advertises ("{days} days after a click"), not a
+    # constant: programs allow 1–365 and the public terms print theirs.
+    ttl = _COOKIE_TTL
+    if link is not None:
+        with contextlib.suppress(Exception):  # an odd row keeps the default window
+            ttl = max(1, int(link.affiliate.program.cookie_window_days)) * 86400
     response = HttpResponseRedirect(landing)
     response.set_cookie(
         _AFFILIATE_COOKIE,
         code,
-        max_age=_COOKIE_TTL,
+        max_age=ttl,
         httponly=True,
         samesite='Lax',
     )
@@ -505,16 +513,10 @@ def conversions(request: HttpRequest) -> HttpResponse:
 
 
 def _min_payout_threshold(affiliate):
-    """Read the program's minimum_payout, falling back to $25."""
-    from djmoney.money import Money
+    """The number the page shows is the number the service enforces."""
+    from plugins.installed.affiliates.services import min_payout_threshold
 
-    try:
-        program_min = affiliate.program.minimum_payout
-        if program_min and program_min.amount > 0:
-            return program_min
-    except Exception:  # noqa: BLE001
-        pass
-    return Money(25, str(affiliate.accrued_balance.currency))
+    return min_payout_threshold(affiliate)
 
 
 @login_required(login_url='/auth/login/')

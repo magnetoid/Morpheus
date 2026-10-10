@@ -517,9 +517,51 @@ def pending_payout_amount(affiliate) -> Money:
         status='approved',
         payout__isnull=True,
     )
-    for row in qs.only('commission'):
+    # No `.only('commission')`: a deferred djmoney field raises KeyError on
+    # its currency column (CLAUDE.md), so the payouts page of any affiliate
+    # with approved earnings 500'd until v0.87.3.
+    for row in qs:
         total += row.commission.amount
     return Money(total, currency)
+
+
+def program_defaults() -> dict:
+    """What a new AffiliateProgram starts from: the three keys on Settings →
+    Marketing → Affiliates. Read fresh (the panel says new programs inherit
+    them, and until v0.87.3 nothing read them at all)."""
+    defaults = {'commission_value': Decimal('10'), 'cookie_window_days': 30, 'minimum_payout': 25}
+    try:
+        from plugins.registry import app_registry
+
+        plugin = app_registry.get('affiliates')
+        if plugin is not None:
+            defaults['commission_value'] = Decimal(
+                str(plugin.get_config_value('default_commission_percent', 10))
+            )
+            defaults['cookie_window_days'] = max(
+                1, min(int(plugin.get_config_value('cookie_window_days', 30)), 365)
+            )
+            defaults['minimum_payout'] = plugin.get_config_value('min_payout_threshold', 25)
+    except Exception:  # noqa: BLE001 — a config problem falls back to the schema defaults
+        logger.debug('affiliates: program_defaults fell back', exc_info=True)
+    return defaults
+
+
+def min_payout_threshold(affiliate) -> Money:
+    """The program's ``minimum_payout``, else the settings-panel threshold.
+
+    One place for the number the payout page shows AND the one the payout
+    service enforces — the page used to compute it only to decide whether to
+    show the button, and a POST below it was paid.
+    """
+    currency = str(affiliate.accrued_balance.currency)
+    try:
+        program_min = affiliate.program.minimum_payout
+        if program_min and program_min.amount > 0:
+            return program_min
+    except Exception:  # noqa: BLE001
+        pass
+    return Money(Decimal(str(program_defaults()['minimum_payout'] or 0)), currency)
 
 
 def has_pending_payout(affiliate) -> bool:
@@ -559,6 +601,9 @@ def request_affiliate_payout(
     amount = amount or pending
     if amount.amount > pending.amount:
         raise ValueError('Payout exceeds available approved earnings.')
+    threshold = min_payout_threshold(affiliate)
+    if amount.amount < threshold.amount:
+        raise ValueError(f'Earnings are below the minimum payout of {threshold}.')
 
     method = (method or affiliate.preferred_payout_method or 'paypal')[:40]
 

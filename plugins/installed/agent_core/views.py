@@ -16,12 +16,12 @@ from queue import Empty, Queue
 from threading import Thread
 from typing import Any
 
+from core.auth.csrf import csrf_exempt_for_bearer
 from core.authz import require_capability
 from morpheus.app.views import (
     HttpResponseBadRequest,
     JsonResponse,
     StreamingHttpResponse,
-    csrf_exempt,
     get_object_or_404,
     render,
     require_http_methods,
@@ -79,7 +79,7 @@ def _agent_rate_key(request):
     return f'agent:ip:{request.META.get("REMOTE_ADDR", "0.0.0.0")}'  # noqa: S104  # nosec B104
 
 
-@csrf_exempt
+@csrf_exempt_for_bearer
 @require_http_methods(['POST'])
 def invoke_agent_view(request, agent_name: str):
     from core.utils.rate_limit import RateLimitExceeded, check_and_consume
@@ -131,7 +131,7 @@ def invoke_agent_view(request, agent_name: str):
     )
 
 
-@csrf_exempt
+@csrf_exempt_for_bearer
 @require_http_methods(['POST'])
 def stream_agent_view(request, agent_name: str):
     """Server-Sent Events: live trace of a single run.

@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.87.2')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.87.3')
 
 # The project website. The dashboard's Help and About pages show its pages
 # (help.html, about.html) in their embed mode, so they are written once for
@@ -773,6 +773,9 @@ if not DEBUG:
     SECURE_REDIRECT_EXEMPT = [r'^healthz/?$', r'^api/health/?$', r'^api/ready/?$']
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    # Django's default, stated: a cross-site POST never carries the session,
+    # which is the second line of defence behind the CSRF check.
+    SESSION_COOKIE_SAMESITE = 'Lax'
     SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
     SECURE_CONTENT_TYPE_NOSNIFF = True
 

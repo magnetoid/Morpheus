@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 
 from api.client import internal_graphql
+from core.utils.countries import normalise_country, store_country
 from morpheus.app.views import redirect, render
 
 from ._queries import CART_QUERY
@@ -153,12 +154,16 @@ def _checkout_base_context(request):
                         'city': addr.city or '',
                         'state': addr.state or '',
                         'postal_code': addr.postal_code or '',
-                        'country': addr.country or 'US',
+                        'country': normalise_country(addr.country),
                         'phone': addr.phone or '',
                     }
                 )
         except Exception:  # noqa: BLE001
             pass
+    # A fresh form starts from the store's own country (never a hardcoded
+    # 'US'): shipping zones match codes, so the default must be a code too.
+    if not saved.get('country'):
+        saved = {**saved, 'country': store_country()}
     cart = cart_data.get('cart') or {}
     return {
         'cart': cart,
@@ -286,6 +291,9 @@ def checkout(request):
         'phone',
     )
     addr = {f: (request.POST.get(f) or '').strip() for f in fields}
+    # 'UK', 'United Kingdom', 'gb' → 'GB'; anything else → '' (and the
+    # "fill in country" error), because a non-code matches no shipping zone.
+    addr['country'] = normalise_country(addr['country'])
     _stamp_checkout_email(request, addr['email'])
     if no_shipping:
         if not addr['email']:

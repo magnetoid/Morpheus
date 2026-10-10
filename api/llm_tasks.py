@@ -30,8 +30,9 @@ import uuid
 
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+
+from core.auth.csrf import csrf_exempt_for_bearer
 
 logger = logging.getLogger('morpheus.api.llm_tasks')
 
@@ -73,7 +74,7 @@ def _owner_id_for(request: HttpRequest) -> str | int:
     return 'public'
 
 
-@csrf_exempt
+@csrf_exempt_for_bearer
 @require_http_methods(['POST'])
 def llm_task_create(request: HttpRequest) -> HttpResponse:
     """POST /api/llm-tasks/ — queue an LLM completion, return task id."""
@@ -125,7 +126,7 @@ def llm_task_create(request: HttpRequest) -> HttpResponse:
     return JsonResponse({'task_id': task_id, 'status': 'pending'}, status=202)
 
 
-@csrf_exempt
+@csrf_exempt_for_bearer
 @require_http_methods(['GET'])
 def llm_task_status(request: HttpRequest, task_id: str) -> HttpResponse:
     """GET /api/llm-tasks/<id>/ — poll task status + result."""
