@@ -518,6 +518,11 @@ def _mcp_endpoint(context: dict[str, Any] | None) -> tuple[str, dict[str, str]]:
         # body, and Django's APPEND_SLASH redirect DROPS that body — so a URL
         # missing the slash fails every tool call.
         return explicit.rstrip('/') + '/', {}
+    if (context or {}).get('mcp_public'):
+        # A turn run by a Celery worker (an automation): the worker container has
+        # no web server on loopback, so it reaches the store by its public address,
+        # which routes to this store and no other.
+        return f'https://{_default_host()}/mcp/admin/v1/', {}
     host, secure = '', False
     request = (context or {}).get('request')
     if request is not None:

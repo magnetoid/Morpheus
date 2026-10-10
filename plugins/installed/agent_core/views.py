@@ -642,31 +642,63 @@ def background_agents_view(request):
     from plugins.installed.agent_core.models import BackgroundAgent
 
     if request.method == 'POST':
+        from datetime import time as _time
+
+        from plugins.installed.agent_core.scheduler import next_daily
+
         name = (request.POST.get('name') or '').strip()
-        agent_name = (request.POST.get('agent_name') or '').strip()
+        engine = request.POST.get('engine') or BackgroundAgent.ENGINE_LINDA
+        if engine not in dict(BackgroundAgent.ENGINE_CHOICES):
+            engine = BackgroundAgent.ENGINE_LINDA
+        agent_name = (request.POST.get('agent_name') or '').strip() or 'worker'
         prompt = (request.POST.get('prompt') or '').strip()
         try:
             interval = max(60, int(request.POST.get('interval_seconds') or 3600))
         except (TypeError, ValueError):
             interval = 3600
-        if name and agent_name and prompt:
+        daily_at = None
+        hh, _, mm = (request.POST.get('daily_at') or '').strip().partition(':')
+        if hh.isdigit() and mm.isdigit() and int(hh) < 24 and int(mm) < 60:
+            daily_at = _time(int(hh), int(mm))
+        if name and prompt:
             BackgroundAgent.objects.create(
                 name=name[:120],
                 agent_name=agent_name[:100],
+                engine=engine,
                 prompt=prompt[:50_000],
                 interval_seconds=interval,
-                next_run_at=timezone.now(),
+                daily_at=daily_at,
+                next_run_at=next_daily(daily_at) if daily_at else timezone.now(),
+                # A Linda automation runs as the person who created it.
                 created_by=request.user if request.user.is_authenticated else None,
             )
         return redirect('/dashboard/agents/background/')
 
-    rows = BackgroundAgent.objects.all().order_by('-updated_at')[:200]
+    rows = list(BackgroundAgent.objects.all().order_by('-updated_at')[:200])
+    # Each Linda automation's chat — linked for its owner, the only one who may open it.
+    from core.assistant.gates import automation_key
+    from core.assistant.models import AssistantConversation
+
+    mine = {
+        automation_key(request.user.pk, bg.pk): bg
+        for bg in rows
+        if bg.engine == BackgroundAgent.ENGINE_LINDA and bg.created_by_id == request.user.pk
+    }
+    for key, chat_id in AssistantConversation.objects.filter(key__in=list(mine)).values_list(
+        'key', 'pk'
+    ):
+        mine[key].chat_id = chat_id
+    from core.agents.events import AgentEvents
+    from morpheus.core import hook_registry
+
     return render(
         request,
         'agent_core/dashboard/background.html',
         {
             'background_agents': rows,
             'agents': agent_registry.all_agents(),
+            # Scheduled runs need the autonomy switch; "Run now" works without it.
+            'autonomy_on': bool(hook_registry.filter(AgentEvents.AUTONOMY_ENABLED, value=False)),
             'active_nav': 'agents',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},

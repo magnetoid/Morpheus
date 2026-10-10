@@ -6,30 +6,38 @@
   <div class="flex items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Linda automations</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Recurring background jobs Linda runs on a schedule. Different from chat-driven Workers — these fire on the clock (daily digest, hourly stock sweep, etc.) without anyone asking.</p>
+      <p class="text-sm text-[color:var(--text-muted)]">Jobs Linda runs on a schedule — a morning stock check, a weekly SEO look — without anyone asking. Each Linda automation answers in its own chat (under Chats). It reads and reports; it never changes the store, because nobody is there to approve — ask for the change in a chat.</p>
     </div>
     <a href="{% url 'agent_core_dash:runs' %}" class="btn">See activity →</a>
   </div>
 
+{% if not autonomy_on %}
+<div class="card card-padded mb-4" style="border-left: 3px solid var(--warn);">
+  <p class="text-sm"><strong>Scheduled runs are off.</strong> Automations run on their schedule only while <strong>Enable autonomous operator</strong> is on (Settings → AI). "Run now" works either way.</p>
+</div>
+{% endif %}
 <p class="meta mb-4">
-  Schedule one of Linda's registered jobs to run on a fixed interval. The scheduler
-  fires every minute and will auto-pause a job after repeated failures.
+  The scheduler checks every minute and pauses a job after repeated failures.
 </p>
 
 <div class="card mb-6">
   <table class="morph-table">
     <thead>
       <tr>
-        <th>Name</th><th>Agent</th><th>Interval</th>
+        <th>Name</th><th>Runs as</th><th>Schedule</th>
         <th>State</th><th>Last run</th><th>Next run</th><th>Failures</th><th></th>
       </tr>
     </thead>
     <tbody>
     {% for bg in background_agents %}
       <tr>
-        <td><strong>{{ bg.name }}</strong>{% if bg.last_error %}<br><span class="meta" title="{{ bg.last_error }}">⚠ last error</span>{% endif %}</td>
-        <td><code>{{ bg.agent_name }}</code></td>
-        <td>{{ bg.interval_seconds }}s</td>
+        <td>
+          <strong>{{ bg.name }}</strong>{% if bg.last_error %}<br><span class="meta" title="{{ bg.last_error }}">⚠ last error</span>{% endif %}
+          {% if bg.last_output %}<br><span class="meta">{{ bg.last_output|truncatechars:160 }}</span>{% endif %}
+          {% if bg.chat_id %}<br><a href="/dashboard/assistant/?c={{ bg.chat_id }}" class="meta">Open chat</a>{% endif %}
+        </td>
+        <td>{% if bg.engine == 'linda' %}Linda{% else %}<code>{{ bg.agent_name }}</code>{% endif %}</td>
+        <td>{% if bg.daily_at %}Every day at {{ bg.daily_at|time:"H:i" }}{% else %}Every {{ bg.interval_seconds }}s{% endif %}</td>
         <td>
           {% if bg.state == 'active' %}<span class="pill pill-success">active</span>
           {% elif bg.state == 'paused' %}<span class="pill">paused</span>
@@ -65,20 +73,27 @@
   </table>
 </div>
 
-<h2 class="text-base font-semibold mb-2">Schedule a new background agent</h2>
+<h2 class="text-base font-semibold mb-2">New automation</h2>
 <div class="card card-padded">
   <form method="post" style="display:grid;gap:0.75rem;">
     {% csrf_token %}
-    <label>Name <input name="name" required class="form-input" placeholder="Daily low-stock digest"></label>
-    <label>Agent
-      <select name="agent_name" required class="form-input">
+    <label>Name <input name="name" required class="form-input" placeholder="Morning stock check"></label>
+    <label>Runs as
+      <select name="engine" class="form-input">
+        <option value="linda" selected>Linda — answers in its own chat</option>
+        <option value="worker">A Worker agent (below)</option>
+      </select>
+    </label>
+    <label>Worker agent <span class="meta">(only for "A Worker agent")</span>
+      <select name="agent_name" class="form-input">
         {% for a in agents %}<option value="{{ a.name }}">{{ a.label }} — {{ a.name }}</option>{% endfor %}
       </select>
     </label>
-    <label>Prompt
-      <textarea name="prompt" required class="form-input" rows="3" placeholder="Run a low-stock check and email me the items at or below reorder point."></textarea>
+    <label>What to do
+      <textarea name="prompt" required class="form-input" rows="3" placeholder="Check stock and tell me which products are at or below their reorder point."></textarea>
     </label>
-    <label>Interval (seconds, min 60) <input name="interval_seconds" type="number" min="60" value="3600" class="form-input"></label>
+    <label>Every day at <span class="meta">(store time; leave empty to use the interval)</span> <input name="daily_at" type="time" class="form-input"></label>
+    <label>Or every (seconds, min 60) <input name="interval_seconds" type="number" min="60" value="3600" class="form-input"></label>
     <button type="submit" class="btn btn-primary">Schedule</button>
   </form>
 </div>

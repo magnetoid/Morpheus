@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.87.0 — 2026-10-10
+
+**Automations run on Linda — the store's cron**
+
+- Linda → Automations can now run Linda herself on a schedule: "every day at 07:30" or every so many minutes. Write what she should do — check stock, look for product pages without descriptions, sum up yesterday's orders — and each run answers in its own chat (listed under Chats, Open chat from the automation); the latest answer also shows on the Automations page.
+- An automation reads and reports; it never changes the store. Nobody is there to say yes, so Linda lists what she would change and you ask for it in a chat. This is enforced, not just asked of her.
+- Scheduled runs need Settings → AI → Enable autonomous operator, as before; the Automations page now says so when it is off. Run now works either way.
+
 ## v0.86.0 — 2026-10-10
 
 **Pick Linda's model per message, with backups**

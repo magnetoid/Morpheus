@@ -64,7 +64,7 @@ Linda tabs. Findings that shape the design:
 Status 2026-10-10: step 1 shipped in v0.85.0 (chats, owner-checked; homes pruned
 after a week; session continuity after a redeploy comes from the recap of stored
 messages, so no session id needs persisting). From step 5: timed-out turns now count
-their tokens, and the stale copy/links are fixed. Step 3 shipped in v0.86.0 (picker + `fallback_providers`). Next: step 4 (Automations on Janus).
+their tokens, and the stale copy/links are fixed. Step 3 shipped in v0.86.0 (picker + `fallback_providers`). Step 4 shipped in v0.87.0 (Linda automations from Celery, own chat, public MCP route, consent refused in automation conversations). Left for later: Linda creating automations through MCP tools; 5-field cron syntax; AI Act export of the consent trail; Activity/Observability showing Linda's turns.
 
 1. Conversations: model fields + migration; ownership-checked views; Chats tab;
    continue/new/rename/archive. Verify: tests incl. another user's chat → 404.

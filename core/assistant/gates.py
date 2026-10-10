@@ -61,6 +61,19 @@ LINDA_SCOPES: tuple[str, ...] = (
 )
 
 
+# An automation's conversation: `user:<owner pk>:auto:<automation id>`.
+_AUTOMATION_MARK = ':auto:'
+
+
+def automation_key(user_pk, automation_id) -> str:
+    """The conversation a scheduled automation runs in, owned by its owner."""
+    return f'user:{user_pk}{_AUTOMATION_MARK}{automation_id}'
+
+
+def is_automation_key(conversation_key: str) -> bool:
+    return _AUTOMATION_MARK in (conversation_key or '')
+
+
 def gate_reason(  # noqa: PLR0911 — flat guard chain, mirrors AgentRuntime
     *,
     tool,
@@ -116,6 +129,15 @@ def gate_reason(  # noqa: PLR0911 — flat guard chain, mirrors AgentRuntime
     if needs_consent is None:
         needs_consent = bool(getattr(tool, 'requires_approval', False))
     if needs_consent and not staged_exempt:
+        # Nobody is watching a scheduled automation, and its prompt is stored like
+        # a message: a prompt saying "…ok" on a short schedule would land after the
+        # previous run's proposal and approve it. An automation never approves.
+        if is_automation_key(conversation_key):
+            return (
+                'automation_cannot_approve: this is a scheduled automation and nobody is '
+                'here to approve a change. Do not make it — say what you would change and '
+                'why, so the merchant can ask for it in a chat.'
+            )
         from core.assistant import consent
 
         if not consent.consume(

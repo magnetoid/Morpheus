@@ -13,6 +13,14 @@ def background_agents_tick(self) -> int:
     return tick()
 
 
+@shared_task(bind=True, name='agent_core.run_linda_automation', time_limit=420, soft_time_limit=390)
+def run_linda_automation(self, automation_id: str) -> str:
+    """One Linda automation run (a Janus turn, up to the turn limit plus margin)."""
+    from plugins.installed.agent_core.linda_automations import run_by_id
+
+    return run_by_id(automation_id)
+
+
 @shared_task(bind=True, time_limit=120, soft_time_limit=90)
 def sweep_stuck_runs(self, older_than_minutes: int = 15) -> dict:
     """Fail AgentRuns wedged in a non-terminal state after their worker died.

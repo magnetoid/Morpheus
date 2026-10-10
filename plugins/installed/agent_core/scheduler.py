@@ -24,15 +24,49 @@ from django.utils import timezone
 logger = logging.getLogger('morpheus.agents.scheduler')
 
 
+def _store_timezone():
+    """The merchant's time zone (Settings → General), else the project's."""
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    from django.conf import settings
+
+    try:
+        from core.models import StoreSettings
+
+        return ZoneInfo(str(StoreSettings.get('timezone') or settings.TIME_ZONE))
+    except (ZoneInfoNotFoundError, ValueError, DatabaseError):
+        return ZoneInfo(settings.TIME_ZONE)
+
+
+def next_daily(at, now=None):
+    """The next time the store's clock reads `at` (a `datetime.time`)."""
+    local = (now or timezone.now()).astimezone(_store_timezone())
+    candidate = local.replace(hour=at.hour, minute=at.minute, second=0, microsecond=0)
+    return candidate if candidate > local else candidate + timedelta(days=1)
+
+
 def schedule_next(bg) -> None:
-    bg.next_run_at = timezone.now() + timedelta(seconds=max(60, int(bg.interval_seconds)))
+    if getattr(bg, 'daily_at', None):
+        bg.next_run_at = next_daily(bg.daily_at)
+    else:
+        bg.next_run_at = timezone.now() + timedelta(seconds=max(60, int(bg.interval_seconds)))
     bg.save(update_fields=['next_run_at', 'updated_at'])
 
 
 def fire(bg) -> dict[str, Any]:
-    """Run one BackgroundAgent now. Returns a small status dict."""
+    """Run one BackgroundAgent now. Returns a small status dict.
+
+    A Linda automation is queued as its own task (a Janus turn takes minutes and
+    must not hold up the tick or a "Run now" click); see linda_automations.py.
+    """
     from plugins.installed.agent_core.models import BackgroundAgent
     from plugins.installed.agent_core.services import run_agent
+
+    if getattr(bg, 'engine', '') == BackgroundAgent.ENGINE_LINDA:
+        from plugins.installed.agent_core.tasks import run_linda_automation
+
+        run_linda_automation.delay(str(bg.pk))
+        return {'ok': True, 'queued': True}
 
     started = timezone.now()
     try:

@@ -385,7 +385,14 @@ widget keeps its one `user:<pk>` thread. Homes idle for a week are pruned
 (`janus_engine.selectable_providers`: Janus can run it, it has a key, its model is
 priced — an unpriced pick would escape the spend cap), and backups go into the
 generated config as `fallback_providers` with their keys in the turn env (v0.86.0;
-the key is in `janus_contract.CONFIG_KEYS`). Bundled ecommerce skills live in
+the key is in `janus_contract.CONFIG_KEYS`). Automations (the store's cron, v0.87.0)
+run Linda as their owner from a Celery task (`agent_core/linda_automations.py`) in
+`user:<pk>:auto:<id>` (listed under Chats). The worker has no web server on loopback,
+so the turn reaches MCP by the store's public URL (`mcp_public`) — never by a compose
+service name, which on a shared Docker network can resolve to another store. And
+**an automation's conversation can never consent** (`gates.is_automation_key`): its
+prompt is stored like a message, so "…ok" on a short schedule would approve the
+previous run's proposal unattended. Bundled ecommerce skills live in
 `core/assistant/janus_skills/` and are wired via `skills.external_dirs` in the
 per-conversation Janus home. **Four CLI traps shipped live in v0.63.0 and each
 looked fine in tests** (v0.63.1): (1) without `-t`, `janus chat` loads its

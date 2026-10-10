@@ -131,6 +131,11 @@ class BackgroundAgent(models.Model):
         (STATE_PAUSED, 'Paused'),
         (STATE_ERROR, 'Error'),
     ]
+    # Who runs it: the in-process Worker, or Linda (a Janus turn for the owner, in
+    # its own conversation — agent_core/linda_automations.py).
+    ENGINE_WORKER = 'worker'
+    ENGINE_LINDA = 'linda'
+    ENGINE_CHOICES = [(ENGINE_LINDA, 'Linda'), (ENGINE_WORKER, 'Worker')]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=120, help_text='Human label for this background job.')
@@ -140,7 +145,11 @@ class BackgroundAgent(models.Model):
     prompt = models.TextField(help_text='User-message text passed to the agent on each tick.')
     context_overrides = models.JSONField(default=dict, blank=True)
 
+    engine = models.CharField(max_length=10, choices=ENGINE_CHOICES, default=ENGINE_WORKER)
     interval_seconds = models.PositiveIntegerField(default=3600)
+    # When set, runs once a day at this time (store time zone) instead of every
+    # `interval_seconds`.
+    daily_at = models.TimeField(null=True, blank=True)
     state = models.CharField(
         max_length=12, choices=STATE_CHOICES, default=STATE_ACTIVE, db_index=True
     )
@@ -149,6 +158,7 @@ class BackgroundAgent(models.Model):
     next_run_at = models.DateTimeField(null=True, blank=True, db_index=True)
     last_run_id = models.CharField(max_length=64, blank=True)
     last_error = models.TextField(blank=True)
+    last_output = models.TextField(blank=True, help_text="The last run's answer (Linda).")
 
     consecutive_failures = models.PositiveIntegerField(default=0)
     max_failures_before_pause = models.PositiveIntegerField(default=5)
