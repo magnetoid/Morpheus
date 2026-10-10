@@ -544,8 +544,9 @@ shortcut is for genuine session-staff, who carry no token). (v0.55.0,
 on a core `APIKey`, because `graphql_view` runs `apply_bearer_user` for every
 Bearer token: a resolver that reads `_morph_token_scopes_graphql` itself refuses
 every API key (catalog did until v0.83.5). Authorize through `has_scope`, which
-checks the key's own scopes first; inventory, orders and book_product still read
-the stash directly.
+checks the key's own scopes first. Since v0.87.1 every staff mutation (catalog,
+inventory, orders, book_product) goes through one check,
+`api.graphql_permissions.mutation_scope_error` — four copies had drifted.
 
 **Landmine — a `migrations/` dir without `__init__.py` is invisible to Django,
 and ONLY production notices.** Five plugins (brand_kit, lookbook, media_3d,

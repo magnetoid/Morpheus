@@ -123,10 +123,6 @@
     },
     {
       "importer": "book_product",
-      "target": "agent_mcp"
-    },
-    {
-      "importer": "book_product",
       "target": "ai_assistant"
     },
     {
@@ -255,10 +251,6 @@
     },
     {
       "importer": "inventory",
-      "target": "agent_mcp"
-    },
-    {
-      "importer": "inventory",
       "target": "notifications_center"
     },
     {
@@ -288,10 +280,6 @@
     {
       "importer": "notifications_center",
       "target": "admin_dashboard"
-    },
-    {
-      "importer": "orders",
-      "target": "agent_mcp"
     },
     {
       "importer": "orders",

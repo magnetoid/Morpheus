@@ -133,6 +133,28 @@ def has_scope(info: strawberry.Info, scope: str) -> bool:  # noqa: PLR0911
     return False
 
 
+def mutation_scope_error(info: strawberry.Info, required: list[str]) -> str:
+    """'' when the caller may run a staff mutation needing one of `required`; else why not.
+
+    The one check behind the catalog, inventory, orders and book_product
+    mutations (four copies drifted: only catalog's was fixed in v0.83.5). A staff
+    dashboard session (no token) needs no scope. Every token — an MCP token from
+    the dashboard, or a core API key on /graphql/agent/ — is judged by
+    `has_scope`, which reads the key's own scopes first. Reading the token stash
+    here instead refuses every API key: graphql_view runs apply_bearer_user for
+    any Bearer token and leaves the empty deny-first set for a non-MCP one.
+    """
+    request = get_request(info)
+    granted = getattr(request, '_morph_token_scopes_graphql', None)
+    if granted is None and is_staff(info):
+        return ''
+    if any(has_scope(info, scope) for scope in required):
+        return ''
+    if granted is not None:
+        return f'token missing scope: needs one of {sorted(required)}'
+    return 'Forbidden — staff only.'
+
+
 def require_scope(info: strawberry.Info, scope: str) -> None:
     """Raise PermissionDenied unless the caller has the scope."""
     if not has_scope(info, scope):

@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.87.1 — 2026-10-10
+
+**One scope check for every staff GraphQL mutation; API keys accepted by inventory, orders and books**
+
+- catalog, inventory, orders and book_product mutations authorise through one function, `api.graphql_permissions.mutation_scope_error`: a core API key holding `inventory.write`, `orders.write` or `catalog.write` is accepted by setStock, markOrderFulfilled and setBookProduct (they refused every API key since v0.83.5 fixed only catalog); session staff, scoped MCP tokens and wildcard tokens behave as before
+- plugin-boundary baseline 116 → 113: inventory, orders and book_product no longer import agent_mcp
+- docs/plans/morpheus-improvement-plan-2026-10.md — the ranked improvement plan from the 2026-10-10 code + production scan and the market/regulatory research (W0–W10, owner decisions, sources)
+- Irving Survival theme (merged at 00:45 without a bump; this release carries it): pre-launch previews show no cart buttons on the product page, the sticky bar or product cards built from rows; category tiles without a photo read as an index, not an empty square.
+
 ## v0.87.0 — 2026-10-10
 
 **Automations run on Linda — the store's cron**

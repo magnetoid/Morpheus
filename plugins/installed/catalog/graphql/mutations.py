@@ -8,15 +8,14 @@ Auth: a staff dashboard session, or a token holding the mutation's scope
 minted at ``/dashboard/apps/agent_mcp/tokens/`` resolve to a staff service
 user (see ``plugins.installed.agent_mcp.auth``) but are held to their own
 scopes; a core ``APIKey`` on ``/graphql/agent/`` is held to the key's scopes.
-See ``_check_scope``.
+See ``api.graphql_permissions.mutation_scope_error``.
 """
 
 from __future__ import annotations
 
 import strawberry
 
-from api.graphql_permissions import has_scope as _has_scope
-from api.graphql_permissions import is_staff as _is_staff
+from api.graphql_permissions import mutation_scope_error as _check_scope
 
 # ─── shared types / helpers ─────────────────────────────────────────────
 
@@ -63,31 +62,6 @@ class PublishDigitalProductResult:
     name: str
     url: str
     error: str
-
-
-def _check_scope(info, required: list[str]) -> str:
-    """Return '' when the request is authorised for the given scope(s),
-    otherwise a human-friendly error string. Session-authenticated
-    staff bypass scope checks (no token means no scope restriction).
-    A Bearer token must hold at least one of the required scopes.
-
-    Tokens are judged by ``has_scope``, as the CMS mutations are: an MCP token
-    by its own GraphQL scopes, a core API key (no user; it authenticates on
-    ``/graphql/agent/``) by the key's scopes. Reading the token stash here
-    instead denied every API key, because ``graphql_view`` runs
-    ``apply_bearer_user`` for any Bearer token and leaves the empty deny-first
-    set behind when the token is not an MCP one."""
-    request = getattr(info.context, 'request', None) or (
-        info.context.get('request') if isinstance(info.context, dict) else None
-    )
-    granted = getattr(request, '_morph_token_scopes_graphql', None)
-    if granted is None and _is_staff(info):
-        return ''
-    if any(_has_scope(info, scope) for scope in required):
-        return ''
-    if granted is not None:
-        return f'token missing scope: needs one of {sorted(required)}'
-    return 'Forbidden — staff only.'
 
 
 def _err_publish(msg: str) -> PublishDigitalProductResult:

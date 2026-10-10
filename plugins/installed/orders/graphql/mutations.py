@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import strawberry
 
-from api.graphql_permissions import is_staff as _is_staff
+from api.graphql_permissions import mutation_scope_error as _check_scope
 from core.graphql.types import ErrorType
 from plugins.installed.orders.graphql._ownership import load_owned_cart, load_owned_item
 from plugins.installed.orders.graphql.inputs import AddressInput
@@ -395,22 +395,6 @@ class OrderAdminResult:
     payment_status: str
     tracking_number: str
     error: str
-
-
-def _check_scope(info, required: list[str]) -> str:
-    if not _is_staff(info):
-        return 'Forbidden — staff only.'
-    request = getattr(info.context, 'request', None) or (
-        info.context.get('request') if isinstance(info.context, dict) else None
-    )
-    granted = getattr(request, '_morph_token_scopes_graphql', None)
-    if granted is None:
-        return ''
-    from plugins.installed.agent_mcp.scopes import has_any
-
-    if not has_any(granted, required):
-        return f'token missing scope: needs one of {sorted(required)}'
-    return ''
 
 
 def _serialize_order_admin(order, *, error: str = '') -> OrderAdminResult:
