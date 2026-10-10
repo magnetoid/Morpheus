@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.87.4 — 2026-10-10
+
+**The image installs the hashed lock CI tests; Janus pinned and cached; CI audits the lock weekly and runs the plugin contract check**
+
+- Build: the Docker image installs `requirements.lock.txt` with hash checking — the same file CI tests — instead of the floors in `requirements.txt` (production had floated to 48 packages the lock never saw); the lock is regenerated (111 packages: Django 6.1.2, PyJWT 2.15.1, pillow 12.3.0, strawberry 0.332.1, oauthlib 4.0.0 …) and the stray `gunicorn==23.0.0` pin is gone. A new dependency goes into requirements.txt AND the lock in the same commit (CLAUDE.md)
+- Janus: pinned to a reviewed commit (`ARG JANUS_REF`, tagged `morpheus-known-good` in the Janus repo) and installed before `COPY . /app`, so its 216 MB layer is cached across deploys instead of rebuilt on every push (tetra's disk gained ~800 MB per push from it)
+- CI: pip-audit runs over the lock; a weekly `audit-weekly` workflow audits the lock (enforcing) and the Janus venv (reported in the step summary until the Janus repo bumps its own pins); the plugin contract check `scripts/check_plugin_standard.py` runs in lint with its 41-entry baseline (four stale entries removed); the three postgres-only tests run in the migrations job instead of never
+- Repository: Dependabot alerts and security updates switched on
+
 ## v0.87.3 — 2026-10-10
 
 **Scope gates on every staff GraphQL surface, CSRF kept for sessions, affiliate payout rules enforced, checkout stores country codes**

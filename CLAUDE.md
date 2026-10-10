@@ -1346,7 +1346,16 @@ for staff_sso) hard-imports its package — `pyjwt[crypto]`, `python3-saml`
 Ship the `requirements.txt` pin in the same commit or the deploy boots 503
 (not a crash — the build just hasn't pip-installed it). Such deploys also have
 a *longer* 503 window while the image rebuilds the native wheels; wait it out,
-don't mistake the gap for a boot failure.
+don't mistake the gap for a boot failure. **Since v0.87.4 the image installs
+the hashed `requirements.lock.txt`** — the same file CI tests — not the floors
+in `requirements.txt` (production had floated to 48 packages the lock never
+saw). A new or bumped dependency goes into `requirements.txt` AND the lock is
+regenerated in the same commit (`uv pip compile requirements.txt -o
+requirements.lock.txt --generate-hashes --universal --upgrade`; without
+`--upgrade`, uv keeps every version the old lock had), or the build fails on
+the missing hash. Janus is pinned the same way: `ARG JANUS_REF` in the
+Dockerfile names a reviewed commit (tagged `morpheus-known-good` in the Janus
+repo), and its layer runs before `COPY . /app`, so it is cached across deploys.
 
 **Landmine — a named volume takes the ownership of the image directory it is
 first mounted on, and a directory the image lacks is created as root's.** The app

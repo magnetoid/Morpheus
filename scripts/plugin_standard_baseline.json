@@ -29,6 +29,7 @@
     "demo_data:settings.not_registered",
     "discovery_quiz:tests.missing",
     "drops:tests.missing",
+    "dsers:settings.not_registered",
     "experiments:models.has_models_flag",
     "feedback:models.has_models_flag",
     "journal:tests.missing",
@@ -43,7 +44,6 @@
     "one_click:tests.missing",
     "personalisation:models.has_models_flag",
     "post_purchase:models.has_models_flag",
-    "product_gallery:tests.missing",
     "product_videos:tests.missing",
     "pwa:models.has_models_flag",
     "rails:tests.missing",
@@ -56,11 +56,9 @@
     "smart_shipping:tests.missing",
     "store_bootstrap:tests.missing",
     "storefront:structure.apps",
-    "tracking:tests.missing",
-    "trust_signals:tests.missing",
     "ugc_reviews:tests.missing",
     "webstories:models.has_models_flag",
-    "webstories:tests.missing",
-    "workflows:structure.apps"
+    "workflows:structure.apps",
+    "zendrop:settings.not_registered"
   ]
 }

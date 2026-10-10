@@ -1,0 +1,47 @@
+name: audit-weekly
+
+# A new CVE lands on a Monday, not on a push. The `audit` job in ci.yml runs
+# pip-audit on every push; this one runs it every week over the same hashed
+# lock the image installs, plus the Janus engine's own environment, which no
+# other job covers (pillow, PyJWT, starlette and mcp had known advisories in
+# the live /opt/janus venv on 2026-10-10 and nothing said so).
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+  workflow_dispatch:
+
+jobs:
+  morpheus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install pip-audit
+      - name: pip-audit — the lock the image installs (ENFORCING)
+        run: pip-audit --require-hashes -r requirements.lock.txt
+
+  janus:
+    # Janus pins its dependencies exactly in its own pyproject, so a finding
+    # here is fixed in the Janus repo (then bump JANUS_REF in the Dockerfile),
+    # not in Morpheus. Reported, not blocking, until that repo is clean —
+    # the step summary carries the list.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install the pinned Janus into its own venv
+        run: |
+          ref=$(sed -n 's/^ARG JANUS_REF=//p' Dockerfile | head -1)
+          python -m venv /tmp/janus
+          /tmp/janus/bin/pip install --quiet --upgrade pip pip-audit
+          /tmp/janus/bin/pip install --quiet "janus-agent[mcp] @ git+https://github.com/magnetoid/Janus-Agent.git@${ref}" ddgs==9.16.0 primp==2.0.1
+      - name: pip-audit — the Janus venv (reported)
+        continue-on-error: true
+        run: |
+          /tmp/janus/bin/pip-audit --local 2>&1 | tee /tmp/janus-audit.txt
+          { echo '## Janus venv advisories'; echo; echo '```'; cat /tmp/janus-audit.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

@@ -557,6 +557,16 @@ payment keys (6); a bucket for off-host backups (4).
 
 ### W2 — Supply chain and build (2–3 days, M)
 
+**Status 2026-10-10:** shipped as v0.87.4 — lock regenerated and the image
+builds from it with hash checking, `gunicorn==23.0.0` gone, Janus pinned to
+`eafb7aba` (tag `morpheus-known-good`) in a layer before `COPY . /app`,
+pip-audit over the lock on push + weekly (Janus venv reported), the
+plugin-standard check in CI (baseline 43 → 41), postgres-only tests in the
+migrations job, Dependabot alerts + security updates on. Open: the deploy
+gate (owner decision 4), the GraphQL cache key, and Janus's own pins (PyJWT,
+pillow, starlette, mcp) which only the Janus repo can bump — pip cannot
+override exact pins.
+
 - Regenerate `requirements.lock.txt` (`uv pip compile --generate-hashes
   --universal`), get CI green, **build the image from the lock**
   (`--require-hashes`), close Dependabot #96, enable Dependabot alerts and

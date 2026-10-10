@@ -16,10 +16,17 @@ RUN apt-get update \
       libpq-dev \
  && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /app/requirements.txt
+# The image installs the SAME hashed lock CI tests (requirements.lock.txt);
+# requirements.txt holds the floors `uv pip compile` resolves from. Installing
+# the floors here meant production floated to whatever PyPI had that day — 48 of
+# 107 packages differed from the lock on 2026-10-10 — and a separate
+# `gunicorn==23.0.0` pin contradicted the lock. A new dependency goes into
+# requirements.txt AND the lock is regenerated in the same commit
+# (`uv pip compile requirements.txt -o requirements.lock.txt --generate-hashes --universal`),
+# or this build fails on the missing hash.
+COPY requirements.lock.txt /app/requirements.lock.txt
 RUN pip install --upgrade pip \
- && pip install -r /app/requirements.txt \
- && pip install gunicorn==23.0.0
+ && pip install --require-hashes -r /app/requirements.lock.txt
 
 
 # ─── Runtime stage ────────────────────────────────────────────────────────────
@@ -58,37 +65,30 @@ RUN apt-get update \
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-COPY --chown=morpheus:morpheus . /app
-
-# The worker mounts its persistent backup volume here (docker-compose
-# `backup_data`), and web and worker mount the media volume at /app/media
-# (`media_data`). Docker creates a missing mount point as root:root and the app
-# runs as morpheus, so every nightly backup failed with PermissionError, and on
-# a store created later every upload did (beta.irvingsurvival.com, 2026-10-09;
-# /media/ is in .dockerignore, so the image had no /app/media at all). An empty
-# named volume takes the ownership of the directory it is first mounted on.
-RUN mkdir -p /app/backups /app/media \
- && chown morpheus:morpheus /app/backups /app/media
-
 # Janus is the store agent (Linda is brand only). Always install into an
 # isolated venv so Django and Janus do not share `plugins/` / `tools/` on
 # sys.path. ARG LINDA_JANUS is ignored (kept so old Coolify build-args still
-# parse). JANUS_REF=main installs the newest Janus on every build, and a running
-# store keeps up between deploys by itself (core/assistant/janus_runtime.py);
-# pin a commit to freeze both. ddgs + primp are Linda's free web search backend
-# (pinned in janus_runtime.PINS too). The [mcp] extra is load-bearing: without
-# the `mcp` package Janus's MCP client silently does nothing and Linda has no
-# store tools at all (shipped that way in v0.63.0).
+# parse). JANUS_REF is PINNED to a reviewed commit (the owner updates Janus
+# occasionally; bump the ARG to move) — and because this layer runs before
+# `COPY . /app`, it is cached across pushes instead of rebuilt (216 MB) on
+# every deploy. Only the contract file is copied in first: it runs standalone
+# under Janus's own interpreter. A running store keeps up between deploys by
+# itself when the merchant turns that on (core/assistant/janus_runtime.py).
+# ddgs + primp are Linda's free web search backend (pinned in
+# janus_runtime.PINS too). The [mcp] extra is load-bearing: without the `mcp`
+# package Janus's MCP client silently does nothing and Linda has no store
+# tools at all (shipped that way in v0.63.0).
 # Every build checks Janus against Morpheus's contract
 # (core/assistant/janus_contract.py: the toolsets, config keys, env vars, CLI
 # options and state columns the integration relies on, mcp included). When the
-# newest Janus breaks it, the build installs JANUS_KNOWN_GOOD instead, so an
+# pinned Janus breaks it, the build installs JANUS_KNOWN_GOOD instead, so an
 # image never ships an engine Linda cannot use. The report stays at
 # /opt/janus/morpheus-contract.json for Settings → AI → Janus.
 ARG LINDA_JANUS=1
-ARG JANUS_REF=main
+ARG JANUS_REF=eafb7aba34db8645401ce285edf987054c5d37d5
 ARG JANUS_KNOWN_GOOD=eafb7aba34db8645401ce285edf987054c5d37d5
 ARG JANUS_REPO=https://github.com/magnetoid/Janus-Agent.git
+COPY core/assistant/janus_contract.py /app/core/assistant/janus_contract.py
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git \
  && python -m venv /opt/janus \
@@ -106,6 +106,18 @@ RUN apt-get update \
  && apt-get purge -y git \
  && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
+
+COPY --chown=morpheus:morpheus . /app
+
+# The worker mounts its persistent backup volume here (docker-compose
+# `backup_data`), and web and worker mount the media volume at /app/media
+# (`media_data`). Docker creates a missing mount point as root:root and the app
+# runs as morpheus, so every nightly backup failed with PermissionError, and on
+# a store created later every upload did (beta.irvingsurvival.com, 2026-10-09;
+# /media/ is in .dockerignore, so the image had no /app/media at all). An empty
+# named volume takes the ownership of the directory it is first mounted on.
+RUN mkdir -p /app/backups /app/media \
+ && chown morpheus:morpheus /app/backups /app/media
 
 # Ensure the entrypoint is executable inside the image even if the host bit was lost.
 RUN chmod +x /app/scripts/docker-entrypoint.sh

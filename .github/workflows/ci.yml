@@ -46,6 +46,11 @@ jobs:
         # `requires`; NEW undeclared cross-plugin imports (and stale baseline
         # entries) fail. Repay by declaring the dep or inverting via core.hooks.
         run: python scripts/check_plugin_boundary.py
+      - name: plugin standard (manifest, migrations, tests, registration)
+        # The app-contract ratchet (scripts/plugin_standard_baseline.json): its
+        # docstring said "CI" since it was written, but nothing ran it until
+        # v0.87.4. A NEW contract violation fails; stale baseline entries fail.
+        run: python scripts/check_plugin_standard.py
       - name: mypy (core kernel — baseline report, non-blocking)
         # mypy is configured (pyproject.toml) + installed above but was never run
         # in CI. Report-only over the core/ kernel for now; tighten to enforcing
@@ -53,9 +58,11 @@ jobs:
         run: mypy core || true
 
   audit:
-    # Dependency CVE scan (pip-audit) over requirements.txt. ENFORCING —
-    # triaged 2026-07-02: zero known CVEs, so a finding here is a NEW vuln and
-    # must block the merge. Pairs with dependabot.yml.
+    # Dependency CVE scan (pip-audit) over the hashed lock — the exact versions
+    # the image installs since v0.87.4 (the floors in requirements.txt are only
+    # what `uv pip compile` resolves from). ENFORCING — triaged 2026-07-02: zero
+    # known CVEs, so a finding here is a NEW vuln and must block the merge.
+    # Pairs with dependabot.yml and the weekly audit workflow.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -64,8 +71,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - run: pip install pip-audit
-      - name: pip-audit (dependency CVEs)
-        run: pip-audit -r requirements.txt
+      - name: pip-audit (dependency CVEs in the lock)
+        run: pip-audit --require-hashes -r requirements.lock.txt
 
   migrations:
     # Apply every migration against real Postgres — sqlite (used by the test job)
@@ -101,6 +108,13 @@ jobs:
           # default to sslmode=require for the managed-Postgres case.
           DATABASE_URL: "postgres://postgres:postgres@localhost:5432/morph_ci?sslmode=disable"
         run: python manage.py migrate --noinput
+      - name: Postgres-only tests (skipped on the sqlite test job, so they never ran)
+        # Three tests are marked "postgres-only path" (a JSON __contains lookup,
+        # a checkout path); the test job runs on sqlite, so they skipped on
+        # every CI run since they were written. Run their modules here.
+        env:
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/morph_ci?sslmode=disable"
+        run: python manage.py test plugins.installed.orders.tests.test_checkout plugins.installed.dynamics.test_dynamic_products --noinput
 
   test:
     runs-on: ubuntu-latest
