@@ -1,0 +1,1 @@
+{% load i18n %}<nav class="pp-seg" aria-label="{% translate 'Period' %}" data-pp-period>{% for p in periods %}<a href="{{ p.url }}"{% if p.active %} aria-current="true"{% endif %}>{{ p.label }}</a>{% endfor %}</nav>

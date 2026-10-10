@@ -1,0 +1,84 @@
+<script>
+(function () {
+  var root = document.querySelector('.pp');
+  if (!root) return;
+
+  // Tabs: on a narrow screen keep the current tab in view, and fade the edge
+  // only while more tabs follow it.
+  var nav = root.querySelector('[data-pp-nav]');
+  var list = nav && nav.querySelector('.pp-nav__list');
+  if (list) {
+    var current = list.querySelector('[aria-current="page"]');
+    if (current && list.scrollWidth > list.clientWidth) {
+      var li = current.parentElement;
+      list.scrollLeft = li.offsetLeft - (list.clientWidth - li.offsetWidth) / 2;
+    }
+    var edge = function () {
+      var atEnd = list.scrollLeft + list.clientWidth >= list.scrollWidth - 2;
+      if (atEnd) nav.setAttribute('data-at-end', ''); else nav.removeAttribute('data-at-end');
+    };
+    list.addEventListener('scroll', edge, { passive: true });
+    window.addEventListener('resize', edge);
+    edge();
+  }
+
+  // Copy buttons: data-pp-copy="text" or data-pp-copy-from="#field".
+  var live = document.createElement('p');
+  live.className = 'pp-sr';
+  live.setAttribute('aria-live', 'polite');
+  root.appendChild(live);
+  var copiedLabel = root.getAttribute('data-pp-copied') || 'Copied';
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); ta.remove(); resolve(); }
+      catch (err) { ta.remove(); reject(err); }
+    });
+  }
+
+  root.addEventListener('click', function (event) {
+    var btn = event.target.closest('[data-pp-copy], [data-pp-copy-from]');
+    if (!btn || !root.contains(btn)) return;
+    var text = btn.getAttribute('data-pp-copy');
+    var source = null;
+    if (text === null) {
+      source = document.querySelector(btn.getAttribute('data-pp-copy-from'));
+      text = source ? (source.value || source.textContent || '') : '';
+    }
+    if (!text) return;
+    copyText(text.trim()).then(function () {
+      var label = btn.querySelector('[data-pp-copy-label]') || btn;
+      if (!label.hasAttribute('data-pp-original')) label.setAttribute('data-pp-original', label.textContent);
+      label.textContent = copiedLabel;
+      btn.classList.add('is-done');
+      live.textContent = copiedLabel;
+      clearTimeout(btn._ppTimer);
+      btn._ppTimer = setTimeout(function () {
+        label.textContent = label.getAttribute('data-pp-original');
+        btn.classList.remove('is-done');
+      }, 1800);
+    }).catch(function () {
+      if (source && source.select) { source.focus(); source.select(); }
+    });
+  });
+
+  // A read-only field selects itself on focus, so a manual copy is one gesture.
+  root.querySelectorAll('[data-pp-select]').forEach(function (field) {
+    field.addEventListener('focus', function () { field.select(); });
+  });
+
+  // A destructive form asks first.
+  root.addEventListener('submit', function (event) {
+    var message = event.target.getAttribute && event.target.getAttribute('data-pp-confirm');
+    if (message && !window.confirm(message)) event.preventDefault();
+  });
+})();
+</script>

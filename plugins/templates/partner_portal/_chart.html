@@ -1,0 +1,15 @@
+{% comment %}A daily bar chart. Expects `chart` (plugins.partner_portal.bar_chart),
+`chart_label` (what the screen reader hears) and `chart_empty` (shown when every
+day is zero). Bar heights arrive as plain strings, never localised numbers.{% endcomment %}
+<figure class="pp-chart" style="margin: 0;">
+  <div class="pp-chart__plot" role="img" aria-label="{{ chart_label }}">
+    {% if chart.empty %}
+    <p class="pp-chart__empty">{{ chart_empty }}</p>
+    {% else %}
+    <div class="pp-chart__tick" style="top: 0;"><span>{{ chart.peak }}</span></div>
+    <div class="pp-chart__tick" style="top: 50%;"><span>{{ chart.half }}</span></div>
+    <ol class="pp-chart__bars" aria-hidden="true">{% for bar in chart.bars %}<li style="--h: {{ bar.h }}%;"{% if bar.zero %} class="is-zero"{% elif bar.hi %} class="is-hi"{% endif %} data-tip="{{ bar.tip }}"></li>{% endfor %}</ol>
+    {% endif %}
+  </div>
+  <div class="pp-chart__axis" aria-hidden="true"><span>{{ chart.first }}</span><span>{{ chart.middle }}</span><span>{{ chart.last }}</span></div>
+</figure>

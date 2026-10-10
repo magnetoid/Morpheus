@@ -1,0 +1,8 @@
+{% load i18n %}<div class="pp-card pp-kpi" data-kpi="{{ kpi.key }}">
+  <p class="pp-label">{{ kpi.label }}</p>
+  <p class="pp-kpi__value" data-kpi-value>{{ kpi.value }}</p>
+  <p class="pp-kpi__foot">
+    {% if kpi.delta %}<span class="pp-delta pp-delta--{{ kpi.delta.dir }}" data-kpi-delta="{{ kpi.delta.dir }}"><span aria-hidden="true">{% if kpi.delta.dir == 'up' %}↑{% elif kpi.delta.dir == 'down' %}↓{% else %}→{% endif %}</span><span class="pp-sr">{% if kpi.delta.dir == 'up' %}{% translate "up" %}{% elif kpi.delta.dir == 'down' %}{% translate "down" %}{% else %}{% translate "unchanged" %}{% endif %}</span> {{ kpi.delta.text }}</span>{% if kpi.compare %}<span>{{ kpi.compare }}</span>{% endif %}{% elif kpi.foot %}<span>{{ kpi.foot }}</span>{% else %}<span>{% translate "No earlier data to compare" %}</span>{% endif %}
+  </p>
+  {% if kpi.spark %}<svg class="pp-spark" viewBox="0 0 {{ kpi.spark.width }} {{ kpi.spark.height }}" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path class="pp-spark__area" d="{{ kpi.spark.area }}"/><polyline class="pp-spark__line" points="{{ kpi.spark.points }}" vector-effect="non-scaling-stroke"/></svg>{% else %}<span class="pp-spark--empty" aria-hidden="true"></span>{% endif %}
+</div>

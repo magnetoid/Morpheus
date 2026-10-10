@@ -1,0 +1,20 @@
+{% comment %}An empty state. Include with title=, text=, icon= (chart, link, box,
+wallet, image, inbox, tag, trophy, code, clock), and optionally cta_url=,
+cta_label=, compact=True.{% endcomment %}
+<div class="pp-empty{% if compact %} pp-empty--compact{% endif %}">
+  <svg class="pp-empty__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+    {% if icon == 'link' %}<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>
+    {% elif icon == 'box' %}<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>
+    {% elif icon == 'wallet' %}<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 14.5h2"/>
+    {% elif icon == 'image' %}<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>
+    {% elif icon == 'inbox' %}<path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/>
+    {% elif icon == 'tag' %}<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8" r="1.5"/>
+    {% elif icon == 'trophy' %}<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>
+    {% elif icon == 'code' %}<path d="M8 8l-5 4 5 4M16 8l5 4-5 4"/>
+    {% elif icon == 'clock' %}<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+    {% else %}<path d="M4 20V11M10 20V5M16 20v-6M2 20h20"/>{% endif %}
+  </svg>
+  <p class="pp-empty__title">{{ title }}</p>
+  {% if text %}<p class="pp-empty__text">{{ text }}</p>{% endif %}
+  {% if cta_url %}<a class="btn btn-primary" href="{{ cta_url }}">{{ cta_label }}</a>{% endif %}
+</div>

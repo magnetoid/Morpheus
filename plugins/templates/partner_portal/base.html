@@ -1,0 +1,61 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% comment %}
+The partner portal shell: identity header, tab bar, page heading. An app's
+portal page extends this and fills portal_title / portal_lede /
+portal_actions / portal_content (or portal_body for a page without the
+standard heading). Everything app-specific arrives in the `portal` context,
+built by plugins.partner_portal.portal_context — this template names no app,
+no URL and no vertical.
+{% endcomment %}
+{% block extra_head %}{% include "partner_portal/_styles.html" %}{% block portal_head %}{% endblock %}{% endblock %}
+
+{% block content %}
+<div class="pp" data-portal="{{ portal.kind }}" data-pp-copied="{% translate 'Copied' %}">
+  <div class="wrap">
+    <div class="pp-frame">
+      <header class="pp-head">
+        <div class="pp-id">
+          {% if portal.avatar_url %}<img class="pp-avatar" src="{{ portal.avatar_url }}" alt="" width="52" height="52">{% else %}<span class="pp-avatar" aria-hidden="true">{{ portal.initials }}</span>{% endif %}
+          <div class="pp-id__text">
+            <p class="pp-kicker">{{ portal.kicker }}</p>
+            <p class="pp-name">{{ portal.name }}</p>
+            {% if portal.sub %}<p class="pp-sub">{{ portal.sub }}</p>{% endif %}
+          </div>
+        </div>
+        {% if portal.status or portal.actions %}
+        <div class="pp-head__aside">
+          {% if portal.status %}<span class="pp-badge pp-badge--lg pp-badge--{{ portal.status.tone }}" data-portal-status="{{ portal.status.key }}">{{ portal.status.label }}</span>{% endif %}
+          {% for action in portal.actions %}<a class="btn btn-ghost btn-sm" href="{{ action.url }}">{{ action.label }}</a>{% endfor %}
+        </div>
+        {% endif %}
+      </header>
+
+      {% if portal.nav %}
+      <nav class="pp-nav" aria-label="{{ portal.nav_label }}" data-pp-nav>
+        <ul class="pp-nav__list">
+          {% for item in portal.nav %}
+          <li><a class="pp-nav__link" href="{{ item.url }}" data-pp-tab="{{ item.key }}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}{% if item.badge %} <span class="pp-nav__badge{% if item.badge_tone %} pp-nav__badge--{{ item.badge_tone }}{% endif %}">{{ item.badge }}</span>{% endif %}</a></li>
+          {% endfor %}
+        </ul>
+      </nav>
+      {% endif %}
+
+      {% block portal_body %}
+      <div class="pp-page-head">
+        <div class="pp-page-head__text">
+          <h1 class="display display-m pp-title">{% block portal_title %}{% endblock %}</h1>
+          {% block portal_lede %}{% endblock %}
+        </div>
+        <div class="pp-page-actions">{% block portal_actions %}{% endblock %}</div>
+      </div>
+      <div class="pp-main">
+        {% block portal_content %}{% endblock %}
+      </div>
+      {% endblock %}
+    </div>
+  </div>
+  <span hidden data-pp-end></span>
+</div>
+{% include "partner_portal/_scripts.html" %}
+{% endblock %}
