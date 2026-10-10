@@ -36,6 +36,17 @@ agent_mcp, CI hooks, pre-commit).
 
 When in doubt: it's a plugin.
 
+**Janus is the brain of Morpheus (ADR 0039, owner rule 2026-10-10).** Build every
+capability for Janus: a merchant action ships with its agent tool in the same change
+(scopes in `AVAILABLE_SCOPES` and, for store work, inside `gates.LINDA_SCOPES`;
+`requires_approval=True` when it writes), or the change says why an agent must not
+have it. Every door into Janus (chat, widget, automations, external agents over MCP
+and GraphQL) is the same engine behind the same gate chain, `core/assistant/gates.py`.
+Consent only comes from the merchant: their own message in a chat, or a grant made in
+advance on an API token. An external agent's message, like an automation's prompt, never
+approves anything, so Janus does for an external agent exactly what its token could do
+itself. A capability Janus cannot reach is half-built.
+
 Examples (this is what's already shipped — mirror the pattern):
 
 - Reviews, loyalty, markets, notifications, workflows, metafields, media,
@@ -56,7 +67,8 @@ Examples (this is what's already shipped — mirror the pattern):
   one plugin from another's models. Code several sibling apps need but core
   does not is *shared plugin infrastructure* at the `plugins/` package root:
   `plugins/feed_mapping.py` (channel feeds), `plugins/dropshipping/` (supplier
-  apps: eligibility, address normalisation, tracking files, ship-with-tracking).
+  apps: eligibility, address normalisation, tracking files, ship-with-tracking,
+  importing a supplier product as a priced draft, the store currency).
 - **Before creating a plugin, audit for overlap**: grep
   `MORPHEUS_DEFAULT_APPS` and the existing plugin descriptions, and
   justify the boundary in the PR. One concept = one model owner —
@@ -1181,6 +1193,15 @@ decorator, not its module path: beat sends by name and the worker rejects an
 unknown one silently as far as the schedule can tell. feature_adoption's hourly
 flush shipped under its module path and no store ever got a `FeatureUsageDay`
 row (v0.76.3); the same test now asserts every scheduled name is registered.
+
+**Landmine — Django's test client skips CSRF, so a Bearer endpoint can be dead to
+every real client while its tests pass.** `POST /graphql/` had no CSRF exemption, so
+every external agent got Django's 403 ("Referer checking failed") before its token was
+read, on every store, until v0.94.0. The whole GraphQL suite passed because `Client()`
+enforces CSRF only when built with `enforce_csrf_checks=True`. A route API clients call
+with a token wraps its view in `core.auth.csrf.csrf_exempt_for_bearer` (a session request
+is still checked; CORS keeps the header to the store's own origins), and its test posts
+with `enforce_csrf_checks=True` and no cookies (`api/tests_csrf_bearer.py`).
 
 **Landmine — a hidden form control still submits, and Django reads the LAST
 value of a repeated key.** The product editor hid inactive per-type cards with

@@ -1,0 +1,135 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}CJdropshipping · Morpheus{% endblock %}
+
+{% block content %}
+<h1 class="text-xl font-semibold mb-2">CJdropshipping</h1>
+<p class="meta mb-4">
+  Import products from CJ's catalogue, and paid orders with CJ products go to CJ on their own. CJ ships them
+  worldwide and reports the tracking back, and the order is marked shipped with the shopper's email sent.
+</p>
+
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Connection</h2>
+  {% if not has_key %}
+  <p class="meta">No API key saved. In CJ: My CJ → Authorization → API, install the API app, then "Add API" with type "API Key". Paste it under <a class="underline" href="/dashboard/settings/shipping/">Settings → Shipping → CJdropshipping</a>.</p>
+  {% else %}
+  {% if connection %}
+    {% if connection.ok %}
+    <p style="margin:.25rem 0;"><strong>Connected</strong>{% if connection.account %} as {{ connection.account }}{% endif %}{% if connection.sandbox %} (sandbox){% endif %} · balance ${{ connection.balance|default:"—" }}{% if connection.qps %} · {{ connection.qps }} request{{ connection.qps|pluralize }}/s{% endif %}</p>
+    {% else %}
+    <p class="callout callout-error" style="margin:.5rem 0;">{{ connection.error }}</p>
+    {% endif %}
+  {% else %}
+  <p class="meta">Key saved. Test it to see the account and the balance orders are paid from.</p>
+  {% endif %}
+  <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.5rem;">
+    <form method="post" action="/dashboard/cj/connection/test/">{% csrf_token %}<button type="submit" class="btn">Test connection</button></form>
+    <form method="post" action="/dashboard/cj/webhooks/register/">{% csrf_token %}<button type="submit" class="btn">Register webhooks</button></form>
+    <form method="post" action="/dashboard/cj/orders/sync/">{% csrf_token %}<button type="submit" class="btn">Refresh orders now</button></form>
+  </div>
+  <p class="meta" style="margin-top:.5rem;">Webhooks deliver order status, tracking, stock and price changes to <code>{{ webhook_url }}</code> as they happen. Without them a sweep every 20 minutes does the same.</p>
+  {% endif %}
+</div>
+
+{% if has_key %}
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Find products in CJ</h2>
+  <form method="get" style="display:flex; gap:.5rem; margin-bottom:.75rem;">
+    <input type="search" name="q" value="{{ search.query|default:'' }}" placeholder="water filter, wind-up radio, solar panel…" style="max-width:28rem; width:100%;" aria-label="Search CJ products">
+    <button type="submit" class="btn btn-primary">Search</button>
+  </form>
+  {% if search_error %}<p class="callout callout-error">{{ search_error }}</p>{% endif %}
+  {% if search %}
+  <p class="meta">{{ search.total }} result{{ search.total|pluralize }} for "{{ search.query }}". Importing creates a draft product — photos, variants and a price from the cost by your markup.</p>
+  <table class="table" style="margin-top:.5rem;">
+    <thead><tr><th></th><th>Product</th><th>CJ price</th><th>In stock</th><th></th></tr></thead>
+    <tbody>
+    {% for item in search.items %}
+      <tr>
+        <td style="width:64px;">{% if item.image %}<img src="{{ item.image }}" alt="" loading="lazy" style="width:56px; height:56px; object-fit:cover; border-radius:6px;">{% endif %}</td>
+        <td>{{ item.name }}<br><code class="meta">{{ item.sku }}</code></td>
+        <td>${{ item.price }}</td>
+        <td>{{ item.inventory|default:"—" }}</td>
+        <td>
+          <form method="post" action="/dashboard/cj/products/import/">{% csrf_token %}<input type="hidden" name="pid" value="{{ item.pid }}"><button type="submit" class="btn btn-sm">Import</button></form>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="meta">Nothing found — try a broader word.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <p class="meta" style="margin-top:.5rem;">{{ links_count }} variant{{ links_count|pluralize }} linked to CJ. An existing product links on its edit page, in the "CJdropshipping supplier" card.</p>
+</div>
+
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Paid orders waiting for CJ</h2>
+  {% for row in awaiting %}
+  <form method="post" action="/dashboard/cj/orders/{{ row.order.order_number }}/send/" style="display:flex; gap:.75rem; align-items:center; padding:.4rem 0; border-top:1px solid var(--border);">
+    {% csrf_token %}
+    <a href="/dashboard/orders/{{ row.order.order_number }}/">#{{ row.order.order_number }}</a>
+    <span class="meta">{{ row.order.placed_at|date:"Y-m-d H:i" }} · {{ row.lines }} CJ line{{ row.lines|pluralize }}{% if row.unmapped %} · not from CJ: {{ row.unmapped|join:", " }}{% endif %}</span>
+    <button type="submit" class="btn btn-sm btn-primary" style="margin-left:auto;">Send to CJ</button>
+  </form>
+  {% empty %}
+  <p class="meta">None — paid orders with CJ products go to CJ automatically{% if not connection %} once the key works{% endif %}.</p>
+  {% endfor %}
+</div>
+
+{% if unpaid %}
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">In CJ, awaiting payment</h2>
+  <table class="table"><thead><tr><th>Order</th><th>CJ order</th><th>Amount</th><th>Method</th><th></th></tr></thead><tbody>
+  {% for r in unpaid %}
+    <tr>
+      <td><a href="/dashboard/orders/{{ r.order.order_number }}/">#{{ r.order.order_number }}</a></td>
+      <td><code>{{ r.cj_order_id|default:"—" }}</code> <span class="meta">{{ r.cj_status }}</span></td>
+      <td>{% if r.amount %}${{ r.amount }}{% else %}—{% endif %}</td>
+      <td>{{ r.logistic_name|default:"—" }}</td>
+      <td><form method="post" action="/dashboard/cj/orders/{{ r.order.order_number }}/pay/">{% csrf_token %}<button type="submit" class="btn btn-sm btn-primary">Pay from balance</button></form>{% if r.note %}<p class="meta">{{ r.note }}</p>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+
+{% if in_progress %}
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Paid — CJ is preparing them</h2>
+  <table class="table"><thead><tr><th>Order</th><th>CJ order</th><th>CJ status</th><th>Method</th></tr></thead><tbody>
+  {% for r in in_progress %}
+    <tr><td><a href="/dashboard/orders/{{ r.order.order_number }}/">#{{ r.order.order_number }}</a></td><td><code>{{ r.cj_order_id }}</code></td><td>{{ r.cj_status|default:"—" }}</td><td>{{ r.logistic_name|default:"—" }}</td></tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+
+{% if problems %}
+<div class="callout callout-error" style="margin-bottom:1rem;">
+  <i data-lucide="alert-triangle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">Needs a look</p>
+    <ul>
+    {% for r in problems %}
+      <li><a href="/dashboard/orders/{{ r.order.order_number }}/">#{{ r.order.order_number }}</a> — {{ r.get_status_display }}{% if r.note %}: {{ r.note }}{% endif %}
+        {% if r.status == 'failed' %}<form method="post" action="/dashboard/cj/orders/{{ r.order.order_number }}/send/" style="display:inline;">{% csrf_token %}<button type="submit" class="btn btn-sm">Try again</button></form>{% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+{% if shipped %}
+<div class="card card-padded">
+  <h2 class="text-base font-semibold mb-2">Recently shipped by CJ</h2>
+  <table class="table"><thead><tr><th>Order</th><th>Shipped</th><th>Tracking</th><th>Carrier</th></tr></thead><tbody>
+  {% for r in shipped %}
+    <tr><td><a href="/dashboard/orders/{{ r.order.order_number }}/">#{{ r.order.order_number }}</a></td><td>{{ r.shipped_at|date:"Y-m-d H:i" }}</td><td>{{ r.tracking_number }}</td><td>{{ r.carrier|default:"—" }}</td></tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

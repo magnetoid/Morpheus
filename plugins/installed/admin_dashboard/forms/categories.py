@@ -40,7 +40,7 @@ class CategoryForm(forms.ModelForm):
         # Exclude self + descendants from the parent choices to prevent a
         # cycle (MPTT would raise on save, but we keep it out of the UI).
         parent_qs = Category.objects.all().order_by('tree_id', 'lft')
-        if self.instance and self.instance.pk:
+        if self._editing:
             parent_qs = parent_qs.exclude(
                 pk__in=self.instance.get_descendants(include_self=True).values_list('pk', flat=True)
             )
@@ -51,6 +51,13 @@ class CategoryForm(forms.ModelForm):
             ):
                 field.widget.attrs.setdefault('class', 'input')
 
+    @property
+    def _editing(self) -> bool:
+        # A Category's UUID pk exists before its first save, so ``pk`` cannot
+        # tell a new row from a stored one (and MPTT refuses tree lookups on
+        # an unsaved node); Django's adding flag can.
+        return bool(self.instance) and not self.instance._state.adding
+
     def clean_slug(self) -> str:
         slug = (self.cleaned_data.get('slug') or '').strip()
         if not slug:
@@ -59,7 +66,7 @@ class CategoryForm(forms.ModelForm):
         # not a 500/IntegrityError.
         qs = (
             Category.objects.exclude(pk=self.instance.pk)
-            if self.instance.pk
+            if self._editing
             else Category.objects.all()
         )
         if slug and qs.filter(slug=slug).exists():
@@ -68,7 +75,7 @@ class CategoryForm(forms.ModelForm):
 
     def clean_parent(self):
         parent = self.cleaned_data.get('parent')
-        if parent and self.instance.pk:
+        if parent and self._editing:
             # Defence in depth — the queryset already excludes these, but a
             # crafted POST could still smuggle a descendant's pk in.
             descendant_pks = set(

@@ -235,6 +235,7 @@ urlpatterns = [
         name='image_set_primary',
     ),
     path('categories/', views.categories_list, name='categories'),
+    path('categories/new/', views.category_new, name='category_new'),
     path('categories/<uuid:category_id>/edit/', views.category_edit, name='category_edit'),
     path('tags/descriptions/', views.tag_descriptions, name='tag_descriptions'),
     path('collections/', views.collections_list, name='collections'),

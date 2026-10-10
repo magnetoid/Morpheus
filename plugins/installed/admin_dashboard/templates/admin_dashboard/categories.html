@@ -15,7 +15,7 @@
       {% else %}
       <a href="?q={{ search }}&amp;inactive=1" class="btn">Include inactive</a>
       {% endif %}
-      <a href="/admin/catalog/category/add/" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> New category</a>
+      <a href="{% url 'admin_dashboard:category_new' %}" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> New category</a>
     </div>
   </div>
 
@@ -78,7 +78,7 @@
     {% elif search %}
     {% include "admin_dashboard/_empty_state.html" with icon="search-x" title="No categories match" hint="Nothing matches your search." action_url="?" action_label="Clear search" %}
     {% else %}
-    {% include "admin_dashboard/_empty_state.html" with icon="folder-tree" title="No categories yet" hint="Categories power product browsing and SEO landing pages." action_url="/admin/catalog/category/add/" action_label="New category" action_icon="plus" %}
+    {% include "admin_dashboard/_empty_state.html" with icon="folder-tree" title="No categories yet" hint="Categories power product browsing and SEO landing pages." action_url="/dashboard/categories/new/" action_label="New category" action_icon="plus" %}
     {% endif %}
   </div>
 

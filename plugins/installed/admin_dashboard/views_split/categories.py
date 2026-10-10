@@ -1,4 +1,4 @@
-"""Category list + edit views for the admin dashboard.
+"""Category list, create and edit views for the admin dashboard.
 
 Hierarchical (MPTT) listing of `catalog.Category` rows with product
 counts and parent/child indentation, plus a full edit form (mirroring
@@ -89,6 +89,45 @@ def categories_list(request: HttpRequest) -> HttpResponse:
                 {'label': 'Dashboard', 'url': '/dashboard/'},
                 {'label': 'Products', 'url': '/dashboard/products/'},
                 {'label': 'Categories'},
+            ],
+        },
+    )
+
+
+@staff_member_required
+@require_capability('catalog.write')
+def category_new(request: HttpRequest) -> HttpResponse:
+    """Create a category in the dashboard (the stock admin is not mounted live)."""
+    from plugins.installed.admin_dashboard.forms.categories import CategoryForm
+
+    from plugins.installed.admin_dashboard.views_split._shared import (
+        entity_form_cards,
+        fire_entity_form_saved,
+    )
+
+    if request.method == 'POST':
+        form = CategoryForm(request.POST, files=request.FILES)
+        if form.is_valid():
+            category = form.save()
+            fire_entity_form_saved('category', category, request)
+            messages.success(request, f'Category “{category.name}” created.')
+            return redirect('admin_dashboard:category_edit', category_id=category.id)
+    else:
+        form = CategoryForm()
+    return render(
+        request,
+        'admin_dashboard/category_form.html',
+        {
+            'form': form,
+            'category': None,
+            'extra_cards': entity_form_cards('category', None, request),
+            'is_new': True,
+            'active_nav': 'categories',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Products', 'url': '/dashboard/products/'},
+                {'label': 'Categories', 'url': '/dashboard/categories/'},
+                {'label': 'New category'},
             ],
         },
     )

@@ -1,0 +1,23 @@
+{% comment %}CJdropshipping supplier card on the product form (PRODUCT_FORM_CARDS). One row per
+variant: the CJ variant id (vid) an order names, and the CJ product id. Saved by the
+cjdropshipping app's PRODUCT_FORM_SAVED subscriber from the cj_vid__/cj_pid__ fields.
+Products imported from CJ arrive linked.{% endcomment %}
+<div class="card card-padded mb-4" data-cj-card>
+  <h2 class="text-base font-semibold mb-1">CJdropshipping supplier</h2>
+  <p class="meta mb-3">The CJ variant id (vid) to order for each variant. Leave the vid empty to unlink.</p>
+  <table class="table">
+    <thead><tr><th>Variant</th><th>Store SKU</th><th>CJ vid</th><th>CJ product id</th><th>CJ cost</th><th>CJ stock</th></tr></thead>
+    <tbody>
+    {% for row in cj_rows %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td><code>{{ row.sku }}</code></td>
+        <td><input type="text" name="cj_vid__{{ row.key }}" value="{{ row.link.cj_variant_id|default:'' }}" placeholder="1424608152007086080" style="width:100%;"></td>
+        <td><input type="text" name="cj_pid__{{ row.key }}" value="{{ row.link.cj_product_id|default:'' }}" placeholder="optional" style="width:100%;"></td>
+        <td>{% if row.link.cost %}${{ row.link.cost }}{% else %}—{% endif %}</td>
+        <td>{{ row.link.stock|default_if_none:"—" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

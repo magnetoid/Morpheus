@@ -40,6 +40,10 @@ a complete, modular commerce engine — not bolted on.
   advisory `CLAUDE.md` rules.
 - **Code and docs ship together** — a change to architecture, a convention, a
   contract, or a count updates the relevant Markdown in the same commit.
+- **Janus is the brain of Morpheus.** Every capability ships with the agent tool
+  that lets Janus use it; every door into Janus (chat, widget, automations,
+  external agents over MCP and GraphQL) runs the same gates, and consent only
+  comes from the merchant: a message in a chat or a grant on a token (ADR 0039).
 - **AI-first surface stays machine-actionable first, human-pretty second** —
   every model, hook, and state transition is designed for agents to act on.
 

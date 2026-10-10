@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from djmoney.money import Money
 
 from plugins.dropshipping import (
@@ -97,3 +97,33 @@ class ShipWithTrackingTests(TestCase):
         self.assertEqual(Fulfillment.objects.get(pk=fulfillment.pk).carrier, 'DHL')
         self.assertEqual(sum(i.quantity for i in fulfillment.items.all()), 3)
         self.assertEqual(order.items.get().fulfilled_quantity, 3)
+
+
+class StoreCurrencyTests(TestCase):
+    """The currency imported supplier products are priced and quoted in."""
+
+    def _product(self, slug: str, currency: str, status: str = 'active'):
+        from plugins.installed.catalog.models import Product
+
+        return Product.objects.create(
+            name=slug,
+            slug=slug,
+            sku=slug.upper(),
+            price=Money(Decimal('5'), currency),
+            status=status,
+        )
+
+    def test_the_currency_the_active_products_are_priced_in(self):
+        from plugins.dropshipping.importer import store_currency
+
+        self._product('a', 'EUR')
+        self._product('b', 'EUR')
+        self._product('c', 'USD')
+        self._product('draft', 'GBP', status='draft')
+        self.assertEqual(store_currency(), 'EUR')
+
+    @override_settings(STORE_CURRENCY='EUR')
+    def test_an_empty_store_uses_the_store_setting(self):
+        from plugins.dropshipping.importer import store_currency
+
+        self.assertEqual(store_currency(), 'EUR')

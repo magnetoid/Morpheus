@@ -1,0 +1,133 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}AliExpress dropshipping · Morpheus{% endblock %}
+
+{% block content %}
+<h1 class="text-xl font-semibold mb-2">AliExpress dropshipping</h1>
+<p class="meta mb-4">
+  Import products from AliExpress, and paid orders with AliExpress products are placed there on their own, one
+  AliExpress order per seller. Pay each order in your AliExpress account before its deadline. The tracking comes
+  back here, and the order is marked shipped with the shopper's email sent.
+</p>
+
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Connection</h2>
+  {% if not has_app %}
+  <ol class="meta" style="margin:.25rem 0 0 1.1rem; list-style:decimal;">
+    <li>On <a class="underline" href="https://openservice.aliexpress.com" target="_blank" rel="noopener">openservice.aliexpress.com</a>, register as a Drop Shipping developer and create an app (AliExpress reviews it).</li>
+    <li>Set the app's callback URL to <code>{{ callback_url }}</code> exactly.</li>
+    <li>Paste the AppKey and AppSecret under <a class="underline" href="/dashboard/settings/shipping/">Settings → Shipping → AliExpress dropshipping</a>, then connect here.</li>
+  </ol>
+  {% elif not connection.connected %}
+  <p class="meta">App saved. Connect the AliExpress buyer account orders are placed from. It must have joined the AliExpress Dropshipping Program (ds.aliexpress.com). The callback URL registered on the app must be <code>{{ callback_url }}</code>.</p>
+  <a class="btn btn-primary" href="/dashboard/aliexpress/oauth/start/" style="margin-top:.5rem; display:inline-flex;">Connect AliExpress account</a>
+  {% else %}
+  <p style="margin:.25rem 0;"><strong>Connected</strong>{% if connection.account %} as {{ connection.account }}{% endif %}{% if token_days_left is not None %} · access renews automatically ({{ token_days_left }} day{{ token_days_left|pluralize }} left){% endif %}</p>
+  <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.5rem;">
+    <a class="btn" href="/dashboard/aliexpress/oauth/start/">Reconnect</a>
+    <form method="post" action="/dashboard/aliexpress/orders/sync/">{% csrf_token %}<button type="submit" class="btn">Refresh orders now</button></form>
+    <form method="post" action="/dashboard/aliexpress/oauth/disconnect/">{% csrf_token %}<button type="submit" class="btn btn-ghost">Disconnect</button></form>
+  </div>
+  {% endif %}
+</div>
+
+{% if connection.connected %}
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Find products on AliExpress</h2>
+  <form method="get" style="display:flex; gap:.5rem; margin-bottom:.75rem;">
+    <input type="search" name="q" value="{{ search.query|default:'' }}" placeholder="water filter, wind-up radio, solar panel…" style="max-width:28rem; width:100%;" aria-label="Search AliExpress products">
+    <button type="submit" class="btn btn-primary">Search</button>
+  </form>
+  {% if search_error %}<p class="callout callout-error">{{ search_error }}</p>{% endif %}
+  {% if search %}
+  <p class="meta">{{ search.total }} result{{ search.total|pluralize }} for "{{ search.query }}". Importing creates a draft product — photos, variants and a price from the cost by your markup.</p>
+  <table class="table" style="margin-top:.5rem;">
+    <thead><tr><th></th><th>Product</th><th>Cost</th><th>Orders</th><th>Rating</th><th></th></tr></thead>
+    <tbody>
+    {% for item in search.items %}
+      <tr>
+        <td style="width:64px;">{% if item.image %}<img src="{{ item.image }}" alt="" loading="lazy" style="width:56px; height:56px; object-fit:cover; border-radius:6px;">{% endif %}</td>
+        <td><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.name }}</a></td>
+        <td>{{ item.price }} {{ item.currency }}</td>
+        <td>{{ item.orders|default:"—" }}</td>
+        <td>{{ item.rating|default:"—" }}</td>
+        <td><form method="post" action="/dashboard/aliexpress/products/import/">{% csrf_token %}<input type="hidden" name="product_id" value="{{ item.id }}"><button type="submit" class="btn btn-sm">Import</button></form></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="meta">Nothing found — try a broader word.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <p class="meta" style="margin-top:.5rem;">{{ links_count }} variant{{ links_count|pluralize }} linked to AliExpress. An existing product links on its edit page, in the "AliExpress supplier" card.</p>
+</div>
+
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Paid orders waiting for AliExpress</h2>
+  {% for row in awaiting %}
+  <form method="post" action="/dashboard/aliexpress/orders/{{ row.order.order_number }}/send/" style="display:flex; gap:.75rem; align-items:center; padding:.4rem 0; border-top:1px solid var(--border);">
+    {% csrf_token %}
+    <a href="/dashboard/orders/{{ row.order.order_number }}/">#{{ row.order.order_number }}</a>
+    <span class="meta">{{ row.order.placed_at|date:"Y-m-d H:i" }} · {{ row.lines }} AliExpress line{{ row.lines|pluralize }}{% if row.unmapped %} · not from AliExpress: {{ row.unmapped|join:", " }}{% endif %}</span>
+    <button type="submit" class="btn btn-sm btn-primary" style="margin-left:auto;">Place on AliExpress</button>
+  </form>
+  {% empty %}
+  <p class="meta">None — paid orders with AliExpress products are placed automatically.</p>
+  {% endfor %}
+</div>
+
+{% if to_pay %}
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Placed — pay these in AliExpress</h2>
+  <p class="meta">AliExpress closes an unpaid order after its deadline. <a class="underline" href="https://www.aliexpress.com/p/order/index.html" target="_blank" rel="noopener">Open your AliExpress orders</a>.</p>
+  <table class="table"><thead><tr><th>Order</th><th>AliExpress order(s)</th><th>Pay by</th><th>Status</th></tr></thead><tbody>
+  {% for r in to_pay %}
+    <tr>
+      <td><a href="/dashboard/orders/{{ r.order.order_number }}/">#{{ r.order.order_number }}</a></td>
+      <td>{% for id in r.ae_order_ids %}<a href="https://www.aliexpress.com/p/order/detail.html?orderId={{ id }}" target="_blank" rel="noopener"><code>{{ id }}</code></a>{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+      <td>{{ r.pay_by|date:"Y-m-d H:i"|default:"—" }}</td>
+      <td class="meta">{{ r.ae_status|default:"placed" }}{% if r.note %} · {{ r.note }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+
+{% if in_progress %}
+<div class="card card-padded mb-4">
+  <h2 class="text-base font-semibold mb-2">Paid — the sellers are preparing them</h2>
+  <table class="table"><thead><tr><th>Order</th><th>AliExpress order(s)</th><th>Status</th><th>Tracking so far</th></tr></thead><tbody>
+  {% for r in in_progress %}
+    <tr><td><a href="/dashboard/orders/{{ r.order.order_number }}/">#{{ r.order.order_number }}</a></td><td>{{ r.ae_order_ids|join:", " }}</td><td>{{ r.ae_status|default:"—" }}</td><td>{{ r.tracking_numbers|length }} of {{ r.ae_order_ids|length }}</td></tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+
+{% if problems %}
+<div class="callout callout-error" style="margin-bottom:1rem;">
+  <i data-lucide="alert-triangle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">Needs a look</p>
+    <ul>
+    {% for r in problems %}
+      <li><a href="/dashboard/orders/{{ r.order.order_number }}/">#{{ r.order.order_number }}</a> — {{ r.get_status_display }}{% if r.note %}: {{ r.note }}{% endif %}
+        {% if r.status == 'failed' %}<form method="post" action="/dashboard/aliexpress/orders/{{ r.order.order_number }}/send/" style="display:inline;">{% csrf_token %}<button type="submit" class="btn btn-sm">Try again</button></form>{% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+{% if shipped %}
+<div class="card card-padded">
+  <h2 class="text-base font-semibold mb-2">Recently shipped from AliExpress</h2>
+  <table class="table"><thead><tr><th>Order</th><th>Shipped</th><th>Carrier</th></tr></thead><tbody>
+  {% for r in shipped %}
+    <tr><td><a href="/dashboard/orders/{{ r.order.order_number }}/">#{{ r.order.order_number }}</a></td><td>{{ r.shipped_at|date:"Y-m-d H:i" }}</td><td>{{ r.carrier|default:"—" }}</td></tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

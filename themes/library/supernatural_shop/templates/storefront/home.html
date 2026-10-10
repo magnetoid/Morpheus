@@ -18,6 +18,244 @@ passes only the fallbacks — a merchant who fills in Settings → SEO overrides
     line-height: 1.45; color: var(--ink-2);
   }
 </style>
+{% comment %}The shop window's styles are in the head, so the hero is never laid out
+unstyled and then moved when a later <style> arrives (CLAUDE.md, CLS landmine).{% endcomment %}
+<style>
+  /* ── This weeks: the shop window ─────────────────────────────────
+     Height is padding-driven, not `100svh`: the hero used to fill the viewport
+     and push every product below the fold on a shop's front page. The rail now
+     ends just above the fold so the shelf underneath peeks and invites a scroll. */
+  .window {
+    padding: clamp(2rem, 3.5vw, 3rem) 0 clamp(1.5rem, 3vw, 2.5rem);
+  }
+  .window__shell {
+    display: grid;
+    /* Deliberately tight: the book and its title read as one composition, not
+       two columns sharing a page. */
+    gap: clamp(1rem, 2vw, 1.75rem);
+    align-items: center;
+  }
+  @media (min-width: 900px) {
+    /* Copy left, the picture right and flush with the page's right margin
+       (owner's ask, 2026-10-10): the copy column takes the room, so the
+       picture mirrors the copy's left margin instead of floating mid-page. */
+    .window__shell {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    /* The copy column still needs a floor, or a one-word title collapses the
+       column and drags the book under the headline. */
+    .window__copy { min-width: min(32rem, 100%); }
+  }
+
+  /* ── The book, face-out ───────────────────────────────────────────────────
+     Order -1 puts the cover above the copy on a phone (the copy column comes
+     first in the DOM for desktop reading order, which would otherwise bury the
+     book under the dots); the desktop rule below restores source order. */
+  .window__stage { display: grid; order: -1; }
+  @media (min-width: 900px) {
+    .window__stage { order: 0; justify-self: end; width: clamp(340px, 44vw, 680px); }
+  }
+  .window__cover {
+    grid-area: 1 / 1;
+    display: block;
+    position: relative;
+    width: min(72vw, 320px);
+    aspect-ratio: 1 / 1;
+    margin-inline: auto;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--paper-2);
+    box-shadow: 0 2px 10px -6px rgba(14, 14, 14, 0.22);
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.985);
+    transition:
+      opacity var(--motion-slow) var(--ease-out),
+      transform var(--motion-slow) var(--ease-out),
+      box-shadow var(--motion-med) var(--ease-out);
+  }
+  /* The picture fills the stage: 44vw, up to 680px (owner's asks, 2026-10-10).
+     `sizes` on the <img> names the same widths, or the browser fetches a
+     smaller file. */
+  @media (min-width: 900px) {
+    .window__cover { width: 100%; margin-inline: 0; }
+  }
+  .window__cover.is-active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+  .window__cover img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  /* Missing-cover "title page" treatment: base.html owns it for every cover
+     on the site, and `.window__cover .placeholder` is wired into those shared
+     selector groups — nothing to restate here. */
+  @media (hover: hover) {
+    .window__cover.is-active:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 20px 38px -20px rgba(14, 14, 14, 0.42);
+    }
+  }
+
+  /* ── Copy ────────────────────────────────────────────────────────────────
+     Every panel is stacked in one grid cell, so the stage's height is the
+     LONGEST title's — constant no matter which book is showing, which is what
+     keeps the shelf below from moving as you click through. Each panel then
+     centres inside that constant box, so a short title sits balanced against
+     the cover instead of stranding its slack in one place. This is what
+     replaced the JS title fitter and the reserved tallest-title box:
+     geometry, not measurement. */
+  .window__copy { min-width: 0; }
+  .window__copy-stage {
+    display: grid;
+    align-items: center;
+  }
+  .window__panel {
+    grid-area: 1 / 1;
+    display: grid;
+    gap: 1rem;
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* No transition on the panel itself: every panel occupies the SAME grid cell,
+     so cross-fading two of them ghosts the outgoing title over the incoming one.
+     The panel cuts; only its three lines animate, which reads as the entrance. */
+  .window__panel.is-active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* One quiet, staggered rise for the three lines — the whole motion budget. */
+  .window__panel > * {
+    margin: 0;
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+    transition:
+      opacity 380ms var(--ease-out),
+      transform 380ms var(--ease-out);
+  }
+  .window__panel.is-active > * {
+    opacity: 1;
+    transform: none;
+    transition-delay: var(--d, 0ms);
+  }
+  /* The restored editorial lead — static, so it never moves between books. */
+  .window__lead {
+    display: grid;
+    gap: 0.9rem;
+    margin-bottom: clamp(1.4rem, 2.5vw, 2rem);
+  }
+  .window__lead > * { margin: 0; }
+  /* Large type throughout the window (owner's ask, 2026-10-10): every size
+     here is the theme's own scale stepped up, and scoped to the hero. */
+  .window .eyebrow { font-size: 0.95rem; }
+  .window .window__headline { font-size: clamp(2.5rem, 6vw, 4.75rem); }
+  .window .window__book { font-size: clamp(3rem, 9vw, 7.25rem); }
+  .window__actions .btn { font-size: 1.08rem; padding: 0.95rem 1.7rem; }
+  .window__book {
+    /* `display display-xl` carries family and size — the "two big texts" era's
+       treatment, the book title as the dominant line. This caps the measure so
+       a long title wraps into the stacked stage instead of running the column;
+       stage height = tallest title, constant across slides, no JS fitter. */
+    max-width: 12ch;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  .window__meta {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .window__cat {
+    font-family: var(--sans);
+    font-size: 0.92rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .window__sep { color: var(--rule); }
+  .window__price {
+    font-family: var(--serif);
+    font-size: clamp(1.45rem, 1.4vw + 1.1rem, 2.05rem);
+    font-variant-numeric: tabular-nums; /* digits hold width between slides */
+  }
+  .window__from { color: var(--muted); font-size: 0.85em; }
+  .window__save {
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--accent-ink);
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+  }
+  .window__actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  /* ── Dot navigation ──────────────────────────────────────────────────────
+     The remembered slider's bullets, sitting under the copy. Each button is a
+     2.25rem hit area (the a11y lesson the old hero dots learned the hard way)
+     drawing a small dot; the active one stretches into an accent dash. */
+  .window__dots {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: clamp(1.25rem, 2.5vw, 1.75rem);
+  }
+  .window__dot {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  .window__dot::after {
+    content: '';
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: var(--rule);
+    transition:
+      background var(--motion-med) var(--ease-out),
+      width var(--motion-med) var(--ease-out);
+  }
+  .window__dot.is-active::after {
+    width: 26px;
+    background: var(--accent-ink);
+  }
+  @media (hover: hover) {
+    .window__dot:not(.is-active):hover::after { background: var(--muted); }
+  }
+  .window__dot:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+    border-radius: 999px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .window__cover,
+    .window__panel,
+    .window__panel > *,
+    .window__dot::after {
+      transition-duration: 1ms !important;
+      transition-delay: 0ms !important;
+    }
+    .window__cover.is-active:hover { transform: none; }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -123,9 +361,9 @@ geometry, so the dots and cover never move between books.
         >
           {% if pick.primaryImage and pick.primaryImage.url %}
             {% if forloop.first %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,800,1200" sizes="(min-width: 1500px) 600px, (min-width: 900px) 40vw, 60vw" priority=True %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,800,1200" sizes="(min-width: 1546px) 680px, (min-width: 900px) 44vw, 72vw" priority=True %}
             {% else %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,800,1200" sizes="(min-width: 1500px) 600px, (min-width: 900px) 40vw, 60vw" %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="600,800,1200" sizes="(min-width: 1546px) 680px, (min-width: 900px) 44vw, 72vw" %}
             {% endif %}
           {% elif PRODUCT_PLACEHOLDER_IMAGE %}
             <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ pick.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
@@ -138,240 +376,6 @@ geometry, so the dots and cover never move between books.
     </div>
   </div>
 </section>
-
-<style>
-  /* ── This weeks: the shop window ─────────────────────────────────
-     Height is padding-driven, not `100svh`: the hero used to fill the viewport
-     and push every product below the fold on a shop's front page. The rail now
-     ends just above the fold so the shelf underneath peeks and invites a scroll. */
-  .window {
-    padding: clamp(2rem, 3.5vw, 3rem) 0 clamp(1.5rem, 3vw, 2.5rem);
-  }
-  .window__shell {
-    display: grid;
-    /* Deliberately tight: the book and its title read as one composition, not
-       two columns sharing a page. */
-    gap: clamp(1rem, 2vw, 1.75rem);
-    align-items: center;
-  }
-  @media (min-width: 900px) {
-    /* Copy left, the book right — the remembered editorial composition.
-       Both columns are content-sized so the book sits just past the end of the
-       copy: `1fr` for the copy pinned the cover to the far right edge, and a
-       short title ("Dune.") then left a gulf the gap alone could not close. */
-    .window__shell {
-      grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
-      justify-content: start;
-    }
-    /* The copy column still needs a floor, or a one-word title collapses the
-       column and drags the book under the headline. */
-    .window__copy { min-width: min(32rem, 100%); }
-  }
-
-  /* ── The book, face-out ───────────────────────────────────────────────────
-     Order -1 puts the cover above the copy on a phone (the copy column comes
-     first in the DOM for desktop reading order, which would otherwise bury the
-     book under the dots); the desktop rule below restores source order. */
-  .window__stage { display: grid; order: -1; }
-  @media (min-width: 900px) {
-    .window__stage { order: 0; }
-  }
-  .window__cover {
-    grid-area: 1 / 1;
-    display: block;
-    position: relative;
-    width: min(60vw, 260px);
-    aspect-ratio: 1 / 1;
-    margin-inline: auto;
-    border-radius: 4px;
-    overflow: hidden;
-    background: var(--paper-2);
-    box-shadow: 0 2px 10px -6px rgba(14, 14, 14, 0.22);
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(0.985);
-    transition:
-      opacity var(--motion-slow) var(--ease-out),
-      transform var(--motion-slow) var(--ease-out),
-      box-shadow var(--motion-med) var(--ease-out);
-  }
-  /* As large as the window allows (owner's ask, 2026-10-10): the cover takes
-     the column beside the copy, up to 600px — still no taller than the copy,
-     so the hero keeps its height and the shelf below still peeks. `sizes` on
-     the <img> names the same widths, or the browser fetches a smaller file. */
-  @media (min-width: 900px) {
-    .window__cover { width: min(100%, clamp(320px, 40vw, 600px)); margin-inline: 0; }
-  }
-  .window__cover.is-active {
-    opacity: 1;
-    pointer-events: auto;
-    transform: none;
-  }
-  .window__cover img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  /* Missing-cover "title page" treatment: base.html owns it for every cover
-     on the site, and `.window__cover .placeholder` is wired into those shared
-     selector groups — nothing to restate here. */
-  @media (hover: hover) {
-    .window__cover.is-active:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 20px 38px -20px rgba(14, 14, 14, 0.42);
-    }
-  }
-
-  /* ── Copy ────────────────────────────────────────────────────────────────
-     Every panel is stacked in one grid cell, so the stage's height is the
-     LONGEST title's — constant no matter which book is showing, which is what
-     keeps the shelf below from moving as you click through. Each panel then
-     centres inside that constant box, so a short title sits balanced against
-     the cover instead of stranding its slack in one place. This is what
-     replaced the JS title fitter and the reserved tallest-title box:
-     geometry, not measurement. */
-  .window__copy { min-width: 0; }
-  .window__copy-stage {
-    display: grid;
-    align-items: center;
-  }
-  .window__panel {
-    grid-area: 1 / 1;
-    display: grid;
-    gap: 1rem;
-    opacity: 0;
-    pointer-events: none;
-  }
-  /* No transition on the panel itself: every panel occupies the SAME grid cell,
-     so cross-fading two of them ghosts the outgoing title over the incoming one.
-     The panel cuts; only its three lines animate, which reads as the entrance. */
-  .window__panel.is-active {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  /* One quiet, staggered rise for the three lines — the whole motion budget. */
-  .window__panel > * {
-    margin: 0;
-    opacity: 0;
-    transform: translate3d(0, 10px, 0);
-    transition:
-      opacity 380ms var(--ease-out),
-      transform 380ms var(--ease-out);
-  }
-  .window__panel.is-active > * {
-    opacity: 1;
-    transform: none;
-    transition-delay: var(--d, 0ms);
-  }
-  /* The restored editorial lead — static, so it never moves between books. */
-  .window__lead {
-    display: grid;
-    gap: 0.9rem;
-    margin-bottom: clamp(1.4rem, 2.5vw, 2rem);
-  }
-  .window__lead > * { margin: 0; }
-  .window__book {
-    /* `display display-xl` carries family and size — the "two big texts" era's
-       treatment, the book title as the dominant line. This caps the measure so
-       a long title wraps into the stacked stage instead of running the column;
-       stage height = tallest title, constant across slides, no JS fitter. */
-    max-width: 12ch;
-    text-wrap: balance;
-    overflow-wrap: break-word;
-  }
-  .window__meta {
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-  }
-  .window__cat {
-    font-family: var(--sans);
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .window__sep { color: var(--rule); }
-  .window__price {
-    font-family: var(--serif);
-    font-size: clamp(1.15rem, 1.1vw + 0.95rem, 1.45rem);
-    font-variant-numeric: tabular-nums; /* digits hold width between slides */
-  }
-  .window__from { color: var(--muted); font-size: 0.85em; }
-  .window__save {
-    font-family: var(--sans);
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: var(--accent-ink);
-    border: 1px solid currentColor;
-    border-radius: 999px;
-    padding: 0.15rem 0.5rem;
-  }
-  .window__actions {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-  }
-
-  /* ── Dot navigation ──────────────────────────────────────────────────────
-     The remembered slider's bullets, sitting under the copy. Each button is a
-     2.25rem hit area (the a11y lesson the old hero dots learned the hard way)
-     drawing a small dot; the active one stretches into an accent dash. */
-  .window__dots {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    margin-top: clamp(1.25rem, 2.5vw, 1.75rem);
-  }
-  .window__dot {
-    display: grid;
-    place-items: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    cursor: pointer;
-  }
-  .window__dot::after {
-    content: '';
-    width: 9px;
-    height: 9px;
-    border-radius: 999px;
-    background: var(--rule);
-    transition:
-      background var(--motion-med) var(--ease-out),
-      width var(--motion-med) var(--ease-out);
-  }
-  .window__dot.is-active::after {
-    width: 26px;
-    background: var(--accent-ink);
-  }
-  @media (hover: hover) {
-    .window__dot:not(.is-active):hover::after { background: var(--muted); }
-  }
-  .window__dot:focus-visible {
-    outline: 2px solid var(--ink);
-    outline-offset: 2px;
-    border-radius: 999px;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .window__cover,
-    .window__panel,
-    .window__panel > *,
-    .window__dot::after {
-      transition-duration: 1ms !important;
-      transition-delay: 0ms !important;
-    }
-    .window__cover.is-active:hover { transform: none; }
-  }
-</style>
 
 <script>
   (function () {

@@ -1,0 +1,23 @@
+{% comment %}AliExpress supplier card on the product form (PRODUCT_FORM_CARDS). One row per
+variant: the AliExpress product id, the sku_attr an order names ("" for a single-SKU
+product) and the sku_id freight quotes use. Saved by the aliexpress app's
+PRODUCT_FORM_SAVED subscriber. Products imported from AliExpress arrive linked.{% endcomment %}
+<div class="card card-padded mb-4" data-ae-card>
+  <h2 class="text-base font-semibold mb-1">AliExpress supplier</h2>
+  <p class="meta mb-3">The AliExpress product id (from the item URL), and for a product with options the SKU's <code>sku_attr</code> and <code>sku_id</code>. Leave the product id empty to unlink.</p>
+  <table class="table">
+    <thead><tr><th>Variant</th><th>Store SKU</th><th>AliExpress product id</th><th>sku_attr</th><th>sku_id</th><th>Cost</th></tr></thead>
+    <tbody>
+    {% for row in ae_rows %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td><code>{{ row.sku }}</code></td>
+        <td><input type="text" name="ae_product__{{ row.key }}" value="{{ row.link.ae_product_id|default:'' }}" placeholder="1005006123456789" inputmode="numeric" style="width:100%;"></td>
+        <td><input type="text" name="ae_sku_attr__{{ row.key }}" value="{{ row.link.sku_attr|default:'' }}" placeholder="14:193#Black" style="width:100%;"></td>
+        <td><input type="text" name="ae_sku_id__{{ row.key }}" value="{{ row.link.ae_sku_id|default:'' }}" placeholder="12000038…" style="width:100%;"></td>
+        <td>{% if row.link.cost %}{{ row.link.cost }} {{ row.link.currency }}{% else %}—{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

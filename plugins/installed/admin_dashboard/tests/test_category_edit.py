@@ -157,3 +157,90 @@ class CategoryEditTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.root.refresh_from_db()
         self.assertIsNone(self.root.parent_id)
+
+
+class CategoryCreateTests(TestCase):
+    """ "New category" is a dashboard page. It once linked to Django's stock
+    admin (/admin/catalog/category/add/), which is mounted only under DEBUG,
+    so the button 404'd on every live store."""
+
+    def setUp(self):
+        self.staff = get_user_model().objects.create_user(
+            username='staff', email='staff@example.com', password='x', is_staff=True
+        )
+        self.url = reverse('admin_dashboard:category_new')
+
+    def test_url_reverses(self):
+        self.assertEqual(self.url, '/dashboard/categories/new/')
+
+    def test_non_staff_blocked(self):
+        shopper = get_user_model().objects.create_user(
+            username='shopper', email='shopper@example.com', password='x'
+        )
+        self.client.force_login(shopper)
+        self.assertIn(self.client.get(self.url).status_code, (302, 403))
+
+    def test_staff_get_renders_an_empty_form(self):
+        self.client.force_login(self.staff)
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'New category')
+        self.assertContains(resp, 'Create category')
+        self.assertNotContains(resp, 'View on storefront')
+
+    def test_staff_post_creates_a_category_with_a_slug_from_its_name(self):
+        parent = Category.objects.create(name='Gear', slug='gear')
+        self.client.force_login(self.staff)
+        resp = self.client.post(
+            self.url,
+            {
+                'name': 'Water Filters',
+                'slug': '',
+                'parent': str(parent.pk),
+                'description': 'Clean water anywhere.',
+                'is_active': 'on',
+                'sort_order': '0',
+            },
+        )
+        created = Category.objects.get(name='Water Filters')
+        self.assertRedirects(
+            resp,
+            reverse('admin_dashboard:category_edit', kwargs={'category_id': created.id}),
+            fetch_redirect_response=False,
+        )
+        self.assertEqual((created.slug, created.parent_id), ('water-filters', parent.pk))
+
+    def test_a_duplicate_slug_re_renders_the_form(self):
+        Category.objects.create(name='Radios', slug='radios')
+        self.client.force_login(self.staff)
+        resp = self.client.post(self.url, {'name': 'Radios', 'slug': '', 'sort_order': '0'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'That slug is already in use')
+        self.assertEqual(Category.objects.filter(slug='radios').count(), 1)
+
+    def test_the_list_links_to_the_dashboard_page(self):
+        self.client.force_login(self.staff)
+        for categories in (False, True):  # the empty state, then the table header
+            if categories:
+                Category.objects.create(name='Tools', slug='tools')
+            resp = self.client.get(reverse('admin_dashboard:categories'))
+            self.assertContains(resp, 'href="/dashboard/categories/new/"')
+            self.assertNotContains(resp, '/admin/catalog/')
+
+
+class NoStockAdminLinkTests(TestCase):
+    """Django's stock admin is mounted only under DEBUG (morph/urls.py), so a
+    dashboard link into it is a 404 on every live store."""
+
+    def test_no_dashboard_template_links_into_the_stock_admin(self):
+        import re
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1] / 'templates'
+        pattern = re.compile(r"""(?:href|action|action_url)=["']/admin/(?!login)""")
+        offenders = [
+            str(path.relative_to(root))
+            for path in root.rglob('*.html')
+            if pattern.search(path.read_text(encoding='utf-8'))
+        ]
+        self.assertEqual(offenders, [])

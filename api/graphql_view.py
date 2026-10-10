@@ -318,10 +318,16 @@ def morpheus_graphql_view(agent_only: bool = False):
     The agent-auth route is wrapped in ``csrf_exempt`` — it uses Bearer
     tokens, never session cookies, so the CSRF middleware would just
     block legitimate external clients (Lumina, Claude Desktop, etc.).
+    The main route skips CSRF only for a request that carries
+    ``Authorization: Bearer`` (the token is the proof; CORS keeps the header
+    to the store's own origins), so an external agent's cookie-less POST
+    reaches the token check while a session request is still CSRF-checked.
+    Until v0.94.0 it had no exemption and every external POST got a 403.
     """
     from api.schema import get_schema
+    from core.auth.csrf import csrf_exempt_for_bearer
 
     view = MorpheusGraphQLView.as_view(schema=get_schema(), agent_only=agent_only)
     if agent_only:
-        view = csrf_exempt(view)
-    return view
+        return csrf_exempt(view)
+    return csrf_exempt_for_bearer(view)

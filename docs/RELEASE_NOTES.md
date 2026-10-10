@@ -15,6 +15,20 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.94.0 — 2026-10-10
+
+**CJdropshipping and AliExpress dropshipping apps, New category in the dashboard, GraphQL open to external agents, a larger Supernatural hero**
+
+- cjdropshipping (opt-in): CJdropshipping's Open API 2.0. Search CJ's catalogue and import a product as a priced draft, send paid orders to CJ on their own (pay later from the page, or from the CJ balance at once), and ship them with the tracking CJ's signed webhooks report. A 20-minute sweep catches what was missed; a store cancellation deletes the CJ order while CJ still allows it.
+- aliexpress (opt-in): AliExpress' official dropshipping API. Connect the AliExpress account by OAuth (state-checked, tokens renewed before they expire), import products as priced drafts, place paid orders on their own (one per seller, idempotent by order number) with the payment deadline AliExpress sets, and ship once every seller's tracking is in. AliExpress has no cancel method, so a store cancellation is flagged for a cancel in AliExpress.
+- plugins/dropshipping: one importer for every supplier app (a draft product, its variants and photos through the catalogue's own services, price = cost x markup ending in .99, supplier HTML on the rich-text allowlist) and store_currency(), read from the currency column: loading only the price deferred it and djmoney raised KeyError, caught by the new tests before it shipped.
+- Dashboard: New category is a dashboard page. The button linked to Django's stock admin, which only runs in development, so it answered 404 on every live store; the category form also broke on a new row (a UUID id exists before the first save). A guard test fails on any dashboard link into the stock admin.
+- GraphQL: POST /graphql/ with an Authorization: Bearer token now reaches the token check. The route had no CSRF exemption, so every external agent got Django's 403 before its token was read; a session request is still CSRF-checked.
+- Supernatural Shop: the home hero's picture is larger and pinned to the right margin, the copy on the left in much larger type, and the hero's styles moved into the head so it is never drawn unstyled first.
+- CI: the opt-in supplier apps run in the test job, and their migrations are applied on real Postgres in the migrations job.
+- Rule: Torsor ADR 0039, Janus is the brain of Morpheus. Every capability ships with the agent tool that lets Janus use it, every door into Janus runs one gate chain, and consent only comes from the merchant. Also in the charter and CLAUDE.md.
+- Docs: the CJ and AliExpress API contracts in docs/plans/cj-aliexpress-dropshipping.md; README at 114 apps.
+
 ## v0.93.0 — 2026-10-10
 
 **Web Stories rebuilt — no more markup on screen — and one media uploader for every image in the dashboard**

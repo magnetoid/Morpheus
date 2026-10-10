@@ -72,3 +72,51 @@ class AgentInvokeCsrfTests(_Base):
         self.assertEqual(r.status_code, 403)
         r = self._post('/api/agents/nope/stream', HTTP_AUTHORIZATION='Bearer not-a-real-token')
         self.assertEqual(r.status_code, 404)
+
+
+class GraphqlBearerCsrfTests(TestCase):
+    """An external agent POSTs to /graphql/ with a Bearer token and no cookies.
+
+    The tokens page tells every merchant to do exactly that, but the main
+    GraphQL route was not CSRF-exempt for Bearer requests, so Django's CSRF
+    middleware answered 403 before the token was ever read.
+    """
+
+    def setUp(self):
+        from plugins.models import PluginConfig
+
+        self.token = 'mph_csrf-graphql-probe-token-1234567890'
+        PluginConfig.objects.update_or_create(
+            plugin_name='agent_mcp',
+            defaults={
+                'config': {
+                    'public_keys': [
+                        {'id': 'csrf-probe', 'label': 'csrf probe', 'token': self.token}
+                    ]
+                }
+            },
+        )
+
+    def test_a_bearer_query_reaches_graphql_without_a_csrf_token(self):
+        client = Client(enforce_csrf_checks=True)
+        r = client.post(
+            '/graphql/',
+            data=json.dumps({'query': '{ __typename }'}),
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.token}',
+        )
+        self.assertEqual(r.status_code, 200, r.content[:300])
+        self.assertEqual(r.json()['data']['__typename'], 'Query')
+
+    def test_a_session_post_without_the_token_is_still_refused(self):
+        staff = get_user_model().objects.create_user(
+            username='gql-staff', email='gql@x.test', password='pw', is_staff=True
+        )
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(staff)
+        r = client.post(
+            '/graphql/',
+            data=json.dumps({'query': '{ __typename }'}),
+            content_type='application/json',
+        )
+        self.assertEqual(r.status_code, 403)
