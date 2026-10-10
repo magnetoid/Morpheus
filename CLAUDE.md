@@ -653,7 +653,14 @@ three go as one bundle — or the store logs a permanent error. Note `eco_impact
 is a "general" plugin that hard-`requires` a vertical although its whole feature
 returns `None` for anything that isn't a book: a general plugin requiring a
 vertical is the coupling to avoid. Guarded by
-`book_product/tests/test_disable_vertical.py`.
+`book_product/tests/test_disable_vertical.py`. (3) **Importing a removed app's
+`models` module files its models under the `plugins` app**, because Django gives
+a model whose own app is not installed to the closest installed parent package.
+On supernatural (no book vertical) catalog search imported
+`book_product.models`, `BookProduct` joined `catalog.Product`'s relations, and
+every product delete failed on the missing `plugins_bookproduct` table, which
+nothing else ever queried. `PluginsConfig.get_models()` now leaves every
+`plugins.installed.*` model out; guarded by `plugins/tests_uninstalled_models.py`.
 
 **Landmine — two plugins can register the same URL, and the loser is silent.**
 `get_urlpatterns` mounts in `_topo_sort` order and **first registrant wins**, so

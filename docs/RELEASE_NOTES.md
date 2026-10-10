@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.96.1 — 2026-10-10
+
+**Product deletes work again on stores without the book app; Irving's shop filters sit above a four-column grid; a slightly larger Supernatural product photo**
+
+- Catalogue: deleting a product works again on stores that run without the book app (Supernatural Shop). The book app's data model was still attached to every product there, so each delete failed on a table that store never had.
+- Irving Survival: the shop has no sidebar any more. Category, brand, attribute filters and the sort sit in one row above the products, four to a row on a desktop. Search stays in the top bar, and an active search, tag or price filter is kept when another filter changes. The default order is labelled Recommended instead of showing Newest.
+- Irving Survival: on phones the header fits the screen again. It had pushed the menu button off the right edge and let the page scroll sideways.
+- Supernatural Shop: the product photo is a little larger, up to 600px wide instead of 540px.
+- Housekeeping: the plugin standard baseline drops an entry that no longer applies; CI's lint gate failed on it after v0.96.0.
+
 ## v0.96.0 — 2026-10-10
 
 **Janus for external agents over MCP and GraphQL, an API tokens page that hands over connections, uploads without reloads, an editor that reads imported copy**

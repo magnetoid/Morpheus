@@ -50,16 +50,18 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 .pdp-long-desc h2 { font-family: var(--serif); font-size: 1.35rem; font-weight: 500; line-height: 1.25; margin: 2rem 0 0.75rem; color: var(--ink); }
 .pdp-long-desc h3 { font-family: var(--serif); font-size: 1.15rem; font-weight: 500; line-height: 1.3; margin: 1.5rem 0 0.5rem; color: var(--ink); }
 @media (min-width: 900px) {
-  /* The image column is capped at 540px, or 45% of the row on a narrower
-     screen (owner's ask, 2026-10-10: the 50/50 split drew a 644px square at
-     1440 wide, down to the fold, with the thumbnails out of sight). The details
-     column takes the rest. Image column flush-left with the breadcrumb line. */
-  .pdp-grid { grid-template-columns: minmax(0, min(540px, 45%)) minmax(0, 1fr) !important; gap: 3.5rem !important; align-items: start !important; }
+  /* The image column is capped at 600px, or 48% of the row on a narrower
+     screen. Owner's asks: 2026-10-10, the 50/50 split drew a 644px square at
+     1440 wide, down to the fold, with the thumbnails out of sight, so it went
+     to 540px; 2026-10-11, "just slightly" bigger than that. The details column
+     takes the rest. Image column flush-left with the breadcrumb line. */
+  .pdp-grid { grid-template-columns: minmax(0, min(600px, 48%)) minmax(0, 1fr) !important; gap: 3.5rem !important; align-items: start !important; }
   /* Fill that column and left-align, but never taller than the screen leaves
-     room for (topbar, breadcrumb and the thumbnail strip, about 230px). The
-     product_gallery plugin's own cap is sized for a 2/3 book cover and centres
-     the hero with margin:0 auto, which would indent it from the column's edge. */
-  .pdp-hero { max-width: min(100%, calc(100svh - 230px)) !important; margin: 0 !important; }
+     room for (topbar, breadcrumb and the top of the thumbnail strip, about
+     210px). The product_gallery plugin's own cap is sized for a 2/3 book cover
+     and centres the hero with margin:0 auto, which would indent it from the
+     column's edge. */
+  .pdp-hero { max-width: min(100%, calc(100svh - 210px)) !important; margin: 0 !important; }
   /* Pin the cover column while the details column scrolls past. Top offset
      clears the sticky topbar (64px) + a comfortable breathing margin. */
   .pdp-grid > div:first-child { position: sticky; top: 84px; align-self: start; }

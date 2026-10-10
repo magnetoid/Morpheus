@@ -52,7 +52,6 @@
     "referrals:tests.missing",
     "returns_portal:tests.missing",
     "rich_post_purchase:tests.missing",
-    "richtext:tests.missing",
     "save_for_later:tests.missing",
     "smart_shipping:tests.missing",
     "store_bootstrap:tests.missing",

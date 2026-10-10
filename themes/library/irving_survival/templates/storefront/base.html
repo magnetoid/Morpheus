@@ -228,6 +228,16 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   .icon-btn:hover { background: var(--surface2); }
   .nav-burger { display: inline-flex; }
   @media (min-width: 1024px) { .icon-btn.nav-burger { display: none; } }
+  /* Phones: wordmark, Search, Cart and the menu button share one row. At the
+     desktop letter-spacing that row needed about 485px, so on a 390px phone the
+     page scrolled sideways and the menu button sat off screen (live, 2026-10-11).
+     The button keeps its 40px target; its glyph lines up with the gutter. */
+  @media (max-width: 479px) {
+    .topbar-row { gap: .75rem; }
+    .wordmark { font-size: .875rem; letter-spacing: .12em; gap: .5rem; }
+    .icons { gap: .875rem; }
+    .icon-btn.nav-burger { width: 40px; margin-right: -10px; }
+  }
   .fly-cart-clone { position: fixed; z-index: 1000; pointer-events: none; border-radius: var(--r-sm); will-change: transform, opacity; }
 
   /* Mobile drawer */
