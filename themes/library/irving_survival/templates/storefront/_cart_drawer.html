@@ -46,6 +46,10 @@ form post + redirect when JS is off.
     transition: transform .25s ease-out;
     font-family: var(--sans, system-ui), sans-serif;
   }
+  /* `display: flex` above beats the browser's own [hidden] rule; without this
+     the closed drawer stayed on the page past the right edge (its shadow showed,
+     and Tab walked into it). */
+  #cart-drawer[hidden] { display: none; }
   /* Opening rides the damped spring from base.html; closing keeps the
      quick ease-out so dismissal feels immediate. */
   #cart-drawer.is-shown { transform: translateX(0); transition: transform .5s var(--spring, ease-out); }
@@ -178,6 +182,9 @@ form post + redirect when JS is off.
     lastFocus = document.activeElement;
     drawer.hidden = false;
     backdrop.hidden = false;
+    // Commit the closed position before the open class lands; the drawer was
+    // display:none until now and would appear in place instead of sliding in.
+    void drawer.offsetWidth;
     drawer.setAttribute('aria-hidden', 'false');
     requestAnimationFrame(function () {
       drawer.classList.add('is-shown');
