@@ -16,6 +16,7 @@ urlpatterns = [
         views.vendor_product_edit,
         name='vendor_product_edit',
     ),
+    path('vendor/me/orders/', views.vendor_orders, name='vendor_orders'),
     path(
         'vendor/me/orders/<uuid:vendor_order_id>/',
         views.vendor_order_detail,

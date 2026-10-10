@@ -1,13 +1,14 @@
 {% comment %}
 Account-page tile → vendor dashboard. Shown only when the signed-in user
-has a Vendor row (any status). Contributed to the account_nav slot by the
-marketplace plugin; vanishes if the plugin is disabled.
+owns a vendor or has applied to become one. Contributed to the account_nav
+slot by the marketplace plugin; vanishes if the plugin is disabled. The word
+for "vendor" is the theme's (vendor_noun).
 {% endcomment %}
-{% load marketplace_account %}
+{% load i18n marketplace_account %}
 {% vendor_for request.user as vendor %}
 {% if vendor %}
-<a href="/vendor/me/" class="book" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
-  <p class="title">Vendor dashboard{% if vendor.status != 'approved' %} <span style="color:var(--muted); font-weight:400;">(application {{ vendor.status }})</span>{% endif %}</p>
-  <p class="meta" style="margin-top: .35rem;">Your products, orders &amp; payouts.</p>
+<a href="/vendor/me/" class="book" data-vendor-tile="{{ vendor.status }}" style="display: block; padding: 1.25rem 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
+  <p class="title">{% blocktranslate with noun=vendor.noun %}{{ noun }} dashboard{% endblocktranslate %}{% if vendor.status != 'approved' %} <span style="color:var(--muted); font-weight:400;">({% if vendor.status == 'paused' %}{% translate "paused" %}{% else %}{% blocktranslate with status=vendor.status %}application {{ status }}{% endblocktranslate %}{% endif %})</span>{% endif %}</p>
+  <p class="meta" style="margin-top: .35rem;">{% translate "Your orders, products and payouts." %}</p>
 </a>
 {% endif %}

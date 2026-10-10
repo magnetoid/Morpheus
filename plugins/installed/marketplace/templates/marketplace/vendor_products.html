@@ -1,102 +1,89 @@
-{% extends "storefront/base.html" %}
-{% load morph %}
-{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% extends "partner_portal/base.html" %}
+{% load i18n morph %}
 
-{% block content %}
-<section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 980px;">
+{% block portal_head %}{% include "marketplace/_vendor_styles.html" %}{% endblock %}
 
-    <p class="meta" style="margin-bottom: 1rem;">
-      <a href="/vendor/me/" style="color: var(--muted);">Vendor dashboard</a>
-      <span style="margin: 0 0.5rem;">/</span>
-      Your products
-    </p>
+{% block portal_body %}
+{% if not vendor %}
+  <div class="pp-page-head"><div class="pp-page-head__text">
+    <h1 class="display display-m pp-title">{% translate "Your products" %}</h1>
+  </div></div>
+  <div class="pp-card" data-vendor-state="none">
+    {% blocktranslate asvar e_title with noun=vendor_noun|lower %}You're not an approved {{ noun }} yet{% endblocktranslate %}
+    {% translate "Apply to sell here. Once the store approves you, every product listed under your name appears on this page." as e_text %}
+    {% translate "Apply to sell" as e_cta %}
+    {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" cta_url="/vendor/apply/" cta_label=e_cta %}
+  </div>
+{% else %}
+  {{ block.super }}
+{% endif %}
+{% endblock %}
 
-    <header style="display: flex; align-items: end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
-      <div>
-        <p class="eyebrow">Your catalogue</p>
-        <h1 class="display display-l" style="margin: 1rem 0 0;">Your products<span class="text-accent">.</span></h1>
-      </div>
-      {% if vendor %}
-        <a href="/contact/" class="btn btn-ghost" title="New listings are added by our acquisitions team">Add a title</a>
-      {% endif %}
-    </header>
+{% block portal_title %}{% translate "Products" %}{% endblock %}
+{% block portal_lede %}<p class="pp-lede">{% translate "Everything listed under your name: status, price, stock and what sold in the last 30 days. To list a new product, contact the store team." %}</p>{% endblock %}
 
-    {% if not vendor %}
-      <div class="vp-empty">
-        <p style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">You're not an approved vendor yet.</p>
-        <p style="color: var(--muted); max-width: 50ch; margin: 0 auto 1.5rem;">
-          Apply to sell on dot books — once approved, every product attributed to you appears here for editing.
-        </p>
-        <a href="/vendor/apply/" class="btn btn-primary">Apply to sell →</a>
-      </div>
-    {% elif not products %}
-      <div class="vp-empty">
-        <p style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">No products listed yet.</p>
-        <p style="color: var(--muted); max-width: 50ch; margin: 0 auto 1.5rem;">
-          Products are added by the dot books team based on what comes in from your imprint. Once an editor accessions one, it'll show up here for you to manage copy, pricing, and status.
-        </p>
-        <a href="/contact/" class="btn">Get in touch →</a>
-      </div>
-    {% else %}
+{% block portal_content %}
+<div class="pp-toolbar" style="margin-bottom: 0;">
+  <div class="pp-scroll-x">
+    <nav class="pp-seg" aria-label="{% translate 'Filter products' %}">
+      <a href="?{% if q %}q={{ q|urlencode }}{% endif %}"{% if not view %} aria-current="true"{% endif %}>{% translate "All" %} <span class="pp-seg__count">{{ counts.all }}</span></a>
+      <a href="?view=active{% if q %}&amp;q={{ q|urlencode }}{% endif %}"{% if view == 'active' %} aria-current="true"{% endif %}>{% translate "On sale" %} <span class="pp-seg__count">{{ counts.active }}</span></a>
+      <a href="?view=draft{% if q %}&amp;q={{ q|urlencode }}{% endif %}"{% if view == 'draft' %} aria-current="true"{% endif %}>{% translate "Drafts" %} <span class="pp-seg__count">{{ counts.draft }}</span></a>
+      <a href="?view=archived{% if q %}&amp;q={{ q|urlencode }}{% endif %}"{% if view == 'archived' %} aria-current="true"{% endif %}>{% translate "Archived" %} <span class="pp-seg__count">{{ counts.archived }}</span></a>
+      {% if stock_known %}<a href="?view=attention{% if q %}&amp;q={{ q|urlencode }}{% endif %}"{% if view == 'attention' %} aria-current="true"{% endif %}>{% translate "Need stock" %} <span class="pp-seg__count">{{ counts.attention }}</span></a>{% endif %}
+    </nav>
+  </div>
+  <form method="get" class="pp-search" role="search">
+    {% if view %}<input type="hidden" name="view" value="{{ view }}">{% endif %}
+    <label class="pp-sr" for="vd-q">{% translate "Search products" %}</label>
+    <input class="pp-input" id="vd-q" type="search" name="q" value="{{ q }}" placeholder="{% translate 'Search by name or SKU' %}">
+    <button type="submit" class="btn btn-ghost btn-sm">{% translate "Search" %}</button>
+  </form>
+</div>
 
-    <table class="vp-table">
+<section class="pp-card" aria-label="{% translate 'Products' %}">
+  {% if products %}
+  <div class="pp-table-wrap">
+    <table class="pp-table">
       <thead>
         <tr>
-          <th>Title</th>
-          <th>Status</th>
-          <th class="vp-right">Price</th>
-          <th>Last updated</th>
-          <th class="vp-right">Edit</th>
+          <th scope="col">{% translate "Product" %}</th>
+          <th scope="col">{% translate "Status" %}</th>
+          <th scope="col" class="num">{% translate "Price" %}</th>
+          {% if stock_known %}<th scope="col" class="num">{% translate "Stock" %}</th>{% endif %}
+          <th scope="col" class="num pp-hide-sm">{% translate "Sold, 30 days" %}</th>
+          <th scope="col" class="pp-hide-sm">{% translate "Updated" %}</th>
+          <th scope="col"><span class="pp-sr">{% translate "Actions" %}</span></th>
         </tr>
       </thead>
       <tbody>
         {% for p in products %}
-        <tr>
+        <tr data-product="{{ p.sku|default:p.pk }}">
           <td>
-            <a href="/vendor/me/products/{{ p.id }}/" class="vp-title">{{ p.name }}</a>
-            <span class="vp-sku">{{ p.sku|default:"—" }}</span>
+            <a class="vd-product" href="/vendor/me/products/{{ p.id }}/">
+              {% if p.thumb %}<img class="pp-thumb" src="{{ p.thumb }}" alt="" width="44" height="44" loading="lazy">{% else %}<span class="pp-thumb" aria-hidden="true"></span>{% endif %}
+              <span><span class="vd-product__name">{{ p.name }}</span>{% if p.sku %}<span class="vd-product__sku">{{ p.sku }}</span>{% endif %}</span>
+            </a>
           </td>
-          <td>
-            {% if p.status == 'active' %}<span class="vp-pill vp-pill--ok">Active</span>
-            {% elif p.status == 'draft' %}<span class="vp-pill vp-pill--wait">Draft</span>
-            {% else %}<span class="vp-pill vp-pill--off">Archived</span>{% endif %}
-          </td>
-          <td class="vp-right">{{ p.price|money }}</td>
-          <td class="vp-when">{{ p.updated_at|date:"M j, Y" }}</td>
-          <td class="vp-right">
-            <a href="/vendor/me/products/{{ p.id }}/" class="btn btn-ghost vp-edit-btn">Edit</a>
-          </td>
+          <td>{% if p.status == 'active' %}<span class="pp-badge pp-badge--ok">{% translate "On sale" %}</span>{% elif p.status == 'draft' %}<span class="pp-badge pp-badge--wait">{% translate "Draft" %}</span>{% else %}<span class="pp-badge">{% translate "Archived" %}</span>{% endif %}</td>
+          <td class="num">{{ p.price|money }}</td>
+          {% if stock_known %}
+          <td class="num" data-stock="{% if p.stock %}{{ p.stock.available }}{% endif %}">{% if p.stock %}{% if p.stock.out %}<span class="pp-badge pp-badge--bad">{% translate "Sold out" %}</span>{% elif p.stock.low %}<span class="pp-badge pp-badge--wait">{% blocktranslate count n=p.stock.available %}{{ n }} left{% plural %}{{ n }} left{% endblocktranslate %}</span>{% else %}{{ p.stock.available }}{% endif %}{% else %}<span class="pp-muted" title="{% translate 'Stock is not tracked for this product' %}">—</span>{% endif %}</td>
+          {% endif %}
+          <td class="num pp-hide-sm">{{ p.sold_30 }}</td>
+          <td class="pp-hide-sm nowrap">{{ p.updated_at|date:"M j, Y" }}</td>
+          <td class="num"><a class="btn btn-ghost btn-sm" href="/vendor/me/products/{{ p.id }}/">{% translate "Edit" %}</a></td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-
-    <p class="meta" style="margin-top: 2rem; color: var(--muted); font-size: .82rem;">
-      Showing {{ products|length }} product{{ products|length|pluralize }}. To add a new title, send the manuscript + cover to our acquisitions team — we accession everything by hand.
-    </p>
-
-    {% endif %}
   </div>
+  {% elif q or view %}
+    {% translate "No products match" as e_title %}{% translate "Try another search, or clear the filter." as e_text %}
+    {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" compact=True %}
+  {% else %}
+    {% translate "No products listed yet" as e_title %}{% translate "The store team adds new products to your shop. Once one is listed, you can edit its text, price and status here." as e_text %}
+    {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" %}
+  {% endif %}
 </section>
-
-<style>
-.vp-empty { text-align: center; padding: 3.5rem 2rem; background: var(--surface-2, rgba(0,0,0,.02)); border-radius: 12px; }
-.vp-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
-.vp-table th, .vp-table td { padding: .85rem .65rem; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: middle; }
-.vp-table thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--rule); }
-.vp-table .vp-right { text-align: right; }
-.vp-title { font-family: var(--serif); font-size: 1.05rem; color: var(--ink); display: block; border-bottom: 1px dotted var(--rule); padding-bottom: 1px; }
-.vp-sku { display: block; font-size: .72rem; color: var(--muted); margin-top: .15rem; }
-.vp-when { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.vp-pill { display: inline-block; padding: .15rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 600; }
-.vp-pill--ok   { background: rgba(16,185,129,.15); color: #047857; }
-.vp-pill--wait { background: rgba(245,158,11,.15); color: #b45309; }
-.vp-pill--off  { background: rgba(0,0,0,.06); color: var(--muted); }
-.vp-edit-btn { font-size: .82rem; padding: .35rem .85rem; }
-@media (max-width: 600px) {
-  .vp-when { display: none; }
-  .vp-table th:nth-child(4), .vp-table td:nth-child(4) { display: none; }
-}
-</style>
 {% endblock %}

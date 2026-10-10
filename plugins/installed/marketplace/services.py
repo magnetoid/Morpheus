@@ -16,6 +16,9 @@ from djmoney.money import Money
 
 logger = logging.getLogger('morpheus.marketplace')
 
+# A payout in one of these states has been asked for and not yet settled.
+OPEN_PAYOUT_STATUSES = ('pending', 'processing')
+
 
 def split_order(order) -> list[VendorOrder]:  # noqa: F821
     """Create VendorOrder rows for each vendor referenced by the order's items."""
@@ -82,6 +85,10 @@ def request_vendor_payout(*, vendor, amount: Money, method: str = '') -> VendorP
 
     if amount.amount <= 0:
         raise ValueError('Payout amount must be positive')
+    # The balance is only debited when a payout is marked paid, so a second
+    # request while one is open would ask for the same money twice.
+    if VendorPayout.objects.filter(vendor=vendor, status__in=OPEN_PAYOUT_STATUSES).exists():
+        raise ValueError('A payout request is already being processed.')
     acct = VendorPayoutAccount.objects.get(vendor=vendor)
     if amount.amount > acct.accrued_balance.amount:
         raise ValueError('Payout exceeds accrued balance')

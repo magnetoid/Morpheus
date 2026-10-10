@@ -77,8 +77,9 @@ class VendorProductsListPermissionTests(TestCase):
         resp = self.client.get('/vendor/me/products/')
         self.assertEqual(resp.status_code, 200)
         body = resp.content.decode()
-        # Per template: "not an approved vendor yet" branch
-        self.assertIn('not an approved vendor', body.lower())
+        # The not-a-vendor-yet branch — worded with the theme's own noun for a
+        # vendor, so assert its marker rather than the word.
+        self.assertIn('data-vendor-state="none"', body)
         # No product names leaked
         self.assertNotIn('Pinocchio', body)
         self.assertNotIn('Other Book', body)

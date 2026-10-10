@@ -1,138 +1,206 @@
-{% extends "storefront/base.html" %}
-{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% extends "partner_portal/base.html" %}
+{% load i18n morph %}
 
-{% block content %}
-<section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 1080px;">
+{% block portal_head %}
+{% include "marketplace/_vendor_styles.html" %}
+<style>
+.vd-overview { display: grid; gap: 1.25rem; grid-template-areas: "send" "balance" "chart" "stock" "best" "recent"; }
+.vd-overview > * { min-width: 0; }
+.vd-a-send { grid-area: send; }
+.vd-a-balance { grid-area: balance; }
+.vd-a-chart { grid-area: chart; }
+.vd-a-stock { grid-area: stock; }
+.vd-a-best { grid-area: best; }
+.vd-a-recent { grid-area: recent; }
+@media (min-width: 960px) {
+  .vd-overview {
+    grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+    grid-template-areas: "send balance" "chart stock" "best recent";
+  }
+}
+</style>
+{% endblock %}
 
-    <p class="eyebrow">Your account</p>
-    <h1 class="display display-l" style="margin: 1rem 0 .75rem;">Vendor dashboard<span class="text-accent">.</span></h1>
-    {% if vendor %}
-      <p class="lede" style="margin-bottom: 2.5rem;">Welcome back{% if vendor.name %}, {{ vendor.name }}{% endif %}. Here's the state of the shop.</p>
-    {% else %}
-      <p class="lede" style="margin-bottom: 2.5rem;">Your application status, vendor orders, and payout balance — all in one place.</p>
-    {% endif %}
-
-    {% if not application %}
-      <article class="card card-padded" style="background: var(--paper-2); padding: 2rem; border-radius: 6px;">
-        <p style="margin: 0 0 1rem;">You haven't applied to be a vendor yet.</p>
-        <a href="/vendor/apply/" class="btn btn-primary">Apply to sell</a>
-      </article>
-    {% else %}
-
-      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
-        <header style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 1rem;">
-          <div>
-            <h2 style="font-family: var(--serif); font-size: 1.4rem; margin: 0;">{{ application.business_name }}</h2>
-            <p style="font-size: .85rem; color: var(--muted); margin: .35rem 0 0;">{{ application.contact_email }}</p>
-          </div>
-          <div>
-            {% if application.status == 'approved' %}
-              <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#d6f3e3; color:#1f7a4d; font-size:.75rem; font-weight:600;">Approved</span>
-            {% elif application.status == 'submitted' %}
-              <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#dbeafe; color:#1d4ed8; font-size:.75rem; font-weight:600;">Submitted</span>
-            {% elif application.status == 'reviewing' %}
-              <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#ffeacc; color:#b86e00; font-size:.75rem; font-weight:600;">Reviewing</span>
-            {% else %}
-              <span style="display:inline-block; padding:.25rem .65rem; border-radius:999px; background:#fde7e9; color:#b3261e; font-size:.75rem; font-weight:600;">{{ application.get_status_display }}</span>
-            {% endif %}
-          </div>
-        </header>
-
-        {% if application.status != 'approved' %}
-          <p style="margin-top: 1rem; color: var(--muted); font-size: .9rem;">
-            {% if application.status == 'submitted' %}We've received your application — we review them within 2 business days.
-            {% elif application.status == 'reviewing' %}We're reviewing your application — expect to hear from us shortly.
-            {% elif application.status == 'rejected' %}Your application wasn't approved this time. You're welcome to <a href="/vendor/apply/" style="text-decoration: underline;">apply again</a>.
-            {% endif %}
-          </p>
-        {% endif %}
-      </article>
-
-      {% if vendor and application.status == 'approved' %}
-
-        <div class="vd-kpis" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-          <div class="card card-padded kpi" style="padding: 1.25rem 1.4rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
-            <span class="kpi__label" style="display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600;">Accrued</span>
-            <span class="kpi__value" style="display: block; font-family: var(--serif); font-size: 1.75rem; margin-top: .3rem; font-variant-numeric: tabular-nums;">{{ accrued }}</span>
-          </div>
-          <div class="card card-padded kpi" style="padding: 1.25rem 1.4rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
-            <span class="kpi__label" style="display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600;">This month sales</span>
-            <span class="kpi__value" style="display: block; font-family: var(--serif); font-size: 1.75rem; margin-top: .3rem; font-variant-numeric: tabular-nums;">{{ month_sales }}</span>
-          </div>
-          <div class="card card-padded kpi" style="padding: 1.25rem 1.4rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
-            <span class="kpi__label" style="display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600;">Open orders</span>
-            <span class="kpi__value" style="display: block; font-family: var(--serif); font-size: 1.75rem; margin-top: .3rem; font-variant-numeric: tabular-nums;">{{ open_orders_count }}</span>
-          </div>
-          <div class="card card-padded kpi" style="padding: 1.25rem 1.4rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
-            <span class="kpi__label" style="display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600;">Active products</span>
-            <span class="kpi__value" style="display: block; font-family: var(--serif); font-size: 1.75rem; margin-top: .3rem; font-variant-numeric: tabular-nums;">{{ active_products_count }}</span>
-          </div>
-        </div>
-
-        <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
-          <h3 style="font-family: var(--serif); font-size: 1.15rem; margin: 0 0 1rem;">Quick actions</h3>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem;">
-            <a href="/vendor/me/products/" class="btn btn-ghost">Your products</a>
-            <a href="/vendor/me/payouts/" class="btn btn-ghost">Payouts</a>
-            <a href="/vendor/me/settings/" class="btn btn-ghost">Settings</a>
-            <a href="#orders" class="btn btn-ghost">Recent orders</a>
-          </div>
-        </article>
-
-        {% if vendor_orders %}
-        <article id="orders" class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
-          <h3 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Recent orders</h3>
-          <table style="width: 100%; font-size: .9rem; border-collapse: collapse;">
-            <thead>
-              <tr style="text-align: left; border-bottom: 1px solid var(--rule);">
-                <th style="padding: .5rem 0; font-weight: 600;">Order</th>
-                <th style="padding: .5rem 0; font-weight: 600;">Status</th>
-                <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Gross</th>
-                <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Net</th>
-                <th style="padding: .5rem 0; font-weight: 600; text-align: right;">When</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for vo in vendor_orders %}
-              <tr style="border-bottom: 1px solid var(--rule);">
-                <td style="padding: .6rem 0; font-family: ui-monospace, monospace; font-size: .85rem;">
-                  <a href="/vendor/me/orders/{{ vo.id }}/" style="border-bottom: 1px dotted var(--rule);">#{{ vo.parent_order.order_number|default:vo.parent_order_id|truncatechars:10 }}</a>
-                </td>
-                <td style="padding: .6rem 0;">{{ vo.get_status_display }}</td>
-                <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ vo.gross }}</td>
-                <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ vo.net }}</td>
-                <td style="padding: .6rem 0; text-align: right; color: var(--muted); font-size: .8rem;">{{ vo.created_at|date:"M j" }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </article>
-        {% endif %}
-
-        {% if payouts %}
-        <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
-          <header style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem;">
-            <h3 style="font-family: var(--serif); font-size: 1.2rem; margin: 0;">Recent payouts</h3>
-            <a href="/vendor/me/payouts/" style="font-size: .85rem; color: var(--muted); border-bottom: 1px dotted var(--rule);">See all</a>
-          </header>
-          <table style="width: 100%; font-size: .9rem; border-collapse: collapse;">
-            <tbody>
-              {% for p in payouts %}
-              <tr style="border-bottom: 1px solid var(--rule);">
-                <td style="padding: .6rem 0;">{{ p.requested_at|date:"M j, Y" }}</td>
-                <td style="padding: .6rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ p.amount }}</td>
-                <td style="padding: .6rem 0; text-align: right; color: var(--muted);">{{ p.get_status_display }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </article>
-        {% endif %}
-
-      {% endif %}
-
-    {% endif %}
+{% block portal_body %}
+{% if not vendor and not application %}
+  <div class="pp-page-head"><div class="pp-page-head__text">
+    <h1 class="display display-m pp-title">{% translate "Sell with us" %}</h1>
+    <p class="pp-lede">{% translate "List your products in this store, ship your own orders, and get paid what you sell, less the store's commission." %}</p>
+  </div></div>
+  <div class="pp-card" data-vendor-state="none">
+    {% blocktranslate asvar e_title with noun=vendor_noun|lower %}You're not a {{ noun }} here yet{% endblocktranslate %}
+    {% translate "Apply once. When the store approves you, this page becomes your dashboard: orders to send, your products and stock, sales and payouts." as e_text %}
+    {% translate "Apply to sell" as e_cta %}
+    {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" cta_url="/vendor/apply/" cta_label=e_cta %}
   </div>
-</section>
+{% elif not vendor %}
+  <div class="pp-page-head"><div class="pp-page-head__text">
+    <h1 class="display display-m pp-title">{% translate "Your application" %}</h1>
+  </div></div>
+  <div class="pp-cols" data-vendor-state="{{ application.status }}">
+    <section class="pp-card">
+      {% if application.status == 'rejected' %}
+        <p class="pp-note pp-note--error"><span><strong>{% translate "Your application wasn't approved this time." %}</strong> {% translate "You're welcome to apply again with more detail about what you sell." %}</span></p>
+        <p style="margin-top: 1.25rem !important;"><a class="btn btn-primary" href="/vendor/apply/">{% translate "Apply again" %}</a></p>
+      {% else %}
+        <p class="pp-note pp-note--wait"><span><strong>{% if application.status == 'approved' %}{% translate "You're approved — your shop is being set up." %}{% else %}{% translate "We've received your application." %}{% endif %}</strong> {% translate "The store team reads every application and replies by email." %}</span></p>
+        <h2 class="pp-card__title" style="margin: 1.5rem 0 1rem;">{% translate "What happens next" %}</h2>
+        <ol class="pp-steps">
+          <li><span class="pp-steps__title">{% translate "Review" %}</span><span class="pp-steps__text">{% translate "The store team checks that your products fit the store." %}</span></li>
+          <li><span class="pp-steps__title">{% translate "Your shop" %}</span><span class="pp-steps__text">{% translate "Once approved, your products are listed under your name and this page becomes your dashboard." %}</span></li>
+          <li><span class="pp-steps__title">{% translate "Orders" %}</span><span class="pp-steps__text">{% translate "You see each order with its shipping address, send it, and add the tracking number here." %}</span></li>
+        </ol>
+      {% endif %}
+    </section>
+    <aside class="pp-card">
+      <h2 class="pp-card__title" style="margin-bottom: 1rem;">{{ application.business_name }}</h2>
+      <dl class="pp-stats">
+        <div><dt>{% translate "Contact" %}</dt><dd>{{ application.contact_email }}</dd></div>
+        <div><dt>{% translate "Sent" %}</dt><dd>{{ application.submitted_at|date:"M j, Y" }}</dd></div>
+      </dl>
+    </aside>
+  </div>
+{% elif not vendor.is_active %}
+  <div class="pp-page-head"><div class="pp-page-head__text">
+    <h1 class="display display-m pp-title">{% translate "Your shop is paused" %}</h1>
+  </div></div>
+  <div class="pp-card" data-vendor-state="paused">
+    <p class="pp-note pp-note--error"><span>{% translate "The store has paused your shop: your products aren't on sale and this dashboard is closed for now. Contact the store team to find out more." %}</span></p>
+  </div>
+{% else %}
+  {{ block.super }}
+{% endif %}
+{% endblock %}
+
+{% block portal_title %}{% translate "Overview" %}{% endblock %}
+{% block portal_lede %}<p class="pp-lede">{% blocktranslate count days=period.days %}Your last day, compared with the day before.{% plural %}Your last {{ days }} days, compared with the {{ days }} before.{% endblocktranslate %}</p>{% endblock %}
+{% block portal_actions %}{% include "partner_portal/_period.html" %}{% endblock %}
+
+{% block portal_content %}
+<div class="pp-kpis">{% for kpi in kpis %}{% include "partner_portal/_kpi.html" %}{% endfor %}</div>
+
+<div class="vd-overview">
+  <section class="pp-card vd-a-send" aria-labelledby="vd-send-title">
+    <div class="pp-card__head">
+      <div>
+        <h2 class="pp-card__title" id="vd-send-title">{% translate "Orders to send" %}</h2>
+        <p class="pp-card__sub">{% blocktranslate count n=to_fulfil_count %}{{ n }} order waiting, oldest first.{% plural %}{{ n }} orders waiting, oldest first.{% endblocktranslate %}</p>
+      </div>
+      <a class="pp-link" href="/vendor/me/orders/?status=open">{% translate "All open orders" %}</a>
+    </div>
+    {% if to_fulfil %}
+    <ul class="pp-list">
+      {% for vo in to_fulfil %}
+      <li class="vd-order" data-to-send="{{ vo.parent_order.order_number }}">
+        <div>
+          <p class="pp-list__title"><a class="pp-link" href="/vendor/me/orders/{{ vo.id }}/">#{{ vo.parent_order.order_number }}</a> · {% blocktranslate count n=vo.units %}{{ n }} item{% plural %}{{ n }} items{% endblocktranslate %}</p>
+          <p class="pp-list__meta">{{ vo.first_item }}{% if vo.extra_items %} {% blocktranslate count n=vo.extra_items %}and {{ n }} more{% plural %}and {{ n }} more{% endblocktranslate %}{% endif %}{% if vo.ship_to %} · {% blocktranslate with place=vo.ship_to %}to {{ place }}{% endblocktranslate %}{% endif %}</p>
+          <div class="vd-order__badges">{% include "marketplace/_payment.html" with payment=vo.payment %}{% include "marketplace/_order_state.html" with state=vo.state %}</div>
+        </div>
+        <div class="vd-order__aside">
+          <span class="vd-wait{% if vo.waiting_days >= 3 %} vd-wait--late{% endif %}">{% if vo.waiting_days %}{% blocktranslate count n=vo.waiting_days %}waiting {{ n }} day{% plural %}waiting {{ n }} days{% endblocktranslate %}{% else %}{% translate "today" %}{% endif %}</span>
+          {% if vo.ready %}{% include "marketplace/_ship_form.html" with next="/vendor/me/" %}{% else %}<span class="pp-field__help">{% translate "Ship once it is paid" %}</span>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      {% translate "Nothing to send" as e_title %}{% translate "You're all caught up. New orders appear here the moment they're placed." as e_text %}
+      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" compact=True %}
+    {% endif %}
+  </section>
+
+  <section class="pp-card vd-a-balance" aria-labelledby="vd-balance-title">
+    <h2 class="pp-label" id="vd-balance-title">{% translate "Your balance" %}</h2>
+    <p class="pp-money" data-balance="available">{{ balance.available|money }}</p>
+    <div class="pp-progress{% if balance.reached %} pp-progress--done{% endif %}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ balance.progress }}" aria-label="{% translate 'Progress to the minimum payout' %}"><span class="pp-progress__fill" style="--pct: {{ balance.progress }}%;"></span></div>
+    <p class="pp-progress__caption">
+      {% if balance.blocker == 'open' %}{% blocktranslate with amount=balance.in_flight|money %}A payout of {{ amount }} is being processed.{% endblocktranslate %}
+      {% elif balance.blocker == 'threshold' %}{% blocktranslate with remaining=balance.remaining|money threshold=balance.threshold|money %}{{ remaining }} to go until the {{ threshold }} minimum.{% endblocktranslate %}
+      {% elif balance.blocker == 'method' %}{% translate "Add a payout method to get paid." %}
+      {% else %}{% translate "You can request a payout." %}{% endif %}
+    </p>
+    <dl class="pp-stats" style="margin-top: 1.1rem;">
+      <div><dt>{% blocktranslate with days=period.days %}Store commission, {{ days }} days{% endblocktranslate %}</dt><dd>{{ commission|money }}</dd></div>
+      {% if balance.open_payout %}<div><dt>{% translate "Requested" %}</dt><dd>{{ balance.in_flight|money }}</dd></div>{% endif %}
+      <div><dt>{% translate "Paid to you" %}</dt><dd data-balance="paid">{{ balance.paid|money }}</dd></div>
+    </dl>
+    <div class="pp-card__foot"><a class="btn {% if balance.can_request %}btn-primary{% else %}btn-ghost{% endif %} btn-sm" href="{% if balance.blocker == 'method' %}/vendor/me/settings/{% else %}/vendor/me/payouts/{% endif %}">{% if balance.can_request %}{% translate "Request a payout" %}{% elif balance.blocker == 'method' %}{% translate "Add a payout method" %}{% else %}{% translate "Payouts" %}{% endif %}</a></div>
+  </section>
+
+  <section class="pp-card vd-a-chart" aria-labelledby="vd-chart-title">
+    <div class="pp-card__head">
+      <div>
+        <h2 class="pp-card__title" id="vd-chart-title">{% translate "Sales" %}</h2>
+        <p class="pp-card__sub">{% blocktranslate with total=chart.total %}{{ total }} in this period, by the day each order was placed.{% endblocktranslate %}</p>
+      </div>
+    </div>
+    {% translate "No sales in this period yet." as chart_empty %}
+    {% include "partner_portal/_chart.html" %}
+  </section>
+
+  <section class="pp-card vd-a-stock" aria-labelledby="vd-stock-title">
+    <div class="pp-card__head"><h2 class="pp-card__title" id="vd-stock-title">{% translate "Stock" %}</h2><a class="pp-link" href="/vendor/me/products/">{% blocktranslate count n=active_products %}{{ n }} product on sale{% plural %}{{ n }} products on sale{% endblocktranslate %}</a></div>
+    {% if stock.attention %}
+    <ul class="pp-list">
+      {% for p in stock.attention|slice:":5" %}
+      <li data-low-stock="{{ p.sku|default:p.pk }}">
+        <div class="pp-list__main"><p class="pp-list__title">{{ p.name }}</p>{% if p.sku %}<p class="pp-list__meta">{{ p.sku }}</p>{% endif %}</div>
+        {% if p.stock.out %}<span class="pp-badge pp-badge--bad">{% translate "Sold out" %}</span>{% else %}<span class="pp-badge pp-badge--wait">{% blocktranslate count n=p.stock.available %}{{ n }} left{% plural %}{{ n }} left{% endblocktranslate %}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% if stock.attention|length > 5 %}<p class="pp-card__foot"><a class="pp-link" href="/vendor/me/products/?view=attention">{% blocktranslate count n=stock.attention|length %}See all {{ n }} product that need stock{% plural %}See all {{ n }} products that need stock{% endblocktranslate %}</a></p>{% endif %}
+    {% elif stock.tracked %}
+      {% translate "Everything is in stock" as e_title %}{% translate "Products running low appear here." as e_text %}
+      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" compact=True %}
+    {% else %}
+      {% translate "Stock isn't tracked yet" as e_title %}{% translate "When the store tracks stock for your products, the ones running low appear here." as e_text %}
+      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" compact=True %}
+    {% endif %}
+  </section>
+
+  <section class="pp-card vd-a-best" aria-labelledby="vd-best-title">
+    <div class="pp-card__head"><h2 class="pp-card__title" id="vd-best-title">{% translate "Best sellers" %}</h2></div>
+    {% if best_sellers %}
+    <ul class="pp-list">
+      {% for p in best_sellers %}
+      <li data-best-seller="{{ p.sku|default:p.name }}">
+        <div class="pp-list__main">
+          <p class="pp-list__title">{% if p.product_id %}<a class="pp-link" href="/vendor/me/products/{{ p.product_id }}/">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}</p>
+          <p class="pp-list__meta">{% blocktranslate count n=p.units %}{{ n }} sold{% plural %}{{ n }} sold{% endblocktranslate %} · {{ p.revenue|money }}</p>
+          <div class="pp-meter" style="margin-top: .45rem;"><span style="--pct: {{ p.share }}%;"></span></div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      {% translate "No sales in this period" as e_title %}{% translate "Your best-selling products show up here." as e_text %}
+      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="chart" compact=True %}
+    {% endif %}
+  </section>
+
+  <section class="pp-card vd-a-recent" aria-labelledby="vd-recent-title">
+    <div class="pp-card__head"><h2 class="pp-card__title" id="vd-recent-title">{% translate "Latest orders" %}</h2><a class="pp-link" href="/vendor/me/orders/">{% translate "All orders" %}</a></div>
+    {% if recent %}
+    <div class="pp-table-wrap">
+      <table class="pp-table">
+        <thead><tr><th scope="col">{% translate "Order" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col" class="num">{% translate "You earn" %}</th></tr></thead>
+        <tbody>
+          {% for vo in recent %}
+          <tr>
+            <td><a class="pp-link pp-table__primary" href="/vendor/me/orders/{{ vo.id }}/">#{{ vo.parent_order.order_number }}</a><span class="pp-table__secondary">{{ vo.created_at|date:"M j" }}</span></td>
+            <td>{% include "marketplace/_order_state.html" with state=vo.state %}</td>
+            <td class="num">{{ vo.net|money }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      {% translate "No orders yet" as e_title %}{% translate "Orders for your products appear here as soon as they are placed." as e_text %}
+      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="inbox" compact=True %}
+    {% endif %}
+  </section>
+</div>
 {% endblock %}

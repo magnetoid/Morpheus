@@ -1,0 +1,16 @@
+{% load i18n %}{% comment %}"Mark shipped" for one order slice, inline in a list. Posts to the
+order's own update endpoint (the same validation as the detail page) and comes
+back to `next`.{% endcomment %}
+<details class="pp-edit vd-ship">
+  <summary class="btn btn-primary btn-sm">{% translate "Mark shipped" %}</summary>
+  <form method="post" action="/vendor/me/orders/{{ vo.id }}/" class="vd-ship__form">
+    {% csrf_token %}
+    <input type="hidden" name="status" value="shipped">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label class="pp-sr" for="trk-{{ vo.id }}">{% translate "Tracking number" %}</label>
+    <input class="pp-input" id="trk-{{ vo.id }}" type="text" name="tracking_number" maxlength="200" placeholder="{% translate 'Tracking number' %}" autocomplete="off">
+    <label class="pp-sr" for="trk-url-{{ vo.id }}">{% translate "Tracking link" %}</label>
+    <input class="pp-input" id="trk-url-{{ vo.id }}" type="url" name="tracking_url" maxlength="500" placeholder="https://… ({% translate 'optional' %})">
+    <button type="submit" class="btn btn-primary btn-sm">{% translate "Save" %}</button>
+  </form>
+</details>

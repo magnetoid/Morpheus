@@ -1,77 +1,68 @@
-{% extends "storefront/base.html" %}
-{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% extends "partner_portal/base.html" %}
+{% load i18n %}
 
-{% block content %}
-<section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 760px;">
+{% block portal_title %}{% translate "Settings" %}{% endblock %}
+{% block portal_lede %}<p class="pp-lede">{% translate "How your shop appears to customers, where the store reaches you, and how you are paid." %}</p>{% endblock %}
 
-    <p class="meta" style="margin-bottom: 1rem;">
-      <a href="/vendor/me/" style="color: var(--muted);">Vendor dashboard</a>
-      <span style="margin: 0 0.5rem;">/</span>
-      Settings
-    </p>
+{% block portal_content %}
+{% if error %}<p class="pp-note pp-note--error" role="alert">{{ error }}</p>{% endif %}
 
-    <p class="eyebrow">Account</p>
-    <h1 class="display display-l" style="margin: 1rem 0 1rem;">Settings<span class="text-accent">.</span></h1>
-    <p class="lede" style="margin-bottom: 2.5rem;">Manage how your shop appears to customers and how we pay you out.</p>
-
-    {% if error %}
-      <div class="card card-padded" style="background:#fde7e9; color:#b3261e; padding:.9rem 1.1rem; border-radius:6px; margin-bottom: 1rem;">{{ error }}</div>
-    {% endif %}
-    {% if messages %}
-      {% for m in messages %}
-        <div class="card card-padded" style="background:#d6f3e3; color:#1f7a4d; padding:.9rem 1.1rem; border-radius:6px; margin-bottom: 1rem;">{{ m }}</div>
-      {% endfor %}
-    {% endif %}
-
-    <form method="post" style="display: grid; gap: 2rem;">
-      {% csrf_token %}
-
-      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
-        <h2 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Shop profile</h2>
-        <div style="display: grid; gap: 1.25rem;">
-          <div>
-            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Vendor name *</label>
-            <input type="text" name="name" required maxlength="200" value="{{ vendor.name }}" class="input" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
-          </div>
-          <div>
-            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Description</label>
-            <textarea name="description" rows="5" class="input" style="width:100%; padding: .75rem 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); font-family: var(--sans);">{{ vendor.description }}</textarea>
-            <p style="font-size: .78rem; color: var(--muted); margin: .35rem 0 0;">Shown on your public vendor profile.</p>
-          </div>
-          <div>
-            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Contact email</label>
-            <input type="email" name="contact_email" maxlength="254" value="{{ contact_email }}" class="input" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
-            <p style="font-size: .78rem; color: var(--muted); margin: .35rem 0 0;">Where we send vendor announcements and payout notifications.</p>
-          </div>
+<form method="post" class="pp-cols">
+  {% csrf_token %}
+  <div class="pp-stack">
+    <section class="pp-card">
+      <fieldset class="pp-fieldset pp-form">
+        <legend>{% translate "Shop profile" %}</legend>
+        <div class="pp-field">
+          <label for="vs-name">{% translate "Shop name" %}</label>
+          <input class="pp-input" type="text" id="vs-name" name="name" required maxlength="200" value="{{ vendor.name }}" autocomplete="organization">
         </div>
-      </article>
+        <div class="pp-field">
+          <label for="vs-description">{% translate "About your shop" %}</label>
+          <textarea class="pp-input" id="vs-description" name="description" rows="6" aria-describedby="vs-description-help">{{ vendor.description }}</textarea>
+          <p class="pp-field__help" id="vs-description-help">{% translate "Shown on your public page in the store." %}</p>
+        </div>
+        {% if application %}
+        <div class="pp-field">
+          <label for="vs-email">{% translate "Contact email" %}</label>
+          <input class="pp-input" type="email" id="vs-email" name="contact_email" maxlength="254" value="{{ contact_email }}" autocomplete="email">
+          <p class="pp-field__help">{% translate "Where the store team writes to you about orders and payouts." %}</p>
+        </div>
+        {% endif %}
+      </fieldset>
+    </section>
 
-      <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
-        <h2 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">Payout method</h2>
-        <div style="display: grid; gap: 1.25rem;">
-          <div>
-            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Method</label>
-            <select name="payout_method" class="input" style="width: 100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);">
-              <option value="">— select —</option>
-              {% for value, label in payout_methods %}
-                <option value="{{ value }}" {% if account.method == value %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
+    <section class="pp-card">
+      <fieldset class="pp-fieldset pp-form">
+        <legend>{% translate "Getting paid" %}</legend>
+        <div class="pp-form-row pp-form-row--2">
+          <div class="pp-field">
+            <label for="vs-method">{% translate "Payout method" %}</label>
+            <select class="pp-input" id="vs-method" name="payout_method">
+              <option value="">{% translate "Choose a method" %}</option>
+              {% for value, label in payout_methods %}<option value="{{ value }}"{% if account.method == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
             </select>
           </div>
-          <div>
-            <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">External account reference</label>
-            <input type="text" name="external_account" maxlength="200" value="{{ account.external_account }}" class="input" style="width:100%; height:44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);" placeholder="Stripe account ID / IBAN / PayPal email">
-            <p style="font-size: .78rem; color: var(--muted); margin: .35rem 0 0;">Stored encrypted. We use this to send payouts.</p>
+          <div class="pp-field">
+            <label for="vs-account">{% translate "Account to pay" %}</label>
+            <input class="pp-input" type="text" id="vs-account" name="external_account" maxlength="200" value="{{ account.external_account }}" placeholder="{% translate 'IBAN, PayPal email or account ID' %}" autocomplete="off">
           </div>
         </div>
-      </article>
+        <p class="pp-field__help">{% translate "Only the store team sees these details. They use them to send your payouts." %}</p>
+      </fieldset>
+    </section>
 
-      <div>
-        <button type="submit" class="btn btn-primary" style="padding: .85rem 2rem;">Save settings</button>
-      </div>
-    </form>
-
+    <div class="pp-actions"><button type="submit" class="btn btn-primary">{% translate "Save settings" %}</button></div>
   </div>
-</section>
+
+  <aside class="pp-card">
+    <h2 class="pp-card__title" style="margin-bottom: 1rem;">{% translate "Your shop" %}</h2>
+    {% if vendor.logo %}<img src="{{ vendor.logo.url }}" alt="" width="72" height="72" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; margin-bottom: 1rem;">{% endif %}
+    <dl class="pp-stats">
+      <div><dt>{% translate "Public page" %}</dt><dd><a class="pp-link" href="/vendor/{{ vendor.slug }}/">/vendor/{{ vendor.slug }}/</a></dd></div>
+      <div><dt>{% translate "Selling since" %}</dt><dd>{{ vendor.created_at|date:"M j, Y" }}</dd></div>
+    </dl>
+    <p class="pp-card__foot">{% translate "To change your logo or your shop's address, contact the store team." %}</p>
+  </aside>
+</form>
 {% endblock %}

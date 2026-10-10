@@ -1,111 +1,70 @@
-{% extends "storefront/base.html" %}
-{% load morph %}
-{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% extends "partner_portal/base.html" %}
+{% load i18n morph %}
 
-{% block content %}
-<section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 720px;">
+{% block portal_title %}{{ product.name }}{% endblock %}
+{% block portal_lede %}<p class="pp-lede">{% translate "Edit how this product reads in the store, its price and whether it is on sale." %}</p>{% endblock %}
+{% block portal_actions %}<a class="btn btn-ghost btn-sm" href="/vendor/me/products/">{% translate "All products" %}</a>{% endblock %}
 
-    <p class="meta" style="margin-bottom: 1rem;">
-      <a href="/vendor/me/" style="color: var(--muted);">Vendor dashboard</a>
-      <span style="margin: 0 0.5rem;">/</span>
-      <a href="/vendor/me/products/" style="color: var(--muted);">Your products</a>
-      <span style="margin: 0 0.5rem;">/</span>
-      Edit
-    </p>
+{% block portal_content %}
+{% if error %}<p class="pp-note pp-note--error" role="alert"><span><strong>{% translate "Couldn't save." %}</strong> {{ error }}</span></p>{% endif %}
 
-    <p class="eyebrow">Editing</p>
-    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">{{ product.name }}<span class="text-accent">.</span></h1>
-
-    {% if error %}
-    <div class="vpe-error" role="alert">
-      <strong>Couldn't save.</strong> {{ error }}
+<form method="post" class="pp-cols">
+  {% csrf_token %}
+  <div class="pp-stack">
+    <section class="pp-card">
+      <fieldset class="pp-fieldset pp-form">
+        <legend>{% translate "Product" %}</legend>
+        <div class="pp-field">
+          <label for="vpe-name">{% translate "Name" %}</label>
+          <input class="pp-input" type="text" id="vpe-name" name="name" value="{{ product.name }}" required maxlength="300">
+        </div>
+        <div class="pp-field">
+          <label for="vpe-short">{% translate "Short description" %}</label>
+          <textarea class="pp-input" id="vpe-short" name="short_description" rows="3" aria-describedby="vpe-short-help">{{ product.short_description }}</textarea>
+          <p class="pp-field__help" id="vpe-short-help">{% translate "One or two sentences, shown near the name. Simple formatting (bold, italic, links) is kept." %}</p>
+        </div>
+        <div class="pp-field">
+          <label for="vpe-long">{% translate "Description" %}</label>
+          <textarea class="pp-input" id="vpe-long" name="description" rows="12" aria-describedby="vpe-long-help">{{ product.description }}</textarea>
+          <p class="pp-field__help" id="vpe-long-help">{% translate "Paragraphs, lists, bold, italic and links are kept; anything else is removed when you save." %}</p>
+        </div>
+      </fieldset>
+    </section>
+    <div class="pp-actions">
+      <button type="submit" class="btn btn-primary">{% translate "Save changes" %}</button>
+      <a class="btn btn-ghost" href="/vendor/me/products/">{% translate "Cancel" %}</a>
     </div>
-    {% endif %}
+  </div>
 
-    <form method="post" class="vpe-form">
-      {% csrf_token %}
-
-      <div class="vpe-field">
-        <label for="vpe-name">Title *</label>
-        <input type="text" id="vpe-name" name="name" value="{{ product.name }}" required maxlength="300">
-      </div>
-
-      <div class="vpe-row">
-        <div class="vpe-field">
-          <label for="vpe-status">Status</label>
-          <select id="vpe-status" name="status">
-            <option value="draft"    {% if product.status == 'draft' %}selected{% endif %}>Draft — not shown publicly</option>
-            <option value="active"   {% if product.status == 'active' %}selected{% endif %}>Active — on the shelf</option>
-            <option value="archived" {% if product.status == 'archived' %}selected{% endif %}>Archived — hidden, kept for history</option>
+  <aside class="pp-stack">
+    <section class="pp-card">
+      <fieldset class="pp-fieldset pp-form">
+        <legend>{% translate "Sale" %}</legend>
+        <div class="pp-field">
+          <label for="vpe-status">{% translate "Status" %}</label>
+          <select class="pp-input" id="vpe-status" name="status">
+            <option value="active"{% if product.status == 'active' %} selected{% endif %}>{% translate "On sale" %}</option>
+            <option value="draft"{% if product.status == 'draft' %} selected{% endif %}>{% translate "Draft — not shown in the store" %}</option>
+            <option value="archived"{% if product.status == 'archived' %} selected{% endif %}>{% translate "Archived — hidden, kept for your records" %}</option>
           </select>
         </div>
-
-        <div class="vpe-field">
-          <label for="vpe-price">Price ({% if product.price %}{{ product.price.currency }}{% else %}USD{% endif %})</label>
-          <input type="number" id="vpe-price" name="price" step="0.01" min="0"
-                 value="{% if product.price %}{{ product.price.amount }}{% endif %}">
-          <p class="vpe-help">For variable products this is the floor — the storefront shows "From $X" automatically.</p>
+        <div class="pp-field">
+          <label for="vpe-price">{% blocktranslate with currency=product.price.currency %}Price ({{ currency }}){% endblocktranslate %}</label>
+          <input class="pp-input" type="number" id="vpe-price" name="price" step="0.01" min="0" inputmode="decimal" value="{% if product.price %}{{ product.price.amount|stringformat:'s' }}{% endif %}">
+          <p class="pp-field__help">{% translate "For a product with options, this is the starting price." %}</p>
         </div>
-      </div>
-
-      <div class="vpe-field">
-        <label for="vpe-short">Short description</label>
-        <textarea id="vpe-short" name="short_description" rows="3"
-                  placeholder="One-line pitch — appears under the title on category pages.">{{ product.short_description }}</textarea>
-        <p class="vpe-help">Typically 1-2 sentences. Plain text or basic HTML; you can mark up author names with &lt;em&gt;.</p>
-      </div>
-
-      <div class="vpe-field">
-        <label for="vpe-long">Long description</label>
-        <textarea id="vpe-long" name="description" rows="14"
-                  placeholder="The full description — back-cover copy, blurbs, reviewer quotes.">{{ product.description }}</textarea>
-        <p class="vpe-help">HTML is OK (paragraphs, bold, italic, links, blockquotes). Avoid embedding scripts or stylesheets.</p>
-      </div>
-
-      <div class="vpe-actions">
-        <a href="/vendor/me/products/" class="btn">Cancel</a>
-        <button type="submit" class="btn btn-primary">Save changes</button>
-      </div>
-    </form>
-
-    <p class="meta" style="margin-top: 2.5rem; color: var(--muted); font-size: .82rem; max-width: 60ch;">
-      For changes to ISBN, format, page count, vendor information, or pricing currency, contact our acquisitions team — those fields are platform-managed so the canonical record stays clean across imprints.
-    </p>
-  </div>
-</section>
-
-<style>
-.vpe-error {
-  padding: .9rem 1rem;
-  background: rgba(239,68,68,.08);
-  border: 1px solid rgba(239,68,68,.25);
-  border-radius: 8px;
-  color: #b91c1c;
-  font-size: .9rem;
-  margin-bottom: 1.5rem;
-}
-.vpe-form { display: grid; gap: 1.5rem; }
-.vpe-row { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
-@media (min-width: 600px) { .vpe-row { grid-template-columns: 1fr 1fr; } }
-.vpe-field label {
-  display: block; font-size: .82rem; font-weight: 500; color: var(--ink);
-  margin-bottom: .35rem;
-}
-.vpe-field input, .vpe-field textarea, .vpe-field select {
-  width: 100%; padding: .6rem .75rem;
-  border: 1px solid var(--rule); border-radius: 6px;
-  background: var(--paper); font-family: inherit; font-size: .95rem;
-  line-height: 1.4; color: var(--ink);
-}
-.vpe-field textarea { line-height: 1.55; resize: vertical; min-height: 80px; }
-.vpe-field input:focus, .vpe-field textarea:focus, .vpe-field select:focus {
-  outline: 2px solid var(--ink); outline-offset: -2px; border-color: var(--ink);
-}
-.vpe-help { font-size: .75rem; color: var(--muted); margin: .3rem 0 0; line-height: 1.5; }
-.vpe-actions {
-  display: flex; gap: .75rem; justify-content: flex-end;
-  margin-top: .5rem;
-}
-</style>
+      </fieldset>
+    </section>
+    <section class="pp-card">
+      <h2 class="pp-card__title" style="margin-bottom: 1rem;">{% translate "At a glance" %}</h2>
+      <dl class="pp-stats">
+        {% if product.sku %}<div><dt>{% translate "SKU" %}</dt><dd><code class="pp-code">{{ product.sku }}</code></dd></div>{% endif %}
+        <div><dt>{% translate "Stock" %}</dt><dd>{% if stock %}{% if stock.out %}<span class="pp-badge pp-badge--bad">{% translate "Sold out" %}</span>{% else %}{{ stock.available }}{% endif %}{% else %}<span class="pp-muted">{% translate "not tracked" %}</span>{% endif %}</dd></div>
+        <div><dt>{% translate "Last updated" %}</dt><dd>{{ product.updated_at|date:"M j, Y" }}</dd></div>
+      </dl>
+      {% if product.status == 'active' %}<p class="pp-card__foot"><a class="pp-link" href="/products/{{ product.slug }}/" target="_blank" rel="noopener">{% translate "See it in the store" %}</a></p>{% endif %}
+      <p class="pp-card__foot">{% translate "Images, options, stock and categories are managed by the store team — get in touch to change them." %}</p>
+    </section>
+  </aside>
+</form>
 {% endblock %}

@@ -1,91 +1,66 @@
-{% extends "storefront/base.html" %}
-{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% extends "partner_portal/base.html" %}
+{% load i18n morph %}
 
-{% block content %}
-<section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 880px;">
+{% block portal_title %}{% translate "Payouts" %}{% endblock %}
+{% block portal_lede %}<p class="pp-lede">{% blocktranslate with threshold=balance.threshold|money %}What you earn from each order collects in your balance. Once it reaches {{ threshold }}, request a payout and the store team pays it by your payout method.{% endblocktranslate %}</p>{% endblock %}
 
-    <p class="meta" style="margin-bottom: 1rem;">
-      <a href="/vendor/me/" style="color: var(--muted);">Vendor dashboard</a>
-      <span style="margin: 0 0.5rem;">/</span>
-      Payouts
+{% block portal_content %}
+<div class="pp-cols">
+  <section class="pp-card" aria-labelledby="vd-balance-title">
+    <h2 class="pp-label" id="vd-balance-title">{% translate "Your balance" %}</h2>
+    <p class="pp-money" data-balance="available">{{ balance.available|money }}</p>
+    <div class="pp-progress{% if balance.reached %} pp-progress--done{% endif %}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ balance.progress }}" aria-label="{% translate 'Progress to the minimum payout' %}"><span class="pp-progress__fill" style="--pct: {{ balance.progress }}%;"></span></div>
+    <p class="pp-progress__caption" data-payout-blocker="{{ balance.blocker }}">
+      {% if balance.blocker == 'open' %}{% blocktranslate with amount=balance.open_payout.amount|money when=balance.open_payout.requested_at|date:"M j" %}Your request for {{ amount }} from {{ when }} is being processed. You can ask for the next one once it is paid.{% endblocktranslate %}
+      {% elif balance.blocker == 'method' %}{% translate "Choose how you want to be paid before you request a payout." %}
+      {% elif balance.blocker == 'threshold' %}{% blocktranslate with remaining=balance.remaining|money threshold=balance.threshold|money %}{{ remaining }} to go until the {{ threshold }} minimum.{% endblocktranslate %}
+      {% else %}{% translate "You've reached the minimum payout." %}{% endif %}
     </p>
-
-    <p class="eyebrow">Money</p>
-    <h1 class="display display-l" style="margin: 1rem 0 1rem;">Payouts<span class="text-accent">.</span></h1>
-    <p class="lede" style="margin-bottom: 2.5rem;">Your accrued balance sits here until you request a payout. We pay out via your configured method within ~3 business days.</p>
-
-    {% if messages %}
-      {% for m in messages %}
-        <div class="card card-padded" style="background: {% if m.tags == 'error' %}#fde7e9{% else %}#d6f3e3{% endif %}; color: {% if m.tags == 'error' %}#b3261e{% else %}#1f7a4d{% endif %}; padding: .9rem 1.1rem; border-radius: 6px; margin-bottom: 1rem;">
-          {{ m }}
-        </div>
-      {% endfor %}
-    {% endif %}
-
-    <article class="card card-padded" style="padding: 2rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 1.5rem;">
-      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap;">
-        <div>
-          <p style="font-size: .8rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 0 .35rem;">Accrued balance</p>
-          <p style="font-family: var(--serif); font-size: clamp(2rem, 5vw, 3rem); margin: 0; font-variant-numeric: tabular-nums; line-height: 1.05;">{{ accrued }}</p>
-          <p style="margin: .5rem 0 0; font-size: .85rem; color: var(--muted);">Minimum payout threshold: <strong>{{ threshold }}</strong></p>
-        </div>
-        <form method="post" style="margin: 0;">
-          {% csrf_token %}
-          {% if can_request %}
-            <button type="submit" class="btn btn-primary" style="padding: .9rem 1.8rem;">Request payout</button>
-          {% else %}
-            <button type="submit" class="btn btn-primary" style="padding: .9rem 1.8rem; opacity: .45; cursor: not-allowed;" disabled>Request payout</button>
-          {% endif %}
-        </form>
-      </div>
-      {% if not can_request %}
-        <p style="margin: 1rem 0 0; font-size: .85rem; color: var(--muted);">
-          {% if account.method == 'unset' or not account.method %}
-            Configure a payout method in <a href="/vendor/me/settings/" style="text-decoration: underline;">settings</a> first.
-          {% else %}
-            You need to accrue at least {{ threshold }} before requesting a payout.
-          {% endif %}
-        </p>
-      {% endif %}
-    </article>
-
-    <article class="card card-padded" style="padding: 1.5rem; border: 1px solid var(--rule); border-radius: 6px;">
-      <h2 style="font-family: var(--serif); font-size: 1.2rem; margin: 0 0 1rem;">History</h2>
-      {% if history %}
-      <table style="width: 100%; font-size: .9rem; border-collapse: collapse;">
-        <thead>
-          <tr style="text-align: left; border-bottom: 1px solid var(--rule);">
-            <th style="padding: .5rem 0; font-weight: 600;">Requested</th>
-            <th style="padding: .5rem 0; font-weight: 600;">Status</th>
-            <th style="padding: .5rem 0; font-weight: 600; text-align: right;">Amount</th>
-            <th style="padding: .5rem 0; font-weight: 600;">Paid</th>
-            <th style="padding: .5rem 0; font-weight: 600;">Reference</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in history %}
-          <tr style="border-bottom: 1px solid var(--rule);">
-            <td style="padding: .65rem 0; font-variant-numeric: tabular-nums;">{{ p.requested_at|date:"M j, Y" }}</td>
-            <td style="padding: .65rem 0;">
-              {% if p.status == 'paid' %}<span style="display:inline-block; padding:.2rem .55rem; border-radius:999px; background:#d6f3e3; color:#1f7a4d; font-size:.7rem; font-weight:600;">Paid</span>
-              {% elif p.status == 'failed' %}<span style="display:inline-block; padding:.2rem .55rem; border-radius:999px; background:#fde7e9; color:#b3261e; font-size:.7rem; font-weight:600;">Failed</span>
-              {% elif p.status == 'processing' %}<span style="display:inline-block; padding:.2rem .55rem; border-radius:999px; background:#ffeacc; color:#b86e00; font-size:.7rem; font-weight:600;">Processing</span>
-              {% else %}<span style="display:inline-block; padding:.2rem .55rem; border-radius:999px; background:#dbeafe; color:#1d4ed8; font-size:.7rem; font-weight:600;">Pending</span>
-              {% endif %}
-            </td>
-            <td style="padding: .65rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ p.amount }}</td>
-            <td style="padding: .65rem 0; color: var(--muted);">{% if p.paid_at %}{{ p.paid_at|date:"M j, Y" }}{% else %}—{% endif %}</td>
-            <td style="padding: .65rem 0; font-family: ui-monospace, monospace; font-size: .82rem; color: var(--muted);">{{ p.external_reference|default:"—" }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <form method="post" class="pp-actions" style="margin-top: 1.5rem;">
+      {% csrf_token %}
+      {% if balance.blocker == 'method' %}
+        <a class="btn btn-primary" href="/vendor/me/settings/">{% translate "Add a payout method" %}</a>
       {% else %}
-        <p style="color: var(--muted); margin: 0;">No payouts yet.</p>
+        <button type="submit" class="btn btn-primary"{% if not balance.can_request %} disabled aria-disabled="true"{% endif %}>{% if balance.can_request %}{% blocktranslate with amount=balance.available|money %}Request {{ amount }}{% endblocktranslate %}{% else %}{% translate "Request payout" %}{% endif %}</button>
       {% endif %}
-    </article>
+      {% if balance.method_set %}<span class="pp-field__help">{% blocktranslate with method=balance.method_label %}Paid by {{ method }}.{% endblocktranslate %} <a class="pp-link" href="/vendor/me/settings/">{% translate "Change" %}</a></span>{% endif %}
+    </form>
+  </section>
 
+  <aside class="pp-card" aria-labelledby="vd-totals-title">
+    <h2 class="pp-card__title" id="vd-totals-title" style="margin-bottom: 1rem;">{% translate "Totals" %}</h2>
+    <dl class="pp-stats">
+      <div><dt>{% translate "Balance" %}</dt><dd>{{ balance.available|money }}</dd></div>
+      <div><dt>{% translate "Requested" %}</dt><dd>{{ balance.in_flight|money }}</dd></div>
+      <div><dt>{% translate "Paid to you" %}</dt><dd data-balance="paid">{{ balance.paid|money }}</dd></div>
+      <div><dt>{% translate "Minimum payout" %}</dt><dd>{{ balance.threshold|money }}</dd></div>
+    </dl>
+    <p class="pp-card__foot">{% translate "Your balance is what your orders earned, after the store's commission, less what has been paid out." %}</p>
+  </aside>
+</div>
+
+<section class="pp-card" aria-labelledby="vd-history-title">
+  <div class="pp-card__head"><h2 class="pp-card__title" id="vd-history-title">{% translate "Payout history" %}</h2></div>
+  {% if history %}
+  <div class="pp-table-wrap">
+    <table class="pp-table">
+      <thead><tr><th scope="col">{% translate "Requested" %}</th><th scope="col" class="num">{% translate "Amount" %}</th><th scope="col" class="pp-hide-sm">{% translate "Method" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col" class="pp-hide-sm">{% translate "Reference" %}</th></tr></thead>
+      <tbody>
+        {% for p in history %}
+        <tr data-payout="{{ p.status }}">
+          <td class="nowrap">{{ p.requested_at|date:"M j, Y" }}{% if p.paid_at %}<span class="pp-table__secondary">{% blocktranslate with when=p.paid_at|date:"M j" %}paid {{ when }}{% endblocktranslate %}</span>{% endif %}</td>
+          <td class="num">{{ p.amount|money }}</td>
+          <td class="pp-hide-sm">{{ p.method_label|default:"—" }}</td>
+          <td>{% if p.status == 'paid' %}<span class="pp-badge pp-badge--ok">{% translate "Paid" %}</span>{% elif p.status == 'failed' %}<span class="pp-badge pp-badge--bad">{% translate "Failed" %}</span>{% elif p.status == 'processing' %}<span class="pp-badge pp-badge--info">{% translate "Processing" %}</span>{% else %}<span class="pp-badge pp-badge--wait">{% translate "Requested" %}</span>{% endif %}</td>
+          <td class="pp-hide-sm">{% if p.external_reference %}<code class="pp-code">{{ p.external_reference }}</code>{% else %}<span class="pp-muted">—</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
+  {% else %}
+    {% translate "No payouts yet" as e_title %}{% translate "Your requests and the payments made to you are listed here." as e_text %}
+    {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="wallet" compact=True %}
+  {% endif %}
 </section>
 {% endblock %}

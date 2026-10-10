@@ -1,0 +1,1 @@
+{% load i18n %}{% if payment == 'paid' %}<span class="pp-badge pp-badge--ok" data-payment="paid">{% translate "Paid" %}</span>{% elif payment == 'cod' %}<span class="pp-badge pp-badge--info" data-payment="cod">{% translate "Cash on delivery" %}</span>{% else %}<span class="pp-badge pp-badge--wait" data-payment="awaiting">{% translate "Awaiting payment" %}</span>{% endif %}
