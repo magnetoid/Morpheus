@@ -478,16 +478,23 @@ rate source, (8) a US tax provider, (9) order editing, (10) an SMS provider.
 Each item is one release (`PATCH` for fixes, `MINOR` for features). "Verify"
 is what must be true on production before the next item starts.
 
-### W0 — Ship the working tree (today)
+### W0 — Ship the working tree (today) — SHIPPED v0.87.1 (779264da)
 
 - v0.87.1: one `mutation_scope_error` for catalog, inventory, orders,
   book_product (`api/graphql_permissions.py`, `api/tests_mutation_scope.py`,
-  baseline 116 → 113, CLAUDE.md).
+  baseline 116 → 113, CLAUDE.md). Live-verified on Irving with probe API keys
+  (right scope reaches the mutation, wrong scope is refused); all four stores
+  on v0.87.1; CI green.
 - Verify: `api.tests_mutation_scope` + `catalog.tests.test_graphql_mutation_auth`
   + `orders.tests.test_graphql_cart_ownership` in one process; `ruff`;
   `release --check`; `/readyz` reports v0.87.1 on all four.
 
 ### W1 — Stop the bleeding (1–2 days, all S)
+
+**Status 2026-10-10:** items 1–6, 8, 9, 11, 12 and 14 shipped as v0.87.2
+(plus the Linda automation run lock, the 15-minute floor and the unpriced-model
+refusal in the Janus form). Open: 7 (the remaining theme bits), 10, 13, and
+every infra and owner item below.
 
 Code, one release each or batched as one PATCH:
 

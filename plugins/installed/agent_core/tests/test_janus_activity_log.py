@@ -161,3 +161,27 @@ class JanusActivityLogTests(TestCase):
         from plugins.installed.agent_core.views import _janus_activity_log
 
         self.assertEqual(_janus_activity_log()['failed'], 1)
+
+    def test_mcp_string_error_output_is_flagged_too(self):
+        """Rows written before v0.87.2 by the MCP edge (Linda's calls) carry
+        ``output`` as the string ``'error: …'``; the dict-only check showed
+        every failed Linda call as a green row and left it out of the count."""
+        from core.audit.models import AuditEvent
+
+        AuditEvent.objects.create(
+            event_type='agents.decision',
+            actor_label='mcp:linda:user-1',
+            target='tool/catalog__update',
+            metadata={
+                'agent': 'mcp:linda:user-1',
+                'tool': 'catalog__update',
+                'args': {},
+                'output': 'error: ValueError: no such product',
+            },
+        )
+        r = self.c.get('/dashboard/agents/')
+        self.assertContains(r, 'no such product')
+        self.assertContains(r, '⚠')
+        from plugins.installed.agent_core.views import _janus_activity_log
+
+        self.assertEqual(_janus_activity_log()['failed'], 1)

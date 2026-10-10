@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from celery import shared_task
 
-from plugins.installed.agent_core.scheduler import tick
+from plugins.installed.agent_core.scheduler import RUN_LOCK_S, tick
 
 
 @shared_task(bind=True, time_limit=600, soft_time_limit=540)
@@ -13,9 +13,17 @@ def background_agents_tick(self) -> int:
     return tick()
 
 
-@shared_task(bind=True, name='agent_core.run_linda_automation', time_limit=420, soft_time_limit=390)
+@shared_task(
+    bind=True,
+    name='agent_core.run_linda_automation',
+    time_limit=RUN_LOCK_S,
+    soft_time_limit=RUN_LOCK_S - 30,
+)
 def run_linda_automation(self, automation_id: str) -> str:
-    """One Linda automation run (a Janus turn, up to the turn limit plus margin)."""
+    """One Linda automation run (a Janus turn, up to the turn limit plus margin).
+
+    The hard limit is also how long the automation's run lock lives
+    (``scheduler.RUN_LOCK_S``), so a worker that dies mid-turn frees it."""
     from plugins.installed.agent_core.linda_automations import run_by_id
 
     return run_by_id(automation_id)

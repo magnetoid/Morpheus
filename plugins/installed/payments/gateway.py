@@ -57,8 +57,12 @@ class PaymentGateway(ABC):
         """Return {success: bool, client_secret?: str, transaction_id?: str, error?: str}."""
 
     def capture(self, *, transaction, **kwargs) -> dict:
-        """Best-effort capture for delayed-capture providers."""
-        return {'success': True}
+        """Capture a previously authorised payment (delayed-capture providers).
+
+        Fails closed like ``refund()``: a gateway that does not implement
+        capture must never report money captured that it never took.
+        """
+        return {'success': False, 'error': 'capture not supported by this gateway'}
 
     def refund(self, *, transaction, amount, **kwargs) -> dict:
         return {'success': False, 'error': 'Not implemented'}

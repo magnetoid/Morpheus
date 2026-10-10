@@ -88,10 +88,20 @@ class JanusSettingsForm(forms.Form):
     def clean(self) -> dict:
         data = super().clean()
         if data.get('model_source') == 'custom':
+            from core.agents.pricing import is_priced
+
             if not data.get('provider'):
                 self.add_error('provider', 'Choose the provider Janus should use.')
             if not data.get('model'):
                 self.add_error('model', 'Enter the model Janus should use.')
+            elif not is_priced(data['model']):
+                # The picker and the backups skip unpriced models already; a
+                # pinned one would run with the spend cap seeing $0 per turn.
+                self.add_error(
+                    'model',
+                    'Morpheus has no price for this model, so the daily spend cap could not '
+                    'see it. Pick a priced model, or add this one to core/agents/pricing.py.',
+                )
             keeps_key = self.has_stored_key and not data.get('clear_api_key')
             if not data.get('api_key') and not keeps_key:
                 self.add_error('api_key', 'Enter an API key for this provider.')

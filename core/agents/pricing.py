@@ -34,22 +34,37 @@ _PRICES: dict[str, tuple[float, float]] = {
     # model-independent run-count cap). Any model this deployment can actually
     # reach belongs in this table — `is_priced()` reports the gap.
     'deepseek-v4-pro': (0.55, 2.19),
+    # Defaults of the hermes and moonshot providers (core/agents/provider_registry.py).
+    # APPROXIMATE, like deepseek-v4-pro above: an unpriced default drops the
+    # provider from Linda's model picker and backup list without a word, and
+    # the spend cap sees $0 for it. Correct when the real price is known.
+    'hermes-3-llama-3-1-405b': (0.80, 0.80),
+    'kimi-latest': (1.00, 3.00),
     'llama3.2': (0.0, 0.0),  # local / self-hosted — no per-token cost
 }
 
 
+def _norm(name: str) -> str:
+    """One spelling for a model name: no vendor prefix ('anthropic/…'), dots as
+    dashes ('claude-3.5-sonnet' → 'claude-3-5-sonnet'), lower case."""
+    return (name or '').strip().lower().rsplit('/', 1)[-1].replace('.', '-')
+
+
+_NORMALISED: dict[str, tuple[float, float]] = {_norm(k): v for k, v in _PRICES.items()}
+
+
 def _match(model: str) -> tuple[float, float] | None:
-    m = (model or '').strip().lower()
+    m = _norm(model)
     if not m:
         return None
-    if m in _PRICES:
-        return _PRICES[m]
+    if m in _NORMALISED:
+        return _NORMALISED[m]
     # Longest matching key so 'claude-3-5-sonnet-20241022' → 'claude-3-5-sonnet'.
     best_key = ''
-    for key in _PRICES:
+    for key in _NORMALISED:
         if (m.startswith(key) or key in m) and len(key) > len(best_key):
             best_key = key
-    return _PRICES[best_key] if best_key else None
+    return _NORMALISED[best_key] if best_key else None
 
 
 def estimate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float:

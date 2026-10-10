@@ -29,6 +29,12 @@ logger = logging.getLogger('morpheus.orders')
 #: checkouts doesn't hold a small merchant's stock hostage for a day.
 DEFAULT_EXPIRY_MINUTES = 60
 
+#: Gateways whose orders are paid later by design — on delivery, or by a bank
+#: transfer the merchant reconciles by hand. The sweep is for abandoned card
+#: checkouts; it used to cancel every cash-on-delivery order after an hour on a
+#: store whose only payment method was cash on delivery.
+OFFLINE_GATEWAYS = ('cod', 'manual')
+
 
 def _expiry_minutes() -> int:
     """Merchant knob, read fresh (a plugin config cache is per-process)."""
@@ -65,6 +71,7 @@ def expire_pending_orders() -> int:
     candidates = list(
         Order.objects.filter(status='pending', placed_at__lt=cutoff)
         .exclude(payment_status='paid')
+        .exclude(payment_gateway__in=OFFLINE_GATEWAYS)
         .values_list('id', flat=True)[:500]
     )
 

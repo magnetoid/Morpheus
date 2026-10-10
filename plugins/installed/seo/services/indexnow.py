@@ -6,7 +6,24 @@ and the push endpoint.
 
 from __future__ import annotations
 
+import threading
+
 from ._helpers import _site_base_url
+
+
+def ping_in_background(urls: list[str]) -> None:
+    """Fire-and-forget ``ping_indexnow`` on a daemon thread.
+
+    Never under the test runner: a thread that reads the launch switch and
+    writes the IndexNow key while the runner is still creating tables is the
+    "database table is locked" failure that turned one red CI run in three
+    into noise (CI tests on file-backed SQLite).
+    """
+    from django.conf import settings
+
+    if getattr(settings, '_RUNNING_TESTS', False):
+        return
+    threading.Thread(target=ping_indexnow, args=(list(urls),), daemon=True).start()
 
 
 def get_or_create_indexnow_key() -> str:

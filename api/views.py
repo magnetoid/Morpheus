@@ -197,6 +197,12 @@ def healthz_deep(request: HttpRequest) -> JsonResponse:
         checks['outbox'] = {'ok': False, 'error': str(e)[:200]}
 
     ok = all(c.get('ok', False) for c in checks.values())
+    # The probe is public (uptime monitors poll it); the exception text can
+    # name a key or a host, so only staff get it. Anonymous callers still see
+    # which check failed.
+    if not getattr(getattr(request, 'user', None), 'is_staff', False):
+        for check in checks.values():
+            check.pop('error', None)
     return JsonResponse(
         {'status': 'ok' if ok else 'degraded', 'checks': checks},
         status=200 if ok else 503,

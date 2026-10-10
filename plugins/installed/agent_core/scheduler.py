@@ -23,6 +23,41 @@ from django.utils import timezone
 
 logger = logging.getLogger('morpheus.agents.scheduler')
 
+#: A Linda automation is a Janus turn of up to a few minutes on a worker with a
+#: handful of slots; one that fires every minute fills them all and shares one
+#: Janus session with itself. Fifteen minutes is the floor for that engine.
+LINDA_MIN_INTERVAL_S = 900
+#: How long the "running" lock lives — the Celery task's hard time limit, so a
+#: worker that dies mid-turn frees the automation on its own.
+RUN_LOCK_S = 420
+
+
+def min_interval_s(engine: str) -> int:
+    return LINDA_MIN_INTERVAL_S if engine == 'linda' else 60
+
+
+def _running_key(bg) -> str:
+    return f'agent_core:automation:running:{bg.pk}'
+
+
+def mark_running(bg) -> bool:
+    """Take the run lock. False when a run is already in flight."""
+    from django.core.cache import cache
+
+    return bool(cache.add(_running_key(bg), '1', timeout=RUN_LOCK_S))
+
+
+def is_running(bg) -> bool:
+    from django.core.cache import cache
+
+    return cache.get(_running_key(bg)) is not None
+
+
+def clear_running(bg) -> None:
+    from django.core.cache import cache
+
+    cache.delete(_running_key(bg))
+
 
 def _store_timezone():
     """The merchant's time zone (Settings → General), else the project's."""
@@ -49,7 +84,8 @@ def schedule_next(bg) -> None:
     if getattr(bg, 'daily_at', None):
         bg.next_run_at = next_daily(bg.daily_at)
     else:
-        bg.next_run_at = timezone.now() + timedelta(seconds=max(60, int(bg.interval_seconds)))
+        floor = min_interval_s(getattr(bg, 'engine', ''))
+        bg.next_run_at = timezone.now() + timedelta(seconds=max(floor, int(bg.interval_seconds)))
     bg.save(update_fields=['next_run_at', 'updated_at'])
 
 
@@ -65,6 +101,10 @@ def fire(bg) -> dict[str, Any]:
     if getattr(bg, 'engine', '') == BackgroundAgent.ENGINE_LINDA:
         from plugins.installed.agent_core.tasks import run_linda_automation
 
+        # One turn at a time per automation; linda_automations.run() releases
+        # the lock, and it expires with the task's time limit either way.
+        if not mark_running(bg):
+            return {'ok': False, 'error': 'already running'}
         run_linda_automation.delay(str(bg.pk))
         return {'ok': True, 'queued': True}
 

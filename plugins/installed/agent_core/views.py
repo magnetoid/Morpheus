@@ -408,7 +408,7 @@ def _janus_activity_log(limit: int = 60) -> dict:
             meta = ev.metadata if isinstance(ev.metadata, dict) else {}
             tool = str(meta.get('tool') or '')
             output = meta.get('output')
-            failed = isinstance(output, dict) and 'error' in output
+            failed = _call_failed(output)
             events.append(
                 {
                     'at': ev.created_at,
@@ -438,6 +438,21 @@ def _janus_activity_log(limit: int = 60) -> dict:
     }
 
 
+def _call_failed(output) -> bool:
+    """Both shapes a decision row's ``output`` has carried: the Worker's
+    ``{'error': …}`` dict, and the string ``'error: …'`` the MCP edge wrote
+    before v0.87.2 (Linda's calls)."""
+    if isinstance(output, dict):
+        return 'error' in output
+    return isinstance(output, str) and output.startswith('error:')
+
+
+def _call_error(output) -> str:
+    if isinstance(output, dict):
+        return str(output.get('error', ''))
+    return str(output)[len('error:') :] if isinstance(output, str) else ''
+
+
 def _describe_tool_call(meta: dict, output, failed: bool) -> str:
     """A one-line reading of an ``agents.decision`` tool call.
 
@@ -447,7 +462,7 @@ def _describe_tool_call(meta: dict, output, failed: bool) -> str:
     agent = str(meta.get('agent') or '')
     parts = [f'{agent} →'] if agent else []
     if failed:
-        err = str(output.get('error', '')).strip().replace('\n', ' ')
+        err = _call_error(output).strip().replace('\n', ' ')
         parts.append(f'failed: {err[:220]}')
         return ' '.join(parts)
     args = meta.get('args') if isinstance(meta.get('args'), dict) else {}
@@ -644,7 +659,7 @@ def background_agents_view(request):
     if request.method == 'POST':
         from datetime import time as _time
 
-        from plugins.installed.agent_core.scheduler import next_daily
+        from plugins.installed.agent_core.scheduler import min_interval_s, next_daily
 
         name = (request.POST.get('name') or '').strip()
         engine = request.POST.get('engine') or BackgroundAgent.ENGINE_LINDA
@@ -653,7 +668,9 @@ def background_agents_view(request):
         agent_name = (request.POST.get('agent_name') or '').strip() or 'worker'
         prompt = (request.POST.get('prompt') or '').strip()
         try:
-            interval = max(60, int(request.POST.get('interval_seconds') or 3600))
+            interval = max(
+                min_interval_s(engine), int(request.POST.get('interval_seconds') or 3600)
+            )
         except (TypeError, ValueError):
             interval = 3600
         daily_at = None

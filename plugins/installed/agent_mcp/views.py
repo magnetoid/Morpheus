@@ -252,10 +252,16 @@ def _audit_call(tool_name: str, args: dict, output: Any = None, error: str = '',
 
         blob = json.dumps(args, default=str)
         capped_args = args if len(blob) <= 4000 else {'_truncated': blob[:4000]}
+        # The Worker path stores ``{'error': …}`` and the Activity feed reads
+        # that shape; a string ``'error: …'`` made every failed MCP call look
+        # like a success there (v0.87.2).
         if error:
-            summary = f'error: {error}'[:1000]
+            summary: Any = {'error': str(error)[:1000]}
+        elif output is None:
+            summary = ''
         else:
-            summary = json.dumps(output, default=str)[:1000] if output is not None else ''
+            out_blob = json.dumps(output, default=str)
+            summary = output if len(out_blob) <= 1000 else {'_truncated': out_blob[:1000]}
         record_ai_decision(
             agent=_mcp_actor(),
             actor=_mcp_actor(),  # fills actor_label (agent= only lands in metadata)

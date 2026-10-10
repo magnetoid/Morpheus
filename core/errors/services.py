@@ -164,11 +164,23 @@ def record_message(
 _JS_FRAME_RE = re.compile(r'(?:https?://[^\s)]+|/[^\s)]+):(\d+)(?::\d+)?')
 
 
+#: Browser noise that is not an error. A View Transition is aborted whenever a
+#: navigation interrupts one still in flight; the browser reports it as an
+#: unhandled rejection, and it was the most common "error" on three live stores.
+_CLIENT_NOISE = (('InvalidStateError', 'Transition was aborted'),)
+
+
+def is_client_noise(name: str, message: str) -> bool:
+    return any(name == n and message.startswith(prefix) for n, prefix in _CLIENT_NOISE)
+
+
 def record_client_error(payload: dict[str, Any], *, request=None) -> None:
     """Write a JS error received from the browser. Validates payload shape."""
     from core.errors.models import ErrorEvent
 
     message = (payload.get('message') or '')[:2000]
+    if is_client_noise((payload.get('name') or '').strip(), message):
+        return
     source_url = (payload.get('source') or '')[:500]
     lineno = int(payload.get('lineno') or 0)
     colno = int(payload.get('colno') or 0)

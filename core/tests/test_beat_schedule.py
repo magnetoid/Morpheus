@@ -37,6 +37,20 @@ class CoreBeatScheduleTests(SimpleTestCase):
 
         self.assertIn('feature_adoption.flush', app.conf.beat_schedule)
 
+    def test_self_improvement_jobs_are_in_the_effective_schedule(self):
+        # Registered from morph/celery.py inside a ``try/except: pass`` — the
+        # shape that once silently dropped core's own jobs. Nothing asserted
+        # them until now.
+        from core.self_improvement.tasks import register_beat_schedule
+        from morph.celery import app
+
+        expected: dict = {}
+        register_beat_schedule(expected)
+        self.assertTrue(expected)
+        for job in expected:
+            with self.subTest(job=job):
+                self.assertIn(job, app.conf.beat_schedule)
+
     def test_every_scheduled_task_is_one_the_worker_registers(self):
         # Beat sends a task by NAME. A schedule entry naming a task under its
         # module path while the task registers under an explicit ``name=`` is

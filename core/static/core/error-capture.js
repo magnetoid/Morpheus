@@ -106,6 +106,9 @@
     } else {
       msg = String(reason);
     }
+    // The browser's own View Transition abort (a navigation interrupted a
+    // transition in flight) is not an error; the server drops it too.
+    if (name === 'InvalidStateError' && msg.indexOf('Transition was aborted') === 0) return;
     ship({
       message: msg, name: name, stack: stack,
       source: '', lineno: 0, colno: 0,

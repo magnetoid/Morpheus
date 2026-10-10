@@ -38,7 +38,19 @@ def run_by_id(automation_id: str) -> str:
 
 
 def run(bg) -> str:
-    """One run. Returns 'completed', 'failed' or 'no_owner'."""
+    """One run. Returns 'completed', 'failed' or 'no_owner'.
+
+    Releases the run lock ``scheduler.fire()`` took, whatever happens.
+    """
+    from plugins.installed.agent_core.scheduler import clear_running
+
+    try:
+        return _run(bg)
+    finally:
+        clear_running(bg)
+
+
+def _run(bg) -> str:
     from core.assistant.gates import automation_key
     from core.assistant.models import AssistantConversation
 

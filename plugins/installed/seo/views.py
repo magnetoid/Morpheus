@@ -308,19 +308,13 @@ def _maybe_ping_sitemap_change() -> None:
     if not _seo_flag('ping_google_on_sitemap_change', True):
         return
     try:
-        from plugins.installed.seo.services import _site_base_url, ping_indexnow
+        from plugins.installed.seo.services import _site_base_url
+        from plugins.installed.seo.services.indexnow import ping_in_background
 
         base = _site_base_url().rstrip('/')
         # Ping the sitemap index, not the flat sitemap — crawlers
         # discover every sub-sitemap from the index in one fetch.
-        sitemap_url = f'{base}/sitemap-index.xml'
-        import threading
-
-        threading.Thread(
-            target=ping_indexnow,
-            args=([sitemap_url],),
-            daemon=True,
-        ).start()
+        ping_in_background([f'{base}/sitemap-index.xml'])
     except Exception:  # noqa: BLE001
         pass
 

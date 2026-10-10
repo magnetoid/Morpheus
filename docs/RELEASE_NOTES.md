@@ -15,6 +15,21 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.87.2 — 2026-10-10
+
+**Ten fixes from the improvement-plan scan: honest payment capture, COD orders no longer expire, Linda automations can't overlap, failed MCP calls show as failed**
+
+- payments: the base gateway `capture()` returned success without taking money; it now fails closed like `refund()` (no shipped gateway implements capture yet)
+- orders: `expire_pending_orders` no longer cancels cash-on-delivery and bank-transfer orders after an hour — they are paid later by design (Irving's only method was COD)
+- Linda automations: one run at a time per automation (a cache lock that lives as long as the task may run), a 15-minute floor for the Linda engine (was 60 s, enough to fill every worker slot), the dashboard form stores the floor
+- Activity: failed Linda/MCP tool calls are flagged and counted — the MCP edge now stores `{'error': …}` like the Worker, and the feed also reads the old `'error: …'` string rows (dotbooks showed 11 failed calls instead of 23)
+- AI pricing: model names match with or without a vendor prefix and with dots or dashes (`anthropic/claude-3.5-sonnet`), the hermes and moonshot defaults are priced (approximately), and Settings → AI → Janus refuses a pinned model Morpheus has no price for — the spend cap saw $0 for it
+- error log: the browser's own View Transition abort (`InvalidStateError: Transition was aborted…`) is dropped on the client and the server; it was the most common 'error' on three stores
+- /healthz/deep: anonymous callers see which check failed but no longer the exception text (it can name a key or a host); staff still see it
+- CI: IndexNow pings go through `seo.services.indexnow.ping_in_background`, which starts no thread under the test runner — the daemon thread touching the database during table creation was the 'database table is locked' flake in 4 of the last 8 red runs
+- deploy smoke (`scripts/deploy_smoke.sh`): waits for every store (dotbooks, supernatural, montenegro, Irving) to serve the pushed version, not only dotbooks.store; runs on macOS bash 3.2 too
+- beat: a test now asserts the self-improvement jobs are in the effective schedule; CLAUDE.md gains the capture and thread landmines; the improvement plan records W0/W1 status
+
 ## v0.87.1 — 2026-10-10
 
 **One scope check for every staff GraphQL mutation; API keys accepted by inventory, orders and books**

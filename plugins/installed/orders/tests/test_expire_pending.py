@@ -109,3 +109,15 @@ class ExpirePendingOrdersTests(TestCase):
         self.assertEqual(expire_pending_orders(), 1)
         # Already cancelled -> no longer a candidate.
         self.assertEqual(expire_pending_orders(), 0)
+
+    def test_offline_gateway_orders_are_not_expired(self):
+        """Cash on delivery and bank transfer are paid later by design. The
+        sweep is for abandoned card checkouts; it cancelled every COD order on
+        a store whose only payment method was COD."""
+        for gateway in ('cod', 'manual'):
+            order = self._place(session_key=f's-{gateway}')
+            Order.objects.filter(pk=order.pk).update(payment_gateway=gateway)
+            self._age(order, 10_000)
+
+        self.assertEqual(expire_pending_orders(), 0)
+        self.assertEqual(set(Order.objects.values_list('status', flat=True)), {'pending'})

@@ -149,9 +149,27 @@ class JanusPageSaveTests(TestCase):
         self.assertEqual(_stored()['api_key'], 'sk-secret-123')
 
     def test_saved_key_can_be_removed(self):
-        self._post(model_source='custom', provider='deepseek', model='m', api_key='sk-secret-123')
+        self._post(
+            model_source='custom',
+            provider='deepseek',
+            model='deepseek-chat',
+            api_key='sk-secret-123',
+        )
         self._post(clear_api_key='on')
         self.assertEqual(_stored()['api_key'], '')
+
+    def test_an_unpriced_custom_model_is_refused(self):
+        # The picker and the backups already skip unpriced models; the pinned
+        # model was the one door left open, and the spend cap sees $0 for it.
+        response = self._post(
+            model_source='custom',
+            provider='deepseek',
+            model='mystery-9000',
+            api_key='sk-secret-123',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'no price')
+        self.assertNotIn('model_source', _stored())
 
     def test_base_url_must_be_http(self):
         response = self._post(base_url='file:///etc/passwd')
@@ -160,7 +178,12 @@ class JanusPageSaveTests(TestCase):
     def test_change_is_audited_without_values(self):
         from core.audit.models import AuditEvent
 
-        self._post(model_source='custom', provider='deepseek', model='m', api_key='sk-secret-123')
+        self._post(
+            model_source='custom',
+            provider='deepseek',
+            model='deepseek-chat',
+            api_key='sk-secret-123',
+        )
         event = AuditEvent.objects.filter(event_type='janus.settings_changed').latest('created_at')
         self.assertEqual(event.actor, self.staff)
         self.assertIn('api_key', event.metadata['changed'])

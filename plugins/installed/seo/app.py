@@ -296,11 +296,9 @@ class SeoPlugin(Plugin):
 
                 url = f'{_site_base_url().rstrip("/")}{template.format(slug=slug)}'
 
-            import threading  # noqa: PLC0415
+            from plugins.installed.seo.services.indexnow import ping_in_background  # noqa: PLC0415
 
-            from plugins.installed.seo.services import ping_indexnow  # noqa: PLC0415
-
-            threading.Thread(target=ping_indexnow, args=([url],), daemon=True).start()
+            ping_in_background([url])
         except Exception as e:  # noqa: BLE001
             logger.debug('seo: IndexNow push failed for %s/%s: %s', model_label, slug, e)
 

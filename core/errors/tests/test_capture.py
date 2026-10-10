@@ -65,6 +65,32 @@ class ObservabilityShimTests(TestCase):
         self.assertEqual(ev.metadata.get('k'), 'v')
 
 
+class ClientNoiseTests(TestCase):
+    """The browser's own View Transition abort is not an error: it fires when a
+    navigation interrupts a transition still in flight, and it was the most
+    common "error" on three live stores."""
+
+    def test_view_transition_abort_is_dropped(self):
+        from core.errors.services import record_client_error
+
+        for tail in ('ViewTransition opt-in disabled', 'Page already revealed'):
+            record_client_error(
+                {
+                    'name': 'InvalidStateError',
+                    'message': f'Transition was aborted because of invalid state. {tail}',
+                }
+            )
+        self.assertEqual(ErrorEvent.objects.count(), 0)
+
+    def test_a_real_client_error_still_lands(self):
+        from core.errors.services import record_client_error
+
+        record_client_error(
+            {'name': 'TypeError', 'message': "Cannot read properties of undefined (reading 'x')"}
+        )
+        self.assertEqual(ErrorEvent.objects.count(), 1)
+
+
 class LogToolTests(TestCase):
     """The assistant's log tools read the CORE error log (not the frozen
     observability plugin table)."""

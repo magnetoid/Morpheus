@@ -1175,7 +1175,13 @@ gateway is offered only when switched on **and** `is_configured()` (Stripe: both
 keys; PayPal: client id + secret; bank transfer: written instructions); `default()`
 is Stripe only when it can charge, else the first working method; the sandbox is
 `staff_only`. Provider error text is logged, never shown. Guarded by
-`payments/tests/test_routing.py::UnconfiguredGatewayTests`.
+`payments/tests/test_routing.py::UnconfiguredGatewayTests`. **A capability the
+gateway lacks fails closed:** the base `capture()` returned `{'success': True}`
+without taking money until v0.87.2 — nothing called it yet, but the first
+delayed-capture flow would have marked unpaid orders captured for every gateway
+that never implemented it (`test_capture_base.py`). Same for the order sweep:
+`expire_pending_orders` cancelled cash-on-delivery and bank-transfer orders
+after an hour (they are paid later by design); `OFFLINE_GATEWAYS` are exempt.
 Relatedly, deciding who is a visitor has one home:
 `core.utils.crawlers.is_crawler_user_agent` (crawlers, HTTP libraries and empty
 user agents are not browsers) — analytics browsing signals and GA4 both use it;
@@ -1274,6 +1280,14 @@ hangs/dies outside the container. Always pin an in-memory DB:
 ```bash
 DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<name>
 ```
+
+**Landmine — a daemon thread that touches the database during a request locks
+the test database.** CI tests on file-backed SQLite; the IndexNow ping ran on a
+thread started by a product save and read the launch switch and wrote the key
+while the runner was still creating tables, so "database table is locked" was
+4 of the last 8 red runs on `main` (v0.87.2). Spawn through
+`seo.services.indexnow.ping_in_background`, which does nothing under
+`settings._RUNNING_TESTS`; never `threading.Thread(...)` from request code.
 
 **Landmine — sqlite hides Postgres migration crashes.** The in-memory
 test DB types loosely: an auto-generated `AlterField` that retargets a
