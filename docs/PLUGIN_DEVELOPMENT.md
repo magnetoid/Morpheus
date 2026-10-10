@@ -871,6 +871,28 @@ empty values over whatever the merchant had stored. That is how the SEO panel
 would have silently wiped every product's meta description and flipped noindex
 pages back into the index.
 
+### A portal for partners on the storefront
+
+The affiliate portal (`/affiliates/me/`) and the vendor portal (`/vendor/me/`)
+share one shell: `plugins/partner_portal.py` (the period picker, comparison with
+the previous period, chart geometry, the tabs) and the templates in
+`plugins/templates/partner_portal/`. `base.html` extends the theme's
+`storefront/base.html` and styles the header, tabs, KPI tiles, cards, tables and
+empty states only from the theme's tokens (`--paper`, `--ink`, `--accent`,
+`--sans`, `--serif`…), so a portal looks native in every theme. A new portal
+extends `partner_portal/base.html`, fills `portal_title` and `portal_content`,
+and builds its context with `portal_context(...)`, which also sets
+`seo_noindex_reason`: the seo app then makes the page `noindex`, so the
+template never writes a robots tag of its own. Chart geometry leaves Python as
+plain strings, never as localized numbers — a bar `42,5%` tall on a Serbian page
+is no bar at all.
+
+**Showing stock for products you don't own.** Fire `PRODUCT_STOCK_SUMMARY`
+(`value={}`, `product_ids=[...]`). The inventory app answers
+`{str(product_id): {'available', 'low', 'out'}}` for the products whose stock it
+tracks. An untracked product is left out — never reported as zero — and with
+inventory off the value stays `{}`: show no stock column, not an empty one.
+
 ---
 
 ## 9. Hooks and events

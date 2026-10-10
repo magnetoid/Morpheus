@@ -68,7 +68,9 @@ Examples (this is what's already shipped — mirror the pattern):
   does not is *shared plugin infrastructure* at the `plugins/` package root:
   `plugins/feed_mapping.py` (channel feeds), `plugins/dropshipping/` (supplier
   apps: eligibility, address normalisation, tracking files, ship-with-tracking,
-  importing a supplier product as a priced draft, the store currency).
+  importing a supplier product as a priced draft, the store currency),
+  `plugins/partner_portal.py` + `plugins/templates/partner_portal/` (the
+  storefront shell the affiliate and vendor portals share).
 - **Before creating a plugin, audit for overlap**: grep
   `MORPHEUS_DEFAULT_APPS` and the existing plugin descriptions, and
   justify the boundary in the PR. One concept = one model owner —
