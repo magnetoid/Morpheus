@@ -173,12 +173,26 @@ def trusted_agent_manifest(request: HttpRequest) -> JsonResponse:
                 'visa_trusted_agent': accepts,
                 'mastercard_verifiable_intent': accepts,
                 'cloudflare_web_bot_auth': accepts,
+                # Verified at the origin itself (agent_mcp/web_bot_auth.py), so
+                # true whether or not Cloudflare is in front.
+                'web_bot_auth': True,
             },
             'verification_headers': [
                 'X-Verified-Agent-Id',
                 'X-Verified-Agent-Provider',
                 'X-Verified-Agent-Signature',
             ],
+            'web_bot_auth': {
+                'spec': 'draft-meunier-web-bot-auth-architecture (RFC 9421 signatures)',
+                'headers': ['Signature-Agent', 'Signature-Input', 'Signature'],
+                'covered_components': ['@authority', 'signature-agent'],
+                'alg': 'ed25519',
+                'tag': 'web-bot-auth',
+                'keyid': 'RFC 7638 JWK thumbprint',
+                'directory': '<Signature-Agent origin>/.well-known/http-message-signatures-directory',
+                'max_window_seconds': 86400,
+                'effect': 'the agent origin is recorded on orders it places; writes still need scopes and consent',
+            },
             'persistence': {
                 'order.metadata.agent_id': 'persisted on checkout',
                 'audit_log': 'AgentRun.metadata + Order.events',

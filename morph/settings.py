@@ -36,7 +36,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.89.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.90.0')
 
 # The project website. The dashboard's Help and About pages show its pages
 # (help.html, about.html) in their embed mode, so they are written once for

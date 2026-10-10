@@ -20,6 +20,14 @@ Cloudflare (Transform Rule / Worker) to add the matching header on proxied
 traffic. A direct-to-origin client can't supply the secret, so its spoofed
 agent headers are ignored.
 
+**Origin verification (v0.90.0).** A store that is not behind Cloudflare —
+or has no proxy secret — still learns who is calling: when a request carries
+``Signature-Agent`` / ``Signature-Input`` / ``Signature`` (Web Bot Auth, RFC
+9421 + draft-meunier-web-bot-auth-architecture), ``web_bot_auth.verify_request``
+checks the Ed25519 signature against the agent's published key directory and
+attaches the same ``TrustedAgent`` namespace with ``provider='web-bot-auth'``.
+The Cloudflare headers win when both are present and verified.
+
 Gating an endpoint on a verified agent is still the view's responsibility;
 this middleware only attaches (or withholds) the namespace.
 """
@@ -97,6 +105,16 @@ class TrustedAgentMiddleware:
                     'mismatch); ignoring the agent claim.'
                 )
             request.trusted_agent = None
+            if request.META.get('HTTP_SIGNATURE_AGENT'):
+                from plugins.installed.agent_mcp.web_bot_auth import verify_request  # noqa: PLC0415
+
+                bot = verify_request(request)
+                if bot is not None:
+                    request.trusted_agent = TrustedAgent(
+                        agent_id=bot.origin[:120],
+                        provider='web-bot-auth',
+                        signature=bot.keyid[:300],
+                    )
         _current.agent = request.trusted_agent
         try:
             return self.get_response(request)

@@ -622,8 +622,14 @@ shape with minor-unit prices and the seller block), 4c (the `openai_shopping`
 app: JSONL feed, six-hourly push, Channels tab, settings panel) and the first
 half of 4e (the WebMCP block on `global_below_body`: three imperative tools over
 GraphQL, declared where `document.modelContext` exists; the declarative form
-annotations and the Lighthouse run are still open). 4d, 4f and the UCP REST
-checkout remain.
+annotations and the Lighthouse run are still open). **Round 2 shipped as
+v0.90.0** — 4d (every MCP endpoint is a dual-era server: the 2026-07-28
+stateless envelope with mirrored headers, `server/discover`, `resultType`,
+`ttlMs`/`cacheScope`, the reserved error codes, Origin validation; the
+2024-11-05 handshake kept for legacy clients) and 4f (Web Bot Auth verified at
+the origin: RFC 9421 Ed25519 signatures against the agent's published directory,
+fail-soft, SSRF-guarded, the agent origin stamped on orders). The UCP REST
+checkout remains.
 
 Ordered by cost-to-value; a–c are feeds and manifests, cheap and immediately
 visible to agents.

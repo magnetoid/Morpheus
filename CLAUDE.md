@@ -525,6 +525,22 @@ plugins want the same concept, one renames — `analytics.summary`/`top_products
 `analytics.traffic_summary`/`analytics.top_viewed_products`. Guarded by
 `core/agents/tests/test_registry_collisions.py`. (v0.55.0)
 
+**Convention — a verified agent is a NAME on the order, never a permission.**
+`TrustedAgentMiddleware` attaches `request.trusted_agent` from Cloudflare's
+`X-Verified-Agent-*` headers (only with the proxy secret) or, since v0.90.0, from
+a Web Bot Auth signature the origin verifies itself
+(`agent_mcp/web_bot_auth.py`: RFC 9421 over `@authority`, Ed25519 key from the
+agent's `/.well-known/http-message-signatures-directory`, `keyid` = RFC 7638
+thumbprint, tag `web-bot-auth`). Both only stamp `order.metadata.agent_id`;
+scopes and consent still gate every write, and a request that fails to verify
+is anonymous, never refused. The one thing an anonymous request can make the
+store do is fetch that directory, and `Signature-Agent` is attacker-controlled —
+so it must be a quoted public https origin (no IP literal, no `localhost`, no
+dotless host: on a shared Docker network `https://web` is another store's
+container), the path is fixed, the body capped at 64 KB, a failed fetch is
+remembered for 5 min and the whole process fetches at most 30 directories a
+minute. Keep every one of those when touching it (`test_web_bot_auth.py`).
+
 **Landmine — in the MCP scope layer, ABSENCE means wildcard, so every fail-open
 default reads as full access.** `token_scopes()` treats a missing `mcp_scopes`
 key as `{'*'}` (back-compat for unconfigured/legacy tokens). That one decision

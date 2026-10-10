@@ -17,7 +17,18 @@ allowed to do:
 | `/mcp/admin/v1/` | Staff bots | Bearer | Full Linda tool catalog |
 | `/mcp/v1/` | Legacy clients | None | Curated public reads |
 
-### Initialize handshake
+Every endpoint is a **dual-era** server (spec revision `2026-07-28`): a
+request that carries the per-request `_meta`
+(`io.modelcontextprotocol/protocolVersion` + `clientCapabilities`) and the
+mirrored `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` headers is served
+statelessly — no handshake, no session, `resultType` + server identity on
+every result, `ttlMs` + `cacheScope` on lists, `server/discover` for
+versions and capabilities, `-32020` / `-32022` / `-32602` on a bad envelope.
+A client that opens with `initialize` is served the 2024-11-05 way, exactly as
+before. The full rules and a modern `curl` are in
+[`MCP_SERVER.md`](MCP_SERVER.md#two-protocol-eras-on-every-mcp-endpoint).
+
+### Initialize handshake (legacy era)
 
 ```bash
 curl -sX POST https://your-morpheus/mcp/storefront/v1/ \
@@ -195,11 +206,36 @@ explicitly. Tokens are minted under `/dashboard/apps/agent_mcp/tokens/`.
 is Phase 2 and deferred. ChatGPT-Operator shoppers can also still
 transact through the MCP cluster's `/mcp/checkout/v1/`.
 
-## 4. Visa TAP / Mastercard VI (Trusted Agents)
+## 4. Web Bot Auth, Visa TAP / Mastercard VI (Trusted Agents)
 
-Both ride on **Cloudflare Web Bot Auth**. Cloudflare verifies
-signed agent traffic at the edge, then forwards the request with
-trust headers attached:
+**At the origin (v0.90.0).** An agent that signs its requests per
+[Web Bot Auth](https://datatracker.ietf.org/doc/draft-meunier-web-bot-auth-architecture/)
+(RFC 9421 HTTP Message Signatures) is recognised by Morpheus itself,
+with or without Cloudflare in front:
+
+```http
+Signature-Agent: "https://agent.example"
+Signature-Input: sig1=("@authority" "signature-agent");created=1760000000;expires=1760000300;keyid="<RFC 7638 thumbprint>";alg="ed25519";tag="web-bot-auth"
+Signature: sig1=:<base64 Ed25519 signature>:
+```
+
+The origin fetches the agent's JWKS from
+`<Signature-Agent origin>/.well-known/http-message-signatures-directory`
+(https only, fixed path, 64 KB cap, cached an hour, a failure remembered
+for five minutes, at most 30 directory fetches a minute process-wide),
+picks the key whose `kid` or thumbprint equals `keyid`, checks the
+`created`/`expires` window (≤ 24 h) and the `web-bot-auth` tag, and
+verifies the signature over `@authority` (+ `signature-agent`). A verified
+request carries `request.trusted_agent` with `provider="web-bot-auth"` and
+the agent origin as its id, so the order stamp below works unchanged. A
+request that does not verify is simply anonymous — never refused — and
+verification is a *name on the order*, not a permission: scopes and
+consent still gate every write. `/.well-known/agent.json` lists the
+exact contract under `web_bot_auth`.
+
+**Behind Cloudflare.** Visa TAP and Mastercard VI ride on **Cloudflare
+Web Bot Auth**. Cloudflare verifies signed agent traffic at the edge, then
+forwards the request with trust headers attached:
 
 ```http
 X-Verified-Agent-Id: visa-tap:agent-12345

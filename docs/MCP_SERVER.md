@@ -32,6 +32,50 @@ POST /graphql/                   Typed schema, Bearer or session auth
 POST /graphql/agent/             Agent-only path (Cloudflare TAP / MVI)
 ```
 
+### Two protocol eras on every MCP endpoint
+
+Each `/mcp/*/v1/` endpoint is a **dual-era** server (spec revision
+`2026-07-28`, *Versioning and Compatibility*):
+
+- **Modern, stateless (2026-07-28).** No `initialize`, no session. Every
+  POST carries `MCP-Protocol-Version: 2026-07-28`, `Mcp-Method: <method>`
+  and, for `tools/call` / `resources/read`, `Mcp-Name: <params.name|uri>`
+  (the `=?base64?…?=` sentinel is decoded), plus
+  `params._meta["io.modelcontextprotocol/protocolVersion"]` and
+  `["io.modelcontextprotocol/clientCapabilities"]`. A header that disagrees
+  with the body is HTTP 400 + `-32020` (HeaderMismatch); a version we do not
+  speak is 400 + `-32022` with `data.supported`; a missing `_meta` field is
+  400 + `-32602`; an unknown method (including `initialize` and `ping` in this
+  era) is 404 + `-32601`; a notification is `202` with no body; a JSON-RPC
+  batch is 400 + `-32600`; an `Mcp-Session-Id` is ignored and never echoed.
+  Every result carries `resultType: "complete"` and
+  `_meta["io.modelcontextprotocol/serverInfo"]`; `tools/list`,
+  `resources/list` and `resources/read` carry `ttlMs` + `cacheScope`
+  (`private` once a token shapes the list); tools are listed in name order.
+  A tool that raises is an error *result* (`isError: true`), and the
+  server's own application errors use codes outside the JSON-RPC reserved
+  range: `40100` authentication required, `40300` approval required,
+  `42900` rate limited.
+- **Legacy (2024-11-05 handshake).** A client that opens with `initialize`
+  is served exactly as before — session id minted and echoed, the error codes
+  below, no `resultType`. Clients on 2025-03-26 … 2025-11-25 negotiate down to
+  2024-11-05 through that handshake.
+- **`server/discover`** answers in both eras (`supportedVersions`,
+  `capabilities`, `instructions`, the server identity, cacheable for an hour),
+  so a dual-era client can probe before choosing.
+- An `Origin` header naming another site is refused with 403 on every
+  request (the transport's DNS-rebinding rule); agents send none.
+
+```bash
+curl -sX POST https://your-morpheus/mcp/storefront/v1/ \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: tools/call' -H 'Mcp-Name: products.search' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"products.search",
+       "arguments":{"name":"novel"},
+       "_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities":{}}}}'
+```
+
 ## Authentication
 
 A Bearer token issued at **/dashboard/apps/agent_mcp/tokens/** works

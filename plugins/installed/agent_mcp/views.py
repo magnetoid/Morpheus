@@ -40,6 +40,8 @@ from core.utils.site import store_contact_email, store_logo_url, store_name, sto
 
 logger = logging.getLogger('morpheus.agent_mcp')
 
+from plugins.installed.agent_mcp import modern  # noqa: E402 — after the logger, like the rest
+
 # ── JSON-RPC error codes ──────────────────────────────────────────────
 _E_PARSE = -32700
 _E_INVALID = -32600
@@ -197,7 +199,9 @@ def _handle_tools_list(params: dict, authed: bool) -> dict:
     else:
         tools = _public_tools()
     out = []
-    for t in tools:
+    # Deterministic order (2026-07-28 asks for it; harmless before): clients
+    # cache the list and LLM prompt caches hit more often.
+    for t in sorted(tools, key=lambda t: t.name):
         entry = {
             'name': t.name,
             'description': getattr(t, 'description', ''),
@@ -363,7 +367,9 @@ def _validate_tool_args(tool, args: dict) -> str:
     return ''
 
 
-_DISCOVERY_METHODS = frozenset({'initialize', 'tools/list', 'resources/list', 'ping'})
+_DISCOVERY_METHODS = frozenset(
+    {'initialize', 'tools/list', 'resources/list', 'ping', 'server/discover'}
+)
 _MCP_DISCOVERY_RATE_PER_MINUTE = 240
 
 
@@ -657,7 +663,13 @@ _HANDLERS = {
     'resources/list': _handle_resources_list,
     'resources/read': _handle_resources_read,
     'ping': lambda params, authed: {},
+    # Answered in both eras: a dual-era client probes with it.
+    'server/discover': lambda params, authed: modern.discover_result(authed=authed),
 }
+
+# The modern era has no handshake, no ping and no sessions; everything else
+# is shared with the legacy dispatcher above.
+_MODERN_HANDLERS = {k: v for k, v in _HANDLERS.items() if k not in ('initialize', 'ping')}
 
 
 class _RpcError(Exception):
@@ -717,6 +729,9 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
         body = json.loads(request.body or b'{}')
     except json.JSONDecodeError:
         return JsonResponse(_error_envelope(None, _E_PARSE, 'parse error'), status=400)
+    if modern.foreign_origin(request):
+        # Streamable HTTP: validate Origin against DNS rebinding. Agents send none.
+        return JsonResponse(_error_envelope(None, _E_INVALID, 'origin not allowed'), status=403)
 
     authed = _is_authed(request)
     # Resolve Bearer → user + stash scopes for the in-flight handler.
@@ -747,6 +762,8 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
         _ip = request.META.get('HTTP_CF_CONNECTING_IP') or request.META.get('REMOTE_ADDR', 'anon')
         _request_state.rl_client = f'ip:{_ip}'
     try:
+        if modern.is_modern(request, body):
+            return _serve_modern(request, body, authed)
         if isinstance(body, list):
             payload: Any = [_dispatch(m, authed) for m in body]
             had_init = any(isinstance(m, dict) and m.get('method') == 'initialize' for m in body)
@@ -777,6 +794,48 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
         _request_state.rl_client = ''
         _request_state.request_id = ''
         _request_state.linda_turn = None
+
+
+def _serve_modern(request: HttpRequest, body: Any, authed: bool) -> HttpResponse:
+    """One stateless 2026-07-28 request: validate the mirrored headers, run
+    the shared handler, stamp the result. See ``modern.py``."""
+    msg_id = body.get('id') if isinstance(body, dict) else None
+    payload, status = _modern_payload(request, body, msg_id, authed)
+    if payload is None:
+        return HttpResponse(status=status)  # a notification: accepted, no body
+    return JsonResponse(payload, status=status)
+
+
+def _modern_payload(request: HttpRequest, body: Any, msg_id: Any, authed: bool) -> tuple:
+    try:
+        ctx = modern.validate(request, body)
+    except modern.ModernError as e:
+        return _error_envelope(msg_id, e.code, e.message, e.data), e.status
+    method, params = ctx['method'], ctx['params']
+    if msg_id is None and method.startswith('notifications/'):
+        return None, 202  # this era defines no client notification we act on
+    handler = _MODERN_HANDLERS.get(method)
+    if handler is None:
+        return _error_envelope(msg_id, _E_METHOD, f'method not found: {method}'), 404
+    try:
+        if method in _DISCOVERY_METHODS:
+            _enforce_discovery_rate_limit(method)
+        result = handler(params, authed)
+    except _RpcError as e:
+        if not (method == 'tools/call' and e.code == _E_TOOL_FAIL):
+            code = modern.translate_error(e.code)
+            return _error_envelope(msg_id, code, e.message, e.data), modern.http_status(code)
+        # A tool that raised is an error RESULT in this era, never -32002.
+        result = {'content': [{'type': 'text', 'text': e.message}], 'isError': True}
+    except Exception as e:  # noqa: BLE001 — last-resort safety
+        logger.error('agent_mcp: handler crashed on %s: %s', method, e, exc_info=True)
+        return _error_envelope(msg_id, _E_INTERNAL, f'internal error: {e}'), 200
+    if msg_id is None:
+        payload = None
+    else:
+        result = modern.decorate(result, method, authed=authed)
+        payload = {'jsonrpc': '2.0', 'id': msg_id, 'result': result}
+    return payload, (202 if payload is None else 200)
 
 
 def _dispatch(message: dict, authed: bool) -> dict:

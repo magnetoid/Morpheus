@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.90.0 — 2026-10-10
+
+**Agent-ready, round two: MCP 2026-07-28 on every endpoint and Web Bot Auth verified at the origin**
+
+- Every /mcp/*/v1/ endpoint is a dual-era MCP server: the stateless 2026-07-28 envelope (per-request _meta, mirrored MCP-Protocol-Version / Mcp-Method / Mcp-Name headers, server/discover, resultType, ttlMs and cacheScope, the reserved error codes, Origin validation) next to the 2024-11-05 initialize handshake, which legacy clients keep
+- Web Bot Auth at the origin: an agent that signs its requests per RFC 9421 (Ed25519 key published at its /.well-known/http-message-signatures-directory, tag web-bot-auth) is recognised with or without Cloudflare in front, and the agent origin is stamped on the orders it places; a request that does not verify stays anonymous, never refused, and the directory fetch is guarded (public https host only, fixed path, 64 KB cap, failures remembered, 30 fetches a minute)
+- /.well-known/agent.json advertises the Web Bot Auth contract; tools/list returns tools in name order in both eras
+
 ## v0.89.0 — 2026-10-10
 
 **Agent-ready, round one: UCP profile to spec, ACP feed with variants, a ChatGPT Shopping feed app and WebMCP tools on the storefront**
