@@ -6,7 +6,7 @@
   <div class="flex items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Linda activity</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Every Worker Linda has spawned — both her direct chat answers and the parallel background jobs she fans out via <code>delegate.spawn_workers</code> — plus what Janus has learned along the way.</p>
+      <p class="text-sm text-[color:var(--text-muted)]">Every Worker run — the background jobs Linda fans out via <code>delegate.spawn_workers</code> and your automations — plus what Janus has learned along the way. Linda's own chat turns are under Chats.</p>
     </div>
     <a href="/dashboard/assistant/" class="btn btn-primary">
       <i data-lucide="sparkles" class="h-4 w-4"></i> Open chat
@@ -69,7 +69,7 @@
       </tr>
       {% empty %}
       <tr><td colspan="10" style="padding: 3rem; text-align: center; color: var(--text-muted);">
-        No agent runs match this filter. <a href="{% url 'agent_core_dash:console' %}">Open the console</a> to talk to Merchant Ops.
+        No agent runs match this filter.
       </td></tr>
       {% endfor %}
     </tbody>
@@ -112,7 +112,7 @@
 <div class="card mt-3">
   <div class="card-padded" style="border-bottom:1px solid var(--border);">
     <p class="font-medium">Activity log</p>
-    <p class="meta">Every memory change Janus journalled, each store/forget of learned material, and every tool call the agents made. Rows are tagged by kind — journal and memory rows are Janus's own record; tool rows name the agent that called (<code>worker</code>, <code>merchant_ops</code>). Newest first, read straight from the database so it survives redeploys.</p>
+    <p class="meta">Every memory change Janus journalled, each store/forget of learned material, and every tool call the agents made. Rows are tagged by kind — journal and memory rows are Janus's own record; tool rows name who called (<code>worker</code>, or <code>mcp:linda:…</code> for Linda's own calls). Newest first, read straight from the database so it survives redeploys.</p>
   </div>
   <table class="morph-table">
     <thead>

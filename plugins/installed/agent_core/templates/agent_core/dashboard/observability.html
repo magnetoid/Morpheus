@@ -1,12 +1,12 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}Linda insights · Morpheus{% endblock %}
+{% block title %}Observability · Linda{% endblock %}
 
 {% block content %}
 <div class="max-w-6xl mx-auto space-y-4">
 <div class="flex items-end justify-between gap-3 mb-4">
   <div>
-    <h1 class="text-xl font-semibold tracking-tight">Linda insights</h1>
-    <p class="text-sm text-[color:var(--text-muted)]">Cost, latency, error rate, and token usage across every Worker run.</p>
+    <h1 class="text-xl font-semibold tracking-tight">Observability</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Cost, latency, error rate and token usage across Worker runs (background jobs and automations). Each chat shows its own cost.</p>
   </div>
   <form method="get" style="display:flex;gap:.5rem;align-items:center;">
     <label class="meta">Window

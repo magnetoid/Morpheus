@@ -360,7 +360,7 @@ Janus — the protected `janus` app — and core reads them only through
 defaults); the timeout never exceeds 300s whatever is stored, and the unset default
 (240s) is `LINDA_JANUS_TIMEOUT_S` in `morph/settings.py`, not the engine constant. The page's slug is `engine`, not `settings`:
 `/dashboard/apps/<app>/settings/` is the legacy settings deep link and silently
-wins the route. Remaining fences: tests force `'legacy'` and must never spawn a real model;
+wins the route. Remaining fences: tests point `JANUS_BIN` at a path that does not exist (`morph/settings.py`) and must never spawn a real model;
 YOLO/`LINDA_JANUS_AUTO_APPROVE` stays **off**; the child gets an env
 **allowlist** (`_child_env`), never `os.environ.copy()`. A non-zero exit is a failure even when stdout carried
 partial text. **The turn limit may exceed `GUNICORN_TIMEOUT` (60s) only because the
@@ -376,7 +376,12 @@ prompt defeats the prompt cache) — page, memories and knowledge travel with th
 message; the history recap is sent only when a fresh Janus session starts
 (`--resume` already carries the transcript), and sessions rotate after
 `SESSION_MAX_TURNS` or `SESSION_IDLE_S` so context stays bounded; token use is read
-from the session row in the home's `state.db` and counts toward `spend_cap_daily`. Bundled ecommerce skills live in
+from the session row in the home's `state.db` and counts toward `spend_cap_daily`. Each Linda chat is its own conversation (`user:<pk>:chat:<id>`, v0.85.0): its own
+Janus home and session, and its own consent context — an "ok" in one chat never
+approves a change proposed in another. A chat id from the browser is never trusted:
+`core/assistant/chats.py:owned_chat` checks the owner on every read and write; the
+widget keeps its one `user:<pk>` thread. Homes idle for a week are pruned
+(`janus_engine.prune_idle_homes`). Bundled ecommerce skills live in
 `core/assistant/janus_skills/` and are wired via `skills.external_dirs` in the
 per-conversation Janus home. **Four CLI traps shipped live in v0.63.0 and each
 looked fine in tests** (v0.63.1): (1) without `-t`, `janus chat` loads its

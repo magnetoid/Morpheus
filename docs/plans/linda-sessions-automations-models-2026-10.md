@@ -61,6 +61,11 @@ Linda tabs. Findings that shape the design:
 
 ## Steps (each verified before the next)
 
+Status 2026-10-10: step 1 shipped in v0.85.0 (chats, owner-checked; homes pruned
+after a week; session continuity after a redeploy comes from the recap of stored
+messages, so no session id needs persisting). From step 5: timed-out turns now count
+their tokens, and the stale copy/links are fixed. Next: steps 3 and 4.
+
 1. Conversations: model fields + migration; ownership-checked views; Chats tab;
    continue/new/rename/archive. Verify: tests incl. another user's chat → 404.
 2. Session persistence in the DB; recovery after a redeploy. Verify: test with a

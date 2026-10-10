@@ -12,7 +12,7 @@ chat would cover them.{% endcomment %}
   <div class="linda-page__tabs">{% include "admin_dashboard/_section_tabs.html" %}</div>
 
   <div id="linda-log" class="linda-log">
-    {% comment %}Empty state — always rendered on page load. Previous-session messages are reachable via the history API; the page itself opens clean.{% endcomment %}
+    {% comment %}Empty state for a new chat. A reopened chat (?c=) replaces it with what was said (linda-history below).{% endcomment %}
     <div class="linda-empty">
       <img src="{% static 'assistant/linda-avatar.jpg' %}" alt="Linda" style="width:84px;height:84px;border-radius:50%;object-fit:cover;margin:0 auto 1rem;display:block;box-shadow:0 6px 20px rgba(0,0,0,.18);">
       <h1>How can I help?</h1>
@@ -39,7 +39,10 @@ chat would cover them.{% endcomment %}
       </button>
     </form>
     <p id="linda-cost" class="linda-cost" hidden></p>
+    {% if conversation_id %}<p class="linda-cost"><a href="/dashboard/assistant/">New chat</a></p>{% endif %}
   </div>
+  {{ history|json_script:"linda-history" }}
+  {{ conversation_id|json_script:"linda-conversation" }}
 
 </div>
 
@@ -286,8 +289,12 @@ chat would cover them.{% endcomment %}
     var empty = log.querySelector('.linda-empty');
     if (empty) empty.remove();
   }
+  // Which chat this page is: '' until the first message starts one, then its
+  // id (the server answers with a `conversation` event and the URL follows).
+  var conversationId = JSON.parse(document.getElementById('linda-conversation').textContent || '""');
   function refreshCost() {
-    fetch('/dashboard/assistant/history/', { credentials: 'same-origin' })
+    if (!conversationId) return;
+    fetch('/dashboard/assistant/history/?conversation=' + encodeURIComponent(conversationId), { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         var s = d && d.summary;
@@ -484,6 +491,7 @@ chat would cover them.{% endcomment %}
         page_url: window.location.pathname + window.location.search,
         page_title: document.title || '',
         mode: currentMode,
+        conversation: conversationId,
       }),
     }).then(function (resp) {
       if (!resp.ok || !resp.body) throw new Error('stream HTTP ' + resp.status);
@@ -504,6 +512,11 @@ chat would cover them.{% endcomment %}
             if (!line) return;
             var ev;
             try { ev = JSON.parse(line.slice(6)); } catch (_) { return; }
+            if (ev.type === 'conversation') {
+              conversationId = ev.id;
+              try { window.history.replaceState(null, '', '/dashboard/assistant/?c=' + encodeURIComponent(ev.id)); } catch (_) {}
+              return;
+            }
             turn.event(ev);
             if (ev.type === 'tool_call_finished') {
               // Render dashboard.navigate as a click-through chip in the log.
@@ -546,7 +559,10 @@ chat would cover them.{% endcomment %}
     });
   });
 
-  refreshCost();  // show any accumulated cost from a resumed conversation
+  // A reopened chat: show what was said, then its cost so far.
+  var past = JSON.parse(document.getElementById('linda-history').textContent || '[]');
+  past.forEach(function (m) { pushLine(m.role, m.content); });
+  refreshCost();
 })();
 </script>
 {% endblock %}

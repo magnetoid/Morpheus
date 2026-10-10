@@ -134,6 +134,7 @@ class CoreTab:
 
 CORE_TABS: tuple[CoreTab, ...] = (
     CoreTab('ai', 'Chat', '/dashboard/assistant/', 10, 'message-circle'),
+    CoreTab('ai', 'Chats', '/dashboard/assistant/chats/', 15, 'message-square'),
     CoreTab('ai', 'Insights', '/dashboard/ai-insights/', 60, 'lightbulb', badge='insights'),
     CoreTab(
         'ai', 'Proposals', '/dashboard/assistant/proposals/', 90, 'git-pull-request', superuser=True

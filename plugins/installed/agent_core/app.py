@@ -164,7 +164,7 @@ class AgentCorePlugin(Plugin):
                     'icon': 'bot',
                     'label': label,
                     'hint': (run.user_message or '')[:80],
-                    'url': f'/dashboard/agents/runs/{run.id}/',
+                    'url': f'/dashboard/agents/{run.id}/',
                     'when': run.started_at,
                 }
             )

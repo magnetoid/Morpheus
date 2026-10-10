@@ -618,6 +618,30 @@ class SessionAndProgressTests(SimpleTestCase):
         self.assertEqual(out['usage']['output_tokens'], 20)
         self.assertEqual(eng._stored_session_id(self.conv), 's9')
 
+    def test_a_turn_that_times_out_still_counts_its_tokens(self):
+        """The longest turns are the ones that time out; the spend cap must see them."""
+        import sqlite3
+        import time as _time
+
+        def slow_then_killed(argv, **kwargs):
+            home = Path(kwargs['env']['JANUS_HOME'])
+            with sqlite3.connect(home / 'state.db') as db:
+                db.execute(
+                    'CREATE TABLE sessions (id TEXT PRIMARY KEY, source TEXT, started_at REAL, model TEXT, '
+                    'input_tokens INT, output_tokens INT, cache_read_tokens INT, cache_write_tokens INT, '
+                    'reasoning_tokens INT, api_call_count INT, estimated_cost_usd REAL)'
+                )
+                db.execute(
+                    "INSERT INTO sessions VALUES ('s7', 'linda', ?, 'grok-4', 90000, 1200, 0, 0, 0, 14, 0)",
+                    (_time.time(),),
+                )
+            raise subprocess.TimeoutExpired(cmd='janus', timeout=240)
+
+        out, _, _ = self._run(slow_then_killed)
+        self.assertIn('timed out', out['error'])
+        self.assertEqual(out['usage']['input_tokens'], 90000)
+        self.assertEqual(out['usage']['output_tokens'], 1200)
+
     def test_the_turn_ticks_while_janus_works(self):
         import time as _time
 

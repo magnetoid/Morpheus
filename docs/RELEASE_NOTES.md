@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.85.0 — 2026-10-10
+
+**Linda keeps your chats**
+
+- Linda has a Chats tab: every chat you had with her, newest first. Open one to continue it where you left off — she keeps that chat's context — rename it, or archive it. "New chat" starts a fresh one, and the first message names it. Each person sees only their own chats. The Linda button on other pages keeps its one running conversation, which is listed too.
+- Each chat is separate for approvals as well: a "yes" in one chat can never approve a change Linda proposed in another.
+- Linda's daily spend limit now also counts turns that ran out of time; those are often the most expensive ones, and they used to count as zero.
+- Small fixes on Linda's pages: agent runs on the Home activity list opened a missing page; Observability was titled "Linda insights" like the Insights tab; Activity and Memory described things Linda no longer does.
+
 ## v0.84.1 — 2026-10-10
 
 **Help and About open from the website**

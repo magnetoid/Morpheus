@@ -273,6 +273,46 @@ def bundled_skill_names() -> list[str]:
     return sorted(names)
 
 
+# A conversation home nobody has used for this long is removed. Each chat has
+# its own home, so homes grow with chats; nothing in one has to survive (what
+# Janus learns is harvested into the DB every turn, and a reopened chat without
+# its home starts a fresh session that gets the recap from stored messages).
+HOME_PRUNE_AFTER_S = 7 * 24 * 3600
+_PRUNE_EVERY_S = 3600
+_last_prune = 0.0
+
+
+def prune_idle_homes(conv_root: Path, *, keep: Path, now: float | None = None) -> int:
+    """Remove ``linda-*`` homes under `conv_root` idle past HOME_PRUNE_AFTER_S."""
+    now = time.time() if now is None else now
+    removed = 0
+    for home in conv_root.iterdir():
+        if home == keep or home.is_symlink() or not home.is_dir():
+            continue
+        if not home.name.startswith('linda-'):
+            continue
+        try:
+            last_used = max(p.stat().st_mtime for p in (home, home / 'state.db') if p.exists())
+        except (OSError, ValueError):
+            continue
+        if now - last_used > HOME_PRUNE_AFTER_S:
+            shutil.rmtree(home, ignore_errors=True)
+            removed += 1
+    return removed
+
+
+def _maybe_prune_homes(current: Path) -> None:
+    """At most hourly per process; a failure here never costs a turn."""
+    global _last_prune  # noqa: PLW0603 — a process-wide throttle
+    if time.time() - _last_prune < _PRUNE_EVERY_S:
+        return
+    _last_prune = time.time()
+    try:
+        prune_idle_homes(current.parent, keep=current)
+    except OSError:
+        logger.debug('janus: home prune failed', exc_info=True)
+
+
 def _session_id(conversation_key: str) -> str:
     digest = hashlib.sha256(conversation_key.encode()).hexdigest()[:12]
     return f'linda-{digest}'
@@ -611,6 +651,24 @@ def _session_usage(conv_home: Path, session_id: str) -> dict[str, Any]:
     return {'model': row[0] or '', **{k: row[i + 1] or 0 for i, k in enumerate(_USAGE_COLUMNS)}}
 
 
+def _session_started_since(conv_home: Path, since: float) -> str:
+    """The Linda session Janus started at or after `since`, or ''."""
+    db = conv_home / 'state.db'
+    if not db.is_file():
+        return ''
+    try:
+        with contextlib.closing(sqlite3.connect(f'file:{db}?mode=ro', uri=True, timeout=2)) as conn:
+            row = conn.execute(
+                "SELECT id FROM sessions WHERE source = 'linda' AND started_at >= ? "
+                'ORDER BY started_at DESC LIMIT 1',
+                (since,),
+            ).fetchone()
+    except sqlite3.Error:
+        logger.debug('janus: session lookup failed', exc_info=True)
+        return ''
+    return str(row[0]) if row and _SESSION_ID_RE.match(str(row[0] or '')) else ''
+
+
 def _recover_reply(conv_home: Path, resume_id: str, since: float) -> tuple[str, str]:
     """The session and last assistant reply this turn wrote to state.db, if any."""
     db = conv_home / 'state.db'
@@ -699,6 +757,7 @@ def iter_janus_turn(
     try:
         conv_home = linda_janus_home() / 'conv' / _session_id(conversation_key)
         conv_home.mkdir(mode=0o700, parents=True, exist_ok=True)
+        _maybe_prune_homes(conv_home)
     except OSError as e:
         # Reported like any engine failure, so the merchant gets the friendly
         # error and the self-improvement loop gets a signal, not a stack trace.
@@ -869,10 +928,17 @@ def _spawn(
             )
         except subprocess.TimeoutExpired:
             logger.warning('janus engine timed out after %ss key=%s', timeout, conversation_key)
+            # The longest turns are the ones that time out, and the daily spend
+            # cap reads `usage`: count what the session spent before the kill.
+            killed = resume_id or _session_started_since(conv_home, spawned_at)
             return {
                 'text': '',
                 'error': f'janus timed out after {timeout}s',
                 'duration_ms': timeout * 1000,
+                'usage': _turn_usage(
+                    usage_before if killed == resume_id else {},
+                    _session_usage(conv_home, killed),
+                ),
             }
         except OSError as e:
             logger.warning('janus engine spawn failed: %s', e)

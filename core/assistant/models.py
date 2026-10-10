@@ -17,6 +17,17 @@ class AssistantConversation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     key = models.CharField(max_length=120, unique=True, db_index=True)
     title = models.CharField(max_length=200, blank=True)
+    # The staff member whose chat this is — every read and write of a chat is
+    # checked against it. Rows from before chats (the one `user:<pk>` thread)
+    # are backfilled by migration 0015; other keys stay unowned.
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='linda_chats',
+    )
+    archived = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
 

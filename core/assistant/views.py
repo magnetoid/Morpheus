@@ -37,12 +37,14 @@ def _conversation_key(request) -> str:
 def assistant_page(request):
     """Standalone Linda page — full-screen chat.
 
-    Always starts with a clean conversation — prior session messages are NOT
-    pre-loaded into the chat area. The merchant can reach previous turns via
-    the conversation history API (``/dashboard/assistant/history/``); the
-    page itself opens fresh every time, like a new browser tab. No suggested
-    prompts: the owner had them removed (2026-10-09).
+    Without ``?c=`` it is a new chat (created with the first message); with
+    ``?c=<chat id>`` it reopens one of your chats (core/assistant/chats.py) and
+    shows what was said, so you can continue. No suggested prompts: the owner
+    had them removed (2026-10-09).
     """
+    from core.assistant.chats import owned_chat, transcript
+
+    chat = owned_chat(request.user, request.GET['c']) if request.GET.get('c') else None
     memories: list = []
     try:
         from core.assistant.models import LindaMemory
@@ -60,8 +62,8 @@ def assistant_page(request):
         request,
         'assistant/page.html',
         {
-            # Intentionally empty — the redesigned page starts clean.
-            'history': [],
+            'history': transcript(chat) if chat else [],
+            'conversation_id': str(chat.pk) if chat else '',
             'memories': memories,
             'assistant_modes': [
                 {'slug': m.slug, 'label': m.label, 'description': m.description, 'icon': m.icon}
@@ -100,7 +102,22 @@ def assistant_stream(request):
         return HttpResponseBadRequest('Missing `message`.')
 
     user = getattr(request, 'user', None)
-    conv_key = _conversation_key(request)
+    # Which conversation: the page sends `conversation` — an id to continue one
+    # of your chats, or '' for a new one; the widget sends none and keeps its
+    # one running thread (core/assistant/chats.py).
+    from core.assistant.chats import owned_chat, running_thread, start_chat
+
+    started = None
+    conversation = body.get('conversation')
+    if conversation is None:
+        conv_key = _conversation_key(request)
+        if user is not None and getattr(user, 'is_authenticated', False):
+            running_thread(user)
+    elif conversation == '':
+        started = start_chat(user, message)
+        conv_key = started.key
+    else:
+        conv_key = owned_chat(user, conversation).key
 
     page_url = (body.get('page_url') or '')[:512]
     page_title = (body.get('page_title') or '')[:200]
@@ -109,6 +126,9 @@ def assistant_stream(request):
     def _event_stream():
         # Outer try: a crash anywhere should still close the stream cleanly.
         try:
+            if started is not None:
+                # The page keeps posting to this chat and puts it in the URL.
+                yield f'data: {json.dumps({"type": "conversation", "id": str(started.pk), "title": started.title})}\n\n'
             for ev in Assistant().stream(
                 message=message[:10_000],
                 conversation_key=conv_key,
@@ -153,8 +173,12 @@ def assistant_stream(request):
 
 @staff_member_required
 def assistant_history(request):
-    """JSON history of the current conversation — used by the floating widget."""
-    key = _conversation_key(request)
+    """JSON history of a conversation: one of your chats (``?conversation=``)
+    or, without it, the widget's running thread."""
+    from core.assistant.chats import owned_chat
+
+    chat_id = request.GET.get('conversation')
+    key = owned_chat(request.user, chat_id).key if chat_id else _conversation_key(request)
     store = get_default_store()
     history = store.history(conversation_key=key, limit=30)
     return JsonResponse(

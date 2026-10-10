@@ -627,7 +627,7 @@ def observability_view(request):
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
                 {'label': 'Linda', 'url': '/dashboard/assistant/'},
-                {'label': 'Insights'},
+                {'label': 'Observability'},
             ],
         },
     )

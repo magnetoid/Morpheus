@@ -1,0 +1,61 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if archived %}Archived chats{% else %}Chats{% endif %} · Linda{% endblock %}
+
+{% block content %}
+{% comment %}Your chats with Linda (core/assistant/chats.py). Open one to continue
+it where you left off; each keeps its own context. Only your own chats are
+listed — another staff member's never are.{% endcomment %}
+<div class="max-w-4xl mx-auto space-y-4">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">{% if archived %}Archived chats{% else %}Chats{% endif %}</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">{% if archived %}Chats you put away. Restore one to see it in Chats again.{% else %}Open a chat to continue it — Linda picks up where you left off.{% endif %}</p>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if archived %}
+      <a href="/dashboard/assistant/chats/" class="btn btn-ghost">Back to chats</a>
+      {% else %}
+      <a href="/dashboard/assistant/chats/?archived=1" class="btn btn-ghost">Archived</a>
+      {% endif %}
+      <a href="/dashboard/assistant/" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> New chat</a>
+    </div>
+  </div>
+
+  {% if chats %}
+  <div class="card overflow-hidden">
+    <table class="morph-table">
+      <thead><tr><th>Chat</th><th>Last message</th><th>Messages</th><th></th></tr></thead>
+      <tbody>
+        {% for c in chats %}
+        <tr>
+          <td class="align-top" style="min-width: 16rem;">
+            <a href="/dashboard/assistant/?c={{ c.pk }}" class="font-medium">{% if c.title %}{{ c.title }}{% elif c.key == thread_key %}Quick questions (the Linda button){% else %}Chat from {{ c.created_at|date:"M j" }}{% endif %}</a>
+            <details class="mt-1">
+              <summary class="text-xs text-[color:var(--text-muted)]" style="cursor: pointer;">Rename</summary>
+              <form method="post" action="/dashboard/assistant/chats/{{ c.pk }}/rename/" class="flex items-center gap-2 mt-1">
+                {% csrf_token %}
+                <input type="text" name="title" value="{{ c.title }}" maxlength="200" class="input" style="width: 100%;" aria-label="Chat name">
+                <button type="submit" class="btn text-xs">Save</button>
+              </form>
+            </details>
+          </td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap align-top">{{ c.last_at|date:"M j, H:i" }}</td>
+          <td class="text-[color:var(--text-muted)] align-top">{{ c.message_count }}</td>
+          <td class="text-right align-top">
+            <form method="post" action="/dashboard/assistant/chats/{{ c.pk }}/{% if archived %}unarchive{% else %}archive{% endif %}/">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-ghost text-xs">{% if archived %}Restore{% else %}Archive{% endif %}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card card-padded text-sm text-[color:var(--text-muted)]">
+    {% if archived %}No archived chats.{% else %}No chats yet. <a href="/dashboard/assistant/">Start one</a> — every chat you have with Linda shows up here.{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
