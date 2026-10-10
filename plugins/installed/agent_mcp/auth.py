@@ -131,6 +131,7 @@ def apply_bearer_user(request: HttpRequest) -> bool:
     request._morph_token_scopes_graphql = set()
     request._morph_token_approved_tools = set()
     request._morph_token_rate_limit = None
+    request._morph_token_id = ''
 
     # Re-use the same source-of-truth reader as the MCP server.
     from plugins.installed.agent_mcp.views import _api_keys
@@ -150,6 +151,8 @@ def apply_bearer_user(request: HttpRequest) -> bool:
     request._morph_token_scopes_mcp = token_scopes(entry, 'mcp')
     request._morph_token_scopes_graphql = token_scopes(entry, 'graphql')
     request._morph_token_label = (entry or {}).get('label', '') if isinstance(entry, dict) else ''
+    # The entry's id: the principal a Janus conversation belongs to (janus_door.py).
+    request._morph_token_id = str((entry or {}).get('id') or '') if isinstance(entry, dict) else ''
     # Governance metadata (enterprise Phase 1): which requires_approval tools
     # the merchant pre-approved THIS token for, and its per-minute rate limit.
     # Legacy raw-string tokens get neither (deny-by-default on approval tools).

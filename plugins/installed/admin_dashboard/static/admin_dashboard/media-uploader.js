@@ -245,12 +245,45 @@
             flashMessage(`Upload failed: ${file.name} — ${reason}`);
             continue;
           }
+          let data = null;
+          try { data = await res.json(); } catch (e) { data = null; }
+          if (data && data.html) {
+            insertImageTile(data.html);
+          } else {
+            // An older server without the tile: fall back to a full render.
+            location.reload();
+            return;
+          }
           added += 1;
         } catch (err) {
           flashMessage(`Upload failed: ${file.name}`);
         }
       }
-      if (added) location.reload();   // server re-renders the grid w/ new tile
+      // Saved already; the tile is in place. No reload, so nothing typed
+      // elsewhere on the page is lost (owner's ask, 2026-10-10).
+      if (added) flashMessage(added === 1 ? 'Image saved.' : `${added} images saved.`);
+    }
+
+    // A new image tile goes after the last image (images come before videos).
+    function insertImageTile(html) {
+      if (!grid) return;
+      const holder = document.createElement('div');
+      holder.innerHTML = html.trim();
+      const tile = holder.firstElementChild;
+      if (!tile) return;
+      const images = grid.querySelectorAll('[data-kind="image"]');
+      const anchor = images.length
+        ? images[images.length - 1].nextSibling
+        : (grid.querySelector('[data-kind="video"]') || addTile || null);
+      grid.insertBefore(tile, anchor);
+      renumberImages();
+      updateCount();
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function updateCount() {
+      const count = root.querySelector('[data-media-count]');
+      if (count && grid) count.textContent = String(grid.querySelectorAll('[data-id]').length);
     }
 
     // ── Video URL paste ───────────────────────────────────────────────
@@ -306,23 +339,8 @@
           const res = await api(fillId(tpl, id), { body: new FormData() });
           if (res.ok || res.redirected) {
             tile.remove();
-            // Recompute slot labels on the remaining image tiles so
-            // "Slot 1" / "Cover" stay in sync without a page reload.
-            const imageTiles = grid.querySelectorAll('[data-kind="image"]');
-            imageTiles.forEach((t, i) => {
-              const slot = t.querySelector('.muploader-tile__slot');
-              if (slot) slot.textContent = `Slot ${i + 1}`;
-              t.classList.toggle('is-cover', i === 0);
-              const pill = t.querySelector('.muploader-tile__cover-pill');
-              if (i === 0 && !pill) {
-                const span = document.createElement('span');
-                span.className = 'muploader-tile__cover-pill';
-                span.textContent = 'Cover';
-                t.appendChild(span);
-              } else if (i !== 0 && pill) {
-                pill.remove();
-              }
-            });
+            renumberImages();
+            updateCount();
           } else {
             flashMessage('Delete failed.');
           }
@@ -415,6 +433,25 @@
       }
     }
 
+    // "Slot 1" / "Cover" follow the image tiles' order without a reload.
+    function renumberImages() {
+      if (!grid) return;
+      grid.querySelectorAll('[data-kind="image"]').forEach((t, i) => {
+        const slot = t.querySelector('.muploader-tile__slot');
+        if (slot) slot.textContent = `Slot ${i + 1}`;
+        t.classList.toggle('is-cover', i === 0);
+        const pill = t.querySelector('.muploader-tile__cover-pill');
+        if (i === 0 && !pill) {
+          const span = document.createElement('span');
+          span.className = 'muploader-tile__cover-pill';
+          span.textContent = 'Cover';
+          t.appendChild(span);
+        } else if (i !== 0 && pill) {
+          pill.remove();
+        }
+      });
+    }
+
     async function deleteFromModal() {
       const kind = modal.dataset.kind;
       const id = modal.dataset.id;
@@ -423,7 +460,14 @@
         const res = await api(url, { body: new FormData() });
         if (res.ok || res.redirected) {
           closeModal();
-          location.reload();
+          const gone = grid && grid.querySelector(`[data-id="${id}"]`);
+          if (gone) {
+            gone.remove();
+            renumberImages();
+            updateCount();
+          } else {
+            location.reload();
+          }
         } else {
           flashMessage('Delete failed.');
         }
@@ -517,4 +561,15 @@
   // Save, stayed inert until a manual reload. Bind whatever a swap brings in;
   // init() skips anything already bound.
   document.addEventListener('htmx:afterSwap', () => Morph.MediaUploader.initAll());
+
+  // A file dropped just outside a drop zone must not make the browser open
+  // it in place of the dashboard, which looks like a reload and loses edits.
+  // Only on pages that have an uploader; the zones handle their own drops.
+  const isFileDragEvent = (e) => Array.from(e.dataTransfer?.types || []).includes('Files');
+  ['dragover', 'drop'].forEach((type) => {
+    document.addEventListener(type, (e) => {
+      if (!isFileDragEvent(e) || !document.querySelector('[data-media-uploader]')) return;
+      if (!e.target.closest || !e.target.closest('[data-media-uploader]')) e.preventDefault();
+    });
+  });
 })();

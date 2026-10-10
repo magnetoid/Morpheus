@@ -31,6 +31,16 @@ _UNSET = object()
 
 
 @dataclass(frozen=True, slots=True)
+class ExternalGrant:
+    """What an external agent's API token may do, read fresh on every call."""
+
+    token_id: str
+    label: str
+    scopes: frozenset
+    approved: frozenset
+
+
+@dataclass(frozen=True, slots=True)
 class LindaTurn:
     user: Any
     conversation_key: str
@@ -39,6 +49,9 @@ class LindaTurn:
     # made the call (informational, never a gate).
     provider: str = ''
     model: str = ''
+    # Set for a turn an external agent asked for (ADR 0039): Janus then works
+    # with exactly that token's power.
+    external: ExternalGrant | None = None
 
 
 def turn_for_request(request) -> LindaTurn | None:
@@ -73,13 +86,60 @@ def _resolve(request) -> LindaTurn | None:
     # The slug in the token was resolved when the turn started; resolve again so
     # a user who lost an entitlement mid-turn loses it on their next tool call.
     mode = resolve_mode(identity.mode, user)
+    external = _external_for(identity)
+    if external is _REFUSED:
+        return None
     return LindaTurn(
         user=user,
         conversation_key=identity.conversation_key,
         mode_slug=mode.slug,
         provider=identity.provider,
         model=identity.model,
+        external=external,
     )
+
+
+_REFUSED = object()
+
+
+def _external_for(identity):
+    """The token grant an external turn runs under: None for a merchant's own
+    turn, ``_REFUSED`` when the turn must not run at all."""
+    from core.assistant import gates
+
+    if not identity.principal and not gates.is_external_key(identity.conversation_key):
+        return None
+    # Both or neither: a principal on a merchant's conversation, or an external
+    # conversation without its token, is refused (fails closed).
+    if gates.principal_of(identity.conversation_key) != identity.principal:
+        return _REFUSED
+    grant = _external_grant(identity.principal)
+    return _REFUSED if grant is None else grant  # a revoked token stops the turn
+
+
+def _external_grant(token_id: str) -> ExternalGrant | None:
+    from plugins.installed.agent_mcp.janus_door import token_entry
+    from plugins.installed.agent_mcp.scopes import token_scopes
+
+    entry = token_entry(token_id)
+    if entry is None:
+        return None
+    return ExternalGrant(
+        token_id=token_id,
+        label=str(entry.get('label') or ''),
+        scopes=frozenset(token_scopes(entry, 'mcp')),
+        approved=frozenset(str(t) for t in entry.get('approved_tools') or []),
+    )
+
+
+def scope_profile(turn: LindaTurn) -> tuple[str, ...]:
+    """Linda's scope profile, narrowed to an external agent's token."""
+    from core.assistant.gates import LINDA_SCOPES
+    from plugins.installed.agent_mcp.scopes import WILDCARD
+
+    if turn.external is None or WILDCARD in turn.external.scopes:
+        return LINDA_SCOPES
+    return tuple(s for s in LINDA_SCOPES if s in turn.external.scopes)
 
 
 # Janus keeps what Linda learns in its own memory (core/assistant/janus_learning.py),
@@ -161,9 +221,7 @@ def _all_tools() -> list:
 
 def catalogue(turn: LindaTurn) -> list:
     """Every tool this turn may see and call: Linda's profile, then the mode."""
-    from core.assistant.gates import LINDA_SCOPES
-
-    profile = set(LINDA_SCOPES)
+    profile = set(scope_profile(turn))
     developer = turn.mode_slug == 'dev'
     tools = [
         t
@@ -217,12 +275,13 @@ def call_tool(tool, name: str, args: dict, turn: LindaTurn, *, audit_call, audit
         tool=tool,
         tool_name=name,
         args=args,
-        scopes=gates.LINDA_SCOPES,
+        scopes=scope_profile(turn),
         context={'user': turn.user, 'mode': turn.mode_slug},
         conversation_key=conv,
         human_message=human_message,
         human_message_at=human_message_at,
         needs_consent=needs_consent(tool),
+        external_approved=turn.external.approved if turn.external else None,
     )
     if reason:
         payload = {'error': reason}

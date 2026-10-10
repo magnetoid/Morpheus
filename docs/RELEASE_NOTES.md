@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.96.0 — 2026-10-10
+
+**Janus for external agents over MCP and GraphQL, an API tokens page that hands over connections, uploads without reloads, an editor that reads imported copy**
+
+- Janus for external agents: Hermes Agent, OpenClaw, Claude Code or any script can ask Janus, the store's own agent, over MCP (janus.ask and janus.reply on /mcp/admin/v1/) or GraphQL (askJanus and janusTurn). Janus works with exactly the asking token's power, its scopes and the protected tools the merchant ticked for it, and nothing said in that conversation counts as consent. A turn runs on a worker; the call waits up to 25 seconds and otherwise returns a turn id to fetch the answer with. A token must have Talk to Janus ticked explicitly; full access does not include it.
+- API tokens page: a token is created for a purpose (Janus: ask and read; Janus: ask, read and change; Read only; Full access; Custom) instead of silently getting full access. Its connection details, shown once with the secret, carry everything the other party needs and ready setup for Hermes Agent, OpenClaw, Claude Code, Cursor-style MCP clients and curl; Connect shows them again without the secret and New secret replaces it. Tokens record who created them and every change is audited. The approvals list now names the protected tools a token can be granted (it was always empty, and every save wiped the grants). The two example cards are gone.
+- Product gallery: a dropped or picked photo is saved and shown in place without reloading the page, which also lost anything typed elsewhere on the form. Deleting from the edit dialog no longer reloads either, and a photo dropped just outside the drop zone no longer opens in the browser instead of the dashboard.
+- Product editor: descriptions imported from suppliers, whose tables the sanitiser had stripped to bare lines between paragraphs, showed as one run-on line or an empty editor. Every top-level run of text now loads as paragraphs.
+- Supernatural Shop: the product page photo is smaller (at most 540 px wide and never taller than the screen allows), the details column wider and the thumbnails back in view. The account menu's Sign in button keeps its colours when focused from the keyboard on Supernatural Shop and Irving Survival.
+
 ## v0.95.0 — 2026-10-10
 
 **Account menu with partner logins, product photos named after the product, Irving written for a worldwide audience**

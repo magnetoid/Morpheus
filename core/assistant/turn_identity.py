@@ -47,6 +47,9 @@ class TurnIdentity:
     # at the edge knew which model made the call). Informational, never a gate.
     provider: str = ''
     model: str = ''
+    # The API token an external agent's turn runs for (ADR 0039), or ''. The MCP
+    # edge looks it up on every call and holds the turn to that token's power.
+    principal: str = ''
 
 
 def is_turn_token(token: str) -> bool:
@@ -54,7 +57,14 @@ def is_turn_token(token: str) -> bool:
 
 
 def mint(
-    *, user, conversation_key: str, mode_slug: str, ttl_s: int, provider: str = '', model: str = ''
+    *,
+    user,
+    conversation_key: str,
+    mode_slug: str,
+    ttl_s: int,
+    provider: str = '',
+    model: str = '',
+    principal: str = '',
 ) -> str:
     """Sign a token for one turn. ``ttl_s`` should cover the turn timeout."""
     payload = {
@@ -69,6 +79,8 @@ def mint(
         payload['p'] = str(provider)[:50]
     if model:
         payload['md'] = str(model)[:100]
+    if principal:
+        payload['e'] = str(principal)[:64]
     return PREFIX + signing.dumps(payload, salt=_SALT, compress=True)
 
 
@@ -93,7 +105,7 @@ def verify(token: str) -> TurnIdentity | None:
     )
     if not well_formed or expires < int(time.time()):
         return None
-    provider, model = (payload.get('p'), payload.get('md'))
+    provider, model, principal = (payload.get('p'), payload.get('md'), payload.get('e'))
     return TurnIdentity(
         user_id=user_id,
         conversation_key=conv,
@@ -101,6 +113,7 @@ def verify(token: str) -> TurnIdentity | None:
         expires_at=expires,
         provider=provider if isinstance(provider, str) else '',
         model=model if isinstance(model, str) else '',
+        principal=principal if isinstance(principal, str) else '',
     )
 
 

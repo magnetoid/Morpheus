@@ -99,8 +99,10 @@ def _public_tools() -> list:
         cluster = active_cluster()
         if cluster is not None:
             names = cluster.get('names')
-            if names is None:  # admin — all tools
-                return all_tools
+            if names is None:  # admin — all tools, plus the door to Janus (janus.ask/reply)
+                from plugins.installed.agent_mcp.janus_door import door_tools
+
+                return [*all_tools, *door_tools()]
             # Resolve each whitelisted name from Linda's catalog first, then fall
             # back to the plugin registry. Buyer-agent cart/checkout tools live
             # in agentic_checkout (registered via contribute_agent_tools) and are
@@ -704,13 +706,17 @@ def _stash_linda_turn(request: HttpRequest) -> None:
     turn = turn_for_request(request)
     _request_state.linda_turn = turn
     if turn is not None:
-        _request_state.token_label = f'linda:user-{turn.user.pk}'
+        if turn.external is not None:
+            # Janus working for an external agent: its rows name the agent's token.
+            _request_state.token_label = f'janus:{turn.external.label or turn.external.token_id}'
+        else:
+            _request_state.token_label = f'linda:user-{turn.user.pk}'
         _request_state.approved_tools = set()
 
 
 @csrf_exempt
 @require_http_methods(['POST', 'GET'])
-def rpc_endpoint(request: HttpRequest) -> HttpResponse:
+def rpc_endpoint(request: HttpRequest) -> HttpResponse:  # noqa: PLR0915 — one entry point; the state stash and its reset stay side by side
     """Single JSON-RPC 2.0 entry point.
 
     Implements the MCP Streamable HTTP transport (2025-03-26+):
@@ -752,6 +758,7 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
     _tok = _present_token(request)
     _request_state.token_present = bool(_tok)
     _request_state.token_label = getattr(request, '_morph_token_label', '') or ''
+    _request_state.token_id = getattr(request, '_morph_token_id', '') or ''
     _request_state.approved_tools = getattr(request, '_morph_token_approved_tools', set())
     _request_state.rate_limit = getattr(request, '_morph_token_rate_limit', None)
     _request_state.request_id = getattr(request, 'request_id', '') or ''
@@ -789,6 +796,7 @@ def rpc_endpoint(request: HttpRequest) -> HttpResponse:
         _request_state.scopes = set()
         _request_state.token_present = False
         _request_state.token_label = ''
+        _request_state.token_id = ''
         _request_state.approved_tools = set()
         _request_state.rate_limit = None
         _request_state.rl_client = ''

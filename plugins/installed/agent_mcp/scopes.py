@@ -164,6 +164,16 @@ AVAILABLE_SCOPES: dict[str, tuple[str, str]] = {
         "Must be granted explicitly via the token's acp_scopes list — the "
         'wildcard does not confer it.',
     ),
+    # Janus — the store's own agent, asked by an external agent (ADR 0039).
+    # Like acp.checkout, the wildcard does NOT confer it: a token talks to Janus
+    # only when this scope is listed explicitly (janus_door.janus_granted), so a
+    # legacy or unconfigured token never gains it silently.
+    'janus.chat': (
+        'Janus · talk to Janus',
+        "Ask Janus, the store's own AI agent, over MCP (janus.ask) or GraphQL (askJanus). "
+        "Janus then works with this token's other scopes and approved tools, never more. "
+        'Must be ticked explicitly; full access does not include it.',
+    ),
     # Diagnostics — sensitive, opt-in
     'diagnostics.read': (
         'Diagnostics · read (sensitive)',

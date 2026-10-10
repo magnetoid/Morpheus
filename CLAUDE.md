@@ -586,6 +586,21 @@ customer timelines, agent runs with full tool output, payment intents for any
 order did until v0.87.3): ask `has_scope` for the surface's own scope, and add
 the scope to `AVAILABLE_SCOPES` + `_CAPABILITY_FOR_SCOPE` in the same change.
 
+**Landmine — an external agent's message is stored like the merchant's, so the
+consent kernel would read its "yes" as the merchant's.** Janus answers external agents
+since v0.96.0 (`janus.ask`/`janus.reply`, `askJanus`/`janusTurn`; `agent_mcp/janus_door.py`).
+The turn runs on Celery in `ext:<token id>:chat:<id>` as the shared `mcp-service` user,
+and its turn token carries the API token as principal. On an external key
+`gates.gate_reason` never consults consent: a write runs only when the token could make it
+itself (Linda's profile narrowed to the token's MCP scopes; a `requires_approval` tool only
+when ticked in `approved_tools`), and the edge re-reads the token on every call, so a revoke
+stops the turn. `janus.chat` must be listed explicitly (the wildcard does not confer it, like
+`acp.checkout`), and the door tools are never in `agent_registry`, so Janus cannot call
+itself. Found on the way: a new token had no scope keys (a wildcard everywhere), and the
+approvals checklist read the legacy read list, so it was always empty and every permissions
+save wiped the grants. Guarded by `agent_mcp/tests/test_janus_door.py` and
+`test_tokens_page.py`.
+
 **Landmine — a `migrations/` dir without `__init__.py` is invisible to Django,
 and ONLY production notices.** Five plugins (brand_kit, lookbook, media_3d,
 rails, smart_shipping) shipped a `0001_initial.py` in a non-package directory:

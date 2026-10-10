@@ -93,8 +93,20 @@ rotate by creating + revoking.
 ### Issuing a token
 
 1. **Dashboard** (recommended): Settings → Developer tools →
-   **API tokens** → Create token. Full value is shown ONCE. The
-   table only shows first4…last4 thereafter.
+   **API tokens** → Create token. Choose what it is for (since v0.96.0 a new
+   token is never an implicit wildcard): *Janus: ask and read*, *Janus: ask,
+   read and change*, *Read only*, *Full access* or *Custom* (no access until you
+   set its permissions). The page then shows the token's **connection
+   details** once, secret included: one block to copy for the other party
+   (store, both endpoints, the header, how to reach Janus, what the token may
+   do) plus ready configuration for Hermes Agent (`~/.hermes/config.yaml`),
+   OpenClaw (`openclaw mcp set`), Claude Code (`claude mcp add --transport
+   http`), Cursor-style `mcpServers` JSON and a curl test. Later, **Connect**
+   shows the same details with a placeholder for the secret, and **New secret**
+   replaces the secret (label, scopes and grants stay; the old one stops at
+   once). The table shows first4…last4 only. Who created a token is recorded on
+   it, and create, rotate, permission and revoke actions write audit rows
+   (`mcp.token_*`).
 2. **Shell** (for automation / scripted bootstrap):
 
 ```bash
@@ -178,6 +190,42 @@ passes the same gates as Linda's in-process loop (`core/assistant/gates.py`):
   touches `janus_learning`, so it neither reads store memory nor contributes to
   it. The `agents.decision` rows such a run writes are tool-call telemetry, not
   learning, and their `metadata.agent` names the caller.
+
+### External agents talk to Janus (`janus.ask`, `askJanus`)
+
+Since v0.96.0 an external agent can ask Janus, the store's own agent, instead of
+driving raw tools: Janus answers with its memory, skills and knowledge of the
+store, and does the work itself. Design:
+`docs/plans/janus-external-agents-2026-10.md`; rule: Torsor ADR 0039.
+
+- **Access.** The token must list the scope `janus.chat` explicitly on the
+  surface it calls from (`mcp_scopes` for the MCP tools, `graphql_scopes` for
+  GraphQL). Like `acp.checkout`, the wildcard does not confer it, so a legacy or
+  unconfigured token never gains Janus without the merchant deciding.
+- **MCP.** On `/mcp/admin/v1/`, `janus.ask {message, conversation?,
+  wait_seconds?}` and `janus.reply {turn, wait_seconds?}`. They are built by
+  agent_mcp and never registered in the agent registry, so neither Janus nor
+  the Worker can call Janus.
+- **GraphQL.** `mutation { askJanus(input: {message, conversation, waitSeconds})
+  { turn conversation status reply error toolCalls } }` and
+  `query { janusTurn(turn, waitSeconds) { ... } }`.
+- **Answers.** `status` is `done`, `failed`, `queued`/`running` (fetch the answer
+  later with the `turn` id) or `refused` (with `code`: `forbidden`, `invalid`,
+  `rate_limited`, `busy`, `not_found`). A turn runs on a Celery worker
+  (`agent_mcp.janus_turn`, up to 420 s); the call waits up to `wait_seconds`
+  (default 20, max 25). Pass the returned `conversation` to continue it; a
+  conversation and its turns belong to the token that started them.
+- **Limits.** 10 questions a minute and 2 running at once per token; the
+  merchant's guardrails (kill switch, daily caps, spend cap) apply as to every
+  Janus turn, and each turn is an `AgentRun` (`metadata.via = "api"`, the token
+  label).
+- **Power.** Janus works with exactly the token's power, looked up on every tool
+  call (a revoked token stops the turn): its catalogue is Linda's narrowed to
+  the token's MCP scopes, a write runs when the scopes cover it, and a protected
+  (`requires_approval`) tool runs only when the merchant ticked it for the token.
+  Nothing said in the conversation is consent: on an external conversation
+  (`ext:<token id>:chat:<id>`) the consent kernel is never consulted
+  (`core/assistant/gates.py`). Audit rows name the token as `janus:<label>`.
 
 ## Write surface (catalog, inventory, orders)
 

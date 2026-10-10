@@ -650,13 +650,21 @@ def image_upload(request: HttpRequest, product_id: str) -> HttpResponse:  # noqa
         logging.getLogger('morpheus.admin').exception('image_upload failed for %s', product_id)
         return _fail(f'Could not save the image: {exc}', status=500)
 
-    messages.success(request, 'Image uploaded.')
     if is_ajax:
+        # The uploader inserts this tile in place: no reload, so no flash
+        # message either (it would surface on the next page instead).
+        from django.template.loader import render_to_string
+
         try:
             url = image.image.url
         except Exception:  # noqa: BLE001
             url = ''
-        return JsonResponse({'ok': True, 'id': str(image.id), 'url': url})
+        tile = render_to_string(
+            'admin_dashboard/_media_tile_image.html',
+            {'img': image, 'slot': sort_order + 1, 'cover': is_primary},
+        )
+        return JsonResponse({'ok': True, 'id': str(image.id), 'url': url, 'html': tile})
+    messages.success(request, 'Image uploaded.')
     return redirect('admin_dashboard:product_edit', product_id=product.id)
 
 

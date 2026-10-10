@@ -1,0 +1,29 @@
+{% comment %}One image tile of the gallery uploader (_media_uploader.html). The page
+renders it per image and the upload view renders it for a new image, so a
+dropped photo appears without a reload and looks exactly like the others.
+Context: img (ProductImage), slot (1-based), cover (bool).{% endcomment %}
+<div class="muploader-tile{% if cover %} is-cover{% endif %}"
+     draggable="true"
+     data-id="{{ img.id }}"
+     data-kind="image"
+     data-alt="{{ img.alt_text|default:''|escape }}">
+  <div class="muploader-tile__media">
+    {% if img.image %}
+    <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:'' }}" loading="lazy">
+    {% else %}
+    <i data-lucide="image-off" class="h-6 w-6 text-[color:var(--text-subtle)]"></i>
+    {% endif %}
+  </div>
+  <div class="muploader-tile__overlay">
+    <span class="muploader-tile__slot">Slot {{ slot }}</span>
+    <button type="button" class="muploader-tile__btn" data-edit-tile aria-label="Edit">
+      <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
+    </button>
+  </div>
+  <button type="button" class="muploader-tile__quick-x" data-delete-tile aria-label="Delete image" title="Delete">
+    <i data-lucide="x" class="h-3 w-3"></i>
+  </button>
+  {% if cover %}
+  <span class="muploader-tile__cover-pill">Cover</span>
+  {% endif %}
+</div>

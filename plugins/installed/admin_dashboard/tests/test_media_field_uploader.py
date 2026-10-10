@@ -146,4 +146,4 @@ class GalleryCounterTests(TestCase):
             'admin_dashboard/_media_uploader.html',
             {'product': _Product(), 'images': [_Img(1), _Img(2), _Img(3)], 'videos': []},
         )
-        self.assertIn('3/15', html)
+        self.assertRegex(html, r'<span data-media-count>3</span>/15')

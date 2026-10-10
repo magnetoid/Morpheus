@@ -35,37 +35,13 @@ Usage from a parent template:
       </p>
     </div>
     <span class="text-xs text-[color:var(--text-muted)]">
-      {% comment %}`images|length|add:videos|length` added a list to an int and printed 0/15 whatever the gallery held.{% endcomment %}{% with n_images=images|length n_videos=videos|length %}{{ n_images|add:n_videos }}{% endwith %}/15
+      {% comment %}`images|length|add:videos|length` added a list to an int and printed 0/15 whatever the gallery held.{% endcomment %}{% with n_images=images|length n_videos=videos|length %}<span data-media-count>{{ n_images|add:n_videos }}</span>{% endwith %}/15
     </span>
   </div>
 
   <div class="muploader-grid" data-media-grid>
     {% for img in images %}
-    <div class="muploader-tile{% if forloop.first %} is-cover{% endif %}"
-         draggable="true"
-         data-id="{{ img.id }}"
-         data-kind="image"
-         data-alt="{{ img.alt_text|default:''|escape }}">
-      <div class="muploader-tile__media">
-        {% if img.image %}
-        <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:'' }}" loading="lazy">
-        {% else %}
-        <i data-lucide="image-off" class="h-6 w-6 text-[color:var(--text-subtle)]"></i>
-        {% endif %}
-      </div>
-      <div class="muploader-tile__overlay">
-        <span class="muploader-tile__slot">Slot {{ forloop.counter }}</span>
-        <button type="button" class="muploader-tile__btn" data-edit-tile aria-label="Edit">
-          <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
-        </button>
-      </div>
-      <button type="button" class="muploader-tile__quick-x" data-delete-tile aria-label="Delete image" title="Delete">
-        <i data-lucide="x" class="h-3 w-3"></i>
-      </button>
-      {% if forloop.first %}
-      <span class="muploader-tile__cover-pill">Cover</span>
-      {% endif %}
-    </div>
+    {% include "admin_dashboard/_media_tile_image.html" with img=img slot=forloop.counter cover=forloop.first %}
     {% endfor %}
 
     {% for v in videos %}
@@ -150,7 +126,7 @@ Usage from a parent template:
                placeholder="Describe what's in the image">
         <p class="muploader-modal__hint">
           Good alt text is concise and describes the image content.
-          Examples: "Hardcover edition of Crime and Punishment, dark blue", or "Author Fyodor Dostoevsky in his study, 1872".
+          Examples: "Amber glass dropper bottle on a wooden table", or "The jacket in navy, worn open, side view".
         </p>
       </div>
 

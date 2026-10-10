@@ -86,6 +86,7 @@ _CAPABILITY_FOR_SCOPE = {
     'crm.read': 'crm.read',
     'crm.write': 'crm.write',
     'agents.read': 'system.read',
+    'janus.chat': 'system.read',
 }
 
 

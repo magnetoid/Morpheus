@@ -65,12 +65,60 @@ function $createHrNode() { return new HrNode(); }
 const NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, CodeNode, ImageNode, HrNode];
 
 /* ---- HTML in/out ---- */
+/* Stored text is not always clean HTML. Imported supplier copy often lost its
+   tables to the sanitiser and kept the cells as bare lines between paragraphs
+   ("Ingredients" then "Non-dairy Creamer", "70%", ...), and a plain-text
+   description has no tags at all. A bare text node cannot sit at the top of a
+   Lexical document, and HTML collapses its line breaks, so both showed as one
+   run-on line (owner's report, 2026-10-10). Every top-level run that is not a
+   block becomes paragraphs: a blank line starts a paragraph, a newline is a
+   line break; a run mixing text and inline tags is wrapped in one paragraph. */
+const BLOCK_TAGS = /^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|TABLE|HR|FIGURE|IMG|SECTION|ARTICLE)$/;
+function paragraphsFromText(doc, text) {
+  return text
+    .split(/\n\s*\n/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .map((chunk) => {
+      const p = doc.createElement('p');
+      chunk.split('\n').forEach((line, i) => {
+        if (i) p.appendChild(doc.createElement('br'));
+        p.appendChild(doc.createTextNode(line.trim()));
+      });
+      return p;
+    });
+}
+function normaliseTopLevel(doc) {
+  const body = doc.body;
+  let run = [];
+  const flush = (before) => {
+    if (!run.length) return;
+    let replacement = [];
+    if (run.every((n) => n.nodeType === 3)) {
+      replacement = paragraphsFromText(doc, run.map((n) => n.textContent).join(''));
+    } else if (run.some((n) => (n.textContent || '').trim() || n.nodeName === 'BR')) {
+      const p = doc.createElement('p');
+      run.forEach((n) => p.appendChild(n));
+      replacement = [p];
+    }
+    run.forEach((n) => { if (n.parentNode === body) body.removeChild(n); });
+    replacement.forEach((el) => body.insertBefore(el, before));
+    run = [];
+  };
+  Array.from(body.childNodes).forEach((n) => {
+    if (n.nodeType === 1 && BLOCK_TAGS.test(n.nodeName)) flush(n);
+    else if (n.nodeType === 1 || n.nodeType === 3) run.push(n);
+    else body.removeChild(n); // comments and the like
+  });
+  flush(null);
+  return doc;
+}
 function loadHTML(editor, html) {
   editor.update(() => {
     const root = $getRoot(); root.clear();
     const trimmed = (html || '').trim();
     if (!trimmed) { root.append($createParagraphNode()); return; }
-    const dom = new DOMParser().parseFromString(trimmed, 'text/html');
+    const dom = normaliseTopLevel(new DOMParser().parseFromString(trimmed, 'text/html'));
     const nodes = $generateNodesFromDOM(editor, dom);
     root.append(...nodes);
     if (root.getChildrenSize() === 0) root.append($createParagraphNode());

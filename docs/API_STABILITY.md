@@ -14,6 +14,7 @@ This document is the stability commitment we make for surfaces that integrators 
 | **REST `/api/graphql/`** | **STABLE** | Endpoint URL + auth header + content-type. |
 | **REST `/api/health/`, `/api/ready/`** | **STABLE** | For load balancers and uptime monitors. |
 | **MCP server at `/mcp/v1/`** | **STABLE** | JSON-RPC 2.0 shape, bearer auth, tool/resource registry. Tool *names* are stable; tool descriptions can be edited. |
+| **Janus for external agents: MCP `janus.ask` / `janus.reply`, GraphQL `askJanus` / `janusTurn`, scope `janus.chat`** | **STABLE** (since v0.96.0) | Names, arguments and the answer fields (`turn`, `conversation`, `status`, `reply`, `error`, `toolCalls`) are frozen; new statuses or fields may be added. Limits (wait time, rate, concurrency) may change. See [`MCP_SERVER.md`](MCP_SERVER.md#external-agents-talk-to-janus-janusask-askjanus). |
 | **Webhook payloads (`order.paid`, `order.cancelled`, …)** | **STABLE** | Event types, top-level keys, HMAC-SHA256 signing. |
 | **`core.hooks.MorpheusEvents.*` constants** | **STABLE** | Plugin hooks the platform fires. Removing one is a breaking change. |
 | **Plugin manifest fields (`name`, `version`, `requires`, `contribute_*`)** | **STABLE** | The plugin contract. |

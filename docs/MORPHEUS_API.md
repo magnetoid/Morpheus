@@ -276,6 +276,17 @@ session-scoped, so a replay can never double-charge); hard declines return
 `422 payment_declined` with `param='payment_data.token'` and the Stripe
 decline code folded into the message content.
 
+## Janus for external agents (MCP and GraphQL)
+
+An API token that lists `janus.chat` can ask Janus, the store's own agent:
+`janus.ask` / `janus.reply` on `/mcp/admin/v1/`, `askJanus` / `janusTurn` on
+`/graphql/`. Janus then works with exactly that token's power. The contract,
+limits and answer shape are in
+[`MCP_SERVER.md`](MCP_SERVER.md#external-agents-talk-to-janus-janusask-askjanus);
+the design in `docs/plans/janus-external-agents-2026-10.md`. App authors need
+nothing for it: every tool an app contributes inside Linda's scope profile is
+one Janus can use for an external agent whose token holds the tool's scopes.
+
 ## When to import from Django directly
 
 `morpheus` covers the common case. If you need something not exposed

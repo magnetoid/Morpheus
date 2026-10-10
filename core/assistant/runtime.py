@@ -278,6 +278,9 @@ class Assistant:
             ttl_s=turn_timeout_s() + 30,
             provider=provider,
             model=model,
+            # An external agent's API token (core/assistant/external.py): the edge
+            # holds the turn to that token's power.
+            principal=str((context or {}).get('principal') or ''),
         )
 
     @staticmethod
@@ -434,7 +437,12 @@ class Assistant:
                 tool_call_count=tool_calls,
                 duration_ms=duration_ms,
                 ended_at=timezone.now(),
-                metadata={'engine': 'janus', 'conversation': conversation_key},
+                metadata={
+                    'engine': 'janus',
+                    'conversation': conversation_key,
+                    **({'via': turn['via']} if turn.get('via') else {}),
+                    **({'token': turn['principal_label']} if turn.get('principal_label') else {}),
+                },
             )
         except Exception:  # noqa: BLE001
             logger.warning('assistant: could not record the turn as a run', exc_info=True)
@@ -541,10 +549,14 @@ class Assistant:
         usage = payload.get('usage') or {}
         # An auto-installed Janus that keeps failing real turns is rolled back.
         janus_runtime.record_turn(error=str(payload.get('error') or ''))
+        ctx = context if isinstance(context, dict) else {}
         turn = {
             'message': message,
-            'user': (context or {}).get('user') if isinstance(context, dict) else None,
+            'user': ctx.get('user'),
             'provider': payload.get('provider') or self._turn_provider(context)[0],
+            # An external agent's turn (ADR 0039): which door and which token.
+            'via': str(ctx.get('via') or ''),
+            'principal_label': str(ctx.get('principal_label') or ''),
         }
         if payload.get('error'):
             error = str(payload['error'])

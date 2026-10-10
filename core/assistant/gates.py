@@ -74,6 +74,30 @@ def is_automation_key(conversation_key: str) -> bool:
     return _AUTOMATION_MARK in (conversation_key or '')
 
 
+# An external agent's conversation: `ext:<API token id>:chat:<hex>` (ADR 0039).
+# The token is the conversation's principal; only that token continues it.
+_EXTERNAL_PREFIX = 'ext:'
+_EXTERNAL_CHAT = ':chat:'
+
+
+def external_key(principal: str, chat: str) -> str:
+    """The conversation an external agent's token holds with Janus."""
+    return f'{_EXTERNAL_PREFIX}{principal}{_EXTERNAL_CHAT}{chat}'
+
+
+def is_external_key(conversation_key: str) -> bool:
+    return (conversation_key or '').startswith(_EXTERNAL_PREFIX)
+
+
+def principal_of(conversation_key: str) -> str:
+    """The token id an external conversation belongs to, or ''."""
+    if not is_external_key(conversation_key):
+        return ''
+    rest = conversation_key[len(_EXTERNAL_PREFIX) :]
+    principal, sep, _chat = rest.partition(_EXTERNAL_CHAT)
+    return principal if sep else ''
+
+
 def gate_reason(  # noqa: PLR0911 — flat guard chain, mirrors AgentRuntime
     *,
     tool,
@@ -87,11 +111,17 @@ def gate_reason(  # noqa: PLR0911 — flat guard chain, mirrors AgentRuntime
     token_budget: int = 0,
     human_message_at: float | None = None,
     needs_consent: bool | None = None,
+    external_approved: frozenset[str] | None = None,
 ) -> str | None:
     """Return a refusal reason, or ``None`` to let the call through.
 
     ``needs_consent`` overrides the tool's own ``requires_approval`` flag. The MCP
     edge sets it for Linda, who needs the merchant's yes for every write.
+
+    ``external_approved`` is the set of protected tools the merchant approved for
+    the API token an external conversation belongs to. On an external key it
+    replaces consent: nothing said in that conversation approves anything, so a
+    call is allowed only when the token could make it itself (ADR 0039).
     """
     # Scope: an under-scoped caller never reaches an over-scoped tool.
     try:
@@ -128,6 +158,22 @@ def gate_reason(  # noqa: PLR0911 — flat guard chain, mirrors AgentRuntime
     staged_exempt = staged and getattr(tool, 'supports_staging', False)
     if needs_consent is None:
         needs_consent = bool(getattr(tool, 'requires_approval', False))
+    if needs_consent and not staged_exempt and is_external_key(conversation_key):
+        # An external agent's own words are stored like a merchant's message, so the
+        # consent kernel would read its "yes" as the merchant's. It is never asked.
+        # The token's grant is the merchant's prior, explicit consent: its scopes
+        # (checked above, the edge passes Linda's profile narrowed to them) and,
+        # for a protected tool, the merchant's tick for this token.
+        if external_approved is None:
+            return 'external_cannot_approve: this conversation belongs to an API token.'
+        if getattr(tool, 'requires_approval', False) and tool_name not in external_approved:
+            return (
+                'external_needs_grant: this is a protected change. The merchant has not '
+                'approved it for the API token this conversation belongs to. Do not make '
+                'it; say what you would change, so the agent can ask the merchant to '
+                'approve the tool for its token.'
+            )
+        return None
     if needs_consent and not staged_exempt:
         # Nobody is watching a scheduled automation, and its prompt is stored like
         # a message: a prompt saying "…ok" on a short schedule would land after the

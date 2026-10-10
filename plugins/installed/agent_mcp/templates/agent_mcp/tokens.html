@@ -4,21 +4,31 @@
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-4">
 
-  <div class="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
-    <a href="{% url 'admin_dashboard:settings' %}" class="hover:underline">Settings</a>
-    <i data-lucide="chevron-right" class="h-3 w-3"></i>
-    <span class="font-medium text-[color:var(--text)]">API tokens</span>
-  </div>
 
   <div>
     <h1 class="text-xl font-semibold tracking-tight">API tokens</h1>
     <p class="text-sm text-[color:var(--text-muted)] mt-1">
-      One Bearer token works for <strong>both</strong>:
-      <code class="font-mono text-xs px-1 py-0.5 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)]">POST {{ admin_rpc_url }}</code>
-      (MCP, JSON-RPC 2.0 for LLM agents) and
-      <code class="font-mono text-xs px-1 py-0.5 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)]">POST {{ graphql_url }}</code>
-      (GraphQL, typed schema for scripts). Each agent should get its own labelled token so you can revoke them independently.
+      A token lets another program or AI agent work with this store: Hermes Agent, OpenClaw, Claude Code,
+      a script or an automation. One token works for the MCP server and the GraphQL API, and a token that may
+      talk to Janus can ask the store's own agent anything. Give each agent its own token so you can revoke it alone.
     </p>
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="font-semibold text-sm">Endpoints</h2>
+    <div class="grid gap-2 mt-2" style="grid-template-columns: minmax(0,1fr);">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs text-[color:var(--text-muted)]" style="min-width:5.5rem;">MCP server</span>
+        <code class="font-mono text-xs px-1.5 py-1 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)]" id="ep-mcp">{{ admin_rpc_url }}</code>
+        <button type="button" class="btn btn-ghost text-xs" data-copy-text="#ep-mcp"><i data-lucide="copy" class="h-3.5 w-3.5"></i> Copy</button>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs text-[color:var(--text-muted)]" style="min-width:5.5rem;">GraphQL API</span>
+        <code class="font-mono text-xs px-1.5 py-1 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)]" id="ep-graphql">{{ graphql_url }}</code>
+        <button type="button" class="btn btn-ghost text-xs" data-copy-text="#ep-graphql"><i data-lucide="copy" class="h-3.5 w-3.5"></i> Copy</button>
+      </div>
+      <p class="text-xs text-[color:var(--text-muted)]">Send <code class="font-mono">Authorization: Bearer &lt;token&gt;</code> with every request. Janus answers on MCP as <code class="font-mono">janus.ask</code> and on GraphQL as <code class="font-mono">askJanus</code>.</p>
+    </div>
   </div>
 
   {% if edit %}
@@ -108,25 +118,35 @@
   </div>
   {% endif %}
 
-  {% if just_created_token %}
-  <div class="card card-padded" style="border-left: 3px solid var(--success);">
-    <div class="flex items-start gap-3">
-      <div class="ai-tile-icon" style="background:var(--success-bg, var(--surface-2));">
-        <i data-lucide="key-round" class="h-5 w-5"></i>
+  {% if kit %}
+  <div class="card overflow-hidden" style="border-left: 3px solid {% if kit.has_secret %}var(--success){% else %}var(--info){% endif %};" data-connection>
+    <div class="card-padded border-b border-[color:var(--border)] flex items-start justify-between gap-3 flex-wrap">
+      <div class="min-w-0">
+        <h2 class="font-semibold">Connection details: {{ kit_label }}</h2>
+        {% if kit.has_secret %}
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Everything the other party needs, the secret included. Copy it now: the secret is shown only once.</p>
+        {% else %}
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">The secret was shown once, when it was made, so it reads <code class="font-mono">PASTE_YOUR_TOKEN_HERE</code> below. Paste it in, or make a new secret to see a complete copy.</p>
+        {% endif %}
       </div>
-      <div class="flex-1 min-w-0">
-        <h2 class="font-semibold">New token for {{ just_created_label }}</h2>
-        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
-          Copy it now — Morpheus will only show the last 4 characters from here on.
-        </p>
-        <div class="mt-2 flex items-center gap-2">
-          <input type="text" readonly value="{{ just_created_token }}"
-                 class="input font-mono flex-1" id="new-token-input"
-                 onfocus="this.select();">
-          <button type="button" class="btn" data-copy-target="#new-token-input">
-            <i data-lucide="copy" class="h-3.5 w-3.5"></i> Copy
-          </button>
-        </div>
+      <div class="flex items-center gap-2">
+        <button type="button" class="btn btn-primary" data-copy-text="#connection-text"><i data-lucide="copy" class="h-3.5 w-3.5"></i> Copy connection details</button>
+        <a href="?" class="btn" title="Close"><i data-lucide="x" class="h-3.5 w-3.5"></i></a>
+      </div>
+    </div>
+    <div class="card-padded space-y-3">
+      <pre id="connection-text" data-connection-text class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre-wrap;">{{ kit.text }}</pre>
+      <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); align-items: start;">
+        {% for snip in kit.snippets %}
+        <details class="rounded border border-[color:var(--border)]" {% if forloop.first %}open{% endif %}>
+          <summary class="cursor-pointer px-3 py-2 text-sm font-medium">{{ snip.label }}</summary>
+          <div class="px-3 pb-3 space-y-2">
+            <p class="text-xs text-[color:var(--text-muted)]">{{ snip.hint }}</p>
+            <pre id="snippet-{{ snip.id }}" class="font-mono text-xs p-2.5 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">{{ snip.code }}</pre>
+            <button type="button" class="btn btn-ghost text-xs" data-copy-text="#snippet-{{ snip.id }}"><i data-lucide="copy" class="h-3.5 w-3.5"></i> Copy</button>
+          </div>
+        </details>
+        {% endfor %}
       </div>
     </div>
   </div>
@@ -136,20 +156,36 @@
     <div class="card-padded border-b border-[color:var(--border)]">
       <h2 class="font-semibold">Create a token</h2>
       <p class="text-xs text-[color:var(--text-muted)] mt-0.5">
-        Use a descriptive label (e.g. <em>External publisher</em>, <em>n8n sync job</em>) so future-you can spot which agent it belongs to.
+        Name it after the agent that will use it, and choose what it may do. You can change its permissions later.
       </p>
     </div>
-    <form method="post" class="card-padded flex items-end gap-2">
+    <form method="post" class="card-padded space-y-3">
       {% csrf_token %}
       <input type="hidden" name="action" value="create">
-      <div class="flex-1 min-w-0">
-        <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Label</label>
-        <input type="text" name="label" class="input mt-1" required maxlength="120"
-               placeholder="External publisher (n8n)">
+      <div>
+        <label class="block text-xs font-medium text-[color:var(--text-muted)]" for="token-label">Label</label>
+        <input type="text" name="label" id="token-label" class="input mt-1" required maxlength="120"
+               placeholder="Hermes on the laptop">
       </div>
-      <button class="btn btn-primary" type="submit">
-        <i data-lucide="plus" class="h-3.5 w-3.5"></i> Create token
-      </button>
+      <fieldset>
+        <legend class="block text-xs font-medium text-[color:var(--text-muted)] mb-1.5">What it may do</legend>
+        <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));">
+          {% for preset in presets %}
+          <label class="flex items-start gap-2 rounded border border-[color:var(--border)] p-2.5 cursor-pointer text-sm">
+            <input type="radio" name="preset" value="{{ preset.id }}" {% if forloop.first %}checked{% endif %} class="mt-0.5">
+            <span>
+              <span class="font-medium">{{ preset.label }}</span>
+              <span class="block text-xs text-[color:var(--text-muted)]">{{ preset.description }}</span>
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      <div class="flex justify-end">
+        <button class="btn btn-primary" type="submit">
+          <i data-lucide="plus" class="h-3.5 w-3.5"></i> Create token
+        </button>
+      </div>
     </form>
   </div>
 
@@ -175,17 +211,30 @@
           <td>
             {{ r.label }}
             {% if r.is_legacy %}<span class="pill pill-neutral" style="margin-left:.4rem;">legacy</span>{% endif %}
-            <div class="text-xs text-[color:var(--text-muted)] mt-0.5">Created {{ r.created_at|default:"—" }}</div>
+            <div class="text-xs text-[color:var(--text-muted)] mt-0.5">Created {{ r.created_at|default:"—" }}{% if r.created_by %} by {{ r.created_by }}{% endif %}</div>
+            {% if r.janus %}<span class="pill pill-info" style="margin-top:.25rem;">Talks to Janus</span>{% endif %}
           </td>
-          <td><code class="font-mono text-xs">{{ r.token_masked }}</code></td>
+          <td class="whitespace-nowrap"><code class="font-mono text-xs">{{ r.token_masked }}</code></td>
           <td class="text-xs">{{ r.mcp_summary }}</td>
           <td class="text-xs">{{ r.graphql_summary }}</td>
           <td class="text-xs text-[color:var(--text-muted)]">{{ r.last_used_at|default:"—" }}</td>
           <td class="text-right">
             {% if r.id %}
+            <a href="?connect={{ r.id }}" class="btn" title="Connection details">
+              <i data-lucide="plug" class="h-3.5 w-3.5"></i> Connect
+            </a>
             <a href="?edit={{ r.id }}" class="btn" title="Edit permissions">
               <i data-lucide="shield" class="h-3.5 w-3.5"></i> Permissions
             </a>
+            <form method="post" style="display:inline;"
+                  data-confirm="Make a new secret for {{ r.label }}? The current one stops working at once.">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="rotate">
+              <input type="hidden" name="id" value="{{ r.id }}">
+              <button class="btn" type="submit" title="New secret">
+                <i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i> New secret
+              </button>
+            </form>
             {% endif %}
             <form method="post" style="display:inline;"
                   data-confirm="Revoke token {{ r.label }}? Any agent using it will lose access immediately.">
@@ -210,110 +259,25 @@
     {% endif %}
   </div>
 
-  <div class="card overflow-hidden">
-    <div class="card-padded border-b border-[color:var(--border)]">
-      <h3 class="font-semibold">Usage examples</h3>
-      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Replace <code class="font-mono">YOUR_TOKEN</code> with any token from the table above.</p>
-    </div>
-    <div class="card-padded space-y-3">
-      <div>
-        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">MCP — JSON-RPC 2.0 (recommended for LLM agents)</p>
-        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">curl -X POST {{ request.scheme }}://{{ request.get_host }}{{ admin_rpc_url }} \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0", "id": 1, "method": "tools/call",
-    "params": {
-      "name": "catalog.publish_digital_product",
-      "arguments": {
-        "title": "Crime and Punishment",
-        "author": "Fyodor Dostoevsky",
-        "pdf_url": "https://your-cdn.com/crime.pdf",
-        "price_amount": "12.99"
-      }
-    }
-  }'</pre>
-      </div>
-      <div>
-        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">GraphQL — typed schema (recommended for scripts)</p>
-        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">curl -X POST {{ request.scheme }}://{{ request.get_host }}{{ graphql_url }} \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation($i:UpdateProductInput!){updateProduct(input:$i){slug priceAmount status error}}",
-    "variables": {"i": {"slug": "crime-and-punishment", "priceAmount": "7.99", "status": "active"}}
-  }'</pre>
-      </div>
-      <div class="text-xs text-[color:var(--text-muted)]">
-        Same token, both surfaces. Behind the scenes the token resolves to a synthetic <code class="font-mono">mcp-service</code> staff user — every mutation is attributed to that user in audit logs.
-      </div>
-    </div>
-  </div>
-
-  <div class="card overflow-hidden">
-    <div class="card-padded border-b border-[color:var(--border)]">
-      <h3 class="font-semibold">Common product-lifecycle mutations</h3>
-      <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Same Bearer token for all of these.</p>
-    </div>
-    <div class="card-padded space-y-3">
-      <div>
-        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Create a generic product</p>
-        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation($i: CreateProductInput!){
-  createProduct(input: $i){ slug status error }
-}
-# variables: {"i": {"name": "...", "priceAmount": "29.99",
-#                   "productType": "simple", "status": "draft"}}</pre>
-      </div>
-      <div>
-        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Publish a PDF book (downloads PDF + cover)</p>
-        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation($i: PublishDigitalProductInput!){
-  publishDigitalProduct(input: $i){ slug url error }
-}
-# variables: {"i": {"title": "...", "pdfUrl": "https://…/book.pdf",
-#                   "coverImageUrl": "https://…/cover.jpg",
-#                   "priceAmount": "9.99"}}</pre>
-      </div>
-      <div>
-        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Replace the PDF on an existing digital product</p>
-        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation($i: UpdateDigitalPdfInput!){
-  updateDigitalPdf(input: $i){ slug error }
-}
-# variables: {"i": {"slug": "your-book",
-#                   "pdfUrl": "https://…/book-v2.pdf"}}</pre>
-      </div>
-      <div>
-        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Flip draft → active</p>
-        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation($i: UpdateProductInput!){
-  updateProduct(input: $i){ slug status error }
-}
-# variables: {"i": {"slug": "your-book", "status": "active"}}</pre>
-      </div>
-      <div>
-        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Upload an image to a product</p>
-        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation($i: AddProductImageInput!){
-  addProductImage(input: $i){ id url isPrimary error }
-}
-# variables: {"i": {"slug": "your-book",
-#                   "imageUrl": "https://…/cover.jpg",
-#                   "isPrimary": true, "altText": "Cover"}}</pre>
-      </div>
-      <div>
-        <p class="text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)] mb-1">Remove or promote an image</p>
-        <pre class="font-mono text-xs p-3 rounded bg-[color:var(--surface-2)] border border-[color:var(--border)] overflow-auto" style="white-space:pre;">mutation { removeProductImage(imageId: "uuid") { id error } }
-mutation { setPrimaryImage(imageId: "uuid")    { id error } }</pre>
-      </div>
-    </div>
-  </div>
 </div>
 
 <script>
-  // Copy helper — used by the "just created" banner.
-  document.querySelectorAll('[data-copy-target]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = document.querySelector(btn.dataset.copyTarget);
+  // Copy buttons: data-copy-text="#id" copies that element's text.
+  document.querySelectorAll('[data-copy-text]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const target = document.querySelector(btn.dataset.copyText);
       if (!target) return;
-      target.select();
-      try { document.execCommand('copy'); } catch {}
+      const text = target.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const area = document.createElement('textarea');
+        area.value = text;
+        document.body.appendChild(area);
+        area.select();
+        try { document.execCommand('copy'); } catch (ignored) {}
+        area.remove();
+      }
       const orig = btn.innerHTML;
       btn.innerHTML = '<i data-lucide="check" class="h-3.5 w-3.5"></i> Copied';
       if (window.lucide) lucide.createIcons();

@@ -35,6 +35,10 @@ class AgentMcpPlugin(Plugin):
             prefix='.well-known/',
             namespace='agent_mcp_well_known',
         )
+        # External agents talk to Janus (ADR 0039): askJanus / janusTurn. The MCP
+        # tools janus.ask / janus.reply are listed by the admin server itself.
+        self.register_graphql_extension('plugins.installed.agent_mcp.graphql_janus')
+        self.register_celery_tasks('plugins.installed.agent_mcp.tasks')
         # Stamp the verified agent id onto orders it placed — the manifest
         # advertises order.metadata.agent_id "persisted on checkout"; this is
         # what makes that true (was previously unwired). Disable-safe: the hook
@@ -70,6 +74,10 @@ class AgentMcpPlugin(Plugin):
             f'- Checkout (no auth): `POST {base}/mcp/checkout/v1/`\n'
             f'- Admin (full tool catalog, Bearer auth): `POST {base}/mcp/admin/v1/`\n'
             f'- Manifest: `{base}/mcp/v1/manifest.json` · Health: `{base}/mcp/v1/health/`\n\n'
+            "**Ask the store's own agent (Janus)**\n"
+            '- MCP tools `janus.ask` / `janus.reply` on the admin server, or GraphQL '
+            f'`askJanus` / `janusTurn` at `POST {base}/graphql/`, with a token the merchant '
+            "allowed to talk to Janus. Janus works with that token's permissions.\n\n"
             '**Discovery manifests**\n'
             f'- Universal Commerce Protocol profile: `{base}/.well-known/ucp`\n'
             f'- Legacy UCP manifest (pre-spec): `{base}/.well-known/ucp.json`\n'

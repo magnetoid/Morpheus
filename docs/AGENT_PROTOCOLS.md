@@ -14,7 +14,7 @@ allowed to do:
 | `/mcp/storefront/v1/` | Anonymous shoppers | None | Catalog reads |
 | `/mcp/cart/v1/` | Anonymous shoppers | None | Catalog + cart |
 | `/mcp/checkout/v1/` | Anonymous shoppers | None | Catalog + cart + checkout |
-| `/mcp/admin/v1/` | Staff bots | Bearer | Full Linda tool catalog |
+| `/mcp/admin/v1/` | Staff bots | Bearer | Full Linda tool catalog; `janus.ask` / `janus.reply` for a token with `janus.chat` ([talk to Janus](MCP_SERVER.md#external-agents-talk-to-janus-janusask-askjanus)) |
 | `/mcp/v1/` | Legacy clients | None | Curated public reads |
 
 Every endpoint is a **dual-era** server (spec revision `2026-07-28`): a
