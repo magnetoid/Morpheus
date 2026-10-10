@@ -1,13 +1,21 @@
 """Agent-discovery files served from /.well-known/.
 
-Two endpoints:
+Three endpoints:
 
-  /.well-known/ucp.json    Universal Commerce Protocol manifest.
-                           Spec: a Google + Shopify + Stripe + Etsy +
-                           Walmart open extension on top of MCP that
-                           lets a single agent (Gemini, ChatGPT, Comet)
-                           discover a merchant's commerce surface
-                           without a per-vendor integration.
+  /.well-known/ucp         The Universal Commerce Protocol business profile,
+                           in the shape the specification describes
+                           (``ucp.version`` as a date, ``services`` keyed by
+                           reverse-domain names with a transport + endpoint,
+                           ``capabilities``, ``payment_handlers``). An agent
+                           that reads the spec looks here. It claims only
+                           what the store serves: the shopping service over
+                           MCP; the UCP checkout *capability* (REST
+                           create/update/complete) is not implemented and
+                           is not advertised.
+
+  /.well-known/ucp.json    The pre-spec manifest (v0.30.0): Morpheus's own
+                           boolean capabilities and MCP endpoint map. Kept
+                           for the clients that learned it; links the profile.
 
   /.well-known/agent.json  Trusted Agent Protocol (Visa) / Verifiable
                            Intent (Mastercard) capabilities manifest.
@@ -25,6 +33,52 @@ from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from core.utils.site import store_contact_email, store_name, store_slug
+
+#: The UCP specification version the profile is written against (a date).
+UCP_VERSION = '2026-08-25'
+_UCP_SPEC = f'https://ucp.dev/{UCP_VERSION}/specification/overview/'
+
+
+def _shopping_mcp_endpoint(base: str) -> str:
+    """The MCP server an agent should use for shopping: the checkout cluster
+    when agentic checkout is on, else the cart cluster."""
+    from plugins.installed.agent_mcp.servers import CART_TOOLS, CHECKOUT_TOOLS
+
+    if _capability_live(CHECKOUT_TOOLS - CART_TOOLS):
+        return f'{base}/mcp/checkout/v1/'
+    return f'{base}/mcp/cart/v1/'
+
+
+@require_http_methods(['GET'])
+def ucp_profile(request: HttpRequest) -> JsonResponse:
+    """GET /.well-known/ucp — the business profile, spec shape (2026-08-25)."""
+    base = request.build_absolute_uri('/').rstrip('/')
+    return JsonResponse(
+        {
+            'ucp': {
+                'version': UCP_VERSION,
+                'services': {
+                    'dev.ucp.shopping': [
+                        {
+                            'version': UCP_VERSION,
+                            'spec': _UCP_SPEC,
+                            'transport': 'mcp',
+                            'endpoint': _shopping_mcp_endpoint(base),
+                        }
+                    ]
+                },
+                # Only what is served. The REST checkout capability
+                # (create_checkout / update_checkout / complete_checkout) is
+                # not implemented; claiming it would send agents to a 404.
+                'capabilities': {},
+                'payment_handlers': {},
+            },
+            # The pre-spec manifest and the trusted-agent manifest, for clients
+            # that still read them.
+            'legacy_manifest': f'{base}/.well-known/ucp.json',
+            'agent_manifest': f'{base}/.well-known/agent.json',
+        }
+    )
 
 
 def _trusted_agent_enabled() -> bool:
@@ -96,6 +150,8 @@ def ucp_manifest(request: HttpRequest) -> JsonResponse:
                 'registration_url': f'{base}/dashboard/settings/ai/',
             },
             'metadata_url': f'{base}/.well-known/agent.json',
+            # The spec-shaped profile (v0.89.0); this file predates the spec.
+            'profile_url': f'{base}/.well-known/ucp',
         }
     )
 
@@ -132,6 +188,7 @@ def trusted_agent_manifest(request: HttpRequest) -> JsonResponse:
                 'cart': f'{base}/mcp/cart/v1/',
                 'checkout': f'{base}/mcp/checkout/v1/',
             },
+            'ucp_profile': f'{base}/.well-known/ucp',
             # Omitted when the merchant has set no contact address: telling an
             # agent to mail an address that does not exist is worse than silence.
             **({'contact': store_contact_email()} if store_contact_email() else {}),

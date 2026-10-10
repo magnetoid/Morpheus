@@ -586,6 +586,14 @@ override exact pins.
 
 ### W3 — Make Linda's work visible (3–5 days, M)
 
+**Status 2026-10-10:** the visibility half shipped as v0.88.0 — every Janus
+turn records an `AgentRun` (`agent_name='linda'`, provider, model, tokens,
+tool calls, error; the guardrails skip those rows so her tokens count once),
+the turn token carries provider + model and the MCP edge writes them on every
+decision row, Activity and Observability show refused writes, and the AI-Act
+export has a `consents` section (executed vs refused, in the CSV too). Open:
+`automations.*` tools for Linda, the 5-field cron, read-only automation chats.
+
 One source of truth for a Janus turn. Recommendation: write a lightweight
 `AgentRun` (`agent='linda'`, provider, model, tokens from `state.db`,
 `tool_call_count`, error) at the end of every turn in `core/assistant/runtime.py`,
@@ -606,6 +614,16 @@ without a second code path.
 - Update `docs/plans/linda-sessions-automations-models-2026-10.md` status.
 
 ### W4 — Agent-ready for 2026 (1–2 weeks, L) — the market bet
+
+**Status 2026-10-10:** round 1 shipped as v0.89.0 — 4a (the `/.well-known/ucp`
+profile, `ucp.version` 2026-08-25, `dev.ucp.shopping` over MCP; `ucp.json`
+stays as the legacy manifest), 4b (the ACP feed in the product/`variants[]`
+shape with minor-unit prices and the seller block), 4c (the `openai_shopping`
+app: JSONL feed, six-hourly push, Channels tab, settings panel) and the first
+half of 4e (the WebMCP block on `global_below_body`: three imperative tools over
+GraphQL, declared where `document.modelContext` exists; the declarative form
+annotations and the Lighthouse run are still open). 4d, 4f and the UCP REST
+checkout remain.
 
 Ordered by cost-to-value; a–c are feeds and manifests, cheap and immediately
 visible to agents.

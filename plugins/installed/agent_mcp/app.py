@@ -71,7 +71,8 @@ class AgentMcpPlugin(Plugin):
             f'- Admin (full tool catalog, Bearer auth): `POST {base}/mcp/admin/v1/`\n'
             f'- Manifest: `{base}/mcp/v1/manifest.json` · Health: `{base}/mcp/v1/health/`\n\n'
             '**Discovery manifests**\n'
-            f'- Universal Commerce Protocol: `{base}/.well-known/ucp.json`\n'
+            f'- Universal Commerce Protocol profile: `{base}/.well-known/ucp`\n'
+            f'- Legacy UCP manifest (pre-spec): `{base}/.well-known/ucp.json`\n'
             f'- Trusted Agent Protocol: `{base}/.well-known/agent.json`\n\n'
             '**Auth**: admin calls need a Bearer token (Dashboard → Developer → '
             'API tokens), scoped per token. Storefront/cart/checkout are public.'
@@ -79,6 +80,22 @@ class AgentMcpPlugin(Plugin):
         if isinstance(value, list):
             value.append({'heading': 'Agent commerce endpoints', 'body': body, 'priority': 10})
         return value
+
+    def contribute_storefront_blocks(self) -> list:
+        # WebMCP (Chrome 149 origin trial): the storefront registers search,
+        # add-to-cart and cart tools with the agent driving the visitor's
+        # browser, backed by the store's own GraphQL endpoint. Renders only the
+        # definitions plus a guarded script; browsers without modelContext see
+        # nothing. Lighthouse's "Agentic Browsing" category scores this.
+        from morpheus.app import StorefrontBlock
+
+        return [
+            StorefrontBlock(
+                slot='global_below_body',
+                template='agent_mcp/blocks/webmcp.html',
+                priority=85,
+            ),
+        ]
 
     def contribute_dashboard_pages(self) -> list:
         return [

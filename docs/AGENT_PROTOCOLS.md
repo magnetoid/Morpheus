@@ -74,15 +74,46 @@ The admin endpoint requires a key generated under
 
 ## 2. UCP (Universal Commerce Protocol)
 
-Google, Shopify, Stripe, Etsy, and Walmart converged on a single
-MCP-compatible discovery manifest at
-`/.well-known/ucp.json`. Morpheus ships it:
+Google and Shopify's open protocol (backed by Stripe, Etsy, Walmart and others)
+is discovered through a **business profile** at `/.well-known/ucp`, in the
+shape the specification describes (`ucp.version` as a date, `services` keyed by
+reverse-domain names with a transport and an endpoint, `capabilities`,
+`payment_handlers`). Morpheus serves it:
+
+```bash
+curl https://your-morpheus/.well-known/ucp
+```
+
+```json
+{
+  "ucp": {
+    "version": "2026-08-25",
+    "services": {
+      "dev.ucp.shopping": [
+        {"version": "2026-08-25", "spec": "https://ucp.dev/2026-08-25/specification/overview/",
+         "transport": "mcp", "endpoint": "https://your-morpheus/mcp/checkout/v1/"}
+      ]
+    },
+    "capabilities": {},
+    "payment_handlers": {}
+  }
+}
+```
+
+The profile claims only what the store serves: the shopping service over MCP
+(the checkout cluster when `agentic_checkout` is on, else the cart cluster).
+The UCP checkout *capability* — `create_checkout` / `update_checkout` /
+`complete_checkout` over REST — is not implemented yet, so it is not listed;
+an agent that needs it falls back to the MCP tools or to ACP (section 4).
+
+The pre-spec manifest from v0.30.0 is still served at `/.well-known/ucp.json`
+for the clients that learned it, and links the profile as `profile_url`:
 
 ```bash
 curl https://your-morpheus/.well-known/ucp.json
 ```
 
-The manifest advertises:
+That legacy manifest advertises:
 
 - The MCP endpoint URLs your storefront exposes
 - Supported currencies + locales (from the `markets` plugin)
@@ -131,9 +162,24 @@ Commerce Protocol, spec version `2026-04-17`:
 
 - `/.well-known/acp.json` — discovery manifest (protocol version,
   checkout base URL, feed URL, payment handlers, Bearer auth).
-- `/acp/feed.json` — product feed (reuses the `google_shopping` mapping).
+- `/acp/feed.json` — product feed in the ACP product-feed shape: one
+  entry per product with its `variants[]` (prices in minor units, the
+  option name/value that distinguishes each variant, availability from
+  the inventory app) and a `seller` block linking the store's policy
+  pages. Rows come from the shared channel resolver (`plugins/feed_mapping.py`).
 - `/acp/checkout_sessions` — `create` / `get` / `update` / `cancel` /
   `complete`, backed by the existing `Cart`.
+
+**Getting listed in ChatGPT without a checkout** is a separate, smaller
+door: OpenAI retired Instant Checkout in March 2026 and merchants on a
+custom stack apply at chatgpt.com/merchants with a product feed in OpenAI's
+feed specification. The `openai_shopping` app serves that feed as JSONL at
+`/feeds/openai-products.jsonl` (one row per product or variant, with the
+`seller_*`, country, eligibility, variant-group and return fields the
+specification requires — Perplexity's merchant program takes the same
+file) and, once OpenAI allow-lists an endpoint, pushes it there every six
+hours with the bearer token stored under **Settings → Channels → ChatGPT
+Shopping feed**. Coverage is on **Channels → ChatGPT Shopping**.
 
 ```bash
 curl https://your-morpheus/.well-known/acp.json

@@ -1,0 +1,49 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}ChatGPT Shopping · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">ChatGPT Shopping</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">The product feed in OpenAI's feed specification. Apply at <a class="underline" href="https://chatgpt.com/merchants" rel="noopener" target="_blank">chatgpt.com/merchants</a> and share the feed URL, or upload the file under Feeds in OpenAI's Ads Manager. Perplexity's merchant program takes the same file.</p>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card card-padded"><p class="meta">Active products</p><p class="display display-l">{{ coverage.active }}</p></div>
+    <div class="card card-padded"><p class="meta">In the feed</p><p class="display display-l">{{ coverage.in_feed }}</p><p class="meta">{{ coverage.coverage_pct }}% coverage</p></div>
+    <div class="card card-padded"><p class="meta">Rows (variants)</p><p class="display display-l">{{ coverage.rows }}</p></div>
+    <div class="card card-padded"><p class="meta">Checkout-eligible</p><p class="display display-l">{{ coverage.checkout_eligible }}</p></div>
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="text-base font-semibold mb-2">Feed</h2>
+    <p class="text-sm"><code>{{ feed_url }}</code></p>
+    <p class="meta mt-2">A product is in the feed when it is active and has an image, a price and stock the resolver accepts — the same rules as the Google feed. Products the resolver skips are missing one of those.</p>
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="text-base font-semibold mb-2">Push</h2>
+    {% if coverage.push_configured %}
+      <p class="text-sm">Pushed every six hours to <code>{{ config.push_endpoint }}</code> with the stored bearer token.</p>
+      {% if last_push %}
+        <p class="meta mt-1">Last push {{ last_push.at|default:"—" }}: {% if last_push.pushed %}<span class="pill pill-success">ok</span>{% else %}<span class="pill pill-danger">failed</span> {{ last_push.error|default:"" }}{% endif %} · {{ last_push.rows|default:0 }} rows</p>
+      {% else %}
+        <p class="meta mt-1">No push yet.</p>
+      {% endif %}
+    {% else %}
+      <p class="text-sm">{% if config.push_endpoint and not config.push_token %}Endpoint <code>{{ config.push_endpoint }}</code> is set but no bearer token — nothing is pushed until the token is stored.{% elif config.push_token and not config.push_endpoint %}A bearer token is stored but no endpoint — nothing is pushed until the endpoint is set.{% else %}No push endpoint configured — OpenAI fetches the URL above, or you upload the file.{% endif %} Both live under <a class="underline" href="/dashboard/settings/channels/">Settings → Channels → ChatGPT Shopping feed</a>.</p>
+    {% endif %}
+  </div>
+
+  <div class="card card-padded">
+    <h2 class="text-base font-semibold mb-2">Seller fields on every row</h2>
+    <dl class="text-sm grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+      <dt class="meta">Seller name</dt><dd>{{ config.seller_name|default:"(store name)" }}</dd>
+      <dt class="meta">Store country</dt><dd>{{ config.store_country|default:"(Settings → General)" }}</dd>
+      <dt class="meta">Target countries</dt><dd>{{ config.target_countries|default:"(store country)" }}</dd>
+      <dt class="meta">Checkout inside ChatGPT</dt><dd>{% if config.checkout_eligible %}on{% else %}off{% endif %}</dd>
+      <dt class="meta">Returns</dt><dd>{% if config.accepts_returns %}{{ config.return_deadline_days }} days · policy {{ config.return_policy_url|default:"/returns/" }}{% else %}not accepted{% endif %}</dd>
+    </dl>
+  </div>
+</div>
+{% endblock %}

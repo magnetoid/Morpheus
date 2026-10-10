@@ -1,0 +1,65 @@
+{% load webmcp %}{% webmcp_tools as webmcp_tool_list %}{{ webmcp_tool_list|json_script:"morph-webmcp-tools" }}
+<script>
+(function () {
+  // WebMCP: only where the browser (Chrome 149+ origin trial) offers it.
+  var ctx = document.modelContext || navigator.modelContext;
+  if (!ctx || typeof ctx.registerTool !== 'function') return;
+  var el = document.getElementById('morph-webmcp-tools');
+  if (!el) return;
+  var tools;
+  try { tools = JSON.parse(el.textContent); } catch (e) { return; }
+
+  function csrf() {
+    var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  function fill(spec, args) {
+    if (typeof spec === 'string') {
+      return spec.charAt(0) === '$' ? args[spec.slice(1)] : spec;
+    }
+    if (spec && typeof spec === 'object') {
+      var out = {};
+      Object.keys(spec).forEach(function (k) {
+        var v = fill(spec[k], args);
+        if (v !== undefined) out[k] = v;
+      });
+      return out;
+    }
+    return spec;
+  }
+  async function run(tool, args) {
+    var input = Object.assign({}, args || {});
+    Object.keys(tool.inputSchema.properties || {}).forEach(function (k) {
+      var p = tool.inputSchema.properties[k];
+      if (input[k] === undefined && p['default'] !== undefined) input[k] = p['default'];
+    });
+    var res = await fetch('/graphql/', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf()},
+      body: JSON.stringify({query: tool.graphql, variables: fill(tool.variables, input)})
+    });
+    var payload = await res.json();
+    // execute() hands the agent a string (Chrome's contract), so the result
+    // is serialised here rather than left to the browser.
+    if (payload.errors) {
+      return JSON.stringify({error: payload.errors.map(function (e) { return e.message; }).join('; ')});
+    }
+    return JSON.stringify(payload.data);
+  }
+  tools.forEach(function (tool) {
+    try {
+      var registered = ctx.registerTool({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        annotations: tool.annotations || {},
+        execute: function (args) { return run(tool, args); }
+      });
+      if (registered && typeof registered.catch === 'function') {
+        registered.catch(function () { /* a tool the browser rejects must not break the page */ });
+      }
+    } catch (e) { /* same: never break the page */ }
+  });
+})();
+</script>

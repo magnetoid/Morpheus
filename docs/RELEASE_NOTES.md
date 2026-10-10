@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.89.0 — 2026-10-10
+
+**Agent-ready, round one: UCP profile to spec, ACP feed with variants, a ChatGPT Shopping feed app and WebMCP tools on the storefront**
+
+- /.well-known/ucp serves the Universal Commerce Protocol profile (ucp.version 2026-08-25, the shopping service over MCP); /.well-known/ucp.json stays as the legacy manifest and links to it
+- /acp/feed.json follows the ACP product-feed shape: one entry per product with its variants (prices in minor units, the option that distinguishes each variant, availability from the inventory app) and a seller block linking the store's policy pages
+- New app openai_shopping (on by default): the ChatGPT Shopping feed in OpenAI's feed specification at /feeds/openai-products.jsonl, with the seller, country, eligibility, variant-group and return fields from its settings panel, pushed every six hours to an allow-listed endpoint when one is configured, and a coverage tab under Channels; Perplexity's merchant program takes the same file
+- WebMCP: storefront pages register three tools (search_products, add_to_cart, get_cart) with the browser's model context where it exists (Chrome 149+ origin trial), backed by the GraphQL API
+- README counts re-measured: 112 apps, 116 dashboard pages, 63 settings panels, 81 storefront blocks
+
 ## v0.88.0 — 2026-10-10
 
 **Linda's work is visible: every Janus turn is a run, refusals and consents reach the AI-Act export**

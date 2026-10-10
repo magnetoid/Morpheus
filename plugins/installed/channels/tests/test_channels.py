@@ -27,7 +27,7 @@ class OverviewTests(TestCase):
 
         rows = _rows(refresh=True)
         names = {r['name'] for r in rows}
-        # All eight commerce channels contribute a row.
+        # All nine commerce channels contribute a row.
         self.assertEqual(
             names,
             {
@@ -39,6 +39,7 @@ class OverviewTests(TestCase):
                 'amazon_ads',
                 'reddit_ads',
                 'snapchat_commerce',
+                'openai_shopping',
             },
         )
         # Every row carries the contract keys.
