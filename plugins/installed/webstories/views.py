@@ -1,8 +1,10 @@
 """Public views for Web Stories.
 
 ``story_page`` serves a valid AMP ``<amp-story>`` document at
-``/story/<slug>/``. The HTML is rendered server-side from the
-per-product ``WebStory.panels`` JSON — no client JS at build time.
+``/story/<slug>/``, rendered server-side from the per-product
+``WebStory.panels`` JSON — no client JS at build time. A story built by an
+older builder is rebuilt on its first view; whatever happens, the text on the
+page is plain (``services.render_pages`` cleans it again).
 
 Cache-Control + Last-Modified mirror the SEO plugin's pattern so
 crawlers hit the document with normal HTTP caching.
@@ -13,10 +15,14 @@ from __future__ import annotations
 import contextlib
 import logging
 
+from django.db import transaction
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.http import http_date
+from django.utils.translation import gettext
 from django.views.decorators.clickjacking import xframe_options_sameorigin
+
+from plugins.installed.webstories import services
 
 logger = logging.getLogger('morpheus.webstories')
 
@@ -47,6 +53,12 @@ def _site_settings():
 
 def _site_base_url(request: HttpRequest) -> str:
     return f'{request.scheme}://{request.get_host()}'.rstrip('/')
+
+
+def _absolute(url: str, base: str) -> str:
+    if not url or url.startswith(('http://', 'https://')):
+        return url
+    return f'{base}/{url.lstrip("/")}'
 
 
 _RASTER = ('.png', '.jpg', '.jpeg', '.gif')
@@ -84,6 +96,18 @@ def _publisher_logo_url(settings_row, base: str) -> str:
     return url if url.startswith(('http://', 'https://')) else f'{base}{url}'
 
 
+def _current_story(product, story):
+    """``story``, rebuilt first when an older builder made it (fail-soft)."""
+    if services.is_current(story):
+        return story
+    try:
+        with transaction.atomic():
+            story, _changed = services.ensure_story(product)
+    except Exception:  # noqa: BLE001 — the stored pages still render, cleaned
+        logger.warning('webstories: rebuilding %s on view failed', product.pk, exc_info=True)
+    return story
+
+
 @xframe_options_sameorigin
 def story_page(request: HttpRequest, slug: str) -> HttpResponse:
     """Render the AMP Web Story document for a product.
@@ -96,15 +120,15 @@ def story_page(request: HttpRequest, slug: str) -> HttpResponse:
     """
     from plugins.installed.catalog.models import Product  # noqa: PLC0415
     from plugins.installed.webstories.models import WebStory  # noqa: PLC0415
+    from plugins.registry import app_registry  # noqa: PLC0415
 
     product = get_object_or_404(Product, slug=slug, status='active')
-    try:
-        story = product.web_story
-    except WebStory.DoesNotExist as e:
-        raise Http404('No story for this product') from e
-
-    if not story.is_published or not story.panels:
-        raise Http404('Story is unpublished or empty')
+    story = WebStory.objects.filter(product=product).first()
+    if story is None or not story.is_published:
+        raise Http404('No story for this product')
+    story = _current_story(product, story)
+    if not story.panels:
+        raise Http404('Story is empty')
 
     base = _site_base_url(request)
     settings_row = _site_settings()
@@ -117,17 +141,28 @@ def story_page(request: HttpRequest, slug: str) -> HttpResponse:
     # a 404. An empty ImageField is falsy, so the truthy check guards the
     # `.url` access (an empty FileField raises ValueError on `.url`).
     publisher_logo = _publisher_logo_url(settings_row, base)
+    title = services.clip(services.plain_text(story.title or product.name or ''), 120)
+    pages = services.render_pages(
+        story.panels,
+        base=base,
+        image_proxy=app_registry.is_active('seo'),
+        fallback_alt=title,
+    )
+    poster = story.poster_portrait_url or next(
+        (p['image_url'] for p in pages if p['image_url']), ''
+    )
 
     context = {
         'story': story,
         'product': product,
-        'panels': story.panels or [],
-        'canonical_url': f'{base}/products/{product.slug}/',
+        'pages': pages,
+        'story_title': title,
+        'description': services.clip(services.plain_text(story.summary or ''), 160),
+        'indexable': story.is_indexable,
         'story_url': f'{base}/story/{product.slug}/',
         'publisher_name': publisher_name,
         'publisher_logo_url': publisher_logo,
-        'poster_url': story.poster_portrait_url
-        or (story.panels[0].get('image_url') if story.panels else ''),
+        'poster_url': _absolute(poster, base),
     }
     response = render(request, 'webstories/story.html', context)
     response['Content-Type'] = 'text/html; charset=utf-8'
@@ -138,9 +173,9 @@ def story_page(request: HttpRequest, slug: str) -> HttpResponse:
 def story_index(request: HttpRequest) -> HttpResponse:
     """List every published Web Story whose product is still active.
 
-    Storefront-style HTML (extends the dot_books base), not AMP — this
-    is a normal browse page, not an embedded story player. Cache + frame
-    headers mirror ``story_page`` so the listing is share-safe.
+    A normal storefront page in the active theme (not AMP). The head comes from
+    the theme's one ``{% storefront_head %}``: the view names the page, the seo
+    app adds the brand, the canonical and the breadcrumb graph.
     """
     from plugins.installed.webstories.models import WebStory  # noqa: PLC0415
 
@@ -153,8 +188,8 @@ def story_index(request: HttpRequest) -> HttpResponse:
         .order_by('-updated_at')[:60]
     )
     breadcrumb_items = [
-        {'name': 'Home', 'url': request.build_absolute_uri('/')},
-        {'name': 'Stories', 'url': request.build_absolute_uri(request.path)},
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': gettext('Stories'), 'url': request.build_absolute_uri(request.path)},
     ]
     last_modified = stories[0].updated_at if stories else None
     response = render(
@@ -163,6 +198,11 @@ def story_index(request: HttpRequest) -> HttpResponse:
         {
             'stories': stories,
             'breadcrumb_items': breadcrumb_items,
+            'seo_title': gettext('Stories'),
+            'seo_description': gettext(
+                'Short, tappable stories about what the shop sells: the photos, '
+                'what each product is for, and what comes with it.'
+            ),
         },
     )
     return _cache_headers(response, last_modified=last_modified)

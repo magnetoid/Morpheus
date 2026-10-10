@@ -19,6 +19,11 @@ from __future__ import annotations
 
 from django.db import models
 
+#: Google's floor for a Web Story (it recommends five to thirty pages). A
+#: shorter story still plays in the product page's player, but is kept out of
+#: search: robots noindex, and no sitemap entry.
+MIN_INDEXABLE_PAGES = 4
+
 
 class WebStory(models.Model):
     product = models.OneToOneField(
@@ -48,3 +53,15 @@ class WebStory(models.Model):
     @property
     def panel_count(self) -> int:
         return len(self.panels or [])
+
+    @property
+    def is_indexable(self) -> bool:
+        """May search engines index this story? The one rule the story page's
+        robots meta and the sitemap both read: published, long enough, and its
+        product not hidden from search (a pre-launch product's story must not
+        leak it)."""
+        return (
+            self.is_published
+            and self.panel_count >= MIN_INDEXABLE_PAGES
+            and not getattr(self.product, 'noindex', False)
+        )

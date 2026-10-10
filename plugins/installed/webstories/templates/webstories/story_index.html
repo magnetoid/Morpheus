@@ -1,12 +1,11 @@
 {% extends "storefront/base.html" %}
-{% load seo %}
-
-{% block seo %}
-{% seo_meta object=None fallback_title="Web Stories — dot books" fallback_description="Tappable book stories from the shelf. Three taps, one cover, one paragraph that landed." %}
-{% endblock %}
+{% load i18n %}
+{% comment %}The head comes from the theme's one storefront_head: the view names the
+page (seo_title / seo_description) and passes breadcrumb_items, and the seo app adds
+the brand, the canonical and the breadcrumb graph. Until v0.93.0 this page overrode
+the head with a hardcoded "Web Stories — dot books" on every store.{% endcomment %}
 
 {% block extra_head %}
-{% if breadcrumb_items %}{% seo_breadcrumb_jsonld items=breadcrumb_items %}{% endif %}
 <style>
   .stories-hero { padding: 4rem 0 1.5rem; }
   .stories-hero .wrap { max-width: 720px; }
@@ -26,7 +25,7 @@
   .story-card {
     position: relative;
     display: block;
-    aspect-ratio: 9 / 16;
+    aspect-ratio: 3 / 4;
     border-radius: 14px;
     overflow: hidden;
     background: var(--paper-2);
@@ -81,17 +80,14 @@
 <section class="stories-hero">
   <div class="wrap">
     <p class="stories-crumb">
-      <a href="/">Home</a>
+      <a href="/">{% translate "Home" %}</a>
       <span style="margin: 0 .35rem;">/</span>
-      <span>Stories</span>
+      <span>{% translate "Stories" %}</span>
     </p>
-    <p class="eyebrow">Web stories</p>
-    <h1 class="display display-xl" style="margin: 1.25rem 0 1rem;">
-      Tap. Flip. Read<span class="text-accent">.</span>
-    </h1>
+    <p class="eyebrow">{% translate "Web stories" %}</p>
+    <h1 class="display display-xl" style="margin: 1.25rem 0 1rem;">{% translate "Stories" %}</h1>
     <p class="lede">
-      Three taps for the cover, the pitch, and the paragraph that landed.
-      Tappable book stories from the shelf — short, visual, made for the phone.
+      {% translate "Short, tappable stories about what we sell: the photos, what each product is for, and what comes with it. Made for the phone." %}
     </p>
   </div>
 </section>
@@ -101,16 +97,16 @@
     {% if stories %}
     <div class="stories-grid">
       {% for s in stories %}
-      <a href="/story/{{ s.product.slug }}/" class="story-card" aria-label="Read the story: {{ s.title|default:s.product.name }}">
+      <a href="/story/{{ s.product.slug }}/" class="story-card" aria-label="{% blocktranslate with name=s.title|default:s.product.name %}Read the story: {{ name }}{% endblocktranslate %}">
         {% if s.poster_portrait_url %}
           <img class="story-card__img" src="{{ s.poster_portrait_url }}" alt="{{ s.title|default:s.product.name }}" loading="lazy" decoding="async">
         {% else %}
           <div class="story-card__fallback">{{ s.title|default:s.product.name }}</div>
         {% endif %}
         <div class="story-card__shade" aria-hidden="true"></div>
-        <span class="story-card__tap">Tap to read</span>
+        <span class="story-card__tap">{% translate "Tap to read" %}</span>
         <div class="story-card__meta">
-          <p class="story-card__eyebrow">Web story</p>
+          <p class="story-card__eyebrow">{% translate "Web story" %}</p>
           <p class="story-card__title">{{ s.title|default:s.product.name }}</p>
         </div>
       </a>
@@ -119,10 +115,10 @@
     {% else %}
     <div class="empty-shelf">
       <div class="glyph">.</div>
-      <h2>No stories yet<span class="text-accent">.</span></h2>
-      <p>We're still building this shelf. Check back soon, or browse the full catalogue while you wait.</p>
+      <h2>{% translate "No stories yet" %}</h2>
+      <p>{% translate "A story appears here once a product has photos. Browse the shop in the meantime." %}</p>
       <div class="actions">
-        <a class="btn btn-primary" href="/products/">Browse all books</a>
+        <a class="btn btn-primary" href="/products/">{% translate "Browse the shop" %}</a>
       </div>
     </div>
     {% endif %}

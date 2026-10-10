@@ -37,11 +37,6 @@
         <label class="block text-sm font-medium mb-1">Description</label>
         {{ form.description }}
       </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Image</label>
-        {% if category.image %}<img src="{{ category.image.url }}" alt="" style="max-height:80px;border-radius:6px;margin-bottom:.5rem;">{% endif %}
-        {{ form.image }}
-      </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <label class="flex items-center gap-2 text-sm">{{ form.is_active }} Active</label>
         <div>
@@ -50,6 +45,9 @@
         </div>
       </div>
     </div>
+
+    {% comment %}The dashboard's one media uploader, form-bound mode — the same component as the product gallery.{% endcomment %}
+    {% include "admin_dashboard/_media_field.html" with field=form.image current=category.image label="Category image" help="Shown on the category's tile and at the top of its page. The first thing a shopper sees of the category." %}
 
     {% comment %}
     Contributed cards (CATEGORY_FORM_CARDS) — the SEO panel arrives here, the

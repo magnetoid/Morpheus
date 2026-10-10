@@ -1000,6 +1000,27 @@ beacon, PWA, chat or GDPR footer links — and `core/tests/test_slot_parity.py`
 checks only the ACTIVE theme (dot_books under test). Every theme base and the
 storefront fallback must emit all four; guarded by `themes/test_global_slots.py`.
 
+**Landmine — product text is rich HTML; anywhere but the PDP it must become
+plain text first, never be sliced raw.** Web Stories cut `short_description`
+(`<p><span>…`) to 160 characters and printed it escaped: `&lt;p&gt;` on screen
+in 10 of Irving's 11 stories and on dotbooks and supernatural, in captions, alt
+text and the meta description (v0.93.0). A slice can also end inside a tag or an
+entity. Use `webstories.services.extract` / `plain_text` / `clip` (paragraphs and
+list items kept apart, cut at a sentence or word) or `strip_tags` + unescape, and
+clean again at render time when the text was stored by older code. Guarded by
+`webstories/tests/test_story_text.py` + `test_story_render.py`.
+
+**Convention — the dashboard has ONE media uploader.** `admin_dashboard/static/
+admin_dashboard/media-uploader.js` + `media-uploader.css` (loaded by base.html),
+two modes: the product gallery (`_media_uploader.html`, instant uploads, reorder,
+video) and form-bound (`_media_field.html`, `data-mode="field"`) for any other
+image field — the file rides along with the form's Save, X ticks Django's
+`<name>-clear`. A new image field includes `_media_field.html`, never a bare file
+input. Anything the dashboard binds in JS must also bind on `htmx:afterSwap`: the
+body is `hx-boost`, so a page reached by a link, or re-rendered after a Save, never
+fires DOMContentLoaded (the uploader stayed inert that way until v0.93.0). Guarded
+by `admin_dashboard/tests/test_media_field_uploader.py`.
+
 **Landmine — a `StorefrontBlock` whose slot no template renders is silent.**
 The plugin is enabled, its tests pass, its block renders fine in isolation — and
 the merchant sees nothing, with no error anywhere. This had happened four times

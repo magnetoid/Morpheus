@@ -49,9 +49,97 @@
     }, opts));
   }
 
+  const MAX_BYTES = 10 * 1024 * 1024;
+
+  /*
+   * Form-bound mode (data-mode="field", admin_dashboard/_media_field.html):
+   * one image field of an ordinary form. Same look as the gallery, but the
+   * chosen file goes into the form's own file input and is saved with the
+   * form, so it works on a create form and never reloads over unsaved edits.
+   * The X ticks Django's clear checkbox (<name>-clear).
+   */
+  function initField(root) {
+    const input = root.querySelector('[data-file-input]');
+    const clear = root.querySelector('[data-field-clear]');
+    const tile = root.querySelector('[data-field-tile]');
+    const preview = root.querySelector('[data-field-preview]');
+    const pill = root.querySelector('[data-field-pill]');
+    const addTile = root.querySelector('[data-add-tile]');
+    const addLabel = root.querySelector('[data-add-label]');
+    const removeBtn = root.querySelector('[data-field-remove]');
+    const note = root.querySelector('[data-field-note]');
+    const noteText = note ? note.textContent : '';
+    if (!input) return;
+    let objectUrl = '';
+
+    function say(text, tone) {
+      if (!note) return;
+      note.textContent = text || noteText;
+      if (tone) note.dataset.tone = tone; else delete note.dataset.tone;
+    }
+
+    function show(url, pillText) {
+      if (tile) tile.hidden = !url;
+      if (preview) preview.src = url || '';
+      if (pill) pill.textContent = pillText || '';
+      if (addLabel) addLabel.textContent = url ? 'Replace image' : 'Add image';
+    }
+
+    function choose(file) {
+      if (!file) return;
+      if (!(file.type || '').startsWith('image/')) {
+        flashMessage(`${file.name} is not an image.`);
+        return;
+      }
+      if (file.size > MAX_BYTES) {
+        flashMessage(`${file.name} is over 10 MB.`);
+        return;
+      }
+      if (!(input.files && input.files[0] === file)) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+      }
+      if (clear) clear.checked = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(file);
+      show(objectUrl, 'New');
+      say(`${file.name} will be saved with the form.`, 'pending');
+    }
+
+    if (addTile) addTile.addEventListener('click', () => input.click());
+    input.addEventListener('change', () => choose(input.files && input.files[0]));
+    if (removeBtn) {
+      removeBtn.addEventListener('click', e => {
+        e.preventDefault();
+        input.value = '';
+        if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = ''; }
+        if (clear) clear.checked = true;
+        show('', '');
+        say(clear ? 'The image will be removed when you save.' : '', clear ? 'pending' : '');
+      });
+    }
+
+    const isFileDrag = e => Array.from(e.dataTransfer?.types || []).includes('Files');
+    root.addEventListener('dragenter', e => { if (isFileDrag(e)) { e.preventDefault(); root.classList.add('is-dragover'); } });
+    root.addEventListener('dragover', e => { if (isFileDrag(e)) e.preventDefault(); });
+    root.addEventListener('dragleave', e => { if (!root.contains(e.relatedTarget)) root.classList.remove('is-dragover'); });
+    root.addEventListener('drop', e => {
+      if (!isFileDrag(e)) return;
+      e.preventDefault();
+      root.classList.remove('is-dragover');
+      const file = Array.from(e.dataTransfer.files || []).find(f => (f.type || '').startsWith('image/'));
+      if (file) choose(file); else flashMessage('Drop an image file.');
+    });
+  }
+
   function init(root) {
     if (root.dataset._mediaUploaderBound === '1') return;
     root.dataset._mediaUploaderBound = '1';
+    if (root.dataset.mode === 'field') {
+      initField(root);
+      return;
+    }
 
     const grid = root.querySelector('[data-media-grid]');
     const fileInput = root.querySelector('[data-file-input]');
@@ -143,7 +231,7 @@
       for (const file of files) {
         if (!file.type.startsWith('image/')) continue;
         if (existingCount + added >= cap) {
-          flashMessage(`Cap reached — ${cap} media items max per product.`);
+          flashMessage(`Cap reached — ${cap} media items at most.`);
           break;
         }
         const fd = new FormData();
@@ -423,4 +511,10 @@
   } else {
     document.addEventListener('DOMContentLoaded', () => Morph.MediaUploader.initAll());
   }
+  // The dashboard body is hx-boost: links AND form submissions swap
+  // #main-content without a page load, so DOMContentLoaded never fires for the
+  // page that arrives — an uploader reached by a link, or re-rendered after a
+  // Save, stayed inert until a manual reload. Bind whatever a swap brings in;
+  // init() skips anything already bound.
+  document.addEventListener('htmx:afterSwap', () => Morph.MediaUploader.initAll());
 })();

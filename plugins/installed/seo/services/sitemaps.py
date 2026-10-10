@@ -77,12 +77,14 @@ def _iter_webstory_entries(base: str) -> Iterable[dict]:
         from plugins.installed.webstories.models import WebStory
 
         rows = (
-            WebStory.objects.filter(is_published=True)
+            WebStory.objects.filter(is_published=True, product__status='active')
             .select_related('product')
-            .only('updated_at', 'product__slug', 'product__status')
+            .only('updated_at', 'is_published', 'panels', 'product__slug', 'product__noindex')
         )
         for s in rows:
-            if getattr(s.product, 'status', '') != 'active':
+            # The story's own rule (published, long enough, product not hidden
+            # from search) — the same one its page's robots meta reads.
+            if not s.is_indexable:
                 continue
             yield {
                 'loc': urljoin(base, f'/story/{s.product.slug}/'),

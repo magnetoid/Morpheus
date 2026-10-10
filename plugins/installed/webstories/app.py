@@ -13,8 +13,9 @@ triggered the GSC "amp-story canonical error"). Discovery instead comes from:
   * the ``<amp-story-player>`` embed on the PDP (a normal link, not a pairing)
   * Story URLs in the main sitemap
 
-V1 is auto-only — every Product save triggers a fresh build via
-``services.ensure_story``. Manual per-panel editing is a v2 follow-up.
+Auto-only — every Product save triggers a fresh build via
+``services.ensure_story`` (plain text, one idea per page, a 3:4 poster).
+Manual per-page editing is a follow-up.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from morpheus.app import Plugin, SettingsPanel, StorefrontBlock
 class WebstoriesPlugin(Plugin):
     name = 'webstories'
     label = 'Web Stories'
-    version = '0.1.0'
+    version = '0.2.0'
     description = (
         'Auto-generates Google-indexable AMP Web Stories from product '
         'images and embeds an <amp-story-player> on the product page.'
@@ -53,35 +54,33 @@ class WebstoriesPlugin(Plugin):
             )
         ]
 
-    def settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            slug='webstories',
-            label='Web Stories',
-            category='channels',
-            description=(
-                'Auto-generated Web Stories per product. Stories are '
-                'rebuilt on every product save and image change.'
-            ),
-            schema={
-                'enabled': {
-                    'type': 'boolean',
-                    'title': 'Enable Web Stories',
-                    'default': True,
-                    'description': (
-                        'When off, /story/<slug>/ returns 404 and the PDP embed renders nothing.'
-                    ),
-                },
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
                 'show_pdp_embed': {
                     'type': 'boolean',
-                    'title': 'Show the amp-story-player on PDP',
+                    'title': 'Show the story card on product pages',
+                    'description': (
+                        'The tappable story preview under the long description. '
+                        'Stories stay at /story/<product>/ and in the sitemap either way.'
+                    ),
                     'default': True,
                 },
-                'theme': {
-                    'type': 'string',
-                    'title': 'Story theme',
-                    'enum': ['paper', 'cream', 'dark'],
-                    'default': 'paper',
-                    'description': 'Background color when an image is missing.',
-                },
             },
+        }
+
+    def contribute_settings_panel(self) -> SettingsPanel:
+        # Until v0.93.0 this was a method named `settings_panel` — not the
+        # contract name — so the panel never showed, and none of its three
+        # keys was read by anything.
+        return SettingsPanel(
+            label='Web Stories',
+            description=(
+                'A story per product, rebuilt whenever the product or its photos '
+                'change: the photos, the opening lines, the key points and a link '
+                'back to the product.'
+            ),
+            schema=self.get_config_schema(),
+            category='storefront',
         )

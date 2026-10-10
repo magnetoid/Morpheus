@@ -1,0 +1,51 @@
+{% comment %}
+The dashboard media uploader, form-bound mode: one image field of any form.
+
+Same component as the product gallery (_media_uploader.html) — same look
+(static/admin_dashboard/media-uploader.css), same script
+(static/admin_dashboard/media-uploader.js, data-mode="field") — but the chosen
+file travels with the form's own Save: it works on a create form, and it never
+reloads the page over unsaved edits. The X removes the image through Django's
+own clear checkbox (`<name>-clear`, ClearableFileInput), so the view needs
+nothing beyond `Form(request.POST, request.FILES)`.
+
+Usage:
+
+  {% include "admin_dashboard/_media_field.html" with field=form.image current=category.image label="Image" help="Shown on the category tile." %}
+{% endcomment %}
+{% load i18n %}
+<div class="muploader muploader--field card card-padded" data-media-uploader data-mode="field">
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <h2 class="font-semibold text-sm">{{ label|default:_("Image") }}</h2>
+      {% if help %}<p class="text-xs text-[color:var(--text-muted)]">{{ help }}</p>{% endif %}
+    </div>
+  </div>
+
+  <div class="muploader-grid" data-media-grid>
+    <div class="muploader-tile is-cover" data-field-tile{% if not current %} hidden{% endif %}>
+      <div class="muploader-tile__media">
+        <img data-field-preview src="{% if current %}{{ current.url }}{% endif %}" alt="">
+      </div>
+      <button type="button" class="muploader-tile__quick-x" data-field-remove aria-label="{% translate 'Remove image' %}" title="{% translate 'Remove' %}">
+        <i data-lucide="x" class="h-3 w-3"></i>
+      </button>
+      <span class="muploader-tile__cover-pill" data-field-pill>{% translate "Current" %}</span>
+    </div>
+
+    <button type="button" class="muploader-tile muploader-tile--add" data-add-tile aria-label="{% if current %}{% translate 'Replace image' %}{% else %}{% translate 'Add image' %}{% endif %}">
+      <div class="muploader-tile__add-stack">
+        <i data-lucide="plus" class="h-6 w-6"></i>
+        <span class="muploader-tile__add-label" data-add-label>{% if current %}{% translate "Replace image" %}{% else %}{% translate "Add image" %}{% endif %}</span>
+      </div>
+    </button>
+  </div>
+
+  {% comment %}Not `hidden`/display:none — Safari refuses to open the file dialog when .click() is called on a display:none input. Visually-hidden-but-rendered works in every browser.{% endcomment %}
+  <input type="file" name="{{ field.html_name }}" id="{{ field.id_for_label }}" accept="image/*" data-file-input
+         style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;">
+  {% if not field.field.required %}<input type="checkbox" name="{{ field.html_name }}-clear" data-field-clear hidden>{% endif %}
+
+  <p class="muploader-field__note" data-field-note>{% translate "Drag an image anywhere here or click the tile. JPEG · PNG · WebP · AVIF · GIF · up to 10 MB. Saved with the form." %}</p>
+  {% if field.errors %}<p class="field-error">{{ field.errors.0 }}</p>{% endif %}
+</div>

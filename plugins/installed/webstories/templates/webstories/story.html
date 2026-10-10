@@ -1,93 +1,89 @@
-{% load static %}<!doctype html>
-<html amp lang="en">
+{% load i18n %}<!doctype html>
+{% get_current_language as LANG %}<html amp lang="{{ LANG|default:'en' }}">
 <head>
 <meta charset="utf-8">
-<title>{{ story.title|default:product.name }}</title>
-<link rel="canonical" href="{{ story_url|default:canonical_url }}">
+<title>{{ story_title }}</title>
+<link rel="canonical" href="{{ story_url }}">
 <meta name="viewport" content="width=device-width">
-<meta name="description" content="{{ story.summary|default:product.short_description }}">
-<script async src="https://cdn.ampproject.org/v0.js"></script>
+{% if not indexable %}<meta name="robots" content="noindex, follow">
+{% endif %}{% if description %}<meta name="description" content="{{ description }}">
+{% endif %}<script async src="https://cdn.ampproject.org/v0.js"></script>
 <script async custom-element="amp-story" src="https://cdn.ampproject.org/v0/amp-story-1.0.js"></script>
 <style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style><noscript><style amp-boilerplate>body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>
 <style amp-custom>
+  amp-story { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
   amp-story-page { background-color: #1a1a1a; }
-  .ws-overlay {
-    background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.65) 100%);
-    width: 100%;
-    height: 100%;
-  }
-  .ws-text-frame {
-    padding: 32px 28px 56px 28px;
-    justify-content: flex-end;
-  }
-  .ws-title {
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: 42px;
-    font-weight: 600;
-    line-height: 1.1;
-    color: #fff;
-    margin: 0 0 14px 0;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.55);
-  }
-  .ws-caption {
-    font-family: 'Inter', system-ui, sans-serif;
-    font-size: 18px;
-    line-height: 1.45;
-    color: rgba(255,255,255,0.95);
-    margin: 0;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.55);
-  }
-  .ws-cta-row {
-    margin-top: 24px;
-  }
-  .ws-cta {
-    display: inline-block;
-    background: #fff;
-    color: #1a1a1a;
-    padding: 14px 28px;
-    border-radius: 999px;
-    text-decoration: none;
-    font-family: 'Inter', system-ui, sans-serif;
-    font-weight: 600;
-    font-size: 16px;
-    letter-spacing: 0.02em;
-  }
-  .ws-poster-fallback {
-    background: #efe7d8;
-  }
+  .ws-stage { position: relative; width: 100%; height: 100%; }
+  .ws-media { position: absolute; top: 6%; left: 8%; right: 8%; bottom: 36%; }
+  .ws-shade { width: 100%; height: 100%; background: linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, .74) 100%); }
+  .ws-text { align-content: end; padding: 28px 26px 48px; }
+  .ws-page--cta .ws-text { padding-bottom: 112px; }
+  .ws-title { font-size: 34px; line-height: 1.12; font-weight: 700; letter-spacing: -.01em; margin: 0 0 10px; }
+  .ws-heading { font-size: 13px; line-height: 1.2; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; margin: 0 0 12px; opacity: .85; }
+  .ws-caption { font-size: 19px; line-height: 1.42; margin: 0; }
+  .ws-byline { font-size: 16px; line-height: 1.35; margin: 0; opacity: .9; }
+  .ws-points { list-style: none; margin: 0; padding: 0; }
+  .ws-points li { position: relative; font-size: 19px; line-height: 1.35; padding: 11px 0 11px 24px; border-top: 1px solid rgba(255, 255, 255, .28); }
+  .ws-points li::before { content: ''; position: absolute; left: 2px; top: 19px; width: 9px; height: 9px; border-radius: 50%; background: currentColor; opacity: .85; }
+  .ws-tone--dark { color: #fff; }
+  .ws-tone--dark .ws-title, .ws-tone--dark .ws-caption, .ws-tone--dark .ws-byline, .ws-tone--dark .ws-points li { text-shadow: 0 2px 14px rgba(0, 0, 0, .5); }
+  .ws-tone--light { color: #141414; }
+  .ws-tone--light .ws-points li { border-top-color: rgba(0, 0, 0, .14); }
 </style>
 </head>
 <body>
+{% translate "View product" as cta_label %}
 <amp-story standalone
-  title="{{ story.title|default:product.name }}"
+  title="{{ story_title }}"
   publisher="{{ publisher_name }}"
   publisher-logo-src="{{ publisher_logo_url }}"
   poster-portrait-src="{{ poster_url }}">
-{% for panel in panels %}
-  <amp-story-page id="panel-{{ forloop.counter }}" auto-advance-after="6s">
-    {% if panel.image_url %}
-      <amp-story-grid-layer template="fill">
-        <amp-img src="{{ panel.image_url }}"
-                 layout="fill"
-                 alt="{{ panel.caption|default:product.name }}"></amp-img>
-      </amp-story-grid-layer>
-      <amp-story-grid-layer template="fill">
-        <div class="ws-overlay"></div>
-      </amp-story-grid-layer>
-    {% else %}
-      <amp-story-grid-layer template="fill">
-        <div class="ws-poster-fallback" style="width:100%;height:100%"></div>
-      </amp-story-grid-layer>
-    {% endif %}
-    <amp-story-grid-layer template="vertical" class="ws-text-frame">
-      {% if panel.title %}<h1 class="ws-title">{{ panel.title }}</h1>{% endif %}
-      {% if panel.caption %}<p class="ws-caption">{{ panel.caption }}</p>{% endif %}
-      {% if panel.cta_url %}
-        <div class="ws-cta-row">
-          <a class="ws-cta" href="{{ panel.cta_url }}">{{ panel.cta_label|default:"View product" }}</a>
+{% for page in pages %}
+  <amp-story-page id="page-{{ forloop.counter }}" class="ws-page--{{ page.kind }}"{% if not forloop.last %} auto-advance-after="{{ page.seconds }}s"{% endif %}>
+    {% if page.image_url and page.fit == 'contain' %}
+    <amp-story-grid-layer template="fill">
+      <div class="ws-stage" style="background-color: {{ page.bg }}">
+        <div class="ws-media">
+          <amp-img src="{{ page.image_url }}"{% if page.srcset %} srcset="{{ page.srcset }}"{% endif %} layout="fill" object-fit="contain" alt="{{ page.alt }}"></amp-img>
         </div>
+      </div>
+    </amp-story-grid-layer>
+    {% elif page.image_url %}
+    <amp-story-grid-layer template="fill">
+      <amp-img src="{{ page.image_url }}"{% if page.srcset %} srcset="{{ page.srcset }}"{% endif %} layout="fill" object-fit="cover" alt="{{ page.alt }}"></amp-img>
+    </amp-story-grid-layer>
+    <amp-story-grid-layer template="fill">
+      <div class="ws-shade"></div>
+    </amp-story-grid-layer>
+    {% else %}
+    <amp-story-grid-layer template="fill">
+      <div class="ws-stage"></div>
+    </amp-story-grid-layer>
+    {% endif %}
+    <amp-story-grid-layer template="vertical" class="ws-text ws-tone--{% if page.image_url %}{{ page.tone }}{% else %}dark{% endif %}">
+      {% if page.kind == 'cover' %}
+        <h1 class="ws-title" animate-in="fly-in-bottom" animate-in-duration="0.5s">{{ page.title }}</h1>
+        {% if page.caption %}<p class="ws-byline" animate-in="fade-in" animate-in-delay="0.3s">{{ page.caption }}</p>{% endif %}
+      {% elif page.kind == 'points' %}
+        <p class="ws-heading">{% translate "At a glance" %}</p>
+        <ul class="ws-points" animate-in="fade-in">{% for point in page.points %}<li>{{ point }}</li>{% endfor %}</ul>
+      {% elif page.kind == 'synopsis' %}
+        <p class="ws-heading">{% translate "About this book" %}</p>
+        <p class="ws-caption" animate-in="fade-in">{{ page.caption }}</p>
+      {% elif page.kind == 'cta' %}
+        <h2 class="ws-title" animate-in="fly-in-bottom" animate-in-duration="0.5s">{{ page.title }}</h2>
+        {% if page.caption %}<p class="ws-caption">{{ page.caption }}</p>{% endif %}
+      {% else %}
+        {% if page.title %}<h2 class="ws-title">{{ page.title }}</h2>{% endif %}
+        {% if page.caption %}<p class="ws-caption" animate-in="fade-in">{{ page.caption }}</p>{% endif %}
       {% endif %}
     </amp-story-grid-layer>
+    {% if page.kind == 'cta' and page.cta_href %}
+    {# The button reads the link's own text; the validator rejects a cta-text attribute here. #}
+    <amp-story-page-outlink layout="nodisplay">
+      <a href="{{ page.cta_href }}">{{ cta_label }}</a>
+    </amp-story-page-outlink>
+    {% endif %}
   </amp-story-page>
 {% endfor %}
 </amp-story>

@@ -254,6 +254,7 @@
   }
 </style>
 <script src="{% static 'admin_dashboard/dashboard.js' %}" defer></script>
+<link rel="stylesheet" href="{% static 'admin_dashboard/media-uploader.css' %}">
 <script src="{% static 'admin_dashboard/media-uploader.js' %}" defer></script>
 {% comment %}Rich-text editor (Lexical) — self-hosted, guarded so disabling the richtext plugin removes it entirely. Bundle scans [data-richtext]; re-scanned on htmx swaps below.{% endcomment %}
 {% plugin_enabled "richtext" as richtext_on %}

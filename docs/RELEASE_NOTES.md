@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.93.0 — 2026-10-10
+
+**Web Stories rebuilt — no more markup on screen — and one media uploader for every image in the dashboard**
+
+- Web Stories showed the product description's HTML as text (<p>, <span>, lists) on three stores; story text is now plain, cut at a sentence or word, and stories already stored are cleaned when shown
+- Each story says one thing per page: the cover, the opening lines, the key points from the description's list, more detail, the other photos, and a closing page with the product link as AMP's own call-to-action button; it validates with the official AMP validator
+- Every story gets a real 3:4 poster (720×960, the photo on its own background colour) as Google asks; product shots are shown whole on their background instead of being cropped
+- Stories shorter than four pages, and stories of products hidden from search (pre-launch), are kept out of the sitemap and carry noindex; the /stories/ page no longer says "dot books" on other stores
+- Web Stories settings now appear (Settings → Storefront) with the switch for the story card on product pages
+- Dashboard: the category image uses the same media uploader as product media — drag and drop, preview tile, remove — saved with the form; the uploader now also works after in-app navigation, and the product gallery's counter shows the real number
+
 ## v0.92.0 — 2026-10-10
 
 **Forms agents can drive in the browser, Irving's centred stage captions, and the plugin-contract check green again**

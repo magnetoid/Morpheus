@@ -9,10 +9,11 @@ The amp-story-player runtime loads from the AMP CDN (one script + one
 stylesheet) and renders a tappable card that opens the full
 `/story/<slug>/` document in a fullscreen overlay.
 {% endcomment %}
-{% if web_story and web_story.panels %}
+{% load webstories i18n %}{% webstory_embed_enabled as show_story_card %}
+{% if show_story_card and web_story and web_story.panels %}
 <section class="pdp-webstory" aria-labelledby="pdp-webstory-heading">
-  <h2 id="pdp-webstory-heading" class="pdp-webstory__heading">Story preview</h2>
-  <p class="pdp-webstory__lede">Tap to flip through the cover, snippets, and details.</p>
+  <h2 id="pdp-webstory-heading" class="pdp-webstory__heading">{% translate "Story preview" %}</h2>
+  <p class="pdp-webstory__lede">{% translate "Tap to flip through the photos and the key points." %}</p>
   <script async src="https://cdn.ampproject.org/amp-story-player-v0.js"></script>
   <link href="https://cdn.ampproject.org/amp-story-player-v0.css" rel="stylesheet">
   <amp-story-player class="pdp-webstory__player">
@@ -21,7 +22,7 @@ stylesheet) and renders a tappable card that opens the full
         <img src="{{ web_story.poster_portrait_url }}"
              loading="lazy"
              data-amp-story-player-poster-img
-             alt="{{ product.name }} story poster">
+             alt="{% blocktranslate with name=product.name %}{{ name }}: story poster{% endblocktranslate %}">
       {% endif %}
       <span>{{ product.name }}</span>
     </a>
@@ -47,7 +48,7 @@ stylesheet) and renders a tappable card that opens the full
   }
   .pdp-webstory__player {
     width: min(280px, 100%);
-    aspect-ratio: 3 / 5;
+    aspect-ratio: 3 / 4;
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
