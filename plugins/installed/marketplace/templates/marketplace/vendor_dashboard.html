@@ -4,17 +4,20 @@
 {% block portal_head %}
 {% include "marketplace/_vendor_styles.html" %}
 <style>
-.vd-overview { display: grid; gap: 1.25rem; grid-template-areas: "send" "side" "chart" "best" "recent"; }
+.vd-overview { display: grid; gap: 1.25rem; grid-template-areas: "send" "side" "chart" "best"; }
 .vd-overview > * { min-width: 0; }
 .vd-a-send { grid-area: send; }
 .vd-a-side { grid-area: side; }
 .vd-a-chart { grid-area: chart; }
 .vd-a-best { grid-area: best; }
-.vd-a-recent { grid-area: recent; }
 @media (min-width: 960px) {
+  /* Two columns that stack on their own: the side column spans every row and
+     the last row is flexible, so whichever column is taller ends lower and
+     neither leaves a gap in the middle of the page. */
   .vd-overview {
     grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
-    grid-template-areas: "send side" "chart side" "best recent";
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas: "send side" "chart side" "best side";
     align-items: start;
   }
 }
@@ -149,6 +152,29 @@
         {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="box" compact=True %}
       {% endif %}
     </section>
+
+    <section class="pp-card" aria-labelledby="vd-recent-title">
+      <div class="pp-card__head"><h2 class="pp-card__title" id="vd-recent-title">{% translate "Latest orders" %}</h2><a class="pp-link" href="/vendor/me/orders/">{% translate "All orders" %}</a></div>
+      {% if recent %}
+      <div class="pp-table-wrap">
+        <table class="pp-table">
+          <thead><tr><th scope="col">{% translate "Order" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col" class="num">{% translate "You earn" %}</th></tr></thead>
+          <tbody>
+            {% for vo in recent %}
+            <tr>
+              <td><a class="pp-link pp-table__primary" href="/vendor/me/orders/{{ vo.id }}/">#{{ vo.parent_order.order_number }}</a><span class="pp-table__secondary">{{ vo.created_at|date:"M j" }}</span></td>
+              <td>{% include "marketplace/_order_state.html" with state=vo.state %}</td>
+              <td class="num">{{ vo.net|money }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        {% translate "No orders yet" as e_title %}{% translate "Orders for your products appear here as soon as they are placed." as e_text %}
+        {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="inbox" compact=True %}
+      {% endif %}
+    </section>
   </div>
 
   <section class="pp-card vd-a-chart" aria-labelledby="vd-chart-title">
@@ -179,29 +205,6 @@
     {% else %}
       {% translate "No sales in this period" as e_title %}{% translate "Your best-selling products show up here." as e_text %}
       {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="chart" compact=True %}
-    {% endif %}
-  </section>
-
-  <section class="pp-card vd-a-recent" aria-labelledby="vd-recent-title">
-    <div class="pp-card__head"><h2 class="pp-card__title" id="vd-recent-title">{% translate "Latest orders" %}</h2><a class="pp-link" href="/vendor/me/orders/">{% translate "All orders" %}</a></div>
-    {% if recent %}
-    <div class="pp-table-wrap">
-      <table class="pp-table">
-        <thead><tr><th scope="col">{% translate "Order" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col" class="num">{% translate "You earn" %}</th></tr></thead>
-        <tbody>
-          {% for vo in recent %}
-          <tr>
-            <td><a class="pp-link pp-table__primary" href="/vendor/me/orders/{{ vo.id }}/">#{{ vo.parent_order.order_number }}</a><span class="pp-table__secondary">{{ vo.created_at|date:"M j" }}</span></td>
-            <td>{% include "marketplace/_order_state.html" with state=vo.state %}</td>
-            <td class="num">{{ vo.net|money }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-      {% translate "No orders yet" as e_title %}{% translate "Orders for your products appear here as soon as they are placed." as e_text %}
-      {% include "partner_portal/_empty.html" with title=e_title text=e_text icon="inbox" compact=True %}
     {% endif %}
   </section>
 </div>
