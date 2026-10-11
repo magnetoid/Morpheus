@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.98.0 — 2026-10-11
+
+**Detailed error capture with a report for Claude Code**
+
+- Errors: a Detailed capture switch on Settings → Developer → Errors, on for 24 hours or 7 days, and off by hand or by itself at the end time. While it is on the store also records warnings, rejected requests, broken internal links, pages slower than 3 seconds, retried background jobs, and in browsers console errors, failed requests and missing images or scripts, each with the request it happened in. Passwords, cookies, request bodies and secret-looking values are never kept.
+- Errors: Copy for Claude Code puts one report of the open errors on the clipboard, errors first, with tracebacks, request details and what to do; Download report saves it as a file. The same report runs on the server as python manage.py errors_report, and agents with diagnostics access read it through errors.recent and errors.get.
+- Errors: Mark resolved on an error's page; if the error comes back it shows as Back again, so a fix that did not hold is not hidden.
+
 ## v0.97.0 — 2026-10-11
 
 **Affiliate and vendor portals; a category picker that adds categories in place; dashboard confirmations that wait for a yes**
