@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.98.2 — 2026-10-11
+
+**One group per problem in the error log**
+
+- Errors: a problem that repeats with a fresh id each time (a provider's request id, a dated file name) now stays one group with a count, instead of a new group per occurrence.
+
 ## v0.98.1 — 2026-10-11
 
 **Fixes from the first error report: forms saved with images, clearer stored errors, no nightly false alarm before launch**
