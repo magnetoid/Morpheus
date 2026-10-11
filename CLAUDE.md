@@ -411,7 +411,12 @@ so the turn reaches MCP by the store's public URL (`mcp_public`) — never by a 
 service name, which on a shared Docker network can resolve to another store. And
 **an automation's conversation can never consent** (`gates.is_automation_key`): its
 prompt is stored like a message, so "…ok" on a short schedule would approve the
-previous run's proposal unattended. Bundled ecommerce skills live in
+previous run's proposal unattended; its chat takes no messages either. Linda manages
+automations through `automations.*` (v0.99.0) **only from a merchant's own chat**: an
+automation reads with Linda's profile as its owner, so one created by an external
+agent or by another automation would read beyond that caller's grant. Schedules are
+five cron fields on the store clock (`agent_core/cron.py`), 15 minutes apart at least
+for Linda. Bundled ecommerce skills live in
 `core/assistant/janus_skills/` and are wired via `skills.external_dirs` in the
 per-conversation Janus home. **Four CLI traps shipped live in v0.63.0 and each
 looked fine in tests** (v0.63.1): (1) without `-t`, `janus chat` loads its
@@ -1249,6 +1254,9 @@ on a submit button (platform "Update now", Cloudflare "Purge everything") was no
 read at all. A handler that must stop a submit stops propagation in the capture
 phase (`dashboard.js:attachConfirmDelegation`); the AJAX save takes its button
 from `ev.submitter`, never from focus (Safari never focuses a clicked button).
+An inline `onsubmit="return confirm(…)"` is the same trap: until v0.99.0 Cancel on
+21 dashboard forms still deleted, sent the newsletter campaign or turned off
+two-factor. Ask with `data-confirm`.
 Guarded by `admin_dashboard/tests/test_confirm_dialog_contract.py`.
 
 **Landmine — invoking an agent hands the caller every scope the AGENT holds.**

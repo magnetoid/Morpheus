@@ -31,7 +31,10 @@ chat would cover them.{% endcomment %}
   </div>
 
   <div class="linda-dock">
-    <form id="linda-form" class="linda-form" autocomplete="off">
+    {% if read_only %}
+    <p class="linda-readonly">This chat is an automation's report: Linda writes here on its schedule, and it takes no messages. To act on what it found, <a href="/dashboard/assistant/">start a new chat</a>. To change its schedule, open <a href="/dashboard/agents/background/">Automations</a>.</p>
+    {% endif %}
+    <form id="linda-form" class="linda-form" autocomplete="off"{% if read_only %} hidden{% endif %}>
       {% csrf_token %}
       {% if models %}
       <select name="provider" class="linda-model" aria-label="Model for the next message" title="Model for the next message">
@@ -45,7 +48,7 @@ chat would cover them.{% endcomment %}
       </button>
     </form>
     <p id="linda-cost" class="linda-cost" hidden></p>
-    {% if conversation_id %}<p class="linda-cost"><a href="/dashboard/assistant/">New chat</a></p>{% endif %}
+    {% if conversation_id and not read_only %}<p class="linda-cost"><a href="/dashboard/assistant/">New chat</a></p>{% endif %}
   </div>
   {{ history|json_script:"linda-history" }}
   {{ conversation_id|json_script:"linda-conversation" }}
@@ -256,6 +259,8 @@ chat would cover them.{% endcomment %}
   }
   .linda-model:hover, .linda-model:focus { color: var(--text); background: color-mix(in srgb, var(--surface-2) 90%, var(--text)); outline: none; }
   .linda-cost { margin: .4rem 0 0; text-align: center; font-size: .72rem; color: var(--text-muted); }
+  .linda-readonly { width: 100%; max-width: 48rem; margin: 0 auto; text-align: center; font-size: .875rem; color: var(--text-muted); }
+  .linda-readonly a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
   .linda-send {
     flex: 0 0 auto;
     border: none; cursor: pointer;

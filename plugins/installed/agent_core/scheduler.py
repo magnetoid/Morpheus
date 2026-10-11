@@ -80,13 +80,93 @@ def next_daily(at, now=None):
     return candidate if candidate > local else candidate + timedelta(days=1)
 
 
-def schedule_next(bg) -> None:
+def next_cron(expr: str, now=None):
+    """The next time the store's clock matches the cron schedule `expr`."""
+    from plugins.installed.agent_core.cron import parse
+
+    return parse(expr).next_after((now or timezone.now()).astimezone(_store_timezone()))
+
+
+def first_run_at(bg):
+    """When a new or resumed automation runs first: its next slot when it has a
+    time of day, the next tick when it runs on an interval."""
+    if getattr(bg, 'cron', ''):
+        return next_cron(bg.cron)
     if getattr(bg, 'daily_at', None):
-        bg.next_run_at = next_daily(bg.daily_at)
+        return next_daily(bg.daily_at)
+    return timezone.now()
+
+
+def schedule_next(bg) -> None:
+    if getattr(bg, 'cron', '') or getattr(bg, 'daily_at', None):
+        bg.next_run_at = first_run_at(bg)
     else:
         floor = min_interval_s(getattr(bg, 'engine', ''))
         bg.next_run_at = timezone.now() + timedelta(seconds=max(floor, int(bg.interval_seconds)))
     bg.save(update_fields=['next_run_at', 'updated_at'])
+
+
+def scheduled_runs_on() -> bool:
+    """Whether the tick runs automations on their schedule (Settings → AI →
+    Enable autonomous operator). "Run now" works either way."""
+    from core.agents.events import AgentEvents
+    from morpheus.core import hook_registry
+
+    return bool(hook_registry.filter(AgentEvents.AUTONOMY_ENABLED, value=False))
+
+
+# ── What the Automations page and Linda's automations.* tools both do ──────────
+
+
+def create_automation(
+    *,
+    name: str,
+    prompt: str,
+    owner,
+    engine: str = 'linda',
+    agent_name: str = 'worker',
+    interval_seconds: int = 3600,
+    daily_at=None,
+    cron: str = '',
+):
+    """A new automation, scheduled. ``ValueError`` says what is wrong with the input.
+
+    A Linda automation runs as ``owner``, the person who asked for it.
+    """
+    from plugins.installed.agent_core.cron import schedule_error
+    from plugins.installed.agent_core.models import BackgroundAgent
+
+    name, prompt, cron = name.strip(), prompt.strip(), ' '.join((cron or '').split())
+    if not name or not prompt:
+        raise ValueError('An automation needs a name and what to do.')
+    if cron and (error := schedule_error(cron, engine=engine)):
+        raise ValueError(error)
+    bg = BackgroundAgent(
+        name=name[:120],
+        prompt=prompt[:50_000],
+        engine=engine,
+        agent_name=agent_name[:100],
+        interval_seconds=max(min_interval_s(engine), int(interval_seconds)),
+        daily_at=daily_at,
+        cron=cron,
+        created_by=owner,
+    )
+    bg.next_run_at = first_run_at(bg)
+    bg.save()
+    return bg
+
+
+def pause(bg) -> None:
+    bg.state = bg.STATE_PAUSED
+    bg.save(update_fields=['state', 'updated_at'])
+
+
+def resume(bg) -> None:
+    """Active again with its failures forgotten, from its next slot."""
+    bg.state = bg.STATE_ACTIVE
+    bg.consecutive_failures = 0
+    bg.next_run_at = first_run_at(bg)
+    bg.save(update_fields=['state', 'consecutive_failures', 'next_run_at', 'updated_at'])
 
 
 def fire(bg) -> dict[str, Any]:
@@ -165,10 +245,7 @@ def tick() -> int:
     opt-in (fail-safe off when no subscriber enables it). Manual "run now"
     (`fire`) is unaffected.
     """
-    from core.agents.events import AgentEvents
-    from morpheus.core import hook_registry
-
-    if not hook_registry.filter(AgentEvents.AUTONOMY_ENABLED, value=False):
+    if not scheduled_runs_on():
         logger.debug('background_agent: tick skipped — autonomy disabled')
         return 0
 
@@ -187,9 +264,10 @@ def tick() -> int:
         return 0
 
     for bg in due:
-        # Reschedule first so two beats firing on top of each other don't double-run.
-        schedule_next(bg)
         try:
+            # Reschedule first so two beats firing on top of each other don't
+            # double-run — inside the try, so one bad row never stops the rest.
+            schedule_next(bg)
             fire(bg)
             fired += 1
         except Exception as e:  # noqa: BLE001

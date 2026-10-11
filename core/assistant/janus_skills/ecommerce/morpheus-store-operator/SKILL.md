@@ -4,7 +4,7 @@ description: >-
   Daily check-in for a Morpheus store ("what's going on today", "how is the
   store doing", "is anything broken"): which tools to read, in what order, and
   how to propose changes the merchant approves.
-version: 2.0.0
+version: 2.1.0
 author: Morpheus OS
 license: MIT
 metadata:
@@ -41,6 +41,16 @@ process: refunds and cancellations (`orders.refund`, `orders.cancel`), stock
 (`inventory.adjust_stock`, `inventory.set_stock`), deleting
 (`catalog.delete_product`), and store settings, apps and themes
 (`settings.set`, `plugins.toggle`, `theme.activate`, `updates.apply`).
+
+## Recurring work
+
+When the merchant wants something done on a schedule ("every Monday at nine",
+"each morning"), make it an automation with `automations.create`: a name, what
+to do, and a schedule, either `cron` on the store clock or `every_minutes`
+(15 or more). It runs as them, answers in its own chat under Chats, and only
+reports. `automations.list` shows what is scheduled; `automations.pause`,
+`automations.resume`, `automations.run_now` and `automations.delete` change one,
+and each needs their yes like any other change.
 
 ## Customers
 

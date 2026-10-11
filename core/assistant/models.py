@@ -34,6 +34,13 @@ class AssistantConversation(models.Model):
     class Meta:
         ordering = ['-updated_at']
 
+    @property
+    def is_automation(self) -> bool:
+        """A scheduled automation's chat, written by its runs; nobody types in it."""
+        from core.assistant.gates import is_automation_key
+
+        return is_automation_key(self.key)
+
     def cost_summary(self) -> dict:
         """Tokens + estimated USD cost for this conversation (dashboard display,
         not billing). Sums per-message tokens, priced by each message's model."""

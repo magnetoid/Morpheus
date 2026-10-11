@@ -16,6 +16,14 @@ import logging
 from plugins.installed.agent_core.tools.analytics import (
     revenue_summary_tool,
 )
+from plugins.installed.agent_core.tools.automations import (
+    create_automation_tool,
+    delete_automation_tool,
+    list_automations_tool,
+    pause_automation_tool,
+    resume_automation_tool,
+    run_automation_now_tool,
+)
 from plugins.installed.agent_core.tools.cart import (
     add_to_cart_tool,
     get_cart_summary_tool,
@@ -124,5 +132,11 @@ def all_builtin_tools() -> list:
         revenue_summary_tool,
         draft_product_description_tool,
         fill_missing_content_tool,
+        list_automations_tool,
+        create_automation_tool,
+        pause_automation_tool,
+        resume_automation_tool,
+        run_automation_now_tool,
+        delete_automation_tool,
         *_diagnostics_tools(),
     ]

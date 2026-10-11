@@ -694,44 +694,41 @@ def observability_view(request):
 @staff_member_required
 @require_capability('system.write')
 def background_agents_view(request):
-    from django.utils import timezone
-
     from morpheus.app.views import redirect
     from plugins.installed.agent_core.models import BackgroundAgent
 
     if request.method == 'POST':
         from datetime import time as _time
 
-        from plugins.installed.agent_core.scheduler import min_interval_s, next_daily
+        from django.contrib import messages
 
-        name = (request.POST.get('name') or '').strip()
+        from plugins.installed.agent_core.scheduler import create_automation
+
         engine = request.POST.get('engine') or BackgroundAgent.ENGINE_LINDA
         if engine not in dict(BackgroundAgent.ENGINE_CHOICES):
             engine = BackgroundAgent.ENGINE_LINDA
-        agent_name = (request.POST.get('agent_name') or '').strip() or 'worker'
-        prompt = (request.POST.get('prompt') or '').strip()
         try:
-            interval = max(
-                min_interval_s(engine), int(request.POST.get('interval_seconds') or 3600)
-            )
+            interval = int(request.POST.get('interval_seconds') or 3600)
         except (TypeError, ValueError):
             interval = 3600
         daily_at = None
         hh, _, mm = (request.POST.get('daily_at') or '').strip().partition(':')
         if hh.isdigit() and mm.isdigit() and int(hh) < 24 and int(mm) < 60:
             daily_at = _time(int(hh), int(mm))
-        if name and prompt:
-            BackgroundAgent.objects.create(
-                name=name[:120],
-                agent_name=agent_name[:100],
+        try:
+            create_automation(
+                name=request.POST.get('name') or '',
+                prompt=request.POST.get('prompt') or '',
+                # A Linda automation runs as the person who created it.
+                owner=request.user if request.user.is_authenticated else None,
                 engine=engine,
-                prompt=prompt[:50_000],
+                agent_name=(request.POST.get('agent_name') or '').strip() or 'worker',
                 interval_seconds=interval,
                 daily_at=daily_at,
-                next_run_at=next_daily(daily_at) if daily_at else timezone.now(),
-                # A Linda automation runs as the person who created it.
-                created_by=request.user if request.user.is_authenticated else None,
+                cron=request.POST.get('cron') or '',
             )
+        except ValueError as e:
+            messages.error(request, str(e))
         return redirect('/dashboard/agents/background/')
 
     rows = list(BackgroundAgent.objects.all().order_by('-updated_at')[:200])
@@ -748,8 +745,7 @@ def background_agents_view(request):
         'key', 'pk'
     ):
         mine[key].chat_id = chat_id
-    from core.agents.events import AgentEvents
-    from morpheus.core import hook_registry
+    from plugins.installed.agent_core.scheduler import scheduled_runs_on
 
     return render(
         request,
@@ -758,7 +754,7 @@ def background_agents_view(request):
             'background_agents': rows,
             'agents': agent_registry.all_agents(),
             # Scheduled runs need the autonomy switch; "Run now" works without it.
-            'autonomy_on': bool(hook_registry.filter(AgentEvents.AUTONOMY_ENABLED, value=False)),
+            'autonomy_on': scheduled_runs_on(),
             'active_nav': 'agents',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
@@ -772,23 +768,17 @@ def background_agents_view(request):
 @staff_member_required
 @require_capability('system.write')
 def background_agent_action_view(request, bg_id: str, action: str):
-    from django.utils import timezone
-
     from morpheus.app.views import redirect
     from plugins.installed.agent_core.models import BackgroundAgent
-    from plugins.installed.agent_core.scheduler import fire
+    from plugins.installed.agent_core.scheduler import fire, pause, resume
 
     bg = get_object_or_404(BackgroundAgent, id=bg_id)
     if request.method != 'POST':
         return redirect('/dashboard/agents/background/')
     if action == 'pause':
-        bg.state = BackgroundAgent.STATE_PAUSED
-        bg.save(update_fields=['state', 'updated_at'])
+        pause(bg)
     elif action == 'resume':
-        bg.state = BackgroundAgent.STATE_ACTIVE
-        bg.consecutive_failures = 0
-        bg.next_run_at = timezone.now()
-        bg.save(update_fields=['state', 'consecutive_failures', 'next_run_at', 'updated_at'])
+        resume(bg)
     elif action == 'run-now':
         fire(bg)
     elif action == 'delete':

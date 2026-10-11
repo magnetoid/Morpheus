@@ -10,7 +10,12 @@ import json
 import logging
 
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponseBadRequest, JsonResponse, StreamingHttpResponse
+from django.http import (
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+    JsonResponse,
+    StreamingHttpResponse,
+)
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
@@ -70,6 +75,8 @@ def assistant_page(request):
         {
             'history': transcript(chat) if chat else [],
             'conversation_id': str(chat.pk) if chat else '',
+            # An automation's chat is its report: read it here, act on it in a new chat.
+            'read_only': bool(chat and chat.is_automation),
             # More than one usable model: the composer offers a choice.
             'models': models if len(models) > 1 else [],
             'memories': memories,
@@ -125,7 +132,14 @@ def assistant_stream(request):
         started = start_chat(user, message)
         conv_key = started.key
     else:
-        conv_key = owned_chat(user, conversation).key
+        conv = owned_chat(user, conversation)
+        if conv.is_automation:
+            # Its runs write here and nothing typed here can approve a change
+            # (gates.is_automation_key), so a message would only mislead.
+            return HttpResponseForbidden(
+                "This is an automation's chat and takes no messages. Start a new chat."
+            )
+        conv_key = conv.key
 
     page_url = (body.get('page_url') or '')[:512]
     page_title = (body.get('page_title') or '')[:200]

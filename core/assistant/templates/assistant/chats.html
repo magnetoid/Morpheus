@@ -30,6 +30,7 @@ listed — another staff member's never are.{% endcomment %}
         <tr>
           <td class="align-top" style="min-width: 16rem;">
             <a href="/dashboard/assistant/?c={{ c.pk }}" class="font-medium">{% if c.title %}{{ c.title }}{% elif c.key == thread_key %}Quick questions (the Linda button){% else %}Chat from {{ c.created_at|date:"M j" }}{% endif %}</a>
+            {% if c.is_automation %}<span class="pill" title="Written by a scheduled automation; read-only">Automation</span>{% endif %}
             <details class="mt-1">
               <summary class="text-xs text-[color:var(--text-muted)]" style="cursor: pointer;">Rename</summary>
               <form method="post" action="/dashboard/assistant/chats/{{ c.pk }}/rename/" class="flex items-center gap-2 mt-1">

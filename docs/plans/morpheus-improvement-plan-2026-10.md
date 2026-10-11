@@ -591,8 +591,11 @@ turn records an `AgentRun` (`agent_name='linda'`, provider, model, tokens,
 tool calls, error; the guardrails skip those rows so her tokens count once),
 the turn token carries provider + model and the MCP edge writes them on every
 decision row, Activity and Observability show refused writes, and the AI-Act
-export has a `consents` section (executed vs refused, in the CSV too). Open:
-`automations.*` tools for Linda, the 5-field cron, read-only automation chats.
+export has a `consents` section (executed vs refused, in the CSV too).
+**Status 2026-10-11: done.** v0.99.0 shipped the rest: six `automations.*` tools
+(only from a merchant's own chat; every change needs their yes), five-field cron
+on the store clock (`agent_core/cron.py`, 15 minutes apart at least for Linda), and
+automation chats that are read-only.
 
 One source of truth for a Janus turn. Recommendation: write a lightweight
 `AgentRun` (`agent='linda'`, provider, model, tokens from `state.db`,

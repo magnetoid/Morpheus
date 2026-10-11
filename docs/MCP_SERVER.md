@@ -345,6 +345,16 @@ counts, paths and the latest message) and `errors.get` (one group by
 fingerprint: full traceback and request context). They return what "Copy for
 Claude Code" on the error log page hands over.
 
+Automations (the store's scheduler) are six tools Linda uses from a merchant's
+own chat: `automations.list` (`system.read`) and `automations.create`,
+`automations.pause`, `automations.resume`, `automations.run_now` and
+`automations.delete` (`system.write`, each needs the merchant's yes). A new
+automation runs on Linda as that merchant, on five cron fields read on the store
+clock or every N minutes (15 or more). The tools refuse every other caller: an
+external agent's conversation, an automation's own run and a plain API token.
+An automation reads with Linda's profile, and `automations.list` returns its
+answers, so any of those callers could otherwise read more than its own grant.
+
 ## Examples
 
 ### Publish a PDF book (MCP)

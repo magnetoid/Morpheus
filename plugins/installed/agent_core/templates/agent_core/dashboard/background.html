@@ -6,7 +6,7 @@
   <div class="flex items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Linda automations</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Jobs Linda runs on a schedule — a morning stock check, a weekly SEO look — without anyone asking. Each Linda automation answers in its own chat (under Chats). It reads and reports; it never changes the store, because nobody is there to approve — ask for the change in a chat.</p>
+      <p class="text-sm text-[color:var(--text-muted)]">Jobs Linda runs on a schedule — a morning stock check, a weekly SEO look — without anyone asking. Each Linda automation answers in its own chat (under Chats). It reads and reports; it never changes the store, because nobody is there to approve — ask for the change in a chat. You can also ask Linda in a chat to set one up, pause it or run it now.</p>
     </div>
     <a href="{% url 'agent_core_dash:runs' %}" class="btn">See activity →</a>
   </div>
@@ -37,7 +37,7 @@
           {% if bg.chat_id %}<br><a href="/dashboard/assistant/?c={{ bg.chat_id }}" class="meta">Open chat</a>{% endif %}
         </td>
         <td>{% if bg.engine == 'linda' %}Linda{% else %}<code>{{ bg.agent_name }}</code>{% endif %}</td>
-        <td>{% if bg.daily_at %}Every day at {{ bg.daily_at|time:"H:i" }}{% else %}Every {{ bg.interval_seconds }}s{% endif %}</td>
+        <td>{{ bg.schedule_label }}</td>
         <td>
           {% if bg.state == 'active' %}<span class="pill pill-success">active</span>
           {% elif bg.state == 'paused' %}<span class="pill">paused</span>
@@ -59,7 +59,7 @@
             {% csrf_token %}<button class="btn-link">Resume</button>
           </form>
           {% endif %}
-          <form method="post" action="/dashboard/agents/background/{{ bg.id }}/delete/" style="display:inline" onsubmit="return confirm('Delete this background agent?');">
+          <form method="post" action="/dashboard/agents/background/{{ bg.id }}/delete/" style="display:inline" data-confirm="Delete the automation “{{ bg.name }}”? Its chat stays under Chats." data-confirm-cta="Delete" data-confirm-danger>
             {% csrf_token %}<button class="btn-link" style="color:var(--danger);">Delete</button>
           </form>
         </td>
@@ -92,8 +92,9 @@
     <label>What to do
       <textarea name="prompt" required class="form-input" rows="3" placeholder="Check stock and tell me which products are at or below their reorder point."></textarea>
     </label>
-    <label>Every day at <span class="meta">(store time; leave empty to use the interval)</span> <input name="daily_at" type="time" class="form-input"></label>
-    <label>Or every (seconds, min 60) <input name="interval_seconds" type="number" min="60" value="3600" class="form-input"></label>
+    <label>Cron schedule <span class="meta">(optional; five fields on the store clock — minute hour day-of-month month day-of-week, e.g. <code>0 9 * * 1-5</code> for weekdays at 09:00)</span> <input name="cron" class="form-input" placeholder="0 9 * * 1-5" autocomplete="off" spellcheck="false"></label>
+    <label>Or every day at <span class="meta">(store time; leave both empty to use the interval)</span> <input name="daily_at" type="time" class="form-input"></label>
+    <label>Or every (seconds; Linda at least 900) <input name="interval_seconds" type="number" min="60" value="3600" class="form-input"></label>
     <button type="submit" class="btn btn-primary">Schedule</button>
   </form>
 </div>

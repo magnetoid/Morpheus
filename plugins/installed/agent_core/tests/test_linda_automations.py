@@ -115,6 +115,32 @@ class LindaAutomationTests(TestCase):
         self.assertEqual(job.daily_at, time(8, 15))
         self.assertEqual(job.created_by, self.owner)
 
+    def _create_on_the_page(self, **fields):
+        self.client.force_login(self.owner)
+        data = {'engine': 'linda', 'prompt': 'Report.', 'interval_seconds': '3600', **fields}
+        return self.client.post('/dashboard/agents/background/', data, follow=True)
+
+    def test_the_page_takes_a_cron_schedule(self):
+        self._create_on_the_page(name='Weekdays', cron='0  9 * * 1-5')
+        job = BackgroundAgent.objects.get(name='Weekdays')
+        self.assertEqual(job.cron, '0 9 * * 1-5')
+        self.assertGreater(job.next_run_at, timezone.now())
+        page = self.client.get('/dashboard/agents/background/').content.decode()
+        self.assertIn('0 9 * * 1-5 (cron, store time)', page)
+
+    def test_the_page_says_why_a_cron_is_refused(self):
+        resp = self._create_on_the_page(name='Too often', cron='*/5 * * * *')
+        self.assertFalse(BackgroundAgent.objects.filter(name='Too often').exists())
+        self.assertContains(resp, 'at most every 15 minutes')
+
+    def test_resuming_a_timed_automation_waits_for_its_slot(self):
+        job = self._job(cron='0 9 * * *', state=BackgroundAgent.STATE_PAUSED)
+        self.client.force_login(self.owner)
+        self.client.post(f'/dashboard/agents/background/{job.pk}/resume/')
+        job.refresh_from_db()
+        self.assertEqual(job.state, BackgroundAgent.STATE_ACTIVE)
+        self.assertGreater(job.next_run_at, timezone.now())
+
 
 class PublicMcpEndpointTests(TestCase):
     def test_a_turn_without_a_request_reaches_the_store_by_its_public_address(self):

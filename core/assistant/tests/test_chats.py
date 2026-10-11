@@ -132,6 +132,41 @@ class ChatsTests(TestCase):
         html = self.client.get('/dashboard/assistant/chats/').content.decode()
         self.assertIn('href="/dashboard/assistant/chats/"', html)
 
+    # An automation's chat is its report. Nothing typed there can approve a
+    # change (gates.is_automation_key), so it takes no messages (plan W3).
+    def _automation_chat(self):
+        from core.assistant.gates import automation_key
+
+        conv = AssistantConversation.objects.create(
+            key=automation_key(self.owner.pk, 'job-1'),
+            user=self.owner,
+            title='Automation: Morning stock',
+        )
+        AssistantMessage.objects.create(conversation=conv, role='user', content='Check stock.')
+        AssistantMessage.objects.create(conversation=conv, role='assistant', content='Two are low.')
+        return conv
+
+    def test_an_automations_chat_opens_as_its_report_without_a_composer(self):
+        conv = self._automation_chat()
+        html = self.client.get(f'/dashboard/assistant/?c={conv.pk}').content.decode()
+        self.assertIn('Two are low.', html)
+        self.assertIn('takes no messages', html)
+        self.assertRegex(html, r'<form id="linda-form"[^>]*\shidden>')
+
+    def test_an_automations_chat_takes_no_messages(self):
+        conv = self._automation_chat()
+        resp = self._say('ok, do it', conversation=str(conv.pk))
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(_FakeAssistant.keys, [])
+        self.assertEqual(conv.messages.count(), 2)
+
+    def test_the_chats_tab_marks_automation_chats(self):
+        self._automation_chat()
+        self._chat(self.owner, title='Weekly sales')
+        html = self.client.get('/dashboard/assistant/chats/').content.decode()
+        self.assertIn('Automation: Morning stock', html)
+        self.assertEqual(html.count('>Automation</span>'), 1)
+
 
 class ModelPickerTests(TestCase):
     """A model can be picked for the next message (owner's ask, 2026-10-10)."""

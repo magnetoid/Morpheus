@@ -150,6 +150,9 @@ class BackgroundAgent(models.Model):
     # When set, runs once a day at this time (store time zone) instead of every
     # `interval_seconds`.
     daily_at = models.TimeField(null=True, blank=True)
+    # Five cron fields on the store's clock (agent_core/cron.py). When set, it
+    # decides the schedule ahead of `daily_at` and `interval_seconds`.
+    cron = models.CharField(max_length=120, blank=True)
     state = models.CharField(
         max_length=12, choices=STATE_CHOICES, default=STATE_ACTIVE, db_index=True
     )
@@ -181,3 +184,17 @@ class BackgroundAgent(models.Model):
 
     def __str__(self) -> str:
         return f'{self.name} → {self.agent_name}'
+
+    @property
+    def schedule_label(self) -> str:
+        """The schedule in words; the page and Linda's tools say it the same way."""
+        if self.cron:
+            return f'{self.cron} (cron, store time)'
+        if self.daily_at:
+            return f'Every day at {self.daily_at:%H:%M} (store time)'
+        seconds = int(self.interval_seconds or 0)
+        unit, size = next(
+            (u, s) for u, s in (('hour', 3600), ('minute', 60), ('second', 1)) if seconds % s == 0
+        )
+        n = seconds // size
+        return f'Every {unit}' if n == 1 else f'Every {n} {unit}s'
