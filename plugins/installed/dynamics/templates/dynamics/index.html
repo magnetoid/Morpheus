@@ -100,7 +100,7 @@
             <a href="/dashboard/dynamics/{{ block.pk }}/preview/" class="btn btn-ghost text-xs">Preview</a>
             <a href="/dashboard/dynamics/{{ block.pk }}/" class="btn btn-ghost text-xs">Edit</a>
             <form method="post" action="/dashboard/dynamics/{{ block.pk }}/delete/" class="inline"
-                  onsubmit="return confirm('Delete this block?');">
+                  data-confirm="Delete this block?" data-confirm-cta="Delete" data-confirm-danger>
               {% csrf_token %}
               <button type="submit" class="btn btn-ghost text-xs text-[color:var(--danger)]">Delete</button>
             </form>

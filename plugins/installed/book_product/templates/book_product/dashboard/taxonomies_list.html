@@ -48,7 +48,7 @@
             <a href="{{ t.page_url }}" target="_blank" rel="noopener" class="btn btn-ghost text-xs">View page</a>
             <a href="{{ t.edit_url }}" class="btn btn-ghost text-xs">Edit SEO</a>
             {% if group.is_curated %}
-            <form method="post" action="{{ t.delete_url }}" class="inline" onsubmit="return confirm('Delete “{{ t.name|escapejs }}”? Books keep their other taxonomies.');">
+            <form method="post" action="{{ t.delete_url }}" class="inline" data-confirm="Delete “{{ t.name }}”? Books keep their other taxonomies." data-confirm-cta="Delete" data-confirm-danger>
               {% csrf_token %}
               <button type="submit" class="btn btn-ghost text-xs text-[color:var(--danger,#dc2626)]">Delete</button>
             </form>

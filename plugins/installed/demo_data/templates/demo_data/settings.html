@@ -59,7 +59,7 @@
     Removes only products tagged with <code>metadata.is_random_demo=True</code>.
     Real products and the bookstore fixture are not affected.
   </p>
-  <form method="post" onsubmit="return confirm('Delete all random demo products?');">
+  <form method="post" data-confirm="Delete all random demo products?" data-confirm-cta="Delete" data-confirm-danger>
     {% csrf_token %}
     <button type="submit" name="action" value="wipe_random" class="btn" style="border-color: var(--danger); color: var(--danger);">
       Wipe random demo

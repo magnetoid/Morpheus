@@ -140,7 +140,7 @@
         <td>{% if e.is_active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Off</span>{% endif %}</td>
         <td class="text-right whitespace-nowrap">
           <a href="?edit={{ e.id }}#entry-form" class="btn btn-ghost text-xs">Edit</a>
-          <form method="post" class="inline" onsubmit="return confirm('Delete this entry?');">
+          <form method="post" class="inline" data-confirm="Delete this entry?" data-confirm-cta="Delete" data-confirm-danger>
             {% csrf_token %}
             <input type="hidden" name="action" value="delete_entry">
             <input type="hidden" name="id" value="{{ e.id }}">

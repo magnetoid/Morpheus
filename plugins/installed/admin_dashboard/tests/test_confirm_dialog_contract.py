@@ -67,3 +67,20 @@ class ConfirmDialogContractTests(SimpleTestCase):
                         continue
                 misplaced.append(f'{rel}: <{tag}>')
         self.assertEqual(misplaced, [], 'data-confirm that nothing would ever ask about')
+
+    def test_no_dashboard_form_asks_with_an_inline_confirm(self):
+        # `onsubmit="return confirm(…)"` only cancels the event, and htmx sends a
+        # boosted form whose submit was cancelled: until v0.99.0, Cancel still
+        # deleted the redirect, sent the newsletter campaign or turned off
+        # two-factor on 21 dashboard forms. Ask with data-confirm. Storefront
+        # pages are not boosted, so their inline confirms work.
+        inline = []
+        for base in ('core', 'plugins'):
+            for path in sorted((_ROOT / base).glob('**/templates/**/*.html')):
+                rel = str(path.relative_to(_ROOT))
+                if '/templates/storefront/' in rel:
+                    continue
+                src = path.read_text(encoding='utf-8', errors='ignore')
+                if re.search(r'\sonsubmit="[^"]*confirm\(', src):
+                    inline.append(rel)
+        self.assertEqual(inline, [])

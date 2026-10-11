@@ -43,7 +43,7 @@
   </form>
 
   {% if delete_url %}
-  <form method="post" action="{{ delete_url }}" class="flex justify-end" onsubmit="return confirm('Delete “{{ name|escapejs }}”? Books keep their other taxonomies.');">
+  <form method="post" action="{{ delete_url }}" class="flex justify-end" data-confirm="Delete “{{ name }}”? Books keep their other taxonomies." data-confirm-cta="Delete" data-confirm-danger>
     {% csrf_token %}
     <button type="submit" class="btn btn-ghost text-sm text-[color:var(--danger,#dc2626)]"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete {{ taxonomy_label|lower }}</button>
   </form>

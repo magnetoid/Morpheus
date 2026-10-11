@@ -47,7 +47,7 @@
           <td class="text-[color:var(--text-muted)] text-xs"><code>{{ c.landing_url }}</code></td>
           <td>{% if c.is_active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral text-xs">Hidden</span>{% endif %}</td>
           <td class="text-right">
-            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this creative?');">
+            <form method="post" style="display:inline;" data-confirm="Delete this creative?" data-confirm-cta="Delete" data-confirm-danger>
               {% csrf_token %}
               <input type="hidden" name="action" value="delete">
               <input type="hidden" name="id" value="{{ c.id }}">

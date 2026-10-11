@@ -57,7 +57,7 @@
           <td class="text-[color:var(--text-muted)] whitespace-nowrap align-top">{{ m.updated_at|date:"M j, H:i" }}</td>
           {% if can_edit %}
           <td class="text-right align-top">
-            <form method="post" action="{% url 'agent_core_dash:memory_action' %}" onsubmit="return confirm('Delete this memory?');">
+            <form method="post" action="{% url 'agent_core_dash:memory_action' %}" data-confirm="Delete this memory?" data-confirm-cta="Delete" data-confirm-danger>
               {% csrf_token %}
               <input type="hidden" name="action" value="delete">
               <input type="hidden" name="memory_id" value="{{ m.id }}">

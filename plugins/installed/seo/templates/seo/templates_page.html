@@ -42,7 +42,7 @@
         <td style="font-size:.8rem;">{{ row.get_mode_display }}</td>
         <td>{% if row.is_active %}<span class="pill pill-info">on</span>{% else %}<span class="pill">off</span>{% endif %}</td>
         <td style="text-align:right;">
-          <form method="post" style="display:inline;" onsubmit="return confirm('Remove this pattern? Pages fall back to their own titles.');">
+          <form method="post" style="display:inline;" data-confirm="Remove this pattern? Pages fall back to their own titles." data-confirm-cta="Remove" data-confirm-danger>
             {% csrf_token %}
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="{{ row.pk }}">

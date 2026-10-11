@@ -34,7 +34,7 @@
     <p class="text-sm" style="color:var(--text-muted); margin-bottom:.9rem;">
       Your account is protected. You'll be asked for a code at each sign-in.
     </p>
-    <form method="post" onsubmit="return confirm('Turn off two-factor for your account?');">
+    <form method="post" data-confirm="Turn off two-factor for your account?" data-confirm-cta="Turn off" data-confirm-danger>
       {% csrf_token %}
       <input type="hidden" name="action" value="disable">
       <button type="submit" class="btn btn-danger">Turn off two-factor</button>

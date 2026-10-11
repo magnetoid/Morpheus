@@ -17,7 +17,7 @@
     <div class="flex items-center gap-2">
       {% if editable %}
       <form method="post" action="/dashboard/draft-orders/{{ draft.number }}/cancel/"
-            onsubmit="return confirm('Cancel this draft?');">
+            data-confirm="Cancel this draft?" data-confirm-cta="Yes, cancel it" data-confirm-danger>
         {% csrf_token %}
         <button class="btn"><i data-lucide="x-circle" class="h-4 w-4"></i> Cancel draft</button>
       </form>
@@ -59,7 +59,7 @@
               <td>
                 {% if editable %}
                 <form method="post" action="/dashboard/draft-orders/{{ draft.number }}/lines/{{ line.id }}/delete/"
-                      onsubmit="return confirm('Remove this line?');">
+                      data-confirm="Remove this line?" data-confirm-cta="Remove" data-confirm-danger>
                   {% csrf_token %}
                   <button class="btn btn-ghost p-1.5" aria-label="Remove">
                     <i data-lucide="trash-2" class="h-4 w-4"></i>

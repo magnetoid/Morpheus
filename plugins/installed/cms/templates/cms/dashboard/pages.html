@@ -37,7 +37,7 @@
           <td class="text-right whitespace-nowrap">
             <a href="/dashboard/cms/pages/{{ r.id }}/edit/" class="btn btn-ghost text-xs">Edit</a>
             <form method="post" action="/dashboard/cms/pages/{{ r.id }}/duplicate/" class="inline">{% csrf_token %}<button type="submit" class="btn btn-ghost text-xs">Duplicate</button></form>
-            <form method="post" action="/dashboard/cms/pages/{{ r.id }}/delete/" class="inline" onsubmit="return confirm('Delete “{{ r.title|escapejs }}”? This cannot be undone.');">{% csrf_token %}<button type="submit" class="btn btn-danger text-xs">Delete</button></form>
+            <form method="post" action="/dashboard/cms/pages/{{ r.id }}/delete/" class="inline" data-confirm="Delete “{{ r.title }}”? This cannot be undone." data-confirm-cta="Delete" data-confirm-danger>{% csrf_token %}<button type="submit" class="btn btn-danger text-xs">Delete</button></form>
           </td>
         </tr>
         {% endfor %}

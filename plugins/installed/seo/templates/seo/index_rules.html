@@ -38,7 +38,7 @@
           <td style="white-space:nowrap;">
             <a class="btn-link" href="?edit={{ r.id }}#rule-form">Edit</a>
             ·
-            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this rule?');">
+            <form method="post" style="display:inline;" data-confirm="Delete this rule?" data-confirm-cta="Delete" data-confirm-danger>
               {% csrf_token %}
               <input type="hidden" name="action" value="delete">
               <input type="hidden" name="id" value="{{ r.id }}">

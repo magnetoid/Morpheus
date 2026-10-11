@@ -26,7 +26,7 @@
             <input type="hidden" name="id" value="{{ a.id }}">
             <button class="btn btn-secondary text-xs">Sync</button>
           </form>
-          <form method="post" class="inline" onsubmit="return confirm('Delete this account?');">
+          <form method="post" class="inline" data-confirm="Delete this account?" data-confirm-cta="Delete" data-confirm-danger>
             {% csrf_token %}
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="{{ a.id }}">

@@ -54,7 +54,7 @@
       </form>
       <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="move_item"><input type="hidden" name="item_id" value="{{ it.id }}"><input type="hidden" name="direction" value="up"><button type="submit" class="btn btn-ghost text-xs" title="Move up" {% if forloop.first %}disabled{% endif %}>↑</button></form>
       <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="move_item"><input type="hidden" name="item_id" value="{{ it.id }}"><input type="hidden" name="direction" value="down"><button type="submit" class="btn btn-ghost text-xs" title="Move down" {% if forloop.last %}disabled{% endif %}>↓</button></form>
-      <form method="post" class="inline" onsubmit="return confirm('Remove “{{ it.label|escapejs }}”?');">{% csrf_token %}<input type="hidden" name="action" value="delete_item"><input type="hidden" name="item_id" value="{{ it.id }}"><button type="submit" class="btn btn-danger text-xs">✕</button></form>
+      <form method="post" class="inline" data-confirm="Remove “{{ it.label }}”?" data-confirm-cta="Remove" data-confirm-danger>{% csrf_token %}<input type="hidden" name="action" value="delete_item"><input type="hidden" name="item_id" value="{{ it.id }}"><button type="submit" class="btn btn-danger text-xs">✕</button></form>
     </div>
     {% empty %}
     <p class="text-sm text-[color:var(--text-muted)]">No items yet — add the first one below.</p>

@@ -35,7 +35,7 @@
             {% if e.status == 'live' %}
             <form method="post" action="/dashboard/live/{{ e.id }}/status/" class="inline">{% csrf_token %}<input type="hidden" name="status" value="ended"><button class="btn btn-sm">End</button></form>
             {% endif %}
-            <form method="post" action="/dashboard/live/{{ e.id }}/delete/" class="inline" onsubmit="return confirm('Delete this event?');">{% csrf_token %}<button class="btn btn-sm btn-danger">Delete</button></form>
+            <form method="post" action="/dashboard/live/{{ e.id }}/delete/" class="inline" data-confirm="Delete this event?" data-confirm-cta="Delete" data-confirm-danger>{% csrf_token %}<button class="btn btn-sm btn-danger">Delete</button></form>
           </td>
         </tr>
       {% endfor %}

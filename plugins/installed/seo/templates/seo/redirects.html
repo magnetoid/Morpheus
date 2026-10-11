@@ -49,7 +49,7 @@
           <td style="white-space:nowrap;">
             <a class="btn-link" href="?edit={{ r.id }}#redirect-form">Edit</a>
             ·
-            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this redirect?');">
+            <form method="post" style="display:inline;" data-confirm="Delete this redirect?" data-confirm-cta="Delete" data-confirm-danger>
               {% csrf_token %}
               <input type="hidden" name="action" value="delete">
               <input type="hidden" name="id" value="{{ r.id }}">
