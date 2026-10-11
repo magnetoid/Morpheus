@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.99.0 — 2026-10-11
+
+**Linda schedules automations from a chat, and Cancel cancels again**
+
+- Linda: ask in a chat for something on a schedule ("every Monday at nine, tell me what is low on stock") and she sets up the automation; she can also list, pause, resume, run and delete them. Each change waits for your yes, and only your own chat with Linda can make one.
+- Automations: a schedule can be five cron fields on the store clock, e.g. 0 9 * * 1-5 for weekdays at 09:00, on the Automations page too. Linda automations run at most every 15 minutes.
+- Automations: an automation's chat is read-only. It shows the report; act on it in a new chat.
+- Automations: resuming one that runs at a set time waits for its next slot instead of running at once.
+- Dashboard: on 21 forms, Cancel in the confirmation went ahead anyway, among them deleting redirects, pages and menus, sending a newsletter campaign and turning off two-factor. They now ask in the dashboard's dialog, and Cancel stops them.
+- Tests: the CI test job was red from v0.98.0 (the Worker agent lacked the error-log tools' scope), and a sandbox test left a thread spinning that slowed every later test.
+
 ## v0.98.2 — 2026-10-11
 
 **One group per problem in the error log**
