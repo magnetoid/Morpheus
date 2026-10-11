@@ -215,6 +215,7 @@ class HookRegistry:
     def _serialize_payload(kwargs: dict[str, Any]) -> dict[str, Any]:
         import decimal
         import json as _json
+        from django.core.files.uploadedfile import UploadedFile
         from django.core.serializers.json import DjangoJSONEncoder
         from django.db import models
         from django.db.models.query import QuerySet
@@ -222,7 +223,7 @@ class HookRegistry:
         from django.http import HttpRequest
 
         class WebhookEncoder(DjangoJSONEncoder):
-            def default(self, o):
+            def default(self, o):  # noqa: PLR0911 — one return per known type
                 if isinstance(o, models.Model):
                     return {'id': str(o.pk), 'model': o.__class__.__name__}
                 if isinstance(o, QuerySet):
@@ -242,6 +243,17 @@ class HookRegistry:
                         'type': 'http_request',
                         'path': getattr(o, 'path', ''),
                         'method': getattr(o, 'method', ''),
+                    }
+                # The dashboard's form-saved hooks pass request.FILES along for
+                # the contributors that store them; a webhook gets what the file
+                # is, never its bytes. Unknown, it failed the whole remote
+                # dispatch of every form saved with an image (2026-10-10).
+                if isinstance(o, UploadedFile):
+                    return {
+                        'type': 'file',
+                        'name': o.name,
+                        'size': o.size,
+                        'content_type': getattr(o, 'content_type', '') or '',
                     }
                 return super().default(o)
 
