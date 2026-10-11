@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.97.0 — 2026-10-11
+
+**Affiliate and vendor portals; a category picker that adds categories in place; dashboard confirmations that wait for a yes**
+
+- Partners: affiliates and vendors (suppliers on Irving) get one portal that looks native in every theme. Affiliates see clicks, orders, conversion and commission for 7, 30 or 90 days against the period before, a link builder that keeps links on the store, orders by commission state, analytics, payouts, coupon, creatives and widgets. Vendors see sales and earnings, orders to send with an inline Mark shipped, products running low, best sellers, payouts and settings. Fixed on the way: an affiliate link could send visitors to another site, the vendor account tile never rendered, payout requests could stack, and partner pages carried a second robots tag.
+- Products: the category field on the product editor is a searchable tree of categories and subcategories, for the primary category and for Also surface under, with New category (name and parent) right in the list. A name that already exists under the same parent picks that category instead of making a copy.
+- Products: saving a product in the editor no longer clears its category and vendor. Since 13 June the editor showed both as empty and every save stored them empty; re-assign the categories of products that lost theirs (the picker makes that quick).
+- Dashboard: Delete and every other action with a confirmation popup now waits for the answer. The popup opened while the action already ran in the background; Update now and Purge everything did not ask at all.
+- Storefront: a closed cart drawer is really closed in all four themes; it sat just past the right edge, casting a shadow and catching the Tab key.
+
 ## v0.96.1 — 2026-10-10
 
 **Product deletes work again on stores without the book app; Irving's shop filters sit above a four-column grid; a slightly larger Supernatural product photo**
