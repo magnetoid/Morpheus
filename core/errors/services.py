@@ -39,10 +39,28 @@ def _fingerprint_server(exc: BaseException) -> str:
     return hashlib.sha256('|'.join(parts).encode('utf-8')).hexdigest()[:32]
 
 
+#: Parts of a message that change on every occurrence of the same problem: a
+#: provider's request id, a hashed or redacted value, a timestamp in a file name.
+#: Left in, "Insufficient Balance (request_id: …)" became one group per day.
+_VOLATILE = (
+    (re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', re.I), '<uuid>'),
+    (re.compile(r'<redacted:[0-9a-f]+>'), '<redacted>'),
+    (re.compile(r'\b[0-9a-f]{12,}\b', re.I), '<hex>'),
+    (re.compile(r'\d{6,}'), '<n>'),
+)
+
+
+def stable_text(text: str) -> str:
+    """``text`` with its per-occurrence parts replaced, for fingerprinting only."""
+    for pattern, placeholder in _VOLATILE:
+        text = pattern.sub(placeholder, text)
+    return text
+
+
 def _fingerprint_client(message: str, source_url: str, lineno: int) -> str:
     """Stable hash for a JS error — message + file:line."""
     src = (source_url or '').split('/')[-1].split('?')[0]
-    key = f'{message}|{src}:{lineno}'
+    key = f'{stable_text(message)}|{src}:{lineno}'
     return hashlib.sha256(key.encode('utf-8')).hexdigest()[:32]
 
 
@@ -164,7 +182,8 @@ def record_message(
         msg = _scrub(message or '')[:2000]
         # Fingerprint on source + class + message head so the same recurring
         # message dedups (mirrors the exception fingerprint's intent).
-        fp = hashlib.sha256(f'{source}|{exception_class}|{msg[:200]}'.encode()).hexdigest()[:32]
+        fp_text = stable_text(msg)[:200]
+        fp = hashlib.sha256(f'{source}|{exception_class}|{fp_text}'.encode()).hexdigest()[:32]
         meta = _with_context(extra, request)
         if source:
             meta.setdefault('source', source)

@@ -280,3 +280,28 @@ class AgentToolTests(_Clean):
         self.assertIn('Traceback', got['latest']['traceback'])
         with self.assertRaises(ToolError):
             agent_registry.get_tool('errors.get').invoke({'fingerprint': 'nope'})
+
+
+class FingerprintTests(_Clean):
+    def test_volatile_ids_do_not_split_one_problem_into_many_groups(self):
+        # A provider puts a fresh request id in every error; one problem per day
+        # became one group per day (dotbooks and Supernatural, 2026-10-09/10).
+        for rid in ('e56bf010-1d2c-4f3b-9a8e-0f32b9096c11', '20e8c068-f144-40ae-928e-a7adcd9d606c'):
+            capture.record_message(
+                f'OpenAI completion error: Error code: 402 - Insufficient Balance (request_id: {rid})',
+                source='log:morpheus.ai.llm',
+            )
+        capture.record_message(
+            'Nightly backup failed: /app/backups/morpheus-backup-20260927T033000Z.tar.gz',
+            source='backups',
+        )
+        capture.record_message(
+            'Nightly backup failed: /app/backups/morpheus-backup-20260928T033000Z.tar.gz',
+            source='backups',
+        )
+        self.assertEqual(ErrorEvent.objects.values('fingerprint').distinct().count(), 2)
+
+    def test_different_status_codes_stay_different_problems(self):
+        capture.record_message('Upstream answered 402', source='x')
+        capture.record_message('Upstream answered 500', source='x')
+        self.assertEqual(ErrorEvent.objects.values('fingerprint').distinct().count(), 2)
