@@ -63,6 +63,8 @@ class ErrorEventLogHandler(logging.Handler):
 
         if not apps.ready:
             return
+        if record.levelno < logging.ERROR and not self._warnings_wanted(record):
+            return
         # Error capture is a core system (ADR 0025) — record into core.errors.
         from core.errors.services import record_error, record_message
 
@@ -94,6 +96,20 @@ class ErrorEventLogHandler(logging.Handler):
             record_error(exc, kind='server', level=level, extra={**meta, 'source': source})
         else:
             record_message(message, kind='server', level=level, source=source, extra=meta)
+
+    @staticmethod
+    def _warnings_wanted(record: logging.LogRecord) -> bool:
+        """WARNING records are kept only while detailed capture is on.
+
+        ``django.request`` warnings are the 4xx responses, which the error
+        middleware records itself with their request (rejected requests, broken
+        internal links); taking both would file every one twice.
+        """
+        if record.levelno < logging.WARNING or record.name == 'django.request':
+            return False
+        from core.errors.mode import detailed_active
+
+        return detailed_active()
 
     def _throttled(self, fp: str) -> bool:
         now = time.monotonic()

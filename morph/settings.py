@@ -868,19 +868,27 @@ import logging as _logging  # noqa: E402
 
 _logging.captureWarnings(True)
 
-# Bridge ERROR-level app logs into the Morpheus Brain's signal pipeline
+# Bridge app logs into the Morpheus Brain's signal pipeline
 # (core.errors.ErrorEvent → error_log collector → SiSignal → Brain). Skipped
 # under tests (no DB writes from log lines in the suite). The handler is
 # fail-soft + loop-safe; see core/brain/log_handler.py. Attached to the app +
-# request/security/celery loggers, NOT db.backends (its own writes log there)
-# nor py.warnings (deprecations aren't errors).
+# request/security/celery loggers and py.warnings, NOT db.backends (its own
+# writes log there). It receives WARNING+ but keeps a WARNING only while
+# detailed capture is on (core/errors/mode.py); ERROR+ always.
 if not _RUNNING_TESTS:
     LOGGING['handlers']['error_event'] = {
         'class': 'core.brain.log_handler.ErrorEventLogHandler',
-        'level': 'ERROR',
+        'level': 'WARNING',
         'filters': ['request_id'],
     }
-    for _brain_logger in ('morph', 'morpheus', 'django.request', 'django.security', 'celery'):
+    for _brain_logger in (
+        'morph',
+        'morpheus',
+        'django.request',
+        'django.security',
+        'celery',
+        'py.warnings',
+    ):
         LOGGING['loggers'][_brain_logger]['handlers'].append('error_event')
 
 # ── Self-improvement engine ────────────────────────────────────────────────────

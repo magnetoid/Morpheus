@@ -339,7 +339,11 @@ Read tools on `/mcp/admin/v1/` additionally include:
 `orders.list_recent`, `orders.summary`, `analytics.revenue_summary`,
 `catalog.stats`, `catalog.list_categories`, `catalog.find_products`,
 `catalog.get_product`, plus all writes above, plus diagnostics
-(`fs.*`, `logs.*`, `plugins.*`).
+(`fs.*`, `logs.*`, `plugins.*`). The error log is two read tools under
+`diagnostics.read`: `errors.recent` (the open error groups, errors first, with
+counts, paths and the latest message) and `errors.get` (one group by
+fingerprint: full traceback and request context). They return what "Copy for
+Claude Code" on the error log page hands over.
 
 ## Examples
 

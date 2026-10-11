@@ -9,6 +9,52 @@
       <h1 class="text-xl font-semibold tracking-tight">Errors</h1>
       <p class="text-sm text-[color:var(--text-muted)]">{{ total_server }} server · {{ total_client }} client (JS) · grouped by fingerprint.</p>
     </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {% comment %}One Markdown report of the open groups, written for Claude Code:
+         paste it into a session that has the Morpheus repository. The same
+         report: `python manage.py errors_report` in the store's container.{% endcomment %}
+      <button type="button" class="btn btn-primary" data-copy-report="{% url 'errors:report' %}" title="Copies a report of the open errors, with tracebacks and request details, to paste into Claude Code">
+        <i data-lucide="copy" class="h-4 w-4"></i> Copy for Claude Code
+      </button>
+      <a class="btn" href="{% url 'errors:report' %}?download=1"><i data-lucide="download" class="h-4 w-4"></i> Download report</a>
+      <a class="btn btn-ghost" href="{% url 'errors:report' %}?format=json&amp;download=1">JSON</a>
+    </div>
+  </div>
+
+  <div class="card card-padded" id="errors-capture">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="max-w-3xl">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="font-semibold">Detailed capture</h2>
+          {% if capture.active %}
+          <span class="pill pill-success">On until {{ capture.until|date:"M j, H:i" }} UTC</span>
+          {% else %}
+          <span class="pill">Off</span>
+          {% endif %}
+        </div>
+        <p class="text-sm text-[color:var(--text-muted)] mt-1">
+          {% if capture.active %}
+          Recording warnings, rejected requests, broken internal links, pages slower than 3 seconds, retried background jobs, and in browsers console errors, failed requests and missing images or scripts, each with the request it happened in.{% if capture.by %} Turned on by {{ capture.by }}.{% endif %} It switches itself off at the time shown.
+          {% else %}
+          Crashes, error logs, failed background jobs and browser errors are always recorded. Detailed capture adds warnings, rejected requests, broken internal links, slow pages, retried jobs, and in browsers console errors, failed requests and missing images or scripts, each with the request it happened in. Turn it on while you track a problem down; it switches itself off.
+          {% endif %}
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        {% if capture.active %}
+        <form method="post" action="{% url 'errors:detailed' %}">{% csrf_token %}
+          <input type="hidden" name="action" value="off">
+          <button type="submit" class="btn">Turn off</button>
+        </form>
+        {% endif %}
+        {% for hours in capture_windows %}
+        <form method="post" action="{% url 'errors:detailed' %}">{% csrf_token %}
+          <input type="hidden" name="hours" value="{{ hours }}">
+          <button type="submit" class="btn{% if not capture.active and forloop.first %} btn-primary{% endif %}">{% if capture.active %}Run {% else %}Turn on for {% endif %}{% if hours == 24 %}24 hours{% else %}7 days{% endif %}{% if capture.active %} from now{% endif %}</button>
+        </form>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 
   {# Summary tiles + 24h sparkline. Auto-refresh every 30s via htmx — #}
@@ -54,10 +100,16 @@
 
   <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
     <div class="flex gap-1">
-      <a href="?" class="btn {% if not kind_filter %}btn-primary{% endif %}">All</a>
-      <a href="?kind=server" class="btn {% if kind_filter == 'server' %}btn-primary{% endif %}">Server</a>
-      <a href="?kind=client" class="btn {% if kind_filter == 'client' %}btn-primary{% endif %}">Client</a>
+      <a href="?status={{ status_filter }}" class="btn {% if not kind_filter %}btn-primary{% endif %}">All</a>
+      <a href="?kind=server&amp;status={{ status_filter }}" class="btn {% if kind_filter == 'server' %}btn-primary{% endif %}">Server</a>
+      <a href="?kind=client&amp;status={{ status_filter }}" class="btn {% if kind_filter == 'client' %}btn-primary{% endif %}">Client</a>
     </div>
+    <div class="flex gap-1">
+      <a href="?status=open{% if kind_filter %}&amp;kind={{ kind_filter }}{% endif %}" class="btn {% if status_filter == 'open' %}btn-primary{% endif %}">Open</a>
+      <a href="?status=resolved{% if kind_filter %}&amp;kind={{ kind_filter }}{% endif %}" class="btn {% if status_filter == 'resolved' %}btn-primary{% endif %}">Resolved</a>
+      <a href="?status=all{% if kind_filter %}&amp;kind={{ kind_filter }}{% endif %}" class="btn {% if status_filter == 'all' %}btn-primary{% endif %}">Every group</a>
+    </div>
+    <input type="hidden" name="status" value="{{ status_filter }}">
     <div class="relative flex-1 min-w-[200px]">
       <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
       <input name="q" value="{{ search }}" placeholder="Message or exception class" class="input input-search">
@@ -84,6 +136,8 @@
         <tr>
           <td class="font-medium">
             <a href="{% url 'errors:detail' fingerprint=r.fingerprint %}" class="hover:underline">{{ r.exception_class|default:"—" }}</a>
+            {% if r.level == 'warning' %}<span class="pill pill-warn">Warning</span>{% endif %}
+            {% if r.status == 'regressed' %}<span class="pill pill-danger">Back again</span>{% elif r.status == 'resolved' %}<span class="pill pill-success">Resolved</span>{% endif %}
           </td>
           <td class="text-[color:var(--text-muted)] max-w-[400px] truncate">{{ r.last_message|truncatechars:120 }}</td>
           <td class="text-[color:var(--text-subtle)] font-mono text-xs max-w-[300px] truncate">{{ r.last_path|default:"—"|truncatechars:80 }}</td>
@@ -108,4 +162,36 @@
   </div>
 
 </div>
+<script>
+  // "Copy for Claude Code": the report is fetched inside the click, so Safari
+  // still counts the clipboard write as part of it (ClipboardItem takes the
+  // pending text); other browsers fall back to writeText.
+  (function () {
+    document.querySelectorAll('[data-copy-report]').forEach(function (btn) {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', function () {
+        var label = btn.innerHTML;
+        var url = btn.getAttribute('data-copy-report');
+        var text = fetch(url, { credentials: 'same-origin' }).then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        });
+        var done = window.ClipboardItem && navigator.clipboard && navigator.clipboard.write
+          ? navigator.clipboard.write([new ClipboardItem({
+              'text/plain': text.then(function (t) { return new Blob([t], { type: 'text/plain' }); }),
+            })])
+          : text.then(function (t) { return navigator.clipboard.writeText(t); });
+        done.then(function () { btn.textContent = 'Copied'; })
+          .catch(function () { btn.textContent = 'Could not copy: use Download report'; })
+          .then(function () {
+            setTimeout(function () {
+              btn.innerHTML = label;
+              if (window.lucide) window.lucide.createIcons();
+            }, 2500);
+          });
+      });
+    });
+  })();
+</script>
 {% endblock %}

@@ -538,6 +538,6 @@ which is exactly what this theme was relying on before it adopted the contract.{
 </footer>
 
 {% storefront_blocks "global_below_body" %}
-<script src="{% static 'core/error-capture.js' %}" defer></script>
+<script src="{% static 'core/error-capture.js' %}" {% error_capture_attrs %} defer></script>
 </body>
 </html>

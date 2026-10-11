@@ -75,3 +75,58 @@ class ErrorEvent(models.Model):
 
     def __str__(self) -> str:
         return f'{self.kind}:{self.exception_class or self.level} — {self.message[:60]}'
+
+
+class ErrorCaptureMode(models.Model):
+    """The detailed-capture switch: one row, read through ``core.errors.mode``.
+
+    Detailed capture records warnings, rejected requests, broken internal links,
+    slow responses, task retries and browser console/network/resource errors on
+    top of the standard capture, until ``detailed_until`` passes. It always has
+    an end, so a forgotten switch cannot leave a store logging every warning.
+    """
+
+    detailed_until = models.DateTimeField(null=True, blank=True)
+    enabled_at = models.DateTimeField(null=True, blank=True)
+    enabled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+
+    class Meta:
+        verbose_name = 'error capture mode'
+
+    def __str__(self) -> str:
+        return f'detailed until {self.detailed_until}' if self.detailed_until else 'standard'
+
+
+class ErrorGroup(models.Model):
+    """A merchant's decision about one fingerprint (made on first decision).
+
+    A group is open until someone resolves it. A resolved group whose error
+    fires again after ``resolved_at`` counts as open again (regressed), so a fix
+    that did not hold shows up instead of hiding behind the old resolution.
+    """
+
+    STATUS_OPEN = 'open'
+    STATUS_RESOLVED = 'resolved'
+    STATUS_CHOICES = [(STATUS_OPEN, 'Open'), (STATUS_RESOLVED, 'Resolved')]
+
+    fingerprint = models.CharField(max_length=64, primary_key=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_OPEN)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+    note = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f'{self.fingerprint[:12]} {self.status}'

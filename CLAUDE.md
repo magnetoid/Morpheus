@@ -1290,6 +1290,14 @@ An app that can stop the store selling contributes a check through
 (ORDER_PLACED subscribers push purchases to GA4 and ad platforms), it prices
 inside a rolled-back transaction or fetches pages. Recipients:
 `ERROR_ALERT_EMAILS`, else superusers, else the store contact (runbook).
+**Detailed capture** (v0.98.0) is a switch on the error log with an end time, never
+open-ended: while on it also keeps warnings, rejected requests, broken internal
+links, slow responses, task retries and browser console/request/resource errors,
+each with its request context (`core/errors/{mode,context}.py`). Hot paths read
+the switch through a 10-second memo, so tests that flip it must `mode.forget()`
+in a cleanup. The report for Claude Code (`core/errors/report.py`) has three
+doors that must stay one builder: "Copy for Claude Code" on the page,
+`manage.py errors_report`, and the `errors.recent`/`errors.get` agent tools.
 
 **Landmine — a payment method offered without its credentials fails at the
 payment step, and absence meant "on".** `payments.is_enabled()` treats a missing

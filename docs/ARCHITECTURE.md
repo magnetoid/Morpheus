@@ -16,6 +16,8 @@ morpheus/
 │   ├── audit/                     # Append-only audit log (AI decisions).
 │   ├── workflows.py               # Saga / compensation primitive.
 │   ├── observability.py           # OpenTelemetry init + PII scrubber.
+│   ├── errors/                    # Error log: capture, detailed capture switch,
+│   │                              #   report for Claude Code, health checks.
 │   ├── i18n/                      # Translation kernel.
 │   └── …
 └── plugins/installed/             # 60+ plugins (live list: settings).

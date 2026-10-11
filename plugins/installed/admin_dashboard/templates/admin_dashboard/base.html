@@ -263,7 +263,7 @@
 <script src="{% static 'richtext/lexical-editor.bundle.js' %}" defer></script>
 {% endif %}
 <!-- Catch unhandled JS errors + unhandledrejection → /api/errors/client/. -->
-<script src="{% static 'core/error-capture.js' %}"></script>
+<script src="{% static 'core/error-capture.js' %}" {% error_capture_attrs %}></script>
 <!-- htmx — progressive partial-reload for boosted links + filter forms.
      Bumped 2.0.3 → 2.0.10: 2.0.3 had a bug where it called .includes()
      on a null getAttribute() result during DOM scanning. -->

@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
+import threading
+import time
 import traceback as _tb
 from typing import Any
 
@@ -71,6 +73,24 @@ def _truncate(text: str, limit: int) -> str:
     return text[: limit - 40] + '\n…[truncated by core.errors]'
 
 
+def _with_context(meta: dict[str, Any] | None, request=None) -> dict[str, Any]:
+    """Add the request context to an event's metadata while detailed capture is on.
+
+    Fail-soft and off by default: standard capture stores what it always did.
+    """
+    meta = dict(meta or {})
+    try:
+        from core.errors.mode import detailed_active
+
+        if detailed_active() and 'context' not in meta:
+            from core.errors.context import request_context
+
+            meta['context'] = request_context(request)
+    except Exception:  # noqa: BLE001, S110 — context is a bonus, never a reason to fail
+        pass
+    return meta
+
+
 def record_error(
     exc: BaseException,
     *,
@@ -83,6 +103,11 @@ def record_error(
     try:
         from core.errors.models import ErrorEvent
 
+        if request is None:
+            from core.errors.context import current_request
+
+            request = current_request.get()
+        extra = _with_context(extra, request)
         traceback_str = _scrub(''.join(_tb.format_exception(type(exc), exc, exc.__traceback__)))
         ErrorEvent.objects.create(
             kind=kind,
@@ -132,11 +157,15 @@ def record_message(
     try:
         from core.errors.models import ErrorEvent
 
+        if request is None:
+            from core.errors.context import current_request
+
+            request = current_request.get()
         msg = _scrub(message or '')[:2000]
         # Fingerprint on source + class + message head so the same recurring
         # message dedups (mirrors the exception fingerprint's intent).
         fp = hashlib.sha256(f'{source}|{exception_class}|{msg[:200]}'.encode()).hexdigest()[:32]
-        meta = dict(extra or {})
+        meta = _with_context(extra, request)
         if source:
             meta.setdefault('source', source)
         ErrorEvent.objects.create(
@@ -161,6 +190,76 @@ def record_message(
         logger.exception('record_message failed')
 
 
+_THROTTLE_S = 60.0
+_THROTTLE_MAX = 1024
+_throttle_seen: dict[str, float] = {}
+_throttle_lock = threading.Lock()
+
+
+def throttled(key: str) -> bool:
+    """True when ``key`` was recorded in this process within the last minute.
+
+    The same rule as the log handler: one row per fingerprint per minute, so a
+    crawler walking ten thousand broken URLs cannot flood the table.
+    """
+    now = time.monotonic()
+    with _throttle_lock:
+        last = _throttle_seen.get(key)
+        if last is not None and now - last < _THROTTLE_S:
+            return True
+        if len(_throttle_seen) >= _THROTTLE_MAX:
+            _throttle_seen.clear()
+        _throttle_seen[key] = now
+    return False
+
+
+#: What a request-level event is, for its title and its level.
+HTTP_SOURCES = {
+    'rejected': 'warning',  # 400, 403, 405, 429
+    'broken_link': 'warning',  # a 404 reached from a page on this site
+    'server_status': 'error',  # a 5xx answered without an exception
+    'slow': 'warning',  # a response slower than the threshold
+}
+
+
+def record_http(source: str, *, request, status: int, duration_ms: int, message: str) -> None:
+    """Record a request-level event (detailed capture). Throttled and fail-soft.
+
+    The fingerprint names the source, the status and the view (or the path when
+    no view resolved), so one broken link or one slow page is one group however
+    often it is hit.
+    """
+    try:
+        from core.errors.context import request_context
+        from core.errors.models import ErrorEvent
+
+        match = getattr(request, 'resolver_match', None)
+        where = (getattr(match, 'view_name', '') if match else '') or request.path
+        if source == 'broken_link':
+            where = request.path  # every broken URL is its own fix
+        key = f'http|{source}|{status}|{where}'
+        if throttled(key):
+            return
+        context = request_context(request, status=status, duration_ms=duration_ms)
+        ErrorEvent.objects.create(
+            kind='server',
+            level=HTTP_SOURCES.get(source, 'warning'),
+            fingerprint=hashlib.sha256(key.encode()).hexdigest()[:32],
+            exception_class=f'HTTP {status}' if source != 'slow' else 'SlowResponse',
+            message=_scrub(message)[:2000],
+            path=(request.path or '')[:500],
+            method=request.method or '',
+            status_code=status,
+            user=_user_of(request),
+            request_id=getattr(request, 'request_id', '') or '',
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:_USER_AGENT_LIMIT],
+            ip_hash=_ip_hash(request),
+            metadata={'source': source, 'context': context},
+        )
+    except Exception:  # noqa: BLE001 — never raise from the capture path
+        logger.exception('record_http failed')
+
+
 _JS_FRAME_RE = re.compile(r'(?:https?://[^\s)]+|/[^\s)]+):(\d+)(?::\d+)?')
 
 
@@ -181,6 +280,15 @@ def record_client_error(payload: dict[str, Any], *, request=None) -> None:
     message = (payload.get('message') or '')[:2000]
     if is_client_noise((payload.get('name') or '').strip(), message):
         return
+    # Console errors, failed requests and missing assets are reported only by a
+    # page rendered while detailed capture was on; a page cached from then can
+    # outlive the switch, so the server decides.
+    detail = bool(payload.get('detail'))
+    if detail:
+        from core.errors.mode import detailed_active
+
+        if not detailed_active():
+            return
     source_url = (payload.get('source') or '')[:500]
     lineno = int(payload.get('lineno') or 0)
     colno = int(payload.get('colno') or 0)
@@ -215,5 +323,6 @@ def record_client_error(payload: dict[str, Any], *, request=None) -> None:
             'lineno': lineno,
             'colno': colno,
             'browser': browser,
+            **({'detail': True, 'source': 'browser'} if detail else {}),
         },
     )

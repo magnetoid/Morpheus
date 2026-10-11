@@ -104,6 +104,29 @@ are read fresh on every request, so a change applies to every worker at once.
   release can break checkout in ways no request logs as an error — a payment
   method with no keys, a template no loader finds — and only a check notices.
 
+## Detailed capture and handing errors to Claude Code
+
+- **Turn it on** from Settings → Developer → Errors: *Turn on for 24 hours* or
+  *7 days*. It switches itself off at the end time. While on, the store also
+  records warnings, rejected requests (400/403/405/429), broken internal links,
+  responses slower than 3 seconds, Celery task retries, and in browsers console
+  errors, failed requests and missing images or scripts, each with its request.
+  Turning it on or off is audited.
+- **Hand the errors to Claude Code:** *Copy for Claude Code* on the page (or
+  *Download report*) gives one Markdown report of the open groups, errors first,
+  with tracebacks, request context and what to do. From a shell on the host:
+
+  ```bash
+  docker exec <web container> python manage.py errors_report            # Markdown, last 7 days
+  docker exec <web container> python manage.py errors_report --days 30 --json
+  docker exec <web container> python manage.py errors_report --resolve <fingerprint>
+  ```
+
+  Agents with `diagnostics.read` read the same through `errors.recent` and
+  `errors.get` over MCP.
+- **Resolve** a group once its fix is live (*Mark resolved* on its page, or
+  `--resolve`). A resolved group that fires again shows as *Back again*.
+
 ## Rollback
 
 - Code: `git revert` the bad commit on `main` and push — that push is itself

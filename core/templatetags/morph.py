@@ -426,3 +426,19 @@ def image_frame_style() -> str:
         f'--img-fit:{escape(settings_["fit"])};'
         '}</style>'
     )
+
+
+@register.simple_tag
+def error_capture_attrs():
+    """Attributes for the error-capture.js <script> tag.
+
+    While detailed capture is on (core/errors/mode.py) the script also reports
+    console errors, failed requests and missing images or scripts; it reads
+    that from ``data-detailed`` on its own tag.
+    """
+    try:
+        from core.errors.mode import detailed_active
+
+        return mark_safe('data-detailed="1"') if detailed_active() else ''
+    except Exception:  # noqa: BLE001 — the page renders whatever the switch says
+        return ''

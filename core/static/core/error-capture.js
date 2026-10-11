@@ -8,6 +8,12 @@
  * Dedup: a 5-second rolling window swallows identical (message+source+line)
  * tuples so a fast-firing loop can't DDoS the ingest. Per-page cap of 25.
  *
+ * Detailed capture (the switch on the dashboard's error log; the server marks
+ * this script's tag with data-detailed="1") also reports, as warnings: an
+ * image, script or stylesheet that failed to load, console.error calls, and a
+ * fetch or XHR request answered with a 5xx or lost to the network. Those
+ * payloads carry `detail: true`; the server drops them once the switch is off.
+ *
  * Read surfaces (one owner of "what happened in this browser session" —
  * consumers read these, they do NOT install their own listeners/wrappers):
  *   `window.morphClientErrors` — the shipped error payloads (same dedup/cap).
@@ -21,6 +27,8 @@
   window.__morphErrorCapture = true;
 
   var ENDPOINT = '/api/errors/client/';
+  var SELF = document.currentScript;
+  var DETAILED = !!(SELF && SELF.getAttribute('data-detailed') === '1');
   var MAX_PER_PAGE = 25;
   var DEDUP_WINDOW_MS = 5000;
 
@@ -78,8 +86,21 @@
   }
 
   window.addEventListener('error', function (ev) {
-    // Resource-load errors (img/script src 404) bubble up as ErrorEvents
-    // with no `.error` and a `target` that's an element — skip those.
+    // Resource-load errors (img/script src 404) arrive here with no `.error`
+    // and a `target` that is an element: reported only in detailed capture.
+    var t = ev.target;
+    if (!ev.error && !ev.message && t && t !== window && t.tagName) {
+      if (!DETAILED) return;
+      var url = t.currentSrc || t.src || t.href || '';
+      if (url) {
+        ship({
+          message: 'Failed to load ' + t.tagName.toLowerCase() + ': ' + url,
+          name: 'ResourceError', source: url, lineno: 0, colno: 0, stack: '',
+          level: 'warning', detail: true,
+        });
+      }
+      return;
+    }
     if (ev.error || ev.message) {
       var e = ev.error;
       ship({
@@ -147,8 +168,66 @@
           ts: new Date().toISOString(),
         });
         if (consoleBuf.length > CONSOLE_MAX) consoleBuf.shift();
+        if (DETAILED && level === 'error') {
+          ship({
+            message: parts.join(' ').slice(0, 500), name: 'ConsoleError',
+            source: '', lineno: 0, colno: 0, stack: '', level: 'warning', detail: true,
+          });
+        }
       } catch (e) { /* never break a console call */ }
       return original.apply(console, arguments);
     };
   });
+
+  // ── Failed requests (detailed capture) ────────────────────────────────────
+  // A 5xx or a lost connection on fetch or XHR (htmx uses XHR). Aborted
+  // requests are a navigation, not a failure; the capture endpoint is skipped.
+  if (!DETAILED) return;
+
+  function shipRequest(method, url, status) {
+    var where = String(url || '').split('?')[0];
+    if (!where || where.indexOf(ENDPOINT) !== -1) return;
+    ship({
+      message: method + ' ' + where + ' failed: ' + (status ? 'HTTP ' + status : 'network error'),
+      name: 'RequestError', source: where, lineno: status || 0, colno: 0, stack: '',
+      level: 'warning', detail: true,
+    });
+  }
+
+  if (window.fetch) {
+    var originalFetch = window.fetch;
+    window.fetch = function (input, init) {
+      var url = typeof input === 'string' ? input : (input && input.url) || '';
+      var method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+      return originalFetch.apply(this, arguments).then(function (res) {
+        if (res && res.status >= 500) shipRequest(method, url, res.status);
+        return res;
+      }, function (err) {
+        if (!err || err.name !== 'AbortError') shipRequest(method, url, 0);
+        throw err;
+      });
+    };
+  }
+
+  if (window.XMLHttpRequest) {
+    var xhrOpen = XMLHttpRequest.prototype.open;
+    var xhrSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this.__morphRequest = [String(method || 'GET').toUpperCase(), String(url || '')];
+      return xhrOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      var xhr = this;
+      try {
+        xhr.addEventListener('abort', function () { xhr.__morphAborted = true; });
+        xhr.addEventListener('loadend', function () {
+          var r = xhr.__morphRequest || ['GET', ''];
+          if (xhr.status >= 500 || (xhr.status === 0 && !xhr.__morphAborted)) {
+            shipRequest(r[0], r[1], xhr.status);
+          }
+        });
+      } catch (e) { /* never break a request */ }
+      return xhrSend.apply(this, arguments);
+    };
+  }
 })();

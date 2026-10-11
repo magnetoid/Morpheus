@@ -17,7 +17,7 @@ import logging
 import os
 
 from celery import Celery
-from celery.signals import task_failure
+from celery.signals import task_failure, task_retry
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'morph.settings')
 
@@ -143,6 +143,37 @@ def _on_task_failure(
         )
     except Exception as e:  # noqa: BLE001 — cache outage must not block worker
         logger.debug('celery: failed to write deadletter: %s', e)
+
+
+@task_retry.connect
+def _on_task_retry(sender=None, request=None, reason=None, einfo=None, **kwargs):
+    """A task retry is recorded while detailed capture is on (core/errors/mode.py).
+
+    A retry is not a failure yet, but a task that keeps retrying is the first
+    sign of one (a provider timing out, a lock held too long).
+    """
+    try:
+        from core.errors.mode import detailed_active
+
+        if not detailed_active():
+            return
+        from core.errors.services import record_message
+
+        name = getattr(sender, 'name', '') or ''
+        record_message(
+            f'Task {name} is retrying: {reason}'[:2000],
+            level='warning',
+            source='celery',
+            exception_class=type(reason).__name__ if isinstance(reason, BaseException) else 'Retry',
+            stack_trace=(str(einfo) if einfo else '')[:20000],
+            extra={
+                'task': name,
+                'task_id': getattr(request, 'id', '') or '',
+                'retries': getattr(request, 'retries', 0),
+            },
+        )
+    except Exception as e:  # noqa: BLE001 — capture outage must not block worker
+        logger.debug('celery: failed to record a retry: %s', e)
 
 
 @app.task(bind=True, ignore_result=True)

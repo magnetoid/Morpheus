@@ -5,15 +5,17 @@ from __future__ import annotations
 import json
 import logging
 
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.cache import cache
 from django.db.models import Count, OuterRef, Subquery
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from core.errors.models import ErrorEvent
+from core.authz import require_capability
+from core.errors.models import ErrorEvent, ErrorGroup
 from core.errors.services import _ip_hash, record_client_error
 
 logger = logging.getLogger('morpheus.errors')
@@ -121,8 +123,14 @@ def errors_list(request: HttpRequest) -> HttpResponse:
     from django.db.models.functions import TruncHour
     from django.utils import timezone
 
+    from core.errors.mode import WINDOWS, state
+    from core.errors.report import status_of
+
     qs = ErrorEvent.objects.all()
 
+    status_filter = request.GET.get('status', 'open')
+    if status_filter not in ('open', 'resolved', 'all'):
+        status_filter = 'open'
     kind = request.GET.get('kind', '')
     if kind in ('server', 'client'):
         qs = qs.filter(kind=kind)
@@ -145,6 +153,17 @@ def errors_list(request: HttpRequest) -> HttpResponse:
         )
         .order_by('-last_seen')[:200]
     )
+    rows = list(grouped)
+    decisions = {
+        g.fingerprint: g
+        for g in ErrorGroup.objects.filter(fingerprint__in=[r['fingerprint'] for r in rows])
+    }
+    for r in rows:
+        r['status'] = status_of(decisions.get(r['fingerprint']), r['last_seen'])
+    if status_filter == 'open':
+        rows = [r for r in rows if r['status'] != 'resolved']
+    elif status_filter == 'resolved':
+        rows = [r for r in rows if r['status'] == 'resolved']
 
     # Summary counters across the same filter as the list — gives context
     # without forcing the user to add `?kind=...` to the URL.
@@ -186,8 +205,11 @@ def errors_list(request: HttpRequest) -> HttpResponse:
         request,
         'admin_dashboard/errors_list.html',
         {
-            'rows': list(grouped),
+            'rows': rows,
             'kind_filter': kind,
+            'status_filter': status_filter,
+            'capture': state(),
+            'capture_windows': WINDOWS,
             'search': search,
             'counts': counts,
             'spark_bars': spark_bars,
@@ -206,16 +228,92 @@ def errors_detail(request: HttpRequest, fingerprint: str) -> HttpResponse:
     qs = ErrorEvent.objects.filter(fingerprint=fingerprint).order_by('-created_at')[:50]
     rows = list(qs)
     if not rows:
-        from django.http import Http404
-
         raise Http404('Unknown fingerprint')
+    from core.errors.report import status_of
+
+    decision = ErrorGroup.objects.filter(fingerprint=fingerprint).first()
     return render(
         request,
         'admin_dashboard/errors_detail.html',
         {
             'rows': rows,
             'head': rows[0],
-            'count': qs.count() if hasattr(qs, 'count') else len(rows),
+            'count': ErrorEvent.objects.filter(fingerprint=fingerprint).count(),
+            'status': status_of(decision, rows[0].created_at),
+            'decision': decision,
+            'fingerprint': fingerprint,
+            'context': (rows[0].metadata or {}).get('context') or {},
             'active_nav': 'errors',
         },
     )
+
+
+@staff_member_required
+def errors_report(request: HttpRequest) -> HttpResponse:
+    """The report for Claude Code: Markdown by default, JSON with ?format=json."""
+    from django.utils import timezone
+
+    from core.errors.report import build_report, render_markdown
+
+    try:
+        days = int(request.GET.get('days') or 7)
+    except ValueError:
+        days = 7
+    fingerprint = (request.GET.get('fingerprint') or '').strip()[:64]
+    report = build_report(
+        days=days, include_resolved=request.GET.get('resolved') == '1', fingerprint=fingerprint
+    )
+    as_json = request.GET.get('format') == 'json'
+    if as_json:
+        response = JsonResponse(report)
+    else:
+        response = HttpResponse(
+            render_markdown(report), content_type='text/markdown; charset=utf-8'
+        )
+    if request.GET.get('download') == '1':
+        stamp = timezone.now().strftime('%Y%m%d-%H%M')
+        response['Content-Disposition'] = (
+            f'attachment; filename="errors-{stamp}.{"json" if as_json else "md"}"'
+        )
+    return response
+
+
+@staff_member_required
+@require_capability('system.write')
+@require_POST
+def errors_detailed(request: HttpRequest) -> HttpResponse:
+    """Turn detailed capture on for a window, or off."""
+    from core.errors.mode import WINDOWS, turn_off, turn_on
+
+    if request.POST.get('action') == 'off':
+        turn_off(user=request.user)
+        messages.success(request, 'Detailed capture is off. Standard capture continues.')
+    else:
+        try:
+            hours = int(request.POST.get('hours') or WINDOWS[0])
+        except ValueError:
+            hours = WINDOWS[0]
+        if hours not in WINDOWS:
+            hours = WINDOWS[0]
+        until = turn_on(hours, user=request.user)
+        messages.success(
+            request, f'Detailed capture is on until {until:%b %d, %H:%M} UTC, then it switches off.'
+        )
+    return redirect('errors:list')
+
+
+@staff_member_required
+@require_capability('system.write')
+@require_POST
+def errors_resolve(request: HttpRequest, fingerprint: str) -> HttpResponse:
+    """Mark a group resolved, or open it again."""
+    from core.errors.report import reopen, resolve
+
+    if request.POST.get('action') == 'reopen':
+        reopen(fingerprint)
+        messages.success(request, 'Opened again.')
+    elif resolve(fingerprint, user=request.user, note=request.POST.get('note', '')):
+        messages.success(request, 'Marked resolved. It opens again if the error comes back.')
+    else:
+        raise Http404('Unknown fingerprint')
+    return redirect('errors:detail', fingerprint=fingerprint)
