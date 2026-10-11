@@ -176,6 +176,25 @@ class ProductEditorRoundTripTests(TestCase):
         self.assertTrue(saved.is_featured)
         self.assertTrue(saved.is_taxable)
 
+    def test_unchanged_save_keeps_category_vendor_and_extra_categories(self):
+        # The selects compared the form's value (a string: UUIDField renders
+        # its value with str()) against the row's UUID, so no option was ever
+        # marked selected. Every save then posted an empty category and vendor
+        # and cleared both (2026-06-13 to 2026-10-11).
+        from plugins.installed.catalog.models import Category, Product, Vendor
+
+        top = Category.objects.create(name='Aromatherapy', slug='aromatherapy', is_active=True)
+        sub = Category.objects.create(name='Oils', slug='oils', parent=top, is_active=True)
+        extra = Category.objects.create(name='Gifts', slug='gifts', is_active=True)
+        vendor = Vendor.objects.create(name='Hearth Supply', slug='hearth-supply')
+        Product.objects.filter(pk=self.product.pk).update(category=sub, vendor=vendor)
+        self.product.additional_categories.set([extra])
+
+        saved = self._save(self._submitted())
+        self.assertEqual(saved.category_id, sub.id, 'saving the editor cleared the category')
+        self.assertEqual(saved.vendor_id, vendor.id, 'saving the editor cleared the vendor')
+        self.assertEqual(list(saved.additional_categories.all()), [extra])
+
     def test_each_product_flag_is_submitted_once(self):
         data = self._submitted()
         for name in ('is_featured', 'is_taxable', 'track_inventory', 'requires_shipping'):

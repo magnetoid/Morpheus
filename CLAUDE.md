@@ -1234,7 +1234,22 @@ value of a repeated key.** The product editor hid inactive per-type cards with
 shipping off on every simple-product save. One control per name per form;
 decide type-dependent values on the server. Guarded by
 `admin_dashboard/tests/test_product_form_roundtrip.py`, which posts back exactly
-what a browser builds from the rendered page.
+what a browser builds from the rendered page. Same test, second trap: a select
+marked `{% if form.category.value == c.id %}selected` never matched, because a
+`forms.UUIDField` renders its value with `str()` and the row's id is a UUID, so
+every save posted an empty category and vendor and cleared both (2026-06-13 to
+v0.97.0). Compare as text (`|stringformat:"s"` on both sides).
+
+**Landmine — `hx-boost` sends a form whose submit event someone cancelled.**
+The dashboard body is boosted, and htmx's submit listener on each form ignores
+`defaultPrevented`: the `data-confirm` handler called `preventDefault()` and
+opened "Delete this product?", while htmx had already posted the delete. Every
+confirmation in the dashboard was decorative until v0.97.0, and a `data-confirm`
+on a submit button (platform "Update now", Cloudflare "Purge everything") was not
+read at all. A handler that must stop a submit stops propagation in the capture
+phase (`dashboard.js:attachConfirmDelegation`); the AJAX save takes its button
+from `ev.submitter`, never from focus (Safari never focuses a clicked button).
+Guarded by `admin_dashboard/tests/test_confirm_dialog_contract.py`.
 
 **Landmine — invoking an agent hands the caller every scope the AGENT holds.**
 The runtime checks tools against the agent's scopes, never the caller's, so

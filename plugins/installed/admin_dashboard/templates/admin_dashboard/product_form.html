@@ -2,6 +2,7 @@
 {% load metafields_tags %}
 {% load morph %}
 {% load richtext %}
+{% load static %}
 {% block title %}{% if product %}{{ product.name }}{% else %}New product{% endif %} · Morpheus{% endblock %}
 
 {% block content %}
@@ -119,78 +120,34 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium mb-1">Primary category</label>
-          <select name="category" class="input" id="id_primary_category">
+          <label class="block text-sm font-medium mb-1" for="id_primary_category">Primary category</label>
+          {% comment %}category-picker.js turns this select into a searchable tree that can
+             add a category in place; the select stays the field the server reads,
+             and is what shows without JavaScript. Values compare as text: the form
+             renders a UUID with str(), and comparing it to the row's UUID never
+             matched, so every save posted an empty category (and vendor).{% endcomment %}
+          <select name="category" class="input" id="id_primary_category"
+                  data-category-picker="single" data-label="Primary category"
+                  data-create-url="{% url 'admin_dashboard:category_quick_create' %}">
             <option value="">— None —</option>
             {% for c in categories %}
-            <option value="{{ c.id }}" {% if form.category.value == c.id %}selected{% endif %}>{{ c.tree_prefix }}{{ c.name }}</option>
+            <option value="{{ c.id }}" data-name="{{ c.name }}" data-depth="{{ c.tree_depth }}" data-parent="{{ c.parent_id|default:'' }}" {% if form.category.value|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.tree_prefix }}{{ c.name }}</option>
             {% endfor %}
           </select>
-          <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">The canonical category — used for breadcrumbs, JSON-LD, and SEO. Nested categories are indented under their parent.</p>
+          <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">The canonical category — used for breadcrumbs, JSON-LD, and SEO. Search to find one, or add a new category or subcategory from the list.</p>
         </div>
         <div class="md:col-span-2">
           <label class="block text-sm font-medium mb-1">Also surface under</label>
           {% with additional_csv=form.additional_categories.value|default:"" %}
           <input type="hidden" name="additional_categories" id="id_additional_categories" value="{{ additional_csv }}">
-          {# Multi-select dropdown: click to open, tick several, click away to close. #}
-          {# Reuses the [data-dropdown] open/close + outside-click JS in base.html. #}
-          <div data-dropdown style="position:relative;">
-            <button type="button" data-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
-                    class="input" id="addcat_toggle"
-                    style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;width:100%;text-align:left;cursor:pointer;">
-              <span id="addcat_summary" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);">Choose categories…</span>
-              <i data-lucide="chevron-down" class="h-4 w-4" style="flex:0 0 auto;"></i>
-            </button>
-            <div class="dropdown-menu" hidden role="menu"
-                 id="additional_categories_grid" data-initial="{{ additional_csv }}"
-                 style="left:0;right:0;max-height:280px;overflow-y:auto;padding:.4rem;">
-              {% for c in categories %}
-              <label style="display:flex;align-items:center;gap:.5rem;font-size:.92rem;cursor:pointer;padding:.3rem .5rem;border-radius:4px;">
-                <input type="checkbox" class="addcat-cb" value="{{ c.id }}" data-pk="{{ c.id }}">
-                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.tree_prefix }}{{ c.name }}</span>
-              </label>
-              {% endfor %}
-              {% if not categories %}
-              <p class="text-xs text-[color:var(--text-muted)]" style="padding:.3rem .5rem;">No categories yet.</p>
-              {% endif %}
-            </div>
-          </div>
+          {# category-picker.js mounts the same searchable tree here, writing ticks into the hidden field. #}
+          <div data-category-picker="multi" data-target="#id_additional_categories" data-label="Also surface under"></div>
           <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">
             Pick additional categories where this product should also appear (e.g. cross-listing under "Bestsellers" + "Children's"). The primary category above stays canonical.
           </p>
           {% endwith %}
-          <script>
-            (function () {
-              var grid = document.getElementById('additional_categories_grid');
-              var hidden = document.getElementById('id_additional_categories');
-              var primary = document.getElementById('id_primary_category');
-              var summary = document.getElementById('addcat_summary');
-              if (!grid || !hidden) return;
-              var initial = (grid.getAttribute('data-initial') || '').split(',').filter(Boolean);
-              initial.forEach(function (id) {
-                var cb = grid.querySelector('.addcat-cb[data-pk="' + id + '"]');
-                if (cb) cb.checked = true;
-              });
-              function sync() {
-                var ids = [], labels = [];
-                grid.querySelectorAll('.addcat-cb').forEach(function (cb) {
-                  if (cb.checked && cb.value !== (primary && primary.value)) {
-                    ids.push(cb.value);
-                    var span = cb.parentNode.querySelector('span');
-                    if (span) labels.push(span.textContent.trim());
-                  }
-                });
-                hidden.value = ids.join(',');
-                if (summary) {
-                  summary.textContent = labels.length ? labels.length + ' selected · ' + labels.join(', ') : 'Choose categories…';
-                  summary.style.color = labels.length ? 'var(--text)' : 'var(--text-muted)';
-                }
-              }
-              grid.addEventListener('change', sync);
-              if (primary) primary.addEventListener('change', sync);
-              sync();
-            })();
-          </script>
+          <link rel="stylesheet" href="{% static 'admin_dashboard/category-picker.css' %}">
+          <script src="{% static 'admin_dashboard/category-picker.js' %}" defer></script>
         </div>
         {# Vendor dropdown from the marketplace plugin; renders below Category. #}
         {% if vendors %}
@@ -199,7 +156,7 @@
           <select name="vendor" class="input">
             <option value="">— None —</option>
             {% for v in vendors %}
-            <option value="{{ v.id }}" {% if form.vendor.value == v.id %}selected{% endif %}>{{ v.name }}</option>
+            <option value="{{ v.id }}" {% if form.vendor.value|stringformat:"s" == v.id|stringformat:"s" %}selected{% endif %}>{{ v.name }}</option>
             {% endfor %}
           </select>
           <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">

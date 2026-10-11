@@ -69,22 +69,43 @@
   };
 
   // Intercept any form / button with `data-confirm="…"` and route through
-  // the modal instead of letting window.confirm fire.
+  // the modal instead of letting window.confirm fire. The attribute may sit
+  // on the <form> or on the submit button that was clicked ("Update now",
+  // "Purge everything"); until 2026-10-11 only the form was read, so those
+  // buttons acted at once.
   function attachConfirmDelegation() {
     document.body.addEventListener('submit', function (e) {
       const form = e.target;
       if (!(form instanceof HTMLFormElement)) return;
-      if (!form.hasAttribute('data-confirm')) return;
+      const btn = e.submitter && e.submitter.hasAttribute && e.submitter.hasAttribute('data-confirm')
+        ? e.submitter : null;
+      const src = btn || (form.hasAttribute('data-confirm') ? form : null);
+      if (!src) return;
       if (form.dataset.morphConfirmed === '1') return;  // already approved → let it submit
       e.preventDefault();
+      // The body is hx-boost: htmx's own submit listener on the form ignores a
+      // cancelled event and sends the request anyway, so a "Delete this
+      // product?" popup opened while the product was already being deleted
+      // (owner's report, 2026-10-11). Stop the event here, in the capture
+      // phase, so nothing below sees it; an approved form then submits as a
+      // normal page request.
+      e.stopPropagation();
       Morph.confirm({
-        title: form.dataset.confirmTitle || undefined,
-        message: form.getAttribute('data-confirm'),
-        cta: form.dataset.confirmCta || 'Confirm',
-        danger: form.hasAttribute('data-confirm-danger'),
+        title: src.dataset.confirmTitle || undefined,
+        message: src.getAttribute('data-confirm'),
+        cta: src.dataset.confirmCta || 'Confirm',
+        danger: src.hasAttribute('data-confirm-danger'),
       }).then(function (ok) {
         if (!ok) return;
         form.dataset.morphConfirmed = '1';
+        if (btn && btn.name) {
+          // form.submit() sends no submitter, so carry the clicked button's value.
+          const carry = document.createElement('input');
+          carry.type = 'hidden';
+          carry.name = btn.name;
+          carry.value = btn.value;
+          form.appendChild(carry);
+        }
         form.submit();
       });
     }, true);
@@ -682,7 +703,13 @@
       form.dataset._morphAjaxBound = '1';
       form.addEventListener('submit', function (ev) {
         ev.preventDefault();
-        _submit(form, document.activeElement?.closest('button'));
+        // The button that submitted, as the browser reports it. Focus is not a
+        // stand-in: Safari never focuses a clicked button, so the focused
+        // element could be any type="button" control (the category picker),
+        // which then showed "Saving" and was disabled in place of Save.
+        const focused = document.activeElement?.closest('button');
+        const isSubmit = focused && (focused.type === 'submit') && focused.form === form;
+        _submit(form, ev.submitter || (isSubmit ? focused : null));
       });
       // Auto-save on change for marked inputs (selects, checkboxes,
       // etc.). Skips native submit-button clicks; those already trigger

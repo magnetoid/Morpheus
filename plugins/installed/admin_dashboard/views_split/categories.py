@@ -173,3 +173,71 @@ def category_edit(request: HttpRequest, category_id: str) -> HttpResponse:
             ],
         },
     )
+
+
+@staff_member_required
+@require_capability('catalog.write')
+def category_quick_create(request: HttpRequest) -> HttpResponse:
+    """Create a category from the product form's category picker; JSON in, JSON out.
+
+    Same validation as the full form (a parent that exists, a unique slug), so a
+    category made here is indistinguishable from one made on the Categories page.
+    A name that already exists under the same parent picks that category instead
+    of minting a twin; the same name under another parent gets its own slug
+    (`oils`, then `oils-2`).
+    """
+    from django.http import JsonResponse
+    from django.utils.text import slugify
+
+    from plugins.installed.admin_dashboard.forms.categories import CategoryForm
+    from plugins.installed.catalog.models import Category
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST required.'}, status=405)
+    name = ' '.join((request.POST.get('name') or '').split())[:200]
+    if not name:
+        return JsonResponse({'ok': False, 'error': 'Give the category a name.'}, status=400)
+    parent = (request.POST.get('parent') or '').strip()
+
+    form = CategoryForm(
+        {
+            'name': name,
+            'slug': '',
+            'parent': parent,
+            'description': '',
+            'is_active': 'on',
+            'sort_order': '0',
+        }
+    )
+    form.is_valid()  # parent first: an unknown parent is an error, not a lookup miss
+    if 'parent' in form.errors:
+        return JsonResponse({'ok': False, 'error': str(form.errors['parent'][0])}, status=400)
+    twin = Category.objects.filter(
+        name__iexact=name, parent=form.cleaned_data.get('parent')
+    ).first()
+    if twin is not None:
+        return JsonResponse(_picker_entry(twin, existing=True))
+
+    base = slugify(name) or 'category'
+    slug, n = base, 2
+    while Category.objects.filter(slug=slug).exists():
+        slug, n = f'{base}-{n}', n + 1
+    form = CategoryForm({**form.data, 'slug': slug})
+    if not form.is_valid():
+        first = next(iter(form.errors.values()))[0] if form.errors else 'Invalid category.'
+        return JsonResponse({'ok': False, 'error': str(first)}, status=400)
+    return JsonResponse(_picker_entry(form.save(), existing=False))
+
+
+def _picker_entry(category, *, existing: bool) -> dict:
+    """What the category picker needs to place a category in its tree."""
+    ancestors = list(category.get_ancestors()) if category.parent_id else []
+    return {
+        'ok': True,
+        'existing': existing,
+        'id': str(category.id),
+        'name': category.name,
+        'parent_id': str(category.parent_id) if category.parent_id else '',
+        'depth': len(ancestors),
+        'path': ' › '.join([*(a.name for a in ancestors), category.name]),
+    }
