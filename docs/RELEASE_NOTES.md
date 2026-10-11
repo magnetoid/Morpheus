@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.98.1 — 2026-10-11
+
+**Fixes from the first error report: forms saved with images, clearer stored errors, no nightly false alarm before launch**
+
+- Dashboard: saving a form with an image no longer logs an error or drops that save's webhook; webhooks get the file's name, size and type.
+- Errors: an error recorded from a log line keeps that line, so the report says what was being done when it failed.
+- Health check: before launch, the nightly cart check skips products that are previews and not yet for sale, instead of reporting the store as broken every night.
+
 ## v0.98.0 — 2026-10-11
 
 **Detailed error capture with a report for Claude Code**
