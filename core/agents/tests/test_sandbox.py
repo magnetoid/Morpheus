@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+
 from django.test import SimpleTestCase
 
 from core.agents.sandbox import SandboxError, run_sandboxed
@@ -28,8 +30,17 @@ class SandboxTests(SimpleTestCase):
             run_sandboxed('result = eval("1")')
 
     def test_timeout(self):
+        # A timed-out script keeps running in its thread. Stop it after the
+        # check: a `while True` here spun for the rest of the test process and
+        # slowed every later test that touches the disk (GIL contention).
+        stop = threading.Event()
+        self.addCleanup(stop.set)
         with self.assertRaises(SandboxError):
-            run_sandboxed('\nx = 0\nwhile True:\n    x += 1\nresult = x', timeout_ms=120)
+            run_sandboxed(
+                '\nx = 0\nwhile not stopped():\n    x += 1\nresult = x',
+                timeout_ms=120,
+                extra_globals={'stopped': stop.is_set},
+            )
 
     def test_in_script_error_is_wrapped(self):
         with self.assertRaises(SandboxError):

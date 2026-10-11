@@ -99,6 +99,7 @@ class Worker(MorpheusAgent):
         'crm.write',
         'customers.read',
         'customers.write',
+        'diagnostics.read',
         'gift_cards.read',
         'gift_cards.write',
         'i18n.read',
