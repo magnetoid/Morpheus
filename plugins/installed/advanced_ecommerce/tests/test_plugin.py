@@ -21,7 +21,8 @@ class AdvancedEcommerceContributionsTests(TestCase):
         slots = {b.slot for b in blocks}
         self.assertIn('home_after_rails', slots)
         self.assertIn('home_below_grid', slots)
-        self.assertIn('cart_summary_extra', slots)
+        # The free-shipping bar is gone (it always claimed 40 USD to go).
+        self.assertNotIn('cart_summary_extra', slots)
         self.assertIn('pdp_below_price', slots)
 
     def test_settings_panel_declared(self):
