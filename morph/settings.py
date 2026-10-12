@@ -169,7 +169,6 @@ MORPHEUS_DEFAULT_APPS = [
     # docs/analysis/vibe_coding_gap_assessment.md. They all follow the
     # plugin contract: settings panel + StorefrontBlock contributions,
     # no hard-coded storefront edits, no cross-plugin model imports.
-    #   F10  checkout_experience    — end-to-end checkout + express pay
     #   F1   immersive_pdp          — video hero, story blocks, sticky buybox
     #   F6   rails                  — six personalised recommendation rails
     #   F2   media_3d               — 3D / AR previews + shoppable video
@@ -188,7 +187,6 @@ MORPHEUS_DEFAULT_APPS = [
     #   F13  post_checkout_upsell   — single in-checkout + post-order upsell
     #   F16  drops                  — scheduled drops + waitlist
     #   F5   motion                 — micro-animations + skeleton states
-    'plugins.installed.checkout_experience',
     'plugins.installed.immersive_pdp',
     'plugins.installed.product_stories',
     'plugins.installed.rails',
