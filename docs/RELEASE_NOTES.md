@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.99.1 — 2026-10-12
+
+**The shop's category filter skips switched-off categories**
+
+- Shop: the Category filter on the products page lists only categories that are switched on; a switched-off category showed an empty shop.
+
 ## v0.99.0 — 2026-10-11
 
 **Linda schedules automations from a chat, and Cancel cancels again**
