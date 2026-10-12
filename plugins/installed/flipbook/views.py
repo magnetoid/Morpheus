@@ -25,6 +25,67 @@ def _plugin_config() -> dict:
         return {}
 
 
+def _source(product):
+    """The product's PDF (its own, else the first active digital variant's), or None.
+
+    The file itself is never linked: /media/digital/ answers staff only
+    (core/media.py), and the page reads the first pages from ``preview_pdf``.
+    """
+    files = [getattr(product, 'digital_file', None)]
+    v = (
+        product.variants.filter(is_active=True, variant_type='digital')
+        .exclude(digital_file='')
+        .order_by('sort_order')
+        .first()
+    )
+    if v is not None:
+        files.append(v.digital_file)
+    for f in files:
+        if f and getattr(f, 'name', '') and f.name.lower().endswith('.pdf'):
+            return f
+    return None
+
+
+def preview_pdf(request, slug: str):
+    """The first ``max_preview_pages`` pages of the product's PDF, made here."""
+    import io
+
+    from django.core.cache import cache
+    from django.http import HttpResponse
+    from pypdf import PdfReader, PdfWriter
+
+    cfg = _plugin_config()
+    if cfg.get('enabled') is False:
+        raise Http404
+    from plugins.installed.catalog.models import Product
+
+    product = Product.objects.filter(slug=slug, status='active').first()
+    source = _source(product) if product else None
+    if source is None:
+        raise Http404
+    max_pages = int(cfg.get('max_preview_pages') or 20)
+    key = f'flipbook:preview:{source.name}:{max_pages}'
+    data = cache.get(key)
+    if data is None:
+        try:
+            with source.open('rb') as fh:
+                reader = PdfReader(fh)
+                writer = PdfWriter()
+                for page in reader.pages[:max_pages]:
+                    writer.add_page(page)
+                buf = io.BytesIO()
+                writer.write(buf)
+            data = buf.getvalue()
+        except Exception as e:  # noqa: BLE001 — a damaged or encrypted PDF has no preview
+            raise Http404 from e
+        cache.set(key, data, 60 * 60 * 24)
+    resp = HttpResponse(data, content_type='application/pdf')
+    resp['Content-Disposition'] = 'inline; filename="preview.pdf"'
+    resp['Cache-Control'] = 'public, max-age=86400'
+    resp['X-Robots-Tag'] = 'noindex'
+    return resp
+
+
 def flipbook(request, slug: str):
     cfg = _plugin_config()
     if cfg.get('enabled') is False:
@@ -36,32 +97,7 @@ def flipbook(request, slug: str):
     if product is None:
         raise Http404
 
-    # Source: prefer the product's digital_file; fall back to the first
-    # active digital variant. The browser will fetch the PDF directly
-    # over the storage backend (S3 / local /media/).
-    source_url = ''
-    source_name = ''
-    if getattr(product, 'digital_file', None) and product.digital_file:
-        try:
-            source_url = product.digital_file.url
-            source_name = product.digital_file.name
-        except Exception:  # noqa: BLE001, S110
-            pass
-    if not source_url:
-        v = (
-            product.variants.filter(is_active=True, variant_type='digital')
-            .exclude(digital_file='')
-            .order_by('sort_order')
-            .first()
-        )
-        if v and v.digital_file:
-            try:
-                source_url = v.digital_file.url
-                source_name = v.digital_file.name
-            except Exception:  # noqa: BLE001, S110
-                pass
-
-    if not source_url or not source_name.lower().endswith('.pdf'):
+    if _source(product) is None:
         raise Http404
 
     max_pages = int(cfg.get('max_preview_pages') or 20)
@@ -74,7 +110,7 @@ def flipbook(request, slug: str):
             # the page's subject and gives it the product page's own title and
             # description, so two indexable URLs would share one title.
             'book': product,
-            'source_url': source_url,
+            'source_url': f'/p/{product.slug}/flipbook/preview.pdf',
             'max_pages': max_pages,
             'seo_title': gettext('Read a preview of %(name)s') % {'name': product.name},
             'seo_description': gettext(

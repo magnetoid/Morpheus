@@ -1058,6 +1058,14 @@ list items kept apart, cut at a sentence or word) or `strip_tags` + unescape, an
 clean again at render time when the text was stored by older code. Guarded by
 `webstories/tests/test_story_text.py` + `test_story_render.py`.
 
+**Landmine — a file you sell is not media.** `/media/` is public, and catalog's
+`digital_file` lives under `digital/` there: until v0.101.0 anyone could download
+dotbooks' paid PDFs, and the flipbook preview printed each file's address in its
+page. `core/media.py:serve_media` now answers `digital/` to staff only; a buyer
+gets the file through a `digital_products` download token, and the preview is a
+PDF of the first pages built on the server. Never put a sold file's `.url` in a
+storefront page. Guarded by `flipbook/tests/test_private_source.py`.
+
 **Convention — the dashboard has ONE media uploader.** `admin_dashboard/static/
 admin_dashboard/media-uploader.js` + `media-uploader.css` (loaded by base.html),
 two modes: the product gallery (`_media_uploader.html`, instant uploads, reorder,

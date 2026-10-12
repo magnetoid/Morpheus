@@ -10,4 +10,5 @@ app_name = 'flipbook'
 
 urlpatterns = [
     path('p/<slug:slug>/flipbook/', views.flipbook, name='flipbook'),
+    path('p/<slug:slug>/flipbook/preview.pdf', views.preview_pdf, name='preview_pdf'),
 ]
