@@ -1,1 +1,1 @@
-<a href="/membership/">Membership</a>
+{% load membership_tags %}{% membership_plans_exist as has_plans %}{% if has_plans %}<a href="/membership/">Membership</a>{% endif %}

@@ -1,4 +1,4 @@
-{% load i18n %}<section class="morpheus-rails morpheus-rails--recently-viewed" data-rail="recently_viewed" aria-label="Recently viewed">
+{% load i18n %}{% if recently_viewed %}<section class="morpheus-rails morpheus-rails--recently-viewed" data-rail="recently_viewed" aria-label="Recently viewed">
   <ol class="morpheus-rails__items">
     {% for product in recently_viewed|slice:":10" %}
       <li class="morpheus-rails__item">
@@ -11,4 +11,4 @@
       <li class="morpheus-rails__empty" hidden></li>
     {% endfor %}
   </ol>
-</section>
+</section>{% endif %}

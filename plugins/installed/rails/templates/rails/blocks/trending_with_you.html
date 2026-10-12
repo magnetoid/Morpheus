@@ -1,4 +1,4 @@
-{% load i18n %}<section class="morpheus-rails morpheus-rails--trending" data-rail="trending" aria-label="Trending with shoppers like you">
+{% load i18n %}{% if trending_products %}<section class="morpheus-rails morpheus-rails--trending" data-rail="trending" aria-label="Trending with shoppers like you">
   <header><h2>{% trans 'Trending with shoppers like you' %}</h2></header>
   <ol class="morpheus-rails__items">
     {% for product in trending_products|slice:":6" %}
@@ -13,4 +13,4 @@
       <li class="morpheus-rails__empty" hidden></li>
     {% endfor %}
   </ol>
-</section>
+</section>{% endif %}

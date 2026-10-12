@@ -73,7 +73,12 @@ def membership_view(request):
     return render(
         request,
         'subscriptions/membership.html',
-        {'plans': plans, 'current': _current_membership(request.user)},
+        {
+            'plans': plans,
+            'current': _current_membership(request.user),
+            # With no plan to join the page is empty: keep it out of search.
+            'seo_noindex_reason': '' if plans else 'no membership plans',
+        },
     )
 
 
