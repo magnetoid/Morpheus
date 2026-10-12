@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.100.0 — 2026-10-12
+
+**Categories include their subcategories**
+
+- Shop: a category page and the shop's category filter now list the category's own products and those of all its subcategories (switched-off subcategories excluded).
+- Shop: the Category dropdown on the products page shows every subcategory, indented under its parent, in all four themes.
+- Dashboard: the category list counts each category together with its subcategories, and shows how many products sit in the category itself.
+- API and Linda: filtering products by category in GraphQL and in Linda's product tools includes subcategories too.
+
 ## v0.99.1 — 2026-10-12
 
 **The shop's category filter skips switched-off categories**
