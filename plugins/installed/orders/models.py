@@ -289,6 +289,12 @@ class Order(models.Model):
     def deliver(self):
         self.log_event('ORDER_DELIVERED', prev_state='shipped', new_state='delivered')
 
+    @transition(field=status, source='*', target='refunded')
+    def mark_refunded(self, reason=''):
+        """The whole order is refunded (RefundService.record_external)."""
+        prev = self.status
+        self.log_event('ORDER_REFUNDED', message=reason, prev_state=prev, new_state='refunded')
+
     @transition(field=status, source='*', target='cancelled')
     def cancel(self, reason=''):
         prev = self.status

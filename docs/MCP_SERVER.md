@@ -301,7 +301,7 @@ using the returned `id`").
 | `orders.mark_fulfilled` / `markOrderFulfilled` | FSM fulfill() | no |
 | `orders.mark_shipped` / `markOrderShipped` | FSM ship() + tracking number | no |
 | `orders.cancel` / `cancelOrder` | FSM cancel() | **yes** |
-| `orders.mark_refunded` / `markOrderRefunded` | Bypass FSM for external refunds | **yes** |
+| `orders.mark_refunded` / `markOrderRefunded` | Record a refund made outside the store: the rest of the total as a processed refund, `PAYMENT_REFUNDED` fired, tenders re-credited | **yes** |
 
 All write operations enforce `info.context.request.user.is_staff` —
 the Bearer-resolved `mcp-service` user satisfies this; sessionless

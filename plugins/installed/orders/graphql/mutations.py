@@ -536,14 +536,15 @@ class OrdersAdminMutationExtension:
         order = Order.objects.filter(order_number=input.order_number).first()
         if order is None:
             return _err_admin(f'order {input.order_number!r} not found')
-        # Bypass FSM protection — manual flag, not a real transition.
-        Order.objects.filter(pk=order.pk).update(
-            status='refunded',
-            payment_status='refunded',
-        )
-        order.refresh_from_db()
-        order.log_event('ORDER_REFUNDED', message=input.reason)
-        return _serialize_order_admin(order)
+        # Through the refund path (orders/refunds.py): PAYMENT_REFUNDED re-credits
+        # gift cards and points and sends the refund email.
+        from plugins.installed.orders.refunds import RefundService
+
+        try:
+            RefundService.record_external(order=order, notes=input.reason or '')
+        except ValueError as e:
+            return _err_admin(str(e))
+        return _serialize_order_admin(Order.objects.get(pk=order.pk))
 
 
 def _address_dict(addr: AddressInput) -> dict:

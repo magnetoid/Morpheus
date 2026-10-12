@@ -165,10 +165,11 @@ def mark_order_shipped_tool(*, order_number: str, tracking_number: str = '') -> 
 @tool(
     name='orders.mark_refunded',
     description=(
-        'Flag an order as refunded — manual, for refunds processed outside '
-        'Morpheus (e.g. directly in Stripe / bank). The FSM has no '
-        'refund() transition because the canonical refund happens in the '
-        'payments plugin; this just lets the merchant flag the row.'
+        'Record that an order was refunded outside Morpheus (directly in Stripe, '
+        'by bank transfer, in cash). Records the rest of the order total as a '
+        'processed refund without calling a payment gateway, re-credits any gift '
+        'card or points spent on it, sends the refund email and marks the order '
+        'refunded. To refund money through the store, use orders.refund.'
     ),
     scopes=['orders.write'],
     schema={
@@ -183,14 +184,16 @@ def mark_order_shipped_tool(*, order_number: str, tracking_number: str = '') -> 
 )
 def mark_order_refunded_tool(*, order_number: str, reason: str = '') -> ToolResult:
     from plugins.installed.orders.models import Order
+    from plugins.installed.orders.refunds import RefundService
 
     order = Order.objects.filter(order_number=order_number).first()
     if order is None:
         raise ToolError(f'order {order_number!r} not found')
-    Order.objects.filter(pk=order.pk).update(
-        status='refunded',
-        payment_status='refunded',
-    )
-    order.refresh_from_db()
-    order.log_event('ORDER_REFUNDED', message=reason)
+    # Through the refund path, never a status update: PAYMENT_REFUNDED re-credits
+    # gift cards and points and sends the refund email (orders/refunds.py).
+    try:
+        RefundService.record_external(order=order, notes=reason)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
+    order = Order.objects.get(pk=order.pk)
     return ToolResult(output=_serialize_admin(order), display=f'#{order.order_number} refunded')

@@ -25,7 +25,7 @@ from django.utils import timezone
 from djmoney.models.fields import MoneyField
 from djmoney.money import Money
 
-from morpheus.core import hook_registry
+from morpheus.core import MorpheusEvents, hook_registry
 
 logger = logging.getLogger('morpheus.orders.refunds')
 
@@ -203,6 +203,45 @@ class RefundService:
                 '(COD/manual order, or gateway failure) — left for reconciliation',
                 refund.id,
             )
+        return refund
+
+    @classmethod
+    @transaction.atomic
+    def record_external(cls, *, order, reason: str = 'other', notes: str = '', actor=None):
+        """Record a refund already made outside Morpheus (in the gateway's own
+        dashboard, in cash) for whatever is left of the order total.
+
+        No gateway is called. The refund is stored as processed and
+        PAYMENT_REFUNDED fires, so gift cards, points and store credit spent on
+        the order are re-credited and the refund email goes out, as for a refund
+        made here; then the order moves to ``refunded``. ValueError when nothing
+        is left to refund.
+        """
+        from plugins.installed.orders.models import Order, Refund
+
+        locked = Order.objects.select_for_update().get(pk=order.pk)
+        already = sum(
+            (r.amount.amount for r in locked.refunds.filter(is_processed=True)),
+            Decimal('0'),
+        )
+        remaining = Decimal(locked.total.amount) - already
+        if remaining <= 0:
+            raise ValueError(f'Order {locked.order_number} has nothing left to refund.')
+        refund = Refund.objects.create(
+            order=locked,
+            amount=Money(remaining, locked.total.currency),
+            reason=reason,
+            notes=notes or 'Refunded outside the store',
+            is_processed=True,
+            processed_at=timezone.now(),
+        )
+        locked.log_event('REFUND_RECORDED', message=f'{refund.amount} — {refund.notes}')
+        hook_registry.fire(
+            MorpheusEvents.PAYMENT_REFUNDED, refund=refund, order=locked, amount=refund.amount
+        )
+        if locked.status != 'refunded':
+            locked.mark_refunded(reason=refund.notes)
+            locked.save()
         return refund
 
 
