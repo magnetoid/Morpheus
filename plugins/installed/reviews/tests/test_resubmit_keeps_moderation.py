@@ -33,6 +33,10 @@ class ResubmitKeepsModerationTests(TestCase):
         )
         self.client.force_login(self.user)
         self.url = f'/reviews/add/{self.product.id}/'
+        # A buyer: only a buyer's review is published at once (test_verified_purchase).
+        from plugins.installed.reviews.tests.test_verified_purchase import paid_order_for
+
+        paid_order_for(self.user, self.product)
 
     def test_a_hidden_review_stays_hidden_when_its_author_posts_again(self):
         from plugins.installed.catalog.models import Review

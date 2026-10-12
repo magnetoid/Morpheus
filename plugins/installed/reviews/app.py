@@ -15,7 +15,7 @@ class ReviewsPlugin(Plugin):
         'Merchant moderation lives at /dashboard/reviews/.'
     )
     has_models = True
-    requires = ['catalog']
+    requires = ['catalog', 'orders']
 
     def ready(self) -> None:
         # Storefront write endpoint.

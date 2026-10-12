@@ -27,6 +27,10 @@ class ReviewsSmoke(TestCase):
             password='hunter2',
             first_name='Mara',
         )
+        # A buyer: only a buyer's review is published at once (test_verified_purchase).
+        from plugins.installed.reviews.tests.test_verified_purchase import paid_order_for
+
+        paid_order_for(self.user, self.product)
 
     def test_post_creates_approved_review_visible_on_pdp(self):
         c = Client()
