@@ -56,6 +56,18 @@ def _enforce_price_delta(old_amount, new_amount: Decimal, max_pct: float) -> Non
         )
 
 
+def _in_category(category: str):
+    """Products in the categories matching ``category`` (slug, or part of the name)
+    and in their active subcategories, as the storefront lists them."""
+    from django.db.models import Q
+
+    from plugins.installed.catalog.category_tree import in_categories
+    from plugins.installed.catalog.models import Category
+
+    roots = list(Category.objects.filter(Q(slug__iexact=category) | Q(name__icontains=category)))
+    return in_categories(roots) if roots else Q(pk__in=[])
+
+
 @tool(
     name='products.search',
     description=(
@@ -98,9 +110,7 @@ def products_search_tool(
     if sku:
         qs = qs.filter(sku__icontains=sku)
     if category:
-        qs = qs.filter(category__slug__iexact=category) | qs.filter(
-            category__name__icontains=category
-        )
+        qs = qs.filter(_in_category(category)).distinct()
     if vendor:
         qs = qs.filter(vendor__slug__iexact=vendor) | qs.filter(vendor__name__icontains=vendor)
     # Total matching the filters — counted BEFORE the limit, so the agent
@@ -155,9 +165,7 @@ def products_count_tool(*, status: str = '', category: str = '', vendor: str = '
     if status:
         qs = qs.filter(status=status)
     if category:
-        qs = qs.filter(category__slug__iexact=category) | qs.filter(
-            category__name__icontains=category
-        )
+        qs = qs.filter(_in_category(category)).distinct()
     if vendor:
         qs = qs.filter(vendor__slug__iexact=vendor) | qs.filter(vendor__name__icontains=vendor)
     total = qs.count()

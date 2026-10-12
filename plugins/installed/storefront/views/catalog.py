@@ -99,14 +99,14 @@ def product_list(request):
     if q:
         qs = _apply_search(qs, q)
 
-    # Category filter — match either the primary `category` FK OR the
-    # `additional_categories` M2M, with .distinct() to avoid duplicate
-    # rows from the join. Symmetric with category_detail's listing.
+    # Category filter — the category and its active subcategories, by primary
+    # category or cross-listing (catalog/category_tree.py), as category_detail lists.
     cat_slug = (request.GET.get('category') or '').strip()
     if cat_slug:
-        qs = qs.filter(
-            Q(category__slug=cat_slug) | Q(additional_categories__slug=cat_slug)
-        ).distinct()
+        from plugins.installed.catalog.category_tree import in_categories  # noqa: PLC0415
+
+        cat = Category.objects.filter(slug=cat_slug, is_active=True).first()
+        qs = qs.filter(in_categories([cat]) if cat else Q(pk__in=[])).distinct()
 
     # Genre / Topic filter — `?genre=<slug>` / `?topic=<slug>` (the book_product
     # taxonomies that replaced category-as-genre). Match via the book's M2M.
@@ -264,9 +264,10 @@ def product_list(request):
     _qs_no_page.pop('page', None)
     paginator_base_qs = _qs_no_page.urlencode()
 
-    categories_list = list(
-        Category.objects.filter(is_active=True, parent__isnull=True).order_by('name')
-    )
+    # Every active category, each top level followed by its subcategories (`depth`).
+    from plugins.installed.catalog.category_tree import display_tree  # noqa: PLC0415
+
+    categories_list = display_tree()
 
     # Author facet — distinct authors (BookProduct model ∪ legacy metafields).
     available_authors: list[str] = []
@@ -1241,12 +1242,9 @@ def category_detail(request, slug):
         except Exception:  # noqa: BLE001 — book_product may be disabled
             pass
         raise Http404
-    # Include products whose PRIMARY category is this one OR whose
-    # `additional_categories` M2M includes it (multi-category surface
-    # support — keeps the primary category canonical for breadcrumbs
-    # but lets a product cross-list under "Bestsellers" + "Children's"
-    # etc.).
-    from django.db.models import Q  # noqa: PLC0415
+    # Products whose primary category, or a category they are cross-listed in,
+    # is this one or one of its active subcategories (catalog/category_tree.py).
+    from plugins.installed.catalog.category_tree import in_categories  # noqa: PLC0415
 
     sort = (request.GET.get('sort') or 'for_you').strip()
     sort_map = {
@@ -1260,7 +1258,7 @@ def category_detail(request, slug):
     order = sort_map.get(sort, sort_map['for_you'])
     qs = (
         Product.objects.filter(status='active')
-        .filter(Q(category=category) | Q(additional_categories=category))
+        .filter(in_categories([category]))
         .select_related('category')
         .prefetch_related('images')  # primary_image hits this — avoid an N+1 per card
         .distinct()

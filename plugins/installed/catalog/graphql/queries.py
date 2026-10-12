@@ -2,6 +2,7 @@ import strawberry
 from django.db.models import Avg, Count, Prefetch, Q
 
 from api.graphql_permissions import current_channel_id
+from plugins.installed.catalog.category_tree import in_categories
 from plugins.installed.catalog.graphql.types import (
     CategoryType,
     CollectionType,
@@ -109,7 +110,9 @@ class CatalogQueryExtension:
             if search:
                 qs = _apply_fts(qs, search)
         if category:
-            qs = qs.filter(category__slug=category)
+            # The category and its active subcategories (catalog/category_tree.py).
+            roots = list(Category.objects.filter(slug=category, is_active=True))
+            qs = qs.filter(in_categories(roots)).distinct() if roots else qs.none()
 
         return list(qs[:first])
 

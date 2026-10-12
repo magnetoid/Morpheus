@@ -56,6 +56,16 @@ def categories_list(request: HttpRequest) -> HttpResponse:
             .values_list('category_id', 'c')
         )
 
+        # A category counts its subcategories' products too, as the storefront
+        # lists them (catalog/category_tree.py): the total, and how many sit in
+        # the category itself.
+        children: dict = {}
+        for pk, parent in Category.objects.filter(is_active=True).values_list('pk', 'parent_id'):
+            children.setdefault(parent, []).append(pk)
+
+        def subtree_total(pk):
+            return product_counts.get(pk, 0) + sum(subtree_total(k) for k in children.get(pk, ()))
+
         # MPTT order — by tree, then sort_order within siblings.
         qs = qs.order_by('tree_id', 'lft')
         for c in qs:
@@ -68,7 +78,8 @@ def categories_list(request: HttpRequest) -> HttpResponse:
                     'parent_name': c.parent.name if c.parent_id else '',
                     'is_active': c.is_active,
                     'sort_order': c.sort_order,
-                    'product_count': product_counts.get(c.id, 0),
+                    'product_count': subtree_total(c.id),
+                    'direct_count': product_counts.get(c.id, 0),
                     'updated_at': c.updated_at,
                 }
             )

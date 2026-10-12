@@ -71,7 +71,7 @@ Branches on booking_listing_mode (prices hidden / no cart in listing mode).
     <select name="category" aria-label="{% trans 'Category' %}" class="h-11 w-full sm:w-48 rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <option value="">{% trans "All categories" %}</option>
       {% for c in categories %}
-      <option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{{ c.name }}</option>
+      <option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{% if c.depth %}&nbsp;&nbsp;&nbsp;{% if c.depth > 1 %}&nbsp;&nbsp;&nbsp;{% endif %}{% endif %}{{ c.name }}</option>
       {% endfor %}
     </select>
     {% if available_authors %}

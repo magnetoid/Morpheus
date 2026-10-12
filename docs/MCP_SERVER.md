@@ -355,6 +355,10 @@ external agent's conversation, an automation's own run and a plain API token.
 An automation reads with Linda's profile, and `automations.list` returns its
 answers, so any of those callers could otherwise read more than its own grant.
 
+A category filter means the category and its active subcategories, everywhere:
+`products.search` and `products.count` here, `products(category:)` in GraphQL, and
+the storefront's category pages and shop filter (`catalog/category_tree.py`).
+
 ## Examples
 
 ### Publish a PDF book (MCP)

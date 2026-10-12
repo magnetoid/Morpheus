@@ -182,6 +182,13 @@ pages that did not exist for months: nothing tests a hardcoded link. Guarded by
 `test_dashboard_cards.py` (every card runs on an empty store) and the
 `morpheus.W003`–`W005` checks.
 
+**Convention — a category lists its subtree (v0.100.0).** "Products in Tech" means
+Tech and every active category below it, by primary category or cross-listing — one
+rule in `catalog/category_tree.py`, read by the category page, the shop filter, the
+GraphQL `products(category:)` query, Linda's product tools and the dashboard counts.
+Never filter on `category__slug` alone; a parent then shows nothing unless every
+product is cross-listed by hand. Guarded by `storefront/tests/test_category_tree.py`.
+
 **Landmine — two lists with the same name WILL drift, and the looser one
 wins where it's read.** `PROTECTED_PLUGINS` ("apps that soft-brick if
 disabled") existed twice: in `core/safety.py` (gating Linda's `plugins.disable`

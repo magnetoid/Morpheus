@@ -69,7 +69,7 @@
       <select name="category" aria-label="Filter by category" onchange="this.form.requestSubmit()" style="height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: 0.9rem;">
         <option value="">All categories</option>
         {% for c in categories %}
-        <option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{{ c.name }}</option>
+        <option value="{{ c.slug }}" {% if c.slug == selected_category %}selected{% endif %}>{% if c.depth %}&nbsp;&nbsp;&nbsp;{% if c.depth > 1 %}&nbsp;&nbsp;&nbsp;{% endif %}{% endif %}{{ c.name }}</option>
         {% endfor %}
       </select>
       {% endif %}

@@ -54,6 +54,7 @@
           <td class="text-[color:var(--text-muted)]">{{ row.parent_name|default:"—" }}</td>
           <td class="text-right tabular-nums">
             <a href="{% url 'admin_dashboard:products' %}?q={{ row.name }}" class="hover:underline">{{ row.product_count }}</a>
+            {% if row.direct_count != row.product_count %}<span class="block text-xs text-[color:var(--text-muted)]" title="Products in this category itself; the rest are in its subcategories">{{ row.direct_count }} here</span>{% endif %}
           </td>
           <td>
             {% if row.is_active %}
