@@ -15,6 +15,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.101.0 — 2026-10-12
+
+**Sold files stay private, and the shop makes no promises it does not keep**
+
+- Security: a digital product's file can no longer be downloaded from its public address. Buyers download it through their download link, and staff can still open it.
+- Flipbook: the preview shows a PDF of the book's first pages, made on the server, instead of linking the whole file.
+- Checkout: the second checkout form that appeared under the real one, with "Pay USD 0", is gone. Its app, checkout_experience, is deleted.
+- Refunds: marking an order refunded from Linda or the API now records a refund, gives back gift card and points balances and sends the refund event, like a refund made through the store.
+- Shop: the cart's free-shipping bar is gone (it always said 40 USD to go), the dot_books and montenegro themes no longer promise free shipping over $40 or €40, and the returns block no longer promises shipping within 48 hours.
+- Feeds: the OpenAI feed publishes a return policy only when the merchant sets one, and the six channel feeds use the store's name when no feed title is set (they all said "Dot Books").
+- Reviews: a review from a customer who paid for the product is published at once and marked as a verified purchase. Other reviews wait for the merchant's approval.
+- Shop: the footer's Membership link appears only once a membership plan exists, and the empty membership page is not indexed. Recommendation rails and customer photo blocks no longer show a heading with nothing under it.
+
 ## v0.100.0 — 2026-10-12
 
 **Categories include their subcategories**
