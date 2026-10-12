@@ -264,7 +264,9 @@ def product_list(request):
     _qs_no_page.pop('page', None)
     paginator_base_qs = _qs_no_page.urlencode()
 
-    categories_list = list(Category.objects.filter(parent__isnull=True).order_by('name'))
+    categories_list = list(
+        Category.objects.filter(is_active=True, parent__isnull=True).order_by('name')
+    )
 
     # Author facet — distinct authors (BookProduct model ∪ legacy metafields).
     available_authors: list[str] = []
