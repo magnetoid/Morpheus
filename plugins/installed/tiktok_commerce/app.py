@@ -235,6 +235,11 @@ class TiktokCommercePlugin(Plugin):
                     'title': 'Include out-of-stock products',
                     'default': True,
                 },
-                'feed_title': {'type': 'string', 'title': 'Feed title', 'default': 'Dot Books'},
+                'feed_title': {
+                    'type': 'string',
+                    'title': 'Feed title',
+                    'description': 'Blank uses the store name.',
+                    'default': '',
+                },
             },
         }

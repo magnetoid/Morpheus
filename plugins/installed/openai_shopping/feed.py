@@ -25,8 +25,8 @@ class FeedConfig:
     seller_privacy_policy: str = ''
     seller_tos: str = ''
     checkout_eligible: bool = False
-    accepts_returns: bool = True
-    return_deadline_days: int = 30
+    accepts_returns: bool = False
+    return_deadline_days: int = 0
     return_policy_url: str = ''
     default_brand: str = ''
     default_condition: str = 'new'
@@ -50,9 +50,9 @@ def config() -> FeedConfig:
     except Exception:  # noqa: BLE001 — defaults are a valid feed
         logger.debug('openai_shopping: config read failed', exc_info=True)
     try:
-        values['return_deadline_days'] = int(values.get('return_deadline_days', 30))
+        values['return_deadline_days'] = int(values.get('return_deadline_days') or 0)
     except (TypeError, ValueError):
-        values['return_deadline_days'] = 30
+        values['return_deadline_days'] = 0
     return FeedConfig(**values)
 
 
@@ -92,14 +92,16 @@ def _row(item: dict, *, cfg: FeedConfig, seller: dict, group: dict | None = None
         'target_countries': seller['target_countries'],
         'is_eligible_search': True,
         'is_eligible_checkout': bool(cfg.checkout_eligible),
-        'accepts_returns': bool(cfg.accepts_returns),
     }
     if item.get('sale_price'):
         row['sale_price'] = item['sale_price']
     if cfg.checkout_eligible:
         row['seller_privacy_policy'] = seller['seller_privacy_policy']
         row['seller_tos'] = seller['seller_tos']
-    if cfg.accepts_returns:
+    # A return policy is a public claim: published only as the merchant set it,
+    # never from a default (CLAUDE.md, "structured data is a PUBLIC CLAIM").
+    if cfg.accepts_returns and cfg.return_deadline_days > 0:
+        row['accepts_returns'] = True
         row['return_deadline_in_days'] = int(cfg.return_deadline_days)
         row['return_policy'] = seller['return_policy']
     for src, dst in (

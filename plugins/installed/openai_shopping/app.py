@@ -149,11 +149,16 @@ class OpenAIShoppingPlugin(Plugin):
                     'description': 'Needs the agentic checkout (ACP) to be live as well.',
                     'default': False,
                 },
-                'accepts_returns': {'type': 'boolean', 'title': 'Accepts returns', 'default': True},
+                'accepts_returns': {
+                    'type': 'boolean',
+                    'title': 'Accepts returns',
+                    'description': 'Published only with a return deadline below; a public claim '
+                    'to ChatGPT and other agents, so it is off until you set it.',
+                    'default': False,
+                },
                 'return_deadline_days': {
                     'type': 'integer',
                     'title': 'Return deadline (days)',
-                    'default': 30,
                 },
                 'return_policy_url': {
                     'type': 'string',

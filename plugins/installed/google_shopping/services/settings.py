@@ -39,7 +39,7 @@ _DEFAULTS = {
     'default_condition': 'new',
     'free_shipping_over': '',
     'include_out_of_stock': True,
-    'feed_title': 'Dot Books',
+    'feed_title': '',  # '' → the store's name
     'feed_description': 'Product feed for Google Merchant Center.',
     'remarketing_enabled': False,
     'remarketing_id': '',

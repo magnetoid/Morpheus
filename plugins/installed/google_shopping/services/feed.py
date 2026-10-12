@@ -64,7 +64,9 @@ def build_feed(*, log: bool = True) -> tuple[str, dict]:
         for it in variant_items or [item]:
             items_xml.append(_item_xml(it))
 
-    title = escape(settings.feed_title or 'Product feed')
+    from core.utils.site import store_name
+
+    title = escape(settings.feed_title or store_name() or 'Product feed')
     desc = escape(settings.feed_description or '')
     from morpheus.core import site_base_url  # noqa: PLC0415
 

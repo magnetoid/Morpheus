@@ -10,7 +10,6 @@ What turning this on does
 -------------------------
 Storefront:
   * "Recently viewed" rail under the home grid.
-  * "Free shipping progress" bar above the cart summary.
   * "Low stock" badge in product detail.
 
 Dashboard:
@@ -23,7 +22,6 @@ Operations:
 
 Settings (admin):
   * `low_stock_threshold` (int, default 5) — shown as the badge cutoff.
-  * `free_shipping_target` (number, default 40) — used by the cart bar.
 """
 
 from __future__ import annotations
@@ -41,9 +39,8 @@ class AdvancedEcommercePlugin(Plugin):
     label = 'Advanced Ecommerce'
     version = '0.1.0'
     description = (
-        'Adds advanced storefront blocks (recently-viewed, free-shipping '
-        'progress, low-stock badge) and dashboard tools (bulk price edit, '
-        'low-stock alerts).'
+        'Adds advanced storefront blocks (recently-viewed, low-stock badge) '
+        'and dashboard tools (bulk price edit, low-stock alerts).'
     )
     has_models = False
     requires = ['catalog', 'orders']
@@ -89,12 +86,6 @@ class AdvancedEcommercePlugin(Plugin):
                 template='advanced_ecommerce/blocks/recently_viewed.html',
                 priority=20,
                 context_keys=['request'],
-            ),
-            StorefrontBlock(
-                slot='cart_summary_extra',
-                template='advanced_ecommerce/blocks/free_shipping_progress.html',
-                priority=20,
-                context_keys=['cart'],
             ),
             StorefrontBlock(
                 slot='pdp_below_price',
@@ -148,17 +139,6 @@ class AdvancedEcommercePlugin(Plugin):
                     'title': 'Low-stock badge cutoff',
                     'description': 'PDP shows a "low stock" badge when available units fall below this.',
                     'default': 5,
-                },
-                'free_shipping_target': {
-                    'type': 'number',
-                    'title': 'Free shipping target',
-                    'description': 'Cart shows a progress bar toward this subtotal.',
-                    'default': 40,
-                },
-                'free_shipping_currency': {
-                    'type': 'string',
-                    'title': 'Free shipping currency',
-                    'default': 'USD',
                 },
             },
         }

@@ -75,8 +75,27 @@ class FeedRowTests(_Base):
         self.assertTrue(row['is_eligible_search'])
         self.assertFalse(row['is_eligible_checkout'])
         self.assertNotIn('seller_privacy_policy', row)
+        # Nobody set a return policy, so the feed makes no claim about one.
+        self.assertNotIn('accepts_returns', row)
+        self.assertNotIn('return_deadline_in_days', row)
+
+    def test_a_return_policy_the_merchant_set_is_published(self):
+        from plugins.registry import app_registry
+
+        plugin = app_registry.get('openai_shopping')
+        plugin.set_config('accepts_returns', True)
+        plugin.set_config('return_deadline_days', 14)
+        self.addCleanup(plugin.invalidate_config_cache)
+        Product.objects.create(
+            name='Kettle',
+            slug='kettle-returns',
+            sku='KT-1',
+            status='active',
+            price=Money(Decimal('25.00'), 'USD'),
+        )
+        row = build_rows()[0]
         self.assertTrue(row['accepts_returns'])
-        self.assertEqual(row['return_deadline_in_days'], 30)
+        self.assertEqual(row['return_deadline_in_days'], 14)
         self.assertTrue(row['return_policy'].endswith('/returns/'))
 
     def test_checkout_eligibility_brings_the_policy_urls(self):

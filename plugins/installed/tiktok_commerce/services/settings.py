@@ -22,7 +22,7 @@ _DEFAULTS = {
     'default_brand': '',
     'default_condition': 'new',
     'include_out_of_stock': True,
-    'feed_title': 'Dot Books',
+    'feed_title': '',  # '' → the store's name
     'pixel_enabled': False,
 }
 

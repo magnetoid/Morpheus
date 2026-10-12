@@ -205,7 +205,12 @@ class MicrosoftCommercePlugin(Plugin):
                     'title': 'Include out-of-stock products',
                     'default': True,
                 },
-                'feed_title': {'type': 'string', 'title': 'Feed title', 'default': 'Dot Books'},
+                'feed_title': {
+                    'type': 'string',
+                    'title': 'Feed title',
+                    'description': 'Blank uses the store name.',
+                    'default': '',
+                },
                 # ── Microsoft Advertising API (campaign management, SOAP) ──
                 'oauth_client_id': {'type': 'string', 'title': 'OAuth client ID', 'default': ''},
                 'oauth_client_secret': {

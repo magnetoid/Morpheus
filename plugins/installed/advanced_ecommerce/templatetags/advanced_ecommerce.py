@@ -25,23 +25,6 @@ def recently_viewed_product(slug: str):
 
 
 @register.simple_tag
-def free_shipping_target():
-    """Returns (target_amount, currency) tuple from plugin config."""
-    try:
-        from plugins.registry import app_registry
-
-        plugin = app_registry.get('advanced_ecommerce')
-        if plugin is None:
-            return 40, 'USD'
-        return (
-            plugin.get_config_value('free_shipping_target', 40),
-            plugin.get_config_value('free_shipping_currency', 'USD'),
-        )
-    except Exception:  # noqa: BLE001
-        return 40, 'USD'
-
-
-@register.simple_tag
 def low_stock_threshold() -> int:
     try:
         from plugins.registry import app_registry
