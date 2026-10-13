@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.107.0 — 2026-10-13
+
+**Montenegro storefront: fixes and honest ratings**
+
+- The category bar no longer pins over the page while scrolling, the search box fits its text and shows 'Any date', and the hero buttons are readable.
+- Ratings, review counts, Superhost and guest quotes now come only from reviews left after a real booking; the 'Loved by 10,000+ customers' and '500+ experiences' lines are gone.
+- Footer social icons appear only for profiles the store has, and there is one language switcher.
+
 ## v0.106.5 — 2026-10-13
 
 **Edit marketplace listings from the storefront**
