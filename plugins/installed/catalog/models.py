@@ -52,7 +52,11 @@ class Category(MPTTModel):
     parent = TreeForeignKey(
         'self', on_delete=models.CASCADE, null=True, blank=True, related_name='children'
     )
+    # The short intro: shown above the products and used as the meta description.
     description = models.TextField(blank=True)
+    # The buying and planning guide shown below the products: formatted text from
+    # the dashboard editor, cleaned on save like a product's description.
+    long_description = models.TextField(blank=True)
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
     meta_title = models.CharField(max_length=200, blank=True)
     meta_description = models.TextField(blank=True)
@@ -73,6 +77,7 @@ class Category(MPTTModel):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
+        self.long_description = sanitize_richtext(self.long_description)
         super().save(*args, **kwargs)
 
 

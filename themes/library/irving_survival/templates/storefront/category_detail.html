@@ -21,6 +21,20 @@ grid. The category's own description (Products → Categories) is the lede.{% en
   .plp-bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; font-size: .875rem; margin-bottom: 1.5rem; color: var(--ink2); }
   .plp-bar select { height: 42px; padding: 0 .9rem; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: .875rem; }
   .plp-pagination { display: flex; justify-content: center; align-items: center; gap: .5rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  /* The category's long description: the buying and planning guide below the
+     grid, set like a product's long description (product_detail.html). */
+  .category-guide { padding-top: clamp(2.5rem, 5vw, 4rem); }
+  .category-guide .wrap-guide { max-width: 46rem; }
+  .category-guide__body { line-height: 1.75; color: var(--ink); font-size: 1.05rem; }
+  .category-guide__body p { margin: 0 0 1.1em; }
+  .category-guide__body p:first-child { font-size: 1.15rem; }
+  .category-guide__body h2 { font-family: var(--sans); font-weight: 600; letter-spacing: -.02em; font-size: 1.35rem; line-height: 1.25; margin: 2.25rem 0 .75rem; color: var(--ink); }
+  .category-guide__body h3 { font-family: var(--sans); font-weight: 600; letter-spacing: -.02em; font-size: 1.15rem; line-height: 1.3; margin: 1.5rem 0 .5rem; color: var(--ink); }
+  .category-guide__body :is(ul, ol) { padding-left: 1.25rem; margin: 0 0 1.1em; }
+  .category-guide__body li { margin: .45em 0; }
+  .category-guide__body li::marker { color: var(--ink2); }
+  .category-guide__body a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  .category-guide__body strong { font-weight: 600; }
 </style>
 {% endblock %}
 
@@ -79,4 +93,15 @@ grid. The category's own description (Products → Categories) is the lede.{% en
     {% endif %}
   </div>
 </section>
+{% if category.long_description %}
+<section class="category-guide">
+  <div class="wrap">
+    <div class="wrap-guide">
+      <p class="eyebrow" style="margin-bottom: .75rem;">{% blocktranslate trimmed with name=category.name %}About {{ name }}{% endblocktranslate %}</p>
+      <hr class="rule" style="margin-bottom: 1.5rem;">
+      <div class="category-guide__body">{{ category.long_description|safe }}</div>
+    </div>
+  </div>
+</section>
+{% endif %}
 {% endblock %}

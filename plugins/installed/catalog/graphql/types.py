@@ -39,7 +39,12 @@ class CategoryType:
     id: strawberry.ID = strawberry.field(description='Unique category identifier (UUID)')
     name: str = strawberry.field(description='Category display name')
     slug: str = strawberry.field(description='URL-safe identifier for deep linking')
-    description: str = strawberry.field(description='Category description text')
+    description: str = strawberry.field(
+        description='Short intro: shown above the products and used as the meta description'
+    )
+    long_description: str = strawberry.field(
+        description='Full description shown below the products (sanitized HTML)'
+    )
     is_active: bool = strawberry.field(description='Whether this category is active')
 
     @strawberry.field

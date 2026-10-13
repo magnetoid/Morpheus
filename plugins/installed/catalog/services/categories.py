@@ -19,6 +19,7 @@ def create_category(
     slug: str = '',
     parent_slug: str = '',
     description: str = '',
+    long_description: str = '',
 ) -> dict[str, str]:
     from plugins.installed.catalog.models import Category
 
@@ -41,6 +42,7 @@ def create_category(
         slug=chosen,
         parent=parent,
         description=(description or '').strip(),
+        long_description=(long_description or '').strip(),
     )
     logger.info('catalog.create_category slug=%s', cat.slug)
     return _serialize_category(cat)
@@ -54,6 +56,7 @@ def update_category(
     new_slug: str = '',
     parent_slug: str | None = None,
     description: str | None = None,
+    long_description: str | None = None,
 ) -> dict[str, str]:
     from plugins.installed.catalog.models import Category
 
@@ -80,6 +83,8 @@ def update_category(
             cat.parent = parent
     if description is not None:
         cat.description = description.strip()
+    if long_description is not None:
+        cat.long_description = long_description.strip()
 
     cat.save()
     return _serialize_category(cat)

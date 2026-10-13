@@ -6,6 +6,16 @@
 {% block extra_head %}
   {% seo_breadcrumb_jsonld items=breadcrumb_items %}
   {% seo_collection_jsonld items=collection_items name=category.name description=category.description %}
+<style>
+  /* The category's long description: the guide below the products. */
+  .category-guide__body { line-height: 1.75; font-size: 1.05rem; }
+  .category-guide__body p { margin: 0 0 1.1em; }
+  .category-guide__body h2 { font-size: 1.35rem; line-height: 1.25; margin: 2rem 0 .75rem; }
+  .category-guide__body h3 { font-size: 1.15rem; line-height: 1.3; margin: 1.5rem 0 .5rem; }
+  .category-guide__body :is(ul, ol) { padding-left: 1.25rem; margin: 0 0 1.1em; }
+  .category-guide__body li { margin: .35em 0; }
+  .category-guide__body a { text-decoration: underline; text-underline-offset: 2px; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -67,4 +77,11 @@
     {% endif %}
   </div>
 </section>
+{% if category.long_description %}
+<section class="category-guide" style="padding: 1rem 0 4rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <div class="category-guide__body">{{ category.long_description|safe }}</div>
+  </div>
+</section>
+{% endif %}
 {% endblock %}

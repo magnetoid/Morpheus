@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load richtext %}
 {% block title %}{% if is_new %}New category{% else %}{{ category.name }}{% endif %} · Morpheus{% endblock %}
 
 {% block content %}
@@ -36,8 +37,14 @@
         {% if form.parent.errors %}<p class="field-error">{{ form.parent.errors.0 }}</p>{% endif %}
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Description</label>
+        <label class="block text-sm font-medium mb-1" for="{{ form.description.id_for_label }}">Intro</label>
         {{ form.description }}
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">One or two sentences. Shown above the products and in search results.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="category-long-description">Full description</label>
+        {% richtext_field name="long_description" value=form.long_description.value id="category-long-description" allow_headings=True allow_images=False aria_label="Full category description" %}
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">The guide shoppers read below the products: how to choose, how much to keep, how to look after it. Headings, lists and links to other categories work.</p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <label class="flex items-center gap-2 text-sm">{{ form.is_active }} Active</label>

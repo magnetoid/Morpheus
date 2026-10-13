@@ -27,6 +27,7 @@ class CategoryForm(forms.ModelForm):
             'slug',
             'parent',
             'description',
+            'long_description',
             'image',
             'is_active',
             'sort_order',

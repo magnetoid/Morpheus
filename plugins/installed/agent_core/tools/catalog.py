@@ -646,7 +646,17 @@ def set_primary_image_tool(*, image_id: str) -> ToolResult:
             'name': {'type': 'string'},
             'slug': {'type': 'string', 'description': 'Auto-generated from name if blank.'},
             'parent_slug': {'type': 'string'},
-            'description': {'type': 'string'},
+            'description': {
+                'type': 'string',
+                'description': 'Short intro: one or two sentences, shown above the products and in search results.',
+            },
+            'long_description': {
+                'type': 'string',
+                'description': (
+                    'Full description shown below the products: HTML with <h2>/<h3>, <p>, <ul>/<li>, '
+                    '<strong> and links to other categories (/category/<slug>/). Unsafe HTML is removed.'
+                ),
+            },
         },
         'required': ['name'],
     },
@@ -657,11 +667,18 @@ def create_category_tool(
     slug: str = '',
     parent_slug: str = '',
     description: str = '',
+    long_description: str = '',
 ) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, create_category
 
     try:
-        r = create_category(name=name, slug=slug, parent_slug=parent_slug, description=description)
+        r = create_category(
+            name=name,
+            slug=slug,
+            parent_slug=parent_slug,
+            description=description,
+            long_description=long_description,
+        )
     except PublishError as e:
         raise ToolError(str(e)) from None
     return ToolResult(output=r, display=f'Created category {r["name"]!r} ({r["slug"]})')
@@ -678,7 +695,17 @@ def create_category_tool(
             'name': {'type': 'string'},
             'new_slug': {'type': 'string'},
             'parent_slug': {'type': 'string'},
-            'description': {'type': 'string'},
+            'description': {
+                'type': 'string',
+                'description': 'Short intro: one or two sentences, shown above the products and in search results.',
+            },
+            'long_description': {
+                'type': 'string',
+                'description': (
+                    'Full description shown below the products: HTML with <h2>/<h3>, <p>, <ul>/<li>, '
+                    '<strong> and links to other categories (/category/<slug>/). Unsafe HTML is removed.'
+                ),
+            },
         },
         'required': ['slug'],
     },
@@ -690,6 +717,7 @@ def update_category_tool(
     new_slug: str = '',
     parent_slug: str | None = None,
     description: str | None = None,
+    long_description: str | None = None,
 ) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, update_category
 
@@ -700,6 +728,7 @@ def update_category_tool(
             new_slug=new_slug,
             parent_slug=parent_slug,
             description=description,
+            long_description=long_description,
         )
     except PublishError as e:
         raise ToolError(str(e)) from None
