@@ -18,6 +18,7 @@ from core.utils.html import sanitize_richtext
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils.text import slugify
 from djmoney.models.fields import MoneyField
+from djmoney.models.managers import money_manager
 from morpheus.app import models
 from mptt.models import MPTTModel, TreeForeignKey
 from taggit.managers import TaggableManager
@@ -226,6 +227,14 @@ class UUIDTaggedItem(GenericUUIDTaggedItemBase, TaggedItemBase):
         verbose_name_plural = 'Tagged items'
 
 
+class ProductQuerySet(models.QuerySet):
+    def shoppable(self):
+        """What the shop sells as goods: active, and not a service an app books
+        (booking_marketplace's experiences live at /bookings/<slug>/, not in the
+        catalogue, the sitemap or the channel feeds)."""
+        return self.filter(status='active').exclude(product_type='service')
+
+
 class Product(models.Model):
     """Core product model."""
 
@@ -239,7 +248,13 @@ class Product(models.Model):
         ('variable', 'Variable'),
         ('digital', 'Digital'),
         ('bundle', 'Bundle'),
+        # Booked through an app (booking_marketplace extends it with dates,
+        # meeting point, tiers): a product in the dashboard, not a shop good.
+        ('service', 'Service (booked through an app)'),
     ]
+
+    # money_manager keeps Money lookups (price=Money(...)) working on the custom manager.
+    objects = money_manager(ProductQuerySet.as_manager())
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=300)
