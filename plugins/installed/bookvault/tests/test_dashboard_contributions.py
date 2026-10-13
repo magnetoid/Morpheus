@@ -111,7 +111,7 @@ class ProductsPageEndToEndTests(TestCase):
         p = _product('page')
         BookvaultProductLink.objects.create(product=p, is_linked=True)
         resp = self.client.get(reverse('admin_dashboard:products'))
-        self.assertContains(resp, '<th>BV</th>', html=True)
+        self.assertContains(resp, '>BV</th>')
         self.assertContains(resp, 'pill-success')
         self.assertContains(resp, 'Send to Bookvault')
         self.assertContains(resp, 'data-bulk-ext-form')
@@ -125,7 +125,7 @@ class ProductsPageEndToEndTests(TestCase):
             resp = self.client.get(reverse('admin_dashboard:products'))
             self.assertEqual(resp.status_code, 200)
             self.assertNotContains(resp, 'Send to Bookvault')
-            self.assertNotContains(resp, '<th>BV</th>', html=True)
+            self.assertNotContains(resp, '>BV</th>')
         finally:
             if was_active:
                 app_registry._active.add('bookvault')
