@@ -462,11 +462,12 @@ def service_detail(request, slug):
             )
         ),
     }
-    # The storefront staff bar's Edit link: staff edit any listing (host.py).
+    # The storefront staff bar's Edit link opens the dashboard's listing editor.
+    from plugins.installed.booking_marketplace.dashboard_listings import edit_url
     from plugins.installed.booking_marketplace.host import _staff_editor
 
     if _staff_editor(request.user):
-        ctx['active_edit_url'] = f'/bookings/host/{service.slug}/edit/'
+        ctx['active_edit_url'] = edit_url(service)
         ctx['active_edit_label'] = _('Edit this listing')
     return render(request, 'booking_marketplace/detail.html', ctx)
 

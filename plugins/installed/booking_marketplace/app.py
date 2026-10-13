@@ -38,6 +38,12 @@ class BookingMarketplacePlugin(Plugin):
             prefix='',
             namespace='booking_marketplace',
         )
+        # The dashboard's listing editor; the list is the Listings DashboardPage.
+        self.register_urls(
+            'plugins.installed.booking_marketplace.urls_dashboard',
+            prefix='dashboard/listings/',
+            namespace='booking_marketplace_dash',
+        )
         # Header megamenu data (categories, destinations, place columns).
         # This context processor was written but never registered, so every
         # theme reading `nav_categories` / `nav_destinations` / `storefront_nav`
@@ -105,6 +111,14 @@ class BookingMarketplacePlugin(Plugin):
         )
         return value
 
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.booking_marketplace.agent_tools import (  # noqa: PLC0415
+            listings_search_tool,
+            listings_update_tool,
+        )
+
+        return [listings_search_tool, listings_update_tool]
+
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
@@ -123,6 +137,17 @@ class BookingMarketplacePlugin(Plugin):
                 icon='inbox',
                 section='orders',
                 order=45,
+                nav='main',
+            ),
+            # Every experience and local good the storefront sells; the dashboard
+            # had none of them (2026-10-14).
+            DashboardPage(
+                label='Listings',
+                slug='listings',
+                view='plugins.installed.booking_marketplace.dashboard_listings.listings_list',
+                icon='map-pin',
+                section='products',
+                order=15,
                 nav='main',
             ),
             DashboardPage(

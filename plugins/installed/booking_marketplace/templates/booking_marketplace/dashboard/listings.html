@@ -1,0 +1,62 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Listings · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Listings</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">Every experience and local good the storefront sells, from every host.</p>
+    </div>
+    <a href="/dashboard/listings/new/" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> New listing</a>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-2">
+    <a href="?{% if state %}state={{ state }}{% endif %}" class="pill {% if not kind %}pill-info{% else %}pill-neutral{% endif %}">All {{ counts.all }}</a>
+    {% for k, label in kinds.items %}
+    <a href="?kind={{ k }}{% if state %}&state={{ state }}{% endif %}" class="pill {% if kind == k %}pill-info{% else %}pill-neutral{% endif %}">{{ label }} {% if k == 'experience' %}{{ counts.experience }}{% else %}{{ counts.product }}{% endif %}</a>
+    {% endfor %}
+    <form method="get" class="ml-auto flex items-center gap-2">
+      {% if kind %}<input type="hidden" name="kind" value="{{ kind }}">{% endif %}
+      <select name="state" class="input input-sm" onchange="this.form.submit()" aria-label="Status">
+        <option value="" {% if not state %}selected{% endif %}>Any status</option>
+        <option value="active" {% if state == 'active' %}selected{% endif %}>Active</option>
+        <option value="inactive" {% if state == 'inactive' %}selected{% endif %}>Hidden</option>
+      </select>
+      <input type="search" name="q" value="{{ q }}" placeholder="Name, place or host" class="input input-sm" aria-label="Search listings">
+    </form>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if listings %}
+    <table class="morph-table morph-table-zebra">
+      <thead><tr><th>Listing</th><th class="hide-sm">Type</th><th class="hide-sm">Host</th><th class="hide-sm">Where</th><th class="text-right">Price</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for s in listings %}
+        <tr>
+          <td>
+            <a href="/dashboard/listings/{{ s.pk }}/edit/" class="flex items-center gap-3">
+              <div class="img-frame img-frame--row rounded border border-[color:var(--border)]">
+                {% if s.image %}<img src="{{ s.image.url }}" alt="" loading="lazy">{% else %}<i data-lucide="map-pin" class="h-4 w-4 text-[color:var(--text-muted)]"></i>{% endif %}
+              </div>
+              <div class="min-w-0 max-w-[18rem]">
+                <div class="font-medium truncate hover:underline">{{ s.name }}</div>
+                <div class="text-xs text-[color:var(--text-muted)] truncate">{{ s.short_description|default:"" }}</div>
+              </div>
+            </a>
+          </td>
+          <td class="hide-sm">{% if s.listing_kind == 'product' %}Local good{% else %}Experience{% endif %}</td>
+          <td class="hide-sm text-[color:var(--text-muted)]">{{ s.vendor.name }}</td>
+          <td class="hide-sm text-[color:var(--text-muted)]">{{ s.location|default:s.get_region_display|default:"—" }}</td>
+          <td class="text-right whitespace-nowrap">{{ s.price }}</td>
+          <td>{% if s.is_active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Hidden</span>{% endif %}{% if s.is_bestseller %} <span class="pill pill-info">Top pick</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="card-padded text-sm text-[color:var(--text-muted)]">No listings match. Hosts add theirs in the host portal, or create one here with New listing.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

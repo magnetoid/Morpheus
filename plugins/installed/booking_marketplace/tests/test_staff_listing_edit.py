@@ -70,7 +70,10 @@ class StaffListingEditTests(TestCase):
     def test_the_listing_page_links_staff_to_the_editor(self):
         self.client.force_login(self.owner)
         page = self.client.get(f'/bookings/{self.svc.slug}/')
-        self.assertEqual(page.context['active_edit_url'], self._edit_url())
+        # The owner asked for the dashboard's editor, not the host's (2026-10-14).
+        self.assertEqual(
+            page.context['active_edit_url'], f'/dashboard/listings/{self.svc.pk}/edit/'
+        )
         self.client.logout()
         page = self.client.get(f'/bookings/{self.svc.slug}/')
         self.assertFalse(page.context.get('active_edit_url'))

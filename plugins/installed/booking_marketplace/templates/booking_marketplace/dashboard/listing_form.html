@@ -1,0 +1,73 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if service %}{{ service.name }}{% else %}New listing{% endif %} · Morpheus{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="max-w-5xl mx-auto space-y-4">
+  {% csrf_token %}
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-xl font-semibold tracking-tight">{% if service %}{{ service.name }}{% else %}New listing{% endif %}</h1>
+    <div class="flex items-center gap-2">
+      {% if service %}<a href="/bookings/{{ service.slug }}/" target="_blank" rel="noopener" class="btn"><i data-lucide="external-link" class="h-4 w-4"></i> View on storefront</a>{% endif %}
+      <a href="{{ list_url }}" class="btn">Cancel</a>
+      <button type="submit" class="btn btn-primary"><i data-lucide="save" class="h-4 w-4"></i> Save</button>
+    </div>
+  </div>
+
+  {% if form.non_field_errors %}<div class="callout callout-error"><div class="callout__body">{{ form.non_field_errors|join:" " }}</div></div>{% endif %}
+
+  <div class="grid gap-4 lg:grid-cols-3">
+    <div class="lg:col-span-2 space-y-4">
+      <div class="card card-padded space-y-3">
+        <h2 class="font-semibold text-sm">Basics</h2>
+        {% for f in form %}{% if f.name in "name slug short_description description" %}
+        <div>
+          <label class="block text-sm font-medium mb-1" for="{{ f.id_for_label }}">{{ f.label }}</label>
+          {{ f }}
+          {% if f.name == 'slug' %}<p class="text-xs text-[color:var(--text-muted)] mt-1">The address: /bookings/&lt;slug&gt;/. Leave empty to make one from the name.</p>{% elif f.help_text %}<p class="text-xs text-[color:var(--text-muted)] mt-1">{{ f.help_text }}</p>{% endif %}
+          {% if f.errors %}<p class="field-error">{{ f.errors.0 }}</p>{% endif %}
+        </div>
+        {% endif %}{% endfor %}
+      </div>
+
+      <div class="card card-padded space-y-3">
+        <h2 class="font-semibold text-sm">What guests get</h2>
+        {% for f in form %}{% if f.name in "highlights included not_included what_to_bring meeting_point languages cancellation_policy" %}
+        <div>
+          <label class="block text-sm font-medium mb-1" for="{{ f.id_for_label }}">{{ f.label }}</label>
+          {{ f }}
+          {% if f.help_text %}<p class="text-xs text-[color:var(--text-muted)] mt-1">{{ f.help_text }}</p>{% endif %}
+          {% if f.errors %}<p class="field-error">{{ f.errors.0 }}</p>{% endif %}
+        </div>
+        {% endif %}{% endfor %}
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="card card-padded space-y-3">
+        <h2 class="font-semibold text-sm">Status</h2>
+        <label class="flex items-center gap-2 text-sm">{{ form.is_active }} Active on the storefront</label>
+        <label class="flex items-center gap-2 text-sm">{{ form.is_bestseller }} Top pick</label>
+      </div>
+      <div class="card card-padded space-y-3">
+        <h2 class="font-semibold text-sm">Listing</h2>
+        {% for f in form %}{% if f.name in "listing_kind vendor category region location price original_price duration_minutes duration_label" %}
+        <div>
+          <label class="block text-sm font-medium mb-1" for="{{ f.id_for_label }}">{{ f.label }}</label>
+          {{ f }}
+          {% if f.help_text %}<p class="text-xs text-[color:var(--text-muted)] mt-1">{{ f.help_text }}</p>{% endif %}
+          {% if f.errors %}<p class="field-error">{{ f.errors.0 }}</p>{% endif %}
+        </div>
+        {% endif %}{% endfor %}
+      </div>
+      {% include "admin_dashboard/_media_field.html" with field=form.image current=service.image label="Photo" help="The listing's main photo, on its card and at the top of its page." %}
+      {% if service %}
+      <div class="card card-padded text-sm space-y-2">
+        <h2 class="font-semibold text-sm">Availability and prices by group</h2>
+        <p class="text-[color:var(--text-muted)]">Weekdays, start times, price tiers and add-ons are set in the host's listing editor.</p>
+        <a href="/bookings/host/{{ service.slug }}/edit/" class="btn btn-sm">Open the host editor</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</form>
+{% endblock %}
