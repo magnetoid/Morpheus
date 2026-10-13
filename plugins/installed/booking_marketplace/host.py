@@ -40,6 +40,19 @@ def _host_vendor(user):
     return Vendor.objects.filter(owner=user, is_active=True).first()
 
 
+def _staff_editor(user) -> bool:
+    """Store staff who may edit the catalogue edit any host's listing.
+
+    The storefront's staff bar links a listing page here; without this only the host
+    who owns a listing could change it, and the owner had no way to (2026-10-13).
+    """
+    if not getattr(user, 'is_staff', False):
+        return False
+    from core.authz import check
+
+    return check(user, 'catalog.write', target='booking_marketplace.listing')
+
+
 def _not_host(request):
     return render(
         request, 'booking_marketplace/host/not_host.html', {'seo_title': gettext('Become a host')}
@@ -89,10 +102,19 @@ def host_services(request):
 @require_http_methods(['GET', 'POST'])
 def host_service_form(request, slug=None):  # noqa: PLR0912, PLR0915 — one branch per optional listing field in a single POST
     vendor = _host_vendor(request.user)
-    if vendor is None:
+    staff = bool(slug) and _staff_editor(request.user)
+    if vendor is None and not staff:
         return _not_host(request)
 
-    svc = get_object_or_404(BookableService, slug=slug, vendor=vendor) if slug else None
+    if slug:
+        owned = (
+            BookableService.objects.all()
+            if staff
+            else BookableService.objects.filter(vendor=vendor)
+        )
+        svc = get_object_or_404(owned, slug=slug)
+    else:
+        svc = None
 
     if request.method == 'POST':
         name = (request.POST.get('name') or '').strip()
@@ -204,6 +226,9 @@ def host_service_form(request, slug=None):  # noqa: PLR0912, PLR0915 — one bra
                 ServiceImage.objects.create(service=svc, image=f)
 
             messages.success(request, f'Saved “{svc.name}”.')
+            # Staff came from the listing page's Edit link; a host from their list.
+            if staff and svc.vendor_id != getattr(vendor, 'pk', None):
+                return redirect(f'/bookings/{svc.slug}/')
             return redirect('/bookings/host/')
 
     from plugins.installed.catalog.models import Category
