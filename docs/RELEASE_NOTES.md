@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.106.0 — 2026-10-13
+
+**A cleaner dashboard in light and dark mode, and full category descriptions**
+
+- Dark mode now covers the whole dashboard: checkboxes, menus and scrollbars match, cards stand out from the page, and status labels are easier to read in both modes.
+- Nothing hides any more: the products list fits the screen again, the Linda button no longer covers the last row, and on a phone the search, buttons and order and product lists fit.
+- Plainer words: the order timeline says Delivered and Shipped, empty boxes say so, Linda's Pulse shows formatted text, the home page greets you by name, and number badges stop at 99+.
+- Linda's section has fewer tabs: Activity, Observability, AI Act evidence and Proposals now share one Oversight tab.
+- Categories have a full description below their products, written with the same editor as product descriptions; the short description stays as the intro above them. Linda can write both.
+- Linda's Pulse no longer repeats the same alert: one store had collected over a thousand copies of one abandoned-cart card.
+
 ## v0.105.0 — 2026-10-13
 
 **Linda can report Morpheus bugs to the Morpheus team, and works within each person's role**
