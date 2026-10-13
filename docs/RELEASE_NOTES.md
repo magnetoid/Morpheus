@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.106.5 — 2026-10-13
+
+**Edit marketplace listings from the storefront**
+
+- On a marketplace store (Montenegro), the staff bar on an experience or local-goods page now has 'Edit this listing', and staff can change any host's listing in the listing editor.
+
 ## v0.106.4 — 2026-10-13
 
 **Forms work on cached pages**
