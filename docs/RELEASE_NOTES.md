@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.104.1 — 2026-10-13
+
+**A reasoning model no longer returns a blank reply to background agents**
+
+- AI: when a reasoning model spends its whole budget thinking and returns nothing, background agents (the daily briefing, bulk workers) now retry once with more room, as the dashboard's AI already did. They no longer get a blank answer.
+
 ## v0.104.0 — 2026-10-13
 
 **AI obeys your guardrails everywhere; old learned-skills loop removed**
