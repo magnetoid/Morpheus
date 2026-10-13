@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.106.3 — 2026-10-13
+
+**Valid AMP pages for journal posts**
+
+- Journal posts' AMP pages now pass Google's AMP validation: images keep their own size once and drop an attribute AMP does not allow. Search Console reported this on Montenegro; it applied to every store.
+
 ## v0.106.2 — 2026-10-13
 
 **CI fix**
