@@ -54,6 +54,7 @@ def get_default_tools() -> list:
         updates_apply_tool,
         updates_status_tool,
     )
+    from core.assistant.tools.ask import assistant_ask_tool
     from core.assistant.tools.code import run_python_tool
     from core.assistant.tools.health import platform_circuit_breakers_tool
     from core.assistant.tools.memory import (
@@ -98,6 +99,8 @@ def get_default_tools() -> list:
         plugins_describe_tool,
         # Navigation — surface dashboard deep-links as click-through chips.
         dashboard_navigate_tool,
+        # A question for the merchant, with answer buttons in the chat.
+        assistant_ask_tool,
         # Platform health — circuit breakers, dependency state, "is X down".
         platform_circuit_breakers_tool,
         # Platform ops — self-update + store config + plugin toggles (gated).

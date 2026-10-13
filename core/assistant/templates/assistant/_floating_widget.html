@@ -218,14 +218,31 @@
   });
   closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
 
+  /* A click on a card under Linda's answer (activity.js) is sent as the
+     merchant's next message; a click on one of her answer choices is marked,
+     so it never approves a change (core/assistant/gates.py). */
+  let nextIsAnswer = false;
+  function reply(text, how) {
+    form.querySelector('input[name=message]').value = text;
+    nextIsAnswer = !!(how && how.answer);
+    form.dispatchEvent(new Event('submit', {cancelable: true}));
+  }
+
   form.addEventListener('submit', e => {
     e.preventDefault();
     const input = form.querySelector('input[name=message]');
     const text = (input.value || '').trim();
+    const isAnswer = nextIsAnswer;
+    nextIsAnswer = false;
     if (!text) return;
     pushLine('user', text); input.value = '';
     // What Linda is doing, live (static/assistant/activity.js).
-    var turn = window.LindaActivity.start(log, { avatar: LINDA_AVATAR, compact: true });
+    var turn = window.LindaActivity.start(log, {
+      avatar: LINDA_AVATAR,
+      compact: true,
+      reply: reply,
+      focus: function () { input.focus(); },
+    });
     log.scrollTop = log.scrollHeight;
 
     var assistantTextEl = null;
@@ -252,6 +269,7 @@
         page_url: window.location.pathname + window.location.search,
         page_title: document.title || '',
         mode: (modeSelect ? modeSelect.value : 'general'),
+        answer: isAnswer,
       }),
     }).then(function(resp) {
       if (!resp.ok || !resp.body) throw new Error('stream HTTP ' + resp.status);

@@ -469,9 +469,14 @@ class Assistant:
         """
         started = time.monotonic()
         history = self.store.history(conversation_key=conversation_key, limit=30)
+        # A click on an assistant.ask button is stored marked, so it never
+        # approves a write (gates.latest_human_turn).
+        answer = isinstance(context, dict) and context.get('answer') is True
         self.store.append(
             conversation_key=conversation_key,
-            message=StoredMessage(role='user', content=message[:50_000]),
+            message=StoredMessage(
+                role='user', content=message[:50_000], tool_name='answer' if answer else ''
+            ),
         )
 
         # Merchant kill switch and daily caps — a deliberate limit, not an outage,

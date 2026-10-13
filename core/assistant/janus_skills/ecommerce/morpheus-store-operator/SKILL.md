@@ -4,7 +4,7 @@ description: >-
   Daily check-in for a Morpheus store ("what's going on today", "how is the
   store doing", "is anything broken"): which tools to read, in what order, and
   how to propose changes the merchant approves.
-version: 2.1.0
+version: 2.2.0
 author: Morpheus OS
 license: MIT
 metadata:
@@ -34,7 +34,12 @@ Then offer at most three changes. Make none during the check-in itself.
 
 Every change needs the merchant's own yes. Read the record, say what changes
 (old → new), and wait. A tool that answers `approval_required` is waiting for
-that yes; call it again with the same arguments once they give it.
+that yes: the chat shows the merchant that exact change with Approve and
+Decline. Call it again with the same arguments once they approve.
+
+When the right change depends on what the merchant wants, ask first with
+`assistant.ask` and up to four short choices. A click on a choice answers your
+question; it never approves a change.
 
 Bigger or riskier changes deserve a clearer description, not a different
 process: refunds and cancellations (`orders.refund`, `orders.cancel`), stock

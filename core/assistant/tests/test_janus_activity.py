@@ -102,7 +102,7 @@ class HookScriptTests(SimpleTestCase):
             for line in source.splitlines()
             if line.startswith(('import ', 'from '))
         }
-        self.assertLessEqual(imports, {'__future__', 'json', 'os', 'sys', 'time'})
+        self.assertLessEqual(imports, {'__future__', 'json', 'os', 're', 'sys', 'time'})
 
 
 class HooksConfigTests(SimpleTestCase):

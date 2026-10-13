@@ -1,9 +1,11 @@
-"""Janus tool hook: append one line per tool step to the turn's progress file.
+"""Janus hook: append one line per step to the turn's progress file.
 
 Janus runs this as its own process for every ``pre_tool_call`` and
-``post_tool_call`` (wired by :func:`core.assistant.activity.hooks_config`), with
-the step as JSON on stdin and the progress file as the only argument. The chat
-reads that file while the turn runs (:class:`core.assistant.activity.ProgressReader`).
+``post_tool_call``, after every model call (``post_api_request``: the words the
+model wrote before its tool calls, and the tokens it used) and when a model call
+fails (``api_request_error``), wired by :func:`core.assistant.activity.hooks_config`,
+with the event as JSON on stdin and the progress file as the only argument. The
+chat reads that file while the turn runs (:class:`core.assistant.activity.ProgressReader`).
 
 Two rules keep it harmless. It prints nothing: an empty stdout means "no
 objection", so this hook can never block or rewrite a tool call. And it swallows
@@ -17,11 +19,15 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import time
 
 _MAX_ARGS = 2000  # characters of a tool's arguments kept for the display
 _MAX_PLAN = 20000  # characters of the todo tool's result (the whole plan)
+_MAX_SAY = 600  # characters of what the model says before its tool calls
+# Reasoning some providers inline in the content; it is not what she says.
+_THINKING = re.compile(r'<(think|thinking|reasoning)>.*?</\1>', re.S | re.I)
 
 
 def _clip(args: dict) -> dict:
@@ -31,13 +37,63 @@ def _clip(args: dict) -> dict:
     return {'_clipped': text[:_MAX_ARGS]}
 
 
+def _int(value) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _model_call(extra: dict) -> dict:
+    """What a model call said before its tool calls, and the tokens it used.
+
+    The final answer reaches the chat the normal way, so a call with no tool
+    calls keeps only its tokens. The request (the whole conversation) is dropped.
+    """
+    tools = _int(extra.get('assistant_tool_call_count')) or 0
+    text = ''
+    if tools:
+        response = extra.get('response')
+        message = response.get('assistant_message') if isinstance(response, dict) else None
+        content = message.get('content') if isinstance(message, dict) else None
+        if isinstance(content, str):
+            text = _THINKING.sub('', content).strip()[:_MAX_SAY]
+    usage = extra.get('usage')
+    usage = usage if isinstance(usage, dict) else {}
+    tokens = _int(usage.get('total_tokens'))
+    if tokens is None:
+        tokens = (_int(usage.get('input_tokens')) or 0) + (_int(usage.get('output_tokens')) or 0)
+    return {
+        't': round(time.time(), 3),
+        'ev': 'call',
+        'text': text,
+        'tools': tools,
+        'tokens': tokens,
+    }
+
+
+def _model_error(extra: dict) -> dict:
+    """A failed model call: its HTTP status and whether Janus may try again
+    (the same provider or a fallback one).
+
+    The provider's error text stays out: it can quote a key or an account.
+    """
+    return {
+        't': round(time.time(), 3),
+        'ev': 'retry',
+        'status': _int(extra.get('status_code')),
+        'retry': bool(extra.get('retryable')),
+    }
+
+
 def record(payload: dict) -> dict | None:
     """The line to write for one hook call, or None when there is nothing to show."""
     event = payload.get('hook_event_name')
-    if event not in ('pre_tool_call', 'post_tool_call'):
-        return None
     extra = payload.get('extra')
     extra = extra if isinstance(extra, dict) else {}
+    if event == 'post_api_request':
+        return _model_call(extra)
+    if event == 'api_request_error':
+        return _model_error(extra)
+    if event not in ('pre_tool_call', 'post_tool_call'):
+        return None
     tool = str(payload.get('tool_name') or '')[:200]
     line = {
         't': round(time.time(), 3),

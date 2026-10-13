@@ -332,6 +332,10 @@ class LindaCatalogueTests(TestCase):
         for internal in ('run_python', 'db.list_models', 'platform.capabilities', 'cart.add_item'):
             self.assertNotIn(internal, names)
 
+    def test_every_mode_can_ask_the_merchant_a_question(self):
+        for mode in ('general', 'sales', 'support', 'ops'):
+            self.assertIn('assistant.ask', self._names(mode), mode)
+
     def test_every_mode_has_tools_to_work_with(self):
         for mode in ('general', 'sales', 'support', 'ops'):
             self.assertGreater(len(self._names(mode)), 10, mode)

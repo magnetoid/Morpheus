@@ -269,6 +269,10 @@ def latest_human_turn(conversation_key: str) -> tuple[str, float]:
                 sent_at = datetime.fromisoformat(msg.at).timestamp() if msg.at else 0.0
             except (TypeError, ValueError):
                 sent_at = 0.0
+            if msg.tool_name == 'answer':
+                # A click on one of assistant.ask's buttons: the words are Linda's
+                # own choices, so it is the latest message but approves nothing.
+                return '', sent_at
             return msg.content or '', sent_at
     except Exception:  # noqa: BLE001 — no message means no consent, never an error
         logger.debug('assistant: latest human message unavailable', exc_info=True)

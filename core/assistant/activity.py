@@ -12,7 +12,13 @@ events:
   and again when it ends;
 * ``{type: 'plan', items: [{id, text, status}]}`` — Linda's plan after each
   update, from the todo tool's own result (the full list, even after a
-  partial update).
+  partial update);
+* ``{type: 'say', id, text}`` — what she wrote before her next tool calls
+  ("Checking stock first."), from Janus's ``post_api_request``;
+* ``{type: 'usage', tokens, calls}`` — tokens used so far this turn, after each
+  model call;
+* ``{type: 'retry', status, retrying}`` — a model call failed (HTTP status only)
+  and whether Janus may try again, from ``api_request_error``.
 
 Hooks fail open in Janus, so nothing here may matter to safety: it is a display.
 The store tool's arguments and output still reach the chat from the rows the
@@ -57,6 +63,11 @@ _NATIVE = {
     'recall_agreements': ('Recalling what you agreed', 'Recalled what you agreed'),
     'propose_plan': ('Drafting a plan', 'Drafted a plan'),
 }
+# Store tools that are not about a store area.
+_STORE_LABELS = {
+    'assistant.ask': ('Asking you a question', 'Asked you a question'),
+    'dashboard.navigate': ('Finding the page', 'Found the page'),
+}
 # Which argument says what a native step is about.
 _DETAIL_ARG = {'web_search': 'query', 'session_search': 'query', 'skill_view': 'name'}
 
@@ -76,6 +87,11 @@ _AREAS = {
 }
 
 
+#: The Janus hook events the chat shows. ``janus_contract.HOOK_EVENTS`` checks
+#: that an installed Janus still fires each of them.
+HOOK_EVENTS = ('pre_tool_call', 'post_tool_call', 'post_api_request', 'api_request_error')
+
+
 def hooks_config(progress_path: Path) -> str:
     """The config.yaml block that makes Janus report each step to ``progress_path``.
 
@@ -84,7 +100,8 @@ def hooks_config(progress_path: Path) -> str:
     """
     command = shlex.join([sys.executable, '-I', '-S', str(HOOK_SCRIPT), str(progress_path)])
     entry = f'    - command: {json.dumps(command)}\n      timeout: 5\n'
-    return f'hooks_auto_accept: true\nhooks:\n  pre_tool_call:\n{entry}  post_tool_call:\n{entry}'
+    events = ''.join(f'  {event}:\n{entry}' for event in HOOK_EVENTS)
+    return f'hooks_auto_accept: true\nhooks:\n{events}'
 
 
 def _humanise(name: str) -> str:
@@ -113,6 +130,8 @@ class ProgressReader:
         self._seq = 0
         self._open: list[dict] = []
         self._store: dict[str, Any] | None = None
+        self._tokens = 0
+        self._calls = 0
 
     def reset(self) -> None:
         """Start the turn with an empty file, so no step from the last turn replays."""
@@ -143,6 +162,8 @@ class ProgressReader:
         return events
 
     def _events(self, rec: dict) -> list[dict]:
+        if rec.get('ev') in ('call', 'retry'):
+            return self._model_events(rec)
         tool = str(rec.get('tool') or '')
         if tool == 'todo':
             plan = _plan(rec) if rec.get('ev') == 'end' else None
@@ -167,6 +188,28 @@ class ProgressReader:
                 }
             ]
         return []
+
+    def _model_events(self, rec: dict) -> list[dict]:
+        """A model call (her words and the running token count) or a failed one."""
+        if rec.get('ev') == 'retry':
+            status = rec.get('status')
+            return [
+                {
+                    'type': 'retry',
+                    'status': status if isinstance(status, int) else None,
+                    'retrying': bool(rec.get('retry')),
+                }
+            ]
+        events: list[dict] = []
+        text = str(rec.get('text') or '').strip()
+        if text:
+            self._seq += 1
+            events.append({'type': 'say', 'id': f's{self._seq}', 'text': text[:600]})
+        tokens = rec.get('tokens')
+        self._tokens += tokens if isinstance(tokens, int) and tokens > 0 else 0
+        self._calls += 1
+        events.append({'type': 'usage', 'tokens': self._tokens, 'calls': self._calls})
+        return events
 
     def _close(self, tool: str, call: str) -> dict | None:
         for i, item in enumerate(self._open):
@@ -195,6 +238,9 @@ class ProgressReader:
         if tool is None:
             label = _humanise(suffix)
             return {'label': label, 'done_label': label}
+        if tool.name in _STORE_LABELS:
+            doing, done = _STORE_LABELS[tool.name]
+            return {'label': doing, 'done_label': done, 'detail': '', 'store_tool': tool.name}
         from core.assistant.gates import is_write_tool
 
         area, _, action = tool.name.partition('.')

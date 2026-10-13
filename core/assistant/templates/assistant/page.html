@@ -487,15 +487,31 @@ chat would cover them.{% endcomment %}
   var STORAGE_KEY = 'linda:mode';
   var currentMode = sessionStorage.getItem(STORAGE_KEY) || 'general';
 
+  /* A click on a card under Linda's answer (activity.js) is sent as the
+     merchant's next message. A click on one of her answer choices is marked,
+     so it never approves a change (core/assistant/gates.py). */
+  var nextIsAnswer = false;
+  function reply(text, how) {
+    input.value = text;
+    nextIsAnswer = !!(how && how.answer);
+    form.dispatchEvent(new Event('submit', {cancelable: true}));
+  }
+
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     var text = (input.value || '').trim();
+    var isAnswer = nextIsAnswer;
+    nextIsAnswer = false;
     if (!text) return;
     pushLine('user', text);
     input.value = '';
     autoresize();
     // What Linda is doing, live (static/assistant/activity.js).
-    var turn = window.LindaActivity.start(log, { avatar: LINDA_AVATAR });
+    var turn = window.LindaActivity.start(log, {
+      avatar: LINDA_AVATAR,
+      reply: reply,
+      focus: function () { input.focus(); },
+    });
     log.scrollTop = log.scrollHeight;
 
     var assistantEl = null;
@@ -520,6 +536,7 @@ chat would cover them.{% endcomment %}
         mode: currentMode,
         conversation: conversationId,
         provider: providerPick ? providerPick.value : '',
+        answer: isAnswer,
       }),
     }).then(function (resp) {
       if (!resp.ok || !resp.body) throw new Error('stream HTTP ' + resp.status);

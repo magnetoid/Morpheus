@@ -169,6 +169,8 @@ def assistant_stream(request):
                     # A model picked for this message; the engine uses it only
                     # when it is one of janus_engine.selectable_providers().
                     'provider': str(body.get('provider') or '')[:32],
+                    # A click on one of assistant.ask's answer buttons (never consent).
+                    'answer': body.get('answer') is True,
                 },
             ):
                 # Final/error events carry an AssistantRunResult which isn't

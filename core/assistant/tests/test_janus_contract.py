@@ -33,8 +33,11 @@ _NOT_PROVED = {
     'mcp_servers.*.timeout',
     'mcp_servers.*.tools.resources',
     'mcp_servers.*.tools.prompts',
+    # Hook events are proved by _check_hooks (HOOK_EVENTS), not by a source pattern.
     'hooks.pre_tool_call',
     'hooks.post_tool_call',
+    'hooks.post_api_request',
+    'hooks.api_request_error',
 }
 
 

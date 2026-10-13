@@ -46,6 +46,10 @@ TOOLSETS = {
     },
 }
 
+# Hook events the chat subscribes to (core.assistant.activity.HOOK_EVENTS): the
+# steps, the plan, the words between tool calls, token use and provider retries.
+HOOK_EVENTS = ('pre_tool_call', 'post_tool_call', 'post_api_request', 'api_request_error')
+
 # Config keys janus_engine writes, each with a pattern Janus's source must still
 # contain, as proof that something reads the key. A key nothing reads is a
 # setting silently ignored, and several of these are safety settings.
@@ -186,7 +190,7 @@ def _check_hooks(report: Report) -> None:
     except Exception as e:  # noqa: BLE001
         report.check('tool hooks', False, str(e)[:200], required=False)
         return
-    events = {'pre_tool_call', 'post_tool_call'}
+    events = set(HOOK_EVENTS)
     report.check('tool hook events', events <= set(VALID_HOOKS), required=False)
     cfg = {
         'hooks': {e: [{'command': 'python hook.py progress.jsonl', 'timeout': 5}] for e in events}

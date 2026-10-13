@@ -133,6 +133,9 @@
 .lt-step[data-state="error"] .lt-mark { font-size: .7rem; line-height: 1; }
 .lt-step[data-state="done"] .lt-mark::before { content: '\2713'; color: var(--text-subtle); }
 .lt-step[data-state="error"] .lt-mark::before { content: '\2715'; color: var(--danger); }
+.lt-step[data-state="waiting"] .lt-mark { font-size: .7rem; line-height: 1; }
+.lt-step[data-state="waiting"] .lt-mark::before { content: '\2022'; color: var(--text); }
+.lt-step[data-state="waiting"] .lt-label { color: var(--text); }
 .lt-label { color: var(--text-muted); white-space: nowrap; }
 .lt-step[data-state="running"] .lt-label { color: var(--text); }
 .lt-detail {
@@ -161,12 +164,59 @@
   color: var(--text-muted);
 }
 
+/* Her words between the steps: what she is about to check. */
+.lt-say {
+  margin: .3rem 0 .25rem;
+  color: var(--text);
+  line-height: 1.45;
+  white-space: pre-wrap; word-break: break-word;
+}
+.lt-tokens { flex: none; font-variant-numeric: tabular-nums; color: var(--text-subtle); }
+
+/* After the answer: her question with answer buttons, and a change waiting for
+   the merchant's yes. */
+.lq {
+  max-width: 44rem;
+  margin: .8rem auto 0;
+  padding: .8rem .95rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: .88rem;
+}
+.lq-title { margin: 0 0 .55rem; color: var(--text); font-weight: 600; }
+.lq--approve { border-color: var(--border-strong); }
+.lq-what { margin: 0 0 .45rem; color: var(--text); }
+.lq-args {
+  display: grid; grid-template-columns: max-content 1fr; gap: .2rem .8rem;
+  margin: 0 0 .6rem; font-size: .82rem;
+}
+.lq-args dt { color: var(--text-subtle); }
+.lq-args dd { margin: 0; color: var(--text); word-break: break-word; }
+.lq-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
+.lq-btn {
+  padding: .4rem .8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font: inherit; font-size: .84rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.lq-btn:hover:not(:disabled) { background: var(--surface-2); }
+.lq-btn:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+.lq-btn--primary { background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
+.lq-btn--primary:hover:not(:disabled) { background: var(--primary); opacity: .9; }
+.lq-btn:disabled { cursor: default; opacity: .45; }
+.lq-btn[data-chosen="true"] { opacity: 1; border-color: var(--text); }
+
 @keyframes lt-spin { to { transform: rotate(360deg); } }
 
 /* Compact variant for the 380px floating widget. */
 .lt--compact { margin: .5rem 0 0; font-size: .8rem; }
 .lt--compact .lt-avatar { width: 20px; height: 20px; }
 .lt--compact .lt-body { margin-left: calc(20px + .6rem); padding-left: .6rem; }
+.lt--compact ~ .lq { margin: .6rem 0 0; font-size: .82rem; }
 
 @media (prefers-reduced-motion: reduce) {
   .lt[data-state="working"] .lt-avatar::after { animation: none; opacity: .4; transform: none; }

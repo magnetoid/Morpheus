@@ -474,7 +474,18 @@ only. The hooks are still useful as a **display**: `pre_tool_call`/`post_tool_ca
 run `core/assistant/janus_progress_hook.py`, which appends a line per step to the
 home's `progress.jsonl`, and the turn streams those as `step`/`plan` events
 (`core/assistant/activity.py`) — verified live before building (both hooks fire for
-agent-loop tools, ~65 ms each). **Janus also updates itself** while the image tracks a
+agent-loop tools, ~65 ms each). Since v0.102.0 the same hook also takes
+`post_api_request` (the model's words before its tool calls, shown as lines between
+the steps, and its token use) and `api_request_error` (HTTP status only; the provider's
+text can quote a key), listed once in `activity.HOOK_EVENTS` and checked by
+`janus_contract.HOOK_EVENTS`. Linda asks the merchant with `assistant.ask` (buttons
+under her answer); a click is stored as the merchant's message with
+`tool_name='answer'` and `gates.latest_human_turn` reads it as empty, because the
+choices are the model's words. A write the edge held with `approval_required` gets an
+Approve / Decline card built from the refused call's recorded arguments, never from her
+text, and Approve sends plain "Yes, go ahead." (a label like "cancel" would trip the
+kernel's negation). Real mid-turn `clarify` needs a callback inside the Janus process,
+so it waits for a Janus change (`docs/plans/janus-interactive-chat-2026-10.md`). **Janus also updates itself** while the image tracks a
 branch (`core/assistant/janus_runtime.py`): every 3 hours a turn or the Janus page
 starts the detached `janus_updater.py`, which installs GitHub's archive of the newest
 commit beside the current Janus (the image has no git) and switches only when
