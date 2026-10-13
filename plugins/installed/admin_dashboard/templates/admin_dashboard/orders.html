@@ -34,9 +34,10 @@
     <a href="?" class="btn">Show all orders</a>
   </div>
   {% elif awaiting_payment_count %}
-  <div class="card card-padded flex flex-wrap items-center justify-between gap-2" role="status">
-    <p class="text-sm">{{ awaiting_payment_count }} shipped or delivered order{{ awaiting_payment_count|pluralize }} paid by cash or bank transfer {{ awaiting_payment_count|pluralize:"is,are" }} not marked paid yet.</p>
-    <a href="?awaiting_payment=1" class="btn">Review</a>
+  <div class="callout callout-warn items-center" role="status">
+    <i data-lucide="alert-triangle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+    <p class="callout__body m-0">{{ awaiting_payment_count }} shipped or delivered order{{ awaiting_payment_count|pluralize }} paid by cash or bank transfer {{ awaiting_payment_count|pluralize:"is,are" }} not marked paid yet.</p>
+    <a href="?awaiting_payment=1" class="btn btn-sm">Review</a>
   </div>
   {% endif %}
 
@@ -78,10 +79,10 @@
         <tr>
           <th class="w-8"><input type="checkbox" data-bulk-all class="rounded border-[color:var(--border)]"></th>
           <th>{% sort_link "order_number" "Order" %}</th>
-          <th>{% sort_link "placed_at" "Date" %}</th>
-          <th>{% sort_link "email" "Customer" %}</th>
+          <th class="hide-sm">{% sort_link "placed_at" "Date" %}</th>
+          <th class="hide-sm">{% sort_link "email" "Customer" %}</th>
           <th>{% sort_link "status" "Status" %}</th>
-          <th>Payment</th>
+          <th class="hide-sm">Payment</th>
           <th class="text-right">{% sort_link "total" "Total" %}</th>
           <th></th>
         </tr>
@@ -91,15 +92,15 @@
         <tr>
           <td><input type="checkbox" name="ids" value="{{ o.id }}" form="bulk-form" data-bulk-row class="rounded border-[color:var(--border)]"></td>
           <td><a href="{% url 'admin_dashboard:order_detail' o.order_number %}" class="font-medium hover:underline">#{{ o.order_number }}</a></td>
-          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ o.placed_at|date:"M j, Y H:i" }}</td>
-          <td class="text-[color:var(--text-muted)]">{% firstof o.email o.customer.email "—" %}</td>
+          <td class="hide-sm text-[color:var(--text-muted)] whitespace-nowrap">{{ o.placed_at|date:"M j, Y H:i" }}</td>
+          <td class="hide-sm text-[color:var(--text-muted)]">{% firstof o.email o.customer.email "—" %}</td>
           <td>
             {% if o.status == 'fulfilled' or o.status == 'delivered' %}<span class="pill pill-success">{{ o.get_status_display }}</span>
             {% elif o.status == 'pending' or o.status == 'processing' or o.status == 'confirmed' %}<span class="pill pill-warn">{{ o.get_status_display }}</span>
             {% elif o.status == 'cancelled' or o.status == 'refunded' %}<span class="pill pill-danger">{{ o.get_status_display }}</span>
             {% else %}<span class="pill pill-neutral">{{ o.get_status_display }}</span>{% endif %}
           </td>
-          <td>
+          <td class="hide-sm">
             {% if o.payment_status == 'paid' %}<span class="pill pill-success">{{ o.payment_status }}</span>
             {% elif o.payment_status == 'unpaid' %}<span class="pill pill-warn">{{ o.payment_status }}</span>
             {% else %}<span class="pill pill-neutral">{{ o.payment_status }}</span>{% endif %}

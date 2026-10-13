@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#f1f1f1">
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0d10" media="(prefers-color-scheme: dark)">
 <title>{% block title %}Morpheus admin{% endblock %}</title>
 {% comment %}FOUC-free theme bootstrap. MUST be the first script in head so the data-theme attribute lands on html before any CSS evaluates the :root[data-theme=...] rules. Reads localStorage['morph:theme'] which is one of 'light' | 'dark' | 'system' (default).{% endcomment %}
 <script>
@@ -118,7 +119,10 @@
     'file-pen':'ri-file-edit-line','git-pull-request':'ri-git-pull-request-line','git-merge':'ri-git-merge-line',
     'corner-up-right':'ri-corner-up-right-line','bed':'ri-hotel-bed-line','leaf':'ri-leaf-line',
     'smile':'ri-emotion-happy-line','message-square-warning':'ri-feedback-line','monitor-smartphone':'ri-device-line',
-    'file-check':'ri-file-shield-2-line'
+    'file-check':'ri-file-shield-2-line',
+    'printer':'ri-printer-line','eye-off':'ri-eye-off-line','link-2-off':'ri-link-unlink',
+    'git-compare':'ri-git-pull-request-line','workflow':'ri-flow-chart','pen-line':'ri-pencil-line',
+    'radar':'ri-radar-line'
   };
   var FALLBACK = 'ri-checkbox-blank-circle-line';
   function renderIcons(root) {
@@ -281,51 +285,60 @@
        content area must offset by this or it slides underneath and is hidden —
        table headers and the per-page filter bars all key off it. */
     --dash-topbar-h: 3rem;
-    /* ── Surface scale — slightly cooler greys than before for a more
-       modern, neutral feel (sRGB rather than perceived-warm whites). ── */
-    --bg:           #f7f7f8;
-    --content-bg:   #ffffff;
-    --sidebar-bg:   #fbfbfc;
-    --surface:      #ffffff;
-    --surface-2:    #f3f3f5;
-    --surface-3:    #ecedf0;   /* zebra rows, raised hover states */
-    --border:       #e3e5e8;
-    --border-strong:#c9cccf;
-    --text:         #1a1a1a;
-    --text-muted:   #5e6166;
-    --text-subtle:  #8a8e94;
-    /* ── Primary stays near-black (brand-neutral); accent introduces a
-       single vibrant hue used SPARINGLY per 2026 dashboard best practice
-       (focus rings, active progress bars, AI moments). Indigo is the most
-       widely-accepted "trust + intelligence" hue across Shopify Polaris,
-       Stripe, Linear. ── */
-    --primary:      #1a1a1a;
-    --primary-fg:   #ffffff;
-    --accent:       #303030;
-    --brand:        #4f46e5;  /* indigo-600 — AI / focus / progress */
-    --brand-fg:     #ffffff;
-    --brand-soft:   #eef2ff;  /* indigo-50  — subtle hover background */
-    --nav-active-bg: #ebebed;
-    --nav-hover-bg:  #f1f1f3;
-    --success:      #1f7a4d;
-    --success-bg:   #d6f3e3;
-    --warn:         #b86e00;
-    --warn-bg:      #ffeacc;
-    --danger:       #b3261e;
-    --danger-bg:    #fde7e9;
-    --info:         #1d4ed8;
-    --info-bg:      #dbeafe;
-    --radius:       10px;       /* up from 8 — softer, more modern */
+    /* ── Colour tokens, light and dark in ONE declaration each (v0.106.0).
+       light-dark() picks a value from the element's colour scheme, which
+       `color-scheme` below sets: the OS preference by default, or the
+       user's explicit choice (<html data-theme>, toggled in the account
+       menu). Dark mode used to be a second and third copy of this list,
+       and the copies drifted. It also tells the browser which mode is on,
+       so checkboxes, selects, date pickers and scrollbars match.
+       The page (--bg) sits one step behind the cards (--surface) in both
+       modes; in dark mode cards were once the page's own colour. ── */
+    color-scheme: light dark;
+    --bg:           light-dark(#f4f5f7, #0c0d10);
+    --sidebar-bg:   light-dark(#fafafb, #111216);
+    --surface:      light-dark(#ffffff, #17191e);
+    --surface-2:    light-dark(#f3f4f6, #1e2026);
+    --surface-3:    light-dark(#eceef1, #25282f);   /* zebra rows, raised hover states */
+    --border:       light-dark(#e3e5e9, #2b2e35);
+    --border-strong:light-dark(#c9cdd2, #3c4048);
+    --text:         light-dark(#17181b, #ececef);
+    --text-muted:   light-dark(#5b5f66, #a7abb3);
+    --text-subtle:  light-dark(#73777e, #7f8590);   /* 4.5:1 on cards in both modes */
+    /* Primary stays near-black / near-white (brand-neutral) for the ONE main
+       action on a page; the indigo brand is for focus, progress and AI moments. */
+    --primary:      light-dark(#17181b, #f4f4f6);
+    --primary-fg:   light-dark(#ffffff, #0c0d10);
+    --accent:       light-dark(#303236, #d0d2d8);
+    --brand:        light-dark(#4f46e5, #818cf8);
+    --brand-fg:     light-dark(#ffffff, #0c0d10);
+    --brand-soft:   light-dark(#eef2ff, #1e1f30);
+    --nav-active-bg: light-dark(#e9eaed, #22252c);
+    --nav-hover-bg:  light-dark(#f0f1f3, #1b1d23);
+    /* Status colours: text on its own -bg reaches 4.5:1 in both modes
+       (warn was 3.4:1 and success 4.5:1 on the light pills). */
+    --success:      light-dark(#19693f, #4ade80);
+    --success-bg:   light-dark(#d6f3e3, #13261b);
+    --warn:         light-dark(#8a5300, #facc15);
+    --warn-bg:      light-dark(#ffeacc, #2c2410);
+    --danger:       light-dark(#b3261e, #f87171);
+    --danger-bg:    light-dark(#fde7e9, #2b1416);
+    --info:         light-dark(#1d4ed8, #60a5fa);
+    --info-bg:      light-dark(#dbeafe, #102035);
+    /* Shadows are built from colour tokens because light-dark() takes colours only. */
+    --ring:         light-dark(rgba(16,18,24,.07), rgba(255,255,255,.07));
+    --ring-strong:  light-dark(rgba(16,18,24,.11), rgba(255,255,255,.12));
+    --shade:        light-dark(rgba(16,18,24,.05), rgba(0,0,0,.45));
+    --shade-strong: light-dark(rgba(16,18,24,.14), rgba(0,0,0,.6));
+    --radius:       10px;
     --radius-sm:    6px;
     --radius-lg:    14px;
-    /* Layered shadows: a 1px ring + a soft drop. More sophisticated than
-       a single border line, still flat enough to read as a dashboard. */
-    --shadow-card:  0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04), 0 1px 0 rgba(255,255,255,.6) inset;
-    --shadow-card-hover: 0 0 0 1px rgba(0,0,0,.06), 0 4px 12px -4px rgba(0,0,0,.08);
-    --shadow-pop:   0 12px 24px -8px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
+    --shadow-card:  0 0 0 1px var(--ring), 0 1px 2px var(--shade);
+    --shadow-card-hover: 0 0 0 1px var(--ring-strong), 0 6px 16px -6px var(--shade-strong);
+    --shadow-pop:   0 14px 28px -10px var(--shade-strong), 0 3px 8px var(--shade);
     /* Off-canvas drawer: cast the shadow evenly toward the content (right),
        not pooling below — left-anchored panel, so no vertical offset. */
-    --shadow-drawer: 4px 0 24px -6px rgba(0,0,0,.12), 1px 0 4px rgba(0,0,0,.05);
+    --shadow-drawer: 4px 0 24px -6px var(--shade-strong), 1px 0 4px var(--shade);
     --motion-fast:  140ms;
     --motion-med:   240ms;
     --motion-slow:  420ms;
@@ -334,82 +347,11 @@
       1.367 21.5%, 1.397, 1.318 31.2%, 1.043 39.8%, 0.838,
       0.798 56.4%, 0.91 65%, 1.029 76.4%, 1);
   }
-  /* Dark mode — applied in two cases:
-     (a) Explicit user choice: <html data-theme="dark"> (toggled by
-         the topbar button, persisted to localStorage).
-     (b) System preference, but only when the user hasn't picked
-         "light" explicitly. Order matters — the explicit selector
-         comes first so it wins specificity ties.
-     Same token names so every existing component recolours automatically.
-     Tuned to feel like a modern command surface (Linear / Vercel)
-     rather than terminal-dark (pure #000). */
-  :root[data-theme="dark"] {
-    --bg:           #0e0f12;
-    --content-bg:   #16181d;
-    --sidebar-bg:   #131418;
-    --surface:      #16181d;
-    --surface-2:    #1d1f25;
-    --surface-3:    #23262d;
-    --border:       #2a2d33;
-    --border-strong:#3a3d44;
-    --text:         #ececef;
-    --text-muted:   #a4a8b0;
-    --text-subtle:  #6f7480;
-    --primary:      #ffffff;
-    --primary-fg:   #0e0f12;
-    --accent:       #d0d2d8;
-    --brand:        #818cf8;
-    --brand-fg:     #0e0f12;
-    --brand-soft:   #1e1f30;
-    --nav-active-bg: #20232a;
-    --nav-hover-bg:  #1a1c22;
-    --success:      #4ade80;
-    --success-bg:   #14271c;
-    --warn:         #facc15;
-    --warn-bg:      #2c2410;
-    --danger:       #f87171;
-    --danger-bg:    #2b1416;
-    --info:         #60a5fa;
-    --info-bg:      #102035;
-    --shadow-card:  0 0 0 1px rgba(255,255,255,.04), 0 1px 2px rgba(0,0,0,.4);
-    --shadow-card-hover: 0 0 0 1px rgba(255,255,255,.08), 0 8px 24px -8px rgba(0,0,0,.6);
-    --shadow-pop:   0 16px 32px -10px rgba(0,0,0,.65), 0 4px 10px rgba(0,0,0,.45);
-    --shadow-drawer: 4px 0 28px -6px rgba(0,0,0,.55), 1px 0 6px rgba(0,0,0,.4);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]):not([data-theme="dark"]) {
-      --bg:           #0e0f12;
-      --content-bg:   #16181d;
-      --sidebar-bg:   #131418;
-      --surface:      #16181d;
-      --surface-2:    #1d1f25;
-      --surface-3:    #23262d;
-      --border:       #2a2d33;
-      --border-strong:#3a3d44;
-      --text:         #ececef;
-      --text-muted:   #a4a8b0;
-      --text-subtle:  #6f7480;
-      --primary:      #ffffff;
-      --primary-fg:   #0e0f12;
-      --accent:       #d0d2d8;
-      --brand:        #818cf8;  /* indigo-400 — pops more on dark bg */
-      --brand-fg:     #0e0f12;
-      --brand-soft:   #1e1f30;
-      --nav-active-bg: #20232a;
-      --nav-hover-bg:  #1a1c22;
-      --success:      #4ade80;
-      --success-bg:   #14271c;
-      --warn:         #facc15;
-      --warn-bg:      #2c2410;
-      --danger:       #f87171;
-      --danger-bg:    #2b1416;
-      --info:         #60a5fa;
-      --info-bg:      #102035;
-      --shadow-card:  0 0 0 1px rgba(255,255,255,.04), 0 1px 2px rgba(0,0,0,.4);
-      --shadow-card-hover: 0 0 0 1px rgba(255,255,255,.08), 0 8px 24px -8px rgba(0,0,0,.6);
-      --shadow-pop:   0 16px 32px -10px rgba(0,0,0,.65), 0 4px 10px rgba(0,0,0,.45);
-    }
-  }
+  /* An explicit choice in the account menu overrides the OS preference. */
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; }
+  /* Checkboxes, radios and range sliders take the brand colour in both modes. */
+  input[type="checkbox"], input[type="radio"], input[type="range"], progress { accent-color: var(--brand); }
   @keyframes ko-reveal-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   .ko-reveal { animation: ko-reveal-up var(--motion-med) var(--ease-out) both; }
   @media (prefers-reduced-motion: reduce) {
@@ -447,6 +389,13 @@
   .card-hoverable:hover { box-shadow: var(--shadow-card-hover); }
   .btn { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .75rem; font-size:.875rem; font-weight:500; border-radius: var(--radius-sm); border:1px solid var(--border); background:var(--surface); color:var(--text); transition:background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast) var(--ease-out); cursor: pointer; }
   .btn:hover { background: var(--surface-2); }
+  /* A button label never breaks onto two lines ("Create order" did on a phone);
+     on a phone, a row of buttons wraps instead, with no template edits. */
+  .btn { white-space: nowrap; }
+  @media (max-width: 639px) {
+    #main-content .flex:has(> .btn):not(.flex-col) { flex-wrap: wrap; }
+    .morph-table .hide-sm { display: none; }
+  }
   /* (Press feedback lives in ONE rule further down: .btn:active scale(.97).) */
   /* The small size step. Was referenced by templates but never defined —
      also absorbs the ad-hoc `btn text-xs` hacks. */
@@ -485,6 +434,7 @@
   .pill { display:inline-flex; align-items:center; padding:.125rem .5rem; border-radius:9999px; font-size:.75rem; font-weight:500; line-height:1.4; transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out), filter var(--motion-fast) var(--ease-out); }
   a.pill:hover, button.pill:hover { filter: brightness(.95); }
   :root[data-theme="dark"] a.pill:hover, :root[data-theme="dark"] button.pill:hover { filter: brightness(1.15); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(a, button).pill:hover { filter: brightness(1.15); } }
   .pill-xs { font-size: .68rem; padding: .05rem .4rem; }
   .pill-success { background: var(--success-bg); color: var(--success); }
   .pill-warn    { background: var(--warn-bg); color: var(--warn); }
@@ -720,6 +670,9 @@
   /* Body class toggled by Morph.dirty so the sticky save bar doesn't
      overlap the last form rows when it's visible. */
   body.has-save-bar main { padding-bottom: 4.5rem; }
+  /* Room under the last row for the floating Linda button, which otherwise sat on
+     top of a table's last total or a list's last button. */
+  body:has(#morph-assistant) #main-content { padding-bottom: 5.5rem; }
 
   /* Native <dialog> modal — used by the product form's variant editor
      and any other "edit-in-place" flow that wants a full-width sheet
@@ -774,7 +727,9 @@
      below. Wraps an existing .card so vendors keep working. (Labels used to
      be uppercase micro-caps; sentence case reads calmer and matches the
      table-header treatment.) */
-  .kpi { display: grid; gap: .35rem; }
+  /* align-content: start keeps the value on the same line in every tile; a tile
+     without a comparison line used to stretch and drop its number lower. */
+  .kpi { display: grid; gap: .35rem; align-content: start; }
   .kpi__label {
     font-size: .8125rem;
     font-weight: 500;
@@ -985,7 +940,7 @@
     <a href="{{ s.url }}" data-section="{{ s.key }}" title="{{ s.label }}" class="nav-link{% if s.active %} active{% endif %}"{% if s.active %} aria-current="page"{% endif %}>
       {% if s.avatar %}<img src="{% static s.avatar %}" alt="" class="h-4 w-4" style="border-radius:50%;object-fit:cover;flex-shrink:0;">{% else %}<i data-lucide="{{ s.icon }}" class="h-4 w-4"></i>{% endif %}
       <span>{{ s.label }}</span>
-      {% if s.badge %}<span class="pill pill-warn" style="margin-left:auto;">{{ s.badge }}</span>{% endif %}
+      {% if s.badge %}<span class="pill pill-warn" style="margin-left:auto;">{{ s.badge|badge_count }}</span>{% endif %}
     </a>
     {% endfor %}
     <a href="{% url 'admin_dashboard:settings' %}" id="settings-link" data-section="settings" title="Settings" class="nav-link" style="margin-top: .5rem;">
@@ -1032,8 +987,9 @@
             type="button"
             style="cursor: text; color: var(--text-muted); display: flex; align-items: center; gap: .35rem;">
       <i data-lucide="search" class="h-4 w-4"></i>
-      <span class="flex-1">Search orders, products, customers…</span>
-      <kbd style="font-size: .7rem; padding: .1rem .35rem; border: 1px solid var(--border); border-radius: 4px; background: var(--surface);">⌘K</kbd>
+      {# One line at any width: the long label wrapped to three lines on a phone. #}
+      <span class="flex-1 min-w-0 truncate"><span class="sm:hidden">Search</span><span class="hidden sm:inline">Search orders, products, customers…</span></span>
+      <kbd class="hidden sm:inline" style="font-size: .7rem; padding: .1rem .35rem; border: 1px solid var(--border); border-radius: 4px; background: var(--surface);">⌘K</kbd>
     </button>
     {% comment %}Theme toggle moved into the user dropdown — 3 explicit choices (light / dark / system) instead of a topbar cycle button.{% endcomment %}
     {# margin-left:auto pushes the account cluster (settings, notifications, user menu) flush to the right edge. #}

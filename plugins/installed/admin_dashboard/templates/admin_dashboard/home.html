@@ -9,7 +9,7 @@
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Home</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">Hi {{ request.user.email }} — here's what's happening in your store.</p>
+      <p class="text-sm text-[color:var(--text-muted)]">Hi {% firstof request.user.first_name request.user.get_username %}, here's what's happening in your store.</p>
     </div>
     {% include "admin_dashboard/_date_range_picker.html" %}
   </div>
@@ -111,7 +111,10 @@
         <div class="kpi__value">{{ m.value }}</div>
         {% if m.series %}{% sparkline m.series stroke=m.trend %}{% endif %}
       </div>
-      {% if m.delta %}
+      {% if m.delta == '—' %}
+      {# No earlier period to compare with: say so instead of "— — vs previous". #}
+      <div class="kpi__delta kpi__delta--flat">No earlier data to compare</div>
+      {% elif m.delta %}
       <div class="kpi__delta {% if m.trend == 'up' %}kpi__delta--up{% elif m.trend == 'down' %}kpi__delta--down{% else %}kpi__delta--flat{% endif %}">
         {% if m.trend == 'up' %}<i data-lucide="trending-up" class="h-3.5 w-3.5" aria-hidden="true"></i>
         {% elif m.trend == 'down' %}<i data-lucide="trending-down" class="h-3.5 w-3.5" aria-hidden="true"></i>
@@ -270,12 +273,12 @@
           </span>
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium">{{ p.title }}</div>
-            <div class="text-xs text-[color:var(--text-muted)]">{{ p.body }}</div>
+            <div class="text-xs text-[color:var(--text-muted)]">{{ p.body|md }}</div>
             {% if p.estimated_impact %}<div class="text-xs italic mt-1" style="color:var(--text-muted);">{{ p.estimated_impact }}</div>{% endif %}
           </div>
           <div class="flex flex-col gap-1 items-end">
             {% if p.suggested_action.url %}
-            <a href="{{ p.suggested_action.url }}" class="btn btn-primary text-xs whitespace-nowrap">
+            <a href="{{ p.suggested_action.url }}" class="btn text-xs">
               {{ p.suggested_action.label|default:"Open" }} <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
             </a>
             {% endif %}

@@ -93,8 +93,8 @@ def metafields_panel(context, obj, *, namespace: str = '') -> str:
     if not rows:
         return mark_safe(
             '<p class="meta" style="margin:0;">'
-            'No custom fields yet. Plugins write metafields via '
-            '<code>Metafield.objects.set(...)</code>; they auto-appear here.'
+            'No custom fields on this record. Apps that store extra details here '
+            'show them in this box.'
             '</p>'
         )
 

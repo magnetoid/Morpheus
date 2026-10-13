@@ -310,13 +310,18 @@ def markdown_to_html(value: str) -> str:
 
     def _inline(text: str) -> str:
         """Inline transforms applied AFTER block-level HTML escaping."""
+
         # [text](url) → anchor. The url piece gets re-escaped so any odd
         # characters can't break out of the href attribute.
-        text = re.sub(
-            r'\[([^\]]+)\]\(([^)\s]+)\)',
-            lambda m: f'<a href="{_esc(m.group(2))}">{m.group(1)}</a>',
-            text,
-        )
+        # Only links a browser cannot run: a path on this site, http(s) or mailto.
+        # The text can come from a model, and `javascript:` is an href too.
+        def _link(m):
+            url = m.group(2)
+            if not (url.startswith('/') or re.match(r'(?i)(https?|mailto):', url)):
+                return m.group(1)
+            return f'<a href="{_esc(url)}">{m.group(1)}</a>'
+
+        text = re.sub(r'\[([^\]]+)\]\(([^)\s]+)\)', _link, text)
         text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
         text = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<em>\1</em>', text)
         return text

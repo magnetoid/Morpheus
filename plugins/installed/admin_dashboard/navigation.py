@@ -130,14 +130,24 @@ class CoreTab:
     nav: str = 'main'  # 'main' | 'hidden'
     badge: str = ''  # key into the nav badges
     superuser: bool = False
+    group: str = ''  # folds into one tab with the section's other pages of this group
 
+
+#: Linda's audit pages share one tab, so her section shows the everyday tabs first.
+OVERSIGHT = 'Oversight'
 
 CORE_TABS: tuple[CoreTab, ...] = (
     CoreTab('ai', 'Chat', '/dashboard/assistant/', 10, 'message-circle'),
     CoreTab('ai', 'Chats', '/dashboard/assistant/chats/', 15, 'message-square'),
     CoreTab('ai', 'Insights', '/dashboard/ai-insights/', 60, 'lightbulb', badge='insights'),
     CoreTab(
-        'ai', 'Proposals', '/dashboard/assistant/proposals/', 90, 'git-pull-request', superuser=True
+        'ai',
+        'Proposals',
+        '/dashboard/assistant/proposals/',
+        90,
+        'git-pull-request',
+        superuser=True,
+        group=OVERSIGHT,
     ),
     CoreTab('orders', 'All orders', '/dashboard/orders/', 10, 'shopping-bag'),
     CoreTab('orders', 'Returns', '/dashboard/returns/', 30, 'undo-2', badge='returns'),
@@ -266,7 +276,7 @@ def tabs(user=None) -> list[Tab]:
     from plugins.registry import app_registry  # noqa: PLC0415
 
     out = [
-        Tab(t.section, t.label, t.url, t.order, t.icon, t.nav, badge=t.badge)
+        Tab(t.section, t.label, t.url, t.order, t.icon, t.nav, badge=t.badge, group=t.group)
         for t in CORE_TABS
         if not t.superuser or _is_superuser(user)
     ]

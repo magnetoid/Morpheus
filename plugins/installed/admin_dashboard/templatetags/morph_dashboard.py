@@ -330,3 +330,23 @@ def filter_chips(context, **labels):
             }
         )
     return {'chips': chips}
+
+
+@register.filter
+def event_label(value) -> str:
+    """An order event code as words: ORDER_PAYMENT_RECEIVED -> "Payment received"."""
+    text = str(value or '').strip()
+    if text.upper().startswith('ORDER_'):
+        text = text[len('ORDER_') :]
+    text = text.replace('_', ' ').replace('.', ' ').strip().lower()
+    return text[:1].upper() + text[1:] if text else ''
+
+
+@register.filter
+def badge_count(value) -> str:
+    """A nav badge number, capped: 1145 unread reads as "99+", not a wall of digits."""
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return str(value or '')
+    return '99+' if n > 99 else str(n)

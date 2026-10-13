@@ -2,7 +2,7 @@
   A checkout address dict as lines. Shared by the order page and the invoice so
   neither prints the raw dict.
 {% endcomment %}
-{% if address %}
+{% if address.address_line1 or address.city or address.postal_code or address.first_name or address.last_name or address.company %}
 <address class="not-italic text-sm leading-relaxed">
   {% if address.first_name or address.last_name %}{{ address.first_name }} {{ address.last_name }}<br>{% endif %}
   {% if address.company %}{{ address.company }}<br>{% endif %}
@@ -13,5 +13,5 @@
   {% if address.phone %}{{ address.phone }}{% endif %}
 </address>
 {% else %}
-<p class="text-sm text-[color:var(--text-muted)]">No address.</p>
+<p class="text-sm text-[color:var(--text-muted)]">No address on this order.</p>
 {% endif %}

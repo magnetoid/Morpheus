@@ -134,7 +134,7 @@
             <option value="{{ c.id }}" data-name="{{ c.name }}" data-depth="{{ c.tree_depth }}" data-parent="{{ c.parent_id|default:'' }}" {% if form.category.value|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.tree_prefix }}{{ c.name }}</option>
             {% endfor %}
           </select>
-          <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">The canonical category — used for breadcrumbs, JSON-LD, and SEO. Search to find one, or add a new category or subcategory from the list.</p>
+          <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">The product's main category: it sets the breadcrumb and where search engines file the product. Search to find one, or add a new category or subcategory from the list.</p>
         </div>
         <div class="md:col-span-2">
           <label class="block text-sm font-medium mb-1">Also surface under</label>
@@ -160,7 +160,7 @@
             {% endfor %}
           </select>
           <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.25rem;">
-            From the Marketplace plugin. Each vendor sees only their own products in the Vendor Dashboard.
+            Who supplies or sells this product. Each vendor sees only their own products in their vendor portal.
           </p>
         </div>
         {% endif %}
@@ -860,8 +860,7 @@
         <span class="text-xs text-[color:var(--text-muted)]">default</span>
       </div>
       <p class="text-xs text-[color:var(--text-muted)]">
-        Multi-channel selling will surface here once additional channels
-        are configured.
+        Other sales channels you connect, such as Google or Meta, appear here.
       </p>
     </div>
 

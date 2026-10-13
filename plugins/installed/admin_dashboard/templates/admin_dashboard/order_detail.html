@@ -1,5 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
-{% load metafields_tags %}
+{% load metafields_tags morph_dashboard %}
 {% block title %}Order · Morpheus{% endblock %}
 
 {% block content %}
@@ -184,11 +184,11 @@
           {% for ev in order.events.all %}
           <div class="flex items-start gap-3">
             <div class="h-7 w-7 rounded-full bg-[color:var(--surface-2)] border border-[color:var(--border)] flex items-center justify-center">
-              <i data-lucide="dot" class="h-4 w-4"></i>
+              <i data-lucide="dot" class="h-4 w-4 text-[color:var(--text-subtle)]"></i>
             </div>
             <div>
-              <div class="text-sm font-medium">{{ ev.event_type }}</div>
-              <div class="text-xs text-[color:var(--text-muted)]">{{ ev.previous_state|default:"—" }} → {{ ev.new_state|default:"—" }} · {{ ev.created_at|date:"M j, H:i" }}</div>
+              <div class="text-sm font-medium">{{ ev.event_type|event_label }}</div>
+              <div class="text-xs text-[color:var(--text-muted)]">{% if ev.previous_state or ev.new_state %}{{ ev.previous_state|default:"—"|capfirst }} → {{ ev.new_state|default:"—"|capfirst }} · {% endif %}{{ ev.created_at|date:"M j, H:i" }}</div>
               {% if ev.message %}<div class="text-sm text-[color:var(--text-muted)] mt-0.5">{{ ev.message }}</div>{% endif %}
             </div>
           </div>

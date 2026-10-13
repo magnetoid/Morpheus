@@ -1103,6 +1103,21 @@ body is `hx-boost`, so a page reached by a link, or re-rendered after a Save, ne
 fires DOMContentLoaded (the uploader stayed inert that way until v0.93.0). Guarded
 by `admin_dashboard/tests/test_media_field_uploader.py`.
 
+**Convention — the dashboard's colours are ONE token list, for both modes (v0.106.0).**
+`admin_dashboard/base.html` defines each colour once with `light-dark()`; `color-scheme` on `:root`
+(the OS preference) or `[data-theme]` (the account menu's choice) picks the value and tells the
+browser, so checkboxes, selects and scrollbars follow. Dark mode used to be a second and third copy
+of the list, and the copies drifted; checkboxes stayed light in dark mode because nothing declared
+`color-scheme`. Never add a second dark block or hardcode a colour in a dashboard template; and an
+icon name missing from the glyph map renders as an empty circle with no error ("Print invoice" did).
+Guarded by `admin_dashboard/tests/test_theme_contract.py`.
+
+**Landmine — a dedupe key built from text a model writes never matches twice.** Pulse kept "one
+unread card per signal" by hashing the card's title, computed after the model reworded it and with
+the count inside it, so every refresh made a new card: dotbooks reached 1,145 unread insights, 992 of
+them one abandoned-cart alert (fixed v0.106.0). Key a record on what produced it (the signal, the
+object, the rule), never on its display text. Guarded by `ai_assistant/tests/test_pulse_dedupe.py`.
+
 **Landmine — a `StorefrontBlock` whose slot no template renders is silent.**
 The plugin is enabled, its tests pass, its block renders fine in isolation — and
 the merchant sees nothing, with no error anywhere. This had happened four times
