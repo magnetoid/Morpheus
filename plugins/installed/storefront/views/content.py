@@ -6,6 +6,8 @@ newsletter capture, and the generic coming-soon placeholder.
 
 from __future__ import annotations
 
+import re
+
 from django.http import HttpResponse
 from django.utils.translation import gettext
 from django.views.decorators.clickjacking import xframe_options_sameorigin
@@ -230,6 +232,37 @@ def journal_detail(request, slug):
     )
 
 
+_IMG_TAG = re.compile(r'<img\b([^>]*?)/?>', re.IGNORECASE)
+_ATTR = re.compile(r'([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*("[^"]*"|\'[^\']*\'|[^\s"\'>]+))?')
+#: What amp-img takes from an <img>. `loading`, `decoding`, `fetchpriority` and the
+#: rest make the page invalid AMP.
+_AMP_IMG_ATTRS = ('src', 'srcset', 'sizes', 'alt', 'title', 'width', 'height', 'class', 'id')
+
+
+def _amp_images(body: str) -> str:
+    """Every <img> in a post body as a valid, closed amp-img.
+
+    The image's own width and height set its aspect ratio; 800x600 only when it has
+    none. Prefixing a fixed size onto each tag left images that had one carrying
+    both, which Search Console reported as a repeated attribute.
+    """
+
+    def convert(match: re.Match) -> str:
+        attrs: dict[str, str] = {}
+        for raw_name, value in _ATTR.findall(match.group(1)):
+            name = raw_name.lower()
+            if name in _AMP_IMG_ATTRS and name not in attrs:
+                attrs[name] = (value[1:-1] if value[:1] in '"\'' else value).replace('"', '&quot;')
+        if not attrs.get('src'):
+            return ''
+        if not (attrs.get('width', '').isdigit() and attrs.get('height', '').isdigit()):
+            attrs['width'], attrs['height'] = '800', '600'
+        rendered = ' '.join(f'{k}="{v}"' for k, v in attrs.items())
+        return f'<amp-img layout="responsive" {rendered}></amp-img>'
+
+    return _IMG_TAG.sub(convert, body)
+
+
 @xframe_options_sameorigin
 def journal_amp(request, slug):
     """AMP variant of `journal_detail`. Mirrors the regular view's context
@@ -249,16 +282,9 @@ def journal_amp(request, slug):
     if entry is None:
         raise Http404
 
-    # Rewrite raw <img> tags so the body is closer to AMP-valid.
-    # Rough — width/height are guesses — but functional for the
-    # validator's "no raw <img>" rule.
     body = entry.get('body', '') or ''
-    if '<img ' in body:
-        body = body.replace(
-            '<img ',
-            '<amp-img layout="responsive" width="800" height="600" ',
-        )
-        entry = {**entry, 'body': body}
+    if '<img' in body:
+        entry = {**entry, 'body': _amp_images(body)}
 
     canonical_url = request.build_absolute_uri(f'/journal/{slug}/')
     breadcrumb_items = [
