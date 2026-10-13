@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.106.4 — 2026-10-13
+
+**Forms work on cached pages**
+
+- On a store whose pages are cached by its CDN (Montenegro), a new visitor's form posts failed with a security error, including the cookie banner's Accept all. Every storefront form now uses the visitor's own security token.
+
 ## v0.106.3 — 2026-10-13
 
 **Valid AMP pages for journal posts**
