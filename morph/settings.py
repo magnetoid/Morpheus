@@ -576,7 +576,23 @@ STATICFILES_DIRS = [
     if d.exists()
 ]
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Django 5.1 removed STATICFILES_STORAGE and DEFAULT_FILE_STORAGE; both were still set
+# here and silently ignored, so static files were served under fixed names
+# (/static/montenegro/refresh.css) with a 4-hour cache, and a CDN kept serving the old
+# CSS and JS for hours after each deploy (2026-10-13). Hashed names make every changed
+# file a new URL. Tests and DEBUG keep plain names: there is no manifest to read there.
+# A name missing from the manifest is served under its plain name, not a 500
+# (core/staticfiles.py).
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {
+        'BACKEND': (
+            'django.contrib.staticfiles.storage.StaticFilesStorage'
+            if DEBUG or _RUNNING_TESTS
+            else 'core.staticfiles.HashedStaticFilesStorage'
+        )
+    },
+}
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -586,7 +602,7 @@ if USE_S3:
     AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
     AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
     AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    STORAGES['default'] = {'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage'}
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 
 # ── Internationalization ───────────────────────────────────────────────────────

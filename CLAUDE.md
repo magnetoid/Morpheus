@@ -1305,6 +1305,15 @@ into every form's token, which Django accepts. A new storefront form needs nothi
 posts must read the token from the cookie or the form after load, never from markup it cached itself.
 Guarded by `storefront/tests/test_csrf_refresh.py`.
 
+**Landmine — a setting Django removed is ignored without a word.** `STATICFILES_STORAGE` and
+`DEFAULT_FILE_STORAGE` were removed in Django 5.1 and stayed in `settings.py`: static files were
+served under fixed names with a 4-hour cache, so a CDN-fronted store kept the old CSS and JS for
+hours after every deploy (Montenegro's fixed layout did not show until v0.107.2), and `USE_S3` would
+have stored uploads on disk. Storage lives in `STORAGES` now; static files are hashed by
+`core/staticfiles.py`, which serves a file missing from the manifest under its plain name instead of
+failing the page. After a Django upgrade, check its removal list against `settings.py`. Guarded by
+`core/tests/test_static_storage.py`.
+
 **Landmine — a hidden form control still submits, and Django reads the LAST
 value of a repeated key.** The product editor hid inactive per-type cards with
 `el.hidden`; their controls still posted, and the Digital card's trailing
