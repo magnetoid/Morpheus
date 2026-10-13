@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.103.0 — 2026-10-13
+
+**Shop memory is Morpheus's own layer; Janus keeps its learning**
+
+- Linda: what she knows about your store (its positioning, your preferences) is now the shop memory, given to every conversation as "what you know about this store".
+- Linda can propose a fact about your store; it is saved only when you confirm it. A superadmin can see and edit the shop memory on the dashboard.
+- The old background learning loop no longer writes generic notes and tool gaps into the shop memory. Janus keeps its own learning separately, so your store's facts stay clean.
+
 ## v0.102.0 — 2026-10-13
 
 **Linda's chat is interactive: her words, questions with buttons, Approve for changes**
