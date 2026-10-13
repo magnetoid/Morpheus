@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.108.0 — 2026-10-13
+
+**Marketplace listings in the dashboard**
+
+- Products → Listings shows every experience and local good your marketplace sells, from every host, with an editor for all of them.
+- On a listing's page, the staff bar's 'Edit this listing' now opens that editor in the dashboard.
+- Linda can find listings and change them, with your yes.
+
 ## v0.107.2 — 2026-10-13
 
 **New styles reach visitors right after a deploy**
