@@ -296,6 +296,18 @@ class AgentCorePlugin(Plugin):
                 nav='main',
                 url='/dashboard/agents/memory/',
             ),
+            # Defects Janus found in Morpheus's own code, for the owner to review
+            # and send to the Morpheus project (core/assistant/reports.py).
+            DashboardPage(
+                label='Reports',
+                slug='reports',
+                view='plugins.installed.agent_core.views.reports_list_view',
+                icon='message-square-warning',
+                section='ai',
+                order=55,
+                nav='main',
+                url='/dashboard/agents/reports/',
+            ),
         ]
 
     def contribute_settings_panel(self) -> SettingsPanel:

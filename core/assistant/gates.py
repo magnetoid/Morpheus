@@ -60,6 +60,43 @@ LINDA_SCOPES: tuple[str, ...] = (
     'i18n.write',
 )
 
+#: The dashboard capability (core/authz.py, rbac's roles) each scope of Linda's
+#: profile stands for. A staff member's Janus may do what their role lets them do on
+#: the dashboard, no more: an inventory manager's Janus cannot switch apps off. The
+#: tier is the person's, never a token's (docs/plans/janus-core-brain-2026-10.md, B).
+CAPABILITY_FOR_SCOPE: dict[str, str] = {
+    'diagnostics.read': 'system.read',
+    'orders.cancel': 'orders.refund',
+    'customers.read': 'crm.read',
+    'customers.write': 'crm.write',
+    'content.write': 'cms.write',
+    'promotions.read': 'marketing.read',
+    'promotions.write': 'marketing.write',
+    'i18n.read': 'system.read',
+    'i18n.write': 'system.write',
+}
+
+
+def person_scopes(user) -> tuple[str, ...]:
+    """Linda's profile, narrowed to what this person's role grants.
+
+    Only while the store enforces roles. Under the default "log only" the dashboard
+    denies nothing, so neither does Janus; superusers always hold everything.
+    """
+    from core import authz
+
+    if getattr(user, 'is_superuser', False) or authz.enforcement_mode() != authz.MODE_ENFORCE:
+        return LINDA_SCOPES
+    held: dict[str, bool] = {}
+    allowed = []
+    for scope in LINDA_SCOPES:
+        capability = CAPABILITY_FOR_SCOPE.get(scope, scope)
+        if capability not in held:
+            held[capability] = authz.has_capability(user, capability)
+        if held[capability]:
+            allowed.append(scope)
+    return tuple(allowed)
+
 
 # An automation's conversation: `user:<owner pk>:auto:<automation id>`.
 _AUTOMATION_MARK = ':auto:'

@@ -133,11 +133,13 @@ def _external_grant(token_id: str) -> ExternalGrant | None:
 
 
 def scope_profile(turn: LindaTurn) -> tuple[str, ...]:
-    """Linda's scope profile, narrowed to an external agent's token."""
-    from core.assistant.gates import LINDA_SCOPES
+    """Linda's scope profile, narrowed to the person or to an external agent's token."""
+    from core.assistant.gates import LINDA_SCOPES, person_scopes
     from plugins.installed.agent_mcp.scopes import WILDCARD
 
-    if turn.external is None or WILDCARD in turn.external.scopes:
+    if turn.external is None:
+        return person_scopes(turn.user)
+    if WILDCARD in turn.external.scopes:
         return LINDA_SCOPES
     return tuple(s for s in LINDA_SCOPES if s in turn.external.scopes)
 
@@ -205,7 +207,7 @@ _CONSENT_ALSO = frozenset(
     }
 )
 # Write-scoped tools that only compute and store their own report.
-_NO_CONSENT = frozenset({'seo.audit_product'})
+_NO_CONSENT = frozenset({'seo.audit_product', 'reports.file'})
 
 
 def _all_tools() -> list:

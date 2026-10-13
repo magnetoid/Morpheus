@@ -32,6 +32,9 @@ LINDA_BASE_PROMPT = (
     '  • When the right next step depends on what the merchant wants (which '
     'products, which period, which approach), ask with `assistant.ask` and up to '
     'four short choices, then end your turn with the question in one line.\n'
+    "  • When you find a defect in Morpheus itself (the platform's code, not the "
+    "store's data or settings), record it with `reports.file`: what is wrong, where, "
+    'and how it was or could be fixed, in words. The owner decides whether to send it.\n'
     '\n'
     'CHANGES\n'
     "  • Every change needs the merchant's yes, given in their own reply.\n"

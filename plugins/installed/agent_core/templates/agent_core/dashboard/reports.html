@@ -1,0 +1,60 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Reports · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Reports</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Defects Linda found in Morpheus itself, written up in words: what is wrong and how it was or could be fixed ({{ open_count }} to review). Sending one opens a new issue on GitHub, filled in, under your own GitHub account. The issue is public, so check the text first: nothing goes out until you submit it there.</p>
+  </div>
+
+  {% if not can_send %}
+  <div class="card card-padded" style="border-left: 3px solid var(--warn);">
+    <p class="text-sm">You can read these reports. <strong>Sending or dismissing one requires owner (superuser) access.</strong></p>
+  </div>
+  {% endif %}
+
+  {% for r in reports %}
+  <div class="card overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-[color:var(--border)] bg-[color:var(--surface-muted)] flex flex-wrap items-center gap-2">
+      <h2 class="font-semibold text-sm flex-1">{{ r.title }}</h2>
+      <span class="badge-soft {% if r.status == 'new' %}badge-soft-warn{% else %}badge-soft-neutral{% endif %}">{{ r.get_status_display }}</span>
+      <span class="text-xs text-[color:var(--text-muted)] whitespace-nowrap">{{ r.created_at|date:"M j, H:i" }}{% if r.reported_by %} · from {{ r.reported_by.get_username }}'s chat{% endif %}{% if r.morpheus_version %} · {{ r.morpheus_version }}{% endif %}</span>
+    </div>
+    {% if can_send and r.status == 'new' %}
+    <form method="post" action="{% url 'agent_core_dash:report_action' r.id %}" class="p-4 space-y-3" hx-boost="false">
+      {% csrf_token %}
+      <label class="text-sm block">Title<br><input type="text" name="title" value="{{ r.title }}" required maxlength="200" class="input" style="width:100%;"></label>
+      <label class="text-sm block">Where<br><input type="text" name="area" value="{{ r.area }}" maxlength="300" class="input" style="width:100%;" placeholder="Module, file or page"></label>
+      <label class="text-sm block">Problem<br><textarea name="problem" required rows="5" class="input" style="width:100%;">{{ r.problem }}</textarea></label>
+      <label class="text-sm block">Fix<br><textarea name="fix" rows="4" class="input" style="width:100%;" placeholder="How it was or could be fixed">{{ r.fix }}</textarea></label>
+      <div class="flex flex-wrap gap-2">
+        <button type="submit" name="action" value="send" class="btn btn-primary">Send to Morpheus</button>
+        <button type="submit" name="action" value="save" class="btn">Save</button>
+        <button type="submit" name="action" value="dismiss" class="btn">Dismiss</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="p-4 space-y-2 text-sm">
+      {% if r.area %}<p><strong>Where:</strong> {{ r.area }}</p>{% endif %}
+      <p><strong>Problem</strong></p>
+      <p class="whitespace-pre-line">{{ r.problem }}</p>
+      <p><strong>Fix</strong></p>
+      <p class="whitespace-pre-line">{{ r.fix|default:"Not fixed yet." }}</p>
+      {% if r.status == 'sent' %}<p class="text-[color:var(--text-muted)]">Sent {{ r.sent_at|date:"M j, H:i" }}{% if r.sent_by %} by {{ r.sent_by }}{% endif %}.</p>{% endif %}
+      {% if can_send and r.status != 'new' %}
+      <form method="post" action="{% url 'agent_core_dash:report_action' r.id %}">
+        {% csrf_token %}
+        <button type="submit" name="action" value="reopen" class="btn text-xs">Reopen</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}
+  <div class="card card-padded text-center text-[color:var(--text-muted)]">
+    <p>No reports yet. When Linda finds a defect in Morpheus itself while she works, she writes it up here for you to review.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

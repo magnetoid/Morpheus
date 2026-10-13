@@ -853,3 +853,81 @@ def memory_action_view(request):
         return redirect(here)
 
     return redirect(here)
+
+
+# ── Janus's technical reports ────────────────────────────────────────────────
+# Defects Janus found in Morpheus's own code (reports.file), written up in words.
+# Reading is staff; editing, sending and dismissing are superuser-only. Sending opens
+# GitHub's new-issue form, pre-filled, in the superuser's browser: they submit it
+# under their own account (core/assistant/reports.py).
+
+_REPORTS_URL = '/dashboard/agents/reports/'
+
+
+@staff_member_required
+@require_capability('system.read')
+def reports_list_view(request):
+    from core.assistant.models import CodeProposal
+
+    rows = list(CodeProposal.objects.select_related('reported_by')[:200])
+    order = {'new': 0, 'sent': 1, 'dismissed': 2}
+    rows.sort(key=lambda r: order.get(r.status, 3))
+    return render(
+        request,
+        'agent_core/dashboard/reports.html',
+        {
+            'reports': rows,
+            'open_count': sum(1 for r in rows if r.status == 'new'),
+            'can_send': request.user.is_superuser,
+            'active_nav': 'agents',
+            'breadcrumb_trail': [
+                {'label': 'Dashboard', 'url': '/dashboard/'},
+                {'label': 'Linda', 'url': '/dashboard/assistant/'},
+                {'label': 'Reports'},
+            ],
+        },
+    )
+
+
+@staff_member_required
+@require_capability('system.read')
+def report_action_view(request, report_id):
+    """POST-only: save the edited text, send the report, dismiss it or reopen it."""
+    from django.contrib import messages
+    from django.http import HttpResponseForbidden, HttpResponseRedirect
+
+    from core.assistant import reports
+    from core.assistant.models import CodeProposal
+    from morpheus.app.views import redirect
+
+    if request.method != 'POST':
+        return redirect(_REPORTS_URL)
+    if not request.user.is_superuser:
+        return HttpResponseForbidden('Only the owner (a superuser) may review reports.')
+    report = get_object_or_404(CodeProposal, pk=report_id)
+    action = (request.POST.get('action') or '').strip()
+
+    if action in ('save', 'send'):
+        title = ' '.join((request.POST.get('title') or '').split())[: reports.MAX_TITLE]
+        problem = (request.POST.get('problem') or '').strip()[: reports.MAX_TEXT]
+        if not title or not problem:
+            messages.error(request, 'A report needs a title and a problem.')
+            return redirect(_REPORTS_URL)
+        report.title = title
+        report.problem = problem
+        report.fix = (request.POST.get('fix') or '').strip()[: reports.MAX_TEXT]
+        report.area = (request.POST.get('area') or '').strip()[: reports.MAX_AREA]
+        report.save()
+        if action == 'send':
+            reports.mark_sent(report, request.user)
+            return HttpResponseRedirect(reports.issue_url(report))
+        messages.success(request, 'Report saved.')
+    elif action == 'dismiss':
+        report.status = 'dismissed'
+        report.save(update_fields=['status', 'updated_at'])
+        messages.success(request, 'Report dismissed.')
+    elif action == 'reopen':
+        report.status = 'new'
+        report.save(update_fields=['status', 'updated_at'])
+        messages.success(request, 'Report reopened.')
+    return redirect(_REPORTS_URL)

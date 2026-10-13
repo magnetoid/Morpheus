@@ -164,14 +164,19 @@ passes the same gates as Linda's in-process loop (`core/assistant/gates.py`):
   registered tool inside Linda's scope profile (`gates.LINDA_SCOPES`, the store
   domains), minus shopper cart/checkout/wishlist tools, duplicates, and platform
   internals (`db.*`, `fs.*`, `run_python`, `platform.capabilities`, …), which only
-  Developer mode adds back (`agent_mcp/linda_turn.py:catalogue`).
+  Developer mode adds back (`agent_mcp/linda_turn.py:catalogue`). While the store
+  enforces roles (rbac `enforcement_mode = enforce`), the profile is narrowed to the
+  capabilities the staff member's role grants on the dashboard
+  (`gates.person_scopes`, `gates.CAPABILITY_FOR_SCOPE`); superusers keep all of it.
 - **Mode** — `tools/list` and `tools/call` see only the mode's tools; the user's
   entitlement to that mode is re-checked on every call.
 - **Consent** — every write is refused with an `isError` result starting
   `approval_required:` until the merchant's own next message in that conversation
   is an affirmative reply: any tool with `requires_approval`, any write-scoped
   tool, plus `delegate.spawn_workers` and `meta.sync_audience`
-  (`linda_turn.needs_consent`). The grant is single-use and bound to the exact
+  (`linda_turn.needs_consent`), except two that only store their own report:
+  `seo.audit_product` and `reports.file` (a defect in Morpheus's code, for the
+  owner to review on AI → Reports). The grant is single-use and bound to the exact
   arguments, ignoring the model's own `confirmed` / `hard_gate_ack` / `echo`.
   `approved_tools` plays no part. The merchant kill switch stops the same set.
 - **Result size** — a tool result over 20,000 characters is cut, with a hint to

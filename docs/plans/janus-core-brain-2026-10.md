@@ -101,9 +101,17 @@ admin write-scripts.
   (v0.104.1, `OpenAIProvider.respond`), so the Worker and briefing no longer get blank replies
   from a reasoning model. Packy's protocol mismatch is left: it is unverifiable without the
   provider and no store uses it.
-- **Next:** A.4 shopper-agent
-  authz (owner), B role tiers (superadmin per-session grant, decided) after sandbox hardening, C the
-  technical-report contribution flow on CodeProposal (decided).
+- **v0.105.0 — C shipped:** `CodeProposal` is the store for Janus's technical reports
+  (`reports.file`: title, where, problem, fix — words, never code; filed without consent because
+  it changes and sends nothing; external agents cannot file). A superuser edits and sends one from
+  AI → Reports (`/dashboard/agents/reports/`): sending opens GitHub's new-issue form on
+  magnetoid/Morpheus, pre-filled and PII-scrubbed, in their own browser, and they submit it under
+  their own account. No store token, nothing leaves without a person.
+- **v0.105.0 — B, first half shipped:** a merchant's turn gets Linda's profile narrowed to what
+  their RBAC role grants on the dashboard (`gates.person_scopes`), while the store enforces roles;
+  under the default "log only" nothing changes. Superusers keep everything plus Developer mode.
+- **Next:** B second half, an isolated script runner (subprocess, dropped environment, no secrets)
+  and then the superadmin per-session write grant; A.4 shopper-agent authz (owner).
 
 ## C. Janus proposing patches to the core — assessment (owner asked 2026-10-13)
 

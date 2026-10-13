@@ -533,7 +533,14 @@ generic lessons and `tool_gap.*` rows is deleted, with the old learned-skills lo
 `skills.distill/list/record_outcome`, v0.104.0): Janus has its own skills toolset and its own
 learning. The Worker is not told to write the shop memory. External agents never see it. Never move a
 Morpheus-specific fact into Janus's store, and never fork Janus for it
-(`docs/plans/janus-core-brain-2026-10.md`). Learned content can steer but never authorize — store writes still need the
+(`docs/plans/janus-core-brain-2026-10.md`). **Reports and tiers (v0.105.0):** Janus records a
+defect in Morpheus's own code with `reports.file` (`CodeProposal`: words, never code; no consent,
+it changes and sends nothing). A superuser sends one from AI → Reports, which opens GitHub's
+new-issue form in their own browser, so no store holds a token; the destination is the
+`MORPHEUS_REPORTS_URL` env var, never a store setting (Janus writes settings). A merchant's turn
+gets Linda's profile narrowed to their role while the store enforces roles (`gates.person_scopes`):
+a scope mapped to a capability no role holds would take that work from every staff member's Janus
+(`test_role_tiers.py`). Learned content can steer but never authorize — store writes still need the
 merchant's own "yes" at the edge — and the merchant reviews and deletes it on
 Settings → AI → Janus. Guarded by `core/assistant/tests/test_janus_learning.py`.
 

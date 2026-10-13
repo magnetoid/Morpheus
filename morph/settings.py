@@ -57,6 +57,14 @@ MORPHEUS_SELF_UPDATE_ENABLED = config('MORPHEUS_SELF_UPDATE_ENABLED', default=Fa
 MORPHEUS_UPDATE_REPO = config('MORPHEUS_UPDATE_REPO', default='')
 MORPHEUS_UPDATE_TOKEN = config('MORPHEUS_UPDATE_TOKEN', default='')
 
+# Where a superuser sends one of Janus's technical reports (AI → Reports): GitHub's
+# new-issue form, opened in their own browser and submitted under their own account,
+# so the store holds no token. An env var, never a store setting: Janus can write
+# store settings, and a setting naming the destination would let her redirect reports.
+MORPHEUS_REPORTS_URL = config(
+    'MORPHEUS_REPORTS_URL', default='https://github.com/magnetoid/Morpheus/issues/new'
+)
+
 # Preferred channel: a signed manifest. Unlike the GitHub source above, this
 # proves the *publisher* produced the bytes rather than merely that we reached
 # a server — HTTPS authenticates the host, not the payload. Verification fails

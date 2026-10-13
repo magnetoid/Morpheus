@@ -63,6 +63,7 @@ def get_default_tools() -> list:
         memory_remember_tool,
     )
     from core.assistant.tools.navigation import dashboard_navigate_tool
+    from core.assistant.tools.reports import reports_file_tool
 
     tools = [
         # Database — schema introspection
@@ -92,6 +93,8 @@ def get_default_tools() -> list:
         dashboard_navigate_tool,
         # A question for the merchant, with answer buttons in the chat.
         assistant_ask_tool,
+        # A defect in Morpheus's own code, for the owner to review and send on.
+        reports_file_tool,
         # Platform health — circuit breakers, dependency state, "is X down".
         platform_circuit_breakers_tool,
         # Platform ops — self-update + store config + plugin toggles (gated).

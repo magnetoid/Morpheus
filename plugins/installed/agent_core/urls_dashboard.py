@@ -22,5 +22,8 @@ urlpatterns = [
     # Linda memory editor (owner curates Linda's cross-session facts).
     path('memory/', views.memory_list_view, name='memory'),
     path('memory/action/', views.memory_action_view, name='memory_action'),
+    # Janus's technical reports on Morpheus's own code (owner reviews, sends on).
+    path('reports/', views.reports_list_view, name='reports'),
+    path('reports/<uuid:report_id>/', views.report_action_view, name='report_action'),
     path('<uuid:run_id>/', views.run_detail_view, name='run_detail'),
 ]

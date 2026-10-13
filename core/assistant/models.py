@@ -245,38 +245,41 @@ class JanusLearning(models.Model):
 
 
 class CodeProposal(models.Model):
-    """RETIRED in v0.65.0 — nothing reads or writes this model any more.
+    """A technical report Janus wrote about a defect in Morpheus's own code.
 
-    Linda's self-coding loop (draft → scan → consensus → apply to a branch) was
-    removed when Janus replaced her in-process engine. The model stays only so its
-    table and history survive: deleting it generates a migration that drops the
-    table on the next deploy, which is a data-loss decision for the owner, not a
-    side effect of a cleanup. Drop it deliberately in its own change.
+    Words, never a patch (owner, 2026-10-13): what is wrong, where, and how it was or
+    could be fixed. A superuser reviews it on the AI → Reports page and may send it to
+    the Morpheus project, which opens a pre-filled GitHub issue in their own browser,
+    under their own account: the store holds no token and nothing leaves until a
+    person submits it. Maintainers decide how core is patched. Filed with
+    ``reports.file`` (core/assistant/tools/reports.py). The name and table are kept
+    from the self-coding loop retired in v0.65.0, which had 0 rows on every store.
     """
 
     STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-        ('applied', 'Applied'),
+        ('new', 'New'),
+        ('sent', 'Sent'),
+        ('dismissed', 'Dismissed'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.SlugField(max_length=120, db_index=True)
-    kind = models.CharField(max_length=20, default='tool')  # tool | skill | module
-    rationale = models.TextField(blank=True)
-    target_path = models.CharField(max_length=300, blank=True)  # informational only
-    source = models.TextField()
-    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='draft', db_index=True)
-    findings = models.JSONField(default=list, blank=True)  # static-scan results
-    passed = models.BooleanField(default=False)  # no CRITICAL/HIGH findings
-    consensus = models.JSONField(default=dict, blank=True)  # multi-model review (Phase 5)
-    # Phase 4 apply (ADR 0014): owner approval is the binding human step; the
-    # apply engine writes the source to a git branch (never main), gated.
-    approver = models.CharField(max_length=200, blank=True)  # superuser email/username
-    approved_at = models.DateTimeField(null=True, blank=True)
-    applied_branch = models.CharField(max_length=200, blank=True)
-    applied_at = models.DateTimeField(null=True, blank=True)
+    title = models.CharField(max_length=200)
+    # Where the defect lives: a module, a file or a dashboard page.
+    area = models.CharField(max_length=300, blank=True)
+    problem = models.TextField()
+    fix = models.TextField(blank=True)
+    morpheus_version = models.CharField(max_length=32, blank=True)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='new', db_index=True)
+    conversation_key = models.CharField(max_length=120, blank=True)
+    reported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+    )
+    sent_by = models.CharField(max_length=200, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -285,37 +288,14 @@ class CodeProposal(models.Model):
         ordering = ['-created_at']
 
     def __str__(self) -> str:
-        return f'CodeProposal({self.name}/{self.status})'
-
-    def approve(self, user) -> None:
-        """Owner approval — the binding human gate (ADR 0014). Only a superuser
-        may approve; this records WHO and WHEN and flips status to 'approved'.
-        Raises PermissionError otherwise (fail-closed)."""
-        from django.utils import timezone
-
-        if user is None or not getattr(user, 'is_superuser', False):
-            raise PermissionError('only the owner (a superuser) may approve a code proposal')
-        if self.status not in ('draft', 'approved'):
-            raise ValueError(f'cannot approve a proposal in status {self.status!r}')
-        self.approver = getattr(user, 'email', '') or getattr(user, 'username', '') or str(user.pk)
-        self.approved_at = timezone.now()
-        self.status = 'approved'
-        self.save(update_fields=['approver', 'approved_at', 'status', 'updated_at'])
-
-    def mark_applied(self, branch: str) -> None:
-        from django.utils import timezone
-
-        self.applied_branch = branch[:200]
-        self.applied_at = timezone.now()
-        self.status = 'applied'
-        self.save(update_fields=['applied_branch', 'applied_at', 'status', 'updated_at'])
+        return f'CodeProposal({self.title[:40]}/{self.status})'
 
 
 class OpsProposal(models.Model):
     """A staged *business-level* change (price edit, SEO meta fill, …) awaiting
     merchant approval — the generic propose→preview→approve→apply artifact
     (staged-changes design 2026-07-05, generalizing ADR-0028's propose-only
-    queue). Distinct from CodeProposal (self-written code) and
+    queue). Distinct from CodeProposal (Janus's reports on core code) and
     SiRecommendation (code-quality findings): OpsProposal stages *data*
     changes, described field-by-field in ``changes`` and applied via
     ContentType resolution so core never imports plugin models.
@@ -384,7 +364,7 @@ class OpsProposal(models.Model):
         return f'OpsProposal({self.kind}/{self.status})'
 
     def approve(self, user) -> bool:
-        """Staff approval — fail-closed (mirrors CodeProposal.approve, but staff
+        """Staff approval — fail-closed (staff
         suffices: ops proposals run through class-allowlisted data rails, they
         don't land code). Returns True on approve; False if the proposal had
         expired (status flips to 'expired'). Raises PermissionError for
