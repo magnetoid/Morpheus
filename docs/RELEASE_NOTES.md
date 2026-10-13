@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.106.1 — 2026-10-13
+
+**Safer error log, and quieter logs**
+
+- The error log never stores secrets: API keys, tokens and passwords in an error's text are removed before it is saved or emailed.
+- Old errors close by themselves after two quiet weeks, so the error page lists what is broken now; one that comes back shows as regressed.
+- When Linda cannot answer (a timeout or a crash), it is recorded as an error and reaches the daily email.
+- Less noise: harmless browser messages and repeated server warnings at start-up are gone, and the products table fits a laptop screen.
+
 ## v0.106.0 — 2026-10-13
 
 **A cleaner dashboard in light and dark mode, and full category descriptions**
