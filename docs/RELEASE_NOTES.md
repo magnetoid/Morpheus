@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.107.2 — 2026-10-13
+
+**New styles reach visitors right after a deploy**
+
+- Stylesheets and scripts now get a new address whenever they change, so a store behind a CDN shows a design change as soon as it is deployed instead of hours later.
+
 ## v0.107.1 — 2026-10-13
 
 **Montenegro category strip polish**
