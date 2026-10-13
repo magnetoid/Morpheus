@@ -287,6 +287,38 @@ def resolve(fingerprint: str, *, user=None, note: str = '') -> bool:
     return True
 
 
+#: A group with no event for this long is resolved by the nightly prune. The open list
+#: then shows what is broken now: 113 of 141 groups on four stores were "open" weeks
+#: after their last event (Oct 2026). If one comes back, it shows as regressed.
+STALE_DAYS = 14
+
+
+def resolve_stale(days: int = STALE_DAYS) -> int:
+    """Resolve every unresolved group whose newest event is older than ``days``."""
+    from datetime import timedelta
+
+    from django.db.models import Max
+    from django.utils import timezone
+
+    from core.errors.models import ErrorEvent, ErrorGroup
+
+    cutoff = timezone.now() - timedelta(days=days)
+    resolved = set(
+        ErrorGroup.objects.filter(status=ErrorGroup.STATUS_RESOLVED).values_list(
+            'fingerprint', flat=True
+        )
+    )
+    stale = [
+        row['fingerprint']
+        for row in ErrorEvent.objects.values('fingerprint').annotate(last=Max('created_at'))
+        if row['last'] < cutoff and row['fingerprint'] not in resolved
+    ]
+    note = f'Resolved automatically: no new event for {days} days.'
+    for fingerprint in stale:
+        resolve(fingerprint, note=note)
+    return len(stale)
+
+
 def reopen(fingerprint: str) -> None:
     from core.errors.models import ErrorGroup
 

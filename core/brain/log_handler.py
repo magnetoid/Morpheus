@@ -91,7 +91,9 @@ class ErrorEventLogHandler(logging.Handler):
         if record.exc_info and record.exc_info[1] is not None:
             # record_error stores the exception's own text; the log line is the
             # part that says what was being done ("… for event=category.form_saved").
-            meta['log_message'] = msg[:500]
+            from core.errors.services import _scrub
+
+            meta['log_message'] = _scrub(msg)[:500]
         source = f'log:{record.name}'[:40]
         # A live exception → frame-based fingerprint via record_error; otherwise
         # the pre-formatted message path.

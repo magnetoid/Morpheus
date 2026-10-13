@@ -29,11 +29,15 @@ def prune_errors_task(keep_days: int = 30) -> int:
     cutoff = timezone.now() - timedelta(days=keep_days)
     qs = ErrorEvent.objects.filter(created_at__lt=cutoff)
     deleted, _ = qs.delete()
+    from core.errors.report import resolve_stale
+
+    stale = resolve_stale()
     logger.info(
-        'prune_errors_task: deleted=%s cutoff=%s keep_days=%s',
+        'prune_errors_task: deleted=%s cutoff=%s keep_days=%s stale_resolved=%s',
         deleted,
         cutoff.isoformat(),
         keep_days,
+        stale,
     )
     return deleted
 

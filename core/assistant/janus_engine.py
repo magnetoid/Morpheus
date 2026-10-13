@@ -862,7 +862,7 @@ def iter_janus_turn(
     except OSError as e:
         # Reported like any engine failure, so the merchant gets the friendly
         # error and the self-improvement loop gets a signal, not a stack trace.
-        logger.warning('janus engine home unavailable: %s', e)
+        logger.error('janus engine home unavailable: %s', e)
         yield {'text': '', 'error': f'janus home unavailable: {e}', 'duration_ms': 0}
         return
     mcp_url, mcp_headers = _mcp_endpoint(context)
@@ -1031,7 +1031,9 @@ def _spawn(
                 check=False,
             )
         except subprocess.TimeoutExpired:
-            logger.warning('janus engine timed out after %ss key=%s', timeout, conversation_key)
+            # ERROR, not WARNING: the merchant got no reply, and the error log keeps a
+            # warning only while detailed capture is on.
+            logger.error('janus engine timed out after %ss key=%s', timeout, conversation_key)
             # The longest turns are the ones that time out, and the daily spend
             # cap reads `usage`: count what the session spent before the kill.
             killed = resume_id or _session_started_since(conv_home, spawned_at)
@@ -1045,7 +1047,7 @@ def _spawn(
                 ),
             }
         except OSError as e:
-            logger.warning('janus engine spawn failed: %s', e)
+            logger.error('janus engine spawn failed: %s', e)
             return {'text': '', 'error': f'janus spawn failed: {e}', 'duration_ms': 0}
         if proc.returncode != 0 and resume_id and 'Session not found' in (proc.stderr or ''):
             # The stored id outlived its state.db. Janus exits before any model
@@ -1080,7 +1082,7 @@ def _turn_result(returncode: int, text: str, err: str) -> dict[str, str]:
         # A crash AFTER partial output is still a crash. Returning the partial
         # text as a completed turn hides the failure from the merchant, from the
         # transcript, and from the self-improvement loop.
-        logger.warning(
+        logger.error(
             'janus engine rc=%s stdout_head=%s stderr=%s', returncode, text[:200], err[:400]
         )
         reason = err[:500] or f'janus exit {returncode}'

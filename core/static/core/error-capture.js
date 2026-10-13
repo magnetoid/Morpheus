@@ -101,6 +101,9 @@
       }
       return;
     }
+    // A script from another origin threw: the browser hides its message, file and
+    // line ("Script error."), so there is nothing to send. The server drops it too.
+    if (!ev.error && ev.message === 'Script error.') return;
     if (ev.error || ev.message) {
       var e = ev.error;
       ship({
@@ -131,6 +134,7 @@
     // transition in flight) is not an error; the server drops it too.
     if (name === 'InvalidStateError' && msg.indexOf('Transition was aborted') === 0) return;
     if (name === 'AbortError' && msg.indexOf('Skipping view transition') === 0) return;  // Safari
+    if (name === 'AbortError' && msg.indexOf('Transition was skipped') === 0) return;  // skipTransition()
     ship({
       message: msg, name: name, stack: stack,
       source: '', lineno: 0, colno: 0,

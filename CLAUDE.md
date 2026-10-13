@@ -1369,6 +1369,11 @@ the switch through a 10-second memo, so tests that flip it must `mode.forget()`
 in a cleanup. The report for Claude Code (`core/errors/report.py`) has three
 doors that must stay one builder: "Copy for Claude Code" on the page,
 `manage.py errors_report`, and the `errors.recent`/`errors.get` agent tools.
+Since v0.106.1 every stored message and traceback passes `redact_secrets` (keys, bearer and
+turn tokens, passwords in URLs) before PII scrubbing; a group quiet for 14 days is resolved by
+the nightly prune and shows as regressed if it returns; and a failure the user feels (a Janus
+turn with no reply) logs at ERROR, because a WARNING is kept only during detailed capture and
+container logs vanish at every deploy (`docs/plans/errors-and-logging-2026-10.md`).
 
 **Landmine — a payment method offered without its credentials fails at the
 payment step, and absence meant "on".** `payments.is_enabled()` treats a missing

@@ -13,15 +13,45 @@ from typing import Any
 logger = logging.getLogger('morpheus.errors')
 
 
-# Reuse the PII scrubber from observability so emails/phones/IPs never
-# land in stored tracebacks.
+#: Secrets an error can quote: a provider's "Incorrect API key provided: sk-…", an
+#: Authorization header in a traceback, a Linda turn token, a database URL. Removed
+#: before anything is stored, shown on the error page or emailed in the digest.
+_SECRETS = (
+    (re.compile(r'\b(?:sk|pk|rk)-[A-Za-z0-9_\-]{16,}'), '<secret>'),
+    (re.compile(r'(?i)\bbearer\s+[A-Za-z0-9._~+/=\-]{12,}'), 'Bearer <secret>'),
+    (re.compile(r'\blt1\.[A-Za-z0-9._\-]{8,}'), '<turn-token>'),
+    (
+        re.compile(
+            r'\b(?:gh[pousr]_[A-Za-z0-9]{20,}|xox[abprs]-[A-Za-z0-9\-]{10,}|AKIA[0-9A-Z]{16})\b'
+        ),
+        '<secret>',
+    ),
+    (re.compile(r'(://[^:/\s@]+:)[^@\s/]+@'), r'\1<secret>@'),
+    (
+        re.compile(
+            r'(?i)\b(api[_-]?key|access[_-]?token|token|secret|password|passwd)(\s*[=:]\s*)[\'"]?[^\s\'",;)}]+'
+        ),
+        r'\1\2<secret>',
+    ),
+)
+
+
+def redact_secrets(text: str) -> str:
+    for pattern, placeholder in _SECRETS:
+        text = pattern.sub(placeholder, text)
+    return text
+
+
+# Secrets first, then the PII scrubber from observability, so keys, emails,
+# phones and IPs never land in a stored message or traceback.
 def _scrub(text: str) -> str:
+    text = redact_secrets(text or '')
     try:
         from core.observability import scrub_pii
 
-        return scrub_pii(text or '')
+        return scrub_pii(text)
     except Exception:  # noqa: BLE001
-        return text or ''
+        return text
 
 
 def _fingerprint_server(exc: BaseException) -> str:
@@ -290,6 +320,10 @@ _JS_FRAME_RE = re.compile(r'(?:https?://[^\s)]+|/[^\s)]+):(\d+)(?::\d+)?')
 _CLIENT_NOISE = (
     ('InvalidStateError', 'Transition was aborted'),
     ('AbortError', 'Skipping view transition'),  # Safari's wording of the same abort
+    ('AbortError', 'Transition was skipped'),  # Chrome's, when skipTransition() runs
+    # A script from another origin threw; the browser hides its message, file and
+    # line, so there is nothing to act on (74 on one store, Oct 2026).
+    ('Error', 'Script error.'),
 )
 
 
