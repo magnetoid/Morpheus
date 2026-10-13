@@ -50,4 +50,3 @@ class ShopMemoryInjectionTests(TestCase):
         text = _format_recent_memories('anything')
         self.assertIn('THIS STORE', text.upper())
         self.assertIn('A Montenegro marketplace', text)
-
