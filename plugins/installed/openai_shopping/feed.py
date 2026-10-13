@@ -139,7 +139,7 @@ def build_rows() -> list[dict[str, Any]]:
     base = site_base_url().rstrip('/')
     seller = _seller(cfg, base)
     rows: list[dict[str, Any]] = []
-    products = Product.objects.filter(status='active').order_by('-created_at')[:_FEED_LIMIT]
+    products = Product.objects.shoppable().order_by('-created_at')[:_FEED_LIMIT]
     for product in products:
         try:
             item = map_product(product, cfg)

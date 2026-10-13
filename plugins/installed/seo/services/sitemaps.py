@@ -269,7 +269,7 @@ def iter_sitemap_entries() -> Iterable[dict]:
         from plugins.installed.catalog.vendors import listing_counts
 
         product_seo = _seo_overrides(Product)
-        for p in Product.objects.filter(status='active').only('slug', 'updated_at'):
+        for p in Product.objects.shoppable().only('slug', 'updated_at'):
             if not _in_sitemap(product_seo, p):
                 continue
             yield {
@@ -711,7 +711,7 @@ def render_image_sitemap_xml() -> str:
         from plugins.installed.catalog.models import Product
 
         cap = _sitemap_max_urls()
-        qs = Product.objects.filter(status='active')
+        qs = Product.objects.shoppable()
         total = qs.count()
         if total > cap:
             logger.warning('seo: image sitemap truncated at %d entries', cap)

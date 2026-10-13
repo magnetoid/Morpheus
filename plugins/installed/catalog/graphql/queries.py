@@ -96,7 +96,7 @@ class CatalogQueryExtension:
         first = _clamp_first(first)
 
         qs = (
-            Product.objects.filter(status='active')
+            Product.objects.shoppable()
             .select_related(*_PRODUCT_RELATED)
             .prefetch_related(*_PRODUCT_PREFETCH)
             .annotate(**_REVIEW_ANNOTATIONS)

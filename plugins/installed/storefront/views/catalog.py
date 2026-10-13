@@ -89,7 +89,7 @@ def product_list(request):
     # so each product card resolves its cover from memory, not a per-row query
     # (the PLP N+1 the audit flagged).
     qs = (
-        Product.objects.filter(status='active')
+        Product.objects.shoppable()
         .select_related('category')
         .prefetch_related('images')
     )
@@ -1257,7 +1257,7 @@ def category_detail(request, slug):
     }
     order = sort_map.get(sort, sort_map['for_you'])
     qs = (
-        Product.objects.filter(status='active')
+        Product.objects.shoppable()
         .filter(in_categories([category]))
         .select_related('category')
         .prefetch_related('images')  # primary_image hits this — avoid an N+1 per card
@@ -1679,7 +1679,7 @@ def quick_search(request):
         return JsonResponse({'results': []})
 
     try:
-        qs = Product.objects.filter(status='active').prefetch_related('images')
+        qs = Product.objects.shoppable().prefetch_related('images')
         qs = _apply_search(qs, q)
         rows = list(qs[:6])
     except Exception:  # noqa: BLE001

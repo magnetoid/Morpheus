@@ -19,7 +19,7 @@ def _active_products():
     from plugins.installed.catalog.models import Product  # noqa: PLC0415
 
     return (
-        Product.objects.filter(status='active').select_related('category').order_by('-created_at')
+        Product.objects.shoppable().select_related('category').order_by('-created_at')
     )
 
 

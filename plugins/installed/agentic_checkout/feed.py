@@ -188,7 +188,7 @@ def product_feed(request: HttpRequest) -> HttpResponse:
 
     settings = _resolve_feed_settings()
     seller = _seller(request.build_absolute_uri('/').rstrip('/'))
-    products = Product.objects.filter(status='active').order_by('-id')[:_FEED_LIMIT]
+    products = Product.objects.shoppable().order_by('-id')[:_FEED_LIMIT]
 
     groups: list[dict[str, Any]] = []
     for product in products:
