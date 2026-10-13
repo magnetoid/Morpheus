@@ -110,7 +110,7 @@ screen while scrolling (37% on a phone), over the cards it introduces.{% endcomm
       <a href="{{ c.href }}" class="mx-catstrip__item group">
         <span class="text-muted-foreground group-hover:text-primary transition-colors">{{ c.icon|safe }}</span>
         <span class="text-sm font-medium text-foreground">{{ c.label }}</span>
-        <span class="text-xs text-muted-foreground">{% blocktrans count c=c.count %}{{ c }} experience{% plural %}{{ c }} experiences{% endblocktrans %}</span>
+        <span class="text-xs text-muted-foreground" aria-label="{% blocktrans count c=c.count %}{{ c }} experience{% plural %}{{ c }} experiences{% endblocktrans %}">{{ c.count }}</span>
       </a>
       {% endfor %}
     </div>
