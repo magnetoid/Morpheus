@@ -2,7 +2,7 @@
 
 Locks four fixes:
   * run_python's sandbox is READ-ONLY for real — mutating tools that were
-    mislabeled `system.read` (memory.remember/forget, skills.record_outcome)
+    mislabeled `system.read` (memory.remember/forget)
     are no longer script-callable;
   * the bridge's defence-in-depth scope re-check no longer dead-letters
     every scoped read tool for Linda (who has no `.scopes` attribute);
@@ -20,11 +20,10 @@ class SandboxReadOnlyTests(TestCase):
         from core.assistant.tools.code import _available_tools
 
         names = set(_available_tools(None).keys())
-        for mutating in ('memory.remember', 'memory.forget', 'skills.record_outcome'):
+        for mutating in ('memory.remember', 'memory.forget'):
             self.assertNotIn(mutating, names)
         # Genuine reads stay available.
         self.assertIn('memory.recall', names)
-        self.assertIn('skills.list', names)
 
     def test_scoped_read_tool_callable_when_agent_has_no_scope_model(self):
         # Regression: `agent_scopes` was an empty set for a caller with no

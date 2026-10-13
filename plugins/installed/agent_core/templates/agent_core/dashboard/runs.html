@@ -194,24 +194,6 @@
   </div>
 </div>
 
-{% if learned_skills %}
-<h2 class="text-lg font-semibold mt-6 mb-3">Learned skills</h2>
-<div class="card">
-  <table class="morph-table">
-    <thead><tr><th>Skill</th><th>Uses</th><th>Success rate</th><th>Last used</th></tr></thead>
-    <tbody>
-    {% for s in learned_skills %}
-      <tr>
-        <td><code>{{ s.name }}</code></td>
-        <td>{{ s.uses }}</td>
-        <td>{% if s.uses %}{{ s.success_rate|floatformat:0 }}%{% else %}—{% endif %}</td>
-        <td>{% if s.last_used_at %}{{ s.last_used_at|date:"M j, H:i" }}{% else %}<span class="text-[color:var(--text-muted)]">never</span>{% endif %}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
 
 <h2 class="text-lg font-semibold mt-6 mb-3">Registered agents</h2>
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">

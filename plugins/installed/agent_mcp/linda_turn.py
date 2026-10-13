@@ -175,9 +175,6 @@ DEVELOPER_TOOLS = frozenset(
         'logs.search',
         'platform.capabilities',
         'plugins.describe',
-        'skills.distill',
-        'skills.list',
-        'skills.record_outcome',
         'delegate.list_agents',
         'delegate.invoke_agent',
         # Blocks for up to 300s inside a turn that has far less.

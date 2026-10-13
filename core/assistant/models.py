@@ -168,59 +168,6 @@ class LindaMemory(models.Model):
         return confidence * math.exp(-age_days / max(half_life_days, 1.0))
 
 
-class LearnedSkill(models.Model):
-    """A skill Linda authored from experience — a named bundle of EXISTING agent
-    tools + a system-prompt prelude, persisted so it survives restarts and is
-    registered into the ``skill_registry`` at boot. A skill grants NO new
-    privilege: every tool still enforces its own scopes at call time. This is the
-    self-learning loop's output (ADR 0011: one agent, grown via skills/tools).
-    """
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.SlugField(max_length=120, unique=True, db_index=True)
-    label = models.CharField(max_length=160)
-    description = models.TextField(blank=True)
-    system_prompt_prelude = models.TextField(blank=True)
-    tool_names = models.JSONField(default=list)  # names of registered tools it bundles
-    examples = models.JSONField(default=list, blank=True)
-    source = models.CharField(max_length=200, blank=True, default='distilled')
-    enabled = models.BooleanField(default=True, db_index=True)
-    version = models.PositiveIntegerField(default=1)
-    # Outcome feedback (Phase 3 — skills self-improve / prune from use).
-    uses = models.PositiveIntegerField(default=0)
-    successes = models.PositiveIntegerField(default=0)
-    failures = models.PositiveIntegerField(default=0)
-    last_used_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True, db_index=True)
-
-    class Meta:
-        app_label = 'assistant'
-        ordering = ['name']
-
-    def __str__(self) -> str:
-        return f'LearnedSkill({self.name})'
-
-    def success_rate(self) -> float:
-        return (self.successes / self.uses) if self.uses else 0.0
-
-    def to_skill(self):
-        """Build a runtime ``Skill`` from this row, resolving ``tool_names``
-        against Linda's live tool catalog (unknown names are dropped — fail-soft)."""
-        from core.agents.skills import Skill  # noqa: PLC0415
-        from core.assistant.tools.skills import all_resolvable_tools  # noqa: PLC0415
-
-        catalog = all_resolvable_tools()
-        tools = tuple(catalog[n] for n in (self.tool_names or []) if n in catalog)
-        return Skill(
-            name=self.name,
-            label=self.label,
-            description=self.description,
-            tools=tools,
-            system_prompt_prelude=self.system_prompt_prelude,
-        )
-
-
 class AssistantBriefing(models.Model):
     """Linda's daily morning briefing — one row per day.
 

@@ -89,7 +89,10 @@ admin write-scripts.
   store"), Janus can recall it and propose a fact that the merchant confirms (write scope →
   consent), reflection writes nothing into it, the Worker is not told to write it. Montenegro's
   generic rows cleaned on the live store.
-- **Next:** A.2 old skills loop (LearnedSkill + skills.*), A.3 one LLM stack, A.4 shopper-agent
+- **v0.104.0 — A.2 shipped:** `LearnedSkill`, `skills.distill/list/record_outcome`, the post-run
+  reflection and the agent_core "learned skills" panel are deleted (0 rows on every store). Janus's
+  own skills (`skills_list`/`skill_view`/`skill_manage`) and its authored-skills panel stay.
+- **Next:** A.3 one LLM stack, A.4 shopper-agent
   authz (owner), B role tiers (superadmin per-session grant, decided) after sandbox hardening, C the
   technical-report contribution flow on CodeProposal (decided).
 

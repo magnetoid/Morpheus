@@ -5,13 +5,11 @@ What the assistant should always know about the specific store it runs in — it
 positioning, the merchant's preferences — is Morpheus's layer, the shop memory.
 It is injected into every turn, a superadmin curates it, and Janus may propose a
 fact that is saved only when the merchant's own message confirms it. The old
-generic reflection flywheel (tool gaps and workflow lessons written into the
-store's memory) is gone: that was Janus's job, and it polluted the shop facts.
+reflection that wrote generic lessons and tool gaps into it is deleted
+(test_old_skills_removed.py).
 """
 
 from __future__ import annotations
-
-from unittest import mock
 
 from django.test import TestCase
 
@@ -53,31 +51,3 @@ class ShopMemoryInjectionTests(TestCase):
         self.assertIn('THIS STORE', text.upper())
         self.assertIn('A Montenegro marketplace', text)
 
-
-class NoGenericFlywheelTests(TestCase):
-    """Reflection judges a Worker run and updates skill counters, nothing more."""
-
-    def _run(self, payload):
-        from core.assistant.reflection import reflect_on_worker_run
-
-        class _Run:
-            id = 'r1'
-            user_message = 'audit SEO'
-            state = 'completed'
-            error = ''
-            final_text = 'done'
-            metadata = {'skills': []}
-
-        provider = mock.Mock(name='provider')
-        provider.name = 'openai'
-        provider.respond.return_value = mock.Mock(text=payload)
-        return reflect_on_worker_run(_Run(), provider=provider)
-
-    def test_lessons_and_tool_gaps_are_not_written_into_shop_memory(self):
-        payload = (
-            '{"outcome": "success",'
-            ' "lessons": [{"key": "profile_orm_queries_early", "value": "aggregate queries"}],'
-            ' "tool_gaps": ["a generic db query tool"]}'
-        )
-        self._run(payload)
-        self.assertFalse(LindaMemory.objects.exists())

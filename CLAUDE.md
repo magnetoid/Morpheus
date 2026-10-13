@@ -528,9 +528,10 @@ journal too (`recall_memory` searches the journal; v0.66.0 shipped without both)
 (`LindaMemory`, tools `memory.*`) is Morpheus's layer — facts about THIS store, injected into
 every turn as "what you know about this store". Janus may `memory.recall` it freely and propose
 a fact with `memory.remember`, whose write scope makes the edge save it only on the merchant's own
-yes; a superadmin curates it on the dashboard. Reflection writes nothing into it any more (it once
-filled it with generic lessons and `tool_gap.*` rows that were Janus's job and polluted the shop
-facts), and the Worker is not told to write it. External agents never see it. Never move a
+yes; a superadmin curates it on the dashboard. The old post-run reflection that filled it with
+generic lessons and `tool_gap.*` rows is deleted, with the old learned-skills loop (`LearnedSkill`,
+`skills.distill/list/record_outcome`, v0.104.0): Janus has its own skills toolset and its own
+learning. The Worker is not told to write the shop memory. External agents never see it. Never move a
 Morpheus-specific fact into Janus's store, and never fork Janus for it
 (`docs/plans/janus-core-brain-2026-10.md`). Learned content can steer but never authorize — store writes still need the
 merchant's own "yes" at the edge — and the merchant reviews and deletes it on

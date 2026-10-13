@@ -63,11 +63,6 @@ def get_default_tools() -> list:
         memory_remember_tool,
     )
     from core.assistant.tools.navigation import dashboard_navigate_tool
-    from core.assistant.tools.skills import (
-        skills_distill_tool,
-        skills_list_tool,
-        skills_record_outcome_tool,
-    )
 
     tools = [
         # Database — schema introspection
@@ -82,10 +77,6 @@ def get_default_tools() -> list:
         memory_recall_tool,
         memory_remember_tool,
         memory_forget_tool,
-        # Self-learning — distill, review, and score reusable skills.
-        skills_distill_tool,
-        skills_list_tool,
-        skills_record_outcome_tool,
         # Code — compose tools in a sandboxed Python script (read/safe tools only).
         run_python_tool,
         # Write operations — gated by confirmed=True; LLM must ask user first.

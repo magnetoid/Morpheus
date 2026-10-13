@@ -277,7 +277,6 @@ def runs_dashboard_view(request):
             'q': query,
             'janus_learned': _janus_learning_summary(),
             'janus_activity': _janus_activity_log(),
-            'learned_skills': _learned_skills_summary(),
             'active_nav': 'agents',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
@@ -306,17 +305,6 @@ def _janus_learning_summary() -> dict:
     except Exception:  # noqa: BLE001
         logger.warning('runs dashboard: janus learning summary failed', exc_info=True)
         return {'notes': {'store': [], 'user': []}, 'skills': [], 'lessons': 0}
-
-
-def _learned_skills_summary() -> list:
-    """LearnedSkill rows (Linda-authored skills) with use/outcome feedback."""
-    from core.assistant.models import LearnedSkill
-
-    try:
-        return list(LearnedSkill.objects.order_by('-uses', '-updated_at')[:20])
-    except Exception:  # noqa: BLE001
-        logger.warning('runs dashboard: learned skills summary failed', exc_info=True)
-        return []
 
 
 def _janus_activity_log(limit: int = 60) -> dict:
