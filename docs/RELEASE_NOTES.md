@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.104.0 — 2026-10-13
+
+**AI obeys your guardrails everywhere; old learned-skills loop removed**
+
+- AI: switching AI off, or reaching today's spend limit, now also stops the dashboard's Generate buttons, the Pulse rewrite, product classification, store setup and bulk copy. They say why instead of running.
+- AI: those calls now count toward the daily spend limit, which used to see only the agents.
+- Bulk rewrite, translate and expand of product copy work again; every product used to fail.
+- Linda: the old learned-skills system and its post-run review are removed. Janus has its own skills, shown under Authored skills.
+
 ## v0.103.0 — 2026-10-13
 
 **Shop memory is Morpheus's own layer; Janus keeps its learning**
