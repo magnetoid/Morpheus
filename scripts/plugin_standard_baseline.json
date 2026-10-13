@@ -33,7 +33,6 @@
     "experiments:models.has_models_flag",
     "feedback:models.has_models_flag",
     "journal:tests.missing",
-    "linda_generated:tests.missing",
     "localization:tests.missing",
     "marketing:tests.missing",
     "markets:structure.apps",

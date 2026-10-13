@@ -78,7 +78,7 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 - [Found by search, and by answer engines](#-found-by-search-and-by-answer-engines)
 - [A tour: shoppers, merchants, developers](#-a-tour-shoppers-merchants-developers)
 - [Architecture: a small kernel, a deep ecosystem](#-architecture-a-small-kernel-a-deep-ecosystem)
-- [What's in the box: all 113 apps](#-whats-in-the-box-all-113-apps)
+- [What's in the box: all 112 apps](#-whats-in-the-box-all-112-apps)
 - [It runs itself](#-it-runs-itself)
 - [The self-improvement loop](#-the-self-improvement-loop)
 - [Safety, security & compliance](#-safety-security--compliance)
@@ -103,7 +103,7 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 |---|---|---|---|
 | **AI operator** | Built in, governed, on *your* infra | Add-on / per-seat copilot | Bring your own |
 | **Agent-transactable** | MCP + ACP + UCP, native | Emerging, platform-mediated | Rare |
-| **Feature model** | 113 apps, disable-safe by construction | Apps (billed, sandboxed) | Extensions / modules |
+| **Feature model** | 112 apps, disable-safe by construction | Apps (billed, sandboxed) | Extensions / modules |
 | **Sales channels** | 8 ad/commerce channels + a multivendor marketplace, built in | Per-channel apps | Per-channel extensions |
 | **Migration in** | Shopify, WooCommerce, Magento, BigCommerce, CSV importers | — | Varies |
 | **Own your data & code** | Yes — self-hosted; source-available under BUSL-1.1, each version turning Apache 2.0 after four years | No | Yes |
@@ -126,7 +126,7 @@ Measured at **v0.76.0 (3 October 2026)** by a script over the tree, not from mem
 
 | Metric | Value | Source of truth |
 |---|---|---|
-| Toggleable apps in the tree | **113** (108 on by default + 5 opt-in: the Montenegro booking vertical and four dropshipping apps: DSers, Zendrop, CJdropshipping and AliExpress) | `plugins/installed/` · `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` |
+| Toggleable apps in the tree | **112** (107 on by default + 5 opt-in: the Montenegro booking vertical and four dropshipping apps: DSers, Zendrop, CJdropshipping and AliExpress) | `plugins/installed/` · `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` |
 | Typed events on the hooks bus | **94**, with **256** subscriptions | `MorpheusEvents` in `core/hooks.py` |
 | Agent tools in the typed registry | **184** — 47 of them require a human's approval | `core/agents/registry.py` at boot |
 | MCP token scopes | **38** | `plugins/installed/agent_mcp/scopes.py` |
@@ -327,7 +327,7 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/PLUGIN_DEVELOPMENT.md`](doc
 
 ---
 
-## 🧩 What's in the box: all 113 apps
+## 🧩 What's in the box: all 112 apps
 
 Every shipped capability is a toggleable app, and every app below is described from its own manifest at v0.76.0. The always-current version is **Settings → Apps** in the dashboard; the source of truth for the count is `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`.
 
@@ -462,7 +462,6 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `ai_content` | The store-wide brand voice every AI generation reads, product-description generation, the content and assets studio |
 | `ai_stylist` | A conversational shopping assistant on the storefront, with a shopper-facing persona and its own audit trail |
 | `janus` | The engine behind Linda: on/off, model, step and time caps, standing instructions, bundled skills, and what she has learned |
-| `linda_generated` | The landing zone for tools Linda writes herself, filled only through the gated apply pipeline |
 | `morpheus_brain` | One console for code quality, errors, SEO health and daily industry reports, with an AI advisory briefing on the whole site |
 | `store_bootstrap` | Type one sentence; get a brand voice, a category tree and a starter catalogue |
 | `lumina` | The Lumina book-creator landing page: write with AI and voice, auto-translate, sell on the bookshop |
