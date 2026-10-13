@@ -99,6 +99,9 @@ case "$MODE" in
     # The default keeps the WSGI gthread combo that solved the
     # ERR_CONNECTION_RESET problem; uvicorn becomes a drop-in upgrade
     # once async ORM hot paths land (see docs/plans/concurrency-roadmap.md).
+    # --no-control-socket: gunicorn 26 opens one under $HOME, which is the root-owned
+    # /app, and logged "Permission denied: '/app/.gunicorn'" on every boot. Nothing
+    # here uses gunicornc.
     exec gunicorn "${GUNICORN_APP:-morph.wsgi:application}" \
         --bind "0.0.0.0:${PORT:-8000}" \
         --worker-class "${GUNICORN_WORKER_CLASS:-gthread}" \
@@ -110,7 +113,8 @@ case "$MODE" in
         --max-requests "${GUNICORN_MAX_REQUESTS:-1000}" \
         --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER:-50}" \
         --access-logfile - \
-        --error-logfile -
+        --error-logfile - \
+        --no-control-socket
     ;;
   worker)
     wait_for_db

@@ -127,7 +127,8 @@ def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (si
             should_track_request,
         )
 
-        response = JsonResponse({'ok': True}, status=204)
+        # A 204 has no body; gunicorn drops one and logs a warning for every hit.
+        response = HttpResponse(status=204)
         # Skip staff/admin browsing so it doesn't pollute customer analytics.
         if should_track_request(request):
             session = get_or_create_session(request, response=response)
@@ -169,7 +170,7 @@ def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (si
         return response
     except Exception as e:  # noqa: BLE001 — beacon must never error
         logger.warning('analytics: beacon failed: %s', e)
-        return JsonResponse({'ok': False}, status=204)
+        return HttpResponse(status=204)
 
 
 @staff_member_required

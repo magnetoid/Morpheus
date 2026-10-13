@@ -69,6 +69,9 @@ _CSP_REPORT_ONLY = '; '.join(
         "img-src 'self' data: blob: https:",
         "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net",
         "connect-src 'self' "
+        # The service worker caches the storefront's Google Fonts stylesheet and
+        # files; its fetches are connect-src, and each one filed a violation.
+        'https://fonts.googleapis.com https://fonts.gstatic.com '
         'https://api.stripe.com '
         'https://api.cloudflare.com '
         'https://cdn.jsdelivr.net '

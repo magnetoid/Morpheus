@@ -75,3 +75,17 @@ class AnalyticsTrackingTests(TestCase):
         event = AnalyticsEvent.objects.last()
         self.assertEqual(event.kind, 'error')
         self.assertEqual(event.error_context.get('code'), 500)
+
+
+class BeaconNoContentTests(TestCase):
+    """A 204 carries no body: gunicorn dropped the JSON and logged a warning per hit."""
+
+    def test_the_beacon_answers_with_an_empty_204(self):
+        request = RequestFactory().post(
+            '/analytics/track/',
+            data=json.dumps({'name': 'page_view'}),
+            content_type='application/json',
+        )
+        response = track_beacon(request)
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b'')

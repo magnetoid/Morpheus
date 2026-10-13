@@ -873,6 +873,18 @@ import logging as _logging  # noqa: E402
 
 _logging.captureWarnings(True)
 
+# By design, not a bug to chase: the app registry reads which apps are enabled, rbac
+# seeds its roles and staff_sso syncs its provider while apps load (plugins/registry.py).
+# Django warns about any query in AppConfig.ready(), five times per boot in every
+# container, which buried the warnings that do need action.
+import warnings as _warnings  # noqa: E402
+
+_warnings.filterwarnings(
+    'ignore',
+    message='Accessing the database during app initialization is discouraged',
+    category=RuntimeWarning,
+)
+
 # Bridge app logs into the Morpheus Brain's signal pipeline
 # (core.errors.ErrorEvent → error_log collector → SiSignal → Brain). Skipped
 # under tests (no DB writes from log lines in the suite). The handler is
