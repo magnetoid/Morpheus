@@ -1,0 +1,86 @@
+/* Montenegro theme — layout fixes and polish (v0.107.0).
+ *
+ * tailwind.css is compiled once with no build step in the repo, so a utility
+ * class it never saw does not exist. Everything new lives here, on semantic
+ * classes, in the theme's own colour variables (HSL triplets set in base.html).
+ */
+
+/* ── Category strip: in the flow, compact ─────────────────────────────────
+   It was `sticky top-[72px]` with tall tiles, so while scrolling it covered
+   about 40% of a laptop screen and 37% of a phone, over the cards below it. */
+.mx-catstrip { background: hsl(var(--background)); }
+.mx-catstrip__row {
+  display: flex;
+  gap: .5rem;
+  overflow-x: auto;
+  padding: 1rem 0;
+  scroll-snap-type: x proximity;
+}
+.mx-catstrip__item {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .55rem .95rem .55rem .75rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  color: hsl(var(--foreground));
+  text-decoration: none;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.mx-catstrip__item:hover,
+.mx-catstrip__item:focus-visible {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / .06);
+}
+.mx-catstrip__item > span:first-child { display: inline-flex; color: hsl(var(--primary)); }
+.mx-catstrip__item > span:first-child svg { width: 1.15rem; height: 1.15rem; }
+.mx-catstrip__item > span:nth-child(2) { font-size: .9rem; font-weight: 500; white-space: nowrap; }
+.mx-catstrip__item > span:nth-child(3) {
+  font-size: .78rem;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+}
+@media (min-width: 1024px) {
+  .mx-catstrip__row { justify-content: center; flex-wrap: wrap; overflow-x: visible; }
+}
+
+/* ── Hero search ───────────────────────────────────────────────────────── */
+/* "What" had no room left once the other fields took their minimum widths:
+   its placeholder read "Sear". */
+@media (min-width: 768px) {
+  .mx-search-what { min-width: 13rem; }
+}
+/* On a phone the four stacked fields filled the screen; the category is also
+   one tap away in the strip and the pills below the search. */
+@media (max-width: 767px) {
+  .mx-hide-phone { display: none !important; }
+}
+
+/* Pills on the hero photo: solid enough to read on any part of the image. */
+.mx-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: .4rem 1rem;
+  border-radius: 999px;
+  font-size: .875rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background) / .94);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .12);
+  text-decoration: none;
+  transition: background-color .15s ease, transform .15s ease;
+}
+.mx-pill:hover,
+.mx-pill:focus-visible { background: hsl(var(--background)); transform: translateY(-1px); }
+
+/* ── Footer: one language switcher ─────────────────────────────────────────
+   The theme's own EN · SR switch sits in the footer bar; the localization
+   app's select (footer_extra) printed a second one below it. */
+footer .morph-lang-switcher { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-pill, .mx-catstrip__item { transition: none; }
+  .mx-pill:hover { transform: none; }
+}

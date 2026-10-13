@@ -18,13 +18,14 @@ register = template.Library()
 def featured_experiences(limit=8):
     """Top active experiences — bestsellers first, then by rating / reviews."""
     from plugins.installed.booking_marketplace.models import BookableService
+    from plugins.installed.booking_marketplace.services import with_verified_rating
 
     return list(
-        BookableService.objects.filter(
-            is_active=True, vendor__is_active=True, listing_kind='experience'
-        )
-        .select_related('vendor')
-        .order_by('-is_bestseller', '-rating', '-review_count')[: int(limit)]
+        with_verified_rating(
+            BookableService.objects.filter(
+                is_active=True, vendor__is_active=True, listing_kind='experience'
+            ).select_related('vendor')
+        ).order_by('-is_bestseller', '-rating', '-review_count')[: int(limit)]
     )
 
 
@@ -145,12 +146,17 @@ def booking_regions():
 
 @register.simple_tag
 def home_testimonials():
-    """Real guest reviews (rating ≥4 with body text), newest first."""
+    """Guest reviews (rating ≥4 with body text) from a real booking, newest first.
+
+    Seeded reviews have no booking, and the homepage printed them as guests' words
+    under "Loved by 10,000+ Customers" (Montenegro: 559 reviews, 0 verified).
+    """
     from plugins.installed.booking_marketplace.models import ServiceReview
+    from plugins.installed.booking_marketplace.services import _verified
 
     try:
         rows = (
-            ServiceReview.objects.filter(rating__gte=4)
+            ServiceReview.objects.filter(_verified(), rating__gte=4)
             .exclude(body='')
             .select_related('service')
             .order_by('-created_at')[:4]
@@ -161,8 +167,35 @@ def home_testimonials():
                 'avatar': (r.author_name or 'G')[0].upper(),
                 'text': r.body,
                 'experience': r.service.name,
+                'rating': r.rating,
             }
             for r in rows
         ]
     except Exception:  # noqa: BLE001
         return []
+
+
+@register.simple_tag
+def listing_rating(service):
+    """(count, average) of a listing's verified reviews, the only rating a card or
+    page may show as guests' (services.verified_rating). Uses a list's
+    `with_verified_rating` annotation when present."""
+    from plugins.installed.booking_marketplace.services import verified_rating
+
+    try:
+        count, avg = verified_rating(service)
+    except Exception:  # noqa: BLE001 — a card never fails over its rating
+        return (0, None)
+    return (count, round(float(avg), 1) if avg is not None else None)
+
+
+@register.simple_tag
+def verified_review_summary():
+    """{'count', 'avg'} over every verified review, for the homepage's guest section."""
+    from django.db.models import Avg, Count
+
+    from plugins.installed.booking_marketplace.models import ServiceReview
+    from plugins.installed.booking_marketplace.services import _verified
+
+    agg = ServiceReview.objects.filter(_verified()).aggregate(n=Count('id'), avg=Avg('rating'))
+    return {'count': agg['n'] or 0, 'avg': round(float(agg['avg']), 1) if agg['avg'] else None}

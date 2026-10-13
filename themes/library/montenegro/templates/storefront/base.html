@@ -42,6 +42,9 @@ which is exactly what this theme was relying on before it adopted the contract.{
 <!-- Adriatic Design System — compiled Tailwind (self-hosted from theme static; CSP-clean,
      no runtime CDN/FOUC). Rebuild after class changes: ./scripts/build-css.sh -->
 <link rel="stylesheet" href="{% static 'montenegro/tailwind.css' %}">
+{% comment %}Layout fixes and polish over the compiled Tailwind file, which has no build
+step here: a class it never saw does not exist, so new rules live in refresh.css.{% endcomment %}
+<link rel="stylesheet" href="{% static 'montenegro/refresh.css' %}">
 
 <style>
   :root {
@@ -526,10 +529,12 @@ which is exactly what this theme was relying on before it adopted the contract.{
           <button type="submit" name="language" value="sr" class="{% if CUR_LANG == 'sr' %}text-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %} transition-colors">Srpski</button>
         </form>
         <span class="text-muted-foreground">€ EUR</span>
+        {% comment %}Social icons only for a profile the store has (Settings → store
+        social_links); they all linked to "#".{% endcomment %}
         <div class="flex items-center gap-3 text-foreground">
-          <a href="#" class="hover:text-muted-foreground transition-colors" aria-label="Facebook"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
-          <a href="#" class="hover:text-muted-foreground transition-colors" aria-label="Twitter"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg></a>
-          <a href="#" class="hover:text-muted-foreground transition-colors" aria-label="Instagram"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg></a>
+          {% if STORE_SOCIAL_LINKS.facebook %}          <a href="{{ STORE_SOCIAL_LINKS.facebook }}" target="_blank" rel="noopener" class="hover:text-muted-foreground transition-colors" aria-label="Facebook"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>{% endif %}
+          {% if STORE_SOCIAL_LINKS.twitter %}          <a href="{{ STORE_SOCIAL_LINKS.twitter }}" target="_blank" rel="noopener" class="hover:text-muted-foreground transition-colors" aria-label="Twitter"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg></a>{% endif %}
+          {% if STORE_SOCIAL_LINKS.instagram %}          <a href="{{ STORE_SOCIAL_LINKS.instagram }}" target="_blank" rel="noopener" class="hover:text-muted-foreground transition-colors" aria-label="Instagram"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg></a>{% endif %}
         </div>
       </div>
     </div>

@@ -1060,8 +1060,8 @@ msgstr "Primorski gradovi"
 msgid "Culture"
 msgstr "Kultura"
 
-msgid "Digital gift cards delivered instantly. Valid for 2 years. Redeemable on 500+ experiences across Montenegro."
-msgstr "Digitalne poklon kartice se isporučuju odmah. Važe 2 godine. Iskoristive na 500+ doživljaja širom Crne Gore."
+msgid "Digital gift cards delivered instantly. Valid for 2 years. Redeemable on any experience across Montenegro."
+msgstr "Digitalne poklon kartice se isporučuju odmah. Važe 2 godine. Iskoristive za bilo koji doživljaj širom Crne Gore."
 
 msgid "Discover Montenegro"
 msgstr "Otkrijte Crnu Goru"
@@ -4098,3 +4098,23 @@ msgstr "Najbliži aerodrom"
 
 msgid "Edit this listing"
 msgstr "Uredi ovu ponudu"
+
+msgid "Top pick"
+msgstr "Preporuka"
+
+msgid "What guests say"
+msgstr "Utisci gostiju"
+
+msgid "Any date"
+msgstr "Bilo koji datum"
+
+#, python-format
+msgid "Rated %(r)s out of 5"
+msgstr "Ocjena %(r)s od 5"
+
+#, python-format
+msgid "%(avg)s from %(n)s verified review"
+msgid_plural "%(avg)s from %(n)s verified reviews"
+msgstr[0] "%(avg)s iz %(n)s potvrđene recenzije"
+msgstr[1] "%(avg)s iz %(n)s potvrđene recenzije"
+msgstr[2] "%(avg)s iz %(n)s potvrđenih recenzija"

@@ -33,11 +33,14 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         </button>
       </div>
     </div>
+    {% comment %}The rating, the review count and Superhost read only reviews from a real
+    booking (services.verified_rating); the stored columns count seeded reviews too.{% endcomment %}
+    {% listing_rating service as vr %}
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm">
       <div class="flex items-center gap-1">
-        <svg class="w-4 h-4 fill-foreground text-foreground" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        <span class="font-semibold">{% if service.rating %}{{ service.rating }}{% else %}{% trans "New" %}{% endif %}</span>
-        {% if service.review_count %}<span class="text-muted-foreground">·</span><span class="underline text-muted-foreground">{{ service.review_count }} {% trans "reviews" %}</span>{% endif %}
+        {% if vr.0 %}<svg class="w-4 h-4 fill-foreground text-foreground" viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span class="font-semibold">{{ vr.1 }}</span><span class="text-muted-foreground">·</span><span class="underline text-muted-foreground">{{ vr.0 }} {% trans "reviews" %}</span>
+        {% else %}<span class="font-semibold">{% trans "New" %}</span>{% endif %}
       </div>
       {% if service.is_bestseller %}
       <span class="text-muted-foreground">·</span>
@@ -82,7 +85,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
       <!-- Host -->
       <div class="flex items-center justify-between pb-8 border-b border-border">
         <div>
-          <h2 class="text-xl font-semibold text-foreground flex flex-wrap items-center gap-2">{% trans "Hosted by" %} {{ service.vendor.name }}{% if service.rating >= 4.8 and service.review_count >= 50 %}<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent-warm/15 text-accent-warm"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>{% trans "Superhost" %}</span>{% endif %}</h2>
+          <h2 class="text-xl font-semibold text-foreground flex flex-wrap items-center gap-2">{% trans "Hosted by" %} {{ service.vendor.name }}{% if vr.1 >= 4.8 and vr.0 >= 50 %}<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent-warm/15 text-accent-warm"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>{% trans "Superhost" %}</span>{% endif %}</h2>
           <div class="flex items-center gap-3 text-muted-foreground mt-1 text-sm">
             {% if service.duration_label %}<span class="flex items-center gap-1.5"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>{{ service.duration_label }}</span>{% endif %}
             {% if service.max_guests_per_booking %}<span class="flex items-center gap-1.5"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>{% trans "Up to" %} {{ service.max_guests_per_booking }}</span>{% endif %}
@@ -353,8 +356,8 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
       <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-semibold text-2xl shrink-0">{{ service.vendor.name|first|upper }}</div>
       <div>
         <p class="font-semibold text-foreground text-lg">{{ service.vendor.name }}</p>
-        <p class="text-sm text-muted-foreground">{% trans "Experience host" %}{% if service.rating >= 4.8 and service.review_count >= 50 %} · <span class="text-accent-warm font-medium">{% trans "Superhost" %}</span>{% endif %}</p>
-        {% if service.rating %}<p class="flex items-center gap-1 text-sm mt-1"><svg class="w-4 h-4 fill-foreground text-foreground" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span class="font-medium">{{ service.rating }}</span>{% if service.review_count %} <span class="text-muted-foreground">({{ service.review_count }} {% trans "reviews" %})</span>{% endif %}</p>{% endif %}
+        <p class="text-sm text-muted-foreground">{% trans "Experience host" %}{% if vr.1 >= 4.8 and vr.0 >= 50 %} · <span class="text-accent-warm font-medium">{% trans "Superhost" %}</span>{% endif %}</p>
+        {% if vr.0 %}<p class="flex items-center gap-1 text-sm mt-1"><svg class="w-4 h-4 fill-foreground text-foreground" viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span class="font-medium">{{ vr.1 }}</span> <span class="text-muted-foreground">({{ vr.0 }} {% trans "reviews" %})</span></p>{% endif %}
       </div>
     </div>
   </section>

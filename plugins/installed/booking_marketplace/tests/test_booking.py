@@ -383,7 +383,7 @@ class RichExperienceTests(MontenegroThemeMixin, TestCase):
 
     def test_card_shows_rich_fields(self):
         body = Client().get('/bookings/').content.decode('utf-8')
-        # The badge's copy is the theme's to choose (it reads 'Guest favourite'
+        # The badge's copy is the theme's to choose (it reads 'Top pick'
         # today); assert the marker, not a display word.
         self.assertIn('data-badge="bestseller"', body)
         self.assertIn('Rich Kayak', body)
@@ -394,7 +394,9 @@ class RichExperienceTests(MontenegroThemeMixin, TestCase):
         self.assertIn('Highlights', body)
         self.assertIn('Hidden caves', body)
         self.assertIn("What's included", body)
-        self.assertIn('234 reviews', body)
+        # The stored review_count (234) counts seeded rows too: the page shows a
+        # count only from reviews with a booking behind them (verified_rating).
+        self.assertNotIn('234 reviews', body)
 
     def test_detail_serbian_labels(self):
         body = Client().get('/sr/bookings/rich-kayak/').content.decode('utf-8')

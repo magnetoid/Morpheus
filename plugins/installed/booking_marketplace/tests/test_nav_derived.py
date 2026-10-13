@@ -72,14 +72,33 @@ class DerivedTestimonialsTests(TestCase):
         vendor = Vendor.objects.create(name='Host', slug='host', is_active=True)
         cat = Category.objects.create(name='Adventure', slug='adventure')
         svc = _mk('rafting', cat, vendor)
+        import datetime
+
+        from django.utils import timezone
+
+        from plugins.installed.booking_marketplace.models import Booking
+
+        booking = Booking.objects.create(
+            service=svc,
+            customer_name='Ana',
+            customer_email='ana@example.com',
+            booking_date=timezone.localdate() + datetime.timedelta(days=2),
+            guests=1,
+            status='completed',
+        )
         ServiceReview.objects.create(
             service=svc,
+            booking=booking,
             author_name='Ana',
             rating=5,
             body='Unforgettable rapids.',
             title='Wow',
         )
         ServiceReview.objects.create(service=svc, author_name='Lo', rating=3, body='meh')
+        # Seeded: high-rated with text, but no booking behind it.
+        ServiceReview.objects.create(
+            service=svc, author_name='Seed', rating=5, body='Seeded praise.'
+        )
 
     def test_only_high_rated_with_text(self):
         t = home_testimonials()
