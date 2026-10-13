@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.105.0 — 2026-10-13
+
+**Linda can report Morpheus bugs to the Morpheus team, and works within each person's role**
+
+- Linda writes up a defect she finds in Morpheus itself (what is wrong, where, and how it was or could be fixed) on the new AI → Reports page. Words, never code, and nothing leaves the store on its own.
+- The owner reviews and edits a report, then sends it: GitHub's new-issue form opens filled in, in the owner's own browser and account, with emails, phone numbers and IP addresses hidden. The store holds no GitHub token.
+- When a store enforces staff roles, Linda only does what that person's role allows on the dashboard: an inventory manager's Linda can adjust stock but cannot switch apps off, change settings, install updates or refund. Under the default 'log only' nothing changes, and owners keep everything.
+
 ## v0.104.1 — 2026-10-13
 
 **A reasoning model no longer returns a blank reply to background agents**
