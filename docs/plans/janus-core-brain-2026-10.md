@@ -98,7 +98,7 @@ admin write-scripts.
   product, now goes through the same gateway. Left for later: deleting the duplicate provider
   classes in favour of `core/agents/llm.py`, the Packy protocol mismatch (Anthropic in the app,
   OpenAI-compatible in core). The reasoning-model empty-completion retry is now in core too
-  (v0.105.0, `OpenAIProvider.respond`), so the Worker and briefing no longer get blank replies
+  (v0.104.1, `OpenAIProvider.respond`), so the Worker and briefing no longer get blank replies
   from a reasoning model. Packy's protocol mismatch is left: it is unverifiable without the
   provider and no store uses it.
 - **Next:** A.4 shopper-agent
