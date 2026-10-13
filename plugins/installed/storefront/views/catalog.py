@@ -88,11 +88,7 @@ def product_list(request):
     # prefetch_related('images') feeds the cache-friendly primary_image property
     # so each product card resolves its cover from memory, not a per-row query
     # (the PLP N+1 the audit flagged).
-    qs = (
-        Product.objects.shoppable()
-        .select_related('category')
-        .prefetch_related('images')
-    )
+    qs = Product.objects.shoppable().select_related('category').prefetch_related('images')
 
     # Search — Postgres full-text on Postgres backends, LIKE fallback elsewhere.
     q = (request.GET.get('q') or '').strip()

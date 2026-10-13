@@ -18,9 +18,7 @@ _PLAIN = {'title', 'description', 'link'}
 def _active_products():
     from plugins.installed.catalog.models import Product  # noqa: PLC0415
 
-    return (
-        Product.objects.shoppable().select_related('category').order_by('-created_at')
-    )
+    return Product.objects.shoppable().select_related('category').order_by('-created_at')
 
 
 def _item_xml(item: dict) -> str:
