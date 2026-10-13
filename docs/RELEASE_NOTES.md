@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.106.2 — 2026-10-13
+
+**CI fix**
+
+- A dashboard test now checks the Bookvault column by its label, after the phone layout gave the column a class. No change for merchants.
+
 ## v0.106.1 — 2026-10-13
 
 **Safer error log, and quieter logs**
