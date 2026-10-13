@@ -16,6 +16,13 @@ class StorefrontPlugin(Plugin):
         from morpheus.core import MorpheusEvents
 
         self.register_urls('plugins.installed.storefront.urls', prefix='')
+        # /csrf/ is a machine endpoint: never language-prefixed.
+        self.register_urls(
+            'plugins.installed.storefront.urls_chrome',
+            prefix='',
+            namespace='storefront_chrome',
+            surface='chrome',
+        )
         # NOTE: order-confirmation email is owned by the core transactional spine
         # (core/emails/handlers.on_order_placed). The storefront used to subscribe
         # ORDER_PLACED to send a second, duplicate copy — removed.
@@ -73,6 +80,19 @@ class StorefrontPlugin(Plugin):
                 },
             },
         }
+
+    def contribute_storefront_blocks(self) -> list:
+        from plugins.contributions import StorefrontBlock
+
+        # Forms on edge-cached pages post with the visitor's own CSRF token
+        # (views/csrf.py); every theme emits global_head.
+        return [
+            StorefrontBlock(
+                slot='global_head',
+                template='storefront/blocks/csrf_refresh.html',
+                priority=5,
+            ),
+        ]
 
     def contribute_hardcoded_pages(self):
         """Functional storefront pages that live in code (views + theme

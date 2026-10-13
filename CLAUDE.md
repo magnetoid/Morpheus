@@ -1295,6 +1295,16 @@ with a token wraps its view in `core.auth.csrf.csrf_exempt_for_bearer` (a sessio
 is still checked; CORS keeps the header to the store's own origins), and its test posts
 with `enforce_csrf_checks=True` and no cookies (`api/tests_csrf_bearer.py`).
 
+**Landmine — an edge-cached page carries someone else's CSRF token.** The storefront marks its
+pages `public, s-maxage=60` (`storefront/middleware.py`), and a CDN that caches them (Montenegro's
+Cloudflare) serves the token minted for whoever filled the cache and drops `Set-Cookie`: every form
+on a cached page answered 403 for everyone else, including the cookie banner's "Accept all"
+(2026-10-13; the other stores were not edge-cached, so only one showed it). `storefront/csrf-refresh.js`
+(contributed to `global_head`) fetches the never-cached `/csrf/` and writes the visitor's cookie value
+into every form's token, which Django accepts. A new storefront form needs nothing more; a script that
+posts must read the token from the cookie or the form after load, never from markup it cached itself.
+Guarded by `storefront/tests/test_csrf_refresh.py`.
+
 **Landmine — a hidden form control still submits, and Django reads the LAST
 value of a repeated key.** The product editor hid inactive per-type cards with
 `el.hidden`; their controls still posted, and the Digital card's trailing
