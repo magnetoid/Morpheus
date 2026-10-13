@@ -82,6 +82,18 @@ class ClientNoiseTests(TestCase):
             )
         self.assertEqual(ErrorEvent.objects.count(), 0)
 
+    def test_safaris_view_transition_skip_is_dropped(self):
+        # Safari words the same abort as an AbortError (montenegro, 2026-10-12).
+        from core.errors.services import record_client_error
+
+        record_client_error(
+            {
+                'name': 'AbortError',
+                'message': 'Skipping view transition because skipTransition() was called.',
+            }
+        )
+        self.assertEqual(ErrorEvent.objects.count(), 0)
+
     def test_a_real_client_error_still_lands(self):
         from core.errors.services import record_client_error
 

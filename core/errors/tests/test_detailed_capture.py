@@ -301,6 +301,17 @@ class FingerprintTests(_Clean):
         )
         self.assertEqual(ErrorEvent.objects.values('fingerprint').distinct().count(), 2)
 
+    def test_an_id_partly_scrubbed_as_a_phone_number_is_still_the_same_problem(self):
+        # The PII scrubber reads a run of digits inside a request id as a phone
+        # number and hashes it, so the id no longer looked like a uuid and the
+        # daily 402 still split into one group per day (dotbooks, 2026-10-11).
+        for rid in ('ccad8165-edb5-484d-b3f8-996778530193', '20e8c068-f144-40ae-928e-a7adcd9d606c'):
+            capture.record_message(
+                f'OpenAI completion error: Error code: 402 - Insufficient Balance (request_id: {rid})',
+                source='log:morpheus.ai.llm',
+            )
+        self.assertEqual(ErrorEvent.objects.values('fingerprint').distinct().count(), 1)
+
     def test_different_status_codes_stay_different_problems(self):
         capture.record_message('Upstream answered 402', source='x')
         capture.record_message('Upstream answered 500', source='x')

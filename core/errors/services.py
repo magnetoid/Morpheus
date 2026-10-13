@@ -42,9 +42,11 @@ def _fingerprint_server(exc: BaseException) -> str:
 #: Parts of a message that change on every occurrence of the same problem: a
 #: provider's request id, a hashed or redacted value, a timestamp in a file name.
 #: Left in, "Insufficient Balance (request_id: …)" became one group per day.
+#: The PII scrubber hashes a run of digits inside an id as a phone number, so an
+#: id with a ``<redacted:…>`` piece glued to it is the same placeholder as a uuid.
 _VOLATILE = (
-    (re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', re.I), '<uuid>'),
-    (re.compile(r'<redacted:[0-9a-f]+>'), '<redacted>'),
+    (re.compile(r'[0-9a-f-]*<redacted:[0-9a-f]+>[0-9a-f-]*', re.I), '<id>'),
+    (re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', re.I), '<id>'),
     (re.compile(r'\b[0-9a-f]{12,}\b', re.I), '<hex>'),
     (re.compile(r'\d{6,}'), '<n>'),
 )
@@ -285,7 +287,10 @@ _JS_FRAME_RE = re.compile(r'(?:https?://[^\s)]+|/[^\s)]+):(\d+)(?::\d+)?')
 #: Browser noise that is not an error. A View Transition is aborted whenever a
 #: navigation interrupts one still in flight; the browser reports it as an
 #: unhandled rejection, and it was the most common "error" on three live stores.
-_CLIENT_NOISE = (('InvalidStateError', 'Transition was aborted'),)
+_CLIENT_NOISE = (
+    ('InvalidStateError', 'Transition was aborted'),
+    ('AbortError', 'Skipping view transition'),  # Safari's wording of the same abort
+)
 
 
 def is_client_noise(name: str, message: str) -> bool:
