@@ -122,7 +122,30 @@ def daily_spend_usd(exclude_id=None) -> float:
         .annotate(pt=Sum('prompt_tokens'), ct=Sum('completion_tokens'))
     )
     rows += _assistant_usage_today()
+    rows += _app_usage_today()
     return sum(estimate_cost(r['model'] or '', r['pt'] or 0, r['ct'] or 0) for r in rows)
+
+
+def _app_usage_today() -> list[dict]:
+    """Model calls apps made today outside agent runs (the dashboard's AI buttons,
+    the Pulse rewrite, classification), reported through ``AI_USAGE_TODAY``."""
+    try:
+        from core.hooks import MorpheusEvents, hook_registry
+
+        rows = hook_registry.filter(MorpheusEvents.AI_USAGE_TODAY, [], since=today_start())
+    except Exception:  # noqa: BLE001 — a broken reporter must not break the cap check
+        return []
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        if isinstance(r, dict):
+            out.append(
+                {
+                    'model': str(r.get('model') or ''),
+                    'pt': int(r.get('pt') or 0),
+                    'ct': int(r.get('ct') or 0),
+                }
+            )
+    return out
 
 
 def _assistant_usage_today() -> list[dict]:

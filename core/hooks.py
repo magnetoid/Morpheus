@@ -734,6 +734,13 @@ class MorpheusEvents:
     #   disabled ai_content yields the plain prompt (ADR 0017 inversion).
     AGENT_SYSTEM_PROMPT = 'agent.system_prompt'  # filter
 
+    # AI_USAGE_TODAY — filter, value=list of {'model', 'pt', 'ct'} (model name,
+    #   prompt tokens, completion tokens), kwargs: since (start of today). Fired by
+    #   core/agents/guardrails.py:daily_spend_usd so an app's own model calls count
+    #   toward the merchant's daily spend cap. ai_assistant reports its provider
+    #   gateway's calls (its AIInteraction rows); core never imports the app.
+    AI_USAGE_TODAY = 'ai.usage_today'  # filter
+
     # AUTHZ_CAPABILITY_CHECK — filter, value=None|bool ("has anyone answered?"),
     #   kwargs: user, capability (e.g. 'orders.refund'), channel. Fired by
     #   core/authz.py:has_capability, which is the ONE question every sensitive

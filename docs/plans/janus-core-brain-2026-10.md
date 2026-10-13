@@ -92,7 +92,13 @@ admin write-scripts.
 - **v0.104.0 — A.2 shipped:** `LearnedSkill`, `skills.distill/list/record_outcome`, the post-run
   reflection and the agent_core "learned skills" panel are deleted (0 rows on every store). Janus's
   own skills (`skills_list`/`skill_view`/`skill_manage`) and its authored-skills panel stay.
-- **Next:** A.3 one LLM stack, A.4 shopper-agent
+- **v0.104.0 — A.3 (guardrails half) shipped:** every app model call obeys the kill switch and
+  the spend cap (`LLMGateway` wraps each provider's `complete`; usage reported through
+  `AI_USAGE_TODAY`); bulk catalog copy, which had called a non-existent method and failed on every
+  product, now goes through the same gateway. Left for later: deleting the duplicate provider
+  classes in favour of `core/agents/llm.py`, the Packy protocol mismatch (Anthropic in the app,
+  OpenAI-compatible in core), and porting the reasoning-model retry into core.
+- **Next:** A.4 shopper-agent
   authz (owner), B role tiers (superadmin per-session grant, decided) after sandbox hardening, C the
   technical-report contribution flow on CodeProposal (decided).
 

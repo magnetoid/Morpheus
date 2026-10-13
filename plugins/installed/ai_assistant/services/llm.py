@@ -9,6 +9,7 @@ ai_assistant plugin config (dashboard) via
 Env vars remain a fallback for local dev.
 """
 
+import functools
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -55,10 +56,53 @@ def _truncated_while_reasoning(response) -> bool:
         return False
 
 
+class AIPaused(RuntimeError):
+    """The merchant's agent guardrails refuse this call: AI is switched off, or
+    today's spend cap is reached. The message is fit to show the merchant."""
+
+
+def guardrail_refusal() -> str:
+    """Why a model call must not run now, or '' to allow.
+
+    The same switch and cap that stop the Worker and Linda (core/agents/guardrails.py).
+    The run cap is left out: a "Generate" click is not an agent run.
+    """
+    from core.agents import guardrails
+
+    if guardrails.agents_paused():
+        return 'AI is paused in Settings → Agent guardrails.'
+    cap = guardrails.daily_spend_cap_usd()
+    if cap and guardrails.daily_spend_usd() >= cap:
+        return "AI has reached today's spend limit set in Agent guardrails."
+    return ''
+
+
+def _guarded(complete):
+    @functools.wraps(complete)
+    def wrapper(self, *args, **kwargs):
+        reason = guardrail_refusal()
+        if reason:
+            raise AIPaused(reason)
+        return complete(self, *args, **kwargs)
+
+    return wrapper
+
+
 class LLMGateway(ABC):
-    """Abstract base — all providers implement this interface."""
+    """Abstract base — all providers implement this interface.
+
+    Every ``complete`` a provider defines is wrapped so it obeys the merchant's
+    agent guardrails first (kill switch, daily spend cap): the dashboard's AI
+    buttons, the Pulse rewrite, classification and store bootstrap all come
+    through here, and once ran with the switch off and outside the cap.
+    """
 
     model: str = ''
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if 'complete' in cls.__dict__:
+            cls.complete = _guarded(cls.__dict__['complete'])
 
     @abstractmethod
     def complete(

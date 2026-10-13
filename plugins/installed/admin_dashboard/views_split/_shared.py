@@ -388,7 +388,7 @@ def call_llm(
     if not app_registry.is_active('ai_assistant'):
         return ('', 'AI provider not configured: the AI assistant app is disabled')
     try:
-        from plugins.installed.ai_assistant.services.llm import get_llm
+        from plugins.installed.ai_assistant.services.llm import AIPaused, get_llm
 
         gateway = get_llm()
     except Exception as e:  # noqa: BLE001 — provider not wired
@@ -401,6 +401,8 @@ def call_llm(
             max_tokens=max_tokens,
             **({'timeout': timeout} if timeout else {}),
         )
+    except AIPaused as e:  # the merchant's guardrails: say so, not "provider error"
+        return ('', str(e))
     except Exception as e:  # noqa: BLE001
         return ('', f'AI provider error: {e}')
     return (text or '').strip(), ''

@@ -186,24 +186,17 @@ def _bulk_run(
 
 
 def _call_llm(user_prompt: str) -> tuple[str, int]:
-    """Call the LLM with brand-voice context. Returns (text, tokens_used).
+    """Call the model with brand-voice context. Returns (text, tokens_used).
 
-    Resolves the provider lazily so dev environments without an API key
-    can run the catalog views without import-time errors.
+    Through the AI app's provider gateway, the one the dashboard's AI buttons use:
+    it obeys the merchant's guardrails (raises ``AIPaused`` when AI is switched off
+    or today's spend cap is reached, which the bulk run records as the item's
+    error) and logs usage that counts toward the cap. It once called a core
+    provider's non-existent ``complete`` and failed on every product. Token use is
+    on the AI usage log, so it is not repeated here.
     """
-    from core.assistant.providers import get_default_provider  # noqa: PLC0415
-
-    provider = get_default_provider()
-    if provider is None:
-        raise RuntimeError('No LLM provider configured (set ANTHROPIC_API_KEY or similar).')
+    from plugins.installed.ai_assistant.services.llm import get_llm  # noqa: PLC0415
 
     system = with_brand_voice('You are an expert e-commerce copywriter for this shop.')
-    response = provider.complete(
-        system=system,
-        messages=[{'role': 'user', 'content': user_prompt}],
-        max_tokens=1200,
-        temperature=0.5,
-    )
-    text = (response.get('text') or '').strip()
-    tokens = int(response.get('usage', {}).get('total_tokens', 0))
-    return text, tokens
+    text = get_llm().complete(user_prompt, system=system, max_tokens=1200, temperature=0.5)
+    return (text or '').strip(), 0

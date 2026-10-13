@@ -1174,7 +1174,14 @@ panel schema + `get_config_schema` in `agent_core/app.py`, the accessors in
 shared constant; a rename silently breaks enforcement AND the AI-Act report (both
 fail soft to off/empty). The kill switch aborts via `_fail` (a hard run stop),
 not `_tool_back` (a per-step soft refusal); enforced off-by-default (caps `0` =
-unlimited). Guarded by `core/agents/tests/test_guardrails.py` +
+unlimited). (4) **Every model call outside an agent run obeys them too (v0.104.0).** The
+dashboard's AI buttons, the Pulse rewrite, classification, store bootstrap and bulk catalog copy
+go through `ai_assistant`'s provider gateway, which ran with the switch off and outside the cap:
+`LLMGateway.__init_subclass__` now wraps every provider's `complete` in the kill-switch + spend-cap
+check (raises `AIPaused`, a message fit for the merchant; the run cap is skipped — a click is not
+a run), and the app reports its `AIInteraction` usage to the cap through the `AI_USAGE_TODAY`
+filter, so core never imports the app. A new way to call a model goes through that gateway or
+the agent runtime, never a raw provider. Guarded by `core/agents/tests/test_guardrails.py` +
 `catalog/tests/test_price_cap.py` + `orders/tests/test_refund_cap.py`.
 
 **Landmine — a new LLM provider must be wired in *three* places or it silently

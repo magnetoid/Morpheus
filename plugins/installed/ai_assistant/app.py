@@ -113,6 +113,8 @@ class AIAssistantPlugin(Plugin):
         self.register_hook(events.DASHBOARD_SETUP_STEPS, self.on_setup_steps, priority=30)
         # Morpheus Brain: contribute unread merchant insights (→ improvements.insights).
         self.register_hook(events.BRAIN_SIGNALS, self.on_brain_signals, priority=50)
+        # This app's own model calls count toward the merchant's daily spend cap.
+        self.register_hook(events.AI_USAGE_TODAY, self.on_ai_usage_today, priority=50)
 
         # Autonomy gate: answer the background-agent scheduler's AUTONOMY_ENABLED
         # filter from the `enable_autonomous_operator` flag (Settings → AI). This
@@ -225,6 +227,20 @@ class AIAssistantPlugin(Plugin):
             pulse_daily_refresh.delay()
         except Exception:  # noqa: BLE001
             pass
+
+    def on_ai_usage_today(self, value, since=None, **_):
+        """Today's provider-gateway calls (AIInteraction rows), for the spend cap."""
+        from django.db.models import Sum
+
+        from plugins.installed.ai_assistant.models import AIInteraction
+
+        qs = AIInteraction.objects.all()
+        if since is not None:
+            qs = qs.filter(created_at__gte=since)
+        rows = qs.values('model_used').annotate(
+            pt=Sum('prompt_tokens'), ct=Sum('completion_tokens')
+        )
+        return [*value, *({'model': r['model_used'], 'pt': r['pt'], 'ct': r['ct']} for r in rows)]
 
     def on_brain_signals(self, value, **kwargs):
         """Merge unread merchant insights into the Brain's Improvements panel
