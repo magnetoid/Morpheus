@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.102.0 — 2026-10-13
+
+**Linda's chat is interactive: her words, questions with buttons, Approve for changes**
+
+- Linda: while she works, the chat shows what she says before each group of steps, a running token count, and when the AI provider fails, its status and whether she tries again.
+- Linda: she can ask you a question with up to four answer buttons under her reply. A click answers her question; it never approves a change.
+- Linda: a change waiting for your yes shows as a card with the exact change and Approve or Decline, and the step reads "Waiting for your approval" instead of failed.
+- Errors: a provider error with a fresh request id each day is now one group instead of one per day, and Safari's harmless view-transition abort is no longer recorded.
+- AI Pulse: the morning rewrite of the dashboard's insight cards may take up to 90 seconds per card, so a reasoning model no longer times out (Irving).
+- Apps: linda_generated is deleted. It loaded an empty package and could never hold anything again.
+
 ## v0.101.0 — 2026-10-12
 
 **Sold files stay private, and the shop makes no promises it does not keep**
