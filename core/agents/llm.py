@@ -221,6 +221,27 @@ class LLMProvider(ABC):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# A reasoning model bills hidden thinking against max_tokens; sized for a
+# non-reasoning model it is eaten by thinking and the API returns an empty
+# answer. The retry needs room and its own budget (thinking outruns the 20s
+# client default), capped below the gunicorn worker timeout.
+_REASONING_MIN_TOKENS = 4000
+_REASONING_RETRY_TIMEOUT_SECS = 45
+
+
+def _truncated_while_reasoning(completion: Any) -> bool:
+    """True when a completion came back empty because the model hit its token
+    ceiling mid-reasoning (HTTP 200, empty content, finish_reason='length',
+    reasoning_tokens spent)."""
+    try:
+        if getattr(completion.choices[0], 'finish_reason', '') != 'length':
+            return False
+        details = getattr(completion.usage, 'completion_tokens_details', None)
+        return bool(getattr(details, 'reasoning_tokens', 0) or 0)
+    except (AttributeError, IndexError, TypeError):
+        return False
+
+
 class OpenAIProvider(LLMProvider):
     name = 'openai'
 
@@ -280,6 +301,20 @@ class OpenAIProvider(LLMProvider):
         completion = self._client.chat.completions.create(**kwargs)
         choice = completion.choices[0]
         msg = choice.message
+        # A reasoning model can spend its whole budget on hidden thinking and
+        # return HTTP 200 with empty content and finish_reason='length'. Without
+        # a tool call that is not an answer, so retry once with headroom (the
+        # prod deepseek model did this; mirrors ai_assistant's gateway).
+        if (
+            not (msg.content or '')
+            and not (getattr(msg, 'tool_calls', None) or [])
+            and _truncated_while_reasoning(completion)
+        ):
+            kwargs['max_tokens'] = max(max_tokens * 8, _REASONING_MIN_TOKENS)
+            kwargs['timeout'] = _REASONING_RETRY_TIMEOUT_SECS
+            completion = self._client.chat.completions.create(**kwargs)
+            choice = completion.choices[0]
+            msg = choice.message
         tool_calls: list[LLMToolCall] = []
         for tc in getattr(msg, 'tool_calls', None) or []:
             parse_error = ''

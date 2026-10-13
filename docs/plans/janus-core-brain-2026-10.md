@@ -97,7 +97,10 @@ admin write-scripts.
   `AI_USAGE_TODAY`); bulk catalog copy, which had called a non-existent method and failed on every
   product, now goes through the same gateway. Left for later: deleting the duplicate provider
   classes in favour of `core/agents/llm.py`, the Packy protocol mismatch (Anthropic in the app,
-  OpenAI-compatible in core), and porting the reasoning-model retry into core.
+  OpenAI-compatible in core). The reasoning-model empty-completion retry is now in core too
+  (v0.105.0, `OpenAIProvider.respond`), so the Worker and briefing no longer get blank replies
+  from a reasoning model. Packy's protocol mismatch is left: it is unverifiable without the
+  provider and no store uses it.
 - **Next:** A.4 shopper-agent
   authz (owner), B role tiers (superadmin per-session grant, decided) after sandbox hardening, C the
   technical-report contribution flow on CodeProposal (decided).

@@ -283,3 +283,80 @@ class FallbackRouterTests(SimpleTestCase):
             provider = get_llm_provider('deepseek', use_fallback=True)
         self.assertIsInstance(provider, FallbackProviderRouter)
         self.assertEqual([s.name for s in provider.secondaries], ['anthropic'])
+
+
+class ReasoningRetryTests(SimpleTestCase):
+    """A reasoning model that spends its whole budget thinking returns HTTP 200
+    with empty content and finish_reason='length'. Core read that as "nothing to
+    say" and the Worker/briefing got an empty reply (the prod deepseek model). It
+    now retries once with headroom. Mirrors ai_assistant's gateway fix.
+    """
+
+    def _completion(self, content, finish_reason='stop', reasoning_tokens=0, tool_calls=None):
+        details = SimpleNamespace(reasoning_tokens=reasoning_tokens)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content=content, tool_calls=tool_calls or []),
+                    finish_reason=finish_reason,
+                )
+            ],
+            usage=SimpleNamespace(
+                prompt_tokens=5,
+                completion_tokens=reasoning_tokens or 7,
+                completion_tokens_details=details,
+            ),
+        )
+
+    def _provider(self, completions):
+        p = OpenAIProvider.__new__(OpenAIProvider)
+        p.model = 'deepseek-reasoner'
+        calls = []
+
+        def create(**kw):
+            calls.append(kw)
+            return completions[len(calls) - 1]
+
+        p._client = SimpleNamespace(
+            chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+        )
+        p._calls = calls
+        return p
+
+    def test_empty_reasoning_completion_is_retried_with_headroom(self):
+        p = self._provider(
+            [
+                self._completion('', 'length', reasoning_tokens=1024),
+                self._completion('The real answer.', 'stop', reasoning_tokens=800),
+            ]
+        )
+        resp = p.respond(
+            messages=[LLMMessage(role='user', content='reasoning-retry-a')], max_tokens=1024
+        )
+        self.assertEqual(resp.text, 'The real answer.')
+        self.assertEqual(len(p._calls), 2)
+        self.assertGreater(p._calls[1]['max_tokens'], p._calls[0]['max_tokens'])
+
+    def test_a_tool_call_with_empty_text_is_not_a_reasoning_burn(self):
+        tc = SimpleNamespace(id='c1', function=SimpleNamespace(name='do', arguments='{}'))
+        p = self._provider([self._completion('', 'tool_calls', tool_calls=[tc])])
+        resp = p.respond(messages=[LLMMessage(role='user', content='reasoning-retry-tool')])
+        self.assertEqual(len(p._calls), 1)
+        self.assertEqual(resp.tool_calls[0].name, 'do')
+
+    def test_a_healthy_answer_is_not_retried(self):
+        p = self._provider([self._completion('Done.', 'stop')])
+        resp = p.respond(messages=[LLMMessage(role='user', content='reasoning-retry-healthy')])
+        self.assertEqual((resp.text, len(p._calls)), ('Done.', 1))
+
+    def test_two_empty_answers_do_not_loop(self):
+        p = self._provider(
+            [
+                self._completion('', 'length', reasoning_tokens=1024),
+                self._completion('', 'length', reasoning_tokens=8000),
+            ]
+        )
+        resp = p.respond(
+            messages=[LLMMessage(role='user', content='reasoning-retry-loop')], max_tokens=1024
+        )
+        self.assertEqual((resp.text, len(p._calls)), ('', 2))
