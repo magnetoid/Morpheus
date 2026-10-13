@@ -63,6 +63,10 @@ def generate_pulse_insights(*, humanize: bool = True, timeout: float | None = No
             continue
         if insight is None:
             continue
+        # One unread card per signal. Keyed on the signal, before the model
+        # rewords the title: a title-based key (the count is in it, and the
+        # rewording varies) made a new card on every refresh.
+        insight['suggested_action'].setdefault('signature', _sig_of_signal(fn.__name__))
         if humanize:
             _humanize_signal(insight, timeout=timeout)
         out.append(_upsert(insight))
@@ -144,6 +148,10 @@ def _upsert(payload: dict):
         )
         return existing
     return MerchantInsight.objects.create(**payload)
+
+
+def _sig_of_signal(name: str) -> str:
+    return hashlib.sha256(f'pulse|{name}'.encode()).hexdigest()[:16]
 
 
 def _sig(payload: dict) -> str:
