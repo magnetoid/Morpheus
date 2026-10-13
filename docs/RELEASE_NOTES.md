@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.107.1 — 2026-10-13
+
+**Montenegro category strip polish**
+
+- The category strip on Montenegro's home page is one compact row, and the gap under the hero is gone.
+
 ## v0.107.0 — 2026-10-13
 
 **Montenegro storefront: fixes and honest ratings**
