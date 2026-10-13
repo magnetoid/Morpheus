@@ -137,7 +137,12 @@ def reembed_all_products(batch_size: int = 50):
     return {'dispatched_chunks': len(chunks), 'total_products': len(ids)}
 
 
-@shared_task
+#: Seconds per Pulse rewrite call in the background task.
+PULSE_LLM_TIMEOUT_S = 90
+
+
+# Six cards at up to 90 s each outlast the global 4-minute soft limit.
+@shared_task(time_limit=660, soft_time_limit=600)
 def pulse_daily_refresh():
     """Linda's Pulse — refresh proactive insight cards on the dashboard.
 
@@ -150,7 +155,9 @@ def pulse_daily_refresh():
     try:
         from plugins.installed.ai_assistant.services.pulse import generate_pulse_insights
 
-        out = generate_pulse_insights()
+        # No request is waiting: a reasoning model may think past the client's
+        # request-sized 20 s (Irving timed out every morning until v0.102.0).
+        out = generate_pulse_insights(timeout=PULSE_LLM_TIMEOUT_S)
         logger.info('Pulse: %d insight(s) emitted', len(out))
     except Exception as e:  # noqa: BLE001
         logger.warning('Pulse: refresh failed: %s', e, exc_info=True)

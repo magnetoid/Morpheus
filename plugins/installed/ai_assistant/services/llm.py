@@ -145,12 +145,17 @@ class OpenAIGateway(LLMGateway):
         messages.append({'role': 'user', 'content': prompt})
 
         start = time.monotonic()
+        # A background caller (a Celery task, no request waiting) may give the
+        # call longer than the client's request-sized default.
+        timeout = kwargs.get('timeout')
+        per_call = {'timeout': timeout} if timeout else {}
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                **per_call,
             )
             result = response.choices[0].message.content or ''
             if not result and _truncated_while_reasoning(response):
@@ -175,7 +180,7 @@ class OpenAIGateway(LLMGateway):
                     messages=messages,
                     temperature=temperature,
                     max_tokens=retry_tokens,
-                    timeout=_REASONING_RETRY_TIMEOUT_SECS,
+                    timeout=max(_REASONING_RETRY_TIMEOUT_SECS, timeout or 0),
                 )
                 result = response.choices[0].message.content or ''
             elapsed = int((time.monotonic() - start) * 1000)

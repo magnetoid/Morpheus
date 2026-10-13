@@ -353,7 +353,9 @@ def _bulk_ids(request: HttpRequest, field: str = 'ids') -> list[str]:
     return out[:500]
 
 
-def call_llm(prompt: str, system: str = '', max_tokens: int = 600) -> tuple[str, str]:
+def call_llm(
+    prompt: str, system: str = '', max_tokens: int = 600, timeout: float | None = None
+) -> tuple[str, str]:
     """Single source of truth for "ask the configured AI provider for some
     text" from dashboard endpoints.
 
@@ -366,6 +368,9 @@ def call_llm(prompt: str, system: str = '', max_tokens: int = 600) -> tuple[str,
     (no provider configured, network glitch, gateway error) returns
     ``('', friendly_message)`` so the caller can return a clean JSON
     payload without needing per-route try/except.
+
+    ``timeout`` (seconds) is for background callers only: a request must stay
+    under gunicorn's 60 s, which the provider's default already respects.
     """
     from plugins.registry import app_registry
 
@@ -394,6 +399,7 @@ def call_llm(prompt: str, system: str = '', max_tokens: int = 600) -> tuple[str,
             system=system,
             temperature=0.6,
             max_tokens=max_tokens,
+            **({'timeout': timeout} if timeout else {}),
         )
     except Exception as e:  # noqa: BLE001
         return ('', f'AI provider error: {e}')

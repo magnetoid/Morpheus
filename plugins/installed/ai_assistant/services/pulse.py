@@ -37,13 +37,14 @@ logger = logging.getLogger('morpheus.pulse')
 _PRIORITY = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
 
 
-def generate_pulse_insights(*, humanize: bool = True) -> list:
+def generate_pulse_insights(*, humanize: bool = True, timeout: float | None = None) -> list:
     """Evaluate every signal, write/update MerchantInsight rows, return them.
 
     When ``humanize`` is True (default), each rule-based card is passed
     through ``call_llm()`` so the title/body match the merchant's brand
     voice. Failures are silent — falls back to rule-written copy so
-    Pulse still works without an AI provider configured.
+    Pulse still works without an AI provider configured. ``timeout`` is per
+    model call, for the Celery task only (a request must stay under 60 s).
     """
 
     out = []
@@ -63,13 +64,13 @@ def generate_pulse_insights(*, humanize: bool = True) -> list:
         if insight is None:
             continue
         if humanize:
-            _humanize_signal(insight)
+            _humanize_signal(insight, timeout=timeout)
         out.append(_upsert(insight))
     out.sort(key=lambda i: (_PRIORITY.get(i.priority, 9), -i.created_at.timestamp()))
     return out
 
 
-def _humanize_signal(payload: dict) -> None:
+def _humanize_signal(payload: dict, *, timeout: float | None = None) -> None:
     """Rewrite title + body via the configured LLM in the merchant's brand voice.
 
     Mutates the signal in place. Failures (no provider, parse miss,
@@ -97,7 +98,7 @@ def _humanize_signal(payload: dict) -> None:
     )
     import json as _json
 
-    text, err = call_llm(_json.dumps(facts), system=system, max_tokens=400)
+    text, err = call_llm(_json.dumps(facts), system=system, max_tokens=400, timeout=timeout)
     if err or not text:
         return
     text = text.strip()
