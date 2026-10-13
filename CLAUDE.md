@@ -523,9 +523,16 @@ USER changes into the shared `memories/daily/*.md`, so harvest keeps only
 journal too (`recall_memory` searches the journal; v0.66.0 shipped without both). The generated config sets
 `skills.guard_agent_created: true` (Janus's `auto` default leaves the skill scanner
 **off** under `janus chat -q`), `inline_shell: false`, and `curator.enabled: false`
-(it archives skills into a dot-dir that isn't kept). Linda's MCP turns no longer
-see `memory.remember`/`memory.forget`/`memory.recall`: a second store would split
-what she learns. Learned content can steer but never authorize — store writes still need the
+(it archives skills into a dot-dir that isn't kept). **Two memories, split on purpose
+(v0.103.0):** Janus keeps its *generic* agent learning in `JanusLearning`; the *shop memory*
+(`LindaMemory`, tools `memory.*`) is Morpheus's layer — facts about THIS store, injected into
+every turn as "what you know about this store". Janus may `memory.recall` it freely and propose
+a fact with `memory.remember`, whose write scope makes the edge save it only on the merchant's own
+yes; a superadmin curates it on the dashboard. Reflection writes nothing into it any more (it once
+filled it with generic lessons and `tool_gap.*` rows that were Janus's job and polluted the shop
+facts), and the Worker is not told to write it. External agents never see it. Never move a
+Morpheus-specific fact into Janus's store, and never fork Janus for it
+(`docs/plans/janus-core-brain-2026-10.md`). Learned content can steer but never authorize — store writes still need the
 merchant's own "yes" at the edge — and the merchant reviews and deletes it on
 Settings → AI → Janus. Guarded by `core/assistant/tests/test_janus_learning.py`.
 

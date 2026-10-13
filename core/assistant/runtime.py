@@ -114,7 +114,7 @@ def _format_recent_memories(query: str = '') -> str:
         return ''
     if not rows:
         return ''
-    lines = ['REMEMBERED FACTS — apply silently unless asked:']
+    lines = ['WHAT YOU KNOW ABOUT THIS STORE — apply silently unless asked:']
     for r in rows:
         lines.append(f'  • [{r["scope"]}] {r["key"]}: {r["value"]}')
     return '\n'.join(lines)

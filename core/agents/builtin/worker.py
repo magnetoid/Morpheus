@@ -16,10 +16,10 @@ collects results via `poll_workers` / `wait_for_workers`. Each run is
 its own `AgentRun` row, so the audit trail and observability page work
 unchanged.
 
-Learning loop: at the end of a run, Worker can call `memory.remember`
-(if any non-obvious fact was uncovered) so subsequent sessions inherit
-that knowledge. Skills are the durable layer — every recurring pattern
-should be promoted to a `Skill` at plugin load time.
+A Worker does not write the shop memory: facts about the store are saved only
+when Janus proposes one and the merchant confirms it, or a superadmin edits it
+(docs/plans/janus-core-brain-2026-10.md). Skills are the durable layer — a
+recurring pattern should be promoted to a `Skill` at plugin load time.
 """
 
 from __future__ import annotations
@@ -44,8 +44,7 @@ prompt_registry.register(
             'the objective itself authorises the change.\n'
             '  • When you finish, return a short structured report:\n'
             '      1. What you did (3–6 bullet points, tool-cited).\n'
-            '      2. Anything surprising worth remembering for future sessions '
-            '(call `memory.remember` if the merchant would benefit).\n'
+            '      2. Anything surprising worth flagging for a human.\n'
             '      3. What you did NOT do and would defer to a human.\n'
             '  • Be terse. The orchestrator (Linda) reads your output verbatim.'
         ),

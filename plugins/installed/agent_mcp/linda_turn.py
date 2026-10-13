@@ -142,10 +142,13 @@ def scope_profile(turn: LindaTurn) -> tuple[str, ...]:
     return tuple(s for s in LINDA_SCOPES if s in turn.external.scopes)
 
 
-# Janus keeps what Linda learns in its own memory (core/assistant/janus_learning.py),
-# with its own recall. A second memory store would split what she learns, and the
-# LindaMemory facts that remain are already injected into her prompt.
-ENGINE_OWNED_TOOLS = frozenset({'memory.remember', 'memory.forget', 'memory.recall'})
+# Two memories, split on purpose (docs/plans/janus-core-brain-2026-10.md). Janus keeps
+# its generic agent learning in its own store (core/assistant/janus_learning.py). The
+# shop memory (memory.*) is Morpheus's layer: facts about THIS store. Janus may recall
+# it freely and propose a fact with memory.remember; that write scope means the edge
+# saves it only on the merchant's own yes (needs_consent). External agents never see it
+# (agent_mcp/views.py and servers.py keep their own exclusions).
+ENGINE_OWNED_TOOLS: frozenset[str] = frozenset()
 
 # ── Linda's catalogue ───────────────────────────────────────────────────────
 # Linda runs a store, so she gets every registered store tool inside her scope

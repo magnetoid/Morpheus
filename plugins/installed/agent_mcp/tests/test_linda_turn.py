@@ -136,13 +136,15 @@ class LindaTurnEdgeTests(TestCase):
         self.assertIn('not exposed', resp['error']['message'])
         self.assertEqual(self.write.calls, [])
 
-    def test_linda_learns_through_janus_not_a_second_memory_store(self):
+    def test_a_shop_fact_is_proposed_not_saved_until_the_merchant_says_yes(self):
+        # Shop memory is Janus-reachable (docs/plans/janus-core-brain-2026-10.md);
+        # its write scope means the edge holds the save for the merchant's own yes.
         remember = _FakeTool('memory.remember', scopes=['system.write'])
         self.tools.append(remember)
         names = {t['name'] for t in self._post('tools/list').json()['result']['tools']}
-        resp = self._call('memory.remember', {'sku': 'x'})
-        self.assertNotIn('memory.remember', names)
-        self.assertIn('not exposed', resp['error']['message'])
+        resp = self._call('memory.remember', {'key': 'store_type', 'value': 'marketplace'})
+        self.assertIn('memory.remember', names)
+        self.assertIn('approval_required', json.dumps(resp))
         self.assertEqual(remember.calls, [])
 
     def test_out_of_profile_tool_is_refused_even_if_called_directly(self):

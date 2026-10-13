@@ -73,18 +73,15 @@ class ReflectionTests(TestCase):
         defaults.update(kw)
         return LearnedSkill.objects.create(name=name, **defaults)
 
-    def test_success_updates_counters_and_stores_lessons(self):
+    def test_success_updates_counters_and_writes_no_shop_memory(self):
+        # Reflection judges the run and counts it on the skill; generic lessons
+        # are Janus's to keep, never written into the shop memory.
         self._skill()
         provider = _reflection_provider(
             {
                 'outcome': 'success',
-                'lessons': [
-                    {
-                        'key': 'meta_descriptions_thin',
-                        'value': 'Product meta descriptions are mostly under 50 chars.',
-                    }
-                ],
-                'tool_gaps': [],
+                'lessons': [{'key': 'meta_descriptions_thin', 'value': 'Under 50 chars.'}],
+                'tool_gaps': ['bulk editor'],
             }
         )
         summary = reflect_on_worker_run(_FakeRun(skills=['seo-audit']), provider=provider)
@@ -92,9 +89,7 @@ class ReflectionTests(TestCase):
         self.assertEqual(summary['outcome'], 'success')
         row = LearnedSkill.objects.get(name='seo-audit')
         self.assertEqual((row.uses, row.successes, row.failures), (1, 1, 0))
-        lesson = LindaMemory.objects.get(key='meta_descriptions_thin')
-        self.assertEqual(lesson.source, 'inferred')
-        self.assertTrue(lesson.embedding)
+        self.assertFalse(LindaMemory.objects.exists())
 
     def test_failure_can_auto_disable_a_bad_skill(self):
         # 4 prior uses, 0 successes — this failure crosses the retire threshold.
@@ -106,32 +101,13 @@ class ReflectionTests(TestCase):
 
         self.assertEqual(summary['skills_disabled'], ['seo-audit'])
         self.assertFalse(LearnedSkill.objects.get(name='seo-audit').enabled)
-        note = LindaMemory.objects.get(key='skill_disabled.seo_audit')
-        self.assertIn('auto-disabled', note.value)
+        self.assertFalse(LindaMemory.objects.exists())
 
     def test_unclear_outcome_records_nothing_on_skills(self):
         self._skill()
         provider = _reflection_provider({'outcome': 'unclear', 'lessons': [], 'tool_gaps': []})
         reflect_on_worker_run(_FakeRun(skills=['seo-audit']), provider=provider)
         self.assertEqual(LearnedSkill.objects.get(name='seo-audit').uses, 0)
-
-    def test_tool_gap_counter_increments_on_repeat(self):
-        payload = {'outcome': 'success', 'lessons': [], 'tool_gaps': ['bulk price editor']}
-        reflect_on_worker_run(_FakeRun(), provider=_reflection_provider(payload))
-        reflect_on_worker_run(_FakeRun(), provider=_reflection_provider(payload))
-        row = LindaMemory.objects.get(key='tool_gap.bulk_price_editor')
-        self.assertTrue(row.value.startswith('seen=2'))
-
-    def test_lessons_capped_at_two(self):
-        provider = _reflection_provider(
-            {
-                'outcome': 'success',
-                'lessons': [{'key': f'k{i}', 'value': f'lesson {i}'} for i in range(5)],
-                'tool_gaps': [],
-            }
-        )
-        summary = reflect_on_worker_run(_FakeRun(), provider=provider)
-        self.assertEqual(summary['lessons'], 2)
 
     def test_unparseable_reflection_is_skipped(self):
         provider = MockLLMProvider(responses=[LLMResponse(text='not json at all')], echo_user=False)

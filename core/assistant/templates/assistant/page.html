@@ -19,7 +19,7 @@ chat would cover them.{% endcomment %}
       <p class="linda-empty-lede">Linda knows the store. Ask, and she'll act — explicit approval first.</p>
       {% if memories %}
       <details class="linda-memories">
-        <summary>{{ memories|length }} thing{{ memories|length|pluralize }} Linda remembers</summary>
+        <summary>{{ memories|length }} thing{{ memories|length|pluralize }} she knows about this store</summary>
         <ul>
           {% for m in memories %}
           <li><strong>{{ m.key }}</strong> — {{ m.value|truncatechars:100 }}</li>

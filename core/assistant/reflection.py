@@ -1,13 +1,14 @@
-"""Post-run reflection — Linda's learning loop.
+"""Post-run reflection — judges a Worker run and updates skill counters.
 
 After a background Worker finishes (`spawn._execute_worker_run`), one cheap
-no-tools LLM call judges the outcome and extracts durable lessons. The verdict
-updates the outcome counters on every LearnedSkill the job used (giving
-`uses/successes/failures` their first writer), lessons land in LindaMemory as
-low-confidence 'inferred' facts, and observed tool gaps are stored under the
-`tool_gap.` key prefix for the self-coding flywheel (Release 3 of
-docs/plans/linda-self-learning-2026-07.md). A skill that keeps failing
-disables itself and leaves a memory explaining why.
+no-tools LLM call judges the outcome. The verdict updates the outcome counters on
+every LearnedSkill the job used (giving `uses/successes/failures` their first
+writer), and a skill that keeps failing disables itself.
+
+It writes nothing into the shop memory. Generic lessons and tool gaps were once
+stored there; that was Janus's job (its own learning, core/assistant/janus_learning.py)
+and it polluted the shop memory, which holds only facts about this store
+(docs/plans/janus-core-brain-2026-10.md).
 
 Fail-soft on every layer: reflection can never affect the run's result, and
 it is skipped entirely when no real LLM provider is configured.
@@ -16,78 +17,18 @@ it is skipped entirely when no real LLM provider is configured.
 from __future__ import annotations
 
 import logging
-import re
 from typing import Any
 
 logger = logging.getLogger('morpheus.assistant.reflection')
 
-_MAX_LESSONS = 2
 _SKIP_PROVIDERS = ('mock', 'unconfigured')
 
 _REFLECTION_SYSTEM = (
     'You review one finished background-agent run on a commerce platform. '
-    'Judge whether the run achieved its objective, and extract at most '
-    f'{_MAX_LESSONS} durable lessons a future agent should remember — stable '
-    'facts, preferences, or workflow insights, never a restatement of the '
-    'task itself. Also note tool gaps: capabilities the agent clearly needed '
-    'but did not have (usually none).\n'
+    'Judge only whether the run achieved its objective.\n'
     'Reply with ONLY this JSON, no prose:\n'
-    '{"outcome": "success" | "failure" | "unclear",\n'
-    ' "lessons": [{"key": "short_snake_case_id", "value": "one sentence"}],\n'
-    ' "tool_gaps": ["short description of the missing tool"]}'
+    '{"outcome": "success" | "failure" | "unclear"}'
 )
-
-
-def _memory_key(raw: str, *, prefix: str = '') -> str:
-    """Normalise an LLM-supplied key to a safe LindaMemory key."""
-    from django.utils.text import slugify
-
-    slug = slugify(str(raw))[:120].replace('-', '_') or 'unnamed'
-    return f'{prefix}{slug}'[:160]
-
-
-def _remember(key: str, value: str) -> None:
-    """Write one inferred fact, embedding it like `memory.remember` does."""
-    from core.assistant.models import LindaMemory
-    from core.embeddings import embed
-
-    value = (value or '').strip()[:5000]
-    LindaMemory.objects.update_or_create(
-        scope='merchant',
-        key=key,
-        defaults={
-            'value': value,
-            'source': 'inferred',
-            'embedding': embed(f'{key}: {value}'),
-        },
-    )
-
-
-def _record_tool_gap(gap: str) -> None:
-    """Store a tool gap, keeping a `seen=N` counter in the value so the
-    Release-3 flywheel can act on gaps observed more than once."""
-    from core.assistant.models import LindaMemory
-    from core.embeddings import embed
-
-    gap = (gap or '').strip()[:400]
-    if not gap:
-        return
-    key = _memory_key(gap, prefix='tool_gap.')
-    obj, created = LindaMemory.objects.get_or_create(
-        scope='merchant',
-        key=key,
-        defaults={
-            'value': f'seen=1 · {gap}',
-            'source': 'inferred',
-            'embedding': embed(f'{key}: {gap}'),
-        },
-    )
-    if not created:
-        m = re.match(r'seen=(\d+)', obj.value or '')
-        n = (int(m.group(1)) + 1) if m else 2
-        obj.value = f'seen={n} · {gap}'
-        obj.source = 'inferred'
-        obj.save(update_fields=['value', 'source', 'updated_at'])
 
 
 def _update_skills(run, outcome: str) -> tuple[list[str], list[str]]:
@@ -111,13 +52,6 @@ def _update_skills(run, outcome: str) -> tuple[list[str], list[str]]:
         if not pruned:
             continue
         pruned_names.append(name)
-        _remember(
-            _memory_key(name, prefix='skill_disabled.'),
-            f'Learned skill "{row.label or name}" was auto-disabled: '
-            f'{row.successes}/{row.uses} runs succeeded '
-            f'({row.success_rate():.0%}). Tell the merchant if they ask '
-            'why it stopped being used.',
-        )
         try:
             from core.audit.services import record_ai_decision
 
@@ -174,25 +108,8 @@ def reflect_on_worker_run(run, *, provider=None) -> dict[str, Any]:
 
         updated, disabled = _update_skills(run, outcome)
 
-        lessons = 0
-        for lesson in (parsed.get('lessons') or [])[:_MAX_LESSONS]:
-            if not isinstance(lesson, dict):
-                continue
-            value = str(lesson.get('value') or '').strip()
-            if not value:
-                continue
-            _remember(_memory_key(lesson.get('key') or value[:60]), value)
-            lessons += 1
-
-        gaps = 0
-        for gap in parsed.get('tool_gaps') or []:
-            _record_tool_gap(str(gap))
-            gaps += 1
-
         summary = {
             'outcome': outcome,
-            'lessons': lessons,
-            'tool_gaps': gaps,
             'skills_updated': updated,
             'skills_disabled': disabled,
         }
