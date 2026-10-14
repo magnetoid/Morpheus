@@ -77,7 +77,6 @@ def ensure_product(service):
     from djmoney.money import Money
 
     from plugins.installed.catalog.models import Product
-    from plugins.installed.seo.models import Redirect
 
     if service.product_id:
         return service.product
@@ -102,17 +101,36 @@ def ensure_product(service):
     _copy_images(service, product)
     service.product = product
     service.save(update_fields=['product'])
-    # An experience is a page at /bookings/<slug>/; anyone at its product URL goes there.
-    Redirect.objects.get_or_create(
-        from_path=f'/products/{product.slug}/',
-        defaults={
-            'to_path': f'/bookings/{service.slug}/',
-            'status_code': 301,
-            'source': 'auto_slug',
-            'note': 'Booking listing: the page is at /bookings/',
-        },
-    )
+    _point_product_url(product, service)
     return product
+
+
+REDIRECT_NOTE = 'Booking listing: the page is at /bookings/'
+
+
+def _point_product_url(product, service) -> None:
+    """An experience is a page at /bookings/<slug>/; its product URL leads there.
+
+    Kept for the product's current slug on every sync, so a slug renamed in the product
+    editor never leaves a product page behind. Stored as 'manual': seo's slug watcher
+    rewrites its own 'auto_slug' rules to the new product URL (which would answer with
+    a product page) and never touches a rule it did not write. A rule someone else
+    wrote on the same path is left alone.
+    """
+    from plugins.installed.seo.models import Redirect
+
+    target = f'/bookings/{service.slug}/'
+    rule, created = Redirect.objects.get_or_create(
+        from_path=f'/products/{product.slug}/',
+        defaults={'to_path': target, 'status_code': 301, 'source': 'manual', 'note': REDIRECT_NOTE},
+    )
+    if (
+        not created
+        and rule.note == REDIRECT_NOTE
+        and (rule.to_path, rule.is_active) != (target, True)
+    ):
+        rule.to_path, rule.is_active = target, True
+        rule.save()  # an instance save: seo drops its cached ruleset on post_save
 
 
 def sync_from_product(product) -> None:
@@ -140,6 +158,7 @@ def sync_from_product(product) -> None:
             'is_active',
         ]
     )
+    _point_product_url(product, service)  # the product's slug may have just changed
 
 
 def sync_to_product(service) -> None:

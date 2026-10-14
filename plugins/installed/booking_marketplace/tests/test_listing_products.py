@@ -144,6 +144,25 @@ class ListingProductTests(TestCase):
             (svc.product.name, svc.product.price.amount), ('Sunset sail', Decimal('80'))
         )
 
+    def test_a_renamed_product_slug_still_leads_to_the_booking_page(self):
+        # seo's slug watcher rewrites auto_slug redirects to the new product URL, and
+        # the product page rendered any service with no redirect: an Add to cart page.
+        p = ensure_product(self.svc)
+        p.slug = 'kayak-kotor'
+        p.save()
+        for path in ('/products/kayak-the-bay/', '/products/kayak-kotor/'):
+            resp = self.client.get(path)
+            self.assertEqual(
+                (resp.status_code, resp['Location']), (301, '/bookings/kayak-the-bay/'), path
+            )
+
+    def test_graphql_has_no_product_page_for_a_service(self):
+        from api.client import internal_graphql
+
+        ensure_product(self.svc)
+        data = internal_graphql('query { product(slug: "kayak-the-bay") { slug } }')
+        self.assertIsNone((data or {}).get('product'))
+
 
 class ListingProductPhotoAndSlugTests(TestCase):
     def setUp(self):

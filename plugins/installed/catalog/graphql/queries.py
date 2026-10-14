@@ -77,7 +77,10 @@ class CatalogQueryExtension:
     @strawberry.field(description='Get a single product by its slug')
     def product(self, info: strawberry.Info, slug: str) -> ProductType | None:
         qs = (
-            Product.objects.filter(status='active', slug=slug)
+            # No product page for a service: a booking listing's product is booked on
+            # its own page (/products/<slug>/ redirects there).
+            Product.objects.shoppable()
+            .filter(slug=slug)
             .select_related(*_PRODUCT_RELATED)
             .prefetch_related(*_PRODUCT_PREFETCH)
         )
