@@ -81,7 +81,7 @@ class ApplyListingContentTests(TestCase):
             'kayak-the-bay': {
                 **NEW['kayak-the-bay'],
                 'faqs': [{'q': 'Kids?', 'a': ''}],
-                'short_description': 'word ' * 80,
+                'name': 'x' * 301,
             },
             'no-such-listing': {'name': 'Ghost'},
         }
@@ -90,7 +90,7 @@ class ApplyListingContentTests(TestCase):
         for fragment in (
             'no-such-listing: no listing with a product',
             'faqs must be',
-            'short_description is',
+            'name is 301',
         ):
             self.assertIn(fragment, str(caught.exception))
         self.product.refresh_from_db()
@@ -135,3 +135,38 @@ class ApplyListingContentTests(TestCase):
         self.assertEqual(self.svc.faqs, [{'q': 'Kids?', 'a': 'From 8.'}])
         meta = self._meta()
         self.assertEqual((meta.title, meta.auto_filled), before)
+
+    def test_a_second_run_never_overwrites_a_backup(self):
+        backup = self.dir / 'b.json'
+        self._run(NEW, '--backup', str(backup))
+        first = backup.read_text()
+        with self.assertRaisesMessage(CommandError, 'already exists'):
+            self._run(NEW, '--backup', str(backup))
+        self.assertEqual(backup.read_text(), first)
+
+    def test_a_backup_of_long_text_restores(self):
+        # Product allows a 300-character name and an unlimited summary; the backup of
+        # such a product must still go back in.
+        long_name = ('Kayak the bay of Kotor ' * 11).strip()
+        long_summary = 'Paddle under the walls at dawn. ' * 15
+        self.product.name, self.product.short_description = long_name, long_summary
+        self.product.save()
+        backup = self.dir / 'b.json'
+        self._run(NEW, '--backup', str(backup))
+        self._run(json.loads(backup.read_text()), '--backup', str(self.dir / 'b2.json'))
+        self.product.refresh_from_db()
+        self.assertEqual(
+            (self.product.name, self.product.short_description), (long_name, long_summary)
+        )
+
+    def test_a_run_whose_backup_would_not_restore_is_refused(self):
+        # Stored data the import itself refuses (an unanswered question) would make a
+        # backup that cannot go back in: refuse before writing anything.
+        self.svc.faqs = [{'q': 'Kids?', 'a': ''}]
+        self.svc.save()
+        backup = self.dir / 'b.json'
+        with self.assertRaisesMessage(CommandError, 'would not restore'):
+            self._run(NEW, '--backup', str(backup))
+        self.assertFalse(backup.exists())
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.name, 'Kayak the bay')

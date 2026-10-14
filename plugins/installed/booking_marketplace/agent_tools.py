@@ -64,11 +64,28 @@ def listings_search_tool(
     return ToolResult(output={'count': len(rows), 'listings': rows})
 
 
+def _set_pairs(svc, fields) -> list[str]:
+    """The itinerary and guest questions a call passed, checked as the import checks them."""
+    from plugins.installed.booking_marketplace.content import PAIR_FIELDS, valid_pairs
+
+    changed = []
+    for name, (first, second) in PAIR_FIELDS.items():
+        rows = fields.get(name)
+        if rows is None:
+            continue
+        if not valid_pairs(rows, first, second, both=name == 'faqs'):
+            raise ToolError(f'{name} must be a list of {first}/{second} rows, none empty')
+        setattr(svc, name, rows)
+        changed.append(name)
+    return changed
+
+
 @tool(
     name='listings.update',
     description=(
         'Change a marketplace listing: name, short description, description, price, '
-        'was-price (strikethrough), location, duration label, active, top pick. Only the '
+        'was-price (strikethrough), location, duration label, active, top pick, the itinerary '
+        'and the guest questions (each list replaces the old one). Only the '
         "fields you pass change. Needs the merchant's yes."
     ),
     scopes=['catalog.write'],
@@ -89,6 +106,24 @@ def listings_search_tool(
             'duration_label': {'type': 'string'},
             'is_active': {'type': 'boolean'},
             'is_bestseller': {'type': 'boolean'},
+            'itinerary': {
+                'type': 'array',
+                'description': 'The steps in order, each {"title", "detail"}.',
+                'items': {
+                    'type': 'object',
+                    'properties': {'title': {'type': 'string'}, 'detail': {'type': 'string'}},
+                    'required': ['title'],
+                },
+            },
+            'faqs': {
+                'type': 'array',
+                'description': 'Guest questions shown on the page, each {"q", "a"}.',
+                'items': {
+                    'type': 'object',
+                    'properties': {'q': {'type': 'string'}, 'a': {'type': 'string'}},
+                    'required': ['q', 'a'],
+                },
+            },
         },
         'required': ['slug'],
     },
@@ -110,6 +145,7 @@ def listings_update_tool(*, slug: str, **fields) -> ToolResult:
         if name in fields and fields[name] is not None:
             setattr(svc, name, bool(fields[name]))
             changed.append(name)
+    changed += _set_pairs(svc, fields)
     currency = svc.price.currency if svc.price else 'EUR'
     for name in ('price', 'original_price'):
         if name not in fields or fields[name] is None:

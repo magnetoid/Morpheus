@@ -189,3 +189,35 @@ class ListingToolsTests(TestCase):
         listings_update_tool.handler(slug='vranac-reserve', price='19.50', is_active=False)
         product.refresh_from_db()
         self.assertEqual((product.price.amount, product.status), (Decimal('19.50'), 'draft'))
+
+    def _vranac(self):
+        from plugins.installed.catalog.models import Vendor
+
+        vendor = Vendor.objects.create(name='Makers', slug='makers', is_active=True)
+        return BookableService.objects.create(
+            vendor=vendor,
+            name='Vranac Reserve',
+            slug='vranac-reserve',
+            listing_kind='experience',
+            price=Money(Decimal('18'), 'EUR'),
+            is_active=True,
+        )
+
+    def test_the_tool_sets_the_itinerary_and_guest_questions(self):
+        from plugins.installed.booking_marketplace.agent_tools import listings_update_tool
+
+        self._vranac()
+        steps = [{'title': 'Meet at the cellar door', 'detail': 'A first glass in the yard.'}]
+        faqs = [{'q': 'Can children come?', 'a': 'With an adult; they get grape juice.'}]
+        listings_update_tool.handler(slug='vranac-reserve', itinerary=steps, faqs=faqs)
+        svc = BookableService.objects.get(slug='vranac-reserve')
+        self.assertEqual((svc.itinerary, svc.faqs), (steps, faqs))
+
+    def test_the_tool_refuses_a_question_without_an_answer(self):
+        from core.agents import ToolError
+        from plugins.installed.booking_marketplace.agent_tools import listings_update_tool
+
+        self._vranac()
+        with self.assertRaisesMessage(ToolError, 'faqs'):
+            listings_update_tool.handler(slug='vranac-reserve', faqs=[{'q': 'Kids?', 'a': ''}])
+        self.assertEqual(BookableService.objects.get(slug='vranac-reserve').faqs, [])

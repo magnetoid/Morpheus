@@ -48,6 +48,12 @@ def _clip(text: str, limit: int) -> str:
     return text[: limit - 1].rsplit(' ', 1)[0].rstrip(' ,;:') + '…'
 
 
+def _same_text(a: str, b: str) -> bool:
+    """Equal but for whitespace. A browser posts a textarea's line breaks as CRLF and drops
+    the newlines from a single-line input, so text a host never touched arrives changed."""
+    return re.sub(r'\s+', '', a or '') == re.sub(r'\s+', '', b or '')
+
+
 def _listing_copy(service, field: str, value: str) -> str:
     """What the listing keeps of a Product text field: plain, and short enough for its column.
 
@@ -221,7 +227,7 @@ def sync_to_product(service) -> None:
     # or cut a long name.
     for field in ('name', 'short_description', 'description'):
         text = getattr(service, field)
-        if text != _listing_copy(service, field, getattr(product, field)):
+        if not _same_text(text, _listing_copy(service, field, getattr(product, field))):
             setattr(product, field, text)
     product.price = service.price
     product.compare_at_price = service.original_price

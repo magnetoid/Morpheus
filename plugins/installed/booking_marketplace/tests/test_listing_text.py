@@ -116,6 +116,21 @@ class ListingTextTests(TestCase):
         self.assertEqual(self.product.name, long_name)
         self.assertEqual(self.product.short_description, long_summary)
 
+    def test_a_browser_post_of_unchanged_text_keeps_the_formatting(self):
+        # Browsers post a textarea's line breaks as CRLF and drop newlines from a
+        # single-line input: text the host did not touch must still read as unchanged.
+        from plugins.installed.booking_marketplace.products import save_listing
+
+        summary = '<p>Kotor at dawn.</p><p>By water.</p>'
+        self._edit_product(description=RICH, short_description=summary)
+        self.svc.description = self.svc.description.replace('\n', '\r\n')
+        self.svc.short_description = self.svc.short_description.replace('\n', '')
+        self.svc.price = Money(Decimal('60'), 'EUR')
+        save_listing(self.svc)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.description, RICH)
+        self.assertEqual(self.product.short_description, summary)
+
 
 class MontenegroListingTextTests(MontenegroThemeMixin, ListingTextTests):
     """The Montenegro theme renders the booking page itself."""

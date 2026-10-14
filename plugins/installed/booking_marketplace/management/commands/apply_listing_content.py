@@ -33,6 +33,13 @@ class Command(BaseCommand):
             raise CommandError(
                 f'{len(problems)} problem(s), nothing written:\n' + '\n'.join(problems)
             )
+        snapshot = content.snapshot(data)
+        unrestorable = content.validate(snapshot)
+        if unrestorable:  # a backup that cannot go back in is no backup
+            raise CommandError(
+                'The backup would not restore, nothing written; fix these listings first:\n'
+                + '\n'.join(unrestorable)
+            )
         if options['dry_run']:
             self.stdout.write(f'would write {len(data)} listing(s)')
             return
@@ -40,9 +47,12 @@ class Command(BaseCommand):
         if not backup:
             raise CommandError('--backup <file> is required for a real run (or use --dry-run)')
         try:
-            Path(backup).write_text(
-                json.dumps(content.snapshot(data), ensure_ascii=False, indent=1), encoding='utf-8'
-            )
+            with open(backup, 'x', encoding='utf-8') as fh:  # never over an earlier backup
+                fh.write(json.dumps(snapshot, ensure_ascii=False, indent=1))
+        except FileExistsError as exc:
+            raise CommandError(
+                f'The backup {backup} already exists; name a new file so the first is kept'
+            ) from exc
         except OSError as exc:
             raise CommandError(f'Cannot write the backup {backup}: {exc}') from exc
         written = content.apply(data)

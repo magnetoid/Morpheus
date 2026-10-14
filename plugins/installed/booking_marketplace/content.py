@@ -35,14 +35,17 @@ FIELDS = {
     'seo_auto_filled',
     'seo_provenance',
 }
-LIMITS = {'name': 200, 'short_description': 300, 'seo_title': 200, 'seo_description': 320}
+# The columns the import writes: Product.name, SeoMeta.title and SeoMeta.description. The
+# listing's copies are clipped to their own columns (products._listing_copy), and Product's
+# summary is unlimited, so a backup of any stored product goes back in.
+LIMITS = {'name': 300, 'seo_title': 200, 'seo_description': 320}
 
 
 def _text_list(value) -> bool:
     return isinstance(value, list) and all(isinstance(v, str) and v.strip() for v in value)
 
 
-def _pairs(value, first: str, second: str, *, both: bool) -> bool:
+def valid_pairs(value, first: str, second: str, *, both: bool) -> bool:
     if not isinstance(value, list):
         return False
     for row in value:
@@ -57,8 +60,6 @@ def _pairs(value, first: str, second: str, *, both: bool) -> bool:
 
 
 def _text_problems(fields) -> list[str]:
-    from plugins.installed.booking_marketplace.products import plain_text
-
     problems = []
     for key in (*PRODUCT_FIELDS, *SEO_FIELDS):
         if key in fields and not isinstance(fields[key], str):
@@ -67,10 +68,8 @@ def _text_problems(fields) -> list[str]:
         problems.append('name is empty')
     for key, limit in LIMITS.items():
         value = fields.get(key)
-        if isinstance(value, str):
-            size = len(plain_text(value)) if key == 'short_description' else len(value)
-            if size > limit:
-                problems.append(f'{key} is {size} characters, over {limit}')
+        if isinstance(value, str) and len(value) > limit:
+            problems.append(f'{key} is {len(value)} characters, over {limit}')
     return problems
 
 
@@ -80,7 +79,7 @@ def _shape_problems(fields, categories) -> list[str]:
         if key in fields and not _text_list(fields[key]):
             problems.append(f'{key} must be a list of text')
     for key, (first, second) in PAIR_FIELDS.items():
-        if key in fields and not _pairs(fields[key], first, second, both=key == 'faqs'):
+        if key in fields and not valid_pairs(fields[key], first, second, both=key == 'faqs'):
             problems.append(f'{key} must be a list of {first}/{second} rows')
     category = fields.get('category')
     if 'category' in fields and category is not None and category not in categories:

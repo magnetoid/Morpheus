@@ -204,7 +204,7 @@ editor's Basics card names no types: a `data-pt-show` list of the four older typ
 experience's name, text and price until v0.109.2. Product text is sanitised rich HTML; the
 listing keeps a plain-text copy (`products.plain_text`, which feeds, JSON-LD, llms.txt and the
 host form read), the booking page renders the product's own text (`|listing_text`), and a
-listing save writes text back only when it changed, or a price edit strips the formatting. The listing's copies are clipped to their columns (`products._listing_copy`): Product allows a longer name and an unlimited summary, Postgres refuses the rest, and sqlite never does. Three traps the review caught: a `ProductImage` deletes its file with its
+listing save writes text back only when it changed, or a price edit strips the formatting. The listing's copies are clipped to their columns (`products._listing_copy`): Product allows a longer name and an unlimited summary, Postgres refuses the rest, and sqlite never does. A listing save compares text with whitespace removed (`products._same_text`): a browser posts a textarea's line breaks as CRLF and drops newlines from a single-line input, so the host form's untouched text used to read as changed and flatten the product's formatting on a price edit. Three traps the review caught: a `ProductImage` deletes its file with its
 row, so copy another model's photo, never share the file; seo's slug watcher rewrites its
 own `auto_slug` redirects, so an app's redirect is stored under another source; and the
 product editor's `_money()` defaulted to USD, so a save re-priced every EUR product.
