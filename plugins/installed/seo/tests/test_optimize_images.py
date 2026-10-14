@@ -10,6 +10,7 @@ import os
 import shutil
 import tempfile
 
+from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import TestCase, override_settings
@@ -29,7 +30,14 @@ def _png_bytes() -> bytes:
 class OptimizeImagesCommandTests(TestCase):
     def setUp(self):
         self._tmp = tempfile.mkdtemp()
-        self._override = override_settings(MEDIA_ROOT=self._tmp)
+        # Real files: the webp variants are written beside the original on disk.
+        self._override = override_settings(
+            MEDIA_ROOT=self._tmp,
+            STORAGES={
+                **settings.STORAGES,
+                'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+            },
+        )
         self._override.enable()
         upload = SimpleUploadedFile('pic.png', _png_bytes(), content_type='image/png')
         self.asset = MediaAsset.from_upload(uploaded_file=upload)

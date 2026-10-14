@@ -1082,6 +1082,11 @@ Run:
 DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.discount_engine
 ```
 
+Uploads go to an in-memory storage under tests, so nothing lands in `media/`. A test of
+code that works with real files (it walks `MEDIA_ROOT`, or `/media/` serves the file)
+overrides `STORAGES` with `FileSystemStorage` and a temp `MEDIA_ROOT`
+(`seo/tests/test_optimize_images.py`).
+
 ### Permission boundary tests (mandatory)
 
 For any authed resolver / viewset, test all three cases:

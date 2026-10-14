@@ -14,9 +14,10 @@ import io
 from decimal import Decimal
 from unittest import mock
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from djmoney.money import Money
 from pypdf import PdfReader, PdfWriter
 
@@ -34,6 +35,16 @@ def _pdf(pages: int) -> bytes:
 
 class PrivateDigitalFileTests(TestCase):
     def setUp(self):
+        # A real file: /media/ is served from disk, from the MEDIA_ROOT the urlconf bound
+        # at import (morph/urls.py), so the file goes there and the cleanup deletes it.
+        override = override_settings(
+            STORAGES={
+                **settings.STORAGES,
+                'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+            },
+        )
+        override.enable()
+        self.addCleanup(override.disable)
         self.product = Product.objects.create(
             name='Paid Book',
             slug='paid-book-flip',

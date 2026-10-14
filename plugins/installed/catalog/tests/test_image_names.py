@@ -14,6 +14,7 @@ import shutil
 import tempfile
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -33,7 +34,14 @@ class ProductImageNameTests(TestCase):
     def setUp(self):
         media = tempfile.mkdtemp(prefix='morph-img-names-')
         self.addCleanup(shutil.rmtree, media, ignore_errors=True)
-        override = override_settings(MEDIA_ROOT=media)
+        # Real files: the names come from what the storage finds on disk.
+        override = override_settings(
+            MEDIA_ROOT=media,
+            STORAGES={
+                **settings.STORAGES,
+                'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+            },
+        )
         override.enable()
         self.addCleanup(override.disable)
         from plugins.installed.catalog.models import Product

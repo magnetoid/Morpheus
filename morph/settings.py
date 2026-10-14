@@ -584,7 +584,16 @@ STATICFILES_DIRS = [
 # A name missing from the manifest is served under its plain name, not a 500
 # (core/staticfiles.py).
 STORAGES = {
-    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    # Tests keep uploads in memory: on disk every run added copies of the same seed
+    # photos to media/ (25,000 files, 4 GB by 2026-10-14) until the disk filled. A test
+    # that needs real files (something walks MEDIA_ROOT) overrides STORAGES itself.
+    'default': {
+        'BACKEND': (
+            'django.core.files.storage.InMemoryStorage'
+            if _RUNNING_TESTS
+            else 'django.core.files.storage.FileSystemStorage'
+        )
+    },
     'staticfiles': {
         'BACKEND': (
             'django.contrib.staticfiles.storage.StaticFilesStorage'
