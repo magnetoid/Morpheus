@@ -221,3 +221,23 @@ class ProductEditorRoundTripTests(TestCase):
         saved = self._save(data)
         self.assertFalse(saved.requires_shipping)
         self.assertFalse(saved.track_inventory)
+
+    def test_a_service_product_stays_a_service_and_unshipped(self):
+        # A booking listing's product (product_type='service'). The type select
+        # offered no 'service' option, so the browser posted the first one and an
+        # unchanged save turned the experience into a stocked, shippable, cartable
+        # simple product.
+        from plugins.installed.catalog.models import Product
+
+        Product.objects.filter(pk=self.product.pk).update(product_type='service')
+        data = self._submitted()
+        self.assertEqual(data['product_type'], ['service'])
+        saved = self._save(data)
+        self.assertEqual(saved.product_type, 'service')
+        self.assertFalse(saved.requires_shipping)
+        self.assertFalse(saved.track_inventory)
+        # Another type is not on offer for a listing's product, and is refused.
+        data['product_type'] = ['simple']
+        resp = self.client.post(self.url, data, headers=_AJAX)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(Product.objects.get(pk=self.product.pk).product_type, 'service')

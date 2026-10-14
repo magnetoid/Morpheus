@@ -107,6 +107,9 @@ class ProductForm(forms.Form):
         help_text='Optional JSON object merged into auto-generated JSON-LD.',
     )
 
+    def _is_service(self) -> bool:
+        return getattr(self.instance, 'product_type', '') == 'service'
+
     def __init__(self, *args, instance=None, **kwargs):
         self.instance = instance
         if instance is not None and 'initial' not in kwargs:
@@ -146,6 +149,10 @@ class ProductForm(forms.Form):
                 ),
             }
         super().__init__(*args, **kwargs)
+        if self._is_service():
+            # A booking listing's product: the booking app owns its type, so the
+            # select shows it (and nothing else would be selected, posting 'simple').
+            self.fields['product_type'].choices = [('service', 'Service (booked through an app)')]
 
     def clean_structured_data(self):
         raw = (self.cleaned_data.get('structured_data') or '').strip()
@@ -225,9 +232,10 @@ class ProductForm(forms.Form):
         # cards of other types, so their controls still submit, and a trailing
         # hidden `track_inventory=""` switched stock tracking and shipping off
         # on every save of a simple or bundle product.
-        is_digital = product.product_type == 'digital'
-        product.track_inventory = bool(cd.get('track_inventory')) and not is_digital
-        product.requires_shipping = bool(cd.get('requires_shipping')) and not is_digital
+        # A service (a booking) is never stocked or shipped either.
+        unshipped = product.product_type in ('digital', 'service')
+        product.track_inventory = bool(cd.get('track_inventory')) and not unshipped
+        product.requires_shipping = bool(cd.get('requires_shipping')) and not unshipped
         product.weight = cd.get('weight')
         product.weight_unit = cd.get('weight_unit') or 'kg'
 
