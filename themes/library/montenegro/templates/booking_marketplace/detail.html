@@ -61,6 +61,10 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
       <span class="inline-flex items-center gap-1 text-muted-foreground"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ service.location }}, Montenegro</span>
       {% endif %}
     </div>
+    {# Answer first: what it is, where, how long and for whom, before anything else. #}
+    {% with summary=product.short_description|default:service.short_description %}{% if summary %}
+    <div id="experience-summary" class="mt-4 max-w-3xl text-base md:text-lg leading-7 md:leading-8 text-foreground">{{ summary|listing_text }}</div>
+    {% endif %}{% endwith %}
   </div>
 
   <!-- Image gallery -->
@@ -104,6 +108,20 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         <div class="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-semibold text-xl shrink-0">{{ service.vendor.name|first|upper }}</div>
       </div>
 
+      {# At a glance: the facts a traveller decides on, each only when the listing knows it. #}
+      {% if service.listing_kind != 'product' %}
+      <section id="at-a-glance" class="py-8 border-b border-border">
+        <h2 class="text-xl font-semibold text-foreground mb-6">{% trans "At a glance" %}</h2>
+        <dl class="grid sm:grid-cols-2 gap-x-8 gap-y-5">
+          {% if service.duration_label or service.duration_minutes %}<div id="glance-duration"><dt class="text-sm text-muted-foreground">{% trans "Duration" %}</dt><dd class="font-medium text-foreground mt-0.5">{% if service.duration_label %}{{ service.duration_label }}{% else %}{{ service.duration_minutes }} {% trans "minutes" %}{% endif %}</dd></div>{% endif %}
+          {% if service.max_guests_per_booking %}<div id="glance-group"><dt class="text-sm text-muted-foreground">{% trans "Group size" %}</dt><dd class="font-medium text-foreground mt-0.5">{% trans "Up to" %} {{ service.max_guests_per_booking }} {% trans "guests per booking" %}</dd></div>{% endif %}
+          {% if service.languages %}<div id="glance-languages"><dt class="text-sm text-muted-foreground">{% trans "Languages" %}</dt><dd class="font-medium text-foreground mt-0.5">{{ service.languages|join:", " }}</dd></div>{% endif %}
+          {% if service.meeting_point %}<div id="glance-meeting-point" class="sm:col-span-2"><dt class="text-sm text-muted-foreground">{% trans "Meeting point" %}</dt><dd class="font-medium text-foreground mt-0.5">{{ service.meeting_point }}</dd></div>{% endif %}
+          {% if service.cancellation_policy %}<div id="glance-cancellation" class="sm:col-span-2"><dt class="text-sm text-muted-foreground">{% trans "Cancellation" %}</dt><dd class="font-medium text-foreground mt-0.5">{{ service.cancellation_policy }}</dd></div>{% endif %}
+        </dl>
+      </section>
+      {% endif %}
+
       {# Highlights #}
       {% if service.highlights %}
       <div class="py-8 border-b border-border space-y-5">
@@ -135,7 +153,8 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
       <!-- Description -->
       {# The Product's text, with the formatting its editor gives it, as on a product page. #}
       {% with text=product.description|default:service.description %}{% if text %}
-      <section class="py-8 border-b border-border">
+      <section id="about" class="py-8 border-b border-border">
+        <h2 class="text-xl font-semibold text-foreground mb-6">{% if service.listing_kind == 'product' %}{% trans "About this product" %}{% else %}{% trans "About this experience" %}{% endif %}</h2>
         <div class="prose-pdp text-foreground leading-7 space-y-4">{{ text|listing_text }}</div>
       </section>
       {% endif %}{% endwith %}
@@ -181,34 +200,33 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         </div>
         {% endif %}
         <a href="https://www.google.com/maps/search/{{ service.location|default:service.get_region_display|urlencode }}+Montenegro" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline mt-3"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>{% trans "Get directions" %}</a>
-        <p class="text-sm text-muted-foreground mt-3">{% trans "Exact meeting point details are provided after booking." %}</p>
+        {% if service.meeting_point %}<p id="meeting-point" class="text-sm text-foreground mt-3"><span class="font-medium">{% trans "Meeting point" %}:</span> {{ service.meeting_point }}</p>{% else %}<p class="text-sm text-muted-foreground mt-3">{% trans "Exact meeting point details are provided after booking." %}</p>{% endif %}
       </section>
       {% endif %}{% endif %}
 
-      <!-- Things to know -->
-      <section class="py-8 border-b border-border">
-        <h2 class="text-xl font-semibold text-foreground mb-6">{% trans "Things to know" %}</h2>
-        <div class="grid sm:grid-cols-3 gap-6">
-          <div>
-            <h3 class="flex items-center gap-2 font-medium text-foreground mb-2"><svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>{% trans "Cancellation policy" %}</h3>
-            <p class="text-sm text-muted-foreground leading-relaxed">{{ service.cancellation_policy }}</p>
-          </div>
-          <div>
-            <h3 class="flex items-center gap-2 font-medium text-foreground mb-2"><svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>{% trans "Duration" %}</h3>
-            <p class="text-sm text-muted-foreground leading-relaxed">{% if service.duration_label %}{{ service.duration_label }}{% else %}{{ service.duration_minutes }} {% trans "minutes" %}{% endif %}</p>
-          </div>
-          <div>
-            <h3 class="flex items-center gap-2 font-medium text-foreground mb-2"><svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>{% trans "Group size" %}</h3>
-            <p class="text-sm text-muted-foreground leading-relaxed">{% trans "Up to" %} {{ service.max_guests_per_booking }} {% trans "guests per booking" %}</p>
-          </div>
+      <!-- Guest questions: in the reading flow, before the reviews -->
+      {% if service.faqs %}
+      <section id="guest-questions" class="py-8 border-b border-border">
+        <h2 class="text-xl font-semibold text-foreground mb-6">{% trans "Guest questions" %}</h2>
+        <div class="border-y border-border divide-y divide-border">
+          {% for f in service.faqs %}
+          <details class="group py-4">
+            <summary class="flex items-center justify-between gap-4 cursor-pointer list-none font-medium text-foreground">
+              {{ f.q }}
+              <svg class="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <p class="text-sm text-muted-foreground leading-relaxed mt-3">{{ f.a }}</p>
+          </details>
+          {% endfor %}
         </div>
       </section>
+      {% endif %}
 
       <!-- Reviews -->
-      <section class="py-8">
+      <section id="reviews" class="py-8">
         <h2 class="text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
           {% trans "Reviews" %}
-          {% if review_summary.count %}<span class="inline-flex items-center gap-1 text-base font-medium"><svg class="w-4 h-4 fill-foreground text-foreground" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>{{ review_summary.avg }} <span class="text-muted-foreground">({{ review_summary.count }})</span></span>{% endif %}
+          {% if vr.0 %}<span id="reviews-rating" class="inline-flex items-center gap-1 text-base font-medium"><svg class="w-4 h-4 fill-foreground text-foreground" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>{{ vr.1 }} <span class="text-muted-foreground">({{ vr.0 }})</span></span>{% endif %}
         </h2>
         {% if can_review %}
         <form method="post" action="/bookings/{{ service.slug }}/review/" class="grid gap-2.5 max-w-md mb-8">
@@ -342,24 +360,6 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
       </div>
     </div>
   </div>
-
-  <!-- Guest questions (FAQ) -->
-  {% if service.faqs %}
-  <section class="border-t border-border pt-10 mt-2">
-    <h2 class="text-xl font-semibold text-foreground mb-6">{% trans "Guest questions" %}</h2>
-    <div class="max-w-3xl border-y border-border divide-y divide-border">
-      {% for f in service.faqs %}
-      <details class="group py-4">
-        <summary class="flex items-center justify-between gap-4 cursor-pointer list-none font-medium text-foreground">
-          {{ f.q }}
-          <svg class="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-        </summary>
-        <p class="text-sm text-muted-foreground leading-relaxed mt-3">{{ f.a }}</p>
-      </details>
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
 
   <!-- Meet your host -->
   <section class="border-t border-border pt-10 mt-2">

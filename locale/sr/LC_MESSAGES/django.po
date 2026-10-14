@@ -4118,3 +4118,12 @@ msgid_plural "%(avg)s from %(n)s verified reviews"
 msgstr[0] "%(avg)s iz %(n)s potvrđene recenzije"
 msgstr[1] "%(avg)s iz %(n)s potvrđene recenzije"
 msgstr[2] "%(avg)s iz %(n)s potvrđenih recenzija"
+
+msgid "At a glance"
+msgstr "Ukratko"
+
+msgid "Languages"
+msgstr "Jezici"
+
+msgid "About this experience"
+msgstr "O ovom doživljaju"
