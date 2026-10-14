@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.111.0 — 2026-10-14
+
+**CRM in the menu, sections fold open**
+
+- CRM is its own entry in the dashboard menu, next to Customers: Overview, Inbox, Support chat, Pipeline and Tasks.
+- Every menu entry with more than one page folds open to them again, grouped as the page's tabs are; the section you are in opens by itself and the others stay as you left them.
+- The tabs and pages are unchanged; when the menu is narrowed to icons, the page links hide.
+
 ## v0.110.0 — 2026-10-14
 
 **Experience pages answer first**
