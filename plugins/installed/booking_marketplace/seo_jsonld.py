@@ -91,7 +91,17 @@ def place_nodes(place, *, url: str, request=None) -> list[dict]:
     return nodes
 
 
-def _product_node(service, *, url: str, request=None) -> dict:
+def _offer(service, url: str) -> dict:
+    return {
+        '@type': 'Offer',
+        'price': str(service.price.amount),
+        'priceCurrency': str(service.price.currency),
+        'availability': 'https://schema.org/InStock',
+        'url': url,
+    }
+
+
+def _product_node(service, *, url: str, request=None, with_prices=True) -> dict:
     node = {
         '@type': 'Product',
         '@id': f'{url}#product',
@@ -102,13 +112,8 @@ def _product_node(service, *, url: str, request=None) -> dict:
     if service.image:
         node['image'] = _abs(request, service.image.url)
     node['brand'] = {'@type': 'Organization', 'name': service.vendor.name}
-    node['offers'] = {
-        '@type': 'Offer',
-        'price': str(service.price.amount),
-        'priceCurrency': 'EUR',
-        'availability': 'https://schema.org/InStock',
-        'url': url,
-    }
+    if with_prices:  # listing mode shows "Contact for price": claim none
+        node['offers'] = _offer(service, url)
     # Never from the denormalised rating/review_count columns: they count
     # seeded rows too (services.verified_reviews). The aggregate and the
     # Review nodes come from the same verified set.
@@ -137,13 +142,50 @@ def _product_node(service, *, url: str, request=None) -> dict:
     return node
 
 
-def experience_nodes(service, *, url: str, request=None) -> list[dict]:
-    """Product (+ Offer, verified AggregateRating/Review) and the guest-questions FAQPage.
+def _trip_node(service, *, url: str, request=None, with_prices=True) -> dict:
+    """TouristTrip: the experience as a trip, its itinerary an ordered list of steps."""
+    node = {
+        '@type': 'TouristTrip',
+        '@id': f'{url}#trip',
+        'name': service.name,
+        'description': service.short_description or service.description[:300] or service.name,
+        'url': url,
+        'provider': {'@type': 'Organization', 'name': service.vendor.name},
+    }
+    if service.image:
+        node['image'] = _abs(request, service.image.url)
+    steps = [s for s in (service.itinerary or []) if isinstance(s, dict) and s.get('title')]
+    if steps:
+        node['itinerary'] = {
+            '@type': 'ItemList',
+            'numberOfItems': len(steps),
+            'itemListElement': [
+                {
+                    '@type': 'ListItem',
+                    'position': position,
+                    'name': str(step['title']),
+                    **({'description': str(step['detail'])} if step.get('detail') else {}),
+                }
+                for position, step in enumerate(steps, start=1)
+            ],
+        }
+    if with_prices:
+        node['offers'] = _offer(service, url)
+    return node
 
-    The on-page "Guest questions" accordion (service.faqs) is mirrored into a
-    FAQPage node so answer engines can quote it.
+
+def experience_nodes(service, *, url: str, request=None, with_prices=True) -> list[dict]:
+    """Product (+ Offer, verified rating), TouristTrip (+ itinerary) and the visible FAQPage.
+
+    The Product is left out when it would carry nothing Google accepts it with (no
+    offer in listing mode, no verified rating): the trip is then the page's main entity.
     """
-    nodes = [_product_node(service, url=url, request=request)]
+    nodes = []
+    product = _product_node(service, url=url, request=request, with_prices=with_prices)
+    if any(key in product for key in ('offers', 'aggregateRating', 'review')):
+        nodes.append(product)
+    if service.listing_kind != 'product':
+        nodes.append(_trip_node(service, url=url, request=request, with_prices=with_prices))
     faq = faq_node(getattr(service, 'faqs', None), url)
     if faq:
         nodes.append(faq)

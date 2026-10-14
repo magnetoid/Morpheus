@@ -131,7 +131,9 @@ def _entity_nodes(name: str, ctx: dict, url: str, request) -> list[dict]:
     from plugins.installed.booking_marketplace import seo_jsonld  # noqa: PLC0415
 
     if name == 'detail' and ctx.get('service') is not None:
-        return seo_jsonld.experience_nodes(ctx['service'], url=url, request=request)
+        return seo_jsonld.experience_nodes(
+            ctx['service'], url=url, request=request, with_prices=not ctx.get('listing_mode')
+        )
     if name == 'place' and ctx.get('place') is not None:
         return seo_jsonld.place_nodes(ctx['place'], url=url, request=request)
     if name == 'event' and ctx.get('event') is not None:
