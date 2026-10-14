@@ -278,6 +278,16 @@ class SearchPathTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response['Location'], '/bookings/?q=kayak')
 
+    def test_linked_experience_products_do_not_count_as_a_catalogue(self):
+        # Since v0.109.0 every listing has an active Product of type 'service'. The
+        # goods search (/products/) lists shoppable() products only, so counting those
+        # sent every Montenegro search to an empty page.
+        from plugins.installed.booking_marketplace.products import ensure_product
+
+        ensure_product(_experience(_host(), 'bay-kayak'))
+        response = self.client.get('/search/?q=kayak')
+        self.assertEqual(response['Location'], '/bookings/?q=kayak')
+
     def test_a_store_with_a_catalogue_keeps_its_own_search(self):
         from decimal import Decimal
 

@@ -238,13 +238,15 @@ def on_search_path(value, request=None, **kwargs):
     """STOREFRONT_SEARCH_PATH — search lands where the inventory is.
 
     Claimed only when the experiences ARE the inventory: live experiences here
-    and no active catalog product. A store that sells both keeps the catalogue's
-    search, which covers its products.
+    and no shoppable catalog product. A store that sells both keeps the
+    catalogue's search, which covers its products. Shoppable, not active: each
+    listing's own Product is an active service (v0.109.0) that the goods search
+    never lists, and counting those sent every search to an empty page.
     """
     from plugins.installed.booking_marketplace.models import BookableService  # noqa: PLC0415
     from plugins.installed.catalog.models import Product  # noqa: PLC0415
 
-    if Product.objects.filter(status='active').exists():
+    if Product.objects.shoppable().exists():
         return value
     live = BookableService.objects.filter(
         is_active=True, vendor__is_active=True, listing_kind='experience'
