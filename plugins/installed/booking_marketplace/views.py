@@ -471,6 +471,13 @@ def service_detail(request, slug):
     # page shows what the product editor's SEO panel says, not the listing's copy.
     ctx['seo_object'] = product or service
     ctx['web_story'] = story if story is not None and story.is_published else None
+    # The destination guides of this experience's region: the hub-and-spoke links the
+    # stay pages already carry (stays.nearby_places).
+    from plugins.installed.booking_marketplace.stays import nearby_places
+
+    ctx['nearby_places'] = (
+        nearby_places(service, limit=4) if service.listing_kind != 'product' else []
+    )
     # The storefront staff bar's Edit link opens the dashboard's listing editor.
     from plugins.installed.booking_marketplace.dashboard_listings import edit_url
     from plugins.installed.booking_marketplace.host import _staff_editor

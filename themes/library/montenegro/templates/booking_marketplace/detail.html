@@ -385,6 +385,20 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
     </div>
   </section>
   {% endif %}
+  <!-- Places nearby: the destination guides of this experience's region -->
+  {% if nearby_places %}
+  <section id="places-nearby" class="border-t border-border pt-10 mt-10">
+    <h2 class="text-xl font-semibold text-foreground mb-6">{% trans "Places nearby" %}</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {% for pl in nearby_places %}
+      <a href="/places/{{ pl.slug }}/" class="group rounded-2xl overflow-hidden border border-border bg-card shadow-card">
+        <div class="aspect-[4/3] bg-muted overflow-hidden">{% if pl.image %}<img src="{{ pl.image.url }}" alt="{{ pl.name }}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">{% endif %}</div>
+        <div class="p-3"><h3 class="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">{{ pl.name }}</h3>{% if pl.summary %}<p class="text-xs text-muted-foreground line-clamp-2 mt-1">{{ pl.summary }}</p>{% endif %}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
 </div>
 <script>(function(){var m=document.getElementById('exp-map');if(!m)return;var f=function(){if(!window.L)return setTimeout(f,120);var map=L.map(m).setView([+m.dataset.lat,+m.dataset.lng],14);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);L.marker([+m.dataset.lat,+m.dataset.lng]).addTo(map);};f();})();</script>
 <script>

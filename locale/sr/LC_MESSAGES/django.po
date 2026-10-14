@@ -4127,3 +4127,6 @@ msgstr "Jezici"
 
 msgid "About this experience"
 msgstr "O ovom doživljaju"
+
+msgid "Places nearby"
+msgstr "Mjesta u blizini"
