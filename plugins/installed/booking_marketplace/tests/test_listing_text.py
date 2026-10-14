@@ -93,6 +93,29 @@ class ListingTextTests(TestCase):
         self.assertNotIn('&amp;amp;', html)
         self.assertIn('<p>A second paragraph.</p>', html)
 
+    def test_a_long_product_name_and_summary_fit_the_listing(self):
+        # Product.name allows 300 characters and short_description is unlimited; the
+        # listing's copies are varchar(200) and varchar(300), and Postgres refuses more.
+        self._edit_product(
+            name='Kayak the bay of Kotor ' * 11,
+            short_description='<p>' + 'Paddle under the walls at dawn. ' * 15 + '</p>',
+        )
+        self.assertLessEqual(len(self.svc.name), 200)
+        self.assertLessEqual(len(self.svc.short_description), 300)
+        self.assertTrue(self.svc.short_description.endswith('…'))
+
+    def test_saving_the_listing_keeps_the_products_long_text(self):
+        from plugins.installed.booking_marketplace.products import save_listing
+
+        long_name = ('Kayak the bay of Kotor ' * 11).strip()
+        long_summary = 'Paddle under the walls at dawn. ' * 15
+        self._edit_product(name=long_name, short_description=long_summary)
+        self.svc.price = Money(Decimal('60'), 'EUR')
+        save_listing(self.svc)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.name, long_name)
+        self.assertEqual(self.product.short_description, long_summary)
+
 
 class MontenegroListingTextTests(MontenegroThemeMixin, ListingTextTests):
     """The Montenegro theme renders the booking page itself."""

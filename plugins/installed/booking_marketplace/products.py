@@ -41,6 +41,24 @@ def plain_text(text: str) -> str:
     return re.sub(r'\n{3,}', '\n\n', '\n'.join(lines)).strip()
 
 
+def _clip(text: str, limit: int) -> str:
+    """The text cut at a word to fit `limit` characters, with an ellipsis."""
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rsplit(' ', 1)[0].rstrip(' ,;:') + '…'
+
+
+def _listing_copy(service, field: str, value: str) -> str:
+    """What the listing keeps of a Product text field: plain, and short enough for its column.
+
+    Product allows a longer name and an unlimited summary; Postgres refuses a copy
+    longer than the listing's column, and sqlite never does.
+    """
+    text = value if field == 'name' else plain_text(value)
+    limit = type(service)._meta.get_field(field).max_length
+    return _clip(text, limit) if limit else text
+
+
 def _resolve_slug(service):
     """The Product to reuse, and the slug to use.
 
@@ -167,9 +185,11 @@ def sync_from_product(product) -> None:
     service = getattr(product, 'booking', None)
     if service is None:
         return
-    service.name = product.name
-    service.short_description = plain_text(product.short_description)
-    service.description = plain_text(product.description)
+    service.name = _listing_copy(service, 'name', product.name)
+    service.short_description = _listing_copy(
+        service, 'short_description', product.short_description
+    )
+    service.description = _listing_copy(service, 'description', product.description)
     service.price = product.price
     service.original_price = product.compare_at_price
     service.category_id = product.category_id
@@ -196,12 +216,12 @@ def sync_to_product(service) -> None:
     product = service.product
     if product is None:
         return
-    product.name = service.name
-    # The listing holds plain copies of the product's rich text: write the text only
-    # when the host changed it, or a price edit would strip the editor's formatting.
-    for field in ('short_description', 'description'):
+    # The listing holds plain, clipped copies of the product's text: write a field back
+    # only when the host changed it, or a price edit would strip the editor's formatting
+    # or cut a long name.
+    for field in ('name', 'short_description', 'description'):
         text = getattr(service, field)
-        if text != plain_text(getattr(product, field)):
+        if text != _listing_copy(service, field, getattr(product, field)):
             setattr(product, field, text)
     product.price = service.price
     product.compare_at_price = service.original_price
