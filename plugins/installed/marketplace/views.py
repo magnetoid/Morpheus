@@ -146,7 +146,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         best_sellers=portal.best_sellers(vendor, period),
         stock=portal.stock_status(vendor),
         balance=portal.balance(vendor, acct),
-        active_products=Product.objects.filter(vendor=vendor, status='active').count(),
+        active_products=Product.objects.shoppable().filter(vendor=vendor).count(),
     )
     context.update(portal.performance(vendor, period))
     return render(request, 'marketplace/vendor_dashboard.html', context)

@@ -29,16 +29,11 @@ def _pick_product(order):
         app_registry.config_value('post_checkout_upsell', 'post_order_upsell_slug', '') or ''
     ).strip()
     if slug:
-        product = Product.objects.filter(slug=slug, status='active').first()
+        product = Product.objects.shoppable().filter(slug=slug).first()
         if product is not None and product.pk not in in_order:
             return product
     # Fallback: the newest active title the customer didn't just buy.
-    return (
-        Product.objects.filter(status='active')
-        .exclude(pk__in=in_order)
-        .order_by('-created_at')
-        .first()
-    )
+    return Product.objects.shoppable().exclude(pk__in=in_order).order_by('-created_at').first()
 
 
 @register.simple_tag

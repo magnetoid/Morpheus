@@ -172,9 +172,9 @@ def home(request):
         )
         sp_products = (
             list(
-                Product.objects.filter(status='active', collections=sp_collection).order_by(
-                    '-is_featured', '-created_at'
-                )[:8]
+                Product.objects.shoppable()
+                .filter(collections=sp_collection)
+                .order_by('-is_featured', '-created_at')[:8]
             )
             if sp_collection
             else []

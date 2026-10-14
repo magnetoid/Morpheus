@@ -156,7 +156,7 @@ def related_to(product, *, k: int = 4) -> list:
     if not related_ids:
         return []
     # Preserve ranked order via dict trick (Python 3.7+ insertion order).
-    by_id = {p.pk: p for p in Product.objects.filter(pk__in=related_ids, status='active')}
+    by_id = {p.pk: p for p in Product.objects.shoppable().filter(pk__in=related_ids)}
     return [by_id[pid] for pid in related_ids if pid in by_id]
 
 

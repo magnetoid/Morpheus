@@ -103,11 +103,14 @@ def stocked_category_ids() -> set:
     """
     from django.db.models import Q
 
-    from plugins.installed.catalog.models import Category
+    from plugins.installed.catalog.models import Category, Product
 
     return set(
         Category.objects.filter(is_active=True)
-        .filter(Q(products__status='active') | Q(also_listed_products__status='active'))
+        .filter(
+            Q(products__in=Product.objects.shoppable())
+            | Q(also_listed_products__in=Product.objects.shoppable())
+        )
         .values_list('pk', flat=True)
         .distinct()
     )

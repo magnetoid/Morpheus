@@ -284,7 +284,10 @@ def iter_sitemap_entries() -> Iterable[dict]:
         category_seo = _seo_overrides(Category)
         stocked = (
             Category.objects.filter(is_active=True)
-            .filter(Q(products__status='active') | Q(also_listed_products__status='active'))
+            .filter(
+                Q(products__in=Product.objects.shoppable())
+                | Q(also_listed_products__in=Product.objects.shoppable())
+            )
             .distinct()
             .only('slug', 'updated_at')
         )
@@ -299,7 +302,7 @@ def iter_sitemap_entries() -> Iterable[dict]:
             }
         collection_seo = _seo_overrides(Collection)
         curated = (
-            Collection.objects.filter(is_active=True, products__status='active')
+            Collection.objects.filter(is_active=True, products__in=Product.objects.shoppable())
             .distinct()
             .only('slug', 'updated_at')
         )

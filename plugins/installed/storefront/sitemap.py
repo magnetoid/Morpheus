@@ -42,7 +42,7 @@ def contribute_sitemap_urls(value, **kwargs):
     def add(path: str, *, changefreq: str = 'weekly', priority: str = '0.7') -> None:
         entries.append({'loc': urljoin(base, path), 'changefreq': changefreq, 'priority': priority})
 
-    if Product.objects.filter(status='active').exists():
+    if Product.objects.shoppable().exists():
         add('/products/')
     if not app_registry.is_active('book_product'):
         stocked = stocked_category_ids()

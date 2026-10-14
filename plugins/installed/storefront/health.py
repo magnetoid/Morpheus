@@ -10,7 +10,8 @@ def public_pages_check() -> dict:
 
     paths = ['/', '/cart/', '/checkout/quick/']
     slug = (
-        Product.objects.filter(status='active', price__gt=0)
+        Product.objects.shoppable()
+        .filter(price__gt=0)
         .order_by('pk')
         .values_list('slug', flat=True)
         .first()

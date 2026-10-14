@@ -38,12 +38,14 @@ def _marketplace_counts() -> dict:
 
     def _compute() -> dict:
         vendor_count = (
-            Vendor.objects.filter(is_active=True, products__status='active').distinct().count()
+            Vendor.objects.filter(is_active=True, products__in=Product.objects.shoppable())
+            .distinct()
+            .count()
         )
-        active_product_count = Product.objects.filter(status='active').count()
+        active_product_count = Product.objects.shoppable().count()
         try:
             titles_in_stock_now = (
-                Product.objects.filter(status='active')
+                Product.objects.shoppable()
                 .filter(Q(track_inventory=False) | Q(variants__stock_levels__quantity__gt=0))
                 .distinct()
                 .count()
@@ -84,9 +86,7 @@ def vendors_directory(request):
     qs = qs.prefetch_related(
         Prefetch(
             'products',
-            queryset=Product.objects.filter(status='active').order_by(
-                '-is_featured', '-created_at'
-            ),
+            queryset=Product.objects.shoppable().order_by('-is_featured', '-created_at'),
             to_attr='_preview_products_all',
         )
     ).order_by('name')[:100]
@@ -169,7 +169,8 @@ def vendor_detail(request, slug):
         raise Http404
 
     page_obj = paginate_or_404(
-        Product.objects.filter(vendor=vendor, status='active')
+        Product.objects.shoppable()
+        .filter(vendor=vendor)
         .select_related('category')
         .order_by('-is_featured', '-created_at'),
         48,
@@ -281,9 +282,11 @@ def marketplace_landing(request):
     # the grid feels alive between visits. Annotate the count so we don't
     # issue a per-card COUNT query inside the loop.
     featured_qs = (
-        Vendor.objects.filter(is_active=True, products__status='active')
+        Vendor.objects.filter(is_active=True, products__in=Product.objects.shoppable())
         .exclude(description='')
-        .annotate(product_count=Count('products', filter=Q(products__status='active')))
+        .annotate(
+            product_count=Count('products', filter=Q(products__in=Product.objects.shoppable()))
+        )
         .distinct()
         .order_by('-created_at')[:6]
     )

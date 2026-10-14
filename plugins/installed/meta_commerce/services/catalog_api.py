@@ -59,7 +59,7 @@ def push_products(*, dry_run: bool = False) -> dict:
     from plugins.installed.meta_commerce.services.mapping import expand_variants  # noqa: PLC0415
 
     requests_list: list[dict] = []
-    for product in Product.objects.filter(status='active').select_related('category').iterator():
+    for product in Product.objects.shoppable().select_related('category').iterator():
         try:
             base = map_product(product, settings)
         except Exception:  # noqa: BLE001

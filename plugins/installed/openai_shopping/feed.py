@@ -168,7 +168,7 @@ def coverage() -> dict[str, Any]:
 
     cfg = config()
     rows = build_rows()
-    active = Product.objects.filter(status='active').count()
+    active = Product.objects.shoppable().count()
     products = {r.get('group_id') or r['item_id'] for r in rows}
     return {
         'active': active,

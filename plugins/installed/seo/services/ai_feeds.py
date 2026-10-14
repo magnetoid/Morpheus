@@ -131,7 +131,7 @@ def render_ai_products_feed(*, limit: int = 1000, offset: int = 0) -> dict:
     try:
         from plugins.installed.catalog.models import Product
 
-        qs = Product.objects.filter(status='active').order_by('-created_at')
+        qs = Product.objects.shoppable().order_by('-created_at')
         catalog_total = qs.count()
         items = [product_jsonld(p) for p in qs[offset : offset + limit]]
     except Exception:  # noqa: BLE001

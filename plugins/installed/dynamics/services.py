@@ -101,9 +101,9 @@ def _apply_block_options(ids, block, *, request=None, customer=None) -> list:
 
         by_str = {
             str(pk): pk
-            for pk in Product.objects.filter(pk__in=pinned_raw, status='active').values_list(
-                'pk', flat=True
-            )
+            for pk in Product.objects.shoppable()
+            .filter(pk__in=pinned_raw)
+            .values_list('pk', flat=True)
         }
         pinned_pks = [by_str[s] for s in pinned_raw if s in by_str]
         pinned_set = {str(x) for x in pinned_pks}
@@ -563,7 +563,7 @@ def calculate_grid_probabilities(
 
     now = timezone.now()
     products = list(
-        Product.objects.filter(status='active').values(
+        Product.objects.shoppable().values(
             'pk',
             'slug',
             'name',
@@ -784,9 +784,7 @@ def _recent_view_ids(request, customer, *, limit) -> list:
     if not slugs:
         return []
     slugs = slugs[:limit]
-    by_slug = dict(
-        Product.objects.filter(slug__in=slugs, status='active').values_list('slug', 'pk')
-    )
+    by_slug = dict(Product.objects.shoppable().filter(slug__in=slugs).values_list('slug', 'pk'))
     return [by_slug[s] for s in slugs if s in by_slug]
 
 
@@ -926,7 +924,7 @@ def _cart_ids(request, customer) -> set:
 def _base_active_qs():
     from plugins.installed.catalog.models import Product
 
-    return Product.objects.filter(status='active')
+    return Product.objects.shoppable()
 
 
 def _apply_filters(qs, block):
@@ -1046,7 +1044,8 @@ def _materialize(ids, limit) -> list:
     by_id = {
         p.pk: p
         for p in (
-            Product.objects.filter(pk__in=ordered, status='active')
+            Product.objects.shoppable()
+            .filter(pk__in=ordered)
             .select_related('category')
             .prefetch_related('images')
         )

@@ -25,7 +25,7 @@ def _build_coverage_report(*, limit: int | None = None) -> dict:
     from plugins.installed.catalog.models import Product  # noqa: PLC0415
 
     settings = snapchat_settings()
-    qs = Product.objects.filter(status='active').select_related('category').order_by('-created_at')
+    qs = Product.objects.shoppable().select_related('category').order_by('-created_at')
     if limit:
         qs = qs[:limit]
 

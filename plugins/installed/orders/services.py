@@ -120,6 +120,10 @@ class CartService:
         product = Product.objects.get(id=product_id)
         if getattr(product, 'status', 'active') != 'active':
             raise ValueError('Product is not available.')
+        if product.product_type == 'service':
+            # A booking listing's product: it has dates, guests and a host, so it is
+            # booked on its own page, never bought from a cart.
+            raise ValueError('This is booked on its own page, not added to a cart.')
         if _is_prelaunch_preview(product):
             raise ValueError('This product is not available to buy yet.')
         variant = ProductVariant.objects.get(id=variant_id) if variant_id else None

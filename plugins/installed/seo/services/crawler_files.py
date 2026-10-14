@@ -250,7 +250,7 @@ def render_llms_txt(*, full: bool = False) -> str:  # noqa: PLR0912, PLR0915 —
             out.append(f'- [{c.name}]({base}/category/{c.slug}/)')
         out.append('')
 
-        qs = Product.objects.filter(status='active').order_by('-created_at')
+        qs = Product.objects.shoppable().order_by('-created_at')
         limit = 200 if full else 50
         # A heading with no rows under it is worse than no heading: it tells a
         # crawler the shop has no catalogue. Only open the section once a row

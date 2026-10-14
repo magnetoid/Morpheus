@@ -89,6 +89,63 @@ class ServiceProductSurfaceTests(TestCase):
         self.assertTrue(any('/products/book/' in loc for loc in locs))
         self.assertFalse(any('/products/kayak-tour/' in loc for loc in locs))
 
+    def test_llms_txt_leaves_services_out(self):
+        from plugins.installed.seo.services.crawler_files import render_llms_txt
+
+        text = render_llms_txt(full=True)
+        self.assertIn('/products/book/', text)
+        self.assertNotIn('kayak-tour', text)
+
+    def test_the_ai_products_feed_leaves_services_out(self):
+        import json
+
+        from plugins.installed.seo.services.ai_feeds import render_ai_products_feed
+
+        feed = json.dumps(render_ai_products_feed(), default=str)
+        self.assertIn('Book', feed)
+        self.assertNotIn('Kayak tour', feed)
+
+    def test_a_category_holding_only_services_counts_as_empty(self):
+        from plugins.installed.catalog.models import Category
+        from plugins.installed.storefront.services import stocked_category_ids
+
+        tours = Category.objects.create(name='Tours', slug='svc-tours', is_active=True)
+        books = Category.objects.create(name='Shelf', slug='svc-shelf', is_active=True)
+        Product.objects.filter(slug='kayak-tour').update(category=tours)
+        Product.objects.filter(slug='book').update(category=books)
+        stocked = stocked_category_ids()
+        self.assertIn(books.pk, stocked)
+        self.assertNotIn(tours.pk, stocked)
+
+    def test_the_post_order_upsell_never_offers_a_service(self):
+        from plugins.installed.post_checkout_upsell.templatetags.post_checkout_upsell import (
+            _pick_product,
+        )
+
+        Product.objects.filter(slug='book').update(status='draft')
+        self.assertIsNone(_pick_product(None))
+
+    def test_the_nightly_page_check_opens_a_shoppable_product(self):
+        import uuid
+        from unittest import mock
+
+        Product.objects.create(
+            id=uuid.UUID(int=1),
+            name='Boat tour',
+            slug='boat-tour',
+            sku='S0',
+            status='active',
+            product_type='service',
+            price=Money(Decimal('70'), 'EUR'),
+        )
+        from plugins.installed.storefront.health import public_pages_check
+
+        with mock.patch('core.errors.health.fetch_failures', return_value=[]) as fetch:
+            public_pages_check()
+        paths = fetch.call_args.args[0]
+        self.assertNotIn('/products/boat-tour/', paths)
+        self.assertIn('/products/book/', paths)
+
     def test_the_channel_feeds_select_no_services(self):
         # Each channel's feed starts from _active_products(); an item is mapped only
         # from what that returns (a bare test product never maps, so the selection

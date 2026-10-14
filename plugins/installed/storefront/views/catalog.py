@@ -1357,7 +1357,8 @@ def collection_detail(request, slug):
         'name': ('name',),
     }
     qs = (
-        Product.objects.filter(status='active', collections=collection)
+        Product.objects.shoppable()
+        .filter(collections=collection)
         .select_related('category')
         .prefetch_related('images')
         .order_by(*sort_map.get(sort, sort_map['for_you']))
@@ -1541,7 +1542,8 @@ def staff_picks(request):
     products = []
     if collection is not None:
         products = list(
-            Product.objects.filter(status='active', collections=collection)
+            Product.objects.shoppable()
+            .filter(collections=collection)
             .order_by('-is_featured', '-created_at')
             .prefetch_related('images')[:30]
         )

@@ -21,7 +21,7 @@ def cart_pricing_check() -> dict:
     from plugins.installed.orders.services import CartService, OrderService, _is_prelaunch_preview
 
     name = 'A cart can be priced'
-    priced = list(Product.objects.filter(status='active', price__gt=0).order_by('pk')[:50])
+    priced = list(Product.objects.shoppable().filter(price__gt=0).order_by('pk')[:50])
     if not priced:
         return {'name': name, 'ok': True, 'detail': 'No priced products to test with.'}
     # A pre-launch preview is refused by the cart on purpose; pricing one would

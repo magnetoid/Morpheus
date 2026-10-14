@@ -19,7 +19,7 @@ def recently_viewed_product(slug: str):
     try:
         from plugins.installed.catalog.models import Product
 
-        return Product.objects.filter(slug=slug, status='active').select_related('category').first()
+        return Product.objects.shoppable().filter(slug=slug).select_related('category').first()
     except Exception:  # noqa: BLE001 — never break rendering
         return None
 
@@ -65,7 +65,8 @@ def featured_collection_rails(exclude_slug: str = '', per_rail: int = 8, max_rai
             if exclude_slug and collection.slug == exclude_slug:
                 continue
             products = list(
-                Product.objects.filter(status='active', collections=collection)
+                Product.objects.shoppable()
+                .filter(collections=collection)
                 .select_related('category')
                 .prefetch_related('images')
                 .order_by('-is_featured', '-created_at')[:per_rail]
