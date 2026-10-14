@@ -1,0 +1,65 @@
+{% comment %}Booking details — contributed to the dashboard product editor through
+PRODUCT_FORM_CARDS by booking_marketplace (product_card.py), saved by its
+PRODUCT_FORM_SAVED subscriber from the booking__ fields. The product's name, text,
+price, category, host and photos are the product form's own fields; this card is
+what only a booking needs.{% endcomment %}
+<div class="card card-padded space-y-3" id="booking-details-card">
+  <h2 class="font-semibold text-sm flex items-center gap-2"><i data-lucide="calendar-check" class="h-4 w-4"></i> Booking details</h2>
+  <p class="text-xs text-[color:var(--text-muted)]">Shown on the booking page at <a class="underline" href="/bookings/{{ listing.slug }}/" target="_blank" rel="noopener">/bookings/{{ listing.slug }}/</a>. Name, description, price, category, host and photos come from this product.</p>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div>
+      <label class="block text-sm font-medium mb-1" for="booking-kind">Listing type</label>
+      <select class="input w-full" id="booking-kind" name="booking__listing_kind">
+        {% for value, label in listing_kinds %}<option value="{{ value }}"{% if value == listing.listing_kind %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1" for="booking-region">Region</label>
+      <select class="input w-full" id="booking-region" name="booking__region">
+        <option value="">—</option>
+        {% for value, label in regions %}<option value="{{ value }}"{% if value == listing.region %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1" for="booking-location">Town or place</label>
+      <input class="input w-full" id="booking-location" name="booking__location" maxlength="120" value="{{ listing.location }}">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1" for="booking-duration">Duration (minutes)</label>
+      <input class="input w-full" id="booking-duration" name="booking__duration_minutes" type="number" min="1" value="{{ listing.duration_minutes|stringformat:'s' }}">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1" for="booking-duration-label">Duration as shown</label>
+      <input class="input w-full" id="booking-duration-label" name="booking__duration_label" maxlength="60" value="{{ listing.duration_label }}" placeholder="3 hours">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1" for="booking-languages">Languages</label>
+      <input class="input w-full" id="booking-languages" name="booking__languages" value="{{ listing.languages|join:', ' }}" placeholder="English, Montenegrin">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1" for="booking-capacity">Guests per day</label>
+      <input class="input w-full" id="booking-capacity" name="booking__daily_capacity" type="number" min="1" value="{{ listing.daily_capacity|stringformat:'s' }}">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1" for="booking-max-guests">Guests per booking</label>
+      <input class="input w-full" id="booking-max-guests" name="booking__max_guests_per_booking" type="number" min="1" value="{{ listing.max_guests_per_booking|stringformat:'s' }}">
+    </div>
+  </div>
+  <div>
+    <label class="block text-sm font-medium mb-1" for="booking-meeting-point">Meeting point</label>
+    <textarea class="input w-full" id="booking-meeting-point" name="booking__meeting_point" rows="2">{{ listing.meeting_point }}</textarea>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {% for name, text in line_fields %}
+    <div>
+      <label class="block text-sm font-medium mb-1" for="booking-{{ name }}">{% if name == 'highlights' %}Highlights{% elif name == 'included' %}Included{% elif name == 'not_included' %}Not included{% else %}What to bring{% endif %} <span class="font-normal text-xs text-[color:var(--text-muted)]">one per line</span></label>
+      <textarea class="input w-full" id="booking-{{ name }}" name="booking__{{ name }}" rows="4">{{ text }}</textarea>
+    </div>
+    {% endfor %}
+  </div>
+  <div>
+    <label class="block text-sm font-medium mb-1" for="booking-cancellation">Cancellation policy</label>
+    <textarea class="input w-full" id="booking-cancellation" name="booking__cancellation_policy" rows="2">{{ listing.cancellation_policy }}</textarea>
+  </div>
+  <p class="text-xs text-[color:var(--text-muted)]">Dates, start times, group prices and extras: <a class="underline" href="{% url 'booking_marketplace:host_edit' listing.slug %}">edit them on the listing</a>.</p>
+</div>

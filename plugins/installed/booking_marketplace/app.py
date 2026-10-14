@@ -66,6 +66,14 @@ class BookingMarketplacePlugin(Plugin):
         from plugins.installed.booking_marketplace.products import on_product_updated
 
         self.register_hook(events.PRODUCT_UPDATED, on_product_updated, priority=50)
+        # Its booking fields on the product editor (disappears with the app, ADR 0023).
+        from plugins.installed.booking_marketplace.product_card import (
+            on_product_form_cards,
+            on_product_form_saved,
+        )
+
+        self.register_hook(events.PRODUCT_FORM_CARDS, on_product_form_cards, priority=60)
+        self.register_hook(events.PRODUCT_FORM_SAVED, on_product_form_saved, priority=60)
 
         # Same arrangement for /ai/products.json: this store's inventory is
         # not a catalog Product, so without this the AI shopping feed reports
