@@ -46,9 +46,15 @@ def _stored(fieldfile) -> bool:
 def _copy_images(service, product) -> None:
     """The listing photo (primary) then its gallery, for a product with no photos yet.
 
-    A reused product keeps the photos it has: copying the listing's on top would show
-    the same picture twice under two file names. A file missing from storage is skipped.
+    Each photo is COPIED: a ProductImage deletes its file with its row, so a shared
+    file would vanish from the booking page the day a merchant removes the product's
+    photo (and the link backup holds rows, not media). A reused product keeps the
+    photos it has; a file missing from storage is skipped.
     """
+    import os
+
+    from django.core.files.base import ContentFile
+
     from plugins.installed.catalog.models import ProductImage
 
     if product.images.exists():
@@ -58,13 +64,11 @@ def _copy_images(service, product) -> None:
     ]
     photos = [(f, alt) for f, alt in photos if _stored(f)]
     for i, (fieldfile, alt) in enumerate(photos):
-        ProductImage.objects.create(
-            product=product,
-            image=fieldfile.name,
-            is_primary=(i == 0),
-            sort_order=i,
-            alt_text=alt[:255],
-        )
+        with fieldfile.storage.open(fieldfile.name, 'rb') as fh:
+            content = ContentFile(fh.read())
+        image = ProductImage(product=product, is_primary=(i == 0), sort_order=i, alt_text=alt[:255])
+        image.image.save(os.path.basename(fieldfile.name), content, save=False)
+        image.save()
 
 
 @transaction.atomic

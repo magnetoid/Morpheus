@@ -187,14 +187,12 @@ class ListingProductPhotoAndSlugTests(TestCase):
         )
         p = ensure_product(self.svc)
         rows = list(p.images.order_by('sort_order').values_list('image', 'is_primary', 'alt_text'))
+        # Copies under the product's own names; the order shows in primary + alt text.
         self.assertEqual(
-            [(name.rsplit('/', 1)[1][:5], primary, alt) for name, primary, alt in rows],
-            [
-                ('cover', True, 'Kayak the bay'),
-                ('first', False, 'First view'),
-                ('secon', False, 'Second view'),
-            ],
+            [(primary, alt) for _, primary, alt in rows],
+            [(True, 'Kayak the bay'), (False, 'First view'), (False, 'Second view')],
         )
+        self.assertTrue(all(default_storage.exists(name) for name, _, _ in rows))
 
     def test_a_reused_product_keeps_its_own_photos(self):
         from plugins.installed.catalog.models import ProductImage
@@ -224,3 +222,13 @@ class ListingProductPhotoAndSlugTests(TestCase):
         p = ensure_product(self.svc)
         self.assertEqual(p.slug, 'kayak-the-bay-experience-2')
         self.assertEqual(Product.objects.get(sku='MAP').name, 'A map')
+
+    def test_deleting_a_product_photo_keeps_the_listings_file(self):
+        # ProductImage deletes its file with its row; a shared file would vanish from
+        # the booking page too, and the link backup holds rows, not media.
+        self.svc.image.name = self._photo('cover.jpg')
+        self.svc.save(update_fields=['image'])
+        image = ensure_product(self.svc).images.get()
+        self.assertNotEqual(image.image.name, self.svc.image.name)
+        image.delete()
+        self.assertTrue(default_storage.exists(self.svc.image.name))
