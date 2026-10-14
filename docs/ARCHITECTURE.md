@@ -14,7 +14,6 @@ morpheus/
 │   ├── agents/                    # LLM tool-use loop, provider abstraction.
 │   ├── assistant/                 # Linda — the always-on operator.
 │   ├── audit/                     # Append-only audit log (AI decisions).
-│   ├── workflows.py               # Saga / compensation primitive.
 │   ├── observability.py           # OpenTelemetry init + PII scrubber.
 │   ├── errors/                    # Error log: capture, detailed capture switch,
 │   │                              #   report for Claude Code, health checks.
@@ -43,11 +42,6 @@ agent gateway, the merchant-facing `workflows` automation plugin —
 lives in `plugins/installed/<name>/`.
 
 When in doubt, it's a plugin.
-
-> **Two things named "workflows."** `core/workflows.py` is a
-> saga/compensation primitive for multi-step side-effecting flows
-> (checkout, returns) — core. The `workflows` *plugin* is merchant-facing
-> automation rules. Same word, different layers.
 
 ## The hook bus
 
