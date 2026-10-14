@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.109.0 — 2026-10-14
+
+**Experiences are products**
+
+- Every experience and local good on a booking store is now a product in Dashboard → Products, with a Booking details card: type, region, place, duration, languages, group sizes, meeting point, highlights, what's included, what to bring and the cancellation policy.
+- Edit on a booking page opens the product editor; the listing editor keeps the listing photo, web address and Top pick, and a tab left open there can no longer overwrite the product. Linda's product tools and listings.update change the same product.
+- Experiences stay off every shopping surface (product grids, feeds, sitemaps, llms.txt, the AI feed, upsells, Merchant Center and Meta catalog pushes) and cannot be added to a cart; /products/<experience>/ leads to its booking page, even after the product is renamed.
+- The product's web story shows on the booking page.
+- For every store: the product editor kept non-USD products in USD on save (now each product keeps its currency, and a variant sells in its product's); bulk activate, draft and archive now save each product, so search, caches and linked listings follow.
+- New command: manage.py link_listing_products --backup <file> (--dry-run lists what it would do).
+
 ## v0.108.0 — 2026-10-13
 
 **Marketplace listings in the dashboard**
