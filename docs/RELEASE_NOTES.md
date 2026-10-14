@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.111.1 — 2026-10-14
+
+**Clearer menu groups**
+
+- In the dashboard menu, a page of its own that follows a group of pages is set apart by a thin divider, so it no longer reads as part of the group above it.
+
 ## v0.111.0 — 2026-10-14
 
 **CRM in the menu, sections fold open**
