@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.110.0 — 2026-10-14
+
+**Experience pages answer first**
+
+- Every experience page opens with a short answer of what, where, how long and for whom, then the facts at a glance: duration, group size, languages, meeting point, cancellation.
+- Guest questions sit in the page before the reviews; each experience links the places of its region; the Reviews heading rates only reviews from a real booking.
+- Search engines see each experience as a trip with its itinerary, and a price only where the page shows one.
+- The product editor and Janus edit an experience's itinerary and guest questions.
+- A long name or summary typed in the product editor no longer stops the experience page from updating, and a host's price edit keeps the product's formatted text.
+- New apply_listing_content command writes listing copy with a backup that restores it.
+
 ## v0.109.2 — 2026-10-14
 
 **Experiences edit like products**
