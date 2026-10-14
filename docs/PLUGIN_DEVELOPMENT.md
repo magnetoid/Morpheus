@@ -603,6 +603,28 @@ contribution mechanism.
 
 See [`SKILLS.md` → Add a model](../SKILLS.md#skill-add-a-model).
 
+### Extending catalog.Product (a vertical)
+
+When your app sells something that is a product with extra data (a bookable
+experience, a rental, a course), extend `catalog.Product` instead of keeping a table
+of your own: a parallel table is invisible to the dashboard's Products page, the
+assistant's product tools, web stories, translations and search.
+`booking_marketplace` is the reference (`products.py`, `product_card.py`):
+
+* A `OneToOneField('catalog.Product', related_name=...)` on your model, declared with
+  `catalog` in `requires`. Product owns name, slug, descriptions, price, category,
+  vendor, photos and status; your model keeps only what Product has no field for.
+* If it is not bought from a cart, give the Product `product_type='service'`. Shopping
+  surfaces list `Product.objects.shoppable()` (active, not a service) and
+  `CartService.add_item` refuses a service; redirect `/products/<slug>/` to your page
+  (an seo `Redirect` stored under a source other than `auto_slug`, which the slug
+  watcher rewrites).
+* Keep your copies in step from `PRODUCT_UPDATED` (in its own savepoint) and push your
+  own editor's changes with an instance `save()`, never `QuerySet.update()`.
+* Put your fields on the product editor with a `PRODUCT_FORM_CARDS` card (below).
+* Copy files into a Product's images; never point a `ProductImage` at your file, because
+  it deletes its file with its row.
+
 ---
 
 ## 7. GraphQL — queries, mutations, permissions

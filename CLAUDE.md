@@ -189,6 +189,23 @@ GraphQL `products(category:)` query, Linda's product tools and the dashboard cou
 Never filter on `category__slug` alone; a parent then shows nothing unless every
 product is cross-listed by hand. Guarded by `storefront/tests/test_category_tree.py`.
 
+**Convention — a vertical extends Product, and shopping surfaces list `shoppable()`
+(v0.109.0).** booking_marketplace kept experiences in a parallel table the dashboard,
+Linda's product tools, stories and search never saw. Each listing now extends a catalog
+Product (`BookableService.product`, related name `booking`): Product owns name, text,
+price, category, host, photos and status; the listing keeps the booking data, kept in
+step through `PRODUCT_UPDATED` and `save_listing()`. An experience is
+`product_type='service'`: whatever lists products to a shopper or crawler as goods
+(grids, feeds, sitemaps, llms.txt, upsells, health checks, the Merchant Center push)
+reads `Product.objects.shoppable()`, `CartService.add_item` refuses a service, and
+`/products/<slug>/` 301s to `/bookings/<slug>/`; the dashboard and Linda's tools still see
+every product. Three traps the review caught: a `ProductImage` deletes its file with its
+row, so copy another model's photo, never share the file; seo's slug watcher rewrites its
+own `auto_slug` redirects, so an app's redirect is stored under another source; and the
+product editor's `_money()` defaulted to USD, so a save re-priced every EUR product.
+Guarded by `booking_marketplace/tests/test_listing_products.py`,
+`catalog/tests/test_service_products.py` and `orders/tests/test_service_products_not_sold.py`.
+
 **Landmine — two lists with the same name WILL drift, and the looser one
 wins where it's read.** `PROTECTED_PLUGINS` ("apps that soft-brick if
 disabled") existed twice: in `core/safety.py` (gating Linda's `plugins.disable`

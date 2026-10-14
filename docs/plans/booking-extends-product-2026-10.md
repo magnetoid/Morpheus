@@ -1,5 +1,11 @@
 # The booking app extends Product (Montenegro, 2026-10-14)
 
+**Status:** the structure shipped in v0.109.0 (plan:
+`docs/superpowers/plans/2026-10-14-booking-extends-product.md`); Montenegro's listings are
+linked by `manage.py link_listing_products --backup <file>` (`--dry-run` lists what it
+would do). The experience-page SEO structure and the content rewrite ("Then, on that
+structure") are next.
+
 Owner, 2026-10-14: "experiences don't reflect the database in the backend of Morpheus, why?" and
 "the booking plugin extends products in Morpheus with the additional data that is displayed on the
 booking page."
