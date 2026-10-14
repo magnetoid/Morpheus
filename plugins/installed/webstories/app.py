@@ -51,7 +51,14 @@ class WebstoriesPlugin(Plugin):
                 slot='pdp_below_long_description',
                 template='storefront/blocks/_webstory_embed.html',
                 priority=40,
-            )
+            ),
+            # A booking page (an experience is a catalog Product extended by the booking
+            # app); the page puts its `product` and `web_story` in the context like a PDP.
+            StorefrontBlock(
+                slot='listing_below_description',
+                template='storefront/blocks/_webstory_embed.html',
+                priority=40,
+            ),
         ]
 
     def get_config_schema(self) -> dict:

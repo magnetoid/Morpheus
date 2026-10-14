@@ -128,6 +128,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         <p class="text-foreground leading-7 whitespace-pre-line">{{ service.description }}</p>
       </section>
       {% endif %}
+      {% storefront_blocks "listing_below_description" %}
 
       <!-- What's included / not included -->
       {% if service.included or service.not_included %}

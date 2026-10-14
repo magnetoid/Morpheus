@@ -12,6 +12,7 @@
     <h1 class="display display-l" style="margin: 1rem 0;">{{ service.name }}<span class="text-accent">.</span></h1>
     <p class="lede">{{ service.duration_minutes }} min{% if not listing_mode and service.price %} · {{ service.price|money }} per guest{% endif %}</p>
     {% if service.description %}<div class="lede" style="margin-top:1rem;">{{ service.description|linebreaks }}</div>{% endif %}
+    {% storefront_blocks "listing_below_description" %}
 
     {% if messages %}{% for m in messages %}
     <div class="card" style="margin-top:1.5rem; padding:1rem; border-radius:8px; border:1px solid var(--rule); {% if m.tags == 'error' %}border-color:var(--accent);{% endif %}">{{ m }}</div>

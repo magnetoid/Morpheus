@@ -1,6 +1,7 @@
 {% comment %}
 Story-player thumbnail rendered into PDP slot `pdp_below_long_description`
-(below the long description), centered horizontally.
+(below the long description) and the booking page's `listing_below_description`,
+centered horizontally.
 
 Gates itself on the OneToOne related row — when there's no WebStory or
 the story isn't published, the block emits nothing.
@@ -11,23 +12,7 @@ stylesheet) and renders a tappable card that opens the full
 {% endcomment %}
 {% load webstories i18n %}{% webstory_embed_enabled as show_story_card %}
 {% if show_story_card and web_story and web_story.panels %}
-<section class="pdp-webstory" aria-labelledby="pdp-webstory-heading">
-  <h2 id="pdp-webstory-heading" class="pdp-webstory__heading">{% translate "Story preview" %}</h2>
-  <p class="pdp-webstory__lede">{% translate "Tap to flip through the photos and the key points." %}</p>
-  <script async src="https://cdn.ampproject.org/amp-story-player-v0.js"></script>
-  <link href="https://cdn.ampproject.org/amp-story-player-v0.css" rel="stylesheet">
-  <amp-story-player class="pdp-webstory__player">
-    <a href="/story/{{ product.slug }}/">
-      {% if web_story.poster_portrait_url %}
-        <img src="{{ web_story.poster_portrait_url }}"
-             loading="lazy"
-             data-amp-story-player-poster-img
-             alt="{% blocktranslate with name=product.name %}{{ name }}: story poster{% endblocktranslate %}">
-      {% endif %}
-      <span>{{ product.name }}</span>
-    </a>
-  </amp-story-player>
-</section>
+{# The style precedes the markup it sizes: after it, the player is laid out unsized, then jumps (CLS). #}
 <style>
   .pdp-webstory {
     margin: 3rem auto;
@@ -58,4 +43,21 @@ stylesheet) and renders a tappable card that opens the full
     margin-right: auto;
   }
 </style>
+<section class="pdp-webstory" aria-labelledby="pdp-webstory-heading">
+  <h2 id="pdp-webstory-heading" class="pdp-webstory__heading">{% translate "Story preview" %}</h2>
+  <p class="pdp-webstory__lede">{% translate "Tap to flip through the photos and the key points." %}</p>
+  <script async src="https://cdn.ampproject.org/amp-story-player-v0.js"></script>
+  <link href="https://cdn.ampproject.org/amp-story-player-v0.css" rel="stylesheet">
+  <amp-story-player class="pdp-webstory__player">
+    <a href="/story/{{ product.slug }}/">
+      {% if web_story.poster_portrait_url %}
+        <img src="{{ web_story.poster_portrait_url }}"
+             loading="lazy"
+             data-amp-story-player-poster-img
+             alt="{% blocktranslate with name=product.name %}{{ name }}: story poster{% endblocktranslate %}">
+      {% endif %}
+      <span>{{ product.name }}</span>
+    </a>
+  </amp-story-player>
+</section>
 {% endif %}

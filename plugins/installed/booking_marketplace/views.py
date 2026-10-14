@@ -462,6 +462,12 @@ def service_detail(request, slug):
             )
         ),
     }
+    # The catalog Product this listing extends, and its web story (the story card
+    # renders into `listing_below_description` from these, as on a product page).
+    product = service.product
+    story = getattr(product, 'web_story', None) if product is not None else None
+    ctx['product'] = product
+    ctx['web_story'] = story if story is not None and story.is_published else None
     # The storefront staff bar's Edit link opens the dashboard's listing editor.
     from plugins.installed.booking_marketplace.dashboard_listings import edit_url
     from plugins.installed.booking_marketplace.host import _staff_editor
