@@ -17,6 +17,16 @@ from morpheus.app import forms
 from ._helpers import _ensure_html, _money
 
 
+def _currency_of(product) -> str:
+    """The currency a product's prices are kept in: its own, or the store's for a new one."""
+    from django.conf import settings
+
+    # A new Product already has its UUID pk, so `adding` is what says it is new.
+    saved = product is not None and not product._state.adding
+    price = product.price if saved else None
+    return str(price.currency) if price is not None else settings.STORE_CURRENCY
+
+
 class ProductForm(forms.Form):
     """Create/edit a `catalog.Product`. Variants/images live in their own flows."""
 
@@ -220,9 +230,12 @@ class ProductForm(forms.Form):
         product.sku = cd['sku'] or ''
         product.status = cd['status']
         product.product_type = cd['product_type']
-        product.price = _money(cd['price']) or product.price
-        product.compare_at_price = _money(cd.get('compare_at_price'))
-        product.cost_price = _money(cd.get('cost_price'))
+        # Prices stay in the product's own currency (a new one takes the store's):
+        # _money() alone means USD, which re-priced every EUR product on save.
+        currency = _currency_of(product)
+        product.price = _money(cd['price'], currency) or product.price
+        product.compare_at_price = _money(cd.get('compare_at_price'), currency)
+        product.cost_price = _money(cd.get('cost_price'), currency)
         product.short_description = cd.get('short_description') or ''
         product.description = cd.get('description') or ''
         product.is_featured = bool(cd.get('is_featured'))
@@ -436,9 +449,11 @@ class VariantForm(forms.Form):
         variant.size = (cd.get('size') or '').strip()
         variant.short_description = (cd.get('short_description') or '').strip()
         variant.description = (cd.get('description') or '').strip()
-        variant.price = _money(cd.get('price'))
-        variant.compare_at_price = _money(cd.get('compare_at_price'))
-        variant.cost_price = _money(cd.get('cost_price'))
+        # A variant sells in its product's currency (one currency per cart).
+        currency = _currency_of(self.product)
+        variant.price = _money(cd.get('price'), currency)
+        variant.compare_at_price = _money(cd.get('compare_at_price'), currency)
+        variant.cost_price = _money(cd.get('cost_price'), currency)
         variant.weight = cd.get('weight')
         variant.variant_type = cd.get('variant_type') or 'physical'
         variant.requires_shipping = bool(cd.get('requires_shipping'))

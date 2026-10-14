@@ -241,3 +241,30 @@ class ProductEditorRoundTripTests(TestCase):
         resp = self.client.post(self.url, data, headers=_AJAX)
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(Product.objects.get(pk=self.product.pk).product_type, 'service')
+
+    def test_an_unchanged_save_keeps_the_products_currency(self):
+        # _money() defaulted to USD, so saving a EUR product (every Montenegro
+        # experience) re-priced it in dollars: the booking's EUR group prices then
+        # failed to add up ("different currencies") and the page showed USD.
+        from djmoney.money import Money
+
+        from plugins.installed.catalog.models import Product
+
+        Product.objects.filter(pk=self.product.pk).update(
+            price=Money(Decimal('50'), 'EUR'), compare_at_price=Money(Decimal('60'), 'EUR')
+        )
+        saved = self._save(self._submitted())
+        self.assertEqual(str(saved.price.currency), 'EUR')
+        self.assertEqual(str(saved.compare_at_price.currency), 'EUR')
+
+    def test_a_variant_is_priced_in_its_products_currency(self):
+        from djmoney.money import Money
+
+        from plugins.installed.admin_dashboard.forms.products import VariantForm
+        from plugins.installed.catalog.models import Product
+
+        Product.objects.filter(pk=self.product.pk).update(price=Money(Decimal('50'), 'EUR'))
+        product = Product.objects.get(pk=self.product.pk)
+        form = VariantForm(data={'name': 'Large', 'sku': 'L-1', 'price': '55'}, product=product)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(str(form.save().price.currency), 'EUR')
