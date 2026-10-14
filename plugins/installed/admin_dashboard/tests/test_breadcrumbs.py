@@ -63,9 +63,11 @@ class NavBreadcrumbTests(TestCase):
         )
         # A tab group still reads section › group › page.
         self.assertEqual(
-            _labels('/dashboard/apps/crm/pipeline/'),
-            ['Dashboard', 'Customers', 'CRM', 'Pipeline'],
+            _labels('/dashboard/apps/google_shopping/ads/'),
+            ['Dashboard', 'Channels', 'Google', 'Google Ads'],
         )
+        # CRM is its own section (2026-10-14): section › page.
+        self.assertEqual(_labels('/dashboard/apps/crm/pipeline/'), ['Dashboard', 'CRM', 'Pipeline'])
 
     def test_settings_tool_reads_as_settings(self):
         self.assertEqual(

@@ -500,7 +500,9 @@
      the space after a parent-with-submenu matches every other row. Submenu
      divs get their own margin when open (below); the inline-styled Settings
      separator keeps its larger gap. */
-  .sidebar-nav > .nav-link + .nav-link { margin-top: 2px; }
+  .sidebar-nav > .nav-link + .nav-link,
+  .sidebar-nav > .nav-group + .nav-group,
+  .sidebar-nav > .nav-group + .nav-link { margin-top: 2px; }
   .nav-link {
     display: flex; align-items: center; gap: .5rem;
     padding: .28rem .55rem; border-radius: var(--radius-sm);
@@ -518,6 +520,29 @@
     transition: transform var(--motion-med) var(--spring, var(--ease-out));
   }
   .nav-link.active::before { transform: scaleY(1); }
+  /* A section folds open to its pages (navigation.sidebar_children, the same
+     registry as the tabs): the chevron toggles the group, the section you are
+     in opens by itself, and the others keep the state you left them in. */
+  .nav-group { position: relative; }
+  .nav-group.has-children > .nav-link { padding-right: 1.9rem; }
+  .nav-chev-btn {
+    position: absolute; top: .2rem; right: .2rem; width: 1.35rem; height: 1.35rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0; background: none; color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer;
+  }
+  .nav-chev-btn:hover { background: var(--nav-hover-bg); color: var(--text); }
+  .nav-chev-btn > i, .nav-chev-btn > svg { transition: transform var(--motion-fast) var(--ease-out); }
+  .nav-group.is-open > .nav-chev-btn > i, .nav-group.is-open > .nav-chev-btn > svg { transform: rotate(180deg); }
+  .nav-children { display: none; margin: 2px 0 6px; padding-left: 1.55rem; }
+  .nav-group.is-open > .nav-children { display: block; }
+  .nav-sublink {
+    display: flex; align-items: center; gap: .4rem;
+    padding: .22rem .55rem; border-radius: var(--radius-sm);
+    color: var(--text-muted); font-size: .78rem; font-weight: 500; line-height: 1.25;
+  }
+  .nav-sublink:hover { background: var(--nav-hover-bg); color: var(--text); }
+  .nav-sublink.active { background: var(--nav-active-bg); color: var(--text); font-weight: 600; }
+  .nav-subheader { padding: .45rem .55rem .15rem; font-size: .7rem; font-weight: 600; color: var(--text-muted); }
   .sidebar-nav { transition: transform .25s ease, opacity .15s ease; }
   .sidebar-nav.slide-out-left { transform: translateX(-12px); opacity: 0; pointer-events: none; }
   .input { width:100%; height:2rem; padding:0 .65rem; font-size:.8125rem; border-radius: var(--radius-sm); border:1px solid var(--border); background: var(--surface); color: var(--text); transition: border-color var(--motion-fast), box-shadow var(--motion-fast); }
@@ -636,6 +661,9 @@
     body.sidebar-collapsed #sidebar .nav-link > svg { font-size: 1rem; }
     body.sidebar-collapsed #sidebar .nav-link .pill,
     body.sidebar-collapsed #sidebar .h-12 a span { display: none; }
+    body.sidebar-collapsed #sidebar .nav-children,
+    body.sidebar-collapsed #sidebar .nav-chev-btn { display: none; }
+    body.sidebar-collapsed #sidebar .nav-group.has-children > .nav-link { padding-right: 0; }
   }
   /* Every Tailwind hover:bg-* utility in content eases uniformly — pages
      stop mixing instant and eased hovers on the same screen. */
@@ -932,16 +960,30 @@
   </div>
   {% comment %}The sidebar is the dashboard's sections, one entry each
   (admin_dashboard/navigation.py). A section's pages are tabs at the top of
-  the page, not links here; Settings swaps this list for the settings
-  categories. Server-rendered for the first paint; after an htmx swap the
-  active entry and the mode come from data-nav-* on #main-content.{% endcomment %}
+  the page and fold out of its entry here, both from the same registry
+  (navigation.sidebar_children), so they never disagree; Settings swaps this
+  list for the settings categories. Server-rendered for the first paint; after
+  an htmx swap the active entry, its open group, its current page and the mode
+  come from data-nav-* on #main-content.{% endcomment %}
   <nav id="nav-main" class="sidebar-nav flex-1 overflow-y-auto px-1.5 py-2" aria-label="Dashboard"{% if dashboard_nav.mode == 'settings' %} style="display:none;"{% endif %}>
     {% for s in dashboard_nav.sections %}
-    <a href="{{ s.url }}" data-section="{{ s.key }}" title="{{ s.label }}" class="nav-link{% if s.active %} active{% endif %}"{% if s.active %} aria-current="page"{% endif %}>
-      {% if s.avatar %}<img src="{% static s.avatar %}" alt="" class="h-4 w-4" style="border-radius:50%;object-fit:cover;flex-shrink:0;">{% else %}<i data-lucide="{{ s.icon }}" class="h-4 w-4"></i>{% endif %}
-      <span>{{ s.label }}</span>
-      {% if s.badge %}<span class="pill pill-warn" style="margin-left:auto;">{{ s.badge|badge_count }}</span>{% endif %}
-    </a>
+    <div class="nav-group{% if s.children %} has-children{% endif %}{% if s.children and s.active %} is-open{% endif %}" data-group="{{ s.key }}">
+      <a href="{{ s.url }}" data-section="{{ s.key }}" title="{{ s.label }}" class="nav-link{% if s.active %} active{% endif %}"{% if s.active %} aria-current="page"{% endif %}>
+        {% if s.avatar %}<img src="{% static s.avatar %}" alt="" class="h-4 w-4" style="border-radius:50%;object-fit:cover;flex-shrink:0;">{% else %}<i data-lucide="{{ s.icon }}" class="h-4 w-4"></i>{% endif %}
+        <span>{{ s.label }}</span>
+        {% if s.badge %}<span class="pill pill-warn" style="margin-left:auto;">{{ s.badge|badge_count }}</span>{% endif %}
+      </a>
+      {% if s.children %}
+      <button type="button" class="nav-chev-btn" data-nav-toggle aria-controls="nav-sub-{{ s.key }}" aria-expanded="{% if s.active %}true{% else %}false{% endif %}" aria-label="{{ s.label }} pages"><i data-lucide="chevron-down" class="h-3 w-3"></i></button>
+      <div class="nav-children" id="nav-sub-{{ s.key }}">
+        {% for c in s.children %}{% if c.heading %}
+        <div class="nav-subheader">{{ c.heading }}</div>
+        {% else %}
+        <a href="{{ c.url }}" data-tab="{{ c.url }}" class="nav-sublink{% if c.active %} active{% endif %}"><span>{{ c.label }}</span>{% if c.badge %}<span class="pill pill-warn" style="margin-left:auto;">{{ c.badge|badge_count }}</span>{% endif %}</a>
+        {% endif %}{% endfor %}
+      </div>
+      {% endif %}
+    </div>
     {% endfor %}
     <a href="{% url 'admin_dashboard:settings' %}" id="settings-link" data-section="settings" title="Settings" class="nav-link" style="margin-top: .5rem;">
       <i data-lucide="settings" class="h-4 w-4"></i> <span>Settings</span>
@@ -1120,7 +1162,7 @@
   With overflow visible they stick to the window and park under the pinned top
   bar via --dash-topbar-h. Nothing scrolls this element programmatically; it is
   only an htmx swap target and a view-transition name.{% endcomment %}
-  <main id="main-content" class="flex-1" data-nav-mode="{{ dashboard_nav.mode }}" data-nav-section="{{ dashboard_nav.section }}" data-nav-category="{{ dashboard_nav.category }}">
+  <main id="main-content" class="flex-1" data-nav-mode="{{ dashboard_nav.mode }}" data-nav-section="{{ dashboard_nav.section }}" data-nav-category="{{ dashboard_nav.category }}" data-nav-tab="{{ dashboard_nav.tab_url }}">
    {# Global dashboard content width: max-w-screen-2xl (1536px) > old 7xl (1280px); use max-w-none for full-bleed. #}
    <div class="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
     {% if messages %}
@@ -1282,6 +1324,32 @@
         if (hit) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
       });
     }
+    // A section folds open to its pages: the section you are in opens, and the
+    // others keep the state you left them in, across htmx-boosted navigation.
+    const OPEN_KEY = 'morph:nav-open';
+    function openGroups() {
+      try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || '[]')); } catch (_) { return new Set(); }
+    }
+    function applyGroups(current) {
+      const open = openGroups();
+      navMain?.querySelectorAll('.nav-group.has-children').forEach(g => {
+        const on = g.dataset.group === current || open.has(g.dataset.group);
+        g.classList.toggle('is-open', on);
+        g.querySelector('[data-nav-toggle]')?.setAttribute('aria-expanded', String(on));
+      });
+    }
+    navMain?.addEventListener('click', e => {
+      const btn = e.target.closest('[data-nav-toggle]');
+      if (!btn) return;
+      e.preventDefault();
+      const group = btn.closest('.nav-group');
+      const on = !group.classList.contains('is-open');
+      group.classList.toggle('is-open', on);
+      btn.setAttribute('aria-expanded', String(on));
+      const open = openGroups();
+      if (on) open.add(group.dataset.group); else open.delete(group.dataset.group);
+      try { localStorage.setItem(OPEN_KEY, JSON.stringify([...open])); } catch (_) {}
+    });
     window.Morph = window.Morph || {};
     window.Morph.syncSidebarMode = function () {
       const main = document.getElementById('main-content');
@@ -1295,6 +1363,8 @@
       if (settingsBackRow) settingsBackRow.style.display = inSettings ? 'block' : 'none';
       const section = main.dataset.navSection || '';
       markActive(navMain.querySelectorAll('.nav-link[data-section]'), 'section', section, !inSettings && section !== '');
+      markActive(navMain.querySelectorAll('.nav-sublink[data-tab]'), 'tab', main.dataset.navTab || '', !inSettings);
+      applyGroups(inSettings ? '' : section);
       markActive(navSettings.querySelectorAll('.nav-link[data-category]'), 'category', main.dataset.navCategory || '', inSettings);
       // On a narrow screen the section tabs scroll sideways; bring the active
       // one into view without moving the page.

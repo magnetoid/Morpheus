@@ -61,6 +61,9 @@ SECTIONS: tuple[NavSection, ...] = (
     NavSection('orders', 'Orders', 'shopping-bag', '/dashboard/orders/', cards=True, always=True),
     NavSection('products', 'Products', 'package', '/dashboard/products/', cards=True, always=True),
     NavSection('customers', 'Customers', 'users', '/dashboard/customers/', cards=True, always=True),
+    # The whole CRM next to the customers it works on (owner's ask, 2026-10-14);
+    # listed only while the crm app is on.
+    NavSection('crm', 'CRM', 'users-round'),
     # Vendors and affiliates right after the people who buy (owner's ask,
     # 2026-10-10); each shows only on a store running its app.
     NavSection('vendors', 'Vendors', 'store'),
@@ -84,7 +87,6 @@ SECTION_ALIASES = {
     'cms': 'content',
     'catalog': 'products',
     'b2b': 'products',
-    'crm': 'customers',
     'sales': 'orders',
 }
 
@@ -515,6 +517,26 @@ def tab_strip(section_tabs: list[Tab], current: Tab | None, badges: dict) -> tup
     return items, subtabs
 
 
+def sidebar_children(section_tabs: list[Tab], current: Tab | None, badges: dict) -> list[dict]:
+    """A section's pages for its sidebar group: the tab strip's pages, a group's
+    members under its heading, so the menu and the tabs never disagree."""
+    groups: dict[str, list[Tab]] = {}
+    for tab in section_tabs:
+        if tab.group:
+            groups.setdefault(tab.group, []).append(tab)
+    out: list[dict] = []
+    seen: set[str] = set()
+    for tab in section_tabs:
+        members = groups.get(tab.group) if tab.group else None
+        if not members or len(members) == 1:
+            out.append(_tab_entry(tab, current, badges))
+        elif tab.group not in seen:
+            seen.add(tab.group)
+            out.append({'heading': tab.group})
+            out.extend(_tab_entry(m, current, badges) for m in members)
+    return out
+
+
 def _has_cards(section_key: str) -> bool:
     from plugins.registry import app_registry  # noqa: PLC0415
 
@@ -554,6 +576,8 @@ def build(request) -> dict:
                 'url': url,
                 'active': loc.mode == 'main' and loc.section == sec.key,
                 'badge': badge,
+                # A section with more than one page folds open to them in the sidebar.
+                'children': sidebar_children(listed, loc.tab, badges) if len(listed) > 1 else [],
             }
         )
 
@@ -574,6 +598,8 @@ def build(request) -> dict:
         'subtabs': subtabs,
         'tabs_centered': bool(strip) and bool(getattr(section(loc.section), 'centered', False)),
         'tab_root': bool(loc.tab and loc.exact),
+        # The current page, so the sidebar's open group can mark it after an htmx swap.
+        'tab_url': loc.tab.url if loc.mode == 'main' and loc.tab else '',
         'location': loc,
         'badges': badges,
         'categories': settings_categories_nav(loc, all_tools),

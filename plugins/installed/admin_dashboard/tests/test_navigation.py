@@ -3,10 +3,12 @@
 Before v0.81.0 the sidebar listed 95–100 links: five hardcoded groups plus a
 group per contributed `section`, settings pages as sidebar links, and the
 same app in two places under different names. Now the sidebar is the
-sections, each section's pages are tabs on the page, and settings pages are
-cards on their category. These tests hold that shape:
+sections, each section's pages are tabs on the page and fold out of its sidebar
+entry (owner's ask, 2026-10-14: both from the same registry, so they never
+disagree), and settings pages are cards on their category. These tests hold that shape:
 
 * the sidebar is the sections, in order, and only the ones with something in them;
+* a section's sidebar group is exactly its tabs, the section you are in open;
 * every tab and tool answers;
 * a page knows where it is — tabs, sub-tabs, a detail route, a settings page;
 * the breadcrumb shows below a tab, not on the tab's own page;
@@ -61,6 +63,13 @@ class _Staff(TestCase):
         self.assertEqual(resp.status_code, 200, url)
         return resp.content.decode()
 
+    def _nav(self, path):
+        from django.test import RequestFactory
+
+        request = RequestFactory().get(path)
+        request.user = get_user_model().objects.get(username='nav-owner')
+        return navigation.build(request)
+
 
 class SidebarTests(_Staff):
     def test_the_sidebar_is_the_sections_in_order(self):
@@ -75,16 +84,63 @@ class SidebarTests(_Staff):
             self.assertIn(key, keys)
         self.assertLessEqual(len(keys), len(navigation.SECTIONS) + 1)
 
-    def test_the_sidebar_lists_no_page_of_an_app(self):
-        # The whole point: an app's pages are tabs, not sidebar links. Every
-        # link in the sidebar is a section (whose landing may be an app's
-        # first tab, e.g. Channels) or Settings — one per section, no more.
+    def test_a_sections_pages_are_its_sidebar_group(self):
+        # Owner's ask (2026-10-14): the sections fold open to their pages again.
+        # The group is built from the same registry as the tabs, so the menu and
+        # the tabs never disagree; each section's own entry is still one link.
         sidebar = _SIDEBAR.search(self.html('/dashboard/orders/')).group(0)
-        links = sidebar.count('class="nav-link')
-        self.assertEqual(links, len(re.findall('data-section=', sidebar)))
-        self.assertLessEqual(links, len(navigation.SECTIONS) + 1)
-        for page_url in ('/dashboard/apps/affiliates/programs/', '/dashboard/reviews/'):
-            self.assertNotIn(page_url, sidebar)
+        self.assertEqual(
+            sidebar.count('class="nav-link'), len(re.findall('data-section=', sidebar))
+        )
+        nav = self._nav('/dashboard/orders/')
+        for sec in nav['sections']:
+            listed = [
+                t.url
+                for t in navigation.tabs(get_user_model().objects.get(username='nav-owner'))
+                if t.section == sec['key'] and t.nav == 'main'
+            ]
+            links = [c['url'] for c in sec['children'] if 'url' in c]
+            with self.subTest(section=sec['key']):
+                if len(listed) > 1:
+                    self.assertEqual(sorted(links), sorted(listed))
+                    for url in links:
+                        self.assertIn(f'data-tab="{url}"', sidebar)
+                else:
+                    self.assertEqual(sec['children'], [])
+
+    def test_a_group_reads_as_a_heading_over_its_pages(self):
+        channels = next(s for s in self._nav('/dashboard/')['sections'] if s['key'] == 'channels')
+        at = channels['children'].index({'heading': 'Google'})
+        self.assertEqual(
+            [c['label'] for c in channels['children'][at + 1 : at + 3]],
+            ['Google Shopping', 'Google Ads'],
+        )
+
+    def test_the_section_you_are_in_renders_open(self):
+        sidebar = _SIDEBAR.search(self.html('/dashboard/orders/')).group(0)
+        self.assertRegex(sidebar, r'class="nav-group has-children is-open" data-group="orders"')
+        self.assertRegex(sidebar, r'class="nav-group has-children" data-group="customers"')
+        self.assertIn('aria-controls="nav-sub-orders" aria-expanded="true"', sidebar)
+
+    def test_crm_is_its_own_section_after_customers(self):
+        # Owner's ask (2026-10-14): the whole CRM out of Customers, next to it.
+        keys = [s.key for s in navigation.SECTIONS]
+        self.assertEqual(keys[keys.index('customers') + 1], 'crm')
+        nav = self._nav('/dashboard/apps/crm/pipeline/')
+        self.assertEqual(nav['section'], 'crm')
+        self.assertEqual(
+            [t['label'] for t in nav['tabs']],
+            ['Overview', 'Inbox', 'Support chat', 'Pipeline', 'Tasks'],
+        )
+        self.assertEqual([t['label'] for t in nav['tabs'] if t['active']], ['Pipeline'])
+        customers = {t.label for t in navigation.tabs() if t.section == 'customers'}
+        self.assertFalse({'Inbox', 'Support chat', 'Pipeline', 'Tasks'} & customers)
+
+    def test_a_disabled_crm_takes_its_section_with_it(self):
+        with disabled('crm'):
+            sidebar = _SIDEBAR.search(self.html('/dashboard/')).group(0)
+            self.assertNotIn('data-section="crm"', sidebar)
+        self.assertIn('data-section="crm"', _SIDEBAR.search(self.html('/dashboard/')).group(0))
 
     def test_a_section_with_nothing_in_it_is_not_listed(self):
         with disabled('marketplace'):
@@ -118,13 +174,6 @@ class EveryEntryAnswersTests(_Staff):
 
 
 class WhereAmITests(_Staff):
-    def _nav(self, path):
-        from django.test import RequestFactory
-
-        request = RequestFactory().get(path)
-        request.user = get_user_model().objects.get(username='nav-owner')
-        return navigation.build(request)
-
     def test_a_tab_page_marks_its_section_and_tab(self):
         nav = self._nav('/dashboard/orders/')
         self.assertEqual((nav['mode'], nav['section']), ('main', 'orders'))
@@ -133,22 +182,23 @@ class WhereAmITests(_Staff):
         self.assertEqual(active, ['All orders'])
 
     def test_a_group_is_one_tab_with_sub_tabs(self):
-        nav = self._nav('/dashboard/apps/crm/pipeline/')
-        self.assertEqual(nav['section'], 'customers')
+        nav = self._nav('/dashboard/apps/google_shopping/ads/')
+        self.assertEqual(nav['section'], 'channels')
         labels = [t['label'] for t in nav['tabs']]
-        self.assertEqual(labels.count('CRM'), 1)
-        self.assertNotIn('Pipeline', labels)  # a sub-tab, not a tab
-        self.assertEqual([t['label'] for t in nav['subtabs'] if t['active']], ['Pipeline'])
-        self.assertTrue(next(t for t in nav['tabs'] if t['label'] == 'CRM')['active'])
+        self.assertEqual(labels.count('Google'), 1)
+        self.assertNotIn('Google Ads', labels)  # a sub-tab, not a tab
+        self.assertEqual([t['label'] for t in nav['subtabs'] if t['active']], ['Google Ads'])
+        self.assertTrue(next(t for t in nav['tabs'] if t['label'] == 'Google')['active'])
 
     def test_affiliates_is_its_own_section_with_its_pages_as_tabs(self):
         # Owner's ask (2026-10-10): out of Marketing, next to Vendors.
         nav = self._nav('/dashboard/apps/affiliates/programs/')
         self.assertEqual(nav['section'], 'affiliates')
         self.assertEqual([t['label'] for t in nav['tabs'] if t['active']], ['Programs'])
+        # CRM sits next to Customers since 2026-10-14; vendors and affiliates follow.
         keys = [s.key for s in navigation.SECTIONS]
         self.assertEqual(
-            keys[keys.index('customers') + 1 : keys.index('customers') + 3],
+            keys[keys.index('crm') + 1 : keys.index('crm') + 3],
             ['vendors', 'affiliates'],
         )
 
@@ -183,6 +233,8 @@ class WhereAmITests(_Staff):
         html = self.html('/dashboard/seo/audit/')
         self.assertIn('data-nav-mode="main"', html)
         self.assertIn('data-nav-section="seo"', html)
+        # The current tab too, so the open sidebar group marks its page after a swap.
+        self.assertIn('data-nav-tab="/dashboard/seo/audit/"', html)
 
     def test_an_app_page_is_found_at_its_router_path_too(self):
         # /dashboard/apps/seo/audit/ serves the same page as /dashboard/seo/audit/.
