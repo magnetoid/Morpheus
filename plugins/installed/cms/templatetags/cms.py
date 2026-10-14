@@ -9,6 +9,17 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+def _render(context, template_name: str, extra: dict) -> str:
+    """Render a fragment inside the page's own context.
+
+    The page's flattened context already carries `request` and every context
+    processor's output. Passing `request=` to render_to_string would build a fresh
+    RequestContext and re-run every processor (store settings, market, cart, nav
+    caches) once per fragment — the bug storefront_blocks had (v0.77.0).
+    """
+    return render_to_string(template_name, {**context.flatten(), **extra})
+
+
 @register.simple_tag(takes_context=True)
 def cms_block(context, key: str):
     from plugins.installed.cms.services import render_block
@@ -17,7 +28,7 @@ def cms_block(context, key: str):
     if block is None:
         return ''
     try:
-        return render_to_string('cms/_block.html', {'block': block}, request=context.get('request'))
+        return _render(context, 'cms/_block.html', {'block': block})
     except Exception:  # noqa: BLE001
         from django.utils.html import escape
 
@@ -31,7 +42,7 @@ def cms_menu(context, key: str):
     menu = get_menu(key)
     if menu is None:
         return ''
-    return render_to_string('cms/_menu.html', {'menu': menu}, request=context.get('request'))
+    return _render(context, 'cms/_menu.html', {'menu': menu})
 
 
 @register.simple_tag(takes_context=True)
@@ -41,7 +52,7 @@ def cms_form(context, key: str):
     form = Form.objects.filter(key=key, is_active=True).first()
     if form is None:
         return ''
-    return render_to_string('cms/_form.html', {'form': form}, request=context.get('request'))
+    return _render(context, 'cms/_form.html', {'form': form})
 
 
 @register.simple_tag(takes_context=True)
@@ -62,7 +73,6 @@ def render_page_sections(context, page):
     if not rows:
         return ''
     out: list[str] = []
-    request = context.get('request')
     for row in rows:
         section = section_registry.get(row.section_id)
         if section is None:
@@ -79,7 +89,7 @@ def render_page_sections(context, page):
             continue
         try:
             ctx = section.render_context(page=page, settings=row.settings or {})
-            out.append(render_to_string(section.template, ctx, request=request))
+            out.append(_render(context, section.template, ctx))
         except Exception as exc:  # noqa: BLE001 — never break the page on one bad section
             from django.conf import settings as dj_settings
 
