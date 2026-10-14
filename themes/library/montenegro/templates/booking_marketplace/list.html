@@ -51,7 +51,7 @@ empty state, and none of the experience-only search, sort and buying guide.{% en
   {% if services %}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
     {% for s in services %}
-    {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode %}
+    {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode heading="h2" %}
     {% endfor %}
   </div>
   {% if page_obj.has_other_pages %}

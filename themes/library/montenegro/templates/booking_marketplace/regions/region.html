@@ -14,7 +14,7 @@
   {% if services %}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
     {% for s in services %}
-    {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode %}
+    {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode heading="h2" %}
     {% endfor %}
   </div>
   {% else %}
