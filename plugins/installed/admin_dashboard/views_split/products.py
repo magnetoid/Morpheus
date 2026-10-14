@@ -887,7 +887,12 @@ def products_bulk(request: HttpRequest) -> HttpResponse:
 
     status_map = {'activate': 'active', 'draft': 'draft', 'archive': 'archived'}
     if action in status_map:
-        qs.update(status=status_map[action])
+        # Save each product (at most 500): QuerySet.update() skips post_save, so
+        # PRODUCT_UPDATED never fired — no reindex, no cache purge, and a booking
+        # listing's product archived here stayed bookable.
+        for product in qs:
+            product.status = status_map[action]
+            product.save(update_fields=['status', 'updated_at'])
         messages.success(request, f'Updated {count} product(s) to {status_map[action]}.')
     elif action == 'delete':
         qs.delete()

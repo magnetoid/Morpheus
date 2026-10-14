@@ -163,6 +163,20 @@ class ListingProductTests(TestCase):
         data = internal_graphql('query { product(slug: "kayak-the-bay") { slug } }')
         self.assertIsNone((data or {}).get('product'))
 
+    def test_a_bulk_archive_on_products_reaches_the_listing(self):
+        # The bulk action used QuerySet.update(), which skips post_save, so
+        # PRODUCT_UPDATED never fired and the listing stayed bookable.
+        from django.contrib.auth import get_user_model
+
+        p = ensure_product(self.svc)
+        self.client.force_login(
+            get_user_model().objects.create_superuser('boss@x.io', 'boss@x.io', 'pw')
+        )
+        self.client.post('/dashboard/products/bulk/', {'action': 'archive', 'ids': [str(p.pk)]})
+        self.svc.refresh_from_db()
+        p.refresh_from_db()
+        self.assertEqual((p.status, self.svc.is_active), ('archived', False))
+
 
 class ListingProductPhotoAndSlugTests(TestCase):
     def setUp(self):
