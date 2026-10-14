@@ -55,6 +55,9 @@ owner's model, never a parallel table"). The 17 goods also exist as archived cat
 
 ## Then, on that structure
 
+Status (2026-10-14): the page structure and the import command shipped in v0.110.0; content per
+`docs/superpowers/plans/2026-10-14-experience-pages-seo-and-content.md` Tasks 8–9.
+
 1. **SEO structure of the experience page:**
    - Answer-first summary and an at-a-glance block (duration, meeting point, languages, group size,
      cancellation).

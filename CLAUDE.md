@@ -204,12 +204,13 @@ editor's Basics card names no types: a `data-pt-show` list of the four older typ
 experience's name, text and price until v0.109.2. Product text is sanitised rich HTML; the
 listing keeps a plain-text copy (`products.plain_text`, which feeds, JSON-LD, llms.txt and the
 host form read), the booking page renders the product's own text (`|listing_text`), and a
-listing save writes text back only when it changed, or a price edit strips the formatting. Three traps the review caught: a `ProductImage` deletes its file with its
+listing save writes text back only when it changed, or a price edit strips the formatting. The listing's copies are clipped to their columns (`products._listing_copy`): Product allows a longer name and an unlimited summary, Postgres refuses the rest, and sqlite never does. Three traps the review caught: a `ProductImage` deletes its file with its
 row, so copy another model's photo, never share the file; seo's slug watcher rewrites its
 own `auto_slug` redirects, so an app's redirect is stored under another source; and the
 product editor's `_money()` defaulted to USD, so a save re-priced every EUR product.
 Guarded by `booking_marketplace/tests/test_listing_products.py`,
-`test_listing_seo_from_product.py`, `test_listing_text.py`, `catalog/tests/test_service_products.py`,
+`test_listing_seo_from_product.py`, `test_listing_text.py`, `test_experience_page_structure.py`,
+`test_experience_trip_jsonld.py`, `test_apply_listing_content.py`, `catalog/tests/test_service_products.py`,
 `orders/tests/test_service_products_not_sold.py` and
 `admin_dashboard/tests/test_product_form_type_cards.py`.
 
