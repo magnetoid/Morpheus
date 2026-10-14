@@ -92,3 +92,51 @@ class BookingDetailsCardTests(TestCase):
         app_registry._active.discard('booking_marketplace')
         self.addCleanup(app_registry._active.add, 'booking_marketplace')
         self.assertEqual(self._cards(self.product), [])
+
+    def _save_rows(self, **lists):
+        post = QueryDict(mutable=True)
+        for key, values in lists.items():
+            post.setlist(f'booking__{key}', values)
+        hook_registry.fire(
+            MorpheusEvents.PRODUCT_FORM_SAVED, product=self.product, post=post, files={}
+        )
+        self.svc.refresh_from_db()
+
+    def test_saving_writes_the_itinerary_in_order(self):
+        self._save_rows(
+            itinerary_present=['1'],
+            itinerary_title=['Meet at the gate', '', 'Paddle under the walls'],
+            itinerary_detail=['Kit and a briefing.', 'a detail with no step', ''],
+        )
+        self.assertEqual(
+            self.svc.itinerary,
+            [
+                {'title': 'Meet at the gate', 'detail': 'Kit and a briefing.'},
+                {'title': 'Paddle under the walls', 'detail': ''},
+            ],
+        )
+
+    def test_saving_keeps_only_answered_questions(self):
+        self._save_rows(
+            faqs_present=['1'],
+            faqs_q=['Do I need to swim?', 'Can children come?', ''],
+            faqs_a=['A little.', '', 'an answer with no question'],
+        )
+        self.assertEqual(self.svc.faqs, [{'q': 'Do I need to swim?', 'a': 'A little.'}])
+
+    def test_a_save_without_the_rows_keeps_them(self):
+        self.svc.itinerary = [{'title': 'Meet', 'detail': ''}]
+        self.svc.faqs = [{'q': 'Swim?', 'a': 'Yes.'}]
+        self.svc.save()
+        self._save(meeting_point='Kotor Sea Gate')
+        self.assertEqual(self.svc.itinerary, [{'title': 'Meet', 'detail': ''}])
+        self.assertEqual(self.svc.faqs, [{'q': 'Swim?', 'a': 'Yes.'}])
+
+    def test_the_card_shows_the_rows_and_spares(self):
+        self.svc.faqs = [{'q': 'Do I need to swim?', 'a': 'A little.'}]
+        self.svc.save()
+        self.client.force_login(self.admin)
+        html = self.client.get(f'/dashboard/products/{self.product.pk}/').content.decode()
+        self.assertIn('value="Do I need to swim?"', html)
+        self.assertEqual(html.count('name="booking__faqs_q"'), 4)
+        self.assertEqual(html.count('name="booking__itinerary_title"'), 4)

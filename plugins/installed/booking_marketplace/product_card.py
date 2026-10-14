@@ -16,6 +16,17 @@ _TEXT = {
 }
 _NUMBERS = ('duration_minutes', 'daily_capacity', 'max_guests_per_booking')
 _LINES = ('highlights', 'included', 'not_included', 'what_to_bring')
+_PAIRS = {'itinerary': ('title', 'detail'), 'faqs': ('q', 'a')}
+
+
+def _rows(items, first: str, second: str, *, spare: int = 2, minimum: int = 4):
+    """Stored pairs as (first, second) rows, plus empty rows to add more."""
+    rows = [
+        (str(item.get(first) or ''), str(item.get(second) or ''))
+        for item in (items or [])
+        if isinstance(item, dict)
+    ]
+    return rows + [('', '')] * max(spare, minimum - len(rows))
 
 
 def on_product_form_cards(value, product=None, **kwargs):
@@ -32,6 +43,8 @@ def on_product_form_cards(value, product=None, **kwargs):
                 'listing_kinds': BookableService.LISTING_KINDS,
                 'regions': REGIONS,
                 'line_fields': [(name, '\n'.join(getattr(listing, name) or [])) for name in _LINES],
+                'itinerary_rows': _rows(listing.itinerary, 'title', 'detail'),
+                'faq_rows': _rows(listing.faqs, 'q', 'a'),
             },
             'order': 60,
         }
@@ -45,6 +58,21 @@ def _number(raw: str):
     except (TypeError, ValueError):
         return None
     return number if number >= 1 else None
+
+
+def _apply_pairs(listing, post) -> None:
+    """The itinerary steps and guest questions, when the card posted their rows."""
+    for field, (first, second) in _PAIRS.items():
+        if f'{PREFIX}{field}_present' not in post:
+            continue  # an older form without these rows changes nothing
+        rows = []
+        firsts = post.getlist(f'{PREFIX}{field}_{first}')
+        seconds = post.getlist(f'{PREFIX}{field}_{second}')
+        for raw_one, raw_two in zip(firsts, seconds, strict=False):
+            one, two = raw_one.strip(), raw_two.strip()
+            if one and (two or field == 'itinerary'):  # a step needs a title, a question its answer
+                rows.append({first: one, second: two})
+        setattr(listing, field, rows)
 
 
 def on_product_form_saved(product=None, post=None, **kwargs):
@@ -77,6 +105,7 @@ def on_product_form_saved(product=None, post=None, **kwargs):
             setattr(
                 listing, name, [line.strip() for line in get(name).splitlines() if line.strip()]
             )
+    _apply_pairs(listing, post)
     from django.db import transaction
 
     with transaction.atomic():  # its own savepoint: a failure never aborts the editor's save

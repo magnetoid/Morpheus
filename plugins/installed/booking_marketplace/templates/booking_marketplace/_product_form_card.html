@@ -57,6 +57,26 @@ what only a booking needs.{% endcomment %}
     </div>
     {% endfor %}
   </div>
+  <fieldset class="space-y-2">
+    <legend class="block text-sm font-medium mb-1">Itinerary <span class="font-normal text-xs text-[color:var(--text-muted)]">one step per row, in order; empty rows are dropped</span></legend>
+    <input type="hidden" name="booking__itinerary_present" value="1">
+    {% for title, detail in itinerary_rows %}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+      <input class="input w-full" name="booking__itinerary_title" value="{{ title }}" maxlength="120" placeholder="Step" aria-label="Step {{ forloop.counter }}">
+      <input class="input w-full md:col-span-2" name="booking__itinerary_detail" value="{{ detail }}" maxlength="300" placeholder="What happens" aria-label="Step {{ forloop.counter }}: what happens">
+    </div>
+    {% endfor %}
+  </fieldset>
+  <fieldset class="space-y-2">
+    <legend class="block text-sm font-medium mb-1">Guest questions <span class="font-normal text-xs text-[color:var(--text-muted)]">shown on the page and to search engines; a question needs its answer</span></legend>
+    <input type="hidden" name="booking__faqs_present" value="1">
+    {% for q, a in faq_rows %}
+    <div class="grid grid-cols-1 gap-2">
+      <input class="input w-full" name="booking__faqs_q" value="{{ q }}" maxlength="200" placeholder="Question" aria-label="Question {{ forloop.counter }}">
+      <textarea class="input w-full" name="booking__faqs_a" rows="2" placeholder="Answer" aria-label="Answer {{ forloop.counter }}">{{ a }}</textarea>
+    </div>
+    {% endfor %}
+  </fieldset>
   <div>
     <label class="block text-sm font-medium mb-1" for="booking-cancellation">Cancellation policy</label>
     <textarea class="input w-full" id="booking-cancellation" name="booking__cancellation_policy" rows="2">{{ listing.cancellation_policy }}</textarea>
