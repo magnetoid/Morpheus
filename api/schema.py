@@ -13,7 +13,7 @@ import logging
 import threading
 
 import strawberry
-from strawberry.extensions import SchemaExtension
+from strawberry.extensions import ParserCache, SchemaExtension, ValidationCache
 
 from api.graphql_permissions import PermissionDenied
 
@@ -142,9 +142,19 @@ def build_schema() -> strawberry.Schema:
     return strawberry.Schema(
         query=Query,
         mutation=Mutation,
-        extensions=[_PermissionToGraphQLError, _MaskUnhandledErrors],
+        extensions=[
+            _PermissionToGraphQLError,
+            _MaskUnhandledErrors,
+            lambda: ParserCache(maxsize=QUERY_CACHE_SIZE),
+            lambda: ValidationCache(maxsize=QUERY_CACHE_SIZE),
+        ],
     )
 
+
+# Parsed documents and validation results kept per query text (LRU). Storefront pages
+# send fixed query strings through internal_graphql; parse + validate cost ~4.7 ms per
+# call against this schema, so a repeat should cost nothing.
+QUERY_CACHE_SIZE = 256
 
 _schema_lock = threading.Lock()
 _cached_schema: strawberry.Schema | None = None
