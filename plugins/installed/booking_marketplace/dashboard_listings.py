@@ -23,6 +23,10 @@ _KINDS = {'experience': 'Experiences', 'product': 'Local goods'}
 
 
 def edit_url(service) -> str:
+    # A listing linked to its catalog Product is edited in the product editor (with the
+    # Booking details card); one not linked yet still has the listing editor.
+    if service.product_id:
+        return f'/dashboard/products/{service.product_id}/'
     return f'/dashboard/listings/{service.pk}/edit/'
 
 

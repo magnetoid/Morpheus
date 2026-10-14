@@ -104,6 +104,13 @@ class DashboardListingTests(TestCase):
         page = self.client.get(f'/bookings/{self.tour.slug}/')
         self.assertEqual(page.context['active_edit_url'], self._edit(self.tour))
 
+    def test_a_linked_listing_edit_link_opens_the_product_editor(self):
+        from plugins.installed.booking_marketplace.products import ensure_product
+
+        product = ensure_product(self.tour)
+        page = self.client.get(f'/bookings/{self.tour.slug}/')
+        self.assertEqual(page.context['active_edit_url'], f'/dashboard/products/{product.pk}/')
+
     def test_a_visitor_cannot_open_them(self):
         self.client.logout()
         self.assertNotEqual(self.client.get(LIST).status_code, 200)
@@ -134,3 +141,22 @@ class ListingToolsTests(TestCase):
         svc = BookableService.objects.get(slug='vranac-reserve')
         self.assertEqual(svc.price.amount, Decimal('19.50'))
         self.assertFalse(svc.is_active)
+
+    def test_a_tool_change_reaches_the_listings_product(self):
+        from plugins.installed.booking_marketplace.agent_tools import listings_update_tool
+        from plugins.installed.booking_marketplace.products import ensure_product
+        from plugins.installed.catalog.models import Vendor
+
+        vendor = Vendor.objects.create(name='Makers', slug='makers', is_active=True)
+        svc = BookableService.objects.create(
+            vendor=vendor,
+            name='Vranac Reserve',
+            slug='vranac-reserve',
+            listing_kind='product',
+            price=Money(Decimal('18'), 'EUR'),
+            is_active=True,
+        )
+        product = ensure_product(svc)
+        listings_update_tool.handler(slug='vranac-reserve', price='19.50', is_active=False)
+        product.refresh_from_db()
+        self.assertEqual((product.price.amount, product.status), (Decimal('19.50'), 'draft'))

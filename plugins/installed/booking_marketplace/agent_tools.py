@@ -129,4 +129,7 @@ def listings_update_tool(*, slug: str, **fields) -> ToolResult:
     if not changed:
         raise ToolError('nothing to change: pass at least one field')
     svc.save()
+    from plugins.installed.booking_marketplace.products import save_listing
+
+    save_listing(svc)  # the listing's catalog Product changes with it
     return ToolResult(output={'updated': changed, 'listing': _row(svc)})
