@@ -7,7 +7,11 @@ that the rest of the app still reads (kept in step by sync_from_product).
 
 from __future__ import annotations
 
+import logging
+
 from django.db import transaction
+
+logger = logging.getLogger('morpheus.booking_marketplace')
 
 
 def _resolve_slug(service):
@@ -132,3 +136,46 @@ def sync_from_product(product) -> None:
             'is_active',
         ]
     )
+
+
+def sync_to_product(service) -> None:
+    """Copy a host's or the listing editor's edits of the shared fields onto the Product."""
+    product = service.product
+    if product is None:
+        return
+    product.name = service.name
+    product.short_description = service.short_description
+    product.description = service.description
+    product.price = service.price
+    product.compare_at_price = service.original_price
+    product.category_id = service.category_id
+    product.vendor_id = service.vendor_id
+    # An inactive listing hides its product, but a product the merchant archived
+    # stays archived rather than coming back as a draft.
+    if service.is_active:
+        product.status = 'active'
+    elif product.status == 'active':
+        product.status = 'draft'
+    product._booking_sync = True  # on_product_updated: this save came from the listing
+    try:
+        product.save()
+    finally:
+        product._booking_sync = False
+
+
+def save_listing(service) -> None:
+    """After a listing is saved by its host or the editor: link its Product, push the edits."""
+    ensure_product(service)
+    sync_to_product(service)
+
+
+def on_product_updated(*, product=None, **_) -> None:
+    """PRODUCT_UPDATED: the product editor (or Linda) changed a listing's product."""
+    if product is None or getattr(product, '_booking_sync', False):
+        return
+    try:
+        # Its own savepoint: a failure here never aborts the caller's transaction.
+        with transaction.atomic():
+            sync_from_product(product)
+    except Exception:  # noqa: BLE001
+        logger.warning('booking: sync from product %s failed', product.pk, exc_info=True)

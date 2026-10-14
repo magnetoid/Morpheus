@@ -92,6 +92,58 @@ class ListingProductTests(TestCase):
         self.assertEqual(resp.status_code, 301)
         self.assertTrue(resp['Location'].endswith('/bookings/kayak-the-bay/'))
 
+    def test_saving_the_product_updates_the_listing_without_a_call(self):
+        p = ensure_product(self.svc)
+        p.price = Money(Decimal('70'), 'EUR')
+        p.save()
+        self.svc.refresh_from_db()
+        self.assertEqual(self.svc.price.amount, Decimal('70'))
+
+    def test_a_host_edit_reaches_the_product(self):
+        from plugins.installed.booking_marketplace.products import sync_to_product
+
+        p = ensure_product(self.svc)
+        self.svc.name = 'Host renamed'
+        self.svc.save()
+        sync_to_product(self.svc)
+        p.refresh_from_db()
+        self.assertEqual(p.name, 'Host renamed')
+
+    def test_an_archived_product_stays_archived_when_its_listing_is_saved(self):
+        from plugins.installed.booking_marketplace.products import sync_to_product
+
+        p = ensure_product(self.svc)
+        p.status = 'archived'
+        p.save()
+        self.svc.refresh_from_db()
+        self.assertFalse(self.svc.is_active)
+        sync_to_product(self.svc)
+        p.refresh_from_db()
+        self.assertEqual(p.status, 'archived')
+
+    def test_a_listing_saved_in_the_editor_gets_its_product(self):
+        from plugins.installed.booking_marketplace.forms import ListingForm
+
+        form = ListingForm(
+            data={
+                'name': 'Sunset sail',
+                'slug': 'sunset-sail',
+                'listing_kind': 'experience',
+                'vendor': self.vendor.pk,
+                'duration_minutes': '120',
+                'price': '80',
+                'is_active': 'on',
+                'description': 'Sail',
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        svc = form.save()
+        svc.refresh_from_db()
+        self.assertIsNotNone(svc.product)
+        self.assertEqual(
+            (svc.product.name, svc.product.price.amount), ('Sunset sail', Decimal('80'))
+        )
+
 
 class ListingProductPhotoAndSlugTests(TestCase):
     def setUp(self):

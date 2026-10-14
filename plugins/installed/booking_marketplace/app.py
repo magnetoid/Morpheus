@@ -61,6 +61,12 @@ class BookingMarketplacePlugin(Plugin):
 
         self.register_hook(events.SITEMAP_URLS, contribute_sitemap_urls, priority=50)
 
+        # A listing extends a catalog Product (docs/plans/booking-extends-product-2026-10.md):
+        # an edit in the product editor reaches the booking page.
+        from plugins.installed.booking_marketplace.products import on_product_updated
+
+        self.register_hook(events.PRODUCT_UPDATED, on_product_updated, priority=50)
+
         # Same arrangement for /ai/products.json: this store's inventory is
         # not a catalog Product, so without this the AI shopping feed reports
         # an empty shop to every crawler.

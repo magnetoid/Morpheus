@@ -110,4 +110,7 @@ class ListingForm(forms.ModelForm):
             setattr(obj, name, [line.strip() for line in raw.splitlines() if line.strip()])
         if commit:
             obj.save()
+            from plugins.installed.booking_marketplace.products import save_listing  # noqa: PLC0415
+
+            save_listing(obj)
         return obj

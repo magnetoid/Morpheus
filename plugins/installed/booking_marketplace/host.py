@@ -29,6 +29,7 @@ from plugins.installed.booking_marketplace.models import (
     PricingTier,
     ServiceImage,
 )
+from plugins.installed.booking_marketplace.products import save_listing
 
 _ACTIONS = {'confirm': 'confirmed', 'cancel': 'cancelled', 'complete': 'completed'}
 
@@ -168,6 +169,7 @@ def host_service_form(request, slug=None):  # noqa: PLR0912, PLR0915 — one bra
             svc.latitude = _dec(request.POST.get('latitude'))
             svc.longitude = _dec(request.POST.get('longitude'))
             svc.save()
+            save_listing(svc)
 
             # Replace availability weekdays (with optional per-weekday start times).
             AvailabilityWindow.objects.filter(service=svc).delete()

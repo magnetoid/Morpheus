@@ -70,3 +70,21 @@ class HostKindTests(TestCase):
         self.assertEqual(svc.tiers.count(), 2)
         self.assertEqual(svc.addons.first().name, 'Pickup')
         self.assertEqual(str(svc.tiers.get(name='Adult').price.amount), '50.00')
+
+
+class HostListingProductTests(HostKindTests):
+    def test_a_host_listing_gets_its_catalog_product(self):
+        resp = host.host_service_form(
+            self._req(
+                {
+                    'name': 'Wine walk',
+                    'listing_kind': 'experience',
+                    'price': '35',
+                    'is_active': 'on',
+                }
+            )
+        )
+        self.assertEqual(resp.status_code, 302)
+        svc = BookableService.objects.get(name='Wine walk')
+        self.assertIsNotNone(svc.product)
+        self.assertEqual((svc.product.name, svc.product.status), ('Wine walk', 'active'))
