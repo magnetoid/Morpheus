@@ -194,35 +194,35 @@ def product_list(request):
     }
     qs = qs.order_by(sort_map.get(sort, '-created_at'))
 
-    # Build facet panel.
+    # Build facet panel: the values any listed product (or its variants) carries, for
+    # every filterable attribute at once — four queries however many filters there are
+    # (it was three per attribute, two of them embedding the whole product query).
     facet_attributes = list(
         Attribute.objects.filter(is_filterable=True).order_by('sort_order', 'name')
     )
     facets = []
-    for attr in facet_attributes:
+    if facet_attributes:
         value_ids = set(
             AttributeValue.objects.filter(
-                attribute=attr,
-                productattribute__product__in=qs,
+                attribute__in=facet_attributes, productattribute__product__in=qs
             ).values_list('id', flat=True)
         ) | set(
             AttributeValue.objects.filter(
-                attribute=attr,
-                productvariant__product__in=qs,
+                attribute__in=facet_attributes, productvariant__product__in=qs
             ).values_list('id', flat=True)
         )
-        if not value_ids:
-            continue
-        values = list(
-            AttributeValue.objects.filter(id__in=value_ids).order_by('sort_order', 'name')
-        )
-        facets.append(
-            {
-                'attr': attr,
-                'values': values,
-                'selected': set(selected_attrs.get(attr.slug, [])),
-            }
-        )
+        values_by_attr: dict = {}
+        for value in AttributeValue.objects.filter(id__in=value_ids).order_by('sort_order', 'name'):
+            values_by_attr.setdefault(value.attribute_id, []).append(value)
+        for attr in facet_attributes:
+            if values_by_attr.get(attr.id):
+                facets.append(
+                    {
+                        'attr': attr,
+                        'values': values_by_attr[attr.id],
+                        'selected': set(selected_attrs.get(attr.slug, [])),
+                    }
+                )
 
     # Pagination — 60 per page. ?page=N navigates; a number past the end 404s
     # rather than silently serving page 1 under its own canonical.
