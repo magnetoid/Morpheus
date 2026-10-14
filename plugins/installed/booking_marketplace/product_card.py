@@ -77,4 +77,7 @@ def on_product_form_saved(product=None, post=None, **kwargs):
             setattr(
                 listing, name, [line.strip() for line in get(name).splitlines() if line.strip()]
             )
-    listing.save()
+    from django.db import transaction
+
+    with transaction.atomic():  # its own savepoint: a failure never aborts the editor's save
+        listing.save()

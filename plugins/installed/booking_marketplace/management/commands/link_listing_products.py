@@ -17,7 +17,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Q
 
 from plugins.installed.booking_marketplace.models import BookableService
-from plugins.installed.booking_marketplace.products import ensure_product
+from plugins.installed.booking_marketplace.products import _resolve_slug, ensure_product
 from plugins.installed.catalog.models import Product
 
 
@@ -25,12 +25,20 @@ class Command(BaseCommand):
     help = 'Link every booking listing to its catalog Product, after a JSON backup.'
 
     def add_arguments(self, parser):
+        parser.add_argument('--backup', help='JSON file written before anything changes.')
         parser.add_argument(
-            '--backup', required=True, help='JSON file written before anything changes.'
+            '--dry-run',
+            action='store_true',
+            help='List what each listing would do (reuse which product, or create one); change nothing.',
         )
 
-    def handle(self, *args, backup: str, **options):
+    def handle(self, *args, backup: str | None = None, dry_run: bool = False, **options):
         listings = list(BookableService.objects.filter(product__isnull=True).order_by('slug'))
+        if dry_run:
+            self._dry_run(listings)
+            return
+        if not backup:
+            raise CommandError('--backup <file> is required (or --dry-run); nothing changed.')
         # A listing reuses a same-named product on its slug or `<slug>-experience…`.
         reusable = Q(pk__in=[])
         for service in listings:
@@ -61,3 +69,16 @@ class Command(BaseCommand):
         if failed:
             summary += f' failed={len(failed)}: {", ".join(failed)}'
         self.stdout.write(summary)
+
+    def _dry_run(self, listings) -> None:
+        reuse = 0
+        for service in listings:
+            existing, slug = _resolve_slug(service)
+            if existing is not None:
+                reuse += 1
+                self.stdout.write(f'reuse {slug} ({existing.status})')
+            else:
+                self.stdout.write(f'create {slug}')
+        self.stdout.write(
+            f'would link {len(listings)}: reuse {reuse}, create {len(listings) - reuse}'
+        )

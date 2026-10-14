@@ -74,3 +74,17 @@ class LinkListingProductsTests(TestCase):
                 'link_listing_products', backup='/nonexistent-dir/b.json', stdout=StringIO()
             )
         self.assertEqual(BookableService.objects.filter(product__isnull=False).count(), 0)
+
+    def test_a_dry_run_lists_what_it_would_do_and_changes_nothing(self):
+        out = StringIO()
+        call_command('link_listing_products', dry_run=True, stdout=out)
+        text = out.getvalue()
+        self.assertIn('reuse vranac (archived)', text)
+        self.assertIn('create kayak-the-bay', text)
+        self.assertIn('would link 2: reuse 1, create 1', text)
+        self.assertEqual(BookableService.objects.filter(product__isnull=False).count(), 0)
+        self.assertFalse(self.backup.exists())
+
+    def test_a_real_run_needs_a_backup_path(self):
+        with self.assertRaises(CommandError):
+            call_command('link_listing_products', stdout=StringIO())

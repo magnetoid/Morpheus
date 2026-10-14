@@ -177,6 +177,31 @@ class ListingProductTests(TestCase):
         p.refresh_from_db()
         self.assertEqual((p.status, self.svc.is_active), ('archived', False))
 
+    def test_clearing_the_products_host_keeps_the_listing_in_step(self):
+        # A listing must have a host; copying the product's empty vendor raised, and
+        # the whole sync (name, price, status) was lost behind "Product saved".
+        p = ensure_product(self.svc)
+        p.vendor = None
+        p.name = 'Renamed without a host'
+        p.save()
+        self.svc.refresh_from_db()
+        self.assertEqual(
+            (self.svc.name, self.svc.vendor_id), ('Renamed without a host', self.vendor.pk)
+        )
+
+    def test_an_active_same_named_product_is_never_converted(self):
+        live = Product.objects.create(
+            name='Kayak the bay',
+            slug='kayak-the-bay',
+            sku='LIVE',
+            status='active',
+            price=Money(Decimal('5'), 'EUR'),
+        )
+        p = ensure_product(self.svc)
+        self.assertNotEqual(p.pk, live.pk)
+        live.refresh_from_db()
+        self.assertEqual((live.product_type, live.price.amount), ('simple', Decimal('5.00')))
+
 
 class ListingProductPhotoAndSlugTests(TestCase):
     def setUp(self):

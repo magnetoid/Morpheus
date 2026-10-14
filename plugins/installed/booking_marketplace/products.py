@@ -17,9 +17,9 @@ logger = logging.getLogger('morpheus.booking_marketplace')
 def _resolve_slug(service):
     """The Product to reuse, and the slug to use.
 
-    A product on the slug with the same name and no listing of its own is this listing's
-    old catalogue copy (Montenegro's 17 archived goods): reuse it. Any other product is
-    someone else's and is never overwritten; the listing takes `<slug>-experience`, then
+    A product on the slug with the same name, not on sale and with no listing of its own
+    is this listing's old catalogue copy (Montenegro's 17 archived goods): reuse it. Any
+    other product is someone else's and is never overwritten; the listing takes `<slug>-experience`, then
     `<slug>-experience-2`, … until a slug is free.
     """
     from plugins.installed.catalog.models import Product
@@ -31,7 +31,9 @@ def _resolve_slug(service):
         if existing is None:
             return None, slug
         same_name = existing.name.strip().lower() == service.name.strip().lower()
-        if same_name and getattr(existing, 'booking', None) is None:
+        # Never a product that is selling: reusing it would turn it into a service.
+        reusable = existing.status != 'active' and getattr(existing, 'booking', None) is None
+        if same_name and reusable:
             return existing, slug
     raise ValueError(f'No free product slug for listing {service.slug!r}')
 
@@ -144,7 +146,8 @@ def sync_from_product(product) -> None:
     service.price = product.price
     service.original_price = product.compare_at_price
     service.category_id = product.category_id
-    service.vendor_id = product.vendor_id
+    # A listing must have a host: a product with none keeps the listing's.
+    service.vendor_id = product.vendor_id or service.vendor_id
     service.is_active = product.status == 'active'
     service.save(
         update_fields=[
@@ -201,4 +204,4 @@ def on_product_updated(*, product=None, **_) -> None:
         with transaction.atomic():
             sync_from_product(product)
     except Exception:  # noqa: BLE001
-        logger.warning('booking: sync from product %s failed', product.pk, exc_info=True)
+        logger.error('booking: sync from product %s failed', product.pk, exc_info=True)
