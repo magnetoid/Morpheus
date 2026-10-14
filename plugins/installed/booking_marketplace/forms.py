@@ -12,6 +12,17 @@ from plugins.installed.booking_marketplace.models import BookableService
 
 #: JSON list fields edited as one item per line; languages as a comma list.
 _LINE_LISTS = ('highlights', 'included', 'not_included', 'what_to_bring')
+# What a listing's catalog Product owns (booking_marketplace/products.py syncs them).
+PRODUCT_FIELDS = (
+    'name',
+    'short_description',
+    'description',
+    'category',
+    'vendor',
+    'is_active',
+    'price',
+    'original_price',
+)
 
 
 class ListingForm(forms.ModelForm):
@@ -79,6 +90,13 @@ class ListingForm(forms.ModelForm):
             self.initial['languages'] = ', '.join(inst.languages or [])
             for name in _LINE_LISTS:
                 self.initial[name] = '\n'.join(str(x) for x in (getattr(inst, name) or []))
+        if inst.pk and inst.product_id:
+            # The product editor owns these for a linked listing. Disabled, a posted
+            # value is ignored, so a tab opened before a product edit cannot push the
+            # old value back onto the product.
+            for name in PRODUCT_FIELDS:
+                self.fields[name].disabled = True
+                self.fields[name].help_text = 'Edited in the product editor.'
         for field in self.fields.values():
             if isinstance(
                 field.widget, (forms.TextInput, forms.Textarea, forms.NumberInput, forms.Select)

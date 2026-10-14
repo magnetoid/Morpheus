@@ -84,6 +84,35 @@ class DashboardListingTests(TestCase):
         self.assertEqual(self.tour.highlights, ['Sea caves', 'Blue Cave swim'])
         self.assertEqual(self.tour.languages, ['English', 'Montenegrin'])
 
+    def test_a_stale_editor_tab_cannot_overwrite_the_products_values(self):
+        # The product editor owns name, text, price, category, host and status of a
+        # linked listing; a listing-editor tab opened before a product edit posted the
+        # old price and pushed it back onto the product.
+        from plugins.installed.booking_marketplace.products import ensure_product
+
+        product = ensure_product(self.tour)
+        product.price = Money(Decimal('99'), 'EUR')
+        product.save()
+        self.client.post(
+            self._edit(self.tour),
+            {
+                'name': 'Stale name',
+                'slug': 'kayak-the-bay',
+                'listing_kind': 'experience',
+                'vendor': self.vendor.pk,
+                'price': '50.00',
+                'duration_minutes': '120',
+                'duration_label': '2 hours',
+                'is_active': 'on',
+            },
+        )
+        product.refresh_from_db()
+        self.tour.refresh_from_db()
+        self.assertEqual((product.price.amount, product.name), (Decimal('99'), 'Kayak the bay'))
+        self.assertEqual(
+            (self.tour.price.amount, self.tour.duration_label), (Decimal('99'), '2 hours')
+        )
+
     def test_a_new_listing_can_be_created_for_a_host(self):
         resp = self.client.post(
             '/dashboard/listings/new/',

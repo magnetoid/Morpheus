@@ -13,6 +13,7 @@
     </div>
   </div>
 
+  {% if service.product_id %}<div class="callout"><div class="callout__body">Name, descriptions, price, category, host and whether it is live are edited in the <a class="underline" href="/dashboard/products/{{ service.product_id }}/">product editor</a>, along with the booking details. This page keeps the listing photo, its web address and Top pick.</div></div>{% endif %}
   {% if form.non_field_errors %}<div class="callout callout-error"><div class="callout__body">{{ form.non_field_errors|join:" " }}</div></div>{% endif %}
 
   <div class="grid gap-4 lg:grid-cols-3">
