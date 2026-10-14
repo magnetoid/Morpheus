@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.111.3 — 2026-10-14
+
+**Site search finds experiences again**
+
+- On Montenegro the site-wide search (/search/, used by browsers and OpenSearch) sends a query to the experiences again; since v0.109.0 it had landed on the empty goods page.
+
 ## v0.111.2 — 2026-10-14
 
 **Experience cards lead with the name**
