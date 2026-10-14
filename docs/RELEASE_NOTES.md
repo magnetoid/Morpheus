@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.111.2 — 2026-10-14
+
+**Experience cards lead with the name**
+
+- On Montenegro's experience and shop cards the experience's name is now the title and the location sits below it; titles use the heading level each page's outline calls for, and each card's link text is just the name.
+
 ## v0.111.1 — 2026-10-14
 
 **Clearer menu groups**
