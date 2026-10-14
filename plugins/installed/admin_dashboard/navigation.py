@@ -526,14 +526,19 @@ def sidebar_children(section_tabs: list[Tab], current: Tab | None, badges: dict)
             groups.setdefault(tab.group, []).append(tab)
     out: list[dict] = []
     seen: set[str] = set()
+    in_group = False
     for tab in section_tabs:
         members = groups.get(tab.group) if tab.group else None
         if not members or len(members) == 1:
+            if in_group:  # a page of its own must not read as the group's
+                out.append({'divider': True})
+                in_group = False
             out.append(_tab_entry(tab, current, badges))
         elif tab.group not in seen:
             seen.add(tab.group)
             out.append({'heading': tab.group})
             out.extend(_tab_entry(m, current, badges) for m in members)
+            in_group = True
     return out
 
 

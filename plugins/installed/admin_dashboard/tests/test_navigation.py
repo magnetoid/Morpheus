@@ -116,6 +116,22 @@ class SidebarTests(_Staff):
             ['Google Shopping', 'Google Ads'],
         )
 
+    def test_a_page_after_a_group_is_set_apart(self):
+        # A page of its own filed after a group's pages must not read as one of
+        # them (ChatGPT Shopping sat under the Google heading in Channels).
+        owner = get_user_model().objects.get(username='nav-owner')
+        group_of = {t.url: t.group for t in navigation.tabs(owner)}
+        for sec in self._nav('/dashboard/')['sections']:
+            heading = None
+            for c in sec['children']:
+                if 'heading' in c:
+                    heading = c['heading']
+                elif 'divider' in c:
+                    heading = None
+                elif heading is not None:
+                    with self.subTest(section=sec['key'], page=c['label']):
+                        self.assertEqual(group_of.get(c['url']), heading)
+
     def test_the_section_you_are_in_renders_open(self):
         sidebar = _SIDEBAR.search(self.html('/dashboard/orders/')).group(0)
         self.assertRegex(sidebar, r'class="nav-group has-children is-open" data-group="orders"')
