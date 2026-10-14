@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.109.1 — 2026-10-14
+
+**Faster storefront pages**
+
+- Repeated GraphQL queries are parsed and checked once instead of on every call (about 5 ms saved per query; a storefront page sends several).
+- The product list's filters cost four database queries however many filters a store has (they cost three per filter).
+- CMS page sections, menus, blocks and forms no longer re-run every page-wide lookup (store settings, market, cart, navigation) once each.
+- Seven code files nothing used are gone, and the test suite keeps uploads in memory instead of filling media/.
+
 ## v0.109.0 — 2026-10-14
 
 **Experiences are products**
