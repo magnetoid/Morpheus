@@ -5,6 +5,16 @@ sticky enquiry/booking card right). Branches on listing_mode (enquiry vs booking
 Context: service, listing_mode, dates ([{date, remaining}]), max_guests,
 review_summary, reviews, can_review. Same POST actions as the plugin default.{% endcomment %}
 
+{% block extra_head %}{{ block.super }}
+{# The description's rich text (from the product editor), styled as on the product page. #}
+<style>
+.prose-pdp h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.35rem; font-weight: 500; line-height: 1.25; margin: 2rem 0 .75rem; }
+.prose-pdp h3 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.15rem; font-weight: 500; line-height: 1.3; margin: 1.5rem 0 .5rem; }
+.prose-pdp ul { list-style: disc; padding-left: 1.25rem; }
+.prose-pdp ol { list-style: decimal; padding-left: 1.25rem; }
+.prose-pdp a { text-decoration: underline; text-underline-offset: 2px; }
+</style>
+{% endblock %}
 {% block content %}
 {% booking_listing_mode as listing_mode %}
 <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
@@ -123,11 +133,12 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
       {% endif %}
 
       <!-- Description -->
-      {% if service.description %}
+      {# The Product's text, with the formatting its editor gives it, as on a product page. #}
+      {% with text=product.description|default:service.description %}{% if text %}
       <section class="py-8 border-b border-border">
-        <p class="text-foreground leading-7 whitespace-pre-line">{{ service.description }}</p>
+        <div class="prose-pdp text-foreground leading-7 space-y-4">{{ text|listing_text }}</div>
       </section>
-      {% endif %}
+      {% endif %}{% endwith %}
       {% storefront_blocks "listing_below_description" %}
 
       <!-- What's included / not included -->

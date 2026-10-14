@@ -7,11 +7,38 @@ that the rest of the app still reads (kept in step by sync_from_product).
 
 from __future__ import annotations
 
+import html
 import logging
+import re
 
 from django.db import transaction
+from django.utils.html import strip_tags
 
 logger = logging.getLogger('morpheus.booking_marketplace')
+
+_TAG = re.compile(r'<[a-zA-Z][^>]*>')
+
+
+def has_markup(text: str) -> bool:
+    """Whether the text is the product editor's rich text rather than plain text."""
+    return bool(_TAG.search(text or ''))
+
+
+def plain_text(text: str) -> str:
+    """The Product's rich text as the listing's plain-text copy.
+
+    Feeds, structured data, llms.txt and the host's form read the listing's text as
+    plain text. Paragraphs and headings become blank lines, list items `• ` lines,
+    tags go and entities are decoded (the product's sanitiser writes `&` as `&amp;`).
+    """
+    text = text or ''
+    if not has_markup(text):
+        return html.unescape(text).strip()
+    text = re.sub(r'(?i)<br\s*/?>', '\n', text)
+    text = re.sub(r'(?i)<li[^>]*>', '\n• ', text)
+    text = re.sub(r'(?i)</(p|h[1-6]|blockquote|ul|ol|pre)>', '\n\n', text)
+    lines = [line.strip() for line in html.unescape(strip_tags(text)).split('\n')]
+    return re.sub(r'\n{3,}', '\n\n', '\n'.join(lines)).strip()
 
 
 def _resolve_slug(service):
@@ -141,8 +168,8 @@ def sync_from_product(product) -> None:
     if service is None:
         return
     service.name = product.name
-    service.short_description = product.short_description
-    service.description = product.description
+    service.short_description = plain_text(product.short_description)
+    service.description = plain_text(product.description)
     service.price = product.price
     service.original_price = product.compare_at_price
     service.category_id = product.category_id
@@ -170,8 +197,12 @@ def sync_to_product(service) -> None:
     if product is None:
         return
     product.name = service.name
-    product.short_description = service.short_description
-    product.description = service.description
+    # The listing holds plain copies of the product's rich text: write the text only
+    # when the host changed it, or a price edit would strip the editor's formatting.
+    for field in ('short_description', 'description'):
+        text = getattr(service, field)
+        if text != plain_text(getattr(product, field)):
+            setattr(product, field, text)
     product.price = service.price
     product.compare_at_price = service.original_price
     product.category_id = service.category_id

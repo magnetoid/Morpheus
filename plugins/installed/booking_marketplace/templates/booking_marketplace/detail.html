@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}
+{% load morph %}{% load booking_tags %}
 
 {% block content %}
 <section style="padding: 4rem 0 2rem;">
@@ -11,7 +11,7 @@
     <p class="eyebrow">Hosted by {{ service.vendor.name }}{% if service.region %} · {{ service.get_region_display }}{% endif %}</p>
     <h1 class="display display-l" style="margin: 1rem 0;">{{ service.name }}<span class="text-accent">.</span></h1>
     <p class="lede">{{ service.duration_minutes }} min{% if not listing_mode and service.price %} · {{ service.price|money }} per guest{% endif %}</p>
-    {% if service.description %}<div class="lede" style="margin-top:1rem;">{{ service.description|linebreaks }}</div>{% endif %}
+    {% with text=product.description|default:service.description %}{% if text %}<div class="lede" style="margin-top:1rem;">{{ text|listing_text }}</div>{% endif %}{% endwith %}
     {% storefront_blocks "listing_below_description" %}
 
     {% if messages %}{% for m in messages %}

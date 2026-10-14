@@ -467,6 +467,9 @@ def service_detail(request, slug):
     product = service.product
     story = getattr(product, 'web_story', None) if product is not None else None
     ctx['product'] = product
+    # The head reads the Product's SEO (title, description, social image), so the
+    # page shows what the product editor's SEO panel says, not the listing's copy.
+    ctx['seo_object'] = product or service
     ctx['web_story'] = story if story is not None and story.is_published else None
     # The storefront staff bar's Edit link opens the dashboard's listing editor.
     from plugins.installed.booking_marketplace.dashboard_listings import edit_url

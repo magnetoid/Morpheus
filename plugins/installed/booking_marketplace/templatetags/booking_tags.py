@@ -199,3 +199,24 @@ def verified_review_summary():
 
     agg = ServiceReview.objects.filter(_verified()).aggregate(n=Count('id'), avg=Avg('rating'))
     return {'count': agg['n'] or 0, 'avg': round(float(agg['avg']), 1) if agg['avg'] else None}
+
+
+@register.filter
+def listing_text(value):
+    """A listing's text as HTML, the way the product page shows a product's.
+
+    The product editor's rich text is sanitised and shown with its formatting; plain
+    text (a host's, or a listing never edited there) becomes paragraphs.
+    """
+    import html
+
+    from django.utils.html import linebreaks
+    from django.utils.safestring import mark_safe
+
+    from core.utils.html import sanitize_richtext
+    from plugins.installed.booking_marketplace.products import has_markup
+
+    value = value or ''
+    if has_markup(value):
+        return mark_safe(sanitize_richtext(value))  # noqa: S308 — sanitised just above
+    return mark_safe(linebreaks(html.unescape(value), autoescape=True))  # noqa: S308 — escaped

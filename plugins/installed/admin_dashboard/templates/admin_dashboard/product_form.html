@@ -51,7 +51,8 @@
   <form method="post" id="product-form" class="space-y-4" enctype="multipart/form-data" data-morph-dirty hx-boost="false" data-ajax>
     {% csrf_token %}
 
-    <div class="card card-padded space-y-3" data-pt-show="simple,variable,digital,bundle">
+    {# Basics apply to every product type, so this card names none (a list hid it from services). #}
+    <div class="card card-padded space-y-3">
       <h2 class="font-semibold text-sm">Basics</h2>
       <div>
         <label class="block text-sm font-medium mb-1">Name</label>
@@ -371,7 +372,7 @@
     </script>
 
     {# Pricing card — hidden on Variable (per-variant pricing); parent price auto-set to 0 by the form. #}
-    <div class="card card-padded space-y-3" data-pt-show="simple,digital,bundle" id="pricing-card">
+    <div class="card card-padded space-y-3" data-pt-show="simple,digital,bundle,service" id="pricing-card">
       <h2 class="font-semibold text-sm">Pricing</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>

@@ -199,12 +199,19 @@ step through `PRODUCT_UPDATED` and `save_listing()`. An experience is
 (grids, feeds, sitemaps, llms.txt, upsells, health checks, the Merchant Center push)
 reads `Product.objects.shoppable()`, `CartService.add_item` refuses a service, and
 `/products/<slug>/` 301s to `/bookings/<slug>/`; the dashboard and Linda's tools still see
-every product. Three traps the review caught: a `ProductImage` deletes its file with its
+every product. The page's head reads the Product's SEO (`seo_object` is the product), and the
+editor's Basics card names no types: a `data-pt-show` list of the four older types hid an
+experience's name, text and price until v0.109.2. Product text is sanitised rich HTML; the
+listing keeps a plain-text copy (`products.plain_text`, which feeds, JSON-LD, llms.txt and the
+host form read), the booking page renders the product's own text (`|listing_text`), and a
+listing save writes text back only when it changed, or a price edit strips the formatting. Three traps the review caught: a `ProductImage` deletes its file with its
 row, so copy another model's photo, never share the file; seo's slug watcher rewrites its
 own `auto_slug` redirects, so an app's redirect is stored under another source; and the
 product editor's `_money()` defaulted to USD, so a save re-priced every EUR product.
 Guarded by `booking_marketplace/tests/test_listing_products.py`,
-`catalog/tests/test_service_products.py` and `orders/tests/test_service_products_not_sold.py`.
+`test_listing_seo_from_product.py`, `test_listing_text.py`, `catalog/tests/test_service_products.py`,
+`orders/tests/test_service_products_not_sold.py` and
+`admin_dashboard/tests/test_product_form_type_cards.py`.
 
 **Landmine — two lists with the same name WILL drift, and the looser one
 wins where it's read.** `PROTECTED_PLUGINS` ("apps that soft-brick if
