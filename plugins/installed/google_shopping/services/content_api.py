@@ -69,7 +69,7 @@ def push_products(*, dry_run: bool = False) -> dict:
     from plugins.installed.catalog.models import Product  # noqa: PLC0415
 
     entries = []
-    qs = Product.objects.filter(status='active').select_related('category')
+    qs = Product.objects.shoppable().select_related('category')
     for product in qs.iterator():
         try:
             item = map_product(product, settings)
