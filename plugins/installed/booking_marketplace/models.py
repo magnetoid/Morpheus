@@ -101,6 +101,16 @@ class BookableService(models.Model):
         ('experience', 'Experience'),  # date + departure + guests + tiers
         ('product', 'Product'),  # quantity + enquiry, no date/shipping
     ]
+    # The catalog Product this listing extends (docs/plans/booking-extends-product-2026-10.md):
+    # Product owns name, slug, descriptions, price, category, host, photos, status and SEO;
+    # the listing keeps the booking data below. Linked by products.ensure_product().
+    product = models.OneToOneField(
+        'catalog.Product',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='booking',
+    )
     listing_kind = models.CharField(
         max_length=12,
         choices=LISTING_KINDS,
