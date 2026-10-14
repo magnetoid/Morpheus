@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.109.2 — 2026-10-14
+
+**Experiences edit like products**
+
+- The product editor shows an experience's basics again: name, address, SKU, short and full description, category, host, price and was-price.
+- An experience's page takes its title and description from the product's SEO panel, so the page says what the editor previews.
+- Text formatted in the product editor (bold, lists, headings) shows formatted on the experience page; feeds and structured data get clean plain text, and a host's price change keeps the formatting.
+
 ## v0.109.1 — 2026-10-14
 
 **Faster storefront pages**
