@@ -389,6 +389,15 @@ class AudienceTests(_Iso, TestCase):
 
         from django.contrib.auth import get_user_model
 
+        # Hashing and upload shape only; who may be uploaded is test_audience_consent.
+        from django.core.cache import cache
+
+        from core.models import StoreSettings
+
+        row = StoreSettings.objects.first() or StoreSettings()
+        row.gdpr_enabled = False
+        row.save()
+        cache.delete('morph:gdpr_enabled')
         _connect()
         get_user_model().objects.create_user(username='c1', email='Buyer@X.test', password='x')
         from plugins.installed.meta_commerce.services import audiences

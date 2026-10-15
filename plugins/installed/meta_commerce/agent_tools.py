@@ -101,7 +101,9 @@ def meta_ads_report_tool(*, days: int = 30) -> ToolResult:
         'retargeting / lookalike seeding. segment is "all_customers" or '
         '"purchasers". Requires Meta Ads connected. Returns how many were uploaded.'
     ),
-    scopes=['analytics.read'],
+    # Uploads customer data off the store: a write, and only on the merchant's yes.
+    scopes=['crm.write'],
+    requires_approval=True,
     schema={
         'type': 'object',
         'properties': {

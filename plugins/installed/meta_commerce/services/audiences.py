@@ -29,24 +29,40 @@ _BATCH = 5000
 
 
 def _segment_emails(segment: str) -> list[str]:
+    """Emails for one segment: never staff, and on a store that manages consent
+    only shoppers who agreed to marketing (core/consent.py)."""
+    from core.consent import marketing_customer_ids  # noqa: PLC0415
+
     if segment == 'all_customers':
         from django.contrib.auth import get_user_model  # noqa: PLC0415
 
-        return list(get_user_model().objects.exclude(email='').values_list('email', flat=True))
+        qs = (
+            get_user_model()
+            .objects.exclude(email='')
+            .exclude(is_staff=True)
+            .exclude(is_superuser=True)
+        )
+        allowed_ids = marketing_customer_ids()
+        if allowed_ids is not None:
+            qs = qs.filter(pk__in=allowed_ids)
+        return sorted(qs.values_list('email', flat=True))
     if segment == 'purchasers':
         from datetime import timedelta  # noqa: PLC0415
 
         from django.utils import timezone  # noqa: PLC0415
 
+        from core.consent import allowed  # noqa: PLC0415
         from plugins.installed.orders.models import Order  # noqa: PLC0415
 
         since = timezone.now() - timedelta(days=180)
-        return list(
+        orders = (
             Order.objects.filter(placed_at__gte=since)
             .exclude(status__in=['pending', 'cancelled'])
             .exclude(email='')
-            .values_list('email', flat=True)
+            .exclude(customer__is_staff=True)
+            .only('email', 'metadata')
         )
+        return sorted({o.email for o in orders if allowed('marketing', order=o)})
     return []
 
 
