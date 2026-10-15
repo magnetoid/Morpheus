@@ -114,18 +114,24 @@ class TiktokCommercePlugin(Plugin):
             logger.debug('tiktok_commerce: cache bust failed: %s', e)
 
     def _on_order_paid(self, order=None, **_):
-        if order is not None:
+        from core.consent import allowed
+
+        if order is not None and allowed('marketing', order=order):
             self._event(lambda m: m.send_complete_payment(order), 'complete_payment')
 
-    def _on_add_to_cart(self, product=None, variant=None, quantity=1, **_):
-        if product is not None or variant is not None:
+    def _on_add_to_cart(self, product=None, variant=None, quantity=1, request=None, **_):
+        from core.consent import allowed
+
+        if (product is not None or variant is not None) and allowed('marketing', request=request):
             self._event(
                 lambda m: m.send_add_to_cart(product=product, variant=variant, quantity=quantity),
                 'add_to_cart',
             )
 
-    def _on_begin_checkout(self, cart=None, **_):
-        if cart is not None:
+    def _on_begin_checkout(self, cart=None, request=None, **_):
+        from core.consent import allowed
+
+        if cart is not None and allowed('marketing', request=request):
             self._event(lambda m: m.send_initiate_checkout(cart), 'begin_checkout')
 
     def _event(self, fn, label: str) -> None:

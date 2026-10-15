@@ -115,7 +115,9 @@ class SnapchatCommercePlugin(Plugin):
             logger.debug('snapchat_commerce: cache bust failed: %s', e)
 
     def _on_order_paid(self, order=None, **_):
-        if order is None:
+        from core.consent import allowed
+
+        if order is None or not allowed('marketing', order=order):
             return
         try:
             from plugins.installed.snapchat_commerce.services import capi  # noqa: PLC0415

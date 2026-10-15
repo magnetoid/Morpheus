@@ -65,6 +65,7 @@ def cart_remove(request, item_id):
             product=product,
             quantity=quantity,
             customer=request.user if request.user.is_authenticated else None,
+            request=request,
         )
     except Exception:  # noqa: BLE001
         logger.exception('REMOVE_FROM_CART hook failed')
@@ -109,6 +110,7 @@ def cart_update(request, item_id):
                 product=product,
                 quantity=removed,
                 customer=request.user if request.user.is_authenticated else None,
+                request=request,
             )
         except Exception:  # noqa: BLE001
             logger.exception('REMOVE_FROM_CART hook failed')
@@ -178,6 +180,7 @@ def cart_add(request, product_id):
                     product=prod,
                     variant=variant,
                     quantity=quantity,
+                    request=request,
                 )
         except Exception:  # noqa: BLE001
             logger.exception('ADD_TO_CART hook failed')

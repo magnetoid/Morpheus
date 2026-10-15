@@ -115,11 +115,15 @@ class PinterestCommercePlugin(Plugin):
             logger.debug('pinterest_commerce: cache bust failed: %s', e)
 
     def _on_order_paid(self, order=None, **_):
-        if order is not None:
+        from core.consent import allowed
+
+        if order is not None and allowed('marketing', order=order):
             self._capi(lambda m: m.send_checkout(order), 'checkout')
 
-    def _on_add_to_cart(self, product=None, variant=None, quantity=1, **_):
-        if product is not None or variant is not None:
+    def _on_add_to_cart(self, product=None, variant=None, quantity=1, request=None, **_):
+        from core.consent import allowed
+
+        if (product is not None or variant is not None) and allowed('marketing', request=request):
             self._capi(
                 lambda m: m.send_add_to_cart(product=product, variant=variant, quantity=quantity),
                 'add_to_cart',

@@ -84,7 +84,9 @@ class RedditAdsPlugin(Plugin):
         return value
 
     def _on_order_paid(self, order=None, **_):
-        if order is None:
+        from core.consent import allowed
+
+        if order is None or not allowed('marketing', order=order):
             return
         try:
             from plugins.installed.reddit_ads.services import capi  # noqa: PLC0415

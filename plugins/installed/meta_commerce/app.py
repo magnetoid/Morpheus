@@ -133,20 +133,26 @@ class MetaCommercePlugin(Plugin):
             logger.debug('meta_commerce: cache bust failed: %s', e)
 
     def _on_order_paid(self, order=None, **_):
-        if order is None:
+        from core.consent import allowed
+
+        if order is None or not allowed('marketing', order=order):
             return
         self._capi(lambda m: m.send_purchase(order), 'purchase')
 
-    def _on_add_to_cart(self, product=None, variant=None, quantity=1, **_):
-        if product is None and variant is None:
+    def _on_add_to_cart(self, product=None, variant=None, quantity=1, request=None, **_):
+        from core.consent import allowed
+
+        if (product is None and variant is None) or not allowed('marketing', request=request):
             return
         self._capi(
             lambda m: m.send_add_to_cart(product=product, variant=variant, quantity=quantity),
             'add_to_cart',
         )
 
-    def _on_begin_checkout(self, cart=None, **_):
-        if cart is None:
+    def _on_begin_checkout(self, cart=None, request=None, **_):
+        from core.consent import allowed
+
+        if cart is None or not allowed('marketing', request=request):
             return
         self._capi(lambda m: m.send_initiate_checkout(cart), 'begin_checkout')
 
