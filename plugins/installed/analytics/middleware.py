@@ -28,12 +28,8 @@ class AnalyticsMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        # A pageview is a page. A script's JSON fetch (the travel store's search
-        # suggestions, the cookie banner's /csrf/) was recorded as one per request.
-        if not (response.get('Content-Type') or '').startswith('text/html'):
-            return response
         path = request.path or ''
-        if path.startswith(_EXCLUDED_PREFIXES):
+        if request.method != 'GET' or path.startswith(_EXCLUDED_PREFIXES):
             return response
         try:
             from plugins.installed.analytics.services import (
@@ -58,6 +54,12 @@ class AnalyticsMiddleware:
             from core.utils.crawlers import is_crawler_user_agent  # noqa: PLC0415
 
             if is_crawler_user_agent(ua):
+                return response
+            # A pageview is a page. A script's JSON fetch (the travel store's search
+            # suggestions, the cookie banner's /csrf/) was recorded as one per request.
+            # Below the crawler branches: AI crawlers mostly read text files, and
+            # those reads are what the AI-visibility counter is for.
+            if not (response.get('Content-Type') or '').startswith('text/html'):
                 return response
 
             if not should_track_request(request):
