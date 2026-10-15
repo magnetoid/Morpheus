@@ -741,6 +741,17 @@ class MorpheusEvents:
     #   gateway's calls (its AIInteraction rows); core never imports the app.
     AI_USAGE_TODAY = 'ai.usage_today'  # filter
 
+    # CONSENT_DECISION — filter, value=None, kwargs: request (HttpRequest or None).
+    #   The consent app answers {'managed', 'analytics', 'marketing'} for that
+    #   visitor; request=None means no visitor, so nothing is granted. Nothing
+    #   answers while the app is off, which core/consent.py reads as "this store
+    #   does not manage consent" — the same as the templates' `consent` context.
+    CONSENT_DECISION = 'consent.decision'  # filter
+    # CONSENT_MARKETING_CUSTOMERS — filter, value=None, no kwargs. The consent app
+    #   answers the set of customer ids whose latest decision allows marketing
+    #   (audience uploads read it through core.consent.marketing_customer_ids).
+    CONSENT_MARKETING_CUSTOMERS = 'consent.marketing_customers'  # filter
+
     # AUTHZ_CAPABILITY_CHECK — filter, value=None|bool ("has anyone answered?"),
     #   kwargs: user, capability (e.g. 'orders.refund'), channel. Fired by
     #   core/authz.py:has_capability, which is the ONE question every sensitive

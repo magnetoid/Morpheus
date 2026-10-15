@@ -44,6 +44,13 @@ class ConsentPlugin(Plugin):
         from plugins.installed.consent import gdpr  # noqa: PLC0415
 
         self.register_hook(events.CUSTOMER_DATA_EXPORT, gdpr.on_customer_export, priority=30)
+        # Server-side sends (core/consent.py) ask the same decision the templates read.
+        from plugins.installed.consent import services  # noqa: PLC0415
+
+        self.register_hook(events.CONSENT_DECISION, services.decision_answer, priority=50)
+        self.register_hook(
+            events.CONSENT_MARKETING_CUSTOMERS, services.marketing_customers_answer, priority=50
+        )
         from plugins.installed.consent.context_processors import consent_context  # noqa: PLC0415
 
         # `consent` on every template context — the gate the tag blocks read.

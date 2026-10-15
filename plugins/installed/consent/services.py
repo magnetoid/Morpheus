@@ -125,3 +125,30 @@ def write_consent(
     except Exception:  # noqa: BLE001 — table missing pre-migration is non-fatal.
         logger.exception('consent: ConsentLog write failed (cookie still set)')
     return decision
+
+
+def decision_answer(value, request=None, **_):
+    """CONSENT_DECISION: this visitor's choice, for core/consent.py."""
+    from core.context_processors import _gdpr_enabled
+
+    decision = read_consent_from_cookie(request)
+    return {
+        'managed': _gdpr_enabled(),
+        'analytics': decision['analytics'],
+        'marketing': decision['marketing'],
+    }
+
+
+def marketing_customers_answer(value, **_):
+    """CONSENT_MARKETING_CUSTOMERS: customers whose LATEST decision allows marketing."""
+    from plugins.installed.consent.models import ConsentLog
+
+    latest: dict = {}
+    rows = (
+        ConsentLog.objects.filter(customer__isnull=False)
+        .order_by('customer_id', '-created_at')
+        .values_list('customer_id', 'marketing')
+    )
+    for customer_id, marketing in rows:
+        latest.setdefault(customer_id, marketing)
+    return {cid for cid, marketing in latest.items() if marketing}
