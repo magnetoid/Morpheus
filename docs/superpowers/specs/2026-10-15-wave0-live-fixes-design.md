@@ -1,6 +1,6 @@
 # Wave 0: consent, AI guardrails, per-request cost, latent defects
 
-**Status:** design approved in chat 2026-10-15; spec awaiting owner review.
+**Status:** shipped in v0.113.0.
 **Source:** `docs/plans/apps-consolidation-2026-10.md`, Wave 0 items 3, 8, 9 and 10 (items 1, 2, 4–7
 shipped in v0.101.0). The facts below were re-checked against the tree on 2026-10-15.
 **Ships as:** one MINOR release. Wave 1 (deletions) and the Wave 2 merges are separate sub-projects.

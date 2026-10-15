@@ -21,7 +21,9 @@ Found during the review; each is visible or exploitable on a live store today.
 **Status (v0.101.0, 2026-10-12):** items 1, 2, 4, 5, 6 and 7 are fixed, except the
 `post_purchase` emails (owner: "ignore mail for now"). Item 4 kept the tool and the mutation
 and routed both through `RefundService.record_external` instead of deleting them, because
-merchants do refund outside the store. Item 3 (consent) and items 8 to 10 are open.
+merchants do refund outside the store. Items 3 and 8–10 shipped in v0.113.0 (spec
+`docs/superpowers/specs/2026-10-15-wave0-live-fixes-design.md`). Not done there: AI provider base URLs
+need an allowlist, and the `markets` middleware goes with that app in wave 2.
 
 1. **Paid PDFs download without signing in.** `flipbook/views.py:44-47` puts
    `product.digital_file.url` into the preview page, and `/media/digital/*.pdf` is served

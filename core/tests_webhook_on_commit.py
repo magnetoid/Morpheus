@@ -15,10 +15,15 @@ class WebhookOnCommitTests(TestCase):
     def setUp(self):
         # Core's own path: with no delivery owner answering WEBHOOK_DELIVER, core
         # posts (webhooks_ui's path is tested in its app).
+        from django.core.cache import cache
+
         from plugins.registry import app_registry
 
         self.addCleanup(app_registry.activate, 'webhooks_ui')
         app_registry.deactivate('webhooks_ui')
+        # Core caches "no active endpoints" for 30 s; an earlier test that fired
+        # an event with none would hide the endpoint each test creates.
+        cache.delete('core:has_active_webhooks')
 
     def _endpoint(self):
         from core.models import WebhookEndpoint

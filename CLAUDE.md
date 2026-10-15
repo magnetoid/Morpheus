@@ -791,6 +791,8 @@ adding an event, wire **both ends** in the same change, and when you find a
 never-fired event, decide deliberately — fire it or delete the subscriber, never
 leave it armed. `grep -rn EVENT_NAME | grep -c fire` is the cheap check.
 
+**Convention — one webhook trigger (v0.113.0).** Core's `_dispatch_remote` decides when (after commit) and to whom (an endpoint's events, or `'*'`); the delivery goes through the `WEBHOOK_DELIVER` filter, which webhooks_ui answers (log, retries, dead-letter, replay), and core posts itself when nothing answers. webhooks_ui used to subscribe its own fan-out as well, so an endpoint got two POSTs in two shapes, one of them before commit. Never add a second subscriber that posts. Every staff-entered URL the server calls goes through `core.net.outbound_request` (public hosts, no redirects). Guarded by `webhooks_ui/tests/test_one_trigger.py` and `core/tests/test_outbound_request.py`.
+
 **Landmine — a price seam must fire on BOTH the displayed and charged price.**
 `PRODUCT_CALCULATE_PRICE` is applied in exactly two places — catalog's GraphQL
 `Product.price` (display) and orders' `_resolve_unit_price` (charge) — and both
@@ -1111,7 +1113,7 @@ theme's base emitted none of `global_head` / `global_below_body` /
 `footer_legal` / `footer_extra` — a live bilingual store with no cookie banner,
 beacon, PWA, chat or GDPR footer links — and `core/tests/test_slot_parity.py`
 checks only the ACTIVE theme (dot_books under test). Every theme base and the
-storefront fallback must emit all four; guarded by `themes/test_global_slots.py`.
+storefront fallback must emit all four; guarded by `themes/test_global_slots.py`. Since v0.113.0 the server-side sends obey it too: the conversion APIs, GA4 Measurement Protocol, the Google Ads purchase tag and `meta.sync_audience` ask `core/consent.py:allowed()`, which reads the shopper's choice stamped on the order at checkout (`metadata['consent']` — a payment webhook has no visitor to ask), else the request, else the store, and refuses without evidence on a store that manages consent. The consent app answers through `CONSENT_DECISION` / `CONSENT_MARKETING_CUSTOMERS`, so core imports nothing; the tracking app's second banner is gone. Guarded by `consent/tests/test_server_side_consent.py`, `plugins/tests_capi_consent.py` and `tracking/tests/test_consent_gate.py`.
 
 **Landmine — product text is rich HTML; anywhere but the PDP it must become
 plain text first, never be sliced raw.** Web Stories cut `short_description`
@@ -1242,7 +1244,7 @@ go through `ai_assistant`'s provider gateway, which ran with the switch off and 
 check (raises `AIPaused`, a message fit for the merchant; the run cap is skipped — a click is not
 a run), and the app reports its `AIInteraction` usage to the cap through the `AI_USAGE_TODAY`
 filter, so core never imports the app. A new way to call a model goes through that gateway or
-the agent runtime, never a raw provider. Guarded by `core/agents/tests/test_guardrails.py` +
+the agent runtime, never a raw provider. (5) **The provider class is guarded too (v0.113.0):** `core.agents.llm.LLMProvider.__init_subclass__` wraps every `respond` (`guardrails.guard_model_call`) — six callers reached a model there directly. A refusal raises `guardrails.AIPaused`; a call outside the runtime's own `run_scope()` is recorded in `ModelUsageDay`, which `daily_spend_usd` adds, so a tool that calls a model inside a run is counted while the run's own calls (stored on the `AgentRun`) are not counted twice. Embeddings and text-to-speech obey the kill switch. Guarded by `core/agents/tests/test_provider_guard.py`. Guarded by `core/agents/tests/test_guardrails.py` +
 `catalog/tests/test_price_cap.py` + `orders/tests/test_refund_cap.py`.
 
 **Landmine — a new LLM provider must be wired in *three* places or it silently

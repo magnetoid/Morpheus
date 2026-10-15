@@ -6,6 +6,17 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.113.0 — one webhook per event, in one shape
+
+A merchant webhook endpoint used to receive each event twice: once from core, as the bare payload,
+and once from the Webhooks app, as `{"event": …, "data": …}`, sometimes before the order was saved.
+It now receives one POST, after commit, whose body is the bare payload (canonical JSON) with the
+event name in `X-Morpheus-Event`. A receiver that read `body["event"]` or `body["data"]` reads the
+header and the body itself. Webhook targets must be public hosts and redirects are not followed —
+point an endpoint at its final URL.
+
+---
+
 ## v0.81.0 — the dashboard is sections, tabs and cards
 
 Nothing an out-of-tree app does stops working; this is what it looks like now

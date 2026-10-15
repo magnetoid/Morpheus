@@ -35,6 +35,13 @@ def _endpoint(events):
 
 
 class OneTriggerTests(TestCase):
+    def setUp(self):
+        # Core caches "no active endpoints" for 30 s; an earlier test that fired
+        # an event with none would hide the endpoint each test creates.
+        from django.core.cache import cache
+
+        cache.delete('core:has_active_webhooks')
+
     def test_one_delivery_through_webhooks_ui_and_none_from_core(self):
         _endpoint([EVENT])
         with (
