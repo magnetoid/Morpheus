@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 from django.conf import settings
 from django.core.cache import cache
-from django.template import Context, Template, TemplateSyntaxError
+from django.template import Context, Template
 from django.test import TestCase
 from djmoney.money import Money
 
@@ -130,9 +130,12 @@ class AdsTagConsentTests(TestCase):
 
 
 class OneBannerTests(TestCase):
-    def test_the_second_banner_tag_is_gone(self):
-        with self.assertRaises(TemplateSyntaxError):
-            Template('{% load tracking %}{% tracking_consent_banner %}')
+    def test_the_retired_banner_tag_renders_nothing(self):
+        # Kept as a no-op for one release: a theme outside this repo that still
+        # calls it must not fail every storefront page with TemplateSyntaxError.
+        self.assertEqual(
+            Template('{% load tracking %}{% tracking_consent_banner %}').render(Context()), ''
+        )
 
     def test_no_theme_renders_it(self):
         root = Path(settings.BASE_DIR) / 'themes' / 'library'

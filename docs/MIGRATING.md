@@ -15,6 +15,10 @@ event name in `X-Morpheus-Event`. A receiver that read `body["event"]` or `body[
 header and the body itself. Webhook targets must be public hosts and redirects are not followed —
 point an endpoint at its final URL.
 
+**Themes.** The tracking app's own cookie banner is gone (the consent app is the one banner):
+`{% tracking_consent_banner %}` renders nothing in v0.113.0 and is removed in the next minor
+release — delete it from an out-of-tree theme's `base.html`.
+
 ---
 
 ## v0.81.0 — the dashboard is sections, tabs and cards

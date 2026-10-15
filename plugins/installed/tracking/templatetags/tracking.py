@@ -288,3 +288,11 @@ def gads_purchase_conversion(context, order):
         f'gtag("event","conversion",{json.dumps(payload)});'
         '</script>'
     )
+
+
+@register.simple_tag
+def tracking_consent_banner():
+    """Retired in v0.113.0 (the consent app is the one cookie banner); renders
+    nothing. Kept for one release so a theme outside this repo that still calls
+    it does not fail every storefront page — remove in the next MINOR."""
+    return ''
