@@ -364,7 +364,6 @@ MIDDLEWARE = [
     # Stays below MarketMiddleware/Auth so request.market + request.user are set
     # for the vary-key and the anon-only gate.
     'api.middleware.GraphQLCacheMiddleware',  # Enterprise: GraphQL Query Caching
-    'plugins.installed.environments.middleware.EnvironmentMiddleware',
     'plugins.installed.seo.middleware.SeoRedirectMiddleware',
     # Maintenance mode — must run AFTER AuthenticationMiddleware (it lets staff
     # through) and before the view is reached. Short-circuits with 503 only for

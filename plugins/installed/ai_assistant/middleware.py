@@ -1,14 +1,11 @@
 """
 AI Assistant — AIContext Middleware
-Attaches a rich AIContext object to every request.
-Resolves customer memory, agent capabilities, experiment assignments.
+Attaches an AIContext (agent capabilities, customer id) to every request.
 """
 
 from __future__ import annotations
 
 import logging
-import random
-import string
 from dataclasses import dataclass, field
 
 from django.db import DatabaseError
@@ -23,11 +20,9 @@ class AIContext:
     customer_id: str | None = None
     agent_id: str | None = None
     agent_capabilities: dict = field(default_factory=dict)
-    memories: list[dict] = field(default_factory=list)
     session_intent: str | None = None
     personalization_tier: str = 'none'
     experiment_assignments: dict = field(default_factory=dict)
-    ab_cohort: str = ''
 
     @property
     def is_agent(self) -> bool:
@@ -36,14 +31,6 @@ class AIContext:
     @property
     def is_personalized(self) -> bool:
         return self.personalization_tier in ('basic', 'full')
-
-    def get_memory_context_string(self) -> str:
-        """Format memories as an LLM-readable string."""
-        if not self.memories:
-            return ''
-        return '\n'.join(
-            f'- {m["key"]}: {m["value"]}' for m in self.memories if m.get('confidence', 1.0) > 0.3
-        )
 
 
 class AIContextMiddleware:
@@ -88,18 +75,6 @@ class AIContextMiddleware:
         ctx.personalization_tier = 'full'
         return True
 
-    def _attach_customer_memories(self, ctx: AIContext, user) -> None:
-        from plugins.installed.ai_assistant.models import AgentMemory
-
-        try:
-            ctx.memories = list(
-                AgentMemory.objects.filter(customer=user, confidence__gte=0.2).values(
-                    'memory_type', 'key', 'value', 'confidence'
-                )[:50]
-            )
-        except DatabaseError as e:
-            logger.warning('AIContext: DB error loading memories: %s', e)
-
     def _build_context(self, request) -> AIContext:
         ctx = AIContext()
 
@@ -111,12 +86,5 @@ class AIContextMiddleware:
         if user is not None and user.is_authenticated:
             ctx.customer_id = str(user.id)
             ctx.personalization_tier = 'full'
-            self._attach_customer_memories(ctx, user)
-
-        if hasattr(request, 'session'):
-            ctx.ab_cohort = request.session.get('ab_cohort', '')
-            if not ctx.ab_cohort:
-                ctx.ab_cohort = ''.join(random.choices(string.ascii_lowercase, k=8))  # noqa: S311
-                request.session['ab_cohort'] = ctx.ab_cohort
 
         return ctx

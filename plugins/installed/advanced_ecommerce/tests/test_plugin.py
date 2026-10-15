@@ -42,14 +42,15 @@ class RecentlyViewedHookTests(TestCase):
             status='active',
         )
         rf = RequestFactory()
-        request = rf.get('/p/x/')
+        # A shopper's browser: crawlers get no recently-viewed list.
+        request = rf.get('/p/x/', HTTP_USER_AGENT='Mozilla/5.0 (Macintosh) Safari/605.1.15')
         request.session = {}
         AdvancedEcommercePlugin().on_product_viewed(product=product, request=request)
         self.assertIn('x', request.session.get('recently_viewed', []))
 
     def test_recently_viewed_capped_at_eight(self):
         rf = RequestFactory()
-        request = rf.get('/')
+        request = rf.get('/', HTTP_USER_AGENT='Mozilla/5.0 (Macintosh) Safari/605.1.15')
         request.session = {'recently_viewed': [f's{i}' for i in range(8)]}
         product = Product.objects.create(
             name='New',

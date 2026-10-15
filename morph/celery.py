@@ -60,6 +60,12 @@ _CORE_BEAT_SCHEDULE = {
         'task': 'core.tasks.check_for_updates',
         'schedule': crontab(hour=4, minute=45),  # 04:45 UTC daily
     },
+    # Expired sessions are deleted daily: database sessions are never removed
+    # otherwise, and every store had a row per crawler hit until v0.113.0.
+    'core-clear-sessions': {
+        'task': 'core.tasks.clear_expired_sessions',
+        'schedule': crontab(hour=4, minute=15),  # 04:15 UTC daily
+    },
     # Drain the transactional outbox into NATS JetStream every minute. Events are
     # written to OutboxEvent in the SAME DB transaction as the domain mutation
     # (core/hooks.py), and this is the ONLY path that publishes them. The task

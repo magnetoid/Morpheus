@@ -355,3 +355,14 @@ def check_for_updates() -> dict:
             status.get('latest'),
         )
     return status
+
+
+@shared_task(name='core.tasks.clear_expired_sessions', time_limit=300, soft_time_limit=240)
+def clear_expired_sessions() -> None:
+    """Delete expired sessions (database-backed). Nothing ever ran Django's
+    `clearsessions`, so every store kept a row per crawler hit for months."""
+    from importlib import import_module
+
+    from django.conf import settings
+
+    import_module(settings.SESSION_ENGINE).SessionStore.clear_expired()

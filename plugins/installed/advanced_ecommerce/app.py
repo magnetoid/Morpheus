@@ -56,6 +56,12 @@ class AdvancedEcommercePlugin(Plugin):
         """Track up to 8 recently-viewed product slugs in the session."""
         if request is None or product is None:
             return
+        from core.utils.crawlers import is_crawler_user_agent
+
+        # A crawler has no use for a recently-viewed list, and writing one gave
+        # every crawled product page a database session and a cookie.
+        if is_crawler_user_agent(request.META.get('HTTP_USER_AGENT')):
+            return
         try:
             session = getattr(request, 'session', None)
             if session is None:
