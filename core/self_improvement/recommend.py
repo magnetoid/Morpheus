@@ -23,6 +23,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
+from core.agents.guardrails import AIPaused
 from core.hooks import hook_registry
 from core.safety import assert_diff_safe
 from core.self_improvement.policy import decide_action, policy_for
@@ -260,6 +261,9 @@ def _plan(cluster: Cluster, pol) -> dict | None:
             getattr(response, 'completion_tokens', 0) or 0
         )
         return parsed
+    except AIPaused as e:  # the merchant paused AI or hit today's cap: not a fault
+        logger.info('analyzer: _plan skipped the model: %s', e)
+        return _heuristic_plan(cluster)
     except Exception:  # noqa: BLE001
         logger.exception('analyzer: _plan failed')
         return _heuristic_plan(cluster)

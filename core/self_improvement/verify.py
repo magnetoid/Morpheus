@@ -12,6 +12,7 @@ import json
 import logging
 from dataclasses import dataclass
 
+from core.agents.guardrails import AIPaused
 from core.self_improvement.prompts import VERIFY_PROMPT_VERSION, verify_v1
 
 logger = logging.getLogger('morpheus.self_improvement.verify')
@@ -64,6 +65,9 @@ def verify_recommendation(recommendation: dict) -> VerifyResult:
             recommend_downgrade_to=parsed.get('recommend_downgrade_to'),
             raw_response=text[:2000],
         )
+    except AIPaused as e:  # the merchant paused AI or hit today's cap: not a fault
+        logger.info('verify_recommendation skipped the model: %s', e)
+        return _fail_open('ai_paused')
     except Exception:  # noqa: BLE001
         logger.exception('verify_recommendation failed')
         return _fail_open('exception')

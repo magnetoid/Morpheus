@@ -65,3 +65,33 @@ class CoreCallersPausedTests(TestCase):
         result = verify_recommendation({'title': 't'})
         self.assertIsNotNone(result)
         self.assertEqual(self.probe.calls, 0)
+
+
+class SelfImprovementPauseIsNotAnErrorTests(TestCase):
+    """A merchant pausing AI is a decision, not a fault: self-improvement must
+    not log it at ERROR, which lands in the error log and the daily digest."""
+
+    def setUp(self):
+        p = _pause()
+        self.addCleanup(p.set_config, 'agents_paused', False)
+        patcher = patch('core.agents.llm.get_llm_provider', return_value=_Probe())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_planning_and_verifying_log_the_pause_below_error(self):
+        from core.self_improvement.policy import policy_for
+        from core.self_improvement.recommend import Cluster, _plan
+        from core.self_improvement.verify import verify_recommendation
+
+        cluster = Cluster(
+            class_name='seo_gap',
+            fingerprint='f',
+            severity=1,
+            seen_count=1,
+            age_hours=1.0,
+            signal_ids=[],
+            payload_samples=[],
+        )
+        with self.assertNoLogs('morpheus.self_improvement', level='ERROR'):
+            _plan(cluster, policy_for('seo_gap'))
+            verify_recommendation({'title': 't', 'class': 'seo_gap', 'action': 'advise'})
