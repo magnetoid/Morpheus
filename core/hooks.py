@@ -225,7 +225,13 @@ class HookRegistry:
         class WebhookEncoder(DjangoJSONEncoder):
             def default(self, o):  # noqa: PLR0911 — one return per known type
                 if isinstance(o, models.Model):
-                    return {'id': str(o.pk), 'model': o.__class__.__name__}
+                    # The identifying fields a receiver needs, never a record dump.
+                    out = {'id': str(o.pk), 'model': o.__class__.__name__}
+                    for attr in ('order_number', 'sku', 'email', 'name', 'slug', 'status'):
+                        v = getattr(o, attr, None)
+                        if isinstance(v, (str, int, float, bool)):
+                            out[attr] = v
+                    return out
                 if isinstance(o, QuerySet):
                     return [{'id': str(obj.pk), 'model': obj.__class__.__name__} for obj in o]
                 if isinstance(o, decimal.Decimal):
@@ -272,7 +278,6 @@ class HookRegistry:
             if not apps.ready:
                 return
             from core.models import OutboxEvent, WebhookEndpoint
-            from core.tasks import dispatch_webhook
         except ImportError as e:  # apps not loaded yet (e.g. during settings import)
             logger.debug('Skipping remote dispatch for %s — apps not ready: %s', event, e)
             return
@@ -309,11 +314,7 @@ class HookRegistry:
                     # webhook. on_commit runs the callback immediately when no atomic
                     # block is open, so the non-transactional path is unchanged. Bind
                     # url/secret as defaults to dodge the late-binding closure trap.
-                    transaction.on_commit(
-                        lambda url=endpoint.url, secret=endpoint.secret: dispatch_webhook.delay(
-                            url, secret, event, payload
-                        )
-                    )
+                    transaction.on_commit(lambda ep=endpoint: self._deliver_one(ep, event, payload))
         except Exception as e:  # noqa: BLE001 — DB outage must not break local handlers
             logger.warning('Webhook dispatch failed for %s: %s', event, e, exc_info=True)
 
@@ -330,6 +331,22 @@ class HookRegistry:
                 OutboxEvent.objects.create(event_type=event, payload=payload)
             except Exception as e:  # noqa: BLE001 — outbox failure logged, do not abort
                 logger.warning('Outbox write failed for %s: %s', event, e, exc_info=True)
+
+    def _deliver_one(self, endpoint, event_name: str, payload: dict) -> None:
+        """One endpoint, one delivery: a delivery owner (webhooks_ui) takes it
+        through WEBHOOK_DELIVER, else core posts. Exactly one path runs."""
+        taken = self.filter(
+            MorpheusEvents.WEBHOOK_DELIVER,
+            False,
+            endpoint=endpoint,
+            event_name=event_name,
+            payload=payload,
+        )
+        if taken is True:
+            return
+        from core.tasks import dispatch_webhook
+
+        dispatch_webhook.delay(endpoint.url, endpoint.secret, event_name, payload)
 
     def has_handlers(self, event: str) -> bool:
         return bool(self._handlers.get(event))
@@ -751,6 +768,11 @@ class MorpheusEvents:
     #   answers the set of customer ids whose latest decision allows marketing
     #   (audience uploads read it through core.consent.marketing_customer_ids).
     CONSENT_MARKETING_CUSTOMERS = 'consent.marketing_customers'  # filter
+    # WEBHOOK_DELIVER — filter, value=False, kwargs: endpoint (core.WebhookEndpoint),
+    #   event_name, payload (JSON-safe dict). Core asks once per subscribed endpoint,
+    #   after commit; an app that takes the delivery (webhooks_ui: log, retries,
+    #   replay) returns True and core does not post. Nothing answers → core posts.
+    WEBHOOK_DELIVER = 'webhook.deliver'  # filter
 
     # AUTHZ_CAPABILITY_CHECK — filter, value=None|bool ("has anyone answered?"),
     #   kwargs: user, capability (e.g. 'orders.refund'), channel. Fired by

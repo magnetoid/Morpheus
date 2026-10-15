@@ -85,7 +85,7 @@ def dispatch_webhook(
         return
 
     try:
-        response = requests.post(url, data=body, headers=headers, timeout=10)
+        response = requests.post(url, data=body, headers=headers, timeout=10, allow_redirects=False)
     except SoftTimeLimitExceeded:
         logger.warning('Webhook soft time limit hit: %s -> %s', event_name, url)
         raise self.retry(countdown=2**self.request.retries)  # noqa: B904

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 import logging
 
 logger = logging.getLogger('morpheus.webhooks_ui')
@@ -35,6 +34,8 @@ def sign_payload(secret: str, body: bytes) -> str:
 
 
 def build_signed_request_body(*, event_name: str, payload: dict) -> bytes:
-    return json.dumps({'event': event_name, 'data': payload}, default=str, sort_keys=True).encode(
-        'utf-8'
-    )
+    """Core's body (core.tasks._canonical_payload): the event's payload, the
+    event name in the X-Morpheus-Event header — one shape for every receiver."""
+    from core.tasks import _canonical_payload
+
+    return _canonical_payload(payload)

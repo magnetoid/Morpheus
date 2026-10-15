@@ -12,6 +12,14 @@ from django.test import TestCase
 
 
 class WebhookOnCommitTests(TestCase):
+    def setUp(self):
+        # Core's own path: with no delivery owner answering WEBHOOK_DELIVER, core
+        # posts (webhooks_ui's path is tested in its app).
+        from plugins.registry import app_registry
+
+        self.addCleanup(app_registry.activate, 'webhooks_ui')
+        app_registry.deactivate('webhooks_ui')
+
     def _endpoint(self):
         from core.models import WebhookEndpoint
 

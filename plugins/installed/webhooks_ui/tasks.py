@@ -91,7 +91,9 @@ def deliver_webhook(delivery_id: str) -> None:
         if _refuse_unsafe_endpoint(d):
             return
 
-        resp = requests.post(d.endpoint.url, data=body, headers=headers, timeout=10)
+        resp = requests.post(
+            d.endpoint.url, data=body, headers=headers, timeout=10, allow_redirects=False
+        )
         d.response_status = resp.status_code
         d.response_body = (resp.text or '')[:5000]
         success = 200 <= resp.status_code < 300
