@@ -30,6 +30,7 @@ from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from core.consent import stamp as consent_stamp
 from plugins.installed.agentic_checkout import serializers as ser
 from plugins.installed.agentic_checkout.app import ACP_API_VERSION
 from plugins.installed.agentic_checkout.auth import _bearer_token, require_acp_scope
@@ -783,6 +784,9 @@ def _create_order_for_completion(cart, request: HttpRequest):
             # Agent checkouts rarely carry the storefront visitor cookie, but
             # stamp it when present so experiments can attribute the purchase.
             visitor_id=(request.COOKIES.get('morph_visitor') or '').strip(),
+            # An agent's request carries no consent cookie: on a store that
+            # manages consent its order records "no", so no conversion API reports it.
+            consent=consent_stamp(request),
         )
     except ValueError as e:
         msg = ser.message_error('invalid', str(e))

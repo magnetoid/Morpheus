@@ -352,6 +352,8 @@ class OrdersMutationExtension:
             if request is not None:
                 visitor_id = (request.COOKIES.get('morph_visitor') or '').strip()
 
+            from core.consent import stamp as consent_stamp
+
             with transaction.atomic():
                 order = OrderService.create_from_cart(
                     cart=cart,
@@ -359,6 +361,7 @@ class OrdersMutationExtension:
                     shipping_address=ship,
                     billing_address=bill,
                     visitor_id=visitor_id,
+                    consent=consent_stamp(request),
                 )
                 # (create_from_cart raises GiftCardRedeemFailed / CouponNoLongerValid
                 # / InsufficientStockError directly on a bad checkout, rolling this

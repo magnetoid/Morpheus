@@ -160,6 +160,25 @@ class AcpCompleteTests(_CompleteTestBase):
         cart = Cart.objects.get(id=sid)
         self.assertEqual(cart.metadata.get('acp_order_id'), str(order.id))
 
+    def test_an_agent_order_records_no_marketing_consent(self):
+        # An agent's request carries no consent cookie: on a store that manages
+        # consent, the conversion APIs must not report this purchase.
+        from django.core.cache import cache
+
+        from core.models import StoreSettings
+
+        row = StoreSettings.objects.first() or StoreSettings()
+        row.gdpr_enabled = True
+        row.save()
+        cache.delete('morph:gdpr_enabled')
+        sid = self._create_session().json()['id']
+        with mock.patch(_REDEEM, return_value=_OK):
+            self._complete(sid)
+        self.assertEqual(
+            Order.objects.get().metadata['consent'],
+            {'managed': True, 'analytics': False, 'marketing': False},
+        )
+
     def test_complete_success_records_evidence_metafield(self):
         try:
             from plugins.installed.metafields.models import Metafield

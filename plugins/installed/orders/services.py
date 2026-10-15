@@ -282,10 +282,14 @@ def _resolve_unit_price(target, currency: str | None, *, fallback, customer=None
     return apply_price_filter(localized, product=fallback, customer=customer)
 
 
-def _order_metadata(visitor_id: str, breakdown: dict) -> dict:
+def _order_metadata(visitor_id: str, breakdown: dict, consent: dict | None = None) -> dict:
     """Order metadata, including any named charges the breakdown added on top
     of the priced lines (``Order.extra_lines``), so a receipt adds up."""
     metadata = {'visitor_id': visitor_id} if visitor_id else {}
+    if consent is not None:
+        # The shopper's choice at checkout; every server-side send reads it back
+        # (core/consent.py) because a payment webhook has no visitor to ask.
+        metadata['consent'] = dict(consent)
     extras = []
     for extra in breakdown.get('extras') or []:
         try:
@@ -396,6 +400,7 @@ class OrderService:
         billing_address: dict,
         *,
         visitor_id: str = '',
+        consent: dict | None = None,
     ) -> Order:
         if not cart.items.exists():
             raise ValueError('Cannot place an order from an empty cart.')
@@ -449,7 +454,7 @@ class OrderService:
             # Anonymous attribution (autopilot-plan follow-up): experiments'
             # ORDER_PLACED handler reads metadata['visitor_id'] to credit
             # `v:` assignments — without it, anonymous conversions are lost.
-            metadata=_order_metadata(visitor_id, breakdown),
+            metadata=_order_metadata(visitor_id, breakdown, consent),
         )
 
         for cart_item in items:
