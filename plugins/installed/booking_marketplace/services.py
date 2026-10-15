@@ -10,6 +10,7 @@ All money + capacity logic lives here, never in views/templates/client:
 from __future__ import annotations
 
 import datetime
+from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import transaction
@@ -85,6 +86,49 @@ def available_sessions(service, *, days: int = 30, limit: int = 30) -> list:
             if len(out) >= limit:
                 break
     return out
+
+
+def bookable_on(services, day) -> list:
+    """The listings in `services` a guest can still book on `day`, in the given order.
+
+    `available_sessions`' rule for one date: the listing runs that weekday (no windows:
+    every day) and a departure has a seat — its capacity minus that day's pending and
+    confirmed guests on that departure, or on the whole day when it has no departure
+    times. One query for the day's bookings; a QuerySet gets its windows prefetched.
+    """
+    from plugins.installed.booking_marketplace.models import Booking
+
+    if hasattr(services, 'prefetch_related'):
+        services = services.prefetch_related('availability')
+    services = list(services)
+    if not services:
+        return []
+    by_slot: dict = defaultdict(int)
+    by_day: dict = defaultdict(int)
+    rows = (
+        Booking.objects.filter(
+            service_id__in=[s.pk for s in services], booking_date=day, status__in=ACTIVE_STATUSES
+        )
+        .order_by()
+        .values('service_id', 'time_slot')
+        .annotate(guests_booked=Sum('guests'))
+    )
+    for row in rows:
+        by_slot[(row['service_id'], row['time_slot'])] += row['guests_booked'] or 0
+        by_day[row['service_id']] += row['guests_booked'] or 0
+    kept = []
+    for service in services:
+        if day.weekday() not in _weekdays(service):
+            continue
+        capacity = service.daily_capacity or 0
+        times = _start_times(service)
+        if times == [None]:
+            free = capacity - by_day[service.pk] > 0
+        else:
+            free = any(capacity - by_slot[(service.pk, slot)] > 0 for slot in times)
+        if free:
+            kept.append(service)
+    return kept
 
 
 @transaction.atomic
