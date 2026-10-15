@@ -516,7 +516,7 @@ def active_categories():
     """Categories that currently have ≥1 active experience, with counts.
 
     The single source for every category surface on the storefront (home
-    band, hero pills, filter chips, nav mega-menu) so the front can never
+    band, search bar, results page, nav mega-menu) so the front can never
     drift from the catalog. Fails soft to [] on a fresh/mid-migration DB.
     """
     try:
@@ -538,6 +538,6 @@ def active_categories():
             .filter(is_active=True, svc_count__gt=0)
             .order_by('-svc_count', 'name')
         )
-        return [{'name': c.name, 'count': c.svc_count} for c in rows]
+        return [{'name': c.name, 'slug': c.slug, 'count': c.svc_count} for c in rows]
     except Exception:  # noqa: BLE001 — table missing / not migrated yet
         return []

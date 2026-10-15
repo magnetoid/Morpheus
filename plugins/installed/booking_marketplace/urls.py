@@ -15,6 +15,8 @@ urlpatterns = [
         name='en_prefix_redirect',
     ),
     path('bookings/', views.services_list, name='list'),
+    # Before the <slug> detail route below, or "suggest" reads as a listing's slug.
+    path('bookings/suggest/', views.suggest, name='suggest'),
     path('shop/', views.products_list, name='shop'),
     # Signed-in customer's own bookings (experiences + stays). Booked under the
     # site root so the montenegro theme's account nav can link to it via

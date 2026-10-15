@@ -28,7 +28,9 @@ class AnalyticsMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        if request.method != 'GET':
+        # A pageview is a page. A script's JSON fetch (the travel store's search
+        # suggestions, the cookie banner's /csrf/) was recorded as one per request.
+        if not (response.get('Content-Type') or '').startswith('text/html'):
             return response
         path = request.path or ''
         if path.startswith(_EXCLUDED_PREFIXES):

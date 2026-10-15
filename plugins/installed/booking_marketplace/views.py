@@ -237,6 +237,22 @@ def products_list(request):
     )
 
 
+def suggest(request):
+    """Suggestions while a visitor types in the search bar: JSON for search.js, never indexed."""
+    from django.http import JsonResponse
+    from django.utils.cache import patch_cache_control
+
+    q = (request.GET.get('q') or '').strip()
+    if 2 <= len(q) <= 80:
+        payload = search_page.suggestions(request, q)
+    else:
+        payload = {'experiences': [], 'places': [], 'categories': []}
+    response = JsonResponse(payload)
+    response['X-Robots-Tag'] = 'noindex'
+    patch_cache_control(response, public=True, max_age=60)
+    return response
+
+
 def places_index(request):
     """Directory of Montenegro destinations (editorial), grouped by region."""
     from plugins.installed.booking_marketplace.models import PLACE_TYPES

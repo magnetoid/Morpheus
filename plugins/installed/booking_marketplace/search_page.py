@@ -15,6 +15,8 @@ from django.utils import timezone
 from django.utils.translation import get_language
 from django.utils.translation import gettext as _
 
+from core.utils.i18n import localized_path
+
 # Django's own `sr` catalog names days and months in Cyrillic (суб., Окт.) on a store
 # written in Latin. Babel and the browser's Intl both follow CLDR, so the server's label
 # and search.js's agree.
@@ -187,3 +189,89 @@ def page_context(request, params: SearchParams, *, close=False, kind='experience
         'card_heading': 'h3' if close else 'h2',
         'empty_message': empty_message(params, kind=kind),
     }
+
+
+def suggestions(request, q: str) -> dict:
+    """Up to 5 experiences, 3 places and 3 categories matching every word of `q`.
+
+    Never close matches: a suggestion is what was typed. Links follow the visitor's
+    language, and nothing here is HTML — search.js sets every value as text.
+    """
+    from plugins.installed.booking_marketplace import search
+
+    out = {'experiences': [], 'places': [], 'categories': []}
+    terms = search.parse_query(q)
+    if terms:
+        index = search.listing_index()
+        out['experiences'] = _suggested_experiences(request, index, terms)
+        out['places'] = _suggested_places(request, index, terms)
+        out['categories'] = _suggested_categories(request, terms)
+    return out
+
+
+def _suggested_experiences(request, index, terms) -> list[dict]:
+    from core.templatetags.morph import money_filter
+    from plugins.installed.booking_marketplace.models import REGIONS, BookableService
+    from plugins.installed.booking_marketplace.views import _image_url, listing_mode
+
+    live = BookableService.objects.filter(
+        is_active=True, vendor__is_active=True, listing_kind='experience'
+    )
+    found = index.find(
+        terms, kind='experience', within=set(live.values_list('pk', flat=True)), fallback=False
+    )
+    if not found.scores:
+        return []
+    rows = sorted(
+        live.filter(pk__in=found.scores),
+        key=lambda s: (-found.scores[s.pk], not s.is_bestseller, s.name.casefold()),
+    )[:5]
+    regions = {key: str(label) for key, label in REGIONS}
+    hide_price = listing_mode()
+    return [
+        {
+            'name': s.name,
+            'url': localized_path(request, f'/bookings/{s.slug}/'),
+            'location': s.location or regions.get(s.region, ''),
+            'image': _image_url(s),
+            'price': '' if hide_price else money_filter(s.price),
+        }
+        for s in rows
+    ]
+
+
+def _suggested_places(request, index, terms) -> list[dict]:
+    from plugins.installed.booking_marketplace.models import Place
+
+    places = Place.objects.filter(is_active=True)
+    found = index.find(
+        terms, kind='place', within=set(places.values_list('pk', flat=True)), fallback=False
+    )
+    if not found.scores:
+        return []
+    rows = sorted(
+        places.filter(pk__in=found.scores), key=lambda p: (-found.scores[p.pk], p.name.casefold())
+    )[:3]
+    return [{'name': p.name, 'url': localized_path(request, f'/places/{p.slug}/')} for p in rows]
+
+
+def _suggested_categories(request, terms) -> list[dict]:
+    from plugins.installed.booking_marketplace import search
+    from plugins.installed.booking_marketplace.services import active_categories
+
+    categories = active_categories()
+    found = search.Index(
+        search.Doc(c['slug'], 'category', ((10, c['name']),)) for c in categories
+    ).find(terms, kind='category', fallback=False)
+    rows = sorted(
+        (c for c in categories if c['slug'] in found.scores),
+        key=lambda c: (-found.scores[c['slug']], -c['count'], c['name']),
+    )[:3]
+    return [
+        {
+            'name': c['name'],
+            'url': localized_path(request, f'/bookings/?category={c["slug"]}'),
+            'count': c['count'],
+        }
+        for c in rows
+    ]
