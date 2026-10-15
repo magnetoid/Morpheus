@@ -29,12 +29,26 @@ _SEND = 'plugins.installed.tracking.services.measurement_protocol.send_event'
 _BROWSER = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15'
 
 
+def _unmanaged_store():
+    """These tests are about what GA4 receives; consent has its own tests
+    (test_consent_gate.py), so run them on a store that does not manage it."""
+    from django.core.cache import cache
+
+    from core.models import StoreSettings
+
+    row = StoreSettings.objects.first() or StoreSettings()
+    row.gdpr_enabled = False
+    row.save()
+    cache.delete('morph:gdpr_enabled')
+
+
 def _sent(mock_send, event_name):
     return [c.kwargs for c in mock_send.call_args_list if c.kwargs.get('event_name') == event_name]
 
 
 class ViewItemFromProductPageTests(TestCase):
     def setUp(self):
+        _unmanaged_store()
         self.product = Product.objects.create(
             name='Lavender Oil',
             slug='lavender-oil-probe',

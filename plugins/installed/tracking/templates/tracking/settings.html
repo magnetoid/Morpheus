@@ -119,29 +119,6 @@
     </label>
   </div>
 
-  <hr class="my-3">
-  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="show_consent_banner" {% if s.show_consent_banner %}checked{% endif %}> Show consent banner on the storefront</label>
-  <div class="grid grid-cols-2 gap-3">
-    <label class="text-sm">Accept label
-      <input class="input w-full" name="banner_accept_label" value="{{ s.banner_accept_label }}">
-    </label>
-    <label class="text-sm">Reject label
-      <input class="input w-full" name="banner_reject_label" value="{{ s.banner_reject_label }}">
-    </label>
-  </div>
-  <label class="text-sm">Body
-    <textarea class="input w-full" name="banner_body" rows="2">{{ s.banner_body }}</textarea>
-  </label>
-  <label class="text-sm">Learn-more URL (optional)
-    <input class="input w-full" name="banner_link_url" value="{{ s.banner_link_url }}">
-  </label>
-  <label class="text-sm">Placement
-    <select class="input w-full" name="banner_placement">
-      <option value="bottom" {% if s.banner_placement == 'bottom' %}selected{% endif %}>Bottom banner</option>
-      <option value="corner" {% if s.banner_placement == 'corner' %}selected{% endif %}>Corner card</option>
-      <option value="modal" {% if s.banner_placement == 'modal' %}selected{% endif %}>Blocking modal</option>
-    </select>
-  </label>
   <button class="btn btn-primary">Save consent</button>
 </form>
 

@@ -25,6 +25,17 @@ def _is_crawler(request) -> bool:
     return is_crawler_user_agent(ua)
 
 
+def _consent_overridden() -> bool:
+    """Settings → Tracking's debug-only "Ignore visitor consent" switch, which
+    promises client- AND server-side tracking regardless of consent."""
+    try:
+        from plugins.installed.tracking.models import TrackingSettings
+
+        return bool(TrackingSettings.get_solo().consent_override)
+    except Exception:  # noqa: BLE001 — a missing row never turns the gate off
+        return False
+
+
 class TrackingPlugin(Plugin):
     name = 'tracking'
     label = 'Tracking (GA4 + GTM)'
@@ -79,22 +90,39 @@ class TrackingPlugin(Plugin):
             transaction_id=str(getattr(order, 'order_number', '') or order.pk),
         )
 
-    def on_add_to_cart(self, cart=None, item=None, product=None, variant=None, quantity=1, **_):
+    def on_add_to_cart(
+        self, cart=None, item=None, product=None, variant=None, quantity=1, request=None, **_
+    ):
         if product is None:
             return
         self._fire(
-            'add_to_cart', cart=cart, item=item, product=product, variant=variant, quantity=quantity
+            'add_to_cart',
+            cart=cart,
+            item=item,
+            product=product,
+            variant=variant,
+            quantity=quantity,
+            request=request,
         )
 
-    def on_remove_from_cart(self, cart=None, item=None, product=None, quantity=1, **_):
+    def on_remove_from_cart(
+        self, cart=None, item=None, product=None, quantity=1, request=None, **_
+    ):
         if product is None:
             return
-        self._fire('remove_from_cart', cart=cart, item=item, product=product, quantity=quantity)
+        self._fire(
+            'remove_from_cart',
+            cart=cart,
+            item=item,
+            product=product,
+            quantity=quantity,
+            request=request,
+        )
 
-    def on_begin_checkout(self, cart=None, **_):
+    def on_begin_checkout(self, cart=None, request=None, **_):
         if cart is None:
             return
-        self._fire('begin_checkout', cart=cart)
+        self._fire('begin_checkout', cart=cart, request=request)
 
     def on_product_viewed(self, product=None, request=None, **_):
         # A product page is a GET, so crawlers fire this as often as shoppers
@@ -103,16 +131,16 @@ class TrackingPlugin(Plugin):
         # server's user agent, so the crawler check has to happen here.
         if product is None or _is_crawler(request):
             return
-        self._fire('view_item', product=product)
+        self._fire('view_item', product=product, request=request)
 
     def on_signup(self, customer=None, **_):
         self._fire('sign_up', customer=customer)
 
-    def on_login(self, customer=None, **_):
-        self._fire('login', customer=customer)
+    def on_login(self, customer=None, request=None, **_):
+        self._fire('login', customer=customer, request=request)
 
-    def on_search(self, search_term='', **_):
-        self._fire('search', search_term=search_term)
+    def on_search(self, search_term='', request=None, **_):
+        self._fire('search', search_term=search_term, request=request)
 
     def _fire(self, event_kind: str, **ctx) -> None:  # noqa: PLR0912
         """Build the GA4 payload and POST via Measurement Protocol.
@@ -121,6 +149,17 @@ class TrackingPlugin(Plugin):
         order flow. Each `event_kind` maps to a builder in
         `services.event_mapping` with a known signature.
         """
+        # Consent first (core/consent.py): the order's stamp, else the visitor's
+        # request, else the store — a store that manages consent sends nothing
+        # it cannot show the shopper agreed to (sign_up has neither: not sent).
+        from core.consent import allowed
+
+        request = ctx.pop('request', None)
+        if not (
+            _consent_overridden() or allowed('analytics', order=ctx.get('order'), request=request)
+        ):
+            return
+
         try:
             from plugins.installed.tracking.services import event_mapping
             from plugins.installed.tracking.tasks import send_event_task

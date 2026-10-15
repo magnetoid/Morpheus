@@ -32,7 +32,6 @@ import json
 from typing import Any
 
 from django import template
-from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 
 from plugins.installed.consent.services import read_consent_from_cookie
@@ -230,8 +229,8 @@ def _ads_config():
         return '', ''
 
 
-@register.simple_tag
-def gads_purchase_conversion(order):
+@register.simple_tag(takes_context=True)
+def gads_purchase_conversion(context, order):
     """Emit a Google Ads `conversion` event for the order. Only fires
     when both google_ads_conversion_id (AW-XXXXXXXXX) AND
     google_ads_purchase_label are configured on the tracking plugin.
@@ -246,6 +245,10 @@ def gads_purchase_conversion(order):
         {% gads_purchase_conversion order %}
     """
     if not order:
+        return ''
+    # The consent app's decision (absent when the app is off: an unmanaged store).
+    consent = context.get('consent') or {}
+    if consent.get('managed') and not consent.get('marketing'):
         return ''
     conv_id, label = _ads_config()
     if not conv_id or not label:
@@ -285,15 +288,3 @@ def gads_purchase_conversion(order):
         f'gtag("event","conversion",{json.dumps(payload)});'
         '</script>'
     )
-
-
-@register.simple_tag
-def tracking_consent_banner():
-    """Tiny consent banner (off by default). When enabled the
-    merchant gets a fixed-position banner with Accept / Reject buttons
-    that update Consent Mode v2 signals via `gtag('consent','update',
-    {...})`."""
-    s = _settings()
-    if s is None or not s.show_consent_banner:
-        return ''
-    return render_to_string('tracking/blocks/consent_banner.html', {'s': s})

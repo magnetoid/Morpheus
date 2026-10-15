@@ -65,12 +65,6 @@ class TrackingSettings(models.Model):
         ('eu', 'European Union (region1.google-analytics.com)'),
     ]
 
-    BANNER_PLACEMENT_CHOICES = [
-        ('bottom', 'Bottom banner'),
-        ('corner', 'Corner card'),
-        ('modal', 'Blocking modal'),
-    ]
-
     DEDUP_STRATEGY_CHOICES = [
         ('transaction_id', 'By transaction_id (recommended for purchases)'),
         ('client_window', 'By client_id + event_name + window'),
@@ -134,16 +128,6 @@ class TrackingSettings(models.Model):
             'staging or non-EU shops. EU consumer-facing shops MUST leave '
             'this off.'
         ),
-    )
-    show_consent_banner = models.BooleanField(default=False)
-    banner_accept_label = models.CharField(max_length=40, default='Accept all')
-    banner_reject_label = models.CharField(max_length=40, default='Reject')
-    banner_body = models.CharField(
-        max_length=400, default='We use cookies for analytics and a great shopping experience.'
-    )
-    banner_link_url = models.CharField(max_length=400, blank=True)
-    banner_placement = models.CharField(
-        max_length=10, choices=BANNER_PLACEMENT_CHOICES, default='bottom'
     )
 
     # ── Identity ──────────────────────────────────────────────────────

@@ -145,12 +145,6 @@ def settings_page(request):
                 new_consent[signal] = 'granted' if val == 'granted' else 'denied'
             s.consent_default = new_consent
             s.consent_override = request.POST.get('consent_override') == 'on'
-            s.show_consent_banner = request.POST.get('show_consent_banner') == 'on'
-            s.banner_accept_label = (request.POST.get('banner_accept_label') or 'Accept all')[:40]
-            s.banner_reject_label = (request.POST.get('banner_reject_label') or 'Reject')[:40]
-            s.banner_body = (request.POST.get('banner_body') or '')[:400]
-            s.banner_link_url = (request.POST.get('banner_link_url') or '')[:400]
-            s.banner_placement = (request.POST.get('banner_placement') or 'bottom').strip()
             s.save()
             flash = 'Consent saved.'
             tab = 'consent'
