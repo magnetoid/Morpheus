@@ -67,7 +67,7 @@ class FoldTests(SimpleTestCase):
         self.assertEqual(fold('ŽABLJAK'), 'zabljak')
         self.assertEqual(fold('Жабљак'), 'zabljak')
         self.assertEqual(fold('Đurđevića Tara'), 'durdevica tara')
-        self.assertEqual(fold('Herceg Novi’s fortress, 3-day'), 'herceg novi s fortress 3 day')
+        self.assertEqual(fold('Herceg Novi’s fortress, 3-day'), 'herceg novis fortress 3 day')
 
     def test_a_word_with_dj_is_indexed_both_ways(self):
         self.assertEqual(search.index_tokens('Đurđevića'), {'durdevica', 'djurdjevica'})
@@ -156,3 +156,20 @@ class MatchingTests(SimpleTestCase):
         self.assertEqual(sorted(_find('med', kind='product').scores), ['honey'])
         self.assertEqual(sorted(_find('kotor', kind='place').scores), ['kotor-place'])
         self.assertEqual(_ranked('kayak', within={'budva-kayak'}), ['budva-kayak'])
+
+    def test_a_possessive_is_one_word(self):
+        # "Kotor's" split into "kotor" + a required "s", which no listing had.
+        index = Index(
+            [
+                _doc('walk', 'Kotor Old Town Walk', location='Kotor'),
+                _doc('mausoleum', 'Njegoš’s Mausoleum on Lovćen', location='Lovćen'),
+            ]
+        )
+        for q, key in (
+            ("Kotor's old town", 'walk'),
+            ('Njegoš’s mausoleum', 'mausoleum'),
+            ('njegos mausoleum', 'mausoleum'),
+        ):
+            with self.subTest(q=q):
+                found = index.find(parse_query(q), kind='experience')
+                self.assertEqual((set(found.scores), found.close), ({key}, False))

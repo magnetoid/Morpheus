@@ -148,6 +148,9 @@ _CYRILLIC = str.maketrans(
     }
 )
 _WORD = re.compile(r'[^\W_]+')
+# A possessive is one word: "Kotor's" folds to "kotors" (whose singular is "kotor"),
+# not "kotor" plus a one-letter word every query would then require.
+_APOSTROPHES = str.maketrans('', '', "'\u2019\u02bc")
 
 
 class Doc(NamedTuple):
@@ -173,7 +176,7 @@ class Matches(NamedTuple):
 
 
 def _latin(text: str) -> str:
-    return (text or '').casefold().translate(_CYRILLIC)
+    return (text or '').casefold().translate(_CYRILLIC).translate(_APOSTROPHES)
 
 
 def _words(text: str) -> list[str]:
