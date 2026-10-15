@@ -150,13 +150,16 @@ def roas_by_channel(model: str = 'last_touch', days: int = 30) -> list:
     from plugins.installed.analytics.models import AdSpendSnapshot, DailyMetric
 
     since = timezone.now().date() - timedelta(days=days)
-    # Each snapshot is a trailing-window total already: read the newest day of
-    # each, never the sum of every day (that counted each total up to 31 times).
+    # Each snapshot is a trailing-window total already: read the newest one,
+    # never the sum of every day (that counted each total up to 31 times). Spend
+    # is per channel — a channel whose fetch failed today keeps yesterday's total.
     spend: dict = defaultdict(Decimal)
-    spend_qs = AdSpendSnapshot.objects.filter(day__gte=since)
-    newest_spend = spend_qs.order_by('-day').values_list('day', flat=True).first()
-    for row in spend_qs.filter(day=newest_spend).values('channel', 'spend'):
-        spend[row['channel']] += Decimal(str(row['spend'] or 0))
+    for row in (
+        AdSpendSnapshot.objects.filter(day__gte=since)
+        .order_by('channel', '-day')
+        .values('channel', 'spend')
+    ):
+        spend.setdefault(row['channel'], Decimal(str(row['spend'] or 0)))
 
     revenue: dict = defaultdict(Decimal)
     prefix = f'{model}:'

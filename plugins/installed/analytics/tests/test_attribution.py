@@ -151,3 +151,17 @@ class RoasWindowTests(TestCase):
             with self.subTest(source=source):
                 self.assertEqual(_channel_of(SimpleNamespace(utm_source=source)), 'meta')
         self.assertEqual(_channel_of(SimpleNamespace(utm_source='google')), 'google')
+
+
+class RoasNewestPerChannelTests(TestCase):
+    def test_a_channel_missing_from_the_newest_day_keeps_its_last_snapshot(self):
+        # Meta's fetch failed today; yesterday's 30-day total is still its spend.
+        today = timezone.now().date()
+        AdSpendSnapshot.objects.create(
+            day=today - timedelta(days=1), channel='meta', spend=Money(Decimal('300'), 'USD')
+        )
+        AdSpendSnapshot.objects.create(
+            day=today, channel='google', spend=Money(Decimal('50'), 'USD')
+        )
+        spend = {r['channel']: r['spend'] for r in roas_by_channel(model='last_touch')}
+        self.assertEqual(spend, {'meta': Decimal('300'), 'google': Decimal('50')})
