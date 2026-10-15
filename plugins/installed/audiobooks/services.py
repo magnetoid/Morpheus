@@ -96,6 +96,10 @@ def _chunks(text: str, size: int = _MAX_CHARS):
 
 
 def _tts(text: str, *, api_key: str, voice_id: str, model: str, timeout: int = 60) -> bytes:
+    from core.agents.guardrails import PAUSED_MESSAGE, AIPaused, agents_paused
+
+    if agents_paused():
+        raise AIPaused(PAUSED_MESSAGE)  # generate() records the failure on the audiobook
     import requests
 
     resp = requests.post(

@@ -79,6 +79,20 @@ def _guarded(complete):
     return wrapper
 
 
+def _paused_guard(embed):
+    """Embeddings cost little and are not priced, so only the kill switch applies."""
+
+    @functools.wraps(embed)
+    def wrapper(self, *args, **kwargs):
+        from core.agents import guardrails
+
+        if guardrails.agents_paused():
+            raise AIPaused(guardrails.PAUSED_MESSAGE)
+        return embed(self, *args, **kwargs)
+
+    return wrapper
+
+
 class LLMGateway(ABC):
     """Abstract base — all providers implement this interface.
 
@@ -94,6 +108,8 @@ class LLMGateway(ABC):
         super().__init_subclass__(**kwargs)
         if 'complete' in cls.__dict__:
             cls.complete = _guarded(cls.__dict__['complete'])
+        if 'embed' in cls.__dict__:
+            cls.embed = _paused_guard(cls.__dict__['embed'])
 
     @abstractmethod
     def complete(

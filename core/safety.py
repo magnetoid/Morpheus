@@ -81,6 +81,9 @@ PROTECTED_PLUGINS: tuple[str, ...] = (
     # and the sub-agents she delegates to. Disable it and chat still answers —
     # with "I can't access that" to every catalog/order/inventory question.
     'agent_core',
+    # Every Linda turn reaches the store's tools through /mcp/admin/v1/; disable
+    # agent_mcp and she answers with no tools at all.
+    'agent_mcp',
     'rbac',  # the authorization layer
     'customers',
     'catalog',  # core commerce primitives: the storefront has nothing to sell,

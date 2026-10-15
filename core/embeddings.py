@@ -42,6 +42,12 @@ def embed(text: str) -> list[float]:
     model = getattr(settings, 'AI_EMBEDDING_MODEL', 'text-embedding-3-small')
 
     if provider == 'openai' and getattr(settings, 'OPENAI_API_KEY', ''):
+        from core.agents.guardrails import agents_paused
+
+        if agents_paused():
+            # AI is switched off: no provider call; the hash vector keeps
+            # retrieval working, the documented degrade path below.
+            return _hash_embedding(text)
         try:
             from openai import OpenAI
 

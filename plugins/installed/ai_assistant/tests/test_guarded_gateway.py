@@ -89,3 +89,10 @@ class GuardedGatewayTests(TestCase):
             text, error = call_llm('write copy')
         self.assertEqual(text, '')
         self.assertIn('paused', error.lower())
+
+    def test_switched_off_ai_makes_no_embedding_call(self):
+        _set(agents_paused=True)
+        gw = _gateway()
+        with self.assertRaises(AIPaused):
+            gw.embed('text')
+        gw.client.embeddings.create.assert_not_called()

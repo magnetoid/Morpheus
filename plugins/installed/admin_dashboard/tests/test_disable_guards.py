@@ -203,6 +203,7 @@ class ProtectedAppGuardTests(TestCase):
             'orders',
             'payments',
             'morpheus_brain',
+            'agent_mcp',
         ):
             self.assertTrue(is_plugin_protected(name), f'{name}: AI disable tools would allow it')
             self.assertTrue(is_protected(name), f'{name}: merchant dashboard would allow it')
