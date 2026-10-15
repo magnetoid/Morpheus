@@ -141,6 +141,14 @@ class ResultsPageTests(PageFixture, TestCase):
         self.assertRegex(body, r'<h3[^>]*><a href="/bookings/kotor-kayak/" class="card-link">')
         self.assertNotIn('id="results-count"', body)
 
+    def test_close_matches_also_offer_a_way_on(self):
+        # Spec §5: the no-match line, the close matches, then popular categories and
+        # "Clear filters" — the way on is not only for a page with nothing on it.
+        body = self._body('/bookings/?q=kayak+ulcinj')
+        after = body[body.index('id="close-matches"') :]
+        self.assertIn('data-popular-category="water-sports"', after)
+        self.assertIn('class="mx-empty__clear"', after)
+
     def test_a_past_date_says_so(self):
         yesterday = (timezone.localdate() - datetime.timedelta(days=1)).isoformat()
         self.assertIn('id="date-note"', self._body(f'/bookings/?date={yesterday}'))

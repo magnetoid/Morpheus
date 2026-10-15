@@ -81,17 +81,11 @@ bar and empty state, and none of the experience-only sort and buying guide.{% en
     {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Next" %}</a>{% endif %}
   </nav>
   {% endif %}
+  {% if search.close %}<div class="mx-empty">{% include "booking_marketplace/_search_way_on.html" %}</div>{% endif %}
   {% else %}
   <div id="no-results" class="mx-empty">
     <p class="mx-empty__title">{{ search.empty_message }}</p>
-    {% if not is_product_shop %}
-    {% booking_categories as popular %}
-    {% if popular %}
-    <p class="mx-empty__hint">{% trans "Popular categories" %}</p>
-    <div class="mx-empty__cats">{% for c in popular|slice:":6" %}<a href="/bookings/?category={{ c.slug }}" class="mx-chip" data-popular-category="{{ c.slug }}"><span>{{ c.name }}</span></a>{% endfor %}</div>
-    {% endif %}
-    {% endif %}
-    <p class="mx-empty__clear"><a href="{% if is_product_shop %}{% url 'booking_marketplace:shop' %}{% else %}{% url 'booking_marketplace:list' %}{% endif %}" class="text-primary underline">{% trans "Clear filters" %}</a></p>
+    {% include "booking_marketplace/_search_way_on.html" %}
   </div>
   {% endif %}
 

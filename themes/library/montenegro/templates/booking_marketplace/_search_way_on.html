@@ -1,0 +1,10 @@
+{% load i18n booking_tags %}{% comment %}What a search that found nothing it fully matched offers next (spec §5): the popular
+categories and a way back to everything — after the close matches, or on an empty page.{% endcomment %}
+{% if not is_product_shop %}
+{% booking_categories as popular %}
+{% if popular %}
+<p class="mx-empty__hint">{% trans "Popular categories" %}</p>
+<div class="mx-empty__cats">{% for c in popular|slice:":6" %}<a href="/bookings/?category={{ c.slug }}" class="mx-chip" data-popular-category="{{ c.slug }}"><span>{{ c.name }}</span></a>{% endfor %}</div>
+{% endif %}
+{% endif %}
+<p class="mx-empty__clear"><a href="{% if is_product_shop %}{% url 'booking_marketplace:shop' %}{% else %}{% url 'booking_marketplace:list' %}{% endif %}" class="text-primary underline">{% trans "Clear filters" %}</a></p>
