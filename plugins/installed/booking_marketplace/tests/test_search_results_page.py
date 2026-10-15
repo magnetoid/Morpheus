@@ -168,6 +168,15 @@ class ChipLinkTests(SimpleTestCase):
         self.assertEqual(chips['q'], '/bookings/?region=kotor&sort=rating')
         self.assertEqual(chips['region'], '/bookings/?q=kayak&sort=rating')
 
+    def test_the_forms_empty_fields_do_not_follow(self):
+        # The search form submits every field, so a query alone arrives as
+        # ?q=kayak&region=&date=&category=; its chip must lead to the clean page.
+        request = RequestFactory().get(
+            '/bookings/', {'q': 'kayak', 'region': '', 'date': '', 'category': ''}
+        )
+        (chip,) = search_page.chips(request, search_page.SearchParams(q='kayak'))
+        self.assertEqual(chip['href'], '/bookings/')
+
 
 @serbian_enabled
 @override_settings(BOOKING_LISTING_MODE=False)

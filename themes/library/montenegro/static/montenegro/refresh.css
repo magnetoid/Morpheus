@@ -72,7 +72,7 @@ footer .morph-lang-switcher { display: none !important; }
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 .mx-sb { position: relative; z-index: 30; text-align: left; }
-.mx-sb--hero { max-width: 56rem; margin: 0 auto; }
+.mx-sb--hero { max-width: 62rem; margin: 0 auto; }
 .mx-sb--shop { max-width: 40rem; }
 .mx-sb__form {
   display: flex; flex-direction: column; gap: .25rem;
@@ -179,8 +179,8 @@ select.mx-sb__input { cursor: pointer; text-overflow: ellipsis; }
 .mx-sb__summary { display: none; }
 @media (min-width: 768px) {
   .mx-sb__form { flex-direction: row; align-items: center; }
-  .mx-sb__field { flex: 1 1 9rem; }
-  .mx-sb__field--what { flex: 1.6 1 13rem; }
+  .mx-sb__field { flex: 1 1 10rem; }
+  .mx-sb__field--what { flex: 1.2 1 15rem; }
   .mx-sb__field + .mx-sb__field::before {
     content: ""; position: absolute; left: 0; top: 25%; width: 1px; height: 50%;
     background: hsl(var(--border));
@@ -206,7 +206,8 @@ select.mx-sb__input { cursor: pointer; text-overflow: ellipsis; }
   .mx-sb__summary-text { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   [data-enhanced].mx-sb--bar .mx-sb__form,
   [data-enhanced].mx-sb--shop .mx-sb__form { display: none; }
-  [data-enhanced].mx-sb.is-open { z-index: 90; }
+  /* Above every fixed layer the page has: the chat bubble sits at 9997. */
+  [data-enhanced].mx-sb.is-open { z-index: 10000; }
   [data-enhanced].mx-sb.is-open .mx-sb__form {
     display: flex; position: fixed; inset: 0; z-index: 90; gap: .5rem;
     padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));

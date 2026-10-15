@@ -158,6 +158,9 @@ def _without(request, param: str) -> str:
     query = request.GET.copy()
     for key in (param, 'page'):
         query.pop(key, None)
+    # The form submits every field, so "?q=kayak" arrives with region=&date=&category=.
+    for key in [key for key, given in query.lists() if not any(v.strip() for v in given)]:
+        del query[key]
     encoded = query.urlencode()
     return f'{request.path}?{encoded}' if encoded else request.path
 
