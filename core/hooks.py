@@ -226,9 +226,17 @@ class HookRegistry:
             def default(self, o):  # noqa: PLR0911 — one return per known type
                 if isinstance(o, models.Model):
                     # The identifying fields a receiver needs, never a record dump.
+                    # A field the caller deferred is skipped: reading it would query
+                    # on every fire (this runs before any endpoint is known).
                     out = {'id': str(o.pk), 'model': o.__class__.__name__}
+                    deferred = o.get_deferred_fields()
                     for attr in ('order_number', 'sku', 'email', 'name', 'slug', 'status'):
-                        v = getattr(o, attr, None)
+                        if attr in deferred:
+                            continue
+                        try:
+                            v = getattr(o, attr, None)
+                        except Exception:  # noqa: BLE001, S112 — a property that raises names nothing
+                            continue
                         if isinstance(v, (str, int, float, bool)):
                             out[attr] = v
                     return out

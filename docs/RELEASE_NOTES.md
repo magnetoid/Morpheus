@@ -21,7 +21,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 - Conversion APIs (Meta, TikTok, Pinterest, Snapchat, Reddit), GA4 server events, the Google Ads tag and Meta audience sync send only what the shopper agreed to; the order records the choice at checkout. Stores that don't ask for consent are unchanged.
 - Every AI call obeys the kill switch and the daily spend cap, including page help, the brain, the briefing, autopilot, self-improvement, description fill, embeddings and narration; their spend now counts.
-- Visitors and crawlers no longer cost a session write or lose the edge cache; expired sessions are cleared daily.
+- Crawlers and visitors browsing pages no longer cost a session write or lose the edge cache (a shopper's product views still keep a recently-viewed list); expired sessions are cleared daily.
 - Merchant webhooks: one POST per event after commit, in one shape; staff-entered URLs must be public and redirects are not followed.
 - Attribution: ROAS reads one 30-day total (was ~31x), and Facebook/Instagram traffic counts as Meta.
 

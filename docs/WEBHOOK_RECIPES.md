@@ -17,27 +17,6 @@ def verify(payload_bytes: bytes, header: str, secret: str) -> bool:
 ```
 
 **Body.** The request body is the event's payload as canonical JSON (sorted keys, no spaces); the event name is in the `X-Morpheus-Event` header. A model appears as its identifying fields — `{"id", "model", "order_number"/"sku"/"email"/"name"/"slug"/"status" when it has them}`, never a record dump. Each delivery carries `X-Morpheus-Delivery` (its id in the delivery log) and `X-Morpheus-Attempt`. Since v0.113.0 every endpoint receives one POST per event, after the transaction commits, and redirects are not followed.
-  ```
-
-- **`docs/MIGRATING.md`.** Insert after the intro's `---` line:
-
-  ```
-  ## v0.113.0 — one webhook per event, in one shape
-
-  A merchant webhook endpoint used to receive each event twice: once from core, as the bare payload, and once from the Webhooks app, as `{"event": …, "data": …}`, sometimes before the order was saved. It now receives one POST, after commit, whose body is the bare payload (canonical JSON) with the event name in `X-Morpheus-Event`. A receiver that read `body["event"]` or `body["data"]` reads the header and the body itself. Webhook targets must be public hosts and redirects are not followed — point an endpoint at its final URL.
-  ```
-
-- **`docs/API_STABILITY.md`.** Add a row at the top of the "Breaking changes shipped" table:
-
-  ```
-  | **v0.113.0** | Merchant webhooks | One POST per event after commit (was two, one possibly before commit); the body is the bare payload (the `{"event","data"}` envelope is gone); redirects are not followed and private hosts are refused. | [`MIGRATING.md`](MIGRATING.md#v01130--one-webhook-per-event-in-one-shape) |
-  ```
-
-- **The spec.** Change its `**Status:**` line to `**Status:** shipped in v0.113.0.`
-
-- [ ] **Step 3: Cut the release**
-
-Run:
 
 Reject anything that fails verification. Morpheus's outbound retry policy is exponential backoff up to 24h, so a flapping verifier won't lose events.
 
@@ -56,7 +35,7 @@ Reject anything that fails verification. Morpheus's outbound retry policy is exp
 
 ```
 Trigger:  Webhooks by Zapier → Catch Hook
-Filter:   event_type contains "order.paid"
+Filter:   header X-Morpheus-Event equals "order.paid"
 Action:   Slack → Send Channel Message
 Body:     ":moneybag: New order *{{order.order_number}}*: 
           {{order.total.amount}} {{order.total.currency}}
@@ -69,7 +48,7 @@ Point the Catch Hook URL at Morpheus's webhook endpoint. Done in 4 minutes.
 
 ```
 Trigger:  Webhook (POST, capture body)
-Filter:   event_type == "product.back_in_stock"
+Filter:   header X-Morpheus-Event == "product.back_in_stock"
 Action 1: Postgres → SELECT email FROM wishlist_items
           WHERE product_id = $1
 Action 2: SMTP → Send to each row
@@ -80,7 +59,7 @@ Subject:  "{{product.name}} is back!"
 
 ```
 Trigger:  Webhook (custom)
-Filter:   event_type == "order.paid"
+Filter:   header X-Morpheus-Event == "order.paid"
 Action:   Google Sheets → Add a Row
 Columns:  order_number, customer.email, total.amount,
           total.currency, line_items.length, created_at
@@ -97,9 +76,9 @@ def morph_hook():
     sig = request.headers.get("X-Morpheus-Signature", "")
     if not verify(request.data, sig, SECRET):
         return "bad signature", 401
-    event = request.json
-    if event["event_type"] == "order.paid":
-        ship_it(event["order"])
+    payload = request.json
+    if request.headers.get("X-Morpheus-Event") == "order.paid":
+        ship_it(payload["order"])  # {"id", "model", "order_number", "email", "status"}
     return "", 200
 ```
 
