@@ -4196,3 +4196,19 @@ msgstr "Zatvori"
 
 msgid "Suggestions"
 msgstr "Prijedlozi"
+
+msgid "Best match"
+msgstr "Najrelevantnije"
+
+msgid "Active filters"
+msgstr "Aktivni filteri"
+
+#, python-format
+msgid "Remove filter %(label)s"
+msgstr "Ukloni filter %(label)s"
+
+msgid "Close matches"
+msgstr "Približni rezultati"
+
+msgid "Popular categories"
+msgstr "Popularne kategorije"

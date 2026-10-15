@@ -1,41 +1,54 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
-{% comment %}1:1 with pages/Search.tsx — 4-segment search bar + count/sort row + grid.
-Context: services, listing_mode, region, q, category, sort.{% endcomment %}
+{% comment %}1:1 with pages/Search.tsx — the search bar, the filters in force, count/sort row + grid.
+Context: services, listing_mode, region, q, category (a slug), sort, and `search`
+(booking_marketplace/search_page.page_context: heading, chips, date_note, close,
+empty_message, card_heading).{% endcomment %}
 {% comment %}Title, description, breadcrumbs and the ItemList come from the head
 document (`seo_title`, `jsonld_items`, `breadcrumb_items` in the view's context).
 This template used to paste its own ld+json beside it — plus a FAQPage whose
 questions appeared nowhere on the page, on /shop/ as much as /bookings/.
-`/shop/` renders here too (`is_product_shop`): it gets its own heading, count and
-empty state, and none of the experience-only search, sort and buying guide.{% endcomment %}
+`/shop/` renders here too (`is_product_shop`): it gets its own heading, count, search
+bar and empty state, and none of the experience-only sort and buying guide.{% endcomment %}
 
 {% block content %}
 {% booking_listing_mode as listing_mode %}
 <div class="container mx-auto px-4 py-8">
   <header class="mb-6">
     {% if is_product_shop %}
-    <h1 class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{% trans "Shop Montenegro" %}</h1>
-    <p class="text-muted-foreground leading-7 max-w-3xl">{% trans "Locally made Montenegrin products from trusted vendors — shipped or ready for pickup across the Adriatic coast." %}</p>
+    <h1 id="results-heading" class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{% trans "Shop Montenegro" %}</h1>
+    {% if not search.chips %}<p id="results-intro" class="text-muted-foreground leading-7 max-w-3xl">{% trans "Locally made Montenegrin products from trusted vendors — shipped or ready for pickup across the Adriatic coast." %}</p>{% endif %}
     {% else %}
-    <h1 class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{% trans "Experiences in Montenegro" %}</h1>
-    <p class="text-muted-foreground leading-7 max-w-3xl">{% trans "Explore the Bay of Kotor by boat, hike in Durmitor, raft the Tara Canyon or meet local food and wine producers. Compare activities by destination, pace and travel style." %}</p>
+    <h1 id="results-heading" class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{{ search.heading }}</h1>
+    {% if not search.chips %}<p id="results-intro" class="text-muted-foreground leading-7 max-w-3xl">{% trans "Explore the Bay of Kotor by boat, hike in Durmitor, raft the Tara Canyon or meet local food and wine producers. Compare activities by destination, pace and travel style." %}</p>{% endif %}
     {% endif %}
   </header>
 
   {% if is_product_shop %}{% include "booking_marketplace/_search.html" with variant="shop" %}{% else %}{% include "booking_marketplace/_search.html" with variant="bar" %}{% endif %}
 
+  {% if search.chips %}
+  <div id="active-filters" class="mx-chips" role="group" aria-label="{% trans 'Active filters' %}">
+    {% for chip in search.chips %}<a href="{{ chip.href }}" class="mx-chip" data-chip="{{ chip.param }}" aria-label="{% blocktrans with label=chip.label %}Remove filter {{ label }}{% endblocktrans %}"><span>{{ chip.label }}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></a>{% endfor %}
+    <a href="{{ search.clear_url }}" class="mx-chips__clear" data-chip-clear>{% trans "Clear all" %}</a>
+  </div>
+  {% endif %}
+  {% if search.date_note %}<p id="date-note" class="mx-results__note" role="status">{{ search.date_note }}</p>{% endif %}
+
+  {% if services and not search.close %}
   <!-- Count + sort row -->
-  <div class="flex flex-wrap items-center justify-between gap-3 mt-8 mb-6">
+  <div class="mx-results__bar">
     {% if is_product_shop %}
-    <p class="text-sm text-muted-foreground">{% blocktrans count c=services|length %}{{ c }} product{% plural %}{{ c }} products{% endblocktrans %}</p>
+    <p id="results-count" class="mx-results__count">{% blocktrans count c=services|length %}{{ c }} product{% plural %}{{ c }} products{% endblocktrans %}</p>
     {% else %}
-    <p class="text-sm text-muted-foreground">{% blocktrans count c=page_obj.paginator.count %}{{ c }} experience{% plural %}{{ c }} experiences{% endblocktrans %}</p>
-    <form method="get" class="flex items-center gap-2">
+    <p id="results-count" class="mx-results__count">{% blocktrans count c=page_obj.paginator.count %}{{ c }} experience{% plural %}{{ c }} experiences{% endblocktrans %}</p>
+    <form id="sort-form" method="get" class="flex items-center gap-2">
       {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
       {% if region %}<input type="hidden" name="region" value="{{ region }}">{% endif %}
       {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
-      <label class="text-sm text-muted-foreground hidden sm:inline">{% trans "Sort by" %}</label>
-      <select name="sort" onchange="this.form.submit()" class="h-9 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer">
+      {% if search.date_iso %}<input type="hidden" name="date" value="{{ search.date_iso }}">{% endif %}
+      <label for="sort-by" class="text-sm text-muted-foreground hidden sm:inline">{% trans "Sort by" %}</label>
+      <select id="sort-by" name="sort" onchange="this.form.submit()" class="h-9 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer">
+        {% if q %}<option value="best" {% if sort == 'best' %}selected{% endif %}>{% trans "Best match" %}</option>{% endif %}
         <option value="recommended" {% if sort == 'recommended' %}selected{% endif %}>{% trans "Recommended" %}</option>
         <option value="rating" {% if sort == 'rating' %}selected{% endif %}>{% trans "Top rated" %}</option>
         {% if not listing_mode %}
@@ -47,11 +60,18 @@ empty state, and none of the experience-only search, sort and buying guide.{% en
     </form>
     {% endif %}
   </div>
+  {% endif %}
 
   {% if services %}
+  {% if search.close %}
+  <div id="no-results" class="mx-empty mx-empty--close">
+    <p class="mx-empty__title">{{ search.empty_message }}</p>
+  </div>
+  <h2 id="close-matches" class="mx-results__close">{% trans "Close matches" %}</h2>
+  {% endif %}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
     {% for s in services %}
-    {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode heading="h2" %}
+    {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode heading=search.card_heading %}
     {% endfor %}
   </div>
   {% if page_obj.has_other_pages %}
@@ -62,12 +82,16 @@ empty state, and none of the experience-only search, sort and buying guide.{% en
   </nav>
   {% endif %}
   {% else %}
-  <div class="text-center py-16">
-    {% if is_product_shop %}
-    <p class="text-muted-foreground">{% trans "No products match your search." %} <a href="{% url 'booking_marketplace:shop' %}" class="text-primary underline">{% trans "Clear filters" %}</a></p>
-    {% else %}
-    <p class="text-muted-foreground">{% trans "No experiences match your search." %} <a href="{% url 'booking_marketplace:list' %}" class="text-primary underline">{% trans "Clear filters" %}</a></p>
+  <div id="no-results" class="mx-empty">
+    <p class="mx-empty__title">{{ search.empty_message }}</p>
+    {% if not is_product_shop %}
+    {% booking_categories as popular %}
+    {% if popular %}
+    <p class="mx-empty__hint">{% trans "Popular categories" %}</p>
+    <div class="mx-empty__cats">{% for c in popular|slice:":6" %}<a href="/bookings/?category={{ c.slug }}" class="mx-chip" data-popular-category="{{ c.slug }}"><span>{{ c.name }}</span></a>{% endfor %}</div>
     {% endif %}
+    {% endif %}
+    <p class="mx-empty__clear"><a href="{% if is_product_shop %}{% url 'booking_marketplace:shop' %}{% else %}{% url 'booking_marketplace:list' %}{% endif %}" class="text-primary underline">{% trans "Clear filters" %}</a></p>
   </div>
   {% endif %}
 
