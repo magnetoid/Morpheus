@@ -188,7 +188,10 @@ select.mx-sb__input { cursor: pointer; text-overflow: ellipsis; }
   .mx-sb__submit { flex: none; }
 }
 @media (max-width: 767px) {
-  .mx-sb__field--category { display: none; }
+  /* Category is desktop-only, unless one is chosen or the full-screen panel is open:
+     a hidden select still submits, so a filter the visitor cannot see never rides along. */
+  .mx-sb__field--category:not(.is-set) { display: none; }
+  [data-enhanced].mx-sb.is-open .mx-sb__field--category { display: flex; }
   .mx-sb__popup { width: 100%; }
   .mx-sb__submit { width: 100%; }
   .mx-sb--hero .mx-sb__form { padding: .375rem; gap: 0; }

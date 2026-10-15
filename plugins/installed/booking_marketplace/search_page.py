@@ -298,6 +298,9 @@ def bar_context(request, variant: str, search: dict | None = None) -> dict:
             search['region_label'] or _('All of Montenegro'),
             search['date_label'] or _('Any date'),
         ]
+        # A phone hides the Category field, yet a hidden select still submits: name it.
+        if search['category_label']:
+            summary.append(search['category_label'])
     return {
         **search,
         'variant': variant,

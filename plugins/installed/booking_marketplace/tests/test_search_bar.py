@@ -129,6 +129,15 @@ class SearchBarTests(BarFixture, TestCase):
         self.assertIn(search_page.date_label(self.day), bar)
         self.assertIn(f'min="{timezone.localdate().isoformat()}"', bar)
 
+    def test_a_chosen_category_is_never_hidden(self):
+        # On a phone the Category field is hidden, yet a hidden select still submits:
+        # a chosen category must be named in the summary and its field shown.
+        bar = self._bar('/bookings/?category=water-sports')
+        summary = re.search(r'class="mx-sb__summary-text">([^<]*)<', bar).group(1)
+        self.assertIn('Water Sports', summary)
+        self.assertIn('class="mx-sb__field mx-sb__field--category is-set"', bar)
+        self.assertNotIn('is-set"', self._bar('/bookings/').split('mx-sb__field--category')[1][:20])
+
     def test_the_shop_bar_searches_goods(self):
         bar = self._bar('/shop/')
         self.assertIn('action="/shop/"', bar)
