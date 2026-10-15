@@ -67,7 +67,7 @@ def _nav_categories():
             {
                 'label': c['name'],
                 'desc': ngettext('%(c)s experience', '%(c)s experiences', n) % {'c': n},
-                'href': _cat_href(c['name']),
+                'href': _cat_href(c['slug']),
                 'icon': _CAT_ICONS.get(slugify(c['name']), _CAT_ICON_DEFAULT),
             }
         )

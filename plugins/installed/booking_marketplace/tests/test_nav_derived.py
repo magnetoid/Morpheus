@@ -6,8 +6,6 @@ from djmoney.money import Money
 from plugins.installed.booking_marketplace.models import BookableService, ServiceReview
 from plugins.installed.booking_marketplace.services import active_categories
 from plugins.installed.booking_marketplace.templatetags.booking_tags import (
-    featured_filters,
-    hero_pills,
     home_categories,
     home_testimonials,
 )
@@ -45,16 +43,10 @@ class DerivedCategoriesTests(TestCase):
         by_name = {c['name']: c['count'] for c in active_categories()}
         self.assertEqual(by_name, {'Adventure': 2, 'Wine': 1})
 
-    def test_hero_pills_derive(self):
-        self.assertEqual(hero_pills(), ['Adventure', 'Wine'])
-
-    def test_featured_filters_derive(self):
-        self.assertEqual(featured_filters(), ['Adventure', 'Wine'])
-
     def test_home_categories_have_links_and_icons(self):
         cats = home_categories()
         self.assertEqual(cats[0]['label'], 'Adventure')
-        self.assertIn('/bookings/?category=Adventure', cats[0]['href'])
+        self.assertIn('/bookings/?category=adventure', cats[0]['href'])
         self.assertIn('<svg', cats[0]['icon'])  # default glyph acceptable
 
     def test_inactive_service_drops_category(self):

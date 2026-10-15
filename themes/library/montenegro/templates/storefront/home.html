@@ -4,15 +4,13 @@
 
 {% block content %}
 {% booking_listing_mode as listing_mode %}
-{% hero_pills as hero_pills %}
 {% home_categories as home_categories %}
-{% featured_filters as featured_filters %}
+{% booking_categories as tab_categories %}
 {% home_testimonials as testimonials %}
-{% booking_regions as hero_regions %}
 
 <!-- ============ HERO (1:1 port of components/Hero.tsx) ============ -->
-<section class="relative min-h-[360px] sm:min-h-[440px] lg:min-h-[560px] flex items-center overflow-hidden">
-  <div class="absolute inset-0">
+<section class="relative min-h-[360px] sm:min-h-[440px] lg:min-h-[560px] flex items-center">
+  <div class="absolute inset-0 overflow-hidden">
     <picture>
       <source type="image/webp" srcset="{% static 'montenegro/hero-kotor-800.webp' %} 800w, {% static 'montenegro/hero-kotor.webp' %} 1600w" sizes="100vw">
       <img src="{% static 'montenegro/hero-kotor.jpg' %}" srcset="{% static 'montenegro/hero-kotor-800.jpg' %} 800w, {% static 'montenegro/hero-kotor.jpg' %} 1600w" sizes="100vw" alt="The Bay of Kotor, Montenegro" width="1600" height="900" fetchpriority="high" decoding="async" class="w-full h-full object-cover">
@@ -23,82 +21,13 @@
       <h1 class="text-3xl sm:text-4xl lg:text-6xl font-semibold text-white leading-[1.1] tracking-tight mb-3 sm:mb-4 px-2">{% trans "Discover Montenegro" %}</h1>
       <p class="text-base sm:text-lg text-white/90 mb-6 sm:mb-8 max-w-md mx-auto px-4">{% trans "Unforgettable experiences in the heart of the Adriatic." %}</p>
 
-      <!-- Hero search — 1:1 with SearchBar variant="hero" (What / Where / When / Category) -->
-      <form action="/bookings/" method="get" class="bg-background rounded-2xl p-2 shadow-elevated max-w-4xl mx-auto text-left">
-        <div class="flex flex-col md:flex-row md:items-center gap-2">
-          <div class="mx-search-what flex-1 flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-muted/50 transition-colors">
-            <svg class="w-5 h-5 text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            <div class="flex-1 min-w-0">
-              <label for="hero-q" class="text-xs font-medium text-foreground block">{% trans "What" %}</label>
-              <input type="text" id="hero-q" name="q" placeholder="{% trans 'Search experiences' %}" class="w-full border-0 bg-transparent p-0 h-6 text-sm text-foreground placeholder:text-muted-foreground outline-none">
-            </div>
-          </div>
-          <div class="hidden md:block w-px h-10 bg-border"></div>
-          <div class="flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-muted/50 transition-colors">
-            <svg class="w-5 h-5 text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-            <div class="flex-1 min-w-[140px]">
-              <label for="hero-region" class="text-xs font-medium text-foreground block">{% trans "Where" %}</label>
-              <select id="hero-region" name="region" class="w-full border-0 bg-transparent p-0 h-6 text-sm text-muted-foreground outline-none cursor-pointer">
-                <option value="">{% trans "All locations" %}</option>
-                {% for r in hero_regions %}<option value="{{ r.key }}">{{ r.label }}</option>{% endfor %}
-              </select>
-            </div>
-          </div>
-          <div class="hidden md:block w-px h-10 bg-border"></div>
-          <div class="flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-muted/50 transition-colors">
-            <svg class="w-5 h-5 text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
-            <div class="flex-1 min-w-[120px]">
-              <label class="text-xs font-medium text-foreground block">{% trans "When" %}</label>
-              <input type="date" name="date" data-mx-any-date placeholder="{% trans 'Any date' %}"
-                     class="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none appearance-none [&::-webkit-calendar-picker-indicator]:opacity-60"
-                     aria-label="{% trans 'When' %}">
-            </div>
-          </div>
-          <div class="hidden md:block w-px h-10 bg-border"></div>
-          <div class="mx-hide-phone flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-muted/50 transition-colors">
-            <svg class="w-5 h-5 text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></svg>
-            <div class="flex-1 min-w-[140px]">
-              <label for="hero-category" class="text-xs font-medium text-foreground block">{% trans "Category" %}</label>
-              <select id="hero-category" name="category" class="w-full border-0 bg-transparent p-0 h-6 text-sm text-muted-foreground outline-none cursor-pointer">
-                <option value="">{% trans "All categories" %}</option>
-                {% for f in featured_filters %}<option value="{{ f }}">{{ f }}</option>{% endfor %}
-              </select>
-            </div>
-          </div>
-          <button type="submit" class="rounded-xl h-12 px-6 inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shrink-0">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            {% trans "Search" %}
-          </button>
-        </div>
-      </form>
-
-      <div class="flex flex-wrap items-center justify-center gap-2 mt-6">
-        {% for label in hero_pills %}
-        <a href="/bookings/?category={{ label|urlencode }}"
-           class="mx-pill">
-          {{ label }}
-        </a>
-        {% endfor %}
-      </div>
+      {% comment %}The one search bar (booking_marketplace/_search.html). The image layer clips
+      its overflow, not the section, so the suggestions can open below the hero.{% endcomment %}
+      {% include "booking_marketplace/_search.html" with variant="hero" %}
     </div>
   </div>
 </section>
 
-{% comment %}A date input cannot show a placeholder, so the field read "dd. mm. yyyy.":
-it shows "Any date" as text until the visitor focuses it, then opens the picker.{% endcomment %}
-<script>
-(function () {
-  var el = document.querySelector('[data-mx-any-date]');
-  if (!el) return;
-  function rest() { if (!el.value) el.type = 'text'; }
-  el.addEventListener('focus', function () {
-    el.type = 'date';
-    if (el.showPicker) { try { el.showPicker(); } catch (e) {} }
-  });
-  el.addEventListener('blur', rest);
-  rest();
-})();
-</script>
 
 <!-- ============ CATEGORIES (1:1 port of components/Categories.tsx) ============ -->
 {% comment %}In the flow, not sticky: pinned under the header it covered about 40% of the
@@ -133,9 +62,9 @@ screen while scrolling (37% on a phone), over the cards it introduces.{% endcomm
 
     <div class="flex flex-wrap gap-2 mb-6 sm:mb-8 scrollbar-hide pb-1">
       <a href="/bookings/" class="px-4 py-2 rounded-full text-sm font-medium border border-border text-foreground hover:bg-muted transition-colors">{% trans "All" %}</a>
-      {% for f in featured_filters %}
-      <a href="/bookings/?category={{ f|urlencode }}"
-         class="px-4 py-2 rounded-full text-sm font-medium border border-border text-foreground hover:bg-muted transition-colors">{{ f }}</a>
+      {% for c in tab_categories %}
+      <a href="/bookings/?category={{ c.slug }}"
+         class="px-4 py-2 rounded-full text-sm font-medium border border-border text-foreground hover:bg-muted transition-colors">{{ c.name }}</a>
       {% endfor %}
     </div>
 

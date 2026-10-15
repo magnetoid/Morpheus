@@ -90,8 +90,8 @@ _CAT_ICONS = {
 _CAT_ICON_DEFAULT = f'<svg {_CAT_ICON_ATTRS}><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>'
 
 
-def _cat_href(name):
-    return f'/bookings/?category={quote(name)}'
+def _cat_href(slug):
+    return f'/bookings/?category={quote(slug)}'
 
 
 @register.simple_tag
@@ -111,22 +111,6 @@ def search_bar(context, variant='bar'):
 
 
 @register.simple_tag
-def hero_pills():
-    """Quick-pills under the hero search — top categories by inventory."""
-    from plugins.installed.booking_marketplace.services import active_categories
-
-    return [c['name'] for c in active_categories()[:4]]
-
-
-@register.simple_tag
-def featured_filters():
-    """Filter chips above the featured grid — every live category."""
-    from plugins.installed.booking_marketplace.services import active_categories
-
-    return [c['name'] for c in active_categories()]
-
-
-@register.simple_tag
 def home_categories():
     """Category band tiles: label + glyph + live count + filtered link."""
     from django.utils.text import slugify
@@ -138,18 +122,10 @@ def home_categories():
             'label': c['name'],
             'icon': _CAT_ICONS.get(slugify(c['name']), _CAT_ICON_DEFAULT),
             'count': c['count'],
-            'href': _cat_href(c['name']),
+            'href': _cat_href(c['slug']),
         }
         for c in active_categories()
     ]
-
-
-@register.simple_tag
-def booking_regions():
-    """Region options for the hero 'Where' dropdown (key + label)."""
-    from plugins.installed.booking_marketplace.models import REGIONS
-
-    return [{'key': k, 'label': label} for k, label in REGIONS]
 
 
 @register.simple_tag

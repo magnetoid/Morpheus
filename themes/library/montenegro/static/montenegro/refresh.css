@@ -50,35 +50,6 @@ section.mx-catstrip { background: hsl(var(--background)); padding: .25rem 0; }
   white-space: nowrap;
 }
 
-/* ── Hero search ───────────────────────────────────────────────────────── */
-/* "What" had no room left once the other fields took their minimum widths:
-   its placeholder read "Sear". */
-@media (min-width: 768px) {
-  .mx-search-what { min-width: 13rem; }
-}
-/* On a phone the four stacked fields filled the screen; the category is also
-   one tap away in the strip and the pills below the search. */
-@media (max-width: 767px) {
-  .mx-hide-phone { display: none !important; }
-}
-
-/* Pills on the hero photo: solid enough to read on any part of the image. */
-.mx-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: .4rem 1rem;
-  border-radius: 999px;
-  font-size: .875rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
-  background: hsl(var(--background) / .94);
-  box-shadow: 0 1px 2px rgb(0 0 0 / .12);
-  text-decoration: none;
-  transition: background-color .15s ease, transform .15s ease;
-}
-.mx-pill:hover,
-.mx-pill:focus-visible { background: hsl(var(--background)); transform: translateY(-1px); }
-
 /* ── Footer: one language switcher ─────────────────────────────────────────
    The theme's own EN · SR switch sits in the footer bar; the localization
    app's select (footer_extra) printed a second one below it. */
@@ -290,6 +261,5 @@ html.mx-sb-locked body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .mx-chip { transition: none; }
   .mx-sb__field, .mx-sb__submit { transition: none; }
-  .mx-pill, .mx-catstrip__item { transition: none; }
-  .mx-pill:hover { transform: none; }
+  .mx-catstrip__item { transition: none; }
 }
