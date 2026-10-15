@@ -1,5 +1,7 @@
 # Montenegro search: find what people type, suggest as they type
 
+Status: shipped in v0.112.0 (2026-10-15).
+
 Design approved by the owner in chat on 2026-10-14. The site-search fix (`/search/` landing on the
 empty goods page) shipped on its own as v0.111.3.
 

@@ -216,6 +216,18 @@ Guarded by `booking_marketplace/tests/test_listing_products.py`,
 `orders/tests/test_service_products_not_sold.py` and
 `admin_dashboard/tests/test_product_form_type_cards.py`.
 
+**Convention — the travel store's search is one engine (v0.112.0).** `booking_marketplace/search.py`
+folds text (case, accents, Serbian Cyrillic, `đ` both ways) and ranks the active listings and
+places from a per-process index; `/bookings/`, `/shop/` and `/bookings/suggest/` filter in the
+database first (region, the category's subtree, `services.bookable_on` for a date) and let it rank
+what survives — the index never decides what is live. It rebuilds when a listing, place or category
+is saved or deleted (`search.bump`, a version token in the shared cache) and at the latest after
+`MAX_AGE_S`, because `QuerySet.update()` skips the signal. A typo is tried only when a word matches
+nothing as typed: on the live content, allowing one for every word brought the biking tours for
+"hiking". Searches fire `SEARCH_PERFORMED` like the storefront's own; a script's JSON fetch is not a
+pageview (analytics counts HTML pages only). Guarded by `booking_marketplace/tests/test_search_*.py`
+and `test_bookable_on.py`.
+
 **Landmine — two lists with the same name WILL drift, and the looser one
 wins where it's read.** `PROTECTED_PLUGINS` ("apps that soft-brick if
 disabled") existed twice: in `core/safety.py` (gating Linda's `plugins.disable`
@@ -855,7 +867,7 @@ carry books we haven't read", "free shipping over $40"). Lazy labels must be
 `LocationFeatureSpecification`, the region breadcrumb). `makemessages` cuts
 `{% trans "…\"…" %}` at the escaped quote, so measure coverage with the template
 engine, not its output. Auth (`/auth/`) is deliberately outside the language tree
-and stays English. Guarded by `core/tests/test_localized_links.py` and
+and stays English. Django's own `sr` catalog is Cyrillic: `|date` day and month names render "суб." and "Окт." on the Latin `/sr/` pages (the booking widget still does), so a visitor-facing date is formatted with Babel's `sr_Latn_ME` (`search_page.date_label`) and, in the browser, `Intl` with `sr-Latn-ME`. Guarded by `core/tests/test_localized_links.py` and
 `booking_marketplace/tests/test_serbian_catalog.py`.
 
 **Landmine — a machine-readable file is read for what it IMPLIES, and all of
