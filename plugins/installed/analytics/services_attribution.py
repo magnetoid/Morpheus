@@ -60,8 +60,14 @@ def attribute(journey: list, revenue, model: str) -> dict:
     return dict(out)
 
 
+# Ad platforms whose traffic arrives under several utm_source spellings, keyed
+# to the channel their spend is reported under (ANALYTICS_AD_SPEND).
+_SOURCE_ALIASES = {'facebook': 'meta', 'fb': 'meta', 'instagram': 'meta', 'ig': 'meta'}
+
+
 def _channel_of(session) -> str:
-    return (session.utm_source or '').strip().lower() or _DIRECT
+    source = (session.utm_source or '').strip().lower()
+    return _SOURCE_ALIASES.get(source, source) or _DIRECT
 
 
 def build_journey(customer_id, purchase_ts, lookback_days: int = 30) -> list:
@@ -139,19 +145,26 @@ def attribute_revenue(days: int = 30) -> int:
 
 
 def roas_by_channel(model: str = 'last_touch', days: int = 30) -> list:
-    """Per-channel spend (AdSpendSnapshot) vs attributed revenue (DailyMetric) → ROAS."""
+    """Per-channel spend vs attributed revenue → ROAS, from the newest snapshot of
+    each (both are trailing-window totals)."""
     from plugins.installed.analytics.models import AdSpendSnapshot, DailyMetric
 
     since = timezone.now().date() - timedelta(days=days)
+    # Each snapshot is a trailing-window total already: read the newest day of
+    # each, never the sum of every day (that counted each total up to 31 times).
     spend: dict = defaultdict(Decimal)
-    for row in AdSpendSnapshot.objects.filter(day__gte=since).values('channel', 'spend'):
+    spend_qs = AdSpendSnapshot.objects.filter(day__gte=since)
+    newest_spend = spend_qs.order_by('-day').values_list('day', flat=True).first()
+    for row in spend_qs.filter(day=newest_spend).values('channel', 'spend'):
         spend[row['channel']] += Decimal(str(row['spend'] or 0))
 
     revenue: dict = defaultdict(Decimal)
     prefix = f'{model}:'
-    for row in DailyMetric.objects.filter(
+    rev_qs = DailyMetric.objects.filter(
         metric='attribution', dimension__startswith=prefix, day__gte=since
-    ).values('dimension', 'value_money'):
+    )
+    newest_rev = rev_qs.order_by('-day').values_list('day', flat=True).first()
+    for row in rev_qs.filter(day=newest_rev).values('dimension', 'value_money'):
         channel = row['dimension'][len(prefix) :]
         revenue[channel] += Decimal(str(row['value_money'] or 0))
 

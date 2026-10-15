@@ -118,3 +118,36 @@ class AttributionPageTests(TestCase):
         resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'attribution')
+
+
+class RoasWindowTests(TestCase):
+    """Each daily snapshot is already a trailing 30-day total (spend and
+    attributed revenue), so summing 31 of them reported ~31x the truth."""
+
+    def test_thirty_one_daily_snapshots_report_the_total_once(self):
+        today = timezone.now().date()
+        for back in range(31):
+            day = today - timedelta(days=back)
+            AdSpendSnapshot.objects.create(
+                day=day, channel='meta', spend=Money(Decimal('300'), 'USD')
+            )
+            DailyMetric.objects.create(
+                day=day,
+                metric='attribution',
+                dimension='last_touch:meta',
+                value_money=Money(Decimal('900'), 'USD'),
+            )
+        [row] = roas_by_channel(model='last_touch')
+        self.assertEqual(row['spend'], Decimal('300'))
+        self.assertEqual(row['revenue'], Decimal('900'))
+        self.assertEqual(row['roas'], 3)
+
+    def test_facebook_and_instagram_traffic_is_metas(self):
+        from types import SimpleNamespace
+
+        from plugins.installed.analytics.services_attribution import _channel_of
+
+        for source in ('facebook', 'fb', 'Instagram', 'ig', 'meta'):
+            with self.subTest(source=source):
+                self.assertEqual(_channel_of(SimpleNamespace(utm_source=source)), 'meta')
+        self.assertEqual(_channel_of(SimpleNamespace(utm_source='google')), 'google')
