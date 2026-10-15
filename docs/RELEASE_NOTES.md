@@ -15,6 +15,34 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.112.0 — 2026-10-15
+
+**Search finds what visitors type**
+
+- On Montenegro, search matches every word in any order (“kayak kotor”), with or without accents or Cyrillic (zabljak, Жабљак), in Serbian (kajak), with a typo (kayac) and with a possessive (Kotor's), and shows the best match first.
+- A date shows only the experiences with a seat left that day, and the category links in the menu find their experiences again.
+- Suggestions appear as you type: experiences, places and categories.
+- One search bar on the home page, the experiences and the shop; on a phone it folds into one line that opens full screen.
+- The results page says what you searched for, with removable filters, close matches, and popular categories when nothing matches.
+- Searches now show in search analytics, and suggestion requests no longer count as page views.
+
+Measured on the store's 142 live listings, before (the live site, 2026-10-14) and after:
+
+| Search on montenegro-experience.me | Before | After (top result) |
+|---|---|---|
+| `kayak` | 7 | 7 — Kayak and Snorkel Tour to Sveti Nikola Island, Budva |
+| `kayak kotor` | 0 | 4 — Sunset Kayak Tour on the Bay of Kotor |
+| `rafting tara` | 0 | 9 — Half-Day Tara River Rafting in the Tara Canyon |
+| `sunset budva` | 0 | 3 — Budva Riviera Sunset Cruise to Sveti Stefan |
+| `blue cave tivat` | 0 | 6 — Full-Day Blue Cave and Beaches Boat Trip from Tivat |
+| `wine tasting podgorica` | 0 | 6 — Šipčanik Wine Cellar Tour and Tasting, Podgorica |
+| `kajak` (Serbian) | 0 | 7 — Kayak and Snorkel Tour to Sveti Nikola Island, Budva |
+| `kayac` (a typo) | 0 | 6 — Kayak and Snorkel Tour to Sveti Nikola Island, Budva |
+| `zabljak` | 0 | 15 — Durmitor Ring Jeep Safari from Žabljak |
+| the menu's Water Sports link | 0 | 32 |
+| Where: Kotor Bay | 41 | 41 |
+| a date | ignored | only experiences with a seat left that day |
+
 ## v0.111.3 — 2026-10-14
 
 **Site search finds experiences again**
