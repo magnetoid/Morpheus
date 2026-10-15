@@ -4130,3 +4130,42 @@ msgstr "O ovom doživljaju"
 
 msgid "Places nearby"
 msgstr "Mjesta u blizini"
+
+msgid "Choose a date from today on"
+msgstr "Izaberite datum od danas nadalje"
+
+#, python-format
+msgid "“%(q)s” in Montenegro"
+msgstr "„%(q)s“ u Crnoj Gori"
+
+#, python-format
+msgid "“%(q)s” in %(region)s"
+msgstr "„%(q)s“ — %(region)s"
+
+#, python-format
+msgid "%(category)s experiences in %(region)s"
+msgstr "%(category)s doživljaji — %(region)s"
+
+#, python-format
+msgid "“%(q)s”"
+msgstr "„%(q)s“"
+
+#, python-format
+msgid "No experiences match “%(q)s” on %(date)s"
+msgstr "Nijedan doživljaj ne odgovara upitu „%(q)s“ za %(date)s"
+
+#, python-format
+msgid "No experiences match “%(q)s”"
+msgstr "Nijedan doživljaj ne odgovara upitu „%(q)s“"
+
+#, python-format
+msgid "Nothing left to book on %(date)s"
+msgstr "Za %(date)s nema slobodnih mjesta"
+
+#, python-format
+msgid "No products match “%(q)s”"
+msgstr "Nijedan proizvod ne odgovara upitu „%(q)s“"
+
+#, python-format
+msgid "%(title)s on %(date)s"
+msgstr "%(title)s, %(date)s"

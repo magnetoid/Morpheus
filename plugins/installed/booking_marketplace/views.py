@@ -10,6 +10,7 @@ Two operating modes (parity with the reference montenegro-experience-hub):
 from __future__ import annotations
 
 import calendar
+import contextlib
 
 from django.conf import settings
 from django.contrib import messages
@@ -21,12 +22,14 @@ from django.utils.translation import ngettext
 
 from core.utils.i18n import localized_path
 from core.utils.pagination import paginate_or_404
-from plugins.installed.booking_marketplace import seo_jsonld
+from morpheus.core import MorpheusEvents, hook_registry
+from plugins.installed.booking_marketplace import search, search_page, seo_jsonld
 from plugins.installed.booking_marketplace.models import REGIONS, BookableService, Place
 from plugins.installed.booking_marketplace.services import (
     BookingError,
     available_dates,
     available_sessions,
+    bookable_on,
     can_review,
     create_booking,
     create_review,
@@ -79,48 +82,71 @@ def _image_url(obj) -> str:
         return ''
 
 
-def services_list(request):
-    """Browse bookable experiences across all hosts."""
-    from plugins.installed.catalog.models import Category
+# The orders a visitor can pick; "best" (the search's own score) joins them while there is a query.
+_ORDER = {
+    'recommended': ('-is_bestseller', '-rating', '-review_count'),
+    'rating': ('-rating', '-review_count'),
+    'price_low': ('price',),
+    'price_high': ('-price',),
+    'newest': ('-id',),
+}
 
+
+def _sort(request, *, has_query: bool) -> str:
+    sort = (request.GET.get('sort') or '').strip()
+    if sort in _ORDER or (sort == 'best' and has_query):
+        return sort
+    return 'best' if has_query else 'recommended'
+
+
+def _ranked(rows, matches, sort: str) -> list:
+    """`rows` the search matched; best first, top picks then names breaking ties, when asked."""
+    rows = [row for row in rows if row.pk in matches.scores]
+    if sort == 'best':
+        rows.sort(
+            key=lambda row: (-matches.scores[row.pk], not row.is_bestseller, row.name.casefold())
+        )
+    return rows
+
+
+def _searched(request, q: str, count: int) -> None:
+    """SEARCH_PERFORMED, as the storefront's own search fires it: search trends, the
+    zero-result report and the GA4 search event read it. Close matches count as none."""
+    with contextlib.suppress(Exception):
+        hook_registry.fire(
+            MorpheusEvents.SEARCH_PERFORMED, query=q, result_count=count, request=request
+        )
+
+
+def services_list(request):
+    """Browse bookable experiences: what the search bar asked for, best match first."""
+    from plugins.installed.catalog.category_tree import subtree_ids
+
+    params = search_page.read_params(request)
     services = BookableService.objects.filter(
         is_active=True, vendor__is_active=True, listing_kind='experience'
     ).select_related('vendor', 'category')
-    region = (request.GET.get('region') or '').strip()
-    if region:
-        services = services.filter(region=region)
-    q = (request.GET.get('q') or '').strip()
-    if q:
-        services = services.filter(
-            Q(name__icontains=q)
-            | Q(short_description__icontains=q)
-            | Q(description__icontains=q)
-            | Q(location__icontains=q)
+    if params.region:
+        services = services.filter(region=params.region)
+    if params.category is not None:
+        services = services.filter(category_id__in=subtree_ids([params.category]))
+    terms = search.parse_query(params.q)
+    sort = _sort(request, has_query=bool(terms))
+    services = services.order_by(*_ORDER.get(sort, _ORDER['recommended']))
+    rows = bookable_on(services, params.day) if params.day else list(services)
+    matches = None
+    if terms:
+        matches = search.listing_index().find(
+            terms, kind='experience', within={row.pk for row in rows}
         )
-    category = (request.GET.get('category') or '').strip()
-    # The title names a category only when the filter matches a real one: it
-    # used to echo whatever `?category=` held ("<anything> experiences in
-    # Montenegro"), one indexable title per string anyone typed.
-    category_obj = (
-        Category.objects.filter(Q(slug=category) | Q(name__iexact=category)).first()
-        if category
-        else None
-    )
-    if category:
-        services = services.filter(category__name__icontains=category)
-    sort = (request.GET.get('sort') or 'recommended').strip()
-    order = {
-        'recommended': ('-is_bestseller', '-rating', '-review_count'),
-        'rating': ('-rating', '-review_count'),
-        'price_low': ('price',),
-        'price_high': ('-price',),
-        'newest': ('-id',),
-    }.get(sort, ('-is_bestseller', '-rating', '-review_count'))
-    services = services.order_by(*order)
+        rows = _ranked(rows, matches, sort)
+        _searched(request, params.q, 0 if matches.close else len(rows))
     # 142 experiences on one page was a 381 KB document; 48 is four rows of
     # the grid. A page past the end is a 404, like every other listing.
-    page_obj = paginate_or_404(services, 48, request)
-    label = category_obj.name if category_obj else ''
+    page_obj = paginate_or_404(rows, 48, request)
+    # The title names a category only when the filter matched a real one: it used to
+    # echo whatever `?category=` held, one indexable title per string anyone typed.
+    label = params.category.name if params.category is not None else ''
     seo_title = (
         _('%(category)s experiences in Montenegro') % {'category': label}
         if label
@@ -142,10 +168,13 @@ def services_list(request):
         {
             'services': services,
             'listing_mode': listing_mode(),
-            'region': region,
-            'q': q,
-            'category': category,
+            'region': params.region,
+            'q': params.q,
+            'category': params.category.slug if params.category is not None else '',
             'sort': sort,
+            'search': search_page.page_context(
+                request, params, close=bool(matches and matches.close)
+            ),
             'seo_title': seo_title,
             'seo_description': seo_description,
             'breadcrumb_items': _crumbs(request, (_('Experiences'), '/bookings/')),
@@ -162,16 +191,23 @@ def services_list(request):
 
 
 def products_list(request):
-    """Browse product-kind listings (the Shop)."""
-    products = BookableService.objects.filter(
-        is_active=True, vendor__is_active=True, listing_kind='product'
-    ).select_related('vendor', 'category')
-    q = (request.GET.get('q') or '').strip()
-    if q:
-        products = products.filter(
-            Q(name__icontains=q) | Q(short_description__icontains=q) | Q(description__icontains=q)
+    """Browse product-kind listings (the Shop); a search shows its best matches first."""
+    q = (request.GET.get('q') or '').strip()[: search_page.QUERY_MAX_CHARS]
+    products = list(
+        BookableService.objects.filter(
+            is_active=True, vendor__is_active=True, listing_kind='product'
         )
-    products = list(products.order_by('-is_bestseller', 'name'))
+        .select_related('vendor', 'category')
+        .order_by('-is_bestseller', 'name')
+    )
+    terms = search.parse_query(q)
+    matches = None
+    if terms:
+        matches = search.listing_index().find(
+            terms, kind='product', within={p.pk for p in products}
+        )
+        products = _ranked(products, matches, 'best')
+        _searched(request, q, 0 if matches.close else len(products))
     return render(
         request,
         'booking_marketplace/list.html',
@@ -180,6 +216,12 @@ def products_list(request):
             'listing_mode': listing_mode(),
             'is_product_shop': True,
             'q': q,
+            'search': search_page.page_context(
+                request,
+                search_page.SearchParams(q=q),
+                close=bool(matches and matches.close),
+                kind='product',
+            ),
             'seo_title': _('Shop Montenegro — local goods'),
             'seo_description': _(
                 'Locally made Montenegrin products from trusted vendors — shipped '
