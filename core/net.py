@@ -26,6 +26,7 @@ unsafe address at check time is refused, which stops the entire class of
 
 from __future__ import annotations
 
+import contextlib
 import ipaddress
 import logging
 import socket
@@ -147,3 +148,22 @@ def is_safe_outbound_url(url: str, *, require_https: bool = True) -> bool:
     except UnsafeUrlError:
         return False
     return True
+
+
+def outbound_request(
+    method: str, url: str, *, require_https: bool = True, field: str = 'url', **kwargs
+):
+    """Send a server-initiated request to a URL someone entered (staff, an
+    agent's setting, a webhook endpoint): public hosts only, never a redirect.
+
+    A redirect is refused because the check covers only the first host — a
+    public URL answering 302 to 169.254.169.254 would otherwise reach it. A host
+    that does not resolve is let through so the caller's retry path handles it
+    (an unresolvable host cannot be connected to).
+    """
+    import requests
+
+    with contextlib.suppress(UnresolvableHostError):
+        check_outbound_url(url, field=field, require_https=require_https)
+    kwargs['allow_redirects'] = False
+    return getattr(requests, method.lower())(url, **kwargs)

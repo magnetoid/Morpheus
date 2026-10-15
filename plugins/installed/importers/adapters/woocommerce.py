@@ -27,10 +27,20 @@ class _HTTPClient:
         self._auth = (consumer_key, consumer_secret)
 
     def get(self, path: str, params: dict | None = None) -> list[dict]:
-        import requests
+        from core.net import outbound_request
 
         url = f'{self._base}/{path.lstrip("/")}'
-        resp = requests.get(url, auth=self._auth, params=params, timeout=20)
+        # A staff-entered store URL: public hosts only (a WooCommerce shop may
+        # still be http), never a redirect.
+        resp = outbound_request(
+            'GET',
+            url,
+            require_https=False,
+            field='store URL',
+            auth=self._auth,
+            params=params,
+            timeout=20,
+        )
         resp.raise_for_status()
         return resp.json()
 

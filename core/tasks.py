@@ -74,18 +74,22 @@ def dispatch_webhook(
 
     # Same egress gate as the webhooks_ui deliverer — this task takes a URL
     # from the caller, so it is an SSRF sink too.
-    from core.net import UnresolvableHostError, UnsafeUrlError, check_outbound_url
+    # An unresolvable host is let through so the retry path below handles it.
+    from core.net import UnsafeUrlError, outbound_request
 
     try:
-        check_outbound_url(url, field='webhook url', require_https=False)
-    except UnresolvableHostError:
-        pass  # transient: let requests fail and the task's retry path handle it
+        response = outbound_request(
+            'POST',
+            url,
+            require_https=False,
+            field='webhook url',
+            data=body,
+            headers=headers,
+            timeout=10,
+        )
     except UnsafeUrlError as e:
         logger.warning('Webhook refused by egress gate: %s -> %s (%s)', event_name, url, e)
         return
-
-    try:
-        response = requests.post(url, data=body, headers=headers, timeout=10, allow_redirects=False)
     except SoftTimeLimitExceeded:
         logger.warning('Webhook soft time limit hit: %s -> %s', event_name, url)
         raise self.retry(countdown=2**self.request.retries)  # noqa: B904

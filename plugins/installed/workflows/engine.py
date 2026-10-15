@@ -329,15 +329,23 @@ def _action_webhook_post(spec: dict, payload: dict) -> tuple[bool, str]:
     url = (spec.get('url') or '').strip()
     if not url.startswith(('http://', 'https://')):
         return False, 'webhook url must be http(s)'
-    try:
-        import requests
-    except ImportError:
-        return False, '`requests` not installed'
+    from core.net import UnsafeUrlError, outbound_request
+
     body = spec.get('body') or _serialize_payload(payload)
     headers = spec.get('headers') or {'Content-Type': 'application/json'}
     try:
-        resp = requests.post(url, json=body, headers=headers, timeout=10)
+        resp = outbound_request(
+            'POST',
+            url,
+            require_https=False,
+            field='webhook url',
+            json=body,
+            headers=headers,
+            timeout=10,
+        )
         return True, f'POST → {resp.status_code}'
+    except UnsafeUrlError as e:
+        return False, str(e)
     except Exception as e:  # noqa: BLE001
         return False, f'webhook error: {e}'
 

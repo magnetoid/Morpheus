@@ -33,10 +33,12 @@ class _HTTPClient:
         self._headers = {'X-Shopify-Access-Token': token, 'Accept': 'application/json'}
 
     def get(self, path: str, params: dict | None = None) -> dict:
-        import requests
+        from core.net import outbound_request
 
         url = f'{self._base}/{path.lstrip("/")}'
-        resp = requests.get(url, headers=self._headers, params=params, timeout=20)
+        resp = outbound_request(
+            'GET', url, field='shop', headers=self._headers, params=params, timeout=20
+        )
         resp.raise_for_status()
         return resp.json()
 

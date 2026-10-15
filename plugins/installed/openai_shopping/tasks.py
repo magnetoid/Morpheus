@@ -20,17 +20,18 @@ def push_feed() -> dict:
     cfg = config()
     if not (cfg.enabled and cfg.push_endpoint and cfg.push_token):
         return {'pushed': False, 'reason': 'no endpoint configured'}
-    if not cfg.push_endpoint.lower().startswith('https://'):
-        return {'pushed': False, 'reason': 'endpoint must be https'}
-
-    import requests
+    from core.net import UnsafeUrlError, outbound_request
 
     rows = build_rows()
     body = render_jsonl(rows)
     result: dict = {'pushed': False, 'rows': len(rows), 'at': timezone.now().isoformat()}
     try:
-        resp = requests.post(
+        # push_endpoint is a setting Janus can write: https, public hosts only,
+        # never a redirect.
+        resp = outbound_request(
+            'POST',
             cfg.push_endpoint,
+            field='push endpoint',
             data=body.encode('utf-8'),
             headers={
                 'Authorization': f'Bearer {cfg.push_token}',
@@ -42,6 +43,8 @@ def push_feed() -> dict:
         result['pushed'] = 200 <= resp.status_code < 300
         if not result['pushed']:
             result['error'] = resp.text[:300]
+    except UnsafeUrlError as e:
+        result['error'] = str(e)
     except Exception as e:  # noqa: BLE001 — recorded for the dashboard, never raised into beat
         result['error'] = f'{type(e).__name__}: {e}'[:300]
     cache.set(LAST_PUSH_KEY, result, timeout=60 * 60 * 24 * 14)
