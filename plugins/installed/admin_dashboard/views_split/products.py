@@ -1001,6 +1001,14 @@ def content_fill_one(request: HttpRequest, product_id: str) -> HttpResponse:
     p = get_object_or_404(Product, pk=product_id)
     fields_updated: list[str] = []
 
+    from core.agents.guardrails import model_call_refusal
+
+    # The merchant's guardrails: say why instead of "no changes" (the content
+    # audit page shows `error`).
+    refusal = model_call_refusal()
+    if refusal:
+        return JsonResponse({'ok': False, 'error': refusal}, status=503)
+
     try:
         from core.agents.llm import LLMMessage, get_llm_provider
 

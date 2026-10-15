@@ -52,6 +52,7 @@ def build_page_help(context: dict, provider=None) -> dict:
 
         provider = get_default_provider()
 
+    from core.agents.guardrails import AIPaused
     from core.agents.llm import LLMMessage
 
     user = (
@@ -73,6 +74,8 @@ def build_page_help(context: dict, provider=None) -> dict:
             temperature=0.2,
             max_tokens=700,
         )
+    except AIPaused as e:  # the merchant switched AI off or hit today's cap: say so
+        return {**fail, 'message': str(e)}
     except Exception as e:  # noqa: BLE001 — provider/breaker safety net
         logger.warning('page_help: provider call failed: %s', e, exc_info=True)
         return {**fail, 'message': 'Linda is unavailable right now.'}
