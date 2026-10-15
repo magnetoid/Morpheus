@@ -25,7 +25,22 @@ unlimited), so an unconfigured store behaves exactly as before.
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
+import functools
+import logging
 from datetime import datetime
+
+logger = logging.getLogger('morpheus.agents.guardrails')
+
+# Shown to the merchant verbatim (dashboard buttons, Linda, background logs).
+PAUSED_MESSAGE = 'AI is paused in Settings → Agent guardrails.'
+CAP_MESSAGE = "AI has reached today's spend limit set in Agent guardrails."
+
+
+class AIPaused(RuntimeError):
+    """The merchant's agent guardrails refuse this call: AI is switched off, or
+    today's spend cap is reached. The message is fit to show the merchant."""
 
 
 def _read(key: str, default):
@@ -123,6 +138,7 @@ def daily_spend_usd(exclude_id=None) -> float:
     )
     rows += _assistant_usage_today()
     rows += _app_usage_today()
+    rows += _outside_run_usage_today()
     return sum(estimate_cost(r['model'] or '', r['pt'] or 0, r['ct'] or 0) for r in rows)
 
 
@@ -179,3 +195,107 @@ def run_start_block_reason(exclude_id=None) -> str | None:
     if cap_usd and daily_spend_usd(exclude_id) >= cap_usd:
         return 'spend_cap_exceeded'
     return None
+
+
+# ── The provider-level guard (v0.113.0) ───────────────────────────────────────
+
+
+def model_call_refusal() -> str:
+    """Why a model call must not run now, or '' to allow. The run cap is left
+    out: a button click or a nightly analysis is not an agent run."""
+    if agents_paused():
+        return PAUSED_MESSAGE
+    cap = daily_spend_cap_usd()
+    if cap and daily_spend_usd() >= cap:
+        return CAP_MESSAGE
+    return ''
+
+
+# True while a call is already accounted for: inside the runtime's own provider
+# call (the run checked its caps and stores its tokens on the AgentRun), or
+# inside an outer guarded call (the fallback router calling a provider).
+_accounted = contextvars.ContextVar('guardrails_accounted', default=False)
+
+
+@contextlib.contextmanager
+def run_scope():
+    """Wrap the agent runtime's OWN provider calls. A model call a tool makes
+    during the run is not inside this scope, so it is checked and counted."""
+    token = _accounted.set(True)
+    try:
+        yield
+    finally:
+        _accounted.reset(token)
+
+
+def guard_model_call(respond):
+    """Wrap a provider's ``respond``: refuse when the guardrails say so, and
+    record the tokens of a call nothing else accounts for."""
+
+    @functools.wraps(respond)
+    def wrapper(self, *args, **kwargs):
+        if _accounted.get():
+            return respond(self, *args, **kwargs)
+        reason = model_call_refusal()
+        if reason:
+            raise AIPaused(reason)
+        token = _accounted.set(True)
+        try:
+            resp = respond(self, *args, **kwargs)
+        finally:
+            _accounted.reset(token)
+        record_model_usage(
+            getattr(resp, 'model', '') or getattr(self, 'model', '') or '',
+            getattr(resp, 'prompt_tokens', 0),
+            getattr(resp, 'completion_tokens', 0),
+        )
+        return resp
+
+    return wrapper
+
+
+def record_model_usage(model: str, prompt_tokens: int, completion_tokens: int) -> None:
+    """Add a call's tokens to today's row for its model. Never raises: losing a
+    count is better than failing the call it describes."""
+    pt, ct = int(prompt_tokens or 0), int(completion_tokens or 0)
+    if not (pt or ct):
+        return
+    try:
+        from django.db import IntegrityError, transaction
+        from django.db.models import F
+
+        from core.agents.models import ModelUsageDay
+
+        day, name = today_start().date(), (model or '')[:100]
+
+        def _add() -> int:
+            return ModelUsageDay.objects.filter(day=day, model=name).update(
+                prompt_tokens=F('prompt_tokens') + pt,
+                completion_tokens=F('completion_tokens') + ct,
+            )
+
+        # Own savepoint: a failure here must not abort the caller's transaction.
+        with transaction.atomic():
+            if _add():
+                return
+            try:
+                with transaction.atomic():
+                    ModelUsageDay.objects.create(
+                        day=day, model=name, prompt_tokens=pt, completion_tokens=ct
+                    )
+            except IntegrityError:  # another worker created today's row first
+                _add()
+    except Exception:  # noqa: BLE001
+        logger.warning('guardrails: could not record model usage', exc_info=True)
+
+
+def _outside_run_usage_today() -> list[dict]:
+    try:
+        from core.agents.models import ModelUsageDay
+
+        return [
+            {'model': r.model, 'pt': r.prompt_tokens, 'ct': r.completion_tokens}
+            for r in ModelUsageDay.objects.filter(day=today_start().date())
+        ]
+    except Exception:  # noqa: BLE001 — a missing table must not lift the cap
+        return []

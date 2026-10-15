@@ -16,6 +16,7 @@ from abc import ABC, abstractmethod
 
 import requests
 
+from core.agents.guardrails import AIPaused  # noqa: F401 — callers import it from here
 from plugins.installed.ai_assistant.services.config import (
     ProviderConfig,
     get_active_provider_name,
@@ -56,11 +57,6 @@ def _truncated_while_reasoning(response) -> bool:
         return False
 
 
-class AIPaused(RuntimeError):
-    """The merchant's agent guardrails refuse this call: AI is switched off, or
-    today's spend cap is reached. The message is fit to show the merchant."""
-
-
 def guardrail_refusal() -> str:
     """Why a model call must not run now, or '' to allow.
 
@@ -69,12 +65,7 @@ def guardrail_refusal() -> str:
     """
     from core.agents import guardrails
 
-    if guardrails.agents_paused():
-        return 'AI is paused in Settings → Agent guardrails.'
-    cap = guardrails.daily_spend_cap_usd()
-    if cap and guardrails.daily_spend_usd() >= cap:
-        return "AI has reached today's spend limit set in Agent guardrails."
-    return ''
+    return guardrails.model_call_refusal()
 
 
 def _guarded(complete):

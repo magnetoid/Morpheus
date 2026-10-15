@@ -322,4 +322,5 @@ from core.agents.models import (  # noqa: E402,F401
     AgentApprovalRequest,
     AgentRun,
     AgentStep,
+    ModelUsageDay,
 )

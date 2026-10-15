@@ -165,3 +165,27 @@ class AgentApprovalRequest(models.Model):
 
     def __str__(self) -> str:
         return f'AgentApprovalRequest({self.tool_name}, {self.state})'
+
+
+class ModelUsageDay(models.Model):
+    """Tokens one model spent today outside the agent runtime's own calls.
+
+    The dashboard's description fill, page help, the brain analyst, autopilot,
+    self-improvement and tools that call a model reach providers directly; the
+    spend cap (core/agents/guardrails.py) adds these rows to the runs' and
+    Linda's totals. One row per (day, model), incremented in place.
+    """
+
+    day = models.DateField()
+    model = models.CharField(max_length=100, blank=True)
+    prompt_tokens = models.BigIntegerField(default=0)
+    completion_tokens = models.BigIntegerField(default=0)
+
+    class Meta:
+        app_label = 'core'
+        constraints = [
+            models.UniqueConstraint(fields=['day', 'model'], name='core_modelusageday_day_model')
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover — debug only
+        return f'{self.day} {self.model}: {self.prompt_tokens}+{self.completion_tokens}'

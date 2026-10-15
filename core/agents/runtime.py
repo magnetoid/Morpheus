@@ -40,7 +40,7 @@ from core.agents.approval import approval_registry
 from core.agents.base import MorpheusAgent
 from core.agents.compaction import compact
 from core.agents.events import AgentEvents
-from core.agents.guardrails import agents_paused, run_start_block_reason
+from core.agents.guardrails import agents_paused, run_scope, run_start_block_reason
 from core.agents.llm import (
     LLMMessage,
     LLMProvider,
@@ -195,12 +195,13 @@ class AgentRuntime:
                 return self._fail(trace, run_id, context, 'deadline_exceeded')
 
             try:
-                response = self.provider.respond(
-                    messages=messages,
-                    tools=tools,
-                    temperature=self.agent.temperature,
-                    max_tokens=self.agent.max_tokens,
-                )
+                with run_scope():  # checked at run start; tokens stored on the AgentRun
+                    response = self.provider.respond(
+                        messages=messages,
+                        tools=tools,
+                        temperature=self.agent.temperature,
+                        max_tokens=self.agent.max_tokens,
+                    )
             except Exception as e:  # noqa: BLE001 — provider failure aborts the run
                 return self._fail(trace, run_id, context, _humanise_provider_error(e))
 
@@ -485,22 +486,23 @@ class AgentRuntime:
     def _summarize_history(self, transcript: str) -> str:
         """Provider-backed summarizer for context compaction. A terse, low-cost
         call; on any failure the caller (`compact`) falls back to truncation."""
-        resp = self.provider.respond(
-            messages=[
-                LLMMessage(
-                    role='system',
-                    content=(
-                        'Summarize the following agent transcript in a few sentences. '
-                        'Preserve facts established, decisions made, and tasks still '
-                        'pending. Be concise.'
+        with run_scope():
+            resp = self.provider.respond(
+                messages=[
+                    LLMMessage(
+                        role='system',
+                        content=(
+                            'Summarize the following agent transcript in a few sentences. '
+                            'Preserve facts established, decisions made, and tasks still '
+                            'pending. Be concise.'
+                        ),
                     ),
-                ),
-                LLMMessage(role='user', content=transcript[:12000]),
-            ],
-            tools=None,
-            temperature=0.0,
-            max_tokens=300,
-        )
+                    LLMMessage(role='user', content=transcript[:12000]),
+                ],
+                tools=None,
+                temperature=0.0,
+                max_tokens=300,
+            )
         return resp.text or ''
 
     def _on_end(self, run_id: str, context: dict[str, Any], result: RunResult) -> None:

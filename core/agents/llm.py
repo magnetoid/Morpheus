@@ -205,6 +205,16 @@ class LLMProvider(ABC):
     name: str = 'base'
     model: str = ''
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # Every provider's respond obeys the merchant's guardrails and reports
+        # what it spent: six callers once reached a model here directly, with
+        # the kill switch off and outside the spend cap (v0.113.0).
+        if 'respond' in cls.__dict__:
+            from core.agents.guardrails import guard_model_call
+
+            cls.respond = guard_model_call(cls.__dict__['respond'])
+
     @abstractmethod
     def respond(
         self,
