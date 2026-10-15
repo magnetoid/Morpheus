@@ -275,3 +275,36 @@ def _suggested_categories(request, terms) -> list[dict]:
         }
         for c in rows
     ]
+
+
+def bar_context(request, variant: str, search: dict | None = None) -> dict:
+    """Everything booking_marketplace/_search.html shows.
+
+    The values come from the page's `search` on a results page and from the request on
+    the home page. A phone shows `summary` and opens the form from it.
+    """
+    from plugins.installed.booking_marketplace.services import active_categories, live_regions
+
+    variant = variant if variant in ('hero', 'bar', 'shop') else 'bar'
+    if search is None:
+        search = values(read_params(request) if request is not None else SearchParams())
+    shop = variant == 'shop'
+    summary = [search['q'] or (_('Search local goods') if shop else _('Any experience'))]
+    if not shop:
+        summary += [
+            search['region_label'] or _('All of Montenegro'),
+            search['date_label'] or _('Any date'),
+        ]
+    return {
+        **search,
+        'variant': variant,
+        'action': '/shop/' if shop else '/bookings/',
+        'regions': [] if shop else live_regions(),
+        'categories': [] if shop else active_categories(),
+        'summary': ' · '.join(summary),
+        'suggest_url': (
+            '' if shop or request is None else localized_path(request, '/bookings/suggest/')
+        ),
+        'date_locale': date_locale()[1],
+        'today_iso': timezone.localdate().isoformat(),
+    }

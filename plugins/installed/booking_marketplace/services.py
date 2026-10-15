@@ -541,3 +541,29 @@ def active_categories():
         return [{'name': c.name, 'slug': c.slug, 'count': c.svc_count} for c in rows]
     except Exception:  # noqa: BLE001 — table missing / not migrated yet
         return []
+
+
+def live_regions() -> list[dict]:
+    """Regions with a live experience, in REGIONS order, with counts: the search bar's Where.
+
+    Fails soft to [] like active_categories(): the bar renders on the home page.
+    """
+    try:
+        from plugins.installed.booking_marketplace.models import REGIONS, BookableService
+
+        counts = dict(
+            BookableService.objects.filter(
+                is_active=True, vendor__is_active=True, listing_kind='experience'
+            )
+            .exclude(region='')
+            .values_list('region')
+            .annotate(n=Count('id'))
+            .values_list('region', 'n')
+        )
+        return [
+            {'key': key, 'label': str(label), 'count': counts[key]}
+            for key, label in REGIONS
+            if counts.get(key)
+        ]
+    except Exception:  # noqa: BLE001 — table missing / not migrated yet
+        return []

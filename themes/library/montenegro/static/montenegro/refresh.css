@@ -92,7 +92,167 @@ footer .morph-lang-switcher { display: none !important; }
 .card-stretch .card-link:focus-visible { outline: none; }
 .card-stretch .card-link:focus-visible::after { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
 
+/* ── Search bar (booking_marketplace/_search.html, montenegro/search.js) ─────
+   One bar on the home hero, /bookings/ and /shop/. On a phone the hero keeps its
+   card and the listings show a summary line that opens the form full screen.
+   Without JavaScript every field shows and the form submits as it is. */
+.mx-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.mx-sb { position: relative; z-index: 30; text-align: left; }
+.mx-sb--hero { max-width: 56rem; margin: 0 auto; }
+.mx-sb--shop { max-width: 40rem; }
+.mx-sb__form {
+  display: flex; flex-direction: column; gap: .25rem;
+  padding: .5rem; border-radius: 1rem;
+  background: hsl(var(--background));
+  box-shadow: var(--shadow-elevated);
+}
+.mx-sb--bar .mx-sb__form,
+.mx-sb--shop .mx-sb__form { border: 1px solid hsl(var(--border)); box-shadow: var(--shadow-soft); }
+.mx-sb__panel-head { display: none; }
+.mx-sb__field {
+  position: relative; display: flex; align-items: center; gap: .75rem;
+  min-width: 0; padding: .5rem .875rem; border-radius: .75rem;
+  transition: background-color .15s ease;
+}
+.mx-sb__field:hover,
+.mx-sb__field:focus-within { background: hsl(var(--muted) / .55); }
+.mx-sb__field:has(.mx-sb__input:focus-visible) { box-shadow: inset 0 0 0 2px hsl(var(--ring)); }
+.mx-sb__field > svg,
+.mx-sb__summary > svg,
+.mx-sb__submit > svg { flex: none; width: 1.25rem; height: 1.25rem; }
+.mx-sb__field > svg { color: hsl(var(--muted-foreground)); }
+.mx-sb__control { flex: 1; min-width: 0; }
+.mx-sb__label {
+  display: block; font-size: .75rem; font-weight: 600; line-height: 1rem;
+  color: hsl(var(--foreground)); cursor: pointer;
+}
+.mx-sb__input {
+  display: block; width: 100%; height: 1.5rem; margin: 0; padding: 0; border: 0;
+  background: transparent; font: inherit; font-size: .9rem; color: hsl(var(--foreground));
+  outline: none; -webkit-appearance: none; appearance: none;
+}
+select.mx-sb__input { cursor: pointer; text-overflow: ellipsis; }
+.mx-sb__input::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
+.mx-sb__input::-webkit-search-cancel-button,
+.mx-sb__input::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+.mx-sb__clear,
+.mx-sb__icon-btn {
+  position: relative; z-index: 1; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; padding: 0; border: 0; border-radius: 999px;
+  background: transparent; color: hsl(var(--muted-foreground)); cursor: pointer;
+}
+.mx-sb__clear:hover,
+.mx-sb__icon-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.mx-sb__clear svg,
+.mx-sb__icon-btn svg { width: 1rem; height: 1rem; }
+.mx-sb__clear[hidden] { display: none; }
+.mx-sb__submit {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  height: 3rem; padding: 0 1.5rem; border: 0; border-radius: .75rem;
+  background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+  font-size: .9rem; font-weight: 600; cursor: pointer;
+  transition: background-color .15s ease;
+}
+.mx-sb__submit:hover { background: hsl(var(--primary) / .9); }
+.mx-sb button:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+/* When: the native date input lies over its label, so a tap opens the system picker. */
+.mx-sb__date { position: relative; }
+.mx-sb__date-text {
+  display: none; height: 1.5rem; line-height: 1.5rem; font-size: .9rem;
+  color: hsl(var(--muted-foreground));
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.mx-sb__date-text.is-set { color: hsl(var(--foreground)); }
+[data-enhanced] .mx-sb__date-text { display: block; }
+[data-enhanced] .mx-sb__date-input {
+  position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+}
+
+/* Suggestions */
+.mx-sb__popup {
+  position: absolute; top: calc(100% + .375rem); left: 0; z-index: 40;
+  width: max(100%, 24rem); max-height: min(28rem, 70vh); overflow-y: auto;
+  padding: .375rem; border: 1px solid hsl(var(--border)); border-radius: .875rem;
+  background: hsl(var(--popover)); box-shadow: var(--shadow-elevated);
+}
+.mx-sb__popup[hidden] { display: none; }
+.mx-sb__group + .mx-sb__group {
+  margin-top: .25rem; padding-top: .25rem; border-top: 1px solid hsl(var(--border));
+}
+.mx-sb__group-label {
+  padding: .375rem .625rem .25rem; font-size: .7rem; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase; color: hsl(var(--muted-foreground));
+}
+.mx-sb__opt {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .5rem .625rem; border-radius: .625rem; cursor: pointer;
+}
+.mx-sb__opt:hover,
+.mx-sb__opt[aria-selected="true"] { background: hsl(var(--muted)); }
+.mx-sb__thumb {
+  flex: none; width: 2.5rem; height: 2.5rem; overflow: hidden;
+  border-radius: .5rem; background: hsl(var(--muted));
+}
+.mx-sb__thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.mx-sb__opt-body { display: flex; flex-direction: column; min-width: 0; }
+.mx-sb__opt-name,
+.mx-sb__opt-meta { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.mx-sb__opt-name { font-size: .9rem; font-weight: 500; color: hsl(var(--foreground)); }
+.mx-sb__opt-meta { font-size: .8rem; color: hsl(var(--muted-foreground)); }
+
+.mx-sb__summary { display: none; }
+@media (min-width: 768px) {
+  .mx-sb__form { flex-direction: row; align-items: center; }
+  .mx-sb__field { flex: 1 1 9rem; }
+  .mx-sb__field--what { flex: 1.6 1 13rem; }
+  .mx-sb__field + .mx-sb__field::before {
+    content: ""; position: absolute; left: 0; top: 25%; width: 1px; height: 50%;
+    background: hsl(var(--border));
+  }
+  .mx-sb__submit { flex: none; }
+}
+@media (max-width: 767px) {
+  .mx-sb__field--category { display: none; }
+  .mx-sb__popup { width: 100%; }
+  .mx-sb__submit { width: 100%; }
+  .mx-sb--hero .mx-sb__form { padding: .375rem; gap: 0; }
+  .mx-sb--hero .mx-sb__field { padding: .4rem .75rem; }
+  /* The listings: a summary line opens the form as a full-screen panel. */
+  [data-enhanced].mx-sb--bar .mx-sb__summary,
+  [data-enhanced].mx-sb--shop .mx-sb__summary {
+    display: flex; align-items: center; gap: .75rem; width: 100%; height: 3.25rem;
+    padding: 0 1rem; border: 1px solid hsl(var(--border)); border-radius: 999px;
+    background: hsl(var(--background)); box-shadow: var(--shadow-soft);
+    color: hsl(var(--foreground)); font: inherit; font-size: .9rem; font-weight: 500;
+    text-align: left; cursor: pointer;
+  }
+  .mx-sb__summary > svg { color: hsl(var(--primary)); }
+  .mx-sb__summary-text { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  [data-enhanced].mx-sb--bar .mx-sb__form,
+  [data-enhanced].mx-sb--shop .mx-sb__form { display: none; }
+  [data-enhanced].mx-sb.is-open { z-index: 90; }
+  [data-enhanced].mx-sb.is-open .mx-sb__form {
+    display: flex; position: fixed; inset: 0; z-index: 90; gap: .5rem;
+    padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+    border: 0; border-radius: 0; box-shadow: none; overflow-y: auto;
+  }
+  [data-enhanced].mx-sb.is-open .mx-sb__panel-head {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: .25rem;
+  }
+  .mx-sb__panel-title { font-size: 1.125rem; font-weight: 600; color: hsl(var(--foreground)); }
+  [data-enhanced].mx-sb.is-open .mx-sb__field { border: 1px solid hsl(var(--border)); }
+  [data-enhanced].mx-sb.is-open .mx-sb__submit { margin-top: auto; }
+}
+html.mx-sb-locked,
+html.mx-sb-locked body { overflow: hidden; }
+
 @media (prefers-reduced-motion: reduce) {
+  .mx-sb__field, .mx-sb__submit { transition: none; }
   .mx-pill, .mx-catstrip__item { transition: none; }
   .mx-pill:hover { transform: none; }
 }

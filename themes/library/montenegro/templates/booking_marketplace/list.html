@@ -22,7 +22,7 @@ empty state, and none of the experience-only search, sort and buying guide.{% en
     {% endif %}
   </header>
 
-  {% if not is_product_shop %}{% include "booking_marketplace/_search_bar.html" %}{% endif %}
+  {% if is_product_shop %}{% include "booking_marketplace/_search.html" with variant="shop" %}{% else %}{% include "booking_marketplace/_search.html" with variant="bar" %}{% endif %}
 
   <!-- Count + sort row -->
   <div class="flex flex-wrap items-center justify-between gap-3 mt-8 mb-6">

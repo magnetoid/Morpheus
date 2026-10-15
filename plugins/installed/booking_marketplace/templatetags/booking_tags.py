@@ -102,6 +102,14 @@ def booking_categories():
     return active_categories()
 
 
+@register.simple_tag(takes_context=True)
+def search_bar(context, variant='bar'):
+    """Everything booking_marketplace/_search.html shows (search_page.bar_context)."""
+    from plugins.installed.booking_marketplace.search_page import bar_context
+
+    return bar_context(context.get('request'), variant, context.get('search'))
+
+
 @register.simple_tag
 def hero_pills():
     """Quick-pills under the hero search — top categories by inventory."""

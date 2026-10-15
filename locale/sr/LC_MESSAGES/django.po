@@ -4169,3 +4169,30 @@ msgstr "Nijedan proizvod ne odgovara upitu „%(q)s“"
 #, python-format
 msgid "%(title)s on %(date)s"
 msgstr "%(title)s, %(date)s"
+
+msgid "Try kayaking, Kotor, wine…"
+msgstr "Npr. kajak, Kotor, vino…"
+
+msgid "Search local goods"
+msgstr "Pretražite domaće proizvode"
+
+msgid "Any experience"
+msgstr "Bilo koji doživljaj"
+
+msgid "All of Montenegro"
+msgstr "Cijela Crna Gora"
+
+msgid "Clear search"
+msgstr "Obriši pretragu"
+
+msgid "Clear date"
+msgstr "Obriši datum"
+
+msgid "Edit search"
+msgstr "Uredi pretragu"
+
+msgid "Close"
+msgstr "Zatvori"
+
+msgid "Suggestions"
+msgstr "Prijedlozi"
