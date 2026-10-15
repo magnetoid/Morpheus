@@ -15,9 +15,14 @@ process) is built at the end of this module.
 from __future__ import annotations
 
 import bisect
+import logging
 import re
+import time
 import unicodedata
+import uuid
 from typing import NamedTuple
+
+logger = logging.getLogger('morpheus.booking_marketplace')
 
 EXACT, PREFIX, TYPO = 1.0, 0.8, 0.5
 MAX_QUERY_CHARS = 200
@@ -310,3 +315,104 @@ class Index:
         return Matches(
             {key: sum(s.get(key, 0.0) for s in per_term) for key in some}, close=bool(some)
         )
+
+
+# -- the store's index ---------------------------------------------------------
+# Built once per process. `bump` (connected in app.py to every listing, place and category
+# save or delete) writes a new version token to the shared cache, and a process holding an
+# index built under another token rebuilds before its next search. An edit that skips
+# save() — `QuerySet.update()` in the seed commands — is picked up once the index is
+# MAX_AGE_S old. Callers filter by the database first and pass the survivors as `within`:
+# the index ranks, it never decides what is live.
+MAX_AGE_S = 600
+_VERSION_KEY = 'booking_marketplace:search:version'
+_STATE: dict = {}
+
+
+def _flatten(value) -> str:
+    """Highlights as text: strings, or the strings inside lists and dicts."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return ' '.join(_flatten(item) for item in value.values())
+    if isinstance(value, list | tuple):
+        return ' '.join(_flatten(item) for item in value)
+    return ''
+
+
+def _region_names() -> dict[str, str]:
+    """Each region's label in English and in Serbian, so `boka` finds Kotor Bay."""
+    from django.utils import translation
+
+    from plugins.installed.booking_marketplace.models import REGIONS
+
+    names = {}
+    for key, label in REGIONS:
+        spellings = []
+        for language in ('en', 'sr'):
+            with translation.override(language):
+                spellings.append(str(label))
+        names[key] = ' '.join(dict.fromkeys(spellings))
+    return names
+
+
+def documents() -> list[Doc]:
+    """The active listings (both kinds) and places, as the index reads them."""
+    from plugins.installed.booking_marketplace.models import BookableService, Place
+    from plugins.installed.booking_marketplace.products import plain_text
+
+    regions = _region_names()
+    docs = [
+        Doc(
+            listing.pk,
+            listing.listing_kind,
+            (
+                (10, listing.name),
+                (6, listing.location),
+                (6, regions.get(listing.region, '')),
+                (5, listing.category.name if listing.category_id else ''),
+                (3, _flatten(listing.highlights)),
+                (2, plain_text(listing.short_description)),
+                (1, plain_text(listing.description)),
+            ),
+        )
+        for listing in BookableService.objects.filter(is_active=True).select_related('category')
+    ]
+    docs += [
+        Doc(place.pk, 'place', ((10, place.name), (6, regions.get(place.region, ''))))
+        for place in Place.objects.filter(is_active=True)
+    ]
+    return docs
+
+
+def _version() -> str:
+    from django.core.cache import cache
+
+    try:
+        current = cache.get(_VERSION_KEY)
+        if current is None:
+            cache.add(_VERSION_KEY, uuid.uuid4().hex, None)
+            current = cache.get(_VERSION_KEY)
+    except Exception:  # noqa: BLE001 — without the cache the index still ages out
+        return ''
+    return current or ''
+
+
+def bump(**_kwargs) -> None:
+    """post_save / post_delete: every process rebuilds its index before its next search."""
+    from django.core.cache import cache
+
+    try:
+        cache.set(_VERSION_KEY, uuid.uuid4().hex, None)
+    except Exception:  # noqa: BLE001 — a cache outage must never fail a listing save
+        logger.warning('booking search: could not bump the index version', exc_info=True)
+
+
+def listing_index() -> Index:
+    """This process's index of the store, rebuilt first when it is stale."""
+    version = _version()
+    built = _STATE.get('built')
+    if built is None or built[0] != version or time.monotonic() - built[1] > MAX_AGE_S:
+        built = (version, time.monotonic(), Index(documents()))
+        _STATE['built'] = built
+    return built[2]

@@ -105,6 +105,18 @@ class BookingMarketplacePlugin(Plugin):
         )
         self.register_hook(events.STOREFRONT_SEARCH_PATH, booking_seo.on_search_path, priority=50)
 
+        # The search index rebuilds after a listing, a place or a category changes (search.py).
+        from django.db.models.signals import post_delete, post_save
+
+        from plugins.installed.booking_marketplace import search as booking_search
+        from plugins.installed.booking_marketplace.models import BookableService, Place
+        from plugins.installed.catalog.models import Category
+
+        for model in (BookableService, Place, Category):
+            uid = f'booking_search_{model._meta.label_lower}'
+            post_save.connect(booking_search.bump, sender=model, dispatch_uid=uid)
+            post_delete.connect(booking_search.bump, sender=model, dispatch_uid=uid)
+
     def on_health_checks(self, value, **kwargs):
         """HEALTH_CHECKS: the listings and an experience page load for a visitor."""
         from core.errors.health import fetch_failures  # noqa: PLC0415
