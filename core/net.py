@@ -166,4 +166,13 @@ def outbound_request(
     with contextlib.suppress(UnresolvableHostError):
         check_outbound_url(url, field=field, require_https=require_https)
     kwargs['allow_redirects'] = False
-    return getattr(requests, method.lower())(url, **kwargs)
+    response = getattr(requests, method.lower())(url, **kwargs)
+    if response.status_code in _REDIRECT_STATUSES:
+        # Refused, and said so: a store entered as http:// that moved to https
+        # otherwise fails as unreadable JSON, and a webhook reads as delivered.
+        target = response.headers.get('Location') or 'another address'
+        raise UnsafeUrlError(f'{field} redirects to {target} — enter that address instead')
+    return response
+
+
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
