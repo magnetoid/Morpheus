@@ -212,7 +212,11 @@ def answer(value: dict, params) -> dict:
         return value
     chosen = selections(params)
     base = value['queryset']
-    value['queryset'] = apply(base, chosen)
+    # Cards on the page read the book, its genres and formats (cards.py): fetch
+    # them with the listing, not once per card.
+    value['queryset'] = (
+        apply(base, chosen).select_related('book').prefetch_related('book__genres', 'variants')
+    )
     value['facets'] = list(value.get('facets') or []) + describe(base, chosen)
     value['sorts'] = list(value.get('sorts') or []) + list(SORTS)
     value['chosen'] = {**(value.get('chosen') or {}), **{k: v for k, v in chosen.items() if v}}

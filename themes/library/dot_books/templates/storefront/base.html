@@ -343,8 +343,13 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   .book .cover-wrap { aspect-ratio: var(--img-ratio, 2 / 3); background: var(--paper-2); border-radius: 4px; overflow: hidden; position: relative; box-shadow: 0 1px 0 rgba(14,14,14,0.06), 0 10px 28px -16px rgba(14,14,14,0.45); outline: 1px solid rgba(14,14,14,0.06); outline-offset: -1px; transition: transform .25s, box-shadow .25s; }
   .book:hover .cover-wrap { transform: translateY(-4px); box-shadow: 0 1px 0 rgba(14,14,14,0.08), 0 22px 40px -18px rgba(14,14,14,0.5); }
   .book .cover-wrap img { width: 100%; height: 100%; object-fit: cover; }
-  .book .cover-wrap .placeholder,
   .window__cover .placeholder { width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:var(--serif);font-size:1.1rem;font-style:italic; }
+  /* A book with no cover yet gets a typeset one: title, author, genre (owner, 2026-10-16). */
+  .book .cover-wrap .placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; gap: .55rem; padding: 14% 12%; text-align: center; justify-content: center; align-items: center; background: linear-gradient(160deg, var(--paper) 0%, var(--paper-2) 100%); box-shadow: inset 0 0 0 1px rgba(14,14,14,.08), inset 0 0 0 7px var(--paper-2), inset 0 0 0 8px rgba(14,14,14,.10); color: var(--ink); }
+  .placeholder__title { font-family: var(--serif); font-size: clamp(1rem, .85rem + .6vw, 1.35rem); font-weight: 600; line-height: 1.15; letter-spacing: -.01em; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+  .placeholder__author { font-family: var(--serif); font-style: italic; font-size: .85rem; color: var(--muted); }
+  .placeholder__genre { margin-top: auto; font-family: var(--sans); font-size: .62rem; letter-spacing: .18em; text-transform: uppercase; color: var(--accent-ink); }
+  .placeholder__title:first-child { margin-top: auto; }
   /* Visually-hidden utility — text for assistive tech only (picker labels,
      the home h1). Owned here so a page refactor can never delete it out from
      under another page's markup, which nearly happened when the old hero
@@ -355,8 +360,15 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
     clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
   }
   .book .ribbon { position: absolute; top: 0.65rem; left: 0.65rem; background: var(--accent-ink); color: var(--paper); border: 1px solid var(--accent-ink); border-radius: 999px; padding: 0.15rem 0.55rem; font-size: 0.65rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; }
-  .book .title { font-family: var(--serif); font-size: 1.2rem; font-weight: 500; line-height: 1.25; letter-spacing: -0.01em; }
-  .book .author { font-family: var(--serif); font-style: italic; font-size: 0.92rem; color: var(--muted); margin-top: 0.15rem; }
+  /* Card text (owner, 2026-10-16: the title read small, and genre and author were missing).
+     The genre, title and author block keeps a fixed height (two title lines), so every card in a
+     row starts its excerpt level while the author stays right under a one-line title. */
+  .book__head { --title-size: clamp(1.2rem, 1rem + .6vw, 1.45rem); display: flex; flex-direction: column; gap: .3rem; min-height: calc(.68rem * 1.45 + 2.4 * var(--title-size) + .95rem * 1.5 + .6rem); }
+  .book__head > * { margin: 0; }
+  .book__genre { font-family: var(--sans); font-size: .68rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-ink); line-height: 1.45; }
+  .book .title { font-family: var(--serif); font-size: var(--title-size, 1.2rem); font-weight: 600; line-height: 1.2; letter-spacing: -0.012em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .book .author { font-family: var(--serif); font-style: italic; font-size: 0.95rem; line-height: 1.5; color: var(--muted); }
+  .book__formats { margin-top: 0.45rem; font-size: 0.75rem; letter-spacing: .04em; color: var(--muted); }
   .book__excerpt { margin-top: 0.4rem; font-size: 0.92rem; line-height: 1.45; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .book .price { margin-top: 0.55rem; font-size: 0.95rem; font-weight: 600; }
   .book .price .compare { color: var(--muted); text-decoration: line-through; margin-left: 0.35rem; font-weight: 400; }

@@ -36,6 +36,8 @@ class BookProductPlugin(Plugin):
         self.register_hook(events.SEO_RESOLVE_PAGE, self.on_seo_resolve_page, priority=40)
         # The all-books page's genre/topic/author/format/length filters.
         self.register_hook(events.LISTING_FACETS, self.on_listing_facets, priority=40)
+        # A storefront book card's genre, author and formats (cards.py).
+        self.register_hook(events.PRODUCT_CARD_META, self.on_product_card_meta, priority=40)
         # A translated work's editions name each other as hreflang alternates —
         # added to the head document after seo has decided the page (priority
         # 60 > seo's 50), never printed by a theme beside it.
@@ -89,6 +91,11 @@ class BookProductPlugin(Plugin):
         'series_index': 'series',
         'imprints': 'imprints',
     }
+
+    def on_product_card_meta(self, value, product=None, **_):
+        from plugins.installed.book_product.cards import card_meta
+
+        return {**(value or {}), **card_meta(product)}
 
     def on_listing_facets(self, value, params=None, surface='', **_):
         from plugins.installed.book_product.listing_facets import answer

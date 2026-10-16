@@ -447,3 +447,17 @@ def error_capture_attrs():
         return mark_safe('data-detailed="1"') if detailed_active() else ''
     except Exception:  # noqa: BLE001 — the page renders whatever the switch says
         return ''
+
+
+@register.simple_tag
+def product_card_meta(product) -> dict:
+    """Extra lines for a storefront product card, from the apps that own them
+    (PRODUCT_CARD_META; the book app adds genre, author and formats). {} when no
+    app answers — a disabled app's handler never runs."""
+    try:
+        from core.hooks import MorpheusEvents, hook_registry
+
+        meta = hook_registry.filter(MorpheusEvents.PRODUCT_CARD_META, {}, product=product)
+    except Exception:  # noqa: BLE001 — never break a storefront render
+        return {}
+    return meta if isinstance(meta, dict) else {}

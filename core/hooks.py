@@ -533,6 +533,11 @@ class MorpheusEvents:
     #   ((key, label, order_by_args)) and its chosen values. Nothing answers on a
     #   store without such an app, and the page shows no extra filters.
     LISTING_FACETS = 'listing.facets'  # filter
+    # PRODUCT_CARD_META — filter, value=dict, kwargs: product (ORM row or GraphQL
+    #   dict). What a storefront product card shows beyond the product itself; the
+    #   book app answers {'genre', 'author', 'formats', 'formats_line'}. Read by
+    #   core's {% product_card_meta %} so a theme card never loads an app's tags.
+    PRODUCT_CARD_META = 'product.card_meta'  # filter
     # STOREFRONT_PRODUCTS — filter. The merchandising-takeover hook: storefront
     #   views fire it at every product placeholder so a merchandising owner
     #   (the dynamics plugin) can control WHAT renders there.
