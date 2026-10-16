@@ -92,3 +92,11 @@ class DotBooksListingFiltersTests(TestCase):
         html = self._page('?q=agatha')
         self.assertIn('<input type="hidden" name="q" value="agatha">', html)
         self.assertIn('Search: agatha', html)
+
+    def test_the_phone_layout_is_final_before_the_script_runs(self):
+        # The collapse keys on (scripting: enabled), not on a class the deferred
+        # script adds, and the Filters button is not hidden in the markup — or
+        # the grid jumps up ~100px on a slow phone when the script lands (CLS).
+        html = self._page()
+        self.assertIn('(max-width: 720px) and (scripting: enabled)', html)
+        self.assertNotIn('data-sheet-open hidden', html)

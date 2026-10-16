@@ -11,7 +11,7 @@
   {# One search, in the header (owner, 2026-10-16): a query from its quick search rides along. #}
   {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
   {% if listing_facets %}
-  <button type="button" class="plp-sheet-open btn" data-sheet-open hidden>{% trans 'Filters' %}{% if chosen_count %} ({{ chosen_count }}){% endif %}</button>
+  <button type="button" class="plp-sheet-open btn" data-sheet-open>{% trans 'Filters' %}{% if chosen_count %} ({{ chosen_count }}){% endif %}</button>
   <div class="plp-facets" data-sheet>
     <div class="plp-sheet-head">
       <strong>{% trans 'Filters' %}</strong>

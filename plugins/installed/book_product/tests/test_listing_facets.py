@@ -196,6 +196,7 @@ class AnswerTests(FacetFixture):
     def test_sorts_by_author_and_length(self):
         by_author = dict((k, o) for k, _l, o in SORTS)
         names = list(self.base().order_by(*by_author['author']).values_list('slug', flat=True))
-        self.assertEqual(names[:3], ['notes', 'murder', 'dragon'])
+        # Books without an author come last, not first.
+        self.assertEqual(names, ['murder', 'dragon', 'quest', 'notes'])
         shortest = list(self.base().order_by(*by_author['shortest']).values_list('slug', flat=True))
         self.assertEqual(shortest, ['dragon', 'murder', 'quest', 'notes'])

@@ -298,9 +298,14 @@ def product_list(request):
     selected_genre_label = _single('genre')
 
     def _without(key, value):
+        # Compare as the filters read them (trimmed, any case): a lower-case author
+        # link or a phone search with a trailing space must still be removable.
+        def norm(v):
+            return (v or '').strip().casefold()
+
         q = request.GET.copy()
         q.pop('page', None)
-        q.setlist(key, [v for v in q.getlist(key) if v != value])
+        q.setlist(key, [v for v in q.getlist(key) if norm(v) != norm(value)])
         encoded = q.urlencode()
         return f'?{encoded}' if encoded else '/products/'
 

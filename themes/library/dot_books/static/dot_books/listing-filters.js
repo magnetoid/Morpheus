@@ -76,9 +76,6 @@
     document.body.style.overflow = '';
     if (sheetOpen) sheetOpen.focus();
   }
-  if (sheetOpen) {
-    sheetOpen.hidden = false;
-    sheetOpen.addEventListener('click', openSheet);
-  }
+  if (sheetOpen) sheetOpen.addEventListener('click', openSheet);
   if (sheetClose) sheetClose.addEventListener('click', closeSheet);
 })();

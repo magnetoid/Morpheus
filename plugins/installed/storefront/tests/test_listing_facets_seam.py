@@ -95,3 +95,12 @@ class SeamTests(TestCase):
         ctx = self._ctx('?q=murder&genre=mystery')
         chip = next(c for c in ctx['filter_chips'] if c['label'] == 'Search: murder')
         self.assertEqual(parse_qs(chip['href'].lstrip('?')), {'genre': ['mystery']})
+
+    def test_a_chip_is_removable_when_the_url_differs_from_the_clean_value(self):
+        # A lower-case author link, and a phone search with a trailing space.
+        ctx = self._ctx('?author=agatha%20christie')
+        chip = next(c for c in ctx['filter_chips'] if c['label'].startswith('Author:'))
+        self.assertEqual(chip['href'], '/products/')
+        ctx = self._ctx('?q=murder%20&genre=mystery')
+        chip = next(c for c in ctx['filter_chips'] if c['label'].startswith('Search:'))
+        self.assertEqual(parse_qs(chip['href'].lstrip('?')), {'genre': ['mystery']})

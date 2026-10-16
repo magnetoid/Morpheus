@@ -9,7 +9,8 @@ that choice would leave.
 
 from __future__ import annotations
 
-from django.db.models import Count, F, Q
+from django.db.models import Count, F, Q, Value
+from django.db.models.functions import NullIf
 
 FACET_KEYS = ('genre', 'topic', 'author', 'format', 'length')
 FORMATS = (('print', 'Print'), ('digital', 'Digital PDF'), ('audiobook', 'Audiobook'))
@@ -23,7 +24,8 @@ LENGTHS = (
 TOPIC_MIN_BOOKS = 2
 GENRE_SEARCH_ABOVE = 12
 SORTS = (
-    ('author', 'Author A–Z', ('book__author', 'name')),
+    # A book without an author sorts last, not first ('' sorts before 'A').
+    ('author', 'Author A–Z', (NullIf(F('book__author'), Value('')).asc(nulls_last=True), 'name')),
     ('shortest', 'Shortest', (F('book__page_count').asc(nulls_last=True), 'name')),
     ('longest', 'Longest', (F('book__page_count').desc(nulls_last=True), 'name')),
 )
