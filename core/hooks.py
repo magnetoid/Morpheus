@@ -522,6 +522,17 @@ class MorpheusEvents:
     #   kwargs: request=HttpRequest, surface=str ('author'|'facet'|'related'|…).
     #   Subscribed by the personalisation plugin; consent-gated, no-op otherwise.
     PRODUCT_LIST_REORDER = 'product.list.reorder'  # filter
+
+    # LISTING_FACETS — filter, value={'queryset': QuerySet[Product], 'facets': list,
+    #   'sorts': list, 'chosen': dict}, kwargs: params (the request's QueryDict),
+    #   surface ('product_list'). Fired by the storefront's product list after its
+    #   own filters, before sorting and pagination. An app that owns product data
+    #   (book_product: genre, topic, author, format, length) narrows `queryset`,
+    #   appends facet dicts ({'key','label','searchable','selected_count',
+    #   'options':[{'value','label','count','selected'}]}), extra sorts
+    #   ((key, label, order_by_args)) and its chosen values. Nothing answers on a
+    #   store without such an app, and the page shows no extra filters.
+    LISTING_FACETS = 'listing.facets'  # filter
     # STOREFRONT_PRODUCTS — filter. The merchandising-takeover hook: storefront
     #   views fire it at every product placeholder so a merchandising owner
     #   (the dynamics plugin) can control WHAT renders there.

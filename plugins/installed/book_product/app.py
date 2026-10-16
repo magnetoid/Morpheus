@@ -34,6 +34,8 @@ class BookProductPlugin(Plugin):
         # no author entity, no per-term meta. Answering SEO_RESOLVE_PAGE tells it
         # what they are, without seo importing this app.
         self.register_hook(events.SEO_RESOLVE_PAGE, self.on_seo_resolve_page, priority=40)
+        # The all-books page's genre/topic/author/format/length filters.
+        self.register_hook(events.LISTING_FACETS, self.on_listing_facets, priority=40)
         # A translated work's editions name each other as hreflang alternates —
         # added to the head document after seo has decided the page (priority
         # 60 > seo's 50), never printed by a theme beside it.
@@ -87,6 +89,11 @@ class BookProductPlugin(Plugin):
         'series_index': 'series',
         'imprints': 'imprints',
     }
+
+    def on_listing_facets(self, value, params=None, surface='', **_):
+        from plugins.installed.book_product.listing_facets import answer
+
+        return answer(value, params)
 
     def on_seo_resolve_page(self, value, request=None, context=None, **kwargs):
         """Claim this app's storefront URLs for the SEO layer.

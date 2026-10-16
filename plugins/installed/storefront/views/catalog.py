@@ -104,15 +104,6 @@ def product_list(request):
         cat = Category.objects.filter(slug=cat_slug, is_active=True).first()
         qs = qs.filter(in_categories([cat]) if cat else Q(pk__in=[])).distinct()
 
-    # Genre / Topic filter — `?genre=<slug>` / `?topic=<slug>` (the book_product
-    # taxonomies that replaced category-as-genre). Match via the book's M2M.
-    genre_slug = (request.GET.get('genre') or '').strip()
-    if genre_slug:
-        qs = qs.filter(book__genres__slug=genre_slug).distinct()
-    topic_slug = (request.GET.get('topic') or '').strip()
-    if topic_slug:
-        qs = qs.filter(book__topics__slug=topic_slug).distinct()
-
     # Collection filter — `?collection=<slug>` (curated merchandising sets;
     # the PDP "Featured in" chips link here so a shopper can browse the set).
     col_slug = (request.GET.get('collection') or '').strip()
@@ -136,7 +127,7 @@ def product_list(request):
     # Book filters — `?author=Hanna Rieder`, `?publisher=Pelican Press`.
     # Model-first (BookProduct) with a legacy book.* metafield fallback.
     book_filter = {}
-    for qk in ('author', 'publisher'):
+    for qk in ('publisher',):
         v = (request.GET.get(qk) or '').strip()
         if v:
             book_filter[qk] = v
@@ -182,17 +173,37 @@ def product_list(request):
 
     qs = qs.distinct()
 
+    # Filters other apps own (the book app: genre, topic, author, format, length).
+    listing = hook_registry.filter(
+        MorpheusEvents.LISTING_FACETS,
+        {'queryset': qs, 'facets': [], 'sorts': [], 'chosen': {}},
+        params=request.GET,
+        surface='product_list',
+    )
+    if not isinstance(listing, dict) or listing.get('queryset') is None:
+        listing = {'queryset': qs, 'facets': [], 'sorts': [], 'chosen': {}}
+    qs = listing['queryset']
+    listing_facets = listing.get('facets') or []
+    chosen_facets = listing.get('chosen') or {}
+
     # Sort
     sort = (request.GET.get('sort') or 'for_you').strip()
     sort_map = {
-        'for_you': '-created_at',  # Base sort, dynamically reordered later
-        'newest': '-created_at',
-        'oldest': 'created_at',
-        'price_asc': 'price',
-        'price_desc': '-price',
-        'name': 'name',
+        'for_you': ('-created_at',),  # Base sort, dynamically reordered later
+        'newest': ('-created_at',),
+        'oldest': ('created_at',),
+        'price_asc': ('price',),
+        'price_desc': ('-price',),
+        'name': ('name',),
     }
-    qs = qs.order_by(sort_map.get(sort, '-created_at'))
+    extra_sorts = [s for s in listing.get('sorts') or [] if len(s) == 3]
+    for key, _label, order in extra_sorts:
+        sort_map[key] = tuple(order)
+    qs = qs.order_by(*sort_map.get(sort, ('-created_at',)))
+    listing_sorts = [('newest', gettext('Newest')), ('name', gettext('Title A–Z'))]
+    listing_sorts += [(k, label) for k, label, _o in extra_sorts if k == 'author']
+    listing_sorts += [('price_asc', gettext('Price ↑')), ('price_desc', gettext('Price ↓'))]
+    listing_sorts += [(k, label) for k, label, _o in extra_sorts if k != 'author']
 
     # Build facet panel: the values any listed product (or its variants) carries, for
     # every filterable attribute at once — four queries however many filters there are
@@ -265,30 +276,51 @@ def product_list(request):
 
     categories_list = display_tree()
 
-    # Author facet — distinct authors (BookProduct model ∪ legacy metafields).
-    available_authors: list[str] = []
-    try:
-        if app_registry.is_active('book_product'):
-            from plugins.installed.book_product.compat import distinct_values
-
-            available_authors = distinct_values('author')
-    except Exception:  # noqa: BLE001
-        pass
-
     selected_cat = next((c for c in categories_list if c.slug == cat_slug), None)
+
     # SEO title/name for the listing. This drives the <title> (via seo_title →
     # {% seo_meta %}), the CollectionPage JSON-LD name, and the OG title — the
     # theme's {% block title %} is NOT what renders <title> (base.html emits it
     # through seo_meta), so this must mirror that block's precedence or filtered
     # PLPs all title as the catalogue label. Order: author > publisher > category > tag
     # > search > default.
-    _author_label = book_filter.get('author', '')
+    def _single(key):
+        """The one chosen value of `key` when it is the only book facet chosen."""
+        values = chosen_facets.get(key) or []
+        others = [k for k, v in chosen_facets.items() if v and k != key]
+        if len(values) != 1 or others:
+            return ''
+        facet = next((f for f in listing_facets if f['key'] == key), None)
+        option = next((o for o in (facet or {}).get('options', []) if o['selected']), None)
+        return option['label'] if option else values[0]
+
+    selected_author = _single('author')
+    selected_genre_label = _single('genre')
+
+    def _without(key, value):
+        q = request.GET.copy()
+        q.pop('page', None)
+        q.setlist(key, [v for v in q.getlist(key) if v != value])
+        encoded = q.urlencode()
+        return f'?{encoded}' if encoded else '/products/'
+
+    filter_chips = [
+        {'label': f'{f["label"]}: {o["label"]}', 'href': _without(f['key'], o['value'])}
+        for f in listing_facets
+        for o in f['options']
+        if o['selected']
+    ]
+    chosen_count = len(filter_chips)
+
+    _author_label = selected_author
     _publisher_label = book_filter.get('publisher', '')
     _tag_label = (selected_tag_obj.name if selected_tag_obj else '') or tag_slug
     if _author_label:
         plp_name = f'Books by {_author_label}'
     elif _publisher_label:
         plp_name = f'{_publisher_label} titles'
+    elif selected_genre_label:
+        plp_name = selected_genre_label
     elif selected_cat:
         plp_name = selected_cat.name
     elif _tag_label:
@@ -329,8 +361,7 @@ def product_list(request):
     _is_filtered = bool(
         q
         or cat_slug
-        or genre_slug
-        or topic_slug
+        or chosen_facets
         or col_slug
         or tag_slug
         or book_filter
@@ -348,13 +379,18 @@ def product_list(request):
             'products': products,
             'categories': categories_list,
             'facets': facets,
-            'available_authors': available_authors,
             'search_query': q,
             'selected_category': cat_slug,
             'selected_category_obj': selected_cat,
             'selected_tag': tag_slug,
             'selected_tag_obj': selected_tag_obj,
-            'selected_author': book_filter.get('author', ''),
+            'selected_author': selected_author,
+            'selected_genre_label': selected_genre_label,
+            'listing_facets': listing_facets,
+            'listing_sorts': listing_sorts,
+            'filter_chips': filter_chips,
+            'chosen_count': chosen_count,
+            'result_count': paginator.count,
             'selected_publisher': book_filter.get('publisher', ''),
             'selected_sort': sort,
             'price_min': pmin or '',
