@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.114.1 — 2026-10-16
+
+**Book cards that name the book, and a share preview that shows the cover**
+
+- dotbooks book cards name the genre, the author and the formats (Print · PDF · Audiobook), with a larger title and a typeset cover for a book without one; the grid adds no query per card.
+- The SEO card's share preview shows the product's cover when no share image is set, as the shop does, and follows the gallery as photos are added, reordered or removed.
+
 ## v0.114.0 — 2026-10-16
 
 **Better book filters on dotbooks**
