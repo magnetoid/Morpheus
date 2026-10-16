@@ -450,6 +450,18 @@
           pill.remove();
         }
       });
+      announceCover();
+    }
+
+    // The first image is the cover the storefront shares; the SEO card's
+    // preview listens for it (seo/_meta_panel.html).
+    function announceCover() {
+      const first = grid && grid.querySelector('[data-kind="image"][data-id]');
+      const img = first && first.querySelector('img');
+      root.dispatchEvent(new CustomEvent('morph:media-cover', {
+        bubbles: true,
+        detail: { url: img ? img.getAttribute('src') : '' },
+      }));
     }
 
     async function deleteFromModal() {
@@ -534,6 +546,7 @@
       tiles.forEach((t, i) => {
         t.classList.toggle('is-cover', i === 0);
       });
+      announceCover();
     }
   }
 

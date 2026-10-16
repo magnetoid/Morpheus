@@ -199,8 +199,11 @@ book code for them and a store without the book app shows no book filters. A the
 `listing_facets` generically (dot_books: `storefront/_listing_filters.html`); every chip comes from the
 view's `filter_chips`, so removing one keeps the rest. dot_books has one search, in the header (owner,
 2026-10-16): the all-books page carries an incoming `?q=` as a hidden field and a chip, never a box of
-its own. Guarded by `book_product/tests/test_listing_facets.py`,
-`storefront/tests/test_listing_facets_seam.py` and `themes/test_dot_books_listing_filters.py`.
+its own. A product card's book line (genre, author, formats) comes the same way (v0.114.1): core's
+`{% product_card_meta %}` fires `PRODUCT_CARD_META` and book_product answers (`book_product/cards.py`),
+so a theme card never loads `book_extras`. Guarded by `book_product/tests/test_listing_facets.py`,
+`storefront/tests/test_listing_facets_seam.py`, `themes/test_dot_books_listing_filters.py` and
+`themes/test_dot_books_book_card.py`.
 
 **Convention — a vertical extends Product, and shopping surfaces list `shoppable()`
 (v0.109.0).** booking_marketplace kept experiences in a parallel table the dashboard,

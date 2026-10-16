@@ -18,7 +18,8 @@
 <div class="seo-panel space-y-4" data-seo-panel
      data-host-title="{{ seo_host_title_id|default:'page-title' }}"
      data-host-desc="{{ seo_host_desc_id|default:'page-excerpt' }}"
-     data-host-image="{{ seo_host_image_id|default:'page-cover' }}">
+     data-host-image="{{ seo_host_image_id|default:'page-cover' }}"
+     data-cover-image="{{ seo_cover_image }}">
   {% comment %}
   The presence marker save_object_seo gates on lives on seo_title below — a
   POST without it must never be able to blank a stored override.
@@ -202,6 +203,14 @@
     var hostTitle = byId('hostTitle');
     var hostDesc = byId('hostDesc');
     var hostImage = byId('hostImage');
+    // What the page shares when no share image is set: the product's cover. The
+    // gallery uploader announces a new one (upload, reorder, delete) without a reload.
+    var cover = root.dataset.coverImage || '';
+    document.addEventListener('morph:media-cover', function (e) {
+      if (!root.isConnected) return;
+      cover = (e.detail && e.detail.url) || '';
+      render();
+    });
     function val(el) { return el ? (el.value || '').trim() : ''; }
     function titleWithBrand(t) { return brand && t ? t + ' — ' + brand : (t || brand); }
     function render() {
@@ -216,7 +225,7 @@
       q('[data-seo-pv-ogdesc]').textContent = ogd || 'Description';
       var imgEl = q('[data-seo-pv-img]');
       var noImg = q('[data-seo-pv-noimg]');
-      var src = img || val(hostImage);
+      var src = img || val(hostImage) || cover;
       if (src) { imgEl.src = src; imgEl.classList.remove('hidden'); if (noImg) noImg.classList.add('hidden'); }
       else { imgEl.classList.add('hidden'); if (noImg) noImg.classList.remove('hidden'); }
       var tc = q('[data-seo-count="title"]');

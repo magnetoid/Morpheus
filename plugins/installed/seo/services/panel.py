@@ -261,6 +261,7 @@ def panel_context(obj, request=None) -> dict:
         'seo_brand': brand,
         'seo_host': host,
         'seo_object_path': _object_path(obj),
+        'seo_cover_image': _cover_url(obj),
         'seo_schema_editor_url': _schema_editor_url(obj),
         'seo_card_open': card_open,
         'seo_twitter_choices': [
@@ -294,6 +295,20 @@ def _schema_editor_url(obj) -> str:
         meta = obj._meta
         return f'/dashboard/seo/schema/{meta.app_label}/{meta.model_name}/{obj.pk}/'
     except Exception:  # noqa: BLE001
+        return ''
+
+
+def _cover_url(obj) -> str:
+    """The image a page shares when it has no share image of its own.
+
+    A product page shares its cover (the storefront passes the primary image as
+    `seo_image`), so the preview falls back to the same one instead of saying
+    "No share image" over a product with photos.
+    """
+    try:
+        image = getattr(obj, 'primary_image', None)
+        return image.image.url if image is not None and image.image else ''
+    except Exception:  # noqa: BLE001 — a file without a URL is no cover
         return ''
 
 
