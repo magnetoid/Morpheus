@@ -1,6 +1,6 @@
 # Dotbooks: better book filters on the all-books page
 
-**Status:** design approved in chat 2026-10-16; spec awaiting owner review.
+**Status:** shipped in v0.114.0. Owner change during the build: the page has no search box of its own; search lives in the header.
 **Owner's request (2026-10-16):** "on dotbooks frontend in all books page, we need more advanced and better
 dropdowns filter and more of them."
 **Ships as:** one MINOR release.

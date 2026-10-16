@@ -191,6 +191,17 @@ GraphQL `products(category:)` query, Linda's product tools and the dashboard cou
 Never filter on `category__slug` alone; a parent then shows nothing unless every
 product is cross-listed by hand. Guarded by `storefront/tests/test_category_tree.py`.
 
+**Convention — a listing's extra filters come from the app that owns the data (v0.114.0).** The
+storefront's product list fires `LISTING_FACETS` after its own filters; book_product answers with
+genre, topic, author, format and length (`book_product/listing_facets.py`: OR inside a facet, AND
+across facets, each facet's counts taken with the others applied) and its sorts. The view imports no
+book code for them and a store without the book app shows no book filters. A theme renders
+`listing_facets` generically (dot_books: `storefront/_listing_filters.html`); every chip comes from the
+view's `filter_chips`, so removing one keeps the rest. dot_books has one search, in the header (owner,
+2026-10-16): the all-books page carries an incoming `?q=` as a hidden field and a chip, never a box of
+its own. Guarded by `book_product/tests/test_listing_facets.py`,
+`storefront/tests/test_listing_facets_seam.py` and `themes/test_dot_books_listing_filters.py`.
+
 **Convention — a vertical extends Product, and shopping surfaces list `shoppable()`
 (v0.109.0).** booking_marketplace kept experiences in a parallel table the dashboard,
 Linda's product tools, stories and search never saw. Each listing now extends a catalog

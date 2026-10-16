@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.114.0 — 2026-10-16
+
+**Better book filters on dotbooks**
+
+- All books: filter by genre, topic, author, format (print, PDF, audiobook) and length, several values each, with a book count next to every choice.
+- Chosen filters show as removable chips; on a phone the filters open in a sheet; every filtered view is a link you can share.
+- One search, in the header: the all-books page keeps a header search while you filter, and has no search box of its own.
+- New sorts: Title A–Z, Author A–Z, Shortest, Longest.
+
 ## v0.113.0 — 2026-10-15
 
 **Nothing leaves the store without consent; AI stops when you say stop**
