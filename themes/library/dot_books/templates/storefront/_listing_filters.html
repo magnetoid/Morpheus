@@ -1,0 +1,58 @@
+{% load static i18n %}
+{% comment %}
+  The all-books toolbar (spec 2026-10-16-dotbooks-book-filters). One GET form: one
+  <details> panel per facet from `listing_facets` (contributed through
+  LISTING_FACETS), the sort menu, and Apply. Without JavaScript the panels open and
+  close natively and Apply submits repeated keys; listing-filters.js applies a panel
+  when it closes, narrows long lists as you type, and turns the facets into a bottom
+  sheet under 720px.
+{% endcomment %}
+<form method="get" action="/products/" class="plp-toolbar" data-listing-filters>
+  {# One search, in the header (owner, 2026-10-16): a query from its quick search rides along. #}
+  {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+  {% if listing_facets %}
+  <button type="button" class="plp-sheet-open btn" data-sheet-open hidden>{% trans 'Filters' %}{% if chosen_count %} ({{ chosen_count }}){% endif %}</button>
+  <div class="plp-facets" data-sheet>
+    <div class="plp-sheet-head">
+      <strong>{% trans 'Filters' %}</strong>
+      <button type="button" class="plp-sheet-close" data-sheet-close aria-label="{% trans 'Close filters' %}">✕</button>
+    </div>
+    {% for f in listing_facets %}
+    <details class="plp-facet" data-facet="{{ f.key }}">
+      <summary class="plp-facet-button">{{ f.label }}{% if f.selected_count %} <span class="plp-facet-n">· {{ f.selected_count }}</span>{% endif %}</summary>
+      <div class="plp-panel" role="group" aria-label="{{ f.label }}">
+        {% if f.searchable %}<input type="search" class="plp-panel-search" placeholder="{% blocktrans with label=f.label|lower %}Find {{ label }}…{% endblocktrans %}" aria-label="{% blocktrans with label=f.label|lower %}Find {{ label }}{% endblocktrans %}" data-panel-search>{% endif %}
+        <div class="plp-options">
+          {% for o in f.options %}
+          <label class="plp-option"><input type="checkbox" name="{{ f.key }}" value="{{ o.value }}"{% if o.selected %} checked{% endif %}><span class="plp-option-label">{{ o.label }}</span><span class="plp-option-count">{{ o.count }}</span></label>
+          {% endfor %}
+        </div>
+        <p class="plp-panel-empty" data-panel-empty hidden>{% trans 'Nothing matches.' %}</p>
+      </div>
+    </details>
+    {% endfor %}
+    <button class="btn btn-primary plp-sheet-apply" type="submit">{% trans 'Show results' %}</button>
+  </div>
+  {% endif %}
+  {% if categories|length > 1 %}
+  {# The catalog's own categories (a store with more than one); books' genres are the Genre panel. #}
+  <select name="category" aria-label="{% trans 'Filter by category' %}" class="plp-sort" onchange="this.form.requestSubmit()">
+    <option value="">{% trans 'All categories' %}</option>
+    {% for c in categories %}
+    <option value="{{ c.slug }}"{% if c.slug == selected_category %} selected{% endif %}>{% if c.depth %}&nbsp;&nbsp;&nbsp;{% if c.depth > 1 %}&nbsp;&nbsp;&nbsp;{% endif %}{% endif %}{{ c.name }}</option>
+    {% endfor %}
+  </select>
+  {% else %}
+  {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+  {% endif %}
+  <select name="sort" aria-label="{% trans 'Sort books' %}" class="plp-sort" onchange="this.form.requestSubmit()">
+    {% for key, label in listing_sorts %}
+    <option value="{{ key }}"{% if key == selected_sort %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  {% if selected_tag %}<input type="hidden" name="tag" value="{{ selected_tag }}">{% endif %}
+  {% if selected_publisher %}<input type="hidden" name="publisher" value="{{ selected_publisher }}">{% endif %}
+  {% for f in facets %}{% for v in f.selected %}<input type="hidden" name="attr_{{ f.attr.slug }}" value="{{ v }}">{% endfor %}{% endfor %}
+  <button class="btn btn-primary plp-apply">{% trans 'Apply' %}</button>
+</form>
+<script src="{% static 'dot_books/listing-filters.js' %}" defer></script>

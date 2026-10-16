@@ -304,13 +304,39 @@ def product_list(request):
         encoded = q.urlencode()
         return f'?{encoded}' if encoded else '/products/'
 
-    filter_chips = [
+    # Every active filter as a removable chip; removing one keeps all the others.
+    filter_chips = []
+    for key, label, value, shown in (
+        ('q', gettext('Search'), q, q),
+        (
+            'publisher',
+            gettext('Publisher'),
+            book_filter.get('publisher', ''),
+            book_filter.get('publisher', ''),
+        ),
+        (
+            'category',
+            gettext('Category'),
+            cat_slug,
+            selected_cat.name if selected_cat else cat_slug,
+        ),
+        (
+            'tag',
+            gettext('Tag'),
+            tag_slug,
+            (selected_tag_obj.name if selected_tag_obj else '') or tag_slug,
+        ),
+    ):
+        if value:
+            filter_chips.append({'label': f'{label}: {shown}', 'href': _without(key, value)})
+    facet_chips = [
         {'label': f'{f["label"]}: {o["label"]}', 'href': _without(f['key'], o['value'])}
         for f in listing_facets
         for o in f['options']
         if o['selected']
     ]
-    chosen_count = len(filter_chips)
+    filter_chips += facet_chips
+    chosen_count = len(facet_chips)
 
     _author_label = selected_author
     _publisher_label = book_filter.get('publisher', '')

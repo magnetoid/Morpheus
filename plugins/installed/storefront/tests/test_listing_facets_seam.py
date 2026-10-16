@@ -90,3 +90,8 @@ class SeamTests(TestCase):
         self.assertEqual(
             [k for k, _l in ctx['listing_sorts']], ['newest', 'name', 'price_asc', 'price_desc']
         )
+
+    def test_removing_the_search_chip_keeps_the_book_filters(self):
+        ctx = self._ctx('?q=murder&genre=mystery')
+        chip = next(c for c in ctx['filter_chips'] if c['label'] == 'Search: murder')
+        self.assertEqual(parse_qs(chip['href'].lstrip('?')), {'genre': ['mystery']})
