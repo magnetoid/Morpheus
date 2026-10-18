@@ -29,23 +29,11 @@ _AWAITING_A_GUIDE = frozenset(
         'localization',
         'markets',
         'media',
-        'media_3d',
-        'motion',
-        'product_gallery',
         'product_stories',
-        'product_videos',
-        'pwa',
-        'rails',
         'reviews',
-        'save_for_later',
         'shipping',
         'smart_shipping',
-        'storefront',
         'tax',
-        'trust_signals',
-        'ugc_reviews',
-        'webstories',
-        'wishlist',
     }
 )
 
