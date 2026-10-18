@@ -16,26 +16,7 @@ from plugins import app_help
 
 #: Apps whose guide is still being written. Every guide removes its app; Task 11
 #: of the plan deletes the set, and from then on every app must have a guide.
-_AWAITING_A_GUIDE = frozenset(
-    {
-        'audiobooks',
-        'b2b',
-        'book_product',
-        'bookvault',
-        'cms',
-        'digital_products',
-        'gdpr',
-        'inventory',
-        'localization',
-        'markets',
-        'media',
-        'product_stories',
-        'reviews',
-        'shipping',
-        'smart_shipping',
-        'tax',
-    }
-)
+_AWAITING_A_GUIDE = frozenset({})
 
 _WORD = re.compile(r"[A-Za-z][A-Za-z'’-]*")
 _SENTENCE_END = re.compile(r'[.!?](\s|$)')
