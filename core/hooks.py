@@ -366,6 +366,15 @@ class HookRegistry:
             out.append(handler.__qualname__)
         return out
 
+    def events_of(self, plugin: str) -> list[str]:
+        """Every event a plugin's handlers listen to, sorted (the Help page's
+        technical details). Empty for an app whose ready() has not run."""
+        return sorted(
+            event
+            for event, entries in self._handlers.items()
+            if any(entry[3] == plugin for entry in entries)
+        )
+
     def clear(self, event: str | None = None) -> None:
         """Clear handlers. If event is None, clears all."""
         if event:

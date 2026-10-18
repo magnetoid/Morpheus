@@ -396,6 +396,14 @@ class AppRegistry:
                 out.append((owner, '/' + prefix))
         return out
 
+    def url_prefixes(self, name: str) -> list[str]:
+        """The URL prefixes an app mounts its own routes under ('/' for the root)."""
+        return [
+            '/' + (entry.get('prefix') or '')
+            for entry in self._plugin_urls
+            if entry.get('plugin') == name
+        ]
+
     def dashboard_cards(self, section: str | None = None) -> list:
         """Contributed `DashboardCard`s, sorted by section then order. Raw
         `section` values — the dashboard resolves legacy aliases itself."""
