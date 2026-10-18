@@ -29,6 +29,8 @@ class ReleaseNotesPlugin(Plugin):
         'docs/RELEASE_NOTES.md next to the running version).'
     )
     has_models = False
+    # Help reads the dashboard's sections, tabs and the Apps catalogue's areas.
+    requires = ['admin_dashboard']
 
     def contribute_dashboard_pages(self) -> list:
         return [
