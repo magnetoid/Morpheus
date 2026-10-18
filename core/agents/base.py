@@ -159,6 +159,10 @@ class MorpheusAgent:
                 continue
             if tool.scopes and not set(tool.scopes).issubset(set(self.scopes)):
                 continue
+            # A tool with no scopes is staff-wide (the help tools): never a
+            # shopper's. A storefront agent gets only tools inside its own scopes.
+            if not tool.scopes and self.audience == 'storefront':
+                continue
             out.append(tool)
             seen_names.add(tool.name)
         return out

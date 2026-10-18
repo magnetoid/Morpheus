@@ -21,6 +21,15 @@ from __future__ import annotations
 from morpheus.app import DashboardPage, Plugin
 from morpheus.core import MorpheusEvents
 
+#: Appended to Linda's instructions while this app is on (AGENT_SYSTEM_PROMPT):
+#: a line in core's base prompt would name tools that vanish when it is off.
+HELP_LINE = (
+    '\nHELP\n'
+    '  • When the merchant asks how to do something in the dashboard, or what an app '
+    "does, read the store's own help first: `help.apps` finds the app, `help.read` "
+    'gives its guide and where its screens are.\n'
+)
+
 
 class ReleaseNotesPlugin(Plugin):
     name = 'release_notes'
@@ -41,6 +50,7 @@ class ReleaseNotesPlugin(Plugin):
         )
         self.register_hook(MorpheusEvents.DASHBOARD_USER_MENU, self.on_user_menu)
         self.register_hook(MorpheusEvents.DASHBOARD_PAGE_HELP, self.on_page_help)
+        self.register_hook(MorpheusEvents.AGENT_SYSTEM_PROMPT, self.on_system_prompt, priority=60)
 
     def contribute_dashboard_pages(self) -> list:
         return [
@@ -116,3 +126,12 @@ class ReleaseNotesPlugin(Plugin):
             'label': 'Help',
             'title': f'Help for {inst.label or inst.name}',
         }
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.release_notes.help_tools import help_apps_tool, help_read_tool
+
+        return [help_apps_tool, help_read_tool]
+
+    def on_system_prompt(self, value, **kwargs):
+        """Tell Linda the store's help exists (AGENT_SYSTEM_PROMPT)."""
+        return value + HELP_LINE if isinstance(value, str) else value
