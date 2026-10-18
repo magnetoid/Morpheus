@@ -27,15 +27,17 @@ class SecretMaskingTests(TestCase):
         user = get_user_model().objects.create_user(username='staff', password='x', is_staff=True)
         self.client.force_login(user)
         # Activate staff_sso so its SettingsPanel (with the format:password
-        # field) is collected and rendered by the shared renderer.
+        # field) is collected and rendered by the shared renderer, and put it
+        # back the way it was afterwards: it is already on in the test process,
+        # and switching it off in tearDown left every later test without it.
+        was_active = app_registry.is_active(self.PLUGIN)
         app_registry.activate(self.PLUGIN)
+        if not was_active:
+            self.addCleanup(app_registry.deactivate, self.PLUGIN)
         self.plugin = app_registry.get(self.PLUGIN)
         # Persist a saved secret to prove it is masked on render / preserved on
         # a blank submit.
         self.plugin.set_config('oidc_client_secret', SECRET)
-
-    def tearDown(self):
-        app_registry.deactivate(self.PLUGIN)
 
     def test_saved_secret_is_not_rendered_in_page_source(self):
         # Staff SSO files under Settings › Team & security (v0.81.0).

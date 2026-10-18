@@ -44,7 +44,11 @@ class BrandVoiceFilterTests(TestCase):
         plugin = app_registry.get('ai_content')
         for key in ('brand_name', 'brand_audience', 'brand_tone', 'brand_voice_guidelines'):
             plugin.set_config(key, '')
-        self.assertEqual(build_system_prompt(), LINDA_BASE_PROMPT)
+        # Nothing prepended means no voice. Other apps may append to the prompt
+        # (the help app's line), so it is not compared whole.
+        prompt = build_system_prompt()
+        self.assertTrue(prompt.startswith(LINDA_BASE_PROMPT), prompt[:60])
+        self.assertNotIn('BRAND VOICE', prompt)
 
     def test_disabled_plugin_yields_plain_prompt(self):
         from core.assistant.prompts import LINDA_BASE_PROMPT, build_system_prompt
@@ -53,8 +57,10 @@ class BrandVoiceFilterTests(TestCase):
         self.assertIn('BRAND VOICE', build_system_prompt())  # sanity: active first
         app_registry.deactivate('ai_content')
         try:
-            # Bus skips the inactive owner's handler → plain prompt, no error.
-            self.assertEqual(build_system_prompt(), LINDA_BASE_PROMPT)
+            # Bus skips the inactive owner's handler → no voice prepended, no error.
+            prompt = build_system_prompt()
+            self.assertTrue(prompt.startswith(LINDA_BASE_PROMPT), prompt[:60])
+            self.assertNotIn('BRAND VOICE', prompt)
         finally:
             app_registry.activate('ai_content')
         self.assertIn('BRAND VOICE', build_system_prompt())  # restored on re-enable

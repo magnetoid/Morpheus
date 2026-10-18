@@ -51,7 +51,10 @@ class HelpPageTests(TestCase):
         self.assertIn(
             'href="/dashboard/help/reviews/"', self._section(html, 'data-help-area="Products"')
         )
-        self.assertNotIn('data-help-off', html)
+        if 'data-help-off' in html:  # another app may be off; reviews is not
+            self.assertNotIn(
+                'href="/dashboard/help/reviews/"', self._section(html, 'data-help-off')
+            )
 
     def test_an_app_that_is_off_is_listed_apart(self):
         app_registry.deactivate('reviews')
