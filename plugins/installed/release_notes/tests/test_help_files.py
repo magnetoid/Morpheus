@@ -106,7 +106,6 @@ _AWAITING_A_GUIDE = frozenset(
         'rbac',
         'reddit_ads',
         'referrals',
-        'release_notes',
         'returns_portal',
         'reviews',
         'rich_post_purchase',

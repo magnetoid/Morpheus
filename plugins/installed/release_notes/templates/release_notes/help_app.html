@@ -1,0 +1,58 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{{ facts.label }} · Help · Morpheus{% endblock %}
+
+{% block content %}
+{% comment %}One app's help (release_notes/help_views.py): its guide (help.md), then
+what the running code says about it: where its screens are, what Linda can do
+there and the technical details.{% endcomment %}
+<div class="help max-w-4xl mx-auto space-y-5">
+  <p class="text-sm"><a href="{% url 'help:index' %}">← All help</a></p>
+  <header class="space-y-1">
+    <div class="flex items-center gap-2 flex-wrap">
+      <h1 class="text-xl font-semibold tracking-tight">{{ facts.label }}</h1>
+      {% if facts.active %}<span class="pill pill-success">On</span>{% else %}<span class="pill pill-neutral">Off</span>{% endif %}
+    </div>
+    {% if summary %}<p class="text-sm text-[color:var(--text-muted)]">{{ summary }}</p>{% endif %}
+    {% if not facts.active %}<p class="text-sm">This app is switched off. An admin can switch it on in <a href="/dashboard/apps/">Settings › Apps</a>; until then its screens are listed without links.</p>{% endif %}
+  </header>
+
+  <section class="card card-padded help-guide">
+    {% if guide_html %}{{ guide_html }}{% else %}<p class="text-sm text-[color:var(--text-muted)]">This app has no guide yet.</p>{% endif %}
+  </section>
+
+  {% if facts.places or facts.cards or facts.shop %}
+  <section class="card card-padded" data-help-places>
+    <h2 class="help__area">Where to find it</h2>
+    <ul class="help__list">
+      {% for place in facts.places %}<li>{% if place.url %}<a href="{{ place.url }}">{{ place.label }}</a>{% else %}{{ place.label }}{% endif %}</li>{% endfor %}
+      {% for card in facts.cards %}<li>{{ card|capfirst }}</li>{% endfor %}
+      {% for spot in facts.shop %}<li>In the shop: {{ spot }}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if facts.tools %}
+  <section class="card card-padded" data-help-tools>
+    <h2 class="help__area">What Linda can do here</h2>
+    <ul class="help__list">
+      {% for tool in facts.tools %}<li>{{ tool.description }}{% if tool.asks_first %} <span class="pill pill-warn pill-xs">asks you first</span>{% endif %}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <details class="card card-padded">
+    <summary class="help__area help__toggle">Technical details</summary>
+    <dl class="help__tech">
+      <dt>Name</dt><dd><code>{{ facts.name }}</code> · v{{ facts.version }}</dd>
+      {% if facts.description %}<dt>Description</dt><dd>{{ facts.description }}</dd>{% endif %}
+      <dt>Requires</dt><dd>{{ facts.requires|join:", "|default:"nothing" }}</dd>
+      <dt>Required by</dt><dd>{{ facts.required_by|join:", "|default:"nothing" }}</dd>
+      <dt>Listens to</dt><dd>{{ facts.events|join:", "|default:"nothing" }}</dd>
+      <dt>Shop slots</dt><dd>{{ facts.slots|join:", "|default:"none" }}</dd>
+      <dt>URL prefixes</dt><dd>{{ facts.urls|join:", "|default:"none" }}</dd>
+      <dt>Agent tools</dt><dd>{% for tool in facts.tools %}<code>{{ tool.name }}</code>{% if not forloop.last %}, {% endif %}{% empty %}none{% endfor %}</dd>
+    </dl>
+  </details>
+</div>
+{% include "release_notes/_help_styles.html" %}
+{% endblock %}

@@ -1,0 +1,5 @@
+<ul class="help__apps">
+  {% for app in apps %}
+  <li><a href="{% url 'help:app' app.name %}" class="help__app">{{ app.label }}</a>{% if app.summary %}<span class="help__summary">{{ app.summary }}</span>{% endif %}</li>
+  {% endfor %}
+</ul>

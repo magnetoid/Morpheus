@@ -72,7 +72,7 @@ class VersionPageTests(TestCase):
 
 
 class SitePageTests(TestCase):
-    """Help and About live on the project website and open embedded here.
+    """About lives on the project website and opens embedded here.
 
     Written once on morpheus.direct for every store (owner's call, 2026-10-10);
     the dashboard frames the site's embed mode. Only these two pages may frame
@@ -85,9 +85,9 @@ class SitePageTests(TestCase):
             username='boss2', email='b2@x.io', password='pw', is_staff=True
         )
 
-    def test_about_and_help_embed_the_website_pages(self):
+    def test_about_embeds_the_website_page(self):
         self.client.force_login(self.staff)
-        for slug, page in (('about', 'about.html'), ('help', 'help.html')):
+        for slug, page in (('about', 'about.html'),):
             with self.subTest(page=slug):
                 resp = self.client.get(f'/dashboard/apps/release_notes/{slug}/')
                 self.assertEqual(resp.status_code, 200)

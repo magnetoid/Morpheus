@@ -1,10 +1,12 @@
 """Release notes plugin — the in-dashboard platform-info pages.
 
-Two model-less surfaces under Dashboard → Settings:
+Three model-less surfaces under Dashboard → Settings:
 
-* **Help** and **About Morpheus OS** — pages of the project website
-  (``MORPHEUS_SITE_URL``, morpheus.direct) shown in its embed mode, so they are
-  written once for every store (`views.help_page`, `views.about`).
+* **Help**: /dashboard/help/, every app's guide (its own
+  ``plugins/installed/<app>/help.md``) and what the running code says about it,
+  searchable and readable by Linda. Spec:
+  docs/superpowers/specs/2026-10-18-help-system-design.md.
+* **About Morpheus OS**: the project website's About page in its embed mode.
 * **Version & updates** — renders [`docs/RELEASE_NOTES.md`](../../../docs/RELEASE_NOTES.md),
   the single source of truth for the Morpheus OS changelog, next to the
   running `MORPHEUS_VERSION` (`views.version_updates`).
@@ -22,27 +24,33 @@ from morpheus.app import DashboardPage, Plugin
 class ReleaseNotesPlugin(Plugin):
     name = 'release_notes'
     label = 'Release notes'
-    version = '1.1.0'
+    version = '1.2.0'
     description = (
-        "Help and About Morpheus OS (the project website's pages, shown in the "
-        'dashboard) and the Version & updates changelog (renders '
-        'docs/RELEASE_NOTES.md next to the running version).'
+        "Help for every app (each app's own guide plus what the running code says "
+        "about it), About Morpheus OS (the project website's page) and the Version & "
+        'updates changelog (renders docs/RELEASE_NOTES.md next to the running version).'
     )
     has_models = False
     # Help reads the dashboard's sections, tabs and the Apps catalogue's areas.
     requires = ['admin_dashboard']
+
+    def ready(self) -> None:
+        self.register_urls(
+            'plugins.installed.release_notes.urls', prefix='dashboard/help/', namespace='help'
+        )
 
     def contribute_dashboard_pages(self) -> list:
         return [
             DashboardPage(
                 label='Help',
                 slug='help',
-                view='plugins.installed.release_notes.views.help_page',
+                view='plugins.installed.release_notes.help_views.help_redirect',
                 icon='help-circle',
                 section='developer',
                 order=93,
                 nav='settings',
-                hint='How the dashboard works',
+                hint='What every app does and where to find it',
+                url='/dashboard/help/',
             ),
             DashboardPage(
                 label='About Morpheus OS',

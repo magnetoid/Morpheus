@@ -1,0 +1,27 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Help · Morpheus{% endblock %}
+
+{% block content %}
+{% comment %}The Help index (release_notes/help_views.py): the apps that are on,
+grouped the way the Apps catalogue groups them, then the apps that are off. Each
+sentence is the app's own help.md summary.{% endcomment %}
+<div class="help max-w-4xl mx-auto space-y-5">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Help</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">What each app does, how to set it up and where to find it. New here? Start with <a href="{% url 'help:app' 'admin_dashboard' %}">how the dashboard works</a>.</p>
+  </div>
+  {% for group in groups %}
+  <section class="card card-padded" data-help-area="{{ group.label }}">
+    <h2 class="help__area">{{ group.label }}</h2>
+    {% include "release_notes/_help_app_list.html" with apps=group.apps %}
+  </section>
+  {% endfor %}
+  {% if off %}
+  <section class="card card-padded" data-help-off>
+    <h2 class="help__area">Not switched on</h2>
+    {% include "release_notes/_help_app_list.html" with apps=off %}
+  </section>
+  {% endif %}
+</div>
+{% include "release_notes/_help_styles.html" %}
+{% endblock %}

@@ -160,7 +160,7 @@ def version_updates(request):
 def _site_page(request, page: str, title: str):
     """A page of the project website, shown inside the dashboard.
 
-    Help and About are written once on the website (``MORPHEUS_SITE_URL``) for
+    About is written once on the website (``MORPHEUS_SITE_URL``) for
     every store; the dashboard frames the site's embed mode, which hides the
     site's own header and footer and takes the dashboard's light or dark theme.
     Only these responses may frame that site — every other dashboard page keeps
@@ -188,10 +188,3 @@ def _site_page(request, page: str, title: str):
 def about(request):
     """About Morpheus OS — the website's About page."""
     return _site_page(request, 'about.html', 'About Morpheus OS')
-
-
-@staff_member_required
-@require_capability('system.read')
-def help_page(request):
-    """Help — the website's guide to the dashboard."""
-    return _site_page(request, 'help.html', 'Help')
