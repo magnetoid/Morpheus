@@ -26,8 +26,8 @@ from morpheus.core import MorpheusEvents
 HELP_LINE = (
     '\nHELP\n'
     '  • When the merchant asks how to do something in the dashboard, or what an app '
-    "does, read the store's own help first: `help.apps` finds the app, `help.read` "
-    'gives its guide and where its screens are.\n'
+    "does, read the store's own help first: `help.apps` lists the apps or searches their "
+    "help, `help.read` gives one app's guide and where its screens are.\n"
 )
 
 

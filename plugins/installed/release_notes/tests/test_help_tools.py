@@ -30,6 +30,18 @@ class HelpToolTests(TestCase):
         self.assertTrue(apps['reviews']['on'])
         self.assertEqual(apps['reviews']['area'], 'Products')
 
+    def test_help_apps_fits_in_one_tool_result(self):
+        from plugins.installed.agent_mcp.linda_turn import MAX_RESULT_CHARS, _result
+
+        text = _result(help_apps_tool.handler().output, is_error=False)['content'][0]['text']
+        self.assertNotIn('[cut:', text)
+        self.assertLessEqual(len(text), MAX_RESULT_CHARS)
+
+    def test_help_apps_with_a_query_searches_the_help(self):
+        apps = {a['name']: a for a in help_apps_tool.handler(query='licence').output['apps']}
+        self.assertIn('release_notes', apps)
+        self.assertTrue(apps['release_notes']['summary'])
+
     def test_help_read_turns_markers_into_names_and_paths(self):
         text = help_read_tool.handler(app='release_notes').output['text']
         self.assertIn('Version & updates (/dashboard/apps/release_notes/version/)', text)

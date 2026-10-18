@@ -246,6 +246,91 @@ def is_write_tool(tool) -> bool:
     )
 
 
+# ── Linda's tool rules ──────────────────────────────────────────────────────
+# One copy, read by the MCP edge's catalogue (agent_mcp/linda_turn.py) and by the
+# Help page's "What Linda can do here" (release_notes/help_facts.py); two copies
+# of a rule drift, and the page would promise tools she is never offered.
+
+#: A shopper's own cart, checkout and wishlist — not the merchant's.
+SHOPPER_PREFIXES: tuple[str, ...] = ('cart.', 'checkout.', 'wishlist.')
+
+#: Platform internals: only in Developer mode (superusers).
+DEVELOPER_TOOLS: frozenset[str] = frozenset(
+    {
+        'db.list_models',
+        'db.count_rows',
+        'db.describe_model',
+        'run_python',
+        'fs.list_dir',
+        'fs.read_file',
+        'fs.search_files',
+        'system.disk_usage',
+        'system.git_log',
+        'system.server_info',
+        'logs.search',
+        'platform.capabilities',
+        'plugins.describe',
+        'delegate.list_agents',
+        'delegate.invoke_agent',
+        # Blocks for up to 300s inside a turn that has far less.
+        'delegate.wait_for_workers',
+    }
+)
+
+#: Tools Linda never gets.
+NOT_LINDAS: frozenset[str] = frozenset(
+    {
+        # Duplicates of the tool Linda uses for the same job; two names for one job
+        # cost her a step deciding.
+        'catalog.find_products',  # products.search
+        'catalog.get_product',  # products.get
+        'analytics.revenue_summary',  # analytics.summary
+        'cms.list_pages',  # cms.pages
+        'orders.list_recent',  # orders.search
+        'plugins.enable',  # plugins.toggle
+        'plugins.disable',  # plugins.toggle
+        # Staff roles are account administration, not store work.
+        'rbac.grant_role',
+        'rbac.revoke_role',
+    }
+)
+
+#: Tools that act on the world without declaring a write scope.
+CONSENT_ALSO: frozenset[str] = frozenset(
+    {
+        'delegate.spawn_workers',  # background runs that spend AI credits
+        'meta.sync_audience',  # uploads customer emails to Meta
+    }
+)
+#: Write-scoped tools that only compute and store their own report.
+NO_CONSENT: frozenset[str] = frozenset({'seo.audit_product', 'reports.file'})
+
+
+def linda_tool(tool, *, developer: bool = False) -> bool:
+    """Whether Linda is ever offered this tool, before her scope profile and mode:
+    never a shopper's tool or one in NOT_LINDAS, and a platform internal only in
+    Developer mode."""
+    name = getattr(tool, 'name', '') or ''
+    if name in NOT_LINDAS or name.startswith(SHOPPER_PREFIXES):
+        return False
+    return developer or name not in DEVELOPER_TOOLS
+
+
+def needs_consent(tool) -> bool:
+    """Whether a Linda call needs the merchant's own yes first.
+
+    Every write does. The Worker's per-tool ``requires_approval`` flags were set
+    for a background agent with its own approval queue, and many writes carry
+    none (catalog.update_product, orders.mark_shipped, crm.reply_support); in a
+    chat, whatever Linda read could otherwise steer her into making one.
+    """
+    if getattr(tool, 'requires_approval', False):
+        return True
+    if getattr(tool, 'name', '') in NO_CONSENT:
+        return False
+    return getattr(tool, 'name', '') in CONSENT_ALSO or is_write_tool(tool)
+
+
 def audit_write_tool(
     *,
     tool,

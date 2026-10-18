@@ -63,6 +63,15 @@ def facts(name: str) -> dict | None:
     blocks = help_markers.ask_list(inst, 'contribute_storefront_blocks')
     slots = list(dict.fromkeys(b.slot for b in blocks))
     tools = help_markers.ask_list(inst, 'contribute_agent_tools')
+    # The tools Linda is ever offered: the edge's own rules (core/assistant/gates.py)
+    # and inside her scope profile. The technical details still name every tool.
+    linda_scopes = set(gates.LINDA_SCOPES)
+    lindas = [
+        t
+        for t in tools
+        if gates.linda_tool(t, developer=True)
+        and set(getattr(t, 'scopes', None) or []) <= linda_scopes
+    ]
     described = navigation.describe_app(inst)
     return {
         'name': name,
@@ -79,10 +88,12 @@ def facts(name: str) -> dict | None:
             {
                 'name': t.name,
                 'description': t.description,
-                'asks_first': gates.is_write_tool(t),
+                'asks_first': gates.needs_consent(t),
+                'developer': t.name in gates.DEVELOPER_TOOLS,
             }
-            for t in tools
+            for t in lindas
         ],
+        'tool_names': [t.name for t in tools],
         'requires': list(inst.requires or []),
         'required_by': sorted(
             p.name for p in app_registry.all_plugins() if name in (p.requires or [])

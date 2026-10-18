@@ -67,3 +67,33 @@ class SlotWordsTests(TestCase):
             if inst is not None:
                 slots |= {b.slot for b in ask_list(inst, 'contribute_storefront_blocks')}
         self.assertEqual(sorted(slots - set(SLOT_WORDS)), [])
+
+
+class LindaToolTests(TestCase):
+    """The page lists the tools Linda can actually use (core/assistant/gates.py)."""
+
+    def test_only_tools_linda_has_are_listed(self):
+        from core.assistant import gates
+
+        for inst in app_registry.all_plugins():
+            for tool in facts(inst.name)['tools']:
+                with self.subTest(app=inst.name, tool=tool['name']):
+                    self.assertFalse(tool['name'].startswith(gates.SHOPPER_PREFIXES))
+                    self.assertNotIn(tool['name'], gates.NOT_LINDAS)
+
+    def test_account_administration_is_not_listed_but_stays_in_the_details(self):
+        rbac = facts('rbac')
+        self.assertNotIn('rbac.grant_role', {t['name'] for t in rbac['tools']})
+        self.assertIn('rbac.grant_role', rbac['tool_names'])
+
+    def test_asks_first_follows_the_edges_consent_rule(self):
+        seo = {t['name']: t['asks_first'] for t in facts('seo')['tools']}
+        self.assertFalse(seo['seo.audit_product'])  # write-scoped, but only stores its own report
+
+    def test_developer_mode_tools_are_marked(self):
+        from core.assistant import gates
+
+        for inst in app_registry.all_plugins():
+            for tool in facts(inst.name)['tools']:
+                with self.subTest(app=inst.name, tool=tool['name']):
+                    self.assertEqual(tool['developer'], tool['name'] in gates.DEVELOPER_TOOLS)

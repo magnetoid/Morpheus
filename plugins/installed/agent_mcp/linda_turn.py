@@ -25,6 +25,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from core.assistant import gates as _gates
+
 logger = logging.getLogger('morpheus.agent_mcp.linda_turn')
 
 _UNSET = object()
@@ -158,56 +160,12 @@ ENGINE_OWNED_TOOLS: frozenset[str] = frozenset()
 # catalog writes while showing platform internals, and a live eval timed out on
 # half its tasks while she explored db.* and run_python looking for them.
 
-# A shopper's own cart, checkout and wishlist — not the merchant's.
-_SHOPPER_PREFIXES = ('cart.', 'checkout.', 'wishlist.')
-
-# Platform internals: only in Developer mode (superusers).
-DEVELOPER_TOOLS = frozenset(
-    {
-        'db.list_models',
-        'db.count_rows',
-        'db.describe_model',
-        'run_python',
-        'fs.list_dir',
-        'fs.read_file',
-        'fs.search_files',
-        'system.disk_usage',
-        'system.git_log',
-        'system.server_info',
-        'logs.search',
-        'platform.capabilities',
-        'plugins.describe',
-        'delegate.list_agents',
-        'delegate.invoke_agent',
-        # Blocks for up to 300s inside a turn that has far less.
-        'delegate.wait_for_workers',
-    }
-)
-
-_NOT_LINDAS = ENGINE_OWNED_TOOLS | {
-    # Duplicates of the tool Linda uses for the same job; two names for one job
-    # cost her a step deciding.
-    'catalog.find_products',  # products.search
-    'catalog.get_product',  # products.get
-    'analytics.revenue_summary',  # analytics.summary
-    'cms.list_pages',  # cms.pages
-    'orders.list_recent',  # orders.search
-    'plugins.enable',  # plugins.toggle
-    'plugins.disable',  # plugins.toggle
-    # Staff roles are account administration, not store work.
-    'rbac.grant_role',
-    'rbac.revoke_role',
-}
-
-# Tools that act on the world without declaring a write scope.
-_CONSENT_ALSO = frozenset(
-    {
-        'delegate.spawn_workers',  # background runs that spend AI credits
-        'meta.sync_audience',  # uploads customer emails to Meta
-    }
-)
-# Write-scoped tools that only compute and store their own report.
-_NO_CONSENT = frozenset({'seo.audit_product', 'reports.file'})
+# The rules themselves live in core/assistant/gates.py, which the Help page reads too.
+_SHOPPER_PREFIXES = _gates.SHOPPER_PREFIXES
+DEVELOPER_TOOLS = _gates.DEVELOPER_TOOLS
+_NOT_LINDAS = ENGINE_OWNED_TOOLS | _gates.NOT_LINDAS
+_CONSENT_ALSO = _gates.CONSENT_ALSO
+_NO_CONSENT = _gates.NO_CONSENT
 
 
 def _all_tools() -> list:
@@ -244,20 +202,8 @@ def mode_tools(tools: list, turn: LindaTurn) -> list:
 
 
 def needs_consent(tool) -> bool:
-    """Whether a Linda call needs the merchant's own yes first.
-
-    Every write does. The Worker's per-tool ``requires_approval`` flags were set
-    for a background agent with its own approval queue, and many writes carry
-    none (catalog.update_product, orders.mark_shipped, crm.reply_support); in a
-    chat, whatever Linda read could otherwise steer her into making one.
-    """
-    from core.assistant import gates
-
-    if getattr(tool, 'requires_approval', False):
-        return True
-    if tool.name in _NO_CONSENT:
-        return False
-    return tool.name in _CONSENT_ALSO or gates.is_write_tool(tool)
+    """Whether a Linda call needs the merchant's own yes first (core/assistant/gates.py)."""
+    return _gates.needs_consent(tool)
 
 
 def call_tool(tool, name: str, args: dict, turn: LindaTurn, *, audit_call, audit_denied) -> dict:

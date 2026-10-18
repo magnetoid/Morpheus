@@ -20,21 +20,41 @@ from plugins.installed.release_notes import help_facts, help_render
 @tool(
     name='help.apps',
     description=(
-        'List every app this store has, with one sentence on what each does, the '
-        'dashboard area it lives in and whether it is switched on. Use it to find '
-        "the app a merchant's question is about, then read its help with help.read."
+        'List every app this store has: its name, label, the dashboard area it lives '
+        "in and whether it is switched on. Pass a query to search every app's help "
+        'instead and get the matching apps with one sentence each on what they do. '
+        "Then read the right app's help with help.read."
     ),
     scopes=[],
+    schema={
+        'type': 'object',
+        'properties': {
+            'query': {
+                'type': 'string',
+                'description': "Words to search every app's help for; leave out to list every app.",
+            }
+        },
+    },
 )
-def help_apps_tool() -> ToolResult:
+def help_apps_tool(*, query: str = '') -> ToolResult:
     from plugins.installed.admin_dashboard import navigation
+    from plugins.installed.release_notes import help_search
     from plugins.registry import app_registry
 
+    if (query or '').strip():
+        hits = help_search.search(query)
+        apps = [
+            {'name': h['name'], 'label': h['label'], 'summary': h['summary'], 'on': h['active']}
+            for h in hits
+        ]
+        return ToolResult(
+            output={'apps': apps, 'count': len(apps)}, display=f'{len(apps)} apps match.'
+        )
+    # Every app, without its sentence: a summary each would outgrow one tool result.
     apps = [
         {
             'name': inst.name,
             'label': inst.label or inst.name,
-            'summary': app_help.summary(inst.name) or inst.description,
             'area': navigation.describe_app(inst)['area_label'],
             'on': app_registry.is_active(inst.name),
         }
@@ -94,7 +114,8 @@ def help_read_tool(*, app: str) -> ToolResult:
         parts.append(
             'What you can do here:\n'
             + '\n'.join(
-                f'- {t["name"]}{" (asks first)" if t["asks_first"] else ""}: {t["description"]}'
+                f'- {t["name"]}{" (asks first)" if t["asks_first"] else ""}'
+                f'{" (Developer mode only)" if t["developer"] else ""}: {t["description"]}'
                 for t in found['tools']
             )
         )

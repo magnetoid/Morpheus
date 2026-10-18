@@ -35,7 +35,7 @@ there and the technical details.{% endcomment %}
   <section class="card card-padded" data-help-tools>
     <h2 class="help__area">What Linda can do here</h2>
     <ul class="help__list">
-      {% for tool in facts.tools %}<li>{{ tool.description }}{% if tool.asks_first %} <span class="pill pill-warn pill-xs">asks you first</span>{% endif %}</li>{% endfor %}
+      {% for tool in facts.tools %}<li>{{ tool.description }}{% if tool.asks_first %} <span class="pill pill-warn pill-xs">asks you first</span>{% endif %}{% if tool.developer %} <span class="pill pill-neutral pill-xs">Developer mode</span>{% endif %}</li>{% endfor %}
     </ul>
   </section>
   {% endif %}
@@ -50,7 +50,7 @@ there and the technical details.{% endcomment %}
       <dt>Listens to</dt><dd>{{ facts.events|join:", "|default:"nothing" }}</dd>
       <dt>Shop slots</dt><dd>{{ facts.slots|join:", "|default:"none" }}</dd>
       <dt>URL prefixes</dt><dd>{{ facts.urls|join:", "|default:"none" }}</dd>
-      <dt>Agent tools</dt><dd>{% for tool in facts.tools %}<code>{{ tool.name }}</code>{% if not forloop.last %}, {% endif %}{% empty %}none{% endfor %}</dd>
+      <dt>Agent tools</dt><dd>{% for name in facts.tool_names %}<code>{{ name }}</code>{% if not forloop.last %}, {% endif %}{% empty %}none{% endfor %}</dd>
     </dl>
   </details>
 </div>

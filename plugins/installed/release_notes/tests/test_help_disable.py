@@ -28,7 +28,11 @@ class HelpDisableTests(TestCase):
         self.addCleanup(app_registry.activate, 'release_notes')
 
     def test_the_help_area_is_gone(self):
-        for url in ('/dashboard/help/', '/dashboard/help/reviews/', '/dashboard/apps/release_notes/help/'):
+        for url in (
+            '/dashboard/help/',
+            '/dashboard/help/reviews/',
+            '/dashboard/apps/release_notes/help/',
+        ):
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 404)
 
@@ -43,7 +47,9 @@ class HelpDisableTests(TestCase):
         staff = types.SimpleNamespace(is_staff=True, is_superuser=False, pk=1)
         names = {
             t.name
-            for t in catalogue(LindaTurn(user=staff, conversation_key='user:help-off', mode_slug='general'))
+            for t in catalogue(
+                LindaTurn(user=staff, conversation_key='user:help-off', mode_slug='general')
+            )
         }
         self.assertNotIn('help.apps', names)
         self.assertNotIn('help.read', names)
