@@ -13,7 +13,7 @@ from django.http import Http404, HttpResponsePermanentRedirect
 from django.shortcuts import render
 
 from plugins import app_help
-from plugins.installed.release_notes import help_facts, help_render
+from plugins.installed.release_notes import help_facts, help_render, help_search
 
 
 def _entries() -> list[dict]:
@@ -56,10 +56,13 @@ def _groups(rows: list[dict]) -> list[dict]:
 @staff_member_required
 def help_index(request):
     rows = _entries()
+    query = (request.GET.get('q') or '').strip()[:100]
     return render(
         request,
         'release_notes/help_index.html',
         {
+            'q': query,
+            'results': help_search.search(query) if query else [],
             'groups': _groups([r for r in rows if r['active']]),
             'off': sorted(
                 (r for r in rows if not r['active']), key=lambda r: r['label'].casefold()

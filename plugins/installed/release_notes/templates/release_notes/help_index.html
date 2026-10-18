@@ -10,6 +10,24 @@ sentence is the app's own help.md summary.{% endcomment %}
     <h1 class="text-xl font-semibold tracking-tight">Help</h1>
     <p class="text-sm text-[color:var(--text-muted)]">What each app does, how to set it up and where to find it. New here? Start with <a href="{% url 'help:app' 'admin_dashboard' %}">how the dashboard works</a>.</p>
   </div>
+  <form method="get" class="help__search" role="search">
+    <input type="search" name="q" value="{{ q }}" class="input" placeholder="Search the help" aria-label="Search the help">
+    <button class="btn btn-secondary" type="submit"><i data-lucide="search" class="h-4 w-4"></i> Search</button>
+  </form>
+  {% if q %}
+  <section class="card card-padded" data-help-results>
+    {% if results %}
+    <h2 class="help__area">Help that mentions “{{ q }}”</h2>
+    <ul class="help__results">
+      {% for hit in results %}
+      <li><a href="{% url 'help:app' hit.name %}" class="help__app">{{ hit.label }}</a>{% if not hit.active %} <span class="pill pill-neutral pill-xs">Off</span>{% endif %}{% if hit.summary %}<div class="help__summary">{{ hit.summary }}</div>{% endif %}{% if hit.snippet %}<div class="help__snippet">{{ hit.snippet }}</div>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm">No help mentions “{{ q }}”. Try another word, or browse the apps below.</p>
+    {% endif %}
+  </section>
+  {% endif %}
   {% for group in groups %}
   <section class="card card-padded" data-help-area="{{ group.label }}">
     <h2 class="help__area">{{ group.label }}</h2>
