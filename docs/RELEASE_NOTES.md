@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.115.1 — 2026-10-18
+
+**Uploaded photos show the picture you uploaded, and two stores' sitemaps keep their pages**
+
+- A photo added to a product after another was deleted could show the deleted picture in the dashboard and on the shop, because it got the same file name. Every upload now gets a name of its own: the product's title plus a short random part.
+- On Supernatural and Irving the sitemaps sometimes left out the shop's own pages (the shop, categories, staff picks, journal, about, contact, shipping and returns) since 14 October. Fixed.
+
 ## v0.115.0 — 2026-10-18
 
 **Help inside the dashboard for every app**
