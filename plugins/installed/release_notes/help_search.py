@@ -58,9 +58,17 @@ def _snippet(body: str, terms: list[str]) -> str:
     found = [i for i in (folded.find(t) for t in terms) if i >= 0]
     if not found:
         return ''
-    start = max(0, min(found) - SNIPPET // 3)
-    piece = ' '.join(body[start : start + SNIPPET].split())
-    return ('…' if start else '') + piece + ('…' if start + SNIPPET < len(body) else '')
+    hit = min(found)
+    start = max(0, hit - SNIPPET // 3)
+    if start:  # begin on a whole word
+        space = body.find(' ', start, hit)
+        start = space + 1 if space != -1 else start
+    end = start + SNIPPET
+    if end < len(body):  # and end on one
+        space = body.rfind(' ', hit, end)
+        end = space if space != -1 else end
+    piece = ' '.join(body[start:end].split())
+    return ('…' if start else '') + piece + ('…' if end < len(body) else '')
 
 
 def search(query: str, *, limit: int = 30) -> list[dict]:

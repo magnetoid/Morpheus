@@ -37,6 +37,15 @@ class SearchTests(TestCase):
         with mock.patch.object(help_search, '_index', return_value=rows):
             self.assertEqual(self._names('refunds'), ['a', 'b'])
 
+    def test_a_snippet_starts_and_ends_on_whole_words(self):
+        body = 'word ' * 60 + 'licence ' + 'more ' * 60
+        rows = [{'name': 'a', 'label': 'A', 'summary': '', 'headings': '', 'body': body}]
+        with mock.patch.object(help_search, '_index', return_value=rows):
+            snippet = help_search.search('licence')[0]['snippet']
+        words = snippet.strip('…').split()
+        self.assertIn('licence', words)
+        self.assertLessEqual(set(words), {'word', 'licence', 'more'}, snippet)
+
     def test_punctuation_is_just_text(self):
         for query in ('(', '*', '?', '[', ')', '\\'):
             with self.subTest(query=query):
