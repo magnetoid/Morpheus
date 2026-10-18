@@ -107,7 +107,7 @@ class SitePageTests(TestCase):
     def test_the_account_menu_links_help_and_about(self):
         self.client.force_login(self.staff)
         html = self.client.get('/dashboard/').content.decode()
-        self.assertIn('href="/dashboard/apps/release_notes/help/"', html)
+        self.assertIn('href="/dashboard/help/"', html)
         self.assertIn('href="/dashboard/apps/release_notes/about/"', html)
 
     def test_anon_blocked(self):

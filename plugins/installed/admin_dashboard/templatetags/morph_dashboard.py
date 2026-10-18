@@ -295,6 +295,34 @@ def get_ai_page_help():
         return False
 
 
+@register.simple_tag(takes_context=True)
+def dashboard_page_help(context):
+    """The current page's Help link, ``{'url', 'label', 'title'}``, or None.
+
+    The shell asks through DASHBOARD_PAGE_HELP and the help app answers, so the
+    shell links no app page itself and every link leaves with the help app.
+    """
+    request = context.get('request')
+    if request is None:
+        return None
+    try:
+        from morpheus.core import MorpheusEvents, hook_registry
+        from plugins.installed.admin_dashboard import navigation
+
+        link = hook_registry.filter(
+            MorpheusEvents.DASHBOARD_PAGE_HELP,
+            value=None,
+            app=navigation.current_app(request),
+            request=request,
+        )
+    except Exception:  # noqa: BLE001 — a Help link never breaks a page
+        import logging
+
+        logging.getLogger('morpheus.admin').warning('dashboard_page_help failed', exc_info=True)
+        return None
+    return link if isinstance(link, dict) and link.get('url') else None
+
+
 @register.inclusion_tag('admin_dashboard/_filter_chips.html', takes_context=True)
 def filter_chips(context, **labels):
     """Render chips for any request.GET param that has a non-empty value.

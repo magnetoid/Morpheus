@@ -133,15 +133,24 @@ class CoreTab:
     badge: str = ''  # key into the nav badges
     superuser: bool = False
     group: str = ''  # folds into one tab with the section's other pages of this group
+    app: str = ''  # the app this page belongs to, for its Help link
 
 
 #: Linda's audit pages share one tab, so her section shows the everyday tabs first.
 OVERSIGHT = 'Oversight'
 
 CORE_TABS: tuple[CoreTab, ...] = (
-    CoreTab('ai', 'Chat', '/dashboard/assistant/', 10, 'message-circle'),
-    CoreTab('ai', 'Chats', '/dashboard/assistant/chats/', 15, 'message-square'),
-    CoreTab('ai', 'Insights', '/dashboard/ai-insights/', 60, 'lightbulb', badge='insights'),
+    CoreTab('ai', 'Chat', '/dashboard/assistant/', 10, 'message-circle', app='agent_core'),
+    CoreTab('ai', 'Chats', '/dashboard/assistant/chats/', 15, 'message-square', app='agent_core'),
+    CoreTab(
+        'ai',
+        'Insights',
+        '/dashboard/ai-insights/',
+        60,
+        'lightbulb',
+        badge='insights',
+        app='ai_assistant',
+    ),
     CoreTab(
         'ai',
         'Proposals',
@@ -150,13 +159,16 @@ CORE_TABS: tuple[CoreTab, ...] = (
         'git-pull-request',
         superuser=True,
         group=OVERSIGHT,
+        app='agent_core',
     ),
-    CoreTab('orders', 'All orders', '/dashboard/orders/', 10, 'shopping-bag'),
-    CoreTab('orders', 'Returns', '/dashboard/returns/', 30, 'undo-2', badge='returns'),
-    CoreTab('products', 'All products', '/dashboard/products/', 10, 'package'),
-    CoreTab('products', 'Categories', '/dashboard/categories/', 20, 'folder-tree'),
-    CoreTab('products', 'Collections', '/dashboard/collections/', 30, 'layers'),
-    CoreTab('products', 'Tags', '/dashboard/tags/descriptions/', 40, 'tags'),
+    CoreTab('orders', 'All orders', '/dashboard/orders/', 10, 'shopping-bag', app='orders'),
+    CoreTab(
+        'orders', 'Returns', '/dashboard/returns/', 30, 'undo-2', badge='returns', app='orders'
+    ),
+    CoreTab('products', 'All products', '/dashboard/products/', 10, 'package', app='catalog'),
+    CoreTab('products', 'Categories', '/dashboard/categories/', 20, 'folder-tree', app='catalog'),
+    CoreTab('products', 'Collections', '/dashboard/collections/', 30, 'layers', app='catalog'),
+    CoreTab('products', 'Tags', '/dashboard/tags/descriptions/', 40, 'tags', app='catalog'),
     CoreTab(
         'products',
         'Content audit',
@@ -164,10 +176,11 @@ CORE_TABS: tuple[CoreTab, ...] = (
         95,
         'clipboard-check',
         nav='hidden',
+        app='catalog',
     ),
-    CoreTab('customers', 'All customers', '/dashboard/customers/', 10, 'users'),
-    CoreTab('marketing', 'Overview', '/dashboard/marketing/', 5, 'layout-grid'),
-    CoreTab('analytics', 'Overview', '/dashboard/analytics/', 10, 'bar-chart-3'),
+    CoreTab('customers', 'All customers', '/dashboard/customers/', 10, 'users', app='customers'),
+    CoreTab('marketing', 'Overview', '/dashboard/marketing/', 5, 'layout-grid', app='marketing'),
+    CoreTab('analytics', 'Overview', '/dashboard/analytics/', 10, 'bar-chart-3', app='analytics'),
 )
 
 
@@ -240,6 +253,7 @@ class Tab:
     group: str = ''
     badge: str = ''
     hint: str = ''
+    app: str = ''  # a shell tab's app (CoreTab.app); contributed pages use `plugin`
 
 
 @dataclass
@@ -278,7 +292,17 @@ def tabs(user=None) -> list[Tab]:
     from plugins.registry import app_registry  # noqa: PLC0415
 
     out = [
-        Tab(t.section, t.label, t.url, t.order, t.icon, t.nav, badge=t.badge, group=t.group)
+        Tab(
+            t.section,
+            t.label,
+            t.url,
+            t.order,
+            t.icon,
+            t.nav,
+            badge=t.badge,
+            group=t.group,
+            app=t.app,
+        )
         for t in CORE_TABS
         if not t.superuser or _is_superuser(user)
     ]
@@ -614,6 +638,22 @@ def build(request) -> dict:
     with contextlib.suppress(Exception):
         request._morph_nav = nav
     return nav
+
+
+def current_app(request) -> str:
+    """The app the current dashboard page belongs to, for its Help link: the
+    owner of the tab or settings tool the path resolves to, the app a shell tab
+    names, or the app whose settings form this is. '' for the shell's own pages
+    (the home, the settings hub)."""
+    from plugins.registry import app_registry  # noqa: PLC0415
+
+    loc = build(request)['location']
+    if loc.tab is not None:
+        return loc.tab.plugin or loc.tab.app
+    if loc.tool is not None:
+        return loc.tool.plugin
+    head = _settings_head(getattr(request, 'path', '') or '')
+    return head if head and app_registry.settings_panel(head) is not None else ''
 
 
 def settings_categories_nav(loc: Location, all_tools: list[Tool]) -> list[dict]:

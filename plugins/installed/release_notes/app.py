@@ -19,6 +19,7 @@ entry to that document. This plugin only *displays*; it owns no data.
 from __future__ import annotations
 
 from morpheus.app import DashboardPage, Plugin
+from morpheus.core import MorpheusEvents
 
 
 class ReleaseNotesPlugin(Plugin):
@@ -38,6 +39,8 @@ class ReleaseNotesPlugin(Plugin):
         self.register_urls(
             'plugins.installed.release_notes.urls', prefix='dashboard/help/', namespace='help'
         )
+        self.register_hook(MorpheusEvents.DASHBOARD_USER_MENU, self.on_user_menu)
+        self.register_hook(MorpheusEvents.DASHBOARD_PAGE_HELP, self.on_page_help)
 
     def contribute_dashboard_pages(self) -> list:
         return [
@@ -73,3 +76,43 @@ class ReleaseNotesPlugin(Plugin):
                 hint='Running version, updates and changelog',
             ),
         ]
+
+    def on_user_menu(self, value, **kwargs):
+        """Help, About and Version in the account menu, in place of links the
+        shell used to hardcode."""
+        from django.conf import settings
+
+        value.extend(
+            [
+                {'label': 'Help', 'url': '/dashboard/help/', 'icon': 'help-circle', 'order': 10},
+                {
+                    'label': 'About Morpheus OS',
+                    'url': '/dashboard/apps/release_notes/about/',
+                    'icon': 'info',
+                    'order': 20,
+                },
+                {
+                    'label': 'Version & updates',
+                    'url': '/dashboard/apps/release_notes/version/',
+                    'icon': 'git-commit-horizontal',
+                    'order': 30,
+                    'badge': getattr(settings, 'MORPHEUS_VERSION', ''),
+                },
+            ]
+        )
+        return value
+
+    def on_page_help(self, value, app='', request=None, **kwargs):
+        """The Help link for a page of ``app``: that app's help, else the index."""
+        from plugins.registry import app_registry
+
+        if (getattr(request, 'path', '') or '').startswith('/dashboard/help/'):
+            return value  # a help page needs no link to help
+        inst = app_registry.get(app) if app else None
+        if inst is None:
+            return {'url': '/dashboard/help/', 'label': 'Help', 'title': 'Help for every app'}
+        return {
+            'url': f'/dashboard/help/{inst.name}/',
+            'label': 'Help',
+            'title': f'Help for {inst.label or inst.name}',
+        }

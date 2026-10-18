@@ -1091,14 +1091,11 @@
         </p>
         <a href="{% url 'admin_dashboard:my_account' %}" class="nav-link" style="font-size:.85rem;"><i data-lucide="user" class="h-4 w-4"></i> Your account</a>
         <a href="{% url 'admin_dashboard:settings' %}" class="nav-link" style="font-size:.85rem;"><i data-lucide="settings" class="h-4 w-4"></i> Store settings</a>
-        {% plugin_enabled "release_notes" as release_notes_on %}{% if release_notes_on %}<a href="/dashboard/apps/release_notes/help/" class="nav-link" style="font-size:.85rem;"><i data-lucide="help-circle" class="h-4 w-4"></i> Help</a>{% endif %}
-        {% if release_notes_on %}<a href="/dashboard/apps/release_notes/about/" class="nav-link" style="font-size:.85rem;"><i data-lucide="info" class="h-4 w-4"></i> About Morpheus OS</a>{% endif %}
-        {% if release_notes_on %}<a href="/dashboard/apps/release_notes/version/" class="nav-link" style="font-size:.85rem;"><i data-lucide="git-commit-horizontal" class="h-4 w-4"></i> Version &amp; updates <span class="pill pill-info" style="font-size:.62rem; margin-left:auto;">{{ MORPHEUS_VERSION|default:"v0.1.0" }}</span></a>{% endif %}
         {% comment %}Contributed entries (DASHBOARD_USER_MENU). An app appends its
         own item rather than the shell hardcoding a link to it; the hook bus drops
         handlers whose plugin is inactive, so these vanish on disable.{% endcomment %}
         {% for item in dashboard_user_menu %}
-        <a href="{{ item.url }}" class="nav-link" style="font-size:.85rem;"{% for k, v in item.attrs.items %} {{ k }}="{{ v }}"{% endfor %}><i data-lucide="{{ item.icon|default:'circle' }}" class="h-4 w-4"></i> {{ item.label }}</a>
+        <a href="{{ item.url }}" class="nav-link" style="font-size:.85rem;"{% for k, v in item.attrs.items %} {{ k }}="{{ v }}"{% endfor %}><i data-lucide="{{ item.icon|default:'circle' }}" class="h-4 w-4"></i> {{ item.label }}{% if item.badge %} <span class="pill pill-info" style="font-size:.62rem; margin-left:auto;">{{ item.badge }}</span>{% endif %}</a>
         {% endfor %}
 
         {% comment %}Theme picker — three explicit choices that flip data-theme on <html>. JS at the bottom of base.html (the theme-mode block) tags the active one with .is-active.{% endcomment %}
@@ -1127,6 +1124,9 @@
        keyboard focus, or click/tap (.is-open, toggled by the delegated handler
        below). Previously .context-help had no CSS, so the help text rendered
        inline; this styles it as a proper tooltip everywhere it's already used. */
+    .page-help { display: flex; justify-content: flex-end; margin: 0 0 .35rem; font-size: .8rem; }
+    .page-help a { display: inline-flex; align-items: center; gap: .3rem; color: var(--text-muted); }
+    .page-help a:hover { color: var(--text); }
     .context-help { position: relative; display: inline-flex; align-items: center; color: var(--text-muted); cursor: help; vertical-align: middle; }
     .context-help:hover, .context-help:focus-visible { color: var(--brand); outline: none; }
     .context-help-tooltip {
@@ -1185,6 +1185,8 @@
     {% endif %}
     {% get_ai_page_help as ai_help %}
     {% if ai_help %}{% include "assistant/_page_helper.html" %}{% endif %}
+    {% comment %}The page's Help link (DASHBOARD_PAGE_HELP): the help app answers with the help of the app this page belongs to; with it off there is no link.{% endcomment %}
+    {% dashboard_page_help as page_help %}{% if page_help %}<p class="page-help"><a href="{{ page_help.url }}" title="{{ page_help.title }}"><i data-lucide="help-circle" class="h-4 w-4"></i> {{ page_help.label }}</a></p>{% endif %}
     {% comment %}The current section's pages as tabs (admin_dashboard/navigation.py). A page that lays out the whole main panel itself (Linda's chat) overrides this block and places the strip inside its own layout.{% endcomment %}
     {% block section_tabs %}{% include "admin_dashboard/_section_tabs.html" %}{% endblock %}
     {% comment %}Breadcrumbs. Default: the view's explicit `breadcrumb_trail`, else the navigation-derived `auto_breadcrumb_trail` (admin_dashboard.context_processors); self-hides on empty. Not on a tab's own page — the tab strip already says where you are; below a tab (a record, a sub-page) the trail leads back. Pages needing a richer trail with parent record names override `{% block breadcrumb %}` in place (e.g. variant_form, order_refund).{% endcomment %}

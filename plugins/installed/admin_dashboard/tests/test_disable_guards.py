@@ -57,13 +57,10 @@ class DashboardNavGuardTests(TestCase):
     link. Add a row here whenever a plugin link is hardcoded into base.html."""
 
     # href fragment  ->  the plugin_enabled guard variable that must gate it.
-    # Only the account dropdown links an app directly now; the sidebar is the
-    # sections (admin_dashboard/navigation.py) and every app page is a
-    # contributed tab or tool card.
-    GUARDED_LINKS = {
-        '/dashboard/apps/release_notes/about/': 'release_notes_on',
-        '/dashboard/apps/release_notes/version/': 'release_notes_on',
-    }
+    # None left: the account menu's Help, About and Version moved to
+    # DASHBOARD_USER_MENU (release_notes, v0.115). Add a row only if an app
+    # link ever has to be hardcoded again.
+    GUARDED_LINKS: dict[str, str] = {}
 
     def test_plugin_nav_links_are_guarded(self):
         lines = _BASE_HTML.read_text(encoding='utf-8').splitlines()
@@ -96,6 +93,7 @@ class DashboardNavGuardTests(TestCase):
             '/dashboard/tracking/',
             '/dashboard/apps/morpheus_brain/',
             '/dashboard/agents/',
+            '/dashboard/apps/release_notes/',
         ):
             self.assertNotIn(fragment, src, f'{fragment} is hardcoded again')
 

@@ -39,7 +39,18 @@ def apps_view(request: HttpRequest) -> HttpResponse:
     except Exception:  # noqa: BLE001, S110
         pass
 
+    from morpheus.core import MorpheusEvents, hook_registry
+    from plugins import app_help
     from plugins.installed.admin_dashboard import navigation
+
+    def help_link(name):
+        try:
+            link = hook_registry.filter(
+                MorpheusEvents.DASHBOARD_PAGE_HELP, value=None, app=name, request=request
+            )
+        except Exception:  # noqa: BLE001 — a Help link never breaks the catalogue
+            return None
+        return link if isinstance(link, dict) and link.get('url') else None
 
     plugins = []
     for name, cls in sorted(app_registry._classes.items()):
@@ -65,6 +76,10 @@ def apps_view(request: HttpRequest) -> HttpResponse:
                 'name': name,
                 'label': getattr(cls, 'label', name),
                 'description': getattr(cls, 'description', ''),
+                # The app's one sentence for staff (its help.md), else the
+                # developer description; and its Help link.
+                'summary': app_help.summary(name) or getattr(cls, 'description', ''),
+                'help': help_link(name),
                 'version': getattr(cls, 'version', ''),
                 'active': db_intends_on,
                 # When the DB says "on" but the runtime didn't pick it up at
