@@ -184,6 +184,22 @@ pages that did not exist for months: nothing tests a hardcoded link. Guarded by
 `test_dashboard_cards.py` (every card runs on an empty store) and the
 `morpheus.W003`–`W005` checks.
 
+**Convention — every app ships its own help, and most of the help is generated (v0.115.0).**
+`/dashboard/help/` (release_notes) shows, per app, the guide in `plugins/installed/<app>/help.md`
+next to what the running code says: its pages, settings, shop surfaces, Linda's tools there, the
+events it listens to and its URL mounts. A guide links the store's pages only through markers
+(`[text](page:slug)`, `settings:`, `field:`, `section:`, `app:`), resolved live, so a renamed page
+renames itself and a moved one never leaves a dead link. Its one-sentence summary is the app's
+sentence everywhere, the Apps catalogue too; it says only what the code does today, in plain words,
+and calls the assistant Linda. A new app ships its `help.md`; a change to what staff see or do in
+an app updates its guide in the same commit; a deleted app takes its guide with it, and a merge
+folds the absorbed app's guide into the target's. Linda reads the same help through `help.apps` and
+`help.read`, which have no scopes, so every staff role has them in every mode; a storefront agent
+never gets a scope-less tool (`core/agents/base.py`). The shell asks for Help links through
+`DASHBOARD_PAGE_HELP` and for menu entries through `DASHBOARD_USER_MENU`, so `base.html` links no
+app. Guarded by `release_notes/tests/test_help_*.py`: a missing guide, a marker that names nothing,
+a heading outside the set and developer words all fail CI.
+
 **Convention — a category lists its subtree (v0.100.0).** "Products in Tech" means
 Tech and every active category below it, by primary category or cross-listing — one
 rule in `catalog/category_tree.py`, read by the category page, the shop filter, the

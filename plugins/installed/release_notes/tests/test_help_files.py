@@ -14,10 +14,6 @@ from django.test import SimpleTestCase
 
 from plugins import app_help
 
-#: Apps whose guide is still being written. Every guide removes its app; Task 11
-#: of the plan deletes the set, and from then on every app must have a guide.
-_AWAITING_A_GUIDE = frozenset({})
-
 _WORD = re.compile(r"[A-Za-z][A-Za-z'’-]*")
 _SENTENCE_END = re.compile(r'[.!?](\s|$)')
 
@@ -37,19 +33,8 @@ def _prose(body: str) -> str:
 
 class GuideCoverageTests(SimpleTestCase):
     def test_every_app_has_a_guide(self):
-        missing = [
-            a
-            for a in app_help.tree_apps()
-            if a not in _AWAITING_A_GUIDE and app_help.guide(a) is None
-        ]
+        missing = [a for a in app_help.tree_apps() if app_help.guide(a) is None]
         self.assertEqual(missing, [], 'apps without plugins/installed/<app>/help.md')
-
-    def test_an_app_with_a_guide_is_not_still_awaiting_one(self):
-        stale = sorted(a for a in _AWAITING_A_GUIDE if app_help.guide(a) is not None)
-        self.assertEqual(stale, [], 'remove these from _AWAITING_A_GUIDE')
-
-    def test_every_awaiting_app_exists(self):
-        self.assertEqual(sorted(_AWAITING_A_GUIDE - set(app_help.tree_apps())), [])
 
 
 class GuideFormatTests(SimpleTestCase):

@@ -95,6 +95,7 @@ plugins/installed/<name>/
 ├── __init__.py             # default_app_config -> apps.<NameConfig>
 ├── apps.py                 # Django AppConfig (label = <name>)
 ├── app.py               # ★ MorpheusPlugin subclass: the manifest
+├── help.md                 # ★ the app's guide for store staff (§5.4)
 ├── models.py               # optional: Django models
 ├── migrations/
 │   ├── __init__.py
@@ -113,7 +114,7 @@ plugins/installed/<name>/
     └── commands/
 ```
 
-The **only required file** is `app.py`. Everything else is opt-in.
+The **required files** are `app.py` and `help.md` (CI fails on an app without a guide). Everything else is opt-in.
 
 ---
 
@@ -494,6 +495,33 @@ code/docs with `fs.*`. **But prefer `contribute_agent_tools`** — a declared,
 scoped command is safer and more reliable than Linda reverse-engineering your
 plugin from its schema. Expose the actions you want her to take; let
 introspection be the fallback.
+
+### 5.4 Help for store staff (`help.md`)
+
+Every app ships `plugins/installed/<app>/help.md`, the page staff read at
+`/dashboard/help/<app>/` and Linda reads through `help.read`:
+
+    ---
+    summary: One plain sentence, at most 140 characters, about what the app does for the store.
+    ---
+
+    ## What it's for
+    ## Set it up
+    ## Common tasks
+    ## Good to know
+
+- Only those headings, in that order; "What it's for" is required; 60–400 words.
+- Describe only what the code does today, in plain words. Call the assistant Linda.
+- Never write a URL to the store's own pages. Use markers, resolved live:
+  `[text](page:<slug>)` (one of your `DashboardPage` slugs; `page:<app>/<slug>` for
+  another app's), `[text](settings:<app>)`, `[](field:<app>.<key>)` (a field of your
+  settings panel, shown by its live label), `[](section:<key>)` (a sidebar section),
+  `[text](app:<name>)` (another app's help). Empty link text shows the live label.
+- Everything else on the page is generated from your manifest: where your pages and
+  settings are, what you add to the shop, your agent tools, the events you listen to.
+
+`release_notes/tests/test_help_files.py` and `test_help_markers.py` fail on a missing
+guide, a marker that names nothing, a heading outside the set, or developer words.
 
 ### Enable / disable lifecycle
 
