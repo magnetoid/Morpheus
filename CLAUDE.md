@@ -1103,6 +1103,25 @@ PDP while every ORM-loaded test stayed green, because only the real view uses
 `seo/tests/test_product_markup.py::DeferredFieldTests` +
 `test_templates_engine.py::GrammarTests::test_deferred_money_fields…`.
 
+**Landmine — django-money wraps `objects` itself, after Django has copied it,
+and a second wrapping crashes once the model cache is refreshed.** django-money
+wraps the `objects` manager of every model with a MoneyField on `class_prepared`
+(so `price=Money(10, 'EUR')` matches the amount and the currency), but
+`ModelBase._prepare` has already copied the manager Django hands out, so a
+custom `objects` stays unwrapped until the model cache is refreshed. v0.109.0
+wrapped `Product.objects` with `money_manager()` by hand, which left two
+wrappings. Creating a model class after start-up refreshes the cache
+(`apps.register_model` → `clear_cache`; on a store without the book app, the
+first import of `book_product.models`), and from then on both were live. Django
+6.1 filters a related manager's queryset in place, so each filter stacked one
+wrapper per wrapping, and the third raised `'function' object has no attribute
+'__self__'`. The storefront's sitemap contribution failed on Supernatural and
+Irving for four days, and their sitemaps left out the shop's index and content
+pages (`/products/`, `/about/`, `/journal/`, …; v0.115.1). A custom `objects` on a money model gets no `money_manager()`;
+instead `Model._meta._expire_cache(reverse=False)` runs after the class. A
+refreshed cache is a second process state: test it, and test start-up in a fresh
+interpreter. Guarded by `catalog/tests/test_product_manager.py`.
+
 **Landmine — a canonical that echoes a query parameter the view never read
 mints one indexable page per value, forever.** Two independent causes produced
 the identical live symptom on `?page=N`: Django's paginator **clamps** an
@@ -1173,6 +1192,16 @@ input. Anything the dashboard binds in JS must also bind on `htmx:afterSwap`: th
 body is `hx-boost`, so a page reached by a link, or re-rendered after a Save, never
 fires DOMContentLoaded (the uploader stayed inert that way until v0.93.0). Guarded
 by `admin_dashboard/tests/test_media_field_uploader.py`.
+
+**Landmine — a file name is an address that caches remember, so a new upload must
+never get a deleted file's name.** Product photos are named after the product
+(v0.95.0), and a name came free when its photo was deleted, so the next upload took
+it. The dashboard page, browsers (31 days on `/media/`), Cloudflare and seo's `/img/`
+copies (cached on disk by source path, served immutable for a year) all kept the
+deleted photo: the owner saw old pictures come back in the uploader, and Supernatural
+and Irving served them to shoppers (2026-10-18). A product photo's name now carries a
+random part (`catalog.models.product_image_upload_to`). The `/img/` cache is right only
+while a path never changes content. Guarded by `catalog/tests/test_image_names.py`.
 
 **Convention — the dashboard's colours are ONE token list, for both modes (v0.106.0).**
 `admin_dashboard/base.html` defines each colour once with `light-dark()`; `color-scheme` on `:root`
@@ -1580,6 +1609,12 @@ hangs/dies outside the container. Always pin an in-memory DB:
 ```bash
 DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<name>
 ```
+
+The local venv also drifts from `requirements.lock.txt`, which CI and the image
+install: in Oct 2026 it ran Django 6.0.5 while CI and production ran 6.1.2 (83 of
+111 locked packages differed), and the djmoney crash above cannot happen on
+6.0. Before trusting a local run on anything version-specific, run
+`uv pip install --python .venv/bin/python -r requirements.lock.txt`.
 
 **Landmine — a daemon thread that touches the database during a request locks
 the test database.** CI tests on file-backed SQLite; the IndexNow ping ran on a

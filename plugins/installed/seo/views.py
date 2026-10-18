@@ -337,7 +337,9 @@ def image_variant(request: HttpRequest, fmt: str, width: int, path: str) -> Http
     URL shape: /img/<fmt>/<width>/<media-relative-path>
     Whitelisted widths/formats only. Cached on disk after first hit
     and returned with a 1-year immutable Cache-Control so Cloudflare /
-    browser cache pin it forever (variants are content-addressed).
+    browser cache pin it forever. Both are keyed by the source's path, so
+    this is right only while a path never changes content: a product photo
+    gets a new name per upload (catalog.models.product_image_upload_to).
     """
     from plugins.installed.seo.services import (
         parse_image_variant_path,

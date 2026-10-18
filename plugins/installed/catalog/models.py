@@ -18,7 +18,6 @@ from core.utils.html import sanitize_richtext
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils.text import slugify
 from djmoney.models.fields import MoneyField
-from djmoney.models.managers import money_manager
 from morpheus.app import models
 from mptt.models import MPTTModel, TreeForeignKey
 from taggit.managers import TaggableManager
@@ -253,8 +252,8 @@ class Product(models.Model):
         ('service', 'Service (booked through an app)'),
     ]
 
-    # money_manager keeps Money lookups (price=Money(...)) working on the custom manager.
-    objects = money_manager(ProductQuerySet.as_manager())
+    # django-money wraps `objects` itself (see the note below the class).
+    objects = ProductQuerySet.as_manager()
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=300)
@@ -484,6 +483,16 @@ class Product(models.Model):
         return self.reviews.filter(is_approved=True).count()
 
 
+# django-money wraps the `objects` manager of a model with a MoneyField when the
+# class is prepared, so price=Money(10, 'EUR') matches the amount and the currency.
+# Django copied the manager it hands out just before that; drop the copy, so
+# Product.objects is the wrapped manager from start-up on. Wrapping it by hand as
+# well (money_manager) left two wrappings live once anything refreshed the model
+# cache, which Django 6.1's related managers stack into a crash
+# (catalog/tests/test_product_manager.py).
+Product._meta._expire_cache(reverse=False)
+
+
 class ProductAttribute(models.Model):
     """Assigns attribute values to a product."""
 
@@ -496,13 +505,20 @@ class ProductAttribute(models.Model):
 
 
 def product_image_upload_to(instance, filename: str) -> str:
-    """``products/<product title>.<ext>``: a file name that says what the photo is.
+    """``products/<product title>-<6 random hex>.<ext>``: a name that says what the photo is, used once.
 
     Image search reads the file name (owner's ask, 2026-10-10), and a phone's
     ``IMG_4821.JPG`` or a supplier's numeric id says nothing. Only a NEW file is
     named here: Django never renames a stored file, so every link already
-    published keeps working. A second photo of the same product counts up
-    (``-2``, ``-3``); a title with no usable letters falls back to the slug.
+    published keeps working. A title with no usable letters falls back to the slug.
+
+    The random part gives every upload an address no photo had before. Without it
+    a photo uploaded after another was deleted took the deleted photo's name, and
+    whatever remembers an address showed the deleted photo: the dashboard page,
+    browsers (31 days), Cloudflare and the resized copies seo serves under /img/
+    as immutable for a year (catalog/tests/test_image_names.py). The title is cut
+    to 72 characters so the name and its optimised copy fit their 100-character
+    columns.
 
     A name is taken when the photo OR its optimised copy exists: the copy is
     named from the photo's name without its extension
@@ -510,6 +526,7 @@ def product_image_upload_to(instance, filename: str) -> str:
     would share one copy and the second would be re-encoded on every save.
     """
     import re
+    import secrets
 
     from django.utils.text import slugify
 
@@ -517,8 +534,8 @@ def product_image_upload_to(instance, filename: str) -> str:
     ext = re.sub(r'[^a-z0-9]', '', ext)[:5] or 'jpg'
     product = getattr(instance, 'product', None)
     base = (
-        slugify(getattr(product, 'name', '') or '')[:80].strip('-')
-        or slugify(getattr(product, 'slug', '') or '')[:80].strip('-')
+        slugify(getattr(product, 'name', '') or '')[:72].strip('-')
+        or slugify(getattr(product, 'slug', '') or '')[:72].strip('-')
         or 'product'
     )
     storage = instance._meta.get_field('image').storage
@@ -528,11 +545,10 @@ def product_image_upload_to(instance, filename: str) -> str:
             return True
         return any(storage.exists(f'products/webp/{stem}.{v}') for v in ('webp', 'avif', 'jpg'))
 
-    stem = base
-    for n in range(2, 100):
+    for _ in range(10):
+        stem = f'{base}-{secrets.token_hex(3)}'
         if not taken(stem):
             break
-        stem = f'{base}-{n}'
     return f'products/{stem}.{ext}'
 
 
