@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.115.0 — 2026-10-18
+
+**Help inside the dashboard for every app**
+
+- Help (/dashboard/help/) explains every app: what it's for, how to set it up and common tasks, from a guide in the app's own folder, plus where its screens and settings are and what Linda can do there, read live from the running store.
+- Search across all of it from the Help page; every dashboard page links the help of the app it belongs to, and the Apps catalogue shows each app's one-sentence summary.
+- Linda reads the same help (help.apps, help.read) before answering how to do something, for every staff member whatever their role.
+- Every guide is checked in CI: an app without a guide, or a guide that links a page or setting that no longer exists, fails the build.
+
 ## v0.114.1 — 2026-10-16
 
 **Book cards that name the book, and a share preview that shows the cover**
