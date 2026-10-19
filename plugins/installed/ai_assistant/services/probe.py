@@ -263,6 +263,15 @@ def probe_moonshot(*, api_key: str, base_url: str = '') -> dict:
     )
 
 
+def probe_qwen(*, api_key: str, base_url: str = '') -> dict:
+    return _probe_openai_compatible(
+        api_key=api_key,
+        base_url=base_url,
+        default_base='https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+        label='Qwen Cloud',
+    )
+
+
 _PROBES = {
     'openai': probe_openai,
     'anthropic': probe_anthropic,
@@ -275,6 +284,7 @@ _PROBES = {
     'apikey': probe_apikey,
     'hermes': probe_hermes,
     'moonshot': probe_moonshot,
+    'qwen': probe_qwen,
 }
 
 

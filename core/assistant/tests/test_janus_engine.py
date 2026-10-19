@@ -776,6 +776,12 @@ class ProviderWiringTests(SimpleTestCase):
         self.assertEqual(env['DEEPSEEK_API_KEY'], 'sk-test')
         self.assertEqual(env['DEEPSEEK_BASE_URL'], 'https://api.deepseek.com/v1')
 
+    def test_dashboard_qwen_key_reaches_janus(self):
+        # Janus's own "Qwen Cloud" provider is called "alibaba" and reads DASHSCOPE_*.
+        args, env = self._wire('qwen', model='qwen-plus')
+        self.assertEqual(args, ['--provider', 'alibaba', '-m', 'qwen-plus'])
+        self.assertEqual(env['DASHSCOPE_API_KEY'], 'sk-test')
+
     def test_openai_maps_to_the_direct_api_not_openrouter(self):
         args, _ = self._wire('openai', model='gpt-4o-mini')
         self.assertEqual(args[:2], ['--provider', 'openai-api'])

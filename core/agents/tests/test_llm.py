@@ -181,6 +181,69 @@ class ProviderResolutionTests(SimpleTestCase):
         self.assertEqual(provider.name, 'moonshot')
 
 
+class QwenProviderTests(SimpleTestCase):
+    """Qwen Cloud (Alibaba Model Studio; owner's ask, 2026-10-19), wired in every
+    place a provider must be, or it silently "isn't selected" (CLAUDE.md)."""
+
+    def _cfg(self, **fields):
+        from core.agents.provider_registry import ProviderConfig
+
+        return ProviderConfig(
+            provider='qwen',
+            api_key='sk-test',
+            base_url=fields.get('base_url', ''),
+            model=fields.get('model', ''),
+            embedding_model='',
+        )
+
+    def test_qwen_is_a_registered_provider(self):
+        from unittest.mock import patch
+
+        from core.agents.llm import _PROVIDER_CLASSES, QwenProvider
+
+        self.assertIs(_PROVIDER_CLASSES.get('qwen'), QwenProvider)
+        with patch('core.agents.provider_registry.get_provider_config', return_value=self._cfg()):
+            provider = get_llm_provider('qwen', use_fallback=False)
+        self.assertEqual(provider.name, 'qwen')
+        self.assertEqual(provider.model, 'qwen-plus')
+
+    def test_qwen_defaults_are_the_international_endpoint_and_its_key(self):
+        from core.agents import provider_registry as reg
+
+        self.assertEqual(
+            reg._DEFAULT_BASE_URLS['qwen'], 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'
+        )
+        self.assertEqual(reg._DEFAULT_MODELS['qwen'], 'qwen-plus')
+        self.assertEqual(reg._ENV_KEYS['qwen'], 'DASHSCOPE_API_KEY')
+        self.assertEqual(reg._ENV_BASE['qwen'], 'DASHSCOPE_BASE_URL')
+
+    def test_qwen_answers_without_hidden_thinking(self):
+        # Qwen 3.5 and later think before answering by default, and a reply spent on
+        # reasoning comes back empty (the DeepSeek trap in respond()). Every call
+        # turns thinking off, which also keeps it at the non-thinking price.
+        from unittest.mock import MagicMock, patch
+
+        from core.agents.llm import LLMMessage, QwenProvider
+
+        with patch('core.agents.provider_registry.get_provider_config', return_value=self._cfg()):
+            provider = QwenProvider()
+        message = SimpleNamespace(content='ok', tool_calls=[])
+        completion = SimpleNamespace(
+            choices=[SimpleNamespace(message=message, finish_reason='stop')], usage=None
+        )
+        provider._client = MagicMock()
+        provider._client.chat.completions.create.return_value = completion
+        provider.respond(messages=[LLMMessage(role='user', content='hi')])
+        sent = provider._client.chat.completions.create.call_args.kwargs
+        self.assertEqual(sent['extra_body'], {'enable_thinking': False})
+
+    def test_qwen_models_are_priced(self):
+        from core.agents.pricing import is_priced
+
+        for model in ('qwen-plus', 'qwen-max', 'qwen-flash', 'qwen3.8-max', 'qwen3.8-flash'):
+            self.assertTrue(is_priced(model), model)
+
+
 class DegradedSentinelTests(SimpleTestCase):
     def test_is_degraded_response_truth_table(self):
         from core.agents.llm import is_degraded_response

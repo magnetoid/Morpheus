@@ -192,6 +192,7 @@ class AIAssistantPlugin(Plugin):
                 'deepseek_api_key',
                 'hermes_api_key',
                 'moonshot_api_key',
+                'qwen_api_key',
             )
         )
         return value
@@ -481,6 +482,25 @@ class AIAssistantPlugin(Plugin):
                     'default': 'kimi-latest',
                     'description': 'e.g. kimi-latest · kimi-k2-0711-preview · moonshot-v1-128k',
                 },
+                # ── Qwen Cloud (Alibaba Model Studio, OpenAI-compatible) ──
+                'qwen_api_key': {
+                    'type': 'string',
+                    'format': 'password',
+                    'title': 'Qwen Cloud · API Key',
+                    'description': 'Qwen Cloud (Alibaba Model Studio) key. https://modelstudio.console.alibabacloud.com',
+                },
+                'qwen_base_url': {
+                    'type': 'string',
+                    'title': 'Qwen Cloud · Base URL',
+                    'default': 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+                    'description': 'Use https://dashscope.aliyuncs.com/compatible-mode/v1 for the China (Beijing) region.',
+                },
+                'qwen_model': {
+                    'type': 'string',
+                    'title': 'Qwen Cloud · Default model',
+                    'default': 'qwen-plus',
+                    'description': 'e.g. qwen-plus · qwen-max · qwen-flash · qwen3.8-max',
+                },
                 # ── Ollama (cloud or self-hosted) ─────────────────────
                 'ollama_base_url': {
                     'type': 'string',
@@ -513,6 +533,7 @@ class AIAssistantPlugin(Plugin):
                         'packy',
                         'hermes',
                         'moonshot',
+                        'qwen',
                         'ollama',
                     ],
                     'default': 'openai',
@@ -590,7 +611,7 @@ class AIAssistantPlugin(Plugin):
     def contribute_settings_panel(self):
         return SettingsPanel(
             label='AI providers',
-            description='API keys and default models for OpenAI, Anthropic, Gemini, OpenRouter, Grok, apikey.fun, DeepSeek, Packy, Hermes (NousResearch), and Ollama. Pick the active provider with "Active provider".',
+            description='API keys and default models for OpenAI, Anthropic, Gemini, OpenRouter, Grok, apikey.fun, DeepSeek, Packy, Hermes (NousResearch), Moonshot (Kimi), Qwen Cloud and Ollama. Pick the active provider with "Active provider".',
             schema=self.get_config_schema(),
             category='ai',
         )

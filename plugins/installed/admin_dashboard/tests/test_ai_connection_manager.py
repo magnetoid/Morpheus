@@ -133,6 +133,18 @@ class ProviderCatalogUXTests(TestCase):
         # Provider blurb (what it's for) shows in the Add-AI picker + card.
         self.assertIn('strong coding', html.lower())
 
+    def test_qwen_cloud_is_offered(self):
+        from plugins.installed.admin_dashboard.views_split.settings import _AI_PROVIDERS
+
+        qwen = next((p for p in _AI_PROVIDERS if p['slug'] == 'qwen'), None)
+        self.assertIsNotNone(qwen, 'Qwen Cloud is not in the AI providers catalogue')
+        self.assertIn('qwen-plus', qwen['models'])
+        schema = _ai().get_config_schema()['properties']
+        self.assertIn('qwen', schema['ai_provider']['enum'])
+        for key in ('qwen_api_key', 'qwen_base_url', 'qwen_model'):
+            self.assertIn(key, schema)
+        self.assertEqual(schema['qwen_api_key'].get('format'), 'password')
+
     def test_every_provider_has_models(self):
         from plugins.installed.admin_dashboard.views_split.settings import _AI_PROVIDERS
 

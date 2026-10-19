@@ -44,6 +44,9 @@ _DEFAULT_BASE_URLS = {
     'hermes': 'https://openrouter.ai/api/v1',
     # Moonshot AI (Kimi) — OpenAI-compatible; .cn host via the panel for China.
     'moonshot': 'https://api.moonshot.ai/v1',
+    # Qwen Cloud (Alibaba Model Studio) — international region; .aliyuncs.com
+    # without -intl via the panel for China (Beijing).
+    'qwen': 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
 }
 
 _DEFAULT_MODELS = {
@@ -58,6 +61,7 @@ _DEFAULT_MODELS = {
     'packy': 'claude-3-5-sonnet-20241022',
     'hermes': 'nousresearch/hermes-3-llama-3.1-405b',
     'moonshot': 'kimi-latest',
+    'qwen': 'qwen-plus',
 }
 
 

@@ -553,6 +553,7 @@ _JANUS_PROVIDERS = {
     'gemini': ('gemini', 'GEMINI_API_KEY', 'GEMINI_BASE_URL'),
     'deepseek': ('deepseek', 'DEEPSEEK_API_KEY', 'DEEPSEEK_BASE_URL'),
     'grok': ('xai', 'XAI_API_KEY', 'XAI_BASE_URL'),
+    'qwen': ('alibaba', 'DASHSCOPE_API_KEY', 'DASHSCOPE_BASE_URL'),
 }
 
 
@@ -567,6 +568,7 @@ _PROVIDER_LABELS = {
     'gemini': 'Gemini',
     'deepseek': 'DeepSeek',
     'grok': 'Grok',
+    'qwen': 'Qwen Cloud',
 }
 
 

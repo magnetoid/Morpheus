@@ -40,6 +40,14 @@ _PRICES: dict[str, tuple[float, float]] = {
     # the spend cap sees $0 for it. Correct when the real price is known.
     'hermes-3-llama-3-1-405b': (0.80, 0.80),
     'kimi-latest': (1.00, 3.00),
+    # Qwen Cloud, international region, first input tier (Alibaba Model Studio
+    # pricing page, 2026-10-19). QwenProvider turns thinking off, so these are the
+    # non-thinking rates (qwen-plus thinks at $4.00 out).
+    'qwen-plus': (0.40, 1.20),
+    'qwen-max': (1.60, 6.40),
+    'qwen-flash': (0.05, 0.40),
+    'qwen3.8-max': (2.00, 6.00),
+    'qwen3.8-flash': (0.15, 0.47),
     'llama3.2': (0.0, 0.0),  # local / self-hosted — no per-token cost
 }
 

@@ -367,6 +367,16 @@ _AI_PROVIDERS = [
         'models': ('kimi-latest', 'kimi-k2-0711-preview', 'moonshot-v1-128k'),
     },
     {
+        'slug': 'qwen',
+        'label': 'Qwen Cloud',
+        'icon': 'cloud',
+        'fields': ('api_key', 'base_url', 'model'),
+        'help_url': 'https://modelstudio.console.alibabacloud.com',
+        'placeholder_model': 'qwen-plus',
+        'blurb': "Alibaba's Qwen models, OpenAI-compatible; low cost for strong answers.",
+        'models': ('qwen-plus', 'qwen-max', 'qwen-flash', 'qwen3.8-max', 'qwen3.8-flash'),
+    },
+    {
         'slug': 'ollama',
         'label': 'Ollama',
         'icon': 'cpu',

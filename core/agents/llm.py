@@ -254,6 +254,9 @@ def _truncated_while_reasoning(completion: Any) -> bool:
 
 class OpenAIProvider(LLMProvider):
     name = 'openai'
+    #: Provider-specific request fields an OpenAI-compatible API needs
+    #: (``chat.completions.create(extra_body=...)``); see QwenProvider.
+    extra_body: dict[str, Any] | None = None
 
     def __init__(self, model: str | None = None) -> None:
         from core.agents.provider_registry import get_provider_config
@@ -308,6 +311,8 @@ class OpenAIProvider(LLMProvider):
         }
         if tools:
             kwargs['tools'] = [t.to_openai_schema() for t in tools]
+        if self.extra_body:
+            kwargs['extra_body'] = dict(self.extra_body)
         completion = self._client.chat.completions.create(**kwargs)
         choice = completion.choices[0]
         msg = choice.message
@@ -730,6 +735,29 @@ class MoonshotProvider(OpenAIProvider):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Qwen Cloud — Alibaba Model Studio, OpenAI-compatible. Qwen 3.5 and later think
+# before answering by default; the answer then comes after a reasoning pass that
+# is billed as output and can use up max_tokens, leaving an empty reply (the
+# DeepSeek trap respond() retries). Every call turns thinking off.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class QwenProvider(OpenAIProvider):
+    name = 'qwen'
+    extra_body = {'enable_thinking': False}
+
+    def __init__(self, model: str | None = None) -> None:
+        from core.agents.provider_registry import get_provider_config
+
+        cfg = get_provider_config('qwen')
+        self._client = _openai_client(
+            api_key=cfg.api_key,
+            base_url=cfg.base_url or 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+        )
+        self.model = model or cfg.model or 'qwen-plus'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Mock — deterministic, used in tests + when no provider configured
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -793,6 +821,7 @@ _PROVIDER_CLASSES: dict[str, type[LLMProvider]] = {
     'apikey': ApikeyProvider,
     'deepseek': DeepSeekProvider,
     'moonshot': MoonshotProvider,
+    'qwen': QwenProvider,
 }
 
 

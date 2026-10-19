@@ -49,6 +49,7 @@ _DEFAULT_BASE_URLS = {
     'hermes': 'https://openrouter.ai/api/v1',
     'deepseek': 'https://api.deepseek.com',
     'moonshot': 'https://api.moonshot.ai/v1',
+    'qwen': 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
 }
 
 _DEFAULT_MODELS = {
@@ -63,6 +64,7 @@ _DEFAULT_MODELS = {
     'hermes': 'nousresearch/hermes-3-llama-3.1-405b',
     'deepseek': 'deepseek-chat',
     'moonshot': 'kimi-latest',
+    'qwen': 'qwen-plus',
 }
 
 _ENV_KEYS = {
@@ -77,6 +79,7 @@ _ENV_KEYS = {
     'deepseek': 'DEEPSEEK_API_KEY',
     'hermes': 'HERMES_API_KEY',
     'moonshot': 'MOONSHOT_API_KEY',
+    'qwen': 'DASHSCOPE_API_KEY',
 }
 
 _ENV_BASE = {
@@ -89,6 +92,7 @@ _ENV_BASE = {
     'deepseek': 'DEEPSEEK_BASE_URL',
     'hermes': 'HERMES_BASE_URL',
     'moonshot': 'MOONSHOT_BASE_URL',
+    'qwen': 'DASHSCOPE_BASE_URL',
 }
 
 
