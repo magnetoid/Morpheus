@@ -65,6 +65,16 @@ def _repo_root() -> Path:
     return Path(getattr(settings, 'BASE_DIR', '.'))
 
 
+def can_self_update() -> bool:
+    """True when this install runs from a git checkout, so it can update its own code.
+
+    A built image (every Docker install, our stores included) has no ``.git``. It
+    updates when a new version is released and deployed, so the dashboard and
+    Linda offer no "Update now" there.
+    """
+    return (_repo_root() / '.git').exists()
+
+
 def platform_update_status(*, fetch: bool = False) -> dict:
     """Compare the deployed git checkout against its upstream.
 

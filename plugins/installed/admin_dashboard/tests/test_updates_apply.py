@@ -86,6 +86,9 @@ class ComponentUpdatesSurfaceTests(TestCase):
         self.page = reverse('admin_dashboard:updates')
         self.apply = reverse('admin_dashboard:updates_apply_component')
         _pin_standalone_updater(self)
+        p = patch('core.updates.can_self_update', return_value=True)
+        p.start()
+        self.addCleanup(p.stop)
 
     def _cache(self, components):
         from django.core.cache import cache
@@ -137,3 +140,25 @@ class ComponentUpdatesSurfaceTests(TestCase):
         from core.updates import cached_update_status
 
         self.assertEqual(cached_update_status()['components'], [self.COMPONENT])
+
+
+class StandaloneUpdaterBuiltImageTests(TestCase):
+    """The standalone /dashboard/updates/ page tells the same truth (safe deploys, part 5)."""
+
+    def setUp(self):
+        u = get_user_model().objects.create_user(
+            username='img', email='i@example.test', password='pw', is_staff=True
+        )
+        self.client.force_login(u)
+        _pin_standalone_updater(self)
+
+    def test_a_built_image_gets_one_line_instead_of_buttons(self):
+        status = {'source': 'git', 'available': 'unavailable', 'reason': 'No git metadata.'}
+        with (
+            patch('core.updates.can_self_update', return_value=False),
+            patch('core.updates.platform_update_status', return_value=status),
+        ):
+            html = self.client.get(reverse('admin_dashboard:updates')).content.decode()
+        self.assertIn('This store updates when a new version is released.', html)
+        for gone in ('Check for updates', 'Update now', 'data-testid="component-updates"'):
+            self.assertNotIn(gone, html)

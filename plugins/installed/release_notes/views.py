@@ -132,6 +132,7 @@ def version_updates(request):
             releases = []
 
     # Updater status — core-owned, no network call on load (last check / daily beat).
+    from core.deploys import running_release
     from core.updates import cached_update_status, platform_update_status
     from core.versioning import component_versions
 
@@ -148,7 +149,7 @@ def version_updates(request):
             'version': version,
             'releases': releases,
             'latest': releases[0] if releases else None,
-            'core_version': components_data.get('core', 'unknown'),
+            'running': running_release(),
             'themes': components_data.get('themes') or [],
             'platform': platform,
             'component_updates': component_updates,

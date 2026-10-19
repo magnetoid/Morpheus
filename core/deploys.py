@@ -30,12 +30,14 @@ import json
 import os
 import re
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 #: Pre-deploy backups kept. The nightly ones rotate separately, in the folder above.
 BACKUP_KEEP = 5
 HANDOFF = Path(tempfile.gettempdir()) / 'morpheus-predeploy.json'
 _COMMIT = re.compile(r'^[0-9a-f]{7,40}$')
+_ARCHIVE = re.compile(r'^morpheus-backup-(\d{8}T\d{6}Z)(?:-(.+))?\.tar\.gz$')
 
 
 def backup_root() -> Path:
@@ -113,3 +115,45 @@ def record_deploy():
     )
     clear_handoff()
     return event, True
+
+
+def latest_predeploy_backup() -> dict | None:
+    """The newest backup in the pre-deploy folder, as ``{name, size, taken_at,
+    label}``; None when there is none."""
+    for path in sorted(predeploy_dir().glob('morpheus-backup-*.tar.gz'), reverse=True):
+        match = _ARCHIVE.match(path.name)
+        if not match:
+            continue
+        try:
+            size = path.stat().st_size
+        except OSError:
+            continue
+        taken_at = datetime.strptime(match.group(1), '%Y%m%dT%H%M%SZ').replace(tzinfo=UTC)
+        return {
+            'name': path.name,
+            'size': size,
+            'taken_at': taken_at,
+            'label': match.group(2) or '',
+        }
+    return None
+
+
+def running_release() -> dict:
+    """What this store runs, for Settings → Version & updates and Linda's
+    ``updates.status``: version, commit, when it was installed, the newest
+    pre-deploy backup, and whether it can update itself."""
+    from django.conf import settings
+
+    from core.models import DeployEvent
+    from core.updates import can_self_update
+
+    version, commit = str(settings.MORPHEUS_VERSION), current_commit()
+    event = DeployEvent.objects.filter(version=version, commit=commit).first()
+    return {
+        'version': version,
+        'commit': commit,
+        'commit_short': commit[:7],
+        'deployed_at': event.deployed_at if event else None,
+        'backup': latest_predeploy_backup(),
+        'self_update': can_self_update(),
+    }

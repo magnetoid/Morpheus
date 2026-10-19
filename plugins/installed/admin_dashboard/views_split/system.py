@@ -37,6 +37,7 @@ def updates_page(request: HttpRequest) -> HttpResponse:
 
     from django.conf import settings as dj_settings
 
+    from core.deploys import running_release
     from core.updates import cached_update_status, platform_update_status
     from core.versioning import component_versions
 
@@ -52,7 +53,7 @@ def updates_page(request: HttpRequest) -> HttpResponse:
         request,
         'admin_dashboard/updates.html',
         {
-            'core_version': data.get('core', 'unknown'),
+            'running': running_release(),
             'plugins': plugins,
             'themes': data.get('themes') or [],
             'plugin_enabled_count': sum(1 for p in plugins if p.get('enabled')),

@@ -1,0 +1,56 @@
+{% comment %}
+The core updater card, shared by Version & updates (release_notes) and the
+standalone /dashboard/updates/ page. `running` is core.deploys.running_release():
+the version, commit, install time and newest pre-deploy backup. A store that
+cannot update itself (no git checkout: every Docker install, ours included) gets
+one line where the check and apply buttons would be, since neither can work
+there (safe-deploys spec, part 5).
+{% endcomment %}
+<div class="card card-padded" data-testid="running-release">
+  <div class="flex items-center justify-between gap-3 flex-wrap">
+    <div>
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Morpheus core</p>
+      <p class="text-lg font-semibold">{{ running.version }}</p>
+      {% if running.commit or running.deployed_at %}
+      <p class="text-sm text-[color:var(--text-muted)]">{% if running.commit %}Commit <code>{{ running.commit_short }}</code>{% endif %}{% if running.commit and running.deployed_at %} · {% endif %}{% if running.deployed_at %}Installed {{ running.deployed_at|date:"j M Y, H:i" }}{% endif %}</p>
+      {% endif %}
+    </div>
+    {% if running.self_update %}
+    <form method="post" action="{% url 'admin_dashboard:updates_check' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-ghost text-sm"><i data-lucide="refresh-cw" class="h-4 w-4"></i> Check for updates</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="mt-3 pt-3 border-t border-[color:var(--border)] text-sm" data-testid="predeploy-backup">
+    {% if running.backup %}
+      Database backup from before the last update that changed the database: {{ running.backup.taken_at|date:"j M Y, H:i" }} ({{ running.backup.size|filesizeformat }}).
+    {% else %}
+      <span class="text-[color:var(--text-muted)]">No backup from before an update yet. The store makes one automatically before any update that changes the database.</span>
+    {% endif %}
+  </div>
+  <div class="mt-3 pt-3 border-t border-[color:var(--border)] text-sm">
+    {% if not running.self_update %}
+      This store updates when a new version is released.{% if platform.available == 'yes' and platform.latest %} {{ platform.latest }} is out.{% endif %}
+    {% elif platform.available == 'yes' %}
+      <span class="pill pill-warn">Update available</span>
+      <span class="text-[color:var(--text-muted)]">{{ platform.behind }} commit(s) behind <code>{{ platform.upstream }}</code> · deployed <code>{{ platform.current }}</code></span>
+      <div class="mt-2 flex items-center gap-2 flex-wrap">
+        <form method="post" action="{% url 'admin_dashboard:updates_apply' %}" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary text-sm"
+                  data-confirm="Apply update? This backs up first, fast-forwards the deployment from {{ platform.current }} to {{ platform.latest }}, boot-probes the new code, runs migrations, and auto-rolls-back on any failure.">
+            <i data-lucide="download" class="h-4 w-4"></i> Update now
+          </button>
+        </form>
+        {% if not self_update_enabled %}<span class="text-xs text-[color:var(--text-muted)]">Self-update is off — set <code>MORPHEUS_SELF_UPDATE_ENABLED=1</code> to allow one-click apply.</span>{% endif %}
+      </div>
+    {% elif platform.available == 'no' %}
+      <span class="pill pill-success">Up to date</span>
+      <span class="text-[color:var(--text-muted)]">on <code>{{ platform.branch }}</code> at <code>{{ platform.current }}</code></span>
+    {% else %}
+      <span class="pill">Version check {{ platform.available }}</span>
+      <span class="text-[color:var(--text-muted)]">{{ platform.reason }}{% if platform.current and platform.current != 'unknown' %} · deployed <code>{{ platform.current }}</code>{% endif %}</span>
+    {% endif %}
+  </div>
+</div>
