@@ -6,6 +6,7 @@ Vendor moved to catalog plugin to avoid circular migration dependency.
 import uuid
 
 from django.db import models
+from django.utils import timezone
 
 
 class StoreSettings(models.Model):
@@ -313,6 +314,25 @@ class ExchangeRate(models.Model):
 
     def __str__(self) -> str:
         return f'{self.base_currency}→{self.quote_currency}: {self.rate}'
+
+
+class DeployEvent(models.Model):
+    """One deploy of this store, written after migrating by ``manage.py
+    safe_migrate`` (core/deploys.py). A restart of the same deploy adds no row."""
+
+    version = models.CharField(max_length=40)
+    commit = models.CharField(max_length=40, blank=True)
+    deployed_at = models.DateTimeField(default=timezone.now)
+    # The pre-deploy backup's path; blank when nothing was migrated.
+    backup = models.CharField(max_length=255, blank=True)
+    # The migrations this deploy applied, as "app_label.name".
+    migrations = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ['-deployed_at', '-pk']
+
+    def __str__(self) -> str:
+        return f'{self.version} at {self.deployed_at:%Y-%m-%d %H:%M}'
 
 
 # Agent run-state models (AgentRun/AgentStep/AgentApprovalRequest) live in

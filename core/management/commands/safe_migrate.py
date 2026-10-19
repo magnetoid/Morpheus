@@ -1,21 +1,25 @@
 """`python manage.py safe_migrate`: migrate, backing the database up first.
 
 The web container's entrypoint runs this in place of `migrate` on every boot
-(scripts/docker-entrypoint.sh). With nothing to migrate it only runs `migrate`.
-With migrations pending it first backs the database up into the pre-deploy
-folder, and a failed backup exits non-zero before anything is migrated. The
-steps share one process on purpose: each `manage.py` start costs about three
-seconds, and the store answers 503 while the web container boots.
-See core/deploys.py.
+(scripts/docker-entrypoint.sh). With migrations pending it first backs the
+database up into the pre-deploy folder, and a failed backup exits non-zero
+before anything is migrated. After migrating it records the deploy as a
+DeployEvent. The steps share one process on purpose: each `manage.py` start
+costs about three seconds, and the store answers 503 while the web container
+boots. See core/deploys.py.
 """
 
 from __future__ import annotations
+
+import logging
 
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
 from core import deploys
 from core.management.commands.morph_backup import Command as BackupCommand
+
+logger = logging.getLogger('morpheus.deploys')
 
 
 class Command(BaseCommand):
@@ -68,4 +72,16 @@ class Command(BaseCommand):
         call_command('migrate', interactive=False, skip_checks=False)
 
     def _record(self) -> None:
-        deploys.clear_handoff()
+        # The record feeds the Version & updates page; it never keeps the store down.
+        try:
+            event, created = deploys.record_deploy()
+        except Exception:
+            logger.exception('safe_migrate: could not record this deploy')
+            self.stderr.write('[safe_migrate] Could not record this deploy; carrying on.')
+            return
+        if not created:
+            self.stdout.write(f'[safe_migrate] {event.version} restarted; already recorded.')
+            return
+        commit = f' ({event.commit[:7]})' if event.commit else ''
+        count = f', {len(event.migrations)} migrations applied' if event.migrations else ''
+        self.stdout.write(f'[safe_migrate] Recorded {event.version}{commit}{count}.')

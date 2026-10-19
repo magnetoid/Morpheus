@@ -8,6 +8,8 @@ On every boot the web container's entrypoint (scripts/docker-entrypoint.sh) runs
    version and commit being deployed. If the backup fails, it exits non-zero
    before migrating, so the store stays on a schema the previous version knows.
 2. It migrates.
+3. It records the deploy as a ``DeployEvent`` (version, commit, the backup's
+   path, the migrations applied). A restart of the same deploy adds nothing.
 
 A file in the container's /tmp (``HANDOFF``) marks the backup step as done for
 this container and carries what it found to the end of the command. A crash
@@ -84,3 +86,30 @@ def write_handoff(data: dict) -> None:
 
 def clear_handoff() -> None:
     HANDOFF.unlink(missing_ok=True)
+
+
+def record_deploy():
+    """Write this boot's DeployEvent from the marker, then remove the marker.
+
+    A boot that migrated nothing, on the version and commit of the newest record,
+    is a restart of that deploy and writes nothing. Returns ``(event, created)``.
+    """
+    from django.conf import settings
+
+    from core.models import DeployEvent
+
+    marker = read_handoff() or {}
+    version, commit = str(settings.MORPHEUS_VERSION), current_commit()
+    migrations = [str(name) for name in marker.get('migrations') or []]
+    newest = DeployEvent.objects.first()
+    if newest and (newest.version, newest.commit) == (version, commit) and not migrations:
+        clear_handoff()
+        return newest, False
+    event = DeployEvent.objects.create(
+        version=version,
+        commit=commit,
+        backup=str(marker.get('backup') or ''),
+        migrations=migrations,
+    )
+    clear_handoff()
+    return event, True

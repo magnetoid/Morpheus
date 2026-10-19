@@ -41,7 +41,7 @@ run_migrations() {
   echo "[entrypoint] Running migrations…"
   # safe_migrate backs the database up first when anything is pending, and exits
   # non-zero before migrating if that backup fails; `set -e` then stops the boot
-  # (core/deploys.py).
+  # (core/deploys.py). It then records the deploy.
   python manage.py safe_migrate
 }
 
