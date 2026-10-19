@@ -30,7 +30,8 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
       {% endif %}
       {% if product.is_on_sale or product.isOnSale %}<span class="ribbon">{% firstof product.discount_percentage product.discountPercentage %}% off</span>{% endif %}
     </div>
-    {% if product.category.name %}<p class="book__category">{{ product.category.name }}</p>{% endif %}
+    {% comment %}Always one line, empty without a category, so the names in a row stay level.{% endcomment %}
+    {% if product.category.name %}<p class="book__category">{{ product.category.name }}</p>{% else %}<p class="book__category" aria-hidden="true">&nbsp;</p>{% endif %}
     <p class="title">{{ product.name }}</p>
     {% if card_author %}<p class="author">{{ card_author }}</p>{% endif %}
   </a>

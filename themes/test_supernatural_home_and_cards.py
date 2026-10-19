@@ -56,6 +56,16 @@ class SupernaturalCardTests(TestCase):
         self.assertIn('<p class="book__category">Daily staples</p>', card)
         self.assertIn('Gentle on the stomach.', card)
 
+    def test_a_card_without_a_category_keeps_the_names_in_line(self):
+        from plugins.installed.catalog.models import Product
+
+        Product.objects.create(
+            name='Loose Tea', slug='loose-tea', sku='LT-1', price=Money(Decimal('5.00'), 'USD'),
+            status='active',
+        )  # fmt: skip
+        card = self._card(self.client.get('/products/').content.decode(), 'loose-tea')
+        self.assertIn('<p class="book__category" aria-hidden="true">&nbsp;</p>', card)
+
     def test_a_carousel_card_keeps_its_description(self):
         self.assertNotIn('.grid-books--rail .book__excerpt { display: none; }', _BASE.read_text())
 
