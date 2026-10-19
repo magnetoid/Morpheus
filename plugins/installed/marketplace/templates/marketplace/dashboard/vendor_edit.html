@@ -1,0 +1,46 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Edit {{ vendor.name }} · Vendor · Morpheus{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <h1 class="text-xl font-semibold tracking-tight">Edit vendor</h1>
+    <a href="/vendor/{{ vendor.slug }}/" target="_blank" rel="noopener" class="btn btn-ghost text-sm"><i data-lucide="external-link" class="h-4 w-4"></i> View on storefront</a>
+  </div>
+
+  {% if form.non_field_errors %}<div class="card card-padded form-error-banner">{{ form.non_field_errors }}</div>{% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="space-y-4">
+    {% csrf_token %}
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">Details</h2>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="{{ form.name.id_for_label }}">Name</label>
+        {{ form.name }}
+        {% if form.name.errors %}<p class="field-error">{{ form.name.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="{{ form.slug.id_for_label }}">Web address</label>
+        {{ form.slug }}
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">The vendor's page is at <code>/vendor/&lt;web address&gt;/</code>. Changing it keeps the old address working: it sends visitors and search engines to the new one.</p>
+        {% if form.slug.errors %}<p class="field-error">{{ form.slug.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="{{ form.description.id_for_label }}">Description</label>
+        {{ form.description }}
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Shown on the vendor's page.</p>
+        {% if form.description.errors %}<p class="field-error">{{ form.description.errors.0 }}</p>{% endif %}
+      </div>
+      <label class="flex items-center gap-2 text-sm">{{ form.is_active }} Active <span class="text-xs text-[color:var(--text-muted)]">— an inactive vendor's page and its place in the vendor directory leave the shop; its products stay</span></label>
+    </div>
+
+    {% include "admin_dashboard/_media_field.html" with field=form.logo current=vendor.logo label="Logo" help="Shown on the vendor's page and in the vendor directory." %}
+
+    <div class="flex items-center justify-between gap-3">
+      <button type="submit" class="btn btn-primary">Save changes</button>
+      <a href="{{ detail_url }}" class="btn btn-ghost text-sm">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

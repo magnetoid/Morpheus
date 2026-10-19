@@ -27,6 +27,7 @@
           <th class="text-right">Lifetime GMV</th>
           <th>Status</th>
           <th>Created</th>
+          <th><span class="sr-only">Edit</span></th>
         </tr>
       </thead>
       <tbody>
@@ -42,6 +43,7 @@
             {% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
           </td>
           <td class="text-xs text-[color:var(--text-muted)]">{{ v.obj.created_at|date:"Y-m-d" }}</td>
+          <td class="text-right"><a href="/dashboard/marketplace/vendors/{{ v.obj.id }}/edit/" class="btn btn-ghost text-xs">Edit</a></td>
         </tr>
         {% endfor %}
       </tbody>

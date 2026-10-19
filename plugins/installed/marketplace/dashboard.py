@@ -317,6 +317,40 @@ def vendor_detail(request, vendor_id):
 
 
 @staff_member_required
+@require_capability('system.write')
+def vendor_edit(request, vendor_id):
+    """Edit a vendor's name, web address, description, logo and status."""
+    from plugins.installed.catalog.models import Vendor  # noqa: PLC0415
+    from plugins.installed.marketplace.forms import VendorForm  # noqa: PLC0415
+
+    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    detail_url = f'/dashboard/marketplace/vendors/{vendor.pk}/'
+    if request.method == 'POST':
+        form = VendorForm(request.POST, request.FILES, instance=vendor)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'{vendor.name} saved.')
+            return HttpResponseRedirect(detail_url)
+    else:
+        form = VendorForm(instance=vendor)
+    return render(
+        request,
+        'marketplace/dashboard/vendor_edit.html',
+        {
+            'vendor': vendor,
+            'form': form,
+            'detail_url': detail_url,
+            'active_nav': 'marketplace',
+            'breadcrumb_trail': _trail(
+                {'label': 'Vendors', 'url': '/dashboard/apps/marketplace/vendors/'},
+                {'label': vendor.name, 'url': detail_url},
+                {'label': 'Edit'},
+            ),
+        },
+    )
+
+
+@staff_member_required
 @require_capability('system.read')
 def vendor_orders(request):
     from plugins.installed.marketplace.models import VendorOrder  # noqa: PLC0415

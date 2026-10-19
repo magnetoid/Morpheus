@@ -10,6 +10,7 @@ app_name = 'marketplace_dashboard'
 
 urlpatterns = [
     path('vendors/<uuid:vendor_id>/', dashboard.vendor_detail, name='vendor_detail'),
+    path('vendors/<uuid:vendor_id>/edit/', dashboard.vendor_edit, name='vendor_edit'),
     # Staff-gated toggle for the customer-detail Vendor panel.
     path(
         'customer/<uuid:customer_id>/toggle-vendor/',

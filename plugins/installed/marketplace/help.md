@@ -14,6 +14,7 @@ Vendors apply to sell through your store. Once approved, each gets a self-servic
 
 - Review and approve or reject vendor applications on [Applications](page:applications).
 - See every vendor, and change one vendor's commission rate, on [Vendors](page:vendors).
+- Edit a vendor's name, web address, description, logo or status with Edit on [Vendors](page:vendors). A new web address keeps the old one working: it sends visitors to the new page.
 - See open vendor orders on [Vendor orders](page:orders).
 - Run a payout and mark payouts as paid on [Payouts](page:payouts).
 - Check a vendor's payout account details on [Payout accounts](page:payout-accounts).
@@ -21,4 +22,4 @@ Vendors apply to sell through your store. Once approved, each gets a self-servic
 
 ## Good to know
 
-A vendor only ever sees their own products and orders. Commission is worked out and credited to the vendor automatically the moment an order is placed — there is nothing to run by hand. A payout only generates once a vendor has earned at least the minimum threshold.
+A vendor only ever sees their own products and orders. Commission is worked out and credited to the vendor automatically the moment an order is placed — there is nothing to run by hand. A payout only generates once a vendor has earned at least the minimum threshold. Linda can list vendors and change one too, and asks you before she saves.

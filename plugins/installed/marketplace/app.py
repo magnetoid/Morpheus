@@ -82,6 +82,14 @@ class MarketplacePlugin(Plugin):
             },
         }
 
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.marketplace.agent_tools import (  # noqa: PLC0415
+            vendors_list_tool,
+            vendors_update_tool,
+        )
+
+        return [vendors_list_tool, vendors_update_tool]
+
     def contribute_dashboard_pages(self) -> list:
         from morpheus.app import DashboardPage  # noqa: PLC0415
 

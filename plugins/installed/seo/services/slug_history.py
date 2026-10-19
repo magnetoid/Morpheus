@@ -24,6 +24,7 @@ URL_TEMPLATES = {
     'catalog.product': '/products/{slug}/',
     'catalog.category': '/category/{slug}/',
     'catalog.collection': '/collection/{slug}/',
+    'catalog.vendor': '/vendor/{slug}/',
     'cms.page': '/journal/{slug}/',
 }
 
