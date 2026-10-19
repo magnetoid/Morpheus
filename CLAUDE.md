@@ -1669,6 +1669,22 @@ weeks without anyone noticing — and a PR cannot be audited against the live
 store at all. Let the audit settle the page first (axe `--load-delay`): text
 sampled mid scroll-reveal fade reads as a contrast failure.
 
+**Convention — a deploy that migrates is backed up first (v0.118.0).** The web
+container's `run_migrations` runs `manage.py safe_migrate`, not `migrate`:
+- When anything is pending, it first backs the database up into
+  `/app/backups/pre-deploy` (`morph_backup --no-media`, five kept, named after
+  the version and commit). If that backup fails, it exits non-zero without
+  migrating.
+- It then migrates and writes a `DeployEvent`.
+
+It is one process on purpose: each `manage.py` start costs about 3 s of every
+deploy's 503. A restart of the same container skips the backup (a marker in
+`/tmp`), because a second copy could be of a half-migrated database. Settings →
+Version & updates reads both, and on a store without `.git` it shows one line
+where the update buttons were (`core.updates.can_self_update`). Guarded by
+`core/tests/test_safe_migrate.py`, `test_deploy_record.py` and
+`test_running_release.py`.
+
 **Landmine — a native dep that loads at settings-import is deploy-critical.**
 A provider app in `INSTALLED_APPS` (e.g. allauth's `openid_connect` / `saml`
 for staff_sso) hard-imports its package — `pyjwt[crypto]`, `python3-saml`
@@ -1697,7 +1713,7 @@ creates both owned by `morpheus`; put any new mount point in that same
 `mkdir`+`chown`. An existing root-owned volume needs a one-time
 `docker exec -u 0 <web> chown morpheus:morpheus /app/media`. The nightly health
 check ("Uploads can be saved") saves and deletes a file in the media storage and
-emails when it can't.
+emails when it can't. Until v0.118.0 only the worker mounted `/app/backups`, so a file written there from the web container (a `docker exec web …` backup too) left with the container at the next deploy; the web container mounts it now, for the backup `safe_migrate` takes.
 
 CI gates a change with `ruff check .`, `ruff format --check .`,
 `python manage.py check` (blocking — fails on model-relation errors like

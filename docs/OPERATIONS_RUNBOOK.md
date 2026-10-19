@@ -131,14 +131,56 @@ are read fresh on every request, so a change applies to every worker at once.
 
 - Code: `git revert` the bad commit on `main` and push — that push is itself
   the rollback deploy; verify with deploy-smoke.
-- Schema: migrations are not auto-reversed. If a migration crashed mid-apply,
-  restore the database from backup, then redeploy the last good commit.
+- Schema: migrations are not auto-reversed. Since v0.118.0, every deploy that
+  migrates first backs the database up to `/app/backups/pre-deploy/`, named
+  after the version it was taken before, and stops before migrating if that
+  backup fails. If a migration crashed mid-apply, restore that backup (see
+  Backups), then redeploy the last good commit.
 
 ## Backups
 
-- Postgres runs in the Coolify stack — keep scheduled dumps enabled in Coolify
-  (Database → Backups) and rehearse a restore periodically. A backup that has
-  never been restored is a guess, not a plan.
+- **Nightly** (the backups app, 03:30 UTC): database and media to
+  `/app/backups/morpheus-backup-<UTC>.tar.gz`, seven kept.
+- **Before each deploy that migrates** (`manage.py safe_migrate`, v0.118.0): the
+  database alone to `/app/backups/pre-deploy/morpheus-backup-<UTC>-<version>-<commit>.tar.gz`,
+  five kept. `DeployEvent` rows say which deploy took which.
+- Both live on the store's `backup_data` volume, which the web and worker
+  containers mount, **on the same host as the store**. They are not off-site.
+- **Rehearse a restore** into a scratch database; it never touches the store's
+  data. A backup that has never been restored is a guess, not a plan. In the
+  store's web container, run
+  `docker exec -i <web> python manage.py shell < this snippet`:
+
+  ```python
+  import os, subprocess, tarfile, tempfile
+  from django.conf import settings
+  from django.db import connection
+  from core.models import DeployEvent
+
+  db = settings.DATABASES['default']
+  env = dict(os.environ, PGPASSWORD=db['PASSWORD'])
+  conn = ['-h', db['HOST'], '-p', str(db['PORT'] or 5432), '-U', db['USER']]
+  backup = DeployEvent.objects.exclude(backup='').first().backup
+  with tempfile.TemporaryDirectory() as tmp:
+      with tarfile.open(backup) as tar:
+          tar.extract('db.dump', tmp, filter='data')
+      subprocess.run(['createdb', *conn, 'restore_check'], env=env, check=True)
+      try:
+          restored = subprocess.run(['pg_restore', *conn, '-d', 'restore_check', '--no-owner', f'{tmp}/db.dump'], env=env, capture_output=True, text=True)
+          print('RESTORE pg_restore exit', restored.returncode, restored.stderr[-400:])
+          copy = subprocess.run(['psql', *conn, '-d', 'restore_check', '-tAc', 'select count(*) from catalog_product'], env=env, check=True, capture_output=True, text=True).stdout.strip()
+          with connection.cursor() as cur:
+              cur.execute('select count(*) from catalog_product')
+              print('RESTORE products in the copy', copy, '| live', cur.fetchone()[0])
+      finally:
+          subprocess.run(['dropdb', *conn, 'restore_check'], env=env, check=True)
+          print('RESTORE scratch database dropped')
+  ```
+- **The real restore** is by hand until `morph_restore` ships (safe deploys,
+  release 3), and it has not been rehearsed on a live store yet:
+  1. Stop web, worker and beat.
+  2. Run `pg_restore --clean --if-exists --no-owner` with the dump into `morpheus`.
+  3. Start them again and check `/readyz`.
 
 ## Local development
 

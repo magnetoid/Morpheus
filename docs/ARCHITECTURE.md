@@ -17,6 +17,7 @@ morpheus/
 │   ├── observability.py           # OpenTelemetry init + PII scrubber.
 │   ├── errors/                    # Error log: capture, detailed capture switch,
 │   │                              #   report for Claude Code, health checks.
+│   ├── deploys.py                 # Safe deploys: backup before migrating, DeployEvent.
 │   ├── i18n/                      # Translation kernel.
 │   └── …
 └── plugins/installed/             # 60+ plugins (live list: settings).

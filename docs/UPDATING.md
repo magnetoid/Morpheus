@@ -1,7 +1,7 @@
 # Updating Morpheus
 
 > Status of this document: **verified against the running deployment on
-> 2026-08-11 (v0.42.0)**, updated 2026-08-13 for v0.44.0. Claims here were checked, not assumed. Where a
+> 2026-08-11 (v0.42.0)**, updated 2026-08-13 for v0.44.0 and 2026-10-19 for v0.118.0 (safe deploys). Claims here were checked, not assumed. Where a
 > capability exists but does not currently function, this says so plainly.
 
 Morpheus updates three kinds of thing, and they do **not** share a mechanism:
@@ -209,6 +209,56 @@ an update cannot change a Morpheus file, it is checked before use, and it rolls 
 
 ---
 
+## Safe deploys (v0.118.0)
+
+Our stores, and any Docker install, update by deploying a new image: a push to
+`main` builds it, and the platform replaces the containers. On every boot the web
+container's entrypoint (`scripts/docker-entrypoint.sh`, `run_migrations`) runs
+`manage.py safe_migrate` in place of `migrate`:
+
+1. **Backup first.** When `migrate` has anything to apply, it backs the database
+   up (`morph_backup --no-media --keep 5`) into
+   `$MORPHEUS_BACKUP_DIR/pre-deploy/`. The default is `/app/backups/pre-deploy/`,
+   on the `backup_data` volume the web and worker containers share. The file is
+   named after the version and commit being deployed:
+   `morpheus-backup-<UTC time>-<version>-<commit>.tar.gz`.
+   - If the backup fails, the command exits non-zero and nothing is migrated.
+   - With nothing to migrate, or on a new, empty database, there is no backup.
+   - A restart of the same container (a crash loop) does not back up again. A
+     marker in `/tmp` says the step was done, and a second copy could be of a
+     half-migrated database.
+2. **`migrate`**, as before.
+3. **A record.** `DeployEvent` holds the version, the commit (`SOURCE_COMMIT`,
+   which Coolify sets), the time, the backup's path and the migrations applied.
+   A restart of the same deploy adds nothing. A failure to record never stops
+   the store.
+
+The three steps run in one process because each `manage.py` start costs about 3 s
+of the 503 every deploy shows. A deploy with nothing to migrate boots as fast as
+before.
+
+Settings → Version & updates shows the running version, its commit, when it was
+installed and the newest pre-deploy backup. Without `.git`
+(`core.updates.can_self_update()`), it shows "This store updates when a new
+version is released." where the check and apply buttons were. Linda's
+`updates.status` says the same, and `updates.apply` answers that it cannot run
+there.
+
+The nightly backups (03:30 UTC, from the backups app) stay in the folder above,
+seven kept, and deploys never rotate them. The backup folder is the
+`MORPHEUS_BACKUP_DIR` env var only, never a setting: staff and Linda can write
+settings, and a dump in a served folder is public.
+
+Restoring is by hand for now ([`OPERATIONS_RUNBOOK.md`](OPERATIONS_RUNBOOK.md),
+Backups). Still to come, per
+[`superpowers/specs/2026-10-19-safe-deploys-design.md`](superpowers/specs/2026-10-19-safe-deploys-design.md):
+
+- a CI check that a release's migrations are safe for the previous version;
+- a restore command and page;
+- an automatic code rollback when a store does not come up.
+
+---
+
 ## What does not work, and why
 
 ### The updater is inert on this production deployment
@@ -219,9 +269,10 @@ for `.git` in the deployment root, and return `unavailable` without it:
 > *"No git metadata in this deployment (built image / non-git install)."*
 
 **Verified 2026-08-11 on dotbooks.store:** `/app/.git` does not exist in the
-running web container. So the Version & updates page reports `unavailable`, and
-`morph_apply_update` refuses, by design. Everything above is correct code that
-this deployment cannot reach.
+running web container. So `morph_apply_update` refuses, by design. Since v0.118.0
+the Version & updates page and Linda say so plainly, instead of offering check and
+apply buttons that cannot work there. Everything above is correct code that this
+deployment cannot reach.
 
 This is not a bug in the updater — it is the deployment model. Coolify builds an
 image from a source copy without git metadata, and updates happen by
@@ -364,6 +415,7 @@ running version afterwards, rather than pretending it can self-patch.
 - **Never leave the platform unbootable.** Backup → staged swap → healthcheck → auto-rollback. The boot probe must run in a *fresh interpreter*; an in-process `check` cannot detect that new code fails to import.
 - **`manage.py morph_versions --json` is a stable contract.** Other tools read it.
 - A deployment without git metadata must degrade to `unavailable` and say why — never error, never silently claim "up to date".
+- **A deploy that migrates is backed up first.** The entrypoint's `run_migrations` calls `safe_migrate`, never bare `migrate`; a failed backup must stop the boot before anything is migrated.
 
 ---
 
@@ -391,3 +443,11 @@ On a **container deployment** (the dotbooks.store model), ignore the above and
 redeploy: push to `main`, let the image rebuild, then confirm `/readyz` reports
 the expected `MORPHEUS_VERSION`. Recovery for a stuck build queue is in
 [`docs/OPERATIONS_RUNBOOK.md`](OPERATIONS_RUNBOOK.md).
+
+```bash
+# Backups taken before migrating (database only, five kept)
+ls -l /app/backups/pre-deploy/
+
+# What was deployed, when, with which backup
+python manage.py shell -c "from core.models import DeployEvent; print(*DeployEvent.objects.values_list('deployed_at', 'version', 'commit', 'backup')[:10], sep='\n')"
+```
