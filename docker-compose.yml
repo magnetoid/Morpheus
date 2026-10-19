@@ -117,6 +117,9 @@ services:
       AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:-}
     volumes:
       - media_data:/app/media
+      # The backup safe_migrate takes before migrating lands here, on the volume
+      # the worker's nightly backups use, so it survives the next deploy.
+      - backup_data:/app/backups
       # /app/staticfiles is intentionally NOT a volume — collected static is
       # baked into the image at build time so admin/dashboard CSS/JS exist
       # immediately on first boot. A volume would shadow them with empty

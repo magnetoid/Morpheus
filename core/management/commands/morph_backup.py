@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -46,13 +47,20 @@ class Command(BaseCommand):
             '--keep', type=int, default=int(os.environ.get('MORPHEUS_BACKUP_KEEP', '7'))
         )
         parser.add_argument('--no-media', action='store_true', help='Skip media files.')
+        parser.add_argument(
+            '--label', default='', help='Added to the file name, e.g. the version being deployed.'
+        )
 
     def handle(self, *args, **options):
         dest = Path(options['dest']).resolve()
         dest.mkdir(parents=True, exist_ok=True)
 
         ts = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
-        archive_path = dest / f'morpheus-backup-{ts}.tar.gz'
+        # The label goes after the timestamp, so names still sort by time for _prune.
+        label = re.sub(r'[^A-Za-z0-9._-]+', '-', options['label']).strip('.-')[:60]
+        suffix = f'-{label}' if label else ''
+        archive_path = dest / f'morpheus-backup-{ts}{suffix}.tar.gz'
+        self.archive_path = archive_path
         self.stdout.write(self.style.NOTICE(f'Backing up to {archive_path}'))
 
         with tempfile.TemporaryDirectory(prefix='morph-bk-') as workdir:
@@ -60,9 +68,15 @@ class Command(BaseCommand):
             self._dump_database(workdir)
             if not options['no_media']:
                 self._snapshot_media(workdir)
-            with tarfile.open(archive_path, 'w:gz') as tar:
-                for child in workdir.iterdir():
-                    tar.add(child, arcname=child.name)
+            try:
+                with tarfile.open(archive_path, 'w:gz') as tar:
+                    for child in workdir.iterdir():
+                        tar.add(child, arcname=child.name)
+            except BaseException:
+                # A half-written archive (a full disk) would look like a good
+                # backup to whoever restores from it later.
+                archive_path.unlink(missing_ok=True)
+                raise
 
         size_mb = archive_path.stat().st_size / (1024 * 1024)
         self.stdout.write(self.style.SUCCESS(f'Wrote {archive_path} ({size_mb:.1f} MiB)'))

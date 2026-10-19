@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
 # Morpheus container entrypoint.
 # Modes (selected by first arg):
-#   web     — wait for DB, migrate, collectstatic, run gunicorn
+#   web     — wait for DB, migrate (safe_migrate: backs up first), collectstatic, run gunicorn
 #   worker  — wait for DB, run celery worker
 #   beat    — wait for DB, run celery beat (with django-celery-beat scheduler if present)
 #   shell   — exec django shell (for ad-hoc debugging)
-#   migrate — run migrations once and exit (useful as a Coolify pre-deploy job)
+#   migrate — run migrations once (safe_migrate) and exit (useful as a Coolify pre-deploy job)
 #   <other> — exec arguments verbatim
 set -eu
 
@@ -39,7 +39,10 @@ PY
 
 run_migrations() {
   echo "[entrypoint] Running migrations…"
-  python manage.py migrate --noinput
+  # safe_migrate backs the database up first when anything is pending, and exits
+  # non-zero before migrating if that backup fails; `set -e` then stops the boot
+  # (core/deploys.py).
+  python manage.py safe_migrate
 }
 
 collect_static() {
