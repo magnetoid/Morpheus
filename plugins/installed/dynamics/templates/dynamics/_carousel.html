@@ -1,46 +1,40 @@
-{% comment %}A single dynamics carousel/grid. Inputs: `heading`, `products`.
-   Uses the dot_books storefront card classes (.wrap/.grid-books/.book) so
-   it inherits the active theme's look; degrades to plain markup if the
-   theme doesn't define them. Renders nothing when there are no products.{% endcomment %}
-{% load seo %}
+{% comment %}A single dynamics carousel/grid. Inputs: `heading`, `products`, `layout`,
+   `columns`, `show_title`, `show_price`, `reason`, `see_all`.
+   A carousel is the theme's own rail (.book-rail-wrap + [data-book-rail], whose
+   arrows the theme's script wires) of the theme's own product card, Add to cart
+   included, so it reads like the rails around it; a block that hides the title or
+   price, or shows a reason, keeps its own card (dynamics/_card.html), because the
+   theme's card always shows both. A grid is unchanged. Renders nothing when there
+   are no products.{% endcomment %}
+{% load i18n %}
 {% if products %}
 <section class="dynamics" style="padding: 3rem 0;">
   <div class="wrap">
-    {% if heading %}
+    {% if heading or see_all %}
     <div style="display:flex; align-items:end; justify-content:space-between; gap:1rem; margin-bottom:1.5rem;">
-      <h2 class="display display-m" style="margin:0;">{{ heading }}<span class="text-accent">.</span></h2>
+      {% if heading %}<h2 class="display display-m" style="margin:0;">{{ heading }}<span class="text-accent">.</span></h2>{% endif %}
+      {% if see_all %}<a href="{{ see_all }}" class="btn-link">{% translate "See all" %}</a>{% endif %}
     </div>
     {% endif %}
-    <div class="grid-books"{% if layout == 'grid' and columns %} style="grid-template-columns: repeat({{ columns }}, minmax(0,1fr));"{% endif %}>
-      {% for product in products %}
-      <a href="/products/{{ product.slug }}/" class="book">
-        <div class="cover-wrap">
-          {% if product.primary_image %}
-            {% comment %}Through the responsive proxy — the raw original is a multi-MB PNG for a
-               260px card. Decorative when the title is shown beside it (the link's name).{% endcomment %}
-            {% if show_title or show_title == None %}
-            {% seo_responsive_image product.primary_image.image alt="" widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
-            {% else %}
-            {% seo_responsive_image product.primary_image.image alt=product.name widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
-            {% endif %}
-          {% else %}
-            <div class="placeholder">{{ product.name|truncatewords:3 }}</div>
-          {% endif %}
-        </div>
-        {% if show_title or show_title == None or reason or show_price or show_price == None %}
-        <div>
-          {% if show_title or show_title == None %}<p class="title">{{ product.name }}</p>{% endif %}
-          {% if reason %}<p class="reason" style="font-size:.72rem; opacity:.65; margin:.25rem 0 0;">{{ reason }}</p>{% endif %}
-          {% if show_price or show_price == None %}
-          <p class="price">
-            {% if product.price_starts_from %}From {% endif %}{{ product.display_price }}
-          </p>
-          {% endif %}
-        </div>
-        {% endif %}
-      </a>
-      {% endfor %}
+    {% if layout == 'grid' %}
+    <div class="grid-books"{% if columns %} style="grid-template-columns: repeat({{ columns }}, minmax(0,1fr));"{% endif %}>
+      {% for product in products %}{% include "dynamics/_card.html" %}{% endfor %}
     </div>
+    {% else %}
+    <div class="book-rail-wrap">
+      <button class="book-rail-nav book-rail-nav--prev" type="button" aria-label="{% translate 'Scroll left' %}" data-rail-prev>&larr;</button>
+      <div class="grid-books grid-books--rail" data-book-rail>
+        {% for product in products %}
+          {% if show_title != False and show_price != False and not reason %}
+            {% include "storefront/_product_card.html" with product=product %}
+          {% else %}
+            {% include "dynamics/_card.html" %}
+          {% endif %}
+        {% endfor %}
+      </div>
+      <button class="book-rail-nav book-rail-nav--next" type="button" aria-label="{% translate 'Scroll right' %}" data-rail-next>&rarr;</button>
+    </div>
+    {% endif %}
   </div>
 </section>
 {% endif %}

@@ -26,7 +26,7 @@ def dynamic_blocks_for(context, slot, request=None, product=None):
     """Resolve enabled DynamicBlocks for ``slot`` into render-ready rows."""
     try:
         from plugins.installed.dynamics.models import DynamicBlock
-        from plugins.installed.dynamics.services import reason_label, recommend
+        from plugins.installed.dynamics.services import reason_label, recommend, see_all_url
     except Exception:  # noqa: BLE001 — plugin mid-teardown
         return []
 
@@ -50,6 +50,7 @@ def dynamic_blocks_for(context, slot, request=None, product=None):
                     'block': block,
                     'products': products,
                     'reason': reason_label(block) if block.show_reason else '',
+                    'see_all': see_all_url(block),
                 }
             )
     return out

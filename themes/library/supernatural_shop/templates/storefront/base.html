@@ -416,8 +416,10 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
     width: 46vw; max-width: 210px;
     scroll-snap-align: start;
   }
-  @media (min-width: 640px)  { .grid-books--rail > .book { width: 160px; } }
-  @media (min-width: 1024px) { .grid-books--rail > .book { width: 168px; } }
+  /* Three to a row on a tablet and four on a desktop (owner, 2026-10-19): the
+     book-cover widths this rail came with (160/168px) fit seven across. */
+  @media (min-width: 640px)  { .grid-books--rail > .book { width: calc((100% - 2 * 1.6rem) / 3); max-width: none; } }
+  @media (min-width: 1024px) { .grid-books--rail > .book { width: calc((100% - 3 * 1.6rem) / 4); } }
 
   .book-rail-nav {
     position: absolute; top: 34%; z-index: 3;

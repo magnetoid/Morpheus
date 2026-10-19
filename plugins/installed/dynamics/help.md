@@ -20,3 +20,5 @@ Open [](page:index) to add a block to a slot, or click into a surface to take co
 ## Good to know
 
 A block only shows once it is enabled and placed on a slot your theme actually renders, or on a surface you have taken control of. Autopilot blocks improve as more shoppers view and buy, and start from sensible defaults before any data comes in. Disabling this app removes every block, every surface takeover and its settings page; nothing it added is left behind.
+
+A carousel looks like your theme's own product rows, with Add to cart on every card, unless it hides the name or price or shows a reason. A block limited to one category also shows that category's subcategories, puts products with a photo first and links to the category with "See all". "Best sellers" stays hidden until something has sold in the last 90 days, rather than showing new products under that heading.

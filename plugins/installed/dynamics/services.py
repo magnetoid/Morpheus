@@ -118,11 +118,19 @@ def _apply_block_options(ids, block, *, request=None, customer=None) -> list:
 
 
 def _manual(block, *, limit, **_) -> list:
-    """Filtered catalog slice: category / tags / metafields, newest first."""
+    """Filtered catalog slice: category / tags / metafields, newest first, and
+    products with a photo before those without (a shelf on the home page)."""
+    from django.db.models import Exists, OuterRef
+
+    from plugins.installed.catalog.models import ProductImage
+
     qs = _base_active_qs()
     qs = _apply_filters(qs, block)
+    qs = qs.annotate(_has_photo=Exists(ProductImage.objects.filter(product=OuterRef('pk'))))
     return list(
-        qs.order_by('-is_featured', '-created_at').values_list('pk', flat=True)[: limit * 2]
+        qs.order_by('-_has_photo', '-is_featured', '-created_at').values_list('pk', flat=True)[
+            : limit * 2
+        ]
     )
 
 
@@ -473,8 +481,9 @@ def _new_arrivals(block, *, limit, **_) -> list:
 
 
 def _best_sellers(block, *, limit, **_) -> list:
-    """Most units sold in paid orders over the last 90 days. Falls back to
-    newest when there are no sales yet."""
+    """Most units sold in paid orders over the last 90 days, and nothing before
+    the first sale: the newest products are not best sellers, and the block's
+    heading would say they are."""
     from datetime import timedelta
 
     from django.utils import timezone
@@ -482,7 +491,7 @@ def _best_sellers(block, *, limit, **_) -> list:
     units = _units_sold(timezone.now() - timedelta(days=90))
     allowed = set(_apply_filters(_base_active_qs(), block).values_list('pk', flat=True))
     ranked = sorted((p for p in units if p in allowed), key=lambda p: units[p], reverse=True)
-    return ranked[: limit * 2] or _new_arrivals(block, limit=limit)
+    return ranked[: limit * 2]
 
 
 def _on_sale(block, *, limit, **_) -> list:
@@ -928,12 +937,13 @@ def _base_active_qs():
 
 
 def _apply_filters(qs, block):
-    """Apply a block's declarative category / tag / metafield filters."""
-    cat_ids = list(block.categories.values_list('pk', flat=True))
-    if cat_ids:
-        qs = qs.filter(
-            models.Q(category_id__in=cat_ids) | models.Q(additional_categories__in=cat_ids)
-        ).distinct()
+    """Apply a block's declarative category / tag / metafield filters. A category
+    brings its subcategories, as everywhere in the shop (catalog.category_tree)."""
+    categories = list(block.categories.all())
+    if categories:
+        from plugins.installed.catalog.category_tree import in_categories
+
+        qs = qs.filter(in_categories(categories)).distinct()
 
     tags = block.tags or []
     if isinstance(tags, list) and tags:
@@ -1051,6 +1061,33 @@ def _materialize(ids, limit) -> list:
         )
     }
     return [by_id[pid] for pid in ordered if pid in by_id]
+
+
+def see_all_url(block) -> str:
+    """The shop page that lists everything a block picks from, or '' when none can.
+
+    A one-category block is that shelf; New in without filters is the newest
+    products. Tags, metafields and a price band have no listing that shows the
+    same set, and Best sellers has no such sort, so they get no link.
+    """
+    from django.urls import NoReverseMatch, reverse
+
+    if (
+        block.tags
+        or block.metafield_key
+        or block.price_min is not None
+        or block.price_max is not None
+    ):
+        return ''
+    categories = list(block.categories.all())
+    try:
+        if block.strategy == 'manual' and len(categories) == 1:
+            return reverse('storefront:category_detail', args=[categories[0].slug])
+        if block.strategy == 'new_arrivals' and not categories:
+            return reverse('storefront:product_list') + '?sort=newest'
+    except NoReverseMatch:
+        pass
+    return ''
 
 
 def rebuild_bandit_posteriors(*, window_days: int = 30) -> dict:
