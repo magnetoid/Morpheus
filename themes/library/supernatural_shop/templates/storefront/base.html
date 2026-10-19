@@ -95,7 +95,8 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
     will-change: transform, opacity;
   }
   /* Smooth scroll for anchor jumps + native CSS scroll-snap targets. */
-  html { scroll-behavior: smooth; }
+  /* About 6% larger type everywhere (owner, 2026-10-19): rem sizes follow the root. */
+  html { font-size: 106.25%; scroll-behavior: smooth; }
   /* Image lazy-load fade-in. Native <img loading="lazy"> images start at
      opacity 0 and fade up on the `load` event (set via small JS in base).
      Cheap, no JS frame cost. */
@@ -156,7 +157,7 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   body {
     margin: 0;
     font-family: var(--sans);
-    font-size: 16px;
+    font-size: 17px;
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -369,6 +370,8 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   .book .ribbon { position: absolute; top: 0.65rem; left: 0.65rem; background: var(--accent-ink); color: var(--paper); border: 1px solid var(--accent-ink); border-radius: 999px; padding: 0.15rem 0.55rem; font-size: 0.65rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; }
   .book .title { font-family: var(--serif); font-size: 1.2rem; font-weight: 500; line-height: 1.25; letter-spacing: -0.01em; }
   .book .author { font-family: var(--serif); font-style: italic; font-size: 0.92rem; color: var(--muted); margin-top: 0.15rem; }
+  /* The shelf a product sits on, above its name (owner, 2026-10-19). */
+  .book__category { margin: 0 0 -0.55rem; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
   .book__excerpt { margin-top: 0.4rem; font-size: 0.92rem; line-height: 1.45; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .book .price { margin-top: 0.55rem; font-size: 0.95rem; font-weight: 600; }
   .book .price .compare { color: var(--muted); text-decoration: line-through; margin-left: 0.35rem; font-weight: 400; }
@@ -379,7 +382,6 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   .book__actions .btn { width: 100%; justify-content: center; }
   .book__add { margin: 0; }
   .btn-sm { padding: 0.5rem 0.9rem; font-size: 0.8rem; }
-  .grid-books--rail .book__excerpt { display: none; }
 
   /* Grids — a boutique wellness shop (essential oils, hydrosols, ritual
      goods), not a bookshelf. Fewer, larger product images: 2 on phones, 3 on

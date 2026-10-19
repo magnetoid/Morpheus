@@ -464,6 +464,35 @@ geometry, so the dots and cover never move between books.
   </div>
 </section>
 
+<!-- The shop's standards at a glance, between the first two carousels (owner, 2026-10-19).
+     Every line is the shop's own wording from the standards band and its description. -->
+<section class="tight home-strip" data-home-strip aria-label="How the shop chooses">
+  <div class="wrap">
+    <ul class="home-strip__list">
+      <li class="home-strip__item" data-reveal>
+        <svg class="home-strip__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/></svg>
+        <p class="home-strip__title">The dose on the label</p>
+        <p class="home-strip__text">Every dose printed, so you know what you take.</p>
+      </li>
+      <li class="home-strip__item" data-reveal style="--reveal-delay: 60ms;">
+        <svg class="home-strip__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/></svg>
+        <p class="home-strip__title">A lab result for the batch</p>
+        <p class="home-strip__text">No certificate from the maker, no place on the shelf.</p>
+      </li>
+      <li class="home-strip__item" data-reveal style="--reveal-delay: 120ms;">
+        <svg class="home-strip__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+        <p class="home-strip__title">Modest claims</p>
+        <p class="home-strip__text">No promise a product can't keep.</p>
+      </li>
+      <li class="home-strip__item" data-reveal style="--reveal-delay: 180ms;">
+        <svg class="home-strip__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+        <p class="home-strip__title">Guides that cite sources</p>
+        <p class="home-strip__text">Plain reading before you buy, with the studies named.</p>
+      </li>
+    </ul>
+  </div>
+</section>
+
 <!-- Staff picks rail (Curated row 2) -->
 {% if staff_picks %}
 <section>
@@ -492,12 +521,66 @@ geometry, so the dots and cover never move between books.
 {# Plugin-contributed shoppable rails (e.g. advanced_ecommerce featured-collection sliders). #}
 {% storefront_blocks "home_after_rails" %}
 
+{% if journal_teasers %}
+<hr class="rule">
+
+<!-- Guides — between the first and second groups of carousels, numbered. -->
+<section class="tight" data-home-guides>
+  <div class="wrap">
+    <div style="display:grid; grid-template-columns: 1fr; gap: 2rem; align-items: end;">
+      <div>
+        <p class="eyebrow">Guides</p>
+        <h2 class="display display-m" style="margin-top: 0.6rem;">Read before you buy<span class="text-accent">.</span></h2>
+      </div>
+      <a href="/journal/" class="btn-link">All guides</a>
+    </div>
+
+    <div style="display:grid; gap: 2rem; grid-template-columns: 1fr; margin-top: 2rem;" class="journal-grid">
+      {% comment %}Real entries — published CMS journal pages (journal_teasers, set in views/home.py). Same links as /journal/.{% endcomment %}
+      {% for entry in journal_teasers %}
+      <article class="journal-card" data-reveal {% if forloop.counter == 2 %}style="--reveal-delay: 90ms;"{% elif forloop.counter == 3 %}style="--reveal-delay: 180ms;"{% endif %}>
+        <span class="guide-card__no" aria-hidden="true">{{ forloop.counter|stringformat:"02d" }}</span>
+        <p class="meta">{{ entry.date_label }}</p>
+        <h3 style="font-family: var(--serif); font-size: 1.6rem; font-weight: 500; line-height: 1.2; margin: 0.6rem 0;">
+          <a href="/journal/{{ entry.slug }}/">{{ entry.title }}</a>
+        </h3>
+        <p style="color: var(--ink-2); line-height: 1.55;">{{ entry.excerpt }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# The second group of carousels (dynamics blocks placed in "Home — above the grid"). #}
+{% storefront_blocks "home_above_grid" %}
+
+<!-- Standards — between the second and third groups of carousels. -->
+<section data-home-standards style="background: var(--paper-2); padding: 6rem 0;">
+  <div class="wrap" style="text-align: center;">
+    <p class="eyebrow" data-reveal>Our standards</p>
+    <h2 class="display display-l" style="margin: 1.5rem auto; max-width: 22ch;">
+      Named for the natural, sold on the tested<span class="text-accent">.</span>
+    </h2>
+    <p class="lede" style="margin: 0 auto;" data-reveal>
+      Every dose on the label, an independent lab result for the batch, and no promise a product can't keep. If a maker can't show us the certificate, the product doesn't go on the shelf.
+    </p>
+    <div style="margin-top: 2rem; display:flex; gap: 1.5rem; justify-content:center; flex-wrap: wrap;" data-reveal>
+      <a href="/p/standards/" class="btn-link">Read our standards</a>
+      <a href="/journal/a-simple-daily-stack/" class="btn-link">A simple daily stack</a>
+    </div>
+  </div>
+</section>
+
+{# The third group of carousels, and the other apps' rows (recently viewed, live). #}
+{% storefront_blocks "home_below_grid" %}
+
 <!-- Genre index — the shop's contents page. Prefers the curated genres
      (nav_genres, the same list the mega-menu shows, via book_product's
      context processor) and falls back to top-level categories. Hidden when
      there are fewer than 3 entries — one lonely chip reads as broken. -->
 {% if nav_genres|length >= 3 %}
-<section class="tight">
+<section class="tight" data-home-shelves>
   <div class="wrap">
     <div data-reveal>
       <p class="eyebrow">Find your section</p>
@@ -517,7 +600,7 @@ geometry, so the dots and cover never move between books.
 {% comment %}The shop's shelves, in the order the shop is built: the staples first,
 then mushrooms, then food. Curated rather than every top-level category — the
 imported aromatherapy catalogue alone has two dozen of those.{% endcomment %}
-<section class="tight">
+<section class="tight" data-home-shelves>
   <div class="wrap">
     <div data-reveal>
       <p class="eyebrow">Shop by shelf</p>
@@ -553,53 +636,6 @@ imported aromatherapy catalogue alone has two dozen of those.{% endcomment %}
 </section>
 {% endif %}
 
-<!-- Standards — after the shoppable rails so products lead the page. -->
-<section style="background: var(--paper-2); padding: 6rem 0;">
-  <div class="wrap" style="text-align: center;">
-    <p class="eyebrow" data-reveal>Our standards</p>
-    <h2 class="display display-l" style="margin: 1.5rem auto; max-width: 22ch;">
-      Named for the natural, sold on the tested<span class="text-accent">.</span>
-    </h2>
-    <p class="lede" style="margin: 0 auto;" data-reveal>
-      Every dose on the label, an independent lab result for the batch, and no promise a product can't keep. If a maker can't show us the certificate, the product doesn't go on the shelf.
-    </p>
-    <div style="margin-top: 2rem; display:flex; gap: 1.5rem; justify-content:center; flex-wrap: wrap;" data-reveal>
-      <a href="/p/standards/" class="btn-link">Read our standards</a>
-      <a href="/journal/a-simple-daily-stack/" class="btn-link">A simple daily stack</a>
-    </div>
-  </div>
-</section>
-
-{% if journal_teasers %}
-<hr class="rule">
-
-<!-- Journal teaser -->
-<section class="tight">
-  <div class="wrap">
-    <div style="display:grid; grid-template-columns: 1fr; gap: 2rem; align-items: end;">
-      <div>
-        <p class="eyebrow">Guides</p>
-        <h2 class="display display-m" style="margin-top: 0.6rem;">Read before you buy<span class="text-accent">.</span></h2>
-      </div>
-      <a href="/journal/" class="btn-link">All guides</a>
-    </div>
-
-    <div style="display:grid; gap: 2rem; grid-template-columns: 1fr; margin-top: 2rem;" class="journal-grid">
-      {% comment %}Real entries — published CMS journal pages (journal_teasers, set in views/home.py). Same links as /journal/.{% endcomment %}
-      {% for entry in journal_teasers %}
-      <article class="journal-card" data-reveal {% if forloop.counter == 2 %}style="--reveal-delay: 90ms;"{% elif forloop.counter == 3 %}style="--reveal-delay: 180ms;"{% endif %}>
-        <p class="meta">{{ entry.date_label }}</p>
-        <h3 style="font-family: var(--serif); font-size: 1.6rem; font-weight: 500; line-height: 1.2; margin: 0.6rem 0;">
-          <a href="/journal/{{ entry.slug }}/">{{ entry.title }}</a>
-        </h3>
-        <p style="color: var(--ink-2); line-height: 1.55;">{{ entry.excerpt }}</p>
-      </article>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-{% endif %}
-
 <style>
 @media (min-width: 900px) { .journal-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 2.5rem !important; } }
 /* Journal teaser cards — the grey top rule "inks in" with accent red on
@@ -614,8 +650,15 @@ imported aromatherapy catalogue alone has two dozen of those.{% endcomment %}
 .journal-card:hover::before { transform: scaleX(1); }
 .journal-card h3 a { transition: color var(--motion-fast) var(--ease-out); }
 .journal-card:hover h3 a { color: var(--accent-ink); }
+/* Icon strip — four lines of the shop's standards between the first carousels. */
+.home-strip { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); background: var(--paper-2); }
+.home-strip__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.75rem 1.5rem; }
+@media (min-width: 900px) { .home-strip__list { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2rem; } }
+.home-strip__icon { width: 30px; height: 30px; fill: none; stroke: var(--accent-ink); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.home-strip__title { font-family: var(--serif); font-size: 1.25rem; font-weight: 500; line-height: 1.2; margin: .7rem 0 .3rem; }
+.home-strip__text { color: var(--muted); font-size: .92rem; line-height: 1.45; margin: 0; }
+/* Guides — a large serif number above each card. */
+.guide-card__no { display: block; font-family: var(--serif); font-size: 2.6rem; line-height: 1; color: var(--accent-ink); margin-bottom: .6rem; }
 </style>
-
-{% storefront_blocks "home_below_grid" %}
 
 {% endblock %}
