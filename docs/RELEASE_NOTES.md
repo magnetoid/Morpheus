@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.117.0 — 2026-10-19
+
+**Edit vendors from the dashboard**
+
+- Dashboard → Vendors has an Edit button on every vendor and on each vendor's page: change the name, web address, description, logo and whether the vendor is active. A new web address keeps the old one working, so links and search results still reach the vendor's page.
+- Linda can list your vendors and change one too, and asks you before she saves.
+- Supernatural's product cards keep their names level when a product has no category.
+
 ## v0.116.1 — 2026-10-19
 
 **Supernatural's home page: content between the carousels, larger type, and cards that name the shelf**
