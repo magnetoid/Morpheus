@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.115.2 — 2026-10-19
+
+**Home page carousels that look like the shop's own rows, four products to a row on Supernatural**
+
+- A carousel block now looks like the shop's own product rows, with Add to cart on every card. A carousel limited to one category also shows its subcategories, puts products with a photo first and links to the category with "See all"; "New in" links to the newest products.
+- "Best sellers" stays hidden until something has sold in the last 90 days, instead of showing new products under that heading.
+- Supernatural's home page rows show four products on a desktop (they showed seven) and three on a tablet.
+
 ## v0.115.1 — 2026-10-18
 
 **Uploaded photos show the picture you uploaded, and two stores' sitemaps keep their pages**
