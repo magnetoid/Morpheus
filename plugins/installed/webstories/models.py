@@ -57,11 +57,22 @@ class WebStory(models.Model):
     @property
     def is_indexable(self) -> bool:
         """May search engines index this story? The one rule the story page's
-        robots meta and the sitemap both read: published, long enough, and its
-        product not hidden from search (a pre-launch product's story must not
-        leak it)."""
+        robots meta and the sitemap both read: the store lets stories into
+        search (Settings → Web Stories), and this one is published, long enough,
+        and its product not hidden from search (a pre-launch product's story
+        must not leak it)."""
         return (
-            self.is_published
+            stories_in_search()
+            and self.is_published
             and self.panel_count >= MIN_INDEXABLE_PAGES
             and not getattr(self.product, 'noindex', False)
         )
+
+
+def stories_in_search() -> bool:
+    """The store's switch: may any story be indexed? Supernatural turned it off
+    (2026-10-19): 620 product stories competed with the product pages."""
+    from plugins.registry import app_registry
+
+    plugin = app_registry.get('webstories')
+    return bool(plugin.get_config_value('index_stories', True)) if plugin else True

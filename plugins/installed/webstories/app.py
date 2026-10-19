@@ -74,6 +74,16 @@ class WebstoriesPlugin(Plugin):
                     ),
                     'default': True,
                 },
+                'index_stories': {
+                    'type': 'boolean',
+                    'title': 'Let search engines index the stories',
+                    'description': (
+                        'Off: every story says "noindex, follow" and leaves the sitemap, '
+                        "so the stories don't compete with your product pages in search. "
+                        'They still play, and links to them keep working.'
+                    ),
+                    'default': True,
+                },
             },
         }
 

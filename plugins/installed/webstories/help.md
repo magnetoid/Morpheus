@@ -10,6 +10,7 @@ Nothing to configure before it works — a story builds itself the first time a 
 
 ## Common tasks
 - Turn the story preview card off a product's page with [](field:webstories.show_pdp_embed); the story keeps its own address either way.
+- Keep every story out of search with [](field:webstories.index_stories), so the stories don't compete with your product pages there; they still play, and links to them keep working.
 - Open a product's story yourself, the way a shopper would, to see what it looks like.
 
 ## Good to know

@@ -185,6 +185,20 @@ class SitemapAndIndexTests(TestCase):
         locs = [e['loc'] for e in _iter_webstory_entries('https://shop.test/')]
         self.assertEqual(locs, ['https://shop.test/story/good/'])
 
+    def test_a_store_that_keeps_stories_out_of_search_says_noindex_and_lists_none(self):
+        # Supernatural's owner (2026-10-19): 620 product stories competed with the
+        # product pages in search. They stay, out of search.
+        from plugins.installed.seo.services.sitemaps import _iter_webstory_entries
+        from plugins.registry import app_registry
+
+        plugin = app_registry.get('webstories')
+        plugin.set_config('index_stories', False)
+        self.addCleanup(plugin.set_config, 'index_stories', True)
+        self._story('good')
+        page = self.client.get('/story/good/').content.decode()
+        self.assertIn('<meta name="robots" content="noindex, follow">', page)
+        self.assertEqual(list(_iter_webstory_entries('https://shop.test/')), [])
+
     def test_the_index_page_is_not_the_bookshops(self):
         self._story('good')
         body = self.client.get('/stories/').content.decode()
