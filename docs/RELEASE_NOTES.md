@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.116.1 — 2026-10-19
+
+**Supernatural's home page: content between the carousels, larger type, and cards that name the shelf**
+
+- Between the carousels: a strip of the shop's standards, the guides as numbered cards, and the standards band, with the shelves last.
+- Text is about 6% larger across the shop.
+- Every product card shows its category above the name and two lines of its description, in carousels too.
+
 ## v0.116.0 — 2026-10-19
 
 **Qwen Cloud for AI, stories out of search when you want, and faster AI feeds**
