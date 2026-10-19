@@ -103,6 +103,24 @@ def render_product_markdown(product) -> str:
     return '\n'.join(parts) + '\n'
 
 
+#: How long a built feed page is kept. The beat task ``seo.warm_ai_feed`` rebuilds
+#: the first page every 10 minutes, inside this window, so no crawler waits for a
+#: cold build (8.7 s for Supernatural's 708 products, 12 s at 1,000).
+FEED_CACHE_TTL = 60 * 20
+
+
+def cached_ai_products_feed(*, limit: int = 1000, offset: int = 0, rebuild: bool = False) -> dict:
+    """The feed page from the server-side cache, built when missing or asked to."""
+    from django.core.cache import cache
+
+    key = f'seo:ai_feed:v1:{limit}:{offset}'
+    data = None if rebuild else cache.get(key)
+    if data is None:
+        data = render_ai_products_feed(limit=limit, offset=offset)
+        cache.set(key, data, FEED_CACHE_TTL)
+    return data
+
+
 def render_ai_products_feed(*, limit: int = 1000, offset: int = 0) -> dict:
     """Schema.org Product feed for AI shopping crawlers.
 

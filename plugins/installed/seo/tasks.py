@@ -13,6 +13,19 @@ logger = logging.getLogger('morpheus.seo.tasks')
 _STATUS_KEY = 'seo:image_optimize:status'
 
 
+@app.task(name='seo.warm_ai_feed', ignore_result=True)
+def warm_ai_feed_task() -> None:
+    """Rebuild /ai/products.json's first page before its cache lapses, so a crawler
+    never waits for the whole catalogue to render (SEO audit, 2026-10-18)."""
+    from plugins.installed.seo.services import site_settings
+    from plugins.installed.seo.services.ai_feeds import cached_ai_products_feed
+    from plugins.installed.seo.services.launch import hidden_until_launch
+
+    if not site_settings().ai_shopping_feed_enabled or hidden_until_launch():
+        return
+    cached_ai_products_feed(rebuild=True)
+
+
 @app.task(name='seo.optimize_images', ignore_result=True)
 def optimize_images_task(widths: str = '', avif: bool = False) -> None:
     """Run the ``optimize_images`` batch warmer in the background and stash a

@@ -14,7 +14,6 @@ import json
 import logging
 
 from django.contrib import messages
-from django.core.cache import cache
 from django.utils.http import http_date
 
 from core.authz import enforce, require_capability
@@ -28,7 +27,6 @@ from plugins.installed.seo.services import (
     cwv_summary,
     refresh_404_suggestions,
     render_agents_md,
-    render_ai_products_feed,
     render_llms_txt,
     render_product_markdown,
     render_robots_txt,
@@ -185,13 +183,10 @@ def ai_products_feed(request: HttpRequest) -> JsonResponse:
     limit = max(1, min(limit, 1000))
     offset = max(0, offset)
     # Rendering walks the whole catalogue (12 s and 1.25 MB on a 1,000-product
-    # store), and crawlers fetch this often. Keep it for the same 15 minutes the
-    # response already asks clients to.
-    key = f'seo:ai_feed:v1:{limit}:{offset}'
-    data = cache.get(key)
-    if data is None:
-        data = render_ai_products_feed(limit=limit, offset=offset)
-        cache.set(key, data, 60 * 15)
+    # store), and crawlers fetch this often: it is cached, and warmed by a beat task.
+    from plugins.installed.seo.services.ai_feeds import cached_ai_products_feed
+
+    data = cached_ai_products_feed(limit=limit, offset=offset)
     resp = JsonResponse(data)
     return _cache_headers(resp, last_modified=_sitemap_last_modified())
 

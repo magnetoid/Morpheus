@@ -102,6 +102,11 @@ class SeoPlugin(Plugin):
             'seo:site_audit',
             {'task': 'seo.site_audit', 'schedule': crontab(hour=3, minute=10)},
         )
+        # /ai/products.json, rebuilt inside its 20-minute cache so no crawler waits.
+        self.register_celery_beat(
+            'seo:warm_ai_feed',
+            {'task': 'seo.warm_ai_feed', 'schedule': crontab(minute='*/10')},
+        )
         # CMS pages — wire the post_save signal directly so we don't need
         # a new cms/signals.py + apps.py wiring.
         self._wire_cms_page_signal()
