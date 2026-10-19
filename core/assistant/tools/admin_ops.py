@@ -16,20 +16,27 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 @tool(
     name='updates.status',
     description=(
-        'Report the platform update status: deployed version, whether an update '
-        'is available, and how many commits behind upstream. Read-only.'
+        'Report what this store runs: version, commit, when it was installed, the backup of '
+        'the database made before the last update that changed it, and whether the store '
+        'can update itself. Where it can (a git checkout), also whether an update is '
+        'available and how many commits behind upstream. Read-only.'
     ),
     scopes=['system.read'],
     schema={'type': 'object', 'properties': {}},
 )
 def updates_status_tool() -> ToolResult:
+    from core.deploys import running_release  # noqa: PLC0415
     from core.updates import platform_update_status  # noqa: PLC0415
     from core.versioning import component_versions  # noqa: PLC0415
 
+    running = running_release()
     status = platform_update_status(fetch=True)
     versions = component_versions()
+    output = {'running': running, 'platform': status, 'core': versions.get('core')}
+    if not running['self_update']:
+        return ToolResult(output=output, display=_built_image_summary(running, status))
     return ToolResult(
-        output={'platform': status, 'core': versions.get('core')},
+        output=output,
         display=(
             f'Update {status.get("available")} — deployed {status.get("current")}'
             f'{", " + str(status.get("behind")) + " behind" if status.get("behind") else ""}.'
@@ -37,13 +44,34 @@ def updates_status_tool() -> ToolResult:
     )
 
 
+def _built_image_summary(running: dict, status: dict) -> str:
+    """What updates.status says on a store that cannot update itself."""
+    parts = [f'Running {running["version"]}']
+    if running['commit']:
+        parts.append(f' (commit {running["commit_short"]})')
+    if running['deployed_at']:
+        parts.append(f', installed {running["deployed_at"]:%Y-%m-%d %H:%M} UTC')
+    parts.append('. This store updates when a new version is released; it cannot update itself.')
+    if status.get('available') == 'yes' and status.get('latest'):
+        parts.append(f' {status["latest"]} is out.')
+    if running['backup']:
+        taken = running['backup']['taken_at']
+        parts.append(
+            f' Database backup from before the last update that changed it: {taken:%Y-%m-%d %H:%M} UTC.'
+        )
+    return ''.join(parts)
+
+
 @tool(
     name='updates.apply',
     description=(
         'Apply the pending platform update (git fast-forward + backup + migrate '
-        '+ healthcheck + auto-rollback). DEPLOYMENT-MUTATING: after the user '
-        'approves, pass confirmed=True, hard_gate_ack="YES", and echo="platform '
-        'update". Requires MORPHEUS_SELF_UPDATE_ENABLED on the server.'
+        '+ healthcheck + auto-rollback). Only a store that runs from a git checkout can: '
+        'check updates.status first. Anywhere else (a built image, like most stores) this '
+        'answers that the store updates when a new version is released. '
+        'DEPLOYMENT-MUTATING: after the user approves, pass confirmed=True, '
+        'hard_gate_ack="YES", and echo="platform update". Requires '
+        'MORPHEUS_SELF_UPDATE_ENABLED on the server.'
     ),
     scopes=['system.write'],
     schema={
@@ -59,10 +87,18 @@ def updates_status_tool() -> ToolResult:
 def updates_apply_tool(
     *, confirmed: bool = False, hard_gate_ack: str = '', echo: str = ''
 ) -> ToolResult:
+    from core.updates import apply_platform_update, can_self_update  # noqa: PLC0415
+
+    if not can_self_update():
+        return ToolResult(
+            output={'ok': False, 'status': 'unavailable', 'reason': 'no git checkout'},
+            display=(
+                "This store can't update itself: it runs from a built image and updates "
+                'when a new version is released. There is nothing to apply here.'
+            ),
+        )
     _require_confirmed(confirmed)
     _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name='platform update', echo=echo)
-    from core.updates import apply_platform_update  # noqa: PLC0415
-
     result = apply_platform_update(confirm=True)
     return ToolResult(output=result, display=f'Update {result.get("status")}.')
 

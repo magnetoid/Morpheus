@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import TestCase
 
 from core.assistant.tools.filesystem import ToolError
@@ -95,15 +96,21 @@ class UpdatesToolsTests(TestCase):
     def test_apply_requires_hard_gate(self):
         from core.assistant.tools.admin_ops import updates_apply_tool
 
-        with self.assertRaises(ToolError):
+        with (
+            patch('core.updates.can_self_update', return_value=True),
+            self.assertRaises(ToolError),
+        ):
             updates_apply_tool.invoke({'confirmed': True})  # missing ack/echo
 
     def test_apply_calls_guarded_updater(self):
         from core.assistant.tools.admin_ops import updates_apply_tool
 
-        with patch(
-            'core.updates.apply_platform_update', return_value={'status': 'applied', 'to': 'v2'}
-        ) as ap:
+        with (
+            patch('core.updates.can_self_update', return_value=True),
+            patch(
+                'core.updates.apply_platform_update', return_value={'status': 'applied', 'to': 'v2'}
+            ) as ap,
+        ):
             r = updates_apply_tool.invoke(
                 {
                     'confirmed': True,
@@ -113,6 +120,32 @@ class UpdatesToolsTests(TestCase):
             )
         ap.assert_called_once_with(confirm=True)
         self.assertEqual(r.output['status'], 'applied')
+
+    def test_status_on_a_built_image_says_it_updates_on_release(self):
+        from core.assistant.tools.admin_ops import updates_status_tool
+
+        status = {'source': 'git', 'available': 'unavailable', 'reason': 'No git metadata.'}
+        with (
+            patch('core.updates.can_self_update', return_value=False),
+            patch('core.updates.platform_update_status', return_value=status),
+        ):
+            r = updates_status_tool.invoke({})
+        self.assertIn('This store updates when a new version is released', r.display)
+        self.assertNotIn('Update unavailable', r.display)
+        self.assertEqual(r.output['running']['version'], settings.MORPHEUS_VERSION)
+        self.assertFalse(r.output['running']['self_update'])
+
+    def test_apply_on_a_built_image_says_it_cannot_run_here(self):
+        from core.assistant.tools.admin_ops import updates_apply_tool
+
+        with (
+            patch('core.updates.can_self_update', return_value=False),
+            patch('core.updates.apply_platform_update') as ap,
+        ):
+            r = updates_apply_tool.invoke({})
+        ap.assert_not_called()
+        self.assertEqual(r.output['status'], 'unavailable')
+        self.assertIn("can't update itself", r.display)
 
 
 class ThemeActivateTests(TestCase):
