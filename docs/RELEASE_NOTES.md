@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.118.0 — 2026-10-19
+
+**Safe deploys: the database is backed up before any update that changes it**
+
+- Before an update that changes the database, the store now backs the database up first and keeps the last five of these backups. If the backup fails, the update stops before changing anything.
+- Settings → Version & updates shows the version the store runs, its commit, when it was installed, and the newest of those backups.
+- On stores that update when a new version is released (all of ours), that page no longer offers Check for updates and Update now buttons that could not work there; it says so in one line, and Linda says the same.
+- Fixed: the web container had no permanent backup folder, so a backup made from it was lost at the next deploy.
+
 ## v0.117.0 — 2026-10-19
 
 **Edit vendors from the dashboard**
