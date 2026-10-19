@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.116.0 — 2026-10-19
+
+**Qwen Cloud for AI, stories out of search when you want, and faster AI feeds**
+
+- Qwen Cloud (Alibaba) is a new AI provider in Settings → AI: add its key and pick qwen-plus, qwen-max or qwen-flash. Linda can run on it too, and its cost counts toward the daily AI spend cap.
+- Settings → Web Stories has a new switch to keep every story out of search engines, so stories don't compete with your product pages there; they still play and their links keep working.
+- Supernatural's grey text now passes the colour-contrast check in the footer, the cookie banner and reviews.
+- The product feed for AI shopping assistants (/ai/products.json) is rebuilt in the background, so it no longer takes several seconds for the first visitor after it expires.
+
 ## v0.115.2 — 2026-10-19
 
 **Home page carousels that look like the shop's own rows, four products to a row on Supernatural**
