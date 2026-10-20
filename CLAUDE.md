@@ -1692,6 +1692,26 @@ checkout, or no git installed) it shows one line where the update buttons were
 `core/tests/test_safe_migrate.py`, `test_deploy_record.py` and
 `test_running_release.py`.
 
+**Convention — a migration leaves the previous release working (v0.119.0).** Putting the
+old code back (by hand now, automatically from safe-deploys release 4) is safe only while
+the old code still runs on the new schema. `manage.py release` refuses, and `release
+--check` (CI) fails, when a migration the release adds would break it
+(`core/migration_safety.py`). The flagged operations are:
+- `RemoveField` and `DeleteModel`;
+- renames, including `AlterModelTable`;
+- `RunSQL`;
+- an `AlterField` that makes a nullable column NOT NULL (even with a default: the old
+  model still writes NULL);
+- an `AddField` of a NOT NULL column without `db_default`. Django drops a Python
+  `default` from the table once the column exists, so the old code's inserts fail. Add
+  booleans as `default=False, db_default=False`.
+
+Such a change ships in two releases: first stop using the column (or start always
+writing it), then change it with `morpheus_contract = "<why it is safe>"` on the
+migration. A migration file Django does not load fails the check rather than passing
+it, so run `release` with `MORPHEUS_EXTRA_APPS` when a release touches an opt-in app.
+Guarded by `core/tests/test_migration_safety.py` and `test_migration_gate.py`.
+
 **Landmine — a native dep that loads at settings-import is deploy-critical.**
 A provider app in `INSTALLED_APPS` (e.g. allauth's `openid_connect` / `saml`
 for staff_sso) hard-imports its package — `pyjwt[crypto]`, `python3-saml`

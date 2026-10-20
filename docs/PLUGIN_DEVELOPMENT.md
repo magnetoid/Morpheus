@@ -628,6 +628,7 @@ contribution mechanism.
 * Index every field you `filter()` on: `db_index=True` for single columns, `models.Index(fields=[…])` in `Meta` for composites.
 * Run `python manage.py makemigrations <plugin>` after every model change.
 * Run `python manage.py makemigrations --check --dry-run` in CI to catch missing migrations.
+* A migration must leave the previous release working, because the store may go back to it. `manage.py release` refuses one that removes or renames a column or table, runs raw SQL, makes a nullable column NOT NULL, or adds a NOT NULL column without `db_default` (`core/migration_safety.py`). Ship such a change in two releases, the second marked `morpheus_contract = "<why it is safe>"`; add a boolean as `models.BooleanField(default=False, db_default=False)`.
 
 See [`SKILLS.md` → Add a model](../SKILLS.md#skill-add-a-model).
 

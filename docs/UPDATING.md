@@ -253,7 +253,9 @@ Restoring is by hand for now ([`OPERATIONS_RUNBOOK.md`](OPERATIONS_RUNBOOK.md),
 Backups). Still to come, per
 [`superpowers/specs/2026-10-19-safe-deploys-design.md`](superpowers/specs/2026-10-19-safe-deploys-design.md):
 
-- a CI check that a release's migrations are safe for the previous version;
+- ~~a check that a release's migrations are safe for the previous version~~: shipped in
+  v0.119.0. `manage.py release` refuses them and `release --check` fails on them
+  (`core/migration_safety.py`), unless the migration says why in `morpheus_contract`;
 - a restore command and page;
 - an automatic code rollback when a store does not come up.
 
