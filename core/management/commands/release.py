@@ -194,6 +194,42 @@ def versioned_changes(changed_paths: list[str]) -> list[str]:
     return out
 
 
+_MIGRATION_FILE = re.compile(r'/migrations/\d{4}_\w+\.py$')
+
+
+def _added_migration_files(base: str) -> list[str]:
+    """Migration files new since ``base``: committed, staged, or not added to git
+    yet. One left uncommitted when the release is cut still ships with the next push."""
+    outputs = (
+        _git('diff', '--name-only', '--diff-filter=AR', f'{base}...HEAD'),
+        _git('diff', '--name-only', '--diff-filter=AR', '--cached'),
+        _git('ls-files', '--others', '--exclude-standard'),
+    )
+    names = {name for out in outputs for name in (out or '').splitlines()}
+    return sorted(name for name in names if _MIGRATION_FILE.search(name))
+
+
+def _migration_report(base: str) -> tuple[list[str], list[str]]:
+    """The release's new migrations, reviewed (core/migration_safety.py): the
+    problems that stop it, and the contracts that let a flagged migration through."""
+    from core import migration_safety
+
+    reviews, unchecked = migration_safety.review_files(_base_dir(), _added_migration_files(base))
+    problems = [f'{r.migration}: {finding}' for r in reviews if r.blocks for finding in r.findings]
+    if problems:
+        problems.append(
+            'Ship such a change in two releases (first stop using it, then change it), and '
+            "mark the second migration with morpheus_contract = '<why it is safe>'."
+        )
+    problems += [
+        f'{path}: not checked, because Django does not load it here (its app is not '
+        'installed: set MORPHEUS_EXTRA_APPS; or its migrations folder has no __init__.py).'
+        for path in unchecked
+    ]
+    accepted = [f'{r.migration}: {r.contract}' for r in reviews if r.findings and r.contract]
+    return problems, accepted
+
+
 class Command(BaseCommand):
     help = 'Bump MORPHEUS_VERSION + add a dated RELEASE_NOTES entry (or --check both).'
 
@@ -238,6 +274,7 @@ class Command(BaseCommand):
             raise CommandError('Pass a bump level (--patch/--minor/--major) or --set vX.Y.Z.')
         if not summary:
             raise CommandError('A one-line summary is required (positional arg).')
+        self._refuse_unsafe_migrations()
 
         settings_path, notes_path = _settings_path(), _notes_path()
         settings_text = settings_path.read_text(encoding='utf-8')
@@ -277,6 +314,29 @@ class Command(BaseCommand):
 
     # ------------------------------------------------------------------
 
+    def _refuse_unsafe_migrations(self) -> None:
+        """Stop the release before anything is written when its new migrations would
+        break the previous release (core/migration_safety.py)."""
+        base = _diff_base()
+        if base is None:
+            self.stdout.write(
+                self.style.WARNING('  ! no origin/main to diff — skipped the migration check')
+            )
+            return
+        problems = self._report_migrations(base)
+        if problems:
+            for problem in problems:
+                self.stderr.write(self.style.ERROR(f'  ✗ {problem}'))
+            raise CommandError(
+                'These migrations would break the previous release; nothing was written.'
+            )
+
+    def _report_migrations(self, base: str) -> list[str]:
+        problems, accepted = _migration_report(base)
+        for line in accepted:
+            self.stdout.write(self.style.SUCCESS(f'  ✓ migration contract — {line}'))
+        return problems
+
     def _check(self) -> None:
         settings_text = _settings_path().read_text(encoding='utf-8')
         notes_text = _notes_path().read_text(encoding='utf-8')
@@ -310,6 +370,7 @@ class Command(BaseCommand):
                     f'is still {current}. A deploy MUST bump it (ADR 0033) — run '
                     f'manage.py release --patch/--minor/--major "…".'
                 )
+            problems += self._report_migrations(base)
 
         if problems:
             for p in problems:

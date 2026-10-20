@@ -28,6 +28,7 @@ docs/superpowers/specs/2026-10-19-safe-deploys-design.md, part 2.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from django.db import migrations
 from django.db.models import NOT_PROVIDED
@@ -115,3 +116,31 @@ def _becomes_not_null(app_label, op, state) -> bool:
     except KeyError:
         return False  # not there before this migration: the AddField rule judged it
     return before.null and not op.field.null
+
+
+def review_files(base_dir: Path, paths: list[str]) -> tuple[list[Review], list[str]]:
+    """Review the migration files at ``paths`` (relative to ``base_dir``), as Django
+    loads them. Also returns the paths it could not review: an app not installed in
+    this process, or a migrations folder without ``__init__.py``. A gate that skipped
+    those would pass while checking nothing."""
+    from django.apps import apps
+    from django.db.migrations.exceptions import NodeNotFoundError
+    from django.db.migrations.loader import MigrationLoader
+
+    loader = MigrationLoader(None, ignore_no_migrations=True)
+    labels = {Path(config.path).resolve(): config.label for config in apps.get_app_configs()}
+    reviews, unchecked = [], []
+    for rel in paths:
+        path = (base_dir / rel).resolve()
+        key = (labels.get(path.parent.parent), path.stem)
+        migration = loader.disk_migrations.get(key)
+        if migration is None:
+            unchecked.append(rel)
+            continue
+        try:
+            state = loader.project_state(key, at_end=False)
+        except NodeNotFoundError:
+            unchecked.append(rel)
+            continue
+        reviews.append(review(migration, state))
+    return reviews, unchecked
