@@ -137,7 +137,7 @@ Measured at **v0.119.0 (20 October 2026)** by a script over the tree, not from m
 | Scheduled jobs · management commands | **61** · **65** | `CELERY_BEAT_SCHEDULE` · `manage.py help` |
 | Payment gateways | **5** — Stripe, PayPal, cash on delivery, bank transfer, sandbox | `payments.gateway_registry` |
 | Production releases since v0.1.0 (2026-06-20) | **299 in 122 days** | `docs/RELEASE_NOTES.md` |
-| Tests | **5,204** test functions; the full suite ran 5,168 tests on 2026-10-20 | `grep -rc "def test_"` |
+| Tests | **5,209** test functions; the full suite ran 5,173 tests on 2026-10-20 | `grep -rc "def test_"` |
 | Python | **~300k lines** in `core/`, `plugins/`, `themes/`, `api/`, `morph/`, `morpheus/`, `scripts/` (~84k of it tests) | the tree |
 | Templates, CSS & JS | **727** templates · **~73k** lines | the tree |
 | Migrations | **270** | `*/migrations/` |
