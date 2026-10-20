@@ -1212,7 +1212,7 @@ of the list, and the copies drifted; checkboxes stayed light in dark mode becaus
 icon name missing from the glyph map renders as an empty circle with no error ("Print invoice" did).
 Guarded by `admin_dashboard/tests/test_theme_contract.py`.
 
-**Convention — the dashboard has ONE page width (v0.118.1).** `admin_dashboard/base.html` sets it
+**Convention — the dashboard has ONE page width (v0.119.0).** `admin_dashboard/base.html` sets it
 (`max-w-screen-2xl`); a page and its cards never cap their own. 111 pages and about 20 cards were
 capped somewhere between 672 and 1280 px, so some screens were narrow and others wide (owner,
 2026-10-20). A paragraph, a table cell or an input may still cap itself, for its own sake. Guarded
@@ -1706,10 +1706,20 @@ the old code still runs on the new schema. `manage.py release` refuses, and `rel
   `default` from the table once the column exists, so the old code's inserts fail. Add
   booleans as `default=False, db_default=False`.
 
-Such a change ships in two releases: first stop using the column (or start always
-writing it), then change it with `morpheus_contract = "<why it is safe>"` on the
-migration. A migration file Django does not load fails the check rather than passing
-it, so run `release` with `MORPHEUS_EXTRA_APPS` when a release touches an opt-in app.
+Such a change ships in two releases, and "stop using the column" means taking the
+field off the model **in state only**: `SeparateDatabaseAndState` with the
+`RemoveField` in `state_operations`, plus an `AlterField` to `null=True` in
+`database_operations` when the column is NOT NULL. Deleting the field from `models.py`
+alone makes `makemigrations` write the very `RemoveField` that breaks the previous
+release, and a NOT NULL column the new model stops writing fails its inserts. The next
+release puts the field back in state only and removes it with a plain `RemoveField`,
+marked `morpheus_contract = "<why it is safe>"` (raw SQL is worse: sqlite refuses
+`DROP COLUMN` on an indexed column, and the pre-commit hook refuses a dropped table). A
+field that cannot take `db_default` (a `MoneyField`) goes in nullable and becomes NOT
+NULL a release later, once every write fills it. Changes to a table the release itself
+creates are not findings. A migration file Django does not load fails the check rather
+than passing it, so run `release` with `MORPHEUS_EXTRA_APPS` when a release touches an
+opt-in app.
 Guarded by `core/tests/test_migration_safety.py` and `test_migration_gate.py`.
 
 **Landmine — a native dep that loads at settings-import is deploy-critical.**

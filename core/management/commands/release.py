@@ -217,10 +217,17 @@ def _migration_report(base: str) -> tuple[list[str], list[str]]:
     reviews, unchecked = migration_safety.review_files(_base_dir(), _added_migration_files(base))
     problems = [f'{r.migration}: {finding}' for r in reviews if r.blocks for finding in r.findings]
     if problems:
-        problems.append(
-            'Ship such a change in two releases (first stop using it, then change it), and '
-            "mark the second migration with morpheus_contract = '<why it is safe>'."
-        )
+        problems += [
+            'A new NOT NULL column needs db_default. Where it cannot have one (a MoneyField), '
+            'add it null=True, fill it on every write, and make it NOT NULL in a later release.',
+            'To remove a column, take the field off the model first, in state only: '
+            'SeparateDatabaseAndState with the RemoveField in state_operations and, for a NOT '
+            'NULL column, an AlterField to null=True in database_operations. Drop it in a later '
+            'release: an AddField in state_operations only, then a plain RemoveField. A table '
+            'goes the same way; a rename is an addition and a later removal.',
+            "Mark that later migration morpheus_contract = '<why it is safe>'. The steps: "
+            'docs/PLUGIN_DEVELOPMENT.md, section 6.',
+        ]
     problems += [
         f'{path}: not checked, because Django does not load it here (its app is not '
         'installed: set MORPHEUS_EXTRA_APPS; or its migrations folder has no __init__.py).'

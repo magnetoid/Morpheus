@@ -628,7 +628,34 @@ contribution mechanism.
 * Index every field you `filter()` on: `db_index=True` for single columns, `models.Index(fields=[…])` in `Meta` for composites.
 * Run `python manage.py makemigrations <plugin>` after every model change.
 * Run `python manage.py makemigrations --check --dry-run` in CI to catch missing migrations.
-* A migration must leave the previous release working, because the store may go back to it. `manage.py release` refuses one that removes or renames a column or table, runs raw SQL, makes a nullable column NOT NULL, or adds a NOT NULL column without `db_default` (`core/migration_safety.py`). Ship such a change in two releases, the second marked `morpheus_contract = "<why it is safe>"`; add a boolean as `models.BooleanField(default=False, db_default=False)`.
+* A migration must leave the previous release working, because the store may go back to it. `manage.py release` refuses one that removes or renames a column or table, runs raw SQL, makes a nullable column NOT NULL, or adds a NOT NULL column without `db_default` (`core/migration_safety.py`). Changes to a table the same release creates are fine. The steps:
+  * **A new NOT NULL column** gets `db_default`; a boolean is `models.BooleanField(default=False, db_default=False)`. A field that cannot have one (a `MoneyField`) goes in with `null=True`, every write fills it, and a later release makes it NOT NULL.
+  * **Removing a column** takes two releases. The first takes the field off the model in state only, so the column is still there for the previous release:
+
+    ```python
+    migrations.SeparateDatabaseAndState(
+        state_operations=[migrations.RemoveField('product', 'legacy_sku')],
+        # Only for a NOT NULL column, which the new model no longer writes:
+        database_operations=[
+            migrations.AlterField('product', 'legacy_sku', models.CharField(max_length=64, null=True)),
+        ],
+    )
+    ```
+
+    Deleting the field from `models.py` alone makes `makemigrations` write a plain `RemoveField`, which drops the column at once. The second release puts the field back in the state for a moment and removes it for real, so Django writes the drop for each database (sqlite refuses a raw `DROP COLUMN` on an indexed column), and says why that is safe on its `Migration` class:
+
+    ```python
+    morpheus_contract = 'nothing reads product.legacy_sku since v0.120.0'
+    operations = [
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddField('product', 'legacy_sku', models.CharField(max_length=64, null=True)),
+            ],
+        ),
+        migrations.RemoveField('product', 'legacy_sku'),
+    ]
+    ```
+  * **A table** goes the same way: a `DeleteModel` in `state_operations` first, then a release later a `CreateModel` in `state_operations` followed by a plain `DeleteModel`. **A rename** is an addition and a later removal.
 
 See [`SKILLS.md` → Add a model](../SKILLS.md#skill-add-a-model).
 

@@ -13,12 +13,21 @@ names the operations in a migration that the previous release would trip over:
   whatever default the new field has.
 - RunSQL: nothing can tell what raw SQL does.
 
-Such a change ships in two releases. The first stops using the column (or
-starts always writing it); the second makes the change and says why it is safe
+Such a change ships in two releases. To remove a column, the first takes the
+field off the model in state only (``SeparateDatabaseAndState``, the
+``RemoveField`` in ``state_operations``, plus an ``AlterField`` to ``null=True``
+in ``database_operations`` when the column is NOT NULL, or the first release's
+inserts fail); the second puts it back in state only and removes it with a
+plain ``RemoveField`` (Django writes the right DDL for each database; sqlite
+refuses a raw ``DROP COLUMN`` on an indexed column), and says why that is safe
 on the migration, ``morpheus_contract = "nothing reads product.legacy_sku since
-v0.119.0"``, which ``review`` accepts. A squashed migration (``replaces``) is not
-reviewed: it never runs where the migrations it replaces already ran. Column type
-or length changes and new unique or check constraints are not checked.
+v0.119.0"``, which ``review`` accepts. A new NOT NULL column gets
+``db_default``, or is added nullable and made NOT NULL in a later release once
+every write fills it. Nothing done to a table the release itself creates is a
+finding: the previous release has no such table. A squashed migration
+(``replaces``) is not reviewed: it never runs where the migrations it replaces
+already ran. Column type or length changes and new unique or check constraints
+are not checked.
 
 ``manage.py release`` refuses to cut a release whose new migrations have
 findings, and ``release --check`` (CI) fails on them. Spec:
@@ -45,29 +54,43 @@ class Review:
         return bool(self.findings) and not self.contract
 
 
-def review(migration, state_before) -> Review:
+def review(migration, state_before, new_models=None) -> Review:
     """What in ``migration`` the previous release would trip over, given the
-    project state just before it runs. ``state_before`` is not changed."""
+    project state just before it runs. ``state_before`` is not changed.
+
+    ``new_models`` holds the ``(app_label, model)`` tables this release creates,
+    and the tables ``migration`` creates are added to it. The previous release has
+    no such table, so nothing done to one can trip it."""
     name = f'{migration.app_label}.{migration.name}'
     contract = str(getattr(migration, 'morpheus_contract', '') or '').strip()
     if migration.replaces:
         return Review(name, (), contract)
-    found = _findings(migration.app_label, migration.operations, state_before.clone())
+    if new_models is None:
+        new_models = set()
+    found = _findings(migration.app_label, migration.operations, state_before.clone(), new_models)
     return Review(name, tuple(found), contract)
 
 
-def _findings(app_label, operations, state) -> list[str]:
+def _findings(app_label, operations, state, new_models) -> list[str]:
     found = []
     for op in operations:
         if isinstance(op, migrations.SeparateDatabaseAndState):
             # Only database_operations touch the tables; state_operations never do.
-            found += _findings(app_label, op.database_operations, state.clone())
-        else:
+            found += _findings(app_label, op.database_operations, state.clone(), new_models)
+        elif isinstance(op, migrations.CreateModel):
+            new_models.add((app_label, op.name_lower))
+        elif (app_label, _model_of(op)) not in new_models:
             finding = _finding(app_label, op, state)
             if finding:
                 found.append(finding)
         op.state_forwards(app_label, state)
     return found
+
+
+def _model_of(op) -> str | None:
+    # A field operation names its model in model_name, a model operation in name;
+    # RunSQL names none.
+    return getattr(op, 'model_name_lower', None) or getattr(op, 'name_lower', None)
 
 
 def _finding(app_label, op, state) -> str:  # noqa: PLR0911 — one rule per operation
@@ -129,18 +152,22 @@ def review_files(base_dir: Path, paths: list[str]) -> tuple[list[Review], list[s
 
     loader = MigrationLoader(None, ignore_no_migrations=True)
     labels = {Path(config.path).resolve(): config.label for config in apps.get_app_configs()}
-    reviews, unchecked = [], []
+    found, unchecked = [], []
     for rel in paths:
         path = (base_dir / rel).resolve()
         key = (labels.get(path.parent.parent), path.stem)
-        migration = loader.disk_migrations.get(key)
-        if migration is None:
+        if key in loader.disk_migrations:
+            found.append((key, rel))
+        else:
             unchecked.append(rel)
-            continue
+    reviews, new_models = [], set()
+    # By name, an app's migrations come in the order they run, so the tables an
+    # earlier one creates are known when a later one changes them.
+    for key, rel in sorted(found):
         try:
             state = loader.project_state(key, at_end=False)
         except NodeNotFoundError:
             unchecked.append(rel)
             continue
-        reviews.append(review(migration, state))
+        reviews.append(review(loader.disk_migrations[key], state, new_models))
     return reviews, unchecked

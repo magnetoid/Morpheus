@@ -147,6 +147,58 @@ class ContractTests(SimpleTestCase):
         self.assertEqual(result.findings, ())
 
 
+class NewTableTests(SimpleTestCase):
+    """The previous release has no table this release creates, so nothing done to
+    one can trip it."""
+
+    def test_changes_to_a_table_created_in_the_same_migration_are_not_flagged(self):
+        result = review(
+            _migration(
+                migrations.CreateModel('box', [('id', models.AutoField(primary_key=True))]),
+                migrations.AddField('box', 'flag', models.BooleanField(default=False)),
+            ),
+            _state(),
+        )
+        self.assertEqual(result.findings, ())
+
+    def test_a_table_created_earlier_in_the_release_is_new(self):
+        created = set()
+        first = _migration(
+            migrations.CreateModel('box', [('id', models.AutoField(primary_key=True))])
+        )
+        state = _state()
+        review(first, state, created)
+        first.operations[0].state_forwards('shop', state)
+        second = _migration(migrations.AddField('box', 'flag', models.BooleanField(default=False)))
+        self.assertEqual(review(second, state, created).findings, ())
+
+    def test_a_state_only_create_model_is_not_a_new_table(self):
+        # Taking over a table that already exists (an app consolidation): it has rows.
+        takeover = migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.CreateModel('box', [('id', models.AutoField(primary_key=True))])
+            ]
+        )
+        result = review(
+            _migration(
+                takeover, migrations.AddField('box', 'flag', models.BooleanField(default=False))
+            ),
+            _state(),
+        )
+        self.assertTrue(result.blocks)
+
+    def test_an_existing_table_next_to_a_new_one_is_still_checked(self):
+        result = review(
+            _migration(
+                migrations.CreateModel('box', [('id', models.AutoField(primary_key=True))]),
+                migrations.AddField('thing', 'flag', models.BooleanField(default=False)),
+            ),
+            _state(),
+        )
+        self.assertEqual(len(result.findings), 1)
+        self.assertIn('AddField thing.flag', result.findings[0])
+
+
 class OrderTests(SimpleTestCase):
     def test_operations_are_judged_in_order(self):
         # Added as nullable, then made NOT NULL in the same migration: the

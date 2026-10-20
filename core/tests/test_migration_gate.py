@@ -44,6 +44,16 @@ class ReviewFilesTests(SimpleTestCase):
         reviews, _ = review_files(_BASE, [_NEW_MODEL])
         self.assertFalse(reviews[0].blocks)
 
+    def test_a_new_app_s_own_migrations_pass_together(self):
+        # 0002_initial adds NOT NULL foreign keys to tables 0001 created.
+        paths = [
+            'plugins/installed/catalog/migrations/0001_initial.py',
+            'plugins/installed/catalog/migrations/0002_initial.py',
+        ]
+        reviews, unchecked = review_files(_BASE, paths)
+        self.assertEqual(unchecked, [])
+        self.assertEqual([r.migration for r in reviews if r.blocks], [])
+
     def test_a_file_django_does_not_load_is_not_waved_through(self):
         path = 'plugins/installed/not_an_app/migrations/0001_initial.py'
         reviews, unchecked = review_files(_BASE, [path])
@@ -116,6 +126,9 @@ class ReleaseGateTests(SimpleTestCase):
             'core.0014_remove_storesettings_guided_ux_mode_and_more: RemoveField', err.getvalue()
         )
         self.assertIn('morpheus_contract', err.getvalue())
+        # The safe recipe (owner's review, 2026-10-20): off the model first, then drop.
+        self.assertIn('SeparateDatabaseAndState', err.getvalue())
+        self.assertIn('db_default', err.getvalue())
 
     def test_release_refuses_before_writing_anything(self):
         tmp = Path(tempfile.mkdtemp())
