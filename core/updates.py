@@ -17,6 +17,7 @@ the working tree / code).
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -66,13 +67,14 @@ def _repo_root() -> Path:
 
 
 def can_self_update() -> bool:
-    """True when this install runs from a git checkout, so it can update its own code.
+    """True when this install can update its own code: a git checkout with git installed.
 
-    A built image (every Docker install, our stores included) has no ``.git``. It
+    A built image cannot: our stores' images carry no ``.git``, and the Dockerfile
+    purges git, so an image built from a clone keeps ``.git`` without the tool. It
     updates when a new version is released and deployed, so the dashboard and
     Linda offer no "Update now" there.
     """
-    return (_repo_root() / '.git').exists()
+    return (_repo_root() / '.git').exists() and shutil.which('git') is not None
 
 
 def platform_update_status(*, fetch: bool = False) -> dict:

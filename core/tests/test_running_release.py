@@ -33,10 +33,21 @@ class CanSelfUpdateTests(SimpleTestCase):
         with (
             tempfile.TemporaryDirectory() as tmp,
             patch('core.updates._repo_root', return_value=Path(tmp)),
+            patch('shutil.which', return_value='/usr/bin/git'),
         ):
             self.assertFalse(can_self_update())
             (Path(tmp) / '.git').mkdir()
             self.assertTrue(can_self_update())
+
+    def test_a_checkout_without_git_installed_cannot_update_itself(self):
+        # An image built from a clone keeps /app/.git, and the Dockerfile purges git.
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch('core.updates._repo_root', return_value=Path(tmp)),
+            patch('shutil.which', return_value=None),
+        ):
+            (Path(tmp) / '.git').mkdir()
+            self.assertFalse(can_self_update())
 
 
 class LatestBackupTests(_BackupFolderMixin, SimpleTestCase):

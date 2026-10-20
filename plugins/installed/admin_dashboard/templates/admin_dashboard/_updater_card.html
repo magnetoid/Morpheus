@@ -2,7 +2,7 @@
 The core updater card, shared by Version & updates (release_notes) and the
 standalone /dashboard/updates/ page. `running` is core.deploys.running_release():
 the version, commit, install time and newest pre-deploy backup. A store that
-cannot update itself (no git checkout: every Docker install, ours included) gets
+cannot update itself (a built image: every Docker install, ours included) gets
 one line where the check and apply buttons would be, since neither can work
 there (safe-deploys spec, part 5).
 {% endcomment %}

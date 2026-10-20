@@ -238,8 +238,8 @@ of the 503 every deploy shows. A deploy with nothing to migrate boots as fast as
 before.
 
 Settings → Version & updates shows the running version, its commit, when it was
-installed and the newest pre-deploy backup. Without `.git`
-(`core.updates.can_self_update()`), it shows "This store updates when a new
+installed and the newest pre-deploy backup. Where the store cannot update itself
+(no git checkout, or no git installed: `core.updates.can_self_update()`), it shows "This store updates when a new
 version is released." where the check and apply buttons were. Linda's
 `updates.status` says the same, and `updates.apply` answers that it cannot run
 there.

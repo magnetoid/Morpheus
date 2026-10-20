@@ -1680,8 +1680,9 @@ container's `run_migrations` runs `manage.py safe_migrate`, not `migrate`:
 It is one process on purpose: each `manage.py` start costs about 3 s of every
 deploy's 503. A restart of the same container skips the backup (a marker in
 `/tmp`), because a second copy could be of a half-migrated database. Settings →
-Version & updates reads both, and on a store without `.git` it shows one line
-where the update buttons were (`core.updates.can_self_update`). Guarded by
+Version & updates reads both, and on a store that cannot update itself (no git
+checkout, or no git installed) it shows one line where the update buttons were
+(`core.updates.can_self_update`). Guarded by
 `core/tests/test_safe_migrate.py`, `test_deploy_record.py` and
 `test_running_release.py`.
 
