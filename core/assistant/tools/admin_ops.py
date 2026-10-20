@@ -32,7 +32,7 @@ def updates_status_tool() -> ToolResult:
     running = running_release()
     status = platform_update_status(fetch=True)
     versions = component_versions()
-    output = {'running': running, 'platform': status, 'core': versions.get('core')}
+    output = {'running': _as_json(running), 'platform': status, 'core': versions.get('core')}
     if not running['self_update']:
         return ToolResult(output=output, display=_built_image_summary(running, status))
     return ToolResult(
@@ -42,6 +42,17 @@ def updates_status_tool() -> ToolResult:
             f'{", " + str(status.get("behind")) + " behind" if status.get("behind") else ""}.'
         ),
     )
+
+
+def _as_json(running: dict) -> dict:
+    """running_release() with its times as ISO text: tool output is stored as JSON (the
+    audit trail, Linda's chat history) with no encoder for dates."""
+    backup = running['backup']
+    return {
+        **running,
+        'deployed_at': running['deployed_at'].isoformat() if running['deployed_at'] else None,
+        'backup': {**backup, 'taken_at': backup['taken_at'].isoformat()} if backup else None,
+    }
 
 
 def _built_image_summary(running: dict, status: dict) -> str:

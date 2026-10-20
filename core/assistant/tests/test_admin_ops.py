@@ -7,6 +7,11 @@ asserted with assertRaises.
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
+import json
+import os
+import tempfile
+from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import patch
 
 from django.conf import settings
@@ -134,6 +139,35 @@ class UpdatesToolsTests(TestCase):
         self.assertNotIn('Update unavailable', r.display)
         self.assertEqual(r.output['running']['version'], settings.MORPHEUS_VERSION)
         self.assertFalse(r.output['running']['self_update'])
+
+    def test_status_output_is_plain_json(self):
+        # Tool output is stored as JSON (the audit trail, Linda's chat history)
+        # with no encoder for dates: a datetime in it loses both records.
+        from core.assistant.tools.admin_ops import updates_status_tool
+        from core.models import DeployEvent
+
+        status = {'source': 'git', 'available': 'unavailable', 'reason': 'No git metadata.'}
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / 'pre-deploy'
+            folder.mkdir()
+            name = f'morpheus-backup-20261019T140200Z-{settings.MORPHEUS_VERSION}-aaaaaaa.tar.gz'
+            (folder / name).write_bytes(b'x')
+            DeployEvent.objects.create(
+                version=settings.MORPHEUS_VERSION,
+                commit='a' * 40,
+                deployed_at=datetime(2026, 10, 19, 14, 3, tzinfo=UTC),
+            )
+            with (
+                patch.dict(os.environ, {'MORPHEUS_BACKUP_DIR': tmp, 'SOURCE_COMMIT': 'a' * 40}),
+                patch('core.updates.can_self_update', return_value=False),
+                patch('core.updates.platform_update_status', return_value=status),
+            ):
+                r = updates_status_tool.invoke({})
+        json.dumps(r.output)  # no default=: plain JSON only
+        self.assertEqual(r.output['running']['deployed_at'], '2026-10-19T14:03:00+00:00')
+        self.assertEqual(r.output['running']['backup']['taken_at'], '2026-10-19T14:02:00+00:00')
+        self.assertIn('installed 2026-10-19 14:03 UTC', r.display)
+        self.assertIn('the last update that changed it: 2026-10-19 14:02 UTC', r.display)
 
     def test_apply_on_a_built_image_says_it_cannot_run_here(self):
         from core.assistant.tools.admin_ops import updates_apply_tool
