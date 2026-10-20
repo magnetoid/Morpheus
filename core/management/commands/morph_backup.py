@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -52,6 +53,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        started = time.time()
         dest = Path(options['dest']).resolve()
         dest.mkdir(parents=True, exist_ok=True)
 
@@ -68,20 +70,23 @@ class Command(BaseCommand):
             self._dump_database(workdir)
             if not options['no_media']:
                 self._snapshot_media(workdir)
+            # Written under a .part name and renamed once complete: a half-written
+            # archive (a full disk, or a process killed so no cleanup runs) must
+            # never look like a good backup to whoever restores from it later.
+            partial = archive_path.with_name(f'{archive_path.name}.part')
             try:
-                with tarfile.open(archive_path, 'w:gz') as tar:
+                with tarfile.open(partial, 'w:gz') as tar:
                     for child in workdir.iterdir():
                         tar.add(child, arcname=child.name)
+                partial.replace(archive_path)
             except BaseException:
-                # A half-written archive (a full disk) would look like a good
-                # backup to whoever restores from it later.
-                archive_path.unlink(missing_ok=True)
+                partial.unlink(missing_ok=True)
                 raise
 
         size_mb = archive_path.stat().st_size / (1024 * 1024)
         self.stdout.write(self.style.SUCCESS(f'Wrote {archive_path} ({size_mb:.1f} MiB)'))
 
-        self._prune(dest, keep=options['keep'])
+        self._prune(dest, keep=options['keep'], started=started)
 
     def _dump_database(self, workdir: Path) -> None:
         db = settings.DATABASES.get('default') or {}
@@ -120,7 +125,7 @@ class Command(BaseCommand):
             tar.add(media_root, arcname='media')
         self.stdout.write(f'  media → {target.name} ({target.stat().st_size // 1024} KiB)')
 
-    def _prune(self, dest: Path, *, keep: int) -> None:
+    def _prune(self, dest: Path, *, keep: int, started: float) -> None:
         archives = sorted(dest.glob('morpheus-backup-*.tar.gz'), reverse=True)
         for old in archives[keep:]:
             try:
@@ -128,3 +133,12 @@ class Command(BaseCommand):
                 self.stdout.write(f'  pruned {old.name}')
             except OSError as e:
                 self.stdout.write(self.style.WARNING(f'  prune failed on {old}: {e}'))
+        # What a backup killed half way left behind. A run still writing one has
+        # touched it since this run started, so it is left alone.
+        for leftover in dest.glob('morpheus-backup-*.tar.gz.part'):
+            try:
+                if leftover.stat().st_mtime < started:
+                    leftover.unlink()
+                    self.stdout.write(f'  removed unfinished {leftover.name}')
+            except OSError as e:
+                self.stdout.write(self.style.WARNING(f'  could not remove {leftover}: {e}'))

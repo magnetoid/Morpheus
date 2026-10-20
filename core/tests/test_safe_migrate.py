@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -196,6 +197,32 @@ class BackupArchiveTests(_DeployEnvMixin, TestCase):
         with patch('tarfile.TarFile.add', side_effect=full), self.assertRaises(OSError):
             self.backup()
         self.assertEqual(list((self.root / 'b').glob('*')), [])
+
+    def test_a_backup_being_written_never_has_a_finished_backups_name(self):
+        # A process killed half way (an out-of-memory kill, a stop during boot)
+        # runs no cleanup: what it leaves on disk must not look like a backup.
+        dest = self.root / 'b'
+        seen = []
+        real_add = tarfile.TarFile.add
+
+        def add(tar, *args, **kwargs):
+            seen.extend(p.name for p in dest.glob('morpheus-backup-*.tar.gz'))
+            return real_add(tar, *args, **kwargs)
+
+        with patch.object(tarfile.TarFile, 'add', add):
+            self.backup()
+        self.assertEqual(seen, [])
+        self.assertEqual(len(list(dest.glob('morpheus-backup-*.tar.gz'))), 1)
+
+    def test_the_next_backup_removes_a_killed_backups_leftover(self):
+        dest = self.root / 'b'
+        dest.mkdir()
+        leftover = dest / 'morpheus-backup-20200101T000000Z.tar.gz.part'
+        leftover.write_bytes(b'half')
+        an_hour_ago = time.time() - 3600
+        os.utime(leftover, (an_hour_ago, an_hour_ago))
+        self.backup()
+        self.assertFalse(leftover.exists())
 
     def test_a_label_is_made_safe_for_a_file_name(self):
         [archive] = self.backup(label='v0.118.0 beta/2').glob('*.tar.gz')
