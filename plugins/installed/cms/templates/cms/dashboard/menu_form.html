@@ -1,7 +1,7 @@
 {% extends "admin_dashboard/base.html" %}
 {% block title %}{% if creating %}New menu{% else %}Edit {{ menu.label }}{% endif %} · CMS · Morpheus{% endblock %}
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-5">
+<div class="mx-auto space-y-5">
   <div class="flex items-center justify-between gap-3">
     <h1 class="text-xl font-semibold tracking-tight">{% if creating %}New menu{% else %}Edit menu — {{ menu.label }}{% endif %}</h1>
     <a href="/dashboard/apps/cms/menus/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; All menus</a>

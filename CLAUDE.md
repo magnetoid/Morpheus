@@ -1212,6 +1212,12 @@ of the list, and the copies drifted; checkboxes stayed light in dark mode becaus
 icon name missing from the glyph map renders as an empty circle with no error ("Print invoice" did).
 Guarded by `admin_dashboard/tests/test_theme_contract.py`.
 
+**Convention — the dashboard has ONE page width (v0.118.1).** `admin_dashboard/base.html` sets it
+(`max-w-screen-2xl`); a page and its cards never cap their own. 111 pages and about 20 cards were
+capped somewhere between 672 and 1280 px, so some screens were narrow and others wide (owner,
+2026-10-20). A paragraph, a table cell or an input may still cap itself, for its own sake. Guarded
+by `admin_dashboard/tests/test_page_width.py`.
+
 **Landmine — a dedupe key built from text a model writes never matches twice.** Pulse kept "one
 unread card per signal" by hashing the card's title, computed after the model reworded it and with
 the count inside it, so every refresh made a new card: dotbooks reached 1,145 unread insights, 992 of

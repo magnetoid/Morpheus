@@ -40,7 +40,7 @@
 </div>
 {% endif %}
 
-<div class="card card-padded max-w-3xl" id="account-form">
+<div class="card card-padded" id="account-form">
   <div class="flex items-center justify-between mb-3">
     <h2 class="font-semibold">{% if edit_account %}Edit “{{ edit_account.label }}”{% else %}Add mail account{% endif %}</h2>
     {% if edit_account %}<a href="/dashboard/crm/inbox/accounts/" class="text-xs text-[color:var(--text-muted)] hover:underline">Cancel</a>{% endif %}

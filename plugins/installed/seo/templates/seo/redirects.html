@@ -64,7 +64,7 @@
   </table>
 </div>
 
-<div class="card card-padded max-w-3xl mb-6" id="redirect-form">
+<div class="card card-padded mb-6" id="redirect-form">
   <div class="flex items-center justify-between mb-3">
     <h3 class="font-semibold">{% if edit_row %}Edit rule{% else %}Add rule{% endif %}</h3>
     {% if edit_row %}<a href="{% url 'seo_dashboard:redirects' %}" class="text-xs text-[color:var(--text-muted)] hover:underline">Cancel</a>{% endif %}
@@ -114,7 +114,7 @@
   </form>
 </div>
 
-<div class="card card-padded max-w-3xl">
+<div class="card card-padded">
   <h3 class="font-semibold mb-1">Import from CSV</h3>
   <p class="text-xs text-[color:var(--text-muted)] mb-3">
     Columns: <code>from_path, to_path, status_code, match_type, note</code>. Rows

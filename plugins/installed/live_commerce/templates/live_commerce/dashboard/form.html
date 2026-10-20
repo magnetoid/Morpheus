@@ -1,7 +1,7 @@
 {% extends "admin_dashboard/base.html" %}
 {% block title %}{% if event %}Edit event{% else %}New event{% endif %} · Morpheus{% endblock %}
 {% block content %}
-<div class="space-y-4 max-w-2xl">
+<div class="space-y-4">
   <h1 class="text-xl font-semibold tracking-tight">{% if event %}Edit live event{% else %}New live event{% endif %}</h1>
 
   <form method="post" class="card card-padded space-y-4">

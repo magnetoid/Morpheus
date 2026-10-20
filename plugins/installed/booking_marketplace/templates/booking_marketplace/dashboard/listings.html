@@ -2,7 +2,7 @@
 {% block title %}Listings · Morpheus{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto space-y-4">
+<div class="mx-auto space-y-4">
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Listings</h1>
@@ -39,7 +39,7 @@
               <div class="img-frame img-frame--row rounded border border-[color:var(--border)]">
                 {% if s.image %}<img src="{{ s.image.url }}" alt="" loading="lazy">{% else %}<i data-lucide="map-pin" class="h-4 w-4 text-[color:var(--text-muted)]"></i>{% endif %}
               </div>
-              <div class="min-w-0 max-w-[18rem]">
+              <div class="min-w-0">
                 <div class="font-medium truncate hover:underline">{{ s.name }}</div>
                 <div class="text-xs text-[color:var(--text-muted)] truncate">{{ s.short_description|default:"" }}</div>
               </div>

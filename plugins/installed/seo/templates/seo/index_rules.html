@@ -57,7 +57,7 @@
 </div>
 
 {% if can_seed %}
-<div class="card card-padded max-w-3xl mb-6">
+<div class="card card-padded mb-6">
   <h3 class="font-semibold mb-1">Start from the usual set</h3>
   <p class="text-xs text-[color:var(--text-muted)] mb-3">
     Adds rules for campaign tags, sorting, and the filters that generate the most
@@ -72,7 +72,7 @@
 {% endif %}
 
 {% if legacy_params %}
-<div class="card card-padded max-w-3xl mb-6">
+<div class="card card-padded mb-6">
   <h3 class="font-semibold mb-1">Still coming from your old settings</h3>
   <p class="text-xs text-[color:var(--text-muted)]">
     <code>{{ legacy_params|join:", " }}</code> — set on the SEO settings page
@@ -82,7 +82,7 @@
 </div>
 {% endif %}
 
-<div class="card card-padded max-w-3xl mb-6" id="rule-form">
+<div class="card card-padded mb-6" id="rule-form">
   <div class="flex items-center justify-between mb-3">
     <h3 class="font-semibold">{% if edit_row %}Edit rule{% else %}Add rule{% endif %}</h3>
     {% if edit_row %}<a href="{% url 'seo_dashboard:index_rules' %}" class="text-xs text-[color:var(--text-muted)] hover:underline">Cancel</a>{% endif %}
@@ -126,7 +126,7 @@
   </form>
 </div>
 
-<div class="card card-padded max-w-3xl mb-6">
+<div class="card card-padded mb-6">
   <h3 class="font-semibold mb-1">What these rules do to a URL</h3>
   <p class="text-xs text-[color:var(--text-muted)] mb-3">
     Paste any storefront URL to see the address it would name as its real one,
@@ -168,7 +168,7 @@
   {% endif %}
 </div>
 
-<div class="card card-padded max-w-3xl">
+<div class="card card-padded">
   <h3 class="font-semibold mb-2">What the policies mean</h3>
   <dl class="text-xs" style="display:grid; grid-template-columns:14rem 1fr; gap:.6rem 1rem;">
     <dt><strong>Keep indexable, drop from the canonical</strong></dt>
