@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.119.0 — 2026-10-20
+
+**Dashboard pages use the full width, and an update keeps the previous version working**
+
+- Every dashboard page now uses the full width of the window. Some pages used to stop at a narrow column while others were wide.
+- A new version can no longer change the database in a way the version before it cannot run on: removing or renaming a column or a table, raw SQL, or a new required column with no default in the database. So the store can always go back to the version before. A change like that now ships in two versions.
+
 ## v0.118.0 — 2026-10-19
 
 **Safe deploys: the database is backed up before any update that changes it**
