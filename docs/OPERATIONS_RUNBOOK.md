@@ -129,8 +129,12 @@ are read fresh on every request, so a change applies to every worker at once.
 
 ## Rollback
 
-- Code: `git revert` the bad commit on `main` and push — that push is itself
-  the rollback deploy; verify with deploy-smoke.
+- Code: automatic since v0.121.0 for a store that a push leaves down. deploy-smoke's
+  guard puts it back on the previous release, the run stays red, and the store emails
+  the operators. A rollback to a release older than v0.121.0 cannot email; the red run
+  is the signal. Do not click Redeploy in Coolify afterwards: it builds `main`, the
+  failed commit. Push a fix, or `git revert` the bad commit and push; that push deploys
+  every store again. By hand: the same revert-and-push, verified with deploy-smoke.
 - Schema: migrations are not auto-reversed. Since v0.118.0, every deploy that
   migrates first backs the database up to `/app/backups/pre-deploy/`, named
   after the version it was taken before, and stops before migrating if that

@@ -207,3 +207,12 @@ class ConfigTests(SimpleTestCase):
         env = {'MORPHEUS_DEPLOY_HOOKS': json.dumps({'webhook': 'https://x', 'repository': 'a/b'})}
         with patch.dict('os.environ', env, clear=True), self.assertRaises(SystemExit):
             guard.load_config()
+
+
+class WorkflowTests(SimpleTestCase):
+    def test_deploy_smoke_runs_the_guard_when_the_smoke_fails(self):
+        text = (Path(__file__).resolve().parents[2] / '.github' / 'workflows' / 'deploy-smoke.yml').read_text()
+        self.assertIn('fetch-depth: 0', text)
+        self.assertIn('if: failure()', text)
+        self.assertIn('python3 scripts/deploy_guard.py rollback', text)
+        self.assertIn('secrets.MORPHEUS_DEPLOY_HOOKS', text)

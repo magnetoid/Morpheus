@@ -22,3 +22,5 @@ Every staff member can read help, whatever their role. The screens it links to s
 Before an update that changes the database, the store backs the database up first and keeps the last five of these backups; if the backup fails, the update stops before changing anything. A store that runs from a built image, as most do, updates when a new version is released, so its Version & updates page has no update button.
 
 A restore puts all the store's data back as it was when the backup was made, or changes nothing if it fails. The store first backs up its data as it is, so a restore can be undone the same way, and shows everyone a "restoring" page while it runs. Access goes back as it was too: staff accounts and API tokens revoked since then work again. Linda cannot restore a backup: it replaces everything saved since.
+
+If an update does not come up, the store goes back to the version before it by itself, emails you, and Version & updates says which version failed.

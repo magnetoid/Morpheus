@@ -260,7 +260,25 @@ Backups). Still to come, per
   --confirm "<store name>"` restores a backup all or nothing, after backing the current
   data up; a superuser starts the same restore from Settings → Version & updates
   (`core/restore.py`);
-- an automatic code rollback when a store does not come up.
+- ~~an automatic code rollback when a store does not come up~~: shipped in v0.121.0.
+
+### Automatic rollback
+
+After every push to `main`, deploy-smoke waits for each store to serve the new version. When a
+store is down at the deadline (not merely still on the old version), `scripts/deploy_guard.py
+rollback` puts it back on the previous release tag. It does this by sending that store's deploy
+platform a signed GitHub push event whose `after` is the tag's commit. Configure it with the
+`MORPHEUS_DEPLOY_HOOKS` repository secret:
+
+    {"webhook": "https://<coolify>/webhooks/source/github/events/manual",
+     "repository": "<owner>/<repo>", "branch": "main",
+     "stores": {"https://store.example": "<that application's manual webhook secret>"}}
+
+Any platform works if it deploys the `after` commit of a signed push and serves `/readyz` with the
+running version. Coolify's manual GitHub webhook does: it uses each application's own secret, found
+under the application's Webhooks settings. The store then emails its operators (`ERROR_ALERT_EMAILS`,
+else the superusers) and Settings → Version & updates says it was put back. After a rollback, push a
+fix rather than redeploying: a redeploy builds the branch head, which is the release that failed.
 
 ---
 

@@ -15,8 +15,17 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 25 minutes of smoke, a minute of checks, then up to 30 minutes for the
+    # stores put back to come up.
+    timeout-minutes: 70
+    env:
+      MORPHEUS_DEPLOY_HOOKS: ${{ secrets.MORPHEUS_DEPLOY_HOOKS }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the guard reads the release tags
       - name: Wait for production to serve this version, then smoke it
         run: bash scripts/deploy_smoke.sh
+      - name: Put back the stores this release left down
+        if: failure()
+        run: python3 scripts/deploy_guard.py rollback

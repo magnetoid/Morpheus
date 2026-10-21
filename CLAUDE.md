@@ -1765,6 +1765,32 @@ tool by design, and `updates.status` shows the last restore. Guarded by
 `core/tests/test_restore_gate.py`, `test_morph_restore.py`, `test_restore_losses.py` and
 `release_notes/tests/test_restore_page.py`.
 
+**Convention — a store a release leaves down goes back to the previous release (v0.121.0).**
+When deploy-smoke times out, `scripts/deploy_guard.py rollback` checks each store three times,
+20 s apart:
+- up on the new version: nothing to do;
+- up on an older version: it is queued or missed its webhook, so it is left alone;
+- down at every check: it puts the store back on the previous release.
+
+It puts a store back by sending that store's Coolify manual GitHub webhook a signed push naming
+the previous release tag's commit, then waits for every store it put back. It never uses an API
+token: the Coolify team holds 34 applications, clients' included, and a write token would reach all
+of them. One store's webhook secret deploys only this repository's commits to that store (the secret
+`MORPHEUS_DEPLOY_HOOKS`, which names no infrastructure in the repository).
+
+What Coolify's source says (v4.4.6):
+- A push deploys its `after` commit, whatever the app's `git_commit_sha`.
+- Redeploy, or an API deploy, deploys `git_commit_sha` (`HEAD`), which is the failed commit. After
+  a rollback, push a fix; never Redeploy.
+
+The store reports it itself. `safe_migrate` records each deploy *before* migrating (after, when
+`DeployEvent` itself is being migrated), so a crashed migration still leaves the attempt and its
+backup. The marker names the row, so a crash-loop restart adds none. A boot older than the newest
+record writes `rolled_back_from`, emails the operators once (`core.errors.alerts.send_alert`), and
+Version & updates says so. A rollback exits 1, so the run stays red. That red run is the only signal
+when the release put back predates v0.121.0, which cannot email. Guarded by
+`core/tests/test_deploy_guard.py` and `test_rollback_notice.py`.
+
 **Landmine — a native dep that loads at settings-import is deploy-critical.**
 A provider app in `INSTALLED_APPS` (e.g. allauth's `openid_connect` / `saml`
 for staff_sso) hard-imports its package — `pyjwt[crypto]`, `python3-saml`
