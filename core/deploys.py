@@ -117,24 +117,27 @@ def record_deploy():
     return event, True
 
 
-def latest_predeploy_backup() -> dict | None:
-    """The newest backup in the pre-deploy folder, as ``{name, size, taken_at,
-    label}``; None when there is none."""
-    for path in sorted(predeploy_dir().glob('morpheus-backup-*.tar.gz'), reverse=True):
-        match = _ARCHIVE.match(path.name)
-        if not match:
-            continue
-        try:
-            size = path.stat().st_size
-        except OSError:
-            continue
+def describe_backup(path: Path) -> dict | None:
+    """A backup file as ``{name, size, taken_at, label}``, from its name and size;
+    None for anything that is not a finished backup."""
+    match = _ARCHIVE.match(path.name)
+    if not match:
+        return None
+    try:
         taken_at = datetime.strptime(match.group(1), '%Y%m%dT%H%M%SZ').replace(tzinfo=UTC)
-        return {
-            'name': path.name,
-            'size': size,
-            'taken_at': taken_at,
-            'label': match.group(2) or '',
-        }
+        size = path.stat().st_size
+    except (OSError, ValueError):
+        return None
+    return {'name': path.name, 'size': size, 'taken_at': taken_at, 'label': match.group(2) or ''}
+
+
+def latest_predeploy_backup() -> dict | None:
+    """The newest backup in the pre-deploy folder, as ``describe_backup`` gives it;
+    None when there is none."""
+    for path in sorted(predeploy_dir().glob('morpheus-backup-*.tar.gz'), reverse=True):
+        info = describe_backup(path)
+        if info:
+            return info
     return None
 
 
