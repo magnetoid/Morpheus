@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.120.1 — 2026-10-21
+
+**Security updates for image handling**
+
+- The image library (Pillow 13) and the list of trusted certificates (certifi) are updated to versions that fix newly published security issues. Photos and pictures work as before.
+
 ## v0.120.0 — 2026-10-21
 
 **Restore a backup from the dashboard**
