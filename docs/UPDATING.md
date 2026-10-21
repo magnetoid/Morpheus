@@ -256,7 +256,10 @@ Backups). Still to come, per
 - ~~a check that a release's migrations are safe for the previous version~~: shipped in
   v0.119.0. `manage.py release` refuses them and `release --check` fails on them
   (`core/migration_safety.py`), unless the migration says why in `morpheus_contract`;
-- a restore command and page;
+- ~~a restore command and page~~: shipped in v0.120.0. `manage.py morph_restore <backup>
+  --confirm "<store name>"` restores a backup all or nothing, after backing the current
+  data up; a superuser starts the same restore from Settings → Version & updates
+  (`core/restore.py`);
 - an automatic code rollback when a store does not come up.
 
 ---

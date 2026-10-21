@@ -13,9 +13,12 @@ It also holds [About Morpheus OS](page:about), the project's page about the plat
 - Find an app by typing a word into the search box at the top of the Help page.
 - Open the help for the page you are on with the Help link at the top right of any dashboard page.
 - Ask Linda how to do something in the dashboard. Linda reads the same help before answering.
+- Restore a backup: a superuser opens [Version & updates](page:version), picks one under Backups, reads what it will replace, and types the store's name.
 
 ## Good to know
 
 Every staff member can read help, whatever their role. The screens it links to still decide who may open them.
 
 Before an update that changes the database, the store backs the database up first and keeps the last five of these backups; if the backup fails, the update stops before changing anything. A store that runs from a built image, as most do, updates when a new version is released, so its Version & updates page has no update button.
+
+A restore puts all the store's data back as it was when the backup was made, or changes nothing if it fails. The store first backs up its data as it is, so a restore can be undone the same way, and shows everyone a "restoring" page while it runs. Linda cannot restore a backup: it replaces everything saved since.

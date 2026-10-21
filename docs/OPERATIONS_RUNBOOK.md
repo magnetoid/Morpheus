@@ -176,11 +176,23 @@ are read fresh on every request, so a change applies to every worker at once.
           subprocess.run(['dropdb', *conn, 'restore_check'], env=env, check=True)
           print('RESTORE scratch database dropped')
   ```
-- **The real restore** is by hand until `morph_restore` ships (safe deploys,
-  release 3), and it has not been rehearsed on a live store yet:
-  1. Stop web, worker and beat.
-  2. Run `pg_restore --clean --if-exists --no-owner` with the dump into `morpheus`.
-  3. Start them again and check `/readyz`.
+- **Restoring** (v0.120.0) puts the whole database back as a backup has it, all or
+  nothing, after backing the current data up into `/app/backups/pre-restore/` (three
+  kept), so a restore can be undone the same way. A superuser starts it from Settings →
+  Version & updates → Backups → Restore…, which says what will be replaced and asks for
+  the store's name. From a shell:
+  `docker exec -it <web> python manage.py morph_restore /app/backups/pre-deploy/<file> --confirm "<store name>"`.
+  - While it runs, every page answers 503 "restoring" (`/healthz` excepted).
+  - It never runs migrations. When the backup is older than the running code, the result
+    names the migrations it lacks, and a redeploy applies them. If one of them is why you
+    restored, put the previous version back first.
+  - Afterwards, restart the worker and beat (Coolify → Restart), so background jobs read
+    the restored data. A restore started from the screen reloads the web workers itself;
+    one started from a shell needs the web restarted too.
+  - The outcome is in `/app/backups/restore/last.json`, and the output of a screen-started
+    restore is in `restore.log` beside it.
+  - A restore that is killed (a deploy replaced the container) stops closing the store 90 s
+    later. It changed everything or nothing.
 
 ## Local development
 

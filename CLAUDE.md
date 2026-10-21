@@ -1722,6 +1722,36 @@ than passing it, so run `release` with `MORPHEUS_EXTRA_APPS` when a release touc
 opt-in app.
 Guarded by `core/tests/test_migration_safety.py` and `test_migration_gate.py`.
 
+**Convention — a restore is all or nothing, and the store closes while it runs (v0.120.0).**
+`manage.py morph_restore <backup> --confirm "<store name>"` and the superuser-only restore screen
+(Settings → Version & updates → Backups, `/dashboard/restore/<kind>/<file>/`) run one engine,
+`core/restore.py`. In order, it:
+- backs the current data up into `pre-restore/` (three kept);
+- ends every other database session;
+- runs `pg_restore --clean --if-exists --no-owner --no-acl --single-transaction --exit-on-error`;
+- drops the cache.
+
+Five traps:
+1. The closed sign is a file on the backups volume (`restore/running.json`, read by
+   `RestoreGateMiddleware` before any middleware that touches the database), never a row or a
+   cache key: the restore replaces the one and clears the other. A heartbeat keeps the file fresh,
+   so a restore that dies reopens the store 90 s later.
+2. The cache shares its Redis database with Celery's queue (`REDIS_URL` for both, no prefix), so
+   never `cache.clear()` outside tests. `delete_pattern('*')` drops only the cache's keys.
+3. Ending the sessions kills every reused connection, so `CONN_HEALTH_CHECKS` is on: a dead
+   connection is replaced instead of failing a request.
+4. Each process keeps app settings in memory. A restore from the screen reloads the web workers
+   (SIGHUP to the gunicorn master), and the result asks for a worker and beat restart.
+5. A restore never runs migrations: someone who restored to undo a bad migration would run it
+   again. A backup older than the code lists what it lacks, and a redeploy applies it.
+
+The screen lists only files under `MORPHEUS_BACKUP_DIR`, never the backups app's folder setting,
+which staff and Linda can change. It takes a kind and a file name, never a path. Each app counts
+what a restore loses through `RESTORE_LOSSES`. Linda has no restore tool by design, and
+`updates.status` shows the last restore. Guarded by `core/tests/test_restore_gate.py`,
+`test_morph_restore.py`, `test_restore_losses.py` and
+`release_notes/tests/test_restore_page.py`.
+
 **Landmine — a native dep that loads at settings-import is deploy-critical.**
 A provider app in `INSTALLED_APPS` (e.g. allauth's `openid_connect` / `saml`
 for staff_sso) hard-imports its package — `pyjwt[crypto]`, `python3-saml`

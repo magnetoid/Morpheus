@@ -179,6 +179,8 @@ Cloudflare (Web Bot Auth)
 Plesk vhost → Coolify Traefik → web container
    ↓
 Django middleware stack:
+   - RestoreGateMiddleware (first, before anything reads the database): every
+     page answers 503 "restoring" while a backup is being restored (core/restore.py)
    - request_id (uuid attached to every log line)
    - sentry / observability spans
    - market resolution (per-country pricing/currency)
