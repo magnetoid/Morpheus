@@ -1,10 +1,15 @@
 """Restoring a backup (safe deploys, part 4). ``manage.py morph_restore`` and
 the restore screen on Settings → Version & updates run this one engine.
 
-A restore puts the whole database back as a backup has it, all or nothing:
-``pg_restore --single-transaction``, so a failure leaves the database exactly as
-it was. Before it starts, it backs the current database up into
-``pre-restore/``, so a wrong restore is undone the same way.
+A restore puts the whole database back as a backup has it, all or nothing. On
+Postgres the dump is rendered to SQL first, then psql runs, as one transaction,
+an emptied ``public`` schema plus that SQL. (``pg_restore --clean`` drops only
+what the backup holds: a table a later migration made survived it, the
+restored django_migrations said that migration never ran, and the next
+migrate, which every boot runs, failed on it.) Before it starts, it backs the
+current database up into ``pre-restore/``, so a wrong restore is undone the
+same way. Those copies are pruned only after a restore that worked, and never
+the one just restored.
 
 While it runs, every page answers "restoring" (``RestoreGateMiddleware``): the
 tables are locked and being replaced. That sign is a file on the backups volume,
@@ -15,7 +20,8 @@ store ``STALE_AFTER`` seconds later.
 
 It never runs migrations. Someone who restored to get away from a bad migration
 would run it again. A backup older than the running code instead reports the
-migrations it lacks, and a redeploy applies them.
+migrations it lacks, on the screen before it starts (``backup_migrations``) and
+in the outcome after, and a redeploy applies them.
 
 Spec: docs/superpowers/specs/2026-10-19-safe-deploys-design.md, part 4.
 """
@@ -25,15 +31,17 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shutil
 import signal
+import sqlite3
 import subprocess
 import sys
 import tarfile
 import tempfile
 import threading
 import time
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -46,8 +54,10 @@ from core.management.commands.morph_backup import Command as BackupCommand
 #: Seconds without a heartbeat after which a restore counts as dead.
 STALE_AFTER = 90
 HEARTBEAT = 5
-#: Backups of the data a restore replaced, kept in ``pre-restore/``.
-PRE_RESTORE_KEEP = 3
+#: Copies of the data restores replaced, kept in ``pre-restore/``: pruned only
+#: after a restore that worked, and never the file just restored.
+PRE_RESTORE_KEEP = 10
+_KEEP_ALL = 1_000_000  # morph_backup --keep that prunes nothing
 #: The folders the restore screen lists, under MORPHEUS_BACKUP_DIR.
 KINDS = {'nightly': '', 'pre-deploy': 'pre-deploy', 'pre-restore': 'pre-restore'}
 
@@ -120,12 +130,17 @@ def start(info: dict) -> None:
         json.dump(info, fh)
 
 
-def finish(outcome: dict) -> None:
-    """Record how the restore ended, then open the store."""
+def _write_last(outcome: dict) -> None:
     target = state_dir() / 'last.json'
+    target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_name('last.json.part')
     partial.write_text(json.dumps(outcome))
     partial.replace(target)
+
+
+def finish(outcome: dict) -> None:
+    """Record how the restore ended, then open the store."""
+    _write_last(outcome)
     running_path().unlink(missing_ok=True)
 
 
@@ -198,12 +213,12 @@ def extract_dump(archive: Path, into: Path) -> Path:
     """The backup's database dump, extracted into ``into``."""
     try:
         with tarfile.open(archive) as tar:
-            member = tar.getmember('db.dump')
+            member = next((m for m in tar if m.name == 'db.dump'), None)
+            if member is None:
+                raise RestoreError(f'{archive.name} holds no database.')
             if not member.isfile():
                 raise RestoreError(f'{archive.name} is not a backup this store can restore.')
             tar.extract(member, into, filter='data')
-    except KeyError as exc:
-        raise RestoreError(f'{archive.name} holds no database.') from exc
     except (OSError, tarfile.TarError) as exc:
         raise RestoreError(f'{archive.name} cannot be read: {exc}') from exc
     return into / 'db.dump'
@@ -236,30 +251,62 @@ def restore_database(dump: Path) -> None:
         raise RestoreError(f'This store cannot restore a {engine} database.')
 
 
-def _pg_restore(db: dict, dump: Path) -> None:
-    cmd = [
-        'pg_restore',
-        '--clean',
-        '--if-exists',
-        '--no-owner',
-        '--no-acl',
-        '--single-transaction',
-        '--exit-on-error',
-    ]
-    env = os.environ.copy()
+def _pg_connection(db: dict) -> tuple[list[str], dict]:
+    args, env = [], os.environ.copy()
     if db.get('HOST'):
-        cmd += ['-h', db['HOST']]
+        args += ['-h', db['HOST']]
     if db.get('PORT'):
-        cmd += ['-p', str(db['PORT'])]
+        args += ['-p', str(db['PORT'])]
     if db.get('USER'):
-        cmd += ['-U', db['USER']]
+        args += ['-U', db['USER']]
     if db.get('PASSWORD'):
         env['PGPASSWORD'] = db['PASSWORD']
-    cmd += ['-d', db['NAME'], str(dump)]
-    done = subprocess.run(cmd, env=env, capture_output=True, text=True, check=False)  # noqa: S603
-    if done.returncode:
-        detail = ' '.join((done.stderr or '').strip().splitlines()[-3:])
-        raise RestoreError(f'The database could not be restored, so nothing changed: {detail}')
+    return args, env
+
+
+def _tail(text: str) -> str:
+    return ' '.join((text or '').strip().splitlines()[-3:])
+
+
+def _pg_restore(db: dict, dump: Path) -> None:
+    """Replace the whole public schema with the backup's, in one transaction.
+
+    The dump is rendered to a file first, so a dump that cannot be read stops
+    before anything runs; then psql empties public and runs the backup's SQL,
+    all inside one transaction (``--single-transaction`` with ON_ERROR_STOP).
+    The pre-commit hook refuses SQL that drops tables one by one; the schema
+    goes as a whole, with everything in it."""
+    conn, env = _pg_connection(db)
+    script = dump.with_name('restore.sql')
+    render_cmd = ['pg_restore', '--no-owner', '--no-acl', '-f', str(script), str(dump)]
+    render = subprocess.run(  # noqa: S603
+        render_cmd,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if render.returncode:
+        raise RestoreError(
+            f'The backup could not be read, so nothing changed: {_tail(render.stderr)}'
+        )
+    load_cmd = [
+        'psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1', '--single-transaction',
+        *conn, '-d', db['NAME'],
+        '-c', 'DROP SCHEMA public CASCADE', '-c', 'CREATE SCHEMA public',
+        '-f', str(script),
+    ]  # fmt: skip
+    load = subprocess.run(  # noqa: S603
+        load_cmd,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if load.returncode:
+        raise RestoreError(
+            f'The database could not be restored, so nothing changed: {_tail(load.stderr)}'
+        )
 
 
 def _sqlite_restore(db: dict, dump: Path) -> None:
@@ -287,35 +334,60 @@ def clear_cache() -> None:
         cache.clear()  # LocMem (tests, local development) holds nothing else
 
 
+def pre_restore_dir() -> Path:
+    return deploys.backup_root() / 'pre-restore'
+
+
 def back_up_current(stdout=None) -> str:
-    """Back the current database up into pre-restore/; the new file's name."""
+    """Back the current database up into pre-restore/; the new file's name.
+    Nothing is pruned yet: the copy being restored, or the first undo copy,
+    could go before the restore has worked."""
     command = BackupCommand(stdout=stdout, stderr=stdout)
     call_command(
         command,
-        dest=str(deploys.backup_root() / 'pre-restore'),
-        keep=PRE_RESTORE_KEEP,
+        dest=str(pre_restore_dir()),
+        keep=_KEEP_ALL,
         no_media=True,
         label='before-restore',
     )
     return command.archive_path.name
 
 
+def prune_pre_restore(restored: Path) -> None:
+    """After a restore that worked: keep the newest PRE_RESTORE_KEEP copies, and
+    the file just restored whatever its age."""
+    keep = Path(restored).resolve()
+    copies = sorted(pre_restore_dir().glob('morpheus-backup-*.tar.gz'), reverse=True)
+    for old in copies[PRE_RESTORE_KEEP:]:
+        if old.resolve() != keep:
+            old.unlink(missing_ok=True)
+
+
 def run(archive: Path, *, confirm: str, by: str = '', stdout=None) -> dict:
     """Restore ``archive`` over the store's database; the outcome, as last.json
     keeps it. Raises RestoreError, with the store open and untouched, when it
     will not start: the name does not match, the file is no backup, or another
-    restore runs. Once it has started, a failure is the outcome's ``error``."""
-    from core.utils.site import store_name
-
+    restore runs. Once it has started, a failure is the outcome's ``error``.
+    A refusal is recorded too (as ``refused``), so the screen that started it can
+    say why; "another restore runs" is not, as that restore's outcome will be."""
     archive = Path(archive)
-    name = store_name()
-    if not name or (confirm or '').strip() != name:
-        raise RestoreError(f"To confirm, type the store's name exactly: {name}")
-    if not archive.is_file():
-        raise RestoreError(f'There is no backup at {archive}.')
-    info = deploys.describe_backup(archive)
     with tempfile.TemporaryDirectory(prefix='morph-restore-') as tmp:
-        dump = extract_dump(archive, Path(tmp))
+        try:
+            dump = _check(archive, confirm, Path(tmp))
+        except RestoreError as exc:
+            logger.warning('restore refused: %s', exc)
+            _write_last(
+                {
+                    'state': 'refused',
+                    'file': archive.name,
+                    'kind': kind_of(archive),
+                    'by': by,
+                    'finished_at': _now(),
+                    'error': str(exc),
+                }
+            )
+            raise
+        info = deploys.describe_backup(archive)
         outcome = {
             'state': 'running',
             'file': archive.name,
@@ -326,7 +398,7 @@ def run(archive: Path, *, confirm: str, by: str = '', stdout=None) -> dict:
         }
         start(outcome)
         with heartbeat(running_path()):
-            outcome.update(_restore(dump, stdout))
+            outcome.update(_restore(archive, dump, stdout))
         outcome['finished_at'] = _now()
         finish(outcome)
     # Loud on purpose: a restore replaced the store's data.
@@ -334,7 +406,19 @@ def run(archive: Path, *, confirm: str, by: str = '', stdout=None) -> dict:
     return outcome
 
 
-def _restore(dump: Path, stdout) -> dict:
+def _check(archive: Path, confirm: str, into: Path) -> Path:
+    """The backup's dump, once the restore may start; RestoreError naming what stops it."""
+    from core.utils.site import store_name
+
+    name = store_name()
+    if not name or (confirm or '').strip() != name:
+        raise RestoreError(f"To confirm, type the store's name exactly: {name}")
+    if not archive.is_file():
+        raise RestoreError(f'There is no backup at {archive}.')
+    return extract_dump(archive, into)
+
+
+def _restore(archive: Path, dump: Path, stdout) -> dict:
     try:
         pre_restore = back_up_current(stdout)
     except Exception as exc:  # noqa: BLE001 — reported to the person; nothing changed
@@ -348,6 +432,10 @@ def _restore(dump: Path, stdout) -> dict:
     except Exception as exc:  # noqa: BLE001 — all or nothing: nothing changed
         return {'state': 'failed', 'pre_restore': pre_restore, 'error': str(exc)}
     clear_cache()
+    try:
+        prune_pre_restore(archive)
+    except OSError:
+        logger.exception('restore: could not prune pre-restore/')
     try:
         missing = deploys.migration_plan()[0]
     except Exception:  # noqa: BLE001 — the restore itself is done
@@ -428,3 +516,72 @@ def spawn(archive: Path, *, confirm: str, by: str, reload_pid: int = 0) -> None:
             cwd=settings.BASE_DIR,
             start_new_session=True,
         )
+
+
+_COPY_MIGRATIONS = re.compile(r'^COPY \S*django_migrations \(([^)]*)\) FROM stdin;$')
+
+
+def backup_migrations(archive: Path) -> set[tuple[str, str]] | None:
+    """The migrations a backup's database records, as ``(app, name)``; None when
+    they cannot be read."""
+    try:
+        with tempfile.TemporaryDirectory(prefix='morph-restore-') as tmp:
+            return _dump_migrations(extract_dump(Path(archive), Path(tmp)))
+    except (RestoreError, OSError, ValueError, IndexError, sqlite3.Error):
+        logger.warning('restore: could not read the migrations in %s', archive, exc_info=True)
+        return None
+
+
+def _dump_migrations(dump: Path) -> set[tuple[str, str]]:
+    with open(dump, 'rb') as fh:
+        head = fh.read(16)
+    if head.startswith(b'SQLite format 3'):
+        with closing(sqlite3.connect(f'file:{dump}?mode=ro', uri=True)) as db:
+            return {
+                (app, name) for app, name in db.execute('SELECT app, name FROM django_migrations')
+            }
+    if head.startswith(b'PGDMP'):
+        read_cmd = ['pg_restore', '--data-only', '--table=django_migrations', '-f', '-', str(dump)]
+        done = subprocess.run(  # noqa: S603
+            read_cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if done.returncode:
+            raise ValueError(_tail(done.stderr))
+        return _copy_rows(done.stdout)
+    raise ValueError(f'{dump.name} is not a database dump')
+
+
+def _copy_rows(sql: str) -> set[tuple[str, str]]:
+    """The ``(app, name)`` rows of the django_migrations COPY block in pg_restore's SQL."""
+    rows, columns = set(), None
+    for line in sql.splitlines():
+        if columns is None:
+            match = _COPY_MIGRATIONS.match(line)
+            if match:
+                columns = [column.strip() for column in match.group(1).split(',')]
+            continue
+        if line == '\\.':
+            return rows
+        values = line.split('\t')
+        rows.add((values[columns.index('app')], values[columns.index('name')]))
+    raise ValueError('the backup holds no django_migrations rows')
+
+
+def missing_for(applied: set[tuple[str, str]]) -> list[str]:
+    """The migrations this code has that a database recording ``applied`` lacks,
+    in the order they would run. (The tree has no squashed migrations; a squash
+    would be listed as missing beside the originals it replaces.)"""
+    from django.db.migrations.loader import MigrationLoader
+
+    graph = MigrationLoader(None, ignore_no_migrations=True).graph
+    seen: set[tuple[str, str]] = set()
+    plan: list[tuple[str, str]] = []
+    for leaf in sorted(graph.leaf_nodes()):
+        for key in graph.forwards_plan(leaf):
+            if key not in seen:
+                seen.add(key)
+                plan.append(key)
+    return [f'{app}.{name}' for app, name in plan if (app, name) not in applied]

@@ -1726,30 +1726,43 @@ Guarded by `core/tests/test_migration_safety.py` and `test_migration_gate.py`.
 `manage.py morph_restore <backup> --confirm "<store name>"` and the superuser-only restore screen
 (Settings → Version & updates → Backups, `/dashboard/restore/<kind>/<file>/`) run one engine,
 `core/restore.py`. In order, it:
-- backs the current data up into `pre-restore/` (three kept);
+- backs the current data up into `pre-restore/`, pruned only after a restore that worked (ten kept,
+  never the file just restored);
 - ends every other database session;
-- runs `pg_restore --clean --if-exists --no-owner --no-acl --single-transaction --exit-on-error`;
+- renders the dump to SQL (`pg_restore -f`) and runs it with `psql --single-transaction`, after
+  `DROP SCHEMA public CASCADE` and `CREATE SCHEMA public` in the same transaction;
 - drops the cache.
 
-Five traps:
-1. The closed sign is a file on the backups volume (`restore/running.json`, read by
+Six traps:
+1. `pg_restore --clean` drops only what the backup holds. A table a later migration made survived
+   it, the restored `django_migrations` said that migration never ran, and the next migrate (every
+   boot runs one) failed on it, so the store crash-looped. The whole schema goes instead, inside the
+   transaction (the pre-commit hook refuses SQL that drops tables one by one). The review found it,
+   and it was reproduced and fixed on a scratch copy before v0.120.0 shipped.
+2. The closed sign is a file on the backups volume (`restore/running.json`, read by
    `RestoreGateMiddleware` before any middleware that touches the database), never a row or a
    cache key: the restore replaces the one and clears the other. A heartbeat keeps the file fresh,
    so a restore that dies reopens the store 90 s later.
-2. The cache shares its Redis database with Celery's queue (`REDIS_URL` for both, no prefix), so
+3. The cache shares its Redis database with Celery's queue (`REDIS_URL` for both, no prefix), so
    never `cache.clear()` outside tests. `delete_pattern('*')` drops only the cache's keys.
-3. Ending the sessions kills every reused connection, so `CONN_HEALTH_CHECKS` is on: a dead
+4. Ending the sessions kills every reused connection, so `CONN_HEALTH_CHECKS` is on: a dead
    connection is replaced instead of failing a request.
-4. Each process keeps app settings in memory. A restore from the screen reloads the web workers
+5. Each process keeps app settings in memory. A restore from the screen reloads the web workers
    (SIGHUP to the gunicorn master), and the result asks for a worker and beat restart.
-5. A restore never runs migrations: someone who restored to undo a bad migration would run it
-   again. A backup older than the code lists what it lacks, and a redeploy applies it.
+6. A restore never runs migrations: someone who restored to undo a bad migration would run it
+   again. The screen reads the backup's own `django_migrations` first and names what it lacks, and
+   the outcome repeats it. A redeploy applies them, so put the previous version back first if one
+   of them is why you restored. `running_release()` survives the missing `DeployEvent` table, so
+   Version & updates still shows the outcome.
 
-The screen lists only files under `MORPHEUS_BACKUP_DIR`, never the backups app's folder setting,
-which staff and Linda can change. It takes a kind and a file name, never a path. Each app counts
-what a restore loses through `RESTORE_LOSSES`. Linda has no restore tool by design, and
-`updates.status` shows the last restore. Guarded by `core/tests/test_restore_gate.py`,
-`test_morph_restore.py`, `test_restore_losses.py` and
+Everything in the database comes back as it was, access included: revoked API tokens, staff
+accounts, passwords and two-factor devices work again, and the screen says so. A refusal (a wrong
+name, a missing or unreadable file) is recorded in `restore/last.json`, so a restore started from
+the screen never fails silently. The screen lists only files under `MORPHEUS_BACKUP_DIR`, never the
+backups app's folder setting, which staff and Linda can change. It takes a kind and a file name,
+never a path. Each app counts what a restore loses through `RESTORE_LOSSES`. Linda has no restore
+tool by design, and `updates.status` shows the last restore. Guarded by
+`core/tests/test_restore_gate.py`, `test_morph_restore.py`, `test_restore_losses.py` and
 `release_notes/tests/test_restore_page.py`.
 
 **Landmine — a native dep that loads at settings-import is deploy-critical.**

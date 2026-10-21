@@ -107,3 +107,12 @@ class RunningReleaseTests(_BackupFolderMixin, TestCase):
         folder.mkdir()
         (folder / 'last.json').write_text('{"state": "done", "file": "x.tar.gz"}')
         self.assertEqual(running_release()['last_restore'], {'state': 'done', 'file': 'x.tar.gz'})
+
+    def test_a_missing_deploy_table_does_not_break_the_page(self):
+        # After restoring a backup older than the code, core_deployevent is missing
+        # until migrate runs; Version & updates must still show how the restore went.
+        from django.db import ProgrammingError
+
+        missing = ProgrammingError('relation "core_deployevent" does not exist')
+        with patch.object(DeployEvent.objects, 'filter', side_effect=missing):
+            self.assertIsNone(running_release()['deployed_at'])

@@ -62,10 +62,15 @@ def restore_backup(request, kind: str, name: str):
             else:
                 messages.success(
                     request,
-                    'The restore has started. Until it finishes, everyone sees a "restoring" page.',
+                    'The restore is starting. Until it finishes, everyone sees a "restoring" '
+                    'page. If it does not start, this page says why.',
                 )
                 return redirect(VERSION_PAGE)
     lost = _join([f'{row["count"]} {row["label"]}' for row in restore.losses(backup['taken_at'])])
+    # Before anything runs: which migrations the running code needs that this
+    # backup's database never ran (None when they cannot be read).
+    applied = restore.backup_migrations(backup['path'])
+    lacks = restore.missing_for(applied) if applied is not None else None
     return render(
         request,
         'release_notes/restore_confirm.html',
@@ -73,6 +78,7 @@ def restore_backup(request, kind: str, name: str):
             'backup': backup,
             'kind_label': KIND_LABELS[backup['kind']],
             'lost': lost,
+            'lacks': lacks,
             'store_name': store_name(),
             'error': error,
             'version_page': VERSION_PAGE,

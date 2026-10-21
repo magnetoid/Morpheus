@@ -16,8 +16,18 @@
       <li>While it runs, a minute or two, everyone sees a "restoring" page, you included.</li>
       <li>Photos and other files are not touched.</li>
       <li>You may need to sign in again afterwards.</li>
+      <li>Access goes back as it was then: staff accounts, passwords, two-factor devices and API tokens revoked since then work again.</li>
     </ul>
   </div>
+
+  {% if lacks is None %}
+  <div class="card card-padded text-sm text-[color:var(--text-muted)]" data-testid="restore-lacks">Which database changes this backup holds could not be read.</div>
+  {% elif lacks %}
+  <div class="card card-padded text-sm space-y-2" data-testid="restore-lacks">
+    <p class="font-semibold">This backup lacks database changes the running version needs: {{ lacks|join:", " }}.</p>
+    <p>After the restore, parts of the store fail until they run. If one of them is why you are restoring, put the previous version back first. Otherwise, redeploy the store after the restore, and they run then.</p>
+  </div>
+  {% endif %}
 
   <form method="post" class="card card-padded space-y-3" hx-boost="false">
     {% csrf_token %}

@@ -54,8 +54,9 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING(
                     'This backup lacks migrations the running version needs: '
-                    f'{", ".join(outcome["missing"])}. Redeploy the store, or run '
-                    'manage.py migrate, to apply them.'
+                    f'{", ".join(outcome["missing"])}. Until they run, parts of the store fail. '
+                    'If one of them is why you restored, put the previous version back first. '
+                    'Redeploy the store, or run manage.py migrate, to apply them.'
                 )
             )
         self.stdout.write('Restart the worker and beat, so background jobs read the restored data.')

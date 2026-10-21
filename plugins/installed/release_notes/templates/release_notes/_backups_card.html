@@ -16,8 +16,10 @@ replaces and asks for the store's name.
   <div class="card-padded text-sm border-b border-[color:var(--border)]" data-testid="restore-last">
     {% if restore_last.state == 'done' %}
       Last restore: {{ restore_last.file }}{% if restore_last.by %}, by {{ restore_last.by }}{% endif %}{% if restore_last.finished_at %}, finished {{ restore_last.finished_at|date:"j M Y, H:i" }}{% endif %}. The data from before it is listed under "Before a restore".
-      {% if restore_last.missing %}<br>The running version needs database changes this backup does not have: {{ restore_last.missing|join:", " }}. Redeploy the store to apply them.{% endif %}
+      {% if restore_last.missing %}<br>The running version needs database changes this backup does not have: {{ restore_last.missing|join:", " }}. Until they run, parts of the store fail. If one of them is why you restored, put the previous version back first; otherwise, redeploy the store to run them.{% endif %}
       <br>Restart the store's worker and beat, so background jobs read the restored data.
+    {% elif restore_last.state == 'refused' %}
+      The last restore{% if restore_last.file %}, of {{ restore_last.file }},{% endif %} did not start: {{ restore_last.error }}
     {% else %}
       The last restore, {{ restore_last.file }}, failed and changed nothing: {{ restore_last.error }}
     {% endif %}

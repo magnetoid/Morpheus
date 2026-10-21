@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import io
 import os
 import signal
+import sqlite3
 import subprocess
 import tarfile
 import tempfile
@@ -92,24 +94,28 @@ class ExtractTests(_Folder, SimpleTestCase):
 
 
 class DatabaseRestoreTests(SimpleTestCase):
-    def test_pg_restore_runs_all_or_nothing_with_the_store_s_credentials(self):
-        done = subprocess.CompletedProcess([], 0, '', '')
-        with patch('core.restore.subprocess.run', return_value=done) as run:
-            restore._pg_restore(
-                {'NAME': 'shop', 'HOST': 'db', 'PORT': 5432, 'USER': 'u', 'PASSWORD': 'p'},
-                Path('/tmp/db.dump'),
-            )
-        argv = run.call_args.args[0]
+    _DB = {'NAME': 'shop', 'HOST': 'db', 'PORT': 5432, 'USER': 'u', 'PASSWORD': 'p'}
+
+    def test_the_backup_replaces_the_whole_schema_in_one_transaction(self):
+        # pg_restore --clean drops only what the backup holds: a table a later
+        # migration made survived it, and the next migrate failed on that table.
+        ok = subprocess.CompletedProcess([], 0, '', '')
+        with patch('core.restore.subprocess.run', side_effect=[ok, ok]) as run:
+            restore._pg_restore(self._DB, Path('/tmp/r/db.dump'))
+        render, load = (c.args[0] for c in run.call_args_list)
         self.assertEqual(
-            argv,
+            render,
+            ['pg_restore', '--no-owner', '--no-acl', '-f', '/tmp/r/restore.sql', '/tmp/r/db.dump'],
+        )
+        self.assertEqual(
+            load,
             [
-                'pg_restore',
-                '--clean',
-                '--if-exists',
-                '--no-owner',
-                '--no-acl',
+                'psql',
+                '-X',
+                '-q',
+                '-v',
+                'ON_ERROR_STOP=1',
                 '--single-transaction',
-                '--exit-on-error',
                 '-h',
                 'db',
                 '-p',
@@ -118,18 +124,33 @@ class DatabaseRestoreTests(SimpleTestCase):
                 'u',
                 '-d',
                 'shop',
-                '/tmp/db.dump',
+                '-c',
+                'DROP SCHEMA public CASCADE',
+                '-c',
+                'CREATE SCHEMA public',
+                '-f',
+                '/tmp/r/restore.sql',
             ],
         )
-        self.assertEqual(run.call_args.kwargs['env']['PGPASSWORD'], 'p')
+        self.assertEqual(run.call_args_list[1].kwargs['env']['PGPASSWORD'], 'p')
 
-    def test_a_failed_pg_restore_says_nothing_changed(self):
-        failed = subprocess.CompletedProcess([], 1, '', 'pg_restore: error: one\npg_restore: two\n')
+    def test_a_backup_that_cannot_be_read_runs_nothing(self):
+        bad = subprocess.CompletedProcess([], 1, '', 'pg_restore: error: input file is too short\n')
         with (
-            patch('core.restore.subprocess.run', return_value=failed),
+            patch('core.restore.subprocess.run', return_value=bad) as run,
+            self.assertRaisesMessage(restore.RestoreError, 'could not be read'),
+        ):
+            restore._pg_restore(self._DB, Path('/tmp/r/db.dump'))
+        self.assertEqual(run.call_count, 1)
+
+    def test_a_failed_load_says_nothing_changed(self):
+        ok = subprocess.CompletedProcess([], 0, '', '')
+        failed = subprocess.CompletedProcess([], 3, '', 'psql:x:1: ERROR:  boom\n')
+        with (
+            patch('core.restore.subprocess.run', side_effect=[ok, failed]),
             self.assertRaisesMessage(restore.RestoreError, 'nothing changed'),
         ):
-            restore._pg_restore({'NAME': 'shop'}, Path('/tmp/db.dump'))
+            restore._pg_restore(self._DB, Path('/tmp/r/db.dump'))
 
     def test_a_sqlite_database_file_is_replaced(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -168,7 +189,7 @@ class ClearCacheTests(SimpleTestCase):
 
 
 class BackUpCurrentTests(_Folder, SimpleTestCase):
-    def test_the_current_data_goes_to_its_own_folder_three_kept(self):
+    def test_the_current_data_goes_to_its_own_folder_and_nothing_is_pruned_yet(self):
         def fake(command, **kwargs):
             command.archive_path = Path(kwargs['dest']) / BEFORE
 
@@ -176,7 +197,7 @@ class BackUpCurrentTests(_Folder, SimpleTestCase):
             self.assertEqual(restore.back_up_current(), BEFORE)
         kwargs = call.call_args.kwargs
         self.assertEqual(kwargs['dest'], str(self.root / 'pre-restore'))
-        self.assertEqual(kwargs['keep'], 3)
+        self.assertGreater(kwargs['keep'], 1000)  # pruning waits for a restore that worked
         self.assertTrue(kwargs['no_media'])
         self.assertEqual(kwargs['label'], 'before-restore')
 
@@ -217,12 +238,14 @@ class RunTests(_Folder, TestCase):
         self.assertFalse(restore.is_running())
         self.assertIn(f'Restored {NAME}', output)
 
-    def test_the_wrong_name_changes_nothing(self):
+    def test_the_wrong_name_changes_nothing_and_is_recorded(self):
         with self.assertRaisesMessage(CommandError, 'Test Shop'):
             self._restore(confirm='Other Shop')
         self.assertEqual(self.calls.mock_calls, [])
-        self.assertIsNone(restore.last())
         self.assertFalse(restore.running_path().exists())
+        # Started from the screen, a refusal would otherwise be invisible.
+        self.assertEqual(restore.last()['state'], 'refused')
+        self.assertIn('Test Shop', restore.last()['error'])
 
     def test_spaces_around_the_name_are_fine_but_case_counts(self):
         self._restore(confirm='  Test Shop  ')
@@ -236,6 +259,7 @@ class RunTests(_Folder, TestCase):
             self._restore()
         self.assertEqual(self.calls.mock_calls, [])
         self.assertTrue(restore.is_running())
+        self.assertIsNone(restore.last())  # the running restore's outcome will be the record
 
     def test_an_archive_without_a_database_never_closes_the_store(self):
         self.archive = _archive(self.root / 'pre-deploy', members={'media.tar': b'm'})
@@ -311,3 +335,123 @@ class SpawnTests(_Folder, SimpleTestCase):
         )
         self.assertTrue(popen.call_args.kwargs['start_new_session'])
         self.assertTrue((self.root / 'restore' / 'restore.log').exists())
+
+
+class PreRestoreCopyTests(_Folder, TestCase):
+    """The copies of the data restores replaced are an undo: none goes before a
+    restore has worked, and never the one being restored."""
+
+    def setUp(self):
+        super().setUp()
+        row = StoreSettings.objects.first() or StoreSettings.objects.create()
+        row.store_name = 'Test Shop'
+        row.save()
+        self.folder = self.root / 'pre-restore'
+        self.old = [
+            _archive(self.folder, f'morpheus-backup-20261019T10000{i}Z-before-restore.tar.gz')
+            for i in (1, 2, 3)
+        ]
+        self.made = 0
+        patchers = [
+            patch('core.restore.PRE_RESTORE_KEEP', 3),
+            patch('core.restore.call_command', side_effect=self._fake_backup),
+            patch('core.restore.end_other_sessions', return_value=0),
+            patch('core.deploys.migration_plan', return_value=([], False)),
+        ]
+        restore_database = patch('core.restore.restore_database')
+        for patcher in patchers:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.restore_database = restore_database.start()
+        self.addCleanup(restore_database.stop)
+
+    def _fake_backup(self, command, **kwargs):
+        """morph_backup, as far as this needs: write the copy, then keep the newest ``keep``."""
+        dest = Path(kwargs['dest'])
+        self.made += 1
+        command.archive_path = _archive(
+            dest, f'morpheus-backup-20261021T00000{self.made}Z-before-restore.tar.gz'
+        )
+        for old in sorted(dest.glob('morpheus-backup-*.tar.gz'), reverse=True)[kwargs['keep'] :]:
+            old.unlink()
+
+    def _restore(self, archive):
+        with contextlib.suppress(CommandError):
+            call_command(
+                'morph_restore', str(archive), '--confirm', 'Test Shop', stdout=io.StringIO()
+            )
+
+    def _left(self):
+        return sorted(p.name for p in self.folder.glob('morpheus-backup-*.tar.gz'))
+
+    def test_restoring_the_oldest_copy_never_deletes_it(self):
+        self._restore(self.old[0])
+        self.assertTrue(self.old[0].exists())
+
+    def test_a_failed_restore_deletes_no_copy(self):
+        self.restore_database.side_effect = restore.RestoreError('nothing changed: boom')
+        self._restore(_archive(self.root / 'pre-deploy'))
+        self.assertEqual(len(self._left()), 4)
+
+    def test_after_a_restore_that_worked_the_newest_copies_are_kept(self):
+        self._restore(_archive(self.root / 'pre-deploy'))
+        new = 'morpheus-backup-20261021T000001Z-before-restore.tar.gz'
+        self.assertEqual(self._left(), sorted([self.old[1].name, self.old[2].name, new]))
+
+
+class BackupMigrationsTests(_Folder, SimpleTestCase):
+    """Before anything runs, the screen says which migrations a backup lacks."""
+
+    def _sqlite_backup(self, rows):
+        path = self.root / 'db.sqlite3'
+        with contextlib.closing(sqlite3.connect(path)) as db:
+            db.execute(
+                'CREATE TABLE django_migrations (id integer primary key, app text, name text, applied text)'
+            )
+            db.executemany(
+                'INSERT INTO django_migrations (app, name, applied) VALUES (?, ?, ?)',
+                [(app, name, '2026-10-20') for app, name in rows],
+            )
+            db.commit()
+        return _archive(self.root, members={'db.dump': path.read_bytes()})
+
+    def test_a_sqlite_backup_s_migrations_are_read(self):
+        archive = self._sqlite_backup([('core', '0001_initial'), ('shop', '0002_extra')])
+        self.assertEqual(
+            restore.backup_migrations(archive), {('core', '0001_initial'), ('shop', '0002_extra')}
+        )
+
+    def test_a_postgres_backup_s_migrations_are_read_from_its_data(self):
+        archive = _archive(self.root, members={'db.dump': b'PGDMP\x01\x0e\x00'})
+        copy = (
+            'SET statement_timeout = 0;\n'
+            'COPY public.django_migrations (id, app, name, applied) FROM stdin;\n'
+            '1\tcore\t0001_initial\t2026-06-20 10:00:00+00\n'
+            '2\tcore\t0024_deployevent\t2026-10-20 01:21:00+00\n'
+            '\\.\n'
+        )
+        done = subprocess.CompletedProcess([], 0, copy, '')
+        with patch('core.restore.subprocess.run', return_value=done) as run:
+            self.assertEqual(
+                restore.backup_migrations(archive),
+                {('core', '0001_initial'), ('core', '0024_deployevent')},
+            )
+        self.assertEqual(
+            run.call_args.args[0][:4],
+            ['pg_restore', '--data-only', '--table=django_migrations', '-f'],
+        )
+
+    def test_a_backup_whose_migrations_cannot_be_read_gives_none(self):
+        self.assertIsNone(
+            restore.backup_migrations(_archive(self.root, members={'media.tar': b'm'}))
+        )
+        self.assertIsNone(
+            restore.backup_migrations(_archive(self.root, members={'db.dump': b'neither'}))
+        )
+
+    def test_the_running_code_s_missing_migrations_are_named(self):
+        from django.db.migrations.loader import MigrationLoader
+
+        graph = MigrationLoader(None, ignore_no_migrations=True).graph
+        applied = set(graph.nodes) - {('core', '0024_deployevent')}
+        self.assertEqual(restore.missing_for(applied), ['core.0024_deployevent'])

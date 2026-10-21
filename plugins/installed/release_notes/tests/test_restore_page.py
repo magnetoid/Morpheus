@@ -178,7 +178,7 @@ class RestorePageTests(TestCase):
         html = self.client.get(VERSION_PAGE).content.decode()
         self.assertIn('data-testid="restore-last"', html)
         self.assertIn('shop.0002_extra', html)
-        self.assertIn('Redeploy the store', html)
+        self.assertIn('put the previous version back first', html)
         (restore.state_dir() / 'last.json').write_text(
             json.dumps({'state': 'failed', 'file': PRE, 'error': 'pg_restore said no'})
         )
@@ -196,3 +196,32 @@ class RestorePageTests(TestCase):
         os.utime(path, (stamp, stamp))
         self.client.force_login(self.boss)
         self.assertContains(self.client.get(VERSION_PAGE), 'did not report back')
+
+    def test_the_screen_warns_that_revoked_access_comes_back(self):
+        self.client.force_login(self.boss)
+        self.assertContains(self.client.get(self._confirm_url()), 'revoked since')
+
+    def test_the_screen_names_the_migrations_the_backup_lacks_before_anything_runs(self):
+        self.client.force_login(self.boss)
+        with (
+            patch('core.restore.backup_migrations', return_value=set()),
+            patch('core.restore.missing_for', return_value=['core.0024_deployevent']),
+        ):
+            response = self.client.get(self._confirm_url())
+        self.assertContains(response, 'core.0024_deployevent')
+        self.assertContains(response, 'put the previous version back first')
+
+    def test_the_screen_says_when_it_cannot_tell_what_the_backup_lacks(self):
+        self.client.force_login(self.boss)
+        with patch('core.restore.backup_migrations', return_value=None):
+            self.assertContains(self.client.get(self._confirm_url()), 'could not be read')
+
+    def test_a_restore_that_did_not_start_says_why(self):
+        restore.state_dir().mkdir(parents=True)
+        (restore.state_dir() / 'last.json').write_text(
+            json.dumps({'state': 'refused', 'file': PRE, 'error': 'There is no backup at x.'})
+        )
+        self.client.force_login(self.boss)
+        html = self.client.get(VERSION_PAGE).content.decode()
+        self.assertIn('did not start', html)
+        self.assertIn('There is no backup at x.', html)

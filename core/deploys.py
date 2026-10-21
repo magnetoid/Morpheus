@@ -146,13 +146,20 @@ def running_release() -> dict:
     ``updates.status``: version, commit, when it was installed, the newest
     pre-deploy backup, whether it can update itself, and how the last restore ended."""
     from django.conf import settings
+    from django.db import DatabaseError, transaction
 
     from core import restore
     from core.models import DeployEvent
     from core.updates import can_self_update
 
     version, commit = str(settings.MORPHEUS_VERSION), current_commit()
-    event = DeployEvent.objects.filter(version=version, commit=commit).first()
+    try:
+        with transaction.atomic():
+            event = DeployEvent.objects.filter(version=version, commit=commit).first()
+    except DatabaseError:
+        # Restored from a backup older than the code: no table until migrate runs,
+        # and this page must still show how the restore went.
+        event = None
     return {
         'version': version,
         'commit': commit,

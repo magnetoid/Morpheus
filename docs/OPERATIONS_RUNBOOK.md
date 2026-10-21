@@ -177,20 +177,25 @@ are read fresh on every request, so a change applies to every worker at once.
           print('RESTORE scratch database dropped')
   ```
 - **Restoring** (v0.120.0) puts the whole database back as a backup has it, all or
-  nothing, after backing the current data up into `/app/backups/pre-restore/` (three
-  kept), so a restore can be undone the same way. A superuser starts it from Settings →
-  Version & updates → Backups → Restore…, which says what will be replaced and asks for
-  the store's name. From a shell:
-  `docker exec -it <web> python manage.py morph_restore /app/backups/pre-deploy/<file> --confirm "<store name>"`.
+  nothing: the dump is rendered to SQL and run in one transaction after the `public`
+  schema is emptied. It first backs the current data up into `/app/backups/pre-restore/`
+  (pruned only after a restore that worked: ten kept, never the one just restored), so a
+  restore can be undone the same way. A superuser starts it from Settings → Version &
+  updates → Backups → Restore…, which says what will be replaced and which migrations the
+  backup lacks, and asks for the store's name. From a shell:
+  `docker exec -it <web> python manage.py morph_restore /app/backups/pre-deploy/<file> --confirm "<store name>" --reload-web 1`.
+  `--reload-web 1` reloads the web workers, because gunicorn is PID 1 in the web container.
   - While it runs, every page answers 503 "restoring" (`/healthz` excepted).
-  - It never runs migrations. When the backup is older than the running code, the result
-    names the migrations it lacks, and a redeploy applies them. If one of them is why you
-    restored, put the previous version back first.
+  - Access comes back as it was: API tokens, staff accounts, passwords and two-factor
+    devices revoked since the backup work again. Revoke them again afterwards.
+  - It never runs migrations. A backup older than the running code lacks some, and parts
+    of the store fail until they run. A redeploy, or a restart of the web container
+    (`safe_migrate`), runs them. If one of them is why you restored, put the previous
+    version back first.
   - Afterwards, restart the worker and beat (Coolify → Restart), so background jobs read
-    the restored data. A restore started from the screen reloads the web workers itself;
-    one started from a shell needs the web restarted too.
-  - The outcome is in `/app/backups/restore/last.json`, and the output of a screen-started
-    restore is in `restore.log` beside it.
+    the restored data.
+  - The outcome, a refusal included, is in `/app/backups/restore/last.json`, and the
+    output of a screen-started restore is in `restore.log` beside it.
   - A restore that is killed (a deploy replaced the container) stops closing the store 90 s
     later. It changed everything or nothing.
 
