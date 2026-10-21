@@ -211,7 +211,9 @@ class ConfigTests(SimpleTestCase):
 
 class WorkflowTests(SimpleTestCase):
     def test_deploy_smoke_runs_the_guard_when_the_smoke_fails(self):
-        text = (Path(__file__).resolve().parents[2] / '.github' / 'workflows' / 'deploy-smoke.yml').read_text()
+        text = (
+            Path(__file__).resolve().parents[2] / '.github' / 'workflows' / 'deploy-smoke.yml'
+        ).read_text()
         self.assertIn('fetch-depth: 0', text)
         self.assertIn('if: failure()', text)
         self.assertIn('python3 scripts/deploy_guard.py rollback', text)
