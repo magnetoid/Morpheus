@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.121.0 — 2026-10-21
+
+**A store an update leaves down goes back to the previous version by itself**
+
+- If an update leaves a store down, it is put back on the previous version automatically, and its operators get an email: which version failed, which one runs now, and where the data from just before it is.
+- Settings → Version & updates says when a store was put back. Until a fix is released, do not redeploy the store from Coolify: that would deploy the failed version again.
+- The PDF library (pypdf) is updated to a version that fixes a newly published security issue.
+
 ## v0.120.1 — 2026-10-21
 
 **Security updates for image handling**
