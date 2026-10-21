@@ -15,6 +15,13 @@ DEFAULT_URLS="https://dotbooks.store https://supernatural-shop.com https://monte
 BASE_URLS="${SMOKE_BASE_URLS:-${SMOKE_BASE_URL:-$DEFAULT_URLS}}"
 DEADLINE_SECS="${SMOKE_DEADLINE_SECS:-1500}" # Coolify builds take ~5-10 min, four of them in a queue
 POLL_SECS=20
+# Where to write the version each store serves at the first check, one
+# "base version" line per healthy store: scripts/deploy_guard.py puts a store
+# that does not come up back on that release.
+BEFORE_FILE="${SMOKE_BEFORE_FILE:-}"
+if [ -n "$BEFORE_FILE" ]; then
+  : >"$BEFORE_FILE"
+fi
 
 expected=$(python3 -c "
 import re
@@ -40,6 +47,7 @@ print(d.get('$1',''))" 2>/dev/null || echo ''
 # string, not an associative array: macOS ships bash 3.2 and this script is
 # also run by hand after a manual deploy.)
 done_hosts=" "
+first_round=1
 start=$(date +%s)
 while :; do
   pending=""
@@ -48,6 +56,9 @@ while :; do
     body=$(curl -sS --max-time 15 "$base/readyz" 2>/dev/null || echo '{}')
     live_version=$(printf '%s' "$body" | read_json_field version)
     live_status=$(printf '%s' "$body" | read_json_field status)
+    if [ -n "$first_round" ] && [ -n "$BEFORE_FILE" ] && [ "$live_status" = "ok" ] && [ -n "$live_version" ]; then
+      echo "$base $live_version" >>"$BEFORE_FILE"
+    fi
     if [ "$live_version" = "$expected" ] && [ "$live_status" = "ok" ]; then
       home=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$base/" || echo 000)
       if [ "$home" = "200" ]; then
@@ -60,6 +71,7 @@ while :; do
       pending="$pending $base(version=${live_version:-?} status=${live_status:-?})"
     fi
   done
+  first_round=""
   if [ -z "$pending" ]; then
     echo "SMOKE OK — every store serves $expected"
     exit 0

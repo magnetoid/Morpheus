@@ -2,11 +2,13 @@
 
 The web container's entrypoint runs this in place of `migrate` on every boot
 (scripts/docker-entrypoint.sh). With migrations pending it first backs the
-database up into the pre-deploy folder, and a failed backup exits non-zero
-before anything is migrated. After migrating it records the deploy as a
-DeployEvent. The steps share one process on purpose: each `manage.py` start
-costs about three seconds, and the store answers 503 while the web container
-boots. See core/deploys.py.
+database up into the pre-deploy folder, and a failed backup records the attempt
+and exits non-zero before anything is migrated. It records the deploy as a
+DeployEvent before migrating (after, when DeployEvent itself is being
+migrated), then migrates, and on a rollback emails the operators last. The
+steps share one process on purpose: each `manage.py` start costs about three
+seconds, and the store answers 503 while the web container boots. See
+core/deploys.py.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ class Command(BaseCommand):
     requires_system_checks = []  # migrate runs them
 
     def handle(self, *args, **options):
+        self._rollback = None
         self._back_up_first()
         # Before migrating, so a migration that crashes still leaves the attempt
         # and its backup on record for the rollback notice.
@@ -36,6 +39,7 @@ class Command(BaseCommand):
         if not recorded:
             self._record(final=True)
         deploys.clear_handoff()
+        self._tell_rollback()
 
     def _back_up_first(self) -> None:
         if deploys.read_handoff() is not None:
@@ -67,6 +71,8 @@ class Command(BaseCommand):
                     label=deploys.deploy_label(),
                 )
             except Exception as exc:
+                # On record, so the release the store is put back on says why.
+                deploys.record_failed_attempt(pending)
                 raise CommandError(
                     f'[safe_migrate] The backup failed, so nothing was migrated: {exc}'
                 ) from exc
@@ -98,9 +104,22 @@ class Command(BaseCommand):
         count = f', {len(event.migrations)} migrations' if event.migrations else ''
         self.stdout.write(f'[safe_migrate] Recorded {event.version}{commit}{count}.')
         if event.rolled_back_from:
-            told = deploys.notify_rollback(event)
-            self.stdout.write(
-                f'[safe_migrate] Back on {event.version} after {event.rolled_back_from}: '
-                + ('told the operators.' if told else 'could not email the operators.')
-            )
+            self._rollback = event
         return True
+
+    def _tell_rollback(self) -> None:
+        """Email the operators that the store went back to an older release. Last,
+        and fail-soft: the email must never stop or slow the boot that brings the
+        store back."""
+        event = self._rollback
+        if event is None:
+            return
+        try:
+            told = deploys.notify_rollback(event)
+        except Exception:
+            logger.exception('safe_migrate: could not send the rollback email')
+            told = False
+        self.stdout.write(
+            f'[safe_migrate] Back on {event.version} after {event.rolled_back_from}: '
+            + ('told the operators.' if told else 'could not email the operators.')
+        )

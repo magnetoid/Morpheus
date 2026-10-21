@@ -1486,7 +1486,10 @@ An app that can stop the store selling contributes a check through
 `HEALTH_CHECKS` (`{'name', 'ok', 'detail'}`) — a check never places a real order
 (ORDER_PLACED subscribers push purchases to GA4 and ad platforms), it prices
 inside a rolled-back transaction or fetches pages. Recipients:
-`ERROR_ALERT_EMAILS`, else superusers, else the store contact (runbook).
+`ERROR_ALERT_EMAILS`, else superusers, else the store contact (runbook). Until
+v0.121.0 that variable did nothing: `alert_recipients` read it with
+`getattr(settings, …)` and `morph/settings.py` never loaded it, so a name read
+that way needs its `config()` line in settings too (`test_error_alerts.py`).
 **Detailed capture** (v0.98.0) is a switch on the error log with an end time, never
 open-ended: while on it also keeps warnings, rejected requests, broken internal
 links, slow responses, task retries and browser console/request/resource errors,
@@ -1679,9 +1682,10 @@ sampled mid scroll-reveal fade reads as a contrast failure.
 container's `run_migrations` runs `manage.py safe_migrate`, not `migrate`:
 - When anything is pending, it first backs the database up into
   `/app/backups/pre-deploy` (`morph_backup --no-media`, five kept, named after
-  the version and commit). If that backup fails, it exits non-zero without
-  migrating.
-- It then migrates and writes a `DeployEvent`.
+  the version and commit). If that backup fails, it records the attempt and
+  exits non-zero without migrating.
+- It writes a `DeployEvent` (after migrating, when that table is itself being
+  migrated), then migrates.
 
 It is one process on purpose: each `manage.py` start costs about 3 s of every
 deploy's 503. A restart of the same container skips the backup (a marker in
@@ -1693,7 +1697,7 @@ checkout, or no git installed) it shows one line where the update buttons were
 `test_running_release.py`.
 
 **Convention — a migration leaves the previous release working (v0.119.0).** Putting the
-old code back (by hand now, automatically from safe-deploys release 4) is safe only while
+old code back (automatically since v0.121.0, or by hand) is safe only while
 the old code still runs on the new schema. `manage.py release` refuses, and `release
 --check` (CI) fails, when a migration the release adds would break it
 (`core/migration_safety.py`). The flagged operations are:
@@ -1765,15 +1769,22 @@ tool by design, and `updates.status` shows the last restore. Guarded by
 `core/tests/test_restore_gate.py`, `test_morph_restore.py`, `test_restore_losses.py` and
 `release_notes/tests/test_restore_page.py`.
 
-**Convention — a store a release leaves down goes back to the previous release (v0.121.0).**
-When deploy-smoke times out, `scripts/deploy_guard.py rollback` checks each store three times,
-20 s apart:
+**Convention — a store a release leaves down goes back to the release it ran (v0.121.0).**
+When deploy-smoke times out, `scripts/deploy_guard.py rollback` checks every store each 20 s, for
+up to 8 minutes (a container swap answers 503 for a minute or more):
 - up on the new version: nothing to do;
 - up on an older version: it is queued or missed its webhook, so it is left alone;
-- down at every check: it puts the store back on the previous release.
+- only a 401, 403 or 429: something in front of it refuses the guard, which cannot tell, so it is
+  left alone and the run stays red;
+- no healthy answer (`/readyz` ok and the homepage 200) for the 8 minutes: it is put back.
 
+A store goes back to the release it served when the smoke started (`SMOKE_BEFORE_FILE`), else to
+the previous release tag, so a store already put back once never gets the release that failed
+there. Going back more than one release is refused when a migration added since carries
+`morpheus_contract`: the gate checks a contract against the release just before its own only.
+After every green smoke, `rollback --dry-run` turns the run red if the guard cannot see a store.
 It puts a store back by sending that store's Coolify manual GitHub webhook a signed push naming
-the previous release tag's commit, then waits for every store it put back. It never uses an API
+the release tag's commit, then waits for every store it put back. It never uses an API
 token: the Coolify team holds 34 applications, clients' included, and a write token would reach all
 of them. One store's webhook secret deploys only this repository's commits to that store (the secret
 `MORPHEUS_DEPLOY_HOOKS`, which names no infrastructure in the repository).
@@ -1784,11 +1795,14 @@ What Coolify's source says (v4.4.6):
   a rollback, push a fix; never Redeploy.
 
 The store reports it itself. `safe_migrate` records each deploy *before* migrating (after, when
-`DeployEvent` itself is being migrated), so a crashed migration still leaves the attempt and its
-backup. The marker names the row, so a crash-loop restart adds none. A boot older than the newest
-record writes `rolled_back_from`, emails the operators once (`core.errors.alerts.send_alert`), and
-Version & updates says so. A rollback exits 1, so the run stays red. That red run is the only signal
-when the release put back predates v0.121.0, which cannot email. Guarded by
+`DeployEvent` itself is being migrated), and a failed pre-deploy backup records the attempt too, so
+the release put back finds a newer record. The marker names the row, so a crash-loop restart adds
+none. A boot older than the newest record writes `rolled_back_from`, and once it has migrated emails
+the operators once (`core.errors.alerts.send_alert`, fail-soft, a 10 s SMTP timeout: the email must
+never hold up the boot that brings the store back), naming the first backup the failed release took
+(a later container's copy is of a half-migrated database); Version & updates says so too. A
+rollback exits 1, so the run stays red. That red run is the only signal when the failed release
+died before Python ran, or when the release put back predates v0.121.0: neither can email. Guarded by
 `core/tests/test_deploy_guard.py` and `test_rollback_notice.py`.
 
 **Landmine — a native dep that loads at settings-import is deploy-critical.**

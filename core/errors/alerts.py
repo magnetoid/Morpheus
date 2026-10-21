@@ -49,14 +49,15 @@ def alert_recipients() -> list[str]:
     return [contact] if contact else []
 
 
-def send_alert(subject: str, body: str) -> bool:
-    """Email ``alert_recipients()``. Fail-soft: an alert must never raise."""
+def send_alert(subject: str, body: str, connection=None) -> bool:
+    """Email ``alert_recipients()``, through ``connection`` when given (one with
+    a timeout, say). Fail-soft: an alert must never raise."""
     recipients = alert_recipients()
     if not recipients:
         logger.warning('errors.alerts: no recipient for "%s"', subject)
         return False
     try:
-        send_mail(subject, body, None, recipients, fail_silently=False)
+        send_mail(subject, body, None, recipients, fail_silently=False, connection=connection)
         return True
     except Exception:  # noqa: BLE001 — a mail outage must not crash the task
         logger.warning('errors.alerts: could not send "%s"', subject, exc_info=True)

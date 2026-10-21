@@ -5,11 +5,15 @@ On every boot the web container's entrypoint (scripts/docker-entrypoint.sh) runs
 
 1. When ``migrate`` has anything to apply, it backs the database up first into
    ``<MORPHEUS_BACKUP_DIR>/pre-deploy/``, keeping the last five, named after the
-   version and commit being deployed. If the backup fails, it exits non-zero
-   before migrating, so the store stays on a schema the previous version knows.
-2. It migrates.
-3. It records the deploy as a ``DeployEvent`` (version, commit, the backup's
-   path, the migrations applied). A restart of the same deploy adds nothing.
+   version and commit being deployed. If the backup fails, it records the
+   attempt and exits non-zero before migrating, so the store stays on a schema
+   the previous version knows.
+2. It records the deploy as a ``DeployEvent`` (version, commit, the backup's
+   path, the migrations to apply), so a migration that crashes still leaves the
+   attempt on record; when the table itself is still being migrated, it records
+   after migrating instead. A restart of the same deploy adds nothing.
+3. It migrates. A boot on a release older than the newest record is a
+   rollback, and once migrating has worked it emails the operators.
 
 A file in the container's /tmp (``HANDOFF``) marks the backup step as done for
 this container and carries what it found to the end of the command. A crash
@@ -27,11 +31,14 @@ Spec: docs/superpowers/specs/2026-10-19-safe-deploys-design.md.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
+
+logger = logging.getLogger('morpheus.deploys')
 
 #: Pre-deploy backups kept. The nightly ones rotate separately, in the folder above.
 BACKUP_KEEP = 5
@@ -143,14 +150,39 @@ def record_deploy():
     return event, True
 
 
+def record_failed_attempt(migrations: list[str]) -> None:
+    """Record a deploy whose pre-deploy backup failed, so that the older release
+    the store is put back on reads as a rollback and says so. Once per version
+    and commit, and with no marker: the next boot must try the backup again.
+    Fail-soft: the boot is failing already, and says why."""
+    from django.conf import settings
+    from django.db import transaction
+
+    from core.models import DeployEvent
+
+    version, commit = str(settings.MORPHEUS_VERSION), current_commit()
+    try:
+        with transaction.atomic():
+            newest = DeployEvent.objects.first()
+            if newest and (newest.version, newest.commit) == (version, commit):
+                return
+            DeployEvent.objects.create(
+                version=version, commit=commit, migrations=[str(name) for name in migrations]
+            )
+    except Exception:  # noqa: BLE001 — a missing table must not hide the backup's error
+        logger.warning('deploys: could not record the failed attempt', exc_info=True)
+
+
 def failed_backup_name(version: str) -> str:
-    """The pre-deploy backup taken before ``version`` migrated; '' when it made
-    no database changes."""
+    """The pre-deploy backup taken before ``version`` first migrated; '' when it
+    made no database changes. The first one: a later container of the same
+    release backs up a database that release had already half-migrated."""
     from core.models import DeployEvent
 
     path = (
         DeployEvent.objects.filter(version=version)
         .exclude(backup='')
+        .order_by('deployed_at', 'pk')
         .values_list('backup', flat=True)
         .first()
     )
@@ -159,7 +191,10 @@ def failed_backup_name(version: str) -> str:
 
 def notify_rollback(event) -> bool:
     """Email the operators that this store went back to an older release. Called
-    once, by the boot that recorded the rollback."""
+    once, by the boot that recorded the rollback, after it migrated; a mail
+    server that does not answer is given up on after 10 seconds."""
+    from django.core.mail import get_connection
+
     from core.errors.alerts import send_alert
     from core.utils.site import site_base_url, store_name
 
@@ -184,7 +219,9 @@ def notify_rollback(event) -> bool:
         ]
     )
     return send_alert(
-        f'{name}: {failed} did not come up, so the store is back on {event.version}', body
+        f'{name}: {failed} did not come up, so the store is back on {event.version}',
+        body,
+        connection=get_connection(timeout=10),
     )
 
 

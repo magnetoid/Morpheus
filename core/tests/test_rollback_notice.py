@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.db import DatabaseError
 from django.test import SimpleTestCase, TestCase, override_settings
 
@@ -14,7 +15,7 @@ from core import deploys
 from core.management.commands.morph_backup import Command as BackupCommand
 from core.management.commands.safe_migrate import Command as SafeMigrate
 from core.models import DeployEvent
-from core.tests.test_safe_migrate import _DeployEnvMixin, _fake_dump
+from core.tests.test_safe_migrate import _broken_dump, _DeployEnvMixin, _fake_dump
 
 RUNNING = 'v0.121.0'
 
@@ -57,15 +58,25 @@ class RecordTests(_DeployEnvMixin, TestCase):
         self.assertEqual(deploys.failed_backup_name('v0.122.0'), 'x.tar.gz')
         self.assertEqual(deploys.failed_backup_name('v0.130.0'), '')
 
+    def test_the_backup_named_is_the_first_one_that_release_took(self):
+        # A second container of the same release backs up a half-migrated database.
+        DeployEvent.objects.create(
+            version='v0.122.0', commit='b' * 40, backup='/app/backups/pre-deploy/first.tar.gz'
+        )
+        DeployEvent.objects.create(
+            version='v0.122.0', commit='b' * 40, backup='/app/backups/pre-deploy/second.tar.gz'
+        )
+        self.assertEqual(deploys.failed_backup_name('v0.122.0'), 'first.tar.gz')
+
 
 @override_settings(MORPHEUS_VERSION=RUNNING)
 class SafeMigrateOrderTests(_DeployEnvMixin, TestCase):
-    def _run(self, migrate=None, record=None):
+    def _run(self, migrate=None, record=None, alert=None):
         out = io.StringIO()
         patches = [
             patch.object(BackupCommand, '_dump_database', _fake_dump),
             patch.object(SafeMigrate, '_migrate', side_effect=migrate),
-            patch('core.errors.alerts.send_alert', return_value=True),
+            patch('core.errors.alerts.send_alert', side_effect=alert, return_value=True),
         ]
         if record is not None:
             patches.append(patch('core.deploys.record_deploy', side_effect=record))
@@ -129,6 +140,64 @@ class SafeMigrateOrderTests(_DeployEnvMixin, TestCase):
         self.assertIn('after v0.122.0', out)
         _, alert_again = self._run()  # a restart of the rolled-back container
         alert_again.assert_not_called()
+
+    def test_the_operators_hear_once_the_store_has_migrated(self):
+        # The email must never stop or slow the boot that brings the store back.
+        DeployEvent.objects.create(version='v0.122.0', commit='b' * 40)
+        order = []
+
+        def alert(subject, body, **kwargs):
+            order.append('email')
+            return True
+
+        self._run(migrate=lambda: order.append('migrate'), alert=alert)
+        self.assertEqual(order, ['migrate', 'email'])
+
+    def test_an_email_that_fails_does_not_stop_the_boot(self):
+        DeployEvent.objects.create(version='v0.122.0', commit='b' * 40)
+        with patch('core.deploys.notify_rollback', side_effect=DatabaseError('no such table')):
+            out, _ = self._run()
+        self.assertIn('could not email the operators', out)
+        self.assertIsNone(deploys.read_handoff())
+
+
+@override_settings(
+    MORPHEUS_VERSION=RUNNING,
+    EMAIL_BACKEND='core.email.MorpheusEmailBackend',
+    EMAIL_HOST='smtp.example.test',
+    ERROR_ALERT_EMAILS='ops@example.test',
+)
+class RollbackEmailTests(_DeployEnvMixin, TestCase):
+    def test_the_email_gives_up_on_a_mail_server_that_does_not_answer(self):
+        event = DeployEvent.objects.create(
+            version=RUNNING, commit='a' * 40, rolled_back_from='v0.122.0'
+        )
+        with patch('django.core.mail.backends.smtp.smtplib.SMTP') as smtp:
+            self.assertTrue(deploys.notify_rollback(event))
+        self.assertEqual(smtp.call_args.kwargs.get('timeout'), 10)
+
+
+@override_settings(MORPHEUS_VERSION=RUNNING)
+class FailedBackupTests(_DeployEnvMixin, TestCase):
+    def _fail(self):
+        with (
+            patch.object(BackupCommand, '_dump_database', _broken_dump),
+            patch.object(SafeMigrate, '_migrate') as migrated,
+            self.assertRaises(CommandError),
+        ):
+            call_command('safe_migrate', stdout=io.StringIO())
+        migrated.assert_not_called()
+
+    def test_a_failed_backup_leaves_the_attempt_for_the_rollback_notice(self):
+        name = self.pend()
+        self._fail()
+        self._fail()  # the crash loop that follows adds no second row
+        event = DeployEvent.objects.get()
+        self.assertEqual((event.version, event.backup, event.migrations), (RUNNING, '', [name]))
+        self.assertIsNone(deploys.read_handoff())  # so the next boot tries the backup again
+        with override_settings(MORPHEUS_VERSION='v0.120.1'):
+            rolled, _ = deploys.record_deploy()
+        self.assertEqual(rolled.rolled_back_from, RUNNING)
 
 
 @override_settings(MORPHEUS_VERSION=RUNNING)

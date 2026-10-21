@@ -1,7 +1,8 @@
 """Each deploy is recorded as a DeployEvent (safe deploys, part 1).
 
-safe_migrate writes it after migrating. The Version & updates page and Linda's
-updates.status read it, and so will the rollback notice in release 4.
+safe_migrate writes it before migrating (after, when DeployEvent itself is being
+migrated). The Version & updates page, Linda's updates.status and the rollback
+notice read it.
 """
 
 from __future__ import annotations

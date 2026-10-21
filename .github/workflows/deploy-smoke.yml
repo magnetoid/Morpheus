@@ -15,17 +15,24 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    # 25 minutes of smoke, a minute of checks, then up to 30 minutes for the
-    # stores put back to come up.
+    # 25 minutes of smoke, up to 8 minutes deciding which stores are down, then
+    # up to 30 minutes for the stores put back to come up.
     timeout-minutes: 70
     env:
       MORPHEUS_DEPLOY_HOOKS: ${{ secrets.MORPHEUS_DEPLOY_HOOKS }}
+      SMOKE_BEFORE_FILE: .smoke-before.txt # what each store served before this deploy
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # the guard reads the release tags
       - name: Wait for production to serve this version, then smoke it
+        id: smoke
         run: bash scripts/deploy_smoke.sh
+      # A guard that cannot see a store (a Cloudflare rule refusing the runner)
+      # would leave it down after a bad release: say so while nothing is wrong.
+      - name: Check the guard can see every store
+        if: success()
+        run: python3 scripts/deploy_guard.py rollback --dry-run
       - name: Put back the stores this release left down
-        if: failure()
+        if: failure() && steps.smoke.outcome == 'failure'
         run: python3 scripts/deploy_guard.py rollback

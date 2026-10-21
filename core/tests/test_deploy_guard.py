@@ -7,22 +7,43 @@ import hmac
 import http.server
 import importlib.util
 import json
+import os
+import socket
+import subprocess
+import tempfile
 import threading
 from pathlib import Path
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import SimpleTestCase
 
+_ROOT = Path(__file__).resolve().parents[2]
 _SPEC = importlib.util.spec_from_file_location(
-    'deploy_guard', Path(__file__).resolve().parents[2] / 'scripts' / 'deploy_guard.py'
+    'deploy_guard', _ROOT / 'scripts' / 'deploy_guard.py'
 )
 guard = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(guard)
 
 NEW, OLD = 'v0.121.0', 'v0.120.1'
+TAGS = ['v0.119.0', 'v0.120.0', OLD, NEW]
 UP_NEW = (200, json.dumps({'status': 'ok', 'version': NEW}))
 UP_OLD = (200, json.dumps({'status': 'ok', 'version': OLD}))
 DOWN = (503, '')
+REFUSED = (403, '')
+
+
+class _Clock:
+    """A fake clock that only sleeping moves."""
+
+    def __init__(self):
+        self.now = 0.0
+
+    def __call__(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.now += seconds
 
 
 def _get(responses):
@@ -40,15 +61,7 @@ def _get(responses):
 
 class VersionTests(SimpleTestCase):
     def test_the_previous_release_ignores_other_tags_and_order(self):
-        tags = [
-            'v0.119.0',
-            'morpheus-known-good',
-            'v0.121.0',
-            'v1.0.0-rc1',
-            'v0.120.1',
-            'v0.9.9',
-            'v0.120.0',
-        ]
+        tags = ['v0.119.0', 'morpheus-known-good', NEW, 'v1.0.0-rc1', OLD, 'v0.9.9', 'v0.120.0']
         self.assertEqual(guard.previous_release(NEW, tags), OLD)
         self.assertEqual(guard.previous_release('v0.9.9', tags), None)
 
@@ -57,30 +70,78 @@ class VersionTests(SimpleTestCase):
         self.assertEqual(guard.expected_version(text), NEW)
 
 
-class ClassifyTests(SimpleTestCase):
-    def _classify(self, readyz, home=(200, '')):
-        get = _get({'https://s/readyz': readyz, 'https://s/': [home]})
-        sleeps = []
-        return guard.classify('https://s', NEW, get=get, sleep=sleeps.append), sleeps
+class StateTests(SimpleTestCase):
+    def test_a_refusal_is_not_an_unhealthy_answer(self):
+        # A rule in front of the store refusing the guard says nothing about the store.
+        self.assertEqual(
+            guard.store_state('https://s', _get({'https://s/readyz': [REFUSED]}))[1], 'refused'
+        )
+        get = _get({'https://s/readyz': [UP_NEW], 'https://s/': [(429, '')]})
+        self.assertEqual(guard.store_state('https://s', get)[1], 'refused')
 
-    def test_a_store_on_the_new_version_is_up(self):
-        self.assertEqual(self._classify([UP_NEW])[0], 'up')
+    def test_ok_needs_readyz_and_the_home_page(self):
+        get = _get({'https://s/readyz': [UP_NEW], 'https://s/': [(200, '')]})
+        self.assertEqual(guard.store_state('https://s', get), (NEW, 'ok'))
+        get = _get({'https://s/readyz': [UP_NEW], 'https://s/': [(500, '')]})
+        self.assertEqual(guard.store_state('https://s', get), (NEW, 'bad'))
+
+
+class ClassifyTests(SimpleTestCase):
+    def _classify(self, responses, stores=('https://s',)):
+        clock = _Clock()
+        states = guard.classify_all(
+            list(stores), NEW, get=_get(responses), sleep=clock.sleep, clock=clock
+        )
+        return states, clock.now
+
+    def test_a_swap_of_two_minutes_is_not_down(self):
+        # A container swap answers 503 for a minute or more (80 s on dotbooks).
+        responses = {'https://s/readyz': [DOWN] * 6 + [UP_NEW], 'https://s/': [(200, '')]}
+        states, waited = self._classify(responses)
+        self.assertEqual(states, {'https://s': 'up'})
+        self.assertGreaterEqual(waited, 120)
 
     def test_a_store_still_on_the_old_version_is_left_alone(self):
-        self.assertEqual(self._classify([UP_OLD])[0], 'late')
+        states, _ = self._classify({'https://s/readyz': [UP_OLD], 'https://s/': [(200, '')]})
+        self.assertEqual(states, {'https://s': 'late'})
 
-    def test_a_brief_503_is_not_down(self):
-        state, sleeps = self._classify([DOWN, UP_NEW])
-        self.assertEqual(state, 'up')
-        self.assertEqual(sleeps, [guard.CHECK_GAP])
+    def test_down_means_no_healthy_answer_for_the_whole_window(self):
+        states, waited = self._classify({'https://s/readyz': [DOWN]})
+        self.assertEqual(states, {'https://s': 'down'})
+        self.assertGreaterEqual(waited, guard.DOWN_AFTER)
 
-    def test_down_means_down_at_every_check(self):
-        state, sleeps = self._classify([DOWN])
-        self.assertEqual(state, 'down')
-        self.assertEqual(len(sleeps), guard.CHECKS - 1)
+    def test_the_stores_share_one_window(self):
+        responses = {'https://a/readyz': [DOWN], 'https://b/readyz': [DOWN]}
+        states, waited = self._classify(responses, stores=('https://a', 'https://b'))
+        self.assertEqual(set(states.values()), {'down'})
+        self.assertLess(waited, guard.DOWN_AFTER + 2 * guard.CHECK_GAP)
+
+    def test_a_store_that_refuses_the_guard_is_unknown_not_down(self):
+        states, _ = self._classify({'https://s/readyz': [REFUSED]})
+        self.assertEqual(states, {'https://s': 'unknown'})
 
     def test_a_home_page_that_fails_is_not_up(self):
-        self.assertEqual(self._classify([UP_NEW], home=(500, ''))[0], 'down')
+        states, _ = self._classify({'https://s/readyz': [UP_NEW], 'https://s/': [(500, '')]})
+        self.assertEqual(states, {'https://s': 'down'})
+
+
+class MalformedAnswerTests(SimpleTestCase):
+    def test_a_malformed_answer_is_unhealthy_not_a_crash(self):
+        # BadStatusLine is an http.client.HTTPException, which URLError does not cover.
+        listener = socket.socket()
+        listener.bind(('127.0.0.1', 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def serve():
+            conn, _ = listener.accept()
+            conn.recv(1024)
+            conn.sendall(b'NOT HTTP AT ALL\r\n\r\n')
+            conn.close()
+
+        threading.Thread(target=serve, daemon=True).start()
+        port = listener.getsockname()[1]
+        self.assertEqual(guard.http_get(f'http://127.0.0.1:{port}/readyz', timeout=5), (0, ''))
 
 
 class _FakeCoolify(http.server.BaseHTTPRequestHandler):
@@ -129,6 +190,31 @@ class WebhookTests(SimpleTestCase):
         self.assertFalse(guard.queued('not json'))
 
 
+class TargetTests(SimpleTestCase):
+    def test_a_store_goes_back_to_the_release_it_served_before(self):
+        # v0.120.1 already failed on this store and it was put back on v0.120.0.
+        self.assertEqual(
+            guard.target_release('https://x', NEW, TAGS, {'https://x': 'v0.120.0'}), 'v0.120.0'
+        )
+
+    def test_without_a_before_version_the_previous_release_is_used(self):
+        self.assertEqual(guard.target_release('https://x', NEW, TAGS, {}), OLD)
+
+    def test_a_before_version_that_is_not_an_older_release_is_ignored(self):
+        self.assertEqual(guard.target_release('https://x', NEW, TAGS, {'https://x': NEW}), OLD)
+        self.assertEqual(guard.target_release('https://x', NEW, TAGS, {'https://x': 'dev'}), OLD)
+
+    def test_the_before_file_is_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'before.txt'
+            path.write_text('https://a v0.120.1\nhttps://b/ v0.119.0\njunk\n')
+            self.assertEqual(
+                guard.read_before(str(path)), {'https://a': OLD, 'https://b': 'v0.119.0'}
+            )
+        self.assertEqual(guard.read_before(''), {})
+        self.assertEqual(guard.read_before('/no/such/file'), {})
+
+
 class RollbackTests(SimpleTestCase):
     CONFIG = {
         'webhook': 'https://coolify/webhooks/source/github/events/manual',
@@ -136,40 +222,56 @@ class RollbackTests(SimpleTestCase):
         'branch': 'main',
         'stores': {'https://up': 'a', 'https://late': 'b', 'https://down': 'c'},
     }
+    COMMITS = {OLD: 'd' * 40, 'v0.120.0': 'e' * 40}
 
-    def _run(self, down_after=(DOWN,), dry_run=False, post_answer=(200, '[{"status": "success"}]')):
-        get = _get(
-            {
-                'https://up/readyz': [UP_NEW],
-                'https://up/': [(200, '')],
-                'https://late/readyz': [UP_OLD],
-                'https://late/': [(200, '')],
-                'https://down/readyz': [DOWN] * guard.CHECKS + list(down_after),
-                'https://down/': [(200, '')],
-            }
-        )
-        posts, lines = [], []
+    def _run(
+        self,
+        after=(UP_OLD,),
+        *,
+        before=None,
+        dry_run=False,
+        contract='',
+        post_answer=None,
+        readyz_down=DOWN,
+    ):
+        posts, lines, clock = [], [], _Clock()
+        after = list(after)
+
+        def get(url, timeout=15):
+            if url == 'https://down/readyz':
+                # Down until its webhook is sent, then whatever the rollback brings.
+                return (
+                    after.pop(0)
+                    if posts and len(after) > 1
+                    else (after[0] if posts else readyz_down)
+                )
+            return {
+                'https://up/readyz': UP_NEW,
+                'https://late/readyz': UP_OLD,
+            }.get(url, (200, ''))
 
         def post(url, body, headers, timeout=30):
             posts.append((url, json.loads(body), headers))
-            return post_answer
+            return post_answer or (200, '[{"status": "success"}]')
 
         code = guard.rollback(
             self.CONFIG,
             NEW,
-            ['v0.120.0', OLD, NEW],
+            TAGS,
             dry_run=dry_run,
+            before=before or {},
             get=get,
             post=post,
-            sleep=lambda s: None,
-            commit_of=lambda tag: {OLD: 'd' * 40}[tag],
+            sleep=clock.sleep,
+            clock=clock,
+            commit_of=self.COMMITS.__getitem__,
+            contract_of=lambda release: contract,
             log=lines.append,
-            clock=iter(range(0, 10_000, 30)).__next__,
         )
         return code, posts, '\n'.join(lines)
 
-    def test_only_the_store_that_is_down_is_put_back_on_the_previous_release(self):
-        code, posts, log = self._run(down_after=(DOWN, UP_OLD))
+    def test_only_the_store_that_is_down_is_put_back(self):
+        code, posts, log = self._run()
         self.assertEqual(code, 1)  # a rollback is still a failed release
         self.assertEqual(len(posts), 1)
         url, payload, headers = posts[0]
@@ -180,11 +282,30 @@ class RollbackTests(SimpleTestCase):
         self.assertEqual(headers['X-Hub-Signature-256'], expected)
         self.assertIn('OK    https://down serves v0.120.1 again', log)
         self.assertIn('LATE  https://late', log)
+        self.assertIn('UP    https://up', log)
+
+    def test_a_store_goes_back_to_the_release_it_ran_before_this_deploy(self):
+        code, posts, log = self._run(
+            after=((200, json.dumps({'status': 'ok', 'version': 'v0.120.0'})),),
+            before={'https://down': 'v0.120.0'},
+        )
+        self.assertEqual(posts[0][1]['after'], 'e' * 40)
+        self.assertIn('OK    https://down serves v0.120.0 again', log)
+
+    def test_going_back_past_a_contract_is_refused(self):
+        code, posts, log = self._run(
+            before={'https://down': 'v0.120.0'}, contract='core/migrations/0030_x.py'
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(posts, [])
+        self.assertIn('core/migrations/0030_x.py', log)
+        self.assertIn('by hand', log)
 
     def test_a_dry_run_sends_nothing(self):
         code, posts, log = self._run(dry_run=True)
         self.assertEqual(posts, [])
         self.assertIn('would put back v0.120.1', log)
+        self.assertEqual(code, 1)
 
     def test_a_webhook_that_queues_nothing_is_a_failure(self):
         code, posts, log = self._run(post_answer=(200, '[{"status": "failed"}]'))
@@ -192,9 +313,38 @@ class RollbackTests(SimpleTestCase):
         self.assertIn('FAIL  https://down', log)
 
     def test_a_store_that_stays_down_after_the_rollback_is_reported(self):
-        code, _, log = self._run(down_after=(DOWN,))
+        code, _, log = self._run(after=(DOWN,))
         self.assertEqual(code, 1)
         self.assertIn('did not come up on v0.120.1 either', log)
+
+    def test_a_store_that_comes_up_on_the_new_version_after_all_is_reported(self):
+        code, _, log = self._run(after=(UP_NEW, UP_OLD))
+        self.assertIn('came up on v0.121.0 after all', log)
+        self.assertIn('OK    https://down serves v0.120.1 again', log)
+
+    def test_a_store_that_refuses_the_guard_is_left_alone_and_reported(self):
+        code, posts, log = self._run(readyz_down=REFUSED)
+        self.assertEqual(code, 1)
+        self.assertEqual(posts, [])
+        self.assertIn('cannot tell', log)
+
+    def test_every_store_up_or_late_is_success(self):
+        config = dict(self.CONFIG, stores={'https://up': 'a', 'https://late': 'b'})
+        clock = _Clock()
+        code = guard.rollback(
+            config,
+            NEW,
+            TAGS,
+            get=lambda url, timeout=15: {
+                'https://up/readyz': UP_NEW,
+                'https://late/readyz': UP_OLD,
+            }.get(url, (200, '')),
+            post=None,
+            sleep=clock.sleep,
+            clock=clock,
+            log=lambda line: None,
+        )
+        self.assertEqual(code, 0)
 
 
 class ConfigTests(SimpleTestCase):
@@ -209,12 +359,54 @@ class ConfigTests(SimpleTestCase):
             guard.load_config()
 
 
+class _FakeStore(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):  # noqa: N802 — the stdlib's name
+        body = json.dumps({'status': 'ok', 'version': settings.MORPHEUS_VERSION}).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+class SmokeRecordsTests(SimpleTestCase):
+    def test_the_smoke_records_what_each_store_served_before(self):
+        server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), _FakeStore)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.shutdown)
+        base = f'http://127.0.0.1:{server.server_port}'
+        with tempfile.TemporaryDirectory() as tmp:
+            before = Path(tmp) / 'before.txt'
+            env = dict(
+                os.environ,
+                SMOKE_BASE_URLS=base,
+                SMOKE_DEADLINE_SECS='30',
+                SMOKE_BEFORE_FILE=str(before),
+            )
+            done = subprocess.run(
+                ['bash', 'scripts/deploy_smoke.sh'],
+                cwd=_ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertEqual(before.read_text().split(), [base, settings.MORPHEUS_VERSION])
+
+
 class WorkflowTests(SimpleTestCase):
     def test_deploy_smoke_runs_the_guard_when_the_smoke_fails(self):
-        text = (
-            Path(__file__).resolve().parents[2] / '.github' / 'workflows' / 'deploy-smoke.yml'
-        ).read_text()
+        text = (_ROOT / '.github' / 'workflows' / 'deploy-smoke.yml').read_text()
         self.assertIn('fetch-depth: 0', text)
-        self.assertIn('if: failure()', text)
+        self.assertIn("if: failure() && steps.smoke.outcome == 'failure'", text)
         self.assertIn('python3 scripts/deploy_guard.py rollback', text)
         self.assertIn('secrets.MORPHEUS_DEPLOY_HOOKS', text)
+        self.assertIn('SMOKE_BEFORE_FILE', text)
+
+    def test_after_a_green_smoke_the_guard_checks_it_can_see_the_stores(self):
+        text = (_ROOT / '.github' / 'workflows' / 'deploy-smoke.yml').read_text()
+        self.assertIn('python3 scripts/deploy_guard.py rollback --dry-run', text)

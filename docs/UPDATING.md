@@ -264,10 +264,15 @@ Backups). Still to come, per
 
 ### Automatic rollback
 
-After every push to `main`, deploy-smoke waits for each store to serve the new version. When a
-store is down at the deadline (not merely still on the old version), `scripts/deploy_guard.py
-rollback` puts it back on the previous release tag. It does this by sending that store's deploy
-platform a signed GitHub push event whose `after` is the tag's commit. Configure it with the
+After every push to `main`, deploy-smoke waits for each store to serve the new version. When it
+times out, `scripts/deploy_guard.py rollback` checks every store each 20 seconds for up to 8
+minutes. A store that gave no healthy answer in that time (`/readyz` reporting `ok` and the
+homepage answering 200) is down, and goes back to the release it served when the smoke started,
+else to the previous release tag. A store still on an older version is late, and is left alone. A
+store that only answers 401, 403 or 429 is refused by something in front of it, so the guard cannot
+tell and leaves it alone. Going back more than one release is refused when a migration added since
+carries `morpheus_contract`. The guard puts a store back by sending that store's deploy platform a
+signed GitHub push event whose `after` is the tag's commit. Configure it with the
 `MORPHEUS_DEPLOY_HOOKS` repository secret:
 
     {"webhook": "https://<coolify>/webhooks/source/github/events/manual",
@@ -276,9 +281,15 @@ platform a signed GitHub push event whose `after` is the tag's commit. Configure
 
 Any platform works if it deploys the `after` commit of a signed push and serves `/readyz` with the
 running version. Coolify's manual GitHub webhook does: it uses each application's own secret, found
-under the application's Webhooks settings. The store then emails its operators (`ERROR_ALERT_EMAILS`,
-else the superusers) and Settings → Version & updates says it was put back. After a rollback, push a
-fix rather than redeploying: a redeploy builds the branch head, which is the release that failed.
+under the application's Webhooks settings. The guard watches only the stores named in the secret,
+by the URLs the smoke checks (`SMOKE_BASE_URLS`): a store missing from it is never put back. After
+every green smoke, a dry run of the guard turns the run red if it cannot see a store.
+
+The store put back emails its operators (`ERROR_ALERT_EMAILS`, else the superusers) once it has
+migrated, and Settings → Version & updates says it was put back. The email needs a newer record to
+compare with: a release that failed before Python ran, or a release put back that predates
+v0.121.0, sends none, and then the red run is the only signal. After a rollback, push a fix rather
+than redeploying: a redeploy builds the branch head, which is the release that failed.
 
 ---
 

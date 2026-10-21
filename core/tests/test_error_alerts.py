@@ -8,9 +8,14 @@ and nothing on a clean day.
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from core.errors.alerts import alert_recipients, send_digest
 from core.errors.models import ErrorEvent
@@ -56,3 +61,28 @@ class ErrorDigestTests(TestCase):
         with override_settings(ERROR_ALERT_EMAILS='ops@example.com, oncall@example.com'):
             self.assertEqual(alert_recipients(), ['ops@example.com', 'oncall@example.com'])
         self.assertEqual(alert_recipients(), ['owner@example.com'])
+
+
+class AlertSettingsTests(SimpleTestCase):
+    def test_the_alert_list_is_read_from_the_environment(self):
+        # The digest, the health check and the rollback email read
+        # settings.ERROR_ALERT_EMAILS; a deployment sets it in its environment.
+        env = dict(
+            os.environ,
+            ERROR_ALERT_EMAILS='ops@example.com',
+            DJANGO_SETTINGS_MODULE='morph.settings',
+        )
+        done = subprocess.run(
+            [
+                sys.executable,
+                '-c',
+                'from django.conf import settings; print(settings.ERROR_ALERT_EMAILS)',
+            ],
+            cwd=settings.BASE_DIR,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        self.assertIn('ops@example.com', done.stdout, done.stderr[-2000:])

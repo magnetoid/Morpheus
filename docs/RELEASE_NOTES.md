@@ -15,11 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
-## v0.121.0 — 2026-10-21
+## v0.121.0 — 2026-10-22
 
 **A store an update leaves down goes back to the previous version by itself**
 
-- If an update leaves a store down, it is put back on the previous version automatically, and its operators get an email: which version failed, which one runs now, and where the data from just before it is.
+- If an update leaves a store down for several minutes, it is put back automatically on the version it ran before, and its operators get an email: which version failed, which one runs now, and where the data from just before it is.
+- After every update that comes up, a check confirms each store can still be watched this way.
+- Error, health-check and rollback emails go to the addresses in `ERROR_ALERT_EMAILS` when it is set. Until now that setting was ignored and they always went to the store's superusers.
 - Settings → Version & updates says when a store was put back. Until a fix is released, do not redeploy the store from Coolify: that would deploy the failed version again.
 - The PDF library (pypdf) is updated to a version that fixes a newly published security issue.
 

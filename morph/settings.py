@@ -791,6 +791,9 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@morpheusstore.io')
 EMAIL_USE_TLS = True
+# Who hears about errors, a failed health check and a rollback, comma-separated
+# (core/errors/alerts.py); unset means the active superusers.
+ERROR_ALERT_EMAILS = config('ERROR_ALERT_EMAILS', default='')
 
 # ── Security ───────────────────────────────────────────────────────────────────
 if not DEBUG:

@@ -129,10 +129,12 @@ are read fresh on every request, so a change applies to every worker at once.
 
 ## Rollback
 
-- Code: automatic since v0.121.0 for a store that a push leaves down. deploy-smoke's
-  guard puts it back on the previous release, the run stays red, and the store emails
-  the operators. A rollback to a release older than v0.121.0 cannot email; the red run
-  is the signal. Do not click Redeploy in Coolify afterwards: it builds `main`, the
+- Code: automatic since v0.121.0 for a store that a push leaves down for 8 minutes.
+  deploy-smoke's guard puts it back on the release it served before (else the previous
+  release), the run stays red, and the store emails the operators. A rollback to a
+  release older than v0.121.0, or after a release that failed before Python ran, sends
+  no email; the red run is the signal. A store the guard cannot see (only 401, 403 or
+  429) is reported and left alone. Do not click Redeploy in Coolify afterwards: it builds `main`, the
   failed commit. Push a fix, or `git revert` the bad commit and push; that push deploys
   every store again. By hand: the same revert-and-push, verified with deploy-smoke.
 - Schema: migrations are not auto-reversed. Since v0.118.0, every deploy that
