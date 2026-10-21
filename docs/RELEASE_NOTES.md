@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.120.0 — 2026-10-21
+
+**Restore a backup from the dashboard**
+
+- A superuser can now put the store's data back as it was when a backup was made. Settings → Version & updates lists the nightly backups, those made before an update and those made before a restore. Before anything happens, it says what will be replaced, such as the orders placed and the customers who signed up since, and asks for the store's name.
+- A restore changes everything or nothing. The store first backs up its data as it is, so a restore can be undone the same way, and shows everyone a "restoring" page while it runs.
+- Fixed: when the database restarts, or a restore ends its connections, the next pages no longer fail. Each connection is checked before it is reused.
+
 ## v0.119.0 — 2026-10-20
 
 **Dashboard pages use the full width, and an update keeps the previous version working**
