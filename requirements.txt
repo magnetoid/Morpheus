@@ -1,9 +1,9 @@
 django>=6.1.1
 djangorestframework>=3.18.1
-strawberry-graphql>=0.327.7
-strawberry-graphql-django>=0.89.2
-openai>=3.17.0
-anthropic>=1.7.0
+strawberry-graphql>=0.336.0
+strawberry-graphql-django>=0.93.0
+openai>=3.35.1
+anthropic>=1.15.0
 opentelemetry-api>=1.44.0
 opentelemetry-sdk>=1.44.0
 opentelemetry-exporter-otlp>=1.44.0
@@ -25,9 +25,9 @@ redis>=8.1.0
 requests>=2.32.0
 django-redis>=7.0.0
 django-storages>=1.14.6
-boto3>=1.43.99
+boto3>=1.43.114
 psycopg2-binary>=2.9.13
-django-allauth[socialaccount]>=65.19.4
+django-allauth[socialaccount]>=65.20.0
 # cryptography — Ed25519 for release-manifest signing (core/signing.py) and
 # the licence checks the commercial edition needs. Already present as a
 # pyjwt[crypto] transitive, but core imports it directly, so it is pinned here.
@@ -42,9 +42,9 @@ pyjwt[crypto]>=2.14.0,<3
 # once `allauth.socialaccount.providers.saml` is in INSTALLED_APPS, so its
 # absence crashes boot — DEPLOY-CRITICAL.
 python3-saml>=1.16
-django-mptt>=0.18
+django-mptt>=0.19.1
 django-taggit>=6.1.0
-django-money>=3.6.1
+django-money>=3.6.2
 django-fsm>=3.0.1
 whitenoise>=6.12
 dj-database-url>=3.1.2
@@ -55,5 +55,5 @@ qrcode>=8.2
 pyotp>=2.10.0
 nats-py>=2.16.0
 gunicorn>=26.2.0
-sentry-sdk>=2.70.0
+sentry-sdk>=2.72.0
 bleach>=6.4.0
