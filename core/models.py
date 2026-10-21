@@ -317,8 +317,10 @@ class ExchangeRate(models.Model):
 
 
 class DeployEvent(models.Model):
-    """One deploy of this store, written after migrating by ``manage.py
-    safe_migrate`` (core/deploys.py). A restart of the same deploy adds no row."""
+    """One deploy of this store, written by ``manage.py safe_migrate`` before it
+    migrates (after, when the table itself is being migrated), so a crashed
+    migration still leaves the attempt and its backup (core/deploys.py). A
+    restart of the same deploy adds no row."""
 
     version = models.CharField(max_length=40)
     commit = models.CharField(max_length=40, blank=True)
@@ -327,6 +329,8 @@ class DeployEvent(models.Model):
     backup = models.CharField(max_length=255, blank=True)
     # The migrations this deploy applied, as "app_label.name".
     migrations = models.JSONField(default=list, blank=True)
+    # The newer version this boot replaced, when it is a rollback; '' otherwise.
+    rolled_back_from = models.CharField(max_length=40, blank=True, default='', db_default='')
 
     class Meta:
         ordering = ['-deployed_at', '-pk']

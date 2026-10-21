@@ -96,6 +96,8 @@ class RunningReleaseTests(_BackupFolderMixin, TestCase):
                 'backup': None,
                 'self_update': False,
                 'last_restore': None,
+                'rolled_back_from': '',
+                'failed_backup': '',
             },
         )
 

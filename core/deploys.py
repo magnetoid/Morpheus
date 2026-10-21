@@ -55,6 +55,20 @@ def current_commit() -> str:
     return value if _COMMIT.match(value) else ''
 
 
+_VERSION = re.compile(r'^v?(\d+)\.(\d+)\.(\d+)$')
+
+
+def version_key(text: str) -> tuple[int, int, int] | None:
+    """``vX.Y.Z`` as numbers, for comparing releases; None for anything else."""
+    match = _VERSION.match(str(text or '').strip())
+    return tuple(int(part) for part in match.groups()) if match else None  # type: ignore[return-value]
+
+
+def is_older(version: str, than: str) -> bool:
+    a, b = version_key(version), version_key(than)
+    return a is not None and b is not None and a < b
+
+
 def deploy_label() -> str:
     """The version being deployed, with its short commit when known: the backup's name."""
     from django.conf import settings
@@ -91,10 +105,15 @@ def clear_handoff() -> None:
 
 
 def record_deploy():
-    """Write this boot's DeployEvent from the marker, then remove the marker.
+    """Write this boot's DeployEvent from the marker. safe_migrate calls it before
+    migrating, so a migration that crashes still leaves the attempt and its
+    backup; the marker then names the row, and a restart of the same container
+    adds nothing. safe_migrate clears the marker once migrating has worked.
 
-    A boot that migrated nothing, on the version and commit of the newest record,
-    is a restart of that deploy and writes nothing. Returns ``(event, created)``.
+    A boot that migrates nothing, on the version and commit of the newest record,
+    is a restart of that deploy and writes nothing. A boot older than the newest
+    record is a rollback: its row names the version it replaced
+    (``rolled_back_from``). Returns ``(event, created)``.
     """
     from django.conf import settings
 
@@ -102,19 +121,71 @@ def record_deploy():
 
     marker = read_handoff() or {}
     version, commit = str(settings.MORPHEUS_VERSION), current_commit()
+    if marker.get('recorded') and (marker.get('version'), marker.get('commit')) == (
+        version,
+        commit,
+    ):
+        event = DeployEvent.objects.filter(pk=marker['recorded']).first()
+        if event is not None:
+            return event, False
     migrations = [str(name) for name in marker.get('migrations') or []]
     newest = DeployEvent.objects.first()
     if newest and (newest.version, newest.commit) == (version, commit) and not migrations:
-        clear_handoff()
         return newest, False
     event = DeployEvent.objects.create(
         version=version,
         commit=commit,
         backup=str(marker.get('backup') or ''),
         migrations=migrations,
+        rolled_back_from=newest.version if newest and is_older(version, newest.version) else '',
     )
-    clear_handoff()
+    write_handoff({**marker, 'recorded': event.pk, 'version': version, 'commit': commit})
     return event, True
+
+
+def failed_backup_name(version: str) -> str:
+    """The pre-deploy backup taken before ``version`` migrated; '' when it made
+    no database changes."""
+    from core.models import DeployEvent
+
+    path = (
+        DeployEvent.objects.filter(version=version)
+        .exclude(backup='')
+        .values_list('backup', flat=True)
+        .first()
+    )
+    return Path(path).name if path else ''
+
+
+def notify_rollback(event) -> bool:
+    """Email the operators that this store went back to an older release. Called
+    once, by the boot that recorded the rollback."""
+    from core.errors.alerts import send_alert
+    from core.utils.site import site_base_url, store_name
+
+    failed, name = event.rolled_back_from, store_name() or 'The store'
+    backup = failed_backup_name(failed)
+    if backup:
+        data = (
+            f'If {failed} changed the database before it failed, the copy from just before it is '
+            f'{backup}. Restore it from Settings → Version & updates → Backups only if you need '
+            'the data as it was.'
+        )
+    else:
+        data = f'{failed} made no database changes, so there is nothing to restore.'
+    body = '\n\n'.join(
+        [
+            f'{failed} did not come up on {name}, so the store was put back on {event.version} at '
+            f'{event.deployed_at:%Y-%m-%d %H:%M} UTC. Shoppers see the store as it was before {failed}.',
+            f'Nothing was restored: the data is as {failed} left it. {data}',
+            'The next release deploys as usual. Until then, do not redeploy the store from '
+            f'Coolify: that would deploy {failed} again.',
+            f'Version & updates: {site_base_url().rstrip("/")}/dashboard/updates/',
+        ]
+    )
+    return send_alert(
+        f'{name}: {failed} did not come up, so the store is back on {event.version}', body
+    )
 
 
 def describe_backup(path: Path) -> dict | None:
@@ -168,4 +239,8 @@ def running_release() -> dict:
         'backup': latest_predeploy_backup(),
         'self_update': can_self_update(),
         'last_restore': restore.last(),
+        'rolled_back_from': event.rolled_back_from if event else '',
+        'failed_backup': failed_backup_name(event.rolled_back_from)
+        if event and event.rolled_back_from
+        else '',
     }

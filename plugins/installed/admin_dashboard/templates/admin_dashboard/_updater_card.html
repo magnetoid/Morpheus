@@ -29,6 +29,14 @@ there (safe-deploys spec, part 5).
       <span class="text-[color:var(--text-muted)]">No backup from before an update yet. The store makes one automatically before any update that changes the database.</span>
     {% endif %}
   </div>
+  {% if running.rolled_back_from %}
+  <div class="mt-3 pt-3 border-t border-[color:var(--border)] text-sm" data-testid="rolled-back">
+    <span class="pill pill-warn">Put back</span>
+    {{ running.rolled_back_from }} did not come up, so this store runs {{ running.version }} again{% if running.deployed_at %} since {{ running.deployed_at|date:"j M Y, H:i" }}{% endif %}.
+    {% if running.failed_backup %}The data from just before {{ running.rolled_back_from }} changed the database is in {{ running.failed_backup }}.{% endif %}
+    Do not redeploy the store from Coolify until a fix is released: that would deploy {{ running.rolled_back_from }} again.
+  </div>
+  {% endif %}
   <div class="mt-3 pt-3 border-t border-[color:var(--border)] text-sm">
     {% if not running.self_update %}
       This store updates when a new version is released.{% if platform.available == 'yes' and platform.latest %} {{ platform.latest }} is out.{% endif %}

@@ -15,6 +15,7 @@ import logging
 
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 
 from core import deploys
 from core.management.commands.morph_backup import Command as BackupCommand
@@ -28,8 +29,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self._back_up_first()
+        # Before migrating, so a migration that crashes still leaves the attempt
+        # and its backup on record for the rollback notice.
+        recorded = self._record(final=False)
         self._migrate()
-        self._record()
+        if not recorded:
+            self._record(final=True)
+        deploys.clear_handoff()
 
     def _back_up_first(self) -> None:
         if deploys.read_handoff() is not None:
@@ -71,17 +77,30 @@ class Command(BaseCommand):
         # skip_checks=False: `manage.py migrate` ran the system checks on every boot.
         call_command('migrate', interactive=False, skip_checks=False)
 
-    def _record(self) -> None:
-        # The record feeds the Version & updates page; it never keeps the store down.
+    def _record(self, *, final: bool) -> bool:
+        """Record this deploy; False when it cannot be written yet. Before
+        migrating, the table or one of its columns can still be missing (a new
+        database, or a deploy that migrates DeployEvent itself): then it is
+        written after migrating. The record never keeps the store down."""
         try:
-            event, created = deploys.record_deploy()
+            with transaction.atomic():
+                event, created = deploys.record_deploy()
         except Exception:
+            if not final:
+                return False
             logger.exception('safe_migrate: could not record this deploy')
             self.stderr.write('[safe_migrate] Could not record this deploy; carrying on.')
-            return
+            return True
         if not created:
             self.stdout.write(f'[safe_migrate] {event.version} restarted; already recorded.')
-            return
+            return True
         commit = f' ({event.commit[:7]})' if event.commit else ''
-        count = f', {len(event.migrations)} migrations applied' if event.migrations else ''
+        count = f', {len(event.migrations)} migrations' if event.migrations else ''
         self.stdout.write(f'[safe_migrate] Recorded {event.version}{commit}{count}.')
+        if event.rolled_back_from:
+            told = deploys.notify_rollback(event)
+            self.stdout.write(
+                f'[safe_migrate] Back on {event.version} after {event.rolled_back_from}: '
+                + ('told the operators.' if told else 'could not email the operators.')
+            )
+        return True

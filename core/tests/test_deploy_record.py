@@ -38,7 +38,7 @@ class RecordDeployTests(_DeployEnvMixin, TestCase):
                 ['core.0024_deployevent'],
             ),
         )
-        self.assertIsNone(deploys.read_handoff())
+        self.assertEqual(deploys.read_handoff()['recorded'], event.pk)
 
     def test_a_restart_of_the_same_deploy_adds_nothing(self):
         first, _ = deploys.record_deploy()
