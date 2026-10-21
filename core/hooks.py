@@ -1020,6 +1020,13 @@ class MorpheusEvents:
     #                 public pages load). A failure is recorded as an ErrorEvent
     #                 and emailed to the operator the same night.
     HEALTH_CHECKS = 'health.checks'
+    # RESTORE_LOSSES — filter, value=list[dict], kwargs: since=datetime (when the
+    #                  backup was made). The restore screen asks each app what a
+    #                  restore would replace; each appends ``{'label': str,
+    #                  'count': int}`` for its own records since then (orders:
+    #                  orders placed; customers: customers signed up; catalog:
+    #                  products added or changed). Read by core.restore.losses.
+    RESTORE_LOSSES = 'restore.losses'
     # CUSTOMER_SEGMENT_CHANGED — kwargs: customer=Customer, old=str, new=str.
     #                            Fired by customers.rfm on the nightly recompute
     #                            when a customer crosses into a different RFM segment;

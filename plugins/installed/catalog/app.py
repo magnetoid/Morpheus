@@ -25,6 +25,7 @@ class CatalogPlugin(Plugin):
 
         self.register_hook(events.CUSTOMER_DATA_EXPORT, gdpr.on_customer_export, priority=20)
         self.register_hook(events.CUSTOMER_ANONYMISE, gdpr.on_customer_anonymise, priority=20)
+        self.register_hook(events.RESTORE_LOSSES, self.on_restore_losses, priority=30)
         self.register_graphql_extension('plugins.installed.catalog.graphql.mutations')
         # Dashboard-home tiles: active-products KPI, top-products panel,
         # first-product setup step.
@@ -34,6 +35,14 @@ class CatalogPlugin(Plugin):
         # Morpheus Brain: contribute the catalog content-gap counts.
         self.register_hook(events.BRAIN_SIGNALS, self.on_brain_signals, priority=50)
         from plugins.installed.catalog import signals  # noqa - register signals
+
+    def on_restore_losses(self, value, since=None, **kwargs):
+        """RESTORE_LOSSES: the products added or changed since the backup was made."""
+        from plugins.installed.catalog.models import Product  # noqa: PLC0415
+
+        changed = Product.objects.filter(updated_at__gt=since)
+        value.append({'label': 'products added or changed', 'count': changed.count()})
+        return value
 
     def on_brain_signals(self, value, **kwargs):
         """Merge the catalog content-gap slice into the Brain snapshot —

@@ -21,6 +21,7 @@ class CustomersPlugin(Plugin):
         from plugins.installed.customers import signals  # noqa
 
         self.register_hook(events.ORDER_PAID, self.on_order_paid, priority=20)
+        self.register_hook(events.RESTORE_LOSSES, self.on_restore_losses, priority=20)
 
         # Nightly RFM re-scoring (04:30 — before the dynamics 3:30/4:00 jobs have
         # long finished and orders have settled). Fires CUSTOMER_SEGMENT_CHANGED.
@@ -31,6 +32,14 @@ class CustomersPlugin(Plugin):
             'customers:recompute_rfm',
             {'task': 'customers.recompute_rfm', 'schedule': crontab(hour=4, minute=30)},
         )
+
+    def on_restore_losses(self, value, since=None, **kwargs):
+        """RESTORE_LOSSES: the customers who signed up since the backup was made."""
+        from django.contrib.auth import get_user_model  # noqa: PLC0415
+
+        joined = get_user_model().objects.filter(date_joined__gt=since, is_staff=False)
+        value.append({'label': 'customers signed up', 'count': joined.count()})
+        return value
 
     def contribute_dashboard_pages(self) -> list:
         from morpheus.app import DashboardPage  # noqa: PLC0415

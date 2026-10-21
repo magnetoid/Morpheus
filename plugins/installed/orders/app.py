@@ -55,6 +55,7 @@ class OrdersPlugin(Plugin):
         self.register_hook(events.CUSTOMER_ANONYMISE, gdpr.on_customer_anonymise, priority=10)
         self.register_hook(events.CUSTOMER_LOGIN, self.on_customer_login, priority=30)
         self.register_hook(events.HEALTH_CHECKS, self.on_health_checks, priority=30)
+        self.register_hook(events.RESTORE_LOSSES, self.on_restore_losses, priority=10)
         # Store credit is a tender: after loyalty (45), before gift cards (50).
         self.register_hook(
             events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown_store_credit, priority=46
@@ -169,6 +170,15 @@ class OrdersPlugin(Plugin):
         from plugins.installed.orders.health import cart_pricing_check  # noqa: PLC0415
 
         value.append(cart_pricing_check())
+        return value
+
+    def on_restore_losses(self, value, since=None, **kwargs):
+        """RESTORE_LOSSES: the orders placed since the backup was made."""
+        from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+        value.append(
+            {'label': 'orders placed', 'count': Order.objects.filter(placed_at__gt=since).count()}
+        )
         return value
 
     def on_cart_breakdown_store_credit(self, value, cart=None, **kwargs):

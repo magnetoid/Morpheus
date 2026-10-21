@@ -362,3 +362,13 @@ def reload_web(pid: int) -> None:
         os.kill(pid, signal.SIGHUP)
     except OSError:
         logger.warning('restore: could not reload the web workers (pid %s)', pid, exc_info=True)
+
+
+def losses(since: datetime) -> list[dict]:
+    """What restoring a backup made at ``since`` replaces, as each app counts it
+    (RESTORE_LOSSES): ``[{'label': 'orders placed', 'count': 4}, …]``, without
+    zero counts. A failing app is skipped by the bus, and the others still count."""
+    from core.hooks import MorpheusEvents, hook_registry
+
+    rows = hook_registry.filter(MorpheusEvents.RESTORE_LOSSES, [], since=since) or []
+    return [row for row in rows if isinstance(row, dict) and row.get('count')]
