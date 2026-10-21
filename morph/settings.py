@@ -326,6 +326,9 @@ app_registry.discover(ALL_MORPHEUS_APPS)
 # ── Middleware ─────────────────────────────────────────────────────────────────
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # While a backup is being restored, every page answers "restoring" before
+    # anything reads the database being replaced (core/restore.py).
+    'core.restore.RestoreGateMiddleware',
     'core.security_headers.SecurityHeadersMiddleware',
     'core.storefront_cache.StorefrontCacheMiddleware',
     # Gzip-compresses responses > 200 bytes. Cloudflare also compresses
@@ -474,6 +477,9 @@ DATABASE_ROUTERS = ['core.db_router.PrimaryReplicaRouter']
 # `?sslmode=…` query string in DATABASE_URL when present.
 _DEFAULT_SSL_MODE = config('DATABASE_SSL_MODE', default='require')
 for db_config in DATABASES.values():
+    # A restore (core/restore.py) ends every other session: a reused connection is
+    # checked first and replaced, instead of failing the request that picks it up.
+    db_config['CONN_HEALTH_CHECKS'] = True
     if db_config.get('ENGINE') == 'django.db.backends.postgresql':
         db_config.setdefault('OPTIONS', {})
         db_config['OPTIONS'].setdefault('sslmode', _DEFAULT_SSL_MODE)
