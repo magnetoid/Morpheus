@@ -100,7 +100,7 @@ def _body(response) -> str:
 def http_get(url: str, timeout: float = 15) -> tuple[int, str]:
     request = urllib.request.Request(url, headers={'User-Agent': 'morpheus-deploy-guard'})  # noqa: S310 — configured https URLs
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 — configured https URLs
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310  # nosec B310 — configured https URLs
             return response.status, response.read().decode('utf-8', 'replace')
     except urllib.error.HTTPError as exc:
         return exc.code, _body(exc)
@@ -112,7 +112,7 @@ def http_get(url: str, timeout: float = 15) -> tuple[int, str]:
 def http_post(url: str, body: bytes, headers: dict, timeout: float = 30) -> tuple[int, str]:
     request = urllib.request.Request(url, data=body, headers=headers, method='POST')  # noqa: S310 — the configured webhook
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 — the configured webhook
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310  # nosec B310 — the configured webhook
             return response.status, response.read().decode('utf-8', 'replace')
     except urllib.error.HTTPError as exc:
         return exc.code, _body(exc)
