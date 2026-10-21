@@ -144,9 +144,10 @@ def latest_predeploy_backup() -> dict | None:
 def running_release() -> dict:
     """What this store runs, for Settings → Version & updates and Linda's
     ``updates.status``: version, commit, when it was installed, the newest
-    pre-deploy backup, and whether it can update itself."""
+    pre-deploy backup, whether it can update itself, and how the last restore ended."""
     from django.conf import settings
 
+    from core import restore
     from core.models import DeployEvent
     from core.updates import can_self_update
 
@@ -159,4 +160,5 @@ def running_release() -> dict:
         'deployed_at': event.deployed_at if event else None,
         'backup': latest_predeploy_backup(),
         'self_update': can_self_update(),
+        'last_restore': restore.last(),
     }

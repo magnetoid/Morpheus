@@ -1,0 +1,33 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Restore a backup · Morpheus{% endblock %}
+
+{% block content %}
+<div class="mx-auto space-y-6">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Restore a backup</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">{{ kind_label }} backup from {{ backup.taken_at|date:"j M Y, H:i" }}{% if backup.label %} ({{ backup.label }}){% endif %}, {{ backup.size|filesizeformat }}.</p>
+  </div>
+
+  <div class="card card-padded text-sm space-y-3" data-testid="restore-losses">
+    <p class="font-semibold">Everything saved since {{ backup.taken_at|date:"j M Y, H:i" }} is replaced.{% if lost %} That includes {{ lost }}.{% endif %}</p>
+    {% if not lost %}<p class="text-[color:var(--text-muted)]">No orders, customers or products have changed since then. Anything else saved since is replaced too.</p>{% endif %}
+    <ul class="list-disc pl-5 space-y-1">
+      <li>The store first backs up its data as it is now, so you can undo this from "Before a restore" on Version &amp; updates.</li>
+      <li>While it runs, a minute or two, everyone sees a "restoring" page, you included.</li>
+      <li>Photos and other files are not touched.</li>
+      <li>You may need to sign in again afterwards.</li>
+    </ul>
+  </div>
+
+  <form method="post" class="card card-padded space-y-3" hx-boost="false">
+    {% csrf_token %}
+    <label class="block text-sm" for="restore-confirm">To confirm, type the store's name: <strong>{{ store_name }}</strong></label>
+    <input id="restore-confirm" name="confirm" type="text" class="input w-full" autocomplete="off" required>
+    {% if error %}<p class="text-sm text-[color:var(--danger)]" data-testid="restore-error">{{ error }}</p>{% endif %}
+    <div class="flex items-center gap-2">
+      <button type="submit" class="btn btn-danger"><i data-lucide="history" class="h-4 w-4"></i> Restore this backup</button>
+      <a class="btn btn-ghost" href="{{ version_page }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

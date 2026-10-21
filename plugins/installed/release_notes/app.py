@@ -48,6 +48,11 @@ class ReleaseNotesPlugin(Plugin):
         self.register_urls(
             'plugins.installed.release_notes.urls', prefix='dashboard/help/', namespace='help'
         )
+        self.register_urls(
+            'plugins.installed.release_notes.restore_urls',
+            prefix='dashboard/restore/',
+            namespace='restore',
+        )
         self.register_hook(MorpheusEvents.DASHBOARD_USER_MENU, self.on_user_menu)
         self.register_hook(MorpheusEvents.DASHBOARD_PAGE_HELP, self.on_page_help)
         self.register_hook(MorpheusEvents.AGENT_SYSTEM_PROMPT, self.on_system_prompt, priority=60)

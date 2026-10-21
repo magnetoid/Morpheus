@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import html as _html
 import re
+from datetime import datetime
 from pathlib import Path
 
 from django.conf import settings
@@ -112,6 +113,19 @@ def parse_releases(raw: str) -> list[dict]:
     return out
 
 
+def _with_times(record: dict | None) -> dict | None:
+    """A restore record with its ISO times as datetimes, for the |date filter."""
+    if not record:
+        return record
+    out = dict(record)
+    for key in ('started_at', 'finished_at', 'taken_at'):
+        try:
+            out[key] = datetime.fromisoformat(out[key]) if out.get(key) else None
+        except (TypeError, ValueError):
+            out[key] = None
+    return out
+
+
 @staff_member_required
 @require_capability('system.read')
 def version_updates(request):
@@ -132,6 +146,7 @@ def version_updates(request):
             releases = []
 
     # Updater status — core-owned, no network call on load (last check / daily beat).
+    from core import restore
     from core.deploys import running_release
     from core.updates import cached_update_status, platform_update_status
     from core.versioning import component_versions
@@ -154,6 +169,12 @@ def version_updates(request):
             'platform': platform,
             'component_updates': component_updates,
             'self_update_enabled': bool(getattr(settings, 'MORPHEUS_SELF_UPDATE_ENABLED', False)),
+            'show_backups': request.user.is_superuser,
+            'backups': restore.backups() if request.user.is_superuser else [],
+            'restore_last': _with_times(restore.last()) if request.user.is_superuser else None,
+            'restore_stalled': _with_times(restore.stalled())
+            if request.user.is_superuser
+            else None,
         },
     )
 

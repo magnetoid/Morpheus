@@ -95,8 +95,15 @@ class RunningReleaseTests(_BackupFolderMixin, TestCase):
                 'deployed_at': when,
                 'backup': None,
                 'self_update': False,
+                'last_restore': None,
             },
         )
 
     def test_before_any_record_the_install_time_is_blank(self):
         self.assertIsNone(running_release()['deployed_at'])
+
+    def test_the_last_restore_is_part_of_the_release_record(self):
+        folder = self.root / 'restore'
+        folder.mkdir()
+        (folder / 'last.json').write_text('{"state": "done", "file": "x.tar.gz"}')
+        self.assertEqual(running_release()['last_restore'], {'state': 'done', 'file': 'x.tar.gz'})

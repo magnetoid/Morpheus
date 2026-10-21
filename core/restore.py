@@ -28,6 +28,7 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 import tarfile
 import tempfile
 import threading
@@ -372,3 +373,58 @@ def losses(since: datetime) -> list[dict]:
 
     rows = hook_registry.filter(MorpheusEvents.RESTORE_LOSSES, [], since=since) or []
     return [row for row in rows if isinstance(row, dict) and row.get('count')]
+
+
+def backups() -> list[dict]:
+    """The backups the restore screen offers, newest first: nightly, made before
+    an update that changed the database, and made before a restore. Only from
+    MORPHEUS_BACKUP_DIR: staff and Linda can change the backups app's folder
+    setting, and a restore trusts its file completely."""
+    found = []
+    root = deploys.backup_root()
+    for kind, sub in KINDS.items():
+        folder = root / sub if sub else root
+        for path in folder.glob('morpheus-backup-*.tar.gz'):
+            info = deploys.describe_backup(path)
+            if info:
+                found.append({**info, 'kind': kind, 'path': path})
+    return sorted(found, key=lambda b: b['taken_at'], reverse=True)
+
+
+def find(kind: str, name: str) -> dict | None:
+    """The listed backup a screen names by kind and file name, never by path."""
+    for backup in backups():
+        if backup['kind'] == kind and backup['name'] == name:
+            return backup
+    return None
+
+
+def spawn(archive: Path, *, confirm: str, by: str, reload_pid: int = 0) -> None:
+    """Start ``manage.py morph_restore`` detached from the request, so it outlives
+    the request and the worker that served it. Its output goes to
+    restore/restore.log."""
+    from django.conf import settings
+
+    folder = state_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    argv = [
+        sys.executable,
+        str(Path(settings.BASE_DIR) / 'manage.py'),
+        'morph_restore',
+        str(archive),
+        '--confirm',
+        confirm,
+        '--by',
+        by,
+    ]
+    if reload_pid:
+        argv += ['--reload-web', str(reload_pid)]
+    with open(folder / 'restore.log', 'ab') as log:
+        subprocess.Popen(  # noqa: S603 — a fixed command, no shell
+            argv,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            cwd=settings.BASE_DIR,
+            start_new_session=True,
+        )

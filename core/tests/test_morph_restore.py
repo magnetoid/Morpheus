@@ -289,3 +289,25 @@ class RunTests(_Folder, TestCase):
         self.calls.restore.side_effect = lambda dump: seen.append(restore.is_running())
         self._restore()
         self.assertEqual(seen, [True])
+
+
+class SpawnTests(_Folder, SimpleTestCase):
+    def test_the_restore_runs_detached_with_the_page_s_answers(self):
+        with patch('core.restore.subprocess.Popen') as popen:
+            restore.spawn(self.root / NAME, confirm='Test Shop', by='boss', reload_pid=42)
+        argv = popen.call_args.args[0]
+        self.assertEqual(
+            argv[2:],
+            [
+                'morph_restore',
+                str(self.root / NAME),
+                '--confirm',
+                'Test Shop',
+                '--by',
+                'boss',
+                '--reload-web',
+                '42',
+            ],
+        )
+        self.assertTrue(popen.call_args.kwargs['start_new_session'])
+        self.assertTrue((self.root / 'restore' / 'restore.log').exists())

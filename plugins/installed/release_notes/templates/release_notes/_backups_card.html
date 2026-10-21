@@ -1,0 +1,44 @@
+{% comment %}
+The backups this store can be restored from (safe deploys, part 4), for
+superusers only. Each row opens its restore screen, which says what the restore
+replaces and asks for the store's name.
+{% endcomment %}
+<div class="card overflow-hidden" data-testid="backups">
+  <div class="card-padded border-b border-[color:var(--border)]">
+    <h2 class="font-semibold text-sm">Backups</h2>
+    <p class="text-sm text-[color:var(--text-muted)]">Put the store's data back as it was when one of these was made. Photos and other files are not touched.</p>
+  </div>
+  {% if restore_stalled %}
+  <div class="card-padded text-sm border-b border-[color:var(--border)]" data-testid="restore-stalled">
+    A restore of {{ restore_stalled.file|default:"a backup" }}{% if restore_stalled.started_at %}, started {{ restore_stalled.started_at|date:"j M Y, H:i" }},{% endif %} did not report back. A restore changes everything or nothing, so the store holds either that backup's data or what it had before. Check, and restore again if you need to.
+  </div>
+  {% elif restore_last %}
+  <div class="card-padded text-sm border-b border-[color:var(--border)]" data-testid="restore-last">
+    {% if restore_last.state == 'done' %}
+      Last restore: {{ restore_last.file }}{% if restore_last.by %}, by {{ restore_last.by }}{% endif %}{% if restore_last.finished_at %}, finished {{ restore_last.finished_at|date:"j M Y, H:i" }}{% endif %}. The data from before it is listed under "Before a restore".
+      {% if restore_last.missing %}<br>The running version needs database changes this backup does not have: {{ restore_last.missing|join:", " }}. Redeploy the store to apply them.{% endif %}
+      <br>Restart the store's worker and beat, so background jobs read the restored data.
+    {% else %}
+      The last restore, {{ restore_last.file }}, failed and changed nothing: {{ restore_last.error }}
+    {% endif %}
+  </div>
+  {% endif %}
+  {% if backups %}
+  <table class="morph-table morph-table-zebra">
+    <thead><tr><th>Made</th><th>Kind</th><th>Version</th><th>Size</th><th></th></tr></thead>
+    <tbody>
+      {% for b in backups %}
+      <tr>
+        <td>{{ b.taken_at|date:"j M Y, H:i" }}</td>
+        <td>{% if b.kind == 'nightly' %}Nightly{% elif b.kind == 'pre-deploy' %}Before an update{% else %}Before a restore{% endif %}</td>
+        <td class="font-mono text-xs">{{ b.label|default:"—" }}</td>
+        <td>{{ b.size|filesizeformat }}</td>
+        <td class="text-right"><a class="btn btn-ghost text-sm" href="{% url 'restore:confirm' b.kind b.name %}">Restore…</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="card-padded text-sm text-[color:var(--text-muted)]">No backups on this store yet.</div>
+  {% endif %}
+</div>

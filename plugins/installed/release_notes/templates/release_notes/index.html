@@ -15,6 +15,7 @@
   </div>
 
   {% include "admin_dashboard/_updater_card.html" %}
+  {% if show_backups %}{% include "release_notes/_backups_card.html" %}{% endif %}
 
   {% if running.self_update %}
   {# Per-app / per-theme signed release channel — components installed on their own. #}
