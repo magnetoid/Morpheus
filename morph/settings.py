@@ -182,7 +182,6 @@ MORPHEUS_DEFAULT_APPS = [
     #   F3   journal                — block-editor story-telling CMS
     #   F4   brand_kit              — brand asset library + design tokens
     #   F8   discovery_quiz         — zero-party-data quiz funnel
-    #   F19  save_for_later         — save-for-later / wishlist upgrades
     #   F15  referrals              — Give-5, Get-5 customer referrals
     #   F12  smart_shipping         — live rates + carbon display
     #   F20  returns_portal         — returns as a retention surface
@@ -199,7 +198,6 @@ MORPHEUS_DEFAULT_APPS = [
     'plugins.installed.discovery_quiz',
     'plugins.installed.staff_mfa',
     'plugins.installed.staff_sso',
-    'plugins.installed.save_for_later',
     'plugins.installed.returns_portal',
     'plugins.installed.lookbook',
     'plugins.installed.post_checkout_upsell',

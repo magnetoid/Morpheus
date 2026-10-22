@@ -44,7 +44,6 @@
     "pwa:models.has_models_flag",
     "rbac:tests.missing",
     "returns_portal:tests.missing",
-    "save_for_later:tests.missing",
     "store_bootstrap:tests.missing",
     "storefront:structure.apps",
     "ugc_reviews:tests.missing",
