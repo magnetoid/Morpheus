@@ -1,16 +1,20 @@
-"""core.migration_ops.DropLeftoverModel: a removed app's table goes when it is there and
-empty (apps consolidation, Wave 1)."""
+"""core.migration_ops: a removed app's table goes when it is there and empty
+(DropLeftoverModel), and leftover_table_drops and forget_apps build the migration that
+drops it (apps consolidation)."""
 
 from __future__ import annotations
 
 from unittest import skipIf
 
+from django.apps import apps as django_apps
 from django.db import connection, migrations, models
+from django.db.migrations.recorder import MigrationRecorder
 from django.db.migrations.state import ModelState, ProjectState
 from django.test import TransactionTestCase
 
 from core import migration_safety
-from core.migration_ops import DropLeftoverModel
+from core.migration_ops import DropLeftoverModel, forget_apps, leftover_table_drops
+from plugins.models import PluginConfig
 
 TABLE = 'wave1_leftover_probe'
 PARENT = 'wave1_leftover_parent'
@@ -71,6 +75,26 @@ class DropLeftoverModelTests(TransactionTestCase):
         review = migration_safety.review(migration, _state())
         self.assertTrue(review.blocks)
 
+    def test_leftover_table_drops_drop_a_table_that_is_there_and_empty(self):
+        self._create()
+        state = ProjectState()
+        with connection.schema_editor() as editor:
+            for operation in leftover_table_drops({'LeftoverProbe': TABLE}):
+                after = state.clone()
+                operation.state_forwards('plugins', after)
+                operation.database_forwards('plugins', editor, state, after)
+                state = after
+        self.assertNotIn(TABLE, connection.introspection.table_names())
+
+    def test_the_gate_sees_every_drop_leftover_table_drops_makes(self):
+        migration = migrations.Migration('0099_probe', 'plugins')
+        migration.operations = leftover_table_drops(
+            {'LeftoverOne': 'probe_one', 'LeftoverTwo': 'probe_two'}
+        )
+        review = migration_safety.review(migration, ProjectState())
+        self.assertTrue(review.blocks)
+        self.assertEqual(len(review.findings), 2)
+
 
 def _linked_state(*, child=True) -> ProjectState:
     state = ProjectState()
@@ -124,3 +148,24 @@ class KeptLeftoverForeignKeyTests(TransactionTestCase):
         with connection.cursor() as cursor:
             cursor.execute(f'SELECT count(*) FROM {CHILD}')  # noqa: S608  # nosec B608 — the test's own table
             self.assertEqual(cursor.fetchone()[0], 1)
+
+
+class ForgetAppsTests(TransactionTestCase):
+    """forget_apps: an app that left the code leaves no migration history or switch behind,
+    and every other app keeps its own."""
+
+    def test_only_the_named_apps_are_forgotten(self):
+        recorder = MigrationRecorder(connection)
+        recorder.record_applied('wave2_gone', '0001_initial')
+        self.addCleanup(recorder.migration_qs.filter(app='wave2_gone').delete)
+        PluginConfig.objects.create(plugin_name='wave2_gone', is_enabled=False)
+        PluginConfig.objects.create(plugin_name='wave2_kept')
+        wishlist_rows = recorder.migration_qs.filter(app='wishlist').count()
+
+        with connection.schema_editor() as editor:
+            forget_apps('wave2_gone')(django_apps, editor)
+
+        self.assertFalse(recorder.migration_qs.filter(app='wave2_gone').exists())
+        self.assertEqual(recorder.migration_qs.filter(app='wishlist').count(), wishlist_rows)
+        names = PluginConfig.objects.filter(plugin_name__in=['wave2_gone', 'wave2_kept'])
+        self.assertEqual(list(names.values_list('plugin_name', flat=True)), ['wave2_kept'])

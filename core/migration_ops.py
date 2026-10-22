@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 
-from django.db import migrations
+from django.db import migrations, models
 
 logger = logging.getLogger('morpheus.migrations')
 
@@ -46,3 +46,37 @@ class DropLeftoverModel(migrations.DeleteModel):
 
     def describe(self):
         return f'Drop the leftover table of {self.name} when it is there and empty'
+
+
+def leftover_table_drops(tables: dict[str, str]) -> list:
+    """The operations that drop a removed app's leftover tables, for a ``plugins`` app
+    migration: each table enters this migration's state as an id-only model (its own app's
+    state left with the app), then ``DropLeftoverModel`` drops it when it is there and
+    empty. ``tables`` maps a name in this state to the table; name children first."""
+    return [
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.CreateModel(
+                    name=name,
+                    fields=[('id', models.BigAutoField(primary_key=True))],
+                    options={'db_table': table},
+                )
+                for name, table in tables.items()
+            ],
+        ),
+        *[DropLeftoverModel(name=name) for name in tables],
+    ]
+
+
+def forget_apps(*labels: str):
+    """A ``RunPython`` function that deletes what ``django_migrations`` and ``PluginConfig``
+    still hold for apps that left the code: an app given one of these names later starts
+    from 0001, and no switch is left for an app that is gone."""
+
+    def forget(apps, schema_editor):
+        from django.db.migrations.recorder import MigrationRecorder  # noqa: PLC0415
+
+        MigrationRecorder(schema_editor.connection).migration_qs.filter(app__in=labels).delete()
+        apps.get_model('plugins', 'PluginConfig').objects.filter(plugin_name__in=labels).delete()
+
+    return forget
