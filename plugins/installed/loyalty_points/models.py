@@ -44,10 +44,11 @@ class PointsTransaction(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# Tiered status (Bronze/Silver/Gold), referral tracking, RFM segments
+# Tiered status (Bronze/Silver/Gold) and RFM segments
 # Added v1.1.0 — sprint priority #13. Loyalty is no longer just points;
-# it's tier-driven status + referral-attributed acquisition + RFM-based
-# segmentation feeding email + storefront personalisation.
+# it's tier-driven status + RFM-based segmentation feeding email +
+# storefront personalisation. (Referral tracking left in v0.122.0:
+# nothing ever created a referral.)
 # ---------------------------------------------------------------------------
 
 
@@ -107,58 +108,6 @@ class CustomerTier(models.Model):
 
     def __str__(self) -> str:
         return f'{self.customer_id} → {self.tier_id}'
-
-
-REFERRAL_STATUS = (
-    ('pending', 'Pending'),
-    ('qualified', 'Qualified'),
-    ('rewarded', 'Rewarded'),
-    ('expired', 'Expired'),
-)
-
-
-class Referral(models.Model):
-    """One row per (referrer, referee) pair.
-
-    Flow: referrer shares their code; referee signs up via the code →
-    `Referral.pending` row created. Referee places their first order →
-    transition to `qualified`. On qualification we mint a points
-    transaction for each side (referrer reward + referee discount) and
-    transition to `rewarded`.
-    """
-
-    referrer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='referrals_made',
-    )
-    referee = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='referrals_received',
-    )
-    code = models.CharField(max_length=32, db_index=True)
-    status = models.CharField(
-        max_length=16, choices=REFERRAL_STATUS, default='pending', db_index=True
-    )
-    qualifying_order_number = models.CharField(max_length=40, blank=True, default='')
-    referrer_reward_points = models.PositiveIntegerField(default=0)
-    referee_reward_points = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
-    qualified_at = models.DateTimeField(null=True, blank=True)
-    rewarded_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        db_table = 'loyalty_referral'
-        constraints = [
-            models.UniqueConstraint(
-                fields=['referrer', 'referee'], name='loyalty_referral_unique_pair'
-            ),
-        ]
-        ordering = ['-created_at']
-
-    def __str__(self) -> str:
-        return f'{self.referrer_id} → {self.referee_id} ({self.status})'
 
 
 class CustomerRFM(models.Model):

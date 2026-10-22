@@ -133,7 +133,7 @@ def _gather_all_uncached() -> dict[str, Any]:
 
     Core owns plugin health, the error-log + code-quality signals, and the
     setup checklist. Every *plugin-owned* slice — SEO/content audits, catalog
-    gaps, Core Web Vitals, merchant insights, the daily AI reports — is merged
+    gaps, Core Web Vitals, merchant insights — is merged
     in by its plugin through the BRAIN_SIGNALS filter, so the kernel imports no
     plugin model and a disabled contributor's Brain panel simply vanishes.
     """
@@ -146,7 +146,6 @@ def _gather_all_uncached() -> dict[str, Any]:
         'content': {'available': True},
         'storefront': {'available': True},
         'improvements': _setup_signal(),
-        'reports': {'available': False},
     }
     return hook_registry.filter(MorpheusEvents.BRAIN_SIGNALS, value=data)
 

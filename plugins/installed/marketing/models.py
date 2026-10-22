@@ -1,6 +1,6 @@
 """
 Morpheus CMS - Marketing Models
-Coupons, Discounts, Email Campaigns, SEO Redirects
+Coupons, Discounts, Email Campaigns
 """
 
 import uuid
@@ -80,26 +80,6 @@ class CouponUsage(models.Model):
 
     class Meta:
         unique_together = ('coupon', 'order')
-
-
-class Redirect(models.Model):
-    """301/302 URL redirects for SEO migrations."""
-
-    REDIRECT_TYPES = [('301', '301 Permanent'), ('302', '302 Temporary')]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    from_path = models.CharField(max_length=500, unique=True)
-    to_path = models.CharField(max_length=500)
-    redirect_type = models.CharField(max_length=3, choices=REDIRECT_TYPES, default='301')
-    is_active = models.BooleanField(default=True)
-    hits = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['from_path']
-
-    def __str__(self):
-        return f'{self.from_path} → {self.to_path}'
 
 
 class EmailCampaign(models.Model):

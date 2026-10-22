@@ -155,51 +155,6 @@ class AgentIntentEvent(models.Model):
         ]
 
 
-class AgentMemory(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    customer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='ai_memories',
-    )
-    agent_id = models.CharField(max_length=200, blank=True)
-    memory_type = models.CharField(
-        max_length=15,
-        choices=[
-            ('preference', 'Preference'),
-            ('constraint', 'Constraint'),
-            ('context', 'Life Context'),
-            ('relationship', 'Relationship'),
-            ('feedback', 'Feedback'),
-            ('behavior', 'Observed Behavior'),
-        ],
-    )
-    key = models.CharField(max_length=200)
-    value = models.JSONField()
-    confidence = models.FloatField(default=1.0)
-    source = models.CharField(
-        max_length=10,
-        choices=[
-            ('explicit', 'Customer Stated'),
-            ('inferred', 'Inferred from Behavior'),
-            ('agent', 'Set by AI Agent'),
-            ('purchase', 'Derived from Purchase'),
-        ],
-    )
-    expires_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['-confidence', '-updated_at']
-        indexes = [
-            models.Index(fields=['customer', 'memory_type']),
-            models.Index(fields=['agent_id']),
-        ]
-
-
 class AgentRegistration(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     agent_id = models.CharField(max_length=200, unique=True)
@@ -257,78 +212,6 @@ class AgentRegistration(models.Model):
         return Decimal(amount) <= (self.budget_limit_amount - (self.total_spend_amount or 0))
 
 
-class PromptTemplate(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=100)
-    prompt_type = models.CharField(
-        max_length=30,
-        choices=[
-            ('product_description', 'Product Description Generator'),
-            ('intent_parser', 'Intent Parser'),
-            ('semantic_search', 'Semantic Search Rewriter'),
-            ('cart_recovery', 'Cart Recovery Message'),
-            ('zero_shot_catalog', 'Zero-Shot Catalog'),
-            ('recommendation', 'Recommendation Explanation'),
-            ('merchant_insight', 'Merchant Insight Generator'),
-            ('chat_response', 'Customer Chat Response'),
-            ('dynamic_pricing', 'Dynamic Pricing Reasoning'),
-        ],
-    )
-    version = models.PositiveIntegerField(default=1)
-    template = models.TextField(help_text='Jinja2 template with {{variables}}')
-    system_message = models.TextField(blank=True)
-    model_override = models.CharField(max_length=100, blank=True)
-    temperature = models.FloatField(default=0.7)
-    max_tokens = models.PositiveIntegerField(default=1000)
-    is_active = models.BooleanField(default=True)
-    performance_score = models.FloatField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['name', '-version']
-        unique_together = ('name', 'version')
-
-
-class AIExperiment(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=200)
-    prompt_a = models.ForeignKey(
-        PromptTemplate, on_delete=models.CASCADE, related_name='experiments_a'
-    )
-    prompt_b = models.ForeignKey(
-        PromptTemplate, on_delete=models.CASCADE, related_name='experiments_b'
-    )
-    metric = models.CharField(
-        max_length=25,
-        choices=[
-            ('conversion_rate', 'Conversion Rate'),
-            ('click_through', 'Click-Through Rate'),
-            ('cart_add', 'Add-to-Cart Rate'),
-            ('revenue_per_session', 'Revenue Per Session'),
-            ('chat_satisfaction', 'Chat Satisfaction Score'),
-        ],
-    )
-    traffic_split = models.FloatField(default=0.5)
-    status = models.CharField(
-        max_length=10,
-        choices=[('running', 'Running'), ('concluded', 'Concluded'), ('paused', 'Paused')],
-        default='running',
-    )
-    winner = models.ForeignKey(
-        PromptTemplate,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='won_experiments',
-    )
-    started_at = models.DateTimeField(auto_now_add=True)
-    concluded_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        ordering = ['-started_at']
-
-
 class AIInteraction(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     interaction_type = models.CharField(
@@ -362,9 +245,6 @@ class AIInteraction(models.Model):
     )
     product = models.ForeignKey('catalog.Product', on_delete=models.SET_NULL, null=True, blank=True)
     order = models.ForeignKey('orders.Order', on_delete=models.SET_NULL, null=True, blank=True)
-    prompt_template = models.ForeignKey(
-        PromptTemplate, on_delete=models.SET_NULL, null=True, blank=True
-    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -373,23 +253,6 @@ class AIInteraction(models.Model):
             models.Index(fields=['interaction_type', 'created_at']),
             models.Index(fields=['customer', 'created_at']),
         ]
-
-
-class DemandForecast(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    product_variant = models.ForeignKey(
-        'catalog.ProductVariant', on_delete=models.CASCADE, related_name='demand_forecasts'
-    )
-    forecast_date = models.DateField()
-    predicted_units = models.IntegerField()
-    confidence_low = models.IntegerField()
-    confidence_high = models.IntegerField()
-    model_version = models.CharField(max_length=50)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['forecast_date']
-        unique_together = ('product_variant', 'forecast_date', 'model_version')
 
 
 class MerchantInsight(models.Model):

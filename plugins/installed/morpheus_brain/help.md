@@ -17,4 +17,4 @@ There is nothing to switch on in [](page:brain). Most of it works without any AI
 - Click "Regenerate briefing" on the advisory tab for a fresh long-form write-up.
 
 ## Good to know
-This page only reads existing data; nothing here changes the store on its own. A "Daily Reports" tab is present but nothing currently fills it with new entries, so do not expect fresh ones there. Every other section degrades gracefully: a source that is switched off or has nothing to show simply says so instead of breaking the page.
+This page only reads existing data; nothing here changes the store on its own. Every section degrades gracefully: a source that is switched off or has nothing to show simply says so instead of breaking the page.

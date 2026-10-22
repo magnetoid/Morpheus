@@ -2,11 +2,11 @@
 contributed by plugins (arch-debt refactor, Phase 8a).
 
 core/brain/signals.py used to import seo/catalog/ai_assistant/morpheus_brain
-models directly. It now seeds the core-owned sections and fires the
+models directly (morpheus_brain contributed the daily reports until v0.122.0). It now seeds the core-owned sections and fires the
 BRAIN_SIGNALS filter; each plugin merges ITS OWN read-only slice. These tests
 prove the inversion is behaviour-preserving AND disable-safe:
 
-  * the four plugins each register a BRAIN_SIGNALS handler (owned → bus-gated);
+  * the three plugins each register a BRAIN_SIGNALS handler (owned → bus-gated);
   * gather_all() surfaces every contributed slice with all plugins active;
   * deactivating a contributor makes ITS slice vanish — the litmus test that the
     kernel imports no plugin model, so a disabled plugin's Brain panel goes away.
@@ -20,7 +20,7 @@ from core.brain import signals
 from morpheus.core import MorpheusEvents, hook_registry
 from plugins.registry import app_registry
 
-_OWNERS = {'seo', 'catalog', 'ai_assistant', 'morpheus_brain'}
+_OWNERS = {'seo', 'catalog', 'ai_assistant'}
 
 
 class BrainSignalsFilterTests(TestCase):
@@ -43,7 +43,7 @@ class BrainSignalsFilterTests(TestCase):
         }
         self.assertTrue(owners >= _OWNERS, f'missing: {_OWNERS - owners}')
 
-    def test_all_seven_sections_present_and_dicts(self):
+    def test_all_six_sections_present_and_dicts(self):
         data = self._fresh()
         for key in (
             'plugins',
@@ -52,7 +52,6 @@ class BrainSignalsFilterTests(TestCase):
             'content',
             'storefront',
             'improvements',
-            'reports',
         ):
             self.assertIn(key, data)
             self.assertIsInstance(data[key], dict)
@@ -71,8 +70,6 @@ class BrainSignalsFilterTests(TestCase):
         self.assertIn('catalog', data['content'])
         # ai_assistant slice — the seeded insight surfaces
         self.assertIn('Ship it', [i['title'] for i in data['improvements']['insights']])
-        # morpheus_brain slice — publishing flips available True
-        self.assertTrue(data['reports']['available'])
 
     def test_seo_slice_vanishes_when_seo_disabled(self):
         self.addCleanup(app_registry.activate, 'seo')
@@ -88,12 +85,6 @@ class BrainSignalsFilterTests(TestCase):
         self.assertIn('catalog', self._fresh()['content'])
         app_registry.deactivate('catalog')
         self.assertNotIn('catalog', self._fresh()['content'])
-
-    def test_reports_unavailable_when_morpheus_brain_disabled(self):
-        self.addCleanup(app_registry.activate, 'morpheus_brain')
-        self.assertTrue(self._fresh()['reports']['available'])
-        app_registry.deactivate('morpheus_brain')
-        self.assertFalse(self._fresh()['reports']['available'])
 
     def test_ai_insight_slice_vanishes_when_ai_assistant_disabled(self):
         self._seed_insight()

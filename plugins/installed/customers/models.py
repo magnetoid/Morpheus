@@ -151,29 +151,6 @@ class Address(models.Model):
         super().save(*args, **kwargs)
 
 
-class WishList(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    customer = models.OneToOneField(Customer, on_delete=models.CASCADE, related_name='wishlist')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f'Wishlist of {self.customer.email}'
-
-
-class WishListItem(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    wishlist = models.ForeignKey(WishList, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey('catalog.Product', on_delete=models.CASCADE)
-    added_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ('wishlist', 'product')
-
-    def __str__(self):
-        return f'{self.product.name} in {self.wishlist}'
-
-
 class CustomerSegment(models.Model):
     """RFM scorecard + segment for one customer, recomputed nightly.
 
