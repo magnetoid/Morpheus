@@ -51,15 +51,13 @@ class CoreCaptureTests(TestCase):
 
 class ObservabilityShimTests(TestCase):
     def test_plugin_record_error_forwards_to_core(self):
-        from plugins.installed.observability.models import ErrorEvent as PluginErrorEvent
         from plugins.installed.observability.services import record_error as plugin_record_error
 
         plugin_record_error(
             source='api.rest', message='legacy call', stack_trace='trace', metadata={'k': 'v'}
         )
-        # Lands in the CORE table, NOT the retired plugin table.
+        # Lands in the CORE table (the plugin's own ErrorEvent left in v0.122.0).
         self.assertEqual(ErrorEvent.objects.count(), 1)
-        self.assertEqual(PluginErrorEvent.objects.count(), 0)
         ev = ErrorEvent.objects.get()
         self.assertEqual(ev.metadata.get('source'), 'api.rest')
         self.assertEqual(ev.metadata.get('k'), 'v')
