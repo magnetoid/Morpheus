@@ -4212,3 +4212,19 @@ msgstr "Približni rezultati"
 
 msgid "Popular categories"
 msgstr "Popularne kategorije"
+
+# ── Wishlist (the wishlist app's own pages) ──
+msgid "Saved for later"
+msgstr "Sačuvano za kasnije"
+
+msgid "Nothing saved yet."
+msgstr "Još ništa nije sačuvano."
+
+msgid "Browse the shop"
+msgstr "Pregledajte ponudu"
+
+msgid "Shared wishlist"
+msgstr "Podijeljena lista želja"
+
+msgid "Shared with you."
+msgstr "Podijeljeno s vama."

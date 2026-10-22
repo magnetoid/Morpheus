@@ -1,11 +1,12 @@
 {% extends "storefront/base.html" %}
+{% load i18n %}
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">
   <div class="wrap" style="max-width: 720px;">
-    <p class="eyebrow">Saved for later</p>
+    <p class="eyebrow">{% trans "Saved for later" %}</p>
     <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
-      Your wishlist<span class="text-accent">.</span>
+      {% trans "Your wishlist" %}<span class="text-accent">.</span>
     </h1>
 
     {% if items %}
@@ -20,15 +21,15 @@
         </div>
         <form method="post" action="/wishlist/remove/{{ item.id }}/">
           {% csrf_token %}
-          <button type="submit" class="btn btn-ghost" style="font-size: .85rem;">Remove</button>
+          <button type="submit" class="btn btn-ghost" style="font-size: .85rem;">{% trans "Remove" %}</button>
         </form>
       </div>
       {% endfor %}
     </div>
     {% else %}
     <div style="padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px;">
-      <p class="lede" style="margin: 0 auto 1rem;">No saved books yet.</p>
-      <a href="/products/" class="btn btn-primary">Browse the shelf</a>
+      <p class="lede" style="margin: 0 auto 1rem;">{% trans "Nothing saved yet." %}</p>
+      <a href="/products/" class="btn btn-primary">{% trans "Browse the shop" %}</a>
     </div>
     {% endif %}
   </div>

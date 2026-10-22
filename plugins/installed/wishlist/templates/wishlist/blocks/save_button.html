@@ -1,8 +1,8 @@
-{# PDP block: save-to-wishlist button. #}
+{% load i18n %}{# PDP block: save-to-wishlist button. #}
 <form method="post" action="/wishlist/add/" style="margin-top: 1rem;">
   {% csrf_token %}
   <input type="hidden" name="slug" value="{{ product.slug }}">
   <button type="submit" class="btn btn-ghost" style="font-size: 0.85rem;">
-    ♡ Save to wishlist
+    ♡ {% trans "Save to wishlist" %}
   </button>
 </form>

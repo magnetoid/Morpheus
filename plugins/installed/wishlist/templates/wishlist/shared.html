@@ -1,13 +1,14 @@
 {% extends "storefront/base.html" %}
+{% load i18n %}
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">
   <div class="wrap" style="max-width: 720px;">
-    <p class="eyebrow">Shared wishlist</p>
+    <p class="eyebrow">{% trans "Shared wishlist" %}</p>
     <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
       {{ wishlist.name }}<span class="text-accent">.</span>
     </h1>
-    <p class="lede" style="margin-bottom: 2rem;">A reading list, shared.</p>
+    <p class="lede" style="margin-bottom: 2rem;">{% trans "Shared with you." %}</p>
     <div class="grid-books">
       {% for item in items %}
       <a href="/products/{{ item.product.slug }}/" class="book">
