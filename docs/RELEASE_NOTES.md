@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.122.1 — 2026-10-22
+
+**The empty tables the removed apps left behind are dropped**
+
+- The tables the ten apps removed in v0.122.0 left behind are dropped when they are empty. One that still holds rows is kept, and the upgrade logs it; on Postgres it lets go of the customers, orders and channels its rows name, so those can still be deleted.
+- The Experiments app's own draft checkout_flow experiment, which no visitor ever saw, is deleted first, so it keeps no table.
+- The tables of the dead models in the apps that stay are dropped whatever they hold, the old error log's rows included.
+
 ## v0.122.0 — 2026-10-22
 
 **Ten apps that stored nothing and showed nothing are gone**
