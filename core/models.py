@@ -295,8 +295,7 @@ class ExchangeRate(models.Model):
     """A snapshot rate from `base` → `quote` currency (e.g. USD → EUR).
 
     Used by storefront context processor to display prices in the
-    visitor's chosen currency. Rates are merchant-managed (or pulled by
-    a daily celery task — see plugins.installed.environments).
+    visitor's chosen currency. Rates are merchant-managed.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

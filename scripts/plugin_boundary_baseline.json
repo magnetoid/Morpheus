@@ -207,10 +207,6 @@
     },
     {
       "importer": "dynamics",
-      "target": "experiments"
-    },
-    {
-      "importer": "dynamics",
       "target": "inventory"
     },
     {

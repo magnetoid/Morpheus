@@ -1,9 +1,8 @@
 """dynamics — the AI merchandiser autopilot.
 
 A nightly, propose-only merchandiser. It reads the store's OWN signals — which
-blocks are live, the bandit's per-segment winners, the propensity distribution,
-and running-experiment results — and files ``MerchandisingProposal`` rows into a
-human-checkpoint review queue. Nothing is applied automatically; a staff member
+blocks are live, the bandit's per-segment winners, the propensity distribution
+— and files ``MerchandisingProposal`` rows into a human-checkpoint review queue. Nothing is applied automatically; a staff member
 Approves (which runs a low-risk config action) or Dismisses each one.
 
 "AI" without the LLM in the hot path: proposals are generated deterministically
@@ -64,7 +63,6 @@ def generate_proposals() -> dict:
     drafts: list[dict] = []
     drafts.extend(_autopilot_draft())
     drafts.extend(_feature_drafts())
-    drafts.extend(_experiment_drafts())
     _enrich_with_llm(drafts)
     created = _persist(drafts)
     applied = _auto_apply_actionables() if created and _auto_apply_enabled() else 0
@@ -146,38 +144,6 @@ def _feature_drafts() -> list[dict]:
             'signature': 'feature_products',
         }
     ]
-
-
-def _experiment_drafts() -> list[dict]:
-    """Surface any running experiment whose variant is significantly beating
-    control — an informational insight consuming experiments.results_for()."""
-    try:
-        from plugins.installed.experiments.models import Experiment
-        from plugins.installed.experiments.services import results_for
-    except Exception:  # noqa: BLE001 — experiments plugin disabled
-        return []
-    out: list[dict] = []
-    for exp in Experiment.objects.filter(status='running')[:20]:
-        try:
-            res = results_for(exp)
-        except Exception:  # noqa: BLE001, S112 — one bad experiment must not stop the rest
-            continue
-        variants = [v for v in (res.get('variants') or []) if v.get('significant_95')]
-        winner = max(variants, key=lambda v: v.get('lift_pct') or 0, default=None)
-        if winner and (winner.get('lift_pct') or 0) > 0:
-            out.append(
-                {
-                    'kind': 'winning_strategy',
-                    'title': f'"{exp.key}": {winner.get("name")} is winning',
-                    'rationale': (
-                        f'Variant "{winner.get("name")}" is beating control by '
-                        f'{winner.get("lift_pct")}% (95% significant). Consider rolling it out.'
-                    ),
-                    'payload': {'experiment': exp.key, 'variant': winner.get('name')},
-                    'signature': f'winning_strategy:{exp.key}',
-                }
-            )
-    return out
 
 
 def _enrich_with_llm(drafts: list[dict]) -> None:

@@ -49,9 +49,3 @@ class NoSessionForVisitorsTests(TestCase):
     def test_a_shopper_still_gets_a_recently_viewed_list(self):
         self.client.get('/products/visit-probe/', HTTP_USER_AGENT=_BROWSER)
         self.assertEqual(self.client.session.get('recently_viewed'), ['visit-probe'])
-
-    def test_the_environments_middleware_is_not_in_the_stack(self):
-        self.assertNotIn(
-            'plugins.installed.environments.middleware.EnvironmentMiddleware',
-            settings.MIDDLEWARE,
-        )

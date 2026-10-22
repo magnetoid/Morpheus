@@ -31,12 +31,6 @@ from plugins.registry import app_registry
 #: Slots a plugin contributes but the active theme intentionally does not render.
 #: Each entry needs a reason — an allow-list without one is just a muted alarm.
 _INTENTIONALLY_UNRENDERED = {
-    # journal/blocks/post.html is a COMPLETE alternative post renderer (it takes
-    # `post` + `blocks`). dot_books renders journal posts itself from `entry`,
-    # so emitting this slot would double-render the article — and render it
-    # empty, since the theme passes no `post`. The slot exists for themes that
-    # would rather the plugin own the page.
-    'journal': 'dot_books renders journal posts itself; slot is for other themes',
     # dynamics offers a THEME-AGNOSTIC slot menu (SLOT_CHOICES) and registers a
     # renderer for each entry, so it contributes this even though dot_books
     # deliberately dropped the slot (its editor's-pick hero leads the page).

@@ -120,15 +120,14 @@ class RemappedPanelsRenderTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         html = resp.content.decode()
         for label in self._panel_labels(
-            'agentic_checkout', 'one_click', 'post_checkout_upsell', 'returns_portal'
+            'agentic_checkout', 'post_checkout_upsell', 'returns_portal'
         ):
             self.assertIn(label, html)
 
     def test_remaining_remaps_land_on_their_pages(self):
-        # Where the five panels live since the v0.81.0 re-filing
+        # Where the four panels live since the v0.81.0 re-filing
         # (docs/plans/dashboard-hubs-2026-10.md).
         for url, plugin_name in [
-            ('/dashboard/settings/storefront/', 'journal'),
             ('/dashboard/settings/payments/', 'fraud_rules'),
             ('/dashboard/settings/marketing/', 'post_purchase'),
             ('/dashboard/settings/storefront/', 'trust_signals'),
