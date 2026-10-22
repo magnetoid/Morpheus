@@ -85,7 +85,7 @@ It has no URLs, views, settings, beat jobs, hooks, Janus tools or GraphQL. Nothi
 5. **Owner, 2026-10-23: wishlist's pages use wording that fits any shop, not the bookshop's.**
    - "No saved books yet", "Browse the shelf" and "A reading list, shared." go.
    - dot_books shows the same words as every other store; a theme can still override a page.
-   - Every string is marked for translation, with a Serbian entry, because Montenegro serves `/sr/` and renders the shared page and the product-page button. Its main wishlist page is its own override and is untouched.
+   - Every string is marked for translation, with a Serbian entry. Montenegro serves `/sr/`, where the product-page button renders in Serbian. The wishlist pages have no Serbian address yet, because their URLs are mounted as chrome, so their entries wait for one. Montenegro's main wishlist page is its own override and is untouched.
 
 ## Files
 
@@ -265,7 +265,8 @@ class WishlistWordingTests(TestCase):
 
 
 class WishlistTranslationTests(SimpleTestCase):
-    """Montenegro serves /sr/ and renders the shared page and the product-page button."""
+    """Montenegro serves /sr/, where the product-page button renders. The wishlist pages have
+    no Serbian address yet (their URLs are chrome), so their strings wait for one."""
 
     def test_every_string_is_marked_and_has_a_serbian_translation(self):
         catalog = trans_real.translation('sr')._catalog

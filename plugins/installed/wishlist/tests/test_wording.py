@@ -50,7 +50,8 @@ class WishlistWordingTests(TestCase):
 
 
 class WishlistTranslationTests(SimpleTestCase):
-    """Montenegro serves /sr/ and renders the shared page and the product-page button."""
+    """Montenegro serves /sr/, where the product-page button renders. The wishlist pages have
+    no Serbian address yet (their URLs are chrome), so their strings wait for one."""
 
     def test_every_string_is_marked_and_has_a_serbian_translation(self):
         catalog = trans_real.translation('sr')._catalog
