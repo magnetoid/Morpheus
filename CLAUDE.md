@@ -1815,9 +1815,17 @@ died before Python ran, or when the release put back predates v0.121.0: neither 
   - both marked `morpheus_contract`.
 - `DropLeftoverModel` is a `DeleteModel`, so the gate sees it. It leaves a table that is not
   there (a store created later, the test database) and keeps one that still holds rows:
-  those belong to someone.
+  those belong to someone. A kept table loses its foreign keys on Postgres: no model knows
+  it any more, so nothing deletes its rows first, and a link would stop anyone deleting the
+  customer or order a row names.
 - Count the live rows before planning a removal. Wave 1 found the experiments app's own seed
   row on every store, and three journal posts on Supernatural that duplicated its CMS pages.
+  An app's own seed is on every other install too, so N+1 deletes it while untouched
+  (`plugins` 0002). Postgres refuses to drop a table whose foreign-key checks are still
+  pending in the same transaction, so a delete before a drop needs
+  `connection.check_constraints()` between them. Only the Postgres run of the test showed it.
+- N+1's contract covers the release before it. A deployment that skips N (the self-updater
+  jumps to the newest release) can go back past N only through its pre-deploy backup.
 - Search for every way the app is named, not only its import path: `{% load <library> %}` for
   each template tag library it ships, its URL namespace, its template paths. Wave 1's search
   matched quoted names and `app:` namespaces and missed `{% load experiments %}` in three cart

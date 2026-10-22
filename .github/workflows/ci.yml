@@ -111,12 +111,14 @@ jobs:
           MORPHEUS_EXTRA_APPS: plugins.installed.dsers,plugins.installed.zendrop,plugins.installed.cjdropshipping,plugins.installed.aliexpress
         run: python manage.py migrate --noinput
       - name: Postgres-only tests (skipped on the sqlite test job, so they never ran)
-        # Three tests are marked "postgres-only path" (a JSON __contains lookup,
-        # a checkout path); the test job runs on sqlite, so they skipped on
-        # every CI run since they were written. Run their modules here.
+        # Some tests are marked "postgres-only path" (a JSON __contains lookup,
+        # a checkout path, the links a kept leftover table drops); the test job
+        # runs on sqlite, so they skipped on every CI run since they were
+        # written. Run their modules here, with the leftover-table drops, which
+        # only Postgres refused (a table with foreign-key checks pending).
         env:
           DATABASE_URL: "postgres://postgres:postgres@localhost:5432/morph_ci?sslmode=disable"
-        run: python manage.py test plugins.installed.orders.tests.test_checkout plugins.installed.dynamics.tests.test_dynamic_products --noinput
+        run: python manage.py test plugins.installed.orders.tests.test_checkout plugins.installed.dynamics.tests.test_dynamic_products core.tests.test_migration_ops core.tests.test_removed_apps --noinput
 
   test:
     runs-on: ubuntu-latest

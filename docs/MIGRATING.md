@@ -6,6 +6,26 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.122.1 — the tables they left are dropped
+
+v0.122.1 drops the tables v0.122.0 left behind (listed below). The deploy backs the database
+up first (`/app/backups/pre-deploy`, when the image's `safe_migrate` runs the migrations).
+
+- A removed app's table goes only when it is empty. One that still holds rows is kept, the
+  upgrade logs it, and on Postgres it loses its foreign keys, so deleting a customer, order or
+  channel a kept row names still works. On SQLite it keeps them.
+- The experiments app's own seed, a draft `checkout_flow` experiment that no visitor was ever
+  assigned to or shown, is deleted first: on its own it does not keep the table.
+- The dead models' tables in the apps that stay go whatever they hold.
+
+**Going back.** These migrations assume the release before them is v0.122.0. From v0.122.1 you
+can go back to v0.122.0, but not to v0.121.0 or older: those find the tables gone. A deployment
+that goes from v0.121.0 or older straight to v0.122.1 (the self-updater fast-forwards to the
+newest release) can go back only by restoring its pre-deploy backup, then deploying the older
+version. Deploy v0.122.0 first to keep the way back.
+
+---
+
 ## v0.122.0 — ten apps are gone
 
 `one_click`, `rich_post_purchase`, `smart_shipping`, `referrals`, `experiments`, `functions`,

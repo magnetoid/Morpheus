@@ -7,7 +7,7 @@ before still runs on the schema. ``DropLeftoverModel`` is that second step: a
 ``morpheus_contract`` as it does for any other table it drops. It leaves a database
 alone when the table is not there (a store created after the app left, the test
 database) and keeps a table that still holds rows: they belong to someone, and a
-person decides what happens to them.
+person decides what happens to them. A kept table loses its foreign keys.
 """
 
 from __future__ import annotations
@@ -31,6 +31,12 @@ class DropLeftoverModel(migrations.DeleteModel):
         with connection.cursor() as cursor:
             cursor.execute(f'SELECT 1 FROM {schema_editor.quote_name(table)} LIMIT 1')  # noqa: S608  # nosec B608 — the migration's own table name
             if cursor.fetchone() is not None:
+                # The rows stay; their links go. No model knows the table now, so nothing
+                # deletes its rows first, and a link would stop anyone deleting the customer,
+                # order or channel a row names. SQLite cannot drop a constraint in place.
+                if connection.vendor != 'sqlite':
+                    for name in schema_editor._constraint_names(model, foreign_key=True):
+                        schema_editor.execute(schema_editor._delete_fk_sql(model, name))
                 logger.warning(
                     'migrations: %s still holds rows, so it is kept; nothing reads it any more',
                     table,

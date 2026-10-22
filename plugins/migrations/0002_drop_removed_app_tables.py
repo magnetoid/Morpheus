@@ -3,7 +3,8 @@
 v0.122.0 took the code out and left the tables, so the release before it still ran
 if a store was put back. Nothing has read them since. Each one goes when it is there
 and empty (core.migration_ops.DropLeftoverModel). The rows django_migrations and
-PluginConfig kept for those apps go too.
+PluginConfig kept for those apps go too. The experiments app's own seed goes first: it
+is not anyone's data, and it would keep that table on every install.
 """
 
 from django.db import migrations, models
@@ -45,6 +46,35 @@ REMOVED_APPS = (
 )
 
 
+#: is the seeded experiment known to anyone? Its visitors' assignments and exposures.
+_SEED_USED = {
+    'experiment_assignment': 'SELECT 1 FROM experiment_assignment LIMIT 1',
+    'experiment_exposure': 'SELECT 1 FROM experiment_exposure LIMIT 1',
+}
+
+
+def delete_the_untouched_seed(apps, schema_editor):
+    """The experiments app's 0002 seeded a draft `checkout_flow` experiment on every install.
+    While it is still a draft and no visitor was ever assigned to or shown an experiment,
+    nobody made it, so it does not keep the table; anything else does."""
+    connection = schema_editor.connection
+    tables = set(connection.introspection.table_names())
+    if 'experiment' not in tables:
+        return
+    with connection.cursor() as cursor:
+        for table, sql in _SEED_USED.items():
+            if table in tables:
+                cursor.execute(sql)
+                if cursor.fetchone() is not None:
+                    return
+        cursor.execute(
+            'DELETE FROM experiment WHERE "key" = %s AND status = %s', ['checkout_flow', 'draft']
+        )
+    # Postgres holds that delete's foreign-key checks until commit and will not drop a table
+    # with checks pending, so run them now; nothing points at the seed.
+    connection.check_constraints(table_names=['experiment'])
+
+
 def forget_the_removed_apps(apps, schema_editor):
     """Their django_migrations rows, so an app given one of these names later starts
     from 0001, and their switch rows, which the Apps catalogue no longer lists."""
@@ -72,6 +102,7 @@ class Migration(migrations.Migration):
                 for name, table in LEFTOVERS.items()
             ],
         ),
+        migrations.RunPython(delete_the_untouched_seed, migrations.RunPython.noop),
         *[DropLeftoverModel(name=name) for name in LEFTOVERS],
         migrations.RunPython(forget_the_removed_apps, migrations.RunPython.noop),
     ]
