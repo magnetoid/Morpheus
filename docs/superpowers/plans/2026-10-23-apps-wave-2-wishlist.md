@@ -82,6 +82,10 @@ It has no URLs, views, settings, beat jobs, hooks, Janus tools or GraphQL. Nothi
 2. **No new feature is built.** A working "save for later" from the cart, or price-drop alerts, would be a new wishlist feature with its own plan.
 3. **wishlist's guide stays as it is.** save_for_later's guide describes features that never existed, so there is nothing true to fold in.
 4. **Two helpers join `core/migration_ops.py`** for the remaining merges, each of which removes at least one app. v0.122.1's `plugins` 0002 stays as released.
+5. **Owner, 2026-10-23: wishlist's pages use wording that fits any shop, not the bookshop's.**
+   - "No saved books yet", "Browse the shelf" and "A reading list, shared." go.
+   - dot_books shows the same words as every other store; a theme can still override a page.
+   - Every string is marked for translation, with a Serbian entry, because Montenegro serves `/sr/` and renders the shared page and the product-page button. Its main wishlist page is its own override and is untouched.
 
 ## Files
 
@@ -90,6 +94,7 @@ Release A:
 - Modify: `morph/settings.py`: the `MORPHEUS_DEFAULT_APPS` line and the `F19` comment line.
 - Modify: `scripts/plugin_standard_baseline.json`, with `--save` (the entry `save_for_later:tests.missing` goes).
 - Modify: `core/tests/test_removed_apps.py`: `REMOVED` and the docstring.
+- Modify: `plugins/installed/wishlist/templates/wishlist/{wishlist,shared}.html`, `templates/wishlist/blocks/save_button.html`, and `locale/sr/LC_MESSAGES/django.{po,mo}`; test `plugins/installed/wishlist/tests/test_wording.py` (owner's wording rule).
 - Modify: `README.md`, `docs/MIGRATING.md`, `docs/plans/apps-consolidation-2026-10.md`.
 - The release tool modifies `docs/RELEASE_NOTES.md` and `MORPHEUS_VERSION`.
 
@@ -109,9 +114,12 @@ Release B:
 - [ ] **Step 1:** Confirm the branch: `git branch --show-current`. Expected: `feat/apps-wave-2-wishlist`, cut from `main` at d96a38e0 (v0.122.1).
 - [ ] **Step 2:** Run Appendix A on the four stores. Expected: the "What goes" numbers, with `registered: True` (the app is installed, switched off). **If any save_for_later table holds a row, stop:** those rows belong to someone, and this plan changes.
 
-### Task 2: Release A — save_for_later leaves the code
+### Task 2: Release A — save_for_later leaves the code, and wishlist speaks for any shop
 
-**Files:** delete `plugins/installed/save_for_later/`; modify `morph/settings.py`, `scripts/plugin_standard_baseline.json`; test `core/tests/test_removed_apps.py`.
+**Files:**
+- Delete: `plugins/installed/save_for_later/`.
+- Modify: `morph/settings.py`, `scripts/plugin_standard_baseline.json`, and wishlist's three templates plus the Serbian catalogue (Steps 7–12).
+- Test: `core/tests/test_removed_apps.py`, `plugins/installed/wishlist/tests/test_wording.py`.
 
 **Interfaces:**
 - Consumes: Task 1 (0 rows everywhere).
@@ -204,6 +212,140 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
 EOF
 ```
 
+- [ ] **Step 7: Write the failing tests for wishlist's wording** (owner, 2026-10-23). Create `plugins/installed/wishlist/tests/test_wording.py`:
+
+```python
+"""Wishlist's pages speak for any shop (owner, 2026-10-23), in every language a store serves.
+
+They carried the bookshop's words ("No saved books yet", "Browse the shelf", "A reading
+list, shared.") on every store but the one that overrides the wishlist page. The checks
+use whole phrases: the test theme's own copy is full of the word "book".
+"""
+
+from __future__ import annotations
+
+from decimal import Decimal
+from pathlib import Path
+
+from django.contrib.auth import get_user_model
+from django.template import engines
+from django.templatetags.i18n import TranslateNode
+from django.test import SimpleTestCase, TestCase
+from django.utils.translation import trans_real
+from djmoney.money import Money
+
+from plugins.installed.catalog.models import Product
+from plugins.installed.wishlist.services import add_item, get_or_create_wishlist, make_shareable
+
+TEMPLATES = Path(__file__).resolve().parents[1] / 'templates' / 'wishlist'
+BROWSER = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 Safari/605.1.15'
+
+
+class WishlistWordingTests(TestCase):
+    def test_an_empty_wishlist_speaks_for_any_shop(self):
+        body = self.client.get('/wishlist/', HTTP_USER_AGENT=BROWSER, follow=True).content.decode()
+        self.assertIn('Nothing saved yet.', body)
+        self.assertIn('Browse the shop', body)
+        self.assertNotIn('No saved books yet.', body)
+        self.assertNotIn('Browse the shelf', body)
+
+    def test_a_shared_wishlist_speaks_for_any_shop(self):
+        user = get_user_model().objects.create_user(
+            username='w@example.com', email='w@example.com', password='x'
+        )
+        product = Product.objects.create(
+            name='Lamp', slug='lamp', sku='L1', status='active', price=Money(Decimal('10'), 'USD')
+        )
+        wishlist = get_or_create_wishlist(customer=user)
+        add_item(wishlist=wishlist, product=product)
+        url = f'/wishlist/shared/{make_shareable(wishlist)}/'
+        body = self.client.get(url, HTTP_USER_AGENT=BROWSER, follow=True).content.decode()
+        self.assertIn('Shared with you.', body)
+        self.assertNotIn('A reading list, shared.', body)
+
+
+class WishlistTranslationTests(SimpleTestCase):
+    """Montenegro serves /sr/ and renders the shared page and the product-page button."""
+
+    def test_every_string_is_marked_and_has_a_serbian_translation(self):
+        catalog = trans_real.translation('sr')._catalog
+        engine = engines['django'].engine
+        msgids = [
+            str(node.filter_expression.var.literal).replace('%', '%%')
+            for path in sorted(TEMPLATES.rglob('*.html'))
+            for node in engine.from_string(path.read_text()).nodelist.get_nodes_by_type(
+                TranslateNode
+            )
+        ]
+        self.assertGreaterEqual(len(msgids), 8)
+        self.assertEqual([m for m in msgids if m not in catalog], [])
+```
+
+- [ ] **Step 8: Run it.**
+
+Run: `DATABASE_URL='sqlite:///:memory:' REDIS_URL='redis://127.0.0.1:6379/15' .venv/bin/python manage.py test plugins.installed.wishlist.tests.test_wording --noinput`
+
+Expected: FAIL, 3 failures:
+- `'Nothing saved yet.' not found`;
+- `'Shared with you.' not found`;
+- `0 not greater than or equal to 8`.
+
+- [ ] **Step 9: Change the three templates.**
+  - **`wishlist/wishlist.html`**:
+    - add `{% load i18n %}` under its `{% extends %}` line;
+    - `Saved for later` → `{% trans "Saved for later" %}`;
+    - `Your wishlist<span class="text-accent">.</span>` → `{% trans "Your wishlist" %}<span class="text-accent">.</span>`;
+    - `Remove` → `{% trans "Remove" %}`;
+    - `No saved books yet.` → `{% trans "Nothing saved yet." %}`;
+    - `Browse the shelf` → `{% trans "Browse the shop" %}`.
+  - **`wishlist/shared.html`**:
+    - add `{% load i18n %}`;
+    - `Shared wishlist` → `{% trans "Shared wishlist" %}`;
+    - `A reading list, shared.` → `{% trans "Shared with you." %}`.
+  - **`wishlist/blocks/save_button.html`**:
+    - start with `{% load i18n %}`;
+    - `♡ Save to wishlist` → `♡ {% trans "Save to wishlist" %}`.
+
+  The CSS classes stay, because all four themes style them.
+- [ ] **Step 10: Serbian entries.** Confirm the five new msgids are not in the catalogue yet: `grep -c '^msgid "\(Saved for later\|Nothing saved yet.\|Browse the shop\|Shared wishlist\|Shared with you.\)"$' locale/sr/LC_MESSAGES/django.po`. Expected: `0`. Then append to `locale/sr/LC_MESSAGES/django.po`:
+
+```
+# ── Wishlist (the wishlist app's own pages) ──
+msgid "Saved for later"
+msgstr "Sačuvano za kasnije"
+
+msgid "Nothing saved yet."
+msgstr "Još ništa nije sačuvano."
+
+msgid "Browse the shop"
+msgstr "Pregledajte ponudu"
+
+msgid "Shared wishlist"
+msgstr "Podijeljena lista želja"
+
+msgid "Shared with you."
+msgstr "Podijeljeno s vama."
+```
+
+Then compile it: `msgfmt --check-format -o locale/sr/LC_MESSAGES/django.mo locale/sr/LC_MESSAGES/django.po`. The committed `.mo` was compiled the same way: recompiling the unchanged `.po` gave identical bytes.
+
+- [ ] **Step 11: Run the tests again, and compile the templates.**
+
+```bash
+export DATABASE_URL='sqlite:///:memory:' REDIS_URL='redis://127.0.0.1:6379/15'
+.venv/bin/python manage.py test plugins.installed.wishlist plugins.installed.booking_marketplace.tests.test_serbian_catalog --noinput
+.venv/bin/python manage.py shell -c "from django.template.loader import get_template; [get_template(n) for n in ('wishlist/wishlist.html', 'wishlist/shared.html', 'wishlist/blocks/save_button.html')]; print('compiled')"
+```
+
+Expected: `OK`, then `compiled`.
+
+- [ ] **Step 12: Commit.**
+
+```bash
+git add plugins/installed/wishlist/templates/wishlist/wishlist.html plugins/installed/wishlist/templates/wishlist/shared.html plugins/installed/wishlist/templates/wishlist/blocks/save_button.html plugins/installed/wishlist/tests/test_wording.py locale/sr/LC_MESSAGES/django.po locale/sr/LC_MESSAGES/django.mo
+git commit -m "fix(wishlist): its pages speak for any shop, and in Serbian on Serbian pages" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+```
+
 ### Task 3: Release A — docs, the full suite, the release
 
 **Files:** `docs/MIGRATING.md`, `docs/plans/apps-consolidation-2026-10.md`, `README.md`; the release tool writes `docs/RELEASE_NOTES.md` and `morph/settings.py`.
@@ -240,13 +382,14 @@ v0.123.0, and its tables go in v0.123.1.
 DATABASE_URL='sqlite:///:memory:' REDIS_URL='redis://127.0.0.1:6379/15' MORPHEUS_EXTRA_APPS='plugins.installed.booking_marketplace,plugins.installed.dsers,plugins.installed.zendrop,plugins.installed.cjdropshipping,plugins.installed.aliexpress' .venv/bin/python manage.py test --noinput > .superpowers/sdd/2026-10-23-apps-wave-2-wishlist/full-a.log 2>&1; tail -3 .superpowers/sdd/2026-10-23-apps-wave-2-wishlist/full-a.log
 ```
 
-Expected: `OK (skipped=11)`, about 5,252 tests. Clean the test run's media files afterwards (touch a marker before the run, then `find media -type f -newer <marker> -delete`).
+Expected: `OK (skipped=11)`, about 5,255 tests. Clean the test run's media files afterwards (touch a marker before the run, then `find media -type f -newer <marker> -delete`).
 
 - [ ] **Step 4: Cut the release.**
 
 ```bash
 DATABASE_URL='sqlite:///:memory:' MORPHEUS_EXTRA_APPS='plugins.installed.booking_marketplace,plugins.installed.dsers,plugins.installed.zendrop,plugins.installed.cjdropshipping,plugins.installed.aliexpress' .venv/bin/python manage.py release --minor "Save for later is gone; Wishlist keeps saved and shared lists" \
-  -m "The Save for later app is removed. It shipped switched off on every store and never worked: the button it added to the cart did nothing. Wishlist keeps saved and shared lists, and back-in-stock alerts are Inventory's. Shoppers see no change."
+  -m "The Save for later app is removed. It shipped switched off on every store and never worked: the button it added to the cart did nothing. Wishlist keeps saved and shared lists, and back-in-stock alerts are Inventory's." \
+  -m "Wishlist's pages use words that fit any shop instead of the bookshop's (\"Nothing saved yet\", \"Browse the shop\"), and Serbian pages show them in Serbian."
 ```
 
 Expected: `v0.122.1 -> v0.123.0`. The gate lists no migration.
@@ -256,7 +399,7 @@ Expected: `v0.122.1 -> v0.123.0`. The gate lists no migration.
   - storefront blocks 73 → **72** (19 slots);
   - templates 721 → **720**;
   - migrations **272**;
-  - test functions **5,281**;
+  - test functions **5,284** (save_for_later's one goes; the three wording tests arrive);
   - releases **305 in 125 days**.
 
   Events, tools, scopes, capabilities, GraphQL, routes, pages, panels, jobs and commands are unchanged. Edit `README.md`:
