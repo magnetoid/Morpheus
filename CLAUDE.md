@@ -738,8 +738,7 @@ is its own declaration, it does nothing. 78 such controls across 30 apps
 were found and removed in v0.76.4 (`docs/plans/dead-settings-2026-10.md`), and
 `core/tests/test_settings_keys_have_readers.py` now fails on any schema key with no
 reader — so the only way to add a control is together with the code that reads it. Guarded by
-`storefront/tests/test_identity_maintenance.py` +
-`brand_kit/tests/test_tokens_render.py`.
+`storefront/tests/test_identity_maintenance.py` (brand_kit, the tokens example, left in v0.122.0).
 
 **Landmine — a vertical shipped in the DEFAULT app list appears on every store,
 and a default app's context processors keep running after it's "off".**
@@ -1804,6 +1803,26 @@ never hold up the boot that brings the store back), naming the first backup the 
 rollback exits 1, so the run stays red. That red run is the only signal when the failed release
 died before Python ran, or when the release put back predates v0.121.0: neither can email. Guarded by
 `core/tests/test_deploy_guard.py` and `test_rollback_notice.py`.
+
+**Convention — an app leaves in two releases (v0.122.0).**
+- Release N deletes the app's folder and its `MORPHEUS_DEFAULT_APPS` line. It takes a
+  dead model out of an app that stays in state only (`SeparateDatabaseAndState`), so every
+  table stays: a store put back on the release before still finds them.
+- Release N+1, pushed only once N is live, drops the leftovers:
+  - a removed app's tables, from a `plugins` app migration with
+    `core.migration_ops.DropLeftoverModel`;
+  - a staying app's, from its own migration (a state-only `CreateModel`, then `DeleteModel`);
+  - both marked `morpheus_contract`.
+- `DropLeftoverModel` is a `DeleteModel`, so the gate sees it. It leaves a table that is not
+  there (a store created later, the test database) and keeps one that still holds rows:
+  those belong to someone.
+- Count the live rows before planning a removal. Wave 1 found the experiments app's own seed
+  row on every store, and three journal posts on Supernatural that duplicated its CMS pages.
+- Search for every way the app is named, not only its import path: `{% load <library> %}` for
+  each template tag library it ships, its URL namespace, its template paths. Wave 1's search
+  matched quoted names and `app:` namespaces and missed `{% load experiments %}` in three cart
+  templates: every cart page would have answered 500, and only the full suite caught it.
+- Guarded by `core/tests/test_removed_apps.py`, `test_dead_models.py` and `test_migration_ops.py`.
 
 **Landmine — a native dep that loads at settings-import is deploy-critical.**
 A provider app in `INSTALLED_APPS` (e.g. allauth's `openid_connect` / `saml`

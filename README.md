@@ -4,17 +4,17 @@
 
 ### Commerce you own. Run by an AI you can actually trust with the keys. Bought by agents.
 
-*Describe your shop in one sentence and get a real, stocked storefront. Toggle 113 capabilities on and off like apps. Then hand the back office to an AI operator who knows your catalog, briefs you every morning, and proposes improvements to her own source code — every one of them reviewed by a panel of independent models, and then by you.*
+*Describe your shop in one sentence and get a real, stocked storefront. Toggle 103 capabilities on and off like apps. Then hand the back office to an AI operator who knows your catalog, briefs you every morning, and proposes improvements to her own source code — every one of them reviewed by a panel of independent models, and then by you.*
 
 [![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
 [![Live stores](https://img.shields.io/badge/live-3%20stores%2C%20one%20codebase-ff5722.svg)](#-three-live-stores-one-codebase)
-[![Apps](https://img.shields.io/badge/apps-113%20toggleable-2563eb.svg)](#-whats-in-the-box-all-113-apps)
+[![Apps](https://img.shields.io/badge/apps-103%20toggleable-2563eb.svg)](#-whats-in-the-box-all-103-apps)
 [![AI operator](https://img.shields.io/badge/AI-built--in%20operator%20(Linda)-e11d48.svg)](#-meet-linda--the-ai-operator)
 [![Agentic](https://img.shields.io/badge/agentic-MCP%20%2F%20ACP%20%2F%20UCP-7c3aed.svg)](#-agentic-commerce-be-transactable-by-ai)
 [![Stack](https://img.shields.io/badge/django%206-postgres%20%C2%B7%20celery%20%C2%B7%20graphql-092e20.svg)](#-tech-stack)
 [![Contact](https://img.shields.io/badge/contact-marko%40morpheus.direct-0ea5e9.svg)](mailto:marko@morpheus.direct)
 
-**[▶ See it live](https://dotbooks.store) · [✉ Talk to us](#-get-in-touch) · [🚀 Run your own](#-quick-start) · [🧩 What's in the box](#-whats-in-the-box-all-113-apps) · [🧱 Architecture](#-architecture-a-small-kernel-a-deep-ecosystem) · [🧭 Roadmap](#-roadmap) · [📚 Docs](#-documentation)**
+**[▶ See it live](https://dotbooks.store) · [✉ Talk to us](#-get-in-touch) · [🚀 Run your own](#-quick-start) · [🧩 What's in the box](#-whats-in-the-box-all-103-apps) · [🧱 Architecture](#-architecture-a-small-kernel-a-deep-ecosystem) · [🧭 Roadmap](#-roadmap) · [📚 Docs](#-documentation)**
 
 </div>
 
@@ -78,7 +78,7 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 - [Found by search, and by answer engines](#-found-by-search-and-by-answer-engines)
 - [A tour: shoppers, merchants, developers](#-a-tour-shoppers-merchants-developers)
 - [Architecture: a small kernel, a deep ecosystem](#-architecture-a-small-kernel-a-deep-ecosystem)
-- [What's in the box: all 113 apps](#-whats-in-the-box-all-113-apps)
+- [What's in the box: all 103 apps](#-whats-in-the-box-all-103-apps)
 - [It runs itself](#-it-runs-itself)
 - [The self-improvement loop](#-the-self-improvement-loop)
 - [Safety, security & compliance](#-safety-security--compliance)
@@ -103,7 +103,7 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 |---|---|---|---|
 | **AI operator** | Built in, governed, on *your* infra | Add-on / per-seat copilot | Bring your own |
 | **Agent-transactable** | MCP + ACP + UCP, native | Emerging, platform-mediated | Rare |
-| **Feature model** | 113 apps, disable-safe by construction | Apps (billed, sandboxed) | Extensions / modules |
+| **Feature model** | 103 apps, disable-safe by construction | Apps (billed, sandboxed) | Extensions / modules |
 | **Sales channels** | 9 ad and AI-shopping channels, four dropshipping suppliers and a multivendor marketplace, built in | Per-channel apps | Per-channel extensions |
 | **Migration in** | Shopify, WooCommerce, Magento, BigCommerce, CSV importers | — | Varies |
 | **Own your data & code** | Yes — self-hosted; source-available under BUSL-1.1, each version turning Apache 2.0 after four years | No | Yes |
@@ -122,25 +122,25 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 
 ## 📊 By the numbers
 
-Measured at **v0.119.0 (20 October 2026)** by a script over the tree, not from memory. Counts drift with every release — each row names its source of truth, and that source wins over this table. The dashboard's **Settings → Apps** page is the always-current catalogue.
+Measured at **v0.122.0 (22 October 2026)** by a script over the tree, not from memory. Counts drift with every release — each row names its source of truth, and that source wins over this table. The dashboard's **Settings → Apps** page is the always-current catalogue.
 
 | Metric | Value | Source of truth |
 |---|---|---|
-| Toggleable apps in the tree | **113** (107 on by default + 6 opt-in: the Montenegro booking vertical, four dropshipping apps — DSers, Zendrop, CJdropshipping and AliExpress — and demo data) | `plugins/installed/` · `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` |
-| Typed events on the hooks bus | **106**, with **279** subscriptions | `MorpheusEvents` in `core/hooks.py` |
+| Toggleable apps in the tree | **103** (97 on by default + 6 opt-in: the Montenegro booking vertical, four dropshipping apps — DSers, Zendrop, CJdropshipping and AliExpress — and demo data) | `plugins/installed/` · `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` |
+| Typed events on the hooks bus | **107**, with **276** subscriptions | `MorpheusEvents` in `core/hooks.py` |
 | Agent tools in the typed registry | **198** — 55 of them require a human's approval | `core/agents/registry.py` at boot |
 | MCP token scopes | **40** | `plugins/installed/agent_mcp/scopes.py` |
 | RBAC capabilities | **32** · gating **284 views** | `plugins/installed/rbac/models.py` · `@require_capability` sites |
-| GraphQL surface | **40** queries · **51** mutations · **101** types | `api/schema.py` |
-| URL routes | **670**, of which **297** dashboard | `python manage.py show_urls`-style walk of the resolver |
-| Dashboard pages · settings panels · storefront blocks | **121** · **65** · **80** across 20 theme slots | the app registry at boot |
-| Scheduled jobs · management commands | **61** · **65** | `CELERY_BEAT_SCHEDULE` · `manage.py help` |
+| GraphQL surface | **36** queries · **50** mutations · **96** types | `api/schema.py` |
+| URL routes | **668**, of which **296** dashboard | `python manage.py show_urls`-style walk of the resolver |
+| Dashboard pages · settings panels · storefront blocks | **120** · **59** · **73** across 19 theme slots | the app registry at boot |
+| Scheduled jobs · management commands | **61** · **64** | `CELERY_BEAT_SCHEDULE` · `manage.py help` |
 | Payment gateways | **5** — Stripe, PayPal, cash on delivery, bank transfer, sandbox | `payments.gateway_registry` |
-| Production releases since v0.1.0 (2026-06-20) | **299 in 122 days** | `docs/RELEASE_NOTES.md` |
-| Tests | **5,209** test functions; the full suite ran 5,173 tests on 2026-10-20 | `grep -rc "def test_"` |
-| Python | **~300k lines** in `core/`, `plugins/`, `themes/`, `api/`, `morph/`, `morpheus/`, `scripts/` (~84k of it tests) | the tree |
-| Templates, CSS & JS | **727** templates · **~73k** lines | the tree |
-| Migrations | **270** | `*/migrations/` |
+| Production releases since v0.1.0 (2026-06-20) | **303 in 124 days** | `docs/RELEASE_NOTES.md` |
+| Tests | **5,274** test functions; the full suite ran 5,244 tests on 2026-10-22 | `grep -rc "def test_"` |
+| Python | **~286k lines** in `core/`, `plugins/`, `themes/`, `api/`, `morph/`, `morpheus/`, `scripts/` (~85k of it tests) | the tree |
+| Templates, CSS & JS | **721** templates · **~73k** lines | the tree |
+| Migrations | **266** | `*/migrations/` |
 | Architecture decision records | **39** | `.torsor/architecture/decisions/` |
 | `core/` imports from apps | **0 — enforced** | `scripts/check_core_boundary.py` (empty allowlist) |
 | Live stores on one codebase | **3** | [below](#-three-live-stores-one-codebase) |
@@ -265,7 +265,7 @@ What that buys you, concretely:
 - **A fast, themed storefront** on any of three shipped themes, installable as a **PWA** that works offline; page transitions and skeleton states tinted to the brand.
 - **Finding things**: semantic search backed by product embeddings, categories that include their subcategories, a travel search that reads accents, Cyrillic and typos, personalised picks (for you, related, recently viewed, bought together) and grids reordered for each shopper, a discovery quiz, lookbooks, editorial product stories, a long-form **journal** with RSS, Atom and AMP editions.
 - **Product pages** with a gallery, videos, a flipbook preview for anything with a PDF, a sticky add-to-cart bar, trust signals (verified-buyer share, recent-purchases ticker), moderated reviews, and — on the bookshop — a first-person **3D bookstore** you can walk around.
-- **Checkout**: multi-step (shipping → payment → review) or **one-page quick checkout**; Apple Pay, Google Pay, Link and Klarna through Stripe; PayPal; cash on delivery; bank transfer. Coupons, gift cards, loyalty points and store credit all apply as tenders in the right order against tax and shipping. Live carrier rates with a lowest-carbon badge; plant a tree at checkout.
+- **Checkout**: multi-step (shipping → payment → review) or **one-page quick checkout**; Apple Pay, Google Pay, Link and Klarna through Stripe; PayPal; cash on delivery; bank transfer. Coupons, gift cards, loyalty points and store credit all apply as tenders in the right order against tax and shipping. Plant a tree at checkout.
 - **An account hub**: orders (with self-service cancel and return), returns with RMA tracking, addresses, downloads, points, credits, payment methods, bookings, a wishlist with shareable links, and the GDPR corner — export my data, delete my account.
 - **Sign-in that doesn't need a password** (an emailed code) as well as passwords and SSO.
 - **Membership and subscriptions**: plans, replenishment, curated boxes, pause / skip / swap.
@@ -276,13 +276,13 @@ What that buys you, concretely:
 - **A dashboard of 121 pages** in sections, tabs and cards (Tailwind + shadcn/ui), every page the same full width, in light or dark — with **built-in help for every app**, written for staff and showing what the running code offers — plus a command bar and a chat that talk to Linda.
 - **Orders**: lifecycle from placed to fulfilled, refunds through one service that locks the order (a double-click can never charge twice), partial refunds that re-credit gift cards, points and credit pro rata, shipped notifications with tracking, printable invoices, notes, CSV export, an *awaiting payment* queue, draft orders and quotes that convert on payment.
 - **Catalog and stock**: products, variants, bundles via lookbooks, collections, metafields on anything, a unified asset manager with one uploader for every image, bulk CSV import/export, importers for Shopify, WooCommerce, Magento and BigCommerce; warehouses, stock movements, reservations, low-stock alerts and a 28-day stockout forecast.
-- **Pricing and promotions**: a rule engine that stacks predicates (cart total, channel, country, customer group, product) with actions (% off, fixed off, free shipping, gift); coupons; per-market pricing and currency; B2B price lists, quotes and net terms; sandboxed merchant functions for cart totals, pricing, shipping and validation.
-- **Growth**: email campaigns, newsletter with double opt-in and signup popups, abandoned-cart recovery, an affiliate platform with its own portal, payouts and embeddable widgets, a pre-launch mode, drops and raffles, live shopping events, A/B experiments.
+- **Pricing and promotions**: a rule engine that stacks predicates (cart total, channel, country, customer group, product) with actions (% off, fixed off, free shipping, gift); coupons; per-market pricing and currency; B2B price lists, quotes and net terms.
+- **Growth**: email campaigns, newsletter with double opt-in and signup popups, abandoned-cart recovery, an affiliate platform with its own portal, payouts and embeddable widgets, a pre-launch mode, drops and raffles, live shopping events.
 - **Channels**: Google Shopping and Ads, Meta, TikTok, Pinterest, Microsoft, Snapchat, Reddit, Amazon Ads and ChatGPT Shopping — feeds, pixels, server-side conversions and campaign reporting — with one overview of coverage, pixel state and ROAS. A multivendor **marketplace** with vendor onboarding, a vendor portal, vendors you edit from the dashboard, vendor orders and payouts. **Dropshipping** through DSers, Zendrop, CJdropshipping and AliExpress.
 - **Customers and CRM**: segments, a customer timeline, leads, accounts, deals and pipelines, tasks, a support inbox and chat, an account-manager agent; who signed in and when.
 - **Analytics**: full-funnel, real-time, cohorts, attribution, channel ROAS, subscription analytics, GA4 + GTM with Consent Mode v2 — and Linda can be asked any of it.
-- **Content**: CMS pages, blocks, menus and forms; a Notion-style journal editor with live preview and scheduled publishing; brand kit with design tokens and an AI brand-kit generator; AI content studio with a store-wide brand voice.
-- **Control**: roles and permissions (six templates), staff two-factor, SSO, an audit log, notifications inbox, webhooks with retry and replay, no-code workflows, environments with snapshots and promotion, Cloudflare cache purge, backups, the error log with a detailed-capture switch and a report written for Claude Code, and **Morpheus Brain** — code quality, errors, SEO health and a daily AI advisory on one page.
+- **Content**: CMS pages, blocks, menus and forms; AI content studio with a store-wide brand voice.
+- **Control**: roles and permissions (six templates), staff two-factor, SSO, an audit log, notifications inbox, webhooks with retry and replay, no-code workflows, Cloudflare cache purge, backups, the error log with a detailed-capture switch and a report written for Claude Code, and **Morpheus Brain** — code quality, errors, SEO health and a daily AI advisory on one page.
 - **Safe updates**: before an update changes the database, the store backs it up and records the deploy; *Settings → Version & updates* shows the running version, its commit, when it was installed and that backup. A release whose database changes would break the version before it is refused.
 
 ### What a developer gets
@@ -340,14 +340,14 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/PLUGIN_DEVELOPMENT.md`](doc
 
 ---
 
-## 🧩 What's in the box: all 113 apps
+## 🧩 What's in the box: all 103 apps
 
 Every shipped capability is a toggleable app, and every app below is described from its own manifest (written at v0.76.0, brought up to date at v0.119.0). The always-current version is **Settings → Apps** in the dashboard; the source of truth for the count is `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`.
 
 > **Apps and plugins are the same thing.** "App" is the word the product uses — in the dashboard, in these docs, and at every seam you touch as an author (`app.py`, `morpheus.app`, `app_registry`). Two things still read "plugin" on purpose: the directory `plugins/installed/` and the base class `MorpheusPlugin`, because renaming them would rewrite roughly two thousand import paths for no user-visible gain. Upgrading an out-of-tree app: [`docs/MIGRATING.md`](docs/MIGRATING.md).
 
 <details open>
-<summary><strong>Commerce core</strong> — 11 apps</summary>
+<summary><strong>Commerce core</strong> — 9 apps</summary>
 
 | App | What it does |
 |---|---|
@@ -358,10 +358,8 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `payments` | The payment engine: Stripe (Payment Element, webhooks, refunds), PayPal, bank transfer; a gateway without credentials is never offered |
 | `advanced_payments` | Cash on delivery and a staff-only sandbox "test payment", as modular gateways |
 | `shipping` | Zones and rates: flat, weight tiers, order-total tiers, free over a threshold; Shippo / EasyPost adapters |
-| `smart_shipping` | Live carrier rates at checkout (EasyPost, Shippo) with a per-rate carbon estimate and a lowest-carbon badge |
 | `tax` | Regions and categorised rates: VAT, US sales tax, EU OSS; computed from the shipping address; Stripe Tax adapter |
 | `draft_orders` | Staff-built draft orders and quotes, shared with the customer, converted to a real order on payment |
-| `one_click` | One-tap returning-shopper checkout with rotating AES-GCM device tokens |
 
 </details>
 
@@ -381,7 +379,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 </details>
 
 <details>
-<summary><strong>Merchandising & personalisation</strong> — 8 apps</summary>
+<summary><strong>Merchandising & personalisation</strong> — 7 apps</summary>
 
 | App | What it does |
 |---|---|
@@ -391,22 +389,19 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `discovery_quiz` | A zero-party-data quiz that ends in a personalised category view and feeds segmentation with consent |
 | `lookbook` | Editorial product bundles with their own pages, added to cart as one line or as individual products; AI auto-looks from the co-purchase graph |
 | `drops` | Scheduled drops, raffle-by-waitlist for limited stock, push notifications, a stock-equalising queue, post-sellout waitlists |
-| `experiments` | In-process A/B tests with cookie-stable assignment and Wald-interval significance |
 | `metafields` | Schema-less custom fields on any record — products, customers, orders, pages |
 
 </details>
 
 <details>
-<summary><strong>Storefront & content</strong> — 19 apps</summary>
+<summary><strong>Storefront & content</strong> — 17 apps</summary>
 
 | App | What it does |
 |---|---|
 | `storefront` | The theme-powered storefront; it consumes the GraphQL API internally and never touches the ORM |
 | `cms` | Pages, reusable blocks, named menus and merchant-defined forms, all theme-overridable |
-| `journal` | A Notion-style block editor with live preview and scheduled publishing; text, image, video, product, collection and form blocks; RSS, Atom and AMP |
 | `richtext` | A self-hosted Lexical rich-text editor used by the product and page forms; no CDN, no build step at deploy |
 | `media` | A unified asset manager for images, video, audio, PDFs, spreadsheets, documents and digital downloads |
-| `brand_kit` | Design tokens (colours, fonts, spacing, radii) as CSS variables, plus an AI brand-kit generator that reads your hero imagery |
 | `product_gallery` | Cover plus square slider on product pages, native scroll-snap, no JS dependency |
 | `product_stories` | Scroll-snap "why you'll love it" story blocks, ordered per product, edited in the dashboard |
 | `product_videos` | YouTube, Vimeo or raw embeds on the product page |
@@ -424,7 +419,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 </details>
 
 <details>
-<summary><strong>CRM, retention & growth</strong> — 13 apps</summary>
+<summary><strong>CRM, retention & growth</strong> — 11 apps</summary>
 
 | App | What it does |
 |---|---|
@@ -435,10 +430,8 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `save_for_later` | Meant for save-for-later from the cart with price-drop and back-in-stock alerts; none of it works yet |
 | `cart_abandonment` | Detects stale carts and runs the consent-checked, multi-step recovery email drip |
 | `post_purchase` | Schedules the chain per order — shipment tracking → delivered → review request → NPS survey; the sending itself is not wired up yet |
-| `rich_post_purchase` | Not built yet: records which customers agreed to SMS, WhatsApp or push messages, but nothing sends through it |
 | `post_checkout_upsell` | One suggested product on the order confirmation page |
 | `newsletter` | Signup popups and a double-opt-in subscriber list; sends reuse the campaign engine |
-| `referrals` | Meant for give-and-get referrals paid in store credit; not built yet |
 | `affiliates` | Affiliate links, attribution, conversions, commission tiers, payouts, embeddable shop widgets and an affiliate portal |
 | `returns_portal` | Exchange or store credit as first-class return resolutions, with feedback routed to the CRM |
 
@@ -464,7 +457,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 </details>
 
 <details>
-<summary><strong>AI & agents</strong> — 10 apps</summary>
+<summary><strong>AI & agents</strong> — 9 apps</summary>
 
 | App | What it does |
 |---|---|
@@ -475,9 +468,8 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `ai_content` | The store-wide brand voice every AI generation reads, product-description generation, the content and assets studio |
 | `ai_stylist` | A conversational shopping assistant with a shopper-facing persona and its own audit trail; set up, but not yet shown on the storefront |
 | `janus` | The engine behind Linda: on/off, model, step and time caps, standing instructions, bundled skills, and what she has learned |
-| `morpheus_brain` | One console for code quality, errors, SEO health and daily industry reports, with an AI advisory briefing on the whole site |
+| `morpheus_brain` | One console for code quality, errors and SEO health, with an AI advisory briefing on the whole site |
 | `store_bootstrap` | Type one sentence; get a brand voice, a category tree and a starter catalogue |
-| `lumina` | The Lumina book-creator landing page: write with AI and voice, auto-translate, sell on the bookshop |
 
 </details>
 
@@ -494,7 +486,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 </details>
 
 <details>
-<summary><strong>Operations, security & compliance</strong> — 20 apps</summary>
+<summary><strong>Operations, security & compliance</strong> — 18 apps</summary>
 
 | App | What it does |
 |---|---|
@@ -511,9 +503,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `webhooks_ui` | Webhook endpoints, HMAC-SHA256-signed deliveries, a delivery log with retry and replay |
 | `notifications_center` | A persistent staff inbox for what needs follow-up: pending RMAs, low stock, failed agent runs, overdue tasks |
 | `workflows` | No-code automation: a trigger, a condition, one or more actions — including "run an agent skill" |
-| `functions` | Sandboxed merchant-defined functions for cart totals, product pricing, shipping rates and order validation |
 | `cloudflare` | Cache purge on product and collection changes, DNS integration |
-| `environments` | Dev / staging / production environments with snapshots and promotion |
 | `importers` | Idempotent migration from Shopify, WooCommerce, Magento and BigCommerce, plus bulk CSV import and export |
 | `feature_adoption` | Per-install feature-usage aggregates and an install-health score, with no PII |
 | `feedback` | Staff bug reports with a screen capture and the recent JavaScript errors attached, as tickets under Settings |
@@ -660,7 +650,7 @@ A README that only lists wins is a sales page. Here is the honest edge of the th
 - **Card payments are wired, not yet battle-tested.** Stripe and PayPal are integrated and gated so a store never offers a method it can't charge, but the reference stores currently sell on cash on delivery and the Stripe card-collection leg has not yet been run against a live Stripe account.
 - **Some surfaces are deeper than others.** Core commerce, the agent layer, security, and SEO have had the most attention. Search Console integration, the site crawler and bulk AI content tooling are specified and not yet built.
 - **A few screens are still ahead of their data.** Keyword tracking, for instance, has a page but nothing yet writes positions into it — it is waiting on the Search Console work.
-- **Some apps are scaffolds.** Eight say so in their own help: 3D and AR previews, the feed-style product rails, customer photo and video reviews, save-for-later, referrals, post-purchase sending, SMS/WhatsApp/push messaging, and the storefront stylist chat. They are listed in the catalogue as what they are, and the dashboard shows the same words.
+- **Some apps are scaffolds.** Six say so in their own help: 3D and AR previews, the feed-style product rails, customer photo and video reviews, save-for-later, post-purchase sending, and the storefront stylist chat. They are listed in the catalogue as what they are, and the dashboard shows the same words.
 - **Restoring data is still by hand.** Every update that changes the database is backed up first, and the backup is easy to find, but the restore command and its page are the next release; until then a restore is an operator's job.
 - **RBAC ships in log mode by default.** The capability checks run everywhere and record what they *would* deny; flipping a store to `enforce` is a deliberate per-store step after its role bindings exist. That default is honest, not timid — an enforcement flip with no bindings provisioned would lock out every non-superuser on day one.
 - **It is not open source — yet.** The code is public under the Business Source License 1.1: free to read, evaluate, develop and test; production use needs a commercial licence; each version turns Apache 2.0 four years after it is released. Versions up to v0.76.0 were published under Apache 2.0 and stay that way.

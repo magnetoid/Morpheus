@@ -41,10 +41,8 @@ agent to do work in this repo.
 | [REST](#5-rest-api) | add a public-readable viewset, add an authed viewset, add scope-gated viewset |
 | [Hooks & events](#6-hooks--events) | fire an event, listen to an event, write to outbox, dispatch a webhook |
 | [Agents](#7-agents--ai-surface) | add an intent kind, sign a receipt, register an agent, talk to platform from the SDK |
-| [Functions runtime](#8-functions-runtime) | author a function, add a capability, debug a runaway function |
 | [Importers](#9-migration-importers) | add a source adapter, run a fixture-driven test, idempotent re-run |
 | [Observability](#10-observability) | add a metric, query a metric, add a log line that scales, capture an error |
-| [Environments](#11-environments) | snapshot, promote, rollback, gate a protected env |
 | [Affiliates](#12-affiliates) | onboard an affiliate, add a commission rule, attribute an order |
 | [Marketplace](#13-multivendor-marketplace) | onboard a vendor, split an order, request a payout |
 | [Search](#14-semantic-search) | embed a product, query embeddings, fall back to keyword |
@@ -319,38 +317,6 @@ agent to do work in this repo.
 
 ---
 
-# 8. Functions runtime
-
-> **Threat model:** the Functions runtime is "merchant-managed" — gate writes
-> to the model in the admin/API. It is *not* a hostile-code sandbox.
-
-### Skill: author a Function
-**Steps:**
-1. Decide a `target` from `Function.TARGET_CHOICES` (e.g. `cart.calculate_total`).
-2. Source must define `def run(input): ...` and return either `None` (no change) or the new value.
-3. Declare `capabilities = ['math', 'money']` to opt into curated globals.
-4. Set `priority` (lower runs first when multiple Functions hit the same hook).
-5. Test via the GraphQL `testRunFunction` mutation before enabling.
-**Validate:** `is_enabled=True` and the next domain event shows the function in `FunctionInvocation` with `success=True`.
-**See also:** [`plugins/installed/functions/runtime.py`](plugins/installed/functions/runtime.py), [Skill: add a runtime capability](#skill-add-a-runtime-capability).
-
-### Skill: add a runtime capability
-**When:** Functions need access to a new safe primitive (e.g. `currency`, `date`).
-**Steps:**
-1. In [`runtime.py`](plugins/installed/functions/runtime.py) call `register_capability('mycap', {'today': lambda: datetime.utcnow().date(), ...})`.
-2. Audit the exports for hostile use (no file, no network, no globals access).
-3. Document the capability in this file under [Skill: author a Function](#skill-author-a-function).
-**Validate:** a Function declaring `capabilities=['mycap']` resolves the names; without the capability it raises.
-
-### Skill: debug a runaway Function
-**Steps:**
-1. Check `FunctionInvocation` for the latest row — `error_message` is your first signal.
-2. If `success=True` but the value is wrong, run via `testRunFunction` with the same input.
-3. If timeouts: bump `timeout_ms` (default 200ms; hard kill at 4×).
-**Validate:** Function's `last_error` clears after the next successful invocation.
-
----
-
 # 9. Migration importers
 
 ### Skill: add a source adapter
@@ -386,29 +352,6 @@ agent to do work in this repo.
 1. `from plugins.installed.observability.services import record_error`.
 2. `record_error(source='payments', message=str(e), stack_trace=traceback.format_exc(), channel=channel)`.
 **Validate:** the row appears in `ErrorEvent` and renders in the merchant dashboard.
-
----
-
-# 11. Environments
-
-### Skill: snapshot an environment
-**Steps:**
-1. `from plugins.installed.environments.services import take_snapshot`.
-2. `snap = take_snapshot(env, label='pre-launch', actor=user)`.
-**Validate:** `snap.payload` carries `theme_overrides` and `settings_overrides`.
-
-### Skill: promote dev → production
-**Steps:**
-1. Take a snapshot of dev.
-2. `promote(snapshot=snap, target=prod, confirm=True, note='ship X')`.
-3. Without `confirm=True` on a `is_protected=True` environment, the call raises `PermissionError`.
-**Validate:** target environment now has the snapshot's overrides; a `Deployment` row exists with `status='applied'` and a `diff`.
-
-### Skill: rollback a bad deploy
-**Steps:**
-1. Find the deployment: `Deployment.objects.filter(target__slug='production').order_by('-started_at').first()`.
-2. `rollback(deployment)`.
-**Validate:** target reverts to the pre-deploy state; the `Deployment.status` becomes `rolled_back`.
 
 ---
 

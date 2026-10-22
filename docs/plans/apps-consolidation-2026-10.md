@@ -64,6 +64,10 @@ need an allowlist, and the `markets` middleware goes with that app in wave 2.
 
 ## Wave 1: delete what does nothing (cheap, low risk)
 
+**Status (v0.122.0, 2026-10-22):** the ten apps and the dead models left the code. Their tables go
+in v0.122.1. `agent_core.AgentConversation`/`AgentMessage` stay: the agent invoke API writes them,
+so they move with the AI merge in wave 2.
+
 Zero rows everywhere and no working surface. A table-dropping migration ships first, the app
 leaves the default list in the next release (two releases, so no boot ever loads a model
 without its table).

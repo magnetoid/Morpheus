@@ -6,6 +6,38 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.122.0 — ten apps are gone
+
+`one_click`, `rich_post_purchase`, `smart_shipping`, `referrals`, `experiments`, `functions`,
+`environments`, `journal`, `brand_kit` and `lumina` are removed, with their settings panels,
+storefront blocks and hooks. An out-of-tree app that lists one in `requires`, or imports from
+one, must drop it. GraphQL loses the `functions` and `currentEnvironment`, `environments` and
+`deployments` queries and the `testRunFunction` mutation. The
+`--morpheus-color-*`, `--morpheus-font-*` and `--morpheus-radius` CSS variables brand_kit put in
+every page head are gone: a theme that used them sets its own.
+
+**Themes.** The experiments app's template tag library left with it: a template that still has
+`{% load experiments %}` no longer compiles, and its page answers 500. The three themes in this
+repository loaded it in `storefront/cart.html` without using its `{% variant %}` tag; a theme
+copied from one of them before this release (`morph_create_theme --from dot_books`, say) must
+delete that load. brand_kit's `tokens` and `brand_kit_settings` template variables are gone too,
+and render empty.
+
+These models leave the code too:
+- `customers.WishList` and `WishListItem`;
+- `ai_assistant.PromptTemplate`, `AIExperiment`, `DemandForecast`, `AgentMemory` and
+  `AIInteraction.prompt_template`;
+- `marketing.Redirect` (seo owns redirects) and `observability.ErrorEvent` (`core.errors` owns
+  the log);
+- `morpheus_brain.DailyReport` and `ReportReference`, and `loyalty_points.Referral`.
+
+Every one of their tables stays in this release. v0.122.1 drops them: a removed app's table only
+when it is empty (one that still holds rows is kept, and the migration logs it), and the dead
+models' tables in the apps that stay whatever they hold, the old `observability_errorevent` rows
+included. Export anything you keep in them before you upgrade to v0.122.1.
+
+---
+
 ## v0.113.0 — one webhook per event, in one shape
 
 A merchant webhook endpoint used to receive each event twice: once from core, as the bare payload,

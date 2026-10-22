@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.122.0 — 2026-10-22
+
+**Ten apps that stored nothing and showed nothing are gone**
+
+- One-click checkout, Rich post-purchase, Smart shipping, Referrals, Experiments, Functions, Environments, the Journal editor, Brand kit and Lumina are removed. Shoppers lose only dotbooks' "Write a book" footer link; Supernatural's journal is its CMS pages, which stay.
+- dotbooks' Lumina page is now a regular page at /p/write-a-book/, and /create/ redirects there.
+- The Brain page no longer has a Daily Reports tab; nothing ever filled it.
+- For developers: five GraphQL fields of the two removed API apps are gone (docs/MIGRATING.md).
+
 ## v0.121.0 — 2026-10-22
 
 **A store an update leaves down goes back to the previous version by itself**

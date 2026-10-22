@@ -76,12 +76,12 @@ Built for three kinds of users:
   COMMERCE PLUGINS      AGENT PLUGINS         INFRA PLUGINS
   catalog · orders      agent_core            cloudflare
   customers · payments  ai_assistant          observability
-  inventory · marketing ai_content            environments
-  analytics · storefront functions            importers (+ CSV)
-  tax · shipping        crm (Account Mgr)     seo
-  wishlist · gift_cards advanced_ecommerce    webhooks_ui
-  affiliates · b2b      admin_dashboard       demo_data
-  marketplace · cms                           rbac
+  inventory · marketing ai_content            importers (+ CSV)
+  analytics · storefront crm (Account Mgr)    seo
+  tax · shipping        advanced_ecommerce    webhooks_ui
+  wishlist · gift_cards admin_dashboard       demo_data
+  affiliates · b2b                            rbac
+  marketplace · cms
   subscriptions
   promotions · draft_orders
 ```
@@ -170,10 +170,8 @@ MORPHEUS_DEFAULT_APPS = [
     'plugins.installed.ai_assistant',  # Agent intents, signed receipts, semantic search, dynamic pricing
     'plugins.installed.ai_content',    # Generative product copy
     # ── Platform extensions ─────────────────────────────────────────
-    'plugins.installed.functions',     # Sandboxed merchant-defined logic
     'plugins.installed.importers',     # Shopify, WooCommerce, … (idempotent)
-    'plugins.installed.observability', # Per-merchant MerchantMetric rollups, ErrorEvent log
-    'plugins.installed.environments',  # Dev/staging/prod with snapshots + promotion
+    'plugins.installed.observability', # record_error, a thin shim over core.errors
     'plugins.installed.affiliates',    # Programs, links, attribution, payouts
     'plugins.installed.marketplace',   # Multivendor: vendor onboarding, order splitting, payouts
 ]
