@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.123.0 — 2026-10-22
+
+**Save for later is gone; Wishlist keeps saved and shared lists**
+
+- The Save for later app is removed. It shipped switched off on every store and never worked: the button it added to the cart did nothing. Wishlist keeps saved and shared lists, and back-in-stock alerts are Inventory's.
+- Wishlist's pages use words that fit any shop instead of the bookshop's ("Nothing saved yet", "Browse the shop"), and Serbian pages show them in Serbian.
+
 ## v0.122.1 — 2026-10-22
 
 **The empty tables the removed apps left behind are dropped**

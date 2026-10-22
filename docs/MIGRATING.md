@@ -6,6 +6,16 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.123.0 — save_for_later is gone
+
+`save_for_later` is removed. It shipped switched off and never worked: its cart button had
+nothing behind it, and no code read or wrote its three tables. Wishlist is the one owner of
+saved and shared lists (`Wishlist.share_token`, `/wishlist/shared/<token>/`), and back-in-stock
+alerts are inventory's. An out-of-tree app that lists `save_for_later` in `requires` must drop
+it. Its tables stay in this release; v0.123.1 drops them the way v0.122.1 dropped Wave 1's.
+
+---
+
 ## v0.122.1 — the tables they left are dropped
 
 v0.122.1 drops the tables v0.122.0 left behind (listed below). The deploy backs the database

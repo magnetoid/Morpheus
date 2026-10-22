@@ -84,6 +84,10 @@ models `customers.WishList(Item)`, `agent_core.AgentConversation/AgentMessage`,
 
 ## Wave 2: merges
 
+**Status (v0.123.0, 2026-10-22):** wishlist ← save_for_later. save_for_later was a stub (off on
+every store, nothing behind its cart button, 0 rows), so nothing moved: it left the code in
+v0.123.0, and its tables go in v0.123.1.
+
 One merge per release; each keeps settings keys, moves config rows in a data migration, keeps
 old agent-tool names as aliases for one release, adds a `MIGRATING.md` section, and passes the
 disable suite.
