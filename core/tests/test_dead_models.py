@@ -43,7 +43,7 @@ class DeadModelsTests(TestCase):
         }
         self.assertNotIn('prompt_template', fields)
 
-    def test_their_tables_stay_for_the_release_before(self):
-        # Release A changes state only: v0.121.0, put back by the guard, finds every table.
+    def test_their_tables_are_gone(self):
+        # Release B: v0.122.0, the release before, reads none of these tables.
         present = set(connection.introspection.table_names())
-        self.assertEqual([t for t in TABLES if t not in present], [])
+        self.assertEqual([t for t in TABLES if t in present], [])
