@@ -10,9 +10,11 @@ from pathlib import Path
 from django.conf import settings
 from django.db import connection, models
 from django.db.migrations.loader import MigrationLoader
+from django.db.migrations.recorder import MigrationRecorder
 from django.db.migrations.state import ModelState, ProjectState
 from django.test import SimpleTestCase, TransactionTestCase
 
+from plugins.models import PluginConfig
 from plugins.registry import app_registry
 
 DROP = importlib.import_module('plugins.migrations.0002_drop_removed_app_tables')
@@ -118,3 +120,55 @@ class LeftoverTablesMigrationTests(TransactionTestCase):
         with self.assertLogs('morpheus.migrations', 'WARNING'):
             self._migrate()
         self.assertIn('experiment', connection.introspection.table_names())
+
+
+SAVE_FOR_LATER_TABLES = {
+    'SavedItem': 'save_for_later_saveditem',
+    'PriceSnapshot': 'save_for_later_pricesnapshot',
+    'SharedWishlist': 'save_for_later_sharedwishlist',
+}
+
+
+class SaveForLaterTablesTests(TransactionTestCase):
+    """plugins 0003 on a store as v0.123.0 left it: save_for_later's three tables, its
+    migration row and its switch."""
+
+    def setUp(self):
+        state = ProjectState()
+        for name, table in SAVE_FOR_LATER_TABLES.items():
+            fields = [('id', models.BigAutoField(primary_key=True))]
+            state.add_model(ModelState('save_for_later', name, fields, {'db_table': table}))
+        self.apps = state.apps
+        with connection.schema_editor() as editor:
+            for name in SAVE_FOR_LATER_TABLES:
+                editor.create_model(self.apps.get_model('save_for_later', name))
+        self.addCleanup(self._remove)
+        recorder = MigrationRecorder(connection)
+        recorder.record_applied('save_for_later', '0001_initial')
+        self.addCleanup(recorder.migration_qs.filter(app='save_for_later').delete)
+        PluginConfig.objects.create(plugin_name='save_for_later', is_enabled=False)
+
+    def _remove(self):
+        names = connection.introspection.table_names()
+        with connection.schema_editor() as editor:
+            for name, table in SAVE_FOR_LATER_TABLES.items():
+                if table in names:
+                    editor.delete_model(self.apps.get_model('save_for_later', name))
+
+    def test_its_tables_migration_row_and_switch_go(self):
+        drop = importlib.import_module('plugins.migrations.0003_drop_save_for_later_tables')
+        state = MigrationLoader(connection).project_state(
+            ('plugins', '0002_drop_removed_app_tables')
+        )
+        with connection.schema_editor() as editor:
+            for operation in drop.Migration.operations:
+                after = state.clone()
+                operation.state_forwards('plugins', after)
+                operation.database_forwards('plugins', editor, state, after)
+                state = after
+        names = connection.introspection.table_names()
+        self.assertEqual([t for t in SAVE_FOR_LATER_TABLES.values() if t in names], [])
+        self.assertFalse(
+            MigrationRecorder(connection).migration_qs.filter(app='save_for_later').exists()
+        )
+        self.assertFalse(PluginConfig.objects.filter(plugin_name='save_for_later').exists())

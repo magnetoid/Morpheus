@@ -6,6 +6,15 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.123.1 — save_for_later's tables are dropped
+
+`save_for_later_saveditem`, `save_for_later_pricesnapshot` and `save_for_later_sharedwishlist`
+are dropped when they are empty; one that still holds rows is kept, as in v0.122.1. The app's
+migration record and switch go too. From v0.123.1 you can go back to v0.123.0; to go further
+back, restore the pre-deploy backup first.
+
+---
+
 ## v0.123.0 — save_for_later is gone
 
 `save_for_later` is removed. It shipped switched off and never worked: its cart button had

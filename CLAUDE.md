@@ -1809,8 +1809,9 @@ died before Python ran, or when the release put back predates v0.121.0: neither 
   dead model out of an app that stays in state only (`SeparateDatabaseAndState`), so every
   table stays: a store put back on the release before still finds them.
 - Release N+1, pushed only once N is live, drops the leftovers:
-  - a removed app's tables, from a `plugins` app migration with
-    `core.migration_ops.DropLeftoverModel`;
+  - a removed app's tables, from a `plugins` app migration built with
+    `core.migration_ops.leftover_table_drops()` (a `DropLeftoverModel` per table) and
+    `forget_apps()` (its `django_migrations` rows and switch);
   - a staying app's, from its own migration (a state-only `CreateModel`, then `DeleteModel`);
   - both marked `morpheus_contract`.
 - `DropLeftoverModel` is a `DeleteModel`, so the gate sees it. It leaves a table that is not
