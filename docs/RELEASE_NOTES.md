@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.123.2 — 2026-10-23
+
+**Staff signing in with a password are asked for their authenticator code too**
+
+- Staff with two-factor sign-in turned on were not asked for their authenticator code when they signed in with a password instead of the emailed code. They are now, on every way of signing in. Shoppers sign in as before.
+
 ## v0.123.1 — 2026-10-23
 
 **Save for later's empty tables are dropped**
