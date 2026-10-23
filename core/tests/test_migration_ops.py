@@ -169,3 +169,14 @@ class ForgetAppsTests(TransactionTestCase):
         self.assertEqual(recorder.migration_qs.filter(app='wishlist').count(), wishlist_rows)
         names = PluginConfig.objects.filter(plugin_name__in=['wave2_gone', 'wave2_kept'])
         self.assertEqual(list(names.values_list('plugin_name', flat=True)), ['wave2_kept'])
+
+    def test_the_gate_sees_forget_apps(self):
+        # Forgotten in the release that removes the code, the release before would find its
+        # tables but no record of creating them, and fail every boot on DuplicateTable.
+        migration = migrations.Migration('0099_probe', 'plugins')
+        migration.operations = [
+            migrations.RunPython(forget_apps('wave2_gone'), migrations.RunPython.noop)
+        ]
+        review = migration_safety.review(migration, ProjectState())
+        self.assertTrue(review.blocks)
+        self.assertIn('wave2_gone', str(review.findings[0]))

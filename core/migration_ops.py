@@ -71,7 +71,10 @@ def leftover_table_drops(tables: dict[str, str]) -> list:
 def forget_apps(*labels: str):
     """A ``RunPython`` function that deletes what ``django_migrations`` and ``PluginConfig``
     still hold for apps that left the code: an app given one of these names later starts
-    from 0001, and no switch is left for an app that is gone."""
+    from 0001, and no switch is left for an app that is gone. Use it only in the release
+    after the code left: the release before would find the apps' tables but no record of
+    creating them, and fail every boot. The migration gate sees it (``morpheus_forgets``)
+    and asks for a ``morpheus_contract``, as for a drop."""
 
     def forget(apps, schema_editor):
         from django.db.migrations.recorder import MigrationRecorder  # noqa: PLC0415
@@ -79,4 +82,5 @@ def forget_apps(*labels: str):
         MigrationRecorder(schema_editor.connection).migration_qs.filter(app__in=labels).delete()
         apps.get_model('plugins', 'PluginConfig').objects.filter(plugin_name__in=labels).delete()
 
+    forget.morpheus_forgets = labels
     return forget

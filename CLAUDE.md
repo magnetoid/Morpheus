@@ -1703,6 +1703,7 @@ the old code still runs on the new schema. `manage.py release` refuses, and `rel
 - `RemoveField` and `DeleteModel`;
 - renames, including `AlterModelTable`;
 - `RunSQL`;
+- `core.migration_ops.forget_apps()`: the release before still records those apps' migrations;
 - an `AlterField` that makes a nullable column NOT NULL (even with a default: the old
   model still writes NULL);
 - an `AddField` of a NOT NULL column without `db_default`. Django drops a Python

@@ -12,6 +12,8 @@ names the operations in a migration that the previous release would trip over:
 - AlterField that makes a nullable column NOT NULL: it still writes NULL there,
   whatever default the new field has.
 - RunSQL: nothing can tell what raw SQL does.
+- RunPython of ``core.migration_ops.forget_apps``: it still records those apps'
+  migrations and switches, and would find their tables with no record of them.
 
 Such a change ships in two releases. To remove a column, the first takes the
 field off the model in state only (``SeparateDatabaseAndState``, the
@@ -114,6 +116,11 @@ def _finding(app_label, op, state) -> str:  # noqa: PLR0911 — one rule per ope
         return f'AlterModelTable {op.name}: the previous release still uses the old table name.'
     if isinstance(op, migrations.RunSQL):
         return 'RunSQL: raw SQL cannot be checked.'
+    if isinstance(op, migrations.RunPython) and getattr(op.code, 'morpheus_forgets', None):
+        return (
+            f'RunPython forget_apps({", ".join(op.code.morpheus_forgets)}): the previous '
+            "release still records those apps' migrations and switches."
+        )
     if isinstance(op, migrations.AddField) and _not_null_without_db_default(op.field):
         return (
             f'AddField {op.model_name}.{op.name}: NOT NULL without db_default, so the rows '
