@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.123.1 — 2026-10-23
+
+**Save for later's empty tables are dropped**
+
+- The three tables the Save for later app left behind are dropped when they are empty, with its migration record and its switch. One that still holds rows is kept, and the upgrade logs it.
+
 ## v0.123.0 — 2026-10-22
 
 **Save for later is gone; Wishlist keeps saved and shared lists**
