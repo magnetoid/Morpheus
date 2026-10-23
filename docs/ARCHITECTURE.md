@@ -76,12 +76,14 @@ challenge view) to interpose a second factor; with no subscriber the
 value stays `None` and login proceeds exactly as before.
 
 This single core change is what lets the **`staff_mfa`** plugin add a
-TOTP second factor for staff sign-in, and **`staff_sso`** (OIDC / SAML
-via allauth, off by default) reuses the *same* gate from its login
-adapter — allauth's `login()` doesn't fire `AUTH_SECOND_FACTOR`, so the
-adapter calls `staff_mfa`'s `second_factor_response` directly, so SSO
-logins honour MFA too. MFA and SSO are plugins; disabling them reverts
-sign-in to single-factor email-OTP.
+TOTP second factor for staff sign-in. Core fires the same filter for
+allauth's own sign-ins (email and password, a code, a sign-up, a reset,
+a social login) from `core/auth/adapters.py:AccountAdapter.pre_login`,
+which allauth calls before it logs anyone in; until v0.123.2 a password
+sign-in skipped it. **`staff_sso`** (OIDC / SAML via allauth, off by
+default) also interposes from its own adapter, which is now defence in
+depth. MFA and SSO are plugins; disabling them reverts sign-in to the
+first factor.
 
 ### Sign-in log
 

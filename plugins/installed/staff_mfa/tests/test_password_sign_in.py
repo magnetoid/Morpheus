@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pyotp
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from morpheus.core import hook_registry
@@ -35,6 +35,10 @@ def _confirmed_device(user):
     )
 
 
+# The login rate limit (10 a minute per IP, counted in a cache no test clears) would
+# answer 429 to a run of auth tests and leave no session, which these tests must not mistake
+# for the gate.
+@override_settings(MORPHEUS_RATELIMIT_ENABLED=False)
 class PasswordSignInSecondFactorTests(TestCase):
     def _sign_in(self, email):
         return self.client.post(reverse('account_login'), {'login': email, 'password': PASSWORD})
@@ -51,9 +55,11 @@ class PasswordSignInSecondFactorTests(TestCase):
         user = _user('boss@example.com', staff=True)
         device = _confirmed_device(user)
         self._sign_in('boss@example.com')
+        # The password alone is not enough.
+        self.assertIsNone(self.client.session.get('_auth_user_id'))
         code = pyotp.TOTP(device.secret).now()
         resp = self.client.post(reverse('staff_mfa:challenge'), {'code': code})
-        self.assertEqual(resp.status_code, 302)
+        self.assertRedirects(resp, '/dashboard/', fetch_redirect_response=False)
         self.assertEqual(self.client.session.get('_auth_user_id'), str(user.pk))
 
     def test_a_customer_signs_in_with_a_password_as_before(self):
@@ -69,5 +75,6 @@ class PasswordSignInSecondFactorTests(TestCase):
         hook_registry.register('auth.second_factor', boom, priority=1)
         self.addCleanup(hook_registry.unregister, 'auth.second_factor', boom)
         _user('boss@example.com', staff=True)
-        self._sign_in('boss@example.com')
+        resp = self._sign_in('boss@example.com')
+        self.assertRedirects(resp, reverse('account_login'), fetch_redirect_response=False)
         self.assertIsNone(self.client.session.get('_auth_user_id'))

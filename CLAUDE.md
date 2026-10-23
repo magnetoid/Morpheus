@@ -381,10 +381,12 @@ and compile every changed template with `get_template()` before shipping
 Until v0.123.2 only the first existed: allauth's email-and-password sign-in at
 `/auth/login/` never fired the hook, so a staff member with an authenticator reached
 the dashboard on the password alone. A sign-in path outside allauth and `otp_verify`
-MUST itself run the gate (`staff_mfa.services.second_factor_response` →
-`ImmediateHttpResponse` to the TOTP challenge), which is exactly why staff_sso
-interposes in its `SocialAccountAdapter.pre_social_login`. Don't add a login route
-without it (`staff_mfa/tests/test_password_sign_in.py`). It must also end in Django's `login()`: the sign-in log
+MUST itself fire the filter before `login()` (`raise_errors=True`, refusing the sign-in
+if it raises; never import staff_mfa for it). staff_sso's own interposition in
+`SocialAccountAdapter.pre_social_login` is defence in depth now. allauth runs `pre_login`
+before its login stages: turning on mandatory email verification, a required login code,
+`allauth.mfa` or headless adds stages that resume a login without it. Don't add a login
+route without the gate (`staff_mfa/tests/test_password_sign_in.py`). It must also end in Django's `login()`: the sign-in log
 (`core/auth/sign_ins.py`, the Contacts "Last sign-in" column) listens to
 `user_logged_in`, so a route that signs people in any other way leaves no trace.
 Relatedly, signing up proves nothing about the email

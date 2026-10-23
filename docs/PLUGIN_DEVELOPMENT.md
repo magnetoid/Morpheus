@@ -1004,34 +1004,37 @@ See [LAW 4 in RULES.md](../RULES.md#law-4--plugins-communicate-via-hooks--outbox
 ### Sign-in plugins must respect the second-factor gate
 
 `MorpheusEvents.AUTH_SECOND_FACTOR` (`'auth.second_factor'`) is a **filter**
-fired in `core/auth/views.py:otp_verify` *after* the email-OTP succeeds and
-*before* `login()` — it lets a plugin interpose a second factor by returning an
-`HttpResponse` (with no subscriber the value stays `None` and login proceeds as
-single-factor email-OTP). `staff_mfa` subscribes to it and redirects an enrolled
+fired *before* `login()`: in `core/auth/views.py:otp_verify` after the email-OTP
+succeeds, and in `core/auth/adapters.py:AccountAdapter.pre_login` before allauth
+signs anyone in (email and password, a code, a sign-up, a reset, a social
+login). It lets a plugin interpose a second factor by returning an
+`HttpResponse`; with no subscriber the value stays `None` and login proceeds on
+the first factor. `staff_mfa` subscribes to it and redirects an enrolled
 staffer to its TOTP challenge.
 
-**If your plugin adds a new way to sign in (SSO/OIDC/SAML, magic links,
-passkeys), it must route staff through the same gate** — otherwise the
-alternate path silently bypasses MFA. Email-OTP fires the filter for you, but
-flows that complete `login()` themselves (e.g. allauth's social login) do **not**
-fire it. In that case call the single decision point directly and interpose its
-response:
+**A new way to sign in that goes through allauth is gated already.** One that
+completes `login()` itself, outside allauth and `otp_verify` (a magic link, a
+custom token exchange), must fire the same filter before `login()` and refuse
+the sign-in if the call raises, or it silently bypasses MFA:
 
 ```python
-from plugins.registry import app_registry
+from core.hooks import MorpheusEvents, hook_registry
 
-if app_registry.is_active('staff_mfa'):
-    from plugins.installed.staff_mfa.services import second_factor_response
-    mfa = app_registry.get('staff_mfa')
-    resp = second_factor_response(mfa, request, user, next_url)
-    if resp is not None:
-        return resp   # redirect to the TOTP challenge before login completes
+resp = hook_registry.filter(
+    MorpheusEvents.AUTH_SECOND_FACTOR,
+    value=None, request=request, user=user, next=next_url, raise_errors=True,
+)
+if resp is not None:
+    return resp   # the second factor's challenge, before login completes
 ```
 
-`staff_sso` does exactly this in its allauth adapter (raising
-`ImmediateHttpResponse(resp)` from `pre_social_login`). Reuse
-`staff_mfa.services.second_factor_response` — don't re-implement the policy —
-and keep email-OTP available as the break-glass path.
+Fire the hook rather than importing `staff_mfa`: no plugin→plugin import, and
+the path keeps working when MFA is off. `staff_sso` also interposes from its
+adapter's `pre_social_login`, which is defence in depth since v0.123.2. Keep
+email-OTP available as the break-glass path. allauth runs `pre_login` before
+its login stages, so turning on mandatory email verification, a required login
+code, `allauth.mfa` or headless adds stages that resume a login without it:
+re-check the gate then.
 
 ---
 
