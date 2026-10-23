@@ -3,7 +3,7 @@ summary: Adds an authenticator-app code as a second step when staff sign in.
 ---
 
 ## What it's for
-This adds a second step to staff sign-in: after the usual email code, an enrolled team member also enters a code from an authenticator app. It applies only to staff accounts, not shoppers.
+This adds a second step to staff sign-in: after the usual email code or password, an enrolled team member also enters a code from an authenticator app. It applies only to staff accounts, not shoppers.
 
 ## Set it up
 Turn on [](field:staff_mfa.require_for_staff) to make this mandatory for every staff account; left off, each person can still choose to enroll for themselves. Set the issuer name shown inside the authenticator app in [](field:staff_mfa.issuer).

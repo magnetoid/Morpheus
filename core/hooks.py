@@ -1046,7 +1046,9 @@ class MorpheusEvents:
     # AUTH_SECOND_FACTOR — filter, value=None|HttpResponse, kwargs:
     #   request=HttpRequest, user=Customer, next=str. Fired by core/auth
     #   otp_verify AFTER the email-OTP (first factor) succeeds but BEFORE
-    #   login() establishes the session. A subscriber that needs a second
+    #   login() establishes the session, and by core/auth/adapters.py's
+    #   AccountAdapter.pre_login before any allauth sign-in (password, code,
+    #   sign-up, reset, social). A subscriber that needs a second
     #   factor (the staff_mfa plugin) stashes the pending user + next in the
     #   session and returns an HttpResponse — a redirect to its challenge
     #   view — and the filter short-circuits login with that response. With

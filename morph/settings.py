@@ -492,6 +492,8 @@ AUTHENTICATION_BACKENDS = [
 SITE_ID = 1
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
 ACCOUNT_LOGIN_METHODS = {'email'}
+# Every allauth sign-in runs the second factor (core/auth/adapters.py, v0.123.2).
+ACCOUNT_ADAPTER = 'core.auth.adapters.AccountAdapter'
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 # Point @login_required / @staff_member_required at allauth, not Django admin.
 # When DEBUG=False the admin URL conf isn't mounted, so the default

@@ -375,13 +375,16 @@ and compile every changed template with `get_template()` before shipping
 
 **Landmine — a new sign-in path silently bypasses MFA.** Staff second factor
 (staff_mfa) hangs off the `AUTH_SECOND_FACTOR` filter, fired in
-`core/auth/views.py:otp_verify` *after* email-OTP and *before* `login()`. Any
-**other** login path — an allauth/SSO/social provider — does NOT fire that hook
-(allauth calls its own `login()`), so it logs the user in single-factor. A new
-sign-in path MUST itself run the gate (`staff_mfa.services.second_factor_response`
-→ `ImmediateHttpResponse` to the TOTP challenge), which is exactly why staff_sso
+`core/auth/views.py:otp_verify` *after* email-OTP and *before* `login()`, and in
+`core/auth/adapters.py:AccountAdapter.pre_login` before allauth signs anyone in
+(password, code, sign-up, reset, social: allauth sends each through `pre_login`).
+Until v0.123.2 only the first existed: allauth's email-and-password sign-in at
+`/auth/login/` never fired the hook, so a staff member with an authenticator reached
+the dashboard on the password alone. A sign-in path outside allauth and `otp_verify`
+MUST itself run the gate (`staff_mfa.services.second_factor_response` →
+`ImmediateHttpResponse` to the TOTP challenge), which is exactly why staff_sso
 interposes in its `SocialAccountAdapter.pre_social_login`. Don't add a login route
-without it. It must also end in Django's `login()`: the sign-in log
+without it (`staff_mfa/tests/test_password_sign_in.py`). It must also end in Django's `login()`: the sign-in log
 (`core/auth/sign_ins.py`, the Contacts "Last sign-in" column) listens to
 `user_logged_in`, so a route that signs people in any other way leaves no trace.
 Relatedly, signing up proves nothing about the email
