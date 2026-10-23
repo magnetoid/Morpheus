@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/inventory/tests/test_stockout_alerts.py
@@ -37,3 +38,7 @@ Symbols in `plugins/installed/inventory/tests/test_stockout_alerts.py`.
 - L169 `test_opens_multiple_alerts_in_one_sync(self)` (method)
 - L178 `test_forecast_uses_available_not_on_hand(self)` (method)
 - L198 `test_tool_clamps_threshold_days(self)` (method)
+- L207 `OverstockDetectionTests` (class)
+- L208 `test_dead_stock_is_overstocked(self)` (method)
+- L218 `test_fast_mover_is_not_overstocked(self)` (method)
+- L225 `test_task_reports_overstock_count(self)` (method)

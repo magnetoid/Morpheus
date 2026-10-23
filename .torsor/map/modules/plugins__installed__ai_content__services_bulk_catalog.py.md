@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:50'
+updated: '2026-10-23T04:51:50'
+rules: []
 ---
 
 # plugins/installed/ai_content/services_bulk_catalog.py
@@ -18,4 +19,4 @@ Symbols in `plugins/installed/ai_content/services_bulk_catalog.py`.
 - L85 `translate(*, target: str, language: str, product_ids: list, dry_run: bool=True)` (function) — Translate `target` into `language` (e.g. 'fr', 'es', 'de').
 - L113 `expand(*, target: str, product_ids: list, dry_run: bool=True)` (function) — Expand a stub into 3-4 paragraphs of merchant-quality copy.
 - L144 `_bulk_run(*, target: str, product_ids: list, op, dry_run: bool)` (function)
-- L188 `_call_llm(user_prompt: str)` (function) — Call the LLM with brand-voice context. Returns (text, tokens_used).
+- L188 `_call_llm(user_prompt: str)` (function) — Call the model with brand-voice context. Returns (text, tokens_used).

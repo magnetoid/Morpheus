@@ -4,14 +4,17 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:56'
-updated: '2026-06-13T00:49:56'
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
 ---
 
 # api/middleware.py
 
 Symbols in `api/middleware.py`.
 
-- L11 `GraphQLCacheMiddleware` (class) — Enterprise GraphQL Query Caching Middleware.
-- L19 `__init__(self, get_response)` (method)
-- L22 `__call__(self, request)` (method)
+- L21 `_cacheable_query(query: str)` (function) — True iff `query` is a pure query whose top-level fields are all public
+- L47 `_vary_key(request)` (function) — The per-visitor axes an anonymous storefront response varies on. Folded
+- L66 `GraphQLCacheMiddleware` (class) — Enterprise GraphQL Query Caching Middleware.
+- L74 `__init__(self, get_response)` (method)
+- L77 `__call__(self, request)` (method)

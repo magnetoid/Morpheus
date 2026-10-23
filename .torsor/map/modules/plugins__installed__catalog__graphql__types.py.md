@@ -4,46 +4,48 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:50'
+updated: '2026-10-23T04:51:50'
+rules: []
 ---
 
 # plugins/installed/catalog/graphql/types.py
 
 Symbols in `plugins/installed/catalog/graphql/types.py`.
 
-- L10 `ImageType` (class)
-- L19 `CategoryType` (class)
-- L27 `image(self)` (method)
-- L33 `structured_data(self)` (method)
-- L53 `AttributeGroupType` (class)
-- L60 `AttributeType` (class)
-- L70 `AttributeValueType` (class)
-- L81 `CollectionType` (class)
-- L89 `image(self)` (method)
-- L96 `ProductVariantType` (class)
-- L120 `short_description(self)` (method)
-- L130 `description(self)` (method)
-- L140 `price(self)` (method)
-- L153 `compare_at_price(self)` (method)
-- L166 `is_on_sale(self)` (method)
-- L181 `discount_percentage(self)` (method)
-- L200 `digital_file_url(self)` (method)
-- L212 `image_url(self)` (method)
-- L241 `ProductType` (class)
-- L261 `collections(self)` (method)
-- L269 `average_rating(self)` (method)
-- L284 `review_count(self)` (method)
-- L304 `primary_image(self)` (method)
-- L326 `images(self)` (method)
-- L347 `tags(self)` (method)
-- L351 `reviews(self)` (method)
-- L357 `price(self)` (method)
-- L376 `price_starts_from(self)` (method)
-- L382 `compare_at_price(self)` (method)
-- L390 `structured_data(self)` (method)
-- L407 `agent_metadata(self)` (method)
-- L429 `AgentProductMetadata` (class) — Stable, machine-friendly view of a product for AI agents.
-- L447 `ReviewCustomerType` (class)
-- L452 `ReviewType` (class)
-- L460 `customer(self)` (method)
+- L9 `_structured_data_json(obj)` (function) — JSON-LD for one object, asked for rather than imported.
+- L29 `ImageType` (class)
+- L38 `CategoryType` (class)
+- L51 `image(self)` (method)
+- L57 `structured_data(self)` (method)
+- L62 `AttributeGroupType` (class)
+- L69 `AttributeType` (class)
+- L79 `AttributeValueType` (class)
+- L102 `CollectionType` (class)
+- L110 `image(self)` (method)
+- L117 `ProductVariantType` (class)
+- L141 `short_description(self)` (method)
+- L151 `description(self)` (method)
+- L161 `price(self)` (method)
+- L180 `compare_at_price(self)` (method)
+- L193 `is_on_sale(self)` (method)
+- L208 `discount_percentage(self)` (method)
+- L227 `digital_file_url(self)` (method)
+- L239 `image_url(self)` (method)
+- L268 `ProductType` (class)
+- L288 `collections(self)` (method)
+- L300 `average_rating(self)` (method)
+- L315 `review_count(self)` (method)
+- L335 `primary_image(self)` (method)
+- L357 `images(self)` (method)
+- L378 `tags(self)` (method)
+- L382 `reviews(self)` (method)
+- L388 `price(self)` (method)
+- L411 `price_starts_from(self)` (method)
+- L418 `compare_at_price(self)` (method)
+- L426 `structured_data(self)` (method)
+- L436 `agent_metadata(self)` (method)
+- L468 `AgentProductMetadata` (class) — Stable, machine-friendly view of a product for AI agents.
+- L486 `ReviewCustomerType` (class)
+- L491 `ReviewType` (class)
+- L499 `customer(self)` (method)

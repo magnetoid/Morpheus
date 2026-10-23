@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/cms/views.py
@@ -13,4 +14,4 @@ updated: '2026-06-13T00:49:57'
 Symbols in `plugins/installed/cms/views.py`.
 
 - L16 `page_view(request, slug: str)` (function)
-- L27 `form_submit(request, key: str)` (function)
+- L82 `form_submit(request, key: str)` (function)

@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
 ---
 
 # core/assistant/modes.py
@@ -13,5 +14,7 @@ updated: '2026-06-13T00:49:57'
 Symbols in `core/assistant/modes.py`.
 
 - L29 `AssistantMode` (class) — One row in the mode catalogue.
-- L109 `get_mode(slug: str | None)` (function) — Resolve a mode by slug. Falls back to ``general`` for unknown /
-- L115 `filter_tools_by_mode(tools: list, mode_slug: str | None)` (function) — Return the subset of ``tools`` allowed by the named mode.
+- L115 `get_mode(slug: str | None)` (function) — Resolve a mode by slug. Falls back to ``general`` for unknown /
+- L126 `allowed_modes_for(user)` (function) — Modes the acting user may use. ``dev`` exposes diagnostics (filesystem,
+- L140 `resolve_mode(slug: str | None, user)` (function) — Server-side mode resolution: honour the client's requested mode only when
+- L157 `filter_tools_by_mode(tools: list, mode_slug: str | None)` (function) — Return the subset of ``tools`` allowed by the named mode.

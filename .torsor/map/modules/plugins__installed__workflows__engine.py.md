@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:52'
+updated: '2026-10-23T04:51:52'
+rules: []
 ---
 
 # plugins/installed/workflows/engine.py
@@ -24,4 +25,4 @@ Symbols in `plugins/installed/workflows/engine.py`.
 - L272 `_action_add_order_note(spec: dict, payload: dict)` (function) — spec: {kind: add_order_note, note}
 - L292 `_action_tag_customer(spec: dict, payload: dict)` (function) — spec: {kind: tag_customer, tag}.
 - L327 `_action_webhook_post(spec: dict, payload: dict)` (function) — spec: {kind: webhook_post, url, body?, headers?}
-- L345 `_action_agent_skill(spec: dict, payload: dict)` (function) — spec: {kind: agent_skill, agent, message, context?}.
+- L353 `_action_agent_skill(spec: dict, payload: dict)` (function) — spec: {kind: agent_skill, agent, message, context?}.

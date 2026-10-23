@@ -4,14 +4,15 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
 ---
 
 # core/management/commands/morph_check_updates.py
 
 Symbols in `core/management/commands/morph_check_updates.py`.
 
-- L17 `Command` (class)
-- L20 `add_arguments(self, parser)` (method)
-- L24 `handle(self, *args, **opts)` (method)
+- L22 `Command` (class)
+- L25 `add_arguments(self, parser)` (method)
+- L29 `handle(self, *args, **opts)` (method)

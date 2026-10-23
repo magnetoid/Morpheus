@@ -1,0 +1,16 @@
+---
+type: map
+status: derived
+tags:
+- map
+links: []
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
+---
+
+# plugins/installed/eco_impact/apps.py
+
+Symbols in `plugins/installed/eco_impact/apps.py`.
+
+- L4 `EcoImpactConfig` (class)

@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/marketplace/tests/test_vendor_self_service.py
@@ -19,14 +20,14 @@ Symbols in `plugins/installed/marketplace/tests/test_vendor_self_service.py`.
 - L53 `setUp(self)` (method)
 - L68 `test_anon_redirects_to_login(self)` (method)
 - L74 `test_customer_without_vendor_sees_empty_state(self)` (method)
-- L86 `test_vendor_sees_only_own_products(self)` (method)
-- L96 `VendorProductEditPermissionTests` (class) — Triplet for the edit endpoint: anon → login, wrong vendor → 404
-- L102 `setUp(self)` (method)
-- L116 `_url(self, product_id)` (method)
-- L119 `test_anon_redirects(self)` (method)
-- L124 `test_non_vendor_user_gets_403(self)` (method)
-- L130 `test_other_vendor_cannot_edit(self)` (method) — The attacker IS an approved vendor (so they get past the 403),
-- L138 `test_other_vendor_cannot_post_either(self)` (method) — The double-check at fetch time means even a POST is blocked.
-- L157 `test_owner_can_view_form(self)` (method)
-- L164 `test_owner_can_save_changes(self)` (method)
-- L182 `test_invalid_price_doesnt_save(self)` (method)
+- L87 `test_vendor_sees_only_own_products(self)` (method)
+- L97 `VendorProductEditPermissionTests` (class) — Triplet for the edit endpoint: anon → login, wrong vendor → 404
+- L103 `setUp(self)` (method)
+- L117 `_url(self, product_id)` (method)
+- L120 `test_anon_redirects(self)` (method)
+- L125 `test_non_vendor_user_gets_403(self)` (method)
+- L131 `test_other_vendor_cannot_edit(self)` (method) — The attacker IS an approved vendor (so they get past the 403),
+- L139 `test_other_vendor_cannot_post_either(self)` (method) — The double-check at fetch time means even a POST is blocked.
+- L158 `test_owner_can_view_form(self)` (method)
+- L165 `test_owner_can_save_changes(self)` (method)
+- L183 `test_invalid_price_doesnt_save(self)` (method)

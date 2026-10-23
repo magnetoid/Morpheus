@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
 ---
 
 # plugins/apps.py
@@ -13,4 +14,5 @@ updated: '2026-06-13T00:49:57'
 Symbols in `plugins/apps.py`.
 
 - L4 `PluginsConfig` (class)
-- L7 `ready(self)` (method)
+- L7 `get_models(self, include_auto_created=False, include_swapped=False)` (method) — The `plugins` package's own models, never an uninstalled app's.
+- L25 `ready(self)` (method)

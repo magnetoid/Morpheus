@@ -1,0 +1,125 @@
+---
+type: map
+status: derived
+tags:
+- map
+links: []
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
+---
+
+# core/assistant/tests/test_janus_engine.py
+
+Symbols in `core/assistant/tests/test_janus_engine.py`.
+
+- L30 `_staff(**kw)` (function)
+- L38 `JanusDiscoveryTests` (class)
+- L39 `test_missing_binary_is_unavailable(self)` (method)
+- L50 `test_explicit_bin_wins(self)` (method)
+- L55 `McpEndpointTests` (class) — How the subprocess reaches the store's MCP server.
+- L64 `test_explicit_url_gets_exactly_one_slash_and_no_extra_headers(self)` (method)
+- L68 `test_explicit_url_slash_is_preserved(self)` (method)
+- L72 `test_request_host_and_scheme_ride_on_loopback(self)` (method)
+- L84 `test_without_a_request_the_configured_host_is_used(self)` (method)
+- L89 `test_local_dev_needs_no_extra_headers(self)` (method)
+- L92 `test_headers_are_written_as_quoted_yaml(self)` (method)
+- L97 `ConfigTests` (class) — The per-conversation config Janus reads. It must never hold a credential.
+- L100 `test_no_credential_is_written_to_disk(self)` (method)
+- L108 `test_changed_url_is_rewritten(self)` (method)
+- L117 `test_unchanged_config_is_left_alone(self)` (method)
+- L126 `test_terminal_scanner_is_off(self)` (method)
+- L133 `test_config_reports_each_step_to_the_conversation_home(self)` (method)
+- L141 `test_config_points_at_bundled_ecommerce_skills(self)` (method)
+- L152 `JanusHomeTests` (class) — v0.63.0 put homes under BASE_DIR. In the image /app is root-owned, so every
+- L158 `test_default_home_is_private_and_outside_the_app_tree(self)` (method)
+- L170 `test_configured_home_is_used(self)` (method)
+- L174 `test_unwritable_home_is_a_reported_failure_not_a_crash(self)` (method)
+- L186 `ChildEnvTests` (class) — The subprocess runs its own tool loop; it gets an allowlist, never the
+- L190 `test_platform_secrets_are_withheld(self)` (method)
+- L206 `test_reserved_janus_vars_are_not_inherited(self)` (method)
+- L217 `_FakeProc` (class)
+- L218 `__init__(self, *, stdout='', stderr='', returncode=0)` (method)
+- L224 `TurnTests` (class)
+- L225 `_run(self, proc, **kw)` (method)
+- L241 `test_unavailable_returns_error_payload(self)` (method)
+- L247 `test_auto_approve_is_off_by_default(self)` (method)
+- L252 `test_auto_approve_is_opt_in(self)` (method)
+- L256 `test_crash_after_partial_output_is_an_error(self)` (method)
+- L264 `test_long_json_envelope_is_unwrapped(self)` (method)
+- L272 `test_plain_text_passes_through(self)` (method)
+- L277 `test_timeout_is_reported_not_raised(self)` (method)
+- L292 `test_default_timeout_stays_within_the_cap(self)` (method)
+- L298 `TurnInvocationTests` (class) — How a turn is launched. Each of these shipped broken in v0.63.0.
+- L301 `setUp(self)` (method)
+- L306 `_turn(self, *procs)` (method)
+- L316 `test_default_toolset_never_loads(self)` (method)
+- L348 `test_toolset_names_the_configured_mcp_server(self)` (method)
+- L352 `test_runs_in_the_conversation_home_not_the_engine_checkout(self)` (method)
+- L364 `test_home_env_points_at_the_conversation_home(self)` (method)
+- L376 `test_tool_iterations_fit_the_turn_timeout(self)` (method)
+- L388 `test_quiet_mode_is_used(self)` (method)
+- L392 `test_follow_up_resumes_by_session_id_not_continue(self)` (method)
+- L403 `test_stale_session_falls_back_to_a_fresh_one(self)` (method)
+- L415 `test_malformed_session_id_never_reaches_argv(self)` (method)
+- L420 `test_session_line_is_not_reported_as_the_error(self)` (method)
+- L428 `EngineHygieneTests` (class) — What the merchant sees must be Linda's answer, from Linda's prompt.
+- L431 `setUp(self)` (method)
+- L436 `_turn(self, proc)` (method)
+- L444 `test_step_limit_notice_is_not_part_of_the_answer(self)` (method)
+- L452 `test_an_empty_reply_is_a_failure_not_a_blank_answer(self)` (method)
+- L457 `test_home_carries_lindas_identity_and_no_general_janus_skills(self)` (method)
+- L471 `test_config_keeps_turns_fast(self)` (method)
+- L477 `test_engine_failures_read_as_what_happened(self)` (method)
+- L485 `SessionAndProgressTests` (class) — A turn resends only what it must, reports what it cost, and shows it is alive.
+- L488 `setUp(self)` (method)
+- L494 `_run(self, *procs, **kwargs)` (method)
+- L510 `_message(argv)` (method)
+- L513 `test_recap_goes_only_to_a_fresh_session(self)` (method)
+- L525 `test_a_bare_message_is_sent_as_is(self)` (method)
+- L530 `test_a_long_or_idle_conversation_starts_a_fresh_session(self)` (method)
+- L544 `test_a_lost_session_retries_with_the_recap(self)` (method)
+- L554 `_janus_writes_usage(self, sid, input_tokens, output_tokens)` (method)
+- L574 `test_turn_usage_is_what_this_turn_added(self)` (method)
+- L581 `test_janus_background_review_is_off(self)` (method)
+- L588 `test_a_reply_lost_from_stdout_is_recovered_from_state_db(self)` (method)
+- L621 `test_a_turn_that_times_out_still_counts_its_tokens(self)` (method) — The longest turns are the ones that time out; the spend cap must see them.
+- L645 `test_the_turn_ticks_while_janus_works(self)` (method)
+- L666 `_works_with_steps(argv, **kwargs)` (method)
+- L684 `_items(self, side_effect)` (method)
+- L696 `test_steps_stream_while_janus_works(self)` (method)
+- L705 `test_a_turn_never_replays_the_last_turns_steps(self)` (method)
+- L713 `test_the_blocking_call_returns_the_reply_not_a_step(self)` (method)
+- L723 `AgentToolsetTests` (class) — What Linda can do beyond the store's tools, and what stays out on purpose.
+- L726 `test_she_can_plan_recall_and_search_the_web(self)` (method)
+- L729 `test_web_search_comes_without_page_fetching(self)` (method)
+- L735 `test_subagents_stay_off_while_delegate_task_can_launch_a_program(self)` (method)
+- L742 `test_the_merchant_can_switch_web_search_off(self)` (method)
+- L751 `ProviderWiringTests` (class) — Janus's `auto` picks OpenRouter whenever OPENAI_API_KEY is set and never
+- L755 `_wire(self, name, **cfg)` (method)
+- L771 `test_dashboard_deepseek_key_reaches_janus(self)` (method)
+- L779 `test_dashboard_qwen_key_reaches_janus(self)` (method)
+- L785 `test_openai_maps_to_the_direct_api_not_openrouter(self)` (method)
+- L789 `test_unmapped_provider_leaves_janus_to_resolve(self)` (method)
+- L792 `test_missing_key_leaves_janus_to_resolve(self)` (method)
+- L795 `test_provider_key_overrides_an_inherited_one(self)` (method)
+- L803 `ModelChoiceTests` (class) — Several models in one chat (owner's ask, 2026-10-10): a model picked for
+- L808 `_conf(self, name)` (method)
+- L820 `_patched(self, active='grok', fallbacks=())` (method)
+- L832 `test_a_model_picked_for_a_message_wins_over_the_default(self)` (method)
+- L839 `test_an_unusable_pick_falls_back_to_the_default(self)` (method)
+- L846 `test_backup_providers_go_into_the_config_with_their_keys(self)` (method)
+- L864 `test_the_picker_lists_priced_providers_that_have_a_key(self)` (method)
+- L870 `test_the_contract_covers_the_new_config_key(self)` (method)
+- L876 `AssistantEngineTests` (class) — Janus is the only engine.
+- L879 `test_tests_can_never_spawn_a_real_engine(self)` (method)
+- L884 `test_tests_can_never_install_a_janus(self)` (method)
+- L890 `test_no_engine_switch_remains(self)` (method)
+- L895 `test_identity_stays_linda(self)` (method)
+- L901 `test_the_prompt_no_longer_rations_her_work(self)` (method)
+- L911 `BundledEcommerceSkillsTests` (class) — Janus store homes must ship Morpheus daily-ops skills out of the box.
+- L921 `test_required_skills_are_present(self)` (method)
+- L926 `test_each_skill_has_valid_frontmatter(self)` (method)
+- L940 `JanusHistoryTests` (class)
+- L941 `test_history_recap_keeps_the_conversation_not_tool_output(self)` (method)
+- L958 `test_empty_history_adds_nothing(self)` (method)

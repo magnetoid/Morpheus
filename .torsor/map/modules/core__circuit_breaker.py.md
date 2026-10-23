@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
 ---
 
 # core/circuit_breaker.py
@@ -25,3 +26,4 @@ Symbols in `core/circuit_breaker.py`.
 - L168 `_record_success(self)` (method)
 - L179 `_record_failure(self, exc: BaseException)` (method)
 - L197 `reset(self)` (method) — Manually reset to CLOSED. Used by ops tooling + tests.
+- L214 `get_llm_breaker(provider_name: str)` (function) — Get or create a circuit breaker specific to an LLM provider.

@@ -4,16 +4,16 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/crm/graphql/mutations.py
 
 Symbols in `plugins/installed/crm/graphql/mutations.py`.
 
-- L9 `CrmLeadMutationResult` (class)
-- L17 `CrmCreateLeadInput` (class)
-- L26 `_is_staff(info)` (function)
-- L35 `CrmMutationExtension` (class)
-- L37 `crm_create_lead(self, info: strawberry.Info, input: CrmCreateLeadInput)` (method)
+- L11 `CrmLeadMutationResult` (class)
+- L19 `CrmCreateLeadInput` (class)
+- L29 `CrmMutationExtension` (class)
+- L31 `crm_create_lead(self, info: strawberry.Info, input: CrmCreateLeadInput)` (method)

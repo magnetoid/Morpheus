@@ -4,33 +4,31 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
 ---
 
 # core/assistant/tests/test_admin_ops.py
 
 Symbols in `core/assistant/tests/test_admin_ops.py`.
 
-- L17 `SettingsSetTests` (class)
-- L18 `test_requires_confirmation(self)` (method)
-- L24 `test_writes_and_coerces(self)` (method)
-- L33 `test_unknown_plugin_errors(self)` (method)
-- L42 `PluginsToggleTests` (class)
-- L43 `test_protected_disable_refused(self)` (method)
-- L58 `test_enable_non_protected_with_gate(self)` (method)
-- L74 `test_hard_gate_required(self)` (method)
-- L81 `UpdatesToolsTests` (class)
-- L82 `test_status_reports(self)` (method)
-- L95 `test_apply_requires_hard_gate(self)` (method)
-- L101 `test_apply_calls_guarded_updater(self)` (method)
-- L118 `ThemeActivateTests` (class)
-- L119 `test_hard_gate_required(self)` (method)
-- L125 `test_unknown_theme(self)` (method)
-- L138 `test_activate_discovered_theme(self)` (method)
-- L154 `WorkflowsRunTests` (class)
-- L155 `test_unknown_workflow(self)` (method)
-- L161 `test_live_run_requires_confirmation(self)` (method)
-- L169 `OrdersRefundTests` (class)
-- L170 `test_hard_gate_required(self)` (method)
-- L177 `test_unknown_order_after_gate(self)` (method)
+- L23 `SettingsSetTests` (class)
+- L24 `test_requires_confirmation(self)` (method)
+- L30 `test_writes_and_coerces(self)` (method)
+- L39 `test_unknown_plugin_errors(self)` (method)
+- L48 `PluginsToggleTests` (class)
+- L49 `test_protected_disable_refused(self)` (method)
+- L64 `test_enable_non_protected_with_gate(self)` (method)
+- L80 `test_hard_gate_required(self)` (method)
+- L87 `UpdatesToolsTests` (class)
+- L88 `test_status_reports(self)` (method)
+- L101 `test_apply_requires_hard_gate(self)` (method)
+- L110 `test_apply_calls_guarded_updater(self)` (method)
+- L129 `test_status_on_a_built_image_says_it_updates_on_release(self)` (method)
+- L143 `test_status_output_is_plain_json(self)` (method)
+- L172 `test_apply_on_a_built_image_says_it_cannot_run_here(self)` (method)
+- L185 `ThemeActivateTests` (class)
+- L186 `test_hard_gate_required(self)` (method)
+- L192 `test_unknown_theme(self)` (method)
+- L205 `test_activate_discovered_theme(self)` (method)

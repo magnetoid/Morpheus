@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:50'
+updated: '2026-10-23T04:51:50'
+rules: []
 ---
 
 # plugins/installed/affiliates/models.py
@@ -26,3 +27,5 @@ Symbols in `plugins/installed/affiliates/models.py`.
 - L302 `__str__(self)` (method)
 - L306 `effective_limit(self)` (method) — Result count, hard-capped so a public endpoint can't be coerced
 - L312 `AffiliatePayout` (class)
+- L336 `AffiliateCreative` (class) — A ready-to-share marketing asset (banner / cover / social image) the
+- L359 `__str__(self)` (method)

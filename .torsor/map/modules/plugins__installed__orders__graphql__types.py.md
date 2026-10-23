@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/orders/graphql/types.py
@@ -31,7 +32,8 @@ Symbols in `plugins/installed/orders/graphql/types.py`.
 - L118 `product(self)` (method)
 - L132 `variant(self)` (method)
 - L140 `CartType` (class)
-- L146 `item_count(self)` (method)
-- L150 `subtotal(self)` (method)
-- L162 `coupon(self)` (method)
-- L173 `gift_card(self)` (method)
+- L149 `session_key(self)` (method)
+- L153 `item_count(self)` (method)
+- L157 `subtotal(self)` (method)
+- L169 `coupon(self)` (method)
+- L180 `gift_card(self)` (method)

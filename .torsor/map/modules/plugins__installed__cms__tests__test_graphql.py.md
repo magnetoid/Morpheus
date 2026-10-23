@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/cms/tests/test_graphql.py
@@ -18,4 +19,4 @@ Symbols in `plugins/installed/cms/tests/test_graphql.py`.
 - L33 `test_staff_can_create_journal_page_with_metadata_and_publish_at(self)` (method)
 - L57 `test_staff_can_query_journal_entries(self)` (method)
 - L89 `test_staff_can_query_single_journal_entry(self)` (method)
-- L105 `test_non_staff_cannot_create_page(self)` (method)
+- L107 `test_non_staff_cannot_create_page(self)` (method)

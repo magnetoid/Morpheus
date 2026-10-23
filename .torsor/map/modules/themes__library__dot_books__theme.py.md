@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:52'
+updated: '2026-10-23T04:51:52'
+rules: []
 ---
 
 # themes/library/dot_books/theme.py
@@ -13,4 +14,4 @@ updated: '2026-06-13T00:49:58'
 Symbols in `themes/library/dot_books/theme.py`.
 
 - L20 `DotBooksTheme` (class)
-- L32 `get_config_schema(self)` (method)
+- L37 `get_config_schema(self)` (method)

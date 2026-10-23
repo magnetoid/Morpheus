@@ -4,13 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
 ---
 
 # core/assistant/prompts.py
 
 Symbols in `core/assistant/prompts.py`.
 
-- L86 `_inject_memories(base: str, *, limit: int=20)` (function) — Append up to `limit` top-relevance LindaMemory rows to the
-- L131 `build_system_prompt()` (function) — Return the full system prompt with brand-voice + LindaMemory
+- L62 `build_system_prompt()` (function) — Return the full system prompt with brand-voice injected when available.

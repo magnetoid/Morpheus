@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/loyalty_points/tests/test_redeem.py
@@ -38,3 +39,4 @@ Symbols in `plugins/installed/loyalty_points/tests/test_redeem.py`.
 - L180 `test_anon_redirected_to_login(self)` (method)
 - L185 `test_owner_sees_own_balance(self)` (method)
 - L194 `test_other_customer_does_not_see_first_customers_points(self)` (method)
+- L203 `test_page_keeps_the_head_document(self)` (method) — The template overrode `{% block seo %}` — the block that holds the

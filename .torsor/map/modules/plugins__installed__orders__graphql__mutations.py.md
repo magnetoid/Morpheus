@@ -4,44 +4,44 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/orders/graphql/mutations.py
 
 Symbols in `plugins/installed/orders/graphql/mutations.py`.
 
-- L16 `AddToCartInput` (class)
-- L26 `UpdateCartItemInput` (class)
-- L32 `RemoveCartItemInput` (class)
-- L37 `ApplyCouponInput` (class)
-- L43 `ApplyGiftCardInput` (class)
-- L49 `CompleteOrderInput` (class)
-- L62 `SetShippingRateInput` (class)
-- L71 `CartPayload` (class)
-- L77 `OrderPayload` (class)
-- L87 `OrdersMutationExtension` (class)
-- L89 `set_shipping_rate(self, input: SetShippingRateInput)` (method)
-- L105 `add_to_cart(self, info: strawberry.Info, input: AddToCartInput)` (method)
-- L142 `update_cart_item(self, input: UpdateCartItemInput)` (method)
-- L164 `remove_cart_item(self, input: RemoveCartItemInput)` (method)
-- L178 `apply_coupon(self, input: ApplyCouponInput)` (method)
-- L212 `apply_gift_card(self, input: ApplyGiftCardInput)` (method)
-- L275 `remove_gift_card(self, input: ApplyGiftCardInput)` (method)
-- L292 `complete_order(self, info: strawberry.Info, input: CompleteOrderInput)` (method)
-- L384 `OrderAdminResult` (class)
-- L392 `_is_staff(info)` (function)
-- L400 `_check_scope(info, required: list[str])` (function)
-- L416 `_serialize_order_admin(order, *, error: str='')` (function)
-- L426 `_err_admin(msg: str)` (function)
-- L437 `MarkFulfilledInput` (class)
-- L442 `MarkShippedInput` (class)
-- L448 `CancelOrderInput` (class)
-- L454 `MarkRefundedInput` (class)
-- L460 `OrdersAdminMutationExtension` (class) — Staff-only order admin mutations — fulfill / ship / cancel /
-- L469 `mark_order_fulfilled(self, info: strawberry.Info, input: MarkFulfilledInput)` (method)
-- L494 `mark_order_shipped(self, info: strawberry.Info, input: MarkShippedInput)` (method)
-- L517 `cancel_order(self, info: strawberry.Info, input: CancelOrderInput)` (method)
-- L542 `mark_order_refunded(self, info: strawberry.Info, input: MarkRefundedInput)` (method)
-- L565 `_address_dict(addr: AddressInput)` (function)
+- L18 `AddToCartInput` (class)
+- L32 `UpdateCartItemInput` (class)
+- L38 `RemoveCartItemInput` (class)
+- L43 `ApplyCouponInput` (class)
+- L49 `ApplyGiftCardInput` (class)
+- L55 `CompleteOrderInput` (class)
+- L68 `SetShippingRateInput` (class)
+- L77 `CartPayload` (class)
+- L83 `OrderPayload` (class)
+- L95 `OrdersMutationExtension` (class)
+- L97 `set_shipping_rate(self, info: strawberry.Info, input: SetShippingRateInput)` (method)
+- L108 `add_to_cart(self, info: strawberry.Info, input: AddToCartInput)` (method)
+- L151 `update_cart_item(self, info: strawberry.Info, input: UpdateCartItemInput)` (method)
+- L168 `remove_cart_item(self, info: strawberry.Info, input: RemoveCartItemInput)` (method)
+- L177 `apply_coupon(self, info: strawberry.Info, input: ApplyCouponInput)` (method)
+- L204 `remove_coupon(self, info: strawberry.Info, input: ApplyCouponInput)` (method)
+- L216 `apply_gift_card(self, info: strawberry.Info, input: ApplyGiftCardInput)` (method)
+- L274 `remove_gift_card(self, info: strawberry.Info, input: ApplyGiftCardInput)` (method)
+- L286 `complete_order(self, info: strawberry.Info, input: CompleteOrderInput)` (method)
+- L395 `OrderAdminResult` (class)
+- L403 `_serialize_order_admin(order, *, error: str='')` (function)
+- L413 `_err_admin(msg: str)` (function)
+- L424 `MarkFulfilledInput` (class)
+- L429 `MarkShippedInput` (class)
+- L435 `CancelOrderInput` (class)
+- L441 `MarkRefundedInput` (class)
+- L447 `OrdersAdminMutationExtension` (class) — Staff-only order admin mutations — fulfill / ship / cancel /
+- L456 `mark_order_fulfilled(self, info: strawberry.Info, input: MarkFulfilledInput)` (method)
+- L481 `mark_order_shipped(self, info: strawberry.Info, input: MarkShippedInput)` (method)
+- L504 `cancel_order(self, info: strawberry.Info, input: CancelOrderInput)` (method)
+- L529 `mark_order_refunded(self, info: strawberry.Info, input: MarkRefundedInput)` (method)
+- L553 `_address_dict(addr: AddressInput)` (function)

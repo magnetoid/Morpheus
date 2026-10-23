@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/crm/models.py
@@ -33,3 +34,8 @@ Symbols in `plugins/installed/crm/models.py`.
 - L459 `__str__(self)` (method)
 - L463 `occurred_at(self)` (method)
 - L467 `CustomerNote` (class) — Quick freeform note attached to a customer (separate from Interaction
+- L494 `ChatThread` (class) — A live customer-support conversation. Started from the storefront chat
+- L531 `__str__(self)` (method)
+- L534 `display_name(self)` (method)
+- L540 `ChatMessage` (class)
+- L559 `__str__(self)` (method)

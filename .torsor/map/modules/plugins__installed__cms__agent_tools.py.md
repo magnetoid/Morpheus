@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:50'
+updated: '2026-10-23T04:51:50'
+rules: []
 ---
 
 # plugins/installed/cms/agent_tools.py
@@ -19,3 +20,7 @@ Symbols in `plugins/installed/cms/agent_tools.py`.
 - L173 `get_page_tool(*, slug: str)` (function)
 - L210 `update_page_tool(*, slug: str, title: str | None=None, body: str | None=None, excerpt: str | None=None, state: str | None=None, layout: str | None=None)` (function)
 - L251 `delete_page_tool(*, slug: str)` (function)
+- L274 `cms_pages_tool(*, state: str='', limit: int=50)` (function)
+- L308 `email_templates_tool()` (function)
+- L345 `cms_publish_page_tool(*, id: str='', slug: str='', confirmed: bool=False, context: dict | None=None)` (function)
+- L420 `cms_unpublish_page_tool(*, id: str='', slug: str='', confirmed: bool=False, context: dict | None=None)` (function)

@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/immersive_pdp/tests/__init__.py
@@ -13,4 +14,5 @@ updated: '2026-06-13T00:49:58'
 Symbols in `plugins/installed/immersive_pdp/tests/__init__.py`.
 
 - L6 `test_plugin_metadata()` (function)
-- L13 `test_block_count_default()` (function)
+- L13 `test_sticky_buybox_default_on()` (function)
+- L20 `test_only_pdp_buybox_blocks_contributed()` (function)

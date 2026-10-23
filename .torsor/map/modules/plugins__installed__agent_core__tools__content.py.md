@@ -4,13 +4,14 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:50'
+updated: '2026-10-23T04:51:50'
+rules: []
 ---
 
 # plugins/installed/agent_core/tools/content.py
 
 Symbols in `plugins/installed/agent_core/tools/content.py`.
 
-- L31 `draft_product_description_tool(*, slug: str, tone: str='literary')` (function)
-- L100 `fill_missing_content_tool(*, slug: str='', limit: int=10, tone: str='literary')` (function)
+- L32 `draft_product_description_tool(*, slug: str, tone: str='literary')` (function)
+- L101 `fill_missing_content_tool(*, slug: str='', limit: int=10, tone: str='literary')` (function)

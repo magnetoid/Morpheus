@@ -4,12 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/marketplace/templatetags/marketplace_account.py
 
 Symbols in `plugins/installed/marketplace/templatetags/marketplace_account.py`.
 
-- L15 `vendor_for(user)` (function) — Return the user's Vendor row (any status) or None. Used to decide
+- L15 `vendor_for(user)` (function) — ``{'status', 'noun'}`` for the signed-in vendor or applicant, else None.

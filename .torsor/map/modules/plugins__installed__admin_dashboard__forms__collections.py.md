@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
 ---
 
 # plugins/installed/admin_dashboard/forms/collections.py
@@ -13,6 +14,6 @@ updated: '2026-06-13T00:49:57'
 Symbols in `plugins/installed/admin_dashboard/forms/collections.py`.
 
 - L17 `CollectionForm` (class)
-- L39 `__init__(self, *args, **kwargs)` (method)
-- L48 `clean_slug(self)` (method)
-- L64 `save(self, commit=True)` (method)
+- L37 `__init__(self, *args, **kwargs)` (method)
+- L46 `clean_slug(self)` (method)
+- L62 `save(self, commit=True)` (method)

@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:56'
-updated: '2026-06-13T00:49:56'
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
 ---
 
 # api/schema.py
@@ -23,5 +24,5 @@ Symbols in `api/schema.py`.
 - L63 `_MaskUnhandledErrors` (class) — Mask any unhandled exception inside a resolver to `INTERNAL_ERROR` and
 - L73 `on_executing_end(self)` (method)
 - L112 `build_schema()` (function) — Assemble the schema from core types + all plugin extension modules.
-- L153 `get_schema()` (function)
-- L162 `warm_schema()` (function) — Pre-build the schema to remove first-request latency.
+- L163 `get_schema()` (function)
+- L172 `warm_schema()` (function) — Pre-build the schema to remove first-request latency.

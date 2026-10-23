@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
 ---
 
 # core/self_improvement/healers/base.py
@@ -21,4 +22,5 @@ Symbols in `core/self_improvement/healers/base.py`.
 - L58 `rollback(self, recommendation)` (method) — Best-effort revert. Default is no-op.
 - L70 `register_healer(class_name: str)` (function) — Decorator. Use as ``@register_healer('seo_gap')`` on the
 - L84 `get_healer(class_name: str)` (function)
-- L89 `known_classes()` (function)
+- L106 `resolve_healers(class_name: str)` (function) — All healers that could serve `class_name`, exact match first.
+- L121 `known_classes()` (function)

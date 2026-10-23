@@ -4,12 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/demo_data/views.py
 
 Symbols in `plugins/installed/demo_data/views.py`.
 
-- L9 `demo_data_index(request)` (function) — Settings page for the demo_data plugin.
+- L11 `demo_data_index(request)` (function) — Settings page for the demo_data plugin.

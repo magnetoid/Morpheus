@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:52'
+updated: '2026-10-23T04:51:52'
+rules: []
 ---
 
 # plugins/tests.py
@@ -36,3 +37,10 @@ Symbols in `plugins/tests.py`.
 - L205 `test_drop_contributions_removes_them(self)` (method)
 - L224 `StorefrontBlocksTagTests` (class) — The {% storefront_blocks 'slot' %} tag renders contributed templates.
 - L227 `test_tag_renders_nothing_when_no_blocks(self)` (method)
+- L234 `GetConfigSavepointTests` (class) — A failed config read must not poison the caller's transaction.
+- L245 `test_db_error_is_contained_in_a_savepoint(self)` (method)
+- L276 `ValidateCoreDependencyTests` (class) — validate() must treat a `core.*` requires entry as a core Django app
+- L282 `_registry(self, **classes)` (method)
+- L289 `test_core_app_dependency_satisfied(self)` (method)
+- L298 `test_missing_plugin_dependency_still_errors(self)` (method)
+- L308 `test_unknown_core_app_still_errors(self)` (method)

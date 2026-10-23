@@ -4,12 +4,13 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/lookbook/migrations/0001_initial.py
 
 Symbols in `plugins/installed/lookbook/migrations/0001_initial.py`.
 
-- L4 `Migration` (class)
+- L7 `Migration` (class)

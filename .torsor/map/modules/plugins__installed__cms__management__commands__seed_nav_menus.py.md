@@ -4,14 +4,15 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:50'
+updated: '2026-10-23T04:51:50'
+rules: []
 ---
 
 # plugins/installed/cms/management/commands/seed_nav_menus.py
 
 Symbols in `plugins/installed/cms/management/commands/seed_nav_menus.py`.
 
-- L34 `Command` (class)
-- L37 `_seed(self, key, label, items)` (method)
-- L47 `handle(self, *args, **options)` (method)
+- L36 `Command` (class)
+- L39 `_seed(self, key, label, items)` (method)
+- L49 `handle(self, *args, **options)` (method)

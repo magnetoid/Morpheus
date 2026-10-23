@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/consent/templatetags/consent.py
@@ -13,4 +14,4 @@ updated: '2026-06-13T00:49:57'
 Symbols in `plugins/installed/consent/templatetags/consent.py`.
 
 - L25 `consent_show(context)` (function)
-- L33 `consent_current(context)` (function)
+- L39 `consent_current(context)` (function)

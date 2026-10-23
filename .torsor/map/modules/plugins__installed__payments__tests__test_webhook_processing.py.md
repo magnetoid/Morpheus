@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/payments/tests/test_webhook_processing.py
@@ -28,6 +29,8 @@ Symbols in `plugins/installed/payments/tests/test_webhook_processing.py`.
 - L122 `test_already_processing_order_only_flips_payment_status(self)` (method)
 - L133 `test_unknown_intent_is_recorded_but_changes_nothing(self)` (method)
 - L144 `test_handler_failure_is_recorded_and_reraised_for_retry(self)` (method)
-- L158 `PaymentFailedTests` (class)
-- L159 `test_failed_marks_tx_with_error(self)` (method)
-- L175 `test_failed_event_cannot_overwrite_a_success(self)` (method)
+- L157 `test_stripe_retry_of_a_failed_event_is_processed(self)` (method) — The failed delivery re-raises so Stripe retries — the retry must then
+- L184 `test_retry_runs_even_when_the_failure_had_no_message(self)` (method) — A recorded error is the retry's claim marker, so a failure whose
+- L202 `PaymentFailedTests` (class)
+- L203 `test_failed_marks_tx_with_error(self)` (method)
+- L219 `test_failed_event_cannot_overwrite_a_success(self)` (method)

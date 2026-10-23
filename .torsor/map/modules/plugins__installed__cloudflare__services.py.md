@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:50'
+updated: '2026-10-23T04:51:50'
+rules: []
 ---
 
 # plugins/installed/cloudflare/services.py
@@ -51,4 +52,7 @@ Symbols in `plugins/installed/cloudflare/services.py`.
 - L392 `patch_zone_setting(zone, setting_id: str, value: Any)` (function) — Toggle / set one zone-level feature. Returns the API response.
 - L398 `analytics_summary(zone, days: int=7)` (function) — Return a flat summary of the dashboard metrics over the last N
 - L420 `purge_for_product_update(product)` (function) — Auto-purge cache for any zone with `auto_purge_on_product_update=True`.
-- L463 `purge_for_category_update(category)` (function) — Tag-based companion to the URL-based hook in plugin.py.
+- L467 `purge_for_category_update(category)` (function) — Tag-based companion to the URL-based hook in app.py.
+- L498 `_turnstile_config()` (function) — Cloudflare plugin config (Turnstile keys + toggle) from PluginConfig.
+- L509 `turnstile_site_key()` (function) — The Turnstile site key to render, or '' when disabled/unset.
+- L517 `verify_turnstile(request)` (function) — Verify a Turnstile challenge server-side. True when Turnstile is disabled

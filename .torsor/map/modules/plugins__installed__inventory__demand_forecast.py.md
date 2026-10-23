@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/inventory/demand_forecast.py
@@ -13,9 +14,9 @@ updated: '2026-06-13T00:49:58'
 Symbols in `plugins/installed/inventory/demand_forecast.py`.
 
 - L52 `ForecastRow` (class) — One forecast per variant.
-- L66 `forecast_all(*, window_days: int=DEFAULT_WINDOW_DAYS, threshold_days: int=DEFAULT_REORDER_THRESHOLD_DAYS, reorder_multiplier: float=DEFAULT_REORDER_MULTIPLIER)` (function) — Compute forecast rows for every tracked variant.
-- L151 `emit_reorder_signals(*, window_days: int=DEFAULT_WINDOW_DAYS, threshold_days: int=DEFAULT_REORDER_THRESHOLD_DAYS)` (function) — Feed reorder candidates into the self-improvement signal bus.
-- L206 `_variant_label(variant)` (function)
-- L214 `_severity_for(row: ForecastRow)` (function) — Higher severity = closer to stockout.
-- L232 `projected_lost_revenue_if_no_reorder(row: ForecastRow, unit_price: Decimal)` (function) — Naive: window_days × velocity × unit_price, capped by current stock.
-- L246 `sync_stockout_alerts(*, window_days: int=DEFAULT_WINDOW_DAYS, threshold_days: int=DEFAULT_REORDER_THRESHOLD_DAYS)` (function) — Reconcile the forecast against open StockoutAlerts.
+- L67 `forecast_all(*, window_days: int=DEFAULT_WINDOW_DAYS, threshold_days: int=DEFAULT_REORDER_THRESHOLD_DAYS, reorder_multiplier: float=DEFAULT_REORDER_MULTIPLIER)` (function) — Compute forecast rows for every tracked variant.
+- L163 `emit_reorder_signals(*, window_days: int=DEFAULT_WINDOW_DAYS, threshold_days: int=DEFAULT_REORDER_THRESHOLD_DAYS)` (function) — Feed reorder candidates into the self-improvement signal bus.
+- L218 `_variant_label(variant)` (function)
+- L226 `_severity_for(row: ForecastRow)` (function) — Higher severity = closer to stockout.
+- L244 `projected_lost_revenue_if_no_reorder(row: ForecastRow, unit_price: Decimal)` (function) — Naive: window_days × velocity × unit_price, capped by current stock.
+- L258 `sync_stockout_alerts(*, window_days: int=DEFAULT_WINDOW_DAYS, threshold_days: int=DEFAULT_REORDER_THRESHOLD_DAYS)` (function) — Reconcile the forecast against open StockoutAlerts.

@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:58'
-updated: '2026-06-13T00:49:58'
+created: '2026-10-23T04:51:51'
+updated: '2026-10-23T04:51:51'
+rules: []
 ---
 
 # plugins/installed/payments/gateways/manual_gateway.py
@@ -13,4 +14,5 @@ updated: '2026-06-13T00:49:58'
 Symbols in `plugins/installed/payments/gateways/manual_gateway.py`.
 
 - L8 `ManualGateway` (class)
-- L14 `create_payment_intent(self, *, order, **kwargs)` (method)
+- L14 `is_configured(self)` (method) — Offered only once the merchant has written how to pay (bank details):
+- L23 `create_payment_intent(self, *, order, **kwargs)` (method)

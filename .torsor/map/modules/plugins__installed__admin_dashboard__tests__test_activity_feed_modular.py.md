@@ -4,8 +4,9 @@ status: derived
 tags:
 - map
 links: []
-created: '2026-06-13T00:49:57'
-updated: '2026-06-13T00:49:57'
+created: '2026-10-23T04:51:49'
+updated: '2026-10-23T04:51:49'
+rules: []
 ---
 
 # plugins/installed/admin_dashboard/tests/test_activity_feed_modular.py
@@ -18,3 +19,4 @@ Symbols in `plugins/installed/admin_dashboard/tests/test_activity_feed_modular.p
 - L55 `test_order_activity_contributed_end_to_end(self)` (method)
 - L71 `test_newsletter_activity_contributed_end_to_end(self)` (method)
 - L81 `test_feed_sorted_newest_first_and_capped(self)` (method)
+- L98 `test_item_with_missing_when_is_dropped_not_500(self)` (method)
