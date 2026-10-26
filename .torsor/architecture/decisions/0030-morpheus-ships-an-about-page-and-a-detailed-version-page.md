@@ -7,19 +7,25 @@ links: []
 created: '2026-07-06T11:45:41'
 updated: '2026-07-06T11:45:41'
 rules:
-- id: about-and-version-pages
-  statement: Morpheus must maintain a public About page and a dashboard Version page
-    that surfaces detailed version data (running core version, per-plugin + theme
-    versions with enabled/active state, the docs/RELEASE_NOTES.md changelog, and update
-    status).
-  applies_to: plugins/installed/storefront (About /about/), plugins/installed/release_notes
-    (Settings -> Version & updates), core/versioning.py, docs/RELEASE_NOTES.md
-  guard: The storefront must serve /about/. The dashboard must expose Settings ->
-    Version & updates (release_notes plugin) rendering docs/RELEASE_NOTES.md + MORPHEUS_VERSION,
-    and the version/updates surface must show core.versioning.component_versions()
-    (core + per-plugin + theme versions with state). Do not delete these pages or
-    strip the detailed version inventory / changelog.
+- rule_id: about-and-version-pages
+  kind: require_import
+  target: core.versioning
+  scope: plugins/installed/release_notes/views.py
   severity: warning
+  message: The About and Version pages read core.versioning (ADR 0030).
+guidance:
+- id: about-and-version-pages
+  statement: Morpheus must maintain a public About page and a dashboard Version page that surfaces detailed
+    version data (running core version, per-plugin + theme versions with enabled/active state, the docs/RELEASE_NOTES.md
+    changelog, and update status).
+  applies_to: plugins/installed/storefront (About /about/), plugins/installed/release_notes (Settings
+    -> Version & updates), core/versioning.py, docs/RELEASE_NOTES.md
+  guard: The storefront must serve /about/. The dashboard must expose Settings -> Version & updates (release_notes
+    plugin) rendering docs/RELEASE_NOTES.md + MORPHEUS_VERSION, and the version/updates surface must show
+    core.versioning.component_versions() (core + per-plugin + theme versions with state). Do not delete
+    these pages or strip the detailed version inventory / changelog.
+  severity: warning
+  status: enforced by the machine rule of the same id
 ---
 
 # ADR 0030: Morpheus ships an About page and a detailed Version page

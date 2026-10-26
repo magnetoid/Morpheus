@@ -4,18 +4,27 @@ status: accepted
 tags:
 - adr
 links:
-- '0026-distribution-model-single-tenant-instances-per-client-agency-model-licensing-deferred-to-publish-time-open-core-or-fsl-with-prep-starting-now'
+- 0026-distribution-model-single-tenant-instances-per-client-agency-model-licensing-deferred-to-publish-time-open-core-or-fsl-with-prep-starting-now
 created: '2026-10-04T00:00:00'
 updated: '2026-10-04T00:00:00'
 rules:
+- rule_id: license-is-busl
+  kind: forbid_pattern
+  severity: warning
+  scope: '*.md'
+  exclude: .torsor/**
+  target: Apache License 2\.0|Apache-2\.0 —|\bis open[ -]source\b|Other open[ -]source
+  message: 'Morpheus is Business Source License 1.1 from v0.76.1: say "source-available", never "open
+    source" or Apache (ADR 0038).'
+guidance:
 - id: license-is-busl
   pattern: Apache License 2\.0|Apache-2\.0 —|is open source and free
-  message: "Morpheus is licensed under the Business Source License 1.1 from
-    v0.76.1 (ADR 0038). Apache 2.0 is only the Change License each version
-    converts to after four years. Don't describe the platform as Apache or as
-    open source in docs or marketing copy."
+  message: Morpheus is licensed under the Business Source License 1.1 from v0.76.1 (ADR 0038). Apache
+    2.0 is only the Change License each version converts to after four years. Don't describe the platform
+    as Apache or as open source in docs or marketing copy.
   where: README.md|CONTRIBUTING.md|CHARTER.md|docs/**/*.md
   severity: warn
+  status: enforced by the machine rule of the same id
 ---
 
 # ADR 0038: Morpheus is licensed under the Business Source License 1.1 from v0.76.1

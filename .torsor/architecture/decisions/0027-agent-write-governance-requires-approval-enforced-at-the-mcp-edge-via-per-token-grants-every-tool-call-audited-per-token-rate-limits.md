@@ -6,13 +6,15 @@ tags:
 links: []
 created: '2026-07-02T21:17:22'
 updated: '2026-07-02T21:17:22'
-rules:
+rules: []
+guidance:
 - id: mcp-writes-need-approval-audit-ratelimit
   pattern: plugins/installed/agent_mcp/(views|auth|dashboard)\.py
-  message: 'MCP tool dispatch must keep the governance gates after scope check: requires_approval
-    tools refused unless the token''s approved_tools grants it, every call/denial
-    audited via core.audit, per-token rate limit. Don''t bypass _enforce_rate_limit
-    / the approval block / _audit_call. (ADR: agent-write governance.)'
+  message: 'MCP tool dispatch must keep the governance gates after scope check: requires_approval tools
+    refused unless the token''s approved_tools grants it, every call/denial audited via core.audit, per-token
+    rate limit. Don''t bypass _enforce_rate_limit / the approval block / _audit_call. (ADR: agent-write
+    governance.)'
+  status: current; guarded by agent_mcp test_governance and test_token_writes
 ---
 
 # ADR 0027: Agent-write governance: requires_approval enforced at the MCP edge via per-token grants; every tool call audited; per-token rate limits

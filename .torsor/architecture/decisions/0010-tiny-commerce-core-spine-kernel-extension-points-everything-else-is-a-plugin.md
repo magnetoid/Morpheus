@@ -6,15 +6,18 @@ tags:
 links: []
 created: '2026-06-07T15:28:09'
 updated: '2026-06-13T18:47:49'
-rules:
+rules: []
+guidance:
 - id: core-owns-interfaces-not-engines
   pattern: core/.*(tax|payment|gateway|shipping_rate|discount_engine)
-  message: Tax/payment/shipping/discount ENGINES are plugins behind a core hook/interface.
-    Core only defines + calls the interface; the implementation lives in plugins/installed/<name>/.
+  message: Tax/payment/shipping/discount ENGINES are plugins behind a core hook/interface. Core only defines
+    + calls the interface; the implementation lives in plugins/installed/<name>/.
+  status: superseded by ADR 0017 (same rule there)
 - id: feature-code-not-in-core
   pattern: core/.*(models|views)\.py
-  message: Is this kernel/spine, or a feature? Non-spine features belong in a plugin,
-    not core/. Core should own extension points, not feature logic.
+  message: Is this kernel/spine, or a feature? Non-spine features belong in a plugin, not core/. Core
+    should own extension points, not feature logic.
+  status: superseded by ADR 0017 (same rule there)
 superseded_by: 0017-advanced-powerful-commerce-core-delivered-through-modularity-supersedes-tiny-core
 ---
 

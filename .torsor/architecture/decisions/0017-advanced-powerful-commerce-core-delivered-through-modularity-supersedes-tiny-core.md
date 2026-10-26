@@ -7,18 +7,27 @@ links: []
 created: '2026-06-13T18:47:49'
 updated: '2026-06-13T18:47:49'
 rules:
+- rule_id: core-owns-interfaces-not-engines
+  kind: forbid_pattern
+  severity: error
+  scope: core/**/*.py
+  exclude: '**/tests/**'
+  target: ^\s*class\s+\w*(TaxEngine|TaxCalculator|TaxProvider|PaymentGateway|PaymentProvider|ShippingRate|ShippingCarrier|ShippingProvider|DiscountEngine|PromotionEngine)\w*\b
+  message: Core defines the extension point; the engine (tax, payment, shipping, discounts) lives in an
+    app (ADR 0017).
+guidance:
 - id: core-owns-interfaces-not-engines
   pattern: core/.*(tax|payment|gateway|shipping_rate|discount_engine)
-  message: "Tax/payment/shipping/discount ENGINES are pluggable plugins behind a core\
-    \ hook/interface \u2014 even when the platform's commerce is advanced. Core defines\
-    \ + calls the interface; the (possibly very powerful) implementation lives in\
-    \ plugins/installed/<name>/."
+  message: Tax/payment/shipping/discount ENGINES are pluggable plugins behind a core hook/interface —
+    even when the platform's commerce is advanced. Core defines + calls the interface; the (possibly very
+    powerful) implementation lives in plugins/installed/<name>/.
+  status: enforced by the machine rule of the same id
 - id: feature-code-not-in-core
   pattern: core/.*(models|views)\.py
-  message: "Kernel/spine, or a feature? Build features as deep as you like \u2014\
-    \ but feature logic belongs in a plugin, not core/. Core owns extension points;\
-    \ 'advanced & powerful' lands as well-factored plugins, never as feature code\
-    \ in core/."
+  message: Kernel/spine, or a feature? Build features as deep as you like — but feature logic belongs
+    in a plugin, not core/. Core owns extension points; 'advanced & powerful' lands as well-factored plugins,
+    never as feature code in core/.
+  status: current; a judgement, not machine-checkable
 supersedes: 0010-tiny-commerce-core-spine-kernel-extension-points-everything-else-is-a-plugin
 ---
 

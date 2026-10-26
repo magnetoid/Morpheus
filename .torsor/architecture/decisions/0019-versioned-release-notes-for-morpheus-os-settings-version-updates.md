@@ -6,20 +6,23 @@ tags:
 links: []
 created: '2026-06-20T22:50:48'
 updated: '2026-06-20T23:31:13'
-rules:
+rules: []
+guidance:
 - id: release-notes-on-version-bump
-  description: "Any change to MORPHEUS_VERSION must add a matching `## vX.Y.Z \u2014\
-    \ YYYY-MM-DD` entry to docs/RELEASE_NOTES.md in the same change."
+  description: Any change to MORPHEUS_VERSION must add a matching `## vX.Y.Z — YYYY-MM-DD` entry to docs/RELEASE_NOTES.md
+    in the same change.
   applies_to:
   - morph/settings.py
   - docs/RELEASE_NOTES.md
   severity: error
+  status: superseded by ADR 0032; enforced by manage.py release --check
 - id: release-notes-is-source-of-truth
-  description: "The in-dashboard Settings \u2192 Version & updates page renders docs/RELEASE_NOTES.md;\
-    \ never hardcode changelog content in the release_notes plugin or templates."
+  description: The in-dashboard Settings → Version & updates page renders docs/RELEASE_NOTES.md; never
+    hardcode changelog content in the release_notes plugin or templates.
   applies_to:
   - plugins/installed/release_notes
   severity: warn
+  status: superseded by ADR 0032; guarded by release_notes test_release_notes
 superseded_by: 0020-every-push-to-main-is-a-new-morpheus-version-release-notes-cover-only-core-plugin-updates
 ---
 

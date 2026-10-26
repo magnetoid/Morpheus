@@ -7,13 +7,28 @@ links: []
 created: '2026-07-02T03:23:05'
 updated: '2026-07-02T03:23:05'
 rules:
+- rule_id: error-capture-is-core-not-plugin
+  kind: forbid_pattern
+  severity: error
+  scope: plugins/**/*.py
+  exclude: '**/migrations/**'
+  target: ^class\s+ErrorEvent\b
+  message: Error capture is core (core/errors); an app is a surface over it, never a second store (ADR
+    0025).
+- rule_id: kernel-imports-no-plugin-recorder
+  kind: forbid_import
+  target: plugins.installed.observability
+  scope: morph/**/*.py
+  severity: error
+  message: The kernel never imports the observability app; it reads core/errors (ADR 0025).
+guidance:
 - id: error-capture-is-core-not-plugin
   pattern: record_error|ErrorEvent|task_failure|capture_exception
-  message: "Error CAPTURE/STORAGE lives in core/errors/ (un-disable-able immune-system\
-    \ infra). Record via core.errors.services.record_error \u2014 never define a second\
-    \ ErrorEvent model or import a plugin's recorder from core/project code (core->plugin\
-    \ boundary). A plugin may only contribute the optional error DASHBOARD surface\
-    \ over core/errors. (ADR: error logging is core.)"
+  message: 'Error CAPTURE/STORAGE lives in core/errors/ (un-disable-able immune-system infra). Record
+    via core.errors.services.record_error — never define a second ErrorEvent model or import a plugin''s
+    recorder from core/project code (core->plugin boundary). A plugin may only contribute the optional
+    error DASHBOARD surface over core/errors. (ADR: error logging is core.)'
+  status: enforced by the machine rules error-capture-is-core-not-plugin and kernel-imports-no-plugin-recorder
 ---
 
 # ADR 0025: Error logging is a CORE system (core/errors); the observability plugin is an optional surface over it, not a parallel store

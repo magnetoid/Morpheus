@@ -6,20 +6,21 @@ tags:
 links: []
 created: '2026-07-01T03:40:12'
 updated: '2026-07-01T03:40:12'
-rules:
+rules: []
+guidance:
 - id: hook-bus-gates-on-owner-active-state
   pattern: def fire|def filter|_owner_inactive|set_active_check
-  message: "core/hooks.py fire()/filter() must skip handlers owned by an inactive\
-    \ plugin (owner tagged via register_hook plugin=..., predicate via set_active_check).\
-    \ Do NOT remove this gating \u2014 it's what makes hook-contributed surfaces vanish\
-    \ on disable (ADR 0023). Covered by core/tests/test_hook_disable_gating.py."
+  message: core/hooks.py fire()/filter() must skip handlers owned by an inactive plugin (owner tagged
+    via register_hook plugin=..., predicate via set_active_check). Do NOT remove this gating — it's what
+    makes hook-contributed surfaces vanish on disable (ADR 0023). Covered by core/tests/test_hook_disable_gating.py.
+  status: current; guarded by core/tests/test_hook_disable_gating.py
 - id: optional-plugin-surface-via-hook-not-hard-import
   pattern: plugins/installed/(admin_dashboard|storefront)/.*(views|dashboard).*\.py
-  message: "Rendering an OPTIONAL plugin's surface (card/column/panel) from a shared\
-    \ shell? Contribute it via the plugin's hook (PRODUCT_FORM_CARDS etc.) so the\
-    \ bus auto-hides it on disable \u2014 never a hard `from plugins.installed.<X>\
-    \ import` (a try/except guards absence, not disable). Foundational plugins (catalog/orders/customers)\
-    \ are exempt \u2014 they're never disabled."
+  message: Rendering an OPTIONAL plugin's surface (card/column/panel) from a shared shell? Contribute
+    it via the plugin's hook (PRODUCT_FORM_CARDS etc.) so the bus auto-hides it on disable — never a hard
+    `from plugins.installed.<X> import` (a try/except guards absence, not disable). Foundational plugins
+    (catalog/orders/customers) are exempt — they're never disabled.
+  status: current; the gated imports that remain are tolerated debt in scripts/plugin_boundary_baseline.json
 ---
 
 # ADR 0024: The hook bus skips handlers owned by a disabled plugin (disable-safety for hook contributions)

@@ -7,20 +7,34 @@ links: []
 created: '2026-06-14T19:56:11'
 updated: '2026-06-14T19:56:11'
 rules:
+- rule_id: storefront-server-rendered-not-headless
+  kind: forbid_pattern
+  severity: error
+  scope: package.json
+  target: '"(next|nuxt|gatsby|@remix-run/react|@sveltejs/kit)"\s*:'
+  message: The storefront is server-rendered; a headless framework is a per-channel opt-in decision (ADR
+    0018).
+- rule_id: one-storefront-app-n-channels
+  kind: forbid_pattern
+  severity: error
+  scope: plugins/installed/storefront_*/**
+  target: .
+  message: One storefront app serves every channel through StoreChannel rows, never a second storefront
+    app (ADR 0018).
+guidance:
 - id: storefront-server-rendered-not-headless
   pattern: ^(frontend|spa|headless|next-storefront|nuxt-storefront)/
-  message: "Multiple storefronts = StoreChannel rows + theme-per-channel on the EXISTING\
-    \ server-rendered Django storefront, NOT a decoupled JS frontend tree. Headless\
-    \ was deliberately deferred (docs/plans/multi-storefront.md, ADR): a JS frontend\
-    \ strands the ~46 plugins that render via {% storefront_blocks %}. Headless is\
-    \ a later, per-channel opt-in over the existing GraphQL API \u2014 not a parallel\
-    \ frontend."
+  message: 'Multiple storefronts = StoreChannel rows + theme-per-channel on the EXISTING server-rendered
+    Django storefront, NOT a decoupled JS frontend tree. Headless was deliberately deferred (docs/plans/multi-storefront.md,
+    ADR): a JS frontend strands the ~46 plugins that render via {% storefront_blocks %}. Headless is a
+    later, per-channel opt-in over the existing GraphQL API — not a parallel frontend.'
+  status: enforced by the machine rule of the same id
 - id: one-storefront-app-n-channels
   pattern: plugins/installed/storefront[0-9_]
-  message: A second storefront is a StoreChannel ROW, not a second storefront plugin.
-    One storefront app renders N channels; per-storefront difference is channel-scoped
-    data + theme-per-channel (override keyed by channel FK), never a forked/cloned
-    storefront plugin or a parallel table.
+  message: A second storefront is a StoreChannel ROW, not a second storefront plugin. One storefront app
+    renders N channels; per-storefront difference is channel-scoped data + theme-per-channel (override
+    keyed by channel FK), never a forked/cloned storefront plugin or a parallel table.
+  status: enforced by the machine rule of the same id
 ---
 
 # ADR 0018: Multiple storefronts = StoreChannel rows on the server-rendered storefront; headless deferred to a per-channel opt-in

@@ -6,12 +6,13 @@ tags:
 links: []
 created: '2026-07-19T02:12:42'
 updated: '2026-07-19T02:12:42'
-rules:
+rules: []
+guidance:
 - id: version-bump-on-app-or-theme-change
-  description: A change to app code (core/, plugins/installed/, morph/) or theme code
-    (themes/) must bump MORPHEUS_VERSION and add a dated docs/RELEASE_NOTES.md entry
-    in the same deploy.
+  description: A change to app code (core/, plugins/installed/, morph/) or theme code (themes/) must bump
+    MORPHEUS_VERSION and add a dated docs/RELEASE_NOTES.md entry in the same deploy.
   severity: error
+  status: current; enforced by manage.py release --check
 ---
 
 # ADR 0033: Any app-code or theme-code change bumps MORPHEUS_VERSION

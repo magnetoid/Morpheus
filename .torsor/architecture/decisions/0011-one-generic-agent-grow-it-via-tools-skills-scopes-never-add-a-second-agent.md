@@ -7,15 +7,48 @@ links: []
 created: '2026-06-07T15:28:11'
 updated: '2026-06-07T15:28:11'
 rules:
+- rule_id: no-langchain
+  kind: forbid_import
+  target: langchain
+  scope: '*.py'
+  severity: error
+  message: 'One agent: wrap an SDK as a tool, never adopt a second agent framework (ADR 0011).'
+- rule_id: no-crewai
+  kind: forbid_import
+  target: crewai
+  scope: '*.py'
+  severity: error
+  message: 'One agent: wrap an SDK as a tool, never adopt a second agent framework (ADR 0011).'
+- rule_id: no-autogen
+  kind: forbid_import
+  target: autogen
+  scope: '*.py'
+  severity: error
+  message: 'One agent: wrap an SDK as a tool, never adopt a second agent framework (ADR 0011).'
+- rule_id: no-llama-index
+  kind: forbid_import
+  target: llama_index
+  scope: '*.py'
+  severity: error
+  message: 'One agent: wrap an SDK as a tool, never adopt a second agent framework (ADR 0011).'
+- rule_id: no-specialist-agent-class
+  kind: forbid_pattern
+  severity: error
+  scope: plugins/**/*.py
+  exclude: '**/tests/**'
+  target: ^\s*class\s+\w+\(\s*MorpheusAgent\s*\)
+  message: Specialise the one Worker with a skill and scopes, never an agent subclass (ADR 0011).
+guidance:
 - id: no-second-agent-framework
   pattern: langchain|crewai|autogen|autogpt|llama_index|AgentExecutor|class\s+\w*Agent\b
-  message: Do not add a second agent framework/orchestrator or a specialist Agent
-    class. Extend the single Worker via @tool + scopes (Skill bundle), or wrap an
-    SDK as one tool.
+  message: Do not add a second agent framework/orchestrator or a specialist Agent class. Extend the single
+    Worker via @tool + scopes (Skill bundle), or wrap an SDK as one tool.
+  status: enforced by the machine rules no-langchain, no-crewai, no-autogen, no-llama-index and no-specialist-agent-class
 - id: agent-grows-by-tools
   pattern: '@tool\('
-  message: 'Good: plugins extend the agent by contributing tools + scopes. Keep tools
-    plugin-owned; don''t fork the agent.'
+  message: 'Good: plugins extend the agent by contributing tools + scopes. Keep tools plugin-owned; don''t
+    fork the agent.'
+  status: current guidance; not a prohibition
 ---
 
 # ADR 0011: One generic agent — grow it via tools/skills/scopes; never add a second agent

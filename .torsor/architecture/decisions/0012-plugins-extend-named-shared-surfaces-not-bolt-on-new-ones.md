@@ -7,19 +7,38 @@ links: []
 created: '2026-06-07T15:28:23'
 updated: '2026-06-07T15:28:23'
 rules:
+- rule_id: extend-dont-invent-sections
+  kind: forbid_pattern
+  severity: error
+  scope: plugins/**/*.py
+  exclude: plugins/installed/admin_dashboard/**
+  target: \bNavSection\(
+  message: File into an existing sidebar section; only admin_dashboard/navigation.py defines sections
+    (ADR 0012).
+- rule_id: settings-extend-category
+  kind: forbid_pattern
+  severity: error
+  scope: plugins/**/*.py
+  exclude: plugins/installed/admin_dashboard/**
+  target: \bSettingsCategory\(
+  message: Contribute into an existing settings category; only the dashboard defines categories (ADR 0012).
+guidance:
 - id: extend-dont-invent-sections
   pattern: section\s*=
-  message: Register into an EXISTING dashboard section from the known set; don't invent
-    a new top-level section. New concept? Contribute into the closest existing section.
+  message: Register into an EXISTING dashboard section from the known set; don't invent a new top-level
+    section. New concept? Contribute into the closest existing section.
+  status: enforced by the machine rule of the same id, and the morpheus.W003/W004 checks
 - id: no-hardcoded-foreign-surfaces
   pattern: templates/(admin_dashboard|storefront)/.*\.html
   message: A plugin's surface must be CONTRIBUTED (DashboardPage/StorefrontBlock/account_nav/settings
-    panel), not hardcoded into admin_dashboard/storefront/theme. Hardcoded foreign
-    surfaces fail the disable test (orphan 404s).
+    panel), not hardcoded into admin_dashboard/storefront/theme. Hardcoded foreign surfaces fail the disable
+    test (orphan 404s).
+  status: current; partly guarded by admin_dashboard test_disable_guards and test_disable_safety
 - id: settings-extend-category
   pattern: contribute_settings_panel|settings_categor
-  message: Settings must extend a shared settings CATEGORY (one coherent hub), not
-    a bespoke standalone settings page that duplicates an existing one.
+  message: Settings must extend a shared settings CATEGORY (one coherent hub), not a bespoke standalone
+    settings page that duplicates an existing one.
+  status: enforced by the machine rule of the same id, and the morpheus.E001 check
 ---
 
 # ADR 0012: Plugins extend named shared surfaces, not bolt on new ones

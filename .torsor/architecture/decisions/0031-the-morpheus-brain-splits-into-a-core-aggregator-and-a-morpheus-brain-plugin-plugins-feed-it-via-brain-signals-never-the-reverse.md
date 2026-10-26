@@ -7,16 +7,22 @@ links: []
 created: '2026-07-06T21:36:49'
 updated: '2026-07-06T21:36:49'
 rules:
+- rule_id: morpheus-brain-core-vs-plugin-split
+  kind: forbid_import
+  target: plugins.installed
+  scope: core/brain/**/*.py
+  severity: error
+  message: The core Brain aggregator never imports an app; apps push through BRAIN_SIGNALS (ADR 0031).
+guidance:
 - id: morpheus-brain-core-vs-plugin-split
   severity: error
-  text: "core/brain/ (signals aggregator, analyst, log handler, beat tasks) is permanent\
-    \ kernel and must NEVER import plugins.installed.* \u2014 plugin-owned Brain data\
-    \ (SEO/catalog/insights/DailyReport slices) is contributed ONLY through the BRAIN_SIGNALS\
-    \ filter via a plugin's register_hook(events.BRAIN_SIGNALS, ...) subscriber. A\
-    \ new core\u2192plugin import in core/brain/, or moving the core aggregator into\
-    \ the morpheus_brain plugin, is forbidden. The morpheus_brain plugin owns DailyReport\
-    \ + the /dashboard/brain/ surface only; it renders the core engine, it does not\
-    \ host it."
+  text: core/brain/ (signals aggregator, analyst, log handler, beat tasks) is permanent kernel and must
+    NEVER import plugins.installed.* — plugin-owned Brain data (SEO/catalog/insights/DailyReport slices)
+    is contributed ONLY through the BRAIN_SIGNALS filter via a plugin's register_hook(events.BRAIN_SIGNALS,
+    ...) subscriber. A new core→plugin import in core/brain/, or moving the core aggregator into the morpheus_brain
+    plugin, is forbidden. The morpheus_brain plugin owns DailyReport + the /dashboard/brain/ surface only;
+    it renders the core engine, it does not host it.
+  status: enforced by the machine rule of the same id
 ---
 
 # ADR 0031: The Morpheus Brain splits into a core aggregator and a morpheus_brain plugin; plugins feed it via BRAIN_SIGNALS, never the reverse

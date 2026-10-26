@@ -1,0 +1,130 @@
+{
+  "violations": [
+    {
+      "file": "core/self_improvement/collectors/seo_gap.py",
+      "rule_kind": "forbid_pattern",
+      "target": "get_model\\(\\s*[\\'\"](catalog|seo|cms|orders|customers|inventory|marketing|promotions|book_product|reviews|loyalty_points|gift_cards|marketplace|booking_marketplace|ai_assistant)[\\'\"]",
+      "count": 4
+    },
+    {
+      "file": "core/self_improvement/healers/alt_text.py",
+      "rule_kind": "forbid_pattern",
+      "target": "get_model\\(\\s*[\\'\"](catalog|seo|cms|orders|customers|inventory|marketing|promotions|book_product|reviews|loyalty_points|gift_cards|marketplace|booking_marketplace|ai_assistant)[\\'\"]",
+      "count": 2
+    },
+    {
+      "file": "core/self_improvement/healers/meta_description.py",
+      "rule_kind": "forbid_pattern",
+      "target": "\\.(meta_title|meta_description|focus_keyword|og_title|og_description|twitter_title|twitter_description)\\s*=[^=]",
+      "count": 1
+    },
+    {
+      "file": "core/self_improvement/healers/meta_description.py",
+      "rule_kind": "forbid_pattern",
+      "target": "get_model\\(\\s*[\\'\"](catalog|seo|cms|orders|customers|inventory|marketing|promotions|book_product|reviews|loyalty_points|gift_cards|marketplace|booking_marketplace|ai_assistant)[\\'\"]",
+      "count": 2
+    },
+    {
+      "file": "core/self_improvement/healers/redirect.py",
+      "rule_kind": "forbid_pattern",
+      "target": "get_model\\(\\s*[\\'\"](catalog|seo|cms|orders|customers|inventory|marketing|promotions|book_product|reviews|loyalty_points|gift_cards|marketplace|booking_marketplace|ai_assistant)[\\'\"]",
+      "count": 1
+    },
+    {
+      "file": "core/self_improvement/healers/synonym.py",
+      "rule_kind": "forbid_pattern",
+      "target": "get_model\\(\\s*[\\'\"](catalog|seo|cms|orders|customers|inventory|marketing|promotions|book_product|reviews|loyalty_points|gift_cards|marketplace|booking_marketplace|ai_assistant)[\\'\"]",
+      "count": 2
+    },
+    {
+      "file": "plugins/installed/admin_dashboard/templates/admin_dashboard/base.html",
+      "rule_kind": "forbid_pattern",
+      "target": "(href|action)=[\"\\']/dashboard/|fetch\\([\\'\"]/dashboard/",
+      "count": 3
+    },
+    {
+      "file": "plugins/installed/admin_dashboard/templates/admin_dashboard/home.html",
+      "rule_kind": "forbid_pattern",
+      "target": "\\{%\\s*url\\s+[\\'\"](?!(admin_dashboard|storefront|storefront_chrome|core_auth|assistant|errors|catalog|orders|customers|payments|agent_core_dash|agent_core_api|agent_mcp|rbac|janus)\\b)[a-z_]+:",
+      "count": 2
+    },
+    {
+      "file": "plugins/installed/admin_dashboard/views_split/settings.py",
+      "rule_kind": "forbid_pattern",
+      "target": "entry\\[[\\'\"]plugin[\\'\"]\\]\\s*==\\s*[\\'\"][a-z_]+[\\'\"]|category\\s*==\\s*[\\'\"]ai_assistant[\\'\"]",
+      "count": 4
+    },
+    {
+      "file": "plugins/installed/admin_dashboard/views_split/settings.py",
+      "rule_kind": "forbid_pattern",
+      "target": "settings\\.STORE_NAME\\b|settings,\\s*[\\'\"]STORE_NAME[\\'\"]",
+      "count": 1
+    },
+    {
+      "file": "plugins/installed/book_product/dashboard_taxonomies.py",
+      "rule_kind": "forbid_pattern",
+      "target": "\\.(meta_title|meta_description|focus_keyword|og_title|og_description|twitter_title|twitter_description)\\s*=[^=]",
+      "count": 6
+    },
+    {
+      "file": "plugins/installed/book_product/tasks.py",
+      "rule_kind": "forbid_pattern",
+      "target": "\\.(meta_title|meta_description|focus_keyword|og_title|og_description|twitter_title|twitter_description)\\s*=[^=]",
+      "count": 2
+    },
+    {
+      "file": "plugins/installed/booking_marketplace/management/commands/seed_site_branding.py",
+      "rule_kind": "forbid_pattern",
+      "target": "settings\\.STORE_NAME\\b|settings,\\s*[\\'\"]STORE_NAME[\\'\"]",
+      "count": 1
+    },
+    {
+      "file": "plugins/installed/crm/agents.py",
+      "rule_kind": "forbid_pattern",
+      "target": "^\\s*class\\s+\\w+\\(\\s*MorpheusAgent\\s*\\)",
+      "count": 1
+    },
+    {
+      "file": "plugins/installed/seo/services/meta.py",
+      "rule_kind": "forbid_pattern",
+      "target": "settings\\.STORE_NAME\\b|settings,\\s*[\\'\"]STORE_NAME[\\'\"]",
+      "count": 2
+    },
+    {
+      "file": "plugins/installed/seo/templatetags/seo.py",
+      "rule_kind": "forbid_pattern",
+      "target": "seo_title.*(STORE_NAME|store_name|brand_name\\(|site_name)",
+      "count": 1
+    },
+    {
+      "file": "plugins/tests_ai_paused_callers.py",
+      "rule_kind": "forbid_pattern",
+      "target": "^\\s*class\\s+\\w*AgentRuntime\\b|^\\s*def\\s+(gate_reason|_gate_reason)\\b|^\\s*class\\s+\\w+\\(\\s*LLMProvider\\s*\\)",
+      "count": 1
+    },
+    {
+      "file": "themes/library/dot_books/templates/storefront/journal_amp.html",
+      "rule_kind": "forbid_pattern",
+      "target": "<title>[^<]*\\}\\}\\s*[\u2014\u00b7|-]\\s*[A-Za-z][^<{]*</title>",
+      "count": 1
+    },
+    {
+      "file": "themes/library/irving_survival/templates/storefront/journal_amp.html",
+      "rule_kind": "forbid_pattern",
+      "target": "<title>[^<]*\\}\\}\\s*[\u2014\u00b7|-]\\s*[A-Za-z][^<{]*</title>",
+      "count": 1
+    },
+    {
+      "file": "themes/library/montenegro/templates/storefront/journal_amp.html",
+      "rule_kind": "forbid_pattern",
+      "target": "<title>[^<]*\\}\\}\\s*[\u2014\u00b7|-]\\s*[A-Za-z][^<{]*</title>",
+      "count": 1
+    },
+    {
+      "file": "themes/library/supernatural_shop/templates/storefront/journal_amp.html",
+      "rule_kind": "forbid_pattern",
+      "target": "<title>[^<]*\\}\\}\\s*[\u2014\u00b7|-]\\s*[A-Za-z][^<{]*</title>",
+      "count": 1
+    }
+  ]
+}

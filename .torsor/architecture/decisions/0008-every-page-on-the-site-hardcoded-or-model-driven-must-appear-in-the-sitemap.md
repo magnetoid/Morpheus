@@ -6,12 +6,13 @@ tags:
 links: []
 created: '2026-06-04T23:46:03'
 updated: '2026-06-04T23:46:03'
-rules:
+rules: []
+guidance:
 - id: sitemap-covers-all-pages
   pattern: urlpatterns|def .*_detail|path\(
-  message: New public-facing route? Ensure its URLs are emitted by iter_sitemap_entries()
-    in seo/services/sitemaps.py (add an _iter_*_entries generator). Every page, hardcoded
-    or model-driven, belongs in the sitemap.
+  message: New public-facing route? Ensure its URLs are emitted by iter_sitemap_entries() in seo/services/sitemaps.py
+    (add an _iter_*_entries generator). Every page, hardcoded or model-driven, belongs in the sitemap.
+  status: superseded as a mechanism; guarded by seo test_sitemap_soft404 and the sitemap policy tests
 ---
 
 # ADR 0008: Every page on the site — hardcoded or model-driven — must appear in the sitemap

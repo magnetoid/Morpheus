@@ -582,7 +582,7 @@ change (`test_janus_contract.py` fails until you do). Guarded by
 **Landmine — what Janus learns lives in files a redeploy deletes, and "add a disk
 volume" only fixes it on one host.** Janus writes its memory notes, the skills it
 authors and its lessons under `JANUS_HOME`, a temp dir per container. Morpheus is
-open source and must behave the same with or without Coolify, so the durable copy
+self-hosted anywhere and must behave the same with or without Coolify, so the durable copy
 is the database (`JanusLearning`, `core/assistant/janus_learning.py`): each turn
 **hydrates** the home from the DB, runs, then **harvests** only the diff — in a
 `finally`, so a note saved before a timeout is kept. Four rules: (1) harvest

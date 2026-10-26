@@ -4,34 +4,43 @@ status: accepted
 tags:
 - adr
 links:
-- '0004-a-domain-with-a-settings-dashboard-page-must-not-also-contribute-a-settingspanel'
-- '0007-a-page-title-is-the-clean-page-name-the-brand-is-applied-at-render'
-- '0013-app-modularity-disabling-a-plugin-removes-all-its-features-from-storefront-and-dashboard'
-- '0023-a-shared-shell-must-render-an-optional-apps-surface-through-a-contribution'
-- '0036-the-storefront-head-is-built-by-core-and-filled-in-by-the-seo-app'
+- 0004-a-domain-with-a-settings-dashboard-page-must-not-also-contribute-a-settingspanel
+- 0007-a-page-title-is-the-clean-page-name-the-brand-is-applied-at-render
+- 0013-app-modularity-disabling-a-plugin-removes-all-its-features-from-storefront-and-dashboard
+- 0023-a-shared-shell-must-render-an-optional-apps-surface-through-a-contribution
+- 0036-the-storefront-head-is-built-by-core-and-filled-in-by-the-seo-app
 created: '2026-08-19T00:00:00'
 updated: '2026-08-19T00:00:00'
 rules:
+- rule_id: seo-writes-go-to-seometa
+  kind: forbid_pattern
+  severity: warning
+  scope: '*.py'
+  exclude: '**/tests/**'
+  target: \.(meta_title|meta_description|focus_keyword|og_title|og_description|twitter_title|twitter_description)\s*=[^=]
+  message: Per-entity SEO is written to SeoMeta, not the legacy Product columns (ADR 0037).
+guidance:
 - id: seo-writes-go-to-seometa
   pattern: \.(meta_title|meta_description|focus_keyword|og_title|og_description|twitter_title|twitter_description)\s*=
-  message: "Per-entity SEO is owned by SeoMeta. The native catalog columns are read
-    as a fallback for one release and are removed after that — write through
-    SeoMeta (or the panel's save_object_seo) instead of assigning the column."
+  message: Per-entity SEO is owned by SeoMeta. The native catalog columns are read as a fallback for one
+    release and are removed after that — write through SeoMeta (or the panel's save_object_seo) instead
+    of assigning the column.
   where: plugins/installed/**/*.py
   severity: warn
+  status: enforced by the machine rule of the same id
 - id: form-saved-needs-a-presence-marker
   pattern: def on_\w+_form_saved
-  message: "A *_FORM_SAVED handler must key off a field its own card posts. Keying
-    off absence means a POST from a form that never rendered the card writes blanks
-    over stored data."
+  message: A *_FORM_SAVED handler must key off a field its own card posts. Keying off absence means a
+    POST from a form that never rendered the card writes blanks over stored data.
   severity: warn
+  status: current; guarded by seo test_panel_contributions
 - id: redirect-targets-are-site-relative
   pattern: HttpResponsePermanentRedirect\(|HttpResponseRedirect\(
-  message: "A redirect target that came from the database is staff- and
-    assistant-writable. Validate it as site-relative before it reaches a Location
-    header, or it is an open redirect."
+  message: A redirect target that came from the database is staff- and assistant-writable. Validate it
+    as site-relative before it reaches a Location header, or it is an open redirect.
   where: plugins/installed/**/middleware.py
   severity: warn
+  status: current; guarded by seo test_redirects_engine
 ---
 
 # ADR 0037: `SeoMeta` is the single owner of per-entity SEO

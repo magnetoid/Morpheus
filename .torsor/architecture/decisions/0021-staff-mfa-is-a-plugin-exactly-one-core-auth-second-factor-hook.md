@@ -7,19 +7,28 @@ links: []
 created: '2026-06-24T02:15:08'
 updated: '2026-06-24T02:15:08'
 rules:
+- rule_id: new-login-path-must-run-second-factor
+  kind: forbid_pattern
+  severity: error
+  scope: plugins/**/*.py
+  exclude: plugins/installed/staff_mfa/**
+  target: (?<![\w.])login\(\s*request\b|\bauth_login\(|\bdjango_login\(
+  message: A sign-in path outside allauth and core/auth/views.py:otp_verify must fire AUTH_SECOND_FACTOR
+    before login() (ADR 0021, CLAUDE.md).
+guidance:
 - id: new-login-path-must-run-second-factor
   pattern: pre_social_login|SocialAccountAdapter|auth_login\(|auth\.login\(
-  message: New sign-in path? It MUST fire the staff_mfa second-factor gate
-    (staff_mfa.services.second_factor_response → ImmediateHttpResponse to the TOTP
-    challenge). allauth/SSO/social providers call their OWN login() and do NOT fire
-    core's AUTH_SECOND_FACTOR hook, so they log in single-factor. (ADR 0021; the
-    MFA-bypass landmine in CLAUDE.md.)
+  message: New sign-in path? It MUST fire AUTH_SECOND_FACTOR before login() (raise_errors=True, refusing
+    the sign-in if it raises; never import staff_mfa for it). allauth sends every sign-in through core/auth/adapters.py:AccountAdapter.pre_login
+    (v0.123.2) and core/auth/views.py:otp_verify fires it after the emailed code; a route outside those
+    two fires it itself. (ADR 0021; the MFA landmine in CLAUDE.md.)
+  status: enforced by the machine rule of the same id, and staff_mfa test_password_sign_in
 - id: single-core-second-factor-hook
   pattern: AUTH_SECOND_FACTOR
-  message: Exactly ONE core second-factor extension point — the AUTH_SECOND_FACTOR
-    filter fired in core/auth otp_verify (after email-OTP, before login()). Don't
-    add a parallel second-factor hook; all MFA logic lives in plugins/installed/staff_mfa.
-    (ADR 0021.)
+  message: Exactly ONE core second-factor extension point, the AUTH_SECOND_FACTOR filter, fired in core/auth/views.py:otp_verify
+    and core/auth/adapters.py:AccountAdapter.pre_login. Do not add a parallel second-factor hook; all
+    MFA logic lives in plugins/installed/staff_mfa. (ADR 0021.)
+  status: current; guarded by staff_mfa tests (a machine rule would flag the sanctioned callers)
 ---
 
 # ADR 0021: Staff MFA is a plugin + exactly one core AUTH_SECOND_FACTOR hook

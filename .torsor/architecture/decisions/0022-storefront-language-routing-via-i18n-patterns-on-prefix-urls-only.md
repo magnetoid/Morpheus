@@ -7,9 +7,19 @@ links: []
 created: '2026-07-01T01:47:54'
 updated: '2026-07-01T01:47:54'
 rules:
+- rule_id: i18n-patterns-storefront-only
+  kind: forbid_pattern
+  severity: error
+  scope: plugins/**/*.py
+  exclude: '**/tests/**'
+  target: ^(?!\s*#).*\bi18n_patterns\(
+  message: Only morph/urls.py wraps the storefront in i18n_patterns; an app registers surface=storefront
+    (ADR 0022).
+guidance:
 - id: i18n-patterns-storefront-only
-  rule: i18n_patterns must wrap only storefront (prefix='') plugin URLs; dashboard/,
-    api/, payments/, auth/, admin/ stay unprefixed.
+  rule: i18n_patterns must wrap only storefront (prefix='') plugin URLs; dashboard/, api/, payments/,
+    auth/, admin/ stay unprefixed.
+  status: enforced by the machine rule of the same id
 ---
 
 # ADR 0022: Storefront language routing via i18n_patterns on prefix='' URLs only

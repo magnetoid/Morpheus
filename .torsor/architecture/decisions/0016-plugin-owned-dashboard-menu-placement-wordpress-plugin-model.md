@@ -7,11 +7,19 @@ links: []
 created: '2026-06-13T01:07:07'
 updated: '2026-06-13T01:07:07'
 rules:
+- rule_id: base-html-links-no-app
+  kind: forbid_pattern
+  severity: warning
+  scope: plugins/installed/admin_dashboard/templates/admin_dashboard/base.html
+  target: (href|action)=["\']/dashboard/|fetch\([\'"]/dashboard/
+  message: base.html links no app page; the app contributes its entry (ADR 0016).
+guidance:
 - id: plugin-owns-dashboard-nav-placement
   applies_to: plugins/installed/admin_dashboard/templates
-  forbids: hardcoded plugin-specific dashboard nav links or menu ordering; plugin
-    menu placement must come from each plugin's DashboardPage(section, order) contribution
+  forbids: hardcoded plugin-specific dashboard nav links or menu ordering; plugin menu placement must
+    come from each plugin's DashboardPage(section, order) contribution
   severity: high
+  status: enforced by the machine rule base-html-links-no-app, and admin_dashboard test_disable_guards
 ---
 
 # ADR 0016: Plugin-owned dashboard menu placement (WordPress-plugin model)

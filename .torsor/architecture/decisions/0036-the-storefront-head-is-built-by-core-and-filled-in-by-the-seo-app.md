@@ -4,31 +4,56 @@ status: accepted
 tags:
 - adr
 links:
-- '0008-every-page-on-the-site-hardcoded-or-model-driven-must-appear-in-the-sitemap'
-- '0013-app-modularity-disabling-a-plugin-removes-all-its-features-from-storefront-and-dashboard'
-- '0017-advanced-powerful-commerce-core-delivered-through-modularity-supersedes-tiny-core'
-- '0022-storefront-language-routing-via-i18n-patterns-on-prefix-urls-only'
+- 0008-every-page-on-the-site-hardcoded-or-model-driven-must-appear-in-the-sitemap
+- 0013-app-modularity-disabling-a-plugin-removes-all-its-features-from-storefront-and-dashboard
+- 0017-advanced-powerful-commerce-core-delivered-through-modularity-supersedes-tiny-core
+- 0022-storefront-language-routing-via-i18n-patterns-on-prefix-urls-only
 created: '2026-08-18T00:00:00'
 updated: '2026-08-18T00:00:00'
 rules:
+- rule_id: head-comes-from-one-tag
+  kind: forbid_pattern
+  severity: warning
+  scope: themes/**/*.html
+  exclude: '**/*_amp.html'
+  target: <title>[^<]*</title>|rel=["\']canonical["\']|property=["\']og:|application/ld\+json
+  message: The storefront <head> comes from {% storefront_head %}; contribute through SEO_RESOLVE_PAGE
+    / SEO_JSONLD_GRAPH (ADR 0036).
+- rule_id: no-brand-in-view-copy
+  kind: forbid_pattern
+  severity: error
+  scope: themes/**/*.html
+  target: <title>[^<]*\}\}\s*[—·|-]\s*[A-Za-z][^<{]*</title>
+  message: A page title is the clean page name; the brand is applied at render from settings (ADR 0036,
+    0007).
+- rule_id: no-brand-in-view-title
+  kind: forbid_pattern
+  severity: error
+  scope: plugins/**/*.py
+  exclude: '**/tests/**'
+  target: seo_title.*(STORE_NAME|store_name|brand_name\(|site_name)
+  message: Set the clean page name; never append the shop name in a view (ADR 0036).
+guidance:
 - id: head-comes-from-one-tag
   pattern: <title>|rel="canonical"|property="og:|application/ld\+json
-  message: "Storefront <head> SEO belongs to the head document, not a template. A theme
-    calls {% storefront_head %} once; apps contribute through STOREFRONT_HEAD /
-    SEO_JSONLD_GRAPH. A <title>, canonical, og:* or JSON-LD written into a theme or page
-    template duplicates the kernel's."
+  message: Storefront <head> SEO belongs to the head document, not a template. A theme calls {% storefront_head
+    %} once; apps contribute through STOREFRONT_HEAD / SEO_JSONLD_GRAPH. A <title>, canonical, og:* or
+    JSON-LD written into a theme or page template duplicates the kernel's.
   where: themes/**/*.html, plugins/installed/*/templates/**/*.html
   severity: warn
+  status: enforced by the machine rule of the same id, and themes/test_head_contract.py
 - id: no-brand-in-view-copy
   pattern: seo_title.*—|seo_title.*·
-  message: "A stored/produced page title is the CLEAN page name; the brand is applied at
-    render from settings (ADR 0007). Never append the shop name in a view or template."
+  message: A stored/produced page title is the CLEAN page name; the brand is applied at render from settings
+    (ADR 0007). Never append the shop name in a view or template.
   severity: warn
+  status: enforced by the machine rules no-brand-in-view-copy and no-brand-in-view-title
 - id: machine-endpoints-are-chrome
   pattern: register_urls\(.*robots|sitemap|llms|well-known
-  message: "Sitemaps, robots.txt, llms.txt and .well-known files must be registered with
-    surface='chrome' so i18n_patterns never prefixes them (/fr/robots.txt is not a thing)."
+  message: Sitemaps, robots.txt, llms.txt and .well-known files must be registered with surface='chrome'
+    so i18n_patterns never prefixes them (/fr/robots.txt is not a thing).
   severity: warn
+  status: current; not machine-checkable (needs the runtime URL registry)
 ---
 
 # ADR 0036: The storefront `<head>` is built by core and filled in by the SEO app

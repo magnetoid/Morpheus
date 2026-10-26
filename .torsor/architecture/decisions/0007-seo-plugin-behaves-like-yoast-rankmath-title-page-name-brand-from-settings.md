@@ -7,16 +7,31 @@ links: []
 created: '2026-06-04T23:45:54'
 updated: '2026-06-04T23:45:54'
 rules:
+- rule_id: seo-title-no-baked-brand
+  kind: forbid_pattern
+  severity: error
+  scope: plugins/installed/seo/**/*.py
+  exclude: '**/tests/**'
+  target: \.title\s*=[^=].*(STORE_NAME|store_name|brand_name\()
+  message: Store the clean page name; the brand is applied at render from settings (ADR 0007).
+- rule_id: seo-brand-from-settings
+  kind: forbid_pattern
+  severity: warning
+  scope: plugins/**/*.py
+  exclude: '**/tests/**'
+  target: settings\.STORE_NAME\b|settings,\s*[\'"]STORE_NAME[\'"]
+  message: Read the brand from StoreSettings / brand_name(), never the STORE_NAME env setting (ADR 0007).
+guidance:
 - id: seo-title-no-baked-brand
   pattern: autofill_meta_for|SeoMeta.*title
-  message: "SeoMeta.title must store the CLEAN page name only \u2014 the brand is\
-    \ applied at render by format_document_title() (settings title_template). Never\
-    \ bake STORE_NAME/brand into the stored title."
+  message: SeoMeta.title must store the CLEAN page name only — the brand is applied at render by format_document_title()
+    (settings title_template). Never bake STORE_NAME/brand into the stored title.
+  status: enforced by the machine rule of the same id
 - id: seo-brand-from-settings
   pattern: STORE_NAME
-  message: "Resolve the brand via brand_name() (org_name \u2192 store_name \u2192\
-    \ STORE_NAME), not settings.STORE_NAME directly, so the SEO settings + store name\
-    \ win."
+  message: Resolve the brand via brand_name() (org_name → store_name → STORE_NAME), not settings.STORE_NAME
+    directly, so the SEO settings + store name win.
+  status: enforced by the machine rule of the same id
 ---
 
 # ADR 0007: SEO plugin behaves like Yoast/RankMath: title = page name + brand from settings

@@ -4,37 +4,44 @@ status: accepted
 tags:
 - adr
 links:
-- '0011-one-generic-agent-grow-it-via-tools-skills-scopes-never-add-a-second-agent'
-- '0027-agent-write-governance-requires-approval-enforced-at-the-mcp-edge-via-per-token-grants-every-tool-call-audited-per-token-rate-limits'
-- '0029-linda-and-the-agent-layer-are-permanent-core-never-a-plugin'
+- 0011-one-generic-agent-grow-it-via-tools-skills-scopes-never-add-a-second-agent
+- 0027-agent-write-governance-requires-approval-enforced-at-the-mcp-edge-via-per-token-grants-every-tool-call-audited-per-token-rate-limits
+- 0029-linda-and-the-agent-layer-are-permanent-core-never-a-plugin
 created: '2026-10-10T00:00:00'
 updated: '2026-10-10T00:00:00'
 rules:
-- id: janus-is-the-brain
-  statement: "Janus is the brain of Morpheus. Every merchant capability is built
-    so Janus can see it and use it, through a registered agent tool, in the same
-    change that adds it."
-  applies_to: plugins/installed/**, core/**
-  guard: "A new merchant action (a dashboard POST view, a settings write, a
-    service a merchant can trigger, a report a merchant reads) ships with an
-    agent tool (contribute_agent_tools() or a core tool): its scopes are in
-    AVAILABLE_SCOPES and, for store work, inside gates.LINDA_SCOPES; a tool that
-    writes declares requires_approval=True. When an agent must not have it
-    (credentials, owner-only switches), the change says why."
-  severity: warn
-- id: one-janus-one-gate-chain
-  statement: "Every door into Janus (dashboard chat, the widget, automations,
-    external agents over MCP and GraphQL) is the same engine behind the same gate
-    chain, core/assistant/gates.py, and the same consent kernel. Consent only ever
-    comes from the merchant: their own message in a chat, or a grant they made in
-    advance on a token."
-  applies_to: core/assistant/**, plugins/installed/agent_mcp/**, api/**
-  guard: "No entry point re-implements a gate, widens Linda's scope profile for
-    its caller, lets a message that is not the merchant's own (an automation's
-    prompt, an external agent's message, anything Janus read) spend a pending
-    consent, or lets Janus do more for an external agent than that agent's token
-    could do itself."
+- rule_id: one-janus-one-gate-chain
+  kind: forbid_pattern
   severity: error
+  scope: plugins/**/*.py
+  exclude: '**/tests/**'
+  target: ^\s*def\s+(gate_reason|_gate_reason)\b|\bconsent\.consume\(
+  message: Every door into Janus runs the one gate chain in core/assistant/gates.py; never a second copy
+    (ADR 0039).
+guidance:
+- id: janus-is-the-brain
+  statement: Janus is the brain of Morpheus. Every merchant capability is built so Janus can see it and
+    use it, through a registered agent tool, in the same change that adds it.
+  applies_to: plugins/installed/**, core/**
+  guard: 'A new merchant action (a dashboard POST view, a settings write, a service a merchant can trigger,
+    a report a merchant reads) ships with an agent tool (contribute_agent_tools() or a core tool): its
+    scopes are in AVAILABLE_SCOPES and, for store work, inside gates.LINDA_SCOPES; a tool that writes
+    declares requires_approval=True. When an agent must not have it (credentials, owner-only switches),
+    the change says why.'
+  severity: warn
+  status: current; guarded by the scope-vocabulary and Linda catalogue tests
+- id: one-janus-one-gate-chain
+  statement: 'Every door into Janus (dashboard chat, the widget, automations, external agents over MCP
+    and GraphQL) is the same engine behind the same gate chain, core/assistant/gates.py, and the same
+    consent kernel. Consent only ever comes from the merchant: their own message in a chat, or a grant
+    they made in advance on a token.'
+  applies_to: core/assistant/**, plugins/installed/agent_mcp/**, api/**
+  guard: No entry point re-implements a gate, widens Linda's scope profile for its caller, lets a message
+    that is not the merchant's own (an automation's prompt, an external agent's message, anything Janus
+    read) spend a pending consent, or lets Janus do more for an external agent than that agent's token
+    could do itself.
+  severity: error
+  status: enforced by the machine rule of the same id
 ---
 
 # ADR 0039: Janus is the brain of Morpheus — build every capability for it

@@ -99,7 +99,7 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 
 ## ✨ Why Morpheus
 
-| | Morpheus | Hosted SaaS (Shopify/BigCommerce) | Other open source (Woo/Medusa/Saleor) |
+| | Morpheus | Hosted SaaS (Shopify/BigCommerce) | Open-source platforms (Woo/Medusa/Saleor) |
 |---|---|---|---|
 | **AI operator** | Built in, governed, on *your* infra | Add-on / per-seat copilot | Bring your own |
 | **Agent-transactable** | MCP + ACP + UCP, native | Emerging, platform-mediated | Rare |

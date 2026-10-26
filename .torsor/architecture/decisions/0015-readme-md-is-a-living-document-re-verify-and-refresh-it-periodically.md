@@ -6,13 +6,15 @@ tags:
 links: []
 created: '2026-06-09T21:53:10'
 updated: '2026-06-09T21:53:10'
-rules:
+rules: []
+guidance:
 - id: readme-living-doc
   pattern: MORPHEUS_DEFAULT_PLUGINS|plugins/installed/[a-z0-9_]+/plugin\.py
-  message: 'Added/removed/renamed a plugin or changed the default set? README.md documents
-    the plugin list, tool catalog, counts, and agent model and drifts fast - re-verify
-    against MORPHEUS_DEFAULT_PLUGINS + get_default_tools and refresh. Point at the
-    source of truth, do not hard-code counts. (ADR: README is a living document.)'
+  message: 'Added/removed/renamed a plugin or changed the default set? README.md documents the plugin
+    list, tool catalog, counts, and agent model and drifts fast - re-verify against MORPHEUS_DEFAULT_PLUGINS
+    + get_default_tools and refresh. Point at the source of truth, do not hard-code counts. (ADR: README
+    is a living document.)'
+  status: current; not machine-checkable (the counts are measured by script)
 ---
 
 # ADR 0015: README.md is a living document — re-verify and refresh it periodically

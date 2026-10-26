@@ -6,14 +6,16 @@ tags:
 links: []
 created: '2026-07-03T02:48:25'
 updated: '2026-07-03T02:48:25'
-rules:
-- rule: AI-drafted code (CodeProposal) must never be applied to a git branch without
-    a recorded superuser approval, and must never be merged to main automatically.
-  guard: "grep for apply_proposal call sites \u2014 all must be behind proposal.approve()\
-    \ + apply_enabled()"
-- rule: Proactive assistant runs (briefing, flywheel, reflection) must skip when the
-    resolved provider is mock/unconfigured and must never raise into their caller.
+rules: []
+guidance:
+- rule: AI-drafted code (CodeProposal) must never be applied to a git branch without a recorded superuser
+    approval, and must never be merged to main automatically.
+  guard: grep for apply_proposal call sites — all must be behind proposal.approve() + apply_enabled()
+  status: obsolete (self-coding removed in v0.65.0)
+- rule: Proactive assistant runs (briefing, flywheel, reflection) must skip when the resolved provider
+    is mock/unconfigured and must never raise into their caller.
   guard: core/assistant/{reflection,briefing,flywheel}.py return-dict fail-soft pattern
+  status: current for the briefing; not machine-checkable
 ---
 
 # ADR 0028: Linda self-learning loop is propose-only: no AI-written code without the owner's click

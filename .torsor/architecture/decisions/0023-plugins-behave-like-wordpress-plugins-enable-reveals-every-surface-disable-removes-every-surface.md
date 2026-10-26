@@ -7,24 +7,61 @@ links: []
 created: '2026-07-01T02:50:37'
 updated: '2026-07-01T02:50:37'
 rules:
+- rule_id: theme-reverses-no-optional-app
+  kind: forbid_pattern
+  severity: error
+  scope: themes/library/*/templates/storefront/**/*.html
+  exclude: themes/library/montenegro/**
+  target: '\{%\s*url\s+[\''"](?!(storefront|storefront_chrome|core_auth|catalog|orders|customers|payments)\b)[a-z_]+:'
+  message: 'A theme never {% url %}s an optional app''s namespace: contribute the markup from the owner,
+    or wrap it in {% plugin_enabled %} (ADR 0023).'
+- rule_id: theme-root-reverses-no-optional-app
+  kind: forbid_pattern
+  severity: error
+  scope: themes/library/*/templates/*.html
+  exclude: themes/library/montenegro/**
+  target: '\{%\s*url\s+[\''"](?!(storefront|storefront_chrome|core_auth|catalog|orders|customers|payments)\b)[a-z_]+:'
+  message: 'A theme never {% url %}s an optional app''s namespace: contribute the markup from the owner,
+    or wrap it in {% plugin_enabled %} (ADR 0023).'
+- rule_id: montenegro-reverses-only-its-required-apps
+  kind: forbid_pattern
+  severity: error
+  scope: themes/library/montenegro/templates/storefront/**/*.html
+  target: '\{%\s*url\s+[\''"](?!(storefront|storefront_chrome|core_auth|catalog|orders|customers|payments|booking_marketplace)\b)[a-z_]+:'
+  message: montenegro links booking_marketplace (its requires_plugins, protected while active) and core
+    apps only (ADR 0023).
+- rule_id: montenegro-root-reverses-only-its-required-apps
+  kind: forbid_pattern
+  severity: error
+  scope: themes/library/montenegro/templates/*.html
+  target: '\{%\s*url\s+[\''"](?!(storefront|storefront_chrome|core_auth|catalog|orders|customers|payments|booking_marketplace)\b)[a-z_]+:'
+  message: montenegro links booking_marketplace (its requires_plugins, protected while active) and core
+    apps only (ADR 0023).
+- rule_id: dashboard-shell-reverses-no-optional-app
+  kind: forbid_pattern
+  severity: warning
+  scope: plugins/installed/admin_dashboard/templates/**/*.html
+  target: '\{%\s*url\s+[\''"](?!(admin_dashboard|storefront|storefront_chrome|core_auth|assistant|errors|catalog|orders|customers|payments|agent_core_dash|agent_core_api|agent_mcp|rbac|janus)\b)[a-z_]+:'
+  message: The dashboard shell never {% url %}s an optional app's namespace; the app contributes the link
+    (ADR 0023).
+guidance:
 - id: disable-removes-every-plugin-surface
-  rule: Every surface a plugin adds (StorefrontBlock, DashboardPage, nav entry, settings
-    panel, account tile, KPI, activity item, URL) must render only while the plugin
-    is enabled; disabling the plugin must remove ALL of them. A surface that survives
-    a disable was hard-coded in the wrong layer.
+  rule: Every surface a plugin adds (StorefrontBlock, DashboardPage, nav entry, settings panel, account
+    tile, KPI, activity item, URL) must render only while the plugin is enabled; disabling the plugin
+    must remove ALL of them. A surface that survives a disable was hard-coded in the wrong layer.
+  status: current; guarded by the storefront and admin_dashboard test_disable_safety and core test_hook_disable_gating
 - id: enable-reveals-surfaces-via-contribution-only
-  rule: "A plugin's features appear on host surfaces ONLY through its own contributions\
-    \ (StorefrontBlock/DashboardPage/contribute_settings_panel/register_urls/core.hooks\
-    \ subscriber) \u2014 never by editing core, the theme, or a sibling plugin. If\
-    \ enabling a feature required editing a file outside plugins/installed/<name>/,\
-    \ that edit belongs back inside the plugin."
+  rule: A plugin's features appear on host surfaces ONLY through its own contributions (StorefrontBlock/DashboardPage/contribute_settings_panel/register_urls/core.hooks
+    subscriber) — never by editing core, the theme, or a sibling plugin. If enabling a feature required
+    editing a file outside plugins/installed/<name>/, that edit belongs back inside the plugin.
+  status: current; guarded by the same disable-safety tests
 - id: hardcoded-plugin-links-gated-by-plugin-enabled
   pattern: href=|url '|{% url
-  message: "Referencing a plugin's route/surface from a shared shell (dashboard nav,\
-    \ theme, sibling)? Wrap it in {% plugin_enabled \"<name>\" %} so it disappears\
-    \ on disable \u2014 otherwise admin_dashboard/tests/test_disable_guards.py fails\
-    \ the build. Prefer a DashboardPage/StorefrontBlock contribution over a hard-coded\
-    \ link."
+  message: Referencing a plugin's route/surface from a shared shell (dashboard nav, theme, sibling)? Wrap
+    it in {% plugin_enabled "<name>" %} so it disappears on disable — otherwise admin_dashboard/tests/test_disable_guards.py
+    fails the build. Prefer a DashboardPage/StorefrontBlock contribution over a hard-coded link.
+  status: enforced by the machine rules theme-reverses-no-optional-app, montenegro-reverses-only-its-required-apps
+    and dashboard-shell-reverses-no-optional-app
 ---
 
 # ADR 0023: Plugins behave like WordPress plugins: enable reveals every surface, disable removes every surface

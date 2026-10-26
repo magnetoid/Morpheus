@@ -7,17 +7,26 @@ links: []
 created: '2026-07-02T06:06:06'
 updated: '2026-07-02T06:06:06'
 rules:
+- rule_id: no-multitenant-scaffolding
+  kind: forbid_pattern
+  severity: warning
+  scope: '*.py'
+  exclude: '**/tests/**'
+  target: \b(tenant_id|TenantModel|TenantMixin|row_level_security)\b
+  message: 'Morpheus is single-tenant: one instance per client (ADR 0026).'
+guidance:
 - id: no-gpl-deps-in-core
   pattern: requirements.*\.txt|pyproject\.toml
-  message: 'Adding a dependency? Check its license: a GPL/AGPL dep in core forecloses
-    the planned permissive open-core split (ADR: distribution/licensing). MIT/BSD/Apache
-    are fine; copyleft needs an explicit owner decision.'
+  message: 'Adding a dependency? Check its license: a GPL/AGPL dep in core forecloses the planned permissive
+    open-core split (ADR: distribution/licensing). MIT/BSD/Apache are fine; copyleft needs an explicit
+    owner decision.'
+  status: current; not machine-checkable (needs licence metadata; nothing checks it yet)
 - id: no-multitenant-scaffolding
   pattern: tenant_id|TenantModel|row_level_security|RLS
-  message: "Morpheus is deliberately single-tenant (one instance per client \u2014\
-    \ agency model, ADR: distribution). Don't add tenant-isolation scaffolding; client\
-    \ separation happens at the instance level. Fleet provisioning/update tooling\
-    \ is the sanctioned alternative."
+  message: 'Morpheus is deliberately single-tenant (one instance per client — agency model, ADR: distribution).
+    Don''t add tenant-isolation scaffolding; client separation happens at the instance level. Fleet provisioning/update
+    tooling is the sanctioned alternative.'
+  status: enforced by the machine rule of the same id
 ---
 
 # ADR 0026: Distribution model: single-tenant instances per client (agency model); licensing deferred to publish time (open-core or FSL), with prep starting now

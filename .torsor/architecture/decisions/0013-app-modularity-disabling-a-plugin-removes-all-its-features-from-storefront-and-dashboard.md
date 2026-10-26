@@ -7,21 +7,38 @@ links: []
 created: '2026-06-07T18:09:00'
 updated: '2026-06-07T18:09:00'
 rules:
+- rule_id: core-no-plugin-imports
+  kind: forbid_import
+  target: plugins.installed
+  scope: core/**/*.py
+  exclude: '**/tests/**'
+  severity: error
+  message: core/ imports nothing from plugins.installed; invert it through a hook (ADR 0013, scripts/check_core_boundary.py).
+- rule_id: core-no-app-model-by-name
+  kind: forbid_pattern
+  severity: warning
+  scope: core/**/*.py
+  exclude: '**/tests/**'
+  target: get_model\(\s*[\'"](catalog|seo|cms|orders|customers|inventory|marketing|promotions|book_product|reviews|loyalty_points|gift_cards|marketplace|booking_marketplace|ai_assistant)[\'"]
+  message: Core names an app by string; ask the owning app through a hook instead (ADR 0013).
+guidance:
 - id: core-no-plugin-specifics
   pattern: core/.*(installed\.|SECTION_ALIAS|marketplace|loyalty|gift_card|reviews)
-  message: 'Core must not name or place specific plugins. A plugin''s surfaces + nav
-    section/placement are owned by the plugin and contributed; core only offers the
-    mechanism + plugin-agnostic fallback. (See ADR: app modularity.)'
+  message: 'Core must not name or place specific plugins. A plugin''s surfaces + nav section/placement
+    are owned by the plugin and contributed; core only offers the mechanism + plugin-agnostic fallback.
+    (See ADR: app modularity.)'
+  status: enforced by the machine rules core-no-plugin-imports and core-no-app-model-by-name, and scripts/check_core_boundary.py
 - id: no-hardcoded-foreign-surface
   pattern: templates/(admin_dashboard|storefront)/.*\.html
-  message: A plugin's storefront/dashboard surface must be CONTRIBUTED (StorefrontBlock
-    / DashboardPage / account_nav / settings panel) + guarded so it vanishes when
-    the plugin is disabled. Hardcoding it here fails the disable test (orphan routes/links/groups).
+  message: A plugin's storefront/dashboard surface must be CONTRIBUTED (StorefrontBlock / DashboardPage
+    / account_nav / settings panel) + guarded so it vanishes when the plugin is disabled. Hardcoding it
+    here fails the disable test (orphan routes/links/groups).
+  status: current; duplicate of ADR 0012 no-hardcoded-foreign-surfaces
 - id: section-owned-by-plugin
   pattern: _SECTION_ORDER|_SECTION_LABELS|_SECTION_ICONS|SECTION_REGISTRY
-  message: Nav section key/label/icon/placement belongs to the contributing plugin,
-    not a central dict/registry in core or context_processors. Centralising it breaks
-    the disable test (the group survives the plugin).
+  message: Nav section key/label/icon/placement belongs to the contributing plugin, not a central dict/registry
+    in core or context_processors. Centralising it breaks the disable test (the group survives the plugin).
+  status: superseded by the v0.81.0 dashboard hubs
 ---
 
 # ADR 0013: App modularity: disabling a plugin removes ALL its features from storefront and dashboard

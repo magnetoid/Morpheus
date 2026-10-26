@@ -6,16 +6,18 @@ tags:
 links: []
 created: '2026-07-08T02:13:01'
 updated: '2026-07-08T02:13:01'
-rules:
+rules: []
+guidance:
 - id: deploy-version-bump
   severity: error
   applies_to: any push/merge to main (Coolify auto-deploys)
-  rule: "A production deploy MUST bump MORPHEUS_VERSION (vMAJOR.MINOR.PATCH; PATCH=fix/polish,\
-    \ MINOR=feature, MAJOR=breaking) AND add a matching dated '## vX.Y.Z \u2014 YYYY-MM-DD'\
-    \ entry to docs/RELEASE_NOTES.md describing the change."
-  rationale: "merge-to-main auto-deploys; Settings \u2192 Version & updates reads\
-    \ MORPHEUS_VERSION + RELEASE_NOTES.md, so an unversioned deploy ships changes\
-    \ users cannot see in the changelog and drifts the reported version behind production."
+  rule: A production deploy MUST bump MORPHEUS_VERSION (vMAJOR.MINOR.PATCH; PATCH=fix/polish, MINOR=feature,
+    MAJOR=breaking) AND add a matching dated '## vX.Y.Z — YYYY-MM-DD' entry to docs/RELEASE_NOTES.md describing
+    the change.
+  rationale: merge-to-main auto-deploys; Settings → Version & updates reads MORPHEUS_VERSION + RELEASE_NOTES.md,
+    so an unversioned deploy ships changes users cannot see in the changelog and drifts the reported version
+    behind production.
+  status: current; enforced by manage.py release --check and deploy-smoke
 ---
 
 # ADR 0032: Every production deploy bumps MORPHEUS_VERSION + release notes

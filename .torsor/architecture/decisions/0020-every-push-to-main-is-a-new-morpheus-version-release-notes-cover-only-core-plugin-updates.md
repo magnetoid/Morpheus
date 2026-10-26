@@ -6,20 +6,23 @@ tags:
 links: []
 created: '2026-06-20T23:31:13'
 updated: '2026-06-20T23:31:13'
-rules:
+rules: []
+guidance:
 - id: version-bump-every-push
-  description: "Each push to main bumps MORPHEUS_VERSION (morph/settings.py) and adds\
-    \ a matching ## vX.Y.Z \u2014 YYYY-MM-DD entry to docs/RELEASE_NOTES.md."
+  description: 'Each push to main bumps MORPHEUS_VERSION (morph/settings.py) and adds a matching ## vX.Y.Z
+    — YYYY-MM-DD entry to docs/RELEASE_NOTES.md.'
   applies_to:
   - morph/settings.py
   - docs/RELEASE_NOTES.md
   severity: error
+  status: current, duplicate of ADR 0032; enforced by manage.py release --check and deploy-smoke
 - id: release-notes-core-and-plugins-only
-  description: RELEASE_NOTES.md entries describe ONLY core/** and plugins/installed/**
-    behavior changes; exclude docs, tests, CI, formatting, pure refactors, chores.
+  description: RELEASE_NOTES.md entries describe ONLY core/** and plugins/installed/** behavior changes;
+    exclude docs, tests, CI, formatting, pure refactors, chores.
   applies_to:
   - docs/RELEASE_NOTES.md
   severity: warn
+  status: contradicted by ADR 0033 (theme code bumps the version too)
 supersedes: 0019-versioned-release-notes-for-morpheus-os-settings-version-updates
 ---
 

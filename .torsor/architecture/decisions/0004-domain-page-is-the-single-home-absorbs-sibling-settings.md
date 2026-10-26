@@ -4,26 +4,29 @@ status: accepted
 tags:
 - adr
 links:
-- '0003-settings-dashboard-unify-never-duplicate-fixes-belong-in-the-owning-app'
+- 0003-settings-dashboard-unify-never-duplicate-fixes-belong-in-the-owning-app
 created: '2026-06-03T00:00:00'
 updated: '2026-06-03T00:00:00'
-rules:
+rules: []
+guidance:
 - id: domain-owns-its-settings-page
-  rule: A commerce domain with a dedicated settings page (DashboardPage) must NOT also
-    contribute its own SettingsPanel in that domain's category. Fold the config into
-    the page instead — a self-panel is a duplicate sidebar entry.
+  rule: A commerce domain with a dedicated settings page (DashboardPage) must NOT also contribute its
+    own SettingsPanel in that domain's category. Fold the config into the page instead — a self-panel
+    is a duplicate sidebar entry.
   where: plugin manifests + domain dashboard views
   severity: warn
+  status: current for tax and shipping; not machine-checkable (needs the registry)
 - id: domain-page-absorbs-sibling-panels
-  rule: A domain settings page must render sibling-plugin SettingsPanels whose category
-    == the domain, so new domain plugins surface ON the page (not as a separate scattered
-    settings entry).
+  rule: A domain settings page must render sibling-plugin SettingsPanels whose category == the domain,
+    so new domain plugins surface ON the page (not as a separate scattered settings entry).
   severity: warn
+  status: superseded by the v0.81.0 dashboard hubs
 - id: suppress-page-owned-category-nav
-  rule: Categories owned by a nav='settings' DashboardPage (section == slug) are suppressed
-    from settings_category_nav so the sidebar shows ONE entry per domain (the page).
+  rule: Categories owned by a nav='settings' DashboardPage (section == slug) are suppressed from settings_category_nav
+    so the sidebar shows ONE entry per domain (the page).
   where: plugins/context_processors.py
   severity: warn
+  status: obsolete
 ---
 
 # ADR 0004: The domain page is the single home — it absorbs sibling settings

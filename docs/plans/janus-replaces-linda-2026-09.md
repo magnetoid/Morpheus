@@ -177,7 +177,7 @@ dangling URL reversals and imports; compile changed templates.
 
 ## Phase 4 — Janus keeps what it learns
 
-**Status: BUILT for v0.66.0.** No disk volume: Morpheus is open source and must run
+**Status: BUILT for v0.66.0.** No disk volume: Morpheus is self-hosted and must run
 the same on Coolify, plain Docker or bare metal, with one or many containers. The
 database is the one store all of those share.
 

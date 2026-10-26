@@ -6,23 +6,25 @@ tags:
 links: []
 created: '2026-06-08T13:36:09'
 updated: '2026-06-08T13:36:09'
-rules:
+rules: []
+guidance:
 - id: selfdev-apply-requires-killswitch
   pattern: (def .*apply.*proposal|promote_to_prod|self_update.*apply|code_apply)
-  message: Any self-dev APPLY/PROMOTE path must hard-check MORPHEUS_SELF_UPDATE_ENABLED
-    (default OFF) AND the selfdev scope AND owner-only approval before touching the
-    repo or a deploy. No apply path may run when the switch is unset. (ADR 0014.)
+  message: Any self-dev APPLY/PROMOTE path must hard-check MORPHEUS_SELF_UPDATE_ENABLED (default OFF)
+    AND the selfdev scope AND owner-only approval before touching the repo or a deploy. No apply path
+    may run when the switch is unset. (ADR 0014.)
+  status: obsolete (self-coding removed in v0.65.0)
 - id: selfdev-blocked-paths
   pattern: selfdev|code_apply|code_draft
-  message: 'Self-dev may write ONLY under plugins/installed/. Hard-blocked forever
-    (not gateable): core/, morph/settings.py, core/safety.py, themes/, payments/money,
-    destructive migrations, secrets/env. Self-dev cannot widen core/safety.py -- it
-    reads it. (ADR 0014.)'
+  message: 'Self-dev may write ONLY under plugins/installed/. Hard-blocked forever (not gateable): core/,
+    morph/settings.py, core/safety.py, themes/, payments/money, destructive migrations, secrets/env. Self-dev
+    cannot widen core/safety.py -- it reads it. (ADR 0014.)'
+  status: obsolete (self-coding removed in v0.65.0)
 - id: selfdev-no-self-approve
   pattern: (consensus|aggregate|evaluate).*(approve|auto_apply|self_approve)
-  message: Consensus is ADVISORY, never approval. Linda never self-approves an apply.
-    A human owner (superuser) approves at a type-to-confirm ack+echo gate, upfront,
-    per proposal. (ADR 0014.)
+  message: Consensus is ADVISORY, never approval. Linda never self-approves an apply. A human owner (superuser)
+    approves at a type-to-confirm ack+echo gate, upfront, per proposal. (ADR 0014.)
+  status: obsolete (self-coding removed in v0.65.0)
 ---
 
 # ADR 0014: Linda self-dev apply: owner-gated, dormant, full-auto-after-staging

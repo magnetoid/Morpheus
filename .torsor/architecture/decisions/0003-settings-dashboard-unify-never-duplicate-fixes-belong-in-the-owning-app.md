@@ -7,15 +7,25 @@ links: []
 created: '2026-06-02T21:22:56'
 updated: '2026-06-02T21:22:56'
 rules:
+- rule_id: unify-in-owning-app
+  kind: forbid_pattern
+  severity: warning
+  scope: plugins/installed/admin_dashboard/**/*.py
+  exclude: '**/tests/**'
+  target: entry\[[\'"]plugin[\'"]\]\s*==\s*[\'"][a-z_]+[\'"]|category\s*==\s*[\'"]ai_assistant[\'"]
+  message: The dashboard shell special-cases an app by name; merge the setting into the owning app (ADR
+    0003).
+guidance:
 - id: settings-no-duplication
-  rule: No duplicate or near-duplicate settings surfaces in the settings dashboard;
-    unify per domain.
+  rule: No duplicate or near-duplicate settings surfaces in the settings dashboard; unify per domain.
   where: settings dashboard
   severity: warn
+  status: current; not machine-checkable (needs the runtime registry)
 - id: unify-in-owning-app
-  rule: Settings unification/merges are coded in the plugin that owns the setting,
-    never patched at the admin_dashboard layer.
+  rule: Settings unification/merges are coded in the plugin that owns the setting, never patched at the
+    admin_dashboard layer.
   severity: warn
+  status: enforced by the machine rule of the same id
 ---
 
 # ADR 0003: Settings dashboard: unify, never duplicate — fixes belong in the owning app

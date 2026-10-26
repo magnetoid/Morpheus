@@ -7,17 +7,23 @@ links: []
 created: '2026-07-05T23:29:03'
 updated: '2026-07-05T23:29:03'
 rules:
-- id: linda-agent-layer-stays-core
-  statement: "Linda and the agent orchestration layer must stay in Morpheus core \u2014\
-    \ never plugin-ize them."
-  applies_to: core/agents/**, core/assistant/** (runtime + dispatch), core/safety.py,
-    scopes
-  guard: No plugin may own or relocate Linda, the single Worker, the LLM providers,
-    the agent runtime, the tool dispatch/registry, the scopes system, or the core/safety.py
-    boundary. Only plugin-data tool BODIES may migrate out of core/assistant/tools/*
-    into their owning plugin via contribute_agent_tools(); the collection point and
-    runtime remain in core.
+- rule_id: linda-agent-layer-stays-core
+  kind: forbid_pattern
   severity: error
+  scope: plugins/**/*.py
+  exclude: '**/tests/**'
+  target: ^\s*class\s+\w*AgentRuntime\b|^\s*def\s+(gate_reason|_gate_reason)\b|^\s*class\s+\w+\(\s*LLMProvider\s*\)
+  message: The agent runtime, the gate chain and model providers are core, never an app (ADR 0029).
+guidance:
+- id: linda-agent-layer-stays-core
+  statement: Linda and the agent orchestration layer must stay in Morpheus core — never plugin-ize them.
+  applies_to: core/agents/**, core/assistant/** (runtime + dispatch), core/safety.py, scopes
+  guard: No plugin may own or relocate Linda, the single Worker, the LLM providers, the agent runtime,
+    the tool dispatch/registry, the scopes system, or the core/safety.py boundary. Only plugin-data tool
+    BODIES may migrate out of core/assistant/tools/* into their owning plugin via contribute_agent_tools();
+    the collection point and runtime remain in core.
+  severity: error
+  status: enforced by the machine rule of the same id
 ---
 
 # ADR 0029: Linda and the agent layer are permanent core — never a plugin

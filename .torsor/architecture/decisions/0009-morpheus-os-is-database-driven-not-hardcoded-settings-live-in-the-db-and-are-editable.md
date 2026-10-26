@@ -6,12 +6,14 @@ tags:
 links: []
 created: '2026-06-04T23:46:10'
 updated: '2026-06-04T23:46:10'
-rules:
+rules: []
+guidance:
 - id: prefer-db-over-hardcode
   pattern: = '[A-Z][a-z].*Store'|DEFAULT_.*=|HARDCODE
   message: Merchant-facing options must be DB-driven (StoreSettings/SiteSeoSettings/PluginConfig/model
-    field), editable from the dashboard. Only hardcode true constants; resolve dynamic
-    values from the DB with a fallback.
+    field), editable from the dashboard. Only hardcode true constants; resolve dynamic values from the
+    DB with a fallback.
+  status: current; guarded for app settings by core/tests/test_settings_keys_have_readers.py
 ---
 
 # ADR 0009: Morpheus OS is database-driven, not hardcoded — settings live in the DB and are editable
