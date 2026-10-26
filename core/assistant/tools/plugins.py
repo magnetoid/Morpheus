@@ -86,10 +86,11 @@ def disable_plugin_tool(*, name: str, hard_gate_ack: str = '', echo: str = '') -
     # soft-bricks the platform. Checked before the confirmation gate so it fails
     # fast. Single source of truth is core.safety — the guard the registry + CLI
     # must also honour (plugin_toggle_softbrick).
-    from core.safety import is_plugin_protected  # noqa: PLC0415
+    from core.safety import protection_reason  # noqa: PLC0415
 
-    if is_plugin_protected(name):
-        raise ToolError(f'refused: {name} is a protected plugin and cannot be disabled')
+    reason = protection_reason(name)
+    if reason:
+        raise ToolError(f'refused: {name} is protected and cannot be disabled ({reason})')
     _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=name, echo=echo)
     try:
         from plugins.models import PluginConfig

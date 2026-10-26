@@ -173,10 +173,14 @@ fail fast at import, not at runtime.
 ### `protected` is one-way, on purpose
 
 There is exactly one gate — `core.safety.is_plugin_protected(name)` — and every
-surface that offers a disable reads it. It returns the union of two things:
+surface that offers a disable reads it. It returns the union of three things:
 
-1. the static floor in `core/safety.py:PROTECTED_PLUGINS`, and
-2. any app whose manifest declares `protected = True`.
+1. the static floor in `core/safety.py:PROTECTED_PLUGINS`,
+2. any app whose manifest declares `protected = True`, and
+3. any app the active theme lists in `requires_plugins`: the theme's pages link
+   that app's URLs, so switching it off would answer 500 on every page.
+
+`core.safety.protection_reason(name)` says which, in words for the merchant.
 
 A manifest can therefore **add** protection but never **remove** it. That
 asymmetry is deliberate: an `app.py` is a file the AI is allowed to edit, while

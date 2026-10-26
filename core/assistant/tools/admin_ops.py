@@ -189,12 +189,11 @@ def plugins_toggle_tool(
 ) -> ToolResult:
     _require_confirmed(confirmed)
     if not enabled:
-        from core.safety import is_plugin_protected  # noqa: PLC0415
+        from core.safety import protection_reason  # noqa: PLC0415
 
-        if is_plugin_protected(plugin):
-            raise ToolError(
-                f'{plugin!r} is protected — disabling it would soft-brick the platform. Refused.'
-            )
+        reason = protection_reason(plugin)
+        if reason:
+            raise ToolError(f'{plugin!r} is protected and cannot be disabled ({reason}). Refused.')
     _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=plugin, echo=echo)
     from plugins.models import PluginConfig  # noqa: PLC0415
 

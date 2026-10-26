@@ -230,3 +230,94 @@ class ProtectedAppGuardTests(TestCase):
 
         self.assertTrue(is_system('agent_core'), 'agent_core is surfaced as Linda, not as an app')
         self.assertFalse(is_system('storefront'))
+
+
+class ThemeRequirementGuardTests(TestCase):
+    """An app the active theme lists in `requires_plugins` cannot be switched off.
+
+    The montenegro theme links booking_marketplace's pages from its header, footer,
+    404 and search pages, and declares `requires_plugins = ['booking_marketplace']`.
+    Only theme activation read that, so switching the app off on the Apps page or
+    through Linda left every page reversing a URL that no longer existed, and the
+    store answered 500 (audit, 2026-10-23).
+    """
+
+    def setUp(self):
+        from themes.base import MorpheusTheme
+        from themes.registry import theme_registry
+
+        class Probe(MorpheusTheme):
+            name = 'requires_probe'
+            label = 'Requires Probe'
+            version = '1.0.0'
+            requires_plugins = ['wishlist']
+
+        self.registry = theme_registry
+        self.prior = theme_registry._active_name
+        theme_registry._themes['requires_probe'] = Probe()
+        self.addCleanup(theme_registry._themes.pop, 'requires_probe', None)
+        self.addCleanup(setattr, theme_registry, '_active_name', self.prior)
+        theme_registry._active_name = 'requires_probe'
+        # A request reloads the active theme from here (themes.middleware), as on a store.
+        from themes.models import ThemeConfig
+
+        ThemeConfig.objects.create(theme_name='requires_probe', is_active=True)
+        # If a refusal ever fails, the app must not stay off for every later test.
+        self.addCleanup(
+            lambda: app_registry.is_active('wishlist') or app_registry.activate('wishlist')
+        )
+
+    def test_an_app_the_active_theme_needs_is_protected(self):
+        from core.safety import is_plugin_protected
+        from plugins.installed.admin_dashboard.views_split.apps import is_protected
+
+        self.assertTrue(is_plugin_protected('wishlist'))
+        self.assertTrue(is_protected('wishlist'))
+
+    def test_the_protection_follows_the_theme(self):
+        from core.safety import is_plugin_protected
+        from themes.models import ThemeConfig
+
+        ThemeConfig.objects.all().delete()
+        self.registry._active_name = self.prior
+        self.assertFalse(is_plugin_protected('wishlist'))
+
+    def test_a_theme_another_worker_switched_to_counts(self):
+        # Each web worker loads the theme once; the store's saved theme is the truth.
+        from core.safety import is_plugin_protected
+
+        self.registry._active_name = self.prior
+        self.assertTrue(is_plugin_protected('wishlist'))
+
+    def test_the_apps_page_keeps_it_on_and_says_why(self):
+        from django.contrib.auth import get_user_model
+        from django.contrib.messages import get_messages
+        from django.urls import reverse
+
+        from plugins.models import PluginConfig
+
+        staff = get_user_model().objects.create_user(
+            username='owner@example.com', email='owner@example.com', password='x', is_staff=True
+        )
+        self.client.force_login(staff)
+        resp = self.client.post(
+            reverse('admin_dashboard:apps'), {'plugin': 'wishlist', 'enabled': '0'}
+        )
+        self.assertTrue(app_registry.is_active('wishlist'))
+        self.assertFalse(
+            PluginConfig.objects.filter(plugin_name='wishlist', is_enabled=False).exists()
+        )
+        notes = ' '.join(str(m) for m in get_messages(resp.wsgi_request))
+        self.assertIn('Requires Probe', notes)
+
+    def test_linda_cannot_switch_it_off(self):
+        from core.agents import ToolError
+        from core.assistant.tools.admin_ops import plugins_toggle_tool
+        from core.assistant.tools.plugins import disable_plugin_tool
+
+        with self.assertRaises(ToolError) as cm:
+            disable_plugin_tool.invoke({'name': 'wishlist'})
+        self.assertIn('Requires Probe', str(cm.exception))
+        with self.assertRaises(ToolError):
+            plugins_toggle_tool.invoke({'plugin': 'wishlist', 'enabled': False, 'confirmed': True})
+        self.assertTrue(app_registry.is_active('wishlist'))

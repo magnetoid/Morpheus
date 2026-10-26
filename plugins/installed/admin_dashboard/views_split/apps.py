@@ -252,13 +252,12 @@ def _toggle_plugin(request: HttpRequest):
     UI lives in admin_dashboard, so disabling it would lock the
     merchant out of every dashboard page (including this one).
     """
+    from core.safety import protection_reason
+
     name = request.POST.get('plugin', '').strip()
     desired = request.POST.get('enabled') == '1'
     if not desired and is_protected(name):
-        messages.error(
-            request,
-            f'{name!r} cannot be disabled — it is required for the dashboard to function.',
-        )
+        messages.error(request, f'{name!r} cannot be disabled: {protection_reason(name)}.')
         return redirect('admin_dashboard:apps')
     try:
         from plugins.models import PluginConfig

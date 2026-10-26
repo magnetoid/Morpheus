@@ -166,7 +166,7 @@ theme** is dropped from the registry — siblings keep loading.
 | `url` | `str` | optional | Theme homepage / docs. |
 | `preview_image` | `str` | optional | Filename inside `static/<name>/`. Recommended: `preview.png` at 1280×720. |
 | `supports_plugins` | `list[str]` | optional | Plugin names this theme provides templates for (informational). |
-| `requires_plugins` | `list[str]` | optional | Plugins that MUST be active for this theme to load. The registry will refuse to set the theme active if any are missing. |
+| `requires_plugins` | `list[str]` | optional | Plugins that MUST be active for this theme to load. The registry will refuse to set the theme active if any are missing, and while the theme is active none of them can be switched off (`core.safety.protection_reason`). A theme may link these apps' URLs without `{% plugin_enabled %}`. |
 
 The base class **validates** all metadata at class-definition time — typos
 fail at import, not at runtime.

@@ -321,20 +321,53 @@ def is_class_allowed(class_name: str) -> bool:
     return class_name not in CLASS_BLOCKLIST
 
 
-def is_plugin_protected(plugin_name: str) -> bool:
-    """Return True if `plugin_name` cannot be disabled (soft-brick risk).
+def protection_reason(plugin_name: str) -> str:
+    """Why `plugin_name` cannot be disabled, in words for the merchant, or ''.
 
-    The static floor above, unioned with any app that declares
-    `protected = True` in its own manifest. Every surface that offers a
-    disable — the merchant dashboard and Linda's disable tools — gates on
-    this one function, so the two can no longer drift apart.
+    The static floor above, any app that declares `protected = True` in its
+    own manifest, and any app the active theme lists in `requires_plugins`:
+    that theme's pages link the app's URLs, so switching it off made every
+    page answer 500 (montenegro and booking_marketplace). Every surface that
+    offers a disable — the merchant dashboard and Linda's disable tools —
+    gates on this one function, so they can no longer drift apart.
     """
     if plugin_name in PROTECTED_PLUGINS:
-        return True
+        return 'the store needs it to run'
     try:
         from plugins.registry import app_registry
 
         cls = app_registry._classes.get(plugin_name)
-        return bool(cls is not None and getattr(cls, 'protected', False))
-    except Exception:  # noqa: BLE001 — a registry hiccup must never un-protect
-        return False
+        if cls is not None and getattr(cls, 'protected', False):
+            return 'the store needs it to run'
+    except Exception:  # noqa: BLE001, S110 — the theme check below still runs
+        pass
+    try:
+        from themes.registry import theme_registry
+
+        # This process's theme, and the store's saved one: each web worker loads the
+        # theme once, so a switch made in another worker reaches this one only later.
+        for theme in (theme_registry.active, theme_registry.get(_stored_theme_name())):
+            if theme is not None and plugin_name in (theme.requires_plugins or ()):
+                return f'the active theme, {theme.label or theme.name}, needs it'
+    except Exception:  # noqa: BLE001, S110 — no theme registry means no theme needs it
+        pass
+    return ''
+
+
+def _stored_theme_name() -> str:
+    """The theme the store has saved as active (themes.middleware loads the same)."""
+    from django.conf import settings
+
+    try:
+        from themes.models import ThemeConfig
+
+        row = ThemeConfig.objects.filter(is_active=True).values_list('theme_name', flat=True)
+        name = row.first()
+    except Exception:  # noqa: BLE001 — no table yet: the setting names the theme
+        name = None
+    return name or getattr(settings, 'MORPHEUS_ACTIVE_THEME', '')
+
+
+def is_plugin_protected(plugin_name: str) -> bool:
+    """Return True if `plugin_name` cannot be disabled (see `protection_reason`)."""
+    return bool(protection_reason(plugin_name))
