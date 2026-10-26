@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.124.0 — 2026-10-26
+
+**Apps a theme needs stay on, and tokens ask before bigger changes**
+
+- An app the store's theme is built on can no longer be switched off while that theme is active. Switching off Bookings on the Montenegro store used to break every page; the Apps page and Linda now refuse and say why.
+- An API token now needs your tick before it can adjust loyalty points, delete a review or cancel a subscription, like every other change that deletes, cancels or refunds. Everyday changes still run on the token's permissions.
+- API tokens can no longer write or delete what Linda remembers about your store. Linda saves a fact only when you say yes in a chat.
+
 ## v0.123.2 — 2026-10-23
 
 **Staff signing in with a password are asked for their authenticator code too**
