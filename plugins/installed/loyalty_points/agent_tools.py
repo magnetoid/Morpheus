@@ -62,6 +62,7 @@ def loyalty_balance_tool(*, email: str) -> ToolResult:
         },
         'required': ['email', 'points'],
     },
+    requires_approval=True,
 )
 def loyalty_adjust_points_tool(
     *, email: str, points: int, reason: str = 'manual_adjust'

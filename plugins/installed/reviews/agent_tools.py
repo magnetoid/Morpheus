@@ -88,6 +88,7 @@ def reviews_approve_tool(*, review_id: str) -> ToolResult:
         'properties': {'review_id': {'type': 'string'}},
         'required': ['review_id'],
     },
+    requires_approval=True,
 )
 def reviews_delete_tool(*, review_id: str) -> ToolResult:
     r = _get(review_id)

@@ -228,6 +228,10 @@ store, and does the work itself. Design:
   call (a revoked token stops the turn): its catalogue is Linda's narrowed to
   the token's MCP scopes, a write runs when the scopes cover it, and a protected
   (`requires_approval`) tool runs only when the merchant ticked it for the token.
+  Every tool that deletes, cancels, refunds or revokes is protected, and so is
+  `loyalty.adjust_points` (v0.124.0). The shop memory's writes (`memory.remember`,
+  `memory.forget`) are never offered to a token, directly or through Janus
+  (`gates.NOT_FOR_TOKENS`): every Linda turn reads that memory.
   Nothing said in the conversation is consent: on an external conversation
   (`ext:<token id>:chat:<id>`) the consent kernel is never consulted
   (`core/assistant/gates.py`). Audit rows name the token as `janus:<label>`.

@@ -100,9 +100,10 @@ def _public_tools() -> list:
         if cluster is not None:
             names = cluster.get('names')
             if names is None:  # admin — all tools, plus the door to Janus (janus.ask/reply)
+                from core.assistant.gates import NOT_FOR_TOKENS
                 from plugins.installed.agent_mcp.janus_door import door_tools
 
-                return [*all_tools, *door_tools()]
+                return [*(t for t in all_tools if t.name not in NOT_FOR_TOKENS), *door_tools()]
             # Resolve each whitelisted name from Linda's catalog first, then fall
             # back to the plugin registry. Buyer-agent cart/checkout tools live
             # in agentic_checkout (registered via contribute_agent_tools) and are

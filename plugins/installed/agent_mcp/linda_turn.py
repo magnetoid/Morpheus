@@ -183,11 +183,13 @@ def catalogue(turn: LindaTurn) -> list:
     """Every tool this turn may see and call: Linda's profile, then the mode."""
     profile = set(scope_profile(turn))
     developer = turn.mode_slug == 'dev'
+    external = _gates.is_external_key(turn.conversation_key)
     tools = [
         t
         for t in _all_tools()
         if set(getattr(t, 'scopes', None) or []) <= profile
         and t.name not in _NOT_LINDAS
+        and not (external and t.name in _gates.NOT_FOR_TOKENS)
         and not t.name.startswith(_SHOPPER_PREFIXES)
         and (developer or t.name not in DEVELOPER_TOOLS)
     ]

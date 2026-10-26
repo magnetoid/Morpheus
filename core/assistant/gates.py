@@ -295,6 +295,11 @@ NOT_LINDAS: frozenset[str] = frozenset(
     }
 )
 
+#: The shop memory's writes, never an API token's: every Linda turn reads that memory
+#: as "what you know about this store", so a token that could write it would speak in
+#: every merchant's chat. Linda saves a fact only on the merchant's own yes.
+NOT_FOR_TOKENS: frozenset[str] = frozenset({'memory.remember', 'memory.forget'})
+
 #: Tools that act on the world without declaring a write scope.
 CONSENT_ALSO: frozenset[str] = frozenset(
     {

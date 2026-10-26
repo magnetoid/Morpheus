@@ -127,6 +127,7 @@ def subscriptions_resume_tool(*, subscription_id: str) -> ToolResult:
         },
         'required': ['subscription_id'],
     },
+    requires_approval=True,
 )
 def subscriptions_cancel_tool(*, subscription_id: str, at_period_end: bool = True) -> ToolResult:
     from django.utils import timezone

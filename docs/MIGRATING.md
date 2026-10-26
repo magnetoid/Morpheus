@@ -6,6 +6,23 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.124.0 — three more protected tools; the shop memory is Linda's own
+
+`loyalty.adjust_points`, `reviews.delete` and `subscriptions.cancel` now carry
+`requires_approval=True`, like every other tool that deletes, cancels, refunds or creates value.
+A token, or Janus answering on its behalf, runs one only once the merchant ticks it for that
+token (Dashboard → Settings → Developer → MCP tokens); until then Janus answers
+`external_needs_grant`. The store's own Workers no longer run them either.
+
+`memory.remember` and `memory.forget` are no longer offered to an API token, directly or through
+Janus: `tools/list` leaves them out and a call answers "tool not exposed". Linda's own chats keep
+them. `memory.recall` is unchanged.
+
+**What to do.** Ask the merchant to tick the three tools if your integration uses them. None of our
+stores' tokens had called any of the five.
+
+---
+
 ## v0.123.1 — save_for_later's tables are dropped
 
 `save_for_later_saveditem`, `save_for_later_pricesnapshot` and `save_for_later_sharedwishlist`

@@ -270,10 +270,14 @@ claimed `orders` was covered when it wasn't. There is now one gate,
 declare `protected = True` in its own manifest, and that is **one-way** — a
 manifest can add protection, never remove it, because an `app.py` is
 AI-editable and `core/safety.py` is in `FORBIDDEN_PATHS`. Same rule for
-`system = True` (hide from the Apps catalogue). When you add a
+`system = True` (hide from the Apps catalogue). The gate also refuses an app the
+active theme lists in `requires_plugins` (v0.124.0; `protection_reason` says why):
+montenegro reverses `booking_marketplace:*` in its header and footer, and only theme
+activation read that list, so switching the app off 500'd every page. It reads the
+store's saved theme too, because each web worker loads the theme once. When you add a
 classification about apps, put it on the app or in core — never a second list
-in a shell. Guarded by
-`admin_dashboard/tests/test_disable_guards.py::ProtectedAppGuardTests`.
+in a shell. Guarded by `admin_dashboard/tests/test_disable_guards.py`
+(`ProtectedAppGuardTests`, `ThemeRequirementGuardTests`).
 
 **A plugin owns all of its own code.** Every file a feature needs — views,
 URLs, templates, dashboard pages, settings panels, GraphQL, beat tasks —
@@ -708,7 +712,13 @@ and its turn token carries the API token as principal. On an external key
 `gates.gate_reason` never consults consent: a write runs only when the token could make it
 itself (Linda's profile narrowed to the token's MCP scopes; a `requires_approval` tool only
 when ticked in `approved_tools`), and the edge re-reads the token on every call, so a revoke
-stops the turn. `janus.chat` must be listed explicitly (the wildcard does not confer it, like
+stops the turn. A write scope is the merchant's advance yes for everyday changes, so a tool
+that destroys or creates value must carry the flag: `loyalty.adjust_points` (on `crm.write`),
+`reviews.delete` and `subscriptions.cancel` did not until v0.124.0, and the shop memory's writes
+were open to any token (now `gates.NOT_FOR_TOKENS`). **Never close a token gap by flagging an
+everyday write:** the Worker cannot resume an approved call (a spawned Worker has no run to
+attach one to), so a flagged `catalog.update_product` would silently stop every bulk job Linda
+hands to Workers. Guarded by `agent_mcp/tests/test_token_writes.py`. `janus.chat` must be listed explicitly (the wildcard does not confer it, like
 `acp.checkout`), and the door tools are never in `agent_registry`, so Janus cannot call
 itself. Found on the way: a new token had no scope keys (a wildcard everywhere), and the
 approvals checklist read the legacy read list, so it was always empty and every permissions
