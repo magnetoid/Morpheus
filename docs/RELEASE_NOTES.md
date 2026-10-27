@@ -19,7 +19,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 **The all-books page loads faster**
 
-- The Topic and Author filters on the all-books page load their full lists when you open them, instead of with every page view. The page is about a third smaller, and the filters work as before: the same choices, counts and search box. Without JavaScript, each filter links to its full list page.
+- The Topic and Author filters on the all-books page load their full lists when you open them, instead of with every page view. The page is about a quarter smaller (305 KB, was 404 KB) and the server answers it about a third faster, and the filters work as before: the same choices, counts and search box. Without JavaScript, each filter links to its full list page.
 - Book covers in product grids and carousels are sent at the size the screen shows them, so pages download less.
 - Product lists ask the database far less for books sold in several formats: dotbooks' all-books page made 127 of its 180 queries just to show prices.
 
