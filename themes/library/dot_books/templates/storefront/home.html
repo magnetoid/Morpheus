@@ -480,7 +480,7 @@ geometry, so the dots and cover never move between books.
       <button class="book-rail-nav book-rail-nav--prev" type="button" aria-label="Scroll left" data-rail-prev>&larr;</button>
       <div class="grid-books grid-books--rail" data-book-rail>
         {% for product in featured_products %}
-        {% include "storefront/_product_card.html" with product=product %}
+        {% include "storefront/_product_card.html" with product=product in_rail=True %}
         {% empty %}
         <div style="padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px; flex: 1 1 100%;">
           <p class="lede" style="margin: 0 auto;">The shelf is being restocked. Check back tomorrow.</p>
@@ -508,7 +508,7 @@ geometry, so the dots and cover never move between books.
       <button class="book-rail-nav book-rail-nav--prev" type="button" aria-label="Scroll left" data-rail-prev>&larr;</button>
       <div class="grid-books grid-books--rail" data-book-rail>
         {% for product in staff_picks %}
-        {% include "storefront/_product_card.html" with product=product %}
+        {% include "storefront/_product_card.html" with product=product in_rail=True %}
         {% endfor %}
       </div>
       <button class="book-rail-nav book-rail-nav--next" type="button" aria-label="Scroll right" data-rail-next>&rarr;</button>

@@ -96,6 +96,19 @@ class BookCardTests(TestCase):
         self.assertIn('/img/avif/240/products/murder.png 240w', card)
         self.assertIn('sizes="(min-width: 1600px) calc((100vw - 270px) / 5)', card)
 
+    def test_a_cover_in_a_rail_is_offered_at_the_rails_width(self):
+        # A rail card is 232px from 1024px up; the grid's sizes would claim 458px on a
+        # 2560px screen and fetch a 600px cover.
+        from django.template.loader import render_to_string
+
+        from plugins.installed.catalog.models import ProductImage
+
+        ProductImage.objects.create(product=self.murder, image='products/murder.png')
+        card = render_to_string(
+            'storefront/_product_card.html', {'product': self.murder, 'in_rail': True}
+        )
+        self.assertIn('sizes="(min-width: 1024px) 232px, (min-width: 640px) 220px', card)
+
     def test_a_book_without_a_cover_gets_a_typeset_placeholder(self):
         card = self._card(self._page(), 'murder-at-dawn')
         self.assertIn('<span class="placeholder__title">The Murder at Dawn</span>', card)

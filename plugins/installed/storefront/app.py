@@ -62,6 +62,9 @@ class StorefrontPlugin(Plugin):
         """
         for path in ('/auth/', '/cart/', '/checkout/'):
             value.disallow(path)
+        # A filter panel's list (product_list ?facet_panel=<key>, JSON): crawlers read
+        # data-options-url like a path, and each fetch runs the panel's counts.
+        value.disallow('/*?*facet_panel=')
         return value
 
     def get_config_schema(self):

@@ -77,9 +77,12 @@ class SeamTests(TestCase):
         self.assertTrue(author['lazy'])
         path, _sep, query = author['options_url'].partition('?')
         self.assertEqual(path, '/products/')
-        self.assertEqual(
-            parse_qs(query), {'genre': ['mystery'], 'sort': ['name'], 'facet_panel': ['author']}
-        )
+        # The order does not change a panel's list, so more requests share a cached answer.
+        self.assertEqual(parse_qs(query), {'genre': ['mystery'], 'facet_panel': ['author']})
+
+    def test_crawlers_are_kept_off_the_panel_lists(self):
+        robots = self.client.get('/robots.txt').content.decode()
+        self.assertIn('Disallow: /*?*facet_panel=', robots)
 
     def test_a_panel_request_answers_with_that_panel_only(self):
         resp = self.client.get('/products/?facet_panel=author&genre=poetry')

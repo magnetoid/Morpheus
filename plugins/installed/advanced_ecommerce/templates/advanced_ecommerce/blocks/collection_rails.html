@@ -19,7 +19,7 @@
       <button class="book-rail-nav book-rail-nav--prev" type="button" aria-label="Scroll left" data-rail-prev>&larr;</button>
       <div class="grid-books grid-books--rail" data-book-rail>
         {% for product in rail.products %}
-        {% include "storefront/_product_card.html" with product=product %}
+        {% include "storefront/_product_card.html" with product=product in_rail=True %}
         {% endfor %}
       </div>
       <button class="book-rail-nav book-rail-nav--next" type="button" aria-label="Scroll right" data-rail-next>&rarr;</button>

@@ -248,3 +248,25 @@ class LazyPanelTests(FacetFixture):
         self.assertFalse(topic.get('lazy'))
         self.assertEqual(_counts(topic), {'love': 2})  # espionage covers one fantasy book
         self.assertEqual(set(out['queryset'].values_list('slug', flat=True)), {'dragon', 'quest'})
+
+    def test_an_author_typed_in_another_case_is_the_stored_name_in_the_panel_too(self):
+        # Agatha Christie wrote no fantasy book, so she is not in the opened list's rows;
+        # her box must carry the same value the page gave it, or closing the panel
+        # would read as a change and reload the page.
+        page = _facet(self._answer('author=agatha%20christie&genre=fantasy')['facets'], 'author')
+        panel = self._answer('facet_panel=author&author=agatha%20christie&genre=fantasy')
+        chosen = [o['value'] for o in panel['facets'][0]['options'] if o['selected']]
+        self.assertEqual(chosen, [o['value'] for o in page['options']])
+        self.assertEqual(chosen, ['Agatha Christie'])
+
+    def test_chosen_authors_cost_one_query_however_many(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        def queries(query):
+            with CaptureQueriesContext(connection) as ctx:
+                self._answer(query)
+            return len(ctx.captured_queries)
+
+        one = queries('author=a1')
+        self.assertEqual(queries('author=a1&author=a2&author=a3&author=a4&author=a5'), one)

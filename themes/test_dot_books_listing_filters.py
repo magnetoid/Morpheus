@@ -63,7 +63,8 @@ class DotBooksListingFiltersTests(TestCase):
         self.assertNotIn('name="topic" value="love"', html)
         self.assertIn('data-options-url="/products/?facet_panel=topic"', html)
         self.assertIn('data-options-url="/products/?facet_panel=author"', html)
-        self.assertIn('href="/authors/"', html)  # without JavaScript: the full list's page
+        # Without JavaScript: the full list's page.
+        self.assertIn('data-panel-more><a href="/authors/">All authors</a>', html)
         resp = self.client.get('/products/?facet_panel=author')
         self.assertIn('name="author" value="Emily Brontë"', resp.json()['html'])
         self.assertIn('<span class="plp-option-count">2</span>', resp.json()['html'])

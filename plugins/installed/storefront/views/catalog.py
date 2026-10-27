@@ -208,7 +208,10 @@ def product_list(request):
         html = render_to_string('storefront/_listing_facet_options.html', {'facet': panel})
         return JsonResponse({'html': html})
     _panel_qs = request.GET.copy()
+    # Page and order never change a panel's list: without them more requests share an
+    # edge-cached answer.
     _panel_qs.pop('page', None)
+    _panel_qs.pop('sort', None)
     for facet in listing_facets:
         if facet.get('lazy'):
             _panel_qs['facet_panel'] = facet['key']

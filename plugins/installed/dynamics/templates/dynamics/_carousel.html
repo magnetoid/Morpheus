@@ -26,7 +26,7 @@
       <div class="grid-books grid-books--rail" data-book-rail>
         {% for product in products %}
           {% if show_title != False and show_price != False and not reason %}
-            {% include "storefront/_product_card.html" with product=product %}
+            {% include "storefront/_product_card.html" with product=product in_rail=True %}
           {% else %}
             {% include "dynamics/_card.html" %}
           {% endif %}

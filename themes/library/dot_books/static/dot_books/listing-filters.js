@@ -12,11 +12,13 @@
   var sheetClose = form.querySelector('[data-sheet-close]');
   var phone = window.matchMedia('(max-width: 720px)');
 
+  // Sorted: a lazy panel's chosen boxes come in URL order and its fetched list in the
+  // list's own order, and the same choices must not read as a change on close.
   function snapshot(panel) {
     return Array.prototype.map.call(
       panel.querySelectorAll('input[type=checkbox]:checked'),
       function (i) { return i.value; }
-    ).join('\u0000');
+    ).sort().join('\u0000');
   }
   function fold(s) {
     return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -36,18 +38,23 @@
         return r.json();
       })
       .then(function (data) {
-        // A box changed while the list was on its way keeps its new state.
+        // A box changed while the list was on its way keeps its new state, and a
+        // keyboard user on one of them stays there.
         var ticked = {};
         box.querySelectorAll('input[type=checkbox]').forEach(function (i) { ticked[i.value] = i.checked; });
+        var focused = document.activeElement;
+        var focusValue = focused && box.contains(focused) ? focused.value : null;
         box.innerHTML = data.html;
         box.querySelectorAll('input[type=checkbox]').forEach(function (i) {
           if (Object.prototype.hasOwnProperty.call(ticked, i.value)) i.checked = ticked[i.value];
+          if (focusValue !== null && i.value === focusValue) i.focus();
         });
         panel.setAttribute('data-loaded', '');
         var more = panel.querySelector('[data-panel-more]');
         if (more) more.hidden = true;
+        // Narrow the new list by whatever is in the search box (or clear "Nothing matches").
         var search = panel.querySelector('[data-panel-search]');
-        if (search && search.value) search.dispatchEvent(new Event('input'));
+        if (search) search.dispatchEvent(new Event('input'));
       })
       .catch(function () { /* the chosen boxes and the link to the whole list stay */ })
       .then(function () { panel.removeAttribute('aria-busy'); });

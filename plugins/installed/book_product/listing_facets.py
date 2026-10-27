@@ -184,6 +184,28 @@ def _topic(base_qs, chosen):
     return _facet('topic', 'Topic', opts, searchable=True)
 
 
+def _stored_authors(values: list[str]) -> list[str]:
+    """Each chosen author as the books store the name (one query): a link may carry any
+    case, and the page and an opened panel must give a chosen box the same value."""
+    from django.db.models.functions import Lower
+
+    from plugins.installed.book_product.models import BookProduct
+
+    if not values:
+        return []
+    stored = dict(
+        BookProduct.objects.annotate(folded=Lower('author'))
+        .filter(folded__in=[v.lower() for v in values])
+        .values_list('folded', 'author')
+    )
+    out: list[str] = []
+    for v in values:
+        name = stored.get(v.lower(), v)
+        if name not in out:
+            out.append(name)
+    return out
+
+
 def _author(base_qs, chosen):
     from plugins.installed.book_product.models import BookProduct
 
@@ -195,7 +217,9 @@ def _author(base_qs, chosen):
         .order_by('author')
     )
     opts = _options(
-        [(r['author'], r['author'], r['n']) for r in authors], chosen['author'], fold=True
+        [(r['author'], r['author'], r['n']) for r in authors],
+        _stored_authors(chosen['author']),
+        fold=True,
     )
     return _facet('author', 'Author', opts, searchable=True)
 
@@ -245,12 +269,8 @@ def _lazy(key, base_qs, chosen):
         )
         label, more, more_label = 'Topic', 'book_product:topics', 'All topics'
     else:
-        stored = BookProduct.objects.exclude(author='')
-        options = []
-        for v in values:
-            name = stored.filter(author__iexact=v).values_list('author', flat=True).first() or v
-            options.append((name, name))
-        fills = stored.filter(product__in=scope).exists()
+        options = [(name, name) for name in _stored_authors(values)]
+        fills = BookProduct.objects.exclude(author='').filter(product__in=scope).exists()
         label, more, more_label = 'Author', 'book_product:authors', 'All authors'
     if not options and not fills:
         return None
