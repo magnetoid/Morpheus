@@ -208,7 +208,7 @@ show, so an empty catalogue still reads as a finished page.
         <div class="h-bundle__foot">
           <span class="h-bundle__price">{% if bundle_price %}{{ bundle_price|money }}{% endif %}</span>
           {% if product.noindex %}
-          <span class="meta">{% translate "Pre-launch preview" %}</span>
+          <span class="meta">{% translate "Irving Survival demo collection" %}</span>
           {% else %}
           <form method="post" action="/cart/add/{{ product.id }}/" class="h-bundle__add">
             {% csrf_token %}
