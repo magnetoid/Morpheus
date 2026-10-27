@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.124.1 — 2026-10-27
+
+**Deploy checks wait for the new code**
+
+- After a deploy, the store checks now wait until every store runs the code just pushed, not only the same version number. A change that kept the version used to be checked before the stores had switched over, so the speed and accessibility audits sometimes hit a store mid-restart.
+
 ## v0.124.0 — 2026-10-26
 
 **Apps a theme needs stay on, and tokens ask before bigger changes**
