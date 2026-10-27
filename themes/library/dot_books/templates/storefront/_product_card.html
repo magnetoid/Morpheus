@@ -12,6 +12,10 @@ shape raises (a |default chain across shapes does). product.id is a raw
 UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
 {% endcomment %}
 {% firstof product.primary_image.image.url product.primaryImage.url as img %}
+{% comment %}The cover's width in .grid-books (base.html): the page less the wrap's padding
+   and the column gaps, over 5/4/3/2 columns. 260px for every desktop sent a 400px cover
+   to a 224px column, and Lighthouse counted ~70% of each cover's bytes as wasted.{% endcomment %}
+{% with card_sizes="(min-width: 1600px) calc((100vw - 270px) / 5), (min-width: 1280px) calc((100vw - 230px) / 5), (min-width: 1024px) calc((100vw - 165px) / 4), (min-width: 768px) calc((100vw - 139px) / 3), (min-width: 640px) calc((100vw - 107px) / 3), calc((100vw - 82px) / 2)" %}
 {% product_card_meta product as bc %}
 {% firstof product.author_name product.author bc.author as card_author %}
 {# Price: apply |money to the raw Money/dict directly, never via firstof-as (it stringifies to "$8.00", so |money would double the symbol → "$$8.00"). #}
@@ -22,11 +26,11 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
          the title, which is the link's name. An alt repeating the title made a
          screen reader announce every book twice (axe: image-redundant-alt).{% endcomment %}
       {% if product.primary_image.image %}
-        {% seo_responsive_image product.primary_image.image alt="" widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
+        {% seo_responsive_image product.primary_image.image alt="" widths="240,400,600,800" sizes=card_sizes %}
       {% elif img %}
         {% comment %}GraphQL dict shape — img is a raw /media/ URL string. Route it
            through the same responsive proxy; the raw originals are multi-MB PNGs.{% endcomment %}
-        {% seo_responsive_image img alt="" widths="400,600,800" sizes="(min-width: 1200px) 260px, (min-width: 768px) 33vw, 50vw" %}
+        {% seo_responsive_image img alt="" widths="240,400,600,800" sizes=card_sizes %}
       {% elif PRODUCT_PLACEHOLDER_IMAGE %}
         <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="" loading="{% caching_img_loading_attr %}" decoding="async">
       {% else %}
@@ -65,3 +69,4 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
     </div>
   </div>
 </div>
+{% endwith %}

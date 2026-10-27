@@ -11,7 +11,8 @@ from __future__ import annotations
 
 #: Whitelisted image variant widths. Restricted to a small set so the
 # cache doesn't explode with arbitrary widths from crawlers.
-ALLOWED_IMAGE_WIDTHS = (200, 400, 600, 800, 1200, 1600, 2000)
+# 240: a desktop book grid shows a cover about 224px wide (dot_books' card).
+ALLOWED_IMAGE_WIDTHS = (200, 240, 400, 600, 800, 1200, 1600, 2000)
 ALLOWED_IMAGE_FORMATS = ('webp', 'avif')
 
 

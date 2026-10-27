@@ -84,6 +84,18 @@ class BookCardTests(TestCase):
         self.assertIn('Emily Dickinson', card)
         self.assertNotIn('book__formats', card)
 
+    def test_a_cover_is_offered_at_the_width_the_grid_shows(self):
+        # A desktop grid shows a cover about 224px wide; the smallest choice was 400px,
+        # so Lighthouse counted most of every cover's bytes as wasted (v0.125.0).
+        from plugins.installed.catalog.models import ProductImage
+
+        ProductImage.objects.create(product=self.murder, image='products/murder.png')
+        html = self._page()
+        start = html.index('href="/products/murder-at-dawn/" class="book__hit"')
+        card = html[start : start + 3000]
+        self.assertIn('/img/avif/240/products/murder.png 240w', card)
+        self.assertIn('sizes="(min-width: 1600px) calc((100vw - 270px) / 5)', card)
+
     def test_a_book_without_a_cover_gets_a_typeset_placeholder(self):
         card = self._card(self._page(), 'murder-at-dawn')
         self.assertIn('<span class="placeholder__title">The Murder at Dawn</span>', card)
