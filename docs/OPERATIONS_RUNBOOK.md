@@ -12,16 +12,20 @@
 ## Health and readiness
 
 - `GET /healthz` — liveness (no dependencies).
-- `GET /readyz` — readiness (DB + cache) and the running `version`; this is
-  the contract for the deploy smoke below.
+- `GET /readyz` — readiness (DB + cache), the running `version` and the
+  `commit` the image was built from (Coolify's `SOURCE_COMMIT`, '' elsewhere);
+  this is the contract for the deploy smoke below.
 - `GET /healthz/deep` — DB + cache + plugin registry + agent runtime +
   outbox lag.
 
 ## Deploy verification (deploy-smoke)
 
 - `.github/workflows/deploy-smoke.yml` runs on every push to `main`: it polls
-  `/readyz` until production reports the pushed `MORPHEUS_VERSION` and
-  `status: ok`, then asserts the homepage returns 200 (25-minute budget).
+  `/readyz` until production reports the pushed `MORPHEUS_VERSION`, the pushed
+  commit (when the store reports one) and `status: ok`, then asserts the homepage
+  returns 200 (25-minute budget). The commit matters for a push that keeps the
+  version (docs only): until v0.124.1 that passed at once, and the live-store
+  audits then ran into the store's container swap.
   A red X on the commit means the deploy never converged — a missed webhook,
   a failed build, or a boot error.
 - Run manually after any hand deploy: `bash scripts/deploy_smoke.sh`.

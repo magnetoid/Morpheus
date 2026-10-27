@@ -360,8 +360,11 @@ class ConfigTests(SimpleTestCase):
 
 
 class _FakeStore(http.server.BaseHTTPRequestHandler):
+    commit = ''  # what the store's /readyz reports; '' = a host that does not say
+
     def do_GET(self):  # noqa: N802 — the stdlib's name
-        body = json.dumps({'status': 'ok', 'version': settings.MORPHEUS_VERSION}).encode()
+        payload = {'status': 'ok', 'version': settings.MORPHEUS_VERSION, 'commit': self.commit}
+        body = json.dumps(payload).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
@@ -410,3 +413,43 @@ class WorkflowTests(SimpleTestCase):
     def test_after_a_green_smoke_the_guard_checks_it_can_see_the_stores(self):
         text = (_ROOT / '.github' / 'workflows' / 'deploy-smoke.yml').read_text()
         self.assertIn('python3 scripts/deploy_guard.py rollback --dry-run', text)
+
+
+class SmokeWaitsForTheCommitTests(SimpleTestCase):
+    """A push that keeps the version (docs only) used to pass the smoke at once,
+    and the live-store audits then ran into the store's container swap (503)."""
+
+    def _smoke(self, live_commit, expected_commit):
+        handler = type('Store', (_FakeStore,), {'commit': live_commit})
+        server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.shutdown)
+        env = dict(
+            os.environ,
+            SMOKE_BASE_URLS=f'http://127.0.0.1:{server.server_port}',
+            SMOKE_DEADLINE_SECS='1',
+            SMOKE_POLL_SECS='1',
+            SMOKE_EXPECT_COMMIT=expected_commit,
+        )
+        return subprocess.run(
+            ['bash', 'scripts/deploy_smoke.sh'],
+            cwd=_ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+
+    def test_a_store_still_on_another_commit_is_waited_for(self):
+        done = self._smoke('b' * 40, 'a' * 40)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn('commit=bbbbbbb', done.stdout + done.stderr)
+
+    def test_a_store_on_the_pushed_commit_passes(self):
+        done = self._smoke('a' * 40, 'A' * 40)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_a_store_that_reports_no_commit_passes_on_its_version(self):
+        done = self._smoke('', 'a' * 40)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)

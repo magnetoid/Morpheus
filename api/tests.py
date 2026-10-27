@@ -225,3 +225,14 @@ class ReadyzTests(TestCase):
         self.assertEqual(data['version'], settings.MORPHEUS_VERSION)
         self.assertIn(data['status'], ('ok', 'degraded'))
         self.assertIn('checks', data)
+
+    def test_readyz_reports_the_commit_the_image_was_built_from(self):
+        # A push that keeps the version (docs only) would otherwise pass the smoke
+        # before the store swapped containers, and the audits ran into the 503.
+        import os
+        from unittest import mock
+
+        with mock.patch.dict(os.environ, {'SOURCE_COMMIT': 'A' * 40}):
+            self.assertEqual(self.client.get('/readyz').json()['commit'], 'a' * 40)
+        with mock.patch.dict(os.environ, {'SOURCE_COMMIT': ''}):
+            self.assertEqual(self.client.get('/readyz').json()['commit'], '')

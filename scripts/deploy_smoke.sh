@@ -14,7 +14,7 @@ set -euo pipefail
 DEFAULT_URLS="https://dotbooks.store https://supernatural-shop.com https://montenegro-experience.me https://beta.irvingsurvival.com"
 BASE_URLS="${SMOKE_BASE_URLS:-${SMOKE_BASE_URL:-$DEFAULT_URLS}}"
 DEADLINE_SECS="${SMOKE_DEADLINE_SECS:-1500}" # Coolify builds take ~5-10 min, four of them in a queue
-POLL_SECS=20
+POLL_SECS="${SMOKE_POLL_SECS:-20}"
 # Where to write the version each store serves at the first check, one
 # "base version" line per healthy store: scripts/deploy_guard.py puts a store
 # that does not come up back on that release.
@@ -33,7 +33,12 @@ if [ -z "$expected" ]; then
   echo "could not parse MORPHEUS_VERSION from morph/settings.py" >&2
   exit 1
 fi
-echo "expecting production to reach version $expected on: $BASE_URLS"
+# The pushed commit, when known. A push that keeps the version (docs only) is
+# deployed only once a store reports this commit; a store that reports none (a
+# host that does not set SOURCE_COMMIT) passes on its version alone.
+expected_commit=$(printf '%s' "${SMOKE_EXPECT_COMMIT:-${GITHUB_SHA:-}}" | tr 'A-F' 'a-f')
+
+echo "expecting production to reach version $expected${expected_commit:+ at ${expected_commit:0:7}} on: $BASE_URLS"
 
 read_json_field() { # stdin: body; $1: field
   python3 -c "import json,sys
@@ -56,10 +61,14 @@ while :; do
     body=$(curl -sS --max-time 15 "$base/readyz" 2>/dev/null || echo '{}')
     live_version=$(printf '%s' "$body" | read_json_field version)
     live_status=$(printf '%s' "$body" | read_json_field status)
+    live_commit=$(printf '%s' "$body" | read_json_field commit)
     if [ -n "$first_round" ] && [ -n "$BEFORE_FILE" ] && [ "$live_status" = "ok" ] && [ -n "$live_version" ]; then
       echo "$base $live_version" >>"$BEFORE_FILE"
     fi
-    if [ "$live_version" = "$expected" ] && [ "$live_status" = "ok" ]; then
+    if [ "$live_version" = "$expected" ] && [ "$live_status" = "ok" ] &&
+      [ -n "$expected_commit" ] && [ -n "$live_commit" ] && [ "$live_commit" != "$expected_commit" ]; then
+      pending="$pending $base(commit=${live_commit:0:7}, expected ${expected_commit:0:7})"
+    elif [ "$live_version" = "$expected" ] && [ "$live_status" = "ok" ]; then
       home=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$base/" || echo 000)
       if [ "$home" = "200" ]; then
         echo "OK  $base — version=$live_version status=ok homepage=200"

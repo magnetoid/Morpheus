@@ -1689,7 +1689,9 @@ recovery (zombie `in_progress` builds wedge Coolify's whole app queue) is in
 `workflow_run`, never off the push:** on push the store still serves the
 previous build, then a 503 mid-swap, so both were red on every run for two
 weeks without anyone noticing — and a PR cannot be audited against the live
-store at all. Let the audit settle the page first (axe `--load-delay`): text
+store at all. deploy-smoke waits for the pushed commit too (`/readyz` reports
+`commit`, v0.124.1): a push that keeps the version (docs only) used to pass at
+once, and Lighthouse then met the container swap. Let the audit settle the page first (axe `--load-delay`): text
 sampled mid scroll-reveal fade reads as a contrast failure.
 
 **Convention — a deploy that migrates is backed up first (v0.118.0).** The web

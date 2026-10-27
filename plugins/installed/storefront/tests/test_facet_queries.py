@@ -7,6 +7,7 @@ product query) — a store with ten filters paid thirty queries per listing page
 from __future__ import annotations
 
 from decimal import Decimal
+from unittest import mock
 
 from django.db import connection
 from django.test import TestCase
@@ -32,9 +33,16 @@ class FacetQueryTests(TestCase):
             html = self.client.get('/products/').content.decode()
         return len(ctx.captured_queries), html
 
+    # The error log's detailed-capture switch is memoised for 10 s per process; on a slow
+    # runner it lapsed between the two measured pages and one paid an extra query (66 != 67).
+    @mock.patch('core.errors.mode._MEMO_S', 3600.0)
     def test_more_filters_cost_no_more_queries(self):
+        from core.errors import mode
+
+        mode.forget()
+        self.addCleanup(mode.forget)
         self._add_filter(1)
-        self._queries()  # the first page warms the nav and settings caches
+        self._queries()  # the first page warms the nav, settings and capture-switch caches
         one, html = self._queries()
         self.assertIn('Value 1', html)
         for n in (2, 3, 4):

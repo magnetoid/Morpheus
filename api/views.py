@@ -128,13 +128,17 @@ def readyz(request: HttpRequest) -> JsonResponse:
     ok = all(checks.values())
     from django.conf import settings  # noqa: PLC0415 — probe stays import-light
 
+    from core.deploys import current_commit  # noqa: PLC0415
+
     return JsonResponse(
-        # version lets the post-deploy smoke (scripts/deploy_smoke.sh) assert
-        # that production actually converged on the pushed commit.
+        # version and commit let the post-deploy smoke (scripts/deploy_smoke.sh)
+        # assert that production converged on the pushed commit: a push that keeps
+        # the version (docs only) is deployed only once the commit matches.
         {
             'status': 'ok' if ok else 'degraded',
             'checks': checks,
             'version': settings.MORPHEUS_VERSION,
+            'commit': current_commit(),
         },
         status=200 if ok else 503,
     )
