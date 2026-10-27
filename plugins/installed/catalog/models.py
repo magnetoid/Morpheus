@@ -438,7 +438,7 @@ class Product(models.Model):
         """
         if self.product_type == 'variable':
             cheapest = None
-            for v in self.variants.filter(is_active=True):
+            for v in self._active_variants():
                 ep = v.effective_price
                 if ep is None:
                     continue
@@ -455,7 +455,13 @@ class Product(models.Model):
         """
         if self.product_type != 'variable':
             return False
-        return self.variants.filter(is_active=True).count() > 1
+        return len(self._active_variants()) > 1
+
+    def _active_variants(self) -> list:
+        # Filtered in Python, like primary_image below: a .filter() bypasses
+        # prefetch_related('variants'), and a listing card read both properties, so
+        # every variable product cost three variant queries per card.
+        return [v for v in self.variants.all() if v.is_active]
 
     @property
     def primary_image(self):

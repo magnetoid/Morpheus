@@ -71,6 +71,28 @@ class SeamTests(TestCase):
             parse_qs(chip['href'].lstrip('?')), {'genre': ['poetry'], 'sort': ['name']}
         )
 
+    def test_a_lazy_panel_gets_the_address_of_its_list(self):
+        ctx = self._ctx('?genre=mystery&sort=name')
+        author = next(f for f in ctx['listing_facets'] if f['key'] == 'author')
+        self.assertTrue(author['lazy'])
+        path, _sep, query = author['options_url'].partition('?')
+        self.assertEqual(path, '/products/')
+        self.assertEqual(
+            parse_qs(query), {'genre': ['mystery'], 'sort': ['name'], 'facet_panel': ['author']}
+        )
+
+    def test_a_panel_request_answers_with_that_panel_only(self):
+        resp = self.client.get('/products/?facet_panel=author&genre=poetry')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'application/json')
+        html = resp.json()['html']
+        self.assertIn('value="Agatha Christie"', html)
+        self.assertIn('value="Emily Dickinson"', html)
+        self.assertNotIn('<html', html)
+
+    def test_a_panel_nobody_offers_is_not_found(self):
+        self.assertEqual(self.client.get('/products/?facet_panel=nope').status_code, 404)
+
     def test_pagination_keeps_repeated_keys(self):
         ctx = self._ctx('?genre=mystery&genre=poetry')
         self.assertEqual(parse_qs(ctx['paginator_base_qs']), {'genre': ['mystery', 'poetry']})

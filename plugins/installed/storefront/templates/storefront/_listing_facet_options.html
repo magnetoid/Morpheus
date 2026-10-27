@@ -1,0 +1,6 @@
+{% comment %}
+  One filter panel's choices: the page renders a panel's options with it, and an opened
+  lazy panel fetches its whole list rendered by it (storefront product_list,
+  ?facet_panel=<key>). A lazy panel's chosen options arrive before their counts.
+{% endcomment %}{% for o in facet.options %}<label class="plp-option"><input type="checkbox" name="{{ facet.key }}" value="{{ o.value }}"{% if o.selected %} checked{% endif %}><span class="plp-option-label">{{ o.label }}</span>{% if o.count is not None %}<span class="plp-option-count">{{ o.count }}</span>{% endif %}</label>
+{% endfor %}

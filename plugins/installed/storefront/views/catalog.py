@@ -87,8 +87,13 @@ def product_list(request):
 
     # prefetch_related('images') feeds the cache-friendly primary_image property
     # so each product card resolves its cover from memory, not a per-row query
-    # (the PLP N+1 the audit flagged).
-    qs = Product.objects.shoppable().select_related('category').prefetch_related('images')
+    # (the PLP N+1 the audit flagged); 'variants' does the same for a variable
+    # product's card price (display_price, price_starts_from).
+    qs = (
+        Product.objects.shoppable()
+        .select_related('category')
+        .prefetch_related('images', 'variants')
+    )
 
     # Search — Postgres full-text on Postgres backends, LIKE fallback elsewhere.
     q = (request.GET.get('q') or '').strip()
@@ -185,6 +190,29 @@ def product_list(request):
     qs = listing['queryset']
     listing_facets = listing.get('facets') or []
     chosen_facets = listing.get('chosen') or {}
+
+    # A long filter panel (a facet the owning app marks `lazy`) arrives with its chosen
+    # options only and fetches the whole list when opened: the same listing, with
+    # `facet_panel` naming it, answers with that panel's options as JSON (not an HTML
+    # page, so analytics counts no pageview).
+    panel_key = (request.GET.get('facet_panel') or '').strip()
+    if panel_key:
+        from django.http import Http404, JsonResponse  # noqa: PLC0415
+        from django.template.loader import render_to_string  # noqa: PLC0415
+
+        panel = next(
+            (f for f in listing_facets if f.get('key') == panel_key and not f.get('lazy')), None
+        )
+        if panel is None:
+            raise Http404('No such filter panel')
+        html = render_to_string('storefront/_listing_facet_options.html', {'facet': panel})
+        return JsonResponse({'html': html})
+    _panel_qs = request.GET.copy()
+    _panel_qs.pop('page', None)
+    for facet in listing_facets:
+        if facet.get('lazy'):
+            _panel_qs['facet_panel'] = facet['key']
+            facet['options_url'] = f'{request.path}?{_panel_qs.urlencode()}'
 
     # Sort
     sort = (request.GET.get('sort') or 'for_you').strip()

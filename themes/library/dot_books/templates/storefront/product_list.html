@@ -27,6 +27,9 @@
   .plp-option-label { flex: 1; }
   .plp-option-count { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
   .plp-panel-empty { margin: .25rem; color: var(--muted); font-size: .85rem; }
+  .plp-panel-more { margin: .25rem; font-size: .85rem; }
+  .plp-panel-more[hidden] { display: none; }
+  .plp-facet[aria-busy="true"] .plp-options { opacity: .55; }
   .plp-sort { height: 44px; padding: 0 1rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); font-family: var(--sans); font-size: .9rem; }
   .plp-apply { height: 44px; }
   /* Keyed on the media feature, not on the class the deferred script adds, so the

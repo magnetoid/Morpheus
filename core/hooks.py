@@ -540,7 +540,11 @@ class MorpheusEvents:
     #   appends facet dicts ({'key','label','searchable','selected_count',
     #   'options':[{'value','label','count','selected'}]}), extra sorts
     #   ((key, label, order_by_args)) and its chosen values. Nothing answers on a
-    #   store without such an app, and the page shows no extra filters.
+    #   store without such an app, and the page shows no extra filters. A long facet
+    #   may be `lazy` (v0.125.0): its options are the chosen ones only (`count` None),
+    #   plus 'more_url' and 'more_label' for a page listing them all. The view gives it
+    #   an 'options_url' (the listing with ?facet_panel=<key>), and for that request the
+    #   app returns the facet in full; the view answers {'html': its options} as JSON.
     LISTING_FACETS = 'listing.facets'  # filter
     # PRODUCT_CARD_META — filter, value=dict, kwargs: product (ORM row or GraphQL
     #   dict). What a storefront product card shows beyond the product itself; the

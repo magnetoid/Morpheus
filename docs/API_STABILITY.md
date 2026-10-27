@@ -43,6 +43,7 @@ Anything that breaks a **STABLE** surface ships with:
 
 | Version | Surface | What broke | Migration |
 |---|---|---|---|
+| **v0.125.0** | Theme authoring — `listing_facets` | A facet may be `lazy`: its options are the chosen ones only (`count` None) and the full list comes from `options_url` (`?facet_panel=<key>`, JSON) when its panel opens. | [`MIGRATING.md`](MIGRATING.md#v01250--a-theme-renders-lazy-filter-panels) |
 | **v0.124.0** | MCP tools — loyalty, reviews, subscriptions, shop memory | `loyalty.adjust_points`, `reviews.delete` and `subscriptions.cancel` are protected (a token needs the merchant's tick); `memory.remember` and `memory.forget` are no longer offered to a token. | [`MIGRATING.md`](MIGRATING.md#v01240--three-more-protected-tools-the-shop-memory-is-lindas-own) |
 | **v0.122.0** | GraphQL — functions, environments | Removed the `functions`, `currentEnvironment`, `environments` and `deployments` queries and the `testRunFunction` mutation, with the two apps behind them | None: neither app held a row on any of our stores; see `docs/MIGRATING.md` |
 | **v0.113.0** | Merchant webhooks | One POST per event after commit (was two, one possibly before commit); the body is the bare payload (the `{"event","data"}` envelope is gone); redirects are not followed and private hosts are refused. | [`MIGRATING.md`](MIGRATING.md#v01130--one-webhook-per-event-in-one-shape) |

@@ -23,6 +23,11 @@ LENGTHS = (
 )
 TOPIC_MIN_BOOKS = 2
 GENRE_SEARCH_ABOVE = 12
+# Long lists (dotbooks: 340 topics, 291 authors, a third of the page's HTML). The page
+# carries a lazy panel's chosen options; the panel fetches the rest when it opens, from
+# the same listing with PANEL_PARAM naming it (the storefront view answers that).
+LAZY_FACETS = ('topic', 'author')
+PANEL_PARAM = 'facet_panel'
 SORTS = (
     # A book without an author sorts last, not first ('' sorts before 'A').
     ('author', 'Author A–Z', (NullIf(F('book__author'), Value('')).asc(nulls_last=True), 'name')),
@@ -156,32 +161,31 @@ def _facet(key, label, options, *, searchable=False):
     }
 
 
-def describe(base_qs, chosen: dict) -> list[dict]:
-    """Every facet with its options and counts; a facet with no options is left out."""
-    from plugins.installed.book_product.models import BookProduct, Genre, Topic
+def _genre(base_qs, chosen):
+    from plugins.installed.book_product.models import Genre
 
-    facets = []
-
-    def labelled(model, values):
-        names = dict(model.objects.filter(slug__in=values).values_list('slug', 'name'))
-        return names
-
-    genre_opts = _options(_taxonomy_rows(Genre, _scope(base_qs, chosen, 'genre')), chosen['genre'])
-    names = labelled(Genre, [o['value'] for o in genre_opts if o['count'] == 0])
-    for o in genre_opts:
+    opts = _options(_taxonomy_rows(Genre, _scope(base_qs, chosen, 'genre')), chosen['genre'])
+    names = _labels(Genre, [o['value'] for o in opts if o['count'] == 0])
+    for o in opts:
         o['label'] = names.get(o['value'], o['label'])
-    facets.append(
-        _facet('genre', 'Genre', genre_opts, searchable=len(genre_opts) > GENRE_SEARCH_ABOVE)
-    )
+    return _facet('genre', 'Genre', opts, searchable=len(opts) > GENRE_SEARCH_ABOVE)
 
-    topic_opts = _options(
+
+def _topic(base_qs, chosen):
+    from plugins.installed.book_product.models import Topic
+
+    opts = _options(
         _taxonomy_rows(Topic, _scope(base_qs, chosen, 'topic'), min_books=TOPIC_MIN_BOOKS),
         chosen['topic'],
     )
-    names = labelled(Topic, [o['value'] for o in topic_opts if o['count'] == 0])
-    for o in topic_opts:
+    names = _labels(Topic, [o['value'] for o in opts if o['count'] == 0])
+    for o in opts:
         o['label'] = names.get(o['value'], o['label'])
-    facets.append(_facet('topic', 'Topic', topic_opts, searchable=True))
+    return _facet('topic', 'Topic', opts, searchable=True)
+
+
+def _author(base_qs, chosen):
+    from plugins.installed.book_product.models import BookProduct
 
     authors = (
         BookProduct.objects.filter(product__in=_scope(base_qs, chosen, 'author'))
@@ -190,20 +194,89 @@ def describe(base_qs, chosen: dict) -> list[dict]:
         .annotate(n=Count('product', distinct=True))
         .order_by('author')
     )
-    author_opts = _options(
+    opts = _options(
         [(r['author'], r['author'], r['n']) for r in authors], chosen['author'], fold=True
     )
-    facets.append(_facet('author', 'Author', author_opts, searchable=True))
+    return _facet('author', 'Author', opts, searchable=True)
 
+
+def _format(base_qs, chosen):
     scope = _scope(base_qs, chosen, 'format')
-    fmt_rows = [(v, label, scope.filter(_format_q(v)).distinct().count()) for v, label in FORMATS]
-    facets.append(_facet('format', 'Format', _options(fmt_rows, chosen['format'])))
+    rows = [(v, label, scope.filter(_format_q(v)).distinct().count()) for v, label in FORMATS]
+    return _facet('format', 'Format', _options(rows, chosen['format']))
 
+
+def _length(base_qs, chosen):
     scope = _scope(base_qs, chosen, 'length')
-    len_rows = [(v, label, scope.filter(_length_q(v)).count()) for v, label, _lo, _hi in LENGTHS]
-    facets.append(_facet('length', 'Length', _options(len_rows, chosen['length'])))
+    rows = [(v, label, scope.filter(_length_q(v)).count()) for v, label, _lo, _hi in LENGTHS]
+    return _facet('length', 'Length', _options(rows, chosen['length']))
 
-    return [f for f in facets if f['options']]
+
+_BUILDERS = {
+    'genre': _genre,
+    'topic': _topic,
+    'author': _author,
+    'format': _format,
+    'length': _length,
+}
+
+
+def _labels(model, values):
+    return dict(model.objects.filter(slug__in=values).values_list('slug', 'name'))
+
+
+def _lazy(key, base_qs, chosen):
+    """A long facet's panel before it opens: its chosen options (labelled, without counts)
+    and where the whole list lives; None when nothing in scope would fill it."""
+    from django.urls import NoReverseMatch, reverse
+
+    from plugins.installed.book_product.models import BookProduct, Topic
+
+    values = chosen[key]
+    scope = _scope(base_qs, chosen, key)
+    if key == 'topic':
+        names = _labels(Topic, values)
+        options = [(v, names.get(v, v)) for v in values]
+        fills = (
+            Topic.objects.filter(is_active=True, books__product__in=scope)
+            .annotate(n=Count('books', distinct=True))
+            .filter(n__gte=TOPIC_MIN_BOOKS)
+            .exists()
+        )
+        label, more, more_label = 'Topic', 'book_product:topics', 'All topics'
+    else:
+        stored = BookProduct.objects.exclude(author='')
+        options = []
+        for v in values:
+            name = stored.filter(author__iexact=v).values_list('author', flat=True).first() or v
+            options.append((name, name))
+        fills = stored.filter(product__in=scope).exists()
+        label, more, more_label = 'Author', 'book_product:authors', 'All authors'
+    if not options and not fills:
+        return None
+    facet = _facet(
+        key,
+        label,
+        [{'value': v, 'label': n, 'count': None, 'selected': True} for v, n in options],
+        searchable=True,
+    )
+    try:
+        more_url = reverse(more)
+    except NoReverseMatch:
+        more_url = ''
+    return {**facet, 'lazy': True, 'more_url': more_url, 'more_label': more_label}
+
+
+def describe(base_qs, chosen: dict, *, keys=FACET_KEYS, lazy=()) -> list[dict]:
+    """Each facet in `keys` with its options and counts; a facet in `lazy` carries only its
+    chosen options. A facet with no options is left out, a lazy one only when nothing in
+    scope would fill it."""
+    facets = []
+    for key in keys:
+        facet = _lazy(key, base_qs, chosen) if key in lazy else _BUILDERS[key](base_qs, chosen)
+        if facet and (facet['options'] or facet.get('lazy')):
+            facets.append(facet)
+    return facets
 
 
 def answer(value: dict, params) -> dict:
@@ -217,7 +290,13 @@ def answer(value: dict, params) -> dict:
     value['queryset'] = (
         apply(base, chosen).select_related('book').prefetch_related('book__genres', 'variants')
     )
-    value['facets'] = list(value.get('facets') or []) + describe(base, chosen)
+    # An opened panel asks for its whole list; the page itself defers the long ones.
+    panel = (params.get(PANEL_PARAM) or '').strip()
+    if panel:
+        described = describe(base, chosen, keys=(panel,)) if panel in FACET_KEYS else []
+    else:
+        described = describe(base, chosen, lazy=LAZY_FACETS)
+    value['facets'] = list(value.get('facets') or []) + described
     value['sorts'] = list(value.get('sorts') or []) + list(SORTS)
     value['chosen'] = {**(value.get('chosen') or {}), **{k: v for k, v in chosen.items() if v}}
     return value

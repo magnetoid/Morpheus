@@ -57,6 +57,23 @@ class DotBooksListingFiltersTests(TestCase):
         self.assertIn('data-panel-search', html)  # topic and author
         self.assertIn('dot_books/listing-filters.js', html)
 
+    def test_topic_and_author_lists_load_when_their_panel_opens(self):
+        html = self._page()
+        self.assertNotIn('name="author" value="Emily Brontë"', html)
+        self.assertNotIn('name="topic" value="love"', html)
+        self.assertIn('data-options-url="/products/?facet_panel=topic"', html)
+        self.assertIn('data-options-url="/products/?facet_panel=author"', html)
+        self.assertIn('href="/authors/"', html)  # without JavaScript: the full list's page
+        resp = self.client.get('/products/?facet_panel=author')
+        self.assertIn('name="author" value="Emily Brontë"', resp.json()['html'])
+        self.assertIn('<span class="plp-option-count">2</span>', resp.json()['html'])
+        from django.conf import settings
+
+        script = (
+            settings.BASE_DIR / 'themes/library/dot_books/static/dot_books/listing-filters.js'
+        ).read_text()
+        self.assertIn('data-options-url', script)
+
     def test_chosen_values_are_checked_and_shown_as_removable_chips(self):
         html = self._page('?author=Agatha%20Christie&genre=mystery')
         self.assertIn('name="author" value="Agatha Christie" checked', html)

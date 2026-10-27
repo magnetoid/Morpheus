@@ -200,3 +200,51 @@ class AnswerTests(FacetFixture):
         self.assertEqual(names, ['murder', 'dragon', 'quest', 'notes'])
         shortest = list(self.base().order_by(*by_author['shortest']).values_list('slug', flat=True))
         self.assertEqual(shortest, ['dragon', 'murder', 'quest', 'notes'])
+
+
+class LazyPanelTests(FacetFixture):
+    """Topic and Author list every choice only when their panel opens (v0.125.0).
+
+    The all-books page sent dotbooks' 340 topics and 291 authors as checkboxes on
+    every view, about a third of its HTML. The page now carries the chosen ones (for
+    the chips, the heading and Apply) and the panel fetches the rest.
+    """
+
+    def _answer(self, query):
+        value = {'queryset': self.base(), 'facets': [], 'sorts': [], 'chosen': {}}
+        return answer(value, _q(query))
+
+    def test_topic_and_author_carry_only_what_is_chosen(self):
+        facets = self._answer('')['facets']
+        for key, url in (('topic', '/topics/'), ('author', '/authors/')):
+            facet = _facet(facets, key)
+            self.assertTrue(facet['lazy'])
+            self.assertEqual(facet['options'], [])
+            self.assertEqual(facet['more_url'], url)
+        self.assertFalse(_facet(facets, 'genre').get('lazy'))
+        self.assertEqual(_counts(_facet(facets, 'genre')), {'fantasy': 2, 'mystery': 2})
+
+    def test_a_chosen_topic_and_author_keep_their_labels(self):
+        facets = self._answer('topic=espionage&author=agatha%20christie')['facets']
+        topic = _facet(facets, 'topic')
+        self.assertEqual(
+            [(o['value'], o['label'], o['selected']) for o in topic['options']],
+            [('espionage', 'Espionage', True)],
+        )
+        author = _facet(facets, 'author')
+        self.assertEqual([o['value'] for o in author['options']], ['Agatha Christie'])
+        self.assertEqual(author['selected_count'], 1)
+
+    def test_a_panel_nothing_would_fill_is_left_out(self):
+        # No topic covers two mystery books (DescribeTests), so there is no Topic panel.
+        keys = [f['key'] for f in self._answer('genre=mystery')['facets']]
+        self.assertNotIn('topic', keys)
+        self.assertIn('author', keys)
+
+    def test_an_opened_panel_gets_its_whole_list(self):
+        out = self._answer('facet_panel=topic&genre=fantasy')
+        self.assertEqual([f['key'] for f in out['facets']], ['topic'])
+        topic = out['facets'][0]
+        self.assertFalse(topic.get('lazy'))
+        self.assertEqual(_counts(topic), {'love': 2})  # espionage covers one fantasy book
+        self.assertEqual(set(out['queryset'].values_list('slug', flat=True)), {'dragon', 'quest'})

@@ -6,6 +6,24 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.125.0 — a theme renders lazy filter panels
+
+`LISTING_FACETS` facets may now be `lazy` (book_product's Topic and Author are). A lazy
+facet's `options` hold only the chosen values, with `count` set to `None`, and it carries
+`more_url` and `more_label` (a page listing every value) and, from the storefront view,
+`options_url` (the listing with `?facet_panel=<key>`, which answers
+`{"html": "<the panel's options>"}`). A theme that renders `listing_facets` should:
+
+- render a facet's options with `{% include "storefront/_listing_facet_options.html" with facet=f %}`,
+  which prints a count only when there is one;
+- on a lazy facet, fetch `options_url` when its panel opens and replace the options with the
+  returned `html` (dot_books: `static/dot_books/listing-filters.js`), and link to `more_url`
+  for shoppers without JavaScript.
+
+A theme that does neither still works: its Topic and Author panels show only what is chosen.
+
+---
+
 ## v0.124.0 — three more protected tools; the shop memory is Linda's own
 
 `loyalty.adjust_points`, `reviews.delete` and `subscriptions.cancel` now carry

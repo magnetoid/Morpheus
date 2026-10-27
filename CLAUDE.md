@@ -217,7 +217,11 @@ view's `filter_chips`, so removing one keeps the rest. dot_books has one search,
 2026-10-16): the all-books page carries an incoming `?q=` as a hidden field and a chip, never a box of
 its own. A product card's book line (genre, author, formats) comes the same way (v0.114.1): core's
 `{% product_card_meta %}` fires `PRODUCT_CARD_META` and book_product answers (`book_product/cards.py`),
-so a theme card never loads `book_extras`. Guarded by `book_product/tests/test_listing_facets.py`,
+so a theme card never loads `book_extras`. Topic and Author are `lazy` (v0.125.0): dotbooks' 340 topics
+and 291 authors were 143 KB of every listing page, so the page carries the chosen ones and the
+panel fetches its list from the same view with `?facet_panel=<key>` (JSON, so analytics counts no
+pageview); without JavaScript it links to `/topics/` or `/authors/`. A lazy facet is left out only
+when nothing in scope would fill it. Guarded by `book_product/tests/test_listing_facets.py`,
 `storefront/tests/test_listing_facets_seam.py`, `themes/test_dot_books_listing_filters.py` and
 `themes/test_dot_books_book_card.py`.
 

@@ -5,7 +5,8 @@
   LISTING_FACETS), the sort menu, and Apply. Without JavaScript the panels open and
   close natively and Apply submits repeated keys; listing-filters.js applies a panel
   when it closes, narrows long lists as you type, and turns the facets into a bottom
-  sheet under 720px.
+  sheet under 720px. A lazy panel (Topic, Author) arrives with its chosen options and
+  fetches the whole list when it opens; without JavaScript it links to the list's page.
 {% endcomment %}
 <form method="get" action="/products/" class="plp-toolbar" data-listing-filters>
   {# One search, in the header (owner, 2026-10-16): a query from its quick search rides along. #}
@@ -18,15 +19,14 @@
       <button type="button" class="plp-sheet-close" data-sheet-close aria-label="{% trans 'Close filters' %}">✕</button>
     </div>
     {% for f in listing_facets %}
-    <details class="plp-facet" data-facet="{{ f.key }}">
+    <details class="plp-facet" data-facet="{{ f.key }}"{% if f.lazy %} data-options-url="{{ f.options_url }}"{% endif %}>
       <summary class="plp-facet-button">{{ f.label }}{% if f.selected_count %} <span class="plp-facet-n">· {{ f.selected_count }}</span>{% endif %}</summary>
       <div class="plp-panel" role="group" aria-label="{{ f.label }}">
         {% if f.searchable %}<input type="search" class="plp-panel-search" placeholder="{% blocktrans with label=f.label|lower %}Find {{ label }}…{% endblocktrans %}" aria-label="{% blocktrans with label=f.label|lower %}Find {{ label }}{% endblocktrans %}" data-panel-search>{% endif %}
-        <div class="plp-options">
-          {% for o in f.options %}
-          <label class="plp-option"><input type="checkbox" name="{{ f.key }}" value="{{ o.value }}"{% if o.selected %} checked{% endif %}><span class="plp-option-label">{{ o.label }}</span><span class="plp-option-count">{{ o.count }}</span></label>
-          {% endfor %}
+        <div class="plp-options" data-panel-options>
+          {% include "storefront/_listing_facet_options.html" with facet=f %}
         </div>
+        {% if f.lazy and f.more_url %}<p class="plp-panel-more" data-panel-more><a href="{{ f.more_url }}">{{ f.more_label }}</a></p>{% endif %}
         <p class="plp-panel-empty" data-panel-empty hidden>{% trans 'Nothing matches.' %}</p>
       </div>
     </details>
