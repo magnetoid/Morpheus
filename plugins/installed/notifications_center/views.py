@@ -98,6 +98,7 @@ def notifications_list(request: HttpRequest) -> HttpResponse:
             'kind_choices': services.known_kinds(user),
             'snooze_choices': services.SNOOZE_CHOICES.items(),
             'muted': services.muted_kinds(user),
+            'store_tz': services.store_timezone(),
             'active_nav': 'notifications',
             **paging_ctx,
         },
@@ -199,7 +200,7 @@ def api_latest(request: HttpRequest) -> JsonResponse:
     """JSON endpoint feeding the topbar bell dropdown.
 
     GET            → latest 10 inbox notifications + the unread counts
-    GET ?counts=1  → the unread counts only (the bell polls this)
+    GET ?counts=1  → the unread counts and the inbox revision (the bell polls this)
     POST id=…      → mark one notification read
     """
     if request.method == 'POST':
@@ -208,7 +209,7 @@ def api_latest(request: HttpRequest) -> JsonResponse:
         if n is not None:
             services.apply(n, 'read')
         return JsonResponse({'ok': True, **services.unread_counts(request.user)})
-    counts = services.unread_counts(request.user)
+    counts = {**services.unread_counts(request.user), 'rev': services.revision(request.user)}
     if request.GET.get('counts'):
         return JsonResponse(counts)
     rows = services.latest_for(request.user, limit=10)

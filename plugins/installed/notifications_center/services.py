@@ -7,14 +7,15 @@ repeats and the default level of each kind are decided here, once.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from collections.abc import Iterable
 from datetime import datetime, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import transaction
-from django.db.models import Q
+from django.db import DatabaseError, connection, transaction
+from django.db.models import Count, Max, Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -76,11 +77,28 @@ def set_muted(user, kind: str, muted: bool) -> set[str]:
     return kinds
 
 
+def _lock_stack(user, group_key: str) -> None:
+    """Serialize deliveries to one stack until the transaction ends (Postgres).
+
+    With no open stack yet there is no row for select_for_update to lock, so
+    two workers delivering the same repeat would each create one. SQLite takes
+    one writer at a time and needs nothing.
+    """
+    if connection.vendor != 'postgresql':
+        return
+    digest = hashlib.blake2b(f'{user.pk}:{group_key}'.encode(), digest_size=8).digest()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            'SELECT pg_advisory_xact_lock(%s)', [int.from_bytes(digest, 'big', signed=True)]
+        )
+
+
 def _deliver(*, user, kind, title, body, action_url, icon, level, group_key) -> Notification:
     now = timezone.now()
     entry = {'at': now.isoformat(), 'title': title, 'body': body[:500]}
-    if group_key:
-        with transaction.atomic():
+    with transaction.atomic():
+        if group_key:
+            _lock_stack(user, group_key)
             open_stack = (
                 Notification.objects.select_for_update()
                 .filter(user=user, group_key=group_key, read_at__isnull=True)
@@ -111,18 +129,18 @@ def _deliver(*, user, kind, title, body, action_url, icon, level, group_key) -> 
                     ]
                 )
                 return open_stack
-    return Notification.objects.create(
-        user=user,
-        kind=kind,
-        title=title,
-        body=body,
-        action_url=action_url,
-        icon=icon,
-        level=level,
-        group_key=group_key,
-        occurrences=[entry],
-        last_at=now,
-    )
+        return Notification.objects.create(
+            user=user,
+            kind=kind,
+            title=title,
+            body=body,
+            action_url=action_url,
+            icon=icon,
+            level=level,
+            group_key=group_key,
+            occurrences=[entry],
+            last_at=now,
+        )
 
 
 def notify(
@@ -251,6 +269,18 @@ def own(user, notification_id) -> Notification | None:
         return None
 
 
+def revision(user) -> str:
+    """Changes whenever the inbox does, a repeat on a stack included: the bell
+    reloads an open list on it, because a repeat leaves the unread count alone."""
+    agg = inbox(user).aggregate(
+        latest=Max(Coalesce('last_at', 'created_at')),
+        total=Count('id'),
+        unread=Count('id', filter=Q(read_at__isnull=True)),
+    )
+    latest = agg['latest'].isoformat() if agg['latest'] else ''
+    return f'{latest}|{agg["total"]}|{agg["unread"]}'
+
+
 def unread_counts(user) -> dict[str, int]:
     """Unread stacks in the inbox, and how many of them are urgent."""
     if user is None or not getattr(user, 'pk', None):
@@ -308,15 +338,33 @@ def as_dict(n: Notification) -> dict:
 # ── Acting on one notification ───────────────────────────────────────────
 
 
+def store_timezone():
+    """The merchant's time zone (Settings → General), else the project's.
+
+    TIME_ZONE is UTC and nothing activates the store's zone, so "tomorrow at
+    09:00" has to ask for it (agent_core's scheduler reads it the same way).
+    """
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    from django.conf import settings
+
+    try:
+        from core.models import StoreSettings
+
+        return ZoneInfo(str(StoreSettings.get('timezone') or settings.TIME_ZONE))
+    except (ZoneInfoNotFoundError, ValueError, DatabaseError):
+        return ZoneInfo(settings.TIME_ZONE)
+
+
 def snooze_until(choice: str, *, now: datetime | None = None) -> datetime | None:
-    """1 hour from now, or 09:00 store time tomorrow / in a week."""
+    """1 hour from now, or 09:00 on the store's clock tomorrow / in a week."""
     now = now or timezone.now()
     if choice == 'hour':
         return now + timedelta(hours=1)
     days = {'tomorrow': 1, 'week': 7}.get(choice)
     if days is None:
         return None
-    local = timezone.localtime(now) + timedelta(days=days)
+    local = now.astimezone(store_timezone()) + timedelta(days=days)
     return local.replace(hour=9, minute=0, second=0, microsecond=0)
 
 
@@ -356,7 +404,7 @@ def apply(n: Notification, action: str, *, until: str = '') -> str:
         n.last_at = wake
         n.read_at = None
         n.save(update_fields=['snoozed_until', 'last_at', 'read_at'])
-        return f'Snoozed until {timezone.localtime(wake):%a %d %b, %H:%M}.'
+        return f'Snoozed until {wake.astimezone(store_timezone()):%a %d %b, %H:%M}.'
     if action in ('mute', 'unmute'):
         set_muted(n.user, n.kind, action == 'mute')
         verb = 'will no longer get' if action == 'mute' else 'will get'

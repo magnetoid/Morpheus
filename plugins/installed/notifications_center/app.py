@@ -44,6 +44,28 @@ class NotificationsCenterPlugin(Plugin):
             self.register_hook(AgentEvents.RUN_FAILED, self._on_agent_failed, priority=80)
         except Exception as e:  # noqa: BLE001
             logger.debug('notifications_center: agent events unavailable: %s', e)
+        # The shell renders the bell's frame; everything else this app adds to
+        # every dashboard page arrives through these seams and leaves with it.
+        from morpheus.core import MorpheusEvents
+
+        self.register_hook(MorpheusEvents.DASHBOARD_USER_MENU, self.on_user_menu)
+        self.register_hook(MorpheusEvents.DASHBOARD_BODY_END, self.on_body_end)
+
+    def on_user_menu(self, value, **kwargs):
+        value.append(
+            {
+                'label': 'Notification settings',
+                'url': '/dashboard/notifications/preferences/',
+                'icon': 'sliders-horizontal',
+                'order': 40,
+            }
+        )
+        return value
+
+    def on_body_end(self, value, **kwargs):
+        # The bell's styles and script (static/notifications_center/bell.*).
+        value.append('notifications_center/_bell_assets.html')
+        return value
 
     @staticmethod
     def _on_low_stock(stock_level=None, **kwargs):

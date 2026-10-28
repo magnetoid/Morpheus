@@ -1,5 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
-{% load morph_dashboard %}
+{% load morph_dashboard tz %}
 {% block title %}Notifications · Morpheus{% endblock %}
 
 {% block content %}
@@ -94,7 +94,7 @@
           {% if n.body %}<p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ n.body|truncatechars:200 }}</p>{% endif %}
           <p class="text-xs text-[color:var(--text-muted)] mt-1">
             {{ n.kind_label }}
-            {% if show == 'snoozed' %} · back {{ n.snoozed_until|date:"D j M, H:i" }}
+            {% if show == 'snoozed' %} · back {{ n.snoozed_until|timezone:store_tz|date:"D j M, H:i" }}
             {% elif show == 'archived' %} · archived {{ n.archived_at|timesince }} ago
             {% else %} · {{ n.activity_at|timesince }} ago{% endif %}
             {% if n.kind in muted %} · <span title="You don't get new ones of this kind">muted</span>{% endif %}
@@ -104,7 +104,7 @@
             <summary>Show all {{ n.count }}</summary>
             <ol>
               {% for o in n.timeline %}
-              <li>{% if o.at %}{{ o.at|date:"D j M, H:i" }} · {% endif %}{{ o.title }}{% if o.body %} — {{ o.body|truncatechars:120 }}{% endif %}</li>
+              <li>{% if o.at %}{{ o.at|timezone:store_tz|date:"D j M, H:i" }} · {% endif %}{{ o.title }}{% if o.body %} — {{ o.body|truncatechars:120 }}{% endif %}</li>
               {% endfor %}
               {% if n.forgotten %}<li>and {{ n.forgotten }} earlier</li>{% endif %}
             </ol>

@@ -1039,17 +1039,19 @@
     {% comment %}Theme toggle moved into the user dropdown — 3 explicit choices (light / dark / system) instead of a topbar cycle button.{% endcomment %}
     {# margin-left:auto pushes the account cluster (settings, notifications, user menu) flush to the right edge. #}
     <a href="{% url 'admin_dashboard:settings' %}" class="btn btn-ghost p-1.5" style="margin-left:auto;" aria-label="Settings"><i data-lucide="settings" class="h-4 w-4"></i></a>
-    {% comment %}The bell is the notifications_center app's surface — it leaves with the app. The shell renders its frame; the app's bell.js fills and refreshes it.{% endcomment %}
+    {% comment %}The bell is the notifications_center app's surface — it leaves with the app. The shell renders its frame; the app fills and refreshes it from its own script, contributed through DASHBOARD_BODY_END.{% endcomment %}
     {% plugin_enabled "notifications_center" as notifications_on %}{% if notifications_on %}
-    <link rel="stylesheet" href="{% static 'notifications_center/bell.css' %}">
     <div data-dropdown id="notif-bell" style="position: relative;"
          data-unread="{{ nav_badges.notifications|default:0 }}" data-urgent="{{ nav_badges.notifications_urgent|default:0 }}">
       <button data-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
               class="btn btn-ghost p-1.5" aria-label="Notifications"
               style="position: relative;">
         <i data-lucide="bell" class="h-4 w-4"></i>
-        <span data-notif-badge class="notif-badge"{% if not nav_badges.notifications %} hidden{% endif %}
-              style="background: {% if nav_badges.notifications_urgent %}var(--danger){% else %}var(--primary){% endif %};">{{ nav_badges.notifications|default:0 }}</span>
+        <span data-notif-badge{% if not nav_badges.notifications %} hidden{% endif %}
+              style="position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px;
+                     padding: 0 3px; border-radius: 999px; background: {% if nav_badges.notifications_urgent %}var(--danger){% else %}var(--primary){% endif %};
+                     color: var(--primary-fg); font-size: 9px; font-weight: 700; line-height: 14px;
+                     text-align: center; box-shadow: 0 0 0 2px var(--bg);">{{ nav_badges.notifications|default:0 }}</span>
       </button>
       <div class="dropdown-menu" hidden role="menu"
            style="min-width: 340px; max-width: 400px; padding: 0; right: 0; top: calc(100% + .35rem);">
@@ -1066,11 +1068,9 @@
             {% csrf_token %}
             <button type="submit" data-notif-mark-all class="btn text-xs" style="flex: 1; justify-content: center;"{% if not nav_badges.notifications %} hidden{% endif %}>Mark all read</button>
           </form>
-          <a href="/dashboard/notifications/preferences/" class="btn btn-ghost text-xs" title="Notification settings" aria-label="Notification settings"><i data-lucide="sliders-horizontal" class="h-3.5 w-3.5"></i></a>
         </div>
       </div>
     </div>
-    <script src="{% static 'notifications_center/bell.js' %}" defer></script>
     {% endif %}
     {# User menu — top-right. Click to open dropdown. #}
     <div id="user-menu" style="position: relative;">

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from unittest import mock
 
 from django.contrib.auth import get_user_model
@@ -137,10 +137,37 @@ class InboxTests(TestCase):
             first = services.ordered(services.inbox(self.user)).first()
         self.assertEqual(first.pk, n.pk)
 
-    def test_tomorrow_is_nine_in_the_morning(self):
-        wake = timezone.localtime(services.snooze_until('tomorrow'))
-        self.assertEqual((wake.hour, wake.minute), (9, 0))
-        self.assertEqual(wake.date(), (timezone.localtime() + timedelta(days=1)).date())
+    def test_tomorrow_is_nine_on_the_store_clock(self):
+        from zoneinfo import ZoneInfo
+
+        from core.models import StoreSettings
+
+        StoreSettings.objects.create(timezone='America/New_York')
+        zone = ZoneInfo('America/New_York')
+        # 03:30 UTC on the 28th is still the evening of the 27th in New York.
+        now = datetime(2026, 10, 28, 3, 30, tzinfo=UTC)
+        wake = services.snooze_until('tomorrow', now=now).astimezone(zone)
+        self.assertEqual((wake.date().isoformat(), wake.hour, wake.minute), ('2026-10-28', 9, 0))
+        week = services.snooze_until('week', now=now).astimezone(zone)
+        self.assertEqual((week.date().isoformat(), week.hour), ('2026-11-03', 9))
+
+    def test_a_repeat_changes_the_revision_but_not_the_count(self):
+        services.notify(user=self.user, kind='k', title='x', subject='s')
+        before = (services.revision(self.user), services.unread_counts(self.user))
+        services.notify(user=self.user, kind='k', title='x again', subject='s')
+        self.assertEqual(services.unread_counts(self.user), before[1])
+        self.assertNotEqual(services.revision(self.user), before[0])
+
+    def test_postgres_takes_a_lock_per_stack(self):
+        cursor = mock.MagicMock()
+        with (
+            mock.patch.object(services.connection, 'vendor', 'postgresql'),
+            mock.patch.object(services.connection, 'cursor', return_value=cursor),
+        ):
+            services._lock_stack(self.user, 'inventory.low_stock:variant:1')
+        sql, params = cursor.__enter__.return_value.execute.call_args.args
+        self.assertIn('pg_advisory_xact_lock', sql)
+        self.assertIsInstance(params[0], int)
 
     def test_rows_without_last_at_still_sort_by_creation(self):
         old = Notification.objects.create(user=self.user, kind='k', title='old')
@@ -195,10 +222,9 @@ class PageTests(TestCase):
         data = self.client.get('/dashboard/notifications/api/latest/').json()
         self.assertEqual((data['unread'], data['urgent']), (1, 0))
         self.assertEqual(data['notifications'][0]['count'], 2)
-        self.assertEqual(
-            self.client.get('/dashboard/notifications/api/latest/?counts=1').json(),
-            {'unread': 1, 'urgent': 0},
-        )
+        counts = self.client.get('/dashboard/notifications/api/latest/?counts=1').json()
+        self.assertEqual((counts['unread'], counts['urgent']), (1, 0))
+        self.assertEqual(counts['rev'], services.revision(self.user))
 
     def test_act_answers_json_to_the_bell(self):
         r = self.client.post(
@@ -246,6 +272,29 @@ class PageTests(TestCase):
     def test_a_malformed_id_on_the_old_bell_post_is_not_an_error(self):
         r = self.client.post('/dashboard/notifications/api/latest/', {'id': 'nope'})
         self.assertEqual(r.status_code, 200)
+
+
+class ShellSeamTests(TestCase):
+    def test_the_app_contributes_its_menu_entry_and_bell_assets(self):
+        from plugins.installed.notifications_center.app import NotificationsCenterPlugin
+
+        app = NotificationsCenterPlugin()
+        menu = app.on_user_menu([])
+        self.assertEqual(menu[0]['url'], '/dashboard/notifications/preferences/')
+        self.assertEqual(app.on_body_end([]), ['notifications_center/_bell_assets.html'])
+
+    def test_the_shell_names_none_of_the_apps_files_or_settings(self):
+        from pathlib import Path
+
+        from django.conf import settings
+
+        base = Path(
+            settings.BASE_DIR,
+            'plugins/installed/admin_dashboard/templates/admin_dashboard/base.html',
+        )
+        text = base.read_text()
+        self.assertNotIn('notifications_center/', text)
+        self.assertNotIn('/dashboard/notifications/preferences/', text)
 
 
 class AgentToolTests(TestCase):

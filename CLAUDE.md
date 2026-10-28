@@ -1650,6 +1650,9 @@ while the runner was still creating tables, so "database table is locked" was
 4 of the last 8 red runs on `main` (v0.87.2). Spawn through
 `seo.services.indexnow.ping_in_background`, which does nothing under
 `settings._RUNNING_TESTS`; never `threading.Thread(...)` from request code.
+Until v0.126.0 that flag missed `python -m pytest` (argv[0] is `pytest/__main__.py`),
+so CI's smoke suites ran in production mode, threads included; a migration that
+only reordered the plan made the thread collide with `CREATE TABLE`.
 
 **Landmine — sqlite hides Postgres migration crashes.** The in-memory
 test DB types loosely: an auto-generated `AlterField` that retargets a

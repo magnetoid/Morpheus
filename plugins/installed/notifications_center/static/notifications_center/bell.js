@@ -8,7 +8,9 @@
  *   - The unread count refreshes every 30 s while the tab is visible (and at once
  *     when it becomes visible again); the badge turns red while anything urgent
  *     is unread.
- *   - The list loads when the dropdown opens, and again after the count changed.
+ *   - The list loads each time the dropdown opens, and reloads while it is open
+ *     when the inbox changed (a repeat on a stack leaves the count alone, so the
+ *     poll compares the inbox revision, not the count).
  *   - A stack shows its count and expands to its earlier occurrences.
  *   - Hover actions: read / unread, snooze until tomorrow, archive, mute the kind.
  */
@@ -30,7 +32,7 @@
     unread: parseInt(bell.dataset.unread || '0', 10) || 0,
     urgent: parseInt(bell.dataset.urgent || '0', 10) || 0,
   };
-  let stale = true;
+  let rev = null;
   let items = [];
 
   function esc(s) {
@@ -58,9 +60,11 @@
     return typeof url === 'string' && /^\/(?![\/\\])/.test(url);
   }
 
-  // `reload`: refresh an open list when the count moved (an action reloads it itself).
+  // `reload`: refresh an open list when the inbox changed (an action reloads it itself).
   function paintCounts(next, reload) {
     const before = counts.unread;
+    const changed = typeof next.rev === 'string' && rev !== null && next.rev !== rev;
+    if (typeof next.rev === 'string') rev = next.rev;
     counts = { unread: next.unread || 0, urgent: next.urgent || 0 };
     if (badge) {
       badge.hidden = counts.unread === 0;
@@ -73,15 +77,12 @@
       headCount.textContent = counts.unread + ' unread';
     }
     if (markAll) markAll.hidden = counts.unread === 0;
-    if (counts.unread !== before) {
-      stale = true;
-      if (counts.unread > before) {
-        toggle.classList.remove('notif-ring');
-        void toggle.offsetWidth; // restart the animation
-        toggle.classList.add('notif-ring');
-      }
-      if (reload !== false && !menu.hidden) load();
+    if (counts.unread > before) {
+      toggle.classList.remove('notif-ring');
+      void toggle.offsetWidth; // restart the animation
+      toggle.classList.add('notif-ring');
     }
+    if ((changed || counts.unread !== before) && reload !== false && !menu.hidden) load();
   }
 
   function poll() {
@@ -132,17 +133,14 @@
   }
 
   function load() {
-    stale = false;
     fetch(BASE + 'api/latest/', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
       .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
       .then(data => {
         items = data.notifications || [];
         render();
         paintCounts(data, false);
-        stale = false;
       })
       .catch(() => {
-        stale = true;
         list.innerHTML = '<p class="notif-b-empty" style="color:var(--danger);">Couldn\'t load notifications.</p>';
       });
   }
@@ -214,7 +212,7 @@
 
   toggle.addEventListener('click', () => {
     // Read the state once every click handler ran, the shell's toggle included.
-    window.setTimeout(() => { if (!menu.hidden && (stale || !items.length)) load(); }, 0);
+    window.setTimeout(() => { if (!menu.hidden) load(); }, 0);
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
   // An action on the list page swaps the page under the topbar: recount at once.
