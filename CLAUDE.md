@@ -1,3 +1,51 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+Python 3.12. Package versions come from `requirements.lock.txt` (CI and the image install it; sync the venv with `uv pip install --python .venv/bin/python -r requirements.lock.txt`).
+
+```bash
+# Tests: always pin an in-memory DB (bare `manage.py test` reaches for the Docker `db` host)
+DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<app>
+DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<app>.tests.test_x.SomeTests.test_y
+# Opt-in apps (booking_marketplace, dsers, zendrop, cjdropshipping, aliexpress) have no tables unless enabled
+MORPHEUS_EXTRA_APPS=plugins.installed.booking_marketplace DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.booking_marketplace
+# pytest-style smoke suites that manage.py test reports as "Ran 0 tests"
+python -m pytest plugins/installed/*/tests/__init__.py -q
+
+# What CI blocks on
+ruff check . && ruff format --check .        # CI pins ruff==0.15.8
+python manage.py check && python manage.py makemigrations --check --dry-run
+python scripts/check_core_boundary.py && python scripts/check_plugin_boundary.py && python scripts/check_plugin_standard.py
+python manage.py release --check             # version bump and RELEASE_NOTES in sync
+
+# Before merging to main (a merge is a production deploy)
+python manage.py release --patch|--minor|--major "Headline" -m "bullet" [--commit]
+
+# Run locally
+docker compose up                            # full stack (postgres, redis, worker, beat) at localhost:8000
+python manage.py runserver                   # sqlite; .delay() work needs Redis
+```
+
+## Where things live
+
+- `morph/settings.py`: each store's app list is `MORPHEUS_DEFAULT_APPS` + `MORPHEUS_EXTRA_APPS` − `MORPHEUS_DISABLED_APPS`.
+- `core/`: the kernel.
+  - `hooks.py`: the event bus; every call between apps goes through it.
+  - `safety.py`, `authz.py`.
+  - `agents/`: runtime, tools, guardrails, providers.
+  - `assistant/`: the Janus engine plus `gates.py`, the one gate chain.
+  - `errors/`, `restore.py`, migration safety.
+  - Imports nothing from `plugins.installed.*`.
+- `plugins/` (package root): the app registry and contribution machinery (`registry.py`, `contributions.py`, `chrome_urls.py` / `storefront_urls.py`), plus code several apps share (`feed_mapping.py`, `dropshipping/`, `partner_portal.py`).
+- `plugins/installed/<app>/`: about 100 apps, each with `apps.py`, an `app.py` manifest, `help.md`, `migrations/__init__.py` and tests.
+  - The shells are `storefront` and `admin_dashboard`; `admin_dashboard/navigation.py` defines the sidebar.
+- `themes/library/`: `dot_books` (dotbooks.store), `montenegro`, `supernatural_shop`, `irving_survival`. It's one codebase with four stores, all deployed from `main`.
+- `api/`: GraphQL and REST (`graphql_view.py`, `graphql_permissions.py`, the response cache).
+- `morpheus/`: the SDK entry points (`morpheus.app`, `.core`, `.theme`).
+
 # Morpheus — house rules for AI-assisted work
 
 > Companion rulesets: [`vendor/vibe-skills/llm-rules/claude.md`](vendor/vibe-skills/llm-rules/claude.md) (Claude-specific) and [`vendor/vibe-skills/AGENTS.md`](vendor/vibe-skills/AGENTS.md) (cross-IDE). See [`AGENTS.md`](AGENTS.md) for the full map.

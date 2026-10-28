@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.126.1 — 2026-10-28
+
+**Irving's catalogue reads as a demo collection**
+
+- On beta.irvingsurvival.com, products that are not on sale yet now say "Irving Survival demo collection" on product cards and the home page bundles, instead of "Pre-launch preview".
+- Their product pages now open with "Irving Survival demo catalogue" instead of saying the product is not available to order. They still have no add-to-cart button.
+
 ## v0.126.0 — 2026-10-27
 
 **Staff notifications stack repeats and can be snoozed**
