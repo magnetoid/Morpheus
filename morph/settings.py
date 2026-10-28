@@ -12,8 +12,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # True when running `python manage.py test` or pytest. Used to relax a few
 # defaults (DATABASE_URL fallback, cache backend) so the suite runs without
-# a real Postgres / Redis around.
-_RUNNING_TESTS = 'test' in sys.argv or sys.argv[0].endswith('pytest')
+# a real Postgres / Redis around. CI runs the smoke suites as `python -m pytest`,
+# whose argv[0] is pytest/__main__.py: missing that ran them in production mode,
+# and a product save's IndexNow thread locked the test database mid-migrate.
+_ARGV0 = Path(sys.argv[0] if sys.argv else '')
+_RUNNING_TESTS = (
+    'test' in sys.argv
+    or _ARGV0.name in ('pytest', 'py.test')
+    or (_ARGV0.name == '__main__.py' and _ARGV0.parent.name == 'pytest')
+)
 
 DEBUG = config('DEBUG', default=False, cast=bool)
 SECRET_KEY = config(
@@ -36,7 +43,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.125.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.126.0')
 
 # The project website. The dashboard's Help and About pages show its pages
 # (help.html, about.html) in their embed mode, so they are written once for

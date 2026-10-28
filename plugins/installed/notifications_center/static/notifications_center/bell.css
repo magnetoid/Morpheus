@@ -1,0 +1,44 @@
+/* The topbar bell (bell.js). Contributed through DASHBOARD_BODY_END, so it leaves with the app. */
+#notif-bell [hidden] { display: none !important; }
+.notif-ring { animation: notif-ring .6s ease-in-out 2; transform-origin: 50% 10%; }
+@keyframes notif-ring {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(14deg); }
+  75% { transform: rotate(-14deg); }
+}
+@media (prefers-reduced-motion: reduce) { .notif-ring { animation: none; } }
+
+.notif-b-item {
+  position: relative; display: flex; align-items: flex-start; gap: .55rem; padding: .55rem .75rem;
+  border-radius: var(--radius-sm); border-left: 3px solid transparent; margin-bottom: .15rem;
+  cursor: pointer; color: var(--text);
+}
+.notif-b-item:hover, .notif-b-item:focus-visible { background: var(--surface-2); outline: none; }
+.notif-b-item.is-unread { background: var(--info-bg); }
+.notif-b-item.level-warning { border-left-color: var(--warn); }
+.notif-b-item.level-urgent { border-left-color: var(--danger); }
+.notif-b-icon {
+  display: inline-flex; width: 1.5rem; height: 1.5rem; border-radius: 4px; background: var(--surface-2);
+  align-items: center; justify-content: center; color: var(--text-muted); flex-shrink: 0;
+}
+.level-warning .notif-b-icon { background: var(--warn-bg); color: var(--warn); }
+.level-urgent .notif-b-icon { background: var(--danger-bg); color: var(--danger); }
+.notif-b-main { flex: 1; min-width: 0; }
+.notif-b-title { font-size: .8rem; margin: 0; line-height: 1.3; font-weight: 500; }
+.is-unread .notif-b-title { font-weight: 600; }
+.notif-b-body, .notif-b-meta { font-size: .7rem; color: var(--text-muted); margin: .15rem 0 0; line-height: 1.3; }
+.notif-b-link { background: none; border: 0; padding: 0; color: var(--info); font: inherit; cursor: pointer; }
+.notif-b-link:hover { text-decoration: underline; }
+.notif-b-stack { list-style: none; margin: .3rem 0 0; padding: 0 0 0 .55rem; border-left: 2px solid var(--border); }
+.notif-b-stack li { font-size: .7rem; color: var(--text-muted); padding: .1rem 0; }
+.notif-b-time { font-variant-numeric: tabular-nums; }
+.notif-b-actions {
+  position: absolute; top: .35rem; right: .35rem; display: none; gap: .1rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: .1rem;
+}
+.notif-b-item:hover .notif-b-actions, .notif-b-item:focus-within .notif-b-actions { display: flex; }
+.notif-b-actions button {
+  background: none; border: 0; padding: .2rem; border-radius: 4px; color: var(--text-muted); cursor: pointer; line-height: 1;
+}
+.notif-b-actions button:hover { background: var(--surface-2); color: var(--text); }
+.notif-b-empty { padding: 1.25rem; text-align: center; color: var(--text-muted); font-size: .8rem; margin: 0; }

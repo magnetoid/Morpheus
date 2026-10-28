@@ -218,7 +218,7 @@ view's `filter_chips`, so removing one keeps the rest. dot_books has one search,
 its own. A product card's book line (genre, author, formats) comes the same way (v0.114.1): core's
 `{% product_card_meta %}` fires `PRODUCT_CARD_META` and book_product answers (`book_product/cards.py`),
 so a theme card never loads `book_extras`. Topic and Author are `lazy` (v0.125.0): dotbooks' 340 topics
-and 291 authors were 143 KB of every listing page, so the page carries the chosen ones and the
+and 291 authors were 117 KB of every listing page, so the page carries the chosen ones and the
 panel fetches its list from the same view with `?facet_panel=<key>` (JSON, so analytics counts no
 pageview); without JavaScript it links to `/topics/` or `/authors/`. A lazy facet is left out only
 when nothing in scope would fill it. Guarded by `book_product/tests/test_listing_facets.py`,
@@ -1650,6 +1650,9 @@ while the runner was still creating tables, so "database table is locked" was
 4 of the last 8 red runs on `main` (v0.87.2). Spawn through
 `seo.services.indexnow.ping_in_background`, which does nothing under
 `settings._RUNNING_TESTS`; never `threading.Thread(...)` from request code.
+Until v0.126.0 that flag missed `python -m pytest` (argv[0] is `pytest/__main__.py`),
+so CI's smoke suites ran in production mode, threads included; a migration that
+only reordered the plan made the thread collide with `CREATE TABLE`.
 
 **Landmine — sqlite hides Postgres migration crashes.** The in-memory
 test DB types loosely: an auto-generated `AlterField` that retargets a

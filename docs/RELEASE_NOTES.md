@@ -15,11 +15,23 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.126.0 — 2026-10-27
+
+**Staff notifications stack repeats and can be snoozed**
+
+- Repeats of the same thing now stack: the same product running low again, or the same automatic task failing again, adds to the notification you haven't read yet, with a count, instead of adding another one. Open a stack to see the earlier ones.
+- Every notification has a level. Warnings get an amber edge, urgent ones a red edge, and the bell's counter turns red while something urgent is unread. Out of stock is urgent; low stock, return requests and failed automatic tasks are warnings.
+- Snooze a notification for an hour, until tomorrow morning or for a week, and it comes back to the top of your inbox, unread. Archive one to take it out of the inbox without losing it. The Notifications page sorts them into Inbox, Unread, Snoozed and Archived, and filters by level and kind.
+- Each staff member chooses which kinds of notification they get, on the new Notification settings page or straight from the bell.
+- The bell refreshes its counter by itself every 30 seconds while the dashboard is open, and you can read, snooze, archive or mute a notification from the bell without leaving the page.
+- Every staff member now sees their own notifications whatever their role. Before, the list needed an admin's permission, which would have hidden an inventory manager's low-stock alerts once roles are enforced.
+- Linda can list your notifications and, once you say yes, mark, snooze, archive or mute them for you.
+
 ## v0.125.0 — 2026-10-27
 
 **The all-books page loads faster**
 
-- The Topic and Author filters on the all-books page load their full lists when you open them, instead of with every page view. The page is about a third smaller, and the filters work as before: the same choices, counts and search box. Without JavaScript, each filter links to its full list page.
+- The Topic and Author filters on the all-books page load their full lists when you open them, instead of with every page view. The page is about a quarter smaller (305 KB, was 404 KB) and the server answers it about a third faster, and the filters work as before: the same choices, counts and search box. Without JavaScript, each filter links to its full list page.
 - Book covers in product grids and carousels are sent at the size the screen shows them, so pages download less.
 - Product lists ask the database far less for books sold in several formats: dotbooks' all-books page made 127 of its 180 queries just to show prices.
 
