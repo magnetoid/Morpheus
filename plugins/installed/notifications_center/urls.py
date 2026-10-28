@@ -10,7 +10,9 @@ app_name = 'notifications_center'
 
 urlpatterns = [
     path('', views.notifications_list, name='list'),
+    path('preferences/', views.preferences, name='preferences'),
     path('<uuid:notification_id>/read/', views.mark_read, name='mark_read'),
+    path('<uuid:notification_id>/act/', views.act, name='act'),
     path('mark-all-read/', views.mark_all_read, name='mark_all_read'),
     # JSON API used by the topbar bell dropdown.
     path('api/latest/', views.api_latest, name='api_latest'),

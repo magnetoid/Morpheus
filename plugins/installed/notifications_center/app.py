@@ -15,7 +15,8 @@ class NotificationsCenterPlugin(Plugin):
     version = '0.1.0'
     description = (
         'Persistent staff inbox for events that need follow-up — pending '
-        'RMAs, low-stock crossings, agent-run failures, overdue tasks. '
+        'RMAs, low-stock crossings, agent-run failures. Repeats stack, each '
+        'notification has a level, staff snooze, archive and mute kinds. '
         'Bell badge in the topbar, full list page in the dashboard.'
     )
     has_models = True
@@ -61,6 +62,7 @@ class NotificationsCenterPlugin(Plugin):
                 body=f'Available: {avail}. Re-order soon to avoid going out of stock.',
                 action_url='/dashboard/products/?status=active',
                 icon='alert-triangle',
+                subject=f'variant:{getattr(variant, "pk", "") or name}',
             )
         except Exception:  # noqa: BLE001, S110
             pass
@@ -81,6 +83,7 @@ class NotificationsCenterPlugin(Plugin):
                 body='This variant is now unavailable to shoppers. Re-stock or hide it.',
                 action_url='/dashboard/products/?status=active',
                 icon='x-octagon',
+                subject=f'variant:{getattr(variant, "pk", "") or name}',
             )
         except Exception:  # noqa: BLE001, S110
             pass
@@ -96,6 +99,7 @@ class NotificationsCenterPlugin(Plugin):
                 body=str(error or '')[:500],
                 action_url=f'/dashboard/agents/{run_id}/' if run_id else '/dashboard/agents/',
                 icon='alert-octagon',
+                subject=f'agent:{agent or "unknown"}',
             )
         except Exception:  # noqa: BLE001, S110
             pass
@@ -111,4 +115,22 @@ class NotificationsCenterPlugin(Plugin):
                 order=40,
                 nav='hidden',
             ),
+            DashboardPage(
+                slug='preferences',
+                label='Notification settings',
+                section='developer',
+                icon='sliders-horizontal',
+                view='plugins.installed.notifications_center.views.preferences',
+                order=41,
+                nav='hidden',
+                url='/dashboard/notifications/preferences/',
+            ),
         ]
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.notifications_center.agent_tools import (
+            notifications_list_tool,
+            notifications_update_tool,
+        )
+
+        return [notifications_list_tool, notifications_update_tool]
