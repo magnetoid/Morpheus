@@ -78,9 +78,11 @@ def _compute_nav_badges(request) -> dict:
         pass
     try:
         if app_registry.is_active('notifications_center'):
-            from plugins.installed.notifications_center.services import unread_count_for
+            from plugins.installed.notifications_center.services import unread_counts
 
-            badges['notifications'] = unread_count_for(getattr(request, 'user', None))
+            counts = unread_counts(getattr(request, 'user', None))
+            badges['notifications'] = counts['unread']
+            badges['notifications_urgent'] = counts['urgent']
     except Exception:  # noqa: BLE001, S110
         pass
     try:  # noqa: SIM105

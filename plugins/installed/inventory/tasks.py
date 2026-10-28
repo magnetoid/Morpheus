@@ -146,6 +146,8 @@ def run_stockout_forecast() -> dict:
                 body=lines,
                 action_url='/dashboard/apps/inventory/stockout-forecast/',
                 icon='alert-triangle',
+                # One stack per inbox: tomorrow's forecast lands on today's if it is unread.
+                subject='stockout-forecast',
             )
         except Exception as exc:  # noqa: BLE001 — alerting never breaks the job
             logger.warning('run_stockout_forecast: notify failed: %s', exc, exc_info=True)

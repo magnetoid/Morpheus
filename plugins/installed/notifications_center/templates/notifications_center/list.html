@@ -1,86 +1,165 @@
 {% extends "admin_dashboard/base.html" %}
-{% load morph_dashboard %}
+{% load morph_dashboard tz %}
 {% block title %}Notifications · Morpheus{% endblock %}
 
 {% block content %}
+<style>
+  .notif-row { display: flex; align-items: flex-start; gap: .75rem; padding: .85rem 1.1rem; border-bottom: 1px solid var(--border); border-left: 3px solid transparent; }
+  .notif-row.is-unread { background: var(--info-bg); }
+  .notif-row.level-warning { border-left-color: var(--warn); }
+  .notif-row.level-urgent { border-left-color: var(--danger); }
+  .notif-icon { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text-muted); flex-shrink: 0; }
+  .level-warning .notif-icon { background: var(--warn-bg); color: var(--warn); }
+  .level-urgent .notif-icon { background: var(--danger-bg); color: var(--danger); }
+  .notif-open { background: none; border: 0; padding: 0; margin: 0; text-align: left; cursor: pointer; color: var(--text); font: inherit; }
+  .notif-open:hover .notif-title { text-decoration: underline; }
+  .notif-actions { display: flex; align-items: center; gap: .15rem; flex-shrink: 0; }
+  .notif-actions form { margin: 0; display: inline; }
+  .notif-snooze { position: relative; }
+  .notif-snooze > summary { list-style: none; }
+  .notif-snooze > summary::-webkit-details-marker { display: none; }
+  .notif-snooze-menu { position: absolute; right: 0; top: calc(100% + .25rem); z-index: 20; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-pop); padding: .25rem; min-width: 9rem; }
+  .notif-snooze-menu button { display: block; width: 100%; text-align: left; }
+  .notif-stack { margin-top: .4rem; }
+  .notif-stack > summary { cursor: pointer; font-size: .75rem; color: var(--text-muted); }
+  .notif-stack ol { list-style: none; margin: .35rem 0 0; padding: 0 0 0 .75rem; border-left: 2px solid var(--border); }
+  .notif-stack li { font-size: .75rem; padding: .2rem 0; color: var(--text-muted); }
+  @media (max-width: 640px) {
+    .notif-row { flex-wrap: wrap; }
+    .notif-actions { flex-basis: 100%; justify-content: flex-end; }
+  }
+</style>
 <div class="mx-auto space-y-4">
 
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Notifications</h1>
       <p class="text-sm text-[color:var(--text-muted)]">
-        {% if page_obj %}{{ page_obj.paginator.count }} total{% endif %}
+        {% if page_obj %}{{ page_obj.paginator.count }} here{% endif %}
         {% if unread_total %} · <strong style="color: var(--text);">{{ unread_total }} unread</strong>{% endif %}
       </p>
     </div>
-    {% if unread_total %}
-    <form method="post" action="{% url 'notifications_center:mark_all_read' %}" style="display:inline;">
-      {% csrf_token %}
-      <button type="submit" class="btn">
-        <i data-lucide="check-check" class="h-4 w-4"></i> Mark all read
-      </button>
-    </form>
-    {% endif %}
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="{% url 'notifications_center:preferences' %}" class="btn">
+        <i data-lucide="sliders-horizontal" class="h-4 w-4"></i> Settings
+      </a>
+      {% if unread_total %}
+      <form method="post" action="{% url 'notifications_center:mark_all_read' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn">
+          <i data-lucide="check-check" class="h-4 w-4"></i> Mark all read
+        </button>
+      </form>
+      {% endif %}
+    </div>
   </div>
 
-  <nav class="flex items-center gap-1 overflow-x-auto" style="border-bottom: 1px solid var(--border);">
-    <a href="?show=all"
-       class="inline-flex items-center gap-2 px-3 py-2 text-sm whitespace-nowrap"
-       style="border-bottom: 2px solid {% if show != 'unread' %}var(--text){% else %}transparent{% endif %};
-              color: {% if show != 'unread' %}var(--text){% else %}var(--text-muted){% endif %};
-              font-weight: {% if show != 'unread' %}600{% else %}500{% endif %};
-              margin-bottom: -1px;">
-      All
-    </a>
-    <a href="?show=unread"
-       class="inline-flex items-center gap-2 px-3 py-2 text-sm whitespace-nowrap"
-       style="border-bottom: 2px solid {% if show == 'unread' %}var(--text){% else %}transparent{% endif %};
-              color: {% if show == 'unread' %}var(--text){% else %}var(--text-muted){% endif %};
-              font-weight: {% if show == 'unread' %}600{% else %}500{% endif %};
-              margin-bottom: -1px;">
-      Unread
-      {% if unread_total %}<span class="pill pill-warn" style="font-size:.68rem; padding:.05rem .4rem;">{{ unread_total }}</span>{% endif %}
-    </a>
-  </nav>
+  {% include "admin_dashboard/_tabs.html" %}
+
+  <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    <input type="hidden" name="show" value="{{ show }}">
+    <select name="level" class="input" style="width:auto;" aria-label="Level">
+      <option value="">Every level</option>
+      {% for value, label in level_choices %}
+      <option value="{{ value }}"{% if value == level %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="kind" class="input" style="width:auto;" aria-label="Kind">
+      <option value="">Every kind</option>
+      {% for value, label in kind_choices %}
+      <option value="{{ value }}"{% if value == kind %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary">Filter</button>
+    {% if level or kind %}<a href="?show={{ show }}" class="btn btn-ghost">Clear</a>{% endif %}
+  </form>
 
   <div class="card overflow-hidden">
     {% if notifications %}
     <ul style="list-style: none; margin: 0; padding: 0;">
       {% for n in notifications %}
-      <li style="border-bottom: 1px solid var(--border);">
-        <form method="post" action="{% url 'notifications_center:mark_read' n.id %}" style="margin: 0;">
-          {% csrf_token %}
-          <button type="submit"
-                  style="width: 100%; text-align: left; background: {% if n.is_unread %}var(--info-bg){% else %}transparent{% endif %};
-                         padding: .85rem 1.1rem; border: 0; cursor: pointer;
-                         display: flex; align-items: flex-start; gap: .75rem; color: var(--text);">
-            <span style="display: inline-flex; align-items: center; justify-content: center;
-                         width: 2rem; height: 2rem; border-radius: var(--radius-sm);
-                         background: var(--surface-2); color: var(--text-muted); flex-shrink: 0;">
-              <i data-lucide="{{ n.icon|default:'bell' }}" class="h-4 w-4"></i>
-            </span>
-            <div style="flex: 1; min-width: 0;">
-              <div class="text-sm" style="font-weight: {% if n.is_unread %}600{% else %}500{% endif %};">
-                {{ n.title }}
-                {% if n.is_unread %}<span class="pill pill-info" style="margin-left:.45rem; font-size:.65rem; padding:.05rem .4rem;">new</span>{% endif %}
-              </div>
-              {% if n.body %}<p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ n.body|truncatechars:200 }}</p>{% endif %}
-              <p class="text-xs text-[color:var(--text-muted)] mt-1">
-                <span style="font-family: monospace; font-size: .68rem;">{{ n.kind }}</span>
-                · {{ n.created_at|timesince }} ago
-              </p>
-            </div>
-            {% if n.action_url %}
-            <i data-lucide="chevron-right" class="h-4 w-4 text-[color:var(--text-muted)]" style="flex-shrink: 0;"></i>
+      <li class="notif-row level-{{ n.level|default:'info' }}{% if n.is_unread %} is-unread{% endif %}">
+        <span class="notif-icon"><i data-lucide="{{ n.icon|default:'bell' }}" class="h-4 w-4"></i></span>
+        <div style="flex: 1; min-width: 0;">
+          <form method="post" action="{% url 'notifications_center:mark_read' n.id %}" style="margin: 0;">
+            {% csrf_token %}
+            <button type="submit" class="notif-open text-sm" style="font-weight: {% if n.is_unread %}600{% else %}500{% endif %};">
+              <span class="notif-title">{{ n.title }}</span>
+              {% if n.count > 1 %}<span class="pill pill-neutral pill-xs" style="margin-left:.35rem;" title="{{ n.count }} times">×{{ n.count }}</span>{% endif %}
+              {% if n.level == 'urgent' %}<span class="pill pill-danger pill-xs" style="margin-left:.35rem;">Urgent</span>
+              {% elif n.level == 'warning' %}<span class="pill pill-warn pill-xs" style="margin-left:.35rem;">Warning</span>{% endif %}
+              {% if n.is_unread %}<span class="pill pill-info pill-xs" style="margin-left:.35rem;">new</span>{% endif %}
+            </button>
+          </form>
+          {% if n.body %}<p class="text-xs text-[color:var(--text-muted)] mt-0.5">{{ n.body|truncatechars:200 }}</p>{% endif %}
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">
+            {{ n.kind_label }}
+            {% if show == 'snoozed' %} · back {{ n.snoozed_until|timezone:store_tz|date:"D j M, H:i" }}
+            {% elif show == 'archived' %} · archived {{ n.archived_at|timesince }} ago
+            {% else %} · {{ n.activity_at|timesince }} ago{% endif %}
+            {% if n.kind in muted %} · <span title="You don't get new ones of this kind">muted</span>{% endif %}
+          </p>
+          {% if n.count > 1 %}
+          <details class="notif-stack">
+            <summary>Show all {{ n.count }}</summary>
+            <ol>
+              {% for o in n.timeline %}
+              <li>{% if o.at %}{{ o.at|timezone:store_tz|date:"D j M, H:i" }} · {% endif %}{{ o.title }}{% if o.body %} — {{ o.body|truncatechars:120 }}{% endif %}</li>
+              {% endfor %}
+              {% if n.forgotten %}<li>and {{ n.forgotten }} earlier</li>{% endif %}
+            </ol>
+          </details>
+          {% endif %}
+        </div>
+        <div class="notif-actions">
+          {% if n.archived_at %}
+          <form method="post" action="{% url 'notifications_center:act' n.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button name="action" value="unarchive" class="btn btn-ghost p-1.5" title="Move back to the inbox" aria-label="Move back to the inbox"><i data-lucide="inbox" class="h-4 w-4"></i></button>
+          </form>
+          {% else %}
+          <form method="post" action="{% url 'notifications_center:act' n.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% if n.is_unread %}
+            <button name="action" value="read" class="btn btn-ghost p-1.5" title="Mark read" aria-label="Mark read"><i data-lucide="check" class="h-4 w-4"></i></button>
+            {% else %}
+            <button name="action" value="unread" class="btn btn-ghost p-1.5" title="Mark unread" aria-label="Mark unread"><i data-lucide="mail" class="h-4 w-4"></i></button>
             {% endif %}
-          </button>
-        </form>
+          </form>
+          {% if show == 'snoozed' %}
+          <form method="post" action="{% url 'notifications_center:act' n.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button name="action" value="wake" class="btn btn-ghost p-1.5" title="Bring back now" aria-label="Bring back now"><i data-lucide="rotate-ccw" class="h-4 w-4"></i></button>
+          </form>
+          {% else %}
+          <details class="notif-snooze">
+            <summary class="btn btn-ghost p-1.5" title="Snooze" aria-label="Snooze"><i data-lucide="clock" class="h-4 w-4"></i></summary>
+            <form method="post" action="{% url 'notifications_center:act' n.id %}" class="notif-snooze-menu">{% csrf_token %}
+              <input type="hidden" name="action" value="snooze"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+              {% for value, label in snooze_choices %}
+              <button name="until" value="{{ value }}" class="nav-link" style="font-size:.8rem;">{{ label }}</button>
+              {% endfor %}
+            </form>
+          </details>
+          {% endif %}
+          <form method="post" action="{% url 'notifications_center:act' n.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button name="action" value="archive" class="btn btn-ghost p-1.5" title="Archive" aria-label="Archive"><i data-lucide="archive" class="h-4 w-4"></i></button>
+          </form>
+          {% endif %}
+          {% if n.kind not in muted %}
+          <form method="post" action="{% url 'notifications_center:act' n.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button name="action" value="mute" class="btn btn-ghost p-1.5" title="Stop getting this kind" aria-label="Stop getting this kind"
+                    data-confirm="Stop getting “{{ n.kind_label }}” notifications? You can turn them back on in Settings."><i data-lucide="eye-off" class="h-4 w-4"></i></button>
+          </form>
+          {% endif %}
+        </div>
       </li>
       {% endfor %}
     </ul>
     {% if page_obj %}{% include "admin_dashboard/_pagination.html" %}{% endif %}
+    {% elif show == 'snoozed' %}
+    {% include "admin_dashboard/_empty_state.html" with icon="clock" title="Nothing snoozed" hint="Snooze a notification to hide it until later; it comes back here as unread." %}
+    {% elif show == 'archived' %}
+    {% include "admin_dashboard/_empty_state.html" with icon="archive" title="Nothing archived" hint="Archived notifications leave the inbox but are kept here." %}
     {% else %}
-    {% include "admin_dashboard/_empty_state.html" with icon="bell-off" title="No notifications" hint="Activity that needs your attention — pending returns, low-stock alerts, agent failures — will land here." %}
+    {% include "admin_dashboard/_empty_state.html" with icon="bell" title="No notifications" hint="Activity that needs your attention — return requests, low-stock alerts, failed automatic tasks — will land here." %}
     {% endif %}
   </div>
 

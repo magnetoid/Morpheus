@@ -15,7 +15,8 @@ class NotificationsCenterPlugin(Plugin):
     version = '0.1.0'
     description = (
         'Persistent staff inbox for events that need follow-up — pending '
-        'RMAs, low-stock crossings, agent-run failures, overdue tasks. '
+        'RMAs, low-stock crossings, agent-run failures. Repeats stack, each '
+        'notification has a level, staff snooze, archive and mute kinds. '
         'Bell badge in the topbar, full list page in the dashboard.'
     )
     has_models = True
@@ -43,6 +44,28 @@ class NotificationsCenterPlugin(Plugin):
             self.register_hook(AgentEvents.RUN_FAILED, self._on_agent_failed, priority=80)
         except Exception as e:  # noqa: BLE001
             logger.debug('notifications_center: agent events unavailable: %s', e)
+        # The shell renders the bell's frame; everything else this app adds to
+        # every dashboard page arrives through these seams and leaves with it.
+        from morpheus.core import MorpheusEvents
+
+        self.register_hook(MorpheusEvents.DASHBOARD_USER_MENU, self.on_user_menu)
+        self.register_hook(MorpheusEvents.DASHBOARD_BODY_END, self.on_body_end)
+
+    def on_user_menu(self, value, **kwargs):
+        value.append(
+            {
+                'label': 'Notification settings',
+                'url': '/dashboard/notifications/preferences/',
+                'icon': 'sliders-horizontal',
+                'order': 40,
+            }
+        )
+        return value
+
+    def on_body_end(self, value, **kwargs):
+        # The bell's styles and script (static/notifications_center/bell.*).
+        value.append('notifications_center/_bell_assets.html')
+        return value
 
     @staticmethod
     def _on_low_stock(stock_level=None, **kwargs):
@@ -61,6 +84,7 @@ class NotificationsCenterPlugin(Plugin):
                 body=f'Available: {avail}. Re-order soon to avoid going out of stock.',
                 action_url='/dashboard/products/?status=active',
                 icon='alert-triangle',
+                subject=f'variant:{getattr(variant, "pk", "") or name}',
             )
         except Exception:  # noqa: BLE001, S110
             pass
@@ -81,6 +105,7 @@ class NotificationsCenterPlugin(Plugin):
                 body='This variant is now unavailable to shoppers. Re-stock or hide it.',
                 action_url='/dashboard/products/?status=active',
                 icon='x-octagon',
+                subject=f'variant:{getattr(variant, "pk", "") or name}',
             )
         except Exception:  # noqa: BLE001, S110
             pass
@@ -96,6 +121,7 @@ class NotificationsCenterPlugin(Plugin):
                 body=str(error or '')[:500],
                 action_url=f'/dashboard/agents/{run_id}/' if run_id else '/dashboard/agents/',
                 icon='alert-octagon',
+                subject=f'agent:{agent or "unknown"}',
             )
         except Exception:  # noqa: BLE001, S110
             pass
@@ -111,4 +137,22 @@ class NotificationsCenterPlugin(Plugin):
                 order=40,
                 nav='hidden',
             ),
+            DashboardPage(
+                slug='preferences',
+                label='Notification settings',
+                section='developer',
+                icon='sliders-horizontal',
+                view='plugins.installed.notifications_center.views.preferences',
+                order=41,
+                nav='hidden',
+                url='/dashboard/notifications/preferences/',
+            ),
         ]
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.notifications_center.agent_tools import (
+            notifications_list_tool,
+            notifications_update_tool,
+        )
+
+        return [notifications_list_tool, notifications_update_tool]
