@@ -1241,8 +1241,10 @@ contributes the tags to `global_head` / `global_below_body` (themes call nothing
 loads gtag.js when no container is set, sends `consent update` from the visitor's
 choice, reads `_ga` / `_ga_<stream>` for every server hit and stamps them on the order
 (`metadata['ga']`) for the payment webhook. A page rendered for a consent choice is
-never edge-cached (`morpheus_consent` is a private cookie). Guarded by
-`tracking/tests/test_browser_tags.py` and `test_server_identity.py`.
+never edge-cached (`morpheus_consent` is a private cookie). A product page or listing
+hands the tags a GraphQL dict whose price is `{amount, currency}`: the first live
+`view_item` said 0 USD for an $8 book until v0.127.1, because the test passed a number.
+Guarded by `tracking/tests/test_browser_tags.py` and `test_server_identity.py`.
 
 **Landmine — product text is rich HTML; anywhere but the PDP it must become
 plain text first, never be sliced raw.** Web Stories cut `short_description`

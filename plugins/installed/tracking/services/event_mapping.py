@@ -20,6 +20,9 @@ def _money_amount(value) -> float:
     if value is None:
         return 0.0
     try:
+        if isinstance(value, dict):
+            # The product page's GraphQL dict: `price { amount currency }`.
+            return float(value.get('amount') or 0)
         if hasattr(value, 'amount'):
             return float(value.amount)
         return float(value)
@@ -28,7 +31,7 @@ def _money_amount(value) -> float:
 
 
 def _money_currency(value, default: str = 'USD') -> str:
-    cur = getattr(value, 'currency', None)
+    cur = value.get('currency') if isinstance(value, dict) else getattr(value, 'currency', None)
     if cur is None:
         return default
     return str(cur)

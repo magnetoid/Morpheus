@@ -216,6 +216,24 @@ class EcommercePushTests(_Base):
         self.assertIn('gtag("event","view_item",', out)
         self.assertNotIn('"event": "view_item"', out)
 
+    def test_the_product_pages_graphql_price_is_read(self):
+        # The PDP renders a GraphQL dict whose price is {amount, currency}: until
+        # v0.127.1 every live view_item said 0 in USD.
+        _configure(measurement_id='G-TEST1234')
+        out = Template('{% load tracking %}{% dl_view_item p %}').render(
+            Context(
+                {
+                    'p': {
+                        'name': 'Map',
+                        'slug': 'map',
+                        'price': {'amount': '8.00', 'currency': 'EUR'},
+                    }
+                }
+            )
+        )
+        self.assertIn('"currency": "EUR", "value": 8.0', out)
+        self.assertIn('"price": 8.0', out)
+
     def test_stored_text_cannot_close_the_script(self):
         _configure(gtm_container_id='GTM-ABC1234')
         out = Template('{% load tracking %}{% dl_view_item p %}').render(
