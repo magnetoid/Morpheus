@@ -23,32 +23,7 @@
 
 <section style="padding: 1rem 0 4rem;">
   <div class="wrap wrap-narrow">
-    <div class="shipping-grid">
-      <article class="shipping-card">
-        <p class="eyebrow">Domestic — US</p>
-        <h2>Standard</h2>
-        <p class="shipping-price">$5 flat</p>
-        <p>3-5 business days. USPS Priority Mail, tracked + insured. <strong>Free on orders over $40.</strong></p>
-      </article>
-      <article class="shipping-card">
-        <p class="eyebrow">Domestic — US</p>
-        <h2>Express</h2>
-        <p class="shipping-price">$14</p>
-        <p>1-2 business days. USPS Priority Express, signed-for. We ship same-day if you order by 12pm CT.</p>
-      </article>
-      <article class="shipping-card">
-        <p class="eyebrow">International</p>
-        <h2>Canada + Mexico</h2>
-        <p class="shipping-price">$18</p>
-        <p>5-10 business days. USPS International, tracked. Customs duties are <strong>your responsibility</strong>, not ours — most orders aren't held but a $50 book might pay $5-10 in duty.</p>
-      </article>
-      <article class="shipping-card">
-        <p class="eyebrow">International</p>
-        <h2>Rest of world</h2>
-        <p class="shipping-price">$28</p>
-        <p>10-21 business days. We ship every country USPS will deliver to. UK / EU customers, we have a UK distributor for some titles — email us before ordering.</p>
-      </article>
-    </div>
+    {% storefront_blocks "shipping_rates" %}
   </div>
 </section>
 
@@ -75,10 +50,6 @@
       <div>
         <h3>My tracking hasn't moved.</h3>
         <p>USPS scans are inconsistent — a package can go from "label printed" to "out for delivery" with nothing in between. Wait 3 business days from ship date before worrying, then <a href="/contact/" class="btn-link" style="display:inline;">drop us a line</a>.</p>
-      </div>
-      <div>
-        <h3>How do I claim free shipping?</h3>
-        <p>Automatic — once your cart subtotal hits $40, the standard rate drops to $0 at checkout. Promo codes apply to subtotal before shipping, so the threshold uses the discounted amount.</p>
       </div>
     </div>
   </div>

@@ -172,6 +172,12 @@ class ShippingPlugin(Plugin):
                 template='shipping/blocks/free_progress.html',
                 priority=20,
             ),
+            # The shipping page's prices: the configured rates, never theme copy.
+            StorefrontBlock(
+                slot='shipping_rates',
+                template='shipping/blocks/rates.html',
+                priority=10,
+            ),
         ]
 
     def contribute_dashboard_pages(self) -> list:

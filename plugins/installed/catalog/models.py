@@ -16,6 +16,7 @@ import uuid
 
 from core.utils.html import sanitize_richtext
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.utils import timezone
 from django.utils.text import slugify
 from djmoney.models.fields import MoneyField
 from morpheus.app import models
@@ -851,3 +852,43 @@ class PriceSchedule(models.Model):
         indexes = [
             models.Index(fields=['effective_at', 'applied_at']),
         ]
+
+
+class PriceHistory(models.Model):
+    """Every price a product or variant has had, from when the store began
+    keeping them: the evidence behind a sale's "lowest price in the 30 days
+    before this reduction" (EU Omnibus) and behind a "was" price.
+
+    Written by `price_history.record` from a save of either model, never by
+    hand. `variant` is set only for a variant with its own price; a variable
+    product's own price is a placeholder and is never recorded.
+    """
+
+    SOURCE_CHOICES = [
+        # The price the target already had when the store started keeping
+        # history; dated at its last save, so nothing before is known.
+        ('initial', 'Already set when history began'),
+        ('created', 'Set when the product was created'),
+        ('changed', 'Changed'),
+    ]
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='price_history')
+    variant = models.ForeignKey(
+        ProductVariant,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='price_history',
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=3)
+    compare_at_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default='changed')
+    changed_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-changed_at', '-id']
+        indexes = [models.Index(fields=['product', 'variant', '-changed_at'])]
+
+    def __str__(self) -> str:
+        return f'{self.amount} {self.currency} at {self.changed_at:%Y-%m-%d}'

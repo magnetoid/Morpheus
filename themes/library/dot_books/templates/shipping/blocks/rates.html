@@ -1,0 +1,17 @@
+{% load morph shipping %}{% comment %}
+dot_books' cards for the shipping app's rates (the page's .shipping-grid CSS).
+The prices are the configured rates; with none, checkout quotes at the address.
+{% endcomment %}{% shipping_rate_cards as cards %}{% if cards %}
+<div class="shipping-grid">
+  {% for c in cards %}
+  <article class="shipping-card">
+    <p class="eyebrow">{{ c.zone }}</p>
+    <h2>{{ c.name }}</h2>
+    <p class="shipping-price">{% include "shipping/blocks/_rate_price.html" %}</p>
+    {% if c.description or c.days_min or c.days_max %}<p>{% if c.days_min or c.days_max %}{% include "shipping/blocks/_rate_days.html" %}. {% endif %}{{ c.description }}</p>{% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p class="lede">Checkout shows the delivery options for your address, with their cost, before you pay.</p>
+{% endif %}

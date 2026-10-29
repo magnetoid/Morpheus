@@ -7,7 +7,7 @@ from core.images import (
     MAX_QUALITY,
     MIN_QUALITY,
 )
-from morpheus.app import Plugin, SettingsPanel
+from morpheus.app import Plugin, SettingsPanel, StorefrontBlock
 from morpheus.core import events
 
 
@@ -200,6 +200,7 @@ class CatalogPlugin(Plugin):
             list_translations_tool,
             products_count_tool,
             products_get_tool,
+            products_price_history_tool,
             products_search_tool,
             products_update_price_tool,
             products_update_status_tool,
@@ -210,10 +211,22 @@ class CatalogPlugin(Plugin):
             products_search_tool,
             products_count_tool,
             products_get_tool,
+            products_price_history_tool,
             products_update_status_tool,
             products_update_price_tool,
             translate_product_tool,
             list_translations_tool,
+        ]
+
+    def contribute_storefront_blocks(self) -> list:
+        # The EU Omnibus note under a sale price: every theme renders this slot.
+        return [
+            StorefrontBlock(
+                slot='pdp_below_price',
+                template='catalog/blocks/prior_price.html',
+                priority=10,
+                context_keys=['product'],
+            ),
         ]
 
     def contribute_settings_panel(self):

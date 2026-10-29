@@ -4228,3 +4228,6 @@ msgstr "Podijeljena lista želja"
 
 msgid "Shared with you."
 msgstr "Podijeljeno s vama."
+
+msgid "Lowest price in the 30 days before this reduction: %(price)s"
+msgstr "Najniža cijena u 30 dana prije ovog sniženja: %(price)s"
