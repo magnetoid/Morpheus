@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.127.1 — 2026-10-29
+
+**GA4 sees the product page's price**
+
+- view_item and view_item_list from a product page or listing now carry the shown price and currency. The page renders the product as a GraphQL dict whose price is {amount, currency}, which the tag read as 0 in USD; the browser tags made it visible once they started loading in v0.127.0.
+
 ## v0.127.0 — 2026-10-29
 
 **GA4 and Tag Manager measure on every store**
