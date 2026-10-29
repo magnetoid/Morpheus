@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.127.2 — 2026-10-29
+
+**Seventeen Python packages updated**
+
+- The packages the stores install move to their current releases, among them django-allauth 65.20.0 (sign-in), django-money 3.6.2, django-mptt 0.19.1 (categories), strawberry-graphql 0.336.2 with strawberry-graphql-django 0.93.0 (the API), and the OpenAI 3.35.1 and Anthropic 1.15.0 SDKs. None of them adds a database migration, so the previous release still runs on the same database.
+
 ## v0.127.1 — 2026-10-29
 
 **GA4 sees the product page's price**
