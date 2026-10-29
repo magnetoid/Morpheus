@@ -154,6 +154,19 @@ class PriorPriceTests(TestCase):
         p.refresh_from_db()
         self.assertIsNone(lowest_prior_price(p))
 
+    def test_the_same_number_in_another_currency_is_another_price(self):
+        p = _product('20')
+        p.price = Money(Decimal('10'), 'EUR')
+        p.save()
+        p.price = Money(Decimal('10'), 'USD')
+        p.compare_at_price = Money(Decimal('20'), 'USD')
+        p.save()
+        now = timezone.now()
+        rows = list(PriceHistory.objects.filter(product=p).order_by('id'))
+        for row, days in zip(rows, (40, 10, 0), strict=True):
+            PriceHistory.objects.filter(pk=row.pk).update(changed_at=now - timedelta(days=days))
+        self.assertIsNone(lowest_prior_price(p))  # the EUR period proves nothing in USD
+
     def test_a_variant_reduction(self):
         p = _product('0', product_type='variable')
         v = ProductVariant.objects.create(
@@ -207,6 +220,8 @@ class SurfaceTests(TestCase):
         )
         self.assertIn(f'data-prior-for="{v.pk}"', out)
         self.assertIn('MutationObserver', out)
+        # The slot sits above the picker in every theme: start once it is parsed.
+        self.assertIn('DOMContentLoaded', out)
 
     def test_the_product_page_renders_the_note(self):
         p = self._reduced()

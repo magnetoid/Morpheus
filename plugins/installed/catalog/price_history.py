@@ -136,8 +136,9 @@ def _lowest_in_window(rows: list[dict], current, currency: str) -> Money | None:
     if not rows or rows[0]['amount'] != current or rows[0]['currency'] != currency:
         return None
     # The current price's run of rows; its oldest row is when the reduction began.
+    # The same number in another currency is a different price.
     run = 0
-    while run < len(rows) and rows[run]['amount'] == current:
+    while run < len(rows) and (rows[run]['amount'], rows[run]['currency']) == (current, currency):
         run += 1
     began = rows[run - 1]
     if began['source'] != 'changed':
