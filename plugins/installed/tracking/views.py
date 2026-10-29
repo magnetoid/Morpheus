@@ -40,7 +40,6 @@ from core.authz import require_capability
 from morpheus.app.views import staff_member_required
 from plugins.installed.tracking.models import (
     DEFAULT_CONSENT_DEFAULT,
-    DEFAULT_ENHANCED_OVERRIDES,
     DEFAULT_EVENT_FIRING,
     GA4EventLog,
     TrackingSettings,
@@ -130,10 +129,6 @@ def settings_page(request):
             for name in DEFAULT_EVENT_FIRING:
                 new_event_firing[name] = request.POST.get(f'event_{name}') == 'on'
             s.event_firing = new_event_firing
-            new_overrides = {}
-            for name in DEFAULT_ENHANCED_OVERRIDES:
-                new_overrides[name] = request.POST.get(f'enhanced_{name}') == 'on'
-            s.enhanced_overrides = new_overrides
             s.save()
             flash = 'Event firing saved.'
             tab = 'events'
@@ -201,10 +196,6 @@ def settings_page(request):
                 'last_fired_at': last.fired_at if last else None,
             }
         )
-    enhanced_rows = [
-        {'name': name, 'enabled': (s.enhanced_overrides or {}).get(name, default)}
-        for name, default in DEFAULT_ENHANCED_OVERRIDES.items()
-    ]
     consent_rows = [
         {'signal': name, 'value': (s.consent_default or {}).get(name, default)}
         for name, default in DEFAULT_CONSENT_DEFAULT.items()
@@ -218,7 +209,6 @@ def settings_page(request):
             'tab': tab,
             'flash': flash,
             'event_rows': event_rows,
-            'enhanced_rows': enhanced_rows,
             'consent_rows': consent_rows,
         },
     )

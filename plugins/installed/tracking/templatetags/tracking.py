@@ -8,17 +8,11 @@
 #   ourselves from validated TrackingSettings — never to raw user input.
 """Template tags for the storefront integration.
 
-Three tags do the heavy lifting in `base.html`:
+The page tags arrive through the app's own storefront blocks, so every theme
+gets them from the slots it already emits and they leave with the app:
 
-    {% load tracking %}
-    ...
-    <head>
-      {% gtm_consent_default %}  {# emits gtag('consent','default',{...}) — must run first #}
-      {% gtm_head %}             {# the GTM container snippet — only if configured #}
-    </head>
-    <body>
-      {% gtm_noscript_body %}
-      ...
+    global_head        → {% tracking_head %}      consent defaults, then GTM or GA4
+    global_below_body  → {% tracking_noscript %}  GTM's no-JavaScript fallback
 
 Plus per-event dataLayer push partials surfaced as `{% dl_view_item product %}`
 etc. — these include a small template that prepends `dataLayer.push({ecommerce: null})`
@@ -29,15 +23,19 @@ to prevent items leaking between events (the #1 production bug per the
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from django import template
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
-from plugins.installed.consent.services import read_consent_from_cookie
 from plugins.installed.tracking.models import TrackingSettings
 
 register = template.Library()
+
+_GOOGLE = 'https://www.googletagmanager.com'
+_TAG_ID = re.compile(r'^(G|GTM|AW)-[A-Z0-9]{4,20}$')
 
 
 def _settings():
@@ -47,104 +45,190 @@ def _settings():
         return None
 
 
-def _has_consent(request, category: str) -> bool:
-    """True if the visitor has opted in to ``category`` (analytics /
-    marketing / functional). Missing request or missing cookie → False:
-    we silently no-op until the banner is answered.
-
-    Compliance escape hatch: when TrackingSettings.consent_override is
-    True, this returns True unconditionally. Intended for staging,
-    internal staff visits, and non-EU shops only.
-    """
-    try:
-        s = _settings()
-        if s is not None and getattr(s, 'consent_override', False):
-            return True
-    except Exception:  # noqa: BLE001
-        pass
-    if request is None:
-        return False
-    try:
-        return bool(read_consent_from_cookie(request).get(category))
-    except Exception:  # noqa: BLE001
-        return False
+def _js(value) -> str:
+    """JSON for inside a <script>: `<` escaped, so no stored text can close the tag."""
+    return json.dumps(value).replace('<', '\\u003c')
 
 
-@register.simple_tag
-def gtm_consent_default():
-    """Emit Consent Mode v2 defaults **before** any GTM/gtag boot.
+def _tag_id(value) -> str:
+    """A GA4 / GTM id fit to print into a script, else '' (the field is free text)."""
+    value = (value or '').strip().upper()
+    return value if _TAG_ID.match(value) else ''
 
-    Per Google's spec, defaults MUST set before the container loads
-    or the page silently runs with implicit `granted` for the
-    measurement window, breaking EEA compliance.
+
+def _visitor_allows(s, request) -> tuple[bool, bool]:
+    """(analytics, marketing) for this visitor: the rule every sender reads
+    (`core.consent`: a store that does not manage consent allows both), or both
+    under the debug-only "Ignore visitor consent" switch."""
+    if getattr(s, 'consent_override', False):
+        return True, True
+    from core.consent import decision_for
+
+    decision = decision_for(request)
+    managed = decision.get('managed')
+    return (not managed or decision['analytics'], not managed or decision['marketing'])
+
+
+def _linker_domains(s, request) -> list[str]:
+    domains = [d.strip().lower() for d in (s.cross_domain or '').split(',') if d.strip()]
+    if domains and request is not None:
+        try:
+            host = request.get_host().split(':')[0].lower()
+        except Exception:  # noqa: BLE001 — DisallowedHost: the middleware has answered it
+            host = ''
+        if host and host not in domains:
+            domains.insert(0, host)
+    return domains
+
+
+def _browser_user_id(s, request) -> str:
+    if not s.user_id_enabled or request is None:
+        return ''
+    user = getattr(request, 'user', None)
+    if not getattr(user, 'is_authenticated', False):
+        return ''
+    from plugins.installed.tracking.services.identity import user_id
+
+    return user_id(user.pk)
+
+
+def _tag_origin(s) -> str:
+    """Where gtm.js / gtag.js load from: a server-side GTM container when set."""
+    url = (s.sgtm_server_url or '').strip().rstrip('/')
+    return url if url.startswith('https://') else _GOOGLE
+
+
+def browser_tagging(s) -> bool:
+    """Is a Google tag loaded in the shopper's browser (GTM, or GA4 itself)?"""
+    return bool(
+        s.client_side_enabled and (_tag_id(s.gtm_container_id) or _tag_id(s.measurement_id))
+    )
+
+
+@register.simple_tag(takes_context=True)
+def tracking_head(context):
+    """Consent Mode v2 defaults, the visitor's own decision, then GTM — or GA4's
+    gtag.js when no container is set.
+
+    The defaults print first and on every page (Google requires them before any
+    tag, and the Ads tags read them too). A tag loads only when the visitor
+    allows analytics; it then gets a consent update, so GA4 runs with the
+    visitor's real choice rather than the denied defaults.
     """
     s = _settings()
     if s is None or not s.client_side_enabled:
         return ''
-    default = s.consent_default or {}
-    # Always emit even when the container ID is empty — the page
-    # might be using server-side only + a custom gtag elsewhere.
-    return mark_safe(
-        '<script>window.dataLayer=window.dataLayer||[];'
-        'function gtag(){dataLayer.push(arguments);}'
-        f'gtag("consent","default",{json.dumps(default)});'
-        '</script>'
-    )
+    request = context.get('request')
+    js = [
+        'window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}',
+        f'gtag("consent","default",{_js(s.consent_default or {})});',
+    ]
+    gtm, ga4 = _tag_id(s.gtm_container_id), _tag_id(s.measurement_id)
+    analytics, marketing = _visitor_allows(s, request)
+    blocked = request is not None and s.is_path_blocked(request.path)
+    if not (gtm or ga4) or not analytics or blocked:
+        return mark_safe(f'<script>{"".join(js)}</script>')
+
+    ads = 'granted' if marketing else 'denied'
+    update = {
+        'analytics_storage': 'granted',
+        'ad_storage': ads,
+        'ad_user_data': ads,
+        'ad_personalization': ads,
+    }
+    js.append(f'gtag("consent","update",{_js(update)});')
+    domains = _linker_domains(s, request)
+    if domains:
+        js.append(f'gtag("set","linker",{_js({"domains": domains})});')
+    uid = _browser_user_id(s, request)
+    origin = _tag_origin(s)
+    if gtm:
+        if uid:
+            js.append(f'dataLayer.push({_js({"user_id": uid})});')
+        js.append(
+            "dataLayer.push({'gtm.start':new Date().getTime(),event:'gtm.js'});"
+            '(function(d,s){var f=d.getElementsByTagName(s)[0],j=d.createElement(s);'
+            f'j.async=true;j.src={_js(f"{origin}/gtm.js?id={gtm}")};'
+            "f.parentNode.insertBefore(j,f);})(document,'script');"
+        )
+        return mark_safe(f'<script>{"".join(js)}</script>')
+    config: dict[str, Any] = {}
+    if uid:
+        config['user_id'] = uid
+    if origin != _GOOGLE:
+        config['server_container_url'] = origin
+    js.append(f'gtag("js",new Date());gtag("config",{_js(ga4)},{_js(config)});')
+    src = escape(f'{origin}/gtag/js?id={ga4}')
+    return mark_safe(f'<script>{"".join(js)}</script><script async src="{src}"></script>')
 
 
 @register.simple_tag(takes_context=True)
-def gtm_head(context):
-    """Emit the GTM head snippet. No-op when GTM container is not
-    configured OR client-side firing is off OR the visitor has not
-    granted analytics consent (GDPR / ePrivacy)."""
+def tracking_noscript(context):
+    """GTM's fallback for browsers without JavaScript, under the same consent rule."""
     s = _settings()
-    if s is None or not s.client_side_enabled or not s.gtm_container_id:
+    if s is None or not s.client_side_enabled:
         return ''
-    if not _has_consent(context.get('request'), 'analytics'):
+    gtm = _tag_id(s.gtm_container_id)
+    request = context.get('request')
+    if not gtm or not _visitor_allows(s, request)[0]:
         return ''
-    gtm = s.gtm_container_id
+    if request is not None and s.is_path_blocked(request.path):
+        return ''
+    src = escape(f'{_tag_origin(s)}/ns.html?id={gtm}')
     return mark_safe(
-        '<script>'
-        "(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':"
-        "new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],"
-        "j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;"
-        "j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;"
-        'f.parentNode.insertBefore(j,f);'
-        f"}})(window,document,'script','dataLayer','{gtm}');"
-        '</script>'
-    )
-
-
-@register.simple_tag(takes_context=True)
-def gtm_noscript_body(context):
-    """Emit the immediate-after-`<body>` noscript fallback iframe.
-    Gated on analytics consent — without opt-in the iframe never loads."""
-    s = _settings()
-    if s is None or not s.client_side_enabled or not s.gtm_container_id:
-        return ''
-    if not _has_consent(context.get('request'), 'analytics'):
-        return ''
-    gtm = s.gtm_container_id
-    return mark_safe(
-        f'<noscript><iframe src="https://www.googletagmanager.com/ns.html?id={gtm}" '
+        f'<noscript><iframe src="{src}" '
         'height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>'
     )
 
 
+@register.simple_tag
+def gtm_consent_default():
+    """Retired in v0.127.0: `tracking_head` arrives through `global_head`. Renders
+    nothing, so a theme outside this repo that still calls it neither breaks nor
+    loads the tags twice — remove in the next MINOR."""
+    return ''
+
+
+@register.simple_tag
+def gtm_head():
+    """Retired in v0.127.0 with `gtm_consent_default` (see there)."""
+    return ''
+
+
+@register.simple_tag
+def gtm_noscript_body():
+    """Retired in v0.127.0: `tracking_noscript` arrives through `global_below_body`."""
+    return ''
+
+
 def _datalayer_push(event_name: str, ecommerce: dict[str, Any]) -> str:
-    """Render a dataLayer.push() pair with the mandatory ecommerce-null reset."""
+    """One ecommerce event for the browser's tag.
+
+    For GTM: a dataLayer.push() pair with the mandatory ecommerce-null reset.
+    For GA4 without a container: a gtag event — gtag.js never reads a pushed
+    `{event: …}` object, only GTM does.
+
+    Sent once the page is parsed: themes print these in `extra_head`, which can
+    come before `global_head`, and an event queued ahead of the Consent Mode
+    defaults (or of gtag's config) would be processed before them.
+    """
     s = _settings()
     if s is None or not s.client_side_enabled:
         return ''
     if not s.event_enabled(event_name):
         return ''
-    body = json.dumps({'event': event_name, 'ecommerce': ecommerce})
+    if not _tag_id(s.gtm_container_id) and _tag_id(s.measurement_id):
+        send = (
+            'window.gtag=window.gtag||function(){dataLayer.push(arguments);};'
+            f'gtag("event",{_js(event_name)},{_js(ecommerce)});'
+        )
+    else:
+        body = _js({'event': event_name, 'ecommerce': ecommerce})
+        send = f'dataLayer.push({{ecommerce:null}});dataLayer.push({body});'
     return mark_safe(
-        '<script>'
-        'window.dataLayer=window.dataLayer||[];'
-        'dataLayer.push({ecommerce:null});'
-        f'dataLayer.push({body});'
-        '</script>'
+        '<script>window.dataLayer=window.dataLayer||[];(function(f){'
+        "document.readyState==='loading'?document.addEventListener('DOMContentLoaded',f):f();"
+        f'}})(function(){{{send}}});</script>'
     )
 
 

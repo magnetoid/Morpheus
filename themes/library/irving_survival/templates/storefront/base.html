@@ -1,4 +1,4 @@
-{% load morph %}{% load seo %}{% load tracking %}{% load caching %}{% load i18n %}<!DOCTYPE html>
+{% load morph %}{% load seo %}{% load caching %}{% load i18n %}<!DOCTYPE html>
 <html lang="{% get_current_language as LANG %}{{ LANG|default:'en' }}">
 <head>
 <meta charset="UTF-8">
@@ -412,10 +412,6 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
 </style>
 {% block extra_head %}{% endblock %}
 
-{% comment %}Consent Mode v2 defaults must run BEFORE the GTM container loads, otherwise the first hit goes out with implicit-granted state — that's the #1 EEA-compliance bug per Google's own docs.{% endcomment %}
-{% gtm_consent_default %}
-{% gtm_head %}
-
 {% comment %}Site-wide JSON-LD, verification metas, hreflang, the OpenSearch link and
 the LLM hint now arrive in the single storefront_head call at the top of this file.
 Journal RSS/Atom autodiscovery still arrives via seo's global_head block — a hard
@@ -467,8 +463,6 @@ the theme's own defaults.
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to content</a>
-{% gtm_noscript_body %}
-
 {% include "storefront/_admin_bar.html" %}
 
 {% if theme_config.show_status_bar is not False %}

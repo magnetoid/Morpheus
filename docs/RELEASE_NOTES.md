@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.127.0 — 2026-10-29
+
+**GA4 and Tag Manager measure on every store**
+
+- GTM or GA4 now load on every theme from the tracking app; Montenegro had a container set and none on its pages, and a GA4 measurement ID alone loaded nothing.
+- The tags get the visitor's consent decision (Consent Mode update), so GA4 no longer runs on denied defaults after a visitor accepts.
+- Server-side events carry the visitor's own GA client and session IDs, and the order keeps them for the payment webhook, so purchases keep their traffic source.
+- Cross-domain measurement, server-side GTM, the hashed user ID, path and user-agent filters, and debug mode now do what their settings say.
+- Product views are counted once: by the browser's tag when there is one, otherwise by the server.
+- A page rendered for one visitor's consent choice is never cached at the edge for everyone else.
+
 ## v0.126.1 — 2026-10-28
 
 **Irving's catalogue reads as a demo collection**

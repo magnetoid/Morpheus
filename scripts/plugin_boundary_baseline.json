@@ -426,10 +426,6 @@
       "target": "payments"
     },
     {
-      "importer": "tracking",
-      "target": "consent"
-    },
-    {
       "importer": "webstories",
       "target": "book_product"
     },

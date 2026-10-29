@@ -49,7 +49,10 @@ _CACHEABLE_PATTERNS = (
 # Intentionally NOT `csrftoken` — Django sets it on the first GET so every
 # returning anon visitor would fall out of the cacheable set. CSRF is
 # per-form, not per-user, and anon PLP/PDP have no per-user state.
-_PRIVATE_COOKIES = ('sessionid', 'cart_token', 'morpheus_session')
+# morpheus_consent too: a visitor's answer changes the page (the banner goes, the
+# analytics tags load), so a page rendered for one visitor's choice must never be
+# served from the edge to everyone else.
+_PRIVATE_COOKIES = ('sessionid', 'cart_token', 'morpheus_session', 'morpheus_consent')
 
 _CACHE_VALUE = 'public, s-maxage=60, stale-while-revalidate=300'
 

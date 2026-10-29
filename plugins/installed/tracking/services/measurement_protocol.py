@@ -146,6 +146,10 @@ def send_event(
     event_params = dict(params or {})
     event_params.setdefault('session_id', sid)
     event_params.setdefault('engagement_time_msec', 100)
+    if s.debug_mode:
+        # DebugView shows a Measurement Protocol hit only when the event itself
+        # carries debug_mode (the `debug_mode=1` query string sent until v0.127.0 was not it).
+        event_params['debug_mode'] = True
 
     body: dict[str, Any] = {
         'client_id': cid,
@@ -171,8 +175,6 @@ def send_event(
         }
 
     url = _endpoint(s.region) + f'?measurement_id={s.measurement_id}&api_secret={s.api_secret}'
-    if s.debug_mode:
-        url += '&debug_mode=1'
 
     status_code = None
     response_body = ''

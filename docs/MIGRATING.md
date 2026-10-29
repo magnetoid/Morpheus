@@ -6,6 +6,17 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.127.0 — a theme no longer calls the GTM tags
+
+The tracking app now puts its tags into the `global_head` and `global_below_body` slots
+that every theme already emits. `{% gtm_consent_default %}`, `{% gtm_head %}` and
+`{% gtm_noscript_body %}` render nothing from this release (so a theme that still calls
+them neither fails nor loads Tag Manager twice) and go in the next minor release.
+Delete those calls from your theme's base template. Nothing else changes: the
+`{% dl_view_item %}`, `{% dl_view_item_list %}` and `{% dl_purchase %}` pushes stay where they are.
+
+---
+
 ## v0.125.0 — a theme renders lazy filter panels
 
 `LISTING_FACETS` facets may now be `lazy` (book_product's Topic and Author are). A lazy
