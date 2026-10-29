@@ -285,6 +285,61 @@ def products_get_tool(*, id: str = '', sku: str = '', slug: str = '') -> ToolRes
 
 
 @tool(
+    name='products.price_history',
+    description=(
+        "A product's or variant's recorded prices, newest first, and its EU "
+        'prior price: the lowest price in the 30 days before its current '
+        'reduction, which the product page shows under a sale price (null when '
+        'not on sale or the history cannot prove it). Pass `id`/`sku`/`slug`, '
+        'or `variant_id` for a variant with its own price. History starts at '
+        'the price each item had when the store began keeping it.'
+    ),
+    scopes=['catalog.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'id': {'type': 'string'},
+            'sku': {'type': 'string'},
+            'slug': {'type': 'string'},
+            'variant_id': {'type': 'string'},
+        },
+    },
+)
+def products_price_history_tool(
+    *, id: str = '', sku: str = '', slug: str = '', variant_id: str = ''
+) -> ToolResult:
+    from plugins.installed.catalog.models import Product, ProductVariant
+    from plugins.installed.catalog.price_history import history, lowest_prior_price
+
+    if variant_id:
+        obj = ProductVariant.objects.filter(pk=variant_id).first()
+    else:
+        obj = (
+            (id and Product.objects.filter(pk=id).first())
+            or (sku and Product.objects.filter(sku=sku).first())
+            or (slug and Product.objects.filter(slug=slug).first())
+            or None
+        )
+    if obj is None:
+        raise ToolError('not found — pass id, sku, slug, or variant_id')
+    if isinstance(obj, Product) and obj.product_type == 'variable':
+        raise ToolError(
+            'a variable product has no price of its own — pass the variant_id of '
+            'each variant (products.get lists them)'
+        )
+    rows = history(obj)
+    prior = lowest_prior_price(obj)
+    return ToolResult(
+        output={
+            'name': str(obj),
+            'prices': rows,
+            'lowest_prior_price': _money_str(prior) if prior else None,
+        },
+        display=f'{obj}: {len(rows)} recorded price(s)',
+    )
+
+
+@tool(
     name='i18n.translate_product',
     description="Set translations for a product's fields in a language.",
     scopes=['catalog.write'],

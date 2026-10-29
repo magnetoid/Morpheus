@@ -1,0 +1,13 @@
+{% load i18n morph shipping %}{% shipping_rate_cards as cards %}{% if cards %}
+<div class="shipping-rates">
+  {% for c in cards %}
+  <article class="shipping-rate">
+    <p class="shipping-rate__zone">{{ c.zone }}</p>
+    <h2 class="shipping-rate__name">{{ c.name }}</h2>
+    <p class="shipping-rate__price">{% include "shipping/blocks/_rate_price.html" %}</p>
+    {% if c.description %}<p>{{ c.description }}</p>{% endif %}
+    {% if c.days_min or c.days_max %}<p>{% include "shipping/blocks/_rate_days.html" %}</p>{% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% endif %}

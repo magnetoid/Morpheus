@@ -817,6 +817,31 @@ merge bumps the version; no two large pieces in flight at once.
 
 ---
 
+### November release sequence (planned 2026-10-29)
+
+W0–W4, W5 round 1 and apps-consolidation waves 0–1 (+ wishlist) are done. The rest
+ships as one release at a time, in this order:
+
+- **R1 honest prices (W5b/W8.3), v0.128.0** — `catalog.PriceHistory` from every
+  price save, the 30-day prior price under a sale (PDP block, booking page, GraphQL,
+  `products.price_history`), the shipping page's costs from the shipping app.
+- R2 reviews ← trust_signals + ugc_reviews (first merge that moves config rows).
+- R3 invoice + packing slip for print (W8.4).
+- R4 storefront search suggest: upgrade `/api/quick-search/` (W8.5).
+- R5 post_purchase ← post_checkout_upsell; payments ← advanced_payments + fraud_rules.
+- R6 AI Act Art. 50 marking (W5c). R7 GPSR `product_safety` app (W5a).
+- R8 express checkout on the cart + shorter forms (W8.2; passkeys parked).
+- R9 ECB exchange rates (W8.6). R10 WCAG fixes + axe on all stores (W5d).
+- R11 dashboard Tailwind precompiled, `unsafe-eval` dropped. R12 checkout CSP with
+  nonces + script inventory (W5e). R13 psycopg 3, OpenAPI schema.
+- Parked: order editing, promotions ← marketing (needs the R2/R5 precedent),
+  SMS (no code to adapt), passkeys (allauth stages bypass the staff MFA gate).
+
+Found by R1: no selling store has a shipping rate, so checkout charges nothing for
+shipping (owner decision: set real rates), and dotbooks' shipping page still makes
+service claims nothing backs: same-day dispatch by 12pm CT, and "tick the gift-wrap
+box at checkout" (checkout has no such box).
+
 ## 5. Decisions needed from the owner
 
 1. AI provider money: top up DeepSeek on three stores, or switch providers and

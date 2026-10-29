@@ -3,7 +3,8 @@ from django.dispatch import receiver
 
 from morpheus.core import MorpheusEvents, hook_registry
 
-from .models import Category, Collection, Product
+from . import price_history
+from .models import Category, Collection, Product, ProductVariant
 
 # String constant — the event isn't on MorpheusEvents yet; subscribers
 # wire to the literal name. Promote to a typed constant once a second
@@ -17,6 +18,15 @@ def product_post_save(sender, instance, created, **kwargs):
         hook_registry.fire(MorpheusEvents.PRODUCT_CREATED, product=instance)
     else:
         hook_registry.fire(MorpheusEvents.PRODUCT_UPDATED, product=instance)
+
+
+@receiver(post_save, sender=Product)
+@receiver(post_save, sender=ProductVariant)
+def record_price_history(sender, instance, created, raw=False, update_fields=None, **kwargs):
+    # Every write path saves the model, so the history needs no caller to know
+    # about it; fixture loads (`raw`) are not price changes.
+    if not raw:
+        price_history.record(instance, created=created, update_fields=update_fields)
 
 
 @receiver(post_save, sender=Category)

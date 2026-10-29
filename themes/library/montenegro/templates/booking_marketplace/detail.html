@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load i18n %}{% load l10n %}{% load booking_tags %}{% load tracking %}
+{% load morph %}{% load i18n %}{% load l10n %}{% load booking_tags %}{% load catalog_prices %}{% load tracking %}
 {% comment %}1:1 port of pages/ExperienceDetail.tsx — 2-col layout (content left,
 sticky enquiry/booking card right). Branches on listing_mode (enquiry vs booking).
 Context: service, listing_mode, dates ([{date, remaining}]), max_guests,
@@ -284,7 +284,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         </form>
         {% else %}
         <p class="mb-1"><span class="text-2xl font-semibold text-foreground">{{ service.price|money }}</span> <span class="text-muted-foreground">{% trans "per unit" %}</span></p>
-        {% if service.original_price %}<p class="text-sm text-muted-foreground line-through mb-4">{{ service.original_price|money }}</p>{% endif %}
+        {% if service.original_price %}<p class="text-sm text-muted-foreground line-through mb-4">{{ service.original_price|money }}</p>{% prior_price service.product as prior %}{% if prior %}<p class="text-xs text-muted-foreground -mt-3 mb-4">{% blocktranslate trimmed with price=prior|money %}Lowest price in the 30 days before this reduction: {{ price }}{% endblocktranslate %}</p>{% endif %}{% endif %}
         <form method="post" action="/bookings/{{ service.slug }}/" class="grid gap-2.5 mt-3">
           {% csrf_token %}
           <input type="number" name="guests" value="1" min="1" required class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -312,7 +312,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         </form>
         {% else %}
         <p class="mb-1"><span class="text-2xl font-semibold text-foreground">{{ service.price|money }}</span> <span class="text-muted-foreground">{% trans "per guest" %}</span></p>
-        {% if service.original_price %}<p class="text-sm text-muted-foreground line-through mb-4">{{ service.original_price|money }}</p>{% endif %}
+        {% if service.original_price %}<p class="text-sm text-muted-foreground line-through mb-4">{{ service.original_price|money }}</p>{% prior_price service.product as prior %}{% if prior %}<p class="text-xs text-muted-foreground -mt-3 mb-4">{% blocktranslate trimmed with price=prior|money %}Lowest price in the 30 days before this reduction: {{ price }}{% endblocktranslate %}</p>{% endif %}{% endif %}
         {% if dates %}
         <form method="post" action="/bookings/{{ service.slug }}/" id="booking-form" data-unit="{{ service.price.amount }}" class="grid gap-2.5 mt-3">
           {% csrf_token %}

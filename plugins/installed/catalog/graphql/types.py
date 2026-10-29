@@ -188,6 +188,15 @@ class ProductVariantType:
         return None
 
     @strawberry.field(
+        description="EU Omnibus prior price: this variant's lowest price in the 30 days before its current reduction began. Null when it is not on sale, has no price of its own, or the store's price history does not reach back far enough to prove it."
+    )
+    def lowest_prior_price(self) -> MoneyType | None:
+        from plugins.installed.catalog.price_history import lowest_prior_price  # noqa: PLC0415
+
+        prior = lowest_prior_price(self)
+        return MoneyType(amount=str(prior.amount), currency=str(prior.currency)) if prior else None
+
+    @strawberry.field(
         description='True when this specific variant is discounted (compare_at_price > price). Computed per-variant so the picker can badge only the discounted editions.'
     )
     def is_on_sale(self) -> bool:
@@ -421,6 +430,15 @@ class ProductType:
         return MoneyType(
             amount=str(self.compare_at_price.amount), currency=str(self.compare_at_price.currency)
         )
+
+    @strawberry.field(
+        description="EU Omnibus prior price: the lowest price in the 30 days before the current reduction began. Null when the product is not on sale, is a variable product (ask each variant), or the store's price history does not reach back far enough to prove it."
+    )
+    def lowest_prior_price(self) -> MoneyType | None:
+        from plugins.installed.catalog.price_history import lowest_prior_price  # noqa: PLC0415
+
+        prior = lowest_prior_price(self)
+        return MoneyType(amount=str(prior.amount), currency=str(prior.currency)) if prior else None
 
     @strawberry.field(description='Schema.org JSON-LD structured data for SEO')
     def structured_data(self) -> str:

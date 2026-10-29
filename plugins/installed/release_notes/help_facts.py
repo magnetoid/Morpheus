@@ -32,6 +32,7 @@ SLOT_WORDS: dict[str, str] = {
     'pdp_below_gallery': 'the product page, under the photos',
     'pdp_below_long_description': 'the product page, below the long description',
     'pdp_below_price': 'the product page, under the price',
+    'shipping_rates': 'the shipping page, where the costs are listed',
 }
 
 

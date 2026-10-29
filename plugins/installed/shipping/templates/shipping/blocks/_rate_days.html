@@ -1,0 +1,1 @@
+{% load i18n %}{% if c.days_min and c.days_max and c.days_min != c.days_max %}{% blocktranslate trimmed with lo=c.days_min hi=c.days_max %}{{ lo }}–{{ hi }} business days{% endblocktranslate %}{% else %}{% blocktranslate trimmed count days=c.days_max|default:c.days_min %}{{ days }} business day{% plural %}{{ days }} business days{% endblocktranslate %}{% endif %}

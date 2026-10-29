@@ -1,0 +1,28 @@
+{% load i18n morph catalog_prices %}{% prior_prices product as prior %}{% if prior %}
+<div class="pdp-prior-price" data-prior-prices>
+  {% for row in prior %}<p class="pdp-prior-price__line" style="margin:.25rem 0 0; font-size:.85em; opacity:.8;" data-prior-for="{{ row.variant_id }}"{% if not row.shown %} hidden{% endif %}>{% blocktranslate trimmed with price=row.price|money %}Lowest price in the 30 days before this reduction: {{ price }}{% endblocktranslate %}</p>
+  {% endfor %}
+</div>
+{% if prior.0.variant_id %}<script>
+(function () {
+  // Follow the edition picker: show the note of the selected variant only.
+  // The slot sits above the picker, so wait until the page is parsed.
+  var box = document.currentScript.previousElementSibling;
+  function start() {
+    var picker = document.querySelector('[data-pdp-variant-picker]');
+    if (!box || !picker) return;
+    function sync() {
+      var sel = picker.querySelector('.pdp-variant.is-selected');
+      if (!sel) return;
+      box.querySelectorAll('[data-prior-for]').forEach(function (line) {
+        line.hidden = line.getAttribute('data-prior-for') !== sel.getAttribute('data-variant-id');
+      });
+    }
+    new MutationObserver(sync).observe(picker, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    sync();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>{% endif %}
+{% endif %}

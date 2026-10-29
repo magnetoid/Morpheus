@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.128.0 — 2026-10-29
+
+**Sales show the lowest price of the 30 days before them, and shipping pages show real costs**
+
+- Every price change is now recorded, however it was made: the product form, Linda, a scheduled price, an import or a booking listing. Each store starts with the price every product and edition had at its last save.
+- A product on sale shows the lowest price it had in the 30 days before the reduction, under the price on every theme and on Montenegro's experience pages, as the EU's price-indication rules require. The line appears only when the recorded prices prove it; for an edition it follows the one the shopper picks. Linda can read a product's price history, and the GraphQL API has lowestPriorPrice.
+- dotbooks' shipping page listed $5, $14, $18 and $28 rates and free shipping over $40, and its about page repeated the $40 promise, while no store has a shipping rate set up and checkout charges nothing for shipping. The page now lists the rates set up under Shipping, with cost, delivery time and free-shipping threshold, and until there are any it says checkout shows the cost for the shopper's address.
+
 ## v0.127.2 — 2026-10-29
 
 **Seventeen Python packages updated**
