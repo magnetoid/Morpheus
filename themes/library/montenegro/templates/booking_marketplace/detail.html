@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load i18n %}{% load l10n %}{% load booking_tags %}
+{% load morph %}{% load i18n %}{% load l10n %}{% load booking_tags %}{% load tracking %}
 {% comment %}1:1 port of pages/ExperienceDetail.tsx — 2-col layout (content left,
 sticky enquiry/booking card right). Branches on listing_mode (enquiry vs booking).
 Context: service, listing_mode, dates ([{date, remaining}]), max_guests,
@@ -14,6 +14,8 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
 .prose-pdp ol { list-style: decimal; padding-left: 1.25rem; }
 .prose-pdp a { text-decoration: underline; text-underline-offset: 2px; }
 </style>
+{# An experience is a catalog Product: GA4's view_item, as on a product page. #}
+{% dl_view_item service.product %}
 {% endblock %}
 {% block content %}
 {% booking_listing_mode as listing_mode %}

@@ -1230,6 +1230,20 @@ beacon, PWA, chat or GDPR footer links — and `core/tests/test_slot_parity.py`
 checks only the ACTIVE theme (dot_books under test). Every theme base and the
 storefront fallback must emit all four; guarded by `themes/test_global_slots.py`. Since v0.113.0 the server-side sends obey it too: the conversion APIs, GA4 Measurement Protocol, the Google Ads purchase tag and `meta.sync_audience` ask `core/consent.py:allowed()`, which reads the shopper's choice stamped on the order at checkout (`metadata['consent']` — a payment webhook has no visitor to ask), else the request, else the store, and refuses without evidence on a store that manages consent. The consent app answers through `CONSENT_DECISION` / `CONSENT_MARKETING_CUSTOMERS`, so core imports nothing; the tracking app's second banner is gone. Guarded by `consent/tests/test_server_side_consent.py`, `plugins/tests_capi_consent.py` and `tracking/tests/test_consent_gate.py`.
 
+**Landmine — an analytics tag that loads is not an analytics tag that measures.**
+Until v0.127.0 no store ran GA4 in the browser: three themes called the GTM tags and
+montenegro never did (a container was set, none was on its pages), a measurement ID
+alone loaded nothing (only GTM was ever loaded), and a container that did load stayed
+on Consent Mode's denied defaults after the visitor accepted, because nothing sent the
+update. Every Measurement Protocol hit also carried a client_id the server made up, so
+in GA4 each purchase was a new user with no traffic source. Now the tracking app
+contributes the tags to `global_head` / `global_below_body` (themes call nothing),
+loads gtag.js when no container is set, sends `consent update` from the visitor's
+choice, reads `_ga` / `_ga_<stream>` for every server hit and stamps them on the order
+(`metadata['ga']`) for the payment webhook. A page rendered for a consent choice is
+never edge-cached (`morpheus_consent` is a private cookie). Guarded by
+`tracking/tests/test_browser_tags.py` and `test_server_identity.py`.
+
 **Landmine — product text is rich HTML; anywhere but the PDP it must become
 plain text first, never be sliced raw.** Web Stories cut `short_description`
 (`<p><span>…`) to 160 characters and printed it escaped: `&lt;p&gt;` on screen

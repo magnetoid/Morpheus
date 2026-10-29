@@ -2,8 +2,9 @@
 
 * Server-side: subscribes to the hook bus and POSTs to the GA4
   Measurement Protocol v2.
-* Client-side: contributes a `{% gtm_head %}` template tag and
-  per-event dataLayer push partials.
+* Client-side: contributes the GTM container (or GA4's gtag.js when no
+  container is set) to every theme's `global_head`, plus per-event
+  dataLayer push partials.
 * Backend control center at `/dashboard/tracking/` with tabs for
   Connection / Event firing / Consent / Identity / Filters / Tests.
 """
@@ -12,7 +13,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.app import DashboardPage, Plugin, SettingsPanel
+from morpheus.app import DashboardPage, Plugin, SettingsPanel, StorefrontBlock
 from morpheus.core import events
 
 logger = logging.getLogger('morpheus.tracking')
@@ -25,15 +26,23 @@ def _is_crawler(request) -> bool:
     return is_crawler_user_agent(ua)
 
 
-def _consent_overridden() -> bool:
-    """Settings → Tracking's debug-only "Ignore visitor consent" switch, which
-    promises client- AND server-side tracking regardless of consent."""
+def _tracking_settings():
     try:
         from plugins.installed.tracking.models import TrackingSettings
 
-        return bool(TrackingSettings.get_solo().consent_override)
-    except Exception:  # noqa: BLE001 — a missing row never turns the gate off
+        return TrackingSettings.get_solo()
+    except Exception:  # noqa: BLE001 — table missing pre-migration: send nothing
+        return None
+
+
+def _filtered(s, request) -> bool:
+    """Settings → Tracking → Filters: a blocked path or a listed user agent."""
+    if request is None:
         return False
+    if s.is_path_blocked(getattr(request, 'path', '') or ''):
+        return True
+    ua = (request.META.get('HTTP_USER_AGENT') or '').lower()
+    return any(p.lower() in ua for p in (s.bot_patterns or []) if p)
 
 
 class TrackingPlugin(Plugin):
@@ -43,7 +52,7 @@ class TrackingPlugin(Plugin):
     description = (
         'Comprehensive Google Analytics 4 + Google Tag Manager integration. '
         'Server-side firing via Measurement Protocol v2, client-side via '
-        'GTM dataLayer pushes. Consent Mode v2, per-event toggles, audit '
+        'GTM (or GA4 gtag.js) on every theme. Consent Mode v2, per-event toggles, audit '
         'log, GTM container export, test bench. Backend control center at '
         '/dashboard/tracking/.'
     )
@@ -56,6 +65,9 @@ class TrackingPlugin(Plugin):
             prefix='dashboard/tracking/',
             namespace='tracking',
         )
+        # The visit's GA ids go on the order early, so a later subscriber that
+        # saves the order keeps them.
+        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=5)
         # Server-side firing. Priority 95 — runs before analytics (99)
         # so we capture in flight without depending on its session row.
         self.register_hook(events.ORDER_PAID, self.on_order_paid, priority=95)
@@ -70,6 +82,26 @@ class TrackingPlugin(Plugin):
 
     # ── Hook handlers (all swallow exceptions; tracking must never
     #     break the order flow).
+
+    def on_order_placed(self, order=None, **_):
+        """Remember the shopper's GA client and session on the order: the purchase
+        is usually confirmed by a payment webhook, where no browser is present."""
+        from core.errors.context import current_request
+        from plugins.installed.tracking.services.identity import ga_ids
+
+        s = _tracking_settings()
+        request = current_request.get()
+        if order is None or s is None or request is None:
+            return
+        ids = ga_ids(request, s.measurement_id)
+        if not ids:
+            return
+        order.metadata = {**(order.metadata or {}), 'ga': ids}
+        try:
+            # Not save(): the order's own save signals have run for this order already.
+            type(order).objects.filter(pk=order.pk).update(metadata=order.metadata)
+        except Exception as exc:  # noqa: BLE001 — tracking never breaks checkout
+            logger.warning('tracking: could not stamp GA ids on %s: %s', order.pk, exc)
 
     def on_order_paid(self, order=None, **_):
         if order is None:
@@ -142,23 +174,44 @@ class TrackingPlugin(Plugin):
     def on_search(self, search_term='', request=None, **_):
         self._fire('search', search_term=search_term, request=request)
 
-    def _fire(self, event_kind: str, **ctx) -> None:  # noqa: PLR0912
+    def _fire(self, event_kind: str, **ctx) -> None:  # noqa: PLR0912, PLR0911, C901
         """Build the GA4 payload and POST via Measurement Protocol.
 
         Wrapped in a broad try so tracking failures never block the
         order flow. Each `event_kind` maps to a builder in
         `services.event_mapping` with a known signature.
         """
-        # Consent first (core/consent.py): the order's stamp, else the visitor's
-        # request, else the store — a store that manages consent sends nothing
-        # it cannot show the shopper agreed to (sign_up has neither: not sent).
         from core.consent import allowed
+        from plugins.installed.tracking.templatetags.tracking import browser_tagging
 
         request = ctx.pop('request', None)
-        if not (
-            _consent_overridden() or allowed('analytics', order=ctx.get('order'), request=request)
-        ):
+        s = _tracking_settings()
+        # Nothing to send to: no queued task and no error row per product view.
+        if s is None or not s.server_side_enabled or not (s.measurement_id and s.api_secret):
             return
+        if _filtered(s, request):
+            return
+        # The browser's tag sends view_item from the product page; a second copy
+        # from here would count every product view twice.
+        if event_kind == 'view_item' and browser_tagging(s):
+            return
+        # Consent (core/consent.py): the order's stamp, else the visitor's
+        # request, else the store — a store that manages consent sends nothing
+        # it cannot show the shopper agreed to (sign_up has neither: not sent).
+        order = ctx.get('order')
+        override = bool(s.consent_override)
+        if not (override or allowed('analytics', order=order, request=request)):
+            return
+        ads = (
+            'GRANTED'
+            if override or allowed('marketing', order=order, request=request)
+            else 'DENIED'
+        )
+        try:
+            identity = self._identity(s, order=order, request=request, customer=ctx.get('customer'))
+        except Exception as exc:  # noqa: BLE001 — an unjoined hit beats none
+            logger.warning('tracking: identity for %s failed: %s', event_kind, exc)
+            identity = {}
 
         try:
             from plugins.installed.tracking.services import event_mapping
@@ -212,10 +265,47 @@ class TrackingPlugin(Plugin):
         # request (product page, add to cart, checkout) open.
         try:
             send_event_task.delay(
-                event_name=event_name, params=params, transaction_id=transaction_id
+                event_name=event_name,
+                params=params,
+                transaction_id=transaction_id,
+                consent={'ad_user_data': ads, 'ad_personalization': ads},
+                **identity,
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning('tracking: could not queue %s: %s', event_name, exc)
+
+    @staticmethod
+    def _identity(s, *, order=None, request=None, customer=None) -> dict:
+        """client_id / session_id (the browser's, else the order's stamp) and the
+        hashed user_id when Settings → Tracking → Identity turns it on."""
+        from plugins.installed.tracking.services.identity import ga_ids, user_id
+
+        ids = ga_ids(request, s.measurement_id) if request is not None else {}
+        if not ids and order is not None:
+            stamp = (getattr(order, 'metadata', None) or {}).get('ga')
+            ids = {k: str(v) for k, v in stamp.items()} if isinstance(stamp, dict) else {}
+        out = {k: ids[k] for k in ('client_id', 'session_id') if ids.get(k)}
+        if s.user_id_enabled:
+            pk = getattr(order, 'customer_id', None) if order is not None else None
+            if pk is None and customer is not None:
+                pk = getattr(customer, 'pk', None)
+            if pk is None and request is not None:
+                user = getattr(request, 'user', None)
+                pk = user.pk if getattr(user, 'is_authenticated', False) else None
+            if pk is not None:
+                out['user_id'] = user_id(pk)
+        return out
+
+    def contribute_storefront_blocks(self) -> list[StorefrontBlock]:
+        # Every theme emits both slots (themes/test_global_slots.py), so every
+        # store gets the tags, and a disabled app takes them along. Priority 0:
+        # the Consent Mode defaults must precede every other Google tag.
+        return [
+            StorefrontBlock(slot='global_head', template='tracking/blocks/head.html', priority=0),
+            StorefrontBlock(
+                slot='global_below_body', template='tracking/blocks/noscript.html', priority=0
+            ),
+        ]
 
     def contribute_dashboard_pages(self) -> list:
         # A tool card on Settings › Sales channels, beside the Google Ads

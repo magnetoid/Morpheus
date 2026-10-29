@@ -42,6 +42,19 @@ def _unmanaged_store():
     cache.delete('morph:gdpr_enabled')
 
 
+def _server_only_ga4():
+    """GA4 configured for Measurement Protocol with no tag in the browser: the
+    server is then the one sender of view_item (test_browser_tags.py covers the
+    store whose browser tag sends it)."""
+    from plugins.installed.tracking.models import TrackingSettings
+
+    s = TrackingSettings.get_solo()
+    s.measurement_id = 'G-TEST1234'
+    s.api_secret = 'secret'
+    s.client_side_enabled = False
+    s.save()
+
+
 def _sent(mock_send, event_name):
     return [c.kwargs for c in mock_send.call_args_list if c.kwargs.get('event_name') == event_name]
 
@@ -49,6 +62,7 @@ def _sent(mock_send, event_name):
 class ViewItemFromProductPageTests(TestCase):
     def setUp(self):
         _unmanaged_store()
+        _server_only_ga4()
         self.product = Product.objects.create(
             name='Lavender Oil',
             slug='lavender-oil-probe',

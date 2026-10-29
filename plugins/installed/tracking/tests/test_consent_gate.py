@@ -35,6 +35,19 @@ def _set_gdpr(on: bool) -> None:
     cache.delete('morph:gdpr_enabled')
 
 
+def _server_only_ga4():
+    """GA4 configured for Measurement Protocol with no tag in the browser: the
+    server is then the one sender of view_item (test_browser_tags.py covers the
+    store whose browser tag sends it)."""
+    from plugins.installed.tracking.models import TrackingSettings
+
+    s = TrackingSettings.get_solo()
+    s.measurement_id = 'G-TEST1234'
+    s.api_secret = 'secret'
+    s.client_side_enabled = False
+    s.save()
+
+
 def _order(consent, product=None):
     line = SimpleNamespace(
         product=product, variant=None, quantity=1, unit_price=Money(Decimal('5'), 'USD')
@@ -53,6 +66,7 @@ def _order(consent, product=None):
 class Ga4ConsentTests(TestCase):
     def setUp(self):
         _set_gdpr(True)
+        _server_only_ga4()
         self.product = Product.objects.create(
             name='Gate',
             slug='gate-probe',

@@ -35,9 +35,11 @@
   </label>
   <label class="block text-sm">GTM container ID
     <input class="input w-full font-mono" name="gtm_container_id" placeholder="GTM-XXXXXXX" value="{{ s.gtm_container_id }}">
+    <span class="block text-xs text-[color:var(--text-muted)] mt-1">Leave blank to load GA4 directly with the measurement ID. With a container, GA4 runs from your GTM tags.</span>
   </label>
   <label class="block text-sm">Server-side GTM endpoint (optional)
     <input class="input w-full" name="sgtm_server_url" placeholder="https://metrics.example.com" value="{{ s.sgtm_server_url }}">
+    <span class="block text-xs text-[color:var(--text-muted)] mt-1">When set (https only), the shop loads GTM or GA4 from your server container instead of Google.</span>
   </label>
   <label class="block text-sm">Region
     <select class="input w-full" name="region">
@@ -56,7 +58,7 @@
   <p class="text-xs text-[color:var(--text-muted)] mb-3">Toggle which GA4 events Morpheus fires. Server-side runs through Measurement Protocol; client-side runs as <code>dataLayer.push()</code>. Both can be on (recommended — server-side captures ad-blocker traffic; client-side captures the full funnel).</p>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="server_side_enabled" {% if s.server_side_enabled %}checked{% endif %}> Server-side firing (Measurement Protocol v2)</label>
-    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="client_side_enabled" {% if s.client_side_enabled %}checked{% endif %}> Client-side firing (GTM dataLayer)</label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="client_side_enabled" {% if s.client_side_enabled %}checked{% endif %}> Client-side tags (GTM, or GA4's own tag when no container is set)</label>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="debug_mode" {% if s.debug_mode %}checked{% endif %}> Debug mode (DebugView only)</label>
   </div>
   <h4 class="font-medium mt-3 mb-2">Per-event toggles</h4>
@@ -72,13 +74,7 @@
       {% endfor %}
     </tbody>
   </table>
-  <h4 class="font-medium mt-4 mb-2">Enhanced Measurement overrides</h4>
-  <p class="text-xs text-[color:var(--text-muted)] mb-2">GA4 fires these automatically when on. Untick to suppress at the GTM trigger level.</p>
-  <div class="grid grid-cols-2 gap-2">
-    {% for r in enhanced_rows %}
-    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="enhanced_{{ r.name }}"{% if r.enabled %} checked{% endif %}> <code>{{ r.name }}</code></label>
-    {% endfor %}
-  </div>
+  <p class="text-xs text-[color:var(--text-muted)] mt-4">Scrolls, outbound clicks, file downloads and video plays are GA4's Enhanced Measurement: switch them in GA4 → Admin → Data streams → your stream.</p>
   <button class="btn btn-primary mt-4">Save event firing</button>
 </form>
 
@@ -140,6 +136,7 @@
   <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="user_id_enabled" {% if s.user_id_enabled %}checked{% endif %}> Send hashed customer pk as GA4 <code>user_id</code> when signed in</label>
   <label class="text-sm">Cross-domain measurement (comma-separated)
     <input class="input w-full" name="cross_domain" value="{{ s.cross_domain }}" placeholder="checkout.example.com, blog.example.com">
+    <span class="block text-xs text-[color:var(--text-muted)] mt-1">Other domains a visitor moves to in one visit, so GA4 keeps it one session. This shop's own domain is added for you. Also list them in GA4 → Admin → Data streams → Configure tag settings → Configure your domains.</span>
   </label>
   <button class="btn btn-primary">Save identity</button>
 </form>
