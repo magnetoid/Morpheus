@@ -825,7 +825,9 @@ ships as one release at a time, in this order:
 - **R1 honest prices (W5b/W8.3), v0.128.0** — `catalog.PriceHistory` from every
   price save, the 30-day prior price under a sale (PDP block, booking page, GraphQL,
   `products.price_history`), the shipping page's costs from the shipping app.
-- R2 reviews ← trust_signals + ugc_reviews: code in v0.129.0, ugc tables dropped in the release after.
+- **R2 reviews ← trust_signals + ugc_reviews, v0.129.0** — the trust strip and its settings in
+  reviews, ugc_reviews gone; its tables dropped in v0.129.1, which also marks Morpheus beta
+  beside its version (owner, 2026-11-01).
 - R3 invoice + packing slip for print (W8.4).
 - R4 storefront search suggest: upgrade `/api/quick-search/` (W8.5).
 - R5 post_purchase ← post_checkout_upsell; payments ← advanced_payments + fraud_rules.

@@ -88,8 +88,8 @@ models `customers.WishList(Item)`, `agent_core.AgentConversation/AgentMessage`,
 every store, nothing behind its cart button, 0 rows), so nothing moved: it left the code in
 v0.123.0 and its tables in v0.123.1. Then reviews ← trust_signals + ugc_reviews (v0.129.0):
 trust_signals' strip, tag and settings moved into reviews (its panel had never shown a field, so
-no config row had anything to move), ugc_reviews was a stub with 0 rows; its tables go in the
-release after. Next: post_purchase ← post_checkout_upsell, payments ← advanced_payments +
+no config row had anything to move), ugc_reviews was a stub with 0 rows; its tables went in
+v0.129.1. Next: post_purchase ← post_checkout_upsell, payments ← advanced_payments +
 fraud_rules.
 
 One merge per release; each keeps settings keys, moves config rows in a data migration, keeps

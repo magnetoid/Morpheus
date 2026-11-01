@@ -12,6 +12,7 @@
       <i data-lucide="git-commit-horizontal" class="h-4 w-4" style="vertical-align:-2px;"></i>
       {{ version }}
     </span>
+    {% if MORPHEUS_RELEASE_STAGE %}<span class="pill pill-warn" data-release-stage style="font-size:.95rem;padding:.4rem .8rem;" title="Morpheus is not finalized yet">{{ MORPHEUS_RELEASE_STAGE|capfirst }}</span>{% endif %}
   </div>
 
   {% include "admin_dashboard/_updater_card.html" %}

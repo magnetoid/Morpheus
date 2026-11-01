@@ -36,6 +36,12 @@ jobs:
           if [ -z "$VERSION" ]; then echo "could not resolve version"; exit 1; fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Resolved $VERSION"
+          # The release stage ('beta' until Morpheus is finalized) goes in the title,
+          # never as GitHub's pre-release flag: /releases/latest skips pre-releases,
+          # and every store's update check reads it (core/update_sources.py).
+          STAGE=$(grep -oE "^MORPHEUS_RELEASE_STAGE = '[a-z]*'" morph/settings.py \
+            | grep -oE "'[a-z]*'" | tr -d "'" || true)
+          echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
 
       - name: Skip if tag already exists
         id: exists
@@ -69,6 +75,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.v.outputs.version }}
+          STAGE: ${{ steps.v.outputs.stage }}
         run: |
           # An annotated tag needs a tagger identity; the runner has none and
           # fails with "fatal: empty ident name" (seen on v0.76.1).
@@ -77,6 +84,6 @@ jobs:
           git tag -a "$VERSION" -m "Morpheus OS $VERSION"
           git push origin "$VERSION"
           gh release create "$VERSION" \
-            --title "Morpheus OS $VERSION" \
+            --title "Morpheus OS $VERSION${STAGE:+ ($STAGE)}" \
             --notes-file release_body.md \
             --target "${{ github.sha }}"

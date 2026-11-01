@@ -176,3 +176,59 @@ class SaveForLaterTablesTests(TransactionTestCase):
             MigrationRecorder(connection).migration_qs.filter(app='save_for_later').exists()
         )
         self.assertFalse(PluginConfig.objects.filter(plugin_name='save_for_later').exists())
+
+
+UGC_REVIEWS_TABLES = {
+    'ReviewMedia': 'ugc_reviews_reviewmedia',
+    'CreatorInvite': 'ugc_reviews_creatorinvite',
+}
+
+
+class UgcReviewsTablesTests(TransactionTestCase):
+    """plugins 0004 on a store as v0.129.0 left it: ugc_reviews' two tables and migration
+    row, and both apps' switches (every store had them on, with nothing saved)."""
+
+    def setUp(self):
+        state = ProjectState()
+        for name, table in UGC_REVIEWS_TABLES.items():
+            fields = [('id', models.BigAutoField(primary_key=True))]
+            state.add_model(ModelState('ugc_reviews', name, fields, {'db_table': table}))
+        self.apps = state.apps
+        with connection.schema_editor() as editor:
+            for name in UGC_REVIEWS_TABLES:
+                editor.create_model(self.apps.get_model('ugc_reviews', name))
+        self.addCleanup(self._remove)
+        recorder = MigrationRecorder(connection)
+        recorder.record_applied('ugc_reviews', '0001_initial')
+        self.addCleanup(recorder.migration_qs.filter(app='ugc_reviews').delete)
+        for name in ('trust_signals', 'ugc_reviews'):
+            PluginConfig.objects.create(plugin_name=name, is_enabled=True)
+        PluginConfig.objects.get_or_create(plugin_name='reviews')
+
+    def _remove(self):
+        names = connection.introspection.table_names()
+        with connection.schema_editor() as editor:
+            for name, table in UGC_REVIEWS_TABLES.items():
+                if table in names:
+                    editor.delete_model(self.apps.get_model('ugc_reviews', name))
+
+    def test_its_tables_migration_row_and_both_switches_go(self):
+        drop = importlib.import_module('plugins.migrations.0004_drop_ugc_reviews_tables')
+        state = MigrationLoader(connection).project_state(
+            ('plugins', '0003_drop_save_for_later_tables')
+        )
+        with connection.schema_editor() as editor:
+            for operation in drop.Migration.operations:
+                after = state.clone()
+                operation.state_forwards('plugins', after)
+                operation.database_forwards('plugins', editor, state, after)
+                state = after
+        names = connection.introspection.table_names()
+        self.assertEqual([t for t in UGC_REVIEWS_TABLES.values() if t in names], [])
+        self.assertFalse(
+            MigrationRecorder(connection).migration_qs.filter(app='ugc_reviews').exists()
+        )
+        self.assertFalse(
+            PluginConfig.objects.filter(plugin_name__in=('trust_signals', 'ugc_reviews')).exists()
+        )
+        self.assertTrue(PluginConfig.objects.filter(plugin_name='reviews').exists())
