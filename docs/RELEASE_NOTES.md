@@ -23,6 +23,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - The strip is translated, with Serbian entries, and the recent-purchases line is worded per visitor's language instead of being cached in whichever language rendered it first.
 - ugc_reviews is removed: it never had a way to add a customer photo or video, and its two product-page blocks showed nothing. Its tables are dropped in the next release.
 - The store now has 100 apps, 94 of them on by default.
+- Two packages move to releases that fix newly published security issues: pypdf 6.21.4 (reading PDFs for previews and audiobook text) and graphql-core 3.3.1 (the API). Neither adds a database migration.
 
 ## v0.128.0 — 2026-10-29
 
