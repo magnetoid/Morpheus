@@ -2,6 +2,13 @@
 {% block title %}{{ thread.display_name }} · Support chat · Morpheus{% endblock %}
 
 {% block content %}
+<style>
+  .crm-chat-bubble { max-width: 80%; padding: .5rem .75rem; border-radius: 12px; overflow-wrap: anywhere; }
+  .crm-chat-text { white-space: pre-wrap; }
+  .crm-chat-staff { align-self: flex-end; background: var(--primary); color: var(--primary-fg); }
+  .crm-chat-customer { align-self: flex-start; background: var(--surface-2); color: var(--text); }
+  .crm-chat-meta { font-size: .65rem; opacity: .7; margin-top: .2rem; }
+</style>
 <div class="mx-auto space-y-4">
   <div class="flex items-end justify-between gap-3 flex-wrap">
     <div>
@@ -22,11 +29,10 @@
   </div>
 
   <div class="card card-padded" style="max-height:26rem;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;">
-    {% for m in messages %}
-    <div style="max-width:80%;padding:.5rem .75rem;border-radius:12px;white-space:pre-wrap;
-      {% if m.sender == 'staff' %}align-self:flex-end;background:var(--accent,#111);color:#fff;{% else %}align-self:flex-start;background:var(--surface-muted,#f0eee8);{% endif %}">
-      {{ m.body }}
-      <div style="font-size:.65rem;opacity:.7;margin-top:.2rem;">{{ m.get_sender_display }} · {{ m.created_at|date:"M j, H:i" }}</div>
+    {% for m in chat_messages %}
+    <div class="crm-chat-bubble crm-chat-{{ m.sender }}">
+      <div class="crm-chat-text">{{ m.body }}</div>
+      <div class="crm-chat-meta">{{ m.get_sender_display }} · {{ m.created_at|date:"M j, H:i" }}</div>
     </div>
     {% empty %}
     <p class="text-[color:var(--text-muted)] text-sm">No messages.</p>

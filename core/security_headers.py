@@ -25,6 +25,7 @@ needs it.
 from __future__ import annotations
 
 from django.conf import settings
+from django.utils.cache import patch_cache_control
 
 _PERMISSIONS_POLICY_VALUE = ', '.join(
     [
@@ -174,4 +175,11 @@ class SecurityHeadersMiddleware:
             # storefront, not the authenticated staff area — which now gets
             # its own narrower *enforcing* CSP above).
             response['Content-Security-Policy-Report-Only'] = _CSP_REPORT_ONLY
+        if path.startswith('/dashboard/'):
+            # Cloudflare's Email Address Obfuscation rewrites every address in an
+            # HTML page into "[email protected]" and decodes it with a script that
+            # runs once per full page load. The dashboard body is hx-boost, so a
+            # page reached by a link was never decoded; `no-transform` is the
+            # header Cloudflare documents for leaving a response's body alone.
+            patch_cache_control(response, no_transform=True)
         return response

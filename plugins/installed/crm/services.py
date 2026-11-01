@@ -23,21 +23,36 @@ def upsert_lead(
     source: str = 'other',
     metadata: dict[str, Any] | None = None,
 ) -> Lead:  # noqa: F821
-    """Idempotent lead create-or-update by email."""
+    """Idempotent lead create-or-update by email.
+
+    An update fills in what this call knows and keeps the rest: a newsletter
+    signup for a lead someone named earlier keeps the name, and metadata merges.
+    """
     from plugins.installed.crm.models import Lead
 
     email = (email or '').strip().lower()
     if not email:
         raise ValueError('upsert_lead: email required')
-    defaults = {
+    fields = {
         'first_name': first_name[:100],
         'last_name': last_name[:100],
         'phone': phone[:40],
         'company': company[:200],
         'source': source,
-        'metadata': metadata or {},
     }
-    lead, _created = Lead.objects.update_or_create(email=email, defaults=defaults)
+    lead, created = Lead.objects.get_or_create(
+        email=email, defaults={**fields, 'metadata': metadata or {}}
+    )
+    if created:
+        return lead
+    changed = [f for f, value in fields.items() if value and getattr(lead, f) != value]
+    for f in changed:
+        setattr(lead, f, fields[f])
+    if metadata:
+        lead.metadata = {**(lead.metadata or {}), **metadata}
+        changed.append('metadata')
+    if changed:
+        lead.save(update_fields=[*changed, 'updated_at'])
     return lead
 
 

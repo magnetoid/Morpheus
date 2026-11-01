@@ -1496,6 +1496,21 @@ into every form's token, which Django accepts. A new storefront form needs nothi
 posts must read the token from the cookie or the form after load, never from markup it cached itself.
 Guarded by `storefront/tests/test_csrf_refresh.py`.
 
+**Landmine — Cloudflare rewrites email addresses in HTML, and the dashboard never decoded them.**
+Email Address Obfuscation (on for the dotbooks, supernatural and montenegro zones) turns every
+address in an HTML response into "[email protected]" plus a script that decodes them on a full page
+load; the dashboard navigates with hx-boost, so staff saw "[email protected]" across Contacts and CRM
+until v0.130.1. `core/security_headers.py` sends `Cache-Control: no-transform` on every `/dashboard/`
+response, which Cloudflare documents as leaving the body alone. A staff page outside `/dashboard/`
+that shows addresses needs the same header (or `<!--email_off-->` markers). Guarded by
+`core/tests/test_dashboard_no_transform.py`.
+
+**Landmine — a view's `messages` replaces the messages framework's.** The context processor's
+`messages` is an ordinary context variable: the CRM inbox passed its emails as `messages`, and the
+shell drew one empty toast per email down the right side (up to 200) and never showed a real flash.
+The shell reads `{% flash_messages %}` (the request's own storage) now; still never name a context
+key `messages`. Guarded by `admin_dashboard/tests/test_flash_toasts.py`.
+
 **Landmine — a setting Django removed is ignored without a word.** `STATICFILES_STORAGE` and
 `DEFAULT_FILE_STORAGE` were removed in Django 5.1 and stayed in `settings.py`: static files were
 served under fixed names with a 4-hour cache, so a CDN-fronted store kept the old CSS and JS for

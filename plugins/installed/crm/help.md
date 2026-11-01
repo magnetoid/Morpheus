@@ -20,4 +20,6 @@ Connect a support mailbox — its address and sign-in details — from the [Inbo
 
 ## Good to know
 
-A lead is created automatically when someone registers, places an order, subscribes to the newsletter, or messages support; a cart left abandoned creates a 24-hour follow-up task. A connected mailbox is checked for new mail every five minutes. Staff are notified the first time a chat thread has an unanswered message waiting.
+A lead is created automatically when someone registers, places an order, subscribes to the newsletter, or messages support; a cart left abandoned creates a 24-hour follow-up task. A connected mailbox is checked for new mail every five minutes, and Sync now says how many new messages arrived or which mailbox could not be reached. Staff are notified the first time a chat thread has an unanswered message waiting.
+
+The inbox shows an email's text, links and layout without its styles, scripts or images, so an email cannot change the page or tell the sender you opened it. The earlier message an email quotes is folded under "Show quoted text". A reply goes to the other side of the conversation and stays in the same thread.

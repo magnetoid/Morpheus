@@ -1,7 +1,24 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}{{ message.subject|default:"(no subject)" }} · Inbox{% endblock %}
+{% load crm_mail %}
+{% block title %}{{ message.subject|mail_header|default:"(no subject)" }} · Inbox{% endblock %}
 
 {% block content %}
+{% comment %}Mail is sanitised in crm/mail_render.py: no styles reach the page, so these rules lay it out. Wide tables scroll inside the card; long words and links wrap.{% endcomment %}
+<style>
+  .crm-mail-body { overflow-wrap: anywhere; overflow-x: auto; max-width: 100%; font-size: .875rem; line-height: 1.5; }
+  .crm-mail-text { white-space: pre-wrap; }
+  .crm-mail-html p, .crm-mail-html ul, .crm-mail-html ol, .crm-mail-html table { margin: 0 0 .5rem; }
+  .crm-mail-html ul, .crm-mail-html ol { padding-left: 1.25rem; }
+  .crm-mail-html ul { list-style: disc; }
+  .crm-mail-html ol { list-style: decimal; }
+  .crm-mail-html h1, .crm-mail-html h2, .crm-mail-html h3 { font-weight: 600; margin: .5rem 0; }
+  .crm-mail-html td, .crm-mail-html th { padding: .125rem .25rem; vertical-align: top; text-align: left; }
+  .crm-mail-body a { color: var(--brand); text-decoration: underline; }
+  .crm-mail-body blockquote, .crm-mail-quote { border-left: 3px solid var(--border-strong); padding-left: .75rem; color: var(--text-muted); }
+  .crm-mail-quote { margin-top: .75rem; }
+  .crm-mail-quote summary { cursor: pointer; font-size: .75rem; }
+  .crm-mail-note { margin-top: .5rem; font-size: .75rem; color: var(--text-muted); }
+</style>
 <div class="flex items-center justify-between mb-4">
   <a href="/dashboard/crm/inbox/" class="text-sm text-[color:var(--text-muted)] hover:underline">&larr; Inbox</a>
   {% if message.customer %}
@@ -9,26 +26,26 @@
   {% endif %}
 </div>
 
-<h1 class="text-xl font-semibold mb-2">{{ message.subject|default:"(no subject)" }}</h1>
+<h1 class="text-xl font-semibold mb-2" style="overflow-wrap:anywhere;">{{ message.subject|mail_header|default:"(no subject)" }}</h1>
 <p class="text-sm text-[color:var(--text-muted)] mb-6">
   {{ message.account.label }} ·
-  {% if message.direction == 'in' %}from {{ message.from_address }}{% else %}to {{ message.to_addresses }}{% endif %}
+  {% if message.direction == 'in' %}from {{ message.from_address }}{% else %}to {{ message.to_addresses|mail_header }}{% endif %}
   · {{ message.occurred_at|date:"M j, Y H:i" }}
 </p>
 
 {% if thread %}
 <div class="space-y-3 mb-6">
   {% for t in thread %}
-  <div class="card card-padded {% if t.id == message.id %}ring-2 ring-[color:var(--brand)]{% endif %}">
-    <div class="flex items-center justify-between mb-2 text-sm">
-      <span>
+  <div class="card card-padded min-w-0 {% if t.id == message.id %}ring-2 ring-[color:var(--brand)]{% endif %}">
+    <div class="flex items-start justify-between gap-3 mb-2 text-sm">
+      <span class="min-w-0" style="overflow-wrap:anywhere;">
         {% if t.direction == 'in' %}<span class="pill pill-info">Received</span>{% else %}<span class="pill pill-neutral">Sent</span>{% endif %}
         <span class="font-medium ml-1">{{ t.from_address }}</span>
-        <span class="text-[color:var(--text-muted)]">→ {{ t.to_addresses|truncatechars:60 }}</span>
+        <span class="text-[color:var(--text-muted)]">→ {{ t.to_addresses|mail_header|truncatechars:60 }}</span>
       </span>
-      <span class="text-[color:var(--text-muted)]">{{ t.occurred_at|date:"M j, H:i" }}</span>
+      <span class="text-[color:var(--text-muted)] whitespace-nowrap">{{ t.occurred_at|date:"M j, H:i" }}</span>
     </div>
-    <pre class="whitespace-pre-wrap text-sm" style="font-family:inherit;">{{ t.body_text|default:t.body_html|striptags }}</pre>
+    {{ t|mail_body }}
   </div>
   {% endfor %}
 </div>
@@ -41,11 +58,11 @@
     {% csrf_token %}
     <div class="mb-3">
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">To</label>
-      <input class="input w-full" name="to" value="{{ message.from_address }}">
+      <input class="input w-full" name="to" value="{{ reply_to }}">
     </div>
     <div class="mb-3">
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">Subject</label>
-      <input class="input w-full" name="subject" value="Re: {{ message.subject }}">
+      <input class="input w-full" name="subject" value="{{ reply_subject }}">
     </div>
     <div class="mb-3">
       <label class="text-xs text-[color:var(--text-muted)] block mb-1">Message</label>

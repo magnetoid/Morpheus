@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load crm_mail %}
 {% block title %}Inbox · CRM · Morpheus admin{% endblock %}
 
 {% block content %}
@@ -39,7 +40,7 @@
 </form>
 
 <div class="card overflow-hidden">
-  {% if messages %}
+  {% if mail_messages %}
   <table class="morph-table">
     <thead>
       <tr>
@@ -47,19 +48,19 @@
       </tr>
     </thead>
     <tbody>
-      {% for m in messages %}
+      {% for m in mail_messages %}
       <tr style="{% if m.direction == 'in' and not m.is_read %}font-weight:600;{% endif %}">
         <td class="whitespace-nowrap">
           <a href="/dashboard/crm/inbox/{{ m.id }}/" class="hover:underline">
             {% if m.direction == 'in' %}
               <span class="pill pill-info">In</span> {{ m.from_address }}
             {% else %}
-              <span class="pill pill-neutral">Out</span> {{ m.to_addresses|truncatechars:60 }}
+              <span class="pill pill-neutral">Out</span> {{ m.to_addresses|mail_header|truncatechars:60 }}
             {% endif %}
             {% if m.customer %}<span class="text-xs text-[color:var(--text-muted)] ml-1">· {{ m.customer.email }}</span>{% endif %}
           </a>
         </td>
-        <td><a href="/dashboard/crm/inbox/{{ m.id }}/" class="hover:underline">{{ m.subject|default:"(no subject)" }}</a></td>
+        <td><a href="/dashboard/crm/inbox/{{ m.id }}/" class="hover:underline">{{ m.subject|mail_header|default:"(no subject)" }}</a></td>
         <td class="text-[color:var(--text-muted)]">{{ m.account.label }}</td>
         <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ m.occurred_at|date:"M j, H:i" }}</td>
       </tr>

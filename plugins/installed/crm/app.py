@@ -92,7 +92,8 @@ class CrmPlugin(Plugin):
                     'icon': 'mail',
                     'label': f'Newsletter signup: {lead.email}',
                     'hint': '',
-                    'url': f'/dashboard/crm/leads/{lead.id}/',
+                    # There is no page per lead; the leads list is the one that exists.
+                    'url': '/dashboard/crm/leads/',
                     'when': lead.created_at,
                 }
             )

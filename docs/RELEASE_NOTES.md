@@ -15,6 +15,20 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.130.1 — 2026-11-01
+
+**Real email addresses in the dashboard, and a readable CRM inbox**
+
+- Staff see real email addresses across the dashboard again: Cloudflare no longer replaces them with "[email protected]".
+- The CRM inbox and Support chat no longer open a column of empty boxes on the right, and real confirmations such as "Thread closed." show again.
+- Email subjects and recipient names read as written ("Potvrda rezervacije", not "=?UTF-8?…?="), mail already in the inbox included.
+- An email shows its text, links and layout without styles, scripts or images; long lines wrap inside the card, and the quoted earlier message folds under "Show quoted text".
+- A reply goes to the other side of the conversation, keeps a single "Re:", and stays in its thread; a thread reads in time order.
+- Sync now says how many messages arrived or which mailbox could not be reached; a mail account port that is not a number is an error, not a crash.
+- Support chat bubbles are readable in dark mode and keep long words inside the bubble.
+- A lead keeps its name, phone and company when the same email signs up again (a newsletter signup used to blank them).
+- "Newsletter signup" items in the home page's activity feed open the leads list instead of a page that did not exist.
+
 ## v0.130.0 — 2026-11-01
 
 **Printable invoice and packing slip**
