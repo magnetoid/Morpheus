@@ -4231,3 +4231,55 @@ msgstr "Podijeljeno s vama."
 
 msgid "Lowest price in the 30 days before this reduction: %(price)s"
 msgstr "Najniža cijena u 30 dana prije ovog sniženja: %(price)s"
+
+msgid "Average rating %(avg)s out of 5 from %(count)s review"
+msgid_plural "Average rating %(avg)s out of 5 from %(count)s reviews"
+msgstr[0] "Prosječna ocjena %(avg)s od 5, na osnovu %(count)s recenzije"
+msgstr[1] "Prosječna ocjena %(avg)s od 5, na osnovu %(count)s recenzije"
+msgstr[2] "Prosječna ocjena %(avg)s od 5, na osnovu %(count)s recenzija"
+
+msgid "(%(count)s review)"
+msgid_plural "(%(count)s reviews)"
+msgstr[0] "(%(count)s recenzija)"
+msgstr[1] "(%(count)s recenzije)"
+msgstr[2] "(%(count)s recenzija)"
+
+#, python-format
+msgid "%(percent)s%% verified buyers"
+msgstr "%(percent)s%% provjerenih kupaca"
+
+msgid "%(count)s ordered in %(window)s"
+msgid_plural "%(count)s ordered in %(window)s"
+msgstr[0] "%(count)s porudžbina u %(window)s"
+msgstr[1] "%(count)s porudžbine u %(window)s"
+msgstr[2] "%(count)s porudžbina u %(window)s"
+
+msgid "the last hour"
+msgstr "posljednjem satu"
+
+#, python-format
+msgid "the last %(n)d hour"
+msgid_plural "the last %(n)d hours"
+msgstr[0] "posljednjem %(n)d satu"
+msgstr[1] "posljednja %(n)d sata"
+msgstr[2] "posljednjih %(n)d sati"
+
+msgid "the last day"
+msgstr "posljednjem danu"
+
+#, python-format
+msgid "the last %(n)d day"
+msgid_plural "the last %(n)d days"
+msgstr[0] "posljednjem %(n)d danu"
+msgstr[1] "posljednja %(n)d dana"
+msgstr[2] "posljednjih %(n)d dana"
+
+msgid "the last week"
+msgstr "posljednjoj sedmici"
+
+#, python-format
+msgid "the last %(n)d week"
+msgid_plural "the last %(n)d weeks"
+msgstr[0] "posljednjoj %(n)d sedmici"
+msgstr[1] "posljednje %(n)d sedmice"
+msgstr[2] "posljednjih %(n)d sedmica"

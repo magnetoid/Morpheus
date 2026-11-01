@@ -56,7 +56,7 @@ class ResolveTests(TestCase):
         for kind, target in (
             ('page', 'no_such_page'),
             ('page', 'no_such_app/x'),
-            ('settings', 'reviews'),  # reviews has no settings
+            ('settings', 'wishlist'),  # wishlist has no settings
             ('field', 'newsletter.no_such_key'),
             ('field', 'newsletter'),
             ('section', 'no_such_section'),

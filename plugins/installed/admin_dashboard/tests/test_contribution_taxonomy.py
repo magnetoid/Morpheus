@@ -130,7 +130,7 @@ class RemappedPanelsRenderTests(TestCase):
         for url, plugin_name in [
             ('/dashboard/settings/payments/', 'fraud_rules'),
             ('/dashboard/settings/marketing/', 'post_purchase'),
-            ('/dashboard/settings/storefront/', 'trust_signals'),
+            ('/dashboard/settings/storefront/', 'reviews'),
             ('/dashboard/settings/team/', 'staff_sso'),
         ]:
             resp = self.client.get(url)

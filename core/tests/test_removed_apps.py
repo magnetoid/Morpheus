@@ -1,6 +1,7 @@
 """Apps consolidation (docs/plans/apps-consolidation-2026-10.md): the apps that left the code
 are gone. Wave 1's ten held no data and showed nothing; Wave 2 folded save_for_later into
-wishlist. Their tables outlive them by one release."""
+wishlist, and trust_signals and ugc_reviews into reviews. Their tables outlive them by one
+release."""
 
 from __future__ import annotations
 
@@ -32,6 +33,9 @@ REMOVED = (
     'lumina',
     # Wave 2: folded into wishlist (v0.123.0).
     'save_for_later',
+    # Wave 2: folded into reviews (v0.129.0).
+    'trust_signals',
+    'ugc_reviews',
 )
 
 

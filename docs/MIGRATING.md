@@ -6,6 +6,26 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.129.0 — trust_signals and ugc_reviews are part of reviews
+
+`trust_signals` and `ugc_reviews` are removed; reviews owns what they did.
+- **The trust strip** (rating, verified-buyer share, recent purchases) is reviews' block in
+  `pdp_below_price`. Its template is `reviews/blocks/trust_strip.html` and its tag library
+  `review_trust` (`{% trust_data product as ts %}`). A theme that overrode
+  `trust_signals/blocks/trust_strip.html` moves the override to the new name. The block's
+  classes are now `review-signals` and `review-signals__*`, because supernatural's theme had
+  its own `.trust-strip`.
+- **Its six settings** are reviews' settings with the same keys (`show_rating`,
+  `min_reviews_for_rating`, `show_verified_share`, `show_recent_purchases`,
+  `recent_purchases_window_hours`, `min_recent_purchases`), on Settings → Storefront →
+  Reviews. trust_signals' panel never showed its fields, so there was nothing to carry over.
+- **ugc_reviews** never had a way to add a photo or video, and its two blocks rendered
+  nothing. Its tables stay in this release; the next one drops them.
+
+An out-of-tree app that lists either app in `requires` lists `reviews` instead.
+
+---
+
 ## v0.127.0 — a theme no longer calls the GTM tags
 
 The tracking app now puts its tags into the `global_head` and `global_below_body` slots

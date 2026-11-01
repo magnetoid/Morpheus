@@ -1,4 +1,5 @@
-"""Trust-signal data fetchers.
+"""Trust signals under a product's price: its rating, the verified-buyer share
+and recent purchases (the trust_signals app until v0.129.0).
 
 One function per signal kind. Each is independent and graceful — a
 failure in one signal must not break the PDP. Aggressively cached
@@ -15,8 +16,9 @@ from typing import Any
 from django.core.cache import cache
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.translation import gettext, ngettext
 
-logger = logging.getLogger('morpheus.trust_signals')
+logger = logging.getLogger('morpheus.reviews')
 
 # Cache windows. Tuned for "freshness vs. DB-load" — the signals don't
 # need to be real-time; a 5-minute lag is invisible to customers.
@@ -93,7 +95,7 @@ def _get_rating(product, cfg: dict) -> dict | None:
         cache.set(key, result, CACHE_TTL_RATING)
         return result
     except Exception:  # noqa: BLE001 — never break the PDP
-        logger.exception('trust_signals: rating fetch failed for product=%s', product.pk)
+        logger.exception('reviews: rating fetch failed for product=%s', product.pk)
         return None
 
 
@@ -131,7 +133,7 @@ def _get_verified_share(product) -> dict | None:
         cache.set(key, result, CACHE_TTL_VERIFIED)
         return result
     except Exception:  # noqa: BLE001 — never break the PDP
-        logger.exception('trust_signals: verified-share fetch failed for product=%s', product.pk)
+        logger.exception('reviews: verified-share fetch failed for product=%s', product.pk)
         return None
 
 
@@ -144,16 +146,25 @@ def _get_recent_purchases(product, cfg: dict) -> dict | None:
     """Returns {count, window_hours, plural_label} or None if below threshold.
 
     Counts unique orders containing this product (not line items) so a
-    bulk order doesn't inflate the count.
+    bulk order doesn't inflate the count. The label is built per request,
+    outside the cache, because it is in the visitor's language.
     """
     window_hours = int(cfg.get('recent_purchases_window_hours', DEFAULT_RECENT_WINDOW_HOURS))
     min_count = int(cfg.get('min_recent_purchases', 3))
 
     key = f'ts:recent:{product.pk}:{window_hours}'
     cached = cache.get(key)
-    if cached is not None:
-        return cached if cached != _SENTINEL_HIDDEN else None
+    if cached is None:
+        cached = _count_recent_purchases(product, window_hours, min_count)
+        if cached is None:
+            return None
+        cache.set(key, cached, CACHE_TTL_RECENT)
+    if cached == _SENTINEL_HIDDEN:
+        return None
+    return {**cached, 'plural_label': _plural_window_label(window_hours)}
 
+
+def _count_recent_purchases(product, window_hours: int, min_count: int):
     try:
         OrderItem = _order_item_model()
         if OrderItem is None:
@@ -169,34 +180,28 @@ def _get_recent_purchases(product, cfg: dict) -> dict | None:
             .distinct()
             .count()
         )
-
         if count < min_count:
-            cache.set(key, _SENTINEL_HIDDEN, CACHE_TTL_RECENT)
-            return None
-
-        result = {
-            'count': count,
-            'window_hours': window_hours,
-            'plural_label': _plural_window_label(window_hours),
-        }
-        cache.set(key, result, CACHE_TTL_RECENT)
-        return result
+            return _SENTINEL_HIDDEN
+        return {'count': count, 'window_hours': window_hours}
     except Exception:  # noqa: BLE001 — never break the PDP
-        logger.exception('trust_signals: recent-purchases fetch failed for product=%s', product.pk)
+        logger.exception('reviews: recent-purchases fetch failed for product=%s', product.pk)
         return None
 
 
 def _plural_window_label(hours: int) -> str:
     if hours <= 1:
-        return 'the last hour'
+        return gettext('the last hour')
     if hours < 24:
-        return f'the last {hours} hours'
+        return ngettext('the last %(n)d hour', 'the last %(n)d hours', hours) % {'n': hours}
     days = round(hours / 24)
     if days == 1:
-        return 'the last day'
+        return gettext('the last day')
     if days < 7:
-        return f'the last {days} days'
-    return f'the last {round(days / 7)} weeks'
+        return ngettext('the last %(n)d day', 'the last %(n)d days', days) % {'n': days}
+    weeks = round(days / 7)
+    if weeks == 1:
+        return gettext('the last week')
+    return ngettext('the last %(n)d week', 'the last %(n)d weeks', weeks) % {'n': weeks}
 
 
 # ---------------------------------------------------------------------------

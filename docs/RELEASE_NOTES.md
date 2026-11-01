@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.129.0 — 2026-10-30
+
+**Reviews own the trust strip; two apps that never worked are gone**
+
+- The rating, verified-buyer share and recent-purchases line under a product's price is now part of the Reviews app (it was the trust_signals app). Its six settings show on Settings → Storefront → Reviews; before, that screen showed no fields at all, so every store ran on the defaults.
+- The strip is translated, with Serbian entries, and the recent-purchases line is worded per visitor's language instead of being cached in whichever language rendered it first.
+- ugc_reviews is removed: it never had a way to add a customer photo or video, and its two product-page blocks showed nothing. Its tables are dropped in the next release.
+- The store now has 100 apps, 94 of them on by default.
+
 ## v0.128.0 — 2026-10-29
 
 **Sales show the lowest price of the 30 days before them, and shipping pages show real costs**

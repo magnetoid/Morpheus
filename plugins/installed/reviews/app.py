@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from morpheus.app import DashboardPage, Plugin, StorefrontBlock
+from morpheus.app import DashboardPage, Plugin, SettingsPanel, StorefrontBlock
 from morpheus.core import events
 
 
 class ReviewsPlugin(Plugin):
     name = 'reviews'
     label = 'Reviews'
-    version = '0.2.0'
+    version = '0.3.0'
     description = (
-        'Customer reviews on the PDP. Auto-published on submit. '
-        'Merchant moderation lives at /dashboard/reviews/.'
+        "Customer reviews on the PDP, a buyer's published at once and anyone "
+        "else's after moderation at /dashboard/reviews/, plus the rating, "
+        'verified-buyer and recent-purchases strip under the price.'
     )
     has_models = True
     requires = ['catalog', 'orders']
@@ -62,7 +63,78 @@ class ReviewsPlugin(Plugin):
                 template='reviews/blocks/write_review.html',
                 priority=80,
             ),
+            # The trust strip (the trust_signals app until v0.129.0). The
+            # block fetches its data through the `trust_data` tag.
+            StorefrontBlock(
+                slot='pdp_below_price',
+                template='reviews/blocks/trust_strip.html',
+                priority=30,  # ahead of low_stock_badge (priority=20)
+                context_keys=['product'],
+            ),
         ]
+
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'show_rating': {
+                    'type': 'boolean',
+                    'title': 'Show star rating + review count',
+                    'default': True,
+                },
+                'min_reviews_for_rating': {
+                    'type': 'integer',
+                    'title': 'Minimum reviews before showing rating',
+                    'minimum': 0,
+                    'maximum': 100,
+                    'default': 3,
+                    'description': (
+                        'Hide the rating until the product has at least this '
+                        'many reviews. Low-N ratings hurt trust more than '
+                        'they help.'
+                    ),
+                },
+                'show_verified_share': {
+                    'type': 'boolean',
+                    'title': 'Show verified-buyer percentage',
+                    'default': True,
+                },
+                'show_recent_purchases': {
+                    'type': 'boolean',
+                    'title': 'Show recent-purchases ticker',
+                    'default': True,
+                },
+                'recent_purchases_window_hours': {
+                    'type': 'integer',
+                    'title': 'Recent-purchases lookback (hours)',
+                    'minimum': 1,
+                    'maximum': 168,
+                    'default': 72,
+                    'description': '"X ordered in the last N hours". 72h is the sweet spot.',
+                },
+                'min_recent_purchases': {
+                    'type': 'integer',
+                    'title': 'Minimum recent purchases to show the ticker',
+                    'minimum': 1,
+                    'maximum': 100,
+                    'default': 3,
+                    'description': (
+                        'Hide the ticker if fewer than N people bought it. '
+                        '"1 ordered today" reads as desperate, not popular.'
+                    ),
+                },
+            },
+        }
+
+    def contribute_settings_panel(self) -> SettingsPanel:
+        # trust_signals passed the properties without the object wrapper, so
+        # its panel rendered no fields at all (v0.129.0 fixed it in the move).
+        return SettingsPanel(
+            label='Reviews',
+            category='storefront',
+            description="Which review and purchase signals show under a product's price.",
+            schema=self.get_config_schema(),
+        )
 
     def contribute_dashboard_pages(self) -> list:
         # The Reviews tab of the Products section, linking the moderation
