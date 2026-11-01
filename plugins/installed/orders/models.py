@@ -227,6 +227,29 @@ class Order(models.Model):
                 continue
         return lines
 
+    @property
+    def tax_lines(self) -> list[dict]:
+        """The rates behind ``tax_total`` recorded at checkout, as
+        ``[{'label', 'amount': Money}]``; empty unless they add up to it, so an
+        invoice never itemises a tax it cannot prove."""
+        from djmoney.money import Money  # noqa: PLC0415
+
+        if self.tax_total is None:
+            return []
+        currency = str(self.tax_total.currency)
+        lines = []
+        for line in (self.metadata or {}).get('tax_lines') or []:
+            try:
+                lines.append(
+                    {'label': line['label'], 'amount': Money(Decimal(line['amount']), currency)}
+                )
+            except (KeyError, TypeError, ArithmeticError):
+                return []
+        total = sum((line['amount'].amount for line in lines), Decimal('0'))
+        if not lines or total != Decimal(str(self.tax_total.amount)):
+            return []
+        return lines
+
     def save(self, *args, **kwargs):
         if not self.order_number:
             self.order_number = self._generate_order_number()

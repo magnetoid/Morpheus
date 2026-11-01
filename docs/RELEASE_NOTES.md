@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.130.0 — 2026-11-01
+
+**Printable invoice and packing slip**
+
+- The invoice prints your business name, address and VAT or tax number, set under Settings → Payments → Checkout, cart & invoices; until they are set, the invoice tells staff where to add them (on screen only).
+- Each tax rate is its own line on the invoice ("VAT 20%"), kept on the order at checkout and shown only while the lines add up to the order's tax. Orders placed before this version show one tax line.
+- A packing slip for every order: what goes in the box and where it goes, with no prices. It lists the items still to send, one shipment (from the Fulfillments list), or the whole order once everything has been sent; digital items are counted, not packed. Print it from the order's More menu, the Fulfillments list or the fulfil form.
+- Both pages print on the printer's own paper size (A4 or Letter) with proper margins and repeated table headings; Save as PDF in the print window keeps a copy.
+- Linda: orders.documents gives the links to an order's invoice and packing slip (read only).
+
 ## v0.129.1 — 2026-11-01
 
 **Morpheus says it is in beta; ugc_reviews' empty tables are dropped**

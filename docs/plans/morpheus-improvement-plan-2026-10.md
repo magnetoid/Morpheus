@@ -828,7 +828,11 @@ ships as one release at a time, in this order:
 - **R2 reviews ← trust_signals + ugc_reviews, v0.129.0** — the trust strip and its settings in
   reviews, ugc_reviews gone; its tables dropped in v0.129.1, which also marks Morpheus beta
   beside its version (owner, 2026-11-01).
-- R3 invoice + packing slip for print (W8.4).
+- **R3 invoice + packing slip for print (W8.4), v0.130.0** — the seller's business name,
+  address and VAT number on the invoice (orders settings), each tax rate kept on the order
+  and itemised while it adds up, a packing slip without prices (open items, one shipment, or
+  the whole order), print CSS with the printer's own paper size, `orders.documents` for Linda.
+  PDF stays the browser's Save as PDF.
 - R4 storefront search suggest: upgrade `/api/quick-search/` (W8.5).
 - R5 post_purchase ← post_checkout_upsell; payments ← advanced_payments + fraud_rules.
 - R6 AI Act Art. 50 marking (W5c). R7 GPSR `product_safety` app (W5a).

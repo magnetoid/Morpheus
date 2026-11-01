@@ -192,6 +192,41 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
 
 
 @tool(
+    name='orders.documents',
+    description=(
+        'Links to the printable invoice and packing slip of one order, by '
+        '`order_number`, for the merchant to open and print (or save as PDF). '
+        'Both pages need a staff sign-in.'
+    ),
+    scopes=['orders.read'],
+    schema={
+        'type': 'object',
+        'properties': {'order_number': {'type': 'string'}},
+        'required': ['order_number'],
+    },
+)
+def orders_documents_tool(*, order_number: str) -> ToolResult:
+    from django.urls import reverse  # noqa: PLC0415
+
+    from core.utils.site import absolutize  # noqa: PLC0415
+    from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+    if not Order.objects.filter(order_number=order_number).exists():
+        raise ToolError(f'order not found: {order_number}')
+    args = {'order_number': order_number}
+    return ToolResult(
+        output={
+            'order_number': order_number,
+            'invoice_url': absolutize(reverse('admin_dashboard:order_invoice', kwargs=args)),
+            'packing_slip_url': absolutize(
+                reverse('admin_dashboard:order_packing_slip', kwargs=args)
+            ),
+        },
+        display=f'invoice and packing slip for #{order_number}',
+    )
+
+
+@tool(
     name='orders.refund',
     description=(
         'Refund all or part of an order through the payment provider. MONEY '

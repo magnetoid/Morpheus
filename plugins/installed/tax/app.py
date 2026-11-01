@@ -47,6 +47,12 @@ class TaxPlugin(Plugin):
             )
             tax_total = result.get('total')
             value['tax'] = tax_total
+            # The rates behind the total, kept on the order for its invoice
+            # (orders/services.py:_order_metadata).
+            value.setdefault('meta', {})['tax_lines'] = [
+                {'label': line['rate_name'], 'amount': str(line['amount'].amount)}
+                for line in result.get('lines') or []
+            ]
 
             subtotal = value.get('subtotal')
             shipping = value.get('shipping')

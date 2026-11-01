@@ -181,6 +181,11 @@ urlpatterns = [
     path('orders/<str:order_number>/action/', views.order_action, name='order_action'),
     path('orders/<str:order_number>/refund/', views.order_refund, name='order_refund'),
     path('orders/<str:order_number>/invoice/', views.order_invoice, name='order_invoice'),
+    path(
+        'orders/<str:order_number>/packing-slip/',
+        views.order_packing_slip,
+        name='order_packing_slip',
+    ),
     path('orders/<str:order_number>/notes/', views.order_notes, name='order_notes'),
     path('returns/', views.returns_list, name='returns_list'),
     path('returns/<uuid:rma_id>/', views.return_detail, name='return_detail'),

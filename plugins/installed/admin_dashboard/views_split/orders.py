@@ -425,11 +425,34 @@ def order_notes(request: HttpRequest, order_number: str) -> HttpResponse:
     return redirect('admin_dashboard:order_detail', order_number=order_number)
 
 
+def _seller() -> dict:
+    """Who an order's printed documents come from: the store, with the business
+    details set on the orders app's settings (read fresh: another worker may
+    have saved them)."""
+    from core.models import StoreSettings  # noqa: PLC0415
+    from plugins.registry import app_registry  # noqa: PLC0415
+
+    store = StoreSettings.objects.first() or StoreSettings()
+    config: dict = {}
+    plugin = app_registry.get('orders')
+    if plugin is not None:
+        plugin.invalidate_config_cache()
+        config = plugin.get_config()
+    return {
+        'name': (config.get('invoice_business_name') or '').strip() or store.store_name,
+        'address': (config.get('invoice_address') or '').strip(),
+        'tax_id': (config.get('invoice_tax_id') or '').strip(),
+        'email': store.contact_email,
+        'phone': store.support_phone,
+        # An empty FileField is falsy but raises on .url.
+        'logo': store.logo.url if store.logo else '',
+    }
+
+
 @staff_member_required
 @require_capability('orders.read')
 def order_invoice(request: HttpRequest, order_number: str) -> HttpResponse:
     """A print-ready invoice for one order (the browser prints or saves it as PDF)."""
-    from core.models import StoreSettings  # noqa: PLC0415
     from plugins.installed.orders.models import Order  # noqa: PLC0415
 
     order = get_object_or_404(Order.objects.prefetch_related('items'), order_number=order_number)
@@ -444,8 +467,72 @@ def order_invoice(request: HttpRequest, order_number: str) -> HttpResponse:
         'admin_dashboard/order_invoice.html',
         {
             'order': order,
-            'store': StoreSettings.objects.first() or StoreSettings(),
+            'seller': _seller(),
             'payment_method': labels.get(order.payment_gateway, order.payment_gateway or '—'),
+        },
+    )
+
+
+def _item_ships(item) -> bool:
+    """Whether an order line is packed: the storefront's rule (the variant
+    overrides the product); a line whose product is gone is packed."""
+    target = item.variant if item.variant is not None else item.product
+    return bool(getattr(target, 'requires_shipping', True))
+
+
+@staff_member_required
+@require_capability('orders.read')
+def order_packing_slip(request: HttpRequest, order_number: str) -> HttpResponse:
+    """A print-ready packing slip: what goes in the box and where it goes, no prices.
+
+    ``?fulfillment=<id>`` lists one shipment; otherwise the items still to send,
+    or the whole order once everything has been sent (a reprint).
+    """
+    from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+    order = get_object_or_404(
+        Order.objects.prefetch_related('items__product', 'items__variant'),
+        order_number=order_number,
+    )
+    items = list(order.items.all())
+    shipment = None
+    wanted = request.GET.get('fulfillment', '')
+    if wanted:
+        # Compared as text: a malformed id is a 404, never a 500.
+        shipment = next(
+            (f for f in order.fulfillments.prefetch_related('items') if str(f.pk) == wanted),
+            None,
+        )
+        if shipment is None:
+            raise Http404('No such shipment on this order.')
+        quantities = {fi.order_item_id: fi.quantity for fi in shipment.items.all()}
+        covers = 'shipment'
+    else:
+        quantities = {i.pk: i.quantity - i.fulfilled_quantity for i in items}
+        covers = 'open'
+        if not any(q > 0 for q in quantities.values()):
+            quantities = {i.pk: i.quantity for i in items}
+            covers = 'all'
+    lines = []
+    not_packed = 0
+    for item in items:
+        quantity = quantities.get(item.pk, 0)
+        if quantity <= 0:
+            continue
+        if not _item_ships(item):
+            not_packed += 1
+            continue
+        lines.append({'item': item, 'quantity': quantity})
+    return render(
+        request,
+        'admin_dashboard/order_packing_slip.html',
+        {
+            'order': order,
+            'seller': _seller(),
+            'shipment': shipment,
+            'covers': covers,
+            'lines': lines,
+            'not_packed': not_packed,
         },
     )
 
