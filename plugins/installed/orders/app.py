@@ -154,13 +154,40 @@ class OrdersPlugin(Plugin):
                         'streaming begins.'
                     ),
                 },
+                'invoice_business_name': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Business name on invoices',
+                    'description': (
+                        'Your registered business name, printed at the top of every '
+                        'invoice. Leave it empty to print the store name.'
+                    ),
+                },
+                'invoice_address': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Business address on invoices',
+                    'description': 'Street, postcode, city and country, on one line.',
+                },
+                'invoice_tax_id': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'VAT or tax number on invoices',
+                    'description': (
+                        'Printed under the address, for example "VAT GB123456789". '
+                        'Leave it empty if your business has none.'
+                    ),
+                },
             },
         }
 
     def contribute_settings_panel(self):
         return SettingsPanel(
-            label='Checkout & cart',
-            description='Tweaks to the cart + checkout flow. Defaults are sensible for new stores.',
+            label='Checkout, cart & invoices',
+            description=(
+                'Tweaks to the cart + checkout flow, and the business details printed '
+                'on invoices. Defaults are sensible for new stores.'
+            ),
             schema=self.get_config_schema(),
             category='payments',
         )
@@ -334,6 +361,7 @@ class OrdersPlugin(Plugin):
             list_returns_tool,
             orders_add_note_tool,
             orders_cancel_tool,
+            orders_documents_tool,
             orders_get_tool,
             orders_search_tool,
             orders_update_status_tool,
@@ -349,6 +377,7 @@ class OrdersPlugin(Plugin):
             approve_return_tool,
             orders_search_tool,
             orders_get_tool,
+            orders_documents_tool,
             analytics_summary_tool,
             analytics_top_products_tool,
         ]

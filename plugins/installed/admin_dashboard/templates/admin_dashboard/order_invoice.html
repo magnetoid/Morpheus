@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Invoice {{ order.order_number }} · {{ store.store_name }}</title>
+<title>Invoice {{ order.order_number }} · {{ seller.name }}</title>
 <link rel="stylesheet" href="{% static 'admin_dashboard/invoice.css' %}">
 </head>
 <body>
@@ -13,10 +13,13 @@
       <h1>Invoice</h1>
       <div class="muted">Order #{{ order.order_number }} · {{ order.placed_at|date:"j F Y" }}</div>
     </div>
-    <div class="store">
-      <strong>{{ store.store_name }}</strong><br>
-      {% if store.contact_email %}{{ store.contact_email }}<br>{% endif %}
-      {% if store.support_phone %}{{ store.support_phone }}{% endif %}
+    <div class="store" data-seller>
+      {% if seller.logo %}<img class="logo" src="{{ seller.logo }}" alt="">{% endif %}
+      <strong>{{ seller.name }}</strong><br>
+      {% if seller.address %}{{ seller.address }}<br>{% endif %}
+      {% if seller.tax_id %}{{ seller.tax_id }}<br>{% endif %}
+      {% if seller.email %}{{ seller.email }}<br>{% endif %}
+      {% if seller.phone %}{{ seller.phone }}{% endif %}
     </div>
   </header>
 
@@ -55,12 +58,15 @@
     <tr><td>Subtotal</td><td class="num">{{ order.subtotal }}</td></tr>
     {% if order.discount_total.amount %}<tr><td>Discount</td><td class="num">&minus;{{ order.discount_total }}</td></tr>{% endif %}
     <tr><td>Shipping</td><td class="num">{{ order.shipping_total }}</td></tr>
-    <tr><td>Tax</td><td class="num">{{ order.tax_total }}</td></tr>
+    {% for line in order.tax_lines %}<tr data-tax-line><td>{{ line.label }}</td><td class="num">{{ line.amount }}</td></tr>{% empty %}<tr><td>Tax</td><td class="num">{{ order.tax_total }}</td></tr>{% endfor %}
     {% for extra in order.extra_lines %}<tr><td>{{ extra.label }}</td><td class="num">{{ extra.amount }}</td></tr>{% endfor %}
     <tr class="grand"><td>Total</td><td class="num">{{ order.total }}</td></tr>
   </table>
 
-  <div class="actions"><button type="button" onclick="window.print()">Print</button></div>
+  <div class="actions">
+    <button type="button" onclick="window.print()">Print</button>
+    {% if not seller.address %}<span class="muted" data-seller-missing>Your business address and tax number are not on this invoice yet. <a href="{% url 'admin_dashboard:settings_category' category='orders' %}">Add them in Settings</a>.</span>{% endif %}
+  </div>
 </main>
 </body>
 </html>

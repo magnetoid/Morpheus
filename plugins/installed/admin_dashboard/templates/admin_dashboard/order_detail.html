@@ -67,6 +67,9 @@
             <i data-lucide="package-check" class="h-4 w-4"></i> Add fulfillment
           </a>
           {% endif %}
+          <a href="{% url 'admin_dashboard:order_packing_slip' order_number=order.order_number %}" target="_blank" rel="noopener" class="dropdown-item">
+            <i data-lucide="printer" class="h-4 w-4"></i> Print packing slip
+          </a>
           <a href="{% url 'admin_dashboard:order_refund' order_number=order.order_number %}" class="dropdown-item">
             <i data-lucide="refresh-ccw" class="h-4 w-4"></i> Issue refund
           </a>
@@ -127,7 +130,7 @@
           <h2 class="font-semibold">Fulfillments</h2>
         </div>
         <table class="morph-table">
-          <thead><tr><th>Status</th><th>Carrier</th><th>Tracking</th><th class="text-right">Created</th></tr></thead>
+          <thead><tr><th>Status</th><th>Carrier</th><th>Tracking</th><th class="text-right">Created</th><th><span class="sr-only">Packing slip</span></th></tr></thead>
           <tbody>
             {% for f in fulfillments %}
             <tr>
@@ -144,6 +147,7 @@
                 {% else %}—{% endif %}
               </td>
               <td class="text-right text-[color:var(--text-muted)] whitespace-nowrap">{{ f.created_at|date:"M j, H:i" }}</td>
+              <td class="text-right whitespace-nowrap"><a class="hover:underline text-sm" target="_blank" rel="noopener" href="{% url 'admin_dashboard:order_packing_slip' order_number=order.order_number %}?fulfillment={{ f.pk }}">Packing slip</a></td>
             </tr>
             {% endfor %}
           </tbody>

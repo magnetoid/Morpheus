@@ -70,7 +70,7 @@ not ready, while people can already browse it. Two settings, both off by default
   are empty, robots.txt names no sitemap (crawling stays allowed, so the
   noindex is read), llms.txt / agents.md / the AI feed answer 404 and nothing
   pings IndexNow.
-- **Settings → Payments → Checkout & cart → "Products hidden from search are
+- **Settings → Payments → Checkout, cart & invoices → "Products hidden from search are
   pre-launch previews"** (`orders.prelaunch_noindex_not_for_sale`): a product
   marked noindex can be viewed but not added to a cart or ordered — by any path
   (storefront, GraphQL, agents). To put one product on sale, clear its noindex.

@@ -300,6 +300,17 @@ def _order_metadata(visitor_id: str, breakdown: dict, consent: dict | None = Non
             extras.append({'label': str(extra['label']), 'amount': str(amount)})
     if extras:
         metadata['extras'] = extras
+    tax_lines = []
+    for line in (breakdown.get('meta') or {}).get('tax_lines') or []:
+        try:
+            amount = Decimal(str(line['amount'])).quantize(Decimal('0.01'))
+        except (KeyError, TypeError, ArithmeticError):
+            continue
+        if line.get('label'):
+            tax_lines.append({'label': str(line['label']), 'amount': str(amount)})
+    if tax_lines:
+        # The rates behind tax_total, for the invoice (Order.tax_lines).
+        metadata['tax_lines'] = tax_lines
     store_credit = (breakdown.get('meta') or {}).get('store_credit') or {}
     if store_credit.get('amount'):
         # Read back on cancel / refund to re-credit what was spent.
