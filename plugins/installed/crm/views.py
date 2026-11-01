@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from core.authz import require_capability
 from morpheus.app.views import render, staff_member_required
 
@@ -9,13 +11,15 @@ from morpheus.app.views import render, staff_member_required
 @staff_member_required
 @require_capability('crm.read')
 def crm_home(request):
+    from django.utils import timezone
+
     from plugins.installed.crm.models import CrmTask, Deal, Interaction, Lead
 
     open_leads = Lead.objects.exclude(status__in=['converted', 'lost']).count()
     open_tasks = CrmTask.objects.filter(completed_at__isnull=True).count()
-    overdue_tasks = sum(
-        1 for t in CrmTask.objects.filter(completed_at__isnull=True) if t.is_overdue
-    )
+    overdue_tasks = CrmTask.objects.filter(
+        completed_at__isnull=True, due_at__lt=timezone.now()
+    ).count()
     open_deals = Deal.objects.filter(closed_at__isnull=True).count()
     recent = Interaction.objects.all().order_by('-occurred_at')[:15]
 
@@ -90,20 +94,29 @@ def inbox_list(request):
     from plugins.installed.crm.models import MailAccount, MailMessage
 
     if request.method == 'POST' and request.POST.get('action') == 'sync':
+        from django.contrib import messages as flash
+
         from plugins.installed.crm.inbox import fetch_all_active
 
-        try:  # noqa: SIM105
-            fetch_all_active()
-        except Exception:  # noqa: BLE001, S110
-            pass
+        try:
+            fetched = sum(fetch_all_active().values())
+        except Exception:  # noqa: BLE001
+            fetched = None
+        failed = [
+            a.label for a in MailAccount.objects.filter(is_active=True).exclude(last_error='')
+        ]
+        if fetched is None or failed:
+            flash.error(
+                request,
+                f'Could not check {", ".join(failed) or "the mailboxes"}. '
+                'The error is on Mail accounts.',
+            )
+        else:
+            flash.success(request, f'{fetched} new message(s).')
         return redirect('/dashboard/crm/inbox/')
 
     accounts = list(MailAccount.objects.all())
-    qs = MailMessage.objects.select_related('account', 'customer').order_by(
-        '-received_at',
-        '-sent_at',
-        '-created_at',
-    )
+    qs = MailMessage.objects.select_related('account', 'customer').order_by(_mail_time().desc())
     direction = (request.GET.get('dir') or '').lower()
     if direction in ('in', 'out'):
         qs = qs.filter(direction=direction)
@@ -120,13 +133,14 @@ def inbox_list(request):
             | Q(to_addresses__icontains=search)
             | Q(body_text__icontains=search)
         )
-    messages = list(qs[:200])
+    # Not `messages`: that name belongs to the messages framework's toasts.
+    mail_messages = list(qs[:200])
     return render(
         request,
         'crm/inbox.html',
         {
             'accounts': accounts,
-            'messages': messages,
+            'mail_messages': mail_messages,
             'direction': direction,
             'account_id': account_id,
             'search': search,
@@ -141,6 +155,7 @@ def inbox_message(request, message_id):
     """Single-message view + reply form."""
     from morpheus.app.views import HttpResponseRedirect, get_object_or_404
     from plugins.installed.crm.inbox import send_message
+    from plugins.installed.crm.mail_render import header_text
     from plugins.installed.crm.models import MailMessage
 
     msg = get_object_or_404(
@@ -151,11 +166,18 @@ def inbox_message(request, message_id):
         msg.is_read = True
         msg.save(update_fields=['is_read'])
 
+    # A reply goes to the other side: the sender of mail we received, the
+    # recipients of mail we sent (not our own address).
+    reply_to = msg.from_address if msg.direction == 'in' else msg.to_addresses
+    subject_text = header_text(msg.subject)
+    reply_subject = (
+        subject_text if re.match(r'(re|aw|sv)\s*:', subject_text, re.I) else f'Re: {subject_text}'
+    )
     error = ''
     if request.method == 'POST':
         body = (request.POST.get('body') or '').strip()
         subject = (request.POST.get('subject') or '').strip()
-        to = (request.POST.get('to') or msg.from_address or '').strip()
+        to = (request.POST.get('to') or reply_to or '').strip()
         if not body or not to:
             error = 'Reply needs a recipient and a body.'
         else:
@@ -163,22 +185,23 @@ def inbox_message(request, message_id):
                 send_message(
                     msg.account,
                     to=[a.strip() for a in to.split(',') if a.strip()],
-                    subject=subject or f'Re: {msg.subject}',
+                    subject=subject or reply_subject,
                     body_text=body,
                     in_reply_to=msg.message_id,
                     customer=msg.customer,
+                    thread_key=msg.thread_key,
                 )
                 return HttpResponseRedirect(f'/dashboard/crm/inbox/{msg.pk}/')
             except Exception as e:  # noqa: BLE001
                 error = f'Send failed: {e}'
 
-    # Same-thread messages, oldest first.
-    thread = []
+    # Same-thread messages, oldest first; a message without a thread is its own.
+    thread = [msg]
     if msg.thread_key:
         thread = list(
             MailMessage.objects.filter(thread_key=msg.thread_key)
             .select_related('account', 'customer')
-            .order_by('received_at', 'sent_at', 'created_at')
+            .order_by(_mail_time())
         )
     return render(
         request,
@@ -186,6 +209,8 @@ def inbox_message(request, message_id):
         {
             'message': msg,
             'thread': thread,
+            'reply_to': reply_to,
+            'reply_subject': reply_subject,
             'error': error,
             'active_nav': 'crm',
         },
@@ -257,18 +282,20 @@ def inbox_accounts(request):
                 pass
             return HttpResponseRedirect('/dashboard/crm/inbox/accounts/')
 
+        imap_port = _port(request.POST.get('imap_port'), 993)
+        smtp_port = _port(request.POST.get('smtp_port'), 465)
         data = {
             'label': (request.POST.get('label') or '').strip()[:120],
             'email_address': (request.POST.get('email_address') or '').strip(),
             'provider': (request.POST.get('provider') or 'imap').strip(),
             'imap_host': (request.POST.get('imap_host') or '').strip(),
-            'imap_port': int(request.POST.get('imap_port') or 993),
+            'imap_port': imap_port,
             'imap_use_ssl': request.POST.get('imap_use_ssl') == 'on',
             'imap_username': (request.POST.get('imap_username') or '').strip(),
             'imap_password': request.POST.get('imap_password') or '',
             'imap_folder': (request.POST.get('imap_folder') or 'INBOX').strip(),
             'smtp_host': (request.POST.get('smtp_host') or '').strip(),
-            'smtp_port': int(request.POST.get('smtp_port') or 465),
+            'smtp_port': smtp_port,
             'smtp_use_ssl': request.POST.get('smtp_use_ssl') == 'on',
             'smtp_use_tls': request.POST.get('smtp_use_tls') == 'on',
             'smtp_username': (request.POST.get('smtp_username') or '').strip(),
@@ -279,6 +306,8 @@ def inbox_accounts(request):
             data['label'] and data['email_address'] and data['imap_host'] and data['smtp_host']
         ):
             error = 'Label, email, IMAP host, and SMTP host are required.'
+        elif imap_port is None or smtp_port is None:
+            error = 'Ports are whole numbers, such as 993 and 465.'
         else:
             account_id = (request.POST.get('id') or '').strip()
             if account_id:
@@ -309,3 +338,22 @@ def inbox_accounts(request):
             'active_nav': 'crm',
         },
     )
+
+
+def _mail_time():
+    """When a mail happened: received for mail that came in, sent for mail we sent.
+
+    Ordering by the columns one after another put every sent mail first (sqlite) or
+    last (Postgres), because the other column is empty on each kind.
+    """
+    from django.db.models.functions import Coalesce
+
+    return Coalesce('received_at', 'sent_at', 'created_at')
+
+
+def _port(value, default: int) -> int | None:
+    """A port typed into the mail account form; None when it is not a number."""
+    try:
+        return int(value or default)
+    except (TypeError, ValueError):
+        return None

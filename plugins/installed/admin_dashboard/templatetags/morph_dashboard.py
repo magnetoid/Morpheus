@@ -279,6 +279,20 @@ def dashboard_card_list(context, section):
     return cards_for(section, context.get('request'))
 
 
+@register.simple_tag(takes_context=True)
+def flash_messages(context):
+    """The request's messages-framework messages, which the shell shows as toasts.
+
+    Read from the request, never the ``messages`` context variable: a view that
+    names its own list ``messages`` (the CRM inbox's emails did) replaces it, and
+    the shell drew one empty toast per email.
+    """
+    from django.contrib.messages import get_messages
+
+    request = context.get('request')
+    return get_messages(request) if request is not None else []
+
+
 @register.simple_tag
 def get_ai_page_help():
     try:

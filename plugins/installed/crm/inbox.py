@@ -29,6 +29,8 @@ from email.utils import parseaddr, parsedate_to_datetime
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from plugins.installed.crm.mail_render import header_text
+
 logger = logging.getLogger('morpheus.crm.inbox')
 
 
@@ -140,9 +142,10 @@ def fetch_account(account, *, max_messages: int = 200) -> int:  # noqa: PLR0912,
                 continue
 
             from_name, from_addr = parseaddr(msg.get('From', ''))
-            to_addrs = msg.get_all('To', []) or []
-            cc_addrs = msg.get_all('Cc', []) or []
-            subject = (msg.get('Subject') or '').strip()
+            # Headers arrive RFC 2047 encoded (=?UTF-8?Q?…?=); store them as people read them.
+            to_addrs = [header_text(a) for a in msg.get_all('To', []) or []]
+            cc_addrs = [header_text(a) for a in msg.get_all('Cc', []) or []]
+            subject = header_text(msg.get('Subject')).strip()
             in_reply_to = (msg.get('In-Reply-To') or '').strip()
 
             received_at = None
@@ -202,8 +205,13 @@ def send_message(
     cc: Iterable[str] | None = None,
     in_reply_to: str = '',
     customer=None,
+    thread_key: str = '',
 ):
-    """Send an email and persist a MailMessage(direction='out')."""
+    """Send an email and persist a MailMessage(direction='out').
+
+    A reply passes its message's ``thread_key`` so it joins that thread whatever
+    the subject now reads.
+    """
     from plugins.installed.crm.models import MailMessage
 
     to_list = [a.strip() for a in to if a and a.strip()]
@@ -247,7 +255,7 @@ def send_message(
         account=account,
         direction='out',
         in_reply_to=in_reply_to[:255],
-        thread_key=_thread_key(subject, to_list[0]),
+        thread_key=thread_key or _thread_key(subject, to_list[0]),
         from_address=account.email_address,
         to_addresses=', '.join(to_list)[:5000],
         cc_addresses=', '.join(cc_list)[:5000],

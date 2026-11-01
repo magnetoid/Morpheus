@@ -132,7 +132,8 @@ def chat_thread(request, thread_id):
         'crm/chat/thread.html',
         {
             'thread': thread,
-            'messages': thread.messages.all(),
+            # Not `messages`: that name belongs to the messages framework's toasts.
+            'chat_messages': thread.messages.all(),
             'active_nav': 'customers',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},

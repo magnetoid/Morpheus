@@ -1167,14 +1167,15 @@
   <main id="main-content" class="flex-1" data-nav-mode="{{ dashboard_nav.mode }}" data-nav-section="{{ dashboard_nav.section }}" data-nav-category="{{ dashboard_nav.category }}" data-nav-tab="{{ dashboard_nav.tab_url }}">
    {# Global dashboard content width: max-w-screen-2xl (1536px) > old 7xl (1280px); use max-w-none for full-bleed. #}
    <div class="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
-    {% if messages %}
+    {% flash_messages as flash %}{% if flash %}
     {# Pipe Django messages framework into the toast queue. Morph.toast is #}
     {# defined in dashboard.js (loaded with `defer`) so we buffer onto its #}
     {# queue and the container drains them on DOMContentLoaded. #}
+    {# Read from the request (flash_messages): a view's own `messages` would replace them. #}
     <script>
       window.Morph = window.Morph || {};
       window.Morph._toastQueue = window.Morph._toastQueue || [];
-      {% for m in messages %}
+      {% for m in flash %}
       window.Morph._toastQueue.push({
         message: "{{ m.message|escapejs }}",
         level: {% if 'error' in m.tags %}'error'{% elif 'success' in m.tags %}'success'{% elif 'warning' in m.tags %}'warn'{% else %}'info'{% endif %},
