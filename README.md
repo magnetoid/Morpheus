@@ -6,6 +6,7 @@
 
 *Describe your shop in one sentence and get a real, stocked storefront. Toggle 100 capabilities on and off like apps. Then hand the back office to an AI operator who knows your catalog, briefs you every morning, and proposes improvements to her own source code — every one of them reviewed by a panel of independent models, and then by you.*
 
+[![Status: beta](https://img.shields.io/badge/status-beta-f59e0b.svg)](docs/RELEASE_NOTES.md)
 [![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
 [![Live stores](https://img.shields.io/badge/live-3%20stores%2C%20one%20codebase-ff5722.svg)](#-three-live-stores-one-codebase)
 [![Apps](https://img.shields.io/badge/apps-100%20toggleable-2563eb.svg)](#-whats-in-the-box-all-100-apps)

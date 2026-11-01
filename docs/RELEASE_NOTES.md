@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.129.1 — 2026-11-01
+
+**Morpheus says it is in beta; ugc_reviews' empty tables are dropped**
+
+- The dashboard shows a Beta label next to the version, in the sidebar and on Settings → Version & updates, because Morpheus OS is not finalized yet. The version number keeps its form, so updates and automatic rollbacks work as before. The README carries a beta badge, and new GitHub Releases say beta in their title.
+- The two empty tables the removed ugc_reviews app left behind are dropped, together with what was left of it and of trust_signals in the store's records.
+
 ## v0.129.0 — 2026-10-30
 
 **Reviews own the trust strip; two apps that never worked are gone**

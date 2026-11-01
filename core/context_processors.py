@@ -52,6 +52,7 @@ def store_settings(request):
         'STORE_COUNTRY': django_settings.STORE_COUNTRY,
         'DEBUG': django_settings.DEBUG,
         'MORPHEUS_VERSION': getattr(django_settings, 'MORPHEUS_VERSION', 'v0.1.0'),
+        'MORPHEUS_RELEASE_STAGE': getattr(django_settings, 'MORPHEUS_RELEASE_STAGE', ''),
         'GOOGLE_PLACES_API_KEY': getattr(django_settings, 'GOOGLE_PLACES_API_KEY', ''),
         # Storefront fallback cover for products with no image (Settings → General).
         'PRODUCT_PLACEHOLDER_IMAGE': _product_placeholder_url(),

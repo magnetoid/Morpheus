@@ -6,6 +6,18 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.129.1 — ugc_reviews' tables are dropped; Morpheus says it is beta
+
+`ugc_reviews_reviewmedia` and `ugc_reviews_creatorinvite` are dropped when they are empty; one
+that still holds rows is kept, as in v0.123.1. Both apps' migration records and switches go
+too. From v0.129.1 you can go back to v0.129.0; to go further back, restore the pre-deploy
+backup first.
+
+`settings.MORPHEUS_RELEASE_STAGE` (`'beta'`) and the `MORPHEUS_RELEASE_STAGE` template variable
+are new. `MORPHEUS_VERSION` is unchanged in form (`vX.Y.Z`), so nothing that parses it changes.
+
+---
+
 ## v0.129.0 — trust_signals and ugc_reviews are part of reviews
 
 `trust_signals` and `ugc_reviews` are removed; reviews owns what they did.

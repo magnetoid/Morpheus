@@ -43,7 +43,13 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.129.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.129.1')
+
+# The release stage shown beside the version (the dashboard, the README badge, the
+# GitHub Release title) while Morpheus is not finalized; '' once it is. The version
+# itself stays vX.Y.Z: the release command, the deploy guard and the update checks
+# parse nothing else. .github/workflows/release.yml reads this line as written.
+MORPHEUS_RELEASE_STAGE = 'beta'
 
 # The project website. The dashboard's Help and About pages show its pages
 # (help.html, about.html) in their embed mode, so they are written once for
