@@ -1,7 +1,7 @@
-{% load trust_signals %}
+{% load i18n review_trust %}
 {% trust_data product as ts %}
 {% if ts.rating or ts.verified or ts.recent_purchases %}
-<div class="trust-strip" style="
+<div class="review-signals" style="
     margin: 0.75rem 0 1.25rem;
     padding: 0.5rem 0;
     display: flex;
@@ -14,13 +14,13 @@
     border-bottom: 1px solid var(--rule, #e3dfd6);
 ">
   {% if ts.rating %}
-  <a href="#reviews" class="trust-strip__rating" style="
+  <a href="#reviews" class="review-signals__rating" style="
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
       text-decoration: none;
       color: inherit;
-  " aria-label="Average rating {{ ts.rating.avg }} out of 5 from {{ ts.rating.count }} reviews">
+  " aria-label="{% blocktranslate trimmed count count=ts.rating.count with avg=ts.rating.avg %}Average rating {{ avg }} out of 5 from {{ count }} review{% plural %}Average rating {{ avg }} out of 5 from {{ count }} reviews{% endblocktranslate %}">
     <span aria-hidden="true" style="display: inline-flex; gap: 1px; color: var(--accent, #b8732d); letter-spacing: -1px;">
       {% for i in "12345"|make_list %}
         {% if forloop.counter <= ts.rating.stars_filled %}
@@ -33,12 +33,12 @@
       {% endfor %}
     </span>
     <strong style="font-weight: 600;">{{ ts.rating.avg }}</strong>
-    <span class="meta">({{ ts.rating.count }} review{{ ts.rating.count|pluralize }})</span>
+    <span class="meta">{% blocktranslate trimmed count count=ts.rating.count %}({{ count }} review){% plural %}({{ count }} reviews){% endblocktranslate %}</span>
   </a>
   {% endif %}
 
   {% if ts.verified %}
-  <span class="trust-strip__verified" style="
+  <span class="review-signals__verified" style="
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
@@ -47,12 +47,12 @@
       <circle cx="7" cy="7" r="6"/>
       <path d="M4 7.5l2 2 4-4"/>
     </svg>
-    {{ ts.verified.percent }}% verified buyers
+    {% blocktranslate trimmed with percent=ts.verified.percent %}{{ percent }}% verified buyers{% endblocktranslate %}
   </span>
   {% endif %}
 
   {% if ts.recent_purchases %}
-  <span class="trust-strip__recent" style="
+  <span class="review-signals__recent" style="
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
@@ -61,7 +61,7 @@
       <circle cx="7" cy="7" r="6"/>
       <path d="M7 3v4l2 1.5"/>
     </svg>
-    {{ ts.recent_purchases.count }} ordered in {{ ts.recent_purchases.plural_label }}
+    {% blocktranslate trimmed count count=ts.recent_purchases.count with window=ts.recent_purchases.plural_label %}{{ count }} ordered in {{ window }}{% plural %}{{ count }} ordered in {{ window }}{% endblocktranslate %}
   </span>
   {% endif %}
 </div>

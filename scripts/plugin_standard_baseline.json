@@ -46,7 +46,6 @@
     "returns_portal:tests.missing",
     "store_bootstrap:tests.missing",
     "storefront:structure.apps",
-    "ugc_reviews:tests.missing",
     "webstories:models.has_models_flag",
     "workflows:structure.apps",
     "zendrop:settings.not_registered"

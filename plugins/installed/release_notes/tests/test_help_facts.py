@@ -23,7 +23,9 @@ class FactsTests(TestCase):
             {t['name']: t['asks_first'] for t in f['tools']},
             {'reviews.list_pending': False, 'reviews.approve': True, 'reviews.delete': True},
         )
-        self.assertEqual(f['shop'], ['the product page, under the buy form'])
+        self.assertEqual(
+            f['shop'], ['the product page, under the buy form', 'the product page, under the price']
+        )
         self.assertEqual(f['requires'], ['catalog', 'orders'])
         self.assertIn(MorpheusEvents.ACTIVITY_FEED, f['events'])
         self.assertIn('/dashboard/reviews/', f['urls'])
@@ -52,7 +54,10 @@ class FactsTests(TestCase):
             type(inst), 'contribute_dashboard_pages', side_effect=RuntimeError('boom')
         ):
             f = facts('reviews')
-        self.assertEqual(f['places'], [])
+        # Only its settings are left once its pages raise.
+        self.assertEqual(
+            f['places'], [Link('Settings › Storefront › Reviews', '/dashboard/settings/reviews/')]
+        )
         self.assertEqual(f['label'], 'Reviews')
 
     def test_no_such_app(self):

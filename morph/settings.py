@@ -43,7 +43,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.128.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.129.0')
 
 # The project website. The dashboard's Help and About pages show its pages
 # (help.html, about.html) in their embed mode, so they are written once for
@@ -118,7 +118,6 @@ MORPHEUS_DEFAULT_APPS = [
     'plugins.installed.seo',
     'plugins.installed.advanced_ecommerce',
     'plugins.installed.advanced_payments',
-    'plugins.installed.trust_signals',
     'plugins.installed.post_purchase',
     'plugins.installed.fraud_rules',
     'plugins.installed.personalisation',
@@ -183,7 +182,6 @@ MORPHEUS_DEFAULT_APPS = [
     #   F6   rails                  — six personalised recommendation rails
     #   F2   media_3d               — 3D / AR previews + shoppable video
     #   F7   ai_stylist             — on-site AI shopping assistant
-    #   F14  ugc_reviews            — photo + video reviews + creator program
     #   F11  one_click              — one-click returning shopper
     #   F17  rich_post_purchase     — multichannel post-purchase chain
     #   F3   journal                — block-editor story-telling CMS
@@ -201,7 +199,6 @@ MORPHEUS_DEFAULT_APPS = [
     'plugins.installed.rails',
     'plugins.installed.media_3d',
     'plugins.installed.ai_stylist',
-    'plugins.installed.ugc_reviews',
     'plugins.installed.discovery_quiz',
     'plugins.installed.staff_mfa',
     'plugins.installed.staff_sso',
