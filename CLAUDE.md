@@ -273,6 +273,16 @@ when nothing in scope would fill it. Guarded by `book_product/tests/test_listing
 `storefront/tests/test_listing_facets_seam.py`, `themes/test_dot_books_listing_filters.py` and
 `themes/test_dot_books_book_card.py`.
 
+**Convention — a search suggestion is what was typed (v0.131.0).** The storefront's search
+dropdown (`/api/quick-search/`, `storefront/search_suggest.py`) suggests products only when every word
+starts a word of the name, then the product's text (words of 4+ letters, since shorter ones match its
+HTML), author or SKU. Above them are landing pages whose names match and that have products on them:
+the shop's categories and collections, plus an app's own through `SEARCH_SUGGESTIONS` (book_product:
+genres, authors). The semantic ranker stays on the full results page. It finds a neighbour for any
+query, so live, "dune" and "orwell" suggested the same six unrelated books, and "wat" missed every
+water filter. Guarded by `storefront/tests/test_search_suggest.py` and
+`book_product/tests/test_search_suggestions.py`.
+
 **Convention — a vertical extends Product, and shopping surfaces list `shoppable()`
 (v0.109.0).** booking_marketplace kept experiences in a parallel table the dashboard,
 Linda's product tools, stories and search never saw. Each listing now extends a catalog

@@ -51,14 +51,14 @@ class QuickSearchTests(TestCase):
     def test_empty_query_returns_empty_results(self):
         resp = self._fetch('')
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json(), {'results': []})
+        self.assertEqual(resp.json(), {'results': [], 'groups': []})
 
     def test_single_char_returns_empty_results(self):
         """Without the 2-char floor the topbar would 500-cascade the
         catalog on every keystroke."""
         resp = self._fetch('c')
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json(), {'results': []})
+        self.assertEqual(resp.json(), {'results': [], 'groups': []})
 
     def test_response_shape_is_stable(self):
         resp = self._fetch('confessions')

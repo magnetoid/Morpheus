@@ -551,6 +551,14 @@ class MorpheusEvents:
     #   book app answers {'genre', 'author', 'formats', 'formats_line'}. Read by
     #   core's {% product_card_meta %} so a theme card never loads an app's tags.
     PRODUCT_CARD_META = 'product.card_meta'  # filter
+    # SEARCH_SUGGESTIONS — filter, value=list of groups, kwargs: query (str, two
+    #   characters at least), words (its lowercased words). The storefront's search
+    #   dropdown (/api/quick-search/) lists products and the shop's own categories and
+    #   collections; an app that owns another kind of landing page appends
+    #   {'key', 'label', 'items': [{'name', 'url', 'meta'}]}: a few rows that start
+    #   with what was typed and have something on them (book_product: genres,
+    #   authors). Every value is text, which the theme escapes.
+    SEARCH_SUGGESTIONS = 'storefront.search_suggestions'  # filter
     # STOREFRONT_PRODUCTS — filter. The merchandising-takeover hook: storefront
     #   views fire it at every product placeholder so a merchandising owner
     #   (the dynamics plugin) can control WHAT renders there.

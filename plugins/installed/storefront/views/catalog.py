@@ -19,6 +19,8 @@ _metafield_search_ids). They're consumed by other modules in this package.
 from __future__ import annotations
 
 import contextlib
+import logging
+
 from django.utils.translation import gettext
 
 from api.client import internal_graphql
@@ -28,6 +30,8 @@ from plugins.installed.storefront.services import catalogue_label, page_intro, s
 from plugins.registry import app_registry
 
 from ._queries import PRODUCT_DETAIL_QUERY
+
+logger = logging.getLogger(__name__)
 
 
 def _paginate(qs, per_page, request):
@@ -1762,24 +1766,32 @@ def categories(request):
 
 
 def quick_search(request):
-    """Lightweight JSON endpoint for the topbar quick-results dropdown.
-    Returns up to 6 matches; empty array for queries < 2 chars.
+    """JSON for the topbar search dropdown: `results` (up to 6 products) and
+    `groups` (matching landing pages: categories, collections and whatever apps
+    add through SEARCH_SUGGESTIONS). Both empty for queries < 2 chars.
+    `storefront/search_suggest.py` decides what matches.
     """
     from django.http import JsonResponse
 
     from core.pricing import apply_price_filter
-    from plugins.installed.catalog.models import Product
+    from plugins.installed.storefront import search_suggest
 
-    q = (request.GET.get('q') or '').strip()
+    q = (request.GET.get('q') or '').strip()[:100]
     if len(q) < 2:
-        return JsonResponse({'results': []})
+        return JsonResponse({'results': [], 'groups': []})
+    terms = search_suggest.words(q)
 
     try:
-        qs = Product.objects.shoppable().prefetch_related('images')
-        qs = _apply_search(qs, q)
-        rows = list(qs[:6])
+        rows = search_suggest.products(q, terms)
     except Exception:  # noqa: BLE001
+        logger.exception('quick_search: product suggestions failed')
         rows = []
+    try:
+        groups = search_suggest.catalog_groups(terms)
+    except Exception:  # noqa: BLE001
+        logger.exception('quick_search: catalog suggestions failed')
+        groups = []
+    groups = hook_registry.filter(MorpheusEvents.SEARCH_SUGGESTIONS, groups, query=q, words=terms)
 
     results = []
     for p in rows:
@@ -1814,4 +1826,4 @@ def quick_search(request):
                 'image_url': img,
             }
         )
-    return JsonResponse({'results': results})
+    return JsonResponse({'results': results, 'groups': groups})

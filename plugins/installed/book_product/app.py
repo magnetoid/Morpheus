@@ -38,6 +38,8 @@ class BookProductPlugin(Plugin):
         self.register_hook(events.LISTING_FACETS, self.on_listing_facets, priority=40)
         # A storefront book card's genre, author and formats (cards.py).
         self.register_hook(events.PRODUCT_CARD_META, self.on_product_card_meta, priority=40)
+        # Genres and authors in the storefront's search dropdown (search_suggestions.py).
+        self.register_hook(events.SEARCH_SUGGESTIONS, self.on_search_suggestions, priority=40)
         # A translated work's editions name each other as hreflang alternates —
         # added to the head document after seo has decided the page (priority
         # 60 > seo's 50), never printed by a theme beside it.
@@ -96,6 +98,11 @@ class BookProductPlugin(Plugin):
         from plugins.installed.book_product.cards import card_meta
 
         return {**(value or {}), **card_meta(product)}
+
+    def on_search_suggestions(self, value, words=(), **_):
+        from plugins.installed.book_product.search_suggestions import answer
+
+        return answer(list(value or []), list(words))
 
     def on_listing_facets(self, value, params=None, surface='', **_):
         from plugins.installed.book_product.listing_facets import answer
