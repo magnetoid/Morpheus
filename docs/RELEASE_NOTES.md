@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.130.2 — 2026-11-02
+
+**Montenegro blog posts read like articles**
+
+- A blog post on montenegro-experience.me is wider (736px of text, was 568px) and set in the body sans at 18px with 1.8 line height; it was the display serif at 17.6px.
+- Headings have a scale and room: h2 about 33px with 52px above, h3 about 23px with 36px above. Paragraphs, lists (with bullets again), figures, captions, quotes and tables get their own spacing; Tailwind's reset had taken every margin off the post's markup.
+- The post's date line and the Blog link above the title read in the theme's muted and primary colours; both pointed at a colour variable the theme redefines as a bare HSL triplet.
+
 ## v0.130.1 — 2026-11-01
 
 **Real email addresses in the dashboard, and a readable CRM inbox**

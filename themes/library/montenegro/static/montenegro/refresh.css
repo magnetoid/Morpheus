@@ -267,3 +267,78 @@ html.mx-sb-locked body { overflow: hidden; }
   .mx-sb__field, .mx-sb__submit { transition: none; }
   .mx-catstrip__item { transition: none; }
 }
+
+/* ── Blog post (storefront/journal_detail.html) ───────────────────────────
+   Tailwind's reset takes every margin off the post's own markup, so h2, h3,
+   paragraphs and lists ran together at one size in a 568px column, set in
+   the display face. The post gets a reading measure, a sans body and a
+   heading scale with room above each heading. */
+.mx-article { padding: 3rem 0 5rem; }
+.mx-article__wrap { max-width: 50rem; margin: 0 auto; padding: 0 1.25rem; }
+@media (min-width: 768px) { .mx-article__wrap { padding: 0 2rem; } }
+.mx-article__crumb {
+  font-size: .8rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+}
+.mx-article__crumb a { color: hsl(var(--primary)); text-decoration: none; }
+.mx-article__crumb a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.mx-article__title {
+  margin: .75rem 0 1rem; color: hsl(var(--foreground));
+  font-size: clamp(2.1rem, 1.4rem + 3vw, 3.4rem); line-height: 1.1; font-weight: 600;
+  text-wrap: balance;
+}
+.mx-article__title span { color: hsl(var(--primary)); }
+.mx-article__meta { font-size: .9rem; color: hsl(var(--muted-foreground)); }
+.mx-article__body { margin-top: 2.5rem; }
+.mx-article__foot {
+  margin-top: 3.5rem; padding-top: 1.75rem; border-top: 1px solid hsl(var(--border));
+}
+.mx-article__foot a { color: hsl(var(--primary)); font-weight: 600; text-decoration: none; }
+.mx-article__foot a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.mx-prose {
+  font-size: 1.0625rem; line-height: 1.8; color: hsl(var(--foreground) / .88);
+  overflow-wrap: break-word;
+}
+@media (min-width: 768px) { .mx-prose { font-size: 1.125rem; } }
+.mx-prose > :first-child { margin-top: 0; }
+.mx-prose > :last-child { margin-bottom: 0; }
+.mx-prose p, .mx-prose ul, .mx-prose ol, .mx-prose figure,
+.mx-prose blockquote, .mx-prose table, .mx-prose pre { margin: 0 0 1.4em; }
+.mx-prose h2, .mx-prose h3, .mx-prose h4 { color: hsl(var(--foreground)); scroll-margin-top: 90px; }
+.mx-prose h2 {
+  margin: 3.25rem 0 1rem; font-size: clamp(1.6rem, 1.25rem + 1.3vw, 2.05rem); line-height: 1.2;
+}
+.mx-prose h3 { margin: 2.25rem 0 .65rem; font-size: clamp(1.25rem, 1.1rem + .6vw, 1.45rem); line-height: 1.3; }
+.mx-prose h4 { margin: 1.75rem 0 .5rem; font-size: 1.05rem; line-height: 1.4; }
+.mx-prose h2 + h3 { margin-top: 1.25rem; }
+.mx-prose ul { list-style: disc; padding-left: 1.4em; }
+.mx-prose ol { list-style: decimal; padding-left: 1.5em; }
+.mx-prose li { margin: .45em 0; padding-left: .2em; }
+.mx-prose li::marker { color: hsl(var(--primary)); }
+.mx-prose li > ul, .mx-prose li > ol { margin: .45em 0 0; }
+.mx-prose a {
+  color: hsl(var(--primary)); text-decoration: underline;
+  text-decoration-thickness: 1px; text-underline-offset: 3px;
+}
+.mx-prose a:hover { text-decoration-thickness: 2px; }
+.mx-prose strong { font-weight: 600; color: hsl(var(--foreground)); }
+.mx-prose img { display: block; width: 100%; height: auto; border-radius: var(--radius); }
+.mx-prose figure { margin: 2.25rem 0; }
+.mx-prose figcaption {
+  margin-top: .6rem; font-size: .875rem; line-height: 1.5; text-align: center;
+  color: hsl(var(--muted-foreground));
+}
+.mx-prose blockquote {
+  padding-left: 1.25rem; border-left: 3px solid hsl(var(--primary));
+  font-family: 'Playfair Display', Georgia, serif; font-size: 1.2em; font-style: italic;
+  color: hsl(var(--foreground));
+}
+.mx-prose table { display: block; overflow-x: auto; border-collapse: collapse; font-size: .95rem; }
+.mx-prose th, .mx-prose td {
+  padding: .6rem .8rem; border-bottom: 1px solid hsl(var(--border)); text-align: left; vertical-align: top;
+}
+.mx-prose th { font-weight: 600; color: hsl(var(--foreground)); }
+.mx-prose hr { margin: 3rem 0; border: 0; border-top: 1px solid hsl(var(--border)); }
+.mx-prose code {
+  padding: .1em .35em; border-radius: .35rem; background: hsl(var(--muted)); font-size: .9em;
+}
