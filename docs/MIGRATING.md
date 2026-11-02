@@ -6,6 +6,15 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.132.1 — the three removed payment and upsell apps leave no records
+
+The switches and stored settings of `post_checkout_upsell`, `advanced_payments` and
+`fraud_rules` are deleted; v0.132.0 had already copied the settings to `post_purchase` and
+`payments`. None of the three had a migration. From v0.132.1 you can go back to v0.132.0; to go
+further back, restore the pre-deploy backup first.
+
+---
+
 ## v0.132.0 — post_checkout_upsell, advanced_payments and fraud_rules are part of post_purchase and payments
 
 The three apps are removed; post_purchase and payments own what they did. None had a table, an

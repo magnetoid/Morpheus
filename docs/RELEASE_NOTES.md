@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.132.1 — 2026-11-02
+
+**The three apps folded into payments and post-purchase leave no records**
+
+- The switches and stored settings of the removed cash-on-delivery, fraud-check and confirmation-page suggestion apps are deleted. v0.132.0 had already copied their settings to payments and post-purchase, where they keep working unchanged.
+- A store can still go back to v0.132.0; going further back needs the pre-deploy backup.
+
 ## v0.132.0 — 2026-11-02
 
 **Cash on delivery, the test payment and the fraud check are part of payments**

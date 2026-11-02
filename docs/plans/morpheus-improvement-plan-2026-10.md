@@ -833,8 +833,12 @@ ships as one release at a time, in this order:
   and itemised while it adds up, a packing slip without prices (open items, one shipment, or
   the whole order), print CSS with the printer's own paper size, `orders.documents` for Linda.
   PDF stays the browser's Save as PDF.
-- R4 storefront search suggest: upgrade `/api/quick-search/` (W8.5).
-- R5 post_purchase ← post_checkout_upsell; payments ← advanced_payments + fraud_rules.
+- **R4 storefront search suggest (W8.5), v0.131.0** — `/api/quick-search/` suggests what was
+  typed (every word starts a word of the name), with the shop's categories and collections and an
+  app's own landing pages (`SEARCH_SUGGESTIONS`: book genres and authors) above the products.
+- **R5 post_purchase ← post_checkout_upsell; payments ← advanced_payments + fraud_rules,
+  v0.132.0** — settings copied by `plugins` 0005, the fraud score on the order page and in
+  `payments.order_risk`; the three apps' rows forgotten in v0.132.1.
 - R6 AI Act Art. 50 marking (W5c). R7 GPSR `product_safety` app (W5a).
 - R8 express checkout on the cart + shorter forms (W8.2; passkeys parked).
 - R9 ECB exchange rates (W8.6). R10 WCAG fixes + axe on all stores (W5d).
