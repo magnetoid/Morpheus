@@ -117,7 +117,7 @@ class CheckoutFlowTests(TestCase):
             cart2, str(self.product.id), quantity=1, variant_id=str(self.variant.id)
         )
         order2 = OrderService.create_from_cart(cart2, 'v2@example.com', addr, addr)
-        # No cookie → no visitor stamp (other subscribers, e.g. fraud_rules,
+        # No cookie → no visitor stamp (other subscribers, e.g. payments' fraud check,
         # may add their own metadata keys after placement).
         self.assertNotIn('visitor_id', order2.metadata)
 

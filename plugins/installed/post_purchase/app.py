@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from morpheus.app import DashboardCard, DashboardPage, Plugin, SettingsPanel
+from morpheus.app import DashboardCard, DashboardPage, Plugin, SettingsPanel, StorefrontBlock
+from morpheus.core import events
 
 
 class PostPurchasePlugin(Plugin):
@@ -10,12 +11,21 @@ class PostPurchasePlugin(Plugin):
     label = 'Post-purchase journey'
     version = '1.0.0'
     description = (
-        'Automates the 4-step post-purchase chain: shipment tracking → '
-        'delivered-confirmation → review request → NPS survey. Compounds '
-        'LTV via timing nobody else gets right.'
+        'Schedules a tracking, delivered, review-request and NPS step per order, '
+        'runs the NPS survey and report, and suggests one product on the order '
+        'confirmation page.'
     )
+    requires = ['orders', 'catalog']
 
     def ready(self) -> None:
+        from plugins.installed.post_purchase.handlers import (  # noqa: PLC0415
+            on_order_fulfilled,
+            on_order_placed,
+        )
+
+        # Owned, so the bus stops calling them while the app is off.
+        self.register_hook(events.ORDER_PLACED, on_order_placed, priority=60)
+        self.register_hook(events.ORDER_FULFILLED, on_order_fulfilled, priority=60)
         self.register_urls(
             'plugins.installed.post_purchase.urls',
             prefix='post-purchase/',
@@ -50,60 +60,38 @@ class PostPurchasePlugin(Plugin):
             ),
         ]
 
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='Post-purchase journey',
-            category='marketing',
-            description=(
-                'Per-shop timing + on/off controls for each step of the '
-                'post-purchase automation chain.'
+    def contribute_storefront_blocks(self) -> list:
+        return [
+            StorefrontBlock(
+                slot='order_receipt_extra',
+                template='post_purchase/blocks/post_order.html',
+                priority=20,
             ),
-            schema={
-                'tracking_email_enabled': {
-                    'type': 'boolean',
-                    'title': 'Send tracking email when shipment is created',
-                    'default': True,
+        ]
+
+    def get_config_schema(self) -> dict:
+        # The journey's timing runs on the defaults in handlers.py: nothing sends
+        # its emails yet, so the page offers no controls for them.
+        return {
+            'type': 'object',
+            'properties': {
+                'post_order_upsell_slug': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Post-order upsell product slug (one product)',
                 },
-                'delivered_followup_enabled': {
-                    'type': 'boolean',
-                    'title': 'Send delivered-confirmation follow-up',
-                    'default': True,
-                },
-                'delivered_followup_delay_hours': {
-                    'type': 'integer',
-                    'title': 'Hours after delivery → follow-up',
-                    'minimum': 1,
-                    'maximum': 168,
-                    'default': 24,
-                },
-                'review_request_enabled': {
-                    'type': 'boolean',
-                    'title': 'Send review-request email',
-                    'default': True,
-                },
-                'review_request_delay_days': {
-                    'type': 'integer',
-                    'title': 'Days after delivery → review request',
-                    'minimum': 1,
-                    'maximum': 60,
-                    'default': 14,
-                    'description': (
-                        '14 days is the empirically-optimal delay — '
-                        'long enough for the customer to actually use the '
-                        'product, short enough to still be memorable.'
-                    ),
-                },
-                'nps_survey_enabled': {
-                    'type': 'boolean',
-                    'title': 'Send NPS survey',
-                    'default': True,
-                },
-                'nps_survey_delay_days': {
-                    'type': 'integer',
-                    'title': 'Days after delivery → NPS survey',
-                    'minimum': 7,
-                    'maximum': 90,
-                    'default': 30,
+                'post_order_copy': {
+                    'type': 'string',
+                    'default': 'P.S. One more thing that pairs well.',
+                    'title': 'Post-order upsell copy',
                 },
             },
+        }
+
+    def contribute_settings_panel(self) -> SettingsPanel:
+        return SettingsPanel(
+            label='Post-purchase',
+            category='marketing',
+            description='The one product suggested on the order confirmation page.',
+            schema=self.get_config_schema(),
         )

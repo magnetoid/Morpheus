@@ -84,3 +84,29 @@ def forget_apps(*labels: str):
 
     forget.morpheus_forgets = labels
     return forget
+
+
+def move_plugin_config(*moves: tuple[str, str, tuple[str, ...]]):
+    """A ``RunPython`` function that copies settings an app that left the code had stored to
+    the app that took its work over: each ``(source, target, keys)`` copies every key the
+    source's ``PluginConfig`` holds into the target's, unless the target already has it. The
+    source row stays, because the release before still reads it; ``forget_apps`` removes it
+    in the release after."""
+
+    def move(apps, schema_editor):
+        config = apps.get_model('plugins', 'PluginConfig')
+        for source, target, keys in moves:
+            row = config.objects.filter(plugin_name=source).first()
+            held = row.config if row is not None and isinstance(row.config, dict) else {}
+            found = {k: held[k] for k in keys if k in held}
+            if not found:
+                continue
+            into, _ = config.objects.get_or_create(plugin_name=target)
+            current = into.config if isinstance(into.config, dict) else {}
+            added = {k: v for k, v in found.items() if k not in current}
+            if added:
+                into.config = {**current, **added}
+                into.save(update_fields=['config', 'updated_at'])
+                logger.info('moved %s settings %s to %s', source, sorted(added), target)
+
+    return move

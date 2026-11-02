@@ -1,0 +1,12 @@
+<p class="mt-2 text-sm">
+  <span class="pill {% if risk.bucket == 'ok' %}pill-success{% elif risk.bucket == 'watch' %}pill-info{% elif risk.bucket == 'review' %}pill-warn{% else %}pill-danger{% endif %}" data-fraud-bucket="{{ risk.bucket }}">{{ risk.level }}</span>
+  <span class="text-[color:var(--text-muted)]">score {{ risk.score }} of 100</span>
+</p>
+{% if risk.reasons %}
+<ul class="mt-2 text-sm list-disc pl-5 space-y-0.5">
+  {% for reason in risk.reasons %}<li>{{ reason }}</li>{% endfor %}
+</ul>
+{% else %}
+<p class="mt-1 text-xs text-[color:var(--text-muted)]">No warning signs.</p>
+{% endif %}
+<p class="mt-2 text-xs text-[color:var(--text-muted)]">Nothing holds or cancels an order because of this score.</p>

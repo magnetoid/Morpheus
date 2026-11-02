@@ -1924,6 +1924,11 @@ died before Python ran, or when the release put back predates v0.121.0: neither 
 - Release N deletes the app's folder and its `MORPHEUS_DEFAULT_APPS` line. It takes a
   dead model out of an app that stays in state only (`SeparateDatabaseAndState`), so every
   table stays: a store put back on the release before still finds them.
+- A merge copies the merged app's stored settings to the app that takes its work over in
+  release N (`core.migration_ops.move_plugin_config`: a key the new owner already holds is
+  kept), and the old row stays for the release before. Without it the new owner's defaults
+  win, and its first panel save or post-migrate sync blanks what the merchant had written
+  (dotbooks' cash-on-delivery instructions, v0.132.0).
 - Release N+1, pushed only once N is live, drops the leftovers:
   - a removed app's tables, from a `plugins` app migration built with
     `core.migration_ops.leftover_table_drops()` (a `DropLeftoverModel` per table) and

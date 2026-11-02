@@ -6,6 +6,31 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.132.0 — post_checkout_upsell, advanced_payments and fraud_rules are part of post_purchase and payments
+
+The three apps are removed; post_purchase and payments own what they did. None had a table, an
+agent tool or a GraphQL field.
+- **The confirmation-page suggestion** is post_purchase's block in `order_receipt_extra`. Its
+  template is `post_purchase/blocks/post_order.html` and its tag library `post_purchase`
+  (`{% load post_purchase %}`, `{% post_order_upsell_pick order as up %}`). A theme that overrode
+  `post_checkout_upsell/blocks/post_order.html` moves the override to the new name. Its two
+  settings (`post_order_upsell_slug`, `post_order_copy`) keep their keys, on Settings →
+  Marketing → Post-purchase.
+- **Cash on delivery and the test payment** are payments' gateways (`cod`, `test`), with
+  `cod_enabled`, `cod_instructions` and `test_enabled` on Settings → Payments → Payment
+  gateways. The gateway classes are importable from `plugins.installed.payments.gateways`.
+- **The fraud score** is payments' (`plugins.installed.payments.risk`); `high_value_threshold`
+  keeps its key. It is written to `order.metadata` under the same keys as before
+  (`fraud_score`, `fraud_bucket`, `fraud_flags`, `fraud_detail`) and is now shown on the
+  order's dashboard page and through the `payments.order_risk` agent tool.
+
+The settings the three apps had stored are copied to their new owners when the release
+migrates. `ORDER_DETAIL_PANELS` is a new filter: an app adds a card to the dashboard order page
+by appending `{'label', 'html', 'priority'}`, like `CUSTOMER_DETAIL_PANELS`. An out-of-tree app
+that lists any of the three in `requires` lists `post_purchase` or `payments` instead.
+
+---
+
 ## v0.129.1 — ugc_reviews' tables are dropped; Morpheus says it is beta
 
 `ugc_reviews_reviewmedia` and `ugc_reviews_creatorinvite` are dropped when they are empty; one
