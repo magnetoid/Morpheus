@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.131.0 — 2026-11-02
+
+**Search suggestions show what was typed, with categories, genres and authors**
+
+- The search dropdown on dotbooks, Supernatural and Irving suggests products whose names start with the words typed, then products whose text, author or SKU does. It used the full results page's semantic ranker, which finds a neighbour for any query: "dune" and "orwell" suggested the same six unrelated books, and "wat" on Irving missed every water filter. Answers took 350–660 ms live and take 4–41 ms against the same databases.
+- Above the products the dropdown lists the categories and collections whose names match, each with its product count; one with nothing in it is never suggested. Apps add their own landing pages through the new SEARCH_SUGGESTIONS filter: book_product adds genres and authors on dotbooks.
+- Arrow keys move through every row, and each group is labelled for screen readers. Enter still opens the full results page, which keeps the semantic ranking.
+
 ## v0.130.2 — 2026-11-02
 
 **Montenegro blog posts read like articles**
