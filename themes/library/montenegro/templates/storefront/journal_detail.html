@@ -11,28 +11,26 @@
 {% endblock %}
 
 {% block content %}
-<article style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 640px;">
-    <p class="meta" style="margin-bottom: 1.25rem;">
-      <a href="/journal/" style="color: var(--muted);">{% trans "Blog" %}</a>
-    </p>
-    <p class="meta" itemprop="author" itemscope itemtype="https://schema.org/Person">
-      {% if entry.author %}<span itemprop="name">{{ entry.author }}</span>{% endif %}
-      {% if entry.author and entry.date_label %} · {% endif %}{{ entry.date_label }}
-    </p>
-    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">
-      {{ entry.title }}<span class="text-accent">.</span>
-    </h1>
-    <div itemprop="articleBody" style="font-family: var(--serif); font-size: 1.1rem; line-height: 1.7; color: var(--ink-2);">
+<article class="mx-article">
+  <div class="mx-article__wrap">
+    <header>
+      <p class="mx-article__crumb"><a href="/journal/">{% trans "Blog" %}</a></p>
+      <h1 class="mx-article__title">{{ entry.title }}<span>.</span></h1>
+      <p class="mx-article__meta" itemprop="author" itemscope itemtype="https://schema.org/Person">
+        {% if entry.author %}<span itemprop="name">{{ entry.author }}</span>{% endif %}
+        {% if entry.author and entry.date_label %} · {% endif %}{{ entry.date_label }}
+      </p>
+    </header>
+    <div class="mx-article__body mx-prose" itemprop="articleBody">
       {% if entry.is_html %}
         {{ entry.body|safe }}
       {% else %}
         {{ entry.body|linebreaks }}
       {% endif %}
     </div>
-
-    <hr class="rule" style="margin: 3rem 0;">
-    <a href="/journal/" class="btn-link">{% trans "All entries" %}</a>
+    <footer class="mx-article__foot">
+      <a href="/journal/">&larr; {% trans "All entries" %}</a>
+    </footer>
   </div>
 </article>
 {% endblock %}
