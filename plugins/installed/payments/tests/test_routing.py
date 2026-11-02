@@ -95,8 +95,8 @@ class ResolveGatewayTests(TestCase):
         _bank_transfer_set_up()
 
     def test_registry_has_expected_gateways(self):
-        # Sanity: the real gateways are registered (payments +
-        # advanced_payments ready() ran at app load).
+        # Sanity: the real gateways are registered (payments' ready() ran at
+        # app load).
         self.assertIsNotNone(gateway_registry.get('stripe'))
         self.assertIsNotNone(gateway_registry.get('manual'))
         self.assertIsNotNone(gateway_registry.get('cod'))

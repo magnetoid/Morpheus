@@ -1,7 +1,7 @@
 """Apps consolidation (docs/plans/apps-consolidation-2026-10.md): the apps that left the code
 are gone. Wave 1's ten held no data and showed nothing; Wave 2 folded save_for_later into
-wishlist, and trust_signals and ugc_reviews into reviews. Their tables outlive them by one
-release."""
+wishlist, trust_signals and ugc_reviews into reviews, post_checkout_upsell into post_purchase,
+and advanced_payments and fraud_rules into payments. Their tables outlive them by one release."""
 
 from __future__ import annotations
 
@@ -36,6 +36,10 @@ REMOVED = (
     # Wave 2: folded into reviews (v0.129.0).
     'trust_signals',
     'ugc_reviews',
+    # Wave 2: folded into post_purchase and payments (v0.132.0).
+    'post_checkout_upsell',
+    'advanced_payments',
+    'fraud_rules',
 )
 
 

@@ -118,7 +118,7 @@ class ServiceProductSurfaceTests(TestCase):
         self.assertNotIn(tours.pk, stocked)
 
     def test_the_post_order_upsell_never_offers_a_service(self):
-        from plugins.installed.post_checkout_upsell.templatetags.post_checkout_upsell import (
+        from plugins.installed.post_purchase.templatetags.post_purchase import (
             _pick_product,
         )
 

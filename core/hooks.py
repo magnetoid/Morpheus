@@ -606,6 +606,11 @@ class MorpheusEvents:
     CART_CALCULATE_TOTAL = 'cart.calculate_total'  # DEPRECATED — use CART_CALCULATE_BREAKDOWN
     ACCOUNT_SUMMARY_FIELDS = 'account.summary_fields'  # filter
     CUSTOMER_DETAIL_PANELS = 'customer.detail_panels'  # filter
+    # ORDER_DETAIL_PANELS — filter, value=list[dict], kwargs: order=Order,
+    #   request=HttpRequest. The CUSTOMER_DETAIL_PANELS contract on the dashboard
+    #   order page: an app appends {'label': str, 'html': SafeString,
+    #   'priority': int} and returns the list (payments: the fraud check).
+    ORDER_DETAIL_PANELS = 'order.detail_panels'  # filter
     # PRODUCT_FORM_CARDS — filter, value=list[dict], kwargs: product=Product.
     #   A plugin appends {'template': '<path>', 'context': {...}, 'order': int}
     #   to contribute a card into the dashboard product-edit form WITHOUT

@@ -181,6 +181,20 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
         'fulfilled': 'Fulfilled',
         'delivered': 'Delivered',
     }
+    # Panels other apps contribute (ORDER_DETAIL_PANELS); a disabled app adds none.
+    detail_panels: list[dict[str, Any]] = []
+    if order is not None:
+        try:
+            from morpheus.core import MorpheusEvents, hook_registry
+
+            panels = hook_registry.filter(
+                MorpheusEvents.ORDER_DETAIL_PANELS, [], order=order, request=request
+            )
+            detail_panels = sorted(
+                (p for p in panels if isinstance(p, dict)), key=lambda p: p.get('priority', 50)
+            )
+        except Exception:  # noqa: BLE001 — never break the order page over a panel
+            detail_panels = []
     cur_status = getattr(order, 'status', '') if order else ''
     cur_idx = happy_path.index(cur_status) if cur_status in happy_path else -1
     status_steps = [
@@ -197,6 +211,7 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
         'admin_dashboard/order_detail.html',
         {
             'order': order,
+            'order_detail_panels': detail_panels,
             'refunds': refunds,
             'refunded_total': refunded_total,
             'status_steps': status_steps,

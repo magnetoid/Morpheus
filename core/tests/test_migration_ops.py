@@ -13,7 +13,12 @@ from django.db.migrations.state import ModelState, ProjectState
 from django.test import TransactionTestCase
 
 from core import migration_safety
-from core.migration_ops import DropLeftoverModel, forget_apps, leftover_table_drops
+from core.migration_ops import (
+    DropLeftoverModel,
+    forget_apps,
+    leftover_table_drops,
+    move_plugin_config,
+)
 from plugins.models import PluginConfig
 
 TABLE = 'wave1_leftover_probe'
@@ -180,3 +185,37 @@ class ForgetAppsTests(TransactionTestCase):
         review = migration_safety.review(migration, ProjectState())
         self.assertTrue(review.blocks)
         self.assertIn('wave2_gone', str(review.findings[0]))
+
+
+class MovePluginConfigTests(TransactionTestCase):
+    """move_plugin_config: a merged app's settings reach the app that took its work over,
+    without overwriting what that app already holds."""
+
+    def _move(self, *moves):
+        with connection.schema_editor() as editor:
+            move_plugin_config(*moves)(django_apps, editor)
+
+    def test_the_named_keys_are_copied_and_the_source_is_kept(self):
+        PluginConfig.objects.create(
+            plugin_name='wave2_old', config={'note': 'Pay the courier', 'flag': False, 'x': 1}
+        )
+        PluginConfig.objects.create(plugin_name='wave2_new', config={'own': 'kept'})
+        self._move(('wave2_old', 'wave2_new', ('note', 'flag', 'absent')))
+        new = PluginConfig.objects.get(plugin_name='wave2_new').config
+        self.assertEqual(new, {'own': 'kept', 'note': 'Pay the courier', 'flag': False})
+        self.assertTrue(PluginConfig.objects.filter(plugin_name='wave2_old').exists())
+
+    def test_a_key_the_target_already_has_is_not_overwritten(self):
+        PluginConfig.objects.create(plugin_name='wave2_old', config={'note': 'old'})
+        PluginConfig.objects.create(plugin_name='wave2_new', config={'note': 'chosen since'})
+        self._move(('wave2_old', 'wave2_new', ('note',)))
+        self.assertEqual(
+            PluginConfig.objects.get(plugin_name='wave2_new').config, {'note': 'chosen since'}
+        )
+
+    def test_a_target_without_a_row_gets_one_and_nothing_to_move_creates_none(self):
+        PluginConfig.objects.create(plugin_name='wave2_old', config={'note': 'old'})
+        PluginConfig.objects.create(plugin_name='wave2_empty', config={})
+        self._move(('wave2_old', 'wave2_new', ('note',)), ('wave2_empty', 'wave2_other', ('note',)))
+        self.assertEqual(PluginConfig.objects.get(plugin_name='wave2_new').config, {'note': 'old'})
+        self.assertFalse(PluginConfig.objects.filter(plugin_name='wave2_other').exists())

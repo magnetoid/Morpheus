@@ -43,7 +43,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.131.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.132.0')
 
 # The release stage shown beside the version (the dashboard, the README badge, the
 # GitHub Release title) while Morpheus is not finalized; '' once it is. The version
@@ -123,9 +123,7 @@ MORPHEUS_DEFAULT_APPS = [
     'plugins.installed.flipbook',
     'plugins.installed.seo',
     'plugins.installed.advanced_ecommerce',
-    'plugins.installed.advanced_payments',
     'plugins.installed.post_purchase',
-    'plugins.installed.fraud_rules',
     'plugins.installed.personalisation',
     'plugins.installed.agent_core',
     'plugins.installed.crm',
@@ -197,7 +195,6 @@ MORPHEUS_DEFAULT_APPS = [
     #   F12  smart_shipping         — live rates + carbon display
     #   F20  returns_portal         — returns as a retention surface
     #   F9   lookbook               — editorial product bundles
-    #   F13  post_checkout_upsell   — single in-checkout + post-order upsell
     #   F16  drops                  — scheduled drops + waitlist
     #   F5   motion                 — micro-animations + skeleton states
     'plugins.installed.immersive_pdp',
@@ -210,7 +207,6 @@ MORPHEUS_DEFAULT_APPS = [
     'plugins.installed.staff_sso',
     'plugins.installed.returns_portal',
     'plugins.installed.lookbook',
-    'plugins.installed.post_checkout_upsell',
     'plugins.installed.drops',
     'plugins.installed.motion',
     # Agentic Commerce Protocol (ACP 2026-04-17). Agent-driven discovery +

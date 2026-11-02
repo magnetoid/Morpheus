@@ -26,7 +26,7 @@ def _pick_product(order):
     from plugins.registry import app_registry
 
     slug = str(
-        app_registry.config_value('post_checkout_upsell', 'post_order_upsell_slug', '') or ''
+        app_registry.config_value('post_purchase', 'post_order_upsell_slug', '') or ''
     ).strip()
     if slug:
         product = Product.objects.shoppable().filter(slug=slug).first()
@@ -47,7 +47,7 @@ def post_order_upsell_pick(order):
         image = product.primary_image
         default_copy = 'P.S. One more thing that pairs well.'
         copy = str(
-            app_registry.config_value('post_checkout_upsell', 'post_order_copy', default_copy)
+            app_registry.config_value('post_purchase', 'post_order_copy', default_copy)
             or default_copy
         )
         return {

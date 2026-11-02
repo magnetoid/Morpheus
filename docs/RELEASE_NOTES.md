@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.132.0 — 2026-11-02
+
+**Cash on delivery, the test payment and the fraud check are part of payments**
+
+- Payments now owns cash on delivery and the staff-only test payment, which were a separate app. Their settings are on Settings → Payments → Payment gateways; dotbooks' cash-on-delivery instructions were carried over as written.
+- Every new order's fraud score (repeat orders from one IP address or email, mismatched countries, refund history, an unusually large first order) is now shown in a Fraud check card on the order's page, and Linda can read it. It was written to every order and shown nowhere. It still holds or cancels nothing.
+- The suggested product on the order confirmation page is part of post-purchase, with its settings on Settings → Marketing → Post-purchase.
+- Two fraud settings that did nothing (an auto-reject score and a card-number list no payment ever filled) are gone.
+
 ## v0.131.0 — 2026-11-02
 
 **Search suggestions show what was typed, with categories, genres and authors**

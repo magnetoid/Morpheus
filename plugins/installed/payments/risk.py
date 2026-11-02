@@ -1,27 +1,22 @@
-"""Fraud risk scoring engine.
+"""Fraud risk scoring on every new order (ORDER_PLACED, priority 85).
 
 Six rules, each contributing weighted points to a 0-100 score:
 
   1. Velocity by IP — > 5 orders from one IP in 10 min → +30.
   2. Velocity by email — > 3 orders from one email in 24 h → +20.
   3. Address mismatch — shipping country ≠ billing country → +15.
-  4. High-risk BIN — first 6 digits in the configurable denylist → +25
-     (currently empty in code; merchants supply their own list via
-     PluginConfig).
+  4. High-risk BIN — first 6 digits in a denylist → +25. No gateway records
+     ``metadata['payment_bin']`` yet, so this rule never fires and the
+     denylist is not offered as a setting.
   5. Refund-fraud history — customer has > 2 refunds in 90 days
      totalling > 50% of orders → +30.
-  6. New-customer + high-value — first order && total > merchant-
-     configured threshold (default 500 USD) → +10.
+  6. New-customer + high-value — first order && total > the payments
+     setting ``high_value_threshold`` (default 500) → +10.
 
-Thresholds:
-  - score < 30   → ok       (no action)
-  - 30 ≤ s < 60  → watch    (logged, surfaced in admin)
-  - 60 ≤ s < 80  → review   (admin flag, optional email alert)
-  - score ≥ 80   → reject   (optional auto-cancel — off by default)
-
-Phase 1 only writes the score and flag list into
-``order.metadata['fraud_score']`` + ``['fraud_flags']``. Auto-action
-is a Phase 2 follow-up gated by merchant opt-in.
+Buckets: < 30 ok, 30-59 watch, 60-79 review, ≥ 80 reject. The score, bucket
+and flags are written to ``order.metadata['fraud_*']`` and shown on the
+dashboard order page and to Linda (``payments.order_risk``). Nothing holds or
+cancels an order because of its score.
 """
 
 from __future__ import annotations
@@ -30,12 +25,13 @@ import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
 from decimal import Decimal
+from typing import Any
 
 from django.conf import settings
 from django.db.models import Count, Sum
 from django.utils import timezone
 
-logger = logging.getLogger('morpheus.fraud_rules.services')
+logger = logging.getLogger('morpheus.payments.risk')
 
 
 @dataclass(slots=True)
@@ -98,7 +94,7 @@ def score_order(order) -> FraudResult:
         score = max(0, min(100, score))
         return FraudResult(score=score, bucket=_bucket_for(score), flags=flags, detail=detail)
     except Exception:  # noqa: BLE001
-        logger.exception('fraud_rules: score_order failed for %s', getattr(order, 'pk', '?'))
+        logger.exception('payments.risk: score_order failed for %s', getattr(order, 'pk', '?'))
         return FraudResult(score=0, bucket='ok', flags=['score_failed'])
 
 
@@ -139,9 +135,8 @@ def _address_mismatch(order) -> bool:
 def _bin_high_risk(order) -> bool:
     """Card BIN (first 6 digits) is on the merchant's denylist.
 
-    The list lives in settings.FRAUD_RULES.high_risk_bins (or
-    PluginConfig). Empty by default — merchant adds known-bad BINs
-    after their first Stripe Radar review.
+    The list lives in settings.FRAUD_RULES.high_risk_bins. Nothing records
+    the card's BIN yet, so this never matches on a real order.
     """
     denylist = _config().get('high_risk_bins') or []
     if not denylist:
@@ -249,9 +244,77 @@ def _config() -> dict:
     try:
         from plugins.models import PluginConfig  # noqa: PLC0415
 
-        row = PluginConfig.objects.filter(plugin_name='fraud_rules').first()
+        row = PluginConfig.objects.filter(plugin_name='payments').first()
         if row and isinstance(row.config, dict):
             return row.config
     except Exception:  # noqa: BLE001, S110
         pass
     return getattr(settings, 'FRAUD_RULES', {})
+
+
+def on_order_placed(*, order: Any = None, **_: Any) -> None:
+    """ORDER_PLACED: score the order and stamp the result on its metadata."""
+    if order is None:
+        return
+    try:
+        result = score_order(order)
+
+        meta = dict(getattr(order, 'metadata', {}) or {})
+        meta['fraud_score'] = result.score
+        meta['fraud_bucket'] = result.bucket
+        meta['fraud_flags'] = result.flags
+        if result.detail:
+            meta['fraud_detail'] = result.detail
+        order.metadata = meta
+        order.save(update_fields=['metadata'])
+
+        if result.bucket in ('review', 'reject'):
+            logger.warning(
+                'payments.risk: order %s flagged bucket=%s score=%s flags=%s',
+                getattr(order, 'order_number', order.pk),
+                result.bucket,
+                result.score,
+                ','.join(result.flags),
+            )
+    except Exception:  # noqa: BLE001 — never break the order pipeline
+        logger.exception('payments.risk: on_order_placed failed')
+
+
+BUCKET_LABELS = {'ok': 'Low', 'watch': 'Watch', 'review': 'Review', 'reject': 'High'}
+FLAG_LABELS = {
+    'velocity_ip': 'More than five orders from this IP address in 10 minutes',
+    'velocity_email': 'More than three orders from this email in 24 hours',
+    'address_mismatch': 'Shipping and billing countries differ',
+    'bin_high_risk': 'Card number on the high-risk list',
+    'refund_fraud_history': 'Most of this customer’s recent orders were refunded',
+    'new_high_value': 'A first order above the high-value amount',
+    'score_failed': 'The check could not run',
+}
+
+
+def order_risk(order) -> dict | None:
+    """The stored score of an order in plain words, or None when it has none."""
+    meta = getattr(order, 'metadata', None) or {}
+    if not isinstance(meta, dict) or 'fraud_score' not in meta:
+        return None
+    bucket = str(meta.get('fraud_bucket') or _bucket_for(int(meta.get('fraud_score') or 0)))
+    return {
+        'score': int(meta.get('fraud_score') or 0),
+        'bucket': bucket,
+        'level': BUCKET_LABELS.get(bucket, bucket),
+        'reasons': [FLAG_LABELS.get(f, f) for f in meta.get('fraud_flags') or []],
+    }
+
+
+def order_panel(value, order=None, **_: Any):
+    """ORDER_DETAIL_PANELS: the fraud check's result on the dashboard order page."""
+    if order is None or not isinstance(value, list):
+        return value
+    risk = order_risk(order)
+    if risk is None:
+        return value
+    from django.template.loader import render_to_string  # noqa: PLC0415
+
+    html = render_to_string('payments/order_risk_panel.html', {'risk': risk})
+    value.append({'label': 'Fraud check', 'html': html, 'priority': 40})
+    return value

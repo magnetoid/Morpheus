@@ -4,18 +4,18 @@
 
 ### Commerce you own. Run by an AI you can actually trust with the keys. Bought by agents.
 
-*Describe your shop in one sentence and get a real, stocked storefront. Toggle 100 capabilities on and off like apps. Then hand the back office to an AI operator who knows your catalog, briefs you every morning, and proposes improvements to her own source code — every one of them reviewed by a panel of independent models, and then by you.*
+*Describe your shop in one sentence and get a real, stocked storefront. Toggle 97 capabilities on and off like apps. Then hand the back office to an AI operator who knows your catalog, briefs you every morning, and proposes improvements to her own source code — every one of them reviewed by a panel of independent models, and then by you.*
 
 [![Status: beta](https://img.shields.io/badge/status-beta-f59e0b.svg)](docs/RELEASE_NOTES.md)
 [![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
 [![Live stores](https://img.shields.io/badge/live-3%20stores%2C%20one%20codebase-ff5722.svg)](#-three-live-stores-one-codebase)
-[![Apps](https://img.shields.io/badge/apps-100%20toggleable-2563eb.svg)](#-whats-in-the-box-all-100-apps)
+[![Apps](https://img.shields.io/badge/apps-97%20toggleable-2563eb.svg)](#-whats-in-the-box-all-97-apps)
 [![AI operator](https://img.shields.io/badge/AI-built--in%20operator%20(Linda)-e11d48.svg)](#-meet-linda--the-ai-operator)
 [![Agentic](https://img.shields.io/badge/agentic-MCP%20%2F%20ACP%20%2F%20UCP-7c3aed.svg)](#-agentic-commerce-be-transactable-by-ai)
 [![Stack](https://img.shields.io/badge/django%206-postgres%20%C2%B7%20celery%20%C2%B7%20graphql-092e20.svg)](#-tech-stack)
 [![Contact](https://img.shields.io/badge/contact-marko%40morpheus.direct-0ea5e9.svg)](mailto:marko@morpheus.direct)
 
-**[▶ See it live](https://dotbooks.store) · [✉ Talk to us](#-get-in-touch) · [🚀 Run your own](#-quick-start) · [🧩 What's in the box](#-whats-in-the-box-all-100-apps) · [🧱 Architecture](#-architecture-a-small-kernel-a-deep-ecosystem) · [🧭 Roadmap](#-roadmap) · [📚 Docs](#-documentation)**
+**[▶ See it live](https://dotbooks.store) · [✉ Talk to us](#-get-in-touch) · [🚀 Run your own](#-quick-start) · [🧩 What's in the box](#-whats-in-the-box-all-97-apps) · [🧱 Architecture](#-architecture-a-small-kernel-a-deep-ecosystem) · [🧭 Roadmap](#-roadmap) · [📚 Docs](#-documentation)**
 
 </div>
 
@@ -79,7 +79,7 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 - [Found by search, and by answer engines](#-found-by-search-and-by-answer-engines)
 - [A tour: shoppers, merchants, developers](#-a-tour-shoppers-merchants-developers)
 - [Architecture: a small kernel, a deep ecosystem](#-architecture-a-small-kernel-a-deep-ecosystem)
-- [What's in the box: all 100 apps](#-whats-in-the-box-all-100-apps)
+- [What's in the box: all 97 apps](#-whats-in-the-box-all-97-apps)
 - [It runs itself](#-it-runs-itself)
 - [The self-improvement loop](#-the-self-improvement-loop)
 - [Safety, security & compliance](#-safety-security--compliance)
@@ -341,7 +341,7 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/PLUGIN_DEVELOPMENT.md`](doc
 
 ---
 
-## 🧩 What's in the box: all 100 apps
+## 🧩 What's in the box: all 97 apps
 
 Every shipped capability is a toggleable app, and every app below is described from its own manifest (written at v0.76.0, brought up to date at v0.119.0). The always-current version is **Settings → Apps** in the dashboard; the source of truth for the count is `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`.
 
@@ -356,8 +356,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `orders` | Cart, the order lifecycle, fulfilment, refunds through one locking service, transactional email, invoices, notes and CSV export |
 | `customers` | Accounts, addresses, passwordless and password sign-in, the self-service account hub |
 | `inventory` | Warehouses, stock levels and movements, low-stock alerts, atomic reservations, a stockout forecast |
-| `payments` | The payment engine: Stripe (Payment Element, webhooks, refunds), PayPal, bank transfer; a gateway without credentials is never offered |
-| `advanced_payments` | Cash on delivery and a staff-only sandbox "test payment", as modular gateways |
+| `payments` | The payment engine: Stripe (Payment Element, webhooks, refunds), PayPal, bank transfer, cash on delivery and a staff-only test payment; a gateway without credentials is never offered; a fraud score on every order (velocity, address mismatch, refund history) |
 | `shipping` | Zones and rates: flat, weight tiers, order-total tiers, free over a threshold; Shippo / EasyPost adapters |
 | `tax` | Regions and categorised rates: VAT, US sales tax, EU OSS; computed from the shipping address; Stripe Tax adapter |
 | `draft_orders` | Staff-built draft orders and quotes, shared with the customer, converted to a real order on payment |
@@ -427,8 +426,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `reviews` | Customer reviews on the product page with merchant moderation, and the star rating, verified-buyer share and recent purchases under the price |
 | `wishlist` | Saved items for customers and guests, shareable links, agent tools for the concierge |
 | `cart_abandonment` | Detects stale carts and runs the consent-checked, multi-step recovery email drip |
-| `post_purchase` | Schedules the chain per order — shipment tracking → delivered → review request → NPS survey; the sending itself is not wired up yet |
-| `post_checkout_upsell` | One suggested product on the order confirmation page |
+| `post_purchase` | One suggested product on the order confirmation page; schedules the chain per order — shipment tracking → delivered → review request → NPS survey; the sending itself is not wired up yet |
 | `newsletter` | Signup popups and a double-opt-in subscriber list; sends reuse the campaign engine |
 | `affiliates` | Affiliate links, attribution, conversions, commission tiers, payouts, embeddable shop widgets and an affiliate portal |
 | `returns_portal` | Exchange or store credit as first-class return resolutions, with feedback routed to the CRM |
@@ -494,7 +492,6 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `staff_sso` | OIDC / SAML 2.0 staff sign-in (Okta, Entra, Google Workspace) with JIT provisioning and domain or group gating |
 | `gdpr` | Article 15 export and Article 17 erasure as self-service, an auditable request trail, seeded Privacy / Terms / Imprint pages |
 | `consent` | A cookie banner with per-category opt-in and an auditable log of every decision, which every tag and every server-side send obeys |
-| `fraud_rules` | Risk scoring over Stripe Radar: velocity, address mismatch, BIN denylist, refund history |
 | `observability` | The audit-log surface and the error log |
 | `backups` | Nightly database and media backups with retention, scheduled through beat |
 | `demo_data` | Seed data for a demo bookstore and an on-demand product generator themed by the active storefront theme (opt-in) |

@@ -12,7 +12,7 @@ from djmoney.money import Money
 
 from plugins.installed.catalog.models import Product
 from plugins.installed.orders.models import Order, OrderItem
-from plugins.installed.post_checkout_upsell.templatetags.post_checkout_upsell import (
+from plugins.installed.post_purchase.templatetags.post_purchase import (
     post_order_upsell_pick,
 )
 
@@ -69,6 +69,6 @@ class PostOrderUpsellPickTests(TestCase):
         _product('bought-2')
         upsell = _product('upsell-2')
         order = _order_of(Product.objects.get(slug='bought-2'))
-        html = get_template('post_checkout_upsell/blocks/post_order.html').render({'order': order})
+        html = get_template('post_purchase/blocks/post_order.html').render({'order': order})
         self.assertIn(upsell.name, html)
         self.assertIn(f'/products/{upsell.slug}/', html)

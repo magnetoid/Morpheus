@@ -1,4 +1,4 @@
-"""Fraud-rules scoring tests.
+"""Fraud risk scoring tests (payments/risk.py).
 
 Each rule's contribution to the score is verified in isolation by
 constructing the minimal input that triggers exactly one rule and
@@ -17,7 +17,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from plugins.installed.fraud_rules.services import (
+from plugins.installed.payments.risk import (
     FraudResult,
     _bucket_for,
     score_order,
@@ -116,7 +116,7 @@ class BinDenylistTests(TestCase):
     def test_no_denylist_no_flag(self):
         order = _FakeOrder(metadata={'payment_bin': '411111'})
         with patch(
-            'plugins.installed.fraud_rules.services._config',
+            'plugins.installed.payments.risk._config',
             return_value={},
         ):
             result = score_order(order)
@@ -125,7 +125,7 @@ class BinDenylistTests(TestCase):
     def test_matching_bin_flags(self):
         order = _FakeOrder(metadata={'payment_bin': '411111'})
         with patch(
-            'plugins.installed.fraud_rules.services._config',
+            'plugins.installed.payments.risk._config',
             return_value={'high_risk_bins': ['411111', '555555']},
         ):
             result = score_order(order)
@@ -135,7 +135,7 @@ class BinDenylistTests(TestCase):
     def test_non_matching_bin_no_flag(self):
         order = _FakeOrder(metadata={'payment_bin': '422222'})
         with patch(
-            'plugins.installed.fraud_rules.services._config',
+            'plugins.installed.payments.risk._config',
             return_value={'high_risk_bins': ['411111']},
         ):
             result = score_order(order)
@@ -152,7 +152,7 @@ class CombinedRulesTests(TestCase):
             metadata={'payment_bin': '411111'},
         )
         with patch(
-            'plugins.installed.fraud_rules.services._config',
+            'plugins.installed.payments.risk._config',
             return_value={'high_risk_bins': ['411111']},
         ):
             result = score_order(order)
@@ -167,19 +167,19 @@ class CombinedRulesTests(TestCase):
         # Hand-construct: rules contributing 30+20+15+25+30 = 120 → clamp to 100.
         with (
             patch(
-                'plugins.installed.fraud_rules.services._ip_velocity',
+                'plugins.installed.payments.risk._ip_velocity',
                 return_value=10,
             ),
             patch(
-                'plugins.installed.fraud_rules.services._email_velocity',
+                'plugins.installed.payments.risk._email_velocity',
                 return_value=10,
             ),
             patch(
-                'plugins.installed.fraud_rules.services._refund_fraud_rate',
+                'plugins.installed.payments.risk._refund_fraud_rate',
                 return_value=0.7,
             ),
             patch(
-                'plugins.installed.fraud_rules.services._config',
+                'plugins.installed.payments.risk._config',
                 return_value={'high_risk_bins': ['411111']},
             ),
         ):
@@ -201,7 +201,7 @@ class ScoreOrderFailSafeTests(TestCase):
         # Patch one of the rule functions to raise — score_order should
         # catch it and return FraudResult(score=0, flags=['score_failed']).
         with patch(
-            'plugins.installed.fraud_rules.services._ip_velocity',
+            'plugins.installed.payments.risk._ip_velocity',
             side_effect=RuntimeError('boom'),
         ):
             result = score_order(order)
@@ -219,9 +219,9 @@ class NewCustomerHighValueTests(TestCase):
         first-order + high-value rule remains. Lets us test that one
         rule in isolation without an Order/StockLevel fixture."""
         patches = [
-            patch('plugins.installed.fraud_rules.services._ip_velocity', return_value=0),
-            patch('plugins.installed.fraud_rules.services._email_velocity', return_value=0),
-            patch('plugins.installed.fraud_rules.services._refund_fraud_rate', return_value=0.0),
+            patch('plugins.installed.payments.risk._ip_velocity', return_value=0),
+            patch('plugins.installed.payments.risk._email_velocity', return_value=0),
+            patch('plugins.installed.payments.risk._refund_fraud_rate', return_value=0.0),
         ]
         for p in patches:
             p.start()
@@ -241,7 +241,7 @@ class NewCustomerHighValueTests(TestCase):
             total=Decimal('1000'),
         )
         with patch(
-            'plugins.installed.fraud_rules.services._is_first_order',
+            'plugins.installed.payments.risk._is_first_order',
             return_value=True,
         ):
             result = self._run_with_safe_db_rules(order)
@@ -257,7 +257,7 @@ class NewCustomerHighValueTests(TestCase):
             total=Decimal('50'),
         )
         with patch(
-            'plugins.installed.fraud_rules.services._is_first_order',
+            'plugins.installed.payments.risk._is_first_order',
             return_value=True,
         ):
             result = self._run_with_safe_db_rules(order)

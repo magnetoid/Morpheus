@@ -13,7 +13,10 @@ class PaymentsPlugin(Plugin):
     name = 'payments'
     label = 'Payments Engine'
     version = '1.0.0'
-    description = 'Handles payment processing, Stripe integration, and payment intent workflows.'
+    description = (
+        'Takes payment at checkout (Stripe, PayPal, bank transfer, cash on delivery and a '
+        'staff-only test payment) and scores every new order for fraud risk.'
+    )
     has_models = True
     requires = ['orders']
 
@@ -32,6 +35,11 @@ class PaymentsPlugin(Plugin):
         # on disable.
         self.register_hook(events.CHECKOUT_GATEWAYS, self.on_checkout_gateways, priority=10)
         self.register_hook(events.HEALTH_CHECKS, self.on_health_checks, priority=20)
+        # Fraud risk on every new order, and its panel on the dashboard order page.
+        from plugins.installed.payments import risk
+
+        self.register_hook(events.ORDER_PLACED, risk.on_order_placed, priority=85)
+        self.register_hook(events.ORDER_DETAIL_PANELS, risk.order_panel, priority=40)
 
         # Register GraphQL extensions if we want mutations like `processPayment`
         self.register_graphql_extension('plugins.installed.payments.graphql.mutations')
@@ -47,22 +55,28 @@ class PaymentsPlugin(Plugin):
 
         try:
             from plugins.installed.payments.gateway import gateway_registry
+            from plugins.installed.payments.gateways.cod_gateway import CashOnDeliveryGateway
             from plugins.installed.payments.gateways.manual_gateway import ManualGateway
             from plugins.installed.payments.gateways.paypal_gateway import PayPalGateway
             from plugins.installed.payments.gateways.stripe_gateway import StripeGateway
+            from plugins.installed.payments.gateways.test_gateway import TestPaymentGateway
 
             gateway_registry.register(ManualGateway())
             gateway_registry.register(StripeGateway())
             gateway_registry.register(PayPalGateway())
+            gateway_registry.register(TestPaymentGateway())
+            gateway_registry.register(CashOnDeliveryGateway())
         except Exception as e:  # noqa: BLE001
             logger.warning('payments: gateway registration failed: %s', e)
 
         # Settings → Payments saves land in PluginConfig; enabled_gateways()
-        # reads PaymentGatewayConfig — project the paypal toggle across on
-        # every panel save (same bridge advanced_payments uses for cod/test).
+        # reads PaymentGatewayConfig — project the paypal, cod and test toggles
+        # across on every panel save, and seed the cod/test rows after migrate.
         try:
-            from django.db.models.signals import post_save
+            from django.apps import apps
+            from django.db.models.signals import post_migrate, post_save
 
+            from plugins.installed.payments.services.offline import sync_offline_gateways
             from plugins.models import PluginConfig
 
             post_save.connect(
@@ -71,15 +85,27 @@ class PaymentsPlugin(Plugin):
                 dispatch_uid='payments-paypal-gateway-sync',
                 weak=False,
             )
+            post_migrate.connect(
+                sync_offline_gateways,
+                sender=apps.get_app_config('payments'),
+                dispatch_uid='payments-offline-gateway-sync',
+            )
         except Exception as e:  # noqa: BLE001
-            logger.warning('payments: paypal config-sync wiring failed: %s', e)
+            logger.warning('payments: gateway config-sync wiring failed: %s', e)
 
     @staticmethod
     def _on_own_config_saved(sender, instance, **kwargs):
         if getattr(instance, 'plugin_name', None) == 'payments':
+            from plugins.installed.payments.services.offline import sync_offline_gateways
             from plugins.installed.payments.services.paypal import sync_gateway_row
 
             sync_gateway_row()
+            sync_offline_gateways()
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.payments.agent_tools import order_risk_tool
+
+        return [order_risk_tool]
 
     def on_health_checks(self, value, **kwargs):
         """HEALTH_CHECKS: checkout offers at least one payment method that works."""
@@ -230,18 +256,38 @@ class PaymentsPlugin(Plugin):
                     'title': 'PayPal Webhook ID',
                     'description': 'From the PayPal developer dashboard — enables the /payments/webhooks/paypal/ backstop.',
                 },
+                'cod_enabled': {
+                    'type': 'boolean',
+                    'title': 'Enable Cash on delivery',
+                    'default': True,
+                },
+                'cod_instructions': {
+                    'type': 'string',
+                    'title': 'Cash-on-delivery instructions (shown at checkout)',
+                    'description': 'e.g. "Pay the courier in cash on arrival. A small COD fee may apply."',
+                    'default': '',
+                },
+                'test_enabled': {
+                    'type': 'boolean',
+                    'title': 'Enable the sandbox "Test payment" method',
+                    'description': 'Offered to signed-in staff only, and never charges. Leave OFF once the store is live.',
+                    'default': False,
+                },
+                'high_value_threshold': {
+                    'type': 'number',
+                    'title': 'Fraud check: a first order above this amount adds risk',
+                    'minimum': 0,
+                    'default': 500,
+                },
             },
         }
 
     def contribute_settings_panel(self):
         # Renders as a schema-driven card on the 'payments' settings category
-        # page (Stripe keys + capture strategy) via admin_dashboard's generic
-        # settings_category view. advanced_payments contributes its own
-        # 'Advanced payments' card to the same category — two plugins, one
-        # page; NOT a duplicate (ADR 0003). Disabling either removes its card.
+        # page via admin_dashboard's generic settings_category view.
         return SettingsPanel(
             label='Payment gateways',
-            description='Stripe + PayPal credentials and capture strategy. Test + cash-on-delivery live in the Advanced payments card below.',
+            description='Stripe and PayPal credentials, cash on delivery, the staff-only test payment and the fraud check.',
             schema=self.get_config_schema(),
             category='payments',
         )

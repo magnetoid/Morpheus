@@ -5,7 +5,7 @@ from the payments plugin config (Settings → Payments): ``paypal_client_id``,
 ``paypal_client_secret`` (write-only), ``paypal_mode`` ('sandbox'|'live') and
 ``paypal_webhook_id``. The gateway is offered at checkout only when the
 ``paypal_enabled`` toggle projects ``PaymentGatewayConfig(slug='paypal')`` on —
-mirroring the advanced_payments panel→config bridge.
+the same panel→config bridge ``services/offline.py`` is for cod/test.
 
 Flow (redirect-based, unlike Stripe's client_secret):
 
@@ -69,8 +69,8 @@ def sync_gateway_row(*args, **kwargs) -> None:
     """Project the ``paypal_enabled`` panel toggle onto PaymentGatewayConfig.
 
     ``enabled_gateways()`` reads PaymentGatewayConfig — not the plugin config —
-    so the Settings → Payments toggle must be mirrored (same bridge the
-    advanced_payments panel uses for cod/test).
+    so the Settings → Payments toggle must be mirrored (same bridge
+    ``services/offline.py`` is for cod/test).
     """
     try:
         from plugins.installed.payments.models import PaymentGatewayConfig
