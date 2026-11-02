@@ -36,7 +36,8 @@ class BookSuggestionTests(TestCase):
         fantasy = Genre.objects.create(name='Fantasy')
         Genre.objects.create(name='Fantastic Voyages')  # no books
         withdrawn = Genre.objects.create(name='Fantasy Classics')
-        _book('a-princess-of-mars', genres=[fantasy])
+        hidden = Genre.objects.create(name='Fantasy Noir', is_active=False)  # its page is a 404
+        _book('a-princess-of-mars', genres=[fantasy, hidden])
         _book('withdrawn', genres=[withdrawn], status='draft')
         self.assertEqual(
             self._groups('fant')['genres'],

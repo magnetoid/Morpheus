@@ -36,7 +36,8 @@ def answer(groups: list, terms: list[str]) -> list:
     if not terms:
         return groups
     genres = (
-        Genre.objects.filter(_starts_words('name', terms))
+        # A hidden genre's page is a 404 (`views._curated_detail`).
+        Genre.objects.filter(_starts_words('name', terms), is_active=True)
         .annotate(n=Count('books', filter=Q(books__product__status='active'), distinct=True))
         .filter(n__gt=0)
     )

@@ -55,9 +55,11 @@ def products(q: str, terms: list[str]) -> list:
             ids = list(search(q, per_page=PRODUCT_LIMIT).product_ids)
         except Exception:  # noqa: BLE001 — fall back to the database
             ids = []
-        if ids:
-            by_id = {p.pk: p for p in base.filter(pk__in=ids)}
-            return [by_id[i] for i in ids if i in by_id]
+        # Typesense's ids are strings and a Product's pk is a UUID.
+        by_id = {str(p.pk): p for p in base.filter(pk__in=ids)} if ids else {}
+        rows = [by_id[str(i)] for i in ids if str(i) in by_id]
+        if rows:
+            return rows
 
     rows = list(
         base.filter(starts_words('name', terms))

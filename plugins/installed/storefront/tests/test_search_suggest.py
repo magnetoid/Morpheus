@@ -10,12 +10,14 @@ whose names match (categories, collections, an app's own) above the products.
 from __future__ import annotations
 
 from decimal import Decimal
+from unittest import mock
 
 from django.test import TestCase
 from djmoney.money import Money
 
 from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.catalog.models import Category, Collection, Product
+from plugins.installed.catalog.search.dispatcher import SearchResult
 
 
 def _product(name, slug, **kw):
@@ -65,6 +67,20 @@ class SuggestTests(TestCase):
         hook_registry.register(MorpheusEvents.SEARCH_RANKED_IDS, _neighbours, priority=10)
         self.addCleanup(hook_registry.unregister, MorpheusEvents.SEARCH_RANKED_IDS, _neighbours)
         self.assertEqual(self._slugs('dune'), [])
+
+    def test_typesense_order_is_kept_and_its_string_ids_match(self):
+        first = _product('Water Filter Bottle', 'water-filter-bottle')
+        second = _product('Gravity Filter', 'gravity-filter')
+        draft = _product('Filter Draft', 'filter-draft', status='draft')
+        # Typesense returns document ids as strings.
+        hits = SearchResult(
+            product_ids=[str(second.pk), str(draft.pk), str(first.pk)], backend='typesense'
+        )
+        with (
+            mock.patch('plugins.installed.catalog.search.get_backend', return_value='typesense'),
+            mock.patch('plugins.installed.catalog.search.search', return_value=hits),
+        ):
+            self.assertEqual(self._slugs('filter'), ['gravity-filter', 'water-filter-bottle'])
 
     def test_drafts_and_services_are_never_suggested(self):
         _product('Kayak Draft', 'kayak-draft', status='draft')
