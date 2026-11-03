@@ -8,6 +8,7 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
+from django.apps import apps as django_apps
 from django.conf import settings
 from django.db import connection, models
 from django.db.migrations.loader import MigrationLoader
@@ -236,3 +237,30 @@ class UgcReviewsTablesTests(TransactionTestCase):
             PluginConfig.objects.filter(plugin_name__in=('trust_signals', 'ugc_reviews')).exists()
         )
         self.assertTrue(PluginConfig.objects.filter(plugin_name='reviews').exists())
+
+
+class PaymentAppsForgottenTests(TransactionTestCase):
+    """plugins 0006 on a store as v0.132.0 left it: the three apps' switches and settings,
+    already copied to post_purchase and payments by 0005."""
+
+    def setUp(self):
+        PluginConfig.objects.create(
+            plugin_name='advanced_payments',
+            config={'cod_enabled': True, 'cod_instructions': 'Pay the courier'},
+        )
+        PluginConfig.objects.create(plugin_name='fraud_rules', config={'high_value_threshold': 750})
+        PluginConfig.objects.create(plugin_name='post_checkout_upsell', is_enabled=False)
+        payments, _ = PluginConfig.objects.get_or_create(plugin_name='payments')
+        payments.config = {'cod_instructions': 'Pay the courier', 'high_value_threshold': 750}
+        payments.save()
+
+    def test_their_switches_go_and_the_settings_they_handed_over_stay(self):
+        forget = importlib.import_module('plugins.migrations.0006_forget_wave2_payment_apps')
+        with connection.schema_editor() as editor:
+            forget.Migration.operations[0].code(django_apps, editor)
+        gone = ('post_checkout_upsell', 'advanced_payments', 'fraud_rules')
+        self.assertFalse(PluginConfig.objects.filter(plugin_name__in=gone).exists())
+        self.assertEqual(
+            PluginConfig.objects.get(plugin_name='payments').config,
+            {'cod_instructions': 'Pay the courier', 'high_value_threshold': 750},
+        )

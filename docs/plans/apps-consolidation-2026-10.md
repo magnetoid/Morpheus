@@ -92,7 +92,8 @@ no config row had anything to move), ugc_reviews was a stub with 0 rows; its tab
 v0.129.1. Then post_purchase ← post_checkout_upsell and payments ← advanced_payments +
 fraud_rules (v0.132.0): none had a table; the suggestion block, COD, the test gateway and the
 fraud score moved with their settings, copied by a data migration, and the score is now shown on
-the order page and to Linda (`payments.order_risk`). Next: promotions ← marketing.
+the order page and to Linda (`payments.order_risk`); the three apps' own rows went in v0.132.1.
+Next: promotions ← marketing.
 
 One merge per release; each keeps settings keys, moves config rows in a data migration, keeps
 old agent-tool names as aliases for one release, adds a `MIGRATING.md` section, and passes the
