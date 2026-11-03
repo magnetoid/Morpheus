@@ -201,6 +201,21 @@ class EditorCardTests(TestCase):
         self._save(data)
         self.assertEqual(marks_for(self.product), {'short_description': 'editor'})
 
+    def test_the_editor_announces_ai_text_and_the_card_ticks_its_own_box(self):
+        # The product editor belongs to admin_dashboard: it says an AI wrote the
+        # description and names nothing of this app's; the card does the ticking.
+        from pathlib import Path
+
+        import plugins.installed.admin_dashboard as dashboard
+
+        editor = (
+            Path(dashboard.__file__).parent / 'templates/admin_dashboard/product_form.html'
+        ).read_text()
+        self.assertNotIn('ai_written_', editor)
+        self.assertEqual(editor.count("'morph:ai-text-written'"), 2)  # Draft and Rewrite
+        body = self.client.get(self.url).content.decode()
+        self.assertIn("document.addEventListener('morph:ai-text-written'", body)
+
     def test_a_save_without_the_card_changes_no_mark(self):
         # Every unticked box is absent from a POST, so without the card's marker a
         # save from anywhere else would read as "untick everything".
@@ -239,6 +254,26 @@ class ProductPageTests(TestCase):
         p = _product(description='<p>A brass lantern.</p>')
         _mark(p, 'meta_description')  # not text the page shows
         self.assertEqual(self._block(p).strip(), '')
+
+    def test_a_mark_on_emptied_text_says_nothing(self):
+        # The merchant cleared the description and kept the box: no text, no claim.
+        for empty in ('', '<p></p>', '<p> &nbsp; </p>'):
+            with self.subTest(text=empty):
+                Product.objects.filter(slug='lantern').delete()
+                p = _product(description=empty)
+                _mark(p, 'description')
+                self.assertEqual(self._block(p).strip(), '')
+
+    def test_a_booking_page_with_empty_product_text_says_nothing(self):
+        # A booking page passes the model and shows the host's own text when the
+        # product has none; the mark must not land on that text.
+        p = _product(description='', short_description='<p>A night walk.</p>')
+        _mark(p, 'description')
+        out = render_to_string('ai_content/blocks/ai_text_mark.html', {'product': p})
+        self.assertEqual(out.strip(), '')
+        _mark(p, 'short_description')
+        out = render_to_string('ai_content/blocks/ai_text_mark.html', {'product': p})
+        self.assertIn('data-ai-generated="short_description"', out)
 
     def test_the_product_page_carries_both_marks(self):
         p = _product(description='<p>A brass lantern.</p>')

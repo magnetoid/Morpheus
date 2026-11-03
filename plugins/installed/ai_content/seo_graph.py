@@ -30,7 +30,7 @@ def on_seo_jsonld_graph(value, page=None, request=None, **kwargs):
         obj = getattr(page, 'obj', None)
         if product is None or obj is None or not product.get('@id'):
             return value
-        from plugins.installed.ai_content.marks import marks_for
+        from plugins.installed.ai_content.marks import marks_for, plain_text
 
         marked = marks_for(obj)
         if not marked:
@@ -38,7 +38,7 @@ def on_seo_jsonld_graph(value, page=None, request=None, **kwargs):
         url = product['@id'].split('#')[0]
         refs = []
         for field, name in _VISIBLE:
-            text = _plain(getattr(obj, field, '') or '') if field in marked else ''
+            text = plain_text(getattr(obj, field, '') or '') if field in marked else ''
             if not text:
                 continue
             node_id = f'{url}#ai-{field.replace("_", "-")}'
@@ -67,11 +67,3 @@ def _product_node(graph) -> dict | None:
         if isinstance(node, dict) and 'Product' in str(node.get('@type', '')):
             return node
     return None
-
-
-def _plain(markup: str) -> str:
-    from html import unescape
-
-    from django.utils.html import strip_tags
-
-    return ' '.join(unescape(strip_tags(markup)).split())

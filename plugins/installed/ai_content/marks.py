@@ -35,6 +35,15 @@ SOURCES = {
 }
 
 
+def plain_text(markup: str) -> str:
+    """The words of a rich-text field, whitespace collapsed ('' for ``<p></p>``)."""
+    from html import unescape
+
+    from django.utils.html import strip_tags
+
+    return ' '.join(unescape(strip_tags(markup or '')).split())
+
+
 def on_ai_content_written(instance=None, fields=None, source='', **kwargs) -> None:
     """``AI_CONTENT_WRITTEN`` subscriber: store one mark per field."""
     if instance is None or not source:

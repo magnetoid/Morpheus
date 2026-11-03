@@ -312,10 +312,9 @@
             var _html = res.data.text || '';
             if (window.morphProductDescriptionEditor) window.morphProductDescriptionEditor.setHTML(_html);
             else ta.value = _html;
-            // The AI app's card records the description as written with AI (it is
-            // absent while that app is off).
-            var aiBox = document.querySelector('input[name="ai_written_description"]');
-            if (aiBox) aiBox.checked = true;
+            // Say an AI wrote the description: an app that keeps track of AI-written
+            // text listens (nothing does while none is on).
+            ta.dispatchEvent(new CustomEvent('morph:ai-text-written', { bubbles: true, detail: { field: 'description' } }));
             if (window.Morph && Morph.toast) Morph.toast('Draft inserted — review before saving.', 'success');
           })
           .catch(function () {
@@ -363,10 +362,9 @@
             var _html = res.data.text || '';
             if (window.morphProductDescriptionEditor) window.morphProductDescriptionEditor.setHTML(_html);
             else ta.value = _html;
-            // The AI app's card records the description as written with AI (it is
-            // absent while that app is off).
-            var aiBox = document.querySelector('input[name="ai_written_description"]');
-            if (aiBox) aiBox.checked = true;
+            // Say an AI wrote the description: an app that keeps track of AI-written
+            // text listens (nothing does while none is on).
+            ta.dispatchEvent(new CustomEvent('morph:ai-text-written', { bubbles: true, detail: { field: 'description' } }));
             if (window.Morph && Morph.toast) Morph.toast('Rewritten — review before saving.', 'success');
           })
           .catch(function () {
