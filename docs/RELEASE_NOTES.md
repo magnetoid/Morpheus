@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.133.0 — 2026-11-03
+
+**Product text written with AI is marked on the product page**
+
+- When Linda or an AI worker writes a product's description, short description, meta title or meta description, when Draft with AI or Rewrite on the product page is saved, or when a bulk AI rewrite changes it, that text is marked as written with AI. Text another system sends with an access token is not marked: nothing says a model wrote it.
+- A marked description says so in a form machines read: an element under the description, and in the page's structured data the text as a CreativeWork with schema.org's digitalSourceType for content a trained model generated. A sentence shoppers read is optional: Settings → AI → "Say so on the product page", off by default.
+- The product page in the dashboard has a "Written with AI" card showing which texts are marked and who wrote them; untick a box once a person has written that text. Linda can read the marks (products.ai_written) but cannot remove them.
+- The AI Act evidence report and its CSV list the text marked in the period. Translations and images are not marked yet.
+
 ## v0.132.1 — 2026-11-02
 
 **The three apps folded into payments and post-purchase leave no records**

@@ -45,9 +45,13 @@ class Command(BaseCommand):
             w.writerow(['approval', a['timestamp'], a['tool'], a['state'], '', a['decided_by']])
         for c in report['consents']:
             w.writerow([c['kind'], c['timestamp'], c['tool'], c['outcome'], '', c['actor']])
+        for t in report.get('ai_text') or []:
+            w.writerow(
+                ['ai_text', t['timestamp'], t['source'], f'{t["object"]}.{t["field"]}', '', '']
+            )
         # Summary to stderr so it doesn't pollute a piped CSV.
         s = report['summary']
         sys.stderr.write(
-            f'\n{s["total_decisions"]} decisions, {s["total_approvals"]} approvals '
-            f'over {days} days.\n'
+            f'\n{s["total_decisions"]} decisions, {s["total_approvals"]} approvals, '
+            f'{s.get("total_ai_text", 0)} texts marked as written with AI over {days} days.\n'
         )

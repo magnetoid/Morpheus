@@ -25,6 +25,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from core.agents.provenance import mark_ai_written
 from plugins.installed.ai_content.services import with_brand_voice
 
 logger = logging.getLogger('morpheus.ai_content.bulk_catalog')
@@ -166,6 +167,10 @@ def _bulk_run(
             if not dry_run and new_value and new_value.strip() != current.strip():
                 setattr(product, target, new_value.strip())
                 product.save(update_fields=[target])
+                # A product's name is a label the merchant chose; its text fields
+                # are marked as written with AI (EU AI Act Art. 50).
+                if target != 'name':
+                    mark_ai_written(product, [target], 'bulk')
                 entry.applied = True
                 result.succeeded += 1
             elif dry_run:

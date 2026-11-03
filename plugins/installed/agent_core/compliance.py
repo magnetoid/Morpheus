@@ -25,8 +25,9 @@ def build_ai_act_report(
     """Build the AI-Act evidence report for [since, until).
 
     Returns a dict with ``period``, ``decisions`` (flat rows), ``approvals``,
-    ``summary`` (counts), and ``guardrails`` (the active guardrail config). All
-    values are JSON/CSV-friendly primitives.
+    ``consents``, ``ai_text`` (text marked as written with AI), ``summary``
+    (counts), and ``guardrails`` (the active guardrail config). All values are
+    JSON/CSV-friendly primitives.
     """
     from collections import Counter
 
@@ -113,7 +114,7 @@ def build_ai_act_report(
             }
         )
 
-    return {
+    report = {
         'period': {'since': _iso(since), 'until': _iso(until)},
         'decisions': decisions,
         'approvals': approval_rows,
@@ -128,7 +129,14 @@ def build_ai_act_report(
             'approvals_by_state': dict(by_state),
         },
         'guardrails': _guardrail_config(),
+        'ai_text': [],
     }
+    # Apps add their own evidence for the window: ai_content, the text marked as
+    # written with AI (``ai_text`` rows plus its counts in ``summary``).
+    from core.hooks import MorpheusEvents, hook_registry
+
+    out = hook_registry.filter(MorpheusEvents.AI_ACT_REPORT, report, since=since, until=until)
+    return out if isinstance(out, dict) else report
 
 
 def _guardrail_config() -> dict[str, Any]:

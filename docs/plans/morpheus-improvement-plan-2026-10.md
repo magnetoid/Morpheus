@@ -182,7 +182,7 @@ robots.txt).
 | Trusted Agent / Web Bot Auth (`agent.json`) | advertises acceptance only when `TRUSTED_AGENT_PROXY_SECRET` is set (Cloudflare-injected headers) | RFC 9421 signatures, agent JWKS directories | no verification at the origin; dotbooks is not proxied by Cloudflare at all |
 | WebMCP | none | Chrome 149 origin trial, Lighthouse category | missing |
 | `llms.txt`, `agents.md`, `/ai/products.json`, `/md/products/<slug>` | ✔ | low-value per the data | keep, don't extend |
-| AI Act Art. 50 | `{% ai_disclosure %}` (chatbot disclosure, merchant text in `gdpr`) ✔ | + machine-readable marking of AI-generated content | marking missing |
+| AI Act Art. 50 | `{% ai_disclosure %}` (chatbot disclosure, merchant text in `gdpr`) ✔ | + machine-readable marking of AI-generated content | product text marked (v0.133.0); translations, images open |
 | GPSR fields | none (only `consent`, `gdpr`) | manufacturer, EU responsible person, warnings per listing | missing |
 | Passkeys (customers) | none | allauth `mfa` WebAuthn + passkey login | missing |
 | Prior-price evidence | `compare_at_price` only, no history | 30-day lowest price (EU), "was" price evidence (UK) | missing |
@@ -839,7 +839,13 @@ ships as one release at a time, in this order:
 - **R5 post_purchase ← post_checkout_upsell; payments ← advanced_payments + fraud_rules,
   v0.132.0** — settings copied by `plugins` 0005, the fraud score on the order page and in
   `payments.order_risk`; the three apps' rows forgotten in v0.132.1.
-- R6 AI Act Art. 50 marking (W5c). R7 GPSR `product_safety` app (W5a).
+- **R6 AI Act Art. 50 marking (W5c), v0.133.0** — product text Linda, a Worker, the editor's AI
+  writer or a bulk rewrite wrote is marked (`ai` metafields via `AI_CONTENT_WRITTEN`); the page
+  says so in a `data-ai-generated` element and a CreativeWork with `digitalSourceType` (not
+  `creditText`/`creator` on Product, which is invalid there); a visible sentence is the merchant's
+  setting; the AI-Act report lists the marks. An API-token write is not marked (author unknown);
+  translations and images are not marked yet.
+- R7 GPSR `product_safety` app (W5a).
 - R8 express checkout on the cart + shorter forms (W8.2; passkeys parked).
 - R9 ECB exchange rates (W8.6). R10 WCAG fixes + axe on all stores (W5d).
 - R11 dashboard Tailwind precompiled, `unsafe-eval` dropped. R12 checkout CSP with

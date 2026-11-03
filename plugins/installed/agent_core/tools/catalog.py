@@ -217,6 +217,8 @@ def publish_digital_product_tool(
     sku: str = '',
     slug: str = '',
     status: str = 'active',
+    agent=None,
+    context=None,
 ) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, publish_digital_product
 
@@ -237,6 +239,12 @@ def publish_digital_product_tool(
         )
     except PublishError as e:
         raise ToolError(str(e)) from None
+    _mark_ai_text(
+        result['id'],
+        {'description': description, 'short_description': short_description},
+        agent,
+        context,
+    )
     return ToolResult(
         output=result,
         display=f'Published {result["name"]!r} → {result["url"]} (sku={result["sku"]})',
@@ -360,6 +368,8 @@ def create_product_tool(
     price_currency: str = 'USD',
     product_type: str = 'simple',
     status: str = 'draft',
+    agent=None,
+    context=None,
     **extra,
 ) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, create_product
@@ -377,10 +387,29 @@ def create_product_tool(
         )
     except PublishError as e:
         raise ToolError(str(e)) from None
+    _mark_ai_text(r['id'], kwargs, agent, context)
     return ToolResult(
         output=r,
         display=f'Created {r["name"]!r} ({r["slug"]}, {r["product_type"]}, {r["status"]})',
     )
+
+
+# Product text a model writes when Linda or a Worker calls these tools. It is
+# marked as written with AI (EU AI Act Art. 50); a plain API token call is not,
+# because nothing says a model wrote it (core/agents/provenance.py).
+_AI_TEXT_FIELDS = ('short_description', 'description', 'meta_title', 'meta_description')
+
+
+def _mark_ai_text(product_id, fields: dict, agent, context) -> None:
+    from core.agents.provenance import ai_author, mark_ai_written
+
+    source = ai_author(agent, context)
+    written = [f for f in _AI_TEXT_FIELDS if str(fields.get(f) or '').strip()]
+    if not source or not written:
+        return
+    from plugins.installed.catalog.models import Product
+
+    mark_ai_written(Product.objects.filter(pk=product_id).first(), written, source)
 
 
 _PRICE_FIELDS = ('price_amount', 'price_currency')
@@ -441,7 +470,7 @@ def _refuse_price_change(fields: dict) -> None:
         'required': ['slug'],
     },
 )
-def update_product_tool(*, slug: str, **fields) -> ToolResult:
+def update_product_tool(*, slug: str, agent=None, context=None, **fields) -> ToolResult:
     from plugins.installed.catalog.services import PublishError, update_product
 
     _refuse_price_change(fields)
@@ -449,6 +478,7 @@ def update_product_tool(*, slug: str, **fields) -> ToolResult:
         r = update_product(slug=slug, **fields)
     except PublishError as e:
         raise ToolError(str(e)) from None
+    _mark_ai_text(r['id'], fields, agent, context)
     return ToolResult(
         output=r,
         display=f'Updated {r["name"]!r} ({r["slug"]}) — fields: {sorted(fields.keys())}',
