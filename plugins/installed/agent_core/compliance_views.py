@@ -47,6 +47,10 @@ def ai_act_report_view(request):
             w.writerow(['approval', a['timestamp'], a['tool'], a['state'], '', a['decided_by']])
         for c in report['consents']:
             w.writerow([c['kind'], c['timestamp'], c['tool'], c['outcome'], '', c['actor']])
+        for t in report.get('ai_text') or []:
+            w.writerow(
+                ['ai_text', t['timestamp'], t['source'], f'{t["object"]}.{t["field"]}', '', '']
+            )
         return resp
 
     return render(

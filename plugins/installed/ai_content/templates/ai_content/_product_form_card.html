@@ -1,0 +1,31 @@
+{% comment %}"Written with AI" card in the product editor, contributed through
+PRODUCT_FORM_CARDS and saved by PRODUCT_FORM_SAVED (ai_content.marks.save_from_form).
+Every box is always rendered and `ai_text_submitted` says the card was on the page:
+an unticked box sends nothing, so the save must know the card was there. The
+editor's AI buttons announce `morph:ai-text-written` and the card ticks that box;
+the editor names nothing of this app's.{% endcomment %}
+<div class="card card-padded space-y-3" id="ai-text-card">
+  <h2 class="font-semibold text-sm flex items-center gap-2"><i data-lucide="sparkles" class="h-4 w-4"></i> Written with AI</h2>
+  <p class="text-xs text-[color:var(--text-muted)]">Text an AI wrote is marked on the product page for shoppers and search engines. Untick a box once a person has written that text.</p>
+  <input type="hidden" name="ai_text_submitted" value="1">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    {% for field in ai_text.fields %}
+    <label class="flex items-center gap-2 text-sm">
+      <input type="checkbox" name="ai_written_{{ field.name }}" value="1"{% if field.marked %} checked{% endif %}>
+      <span>{{ field.label }}{% if field.source %} <span class="text-xs text-[color:var(--text-muted)]">({{ field.source }})</span>{% endif %}</span>
+    </label>
+    {% endfor %}
+  </div>
+</div>
+<script>
+(function () {
+  var card = document.getElementById('ai-text-card');
+  if (!card) return;
+  document.addEventListener('morph:ai-text-written', function (e) {
+    if (!card.isConnected) return;
+    var field = e.detail && e.detail.field;
+    var box = field && card.querySelector('input[name="ai_written_' + field + '"]');
+    if (box) box.checked = true;
+  });
+})();
+</script>

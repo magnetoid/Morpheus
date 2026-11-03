@@ -4283,3 +4283,6 @@ msgid_plural "the last %(n)d weeks"
 msgstr[0] "posljednjoj %(n)d sedmici"
 msgstr[1] "posljednje %(n)d sedmice"
 msgstr[2] "posljednjih %(n)d sedmica"
+
+msgid "This product's description was written with the help of AI."
+msgstr "Opis ovog proizvoda napisan je uz pomoć vještačke inteligencije."

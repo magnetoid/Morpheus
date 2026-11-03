@@ -68,5 +68,31 @@
       </tbody>
     </table>
   </div>
+
+  {% comment %}Contributed by the AI content app through the AI_ACT_REPORT filter;
+  absent while that app is off, because then nothing is marked.{% endcomment %}
+  {% if 'total_ai_text' in report.summary %}
+  <div class="card">
+    <div class="card-padded border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Text written with AI</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">Product text marked as written with AI in this window, which the product page and its structured data say ({{ report.summary.total_ai_text }}).</p>
+    </div>
+    <table class="morph-table">
+      <thead><tr><th>When</th><th>What</th><th>Field</th><th>Written by</th></tr></thead>
+      <tbody>
+        {% for t in report.ai_text|slice:":200" %}
+        <tr>
+          <td class="whitespace-nowrap">{{ t.timestamp }}</td>
+          <td><code>{{ t.object }}</code></td>
+          <td>{{ t.field }}</td>
+          <td>{{ t.source }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-sm text-[color:var(--text-muted)] card-padded">No text was marked as written with AI in this window.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

@@ -312,6 +312,9 @@
             var _html = res.data.text || '';
             if (window.morphProductDescriptionEditor) window.morphProductDescriptionEditor.setHTML(_html);
             else ta.value = _html;
+            // Say an AI wrote the description: an app that keeps track of AI-written
+            // text listens (nothing does while none is on).
+            ta.dispatchEvent(new CustomEvent('morph:ai-text-written', { bubbles: true, detail: { field: 'description' } }));
             if (window.Morph && Morph.toast) Morph.toast('Draft inserted — review before saving.', 'success');
           })
           .catch(function () {
@@ -359,6 +362,9 @@
             var _html = res.data.text || '';
             if (window.morphProductDescriptionEditor) window.morphProductDescriptionEditor.setHTML(_html);
             else ta.value = _html;
+            // Say an AI wrote the description: an app that keeps track of AI-written
+            // text listens (nothing does while none is on).
+            ta.dispatchEvent(new CustomEvent('morph:ai-text-written', { bubbles: true, detail: { field: 'description' } }));
             if (window.Morph && Morph.toast) Morph.toast('Rewritten — review before saving.', 'success');
           })
           .catch(function () {

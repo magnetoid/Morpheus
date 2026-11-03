@@ -815,6 +815,18 @@ class MorpheusEvents:
     #   toward the merchant's daily spend cap. ai_assistant reports its provider
     #   gateway's calls (its AIInteraction rows); core never imports the app.
     AI_USAGE_TODAY = 'ai.usage_today'  # filter
+    # AI_CONTENT_WRITTEN — fire, kwargs: instance (the model row whose text an AI
+    #   wrote), fields (list of field names), source ('linda' | 'worker' |
+    #   'editor' | 'bulk'). Fired through core/agents/provenance.py:mark_ai_written
+    #   by every path where a model writes text the shop publishes (Art. 50 of the
+    #   EU AI Act asks for that text to be marked). ai_content stores the marks and
+    #   publishes them; while it is off nothing is recorded.
+    AI_CONTENT_WRITTEN = 'ai.content_written'  # fire
+    # AI_ACT_REPORT — filter, value=dict (the report agent_core/compliance.py
+    #   built), kwargs: since, until. An app adds its own section of evidence for
+    #   the window (ai_content: the text marked as written with AI) and returns
+    #   the dict.
+    AI_ACT_REPORT = 'ai.act_report'  # filter
 
     # CONSENT_DECISION — filter, value=None, kwargs: request (HttpRequest or None).
     #   The consent app answers {'managed', 'analytics', 'marketing'} for that
