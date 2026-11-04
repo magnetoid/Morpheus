@@ -183,7 +183,7 @@ robots.txt).
 | WebMCP | none | Chrome 149 origin trial, Lighthouse category | missing |
 | `llms.txt`, `agents.md`, `/ai/products.json`, `/md/products/<slug>` | ✔ | low-value per the data | keep, don't extend |
 | AI Act Art. 50 | `{% ai_disclosure %}` (chatbot disclosure, merchant text in `gdpr`) ✔ | + machine-readable marking of AI-generated content | product text marked (v0.133.0); translations, images open |
-| GPSR fields | none (only `consent`, `gdpr`) | manufacturer, EU responsible person, warnings per listing | missing |
+| GPSR fields | none (only `consent`, `gdpr`) | manufacturer, EU responsible person, warnings per listing | per product + store defaults, page + `manufacturer` in the graph (v0.134.0); feeds open |
 | Passkeys (customers) | none | allauth `mfa` WebAuthn + passkey login | missing |
 | Prior-price evidence | `compare_at_price` only, no history | 30-day lowest price (EU), "was" price evidence (UK) | missing |
 | Free-shipping promises | **hardcoded** in `themes/library/dot_books/.../product_detail.html:409` and `cart.html:86` ("Free shipping over $40") and `montenegro/.../cart.html:115` ("€40") while `ShippingRate` count is 0 on every store | the promise must come from the shipping app | a claim without a source — the same class as the `og:image` / JSON-LD defaults landmine, and drip-pricing exposure on the UK store |
@@ -383,7 +383,7 @@ tests, migrations, contributions, manifest descriptions).
 
 | Area | Implemented | Partial / thin | Missing |
 |---|---|---|---|
-| Catalog | products, variants, attributes, categories, collections, metafields, digital products, audiobooks, the book vertical, lookbook bundles, importers (Shopify, WooCommerce, Magento, BigCommerce, … — 2 tests), WebP/AVIF variants | product types are flags, not a type system; `localized_prices` JSON on Product | bundles as a product type; price history; GPSR data |
+| Catalog | products, variants, attributes, categories, collections, metafields, digital products, audiobooks, the book vertical, lookbook bundles, importers (Shopify, WooCommerce, Magento, BigCommerce, … — 2 tests), WebP/AVIF variants | product types are flags, not a type system; `localized_prices` JSON on Product | bundles as a product type; price history |
 | Pricing & promotions | promotions engine (predicates, `catalog`/`order` types, usage limits, scheduling), coupons in `marketing`, B2B price lists + quotes + net terms (893 lines, **2 tests**), gift cards, loyalty, store credit, membership discount, one price seam (`core/pricing.py`) | two coupon systems (`marketing.Coupon` vs promotions); BOGO/tiered/automatic only as predicates | 30-day prior-price evidence |
 | Markets & currency | `markets` (per-country price, currency, locale), `ExchangeRate` rows, a convert tag | no rate source feeds `ExchangeRate`; no Market/StoreChannel rows on any live store | automatic FX, tax-inclusive display per market |
 | Tax | TaxCategory / TaxRegion / TaxRate, provider `local` or `stripe`, `prices_include_tax`, EU OSS categories | no store has a region or rate configured | US sales-tax provider, VIES VAT-ID check, reverse charge |
@@ -845,7 +845,12 @@ ships as one release at a time, in this order:
   `creditText`/`creator` on Product, which is invalid there); a visible sentence is the merchant's
   setting; the AI-Act report lists the marks. An API-token write is not marked (author unknown);
   translations and images are not marked yet.
-- R7 GPSR `product_safety` app (W5a).
+- **R7 GPSR `product_safety` app (W5a), v0.134.0** — a product's manufacturer, EU responsible
+  person, warnings and safety-sheet link are `gpsr` metafields (editor card, Linda's
+  `products.safety_info` / `products.set_safety_info`); the store's own details (settings) stand
+  in for goods that name none, a party whole from one source, never for a service or a download.
+  The page shows them under the description and the graph names the manufacturer. Product codes
+  stay the metafields identifiers; feed attributes are not added.
 - R8 express checkout on the cart + shorter forms (W8.2; passkeys parked).
 - R9 ECB exchange rates (W8.6). R10 WCAG fixes + axe on all stores (W5d).
 - R11 dashboard Tailwind precompiled, `unsafe-eval` dropped. R12 checkout CSP with

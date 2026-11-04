@@ -1,0 +1,26 @@
+{% comment %}Under the product's description (slot `pdp_below_long_description`): the
+product's safety details, EU GPSR. Rendered only when there is something to show;
+each party is the product's own or, for goods, the store's (product_safety.safety).
+A contact is a link only when it is an email or a web address.{% endcomment %}
+{% load i18n product_safety %}{% product_safety product as safety %}{% if safety %}
+<details class="product-safety" data-product-safety style="margin:1.25rem 0 0; font-size:.9em;">
+  <summary style="cursor:pointer; font-weight:600;">{% translate "Product safety information" %}</summary>
+  <dl style="margin:.75rem 0 0;">
+    {% if safety.manufacturer %}
+    <dt style="font-weight:600;">{% translate "Manufacturer" %}</dt>
+    <dd style="margin:0 0 .75rem;">{% with p=safety.manufacturer %}{% if p.name %}{{ p.name }}<br>{% endif %}{% if p.address %}{{ p.address|linebreaksbr }}<br>{% endif %}{% if p.href %}<a href="{{ p.href }}" rel="noopener">{{ p.contact }}</a>{% elif p.contact %}{{ p.contact }}{% endif %}{% endwith %}</dd>
+    {% endif %}
+    {% if safety.responsible %}
+    <dt style="font-weight:600;">{% translate "Responsible person in the EU" %}</dt>
+    <dd style="margin:0 0 .75rem;">{% with p=safety.responsible %}{% if p.name %}{{ p.name }}<br>{% endif %}{% if p.address %}{{ p.address|linebreaksbr }}<br>{% endif %}{% if p.href %}<a href="{{ p.href }}" rel="noopener">{{ p.contact }}</a>{% elif p.contact %}{{ p.contact }}{% endif %}{% endwith %}</dd>
+    {% endif %}
+    {% if safety.warnings %}
+    <dt style="font-weight:600;">{% translate "Warnings and safety information" %}</dt>
+    <dd style="margin:0 0 .75rem;">{{ safety.warnings|linebreaksbr }}</dd>
+    {% endif %}
+    {% if safety.safety_url %}
+    <dd style="margin:0;"><a href="{{ safety.safety_url }}" rel="noopener" target="_blank">{% translate "Instructions and safety information" %}</a></dd>
+    {% endif %}
+  </dl>
+</details>
+{% endif %}

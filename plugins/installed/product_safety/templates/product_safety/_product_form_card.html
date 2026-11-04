@@ -1,0 +1,21 @@
+{% comment %}"Product safety" card in the product editor, contributed through
+PRODUCT_FORM_CARDS and saved by PRODUCT_FORM_SAVED (product_safety.safety.save_from_form).
+`gpsr_submitted` says the card was on the page, so a save without it changes nothing.
+A placeholder is the store's own detail, which the page shows while the field is empty.{% endcomment %}
+<div class="card card-padded space-y-3" id="product-safety-card">
+  <h2 class="font-semibold text-sm flex items-center gap-2"><i data-lucide="shield-check" class="h-4 w-4"></i> Product safety</h2>
+  <p class="text-xs text-[color:var(--text-muted)]">Shown on the product page under the description, as EU product safety rules require for goods sold to shoppers there. Leave the manufacturer or the responsible person blank to show your store's details from settings (goods only, not services or downloads). Name a responsible person in the EU when the manufacturer is outside it.</p>
+  <input type="hidden" name="gpsr_submitted" value="1">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {% for field in product_safety.fields %}
+    <div{% if field.multiline %} class="md:col-span-2"{% endif %}>
+      <label class="block text-sm font-medium mb-1" for="gpsr-{{ field.name }}">{{ field.label }}</label>
+      {% if field.multiline %}
+      <textarea class="input w-full" rows="3" id="gpsr-{{ field.name }}" name="gpsr_{{ field.name }}" maxlength="{{ field.maxlength }}">{{ field.value }}</textarea>
+      {% else %}
+      <input type="text" class="input w-full" id="gpsr-{{ field.name }}" name="gpsr_{{ field.name }}" value="{{ field.value }}" maxlength="{{ field.maxlength }}"{% if field.placeholder %} placeholder="{{ field.placeholder }}"{% endif %}>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>

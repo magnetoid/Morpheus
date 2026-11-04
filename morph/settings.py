@@ -43,7 +43,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.133.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.134.0')
 
 # The release stage shown beside the version (the dashboard, the README badge, the
 # GitHub Release title) while Morpheus is not finalized; '' once it is. The version
@@ -177,6 +177,7 @@ MORPHEUS_DEFAULT_APPS = [
     'plugins.installed.webstories',
     'plugins.installed.consent',
     'plugins.installed.gdpr',
+    'plugins.installed.product_safety',
     # ── Vibe-coding roadmap (added 2026-06-12) ────────────────────────────
     # These plugins implement the F1-F20 vibe-coding feature roadmap in
     # docs/analysis/vibe_coding_gap_assessment.md. They all follow the
