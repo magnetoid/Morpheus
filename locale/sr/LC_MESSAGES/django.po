@@ -4286,3 +4286,18 @@ msgstr[2] "posljednjih %(n)d sedmica"
 
 msgid "This product's description was written with the help of AI."
 msgstr "Opis ovog proizvoda napisan je uz pomoć vještačke inteligencije."
+
+msgid "Product safety information"
+msgstr "Informacije o bezbjednosti proizvoda"
+
+msgid "Manufacturer"
+msgstr "Proizvođač"
+
+msgid "Responsible person in the EU"
+msgstr "Odgovorno lice u EU"
+
+msgid "Warnings and safety information"
+msgstr "Upozorenja i informacije o bezbjednosti"
+
+msgid "Instructions and safety information"
+msgstr "Uputstvo i informacije o bezbjednosti"

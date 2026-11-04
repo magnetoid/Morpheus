@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.134.0 — 2026-11-04
+
+**Product safety details on every product page (EU GPSR)**
+
+- A new Product safety app: a product's manufacturer (name, postal address, email or website), its responsible person in the EU, its warnings and a link to instructions or a safety sheet, entered in a Product safety card in the product editor.
+- Settings → General → Product safety holds the store's own details as manufacturer and responsible person. A product sold as goods that names none of its own shows them; a service or a download never does, and a party always comes whole from one place.
+- The product page shows a "Product safety information" section under the description when there is something to show (Serbian translated), and its structured data names the manufacturer.
+- Linda reads a product's safety details with products.safety_info and fills them in with products.set_safety_info, after your yes.
+- Product codes (GTIN, MPN, ISBN) stay in the product's identifier fields. Shopping feeds do not carry these details yet.
+
 ## v0.133.0 — 2026-11-03
 
 **Product text written with AI is marked on the product page**
