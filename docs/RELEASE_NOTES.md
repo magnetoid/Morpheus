@@ -24,6 +24,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - Irving Survival: the status bar at the top is a named region, and product cards read their name once.
 - Every theme: the promo code field on the one-page checkout, and the address type and return reason in a shopper's account, are labelled. CMS forms tie each label to its field.
 - The automatic accessibility check after each deploy now covers all four stores, not only dotbooks, and checks before a deploy keep every theme's lists, menus and headings in order.
+- Security: oauthlib, used by social sign-in, is updated to 4.0.1 for a newly published advisory (CVE-2026-49272).
 
 ## v0.135.0 — 2026-11-05
 
