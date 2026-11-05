@@ -12,7 +12,7 @@ reference VendorSidebar/VendorDashboard. Host pages extend this and fill
     <aside class="lg:sticky lg:top-24 self-start">
       <div class="rounded-2xl border border-border bg-card shadow-card p-3">
         <p class="px-3 pt-2 pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{% trans "Host dashboard" %}</p>
-        <nav class="space-y-0.5">
+        <nav class="space-y-0.5" aria-label="{% trans 'Host dashboard' %}">
           {% with base="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" %}
           <a href="/bookings/host/" class="{{ base }} {% if request.path == '/bookings/host/' %}bg-primary/10 text-primary{% else %}text-muted-foreground hover:bg-muted hover:text-foreground{% endif %}">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>

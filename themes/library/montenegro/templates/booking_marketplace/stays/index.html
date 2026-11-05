@@ -22,11 +22,11 @@ used to carry asked differently worded questions than the ones shown.{% endcomme
   </section>
 
   <form method="get" class="flex flex-wrap items-center gap-2 mb-8">
-    <select name="region" onchange="this.form.submit()" class="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground">
+    <select name="region" aria-label="{% trans 'Region' %}" onchange="this.form.submit()" class="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground">
       <option value="">{% trans "All regions" %}</option>
       {% for value, label in region_choices %}<option value="{{ value }}" {% if value == active_region %}selected{% endif %}>{{ label }}</option>{% endfor %}
     </select>
-    <select name="type" onchange="this.form.submit()" class="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground">
+    <select name="type" aria-label="{% trans 'Property type' %}" onchange="this.form.submit()" class="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground">
       <option value="">{% trans "All types" %}</option>
       {% for value, label in type_choices %}<option value="{{ value }}" {% if value == active_type %}selected{% endif %}>{{ label }}</option>{% endfor %}
     </select>

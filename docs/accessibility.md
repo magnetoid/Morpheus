@@ -22,7 +22,9 @@ Two GitHub Actions workflows gate WCAG regression:
 
 - [`.github/workflows/lighthouse.yml`](.github/workflows/lighthouse.yml) — Lighthouse-CI's a11y category ≥ 0.92 across 5 URLs.
 - [`.github/workflows/accessibility.yml`](.github/workflows/accessibility.yml) — full axe-core ruleset
-  (`wcag2a wcag2aa wcag21a wcag21aa wcag22aa best-practice`) across the same URLs.
+  (`wcag2a wcag2aa wcag21a wcag21aa wcag22aa best-practice`) on all four stores, one job per
+  store (dotbooks, supernatural, montenegro, irving): home, listing, a product or experience
+  page, cart or hotels, journal. Lighthouse still covers dotbooks only.
 
 Both audit the **live** store, so they run after the `deploy-smoke`
 workflow has seen production converge on a pushed version (a
@@ -30,9 +32,13 @@ workflow has seen production converge on a pushed version (a
 push itself, when the store still serves the previous build, and never on
 a PR, whose code the live store does not carry. axe waits 2 s after load
 so the theme's scroll-reveal fade has settled (mid-fade text reads as a
-contrast failure). Reports are uploaded as the `axe-reports` artefact for
-30 days. Structural findings get a rendering guard in
-`themes/test_a11y_markup.py` so they fail before a deploy, not after.
+contrast failure). Reports are uploaded as the `axe-reports-<store>` artefact for
+30 days. Structural findings get a guard so they fail before a deploy, not after:
+`themes/test_a11y_markup.py` reads every theme template (each `<select>` labelled, each
+`<nav>` named) and renders home, listing, product, cart and both checkouts under dot_books,
+supernatural_shop and irving_survival (no heading skips a level, every control has a name,
+card covers are decorative); `booking_marketplace/tests/test_montenegro_a11y.py` does the
+same for Montenegro's pages. Colour contrast is left to the live audit.
 
 ## What WCAG 2.2 AA actually requires
 

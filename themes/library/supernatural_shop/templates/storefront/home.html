@@ -304,7 +304,7 @@ geometry, so the dots and cover never move between books.
         </header>
         <div class="window__copy-stage">
           {% for pick in hero_products %}
-          <article
+          <div
             class="window__panel{% if forloop.first %} is-active{% endif %}"
             id="hero-panel-{{ forloop.counter0 }}"
             data-home-hero-copy
@@ -325,7 +325,7 @@ geometry, so the dots and cover never move between books.
               <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop now</a>
               <a href="/products/" class="btn btn-ghost">Browse the shop</a>
             </div>
-          </article>
+          </div>
           {% endfor %}
         </div>
 

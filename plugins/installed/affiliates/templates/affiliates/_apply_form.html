@@ -10,8 +10,8 @@
   </div>
   {% if programs|length > 1 %}
   <div>
-    <label class="block" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Program</label>
-    <select name="program_slug" class="input">
+    <label class="block" for="affiliate-program" style="font-size: .85rem; margin-bottom: .35rem; color: var(--ink-2);">Program</label>
+    <select id="affiliate-program" name="program_slug" class="input">
       {% for p in programs %}
       <option value="{{ p.slug }}">{{ p.name }} — {% if p.commission_type == 'percent' %}{{ p.commission_value|floatformat:1 }}%{% else %}{{ p.commission_value|floatformat:2 }} fixed{% endif %}</option>
       {% endfor %}

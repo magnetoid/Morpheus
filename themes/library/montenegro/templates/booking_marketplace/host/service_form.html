@@ -156,15 +156,15 @@ weekdays, selected_wd, start_times. POST = same page, enctype multipart/form-dat
     <div class="space-y-3">
       {% for a in svc.addons.all %}
       <div class="grid grid-cols-[2fr_1fr_1fr] gap-3">
-        <input type="text" name="addon_name" value="{{ a.name }}" class="{{ inp }}">
-        <input type="number" name="addon_price" value="{{ a.price.amount }}" step="0.01" class="{{ inp }}">
-        <select name="addon_type" class="{{ inp }} appearance-none"><option value="per_person" {% if a.price_type == 'per_person' %}selected{% endif %}>{% trans "per person" %}</option><option value="per_booking" {% if a.price_type == 'per_booking' %}selected{% endif %}>{% trans "per booking" %}</option></select>
+        <input type="text" name="addon_name" value="{{ a.name }}" aria-label="{% trans 'Add-on name' %}" class="{{ inp }}">
+        <input type="number" name="addon_price" value="{{ a.price.amount }}" step="0.01" aria-label="{% trans 'Add-on price' %}" class="{{ inp }}">
+        <select name="addon_type" aria-label="{% trans 'Price per' %}" class="{{ inp }} appearance-none"><option value="per_person" {% if a.price_type == 'per_person' %}selected{% endif %}>{% trans "per person" %}</option><option value="per_booking" {% if a.price_type == 'per_booking' %}selected{% endif %}>{% trans "per booking" %}</option></select>
       </div>
       {% endfor %}
       <div class="grid grid-cols-[2fr_1fr_1fr] gap-3">
-        <input type="text" name="addon_name" placeholder="{% trans 'e.g. Hotel pickup' %}" class="{{ inp }}">
-        <input type="number" name="addon_price" step="0.01" placeholder="€" class="{{ inp }}">
-        <select name="addon_type" class="{{ inp }} appearance-none"><option value="per_person">{% trans "per person" %}</option><option value="per_booking">{% trans "per booking" %}</option></select>
+        <input type="text" name="addon_name" placeholder="{% trans 'e.g. Hotel pickup' %}" aria-label="{% trans 'Add-on name' %}" class="{{ inp }}">
+        <input type="number" name="addon_price" step="0.01" placeholder="€" aria-label="{% trans 'Add-on price' %}" class="{{ inp }}">
+        <select name="addon_type" aria-label="{% trans 'Price per' %}" class="{{ inp }} appearance-none"><option value="per_person">{% trans "per person" %}</option><option value="per_booking">{% trans "per booking" %}</option></select>
       </div>
     </div>
     <div class="mt-5">
