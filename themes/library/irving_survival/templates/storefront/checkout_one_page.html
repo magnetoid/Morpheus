@@ -185,7 +185,7 @@
       <form method="post" action="{% url 'storefront:checkout_apply_coupon' %}"
             style="display:flex; gap:.5rem; padding-top:.75rem;">
         {% csrf_token %}
-        <input type="text" name="code" placeholder="Promo code" autocomplete="off"
+        <input type="text" name="code" placeholder="Promo code" aria-label="Promo code" autocomplete="off"
                style="flex:1; min-width:0; border:1px solid var(--rule); border-radius:4px; padding:.45rem .6rem; font-size:.9rem; background:var(--paper);">
         <button type="submit" class="btn btn-ghost" style="white-space:nowrap;">Apply</button>
       </form>

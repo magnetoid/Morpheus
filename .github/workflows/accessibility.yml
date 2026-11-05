@@ -1,6 +1,6 @@
 name: accessibility
 
-# Runs axe-core against the live storefront. axe catches a different
+# Runs axe-core against the four live storefronts (one job per store). axe catches a different
 # set of violations than Lighthouse's accessibility audit (Lighthouse
 # uses axe-core under the hood but with a narrower ruleset). This
 # workflow runs the full WCAG 2.2 AA ruleset and fails on any new
@@ -35,6 +35,42 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Every store runs from main, and each theme has its own markup: until R10 only
+    # dotbooks was audited, while Montenegro's booking form had unnamed fields and
+    # Irving's status bar sat outside every landmark. A store's red run does not
+    # stop the others'.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - store: dotbooks
+            urls: >-
+              https://dotbooks.store/
+              https://dotbooks.store/products/
+              https://dotbooks.store/products/peter-pan/
+              https://dotbooks.store/cart/
+              https://dotbooks.store/journal/
+          - store: supernatural
+            urls: >-
+              https://supernatural-shop.com/
+              https://supernatural-shop.com/products/
+              https://supernatural-shop.com/products/gift-mug/
+              https://supernatural-shop.com/cart/
+              https://supernatural-shop.com/journal/
+          - store: montenegro
+            urls: >-
+              https://montenegro-experience.me/
+              https://montenegro-experience.me/sr/
+              https://montenegro-experience.me/bookings/
+              https://montenegro-experience.me/bookings/private-yacht-charter-tivat/
+              https://montenegro-experience.me/hotels/
+              https://montenegro-experience.me/journal/
+          - store: irving
+            urls: >-
+              https://beta.irvingsurvival.com/
+              https://beta.irvingsurvival.com/products/
+              https://beta.irvingsurvival.com/products/workplace-emergency-kit/
+              https://beta.irvingsurvival.com/cart/
     steps:
       - uses: actions/checkout@v7
 
@@ -62,19 +98,15 @@ jobs:
           test -x "$DRIVER"
           echo "CHROMEDRIVER_PATH=$DRIVER" >> "$GITHUB_ENV"
 
-      - name: Run axe against 5 representative URLs
+      - name: Run axe against ${{ matrix.store }}
+        env:
+          URLS: ${{ matrix.urls }}
         run: |
           set -euo pipefail
-          URLS=(
-            "https://dotbooks.store/"
-            "https://dotbooks.store/products/"
-            "https://dotbooks.store/products/peter-pan/"
-            "https://dotbooks.store/cart/"
-            "https://dotbooks.store/journal/"
-          )
+          read -ra URL_LIST <<< "$URLS"
           mkdir -p a11y-reports
           FAIL=0
-          for URL in "${URLS[@]}"; do
+          for URL in "${URL_LIST[@]}"; do
             SAFE=$(echo "$URL" | sed 's|[^a-zA-Z0-9]|_|g')
             echo "::group::axe $URL"
             # --load-delay: the theme fades cards in on scroll-reveal (under a
@@ -87,7 +119,7 @@ jobs:
               --load-delay=2000 \
               --dir a11y-reports --save "${SAFE}.json" \
               --exit; then
-              echo "::error::axe found WCAG violations on $URL — see the axe-reports artefact"
+              echo "::error::axe found WCAG violations on $URL — see the axe-reports-${{ matrix.store }} artefact"
               FAIL=1
             fi
             echo "::endgroup::"
@@ -100,6 +132,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: axe-reports
+          name: axe-reports-${{ matrix.store }}
           path: a11y-reports/
           retention-days: 30

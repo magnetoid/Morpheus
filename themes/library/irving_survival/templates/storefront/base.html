@@ -466,12 +466,12 @@ the theme's own defaults.
 {% include "storefront/_admin_bar.html" %}
 
 {% if theme_config.show_status_bar is not False %}
-<div class="statusbar">
+<aside class="statusbar" aria-label="{% translate 'Notice' %}">
   <div class="wrap">
     <p class="statusbar__now" style="margin:0"><span class="statusbar__dot" aria-hidden="true"></span><span>{% if theme_config.status_text %}{{ theme_config.status_text }}{% else %}{% translate "Power cut in England, Scotland or Wales? Call 105, free." %}{% endif %}</span></p>
     <a class="statusbar__aside" href="https://prepare.campaign.gov.uk/" target="_blank" rel="noopener">{% translate "Official guidance: UK Government, Prepare" %}<span aria-hidden="true"> ↗</span><span class="sr-only"> {% translate "(opens in a new tab)" %}</span></a>
   </div>
-</div>
+</aside>
 {% endif %}
 
 <header class="topbar">

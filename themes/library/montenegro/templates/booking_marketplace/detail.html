@@ -22,7 +22,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
 <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
 
   <!-- Breadcrumb -->
-  <nav class="flex items-center gap-1.5 text-sm mb-4">
+  <nav class="flex items-center gap-1.5 text-sm mb-4" aria-label="{% trans 'Breadcrumb' %}">
     <a href="/" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Home" %}</a>
     <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
     {% if service.listing_kind == 'product' %}<a href="/shop/" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Shop" %}</a>{% else %}<a href="/bookings/" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Experiences" %}</a>{% endif %}
@@ -233,7 +233,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         {% if can_review %}
         <form method="post" action="/bookings/{{ service.slug }}/review/" class="grid gap-2.5 max-w-md mb-8">
           {% csrf_token %}
-          <select name="rating" required class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <select name="rating" aria-label="{% trans 'Your rating' %}" required class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <option value="5">{% trans "★★★★★ — Excellent" %}</option>
             <option value="4">{% trans "★★★★ — Good" %}</option>
             <option value="3">{% trans "★★★ — Okay" %}</option>
@@ -275,7 +275,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         <p class="text-sm text-muted-foreground mt-1 mb-5">{% trans "Interested? Send the vendor your details and they'll get back to you." %}</p>
         <form method="post" action="/bookings/{{ service.slug }}/" class="grid gap-2.5">
           {% csrf_token %}
-          <input type="number" name="guests" value="1" min="1" placeholder="{% trans 'Quantity' %}" class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <input type="number" name="guests" value="1" min="1" placeholder="{% trans 'Quantity' %}" aria-label="{% trans 'Quantity' %}" class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <input type="text" name="name" placeholder="{% trans 'Your name' %}" required class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <input type="email" name="email" placeholder="{% trans 'Your email' %}" required class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <input type="tel" name="phone" placeholder="{% trans 'Phone (optional)' %}" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -287,7 +287,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         {% if service.original_price %}<p class="text-sm text-muted-foreground line-through mb-4">{{ service.original_price|money }}</p>{% prior_price service.product as prior %}{% if prior %}<p class="text-xs text-muted-foreground -mt-3 mb-4">{% blocktranslate trimmed with price=prior|money %}Lowest price in the 30 days before this reduction: {{ price }}{% endblocktranslate %}</p>{% endif %}{% endif %}
         <form method="post" action="/bookings/{{ service.slug }}/" class="grid gap-2.5 mt-3">
           {% csrf_token %}
-          <input type="number" name="guests" value="1" min="1" required class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <input type="number" name="guests" value="1" min="1" required aria-label="{% trans 'Guests' %}" class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <input type="text" name="name" placeholder="{% trans 'Your name' %}" required class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <input type="email" name="email" placeholder="{% trans 'Your email' %}" required class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <button type="submit" class="h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">{% trans "Order" %}</button>
@@ -305,7 +305,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
           <input type="tel" name="phone" placeholder="{% trans 'Phone (optional)' %}" class="h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <div class="grid grid-cols-2 gap-2.5">
             <input type="date" name="preferred_date" aria-label="{% trans 'Preferred date' %}" class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <input type="number" name="guests" min="1" placeholder="{% trans 'Guests' %}" class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <input type="number" name="guests" min="1" placeholder="{% trans 'Guests' %}" aria-label="{% trans 'Guests' %}" class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
           </div>
           <textarea name="message" rows="3" placeholder="{% trans 'Anything the host should know? (optional)' %}" class="rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
           <button type="submit" class="h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">{% trans "Send enquiry" %}</button>
@@ -316,11 +316,11 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         {% if dates %}
         <form method="post" action="/bookings/{{ service.slug }}/" id="booking-form" data-unit="{{ service.price.amount }}" class="grid gap-2.5 mt-3">
           {% csrf_token %}
-          <select name="booking_date" required class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <select name="booking_date" aria-label="{% trans 'Date' %}" required class="h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
             {% for d in dates %}<option value="{{ d.date|date:'Y-m-d' }}">{{ d.date|date:'D j M Y' }} — {{ d.remaining }} {% trans "left" %}</option>{% endfor %}
           </select>
           {% if sessions %}
-          <select name="time_slot" class="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <select name="time_slot" aria-label="{% trans 'Time' %}" class="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
             {% for s in sessions %}{% for t in s.times %}<option value="{{ t.time|default:'' }}">{{ s.date|date:'D j M' }}{% if t.time %} · {{ t.time }}{% endif %} — {{ t.remaining }} {% trans "left" %}</option>{% endfor %}{% endfor %}
           </select>
           {% endif %}
@@ -332,7 +332,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
             </div>
             {% endfor %}
           {% else %}
-            <input type="number" name="guests" value="1" min="1" max="{{ max_guests }}" required class="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <input type="number" name="guests" value="1" min="1" max="{{ max_guests }}" required aria-label="{% trans 'Guests' %}" class="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
           {% endif %}
           {% if addons %}
             <p class="text-sm font-medium text-foreground mt-1">{% trans "Add-ons" %}</p>

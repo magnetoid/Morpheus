@@ -3,17 +3,17 @@
   {% csrf_token %}
   {% for field in form.fields %}
   <div>
-    {% if field.label %}<label class="block text-sm" style="margin-bottom:.25rem;">{{ field.label }}{% if field.required %} *{% endif %}</label>{% endif %}
+    {% if field.label %}<label class="block text-sm" for="cms-{{ form.key }}-{{ field.name }}" style="margin-bottom:.25rem;">{{ field.label }}{% if field.required %} *{% endif %}</label>{% endif %}
     {% if field.type == "textarea" %}
-    <textarea name="{{ field.name }}" {% if field.required %}required{% endif %}
+    <textarea id="cms-{{ form.key }}-{{ field.name }}" name="{{ field.name }}" {% if field.required %}required{% endif %}
               placeholder="{{ field.placeholder|default:'' }}" rows="{{ field.rows|default:5 }}"
               class="input"></textarea>
     {% elif field.type == "select" %}
-    <select name="{{ field.name }}" {% if field.required %}required{% endif %} class="input">
+    <select id="cms-{{ form.key }}-{{ field.name }}" name="{{ field.name }}" {% if field.required %}required{% endif %} class="input">
       {% for opt in field.options %}<option value="{{ opt.value }}">{{ opt.label }}</option>{% endfor %}
     </select>
     {% else %}
-    <input type="{{ field.type|default:'text' }}" name="{{ field.name }}"
+    <input type="{{ field.type|default:'text' }}" id="cms-{{ form.key }}-{{ field.name }}" name="{{ field.name }}"
            {% if field.required %}required{% endif %}
            placeholder="{{ field.placeholder|default:'' }}" class="input">
     {% endif %}

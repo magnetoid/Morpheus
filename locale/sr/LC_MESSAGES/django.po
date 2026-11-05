@@ -4349,3 +4349,30 @@ msgstr "Ukupan iznos za ovu adresu se promijenio. Provjerite ga i platite ponovo
 
 msgid "The order could not be placed."
 msgstr "Porudžbina nije mogla biti napravljena."
+
+msgid "Property type"
+msgstr "Vrsta smještaja"
+
+msgid "Your rating"
+msgstr "Vaša ocjena"
+
+msgid "Time"
+msgstr "Vrijeme"
+
+msgid "Main"
+msgstr "Glavni meni"
+
+msgid "Menu"
+msgstr "Meni"
+
+msgid "Add-on name"
+msgstr "Naziv dodatka"
+
+msgid "Add-on price"
+msgstr "Cijena dodatka"
+
+msgid "Price per"
+msgstr "Cijena po"
+
+msgid "Notice"
+msgstr "Obavještenje"

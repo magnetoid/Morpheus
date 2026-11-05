@@ -701,11 +701,11 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
       <a href="/products/{{ p.slug }}/" class="book">
         <div class="cover-wrap">
           {% if p.primaryImage and p.primaryImage.url %}
-            <img src="{{ p.primaryImage.url }}" alt="{{ p.primaryImage.altText|default:p.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
+            <img src="{{ p.primaryImage.url }}" alt="" loading="{% caching_img_loading_attr %}" decoding="async">
           {% elif PRODUCT_PLACEHOLDER_IMAGE %}
-            <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ p.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
+            <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="" loading="{% caching_img_loading_attr %}" decoding="async">
           {% else %}
-            <div class="placeholder">{{ p.name|truncatewords:3 }}</div>
+            <div class="placeholder" aria-hidden="true">{{ p.name|truncatewords:3 }}</div>
           {% endif %}
         </div>
         <div>

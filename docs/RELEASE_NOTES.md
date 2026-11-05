@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.135.1 — 2026-11-05
+
+**Accessibility fixes on every store, and the live audit checks all four**
+
+- Montenegro: the experience page's date, time and guests fields, the review rating, the hotel filters and the host form's add-ons now have names a screen reader reads out; the footer's titles no longer skip a heading level; the gift banner's label is readable on its dark background; the header, menu and breadcrumbs are named.
+- Supernatural: the home hero's panels use markup screen readers accept, and a product card no longer reads its name twice (the cover is decorative beside the title). The shop's search box is named.
+- Irving Survival: the status bar at the top is a named region, and product cards read their name once.
+- Every theme: the promo code field on the one-page checkout, and the address type and return reason in a shopper's account, are labelled. CMS forms tie each label to its field.
+- The automatic accessibility check after each deploy now covers all four stores, not only dotbooks, and checks before a deploy keep every theme's lists, menus and headings in order.
+
 ## v0.135.0 — 2026-11-05
 
 **Express checkout on the cart page and a shorter checkout form**
