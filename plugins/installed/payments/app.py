@@ -4,7 +4,7 @@
 import logging
 
 from morpheus.core import events
-from morpheus.app import Plugin, SettingsPanel
+from morpheus.app import Plugin, SettingsPanel, StorefrontBlock
 
 logger = logging.getLogger('morpheus.plugins.payments')
 
@@ -101,6 +101,18 @@ class PaymentsPlugin(Plugin):
 
             sync_gateway_row()
             sync_offline_gateways()
+
+    def contribute_storefront_blocks(self) -> list:
+        # Apple Pay / Google Pay / Link above the cart's checkout button, while Stripe
+        # can take the payment (the tag decides; the box shows only once Stripe says
+        # the browser has a wallet).
+        return [
+            StorefrontBlock(
+                slot='cart_summary_extra',
+                template='payments/blocks/express_cart.html',
+                priority=10,
+            ),
+        ]
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.payments.agent_tools import order_risk_tool
@@ -256,6 +268,12 @@ class PaymentsPlugin(Plugin):
                     'title': 'PayPal Webhook ID',
                     'description': 'From the PayPal developer dashboard — enables the /payments/webhooks/paypal/ backstop.',
                 },
+                'express_on_cart': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Show express checkout on the cart page',
+                    'description': "Apple Pay, Google Pay and Link buttons above the cart's checkout button, while Stripe is set up. The shopper pays from their wallet without filling in the checkout form.",
+                },
                 'cod_enabled': {
                     'type': 'boolean',
                     'title': 'Enable Cash on delivery',
@@ -287,7 +305,7 @@ class PaymentsPlugin(Plugin):
         # page via admin_dashboard's generic settings_category view.
         return SettingsPanel(
             label='Payment gateways',
-            description='Stripe and PayPal credentials, cash on delivery, the staff-only test payment and the fraud check.',
+            description='Stripe and PayPal credentials, express checkout on the cart page, cash on delivery, the staff-only test payment and the fraud check.',
             schema=self.get_config_schema(),
             category='payments',
         )

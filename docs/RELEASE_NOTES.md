@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.135.0 — 2026-11-05
+
+**Express checkout on the cart page and a shorter checkout form**
+
+- While Stripe is set up, the cart page shows Apple Pay, Google Pay and Link buttons, so a shopper can pay from their wallet without filling in the checkout form. Settings → Payment gateways switches them off, or ask Linda.
+- The wallet shows the total for the address it shares, with your shipping rates and tax, and the order is placed only for exactly that total. A declined wallet payment finishes on the checkout's payment page.
+- A cart holding a download stays with the checkout form while the digital-content acknowledgement is on, because only the form can ask for it. Apple Pay also needs your domain registered with Stripe.
+- Both checkout forms, in every theme, now ask for eight things up front: email, name, street, city, region, postal code and country. The apartment line and phone number open with a click, and stay open when they hold something.
+- Country is a list, starting from your store's country, in the shopper's language (Serbian in Latin script).
+- Fixed: the one-page checkout forgot a signed-in shopper's saved address and the store's country on the first visit.
+
 ## v0.134.0 — 2026-11-04
 
 **Product safety details on every product page (EU GPSR)**

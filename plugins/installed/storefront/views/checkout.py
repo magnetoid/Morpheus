@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 
 from api.client import internal_graphql
-from core.utils.countries import normalise_country, store_country
+from core.utils.countries import country_choices, normalise_country, store_country
 from morpheus.app.views import redirect, render
 
 from ._queries import CART_QUERY
@@ -169,6 +169,9 @@ def _checkout_base_context(request):
         'cart': cart,
         'totals': _cart_totals(request, cart),
         'form': saved,
+        # The country is a list of codes, named in the page's language: zones and
+        # tax regions compare codes, and a list takes no typing.
+        'countries': country_choices(),
     }
 
 

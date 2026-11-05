@@ -4301,3 +4301,51 @@ msgstr "Upozorenja i informacije o bezbjednosti"
 
 msgid "Instructions and safety information"
 msgstr "Uputstvo i informacije o bezbjednosti"
+
+msgid "Add apartment, suite, etc."
+msgstr "Dodajte stan, sprat i sl."
+
+msgid "Add a phone number for delivery updates"
+msgstr "Dodajte broj telefona za obavještenja o dostavi"
+
+msgid "Choose a country"
+msgstr "Izaberite državu"
+
+msgid "Express checkout"
+msgstr "Brzo plaćanje"
+
+msgid "Standard delivery"
+msgstr "Standardna dostava"
+
+msgid "The payment did not go through. Try again, or check out below."
+msgstr "Plaćanje nije prošlo. Pokušajte ponovo ili završite kupovinu ispod."
+
+msgid "Pay another way"
+msgstr "Platite na drugi način"
+
+msgid "Your cart is empty."
+msgstr "Vaša korpa je prazna."
+
+msgid "We could not price delivery to this address."
+msgstr "Nismo mogli da izračunamo cijenu dostave na ovu adresu."
+
+msgid "We do not deliver to this address."
+msgstr "Ne dostavljamo na ovu adresu."
+
+msgid "Please check out below."
+msgstr "Završite kupovinu ispod."
+
+msgid "A valid email is required."
+msgstr "Potrebna je ispravna email adresa."
+
+msgid "Please choose a full delivery address."
+msgstr "Izaberite punu adresu za dostavu."
+
+msgid "That delivery option is no longer available. Please choose again."
+msgstr "Ta opcija dostave više nije dostupna. Izaberite ponovo."
+
+msgid "The total changed for this address. Please check it and pay again."
+msgstr "Ukupan iznos za ovu adresu se promijenio. Provjerite ga i platite ponovo."
+
+msgid "The order could not be placed."
+msgstr "Porudžbina nije mogla biti napravljena."

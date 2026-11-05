@@ -17,4 +17,6 @@ There is nothing to turn on — it runs as soon as your store has active product
 ## Good to know
 Home, Cart, Checkout, My account and Contact are built into this app, not pages you create yourself — they're listed for reference in Pages. A message sent through the Contact page is saved as a lead when you have [the CRM app](app:crm) turned on. A customer can cancel their own order themselves only before it is dispatched, and a paid order is refunded the same way any other refund is.
 
+Checkout asks up front only for what a delivery needs: email, name, street, city, region, postal code and the country, picked from a list that starts at your store's own country. The apartment line and a phone number are one click away, and open by themselves when they already hold something. A signed-in customer starts from their saved address.
+
 As a shopper types in the search box, the dropdown suggests products whose names contain the words typed, and above them the categories and collections whose names match, each with how many products it holds. A category or collection with nothing in it is never suggested. Pressing Enter opens the full results page, which also finds related products that don't contain the words.

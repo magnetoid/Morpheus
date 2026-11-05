@@ -49,12 +49,15 @@
                    autocomplete="address-line1"
                    style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
           </div>
-          <div style="margin-top:1rem;">
-            <label for="ck-addr2" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Apt / suite (optional)</label>
-            <input id="ck-addr2" name="address_line2" value="{{ form.address_line2|default:'' }}"
-                   autocomplete="address-line2"
-                   style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
-          </div>
+          <details style="margin-top:1rem;"{% if form.address_line2 %} open{% endif %}>
+            <summary style="cursor:pointer; font-size:.85rem; text-decoration:underline; width:fit-content;">Add apartment, suite, etc.</summary>
+            <div style="margin-top:.5rem;">
+              <label for="ck-addr2" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Apt / suite (optional)</label>
+              <input id="ck-addr2" name="address_line2" value="{{ form.address_line2|default:'' }}"
+                     autocomplete="address-line2"
+                     style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+            </div>
+          </details>
           <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem; margin-top:1rem;">
             <div>
               <label for="ck-city" style="display:block; font-size:.85rem; margin-bottom:.25rem;">City</label>
@@ -72,18 +75,22 @@
                      style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
             </div>
           </div>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top:1rem;">
-            <div>
-              <label for="ck-country" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Country</label>
-              <input id="ck-country" name="country" required value="{{ form.country|default:'' }}" autocomplete="country-name"
-                     style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
-            </div>
-            <div>
-              <label for="ck-phone" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Phone (optional)</label>
-              <input id="ck-phone" name="phone" value="{{ form.phone|default:'' }}" autocomplete="tel"
-                     style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
-            </div>
+          <div style="margin-top:1rem;">
+            <label for="ck-country" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Country</label>
+            <select id="ck-country" name="country" required autocomplete="country"
+                    style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+                <option value="">Choose a country</option>
+                {% for code, name in countries %}<option value="{{ code }}"{% if code == form.country %} selected{% endif %}>{{ name }}</option>{% endfor %}
+            </select>
           </div>
+          <details style="margin-top:1rem;"{% if form.phone %} open{% endif %}>
+            <summary style="cursor:pointer; font-size:.85rem; text-decoration:underline; width:fit-content;">Add a phone number for delivery updates</summary>
+            <div style="margin-top:.5rem;">
+              <label for="ck-phone" style="display:block; font-size:.85rem; margin-bottom:.25rem;">Phone (optional)</label>
+              <input id="ck-phone" name="phone" type="tel" value="{{ form.phone|default:'' }}" autocomplete="tel" inputmode="tel"
+                     style="width:100%; padding:.75rem; border:1px solid var(--rule); border-radius:6px;">
+            </div>
+          </details>
         </fieldset>
 
         {# ── Shipping method ────────────────────────────────────── #}

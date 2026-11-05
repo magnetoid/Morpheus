@@ -59,11 +59,14 @@
             <input id="ck-addr1" name="address_line1" value="{{ form.address_line1|default:'' }}"
                    autocomplete="address-line1" required class="ck-input">
           </div>
-          <div class="ck-field">
-            <label for="ck-addr2">{% trans "Apartment, suite, etc." %} <span class="ck-opt">{% trans "(optional)" %}</span></label>
-            <input id="ck-addr2" name="address_line2" value="{{ form.address_line2|default:'' }}"
-                   autocomplete="address-line2" class="ck-input">
-          </div>
+          <details style="margin-top:.85rem;"{% if form.address_line2 %} open{% endif %}>
+            <summary style="cursor:pointer; font-size:.85rem; text-decoration:underline; width:fit-content;">{% trans "Add apartment, suite, etc." %}</summary>
+            <div class="ck-field" style="margin-top:.5rem;">
+              <label for="ck-addr2">{% trans "Apartment, suite, etc." %} <span class="ck-opt">{% trans "(optional)" %}</span></label>
+              <input id="ck-addr2" name="address_line2" value="{{ form.address_line2|default:'' }}"
+                     autocomplete="address-line2" class="ck-input">
+            </div>
+          </details>
           <div class="ck-grid-3">
             <div class="ck-field">
               <label for="ck-city">{% trans "City" %} <span class="ck-req" aria-hidden="true">*</span></label>
@@ -81,22 +84,21 @@
                      autocomplete="postal-code" inputmode="numeric" class="ck-input">
             </div>
           </div>
-          <div class="ck-grid-2">
-            <div class="ck-field">
-              <label for="ck-country">{% trans "Country" %} <span class="ck-req" aria-hidden="true">*</span></label>
-              <input id="ck-country" name="country" value="{{ form.country|default:'US' }}"
-                     autocomplete="country" maxlength="2"
-                     pattern="[A-Za-z]{2}"
-                     style="text-transform: uppercase;"
-                     required class="ck-input">
-              <p class="ck-hint">{% blocktrans trimmed %}Two-letter ISO code (e.g. <code>US</code>, <code>DE</code>, <code>GB</code>).{% endblocktrans %}</p>
-            </div>
-            <div class="ck-field">
+          <div class="ck-field" style="margin-top:.85rem;">
+            <label for="ck-country">{% trans "Country" %} <span class="ck-req" aria-hidden="true">*</span></label>
+            <select id="ck-country" name="country" autocomplete="country" required class="ck-input">
+                <option value="">{% trans "Choose a country" %}</option>
+                {% for code, name in countries %}<option value="{{ code }}"{% if code == form.country %} selected{% endif %}>{{ name }}</option>{% endfor %}
+            </select>
+          </div>
+          <details style="margin-top:.85rem;"{% if form.phone %} open{% endif %}>
+            <summary style="cursor:pointer; font-size:.85rem; text-decoration:underline; width:fit-content;">{% trans "Add a phone number for delivery updates" %}</summary>
+            <div class="ck-field" style="margin-top:.5rem;">
               <label for="ck-phone">{% trans "Phone" %} <span class="ck-opt">{% trans "(optional)" %}</span></label>
               <input id="ck-phone" name="phone" type="tel" value="{{ form.phone|default:'' }}"
                      autocomplete="tel" inputmode="tel" class="ck-input">
             </div>
-          </div>
+          </details>
         </fieldset>
         {% endif %}
 
@@ -283,7 +285,8 @@
         setIfEmpty('ck-city', city);
         setIfEmpty('ck-state', state);
         setIfEmpty('ck-zip', postal);
-        setIfEmpty('ck-country', country);
+        var countryEl = document.getElementById('ck-country');
+        if (countryEl && country) countryEl.value = country;
       });
     }
     if (document.readyState === 'loading') {
