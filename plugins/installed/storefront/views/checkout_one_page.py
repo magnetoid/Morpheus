@@ -289,7 +289,10 @@ def _render_form(request, *, addr: dict | None, rate_id: str, error: str, paymen
     _waiver = _withdrawal_waiver()
     ctx['show_withdrawal_waiver'] = _waiver['enabled'] and _cart_has_digital(request)
     ctx['withdrawal_waiver_text'] = _waiver['text']
-    ctx['form'] = addr or {}
+    # A first visit keeps the base context's prefill (a signed-in shopper's saved
+    # address, else the store's country); a re-render shows what was typed.
+    if addr is not None:
+        ctx['form'] = addr
     ctx['selected_rate_id'] = rate_id
     ctx['error'] = error
     ctx['payment_methods'] = _payment_methods(request)

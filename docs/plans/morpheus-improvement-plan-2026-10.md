@@ -851,7 +851,15 @@ ships as one release at a time, in this order:
   in for goods that name none, a party whole from one source, never for a service or a download.
   The page shows them under the description and the graph names the manufacturer. Product codes
   stay the metafields identifiers; feed attributes are not added.
-- R8 express checkout on the cart + shorter forms (W8.2; passkeys parked).
+- **R8 express checkout on the cart + a shorter checkout form (W8.2), v0.135.0** — payments
+  contributes Stripe's Express Checkout Element to `cart_summary_extra` while Stripe can charge
+  (merchant switch `express_on_cart`); every amount the wallet sheet shows is quoted by the
+  server for the wallet's address (`/payments/express/quote/`), the order is placed only while
+  that amount holds and its total is checked before the client secret leaves
+  (`/payments/express/order/`). A cart that needs the digital-withdrawal tick stays with the form.
+  Every theme's two checkout forms show eight fields up front; the apartment line and phone sit
+  behind a disclosure (open when filled), and the country is a list of codes starting from the
+  store country (`core/utils/countries.py:country_choices`). Passkeys parked.
 - R9 ECB exchange rates (W8.6). R10 WCAG fixes + axe on all stores (W5d).
 - R11 dashboard Tailwind precompiled, `unsafe-eval` dropped. R12 checkout CSP with
   nonces + script inventory (W5e). R13 psycopg 3, OpenAPI schema.

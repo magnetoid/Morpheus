@@ -42,3 +42,45 @@ class OnePageCheckoutCountryTests(SimpleTestCase):
 
         self.assertEqual(_shipping_input({'country': 'uk'})['country'], 'GB')
         self.assertEqual(_shipping_input({'country': 'Narnia'})['country'], '')
+
+
+class OnePagePrefillTests(TestCase):
+    def test_a_first_visit_starts_from_the_store_country(self):
+        # The one-page form threw the prefill away on a first visit until v0.135.0.
+        StoreSettings.objects.create(country='UK')
+        r = self.client.get('/checkout/quick/')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context['form'].get('country'), 'GB')
+
+    def test_a_re_render_keeps_what_was_typed(self):
+        StoreSettings.objects.create(country='UK')
+        r = self.client.post('/checkout/quick/', {'email': '', 'country': 'DE'})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context['form'].get('country'), 'DE')
+
+
+class CountryChoicesTests(SimpleTestCase):
+    def test_codes_named_in_the_page_language(self):
+        from core.utils.countries import country_choices
+
+        english = dict(country_choices('en'))
+        self.assertEqual(english['GB'], 'United Kingdom')
+        self.assertEqual(english['ME'], 'Montenegro')
+        # Serbian pages are written in Latin script, never Django's Cyrillic.
+        self.assertEqual(dict(country_choices('sr'))['ME'], 'Crna Gora')
+
+    def test_only_places_an_order_ships_to(self):
+        from core.utils.countries import country_choices
+
+        codes = [code for code, _name in country_choices('en')]
+        for grouping in ('EU', 'UN', 'ZZ', 'EZ'):
+            self.assertNotIn(grouping, codes)
+        self.assertTrue(all(len(code) == 2 and code.isupper() for code in codes))
+
+    def test_sorted_by_name(self):
+        from core.utils.countries import country_choices
+
+        names = [name for _code, name in country_choices('en')]
+        self.assertLess(names.index('Albania'), names.index('Zimbabwe'))
+        # "Åland Islands" sorts with the A's, not after Z.
+        self.assertLess(names.index('Åland Islands'), names.index('Albania'))
