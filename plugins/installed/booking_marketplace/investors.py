@@ -47,12 +47,18 @@ def _catalogue() -> dict:
     experiences = BookableService.objects.filter(
         is_active=True, vendor__is_active=True, listing_kind='experience'
     )
+    # The same filter as the stays index (stay_views.stays_index).
+    stays = Property.objects.filter(is_active=True, vendor__is_active=True)
     prices = [p for p in experiences.values_list('price', flat=True) if p and p > 0]
+    # A host is anyone with a public experience or stay; a guesthouse with no
+    # experience is still a host on the site.
+    hosts = set(experiences.values_list('vendor_id', flat=True))
+    hosts |= set(stays.values_list('vendor_id', flat=True))
     return {
         'experiences': experiences.count(),
-        'stays': Property.objects.filter(is_active=True, vendor__is_active=True).count(),
+        'stays': stays.count(),
         'regions': len(live_regions()),
-        'hosts': experiences.values('vendor_id').distinct().count(),
+        'hosts': len(hosts),
         'median_price': Decimal(median(prices)) if prices else FALLBACK_PRICE,
     }
 

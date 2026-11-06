@@ -56,6 +56,9 @@ class InvestorPageTests(TestCase):
         Property.objects.create(
             vendor=kotor, name='Old Town Rooms', slug='old-town-rooms', is_active=True
         )
+        # A guesthouse that offers no experience is still a host on the site.
+        inn = Vendor.objects.create(name='Bay Inn', slug='bay-inn', is_active=True)
+        Property.objects.create(vendor=inn, name='Bay Inn', slug='bay-inn', is_active=True)
 
     def setUp(self):
         _activate_theme(self, 'montenegro')
@@ -66,8 +69,8 @@ class InvestorPageTests(TestCase):
         ctx = resp.context['catalogue']
         # A listing from a host who is switched off is not on the site.
         self.assertEqual(ctx['experiences'], 3)
-        self.assertEqual(ctx['hosts'], 2)
-        self.assertEqual(ctx['stays'], 1)
+        self.assertEqual(ctx['hosts'], 3)
+        self.assertEqual(ctx['stays'], 2)
         self.assertEqual(ctx['regions'], 2)
         self.assertEqual(ctx['median_price'], Decimal('60'))
 
