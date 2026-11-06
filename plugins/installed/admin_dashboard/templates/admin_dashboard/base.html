@@ -20,12 +20,6 @@
   } catch (_) { /* localStorage disabled — leave default (light) */ }
 })();
 </script>
-<!-- crossorigin=anonymous on CORS-serving CDNs only so window.onerror sees
-     real error messages + stack frames. cdn.tailwindcss.com does NOT serve
-     Access-Control-Allow-Origin, so the crossorigin attribute makes the
-     browser block it outright — leave it bare. unpkg.com does serve CORS,
-     so its scripts keep the attribute. -->
-<script src="https://cdn.tailwindcss.com"></script>
 <!-- Remix Icon webfont (https://remixicon.com) — one consistent line weight across
      the whole dashboard. We keep every existing `<i data-lucide="name">` in the
      templates untouched and shim `lucide.createIcons()` to convert each into the
@@ -941,6 +935,8 @@
   .img-frame--sm  { height: 2.25rem; width: auto; min-width: 1.5rem; max-width: 3.5rem; }
 </style>
 {% image_frame_style %}
+{% comment %}Tailwind, built ahead of time from every app's templates (admin_dashboard/frontend/README.md). It replaced the Play CDN, which compiled classes in the browser and needed 'unsafe-eval' in the dashboard's CSP. It stays last in the head, where the CDN put its styles: a utility (lg:hidden, flex) wins over the shell's own rule of equal weight above.{% endcomment %}
+<link rel="stylesheet" href="{% static 'admin_dashboard/tailwind.css' %}">
 </head>
 <body class="min-h-screen flex guided-ux" hx-boost="true" hx-target="#main-content" hx-select="#main-content" hx-swap="outerHTML show:window:top" hx-push-url="true" hx-indicator="#htmx-progress">
 

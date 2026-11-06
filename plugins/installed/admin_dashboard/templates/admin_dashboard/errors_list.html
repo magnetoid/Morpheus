@@ -58,8 +58,8 @@
   </div>
 
   {# Summary tiles + 24h sparkline. Auto-refresh every 30s via htmx — #}
-  {# only when the tab is visible (htmx skips the swap on hidden tabs). #}
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3" hx-get="?{{ request.GET.urlencode }}" hx-trigger="every 30s [document.visibilityState=='visible']" hx-select="#errors-summary,#errors-sparkline,#errors-table" hx-target="this" hx-swap="none">
+  {# only when the tab is visible (data-poll-when-visible, dashboard.js). #}
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3" hx-get="?{{ request.GET.urlencode }}" hx-trigger="every 30s" data-poll-when-visible hx-select="#errors-summary,#errors-sparkline,#errors-table" hx-target="this" hx-swap="none">
     <div class="card card-padded" id="errors-summary-total">
       <p class="kpi__label">Total</p>
       <p class="kpi__value mt-1">{{ counts.total }}</p>

@@ -74,6 +74,24 @@ jobs:
       - name: pip-audit (dependency CVEs in the lock)
         run: pip-audit --require-hashes -r requirements.lock.txt
 
+  dashboard-css:
+    # The dashboard's Tailwind stylesheet is built ahead of time and committed,
+    # because the image has no Node (admin_dashboard/frontend/README.md). A
+    # template that gains a class the committed file lacks renders that class
+    # unstyled, so this rebuilds it and fails when the result differs.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the dashboard stylesheet
+        working-directory: plugins/installed/admin_dashboard/frontend
+        run: npm ci --no-audit --no-fund && npm run build
+      - name: The committed stylesheet is current
+        run: |
+          git diff --quiet -- plugins/installed/admin_dashboard/static/admin_dashboard/tailwind.css || {
+            echo "::error::admin_dashboard/static/admin_dashboard/tailwind.css is out of date. Run 'npm ci && npm run build' in plugins/installed/admin_dashboard/frontend and commit the file."
+            exit 1
+          }
+
   migrations:
     # Apply every migration against real Postgres — sqlite (used by the test job)
     # types loosely and silently accepts e.g. a bigint->uuid AlterField cast that

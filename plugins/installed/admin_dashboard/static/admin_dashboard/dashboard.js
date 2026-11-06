@@ -531,6 +531,16 @@
         }
       });
     });
+
+    // A poll that runs only while the tab is visible. htmx's own
+    // `every 30s [condition]` filter evaluates a string, which the dashboard's
+    // CSP refuses (no 'unsafe-eval'), so mark the poller instead.
+    document.body.addEventListener('htmx:beforeRequest', function (e) {
+      var elt = e.detail && e.detail.elt;
+      if (elt && elt.hasAttribute('data-poll-when-visible') && document.visibilityState !== 'visible') {
+        e.preventDefault();
+      }
+    });
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);

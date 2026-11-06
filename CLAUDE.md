@@ -1318,6 +1318,20 @@ capped somewhere between 672 and 1280 px, so some screens were narrow and others
 2026-10-20). A paragraph, a table cell or an input may still cap itself, for its own sake. Guarded
 by `admin_dashboard/tests/test_page_width.py`.
 
+**Convention — the dashboard's Tailwind is built ahead of time (v0.136.0).** `admin_dashboard/frontend`
+builds `static/admin_dashboard/tailwind.css` from every app's templates, Python and scripts (Tailwind
+3.4.17, default theme, the version the Play CDN served), and the file is committed because the image
+has no Node. The CDN compiled classes in the browser and was the last reason the dashboard's CSP
+allowed `'unsafe-eval'`. A change that adds a class runs `npm ci && npm run build` there and commits
+the result; CI's `dashboard-css` job fails otherwise. Write every class whole (`'bg-' + tone` gets no
+CSS), and keep the link last in the head: the CDN appended its styles after the shell's own, and
+linked first the stylesheet lost `lg:hidden` to the shell's `display`, so the mobile menu buttons
+showed on desktop. htmx needs eval too, for a trigger filter (`every 30s [cond]`), `hx-on` and `js:`
+values: the error log's refresh failed on that, so a poll that waits for a visible tab carries
+`data-poll-when-visible` (dashboard.js). Guarded by `admin_dashboard/tests/test_tailwind_build.py` (every
+utility on every tab and tool has a rule) and `core/tests/test_csp_richtext.py` (no eval in the CSP or
+asked for by a template).
+
 **Landmine — a dedupe key built from text a model writes never matches twice.** Pulse kept "one
 unread card per signal" by hashing the card's title, computed after the model reworded it and with
 the count inside it, so every refresh made a new card: dotbooks reached 1,145 unread insights, 992 of

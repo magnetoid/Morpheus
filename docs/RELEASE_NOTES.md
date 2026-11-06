@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.136.0 — 2026-11-06
+
+**The dashboard's styles ship with Morpheus, and its security policy allows no eval**
+
+- The dashboard and the media picker load their Tailwind styles from the store itself, built ahead of time, instead of a script that compiled them in the browser. Pages look the same; a comparison of 361 dashboard pages before and after found no difference.
+- Security: the dashboard's content security policy no longer allows scripts to evaluate code ('unsafe-eval') or load from the Tailwind CDN. Staff see product text, vendor copy and other untrusted content there, so this closes the way a stored script would run.
+- For app authors: a Tailwind class in an app outside this repository renders only if the dashboard's stylesheet already has it (docs/MIGRATING.md, v0.136.0).
+
 ## v0.135.1 — 2026-11-05
 
 **Accessibility fixes on every store, and the live audit checks all four**
