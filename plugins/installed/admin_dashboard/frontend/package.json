@@ -1,0 +1,12 @@
+{
+  "name": "morph-dashboard-css",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Builds the dashboard's Tailwind stylesheet. Build only; not published.",
+  "scripts": {
+    "build": "tailwindcss --config tailwind.config.js --input input.css --output ../static/admin_dashboard/tailwind.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}

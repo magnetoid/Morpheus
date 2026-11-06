@@ -98,22 +98,17 @@ _CSP_REPORT_ONLY = '; '.join(
 # neutralize.
 #
 # CDN allow-list rationale (TODO: self-host these to remove the allow-list):
-#   - cdn.tailwindcss.com — Tailwind JIT runtime (admin styling)
 #   - unpkg.com — htmx + lucide-icons (admin behaviour + iconography)
-# The rich-text editor is now self-hosted (richtext plugin: an eval-free
-# Lexical bundle served from 'self'), so esm.sh was removed from the dashboard
-# CSP entirely (it used to load TipTap).
+# The rich-text editor is self-hosted (richtext plugin: an eval-free Lexical
+# bundle served from 'self'), so esm.sh is gone (it used to load TipTap), and
+# Tailwind is a stylesheet built ahead of time (admin_dashboard/frontend), so
+# the Play CDN and the 'unsafe-eval' its in-browser compiler needed are gone
+# too (v0.136.0).
 _CSP_DASHBOARD_ENFORCE = '; '.join(
     [
         "default-src 'self'",
-        # 'unsafe-eval' is required ONLY by the Tailwind Play CDN's JIT compiler
-        # (cdn.tailwindcss.com), which evals at runtime. The TipTap editor that
-        # also needed it is gone — replaced by the self-hosted, eval-free
-        # richtext/Lexical bundle served from 'self'. To finally drop
-        # 'unsafe-eval', precompile Tailwind to a static stylesheet (separate
-        # follow-up). Dashboard is staff-only.
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com",
-        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net",
+        "script-src 'self' 'unsafe-inline' https://unpkg.com",
+        "style-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net",
         "img-src 'self' data: blob: https:",
         # cdn.jsdelivr.net — Remix Icon webfont (remixicon.css + .woff2 glyphs).
         "font-src 'self' data: https://cdn.jsdelivr.net",

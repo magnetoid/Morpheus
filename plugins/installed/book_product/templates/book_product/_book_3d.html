@@ -26,7 +26,8 @@ Include this ONCE per page (it carries the importmap, which must be unique).
   async function coverTexture(pdfUrl) {
     const pdfjs = await import(PDFJS);
     pdfjs.GlobalWorkerOptions.workerSrc = WORKER;
-    const pdf = await pdfjs.getDocument(pdfUrl).promise;
+    // No eval: the dashboard's CSP refuses it, and the cover renders without.
+    const pdf = await pdfjs.getDocument({ url: pdfUrl, isEvalSupported: false }).promise;
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale: 2 });
     const canvas = document.createElement('canvas');

@@ -6,6 +6,22 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.136.0 — the dashboard's Tailwind is a built stylesheet
+
+The dashboard no longer loads the Tailwind Play CDN, which compiled classes in the browser.
+It links `admin_dashboard/tailwind.css`, built from the templates, Python and scripts in this
+repository (`plugins/installed/admin_dashboard/frontend/`), and its CSP no longer allows
+`'unsafe-eval'` or `cdn.tailwindcss.com`.
+- **An app outside this repository** is not scanned. A Tailwind class its dashboard pages use
+  renders only when the stylesheet already has it. Use the shell's own classes (`btn`, `card`,
+  `pill`, …) and the utilities the stylesheet carries, or link a stylesheet of your own from
+  your app's static files.
+- **A script that loaded the Play CDN** on a dashboard page is refused by the CSP; remove it.
+- **A class built from pieces** (`'bg-' + tone`, `text-{{ colour }}-600`) never had a rule the
+  build can find. Map each value to a whole class name.
+
+---
+
 ## v0.132.1 — the three removed payment and upsell apps leave no records
 
 The switches and stored settings of `post_checkout_upsell`, `advanced_payments` and
