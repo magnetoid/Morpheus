@@ -222,7 +222,7 @@ referral prompts, quiz nudges. Contributed via StorefrontBlock(slot=
   }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce }}">
   // Submit busy state — flips aria-busy + disabled while the POST is
   // in flight. Per 2026 a11y guidance the button stays focusable
   // (aria-busy + visual change), so screen-reader status is announced.
@@ -249,8 +249,8 @@ referral prompts, quiz nudges. Contributed via StorefrontBlock(slot=
 </script>
 
 {% if GOOGLE_PLACES_API_KEY %}
-<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_PLACES_API_KEY }}&libraries=places"></script>
-<script>
+<script nonce="{{ csp_nonce }}" async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_PLACES_API_KEY }}&libraries=places"></script>
+<script nonce="{{ csp_nonce }}">
   // Google Places autocomplete — fills city/state/postal/country from a
   // selected place, but only when those fields are still empty (never
   // clobbers manual input). No-ops cleanly if the script fails to load.

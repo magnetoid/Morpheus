@@ -9,6 +9,7 @@ from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404
 
 from api.client import internal_graphql
+from core.security_headers import payment_page
 from morpheus.app.views import redirect, render
 from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.catalog.models import Product, ProductVariant
@@ -19,6 +20,7 @@ from ._queries import CART_QUERY
 logger = logging.getLogger('morpheus.storefront')
 
 
+@payment_page
 def cart(request):
     from .checkout import _cart_totals
 

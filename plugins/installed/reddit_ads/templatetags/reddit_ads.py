@@ -17,6 +17,8 @@ import re
 from django import template
 from django.utils.safestring import mark_safe
 
+from core.security_headers import script_nonce
+
 register = template.Library()
 
 _PIXEL_RE = re.compile(r'^[A-Za-z0-9_]{4,50}$')
@@ -79,7 +81,7 @@ def reddit_pixel(context):
 
     purchase = _purchase_js(context.get('order'), request)
     snippet = (
-        '<script>!function(w,d){if(!w.rdt){var p=w.rdt=function(){'
+        '<script' + script_nonce(context) + '>!function(w,d){if(!w.rdt){var p=w.rdt=function(){'
         'p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};'
         'p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/pixel.js",'
         't.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}'

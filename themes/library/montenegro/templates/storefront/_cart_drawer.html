@@ -95,7 +95,7 @@ form post + redirect when JS is off.
   #cart-drawer footer .btn { display: block; text-align: center; padding: .75rem 1rem; }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   var root = document.getElementById('cart-drawer-root');
   if (!root) return;

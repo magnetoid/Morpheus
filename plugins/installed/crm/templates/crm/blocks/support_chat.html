@@ -45,7 +45,7 @@
   .crm-chat__row input { flex: 1; }
   .crm-chat__row button { border: 0; background: var(--ink, #111); color: var(--paper, #fff); border-radius: 10px; width: 2.6rem; cursor: pointer; font-size: 1.1rem; }
 </style>
-<script>
+<script nonce="{{ csp_nonce }}">
 (() => {
   const root = document.getElementById('crm-chat');
   if (!root) return;

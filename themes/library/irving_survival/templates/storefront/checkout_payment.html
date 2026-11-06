@@ -38,8 +38,8 @@
       handles encryption, 3-D Secure, and authorisation.
     </p>
 
-    <script src="https://js.stripe.com/v3/"></script>
-    <script>
+    <script nonce="{{ csp_nonce }}" src="https://js.stripe.com/v3/"></script>
+    <script nonce="{{ csp_nonce }}">
     (function () {
       var stripe = Stripe('{{ stripe_publishable_key|escapejs }}');
       var elements = stripe.elements({

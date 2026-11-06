@@ -22,6 +22,8 @@ from django import template
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
+from core.security_headers import script_nonce
+
 register = template.Library()
 
 
@@ -95,8 +97,8 @@ def caching_font_display() -> str:
     )
 
 
-@register.simple_tag
-def caching_service_worker_register() -> str:
+@register.simple_tag(takes_context=True)
+def caching_service_worker_register(context) -> str:
     """Register the storefront service worker if the merchant
     enabled it on the Caching page. No-op when off — leaves no
     JS on the page.
@@ -111,7 +113,7 @@ def caching_service_worker_register() -> str:
         return ''
     offline = escape((cfg.get('offline_page_path') or '/offline/').strip())
     return mark_safe(  # noqa: S308
-        '<script>'
+        '<script' + script_nonce(context) + '>'
         'if ("serviceWorker" in navigator) {'
         '  window.addEventListener("load", function () {'
         '    navigator.serviceWorker.register("/sw.js", {scope: "/"}).catch(function(e){'

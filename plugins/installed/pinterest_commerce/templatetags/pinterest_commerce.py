@@ -18,6 +18,8 @@ import re
 from django import template
 from django.utils.safestring import mark_safe
 
+from core.security_headers import script_nonce
+
 register = template.Library()
 
 _TAG_RE = re.compile(r'^\d{6,20}$')
@@ -97,7 +99,9 @@ def pinterest_tag(context):
 
     checkout = _checkout_js(context.get('order'), request)
     snippet = (
-        '<script>!function(e){if(!window.pintrk){window.pintrk=function(){'
+        '<script'
+        + script_nonce(context)
+        + '>!function(e){if(!window.pintrk){window.pintrk=function(){'
         'window.pintrk.queue.push(Array.prototype.slice.call(arguments))};var n=window.pintrk;'
         'n.queue=[],n.version="3.0";var t=document.createElement("script");t.async=!0,t.src=e;'
         'var r=document.getElementsByTagName("script")[0];r.parentNode.insertBefore(t,r)}}'

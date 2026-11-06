@@ -16,6 +16,8 @@ import re
 from django import template
 from django.utils.safestring import mark_safe
 
+from core.security_headers import script_nonce
+
 register = template.Library()
 
 _TAG_RE = re.compile(r'^\d{5,20}$')
@@ -104,7 +106,9 @@ def uet_tag(context):
     remarketing = _remarketing_js(context, request)
     purchase = _purchase_js(context.get('order'), request)
     snippet = (
-        '<script>(function(w,d,t,r,u){var f,n,i;w[u]=w[u]||[],f=function(){'
+        '<script'
+        + script_nonce(context)
+        + '>(function(w,d,t,r,u){var f,n,i;w[u]=w[u]||[],f=function(){'
         f'var o={{ti:{_js(tag_id)},enableAutoSpaTracking:!0}};'
         'o.q=w[u],w[u]=new UET(o),w[u].push("pageLoad")},n=d.createElement(t),n.src=r,'
         'n.async=1,n.onload=n.onreadystatechange=function(){var s=this.readyState;'

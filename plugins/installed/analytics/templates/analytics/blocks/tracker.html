@@ -1,7 +1,7 @@
 {# The beacon runs only with analytics consent; an unmanaged store (GDPR features off, consent app off) keeps it. #}
 {% if not consent.managed or consent.analytics %}
 {# Storefront analytics beacon — emits product views, search queries, cart adds, scroll depth, and custom no-code events. #}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function() {
   var TRACK_URL = '/api/analytics/track/';
   var startTime = Date.now();

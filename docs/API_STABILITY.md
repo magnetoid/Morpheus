@@ -43,6 +43,7 @@ Anything that breaks a **STABLE** surface ships with:
 
 | Version | Surface | What broke | Migration |
 |---|---|---|---|
+| **v0.137.0** | Theme and app authoring — scripts on payment pages | The cart, checkout, saved-card and membership card pages enforce a nonce-based CSP: a `<script>` without `nonce="{{ csp_nonce }}"` and an inline `on…=` handler no longer run there. | [`MIGRATING.md`](MIGRATING.md#v01370--scripts-on-the-payment-pages-carry-the-pages-nonce) |
 | **v0.136.0** | App authoring — dashboard styling | The dashboard links a Tailwind stylesheet built from this repository's sources instead of the Play CDN, and its CSP drops `'unsafe-eval'` and `cdn.tailwindcss.com`. An out-of-tree app's dashboard pages get only the utilities the stylesheet already has. | [`MIGRATING.md`](MIGRATING.md#v01360--the-dashboards-tailwind-is-a-built-stylesheet) |
 | **v0.125.0** | Theme authoring — `listing_facets` | A facet may be `lazy`: its options are the chosen ones only (`count` None) and the full list comes from `options_url` (`?facet_panel=<key>`, JSON) when its panel opens. | [`MIGRATING.md`](MIGRATING.md#v01250--a-theme-renders-lazy-filter-panels) |
 | **v0.124.0** | MCP tools — loyalty, reviews, subscriptions, shop memory | `loyalty.adjust_points`, `reviews.delete` and `subscriptions.cancel` are protected (a token needs the merchant's tick); `memory.remember` and `memory.forget` are no longer offered to a token. | [`MIGRATING.md`](MIGRATING.md#v01240--three-more-protected-tools-the-shop-memory-is-lindas-own) |

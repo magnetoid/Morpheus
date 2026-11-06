@@ -28,6 +28,8 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
+from core.security_headers import payment_page
+
 _MEMBERSHIP = '/membership/'
 
 
@@ -152,6 +154,7 @@ def _paid_stripe_plan_or_redirect(request, plan_id):
     return plan, None
 
 
+@payment_page
 @login_required
 @require_http_methods(['GET'])
 def subscribe_start_view(request, plan_id):

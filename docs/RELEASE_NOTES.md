@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.137.0 — 2026-11-06
+
+**The cart and checkout run only the scripts the store put there**
+
+- Security: the cart, every checkout step, saved cards and the membership card form now enforce a content security policy. A script runs there only when its tag carries that page's one-time code (a nonce), so a script slipped into a product description, a review or the database runs nothing where shoppers type a card or an address. Inline handlers and code evaluation are blocked too. The rest of the shop keeps the report-only policy.
+- docs/CHECKOUT_SCRIPTS.md lists every script on those pages, who owns it and why (PCI DSS 4.0.1 requirement 6.4.3). A test renders each of those pages under every theme and fails when a script lacks the nonce or loads from an origin the list does not name.
+- Montenegro: the header's account and mobile menus and the language switcher work without inline handlers, which the policy blocks. Removing a saved card asks for confirmation the same way on every theme.
+- The themes load their animation and page-speed libraries at exact versions (motion 10.18.0, web-vitals 4.2.4).
+- For app authors: a script a storefront block or template tag writes carries nonce="{{ csp_nonce }}" (docs/MIGRATING.md, v0.137.0).
+
 ## v0.136.0 — 2026-11-06
 
 **The dashboard's styles ship with Morpheus, and its security policy allows no eval**

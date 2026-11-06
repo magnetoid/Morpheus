@@ -31,8 +31,8 @@
   </button>
   <p style="color:#888;font-size:.8rem;margin:.75rem 0 0;">Your card is held by Stripe; we only keep a reference to it. Cancel any time from your account.</p>
 
-  <script src="https://js.stripe.com/v3/"></script>
-  <script>
+  <script nonce="{{ csp_nonce }}" src="https://js.stripe.com/v3/"></script>
+  <script nonce="{{ csp_nonce }}">
   (function () {
     var stripe = Stripe('{{ stripe_publishable_key|escapejs }}');
     var elements = stripe.elements({

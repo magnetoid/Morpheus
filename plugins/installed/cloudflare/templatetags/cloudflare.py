@@ -6,11 +6,13 @@ from django import template
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
+from core.security_headers import script_nonce
+
 register = template.Library()
 
 
-@register.simple_tag
-def turnstile() -> str:
+@register.simple_tag(takes_context=True)
+def turnstile(context) -> str:
     """Render the Cloudflare Turnstile widget when enabled + a site key is set.
     Place inside a <form>; pair it with services.verify_turnstile() in the view.
     Renders nothing (so the form still works) when Turnstile is off."""
@@ -21,5 +23,5 @@ def turnstile() -> str:
         return ''
     return mark_safe(  # noqa: S308 — site key is escape()'d; the rest is static markup
         f'<div class="cf-turnstile" data-sitekey="{escape(site)}" style="margin:.5rem 0;"></div>'
-        '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
+        f'<script{script_nonce(context)} src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
     )

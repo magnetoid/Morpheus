@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 
 from morpheus.app.views import render
+from core.security_headers import payment_page
 
 logger = logging.getLogger('morpheus.storefront')
 
@@ -403,6 +404,7 @@ def account_credits(request):
 # (never URL-routed); the gdpr plugin now owns and routes them.
 
 
+@payment_page
 def account_payment_methods(request):
     """Saved card vault — list + add (SetupIntent) + delete.
 

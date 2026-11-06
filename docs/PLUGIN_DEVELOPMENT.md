@@ -322,6 +322,19 @@ class AdvancedShopPlugin(MorpheusPlugin):
         ...   # always accept **kwargs; wrap the body so a bad row can't break the chain
 ```
 
+### A storefront block's scripts carry the page's nonce (v0.137.0)
+
+A block can land on the cart, the checkout or another page where a shopper types
+a card, and those pages enforce a policy that runs a script only when its tag
+carries the response's nonce. So every `<script>` a block template writes says
+`nonce="{{ csp_nonce }}"`, and a template tag that writes one takes the context
+(`takes_context=True`) and adds `core.security_headers.script_nonce(context)`.
+Attach behaviour with `addEventListener`; an `onclick=` attribute does nothing on
+those pages. A script from a new third-party origin goes into
+`PAYMENT_PAGE_SCRIPT_ORIGINS` and [`CHECKOUT_SCRIPTS.md`](CHECKOUT_SCRIPTS.md) in the
+same change. `core/tests/test_payment_page_csp.py` renders every payment page with
+every script-writing app switched on and fails on a script without the nonce.
+
 ### Where an app's dashboard entries land (v0.81.0)
 
 The dashboard has **one taxonomy**, owned by the shell

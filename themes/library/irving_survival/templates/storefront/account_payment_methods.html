@@ -57,7 +57,7 @@
             </div>
           </div>
           <form method="post" action="/account/payment-methods/" style="margin: 0;"
-                onsubmit="return confirm('Remove this card from your account?');">
+                data-confirm="Remove this card from your account?">
             {% csrf_token %}
             <input type="hidden" name="delete_id" value="{{ pm.id }}">
             <button type="submit" class="btn-link" style="color: var(--muted); background: none; border: 0; cursor: pointer; font-size: .9rem;">
@@ -67,6 +67,13 @@
         </li>
         {% endfor %}
       </ul>
+      <script nonce="{{ csp_nonce }}">
+      document.querySelectorAll('form[data-confirm]').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+          if (!window.confirm(form.dataset.confirm)) e.preventDefault();
+        });
+      });
+      </script>
       {% else %}
       <p style="color: var(--ink-2); margin: 0;">No cards on file yet. Add one below to speed through future checkouts.</p>
       {% endif %}
@@ -92,8 +99,8 @@
         Save this card
       </button>
 
-      <script src="https://js.stripe.com/v3/"></script>
-      <script>
+      <script nonce="{{ csp_nonce }}" src="https://js.stripe.com/v3/"></script>
+      <script nonce="{{ csp_nonce }}">
       (function () {
         var stripe = Stripe('{{ stripe_publishable_key|escapejs }}');
         var elements = stripe.elements({

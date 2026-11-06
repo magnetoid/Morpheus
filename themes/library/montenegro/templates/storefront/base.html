@@ -303,7 +303,6 @@ step here: a class it never saw does not exist, so new rules live in refresh.css
         <!-- Account dropdown -->
         <div class="relative" data-account-menu>
           <button type="button" aria-haspopup="true" aria-expanded="false" aria-label="{% trans 'Account' %}"
-            onclick="const p=this.parentNode.querySelector('[data-account-panel]');const hid=p.classList.toggle('hidden');this.setAttribute('aria-expanded',String(!hid));"
             class="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </button>
@@ -373,10 +372,22 @@ step here: a class it never saw does not exist, so new rules live in refresh.css
           {% endwith %}
           </div>
         </div>
-        <script>
+        <script nonce="{{ csp_nonce }}">
         (function(){
           if (window.__accountMenuBound) return; window.__accountMenuBound = true;
+          // Listeners, never onclick attributes: the cart and checkout enforce a
+          // CSP that runs only scripts carrying the page's nonce.
           document.addEventListener('click', function(e){
+            var toggle = e.target.closest('[data-account-menu] > button[aria-haspopup]');
+            if (toggle) {
+              var hid = toggle.parentNode.querySelector('[data-account-panel]').classList.toggle('hidden');
+              toggle.setAttribute('aria-expanded', String(!hid));
+            }
+            var open = e.target.closest('[data-mobile-menu-open]');
+            if (open || e.target.closest('[data-mobile-menu-close]')) {
+              document.getElementById('mobile-menu').classList.toggle('hidden', !open);
+              document.body.style.overflow = open ? 'hidden' : '';
+            }
             document.querySelectorAll('[data-account-menu]').forEach(function(menu){
               if (menu.contains(e.target)) return;
               var p = menu.querySelector('[data-account-panel]');
@@ -404,7 +415,7 @@ step here: a class it never saw does not exist, so new rules live in refresh.css
         </a>
         {% endif %}
         <!-- Mobile menu trigger -->
-        <button type="button" onclick="document.getElementById('mobile-menu').classList.remove('hidden');document.body.style.overflow='hidden';" class="lg:hidden w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center text-foreground transition-colors" aria-label="{% trans 'Open menu' %}">
+        <button type="button" data-mobile-menu-open class="lg:hidden w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center text-foreground transition-colors" aria-label="{% trans 'Open menu' %}">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M4 6h16M4 18h16"/></svg>
         </button>
       </div>
@@ -414,14 +425,14 @@ step here: a class it never saw does not exist, so new rules live in refresh.css
 
 <!-- Mobile menu -->
 <div id="mobile-menu" class="hidden fixed inset-0 z-[60] lg:hidden">
-  <div class="absolute inset-0 bg-black/40" onclick="document.getElementById('mobile-menu').classList.add('hidden');document.body.style.overflow='';"></div>
+  <div class="absolute inset-0 bg-black/40" data-mobile-menu-close></div>
   <div class="absolute inset-y-0 left-0 w-full sm:max-w-md bg-background shadow-elevated flex flex-col">
     <div class="p-4 border-b border-border flex items-center justify-between">
       <span class="flex items-center gap-2">
         <span class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"><span class="text-primary-foreground font-bold text-lg">M</span></span>
         <span class="text-base font-semibold">montenegro<span class="text-primary">experience</span></span>
       </span>
-      <button type="button" onclick="document.getElementById('mobile-menu').classList.add('hidden');document.body.style.overflow='';" class="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center" aria-label="{% trans 'Close menu' %}">
+      <button type="button" data-mobile-menu-close class="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center" aria-label="{% trans 'Close menu' %}">
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -545,6 +556,6 @@ step here: a class it never saw does not exist, so new rules live in refresh.css
 </footer>
 
 {% storefront_blocks "global_below_body" %}
-<script src="{% static 'core/error-capture.js' %}" {% error_capture_attrs %} defer></script>
+<script nonce="{{ csp_nonce }}" src="{% static 'core/error-capture.js' %}" {% error_capture_attrs %} defer></script>
 </body>
 </html>

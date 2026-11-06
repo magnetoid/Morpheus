@@ -18,6 +18,8 @@ import re
 from django import template
 from django.utils.safestring import mark_safe
 
+from core.security_headers import script_nonce
+
 register = template.Library()
 
 _PIXEL_RE = re.compile(r'^[A-Za-z0-9]{6,40}$')
@@ -96,7 +98,9 @@ def tiktok_pixel(context):
 
     purchase = _purchase_js(context.get('order'), request)
     snippet = (
-        '<script>!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];'
+        '<script'
+        + script_nonce(context)
+        + '>!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];'
         'ttq.methods=["page","track","identify","instances","debug","on","off","once","ready",'
         '"alias","group","enableCookie","disableCookie"];ttq.setAndDefer=function(t,e){'
         't[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};'

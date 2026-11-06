@@ -1,5 +1,5 @@
 {% load webmcp %}{% webmcp_tools as webmcp_tool_list %}{{ webmcp_tool_list|json_script:"morph-webmcp-tools" }}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   // WebMCP: only where the browser (Chrome 149+ origin trial) offers it.
   var ctx = document.modelContext || navigator.modelContext;

@@ -14,6 +14,7 @@ import logging
 from api.client import internal_graphql
 from core.utils.countries import country_choices, normalise_country, store_country
 from morpheus.app.views import redirect, render
+from core.security_headers import payment_page
 
 from ._queries import CART_QUERY
 
@@ -258,6 +259,7 @@ def _available_shipping_rates(request, addr):
     return rates
 
 
+@payment_page
 def checkout(request):
     """Step 1: contact + shipping address."""
     no_shipping = not _cart_requires_shipping(request)
@@ -411,6 +413,7 @@ def checkout_remove_gift_card(request):
     return redirect(back)
 
 
+@payment_page
 def checkout_shipping(request):
     """Step 2: pick a shipping rate."""
     addr = request.session.get('checkout_address')
@@ -448,6 +451,7 @@ def checkout_shipping(request):
     )
 
 
+@payment_page
 def checkout_review(request):
     """Step 3: final review + place order. POST creates the Order +
     captures Stripe client_secret, then redirects to /checkout/payment/."""
@@ -555,6 +559,7 @@ def checkout_review(request):
     )
 
 
+@payment_page
 def checkout_payment(request):
     """Step 4: Stripe Payment Element."""
     order_no = request.session.get('checkout_order_number') or ''

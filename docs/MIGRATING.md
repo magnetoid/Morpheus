@@ -6,6 +6,26 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.137.0 — scripts on the payment pages carry the page's nonce
+
+The cart, the checkout steps, saved cards and the membership card form now enforce a
+Content-Security-Policy (`core.security_headers.payment_page`). A script runs there only when its
+tag carries the response's nonce. [`CHECKOUT_SCRIPTS.md`](CHECKOUT_SCRIPTS.md) lists what runs.
+- **A theme outside this repository**: give every `<script>` in `storefront/base.html`, the
+  templates it includes, and the cart, checkout, saved-card and membership templates
+  `nonce="{{ csp_nonce }}"`. Until then its scripts on those pages do not run.
+- **An app outside this repository** whose storefront block or template tag writes a script:
+  add the nonce the same way. A tag takes the context
+  (`@register.simple_tag(takes_context=True)`) and writes `<script{script_nonce(context)}>`
+  (`from core.security_headers import script_nonce`).
+- **An `onclick=`, `onchange=` or `onsubmit=` attribute**, or a `javascript:` link, does not run on
+  those pages. Attach a listener from a nonced script instead.
+- **A script from a new origin** (a chat widget, another pixel) still loads when a nonced script
+  inserts it. Add the origin to `PAYMENT_PAGE_SCRIPT_ORIGINS` and to the inventory so it is on
+  record.
+
+---
+
 ## v0.136.0 — the dashboard's Tailwind is a built stylesheet
 
 The dashboard no longer loads the Tailwind Play CDN, which compiled classes in the browser.

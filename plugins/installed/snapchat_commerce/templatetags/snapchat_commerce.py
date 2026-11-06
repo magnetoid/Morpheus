@@ -19,6 +19,8 @@ import re
 from django import template
 from django.utils.safestring import mark_safe
 
+from core.security_headers import script_nonce
+
 register = template.Library()
 
 _PIXEL_RE = re.compile(r'^[A-Za-z0-9-]{6,64}$')
@@ -111,7 +113,9 @@ def snap_pixel(context):
 
     purchase = _purchase_js(context.get('order'), request)
     snippet = (
-        '<script>(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function()'
+        '<script'
+        + script_nonce(context)
+        + '>(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function()'
         '{a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};'
         'a.queue=[];var s="script";var r=t.createElement(s);r.async=!0;'
         'r.src=n;var u=t.getElementsByTagName(s)[0];'

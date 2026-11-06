@@ -40,5 +40,5 @@ body.has-admin-bar .topbar { top: 32px !important; }
   .storefront-admin-bar a:not(:first-child):not(:nth-child(2)) { display: none; }
 }
 </style>
-<script>document.body.classList.add('has-admin-bar');</script>
+<script nonce="{{ csp_nonce }}">document.body.classList.add('has-admin-bar');</script>
 {% endif %}

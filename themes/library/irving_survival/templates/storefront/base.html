@@ -420,7 +420,7 @@ url tag for the seo namespace here 500'd every page once seo was disabled.{% end
 {# PWA manifest + apple-touch-icon are injected by the pwa plugin's storefront block (global_below_body), which also registers the service worker. #}
 
 {# Speculation Rules API — hover-prerenders PDP/category/vendor links. Skips side-effect-y paths. #}
-<script type="speculationrules">
+<script nonce="{{ csp_nonce }}" type="speculationrules">
 {
   "prerender": [{
     "where": {
@@ -445,11 +445,11 @@ url tag for the seo namespace here 500'd every page once seo was disabled.{% end
 
 {# Catch unhandled JS errors + unhandledrejection → /api/errors/client/. #}
 {% load static %}
-<script src="{% static 'core/error-capture.js' %}" {% error_capture_attrs %} defer></script>
+<script nonce="{{ csp_nonce }}" src="{% static 'core/error-capture.js' %}" {% error_capture_attrs %} defer></script>
 
 {# Motion One — ~3kb vanilla animator with spring built-in. Exposed as window.__motion #}
-<script type="module">
-  import { animate, stagger } from 'https://cdn.jsdelivr.net/npm/motion@10/+esm';
+<script nonce="{{ csp_nonce }}" type="module">
+  import { animate, stagger } from 'https://cdn.jsdelivr.net/npm/motion@10.18.0/+esm';
   window.__motion = { animate, stagger };
   window.dispatchEvent(new CustomEvent('motion:ready'));
 </script>
@@ -650,7 +650,7 @@ the theme's own defaults.
 }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 /* Topbar quick-search overlay — opens on icon click, fetches results
    via /api/quick-search/?q=… (250ms debounce), arrow-key + Enter
    navigation, ESC + backdrop close. Submitting the form jumps to the
@@ -836,7 +836,7 @@ the theme's own defaults.
         <button type="submit">{% translate "Subscribe" %}</button>
       </form>
       <p id="footer-newsletter-msg" class="meta" style="margin:.25rem 0 0;" aria-live="polite"></p>
-      <script>
+      <script nonce="{{ csp_nonce }}">
       (function () {
         var f = document.getElementById('footer-newsletter');
         var msg = document.getElementById('footer-newsletter-msg');
@@ -896,7 +896,7 @@ the theme's own defaults.
   </div>
 </footer>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (() => {
   // The account menu (owner's ask, 2026-10-10). Without this script the icon is a
   // plain link to /account/, so nothing is lost when it does not run.
@@ -925,7 +925,7 @@ the theme's own defaults.
   });
 })();
 </script>
-<script>
+<script nonce="{{ csp_nonce }}">
 (() => {
   const dr = document.getElementById('drawer');
   const openBtn = document.getElementById('drawer-open');
@@ -983,8 +983,8 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
 
 {% include "storefront/_cart_drawer.html" %}
 
-<script type="module">
-  import {onCLS, onINP, onLCP, onFCP, onTTFB} from 'https://cdn.jsdelivr.net/npm/web-vitals@4/+esm';
+<script nonce="{{ csp_nonce }}" type="module">
+  import {onCLS, onINP, onLCP, onFCP, onTTFB} from 'https://cdn.jsdelivr.net/npm/web-vitals@4.2.4/+esm';
   function beacon(m) {
     try {
       navigator.sendBeacon('/web-vitals/', JSON.stringify({
@@ -997,7 +997,7 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
   onLCP(beacon); onINP(beacon); onCLS(beacon); onFCP(beacon); onTTFB(beacon);
 </script>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   function tagFade(img) {
     if (img.classList.contains('is-loaded') || img.classList.contains('ko-fade-img')) return;
@@ -1024,7 +1024,7 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
 })();
 </script>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 /* Motion II — scroll-reveal engine, dot-stamp trigger, topbar elevation,
    and PLP→PDP cover-morph wiring. Kept as one small IIFE at the end of
    <body> so it runs after the DOM exists and before first user scroll. */
@@ -1120,7 +1120,7 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
 })();
 </script>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 /* A product row can outlive its image FILE — an import that carried rows but not
    uploads, or media restored without its objects. The template can only test
    whether a primaryImage row exists, so a missing file reaches the browser as a
@@ -1161,7 +1161,7 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
 
 {# Speculation Rules — Chrome 122+ prefetches/prerenders PDPs on hover. #}
 {# No-op on browsers without support. Eagerness 'moderate' = on hover/touchstart. #}
-<script type="speculationrules">
+<script nonce="{{ csp_nonce }}" type="speculationrules">
 {
   "prefetch": [{
     "source": "document",
