@@ -4376,3 +4376,409 @@ msgstr "Cijena po"
 
 msgid "Notice"
 msgstr "Obavještenje"
+
+msgid "The Bay of Kotor, Montenegro"
+msgstr "Bokokotorski zaliv, Crna Gora"
+
+msgid "For investors"
+msgstr "Za investitore"
+
+msgid "The marketplace for Montenegro’s experiences"
+msgstr "Platforma za doživljaje u Crnoj Gori"
+
+msgid "Talk to the team"
+msgstr "Razgovarajte s timom"
+
+msgid "See the opportunity"
+msgstr "Pogledajte priliku"
+
+msgid "On the site today"
+msgstr "Danas na sajtu"
+
+msgid "Hotels and stays"
+msgstr "Hoteli i smještaj"
+
+msgid "Local hosts"
+msgstr "Lokalni domaćini"
+
+msgid "Regions covered"
+msgstr "Pokrivenih regiona"
+
+msgid "Languages on every page"
+msgstr "Jezika na svakoj stranici"
+
+msgid "01 · The market"
+msgstr "01 · Tržište"
+
+msgid "A small country with a large visitor economy"
+msgstr "Mala zemlja s velikom turističkom privredom"
+
+msgid "Source"
+msgstr "Izvor"
+
+msgid "tourist arrivals in 2025"
+msgstr "dolazaka turista u 2025."
+
+msgid "2.7 million"
+msgstr "2,7 miliona"
+
+msgid "of overnight stays were by foreign visitors"
+msgstr "noćenja ostvarili su strani gosti"
+
+#, python-format
+msgid "95.8%%"
+msgstr "95,8%%"
+
+msgid "tourism revenue in 2024, a central bank estimate"
+msgstr "prihod od turizma u 2024, procjena Centralne banke"
+
+msgid "€1.5 billion"
+msgstr "1,5 milijardi €"
+
+msgid "airport passengers in 2025, the first year above three million"
+msgstr "putnika na aerodromima u 2025, prvi put više od tri miliona"
+
+msgid "3.1 million"
+msgstr "3,1 miliona"
+
+msgid "cruise passengers on 496 ship calls in 2025"
+msgstr "putnika s kruzera na 496 uplovljavanja u 2025."
+
+msgid "630,000+"
+msgstr "630.000+"
+
+msgid "02 · The opportunity"
+msgstr "02 · Prilika"
+
+msgid "Experiences are the least digital part of travel"
+msgstr "Doživljaji su najmanje digitalizovan dio putovanja"
+
+msgid "Share of bookings made online"
+msgstr "Udio rezervacija napravljenih online"
+
+msgid "Experiences compared with travel overall, 2025."
+msgstr "Doživljaji u poređenju s putovanjima uopšte, 2025."
+
+msgid "Tours, activities and attractions"
+msgstr "Ture, aktivnosti i atrakcije"
+
+#, python-format
+msgid "33%%"
+msgstr "33%%"
+
+msgid "Travel overall"
+msgstr "Putovanja uopšte"
+
+#, python-format
+msgid "64%%"
+msgstr "64%%"
+
+msgid "$271 billion"
+msgstr "271 milijarda $"
+
+msgid "experiences market, 2025"
+msgstr "tržište doživljaja, 2025."
+
+msgid "$342 billion"
+msgstr "342 milijarde $"
+
+msgid "forecast for 2029"
+msgstr "prognoza za 2029."
+
+msgid "03 · The gap in Montenegro"
+msgstr "03 · Praznina u Crnoj Gori"
+
+msgid "Demand is on the coast. Much of the best of the country is inland."
+msgstr "Potražnja je na obali. Velik dio najboljeg što zemlja nudi je u unutrašnjosti."
+
+msgid "Nine nights in ten on the coast"
+msgstr "Devet od deset noćenja na obali"
+
+msgid "Small, owner-run hosts"
+msgstr "Mali domaćini koje vode sami vlasnici"
+
+msgid "Global sites cover the famous few"
+msgstr "Globalni sajtovi pokrivaju samo najpoznatije"
+
+msgid "04 · What we built"
+msgstr "04 · Šta smo izgradili"
+
+msgid "One place for the whole trip"
+msgstr "Jedno mjesto za cijelo putovanje"
+
+msgid "Experiences, stays and local products"
+msgstr "Doživljaji, smještaj i lokalni proizvodi"
+
+msgid "Search that knows the country"
+msgstr "Pretraga koja poznaje zemlju"
+
+msgid "Reviewed local hosts"
+msgstr "Provjereni lokalni domaćini"
+
+msgid "Two languages, properly"
+msgstr "Dva jezika, kako treba"
+
+msgid "Sold where people shop"
+msgstr "Prodaja tamo gdje ljudi kupuju"
+
+msgid "Ready for AI assistants"
+msgstr "Spremno za AI asistente"
+
+msgid "05 · Business model"
+msgstr "05 · Poslovni model"
+
+msgid "How the platform earns"
+msgstr "Kako platforma zarađuje"
+
+msgid "Service fee on every experience booking"
+msgstr "Naknada za uslugu na svaku rezervaciju doživljaja"
+
+msgid "On the site"
+msgstr "Na sajtu"
+
+msgid "More to sell on the same trip"
+msgstr "Više za prodaju na istom putovanju"
+
+msgid "New revenue lines"
+msgstr "Novi izvori prihoda"
+
+msgid "Our own engine, so the margin is ours"
+msgstr "Sopstvena platforma, pa je i marža naša"
+
+msgid "06 · Scale"
+msgstr "06 · Rast"
+
+msgid "What the fee earns as the share grows"
+msgstr "Koliko naknada donosi kako udio raste"
+
+msgid "Illustrative scenarios, based on 2025 arrivals."
+msgstr "Ilustrativni scenariji, na osnovu dolazaka u 2025."
+
+msgid "Share of arrivals"
+msgstr "Udio dolazaka"
+
+msgid "Guests a year"
+msgstr "Gostiju godišnje"
+
+msgid "Booking value"
+msgstr "Vrijednost rezervacija"
+
+msgid "Fee revenue"
+msgstr "Prihod od naknade"
+
+msgid "Try your own numbers"
+msgstr "Probajte sa svojim brojevima"
+
+msgid "Move the sliders to see a year at different volumes."
+msgstr "Pomjerite klizače da vidite godinu pri različitom obimu."
+
+msgid "Guests booked per year"
+msgstr "Gostiju s rezervacijom godišnje"
+
+msgid "Average spend per guest"
+msgstr "Prosječna potrošnja po gostu"
+
+msgid "Share of 2025 tourist arrivals"
+msgstr "Udio dolazaka turista u 2025."
+
+msgid "These are illustrations of the arithmetic, not forecasts or projections of returns."
+msgstr "Ovo su ilustracije računice, a ne prognoze niti projekcije prinosa."
+
+msgid "07 · Room to grow"
+msgstr "07 · Prostor za rast"
+
+msgid "Built to repeat across the region"
+msgstr "Napravljeno da se ponovi u regionu"
+
+msgid "Albania"
+msgstr "Albanija"
+
+msgid "12.5 million"
+msgstr "12,5 miliona"
+
+msgid "Croatia"
+msgstr "Hrvatska"
+
+msgid "21.8 million"
+msgstr "21,8 miliona"
+
+msgid "Visitors in 2025: tourist arrivals in Montenegro and Croatia, entries by foreign nationals in Albania."
+msgstr "Posjetioci u 2025: dolasci turista u Crnoj Gori i Hrvatskoj, ulasci stranih državljana u Albaniji."
+
+msgid "08 · Where we fit"
+msgstr "08 · Gdje se uklapamo"
+
+msgid "The best way to book this one country"
+msgstr "Najbolji način da se rezerviše baš ova zemlja"
+
+msgid "Visitors to Montenegro have three ways to book an experience today."
+msgstr "Posjetioci Crne Gore danas imaju tri načina da rezervišu doživljaj."
+
+msgid "Global experience platforms"
+msgstr "Globalne platforme za doživljaje"
+
+msgid "What they lack"
+msgstr "Šta im nedostaje"
+
+msgid "Local depth, Serbian, stays and products together, local relationships."
+msgstr "Lokalna dubina, srpski jezik, smještaj i proizvodi na jednom mjestu, lokalne veze."
+
+msgid "Our answer"
+msgstr "Naš odgovor"
+
+msgid "The whole country in one place, in both languages, with reviewed local hosts."
+msgstr "Cijela zemlja na jednom mjestu, na oba jezika, s provjerenim lokalnim domaćinima."
+
+msgid "Hotel booking sites"
+msgstr "Sajtovi za rezervaciju hotela"
+
+msgid "Little or nothing for what to do after arrival."
+msgstr "Malo ili ništa o tome šta raditi po dolasku."
+
+msgid "Stays and experiences in one place, and day trips sold through hotels."
+msgstr "Smještaj i doživljaji na jednom mjestu, i jednodnevni izleti koji se prodaju preko hotela."
+
+msgid "Local agencies and quay kiosks"
+msgstr "Lokalne agencije i kiosci na rivi"
+
+msgid "Booking ahead, comparison, card payment, being found online."
+msgstr "Rezervacija unaprijed, poređenje, plaćanje karticom, vidljivost na internetu."
+
+msgid "We bring these operators online instead of competing with them."
+msgstr "Ove operatere dovodimo na internet umjesto da se s njima takmičimo."
+
+msgid "09 · Use of investment"
+msgstr "09 · Namjena investicije"
+
+msgid "What investment speeds up"
+msgstr "Šta investicija ubrzava"
+
+msgid "More hosts in every region"
+msgstr "Više domaćina u svakom regionu"
+
+msgid "Sign, verify and present local hosts across the country ahead of the 2027 season."
+msgstr "Ugovoriti, provjeriti i predstaviti lokalne domaćine širom zemlje prije sezone 2027."
+
+msgid "Tools hosts run themselves"
+msgstr "Alati kojima domaćini upravljaju sami"
+
+msgid "Calendars, prices and payouts that each host manages on their own."
+msgstr "Kalendari, cijene i isplate kojima svaki domaćin upravlja sam."
+
+msgid "Distribution"
+msgstr "Distribucija"
+
+msgid "Day trips sold through hotels and cruise agents, and more reach through Google, Meta and AI assistants."
+msgstr "Jednodnevni izleti koji se prodaju preko hotela i agenata za kruzere, i veći doseg preko Googlea, Mete i AI asistenata."
+
+msgid "The next country"
+msgstr "Sljedeća zemlja"
+
+msgid "Take the same platform to the region once the model is proven in Montenegro."
+msgstr "Ista platforma u regionu, kada se model dokaže u Crnoj Gori."
+
+msgid "Let’s talk"
+msgstr "Razgovarajmo"
+
+msgid "Contact the team"
+msgstr "Kontaktirajte tim"
+
+msgid "Sources"
+msgstr "Izvori"
+
+msgid "Where the numbers come from"
+msgstr "Odakle su brojevi"
+
+msgid "MONSTAT, Statistical Office of Montenegro"
+msgstr "MONSTAT, Uprava za statistiku Crne Gore"
+
+msgid "MINA news agency"
+msgstr "Agencija MINA"
+
+msgid "This page is for information only. It is not an offer to sell, or a request for an offer to buy, any securities. The scenarios illustrate arithmetic and are not forecasts."
+msgstr "Ova stranica služi samo za informisanje. Nije ponuda za prodaju niti poziv na davanje ponude za kupovinu bilo kakvih hartija od vrijednosti. Scenariji ilustruju računicu i nisu prognoze."
+
+msgid "Montenegro Experience brings the country’s tours, activities, stays and local products together in one place, in English and Serbian, on a commerce engine we built ourselves. We are looking for investors to help it grow."
+msgstr "Montenegro Experience okuplja ture, aktivnosti, smještaj i lokalne proizvode iz cijele zemlje na jednom mjestu, na engleskom i srpskom, na platformi za online prodaju koju smo sami izgradili. Tražimo investitore koji će joj pomoći da raste."
+
+msgid "Montenegro has about 620,000 residents and welcomed more than 2.7 million tourists in 2025. Tourism is the core of its economy, nearly all of it international, and it is still growing."
+msgstr "Crna Gora ima oko 620.000 stanovnika, a 2025. ugostila je više od 2,7 miliona turista. Turizam je okosnica njene privrede, gotovo u potpunosti međunarodni, i i dalje raste."
+
+msgid "Tours, activities and attractions are travel’s third-largest sector, worth $271 billion in 2025 and forecast to reach $342 billion by 2029."
+msgstr "Ture, aktivnosti i atrakcije su treći najveći sektor putovanja, vrijedan 271 milijardu dolara u 2025, a prognoza je 342 milijarde do 2029."
+
+msgid "Yet only a third of experience bookings are made online, against almost two thirds for travel overall, and one operator in three has no online booking at all."
+msgstr "Ipak, samo se trećina rezervacija doživljaja pravi online, naspram skoro dvije trećine kod putovanja uopšte, a svaki treći operater uopšte nema online rezervacije."
+
+msgid "Visitors book the flight and the hotel online, then book what they do after they land on the quay, at the hotel desk or not at all. That gap is the market we are building for."
+msgstr "Posjetioci let i hotel rezervišu online, a ono što će raditi nakon dolaska rezervišu na rivi, na recepciji hotela ili nikako. Ta praznina je tržište za koje gradimo."
+
+#, python-format
+msgid "In 2025, 92.6%% of overnight stays were in seaside resorts. Mountains, canyons, Lake Skadar, monasteries and wineries are reached on day trips, and a day trip needs a booking made before the visitor leaves the hotel."
+msgstr "U 2025. godini 92,6%% noćenja ostvareno je u primorskim mjestima. Do planina, kanjona, Skadarskog jezera, manastira i vinarija stiže se jednodnevnim izletima, a izlet traži rezervaciju prije nego što gost izađe iz hotela."
+
+msgid "Skippers, mountain guides, family wineries and cooking hosts sell much of what makes the country special. Many of them are hard to find online, and visitors can’t compare them."
+msgstr "Skiperi, planinski vodiči, porodične vinarije i domaćini kuvanja prodaju velik dio onoga što zemlju čini posebnom. Mnoge od njih teško je naći na internetu, a posjetioci ne mogu da ih uporede."
+
+msgid "International platforms list the best-known excursions, mostly in English. The long tail of local experiences, stays and products is thin, and few of them offer Serbian, the language of the country and of many regional visitors."
+msgstr "Međunarodne platforme nude najpoznatije izlete, uglavnom na engleskom. Ponuda lokalnih doživljaja, smještaja i proizvoda je oskudna, a malo njih nudi srpski, jezik zemlje i mnogih gostiju iz regiona."
+
+msgid "montenegro-experience.me covers what to do, where to stay and what to take home, across the whole country. It is live today."
+msgstr "montenegro-experience.me pokriva šta raditi, gdje odsjesti i šta ponijeti kući, u cijeloj zemlji. Sajt radi već danas."
+
+msgid "Tours and activities, hotels and stays, an events calendar, gift cards, and a shop of Montenegrin goods such as Vranac wine, olive oil, honey and Njeguši prosciutto."
+msgstr "Ture i aktivnosti, hoteli i smještaj, kalendar događaja, poklon-kartice i prodavnica crnogorskih proizvoda poput vranca, maslinovog ulja, meda i njeguškog pršuta."
+
+msgid "One search for experiences, places and stays, by region, category and date. It understands typos, accents, and Serbian in Latin or Cyrillic script."
+msgstr "Jedna pretraga za doživljaje, mjesta i smještaj, po regionu, kategoriji i datumu. Razumije greške u kucanju, akcente i srpski na latinici ili ćirilici."
+
+msgid "Every host applies to join, and the team reviews each application before the host’s listings go live."
+msgstr "Svaki domaćin se prijavljuje, a tim pregleda svaku prijavu prije nego što domaćinova ponuda bude objavljena."
+
+msgid "Every page exists in English and in Serbian, and each is linked to the other so search engines show visitors the right one."
+msgstr "Svaka stranica postoji na engleskom i na srpskom, i povezane su tako da pretraživači svakom posjetiocu prikažu pravu."
+
+msgid "The catalogue feeds Google Shopping and the Meta catalogues behind Facebook and Instagram."
+msgstr "Katalog se šalje u Google Shopping i Meta kataloge za Facebook i Instagram."
+
+msgid "The site publishes a machine-readable catalogue and a guide for AI assistants, so trip-planning tools can find and describe what is on offer."
+msgstr "Sajt objavljuje katalog koji mašine mogu da čitaju i vodič za AI asistente, pa alati za planiranje putovanja mogu da pronađu i opišu ponudu."
+
+#, python-format
+msgid "%(pct)s%%"
+msgstr "%(pct)s%%"
+
+msgid "The fee is added to the guest’s price, so hosts keep their own price. Guests see the full total before they confirm."
+msgstr "Naknada se dodaje na cijenu za gosta, pa domaćini zadržavaju svoju cijenu. Gosti vide ukupan iznos prije potvrde."
+
+msgid "Hotels and stays, gift cards that bring in new guests, and a shop of Montenegrin products for visitors and for the diaspora all year."
+msgstr "Hoteli i smještaj, poklon-kartice koje dovode nove goste i prodavnica crnogorskih proizvoda za posjetioce i za dijasporu tokom cijele godine."
+
+msgid "Promoted listings for hosts, day trips sold through hotels and cruise agents, and bookings that come in through AI assistants."
+msgstr "Istaknute ponude za domaćine, jednodnevni izleti koji se prodaju preko hotela i agenata za kruzere, i rezervacije koje stižu preko AI asistenata."
+
+msgid "The marketplace runs on Morpheus, a commerce engine we build ourselves. We rent no booking engine and pay no platform a share of revenue. Running costs barely grow with each booking, apart from card processing."
+msgstr "Platforma radi na Morpheusu, sistemu za online prodaju koji sami gradimo. Ne iznajmljujemo sistem za rezervacije i nikome ne dajemo dio prihoda. Troškovi rada gotovo ne rastu s brojem rezervacija, osim troškova kartičnog plaćanja."
+
+msgid "The same engine already runs four online stores, so the parts a modern marketplace needs are built in and proven in production."
+msgstr "Isti sistem već pokreće četiri online prodavnice, pa su djelovi koji su savremenoj platformi potrebni već ugrađeni i provjereni u radu."
+
+#, python-format
+msgid "Each scenario takes a share of Montenegro’s 2025 tourist arrivals, one experience per guest at %(price)s, the median price of an experience on the site today, and the %(pct)s%% service fee. Stays, gift cards and the shop come on top."
+msgstr "Svaki scenario uzima udio dolazaka turista u Crnu Goru u 2025, jedan doživljaj po gostu po cijeni od %(price)s, što je srednja cijena doživljaja na sajtu danas, i naknadu za uslugu od %(pct)s%%. Smještaj, poklon-kartice i prodavnica dolaze povrh toga."
+
+#, python-format
+msgid "Fee revenue at %(pct)s%%"
+msgstr "Prihod od naknade od %(pct)s%%"
+
+msgid "On our engine, a new country is a new store, not a new build. Montenegro is where we prove the model. Its neighbours are much larger travel markets."
+msgstr "Na našoj platformi nova zemlja je nova prodavnica, a ne nova izgradnja. Crna Gora je mjesto gdje dokazujemo model. Susjedne zemlje su mnogo veća turistička tržišta."
+
+msgid "We are looking for investors and partners who know travel, marketplaces or the Adriatic region. We’ll walk you through the product, the plan and the numbers behind it."
+msgstr "Tražimo investitore i partnere koji poznaju putovanja, online platforme ili jadranski region. Provešćemo vas kroz proizvod, plan i brojke iza njega."
+
+msgid "Investors"
+msgstr "Investitori"
+
+msgid "Montenegro Experience: the marketplace for the country’s experiences, stays and local products, and the market it serves."
+msgstr "Montenegro Experience: platforma za doživljaje, smještaj i lokalne proizvode Crne Gore, i tržište kojem služi."

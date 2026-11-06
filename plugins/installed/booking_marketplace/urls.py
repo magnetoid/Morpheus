@@ -1,7 +1,7 @@
 from django.urls import path, re_path
 from django.views.generic import RedirectView
 
-from plugins.installed.booking_marketplace import account, host, stay_views, views
+from plugins.installed.booking_marketplace import account, host, investors, stay_views, views
 
 app_name = 'booking_marketplace'
 
@@ -23,6 +23,8 @@ urlpatterns = [
     # `{% url 'booking_marketplace:account_bookings' %}`; only exists while this
     # plugin is enabled.
     path('account/bookings/', account.account_bookings, name='account_bookings'),
+    # The investor page: the theme ships it, or this answers 404 (investors.py).
+    path('investors/', investors.investors, name='investors'),
     path('regions/', views.regions_index, name='regions'),
     path('regions/<slug:region>/', views.region_detail, name='region'),
     path('places/', views.places_index, name='places'),

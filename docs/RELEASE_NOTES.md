@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.138.0 — 2026-11-06
+
+**Montenegro: a page for investors**
+
+- Montenegro Experience has an investor page at /investors/ (and /sr/investors/ in Serbian), in the site's own design: the market, the opportunity, what the platform does, the business model, scenarios with a calculator, room to grow in the region, and how investment would be used.
+- It shows only public figures, each with its source, and what the site lists today (experiences, stays, hosts, regions), counted live. It never shows bookings, enquiries, revenue or which booking steps are on.
+- The page is shared by link: it is not in the menu or the sitemap, and search engines are asked not to index it. Other stores answer 404 there.
+
 ## v0.137.0 — 2026-11-06
 
 **The cart and checkout run only the scripts the store put there**
