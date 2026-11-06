@@ -6,7 +6,7 @@
   {% csrf_token %}
   <input name="next" type="hidden" value="{{ request.path }}">
   <label for="morph-lang-select" style="font-size:.8rem;opacity:.7">{% translate "Language" %}</label>
-  <select name="language" id="morph-lang-select" onchange="this.form.submit()"
+  <select name="language" id="morph-lang-select"
           aria-label="{% translate 'Language' %}" style="padding:.2rem .4rem;border-radius:6px">
     {% for code, name in LANGS %}
     <option value="{{ code }}" {% if code == CUR_LANG %}selected{% endif %}>{{ name }}</option>
@@ -14,4 +14,8 @@
   </select>
   <noscript><button type="submit">{% translate "Go" %}</button></noscript>
 </form>
+{# A listener, not an onchange attribute: the cart and checkout enforce a CSP that runs only scripts carrying the page's nonce. #}
+<script nonce="{{ csp_nonce }}">
+document.getElementById('morph-lang-select').addEventListener('change', function () { this.form.submit(); });
+</script>
 {% endif %}

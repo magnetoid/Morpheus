@@ -30,6 +30,7 @@ from django import template
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
+from core.security_headers import script_nonce
 from plugins.installed.tracking.models import TrackingSettings
 
 register = template.Library()
@@ -119,6 +120,7 @@ def tracking_head(context):
     if s is None or not s.client_side_enabled:
         return ''
     request = context.get('request')
+    n = script_nonce(context)
     js = [
         'window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}',
         f'gtag("consent","default",{_js(s.consent_default or {})});',
@@ -127,7 +129,7 @@ def tracking_head(context):
     analytics, marketing = _visitor_allows(s, request)
     blocked = request is not None and s.is_path_blocked(request.path)
     if not (gtm or ga4) or not analytics or blocked:
-        return mark_safe(f'<script>{"".join(js)}</script>')
+        return mark_safe(f'<script{n}>{"".join(js)}</script>')
 
     ads = 'granted' if marketing else 'denied'
     update = {
@@ -151,7 +153,7 @@ def tracking_head(context):
             f'j.async=true;j.src={_js(f"{origin}/gtm.js?id={gtm}")};'
             "f.parentNode.insertBefore(j,f);})(document,'script');"
         )
-        return mark_safe(f'<script>{"".join(js)}</script>')
+        return mark_safe(f'<script{n}>{"".join(js)}</script>')
     config: dict[str, Any] = {}
     if uid:
         config['user_id'] = uid
@@ -159,7 +161,7 @@ def tracking_head(context):
         config['server_container_url'] = origin
     js.append(f'gtag("js",new Date());gtag("config",{_js(ga4)},{_js(config)});')
     src = escape(f'{origin}/gtag/js?id={ga4}')
-    return mark_safe(f'<script>{"".join(js)}</script><script async src="{src}"></script>')
+    return mark_safe(f'<script{n}>{"".join(js)}</script><script{n} async src="{src}"></script>')
 
 
 @register.simple_tag(takes_context=True)
@@ -201,7 +203,7 @@ def gtm_noscript_body():
     return ''
 
 
-def _datalayer_push(event_name: str, ecommerce: dict[str, Any]) -> str:
+def _datalayer_push(context, event_name: str, ecommerce: dict[str, Any]) -> str:
     """One ecommerce event for the browser's tag.
 
     For GTM: a dataLayer.push() pair with the mandatory ecommerce-null reset.
@@ -226,14 +228,14 @@ def _datalayer_push(event_name: str, ecommerce: dict[str, Any]) -> str:
         body = _js({'event': event_name, 'ecommerce': ecommerce})
         send = f'dataLayer.push({{ecommerce:null}});dataLayer.push({body});'
     return mark_safe(
-        '<script>window.dataLayer=window.dataLayer||[];(function(f){'
+        f'<script{script_nonce(context)}>window.dataLayer=window.dataLayer||[];(function(f){{'
         "document.readyState==='loading'?document.addEventListener('DOMContentLoaded',f):f();"
         f'}})(function(){{{send}}});</script>'
     )
 
 
-@register.simple_tag
-def dl_view_item(product):
+@register.simple_tag(takes_context=True)
+def dl_view_item(context, product):
     """`view_item` dataLayer push for the PDP."""
     if not product:
         return ''
@@ -248,11 +250,11 @@ def dl_view_item(product):
         'value': params.get('value', 0),
         'items': params.get('items', []),
     }
-    return _datalayer_push('view_item', ecommerce)
+    return _datalayer_push(context, 'view_item', ecommerce)
 
 
-@register.simple_tag
-def dl_view_item_list(items, list_id: str = '', list_name: str = ''):
+@register.simple_tag(takes_context=True)
+def dl_view_item_list(context, items, list_id: str = '', list_name: str = ''):
     """`view_item_list` push for the PLP / category page."""
     if not items:
         return ''
@@ -267,11 +269,11 @@ def dl_view_item_list(items, list_id: str = '', list_name: str = ''):
         'item_list_name': list_name,
         'items': params.get('items', []),
     }
-    return _datalayer_push('view_item_list', ecommerce)
+    return _datalayer_push(context, 'view_item_list', ecommerce)
 
 
-@register.simple_tag
-def dl_purchase(order):
+@register.simple_tag(takes_context=True)
+def dl_purchase(context, order):
     """`purchase` push for the order confirmation page. The
     transaction_id ensures GA dedups against the server-side hit."""
     if not order:
@@ -291,7 +293,7 @@ def dl_purchase(order):
         'coupon': params.get('coupon', ''),
         'items': params.get('items', []),
     }
-    return _datalayer_push('purchase', ecommerce)
+    return _datalayer_push(context, 'purchase', ecommerce)
 
 
 def _ads_config():
@@ -362,10 +364,11 @@ def gads_purchase_conversion(context, order):
         'currency': currency,
         'transaction_id': transaction_id,
     }
+    n = script_nonce(context)
     return mark_safe(
-        '<script async '
+        f'<script{n} async '
         f'src="https://www.googletagmanager.com/gtag/js?id={conv_id}"></script>'
-        '<script>'
+        f'<script{n}>'
         'window.dataLayer=window.dataLayer||[];'
         'function gtag(){dataLayer.push(arguments);}'
         f'gtag("js", new Date()); gtag("config", "{conv_id}");'

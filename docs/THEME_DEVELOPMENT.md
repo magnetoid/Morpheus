@@ -509,6 +509,7 @@ they get caught.
 | Give a page your own name with `{% block seo %}{% with seo_title=… %}{{ block.super }}{% endwith %}{% endblock %}` | Write `{% block title %}` — no base renders it, so it never reaches the page |
 | Use `{% page_href page_obj.next_page_number %}` for pagination links | Build `?page={{ n }}` by hand — page 1 then costs a 301 hop |
 | Set `<html lang="{% get_current_language as L %}{{ L }}">` | Hardcode `lang="en"` on a theme any store may run in another language |
+| Give every `<script>` `nonce="{{ csp_nonce }}"` and attach behaviour with `addEventListener` | Write `onclick=` / `onchange=` attributes or an un-nonced `<script>` — the cart and checkout enforce a CSP and run neither ([`CHECKOUT_SCRIPTS.md`](CHECKOUT_SCRIPTS.md)) |
 | Let the head document emit hreflang and JSON-LD | Paste `<script type="application/ld+json">` or `hreflang` links — apps contribute through `SEO_JSONLD_GRAPH` / `STOREFRONT_HEAD` |
 | Wrap every visible word — headings, buttons, `alt`, `aria-label`, placeholders — in `{% trans %}` / `{% blocktrans trimmed %}`, counts in `{% blocktrans count %}` | Write English straight into markup or pluralise with `\|pluralize` (it appends an English "s") — a `/sr/` page then shows it in English |
 | Link with `{% url %}`; plain `href` paths are moved into the visitor's language for you | Build a URL that never becomes an `<a href>` (a redirect, a JSON-LD `url`, a link assembled in JavaScript) without `core.utils.i18n.localized_path()` |

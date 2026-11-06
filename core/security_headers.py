@@ -26,6 +26,9 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.utils.cache import patch_cache_control
+from django.utils.csp import CSP
+from django.utils.html import format_html
+from django.views.decorators.csp import csp_override
 
 _PERMISSIONS_POLICY_VALUE = ', '.join(
     [
@@ -124,6 +127,64 @@ _CSP_DASHBOARD_ENFORCE = '; '.join(
 )
 
 
+# The origins a payment page's own markup loads scripts from, or tells the
+# browser to load them from (an inline tag snippet that inserts its loader).
+# docs/CHECKOUT_SCRIPTS.md is the inventory PCI DSS 6.4.3 asks for: every
+# script, its owner and why it is there (core/tests/test_payment_page_csp.py
+# keeps the two in step). In the policy they matter only to a browser without
+# 'strict-dynamic': every current one runs a script only when its tag carries
+# the page's nonce, and then whatever that script loads.
+PAYMENT_PAGE_SCRIPT_ORIGINS = (
+    'https://js.stripe.com',
+    'https://*.js.stripe.com',
+    'https://maps.googleapis.com',
+    'https://www.googletagmanager.com',
+    'https://cdn.jsdelivr.net',
+    # The ad pixels' loaders, each inserted by the app's inline snippet.
+    'https://connect.facebook.net',
+    'https://analytics.tiktok.com',
+    'https://s.pinimg.com',
+    'https://sc-static.net',
+    'https://www.redditstatic.com',
+    'https://bat.bing.com',
+)
+
+# Where a payment page's forms may send the shopper. The one-page checkout
+# answers a PayPal order with a redirect to PayPal's approval page, and a
+# browser applies form-action to that redirect too.
+PAYMENT_PAGE_FORM_TARGETS = ('https://www.paypal.com', 'https://www.sandbox.paypal.com')
+
+# Enforced on every page where a shopper types an address or a card: the
+# cart (wallet buttons), the checkout steps, saved cards and the membership
+# card form. A script runs only when its tag carries the response's nonce
+# (`nonce="{{ csp_nonce }}"`), so markup injected into the page runs nothing,
+# and there is no 'unsafe-eval'. The other directives stay unrestricted here:
+# the storefront's report-only policy is still learning them.
+_PAYMENT_PAGE_CSP = {
+    'script-src': [CSP.NONCE, CSP.STRICT_DYNAMIC, CSP.SELF, *PAYMENT_PAGE_SCRIPT_ORIGINS],
+    'object-src': [CSP.NONE],
+    'base-uri': [CSP.SELF],
+    'frame-ancestors': [CSP.SELF],
+    'form-action': [CSP.SELF, *PAYMENT_PAGE_FORM_TARGETS],
+    'report-uri': '/api/csp-report/',
+}
+
+
+def payment_page(view):
+    """Enforce the payment-page policy on `view` (django.middleware.csp writes it)."""
+    return csp_override(_PAYMENT_PAGE_CSP)(view)
+
+
+def script_nonce(context) -> str:
+    """` nonce="…"` for a <script> a template tag writes, from the page's context.
+
+    Empty outside a request (an email, a test without the middleware). A tag
+    that writes a script takes the context for this (takes_context=True).
+    """
+    nonce = context.get('csp_nonce')
+    return format_html(' nonce="{}"', nonce) if nonce is not None else ''
+
+
 def dashboard_csp(*, frame_src: tuple[str, ...] = ()) -> str:
     """The enforced dashboard policy, letting one response frame `frame_src`.
 
@@ -157,6 +218,8 @@ class SecurityHeadersMiddleware:
             response['Content-Security-Policy'] = _CSP_DASHBOARD_ENFORCE
         elif (
             not dashboard_enforce
+            # A payment page enforces its own policy (payment_page above).
+            and not response.has_header('Content-Security-Policy')
             and not response.has_header('Content-Security-Policy-Report-Only')
             and not path.startswith('/admin/')
             and not path.startswith('/static/')

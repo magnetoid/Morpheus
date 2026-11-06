@@ -22,6 +22,8 @@ import re
 from django import template
 from django.utils.safestring import mark_safe
 
+from core.security_headers import script_nonce
+
 register = template.Library()
 
 _AW_RE = re.compile(r'^AW-[A-Za-z0-9]+$')
@@ -87,8 +89,8 @@ def gads_remarketing(context):
     cid_js = _js(cid)
     params_js = _js(params)
     snippet = (
-        f'<script async src="https://www.googletagmanager.com/gtag/js?id={cid}"></script>'
-        '<script>window.dataLayer=window.dataLayer||[];'
+        f'<script{script_nonce(context)} async src="https://www.googletagmanager.com/gtag/js?id={cid}"></script>'
+        '<script' + script_nonce(context) + '>window.dataLayer=window.dataLayer||[];'
         'function gtag(){dataLayer.push(arguments);}'
         f'gtag("js",new Date());gtag("config",{cid_js});'
         f'gtag("event","page_view",{params_js});</script>'

@@ -11,6 +11,6 @@ box stays collapsed until Stripe says this browser has a wallet to offer.
   {% csrf_token %}
   {{ express.config|json_script:"express-checkout-config" }}
 </div>
-<script src="https://js.stripe.com/v3/" defer></script>
-<script src="{% static 'payments/express-cart.js' %}" defer></script>
+<script nonce="{{ csp_nonce }}" src="https://js.stripe.com/v3/" defer></script>
+<script nonce="{{ csp_nonce }}" src="{% static 'payments/express-cart.js' %}" defer></script>
 {% endif %}

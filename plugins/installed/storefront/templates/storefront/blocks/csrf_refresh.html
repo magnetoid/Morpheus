@@ -1,1 +1,1 @@
-{% load static %}<script src="{% static 'storefront/csrf-refresh.js' %}" defer></script>
+{% load static %}<script nonce="{{ csp_nonce }}" src="{% static 'storefront/csrf-refresh.js' %}" defer></script>

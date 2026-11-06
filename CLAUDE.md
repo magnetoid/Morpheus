@@ -1332,6 +1332,20 @@ values: the error log's refresh failed on that, so a poll that waits for a visib
 utility on every tab and tool has a rule) and `core/tests/test_csp_richtext.py` (no eval in the CSP or
 asked for by a template).
 
+**Convention — a payment page runs only the scripts that carry its nonce (v0.137.0).** The cart, the
+checkout steps, saved cards and the membership card form carry `@payment_page`
+(`core/security_headers.py`): an enforced CSP whose `script-src` is `'nonce-…' 'strict-dynamic'`,
+with no `'unsafe-eval'`, written by `django.middleware.csp` from the request's nonce. Every `<script>` a
+storefront template writes carries `nonce="{{ csp_nonce }}"`, and a template tag that writes one takes
+the context and uses `script_nonce(context)`. Behaviour attaches with `addEventListener`, never an
+`on…=` attribute: montenegro's menus and the language switcher were attributes and would have stopped
+working on the checkout. A new third-party script origin goes into `PAYMENT_PAGE_SCRIPT_ORIGINS` and
+`docs/CHECKOUT_SCRIPTS.md` (the PCI DSS 6.4.3 inventory) in the same change. Django writes the nonce
+into the header only once a template has read it, so a page that prints none runs no inline script.
+Every other storefront page keeps the report-only policy. Guarded by
+`core/tests/test_payment_page_csp.py`, which renders every payment page under every theme with every
+script-writing app switched on.
+
 **Landmine — a dedupe key built from text a model writes never matches twice.** Pulse kept "one
 unread card per signal" by hashing the card's title, computed after the model reworded it and with
 the count inside it, so every refresh made a new card: dotbooks reached 1,145 unread insights, 992 of

@@ -43,7 +43,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.136.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.137.0')
 
 # The release stage shown beside the version (the dashboard, the README badge, the
 # GitHub Release title) while Morpheus is not finalized; '' once it is. The version
@@ -325,6 +325,11 @@ MIDDLEWARE = [
     # anything reads the database being replaced (core/restore.py).
     'core.restore.RestoreGateMiddleware',
     'core.security_headers.SecurityHeadersMiddleware',
+    # Gives each request its CSP nonce (`csp_nonce` in templates) and writes the
+    # enforced policy a payment page asks for (core.security_headers.payment_page).
+    # SECURE_CSP stays empty, so no other page gets a policy from here. Inside
+    # SecurityHeadersMiddleware, which then leaves that page's policy alone.
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',
     'core.storefront_cache.StorefrontCacheMiddleware',
     # Gzip-compresses responses > 200 bytes. Cloudflare also compresses
     # at the edge but origin compression saves bytes on the CF↔origin
@@ -403,6 +408,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # `csp_nonce`: every <script> a storefront template writes carries it.
+                'django.template.context_processors.csp',
                 'core.context_processors.store_settings',
                 # cart_context moved to the orders plugin (register_context_processor);
                 # merged at request time by plugins.context_processors.plugin_context.

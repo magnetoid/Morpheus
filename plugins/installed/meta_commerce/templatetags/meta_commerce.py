@@ -19,6 +19,8 @@ import re
 from django import template
 from django.utils.safestring import mark_safe
 
+from core.security_headers import script_nonce
+
 register = template.Library()
 
 _PIXEL_RE = re.compile(r'^\d{5,20}$')
@@ -103,7 +105,9 @@ def meta_pixel(context):
     purchase = _purchase_js(context.get('order'), request)
 
     snippet = (
-        '<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?'
+        '<script'
+        + script_nonce(context)
+        + '>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?'
         'n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;'
         'n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;'
         't.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}'
