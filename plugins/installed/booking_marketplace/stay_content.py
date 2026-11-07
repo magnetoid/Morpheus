@@ -17,25 +17,7 @@ from django.utils.translation import ngettext
 
 from plugins.installed.booking_marketplace.place_content import _ICON_SVG
 
-# Verifiable geography for each REGIONS key — what a traveller confirms on a map,
-# not marketing adjectives.
-_REGION_CONTEXT = {
-    'kotor': _l('the fjord-like Bay of Kotor, ringed by walled medieval towns and steep mountains'),
-    'budva': _l(
-        "the Budva Riviera, the coast's busiest run of beaches, resorts and old-town nightlife"
-    ),
-    'durmitor': _l(
-        'the Durmitor highlands, with national-park peaks, the Tara River canyon and winter skiing'
-    ),
-    'skadar': _l(
-        "Lake Skadar, the Balkans' largest lake and a birdwatching and wine-country retreat"
-    ),
-    'podgorica': _l("Podgorica, Montenegro's capital and main transport hub"),
-    'ulcinj': _l('Ulcinj and the long sandy beaches of the southern coast'),
-    'tivat': _l('Tivat, home to the Porto Montenegro marina and the Luštica peninsula'),
-    'cetinje': _l('Cetinje, the historic royal capital in the hills above the bay'),
-    'other': _l('Montenegro'),
-}
+# Each region's geography lives on the store's country (country.py: region_context).
 
 # amenity slug -> ("Best for" label, icon key from place_content._ICON_SVG).
 # Only amenities that imply *who a stay suits* appear here.
@@ -107,14 +89,16 @@ def location_intro(prop, nearby=None) -> str:
     """A unique, factual "Staying in …" paragraph built from this property's own
     region/type/rating plus the real Place names in its region. Replaces the
     generic paragraph that used to repeat on every hotel."""
-    from plugins.installed.booking_marketplace.models import PROPERTY_TYPES, REGIONS
+    from plugins.installed.booking_marketplace import country
+    from plugins.installed.booking_marketplace.models import PROPERTY_TYPES
 
     # Whole sentences go to the translator: Serbian puts the star class after
     # the type and declines the place, so no fragment can be glued in English
     # order.
     type_label = str(dict(PROPERTY_TYPES).get(prop.property_type) or _('stay')).lower()
-    region_ctx = str(_REGION_CONTEXT.get(prop.region) or _('Montenegro'))
-    loc = prop.location or str(dict(REGIONS).get(prop.region) or _('Montenegro'))
+    here = country.current()
+    region_ctx = str(here.region_context.get(prop.region) or here.name)
+    loc = prop.location or str(dict(here.regions).get(prop.region) or here.name)
     stars = prop.star_rating or 0
     star = ngettext('%(n)s-star ', '%(n)s-star ', stars) % {'n': stars} if stars else ''
     parts = [

@@ -22,7 +22,7 @@ from themes.registry import theme_registry
 
 THEMES = ['dot_books', 'supernatural_shop', 'irving_survival']
 if apps.is_installed('plugins.installed.booking_marketplace'):
-    THEMES.append('montenegro')
+    THEMES += ['montenegro', 'croatia']
 
 FIELDS = {
     'email',

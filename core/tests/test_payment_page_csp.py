@@ -127,7 +127,7 @@ class PaymentPagePolicyTests(SimpleTestCase):
 
 THEMES = ['dot_books', 'supernatural_shop', 'irving_survival']
 if apps.is_installed('plugins.installed.booking_marketplace'):
-    THEMES.append('montenegro')
+    THEMES += ['montenegro', 'croatia']
 
 # Every app that writes a script into a storefront page, switched on with a
 # value its own validation accepts.

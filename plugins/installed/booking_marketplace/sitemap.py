@@ -29,8 +29,8 @@ def contribute_sitemap_urls(value, **kwargs):
     `value` (the sitemap's running URL list so far) and returns it."""
     from django.db.models import Count
 
+    from plugins.installed.booking_marketplace.country import regions
     from plugins.installed.booking_marketplace.models import (
-        REGIONS,
         BookableService,
         Event,
         Place,
@@ -67,7 +67,7 @@ def contribute_sitemap_urls(value, **kwargs):
         if rows.exists():
             add(path)
 
-    known = {key for key, _label in REGIONS}
+    known = {key for key, _label in regions()}
     stocked_regions = [
         row['region']
         for row in live.exclude(region='').values('region').annotate(n=Count('pk'))

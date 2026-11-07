@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.139.0 — 2026-11-07
+
+**A theme for croatia-experience.me, and the travel app follows the store's country**
+
+- New croatia theme, copied from montenegro: Croatia Experience name and logo, an Adriatic blue palette, Croatian copy and an EN/HR language switch. The hero and share images are drawn placeholders until the store has photos.
+- The travel app reads its country from the theme (booking_marketplace/country.py): regions, the address country in structured data (HR, not ME), search stop-words and page titles. A theme that names no country keeps Montenegro.
+- Croatian at /hr/: locale/hr with 1,612 entries, Croatian dates and numbers.
+- An investor page for Croatia with public figures from the Croatian National Tourist Board, the Croatian Bureau of Statistics and the central bank.
+- Region fields take their choices from the store's country (migration 0016 changes choices only, no SQL).
+- Montenegro's event pages now have a Serbian description.
+
 ## v0.138.0 — 2026-11-06
 
 **Montenegro: a page for investors**

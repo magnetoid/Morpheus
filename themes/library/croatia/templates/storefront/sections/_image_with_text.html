@@ -1,0 +1,18 @@
+<section style="padding: 4rem 0;">
+  <div class="wrap" style="display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center;
+                            {% if settings.image_position == 'right' %}direction: rtl;{% endif %}">
+    {% if settings.image_url %}
+    <div style="direction: ltr;">
+      <img src="{{ settings.image_url }}" alt="{{ settings.image_alt|default:'' }}"
+           style="width: 100%; border-radius: 4px; box-shadow: 0 12px 36px -16px rgba(14,14,14,.25);">
+    </div>
+    {% endif %}
+    <div style="direction: ltr;">
+      {% if settings.heading %}<h2 class="display display-m" style="margin: 0 0 1rem;">{{ settings.heading }}</h2>{% endif %}
+      {% if settings.body %}<div style="font-size: 1.05rem; line-height: 1.7; color: var(--ink-2); margin-bottom: 1.5rem;">{{ settings.body|safe }}</div>{% endif %}
+      {% if settings.cta_label and settings.cta_url %}
+      <a href="{{ settings.cta_url }}" class="btn btn-link">{{ settings.cta_label }}</a>
+      {% endif %}
+    </div>
+  </div>
+</section>

@@ -43,7 +43,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.138.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.139.0')
 
 # The release stage shown beside the version (the dashboard, the README badge, the
 # GitHub Release title) while Morpheus is not finalized; '' once it is. The version
@@ -643,6 +643,7 @@ _SUPPORTED_LANGUAGE_NAMES = {
     'pt': 'Português',
     'nl': 'Nederlands',
     'sr': 'Српски',
+    'hr': 'Hrvatski',
     'ru': 'Русский',
     'pl': 'Polski',
     'tr': 'Türkçe',
@@ -664,8 +665,8 @@ _lang_codes = [
 if LANGUAGE_CODE not in _lang_codes:  # core language is always routable
     _lang_codes.insert(0, LANGUAGE_CODE)
 LANGUAGES = [(c, _SUPPORTED_LANGUAGE_NAMES.get(c, c)) for c in dict.fromkeys(_lang_codes)]
-# Translation catalogs (locale/sr/LC_MESSAGES/…). The Serbian catalog ships with
-# the Montenegro vertical; other stores simply have no .po/.mo there, so this
+# Translation catalogs (locale/<lang>/LC_MESSAGES/…). Serbian ships with the
+# Montenegro store and Croatian with the Croatia one; other stores have no .po/.mo there, so this
 # path is inert for them.
 LOCALE_PATHS = [BASE_DIR / 'locale']
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

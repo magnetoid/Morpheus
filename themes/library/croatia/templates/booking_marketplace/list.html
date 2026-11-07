@@ -1,0 +1,109 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
+{% comment %}1:1 with pages/Search.tsx — the search bar, the filters in force, count/sort row + grid.
+Context: services, listing_mode, region, q, category (a slug), sort, and `search`
+(booking_marketplace/search_page.page_context: heading, chips, date_note, close,
+empty_message, card_heading).{% endcomment %}
+{% comment %}Title, description, breadcrumbs and the ItemList come from the head
+document (`seo_title`, `jsonld_items`, `breadcrumb_items` in the view's context).
+This template used to paste its own ld+json beside it — plus a FAQPage whose
+questions appeared nowhere on the page, on /shop/ as much as /bookings/.
+`/shop/` renders here too (`is_product_shop`): it gets its own heading, count, search
+bar and empty state, and none of the experience-only sort and buying guide.{% endcomment %}
+
+{% block content %}
+{% booking_listing_mode as listing_mode %}
+<div class="container mx-auto px-4 py-8">
+  <header class="mb-6">
+    {% if is_product_shop %}
+    <h1 id="results-heading" class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{% trans "Shop Croatia" %}</h1>
+    {% if not search.chips %}<p id="results-intro" class="text-muted-foreground leading-7 max-w-3xl">{% trans "Locally made Croatian products from trusted vendors — shipped or ready for pickup along the Adriatic coast." %}</p>{% endif %}
+    {% else %}
+    <h1 id="results-heading" class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{{ search.heading }}</h1>
+    {% if not search.chips %}<p id="results-intro" class="text-muted-foreground leading-7 max-w-3xl">{% trans "Sail between the Dalmatian islands, walk the lakes of Plitvice, raft the Cetina river or meet local olive oil and wine producers. Compare activities by destination, pace and travel style." %}</p>{% endif %}
+    {% endif %}
+  </header>
+
+  {% if is_product_shop %}{% include "booking_marketplace/_search.html" with variant="shop" %}{% else %}{% include "booking_marketplace/_search.html" with variant="bar" %}{% endif %}
+
+  {% if search.chips %}
+  <div id="active-filters" class="mx-chips" role="group" aria-label="{% trans 'Active filters' %}">
+    {% for chip in search.chips %}<a href="{{ chip.href }}" class="mx-chip" data-chip="{{ chip.param }}" aria-label="{% blocktrans with label=chip.label %}Remove filter {{ label }}{% endblocktrans %}"><span>{{ chip.label }}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></a>{% endfor %}
+    <a href="{{ search.clear_url }}" class="mx-chips__clear" data-chip-clear>{% trans "Clear all" %}</a>
+  </div>
+  {% endif %}
+  {% if search.date_note %}<p id="date-note" class="mx-results__note" role="status">{{ search.date_note }}</p>{% endif %}
+
+  {% if services and not search.close %}
+  <!-- Count + sort row -->
+  <div class="mx-results__bar">
+    {% if is_product_shop %}
+    <p id="results-count" class="mx-results__count">{% blocktrans count c=services|length %}{{ c }} product{% plural %}{{ c }} products{% endblocktrans %}</p>
+    {% else %}
+    <p id="results-count" class="mx-results__count">{% blocktrans count c=page_obj.paginator.count %}{{ c }} experience{% plural %}{{ c }} experiences{% endblocktrans %}</p>
+    <form id="sort-form" method="get" class="flex items-center gap-2">
+      {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+      {% if region %}<input type="hidden" name="region" value="{{ region }}">{% endif %}
+      {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+      {% if search.date_iso %}<input type="hidden" name="date" value="{{ search.date_iso }}">{% endif %}
+      <label for="sort-by" class="text-sm text-muted-foreground hidden sm:inline">{% trans "Sort by" %}</label>
+      <select id="sort-by" name="sort" onchange="this.form.submit()" class="h-9 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer">
+        {% if q %}<option value="best" {% if sort == 'best' %}selected{% endif %}>{% trans "Best match" %}</option>{% endif %}
+        <option value="recommended" {% if sort == 'recommended' %}selected{% endif %}>{% trans "Recommended" %}</option>
+        <option value="rating" {% if sort == 'rating' %}selected{% endif %}>{% trans "Top rated" %}</option>
+        {% if not listing_mode %}
+        <option value="price_low" {% if sort == 'price_low' %}selected{% endif %}>{% trans "Price: low to high" %}</option>
+        <option value="price_high" {% if sort == 'price_high' %}selected{% endif %}>{% trans "Price: high to low" %}</option>
+        {% endif %}
+        <option value="newest" {% if sort == 'newest' %}selected{% endif %}>{% trans "Newest" %}</option>
+      </select>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if services %}
+  {% if search.close %}
+  <div id="no-results" class="mx-empty mx-empty--close">
+    <p class="mx-empty__title">{{ search.empty_message }}</p>
+  </div>
+  <h2 id="close-matches" class="mx-results__close">{% trans "Close matches" %}</h2>
+  {% endif %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    {% for s in services %}
+    {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode heading=search.card_heading %}
+    {% endfor %}
+  </div>
+  {% if page_obj.has_other_pages %}
+  <nav aria-label="{% trans 'Pages' %}" class="flex flex-wrap items-center justify-center gap-2 mt-10 pt-6 border-t border-border">
+    {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Previous" %}</a>{% endif %}
+    <span class="px-4 text-sm text-muted-foreground">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+    {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Next" %}</a>{% endif %}
+  </nav>
+  {% endif %}
+  {% if search.close %}<div class="mx-empty">{% include "booking_marketplace/_search_way_on.html" %}</div>{% endif %}
+  {% else %}
+  <div id="no-results" class="mx-empty">
+    <p class="mx-empty__title">{{ search.empty_message }}</p>
+    {% include "booking_marketplace/_search_way_on.html" %}
+  </div>
+  {% endif %}
+
+  {% if not is_product_shop %}
+  <section class="mt-12 rounded-2xl border border-border bg-card p-5 md:p-7">
+    <h2 class="text-2xl font-semibold text-foreground mb-3">{% trans "How to choose a Croatia experience" %}</h2>
+    <p class="text-muted-foreground leading-7 max-w-4xl">{% trans "Choose coastal boat trips and old-town walks for an easy first visit, mountain activities for active itineraries, and food or wine experiences for a slower local perspective. Check meeting points, duration and transport before confirming." %}</p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6">
+      <article><h3 class="font-semibold text-foreground mb-2">{% trans "Best for first-time visitors" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "Start with Dubrovnik or Split and an island day, then add the lakes of Plitvice or Krka." %}</p></article>
+      <article><h3 class="font-semibold text-foreground mb-2">{% trans "Best for active trips" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "Look for Cetina rafting, Velebit and Paklenica hiking, sea kayaking and guided island cycling." %}</p></article>
+      <article><h3 class="font-semibold text-foreground mb-2">{% trans "Best for local culture" %}</h3><p class="text-sm text-muted-foreground leading-6">{% trans "Choose old-town walks, Istrian hill towns, konoba food, wine tastings and host-led workshops." %}</p></article>
+    </div>
+    <div class="flex flex-wrap gap-3 mt-6 text-sm font-medium">
+      <a href="/places/" class="text-primary hover:underline">{% trans "Explore destinations" %}</a>
+      <a href="/journal/" class="text-primary hover:underline">{% trans "Read local travel guides" %}</a>
+      <a href="/hotels/" class="text-primary hover:underline">{% trans "Find a place to stay" %}</a>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

@@ -44,6 +44,8 @@ class MontenegroTheme(MorpheusTheme):
     vendor_noun = 'Host'
     vendor_noun_plural = 'Hosts'
     demo_topic = 'travel'
+    # The booking app's regions, address country and page titles follow it.
+    country = 'ME'
 
     def get_config_schema(self) -> dict:
         return {

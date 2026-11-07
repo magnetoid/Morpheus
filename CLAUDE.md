@@ -42,7 +42,7 @@ python manage.py runserver                   # sqlite; .delay() work needs Redis
 - `plugins/` (package root): the app registry and contribution machinery (`registry.py`, `contributions.py`, `chrome_urls.py` / `storefront_urls.py`), plus code several apps share (`feed_mapping.py`, `dropshipping/`, `partner_portal.py`).
 - `plugins/installed/<app>/`: about 100 apps, each with `apps.py`, an `app.py` manifest, `help.md`, `migrations/__init__.py` and tests.
   - The shells are `storefront` and `admin_dashboard`; `admin_dashboard/navigation.py` defines the sidebar.
-- `themes/library/`: `dot_books` (dotbooks.store), `montenegro`, `supernatural_shop`, `irving_survival`. It's one codebase with four stores, all deployed from `main`.
+- `themes/library/`: `dot_books` (dotbooks.store), `montenegro`, `croatia`, `supernatural_shop`, `irving_survival`. It's one codebase with five stores, all deployed from `main`.
 - `api/`: GraphQL and REST (`graphql_view.py`, `graphql_permissions.py`, the response cache).
 - `morpheus/`: the SDK entry points (`morpheus.app`, `.core`, `.theme`).
 
@@ -307,6 +307,16 @@ Guarded by `booking_marketplace/tests/test_listing_products.py`,
 `test_experience_trip_jsonld.py`, `test_apply_listing_content.py`, `catalog/tests/test_service_products.py`,
 `orders/tests/test_service_products_not_sold.py` and
 `admin_dashboard/tests/test_product_form_type_cards.py`.
+
+**Convention — a travel store's country comes from its theme (v0.139.0).** booking_marketplace serves
+montenegro-experience.me and croatia-experience.me; the theme names the country (`MorpheusTheme.country`,
+`ME` / `HR`) and `booking_marketplace/country.py` holds each country's regions, address code, search
+stop-words, page titles and the investor page's arrivals. The region fields take their choices from it
+(a callable, so no migration per country), JSON-LD writes its `addressCountry`, and a page that names
+the country reads it from there, never from a literal: the app said Montenegro in about 80 places,
+`addressCountry: 'ME'` among them. A theme that names no country keeps Montenegro. The croatia theme
+is a copy of montenegro's (owner, 2026-11-07), so a fix to one theme's templates is not in the other.
+Croatian lives in `locale/hr`. Guarded by `booking_marketplace/tests/test_croatia_store.py`.
 
 **Convention — the travel store's search is one engine (v0.112.0).** `booking_marketplace/search.py`
 folds text (case, accents, Serbian Cyrillic, `đ` both ways) and ranks the active listings and

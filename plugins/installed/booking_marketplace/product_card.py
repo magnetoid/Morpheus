@@ -33,7 +33,8 @@ def on_product_form_cards(value, product=None, **kwargs):
     listing = getattr(product, 'booking', None) if getattr(product, 'pk', None) else None
     if listing is None:
         return value
-    from plugins.installed.booking_marketplace.models import REGIONS, BookableService
+    from plugins.installed.booking_marketplace.country import regions
+    from plugins.installed.booking_marketplace.models import BookableService
 
     value.append(
         {
@@ -41,7 +42,7 @@ def on_product_form_cards(value, product=None, **kwargs):
             'context': {
                 'listing': listing,
                 'listing_kinds': BookableService.LISTING_KINDS,
-                'regions': REGIONS,
+                'regions': regions(),
                 'line_fields': [(name, '\n'.join(getattr(listing, name) or [])) for name in _LINES],
                 'itinerary_rows': _rows(listing.itinerary, 'title', 'detail'),
                 'faq_rows': _rows(listing.faqs, 'q', 'a'),
@@ -79,7 +80,8 @@ def on_product_form_saved(product=None, post=None, **kwargs):
     listing = getattr(product, 'booking', None) if product is not None else None
     if listing is None or post is None or not any(k.startswith(PREFIX) for k in post):
         return
-    from plugins.installed.booking_marketplace.models import REGIONS, BookableService
+    from plugins.installed.booking_marketplace.country import regions
+    from plugins.installed.booking_marketplace.models import BookableService
 
     def has(name):
         return f'{PREFIX}{name}' in post
@@ -89,7 +91,7 @@ def on_product_form_saved(product=None, post=None, **kwargs):
 
     if has('listing_kind') and get('listing_kind') in dict(BookableService.LISTING_KINDS):
         listing.listing_kind = get('listing_kind')
-    if has('region') and (get('region') == '' or get('region') in dict(REGIONS)):
+    if has('region') and (get('region') == '' or get('region') in dict(regions())):
         listing.region = get('region')
     for name, limit in _TEXT.items():
         if has(name):

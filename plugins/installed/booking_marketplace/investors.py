@@ -1,4 +1,4 @@
-"""The investor page: Montenegro's visitor economy and the marketplace built for it (v0.138.0).
+"""The investor page: the country's visitor economy and the marketplace built for it (v0.138.0).
 
 The page states public market figures, each cited in its Sources, and what the
 public catalogue lists today, counted live so it never goes stale. It names no
@@ -24,21 +24,23 @@ from django.template import TemplateDoesNotExist
 from django.template.loader import select_template
 from django.utils.translation import get_language, gettext
 
+from plugins.installed.booking_marketplace import country
 from plugins.installed.booking_marketplace.services import SERVICE_FEE_RATE, live_regions
 
 TEMPLATE = 'booking_marketplace/investors.html'
 
-# MONSTAT, "Arrivals and overnight stays of tourists, total, 2025" (source 1 on the page).
-ARRIVALS_2025 = 2_728_564
 SCENARIO_SHARES = (Decimal('0.01'), Decimal('0.03'), Decimal('0.05'))
 # Used only while the catalogue has no priced experience.
 FALLBACK_PRICE = Decimal('60')
 
 
+# The page's language → Babel's locale for its numbers. Serbian is Babel's Latin-script
+# Montenegrin, as search_page.date_label: Django's own `sr` catalog is Cyrillic.
+_BABEL_LOCALES = {'sr': 'sr_Latn_ME', 'hr': 'hr_HR'}
+
+
 def _locale() -> str:
-    # Babel's Latin-script Montenegrin, as search_page.date_label: Django's own
-    # `sr` catalog is Cyrillic.
-    return 'sr_Latn_ME' if (get_language() or '').startswith('sr') else 'en'
+    return _BABEL_LOCALES.get((get_language() or '')[:2], 'en')
 
 
 def _catalogue() -> dict:
@@ -64,9 +66,11 @@ def _catalogue() -> dict:
 
 
 def _scenarios(price: Decimal, locale: str) -> list[dict]:
+    # The country's 2025 arrivals: source 1 on each theme's page (country.py).
+    arrivals = country.current().arrivals_2025
     rows = []
     for share in SCENARIO_SHARES:
-        guests = int((ARRIVALS_2025 * share).quantize(Decimal('1'), ROUND_HALF_UP))
+        guests = int((arrivals * share).quantize(Decimal('1'), ROUND_HALF_UP))
         value = guests * price
         fee = value * SERVICE_FEE_RATE
         rows.append(
@@ -98,18 +102,16 @@ def investors(request):
             'median_price': format_compact_currency(price, 'EUR', locale=locale),
             'median_price_value': int(price),
             'fee_pct': fee_pct,
-            'arrivals': ARRIVALS_2025,
+            'arrivals': country.current().arrivals_2025,
             'scenarios': _scenarios(price, locale),
-            'number_locale': 'sr-Latn-ME' if locale.startswith('sr') else 'en',
+            # The calculator's Intl locale: Babel's, hyphenated.
+            'number_locale': locale.replace('_', '-'),
             'breadcrumb_items': [
                 {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
                 {'name': gettext('Investors'), 'url': request.build_absolute_uri(request.path)},
             ],
             'seo_title': gettext('Investors'),
-            'seo_description': gettext(
-                'Montenegro Experience: the marketplace for the country’s experiences, '
-                'stays and local products, and the market it serves.'
-            ),
+            'seo_description': str(country.text('investors_description')),
             'seo_og_type': 'website',
             # Shared with investors by link; travellers have no reason to land here.
             'seo_noindex_reason': 'investor page, shared by link',

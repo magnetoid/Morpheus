@@ -1,0 +1,5078 @@
+# Croatian translations for croatia.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the croatia project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: croatia VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-11-07 01:35+0100\n"
+"PO-Revision-Date: 2026-11-07 01:35+0100\n"
+"Last-Translator: Croatia Experience\n"
+"Language: hr\n"
+"Language-Team: hr\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+# ── Navigation ──
+msgid "Experiences"
+msgstr "Doživljaji"
+
+msgid "Regions"
+msgstr "Regije"
+
+msgid "Shop"
+msgstr "Trgovina"
+
+msgid "Hosts"
+msgstr "Domaćini"
+
+msgid "Journal"
+msgstr "Blog"
+
+msgid "About"
+msgstr "O nama"
+
+# ── Footer headers ──
+msgid "Explore"
+msgstr "Istražite"
+
+msgid "Discover"
+msgstr "Otkrijte"
+
+msgid "Help"
+msgstr "Pomoć"
+
+# ── Marquee strip ──
+msgid "Free cancellation on most experiences"
+msgstr "Besplatan otkaz za većinu doživljaja"
+
+msgid "Local, hand-picked hosts"
+msgstr "Pažljivo odabrani lokalni domaćini"
+
+msgid "New experiences added weekly"
+msgstr "Novi doživljaji svakog tjedna"
+
+# ── Booking / detail CTAs ──
+msgid "Contact for price"
+msgstr "Cijena na upit"
+
+msgid "Send enquiry"
+msgstr "Pošalji upit"
+
+msgid "Book your spot"
+msgstr "Rezervirajte svoje mjesto"
+
+msgid "Request to book"
+msgstr "Zatraži rezervaciju"
+
+msgid "Post review"
+msgstr "Objavi recenziju"
+
+# ── Home hero ──
+msgid "Unforgettable experiences along the Adriatic"
+msgstr "Nezaboravni doživljaji uz Jadran"
+
+msgid "Search"
+msgstr "Pretraživanje"
+
+# ── Homepage + experiences list ──
+msgid "Featured experiences"
+msgstr "Izdvojeni doživljaji"
+
+msgid "See all"
+msgstr "Prikaži sve"
+
+msgid "Explore by region"
+msgstr "Istražite po regiji"
+
+msgid "Free cancellation"
+msgstr "Besplatan otkaz"
+
+msgid "Real local hosts"
+msgstr "Pravi lokalni domaćini"
+
+msgid "Hand-picked only"
+msgstr "Samo pažljivo odabrano"
+
+msgid "Experiences in Montenegro"
+msgstr "Doživljaji u Crnoj Gori"
+
+msgid "Tours, activities and rentals from trusted local hosts across the Adriatic."
+msgstr "Ture, aktivnosti i najam od pouzdanih lokalnih domaćina diljem Jadrana."
+
+msgid "Hand-picked tours, stays and hidden gems from trusted local hosts — book the real Montenegro, from the bay to the peaks."
+msgstr "Pažljivo odabrane ture, smještaj i skriveni dragulji od pouzdanih lokalnih domaćina — rezervirajte pravu Crnu Goru, od zaljeva do vrhova."
+
+msgid "Places"
+msgstr "Mjesta"
+
+msgid "Popular places"
+msgstr "Popularna mjesta"
+
+msgid "All places"
+msgstr "Sva mjesta"
+
+# -- Serbian sweep: account / content / host / cart --
+msgid "&larr; Back to account"
+msgstr "&larr; Natrag na korisnički račun"
+
+msgid "(default)"
+msgstr "(zadano)"
+
+msgid "(hidden)"
+msgstr "(skriveno)"
+
+msgid "(optional)"
+msgstr "(neobavezno)"
+
+msgid "+ Add address"
+msgstr "+ Dodaj adresu"
+
+msgid "+ New experience"
+msgstr "+ Novi doživljaj"
+
+msgid "A few honest notes"
+msgstr "Nekoliko iskrenih napomena"
+
+msgid "AI search"
+msgstr "AI pretraživanje"
+
+msgid "Account"
+msgstr "Korisnički račun"
+
+msgid "Account preferences + login history"
+msgstr "Postavke računa + povijest prijava"
+
+msgid "Account profile (email, name, addresses) — required to log in and keep your past orders."
+msgstr "Profil korisničkog računa (e-pošta, ime, adrese) — potreban za prijavu i čuvanje vaših prethodnih narudžbi."
+
+msgid "Add a card"
+msgstr "Dodaj karticu"
+
+msgid "Add your first address"
+msgstr "Dodajte svoju prvu adresu"
+
+msgid "Address line 1"
+msgstr "Adresa, redak 1"
+
+msgid "Address line 2 (optional)"
+msgstr "Adresa, redak 2 (neobavezno)"
+
+msgid "Address type"
+msgstr "Vrsta adrese"
+
+msgid "Addresses"
+msgstr "Adrese"
+
+msgid "After you place the order we'll redirect to a secure payment page (Stripe). Your card never touches our server."
+msgstr "Nakon što predate narudžbu, preusmjerit ćemo vas na sigurnu stranicu za plaćanje (Stripe). Vaša kartica nikada ne dolazi na naš poslužitelj."
+
+msgid "All entries"
+msgstr "Svi unosi"
+
+msgid "All orders"
+msgstr "Sve narudžbe"
+
+msgid "All returns"
+msgstr "Svi povrati"
+
+msgid "Almost there"
+msgstr "Još malo"
+
+msgid "Amount"
+msgstr "Iznos"
+
+msgid "Analytics (Google Analytics) — only if you opt in via the cookie banner. Used to see which pages people read so we can fix the slow ones."
+msgstr "Analitika (Google Analytics) — samo ako pristanete putem banera za kolačiće. Koristi se da vidimo koje stranice ljudi čitaju kako bismo popravili spore."
+
+msgid "Apartment, suite, etc."
+msgstr "Stan, apartman itd."
+
+msgid "Apply"
+msgstr "Primijeni"
+
+msgid "Apply at checkout — paste the code into the \"Have a gift card?\" field."
+msgstr "Primijenite pri naplati — zalijepite kod u polje \"Imate darovnu karticu?\"."
+
+msgid "Apply to host"
+msgstr "Prijavite se za domaćina"
+
+msgid "Apt / suite (optional)"
+msgstr "Stan / apartman (neobavezno)"
+
+msgid "Available balance — applied automatically at checkout."
+msgstr "Raspoloživo stanje — automatski se primjenjuje pri naplati."
+
+msgid "Back home"
+msgstr "Natrag na početnu"
+
+msgid "Back to home"
+msgstr "Natrag na početnu"
+
+msgid "Back to order"
+msgstr "Natrag na narudžbu"
+
+msgid "Balance"
+msgstr "Stanje"
+
+msgid "Become a host — Montenegro Experience"
+msgstr "Postanite domaćin — Montenegro Experience"
+
+msgid "Billing"
+msgstr "Naplata"
+
+msgid "Book"
+msgstr "Rezerviraj"
+
+msgid "Bookings"
+msgstr "Rezervacije"
+
+msgid "Browse experiences"
+msgstr "Pregledaj doživljaje"
+
+msgid "Calculated at checkout"
+msgstr "Obračunava se pri naplati"
+
+msgid "Cancel"
+msgstr "Otkaži"
+
+msgid "Cancellation policy"
+msgstr "Uvjeti otkazivanja"
+
+msgid "Cancelled"
+msgstr "Otkazano"
+
+msgid "Card-on-file isn't available right now. Refresh in a moment, or just enter your card at checkout — we'll offer to save it there too."
+msgstr "Spremanje kartice trenutno nije dostupno. Osvježite stranicu za trenutak ili jednostavno unesite karticu pri naplati — i tamo ćemo vam ponuditi da je spremite."
+
+msgid "Cards you've chosen to keep on file for faster checkout. We never see the numbers — Stripe holds them, we hold a reference. Remove one any time; we'll forget it immediately."
+msgstr "Kartice koje ste odabrali spremiti radi brže naplate. Mi nikada ne vidimo brojeve — Stripe ih čuva, a mi čuvamo referencu. Uklonite karticu bilo kada; odmah ćemo je zaboraviti."
+
+msgid "Cart"
+msgstr "Košarica"
+
+msgid "Cart and order data — required to fulfil your booking."
+msgstr "Podaci o košarici i narudžbi — potrebni za ispunjenje vaše rezervacije."
+
+msgid "Categories are being set up. Check back soon."
+msgstr "Kategorije se postavljaju. Provjerite ponovno uskoro."
+
+msgid "Category"
+msgstr "Kategorija"
+
+msgid "Change"
+msgstr "Promijeni"
+
+msgid "Changed my mind"
+msgstr "Predomislio sam se"
+
+msgid "Checkout"
+msgstr "Naplata"
+
+msgid "Checkout · 1 of 3"
+msgstr "Naplata · 1 od 3"
+
+msgid "Checkout · 2 of 3"
+msgstr "Naplata · 2 od 3"
+
+msgid "Checkout · 3 of 3"
+msgstr "Naplata · 3 od 3"
+
+msgid "Checkout · Payment"
+msgstr "Naplata · Plaćanje"
+
+msgid "Checkout — Montenegro Experience"
+msgstr "Naplata — Montenegro Experience"
+
+msgid "City"
+msgstr "Grad"
+
+msgid "Click submit to record an opt-out preference for this browser session and any logged-in account."
+msgstr "Kliknite na pošalji kako biste zabilježili postavku odjave za ovu sesiju preglednika i svaki prijavljeni korisnički račun."
+
+msgid "Code"
+msgstr "Kod"
+
+msgid "Company (optional)"
+msgstr "Tvrtka (neobavezno)"
+
+msgid "Complete"
+msgstr "Završi"
+
+msgid "Confirm"
+msgstr "Potvrdi"
+
+msgid "Confirmed &amp; completed"
+msgstr "Potvrđeno i završeno"
+
+msgid "Contact"
+msgstr "Kontakt"
+
+msgid "Continue to payment"
+msgstr "Nastavi na plaćanje"
+
+msgid "Continue to review"
+msgstr "Nastavi na pregled"
+
+msgid "Continue to shipping"
+msgstr "Nastavi na dostavu"
+
+msgid "Couldn't sign you up"
+msgstr "Nismo vas mogli registrirati"
+
+msgid "Country"
+msgstr "Država"
+
+msgid "Country (2-letter)"
+msgstr "Država (2 slova)"
+
+msgid "Create experience"
+msgstr "Izradi doživljaj"
+
+msgid "Credit"
+msgstr "Kredit"
+
+msgid "Customer name + ship-to address inside past Orders → \"[redacted]\""
+msgstr "Ime kupca + adresa za dostavu u prethodnim narudžbama → \"[uklonjeno]\""
+
+msgid "Damaged in transit"
+msgstr "Oštećeno u transportu"
+
+msgid "Debit"
+msgstr "Terećenje"
+
+msgid "Defective"
+msgstr "Neispravno"
+
+msgid "Delete"
+msgstr "Obriši"
+
+msgid "Delete account"
+msgstr "Obriši korisnički račun"
+
+msgid "Delete my account"
+msgstr "Obriši moj korisnički račun"
+
+msgid "Digital delivery"
+msgstr "Digitalna isporuka"
+
+msgid "Do not sell my information"
+msgstr "Ne prodavajte moje podatke"
+
+msgid "Download"
+msgstr "Preuzmi"
+
+msgid "Download my data"
+msgstr "Preuzmi moje podatke"
+
+msgid "Download my data (ZIP)"
+msgstr "Preuzmi moje podatke (ZIP)"
+
+msgid "Download my data first →"
+msgstr "Prvo preuzmi moje podatke →"
+
+msgid "Duration (min)"
+msgstr "Trajanje (min)"
+
+msgid "Earnings"
+msgstr "Zarada"
+
+msgid "Earnings — Montenegro Experience"
+msgstr "Zarada — Montenegro Experience"
+
+msgid "Edit"
+msgstr "Uredi"
+
+msgid "Edit address"
+msgstr "Uredi adresu"
+
+msgid "Edit experience"
+msgstr "Uredi doživljaj"
+
+msgid "Email"
+msgstr "E-pošta"
+
+msgid "Enquiries"
+msgstr "Upiti"
+
+msgid "Enter code"
+msgstr "Unesite kod"
+
+msgid "Experience, town, activity…"
+msgstr "Doživljaj, grad, aktivnost…"
+
+msgid "Expired"
+msgstr "Isteklo"
+
+msgid "Files arrive as JSON inside a ZIP. Free, instant, no support ticket required."
+msgstr "Datoteke stižu kao JSON unutar ZIP-a. Besplatno, trenutno, bez prijave za podršku."
+
+msgid "Final look"
+msgstr "Posljednji pregled"
+
+msgid "First name"
+msgstr "Ime"
+
+msgid "Free"
+msgstr "Besplatno"
+
+msgid "Free shipping over $40"
+msgstr "Besplatna dostava preko $40"
+
+msgid "From the journal"
+msgstr "Iz bloga"
+
+msgid "Full description"
+msgstr "Cjeloviti opis"
+
+msgid "General enquiry"
+msgstr "Opći upit"
+
+msgid "Get a copy of everything we have on file for you — account profile, orders, reviews, addresses, consent decisions, and anything else tied to your customer record. GDPR Article 15. CCPA's \"right to know\". Every right-to-access law any of us know about."
+msgstr "Preuzmite kopiju svega što imamo o vama — profil korisničkog računa, narudžbe, recenzije, adrese, odluke o privolama i sve drugo vezano uz vaš zapis kupca. Članak 15. GDPR-a. \"Pravo na saznanje\" prema CCPA-i. Svaki zakon o pravu na pristup podacima za koji znamo."
+
+msgid "Get in touch"
+msgstr "Stupite u kontakt"
+
+msgid "Gift card code"
+msgstr "Kod darovne kartice"
+
+msgid "Gift cards"
+msgstr "Darovne kartice"
+
+msgid "Go to delete account →"
+msgstr "Idi na brisanje korisničkog računa →"
+
+msgid "Have a gift card?"
+msgstr "Imate darovnu karticu?"
+
+msgid "History"
+msgstr "Povijest"
+
+msgid "Home"
+msgstr "Početna"
+
+msgid "In progress"
+msgstr "U tijeku"
+
+msgid "Issued as store credit on your account."
+msgstr "Izdano kao kredit trgovine na vašem korisničkom računu."
+
+msgid "Items"
+msgstr "Stavke"
+
+msgid "Keep browsing"
+msgstr "Nastavi pregledavati"
+
+msgid "Kind"
+msgstr "Vrsta"
+
+msgid "Last name"
+msgstr "Prezime"
+
+msgid "Leave all unchecked to run every day."
+msgstr "Ostavite sve neoznačeno za održavanje svaki dan."
+
+msgid "Limit reached"
+msgstr "Dostignuto ograničenje"
+
+msgid "List your first experience"
+msgstr "Oglasite svoj prvi doživljaj"
+
+msgid "List your tours, activities or stays and reach travellers looking for the real Montenegro. Apply to become a host and we’ll set you up."
+msgstr "Oglasite svoje ture, aktivnosti ili smještaj i dođite do putnika koji traže pravu Crnu Goru. Prijavite se za domaćina i mi ćemo vas postaviti."
+
+msgid "Looking for a recommendation? Want to suggest a title? Need help with an order? We read every message."
+msgstr "Tražite preporuku? Želite predložiti naslov? Treba vam pomoć oko narudžbe? Čitamo svaku poruku."
+
+msgid "Marketing cookies — only if you opt in. Used for re-engagement emails on cart abandonment."
+msgstr "Marketinški kolačići — samo ako pristanete. Koriste se za e-poruke za ponovno angažiranje pri napuštanju košarice."
+
+msgid "Max guests per booking"
+msgstr "Maks. broj gostiju po rezervaciji"
+
+msgid "Message"
+msgstr "Poruka"
+
+msgid "Name"
+msgstr "Ime"
+
+msgid "Name, email, contact preferences."
+msgstr "Ime, e-pošta, postavke kontakta."
+
+msgid "Net is your take-home (per-guest price × guests). Montenegro Experience keeps the 12% service fee guests pay on top. Payouts are settled to your registered account."
+msgstr "Neto je vaš iznos koji dobivate (cijena po gostu × broj gostiju). Montenegro Experience zadržava naknadu za uslugu od 12% koju gosti plaćaju povrh cijene. Isplate se vrše na vaš registrirani račun."
+
+msgid "Net to you"
+msgstr "Neto za vas"
+
+msgid "New"
+msgstr "Novo"
+
+msgid "New address"
+msgstr "Nova adresa"
+
+msgid "New experience"
+msgstr "Novi doživljaj"
+
+msgid "Next →"
+msgstr "Sljedeća →"
+
+msgid "No active downloads. Digital purchases will appear here with a button to grab the file."
+msgstr "Nema aktivnih preuzimanja. Digitalne kupnje pojavit će se ovdje s gumbom za preuzimanje datoteke."
+
+msgid "No addresses saved yet."
+msgstr "Još nema spremljenih adresa."
+
+msgid "No bookings yet."
+msgstr "Još nema rezervacija."
+
+msgid "No cards on file yet. Add one below to speed through future checkouts."
+msgstr "Još nema spremljenih kartica. Dodajte je ispod kako biste ubrzali buduće naplate."
+
+msgid "No confirmed bookings yet — your earnings will appear here."
+msgstr "Još nema potvrđenih rezervacija — vaša će se zarada prikazati ovdje."
+
+msgid "No enquiries yet."
+msgstr "Još nema upita."
+
+msgid "No gift cards on this account yet."
+msgstr "Na ovom korisničkom računu još nema darovnih kartica."
+
+msgid "No item details on file."
+msgstr "Nema spremljenih podataka o stavkama."
+
+msgid "No orders yet."
+msgstr "Još nema narudžbi."
+
+msgid "No returns yet."
+msgstr "Još nema povrata."
+
+msgid "No shipping rates available for this address. Configure shipping zones in the dashboard, or contact support."
+msgstr "Za ovu adresu nema dostupnih cijena dostave. Postavite zone dostave na nadzornoj ploči ili kontaktirajte podršku."
+
+msgid "No store credit yet. You'll earn it from refunded returns when you choose \"store credit\" instead of money back."
+msgstr "Još nemate kredit trgovine. Zaradit ćete ga povratima kada odaberete \"kredit trgovine\" umjesto povrata novca."
+
+msgid "Not as described"
+msgstr "Ne odgovara opisu"
+
+msgid "Note"
+msgstr "Napomena"
+
+msgid "Note (optional)"
+msgstr "Napomena (neobavezno)"
+
+msgid "Notes, essays, short pieces from the booksellers. Updated when there's something to say — never on a schedule."
+msgstr "Bilješke, eseji i kratki tekstovi knjižara. Ažurira se kada ima što reći — nikad po rasporedu."
+
+msgid "Nothing here yet. Browse experiences and add one or two."
+msgstr "Ovdje još nema ničega. Pregledajte doživljaje i dodajte jedan ili dva."
+
+msgid "On file"
+msgstr "Spremljeno"
+
+msgid "One page"
+msgstr "Jedna stranica"
+
+msgid "Only on a subscription renewal or a pre-authorised back-order — and only after you've explicitly opted in to that specific arrangement. Never out of the blue."
+msgstr "Samo pri obnovi pretplate ili unaprijed odobrenoj naknadnoj narudžbi — i samo nakon što ste izričito pristali na taj konkretan dogovor. Nikada iznenada."
+
+msgid "Open and past return requests."
+msgstr "Otvoreni i prethodni zahtjevi za povrat."
+
+msgid "Opt me out"
+msgstr "Odjavi me"
+
+msgid "Opt out"
+msgstr "Odjavi se"
+
+msgid "Opt-out recorded."
+msgstr "Odjava je zabilježena."
+
+msgid "Order confirmation + tracking sent here."
+msgstr "Potvrda narudžbe + praćenje šalju se ovdje."
+
+msgid "Order history"
+msgstr "Povijest narudžbi"
+
+msgid "Order numbers + totals (for accounting; tax law requires we keep these)"
+msgstr "Brojevi narudžbi + ukupni iznosi (za računovodstvo; porezni zakon zahtijeva da ih čuvamo)"
+
+msgid "Order summary"
+msgstr "Pregled narudžbe"
+
+msgid "Orders"
+msgstr "Narudžbe"
+
+msgid "Other"
+msgstr "Drugo"
+
+msgid "Past orders, status, receipts."
+msgstr "Prethodne narudžbe, status, računi."
+
+msgid "Pay now"
+msgstr "Plati sada"
+
+msgid "Payment"
+msgstr "Plaćanje"
+
+msgid "Payment isn't configured yet."
+msgstr "Plaćanje još nije postavljeno."
+
+msgid "Payment method"
+msgstr "Način plaćanja"
+
+msgid "Payment methods"
+msgstr "Načini plaćanja"
+
+msgid "Payment — Montenegro Experience"
+msgstr "Plaćanje — Montenegro Experience"
+
+msgid "Permanently delete my account"
+msgstr "Trajno obriši moj korisnički račun"
+
+msgid "Phone"
+msgstr "Telefon"
+
+msgid "Phone (optional)"
+msgstr "Telefon (neobavezno)"
+
+msgid "Photo"
+msgstr "Fotografija"
+
+msgid "Pick a shipping speed"
+msgstr "Odaberite brzinu dostave"
+
+msgid "Pick the items + quantities you'd like to send back."
+msgstr "Odaberite stavke + količine koje želite vratiti."
+
+msgid "Pick up where you left off."
+msgstr "Nastavite gdje ste stali."
+
+msgid "Place order"
+msgstr "Predaj narudžbu"
+
+msgid "Platform fee (12%)"
+msgstr "Naknada platforme (12%)"
+
+msgid "Please fix the following:"
+msgstr "Molimo ispravite sljedeće:"
+
+msgid "Postal code"
+msgstr "Poštanski broj"
+
+msgid "Price (€ per guest)"
+msgstr "Cijena (€ po gostu)"
+
+msgid "Privacy"
+msgstr "Privatnost"
+
+msgid "Processed via your original payment method."
+msgstr "Obrađeno putem vašeg izvornog načina plaćanja."
+
+msgid "Profile"
+msgstr "Profil"
+
+msgid "Qty"
+msgstr "Kol."
+
+msgid "Reason"
+msgstr "Razlog"
+
+msgid "Refunded"
+msgstr "Vraćen novac"
+
+msgid "Rejected"
+msgstr "Odbijeno"
+
+msgid "Remove"
+msgstr "Ukloni"
+
+msgid "Reply"
+msgstr "Odgovori"
+
+msgid "Request a return"
+msgstr "Zatraži povrat"
+
+msgid "Requested"
+msgstr "Zatraženo"
+
+msgid "Returns"
+msgstr "Povrati"
+
+msgid "Reviews you wrote (visible publicly as \"Deleted user\" — the content stays for other readers)"
+msgstr "Recenzije koje ste napisali (javno vidljive kao \"Obrisani korisnik\" — sadržaj ostaje za druge čitatelje)"
+
+msgid "Runs on"
+msgstr "Održava se"
+
+msgid "Save address"
+msgstr "Spremi adresu"
+
+msgid "Save changes"
+msgstr "Spremi promjene"
+
+msgid "Save profile"
+msgstr "Spremi profil"
+
+msgid "Save this card"
+msgstr "Spremi ovu karticu"
+
+msgid "Save this info for next time"
+msgstr "Spremi ove podatke za sljedeći put"
+
+msgid "Saved addresses"
+msgstr "Spremljene adrese"
+
+msgid "Saved cards"
+msgstr "Spremljene kartice"
+
+msgid "Saved shipping &amp; billing addresses."
+msgstr "Spremljene adrese za dostavu i naplatu."
+
+msgid "Saved titles you'd come back to."
+msgstr "Spremljeni naslovi kojima biste se vratili."
+
+msgid "Seats / day"
+msgstr "Mjesta / dan"
+
+msgid "Send"
+msgstr "Pošalji"
+
+msgid "Share your Montenegro"
+msgstr "Podijelite svoju Crnu Goru"
+
+msgid "Shipping"
+msgstr "Dostava"
+
+msgid "Shipping address"
+msgstr "Adresa za dostavu"
+
+msgid "Shipping method"
+msgstr "Način dostave"
+
+msgid "Ships to"
+msgstr "Dostavlja se na"
+
+msgid "Short description (shown on cards)"
+msgstr "Kratak opis (prikazuje se na karticama)"
+
+msgid "Sign out"
+msgstr "Odjavi se"
+
+msgid "State / Region"
+msgstr "Država / regija"
+
+msgid "State / region"
+msgstr "Država / regija"
+
+msgid "Store credit"
+msgstr "Kredit trgovine"
+
+msgid "Store credit &amp; gift cards"
+msgstr "Kredit trgovine i darovne kartice"
+
+msgid "Street address"
+msgstr "Ulica i kućni broj"
+
+msgid "Submit return request"
+msgstr "Pošalji zahtjev za povrat"
+
+msgid "Subtotal"
+msgstr "Međuzbroj"
+
+msgid "Tax"
+msgstr "Porez"
+
+msgid "Thanks — we got your note and will reply soon."
+msgstr "Hvala — primili smo vašu poruku i uskoro ćemo odgovoriti."
+
+msgid "This cannot be undone. You'll be logged out and redirected home."
+msgstr "Ovo se ne može poništiti. Bit ćete odjavljeni i preusmjereni na početnu."
+
+msgid "This cart contains only digital or virtual items — we'll send your downloads to the email above. No shipping address needed."
+msgstr "Ova košarica sadrži samo digitalne ili virtualne stavke — poslat ćemo vaša preuzimanja na gornju e-adresu. Adresa za dostavu nije potrebna."
+
+msgid "Total"
+msgstr "Ukupno"
+
+msgid "Under CCPA and similar laws in other states, you have the right to opt out anyway, even from sharing we don't do. Submit the form below and we'll record your opt-out preference and flip every analytics and marketing toggle off for your session."
+msgstr "Prema CCPA-i i sličnim zakonima u drugim saveznim državama, ipak imate pravo na odjavu, čak i od dijeljenja koje ne provodimo. Pošaljite obrazac u nastavku i mi ćemo zabilježiti vašu postavku odjave te isključiti sve prekidače analitike i marketinga za vašu sesiju."
+
+msgid "Update from us"
+msgstr "Obavijest od nas"
+
+msgid "View"
+msgstr "Pogledaj"
+
+msgid "View order status"
+msgstr "Pogledaj status narudžbe"
+
+msgid "View orders"
+msgstr "Pogledaj narudžbe"
+
+msgid "Visible on the storefront"
+msgstr "Vidljivo u trgovini"
+
+msgid "We collect the card now, charge nothing, and have it ready for your next order. Authentication (3-D Secure) happens here once so checkout stays one tap."
+msgstr "Sada prikupljamo karticu, ništa ne naplaćujemo i držimo je spremnom za vašu sljedeću narudžbu. Autentifikacija (3-D Secure) obavi se ovdje jednom kako bi naplata ostala na jedan dodir."
+
+msgid "We detach the card from your account immediately. Open orders aren't affected — they keep the charge that already went through."
+msgstr "Karticu odmah odvajamo od vašeg korisničkog računa. Otvorene narudžbe nisu pogođene — zadržavaju naplatu koja je već prošla."
+
+msgid "We don't sell your personal information. We never have. We don't share it with data brokers, ad networks, or third parties looking to retarget you across the rest of the internet."
+msgstr "Ne prodajemo vaše osobne podatke. Nikada nismo. Ne dijelimo ih s posrednicima podataka, oglasnim mrežama ni trećim stranama koje vas žele ponovno ciljati po ostatku interneta."
+
+msgid "We'll send a short note when something worth your attention. No spam."
+msgstr "Poslat ćemo kratku poruku kada bude nešto vrijedno vaše pažnje. Bez spama."
+
+msgid "Welcome to the list"
+msgstr "Dobro došli na popis"
+
+msgid "What gets anonymised (kept for legal/fiscal)"
+msgstr "Što se anonimizira (čuva se iz pravnih/fiskalnih razloga)"
+
+msgid "What gets deleted"
+msgstr "Što se briše"
+
+msgid "What happens when I click Remove?"
+msgstr "Što se događa kada kliknem Ukloni?"
+
+msgid "What we collect, briefly"
+msgstr "Što prikupljamo, ukratko"
+
+msgid "What you'll get"
+msgstr "Što ćete dobiti"
+
+msgid "When"
+msgstr "Kada"
+
+msgid "Where is my card actually stored?"
+msgstr "Gdje se moja kartica zapravo čuva?"
+
+msgid "Where should it go"
+msgstr "Kamo da pošaljemo"
+
+msgid "Will you ever charge a saved card without me?"
+msgstr "Hoćete li ikada naplatiti spremljenu karticu bez mene?"
+
+msgid "Wishlist"
+msgstr "Lista želja"
+
+msgid "Wishlist + saved payment methods"
+msgstr "Lista želja + spremljeni načini plaćanja"
+
+msgid "Wrong item"
+msgstr "Pogrešan artikl"
+
+msgid "You can leave any time. We'll keep what we're legally required to keep (order history for accounting), anonymise what we can, and delete the rest."
+msgstr "Možete otići u bilo kojem trenutku. Zadržat ćemo ono što smo zakonski obvezni (povijest narudžbi za računovodstvo), anonimizirati što možemo, a ostalo obrisati."
+
+msgid "You haven’t listed any experiences yet."
+msgstr "Još niste oglasili nijedan doživljaj."
+
+msgid "You'll enter card details on the next step. We don't store cards; Stripe handles encryption + 3-D Secure."
+msgstr "Podatke o kartici unijet ćete u sljedećem koraku. Mi ne čuvamo kartice; Stripe upravlja enkripcijom + 3-D Secureom."
+
+msgid "Your account"
+msgstr "Vaš korisnički račun"
+
+msgid "Your bookings — Montenegro Experience"
+msgstr "Vaše rezervacije — Montenegro Experience"
+
+msgid "Your cart is empty"
+msgstr "Vaša košarica je prazna"
+
+msgid "Your cart — Montenegro Experience"
+msgstr "Vaša košarica — Montenegro Experience"
+
+msgid "Your downloads"
+msgstr "Vaša preuzimanja"
+
+msgid "Your enquiries — Montenegro Experience"
+msgstr "Vaši upiti — Montenegro Experience"
+
+msgid "Your experiences"
+msgstr "Vaši doživljaji"
+
+msgid "Your experiences — Montenegro Experience"
+msgstr "Vaši doživljaji — Montenegro Experience"
+
+msgid "Your note"
+msgstr "Vaša napomena"
+
+msgid "Your order"
+msgstr "Vaša narudžba"
+
+msgid "Your orders"
+msgstr "Vaše narudžbe"
+
+msgid "Your profile"
+msgstr "Vaš profil"
+
+msgid "Your profile (name, email, password)"
+msgstr "Vaš profil (ime, e-pošta, lozinka)"
+
+msgid "Your saved cards"
+msgstr "Vaše spremljene kartice"
+
+msgid "Your trip, ready to book"
+msgstr "Vaše putovanje, spremno za rezervaciju"
+
+msgid "experience — Montenegro Experience"
+msgstr "doživljaj — Montenegro Experience"
+
+msgid "← All returns"
+msgstr "← Svi povrati"
+
+msgid "← Prev"
+msgstr "← Prethodna"
+
+msgid "Region"
+msgstr "Regija"
+
+# -- core experience pages --
+msgid "A 12% service fee is added at confirmation."
+msgstr "Naknada za uslugu od 12% dodaje se pri potvrdi."
+
+msgid "Bestseller"
+msgstr "Najpopularnije"
+
+msgid "Browse all experiences"
+msgstr "Pregledaj sve doživljaje"
+
+msgid "Cancellation:"
+msgstr "Otkazivanje:"
+
+msgid "Date"
+msgstr "Datum"
+
+msgid "Destinations"
+msgstr "Destinacije"
+
+msgid "Destinations are being added. Check back soon."
+msgstr "Destinacije se dodaju. Provjerite uskoro."
+
+msgid "Experiences in"
+msgstr "Doživljaji u"
+
+msgid "Explore Montenegro by region"
+msgstr "Istražite Crnu Goru po regiji"
+
+msgid "From"
+msgstr "Od"
+
+msgid "Guests"
+msgstr "Gosti"
+
+msgid "Highlights"
+msgstr "Istaknuto"
+
+msgid "Hosted by"
+msgstr "Domaćin"
+
+msgid "No dates open right now — please check back later."
+msgstr "Trenutno nema slobodnih termina — provjerite kasnije."
+
+msgid "No experiences are listed yet. Check back soon."
+msgstr "Još nema objavljenih doživljaja. Provjerite uskoro."
+
+msgid "No experiences here yet."
+msgstr "Ovdje još nema doživljaja."
+
+msgid "No reviews yet — be the first after your visit."
+msgstr "Još nema recenzija — budite prvi nakon posjeta."
+
+msgid "Not included"
+msgstr "Nije uključeno"
+
+msgid "Places to visit"
+msgstr "Mjesta za posjetiti"
+
+msgid "Reviews"
+msgstr "Recenzije"
+
+msgid "Send the host your dates and party size and they’ll get back to you with availability and a price."
+msgstr "Pošaljite domaćinu željene datume i broj gostiju, a on će vam se javiti s dostupnošću i cijenom."
+
+msgid "What's included"
+msgstr "Što je uključeno"
+
+msgid "Where to go"
+msgstr "Kamo krenuti"
+
+msgid "per guest"
+msgstr "po gostu"
+
+msgid "★ — Bad"
+msgstr "★ — Loše"
+
+msgid "★★ — Poor"
+msgstr "★★ — Slabo"
+
+msgid "★★★ — Okay"
+msgstr "★★★ — U redu"
+
+msgid "★★★★ — Good"
+msgstr "★★★★ — Dobro"
+
+msgid "★★★★★ — Excellent"
+msgstr "★★★★★ — Izvrsno"
+
+msgid "24/7 support"
+msgstr "Podrška 0–24"
+
+msgid "4.9 average rating"
+msgstr "Prosječna ocjena 4.9"
+
+msgid "A Montenegro Experience gift card — for the traveller who has everything."
+msgstr "Darovna kartica Montenegro Experience — za putnika koji ima sve."
+
+msgid "Adventure"
+msgstr "Avantura"
+
+msgid "All"
+msgstr "Sve"
+
+msgid "Become a Host"
+msgstr "Postanite domaćin"
+
+msgid "Book with confidence — free cancellation on most experiences"
+msgstr "Rezervirajte bez brige — besplatan otkaz za većinu doživljaja"
+
+msgid "Browse by category"
+msgstr "Pregled po kategoriji"
+
+msgid "Buy Gift Card"
+msgstr "Kupi darovnu karticu"
+
+msgid "Cancellation options"
+msgstr "Mogućnosti otkazivanja"
+
+msgid "Cities &amp; towns"
+msgstr "Gradovi i mjesta"
+
+msgid "Coastal towns"
+msgstr "Primorski gradovi"
+
+msgid "Culture"
+msgstr "Kultura"
+
+msgid "Digital gift cards delivered instantly. Valid for 2 years. Redeemable on any experience across Montenegro."
+msgstr "Digitalne darovne kartice isporučuju se odmah. Vrijede 2 godine. Mogu se iskoristiti za bilo koji doživljaj diljem Crne Gore."
+
+msgid "Discover Montenegro"
+msgstr "Otkrijte Crnu Goru"
+
+msgid "Discover the beauty of Montenegro through unique, handcrafted experiences."
+msgstr "Otkrijte ljepotu Crne Gore kroz jedinstvene, pažljivo osmišljene doživljaje."
+
+msgid "Every host is vetted so you book with confidence."
+msgstr "Svaki je domaćin provjeren kako biste rezervirali bez brige."
+
+msgid "Flexible plans on most experiences."
+msgstr "Fleksibilni uvjeti za većinu doživljaja."
+
+msgid "Food & Drink"
+msgstr "Hrana i piće"
+
+msgid "Free instant delivery"
+msgstr "Besplatna trenutna isporuka"
+
+msgid "From walled coastal towns to glacial mountain lakes — explore the destinations behind every experience."
+msgstr "Od utvrđenih primorskih gradova do ledenjačkih planinskih jezera — istražite destinacije iza svakog doživljaja."
+
+msgid "From €25 to €500"
+msgstr "Od €25 do €500"
+
+msgid "Get inspired"
+msgstr "Potražite inspiraciju"
+
+msgid "Gift Card"
+msgstr "Darovna kartica"
+
+msgid "Gift Cards"
+msgstr "Darovne kartice"
+
+msgid "Give the Gift of Adventure"
+msgstr "Poklonite avanturu"
+
+msgid "Give the gift of experience"
+msgstr "Poklonite doživljaj"
+
+msgid "Guest favourite"
+msgstr "Omiljeno kod gostiju"
+
+msgid "Help center"
+msgstr "Centar za pomoć"
+
+msgid "Hiking, climbing & adrenaline"
+msgstr "Planinarenje, penjanje i adrenalin"
+
+msgid "History, towns & traditions"
+msgstr "Povijest, gradovi i tradicija"
+
+msgid "Hosting"
+msgstr "Domaćinstvo"
+
+msgid "Hosting resources"
+msgstr "Resursi za domaćine"
+
+msgid "Kayaking, diving & sailing"
+msgstr "Kajak, ronjenje i jedrenje"
+
+msgid "Landmarks &amp; nature"
+msgstr "Znamenitosti i priroda"
+
+msgid "Loved by 10,000+ Customers"
+msgstr "Voli nas 10.000+ gostiju"
+
+msgid "Mountains &amp; parks"
+msgstr "Planine i parkovi"
+
+msgid "New experiences and hidden gems, straight to your inbox."
+msgstr "Novi doživljaji i skriveni dragulji, izravno u vaš sandučić."
+
+msgid "New experiences are being added — check back soon."
+msgstr "Novi se doživljaji dodaju — provjerite uskoro."
+
+msgid "Newsroom"
+msgstr "Press centar"
+
+msgid "Perfect for any occasion"
+msgstr "Savršeno za svaku priliku"
+
+msgid "Places to visit in Montenegro"
+msgstr "Mjesta za posjetiti u Crnoj Gori"
+
+msgid "Popular Experiences"
+msgstr "Popularni doživljaji"
+
+msgid "Popular destinations"
+msgstr "Popularna odredišta"
+
+msgid "Real people, ready whenever you need us."
+msgstr "Pravi ljudi, tu kad god nas zatrebate."
+
+msgid "Safety information"
+msgstr "Sigurnosne informacije"
+
+msgid "Save"
+msgstr "Spremi"
+
+msgid "Secure payment"
+msgstr "Sigurno plaćanje"
+
+msgid "Send the host your dates and party size and they'll get back to you with availability and a price."
+msgstr "Pošaljite domaćinu svoje termine i broj gostiju, a on će vam se javiti s dostupnošću i cijenom."
+
+msgid "Share"
+msgstr "Podijeli"
+
+msgid "Shop gift cards"
+msgstr "Kupite darovne kartice"
+
+msgid "Sitemap"
+msgstr "Karta web-mjesta"
+
+msgid "Spa, yoga & retreats"
+msgstr "Spa, joga i retreatovi"
+
+msgid "Subscribe"
+msgstr "Pretplatite se"
+
+msgid "Support"
+msgstr "Podrška"
+
+msgid "Tastings, markets & local cuisine"
+msgstr "Degustacije, tržnice i lokalna kuhinja"
+
+msgid "Terms"
+msgstr "Uvjeti"
+
+msgid "Unforgettable experiences, hosted by locals."
+msgstr "Nezaboravni doživljaji u organizaciji lokalnih domaćina."
+
+msgid "Up to"
+msgstr "Do"
+
+msgid "Verified local hosts"
+msgstr "Provjereni lokalni domaćini"
+
+msgid "View all"
+msgstr "Prikaži sve"
+
+msgid "View all destinations"
+msgstr "Prikaži sva odredišta"
+
+msgid "View all experiences"
+msgstr "Prikaži sve doživljaje"
+
+msgid "Vineyards & cellar visits"
+msgstr "Vinogradi i posjeti podrumima"
+
+msgid "Water Sports"
+msgstr "Vodeni sportovi"
+
+msgid "Wellness"
+msgstr "Wellness"
+
+msgid "Wine Tours"
+msgstr "Vinske ture"
+
+msgid "Your payment is protected end to end."
+msgstr "Vaše je plaćanje zaštićeno od početka do kraja."
+
+msgid "left"
+msgstr "preostalo"
+
+msgid "per person"
+msgstr "po osobi"
+
+msgid "reviews"
+msgstr "recenzija"
+
+msgid "experiences"
+msgstr "doživljaja"
+
+# ── SEO meta (montenegro /sr/ localization) ──
+msgid "Montenegro Experience — tours, stays & hidden gems"
+msgstr "Montenegro Experience — ture, smještaj i skriveni dragulji"
+
+msgid "Unforgettable experiences along the Adriatic. Hand-picked tours, stays and hidden gems from trusted local hosts across Montenegro."
+msgstr "Nezaboravni doživljaji na Jadranu. Pažljivo odabrane ture, smještaj i skriveni dragulji provjerenih lokalnih domaćina diljem Crne Gore."
+
+#, python-format
+msgid "%(category)s experiences in Montenegro"
+msgstr "%(category)s doživljaji u Crnoj Gori"
+
+msgid "Experiences in Montenegro — book with local hosts"
+msgstr "Doživljaji u Crnoj Gori — rezervirajte kod lokalnih domaćina"
+
+#, python-format
+msgid "Book %(category)s experiences in Montenegro with trusted local hosts — instant confirmation, free cancellation on most tours."
+msgstr "Rezervirajte %(category)s doživljaje u Crnoj Gori kod provjerenih lokalnih domaćina — trenutačna potvrda, besplatno otkazivanje za većinu tura."
+
+msgid "Explore Montenegro"
+msgstr "Istražite Crnu Goru"
+
+msgid "Destination guides to the best places to visit in Montenegro — the Bay of Kotor, the Budva Riviera, Durmitor and the northern mountains, Lake Skadar and the southern coast."
+msgstr "Vodiči kroz najljepša odredišta u Crnoj Gori — Bokokotorski zaljev, Budvansku rivijeru, Durmitor i sjeverne planine, Skadarsko jezero i južnu obalu."
+
+msgid "Hotels & stays in Montenegro"
+msgstr "Hoteli i smještaj u Crnoj Gori"
+
+# ── Become a host / founding-partner page ──
+msgid ". Keep every euro."
+msgstr ". Zadržite svaki euro."
+
+msgid "0% commission during launch"
+msgstr "0% provizije tijekom lansiranja"
+
+msgid "Become a founding partner"
+msgstr "Postanite partner od početka"
+
+msgid "Commission during launch"
+msgstr "Provizija tijekom lansiranja"
+
+msgid "Create an account"
+msgstr "Otvorite korisnički račun"
+
+msgid "Create an account to apply"
+msgstr "Otvorite korisnički račun za prijavu"
+
+msgid "I already have one"
+msgstr "Već imam račun"
+
+msgid "List your Montenegro"
+msgstr "Objavite svoju Crnu Goru"
+
+msgid "No lock-in"
+msgstr "Bez vezivanja"
+
+msgid "No setup fee. No monthly fee. No exclusivity — keep selling everywhere else you already do."
+msgstr "Bez naknade za otvaranje. Bez mjesečne naknade. Bez ekskluzivnosti — nastavite prodavati svugdje gdje već prodajete."
+
+msgid "Questions before you commit? Write to us — we answer every host personally."
+msgstr "Imate pitanja prije odluke? Pišite nam — svakom domaćinu odgovaramo osobno."
+
+msgid "Sell anywhere else too"
+msgstr "Prodajte i svugdje drugdje"
+
+msgid "To list, always"
+msgstr "Za objavu, uvijek"
+
+msgid "Tours, stays, boat trips, tastings — list them at no cost. As a founding partner you pay 0% commission during our launch period and keep 100% of what your guests pay."
+msgstr "Ture, smještaj, izleti brodom, degustacije — objavite ih bez ikakvih troškova. Kao partner od početka plaćate 0% provizije tijekom lansiranja i zadržavate 100% onoga što vaši gosti plate."
+
+msgid "We are early, and we would rather be straight with you than oversell. Here is exactly what you get today."
+msgstr "Tek smo počeli i radije ćemo biti iskreni nego obećavati previše. Evo što točno dobivate već danas."
+
+msgid "We do the finding"
+msgstr "Mi pronalazimo goste za vas"
+
+msgid "What a founding partner gets"
+msgstr "Što dobiva partner od početka"
+
+msgid "You keep 100% of every booking. No listing fee, no monthly fee, no payout fee. If we ever introduce a commission, founding partners are told well in advance and are free to leave."
+msgstr "Zadržavate 100% svake rezervacije. Bez naknade za oglas, bez mjesečne naknade, bez naknade za isplatu. Ako ikada uvedemo proviziju, partneri od početka bit će obaviješteni mnogo ranije i slobodni su otići."
+
+msgid "You stay in control"
+msgstr "Vi imate kontrolu"
+
+msgid "Your listing gets its own page in English and Serbian, structured data for Google, and a feed built for AI assistants — so travellers asking ChatGPT what to do in Kotor can be shown your tour. That is work most small operators never get to."
+msgstr "Vaš oglas dobiva vlastitu stranicu na engleskom i srpskom jeziku, strukturirane podatke za Google i feed izrađen za AI asistente — pa putniku koji pita ChatGPT što raditi u Kotoru može biti prikazana vaša tura. To je posao do kojeg većina malih organizatora nikada ne stigne."
+
+msgid "Your listing, both languages"
+msgstr "Vaš oglas, na oba jezika"
+
+msgid "Your prices, your dates, your cancellation terms. No exclusivity — keep selling on every other channel you already use. Guests contact you directly, and you can pause or remove a listing whenever you want."
+msgstr "Vaše cijene, vaši datumi, vaši uvjeti otkazivanja. Bez ekskluzivnosti — nastavite prodavati na svim kanalima koje već koristite. Gosti vas kontaktiraju izravno, a oglas možete pauzirati ili ukloniti kad god želite."
+
+msgid "free"
+msgstr "besplatno"
+
+msgid "Add your experiences, products, or food items with photos and pricing."
+msgstr "Dodajte svoje doživljaje, proizvode ili jela s fotografijama i cijenama."
+
+msgid "Apply to Become a Host"
+msgstr "Prijavite se da postanete domaćin"
+
+msgid "Art prints"
+msgstr "Umjetnički printovi"
+
+msgid "Bakeries"
+msgstr "Pekarnice"
+
+msgid "Bank transfer (SEPA / wire)"
+msgstr "Bankovni prijenos (SEPA / uplatnica)"
+
+msgid "Be found by travellers planning a Montenegro trip — in search, and in the AI assistants they increasingly ask."
+msgstr "Neka vas pronađu putnici koji planiraju put u Crnu Goru — u pretraživanju i u AI asistentima koje sve češće pitaju."
+
+msgid "Be one of the first hosts on a new Montenegrin platform — and set your terms while it is still being built."
+msgstr "Budite među prvim domaćinima na novoj crnogorskoj platformi — i postavite svoje uvjete dok se još gradi."
+
+msgid "Boat tours"
+msgstr "Ture brodom"
+
+msgid "Briefly describe what you would like to offer on the platform, where you operate, and your typical guests."
+msgstr "Ukratko opišite što želite ponuditi na platformi, gdje poslujete i kakvi su vaši gosti."
+
+msgid "Business name"
+msgstr "Naziv poslovanja"
+
+msgid "Catering"
+msgstr "Ketering"
+
+msgid "City walks"
+msgstr "Šetnje gradom"
+
+msgid "Contact email"
+msgstr "E-mail za kontakt"
+
+msgid "Cooking classes"
+msgstr "Tečajevi kuhanja"
+
+msgid "Easy Setup"
+msgstr "Jednostavno postavljanje"
+
+msgid "Everything you need to grow your business in Montenegro's booming tourism market."
+msgstr "Sve što vam treba za razvoj poslovanja na crnogorskom turističkom tržištu koje cvjeta."
+
+msgid "Experience Hosts"
+msgstr "Domaćini doživljaja"
+
+msgid "Experiences, products, food delivery — all on one platform."
+msgstr "Doživljaji, proizvodi, dostava hrane — sve na jednoj platformi."
+
+msgid "Fill out the form below and our team will get back to you within 2 business days."
+msgstr "Ispunite obrazac u nastavku i javit ćemo vam se u roku od 2 radna dana."
+
+msgid "Flexible Earnings"
+msgstr "Fleksibilna zarada"
+
+msgid "Food & Delivery"
+msgstr "Hrana i dostava"
+
+msgid "Free Marketing"
+msgstr "Besplatna promocija"
+
+msgid "Full Support"
+msgstr "Puna podrška"
+
+msgid "Get Started in 3 Simple Steps"
+msgstr "Započnite u 3 jednostavna koraka"
+
+msgid "Handmade jewelry"
+msgstr "Ručno izrađen nakit"
+
+msgid "Hiking guides"
+msgstr "Planinarski vodiči"
+
+msgid "Learn More"
+msgstr "Saznajte više"
+
+msgid "List Your Offerings"
+msgstr "Objavite svoju ponudu"
+
+msgid "List in minutes. No tech skills needed — we handle everything."
+msgstr "Objavite za nekoliko minuta. Nije potrebno tehničko znanje — sve rješavamo mi."
+
+msgid "Local goods, handmade crafts, souvenirs, artisan products, and specialty items."
+msgstr "Domaći proizvodi, rukotvorine, suveniri, zanatski i specijalni artikli."
+
+msgid "Local wine"
+msgstr "Domaće vino"
+
+msgid "Meal prep"
+msgstr "Pripremljeni obroci"
+
+msgid "Montenegro landscape"
+msgstr "Krajolik Crne Gore"
+
+msgid "Now accepting hosts across Montenegro"
+msgstr "Primamo domaćine iz cijele Crne Gore"
+
+msgid "Olive oil"
+msgstr "Maslinovo ulje"
+
+msgid "One of our team is reviewing your application now."
+msgstr "Netko iz našeg tima upravo pregledava vašu prijavu."
+
+msgid "Open host dashboard"
+msgstr "Otvorite nadzornu ploču domaćina"
+
+msgid "PayPal"
+msgstr "PayPal"
+
+msgid "Preferred payout method"
+msgstr "Željeni način isplate"
+
+msgid "Product Sellers"
+msgstr "Prodavači proizvoda"
+
+msgid "Reach Global Tourists"
+msgstr "Dosegnite turiste iz cijelog svijeta"
+
+msgid "Ready to Grow Your Business?"
+msgstr "Spremni za razvoj svog poslovanja?"
+
+msgid "Receive booking requests and enquiries directly. You confirm, you host, you get paid."
+msgstr "Primajte zahtjeve za rezervaciju i upite izravno. Vi potvrđujete, vi ugošćujete, vi naplaćujete."
+
+msgid "Restaurants"
+msgstr "Restorani"
+
+msgid "Restaurants, catering services, meal kits, and local food specialties."
+msgstr "Restorani, ketering, setovi za obroke i domaći specijaliteti."
+
+msgid "Sell Anything"
+msgstr "Prodajte bilo što"
+
+msgid "Set your own prices. Get paid directly to your account."
+msgstr "Sami određujete cijene. Novac ide izravno na vaš račun."
+
+msgid "Start Earning"
+msgstr "Počnite zarađivati"
+
+msgid "Stripe Connect"
+msgstr "Stripe Connect"
+
+msgid "Submit application"
+msgstr "Pošaljite prijavu"
+
+msgid "Talk to a real person. We answer every host ourselves, in English or Serbian."
+msgstr "Razgovarajte sa stvarnom osobom. Svakom domaćinu odgovaramo osobno, na engleskom ili srpskom jeziku."
+
+msgid "Tax ID"
+msgstr "OIB"
+
+msgid "Tell us about your business in under 5 minutes."
+msgstr "Ispričajte nam o svom poslovanju za manje od 5 minuta."
+
+msgid "Tell us about your offerings"
+msgstr "Recite nam nešto o svojoj ponudi"
+
+msgid "Tours, adventures, cultural activities, wellness retreats, wine tastings, and more."
+msgstr "Ture, avanture, kulturne aktivnosti, wellness retreatovi, degustacije vina i još mnogo toga."
+
+msgid "VAT / PIB / etc."
+msgstr "PDV / PIB / itd."
+
+msgid "We put your listing in front of travellers at no cost to you — search, structured data, and AI feeds included."
+msgstr "Vaš oglas stavljamo pred putnike bez ikakvih troškova za vas — uključujući pretraživanje, strukturirane podatke i AI feedove."
+
+msgid "We respond within 2 business days."
+msgstr "Odgovaramo u roku od 2 radna dana."
+
+msgid "Who Can Join?"
+msgstr "Tko se može pridružiti?"
+
+msgid "Why Hosts Choose Us"
+msgstr "Zašto domaćini biraju nas"
+
+msgid "Your business or brand name"
+msgstr "Naziv vašeg poslovanja ili brenda"
+
+msgid "optional"
+msgstr "neobavezno"
+
+msgid "required."
+msgstr "obavezno."
+
+msgid "— select —"
+msgstr "— odaberite —"
+
+msgid "Tours, stays, boat trips, tastings — list them at no cost. As a founding partner you pay 0% commission during our launch period: you keep 100% of the price you set."
+msgstr "Ture, smještaj, izleti brodom, degustacije — objavite ih bez ikakvih troškova. Kao partner od početka plaćate 0% provizije tijekom lansiranja: zadržavate 100% cijene koju sami odredite."
+
+msgid "You keep 100% of the price you set — we take no cut of it. No listing fee, no monthly fee, no payout fee. Guests pay a 12% service fee on top of your price, which is what funds the platform. If we ever introduce a host commission, founding partners are told well in advance and are free to leave."
+msgstr "Zadržavate 100% cijene koju sami odredite — mi od nje ne uzimamo ništa. Bez naknade za oglas, bez mjesečne naknade, bez naknade za isplatu. Gosti plaćaju naknadu za uslugu od 12% povrh vaše cijene i time se financira platforma. Ako ikada uvedemo proviziju za domaćine, partneri od početka bit će obaviješteni mnogo ranije i slobodni su otići."
+
+# ── Events calendar (v0.41.0) ─────────────────────────────────────────
+msgid "Events"
+msgstr "Događaji"
+
+msgid "Events calendar"
+msgstr "Kalendar događaja"
+
+msgid "Montenegro events calendar"
+msgstr "Kalendar događaja u Crnoj Gori"
+
+msgid "Montenegro Events Calendar"
+msgstr "Kalendar događaja u Crnoj Gori"
+
+msgid "Events are being added. Check back soon."
+msgstr "Događaji se dodaju. Navratite uskoro."
+
+msgid "Dates to be announced"
+msgstr "Datumi će biti objavljeni"
+
+msgid "Annual"
+msgstr "Godišnji"
+
+msgid "What to expect"
+msgstr "Što možete očekivati"
+
+msgid "Good to know"
+msgstr "Dobro je znati"
+
+msgid "Plan your visit"
+msgstr "Isplanirajte posjet"
+
+msgid "Official event site"
+msgstr "Službeno web-mjesto događaja"
+
+msgid "Experiences nearby"
+msgstr "Doživljaji u blizini"
+
+msgid "Also on around then"
+msgstr "Tada se održava i"
+
+msgid "What's on in"
+msgstr "Što se događa u"
+
+msgid "See the full events calendar"
+msgstr "Pogledajte cijeli kalendar događaja"
+
+msgid "Breadcrumb"
+msgstr "Navigacija"
+
+msgid "from"
+msgstr "od"
+
+msgid "Carnivals, festivals, summer theatre and the winter ski season — what is on through the year, and where to be when it happens."
+msgstr "Karnevali, festivali, ljetno kazalište i zimska skijaška sezona — što se događa tijekom godine i gdje biti kad se događa."
+
+msgid "What is on in Montenegro through the year — Kotor Carnival, the Mimosa Festival, Boka Night, summer theatre in Budva, Lake Fest and the winter ski season on Bjelasica."
+msgstr "Što se događa u Crnoj Gori tijekom godine — Kotorski karneval, Praznik mimoze, Bokeljska noć, ljetno kazalište u Budvi, Lake Fest i zimska skijaška sezona na Bjelasici."
+
+#, python-format
+msgid "Dates for %(name)s shift a little each year. Check the official listing before you book travel."
+msgstr "Datumi za %(name)s svake se godine malo pomiču. Provjerite službeni raspored prije rezerviranja putovanja."
+
+#, python-format
+msgid "Where to stay in %(name)s"
+msgstr "Gdje odsjesti u %(name)s"
+
+# ── Errors, sign-in and page titles (v0.80.0) ──
+msgid "Page not found"
+msgstr "Stranica nije pronađena"
+
+msgid "Oops! Page not found"
+msgstr "Ups! Stranica nije pronađena"
+
+msgid "The page you're looking for doesn't exist or has been moved."
+msgstr "Stranica koju tražite ne postoji ili je premještena."
+
+msgid "Sign in"
+msgstr "Prijava"
+
+msgid "Reset your password"
+msgstr "Poništite lozinku"
+
+msgid "Check your inbox"
+msgstr "Provjerite pristiglu poštu"
+
+msgid "Choose a new password"
+msgstr "Odaberite novu lozinku"
+
+msgid "Password changed"
+msgstr "Lozinka je promijenjena"
+
+msgid "Confirm your email"
+msgstr "Potvrdite svoju e-adresu"
+
+msgid "Change your password"
+msgstr "Promijenite lozinku"
+
+msgid "Email addresses"
+msgstr "E-adrese"
+
+msgid "Sign in with a code"
+msgstr "Prijava kodom"
+
+msgid "Enter your code"
+msgstr "Unesite svoj kod"
+
+msgid "Your cart"
+msgstr "Vaša košarica"
+
+msgid "Delivery details"
+msgstr "Podaci za dostavu"
+
+msgid "Review your order"
+msgstr "Pregled narudžbe"
+
+msgid "Order received"
+msgstr "Narudžba je zaprimljena"
+
+msgid "Order details"
+msgstr "Detalji narudžbe"
+
+msgid "Return an order"
+msgstr "Povrat narudžbe"
+
+msgid "Return status"
+msgstr "Status povrata"
+
+msgid "Store credit & gift cards"
+msgstr "Kredit i darovne kartice"
+
+# ── Hosts, listings and the shop (v0.80.0) ──
+msgid "Host"
+msgstr "Domaćin"
+
+msgid "Stays"
+msgstr "Smještaj"
+
+msgid "Local goods"
+msgstr "Lokalni proizvodi"
+
+msgid "Hotels"
+msgstr "Hoteli"
+
+msgid "Shop Montenegro"
+msgstr "Trgovina Crne Gore"
+
+msgid "Shop Montenegro — local goods"
+msgstr "Trgovina Crne Gore — lokalni proizvodi"
+
+msgid "Locally made Montenegrin products from trusted vendors — shipped or ready for pickup across the Adriatic coast."
+msgstr "Crnogorski proizvodi lokalnih proizvođača od provjerenih prodavača — s dostavom ili za preuzimanje duž jadranske obale."
+
+#, python-format
+msgid "%(region)s experiences"
+msgstr "%(region)s — doživljaji"
+
+#, python-format
+msgid "%(region)s: %(count)d experience to book with a local host"
+msgid_plural "%(region)s: %(count)d experiences to book with local hosts"
+msgstr[0] "%(region)s: %(count)d doživljaj za rezervaciju kod lokalnog domaćina"
+msgstr[1] "%(region)s: %(count)d doživljaja za rezervaciju kod lokalnih domaćina"
+msgstr[2] "%(region)s: %(count)d doživljaja za rezervaciju kod lokalnih domaćina"
+
+#, python-format
+msgid "Experiences to book in %(count)d region of Montenegro"
+msgid_plural "Experiences to book in %(count)d regions of Montenegro"
+msgstr[0] "Doživljaji za rezervaciju u %(count)d regiji Crne Gore"
+msgstr[1] "Doživljaji za rezervaciju u %(count)d regije Crne Gore"
+msgstr[2] "Doživljaji za rezervaciju u %(count)d regija Crne Gore"
+
+msgid "No products match your search."
+msgstr "Nijedan proizvod ne odgovara vašem pretraživanju."
+
+msgid "No experiences match your search."
+msgstr "Nijedan doživljaj ne odgovara vašem pretraživanju."
+
+msgid "Clear filters"
+msgstr "Očisti filtre"
+
+#, python-format
+msgid "%(c)s product"
+msgid_plural "%(c)s products"
+msgstr[0] "%(c)s proizvod"
+msgstr[1] "%(c)s proizvoda"
+msgstr[2] "%(c)s proizvoda"
+
+#, python-format
+msgid "%(c)s experience"
+msgid_plural "%(c)s experiences"
+msgstr[0] "%(c)s doživljaj"
+msgstr[1] "%(c)s doživljaja"
+msgstr[2] "%(c)s doživljaja"
+
+#, python-format
+msgid "%(counter)s listing"
+msgid_plural "%(counter)s listings"
+msgstr[0] "%(counter)s ponuda"
+msgstr[1] "%(counter)s ponude"
+msgstr[2] "%(counter)s ponuda"
+
+msgid "This host has no active listings right now."
+msgstr "Ovaj domaćin trenutačno nema aktivnih ponuda."
+
+msgid "Browse other hosts"
+msgstr "Pogledajte druge domaćine"
+
+msgid "Planning your Montenegro stay"
+msgstr "Planiranje boravka u Crnoj Gori"
+
+msgid "Which area is best for a first visit?"
+msgstr "Koji je kraj najbolji za prvi posjet?"
+
+msgid "The Bay of Kotor combines historic towns, water access and easy day trips. Budva suits beach-focused stays, while Durmitor is the strongest choice for hiking."
+msgstr "Bokokotorski zaljev spaja povijesne gradove, more i lake jednodnevne izlete. Budva je prikladna za odmor na plaži, a Durmitor je najbolji izbor za planinarenje."
+
+msgid "When should I book?"
+msgstr "Kada trebam rezervirati?"
+
+msgid "Reserve early for July and August. The shoulder months of May, June, September and October often provide better value and fewer crowds."
+msgstr "Za srpanj i kolovoz rezervirajte na vrijeme. Svibanj, lipanj, rujan i listopad često nude bolje cijene i manje gužve."
+
+msgid "Do I need a car?"
+msgstr "Trebam li automobil?"
+
+msgid "Not always on the coast, but a car makes mountain, lake and rural itineraries easier. Local tours and transfers are practical alternatives."
+msgstr "Na obali ne uvijek, ali automobil olakšava obilaske planina, jezera i sela. Lokalne ture i transferi praktična su alternativa."
+
+msgid "Bring Montenegro home"
+msgstr "Ponesite Crnu Goru kući"
+
+msgid "Local wine, olive oil, honey and crafts from the makers you meet."
+msgstr "Lokalno vino, maslinovo ulje, med i rukotvorine proizvođača koje upoznate."
+
+msgid "Shop local goods"
+msgstr "Kupite lokalne proizvode"
+
+msgid "Cancellations & refunds"
+msgstr "Otkazivanja i povrati"
+
+msgid "Blog"
+msgstr "Blog"
+
+# ── Pagination (v0.80.0) ──
+msgid "Pages"
+msgstr "Stranice"
+
+msgid "Previous"
+msgstr "Prethodna"
+
+msgid "Next"
+msgstr "Sljedeća"
+
+#, python-format
+msgid "Page %(n)s of %(total)s"
+msgstr "Stranica %(n)s od %(total)s"
+
+#, python-format
+msgid "Page %(cur)s of %(total)s"
+msgstr "Stranica %(cur)s od %(total)s"
+
+msgid "Journal pages"
+msgstr "Stranice bloga"
+
+msgid "Newer"
+msgstr "Novije"
+
+msgid "Older"
+msgstr "Starije"
+
+# ── Montenegro interface: theme, booking pages, host and vendor back office
+# (v0.80.1) ──
+msgid "Montenegro Experience"
+msgstr "Montenegro Experience"
+
+msgid "Welcome back"
+msgstr "Dobro došli natrag"
+
+msgid "Sign in to continue your journey."
+msgstr "Prijavite se i nastavite svoje putovanje."
+
+msgid "you@example.com"
+msgstr "vi@primjer.com"
+
+msgid "Forgot password?"
+msgstr "Zaboravili ste lozinku?"
+
+msgid "Remember me"
+msgstr "Zapamti me"
+
+msgid "or"
+msgstr "ili"
+
+#, python-format
+msgid "Continue with %(name)s"
+msgstr "Nastavi putem %(name)s"
+
+msgid "Email me a code instead"
+msgstr "Pošalji mi kod e-poštom"
+
+msgid "Don't have an account?"
+msgstr "Nemate račun?"
+
+msgid "Create account"
+msgstr "Otvori račun"
+
+msgid "No password needed. We'll email you a 6-digit code."
+msgstr "Lozinka nije potrebna. Poslat ćemo vam šesteroznamenkasti kod e-poštom."
+
+msgid "Email address"
+msgstr "E-mail adresa"
+
+msgid "Email me a code"
+msgstr "Pošalji mi kod"
+
+msgid "Use password instead"
+msgstr "Koristi lozinku"
+
+msgid "Enter the 6-digit code"
+msgstr "Unesite šesteroznamenkasti kod"
+
+#, python-format
+msgid "If <strong>%(email)s</strong> is on file, your code is on its way. Check your inbox."
+msgstr "Ako je <strong>%(email)s</strong> u našoj evidenciji, kod vam je poslan. Provjerite pristiglu poštu."
+
+msgid "Verification code"
+msgstr "Kod za potvrdu"
+
+msgid "Codes expire after 10 minutes."
+msgstr "Kodovi istječu nakon 10 minuta."
+
+msgid "Verify and sign in"
+msgstr "Potvrdi i prijavi se"
+
+msgid "Use a different email"
+msgstr "Koristi drugu e-adresu"
+
+msgid "Reset password"
+msgstr "Poništi lozinku"
+
+msgid "Enter your email and we'll send you a link to reset your password."
+msgstr "Unesite svoju e-adresu i poslat ćemo vam poveznicu za poništavanje lozinke."
+
+msgid "Send reset link"
+msgstr "Pošalji poveznicu za poništavanje"
+
+msgid "Back to sign in"
+msgstr "Natrag na prijavu"
+
+msgid "Check your email"
+msgstr "Provjerite e-poštu"
+
+msgid "We have sent you an email. If you have not received it please check your spam folder. Otherwise contact us if you do not receive it in a few minutes."
+msgstr "Poslali smo vam e-poruku. Ako je niste primili, provjerite mapu s neželjenom poštom. Ako ni tada ne stigne u nekoliko minuta, kontaktirajte nas."
+
+msgid "Create your account"
+msgstr "Otvorite svoj korisnički račun"
+
+msgid "Join Montenegro Experience to book and save your favourites."
+msgstr "Pridružite se Montenegro Experienceu kako biste rezervirali i spremili svoje favorite."
+
+msgid "Already have an account?"
+msgstr "Već imate račun?"
+
+msgid "Affiliate dashboard"
+msgstr "Nadzorna ploča za affiliate"
+
+msgid "Clicks, conversions, earnings — what's happening with the travellers you've sent our way, all in one place."
+msgstr "Klikovi, konverzije, zarada — sve o putnicima koje ste nam poslali, na jednom mjestu."
+
+msgid "You don't have an affiliate account yet."
+msgstr "Još nemate affiliate račun."
+
+msgid "Apply once, get approved, then earn commission every time a traveller you sent us books."
+msgstr "Prijavite se jednom, pričekajte odobrenje, a zatim zarađujte proviziju svaki put kada putnik kojeg ste nam poslali nešto rezervira."
+
+msgid "Apply to join"
+msgstr "Prijavite se"
+
+msgid "Approved"
+msgstr "Odobreno"
+
+msgid "Pending review"
+msgstr "Na pregledu"
+
+msgid "Suspended"
+msgstr "Suspendirano"
+
+msgid "Clicks · lifetime"
+msgstr "Klikovi · ukupno"
+
+msgid "Conversions · lifetime"
+msgstr "Konverzije · ukupno"
+
+msgid "approved"
+msgstr "odobreno"
+
+msgid "Earned · lifetime"
+msgstr "Zarađeno · ukupno"
+
+msgid "Pending payout"
+msgstr "Isplata na čekanju"
+
+msgid "approved, not yet paid"
+msgstr "odobreno, još nije isplaćeno"
+
+msgid "Conversion rate — conversions divided by clicks."
+msgstr "Stopa konverzije — broj konverzija podijeljen brojem klikova."
+
+msgid "Conversion rate"
+msgstr "Stopa konverzije"
+
+msgid "click"
+msgid_plural "clicks"
+msgstr[0] "klik"
+msgstr[1] "klika"
+msgstr[2] "klikova"
+
+msgid "conversion"
+msgid_plural "conversions"
+msgstr[0] "konverzija"
+msgstr[1] "konverzije"
+msgstr[2] "konverzija"
+
+msgid "last 7 days"
+msgstr "zadnjih 7 dana"
+
+msgid "All links"
+msgstr "Sve poveznice"
+
+msgid "Creatives"
+msgstr "Promotivni materijali"
+
+msgid "Analytics"
+msgstr "Analitika"
+
+msgid "Conversions"
+msgstr "Konverzije"
+
+msgid "Request payout"
+msgstr "Zatraži isplatu"
+
+msgid "Settings"
+msgstr "Postavke"
+
+msgid "Landing path"
+msgstr "Odredišna putanja"
+
+msgid "Label"
+msgstr "Oznaka"
+
+msgid "Label (optional)"
+msgstr "Oznaka (neobavezno)"
+
+msgid "New link"
+msgstr "Nova poveznica"
+
+msgid "Recent conversions"
+msgstr "Nedavne konverzije"
+
+msgid "Order"
+msgstr "Narudžba"
+
+msgid "Gross"
+msgstr "Bruto"
+
+msgid "Commission"
+msgstr "Provizija"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "See all conversions"
+msgstr "Pogledaj sve konverzije"
+
+msgid "No conversions yet — share your links and check back."
+msgstr "Još nema konverzija — podijelite svoje poveznice i provjerite kasnije."
+
+msgid "Top performing links"
+msgstr "Najuspješnije poveznice"
+
+msgid "Link"
+msgstr "Poveznica"
+
+msgid "Clicks"
+msgstr "Klikovi"
+
+msgid "CR"
+msgstr "SK"
+
+msgid "No clicks recorded yet."
+msgstr "Još nema zabilježenih klikova."
+
+msgid "Cookie window: <strong>30 days</strong>. A traveller who clicks your link and books anything inside that window is attributed to you, even if they leave and come back later."
+msgstr "Trajanje kolačića: <strong>30 dana</strong>. Putnik koji klikne na vašu poveznicu i bilo što rezervira u tom razdoblju pripisuje se vama, čak i ako ode pa se kasnije vrati."
+
+msgid "We're reviewing your application. You'll be able to create tracked links here once approved — typically within 2 business days."
+msgstr "Pregledavamo vašu prijavu. Nakon odobrenja ovdje ćete moći izrađivati poveznice za praćenje — obično u roku od 2 radna dana."
+
+msgid "Your account is suspended. Email us if you think this is an error."
+msgstr "Vaš je račun suspendiran. Pišite nam ako mislite da je riječ o pogrešci."
+
+msgid "Save to wishlist"
+msgstr "Spremi na listu želja"
+
+msgid "What"
+msgstr "Što"
+
+msgid "Search experiences"
+msgstr "Pretraži doživljaje"
+
+msgid "Where"
+msgstr "Gdje"
+
+msgid "All locations"
+msgstr "Sve lokacije"
+
+msgid "All categories"
+msgstr "Sve kategorije"
+
+msgid "Show all photos"
+msgstr "Prikaži sve fotografije"
+
+msgid "Superhost"
+msgstr "Superdomaćin"
+
+msgid "Itinerary"
+msgstr "Plan programa"
+
+msgid "What to bring"
+msgstr "Što ponijeti"
+
+msgid "Where you'll be"
+msgstr "Gdje ćete biti"
+
+msgid "Get directions"
+msgstr "Upute za dolazak"
+
+msgid "Exact meeting point details are provided after booking."
+msgstr "Točno mjesto sastanka dobit ćete nakon rezervacije."
+
+msgid "Things to know"
+msgstr "Korisno je znati"
+
+msgid "Duration"
+msgstr "Trajanje"
+
+msgid "minutes"
+msgstr "minuta"
+
+msgid "Group size"
+msgstr "Veličina grupe"
+
+msgid "guests per booking"
+msgstr "gostiju po rezervaciji"
+
+msgid "Title (optional)"
+msgstr "Naslov (neobavezno)"
+
+msgid "Tell other travellers about your experience"
+msgstr "Ispričajte drugim putnicima kako vam je bilo"
+
+msgid "Interested? Send the vendor your details and they'll get back to you."
+msgstr "Zainteresirani ste? Pošaljite prodavaču svoje podatke i javit će vam se."
+
+msgid "Quantity"
+msgstr "Količina"
+
+msgid "Your name"
+msgstr "Vaše ime"
+
+msgid "Your email"
+msgstr "Vaša e-pošta"
+
+msgid "Any questions or special requests? (optional)"
+msgstr "Imate pitanja ili posebne zahtjeve? (neobavezno)"
+
+msgid "per unit"
+msgstr "po komadu"
+
+msgid "Preferred date"
+msgstr "Željeni datum"
+
+msgid "Anything the host should know? (optional)"
+msgstr "Nešto što domaćin treba znati? (neobavezno)"
+
+msgid "Add-ons"
+msgstr "Dodaci"
+
+msgid "Estimated total"
+msgstr "Procijenjeni iznos"
+
+msgid "A 12%% service fee is added at confirmation."
+msgstr "Naknada za uslugu od 12%% dodaje se pri potvrdi."
+
+msgid "Guest questions"
+msgstr "Pitanja gostiju"
+
+msgid "Meet your host"
+msgstr "Upoznajte domaćina"
+
+msgid "Experience host"
+msgstr "Domaćin doživljaja"
+
+msgid "You might also like"
+msgstr "Moglo bi vam se svidjeti"
+
+msgid "Similar experiences you might like"
+msgstr "Slični doživljaji koji bi vam se mogli svidjeti"
+
+msgid "Host dashboard"
+msgstr "Nadzorna ploča domaćina"
+
+msgid "Products"
+msgstr "Proizvodi"
+
+msgid "Back to site"
+msgstr "Natrag na web-mjesto"
+
+msgid "Review guest reservations and confirm, complete, or cancel each one."
+msgstr "Pregledajte rezervacije gostiju i svaku potvrdite, završite ili otkažite."
+
+msgid "guest"
+msgid_plural "guests"
+msgstr[0] "gost"
+msgstr[1] "gosta"
+msgstr[2] "gostiju"
+
+msgid "When a guest reserves one of your experiences, it'll show up here."
+msgstr "Kada gost rezervira neki od vaših doživljaja, pojavit će se ovdje."
+
+msgid "Track take-home pay from confirmed and completed bookings."
+msgstr "Pratite zaradu od potvrđenih i završenih rezervacija."
+
+msgid "Your take-home pay"
+msgstr "Vaša zarada"
+
+msgid "Platform fee (12%%)"
+msgstr "Naknada platforme (12%%)"
+
+msgid "Service fee guests pay on top"
+msgstr "Naknada za uslugu koju gosti plaćaju povrh cijene"
+
+#, python-format
+msgid "From %(count)s booking"
+msgid_plural "From %(count)s bookings"
+msgstr[0] "Iz %(count)s rezervacije"
+msgstr[1] "Iz %(count)s rezervacije"
+msgstr[2] "Iz %(count)s rezervacija"
+
+msgid "Net is your take-home (per-guest price × guests). Montenegro Experience keeps the 12%% service fee guests pay on top. Payouts are settled to your registered account."
+msgstr "Neto je ono što vama ostaje (cijena po gostu × broj gostiju). Montenegro Experience zadržava naknadu za uslugu od 12%% koju gosti plaćaju povrh cijene. Isplate se vrše na vaš registrirani račun."
+
+msgid "Confirmed & completed"
+msgstr "Potvrđene i završene"
+
+msgid "net"
+msgstr "neto"
+
+msgid "No confirmed bookings yet"
+msgstr "Još nema potvrđenih rezervacija"
+
+msgid "Your earnings will appear here once bookings are confirmed."
+msgstr "Vaša će se zarada pojaviti ovdje kada rezervacije budu potvrđene."
+
+msgid "Leads from guests asking about your experiences. Reply by email to convert them."
+msgstr "Upiti gostiju o vašim doživljajima. Odgovorite e-poštom kako biste ih pretvorili u rezervacije."
+
+#, python-format
+msgid "Prefers %(date)s"
+msgstr "Želi %(date)s"
+
+msgid "Guest enquiries about your experiences will land here."
+msgstr "Upiti gostiju o vašim doživljajima stizat će ovdje."
+
+msgid "You're not a host yet"
+msgstr "Još niste domaćin"
+
+msgid "List your tours, activities or stays and reach travellers looking for the real Montenegro. Apply to become a host and we'll set you up."
+msgstr "Objavite svoje ture, aktivnosti ili smještaj i dođite do putnika koji traže pravu Crnu Goru. Prijavite se da postanete domaćin i sve ćemo vam postaviti."
+
+msgid "Reach travellers"
+msgstr "Dođite do putnika"
+
+msgid "Manage bookings"
+msgstr "Upravljajte rezervacijama"
+
+msgid "Get paid out"
+msgstr "Primajte isplate"
+
+msgid "Update the details travellers see and how this experience can be booked."
+msgstr "Ažurirajte podatke koje putnici vide i način na koji se ovaj doživljaj može rezervirati."
+
+msgid "Tell travellers what makes this experience special and set how it runs."
+msgstr "Recite putnicima po čemu je ovaj doživljaj poseban i odredite kako se odvija."
+
+msgid "Back to experiences"
+msgstr "Natrag na doživljaje"
+
+msgid "Basics"
+msgstr "Osnovno"
+
+msgid "The name and descriptions travellers will read."
+msgstr "Naziv i opisi koje će putnici čitati."
+
+msgid "Listing type"
+msgstr "Vrsta ponude"
+
+msgid "Experiences are booked by date; products are ordered by quantity."
+msgstr "Doživljaji se rezerviraju po datumu; proizvodi se naručuju po količini."
+
+msgid "e.g. Kotor Bay sunset kayak tour"
+msgstr "npr. Tura kajakom na zalasku sunca u Bokokotorskom zaljevu"
+
+msgid "Short description"
+msgstr "Kratak opis"
+
+msgid "One line shown on listing cards"
+msgstr "Jedan redak koji se prikazuje na karticama ponuda"
+
+msgid "Shown on cards across the site. Up to 300 characters."
+msgstr "Prikazuje se na karticama na cijelom web-mjestu. Do 300 znakova."
+
+msgid "Describe the experience, what to expect, and why travellers will love it."
+msgstr "Opišite doživljaj, što gosti mogu očekivati i zašto će im se svidjeti."
+
+msgid "Location &amp; category"
+msgstr "Lokacija i kategorija"
+
+msgid "Help travellers find this experience by area."
+msgstr "Pomozite putnicima da pronađu ovaj doživljaj prema području."
+
+msgid "— Select a region —"
+msgstr "— Odaberite regiju —"
+
+msgid "— Select a category —"
+msgstr "— Odaberite kategoriju —"
+
+msgid "Pricing &amp; capacity"
+msgstr "Cijene i kapacitet"
+
+msgid "How much it costs and how many guests you can take."
+msgstr "Koliko košta i koliko gostiju možete primiti."
+
+msgid "Price per guest"
+msgstr "Cijena po gostu"
+
+msgid "Duration (minutes)"
+msgstr "Trajanje (minute)"
+
+msgid "Seats per day"
+msgstr "Mjesta po danu"
+
+msgid "Total guests you can take across all bookings each day."
+msgstr "Ukupan broj gostiju koje dnevno možete primiti kroz sve rezervacije."
+
+msgid "The largest party a single booking can include."
+msgstr "Najveća grupa koju jedna rezervacija može obuhvatiti."
+
+msgid "Availability"
+msgstr "Dostupnost"
+
+msgid "Pick the weekdays this experience runs on."
+msgstr "Odaberite dane u tjednu kada se ovaj doživljaj održava."
+
+msgid "Leave all unchecked to run every day (capacity-limited)."
+msgstr "Ostavite sve neoznačeno da se održava svaki dan (u okviru kapaciteta)."
+
+msgid "Pricing tiers (optional)"
+msgstr "Cjenovni razredi (neobavezno)"
+
+msgid "Leave empty to use the single price above."
+msgstr "Ostavite prazno za korištenje jedinstvene cijene iznad."
+
+msgid "e.g. Adult"
+msgstr "npr. Odrasli"
+
+msgid "Add-ons (optional)"
+msgstr "Dodaci (neobavezno)"
+
+msgid "Optional paid extras guests can add."
+msgstr "Neobvezni plaćeni dodaci koje gosti mogu dodati."
+
+msgid "per booking"
+msgstr "po rezervaciji"
+
+msgid "e.g. Hotel pickup"
+msgstr "npr. Prijevoz od hotela"
+
+msgid "Add gallery photos"
+msgstr "Dodaj fotografije u galeriju"
+
+msgid "Logistics"
+msgstr "Logistika"
+
+msgid "Meeting point, map location and languages."
+msgstr "Mjesto sastanka, lokacija na karti i jezici."
+
+msgid "Meeting point"
+msgstr "Mjesto sastanka"
+
+msgid "Latitude"
+msgstr "Zemljopisna širina"
+
+msgid "Longitude"
+msgstr "Zemljopisna dužina"
+
+msgid "Languages (comma-separated)"
+msgstr "Jezici (odvojeni zarezom)"
+
+msgid "What to bring (one per line)"
+msgstr "Što ponijeti (jedna stavka po retku)"
+
+msgid "A strong cover image helps travellers picture the experience."
+msgstr "Upečatljiva naslovna fotografija pomaže putnicima da zamisle doživljaj."
+
+msgid "Current photo. Upload a new one to replace it."
+msgstr "Trenutačna fotografija. Prenesite novu kako biste je zamijenili."
+
+msgid "Replace photo"
+msgstr "Zamijeni fotografiju"
+
+msgid "Cover photo"
+msgstr "Naslovna fotografija"
+
+msgid "Policy &amp; visibility"
+msgstr "Pravila i vidljivost"
+
+msgid "Set expectations and choose whether it's published."
+msgstr "Postavite očekivanja i odaberite hoće li biti objavljeno."
+
+msgid "e.g. Free cancellation up to 24 hours before the experience."
+msgstr "npr. Besplatno otkazivanje do 24 sata prije doživljaja."
+
+msgid "Uncheck to keep this experience hidden from travellers while you finish it."
+msgstr "Isključite kako bi ovaj doživljaj ostao skriven od putnika dok ga ne dovršite."
+
+msgid "Manage the experiences you offer and keep an eye on what needs attention."
+msgstr "Upravljajte doživljajima koje nudite i pratite što zahtijeva pozornost."
+
+msgid "Listed in your catalogue"
+msgstr "U vašem katalogu"
+
+msgid "Pending bookings"
+msgstr "Rezervacije na čekanju"
+
+msgid "Awaiting your reply"
+msgstr "Čekaju vaš odgovor"
+
+msgid "New enquiries"
+msgstr "Novi upiti"
+
+msgid "Leads to follow up"
+msgstr "Upiti za praćenje"
+
+msgid "View earnings"
+msgstr "Pogledaj zaradu"
+
+msgid "Live"
+msgstr "Objavljeno"
+
+msgid "Hidden"
+msgstr "Skriveno"
+
+#, python-format
+msgid "%(cap)s seats/day"
+msgstr "%(cap)s mjesta/dan"
+
+msgid "No experiences yet"
+msgstr "Još nema doživljaja"
+
+msgid "List your first tour, activity or stay and start reaching travellers looking for the real Montenegro."
+msgstr "Objavite svoju prvu turu, aktivnost ili smještaj i počnite dopirati do putnika koji traže pravu Crnu Goru."
+
+msgid "Explore the Bay of Kotor by boat, hike in Durmitor, raft the Tara Canyon or meet local food and wine producers. Compare activities by destination, pace and travel style."
+msgstr "Istražite Bokokotorski zaljev brodom, planinarite po Durmitoru, raftajte kanjonom Tare ili upoznajte lokalne proizvođače hrane i vina. Usporedite aktivnosti prema destinaciji, tempu i stilu putovanja."
+
+msgid "Sort by"
+msgstr "Sortiraj po"
+
+msgid "Recommended"
+msgstr "Preporučeno"
+
+msgid "Top rated"
+msgstr "Najbolje ocijenjeno"
+
+msgid "Price: low to high"
+msgstr "Cijena: od najniže"
+
+msgid "Price: high to low"
+msgstr "Cijena: od najviše"
+
+msgid "Newest"
+msgstr "Najnovije"
+
+msgid "How to choose a Montenegro experience"
+msgstr "Kako odabrati doživljaj u Crnoj Gori"
+
+msgid "Choose coastal boat trips and old-town walks for an easy first visit, mountain activities for active itineraries, and food or wine experiences for a slower local perspective. Check meeting points, duration and transport before confirming."
+msgstr "Za lagan prvi posjet odaberite izlete brodom uz obalu i šetnje starim gradovima, za aktivna putovanja planinske aktivnosti, a za sporiji, lokalni dojam doživljaje hrane i vina. Prije potvrde provjerite mjesto sastanka, trajanje i prijevoz."
+
+msgid "Best for first-time visitors"
+msgstr "Najbolje za prvi posjet"
+
+msgid "Start with Kotor, Perast and the bay, then add a day around Budva or Lake Skadar."
+msgstr "Započnite s Kotorom, Perastom i zaljevom, pa dodajte dan oko Budve ili Skadarskog jezera."
+
+msgid "Best for active trips"
+msgstr "Najbolje za aktivna putovanja"
+
+msgid "Look for Tara rafting, Durmitor hiking, kayaking and guided canyon or mountain routes."
+msgstr "Potražite rafting na Tari, planinarenje po Durmitoru, kajak te vođene ture kroz kanjone i planine."
+
+msgid "Best for local culture"
+msgstr "Najbolje za lokalnu kulturu"
+
+msgid "Choose old-town walks, monastery visits, village food, wine tastings and host-led workshops."
+msgstr "Odaberite šetnje starim gradovima, posjete samostanima, seosku kuhinju, kušanja vina i radionice koje vode domaćini."
+
+msgid "Explore destinations"
+msgstr "Istražite destinacije"
+
+msgid "Read local travel guides"
+msgstr "Pročitajte lokalne vodiče"
+
+msgid "Find a place to stay"
+msgstr "Pronađite smještaj"
+
+msgid "Key facts"
+msgstr "Osnovne činjenice"
+
+msgid "Ideal for"
+msgstr "Idealno za"
+
+msgid "Where it is"
+msgstr "Gdje se nalazi"
+
+msgid "Line up where to stay and what to do around"
+msgstr "Isplanirajte gdje odsjesti i što raditi u okolici"
+
+msgid "Hotels near"
+msgstr "Hoteli u blizini"
+
+msgid "Experiences & tours"
+msgstr "Doživljaji i ture"
+
+msgid "All places in Montenegro"
+msgstr "Sva mjesta u Crnoj Gori"
+
+msgid "Official resources & further reading"
+msgstr "Službeni izvori i dodatna literatura"
+
+msgid "Frequently asked questions"
+msgstr "Često postavljana pitanja"
+
+msgid "More in"
+msgstr "Još u"
+
+msgid "From ancient coastal towns to dramatic mountain peaks, discover every corner of this stunning Adriatic jewel — where to go, when to visit, and what not to miss."
+msgstr "Od drevnih primorskih gradova do moćnih planinskih vrhova — otkrijte svaki kutak ovog jadranskog dragulja: kamo krenuti, kada doći i što ne propustiti."
+
+msgid "night"
+msgstr "noć"
+
+#, python-format
+msgid "About %(name)s"
+msgstr "O objektu %(name)s"
+
+msgid "Best for"
+msgstr "Najbolje za"
+
+#, python-format
+msgid "Staying in %(location)s"
+msgstr "Boravak u mjestu %(location)s"
+
+msgid "Explore Montenegro destinations"
+msgstr "Istražite destinacije u Crnoj Gori"
+
+msgid "Find nearby experiences"
+msgstr "Pronađite doživljaje u blizini"
+
+msgid "Amenities"
+msgstr "Sadržaji"
+
+msgid "Rooms"
+msgstr "Sobe"
+
+#, python-format
+msgid "sleeps %(n)s"
+msgstr "kapacitet %(n)s"
+
+msgid "Check-in"
+msgstr "Dolazak"
+
+msgid "Check-out"
+msgstr "Odlazak"
+
+msgid "Adults"
+msgstr "Odrasli"
+
+msgid "Children"
+msgstr "Djeca"
+
+msgid "Book now"
+msgstr "Rezerviraj odmah"
+
+#, python-format
+msgid "Other places to stay in %(region)s"
+msgstr "Ostali smještaj u regiji %(region)s"
+
+#, python-format
+msgid "%(stars)s star"
+msgid_plural "%(stars)s stars"
+msgstr[0] "%(stars)s zvjezdica"
+msgstr[1] "%(stars)s zvjezdice"
+msgstr[2] "%(stars)s zvjezdica"
+
+msgid "Check-in from"
+msgstr "Dolazak od"
+
+msgid "Check-out until"
+msgstr "Odlazak do"
+
+msgid "Where to stay in Montenegro"
+msgstr "Gdje odsjesti u Crnoj Gori"
+
+msgid "Hand-picked hotels, resorts and apartments across the coast and mountains."
+msgstr "Pažljivo odabrani hoteli, rezorti i apartmani na obali i u planinama."
+
+msgid "Find the right base for your trip"
+msgstr "Pronađite pravu bazu za svoje putovanje"
+
+msgid "Stay around Kotor for old-town atmosphere and the bay, choose Budva for beaches and evening energy, or head north to Durmitor for cooler air and mountain trails. Use the filters below, then compare each property with our destination guides before you book."
+msgstr "Odsjednite u okolici Kotora zbog atmosfere starog grada i zaljeva, odaberite Budvu zbog plaža i večernje živosti ili krenite na sjever, na Durmitor, zbog svježijeg zraka i planinskih staza. Koristite filtre ispod, a prije rezervacije usporedite svaki objekt s našim vodičima kroz destinacije."
+
+msgid "Kotor guide"
+msgstr "Vodič kroz Kotor"
+
+msgid "Budva guide"
+msgstr "Vodič kroz Budvu"
+
+msgid "Durmitor guide"
+msgstr "Vodič kroz Durmitor"
+
+msgid "When to visit"
+msgstr "Kada posjetiti"
+
+msgid "All regions"
+msgstr "Sve regije"
+
+msgid "All types"
+msgstr "Sve vrste"
+
+msgid "No hotels match your filters yet."
+msgstr "Nijedan hotel još ne odgovara vašim filtrima."
+
+msgid "Last updated"
+msgstr "Posljednje ažurirano"
+
+msgid "Tours, stays, boat trips, tastings — list them at no cost. As a founding partner you pay 0%% commission during our launch period: you keep 100%% of the price you set."
+msgstr "Ture, smještaj, izleti brodom, kušanja — objavite ih besplatno. Kao partner osnivač tijekom razdoblja lansiranja plaćate 0%% provizije: zadržavate 100%% cijene koju odredite."
+
+msgid "Whether you host experiences, sell products, or deliver food — there's a place for you."
+msgstr "Bilo da organizirate doživljaje, prodajete proizvode ili dostavljate hranu — ovdje ima mjesta za vas."
+
+msgid "0%% commission during launch"
+msgstr "0%% provizije tijekom lansiranja"
+
+msgid "You keep 100%% of the price you set — we take no cut of it. No listing fee, no monthly fee, no payout fee. Guests pay a 12%% service fee on top of your price, which is what funds the platform. If we ever introduce a host commission, founding partners are told well in advance and are free to leave."
+msgstr "Zadržavate 100%% cijene koju odredite — ne uzimamo ništa od nje. Bez naknade za objavu, bez mjesečne naknade, bez naknade za isplatu. Gosti plaćaju naknadu za uslugu od 12%% povrh vaše cijene i iz nje se financira platforma. Ako ikada uvedemo proviziju za domaćine, partneri osnivači bit će obaviješteni pravodobno i slobodni otići."
+
+msgid "It takes a minute. You'll use the same account to manage your listings, prices and bookings once you're approved."
+msgstr "Traje minutu. Nakon odobrenja istim korisničkim računom upravljate ponudama, cijenama i rezervacijama."
+
+msgid "We've received your application. Our team will review it within 2 business days."
+msgstr "Primili smo vašu prijavu. Naš tim pregledat će je u roku od 2 radna dana."
+
+msgid "You're approved! Head to your host dashboard to start listing."
+msgstr "Odobreni ste! Idite na nadzornu ploču domaćina i počnite objavljivati ponude."
+
+msgid "A previous application wasn't approved. You're welcome to submit a fresh one below."
+msgstr "Prethodna prijava nije odobrena. Slobodno pošaljite novu u nastavku."
+
+msgid "Other (we'll discuss)"
+msgstr "Drugo (dogovorit ćemo se)"
+
+msgid "Apply Now — It's Free"
+msgstr "Prijavite se — besplatno je"
+
+msgid "Dashboard"
+msgstr "Nadzorna ploča"
+
+#, python-format
+msgid "Welcome back, %(name)s — here's the state of the shop."
+msgstr "Dobro došli natrag, %(name)s — evo kako stoji vaša trgovina."
+
+msgid "Your application status, vendor orders and payout balance — all in one place."
+msgstr "Status vaše prijave, narudžbe i stanje za isplatu — sve na jednom mjestu."
+
+msgid "Manage products"
+msgstr "Upravljaj proizvodima"
+
+msgid "You haven't applied to sell yet"
+msgstr "Još se niste prijavili za prodaju"
+
+msgid "Apply to become a vendor on Montenegro Experience and reach travellers looking for the real thing."
+msgstr "Prijavite se kako biste postali prodavač na Montenegro Experienceu i došli do putnika koji traže autentično iskustvo."
+
+msgid "Apply to sell"
+msgstr "Prijavi se za prodaju"
+
+msgid "We've received your application — we review them within 2 business days."
+msgstr "Primili smo vašu prijavu — prijave pregledavamo u roku od 2 radna dana."
+
+msgid "We're reviewing your application — expect to hear from us shortly."
+msgstr "Pregledavamo vašu prijavu — uskoro ćemo vam se javiti."
+
+msgid "Your application wasn't approved this time. You're welcome to"
+msgstr "Vaša prijava ovaj put nije odobrena. Možete"
+
+msgid "apply again"
+msgstr "podnijeti novu prijavu"
+
+msgid "Payout balance"
+msgstr "Stanje za isplatu"
+
+msgid "Accrued to date"
+msgstr "Obračunato do danas"
+
+msgid "Sales this month"
+msgstr "Prodaja ovog mjeseca"
+
+msgid "Gross, current month"
+msgstr "Bruto, tekući mjesec"
+
+msgid "Active products"
+msgstr "Aktivni proizvodi"
+
+msgid "On the shelf"
+msgstr "U ponudi"
+
+msgid "Open orders"
+msgstr "Otvorene narudžbe"
+
+msgid "Awaiting fulfilment"
+msgstr "Čekaju isporuku"
+
+msgid "Payouts"
+msgstr "Isplate"
+
+msgid "Recent orders"
+msgstr "Nedavne narudžbe"
+
+msgid "Net"
+msgstr "Neto"
+
+msgid "No orders yet. They'll appear here as customers buy your products."
+msgstr "Još nema narudžbi. Pojavit će se ovdje kada kupci kupe vaše proizvode."
+
+msgid "Recent payouts"
+msgstr "Nedavne isplate"
+
+msgid "Vendor order"
+msgstr "Narudžba prodavača"
+
+msgid "Update fulfilment status and tracking — the customer is notified automatically."
+msgstr "Ažurirajte status isporuke i praćenje — kupac se obavještava automatski."
+
+msgid "Vendor dashboard"
+msgstr "Nadzorna ploča prodavača"
+
+#, python-format
+msgid "%(counter)s line"
+msgid_plural "%(counter)s lines"
+msgstr[0] "%(counter)s stavka"
+msgstr[1] "%(counter)s stavke"
+msgstr[2] "%(counter)s stavki"
+
+msgid "Title"
+msgstr "Naziv"
+
+msgid "SKU"
+msgstr "Šifra (SKU)"
+
+msgid "Unit"
+msgstr "Jedinična cijena"
+
+msgid "No items snapshot recorded."
+msgstr "Nema spremljenog pregleda stavki."
+
+msgid "Ship to"
+msgstr "Dostava na adresu"
+
+msgid "No shipping address on file."
+msgstr "Nema adrese za dostavu."
+
+msgid "Current status"
+msgstr "Trenutni status"
+
+#, python-format
+msgid "Fulfilled %(d)s"
+msgstr "Isporučeno %(d)s"
+
+msgid "Update fulfilment"
+msgstr "Ažuriraj isporuku"
+
+msgid "Change the status and add tracking details for the customer."
+msgstr "Promijenite status i dodajte podatke za praćenje pošiljke za kupca."
+
+msgid "Tracking number"
+msgstr "Broj za praćenje"
+
+msgid "e.g. 1Z999AA10123456784"
+msgstr "npr. 1Z999AA10123456784"
+
+msgid "Tracking URL"
+msgstr "Poveznica za praćenje"
+
+msgid "Money"
+msgstr "Novac"
+
+msgid "Your accrued balance sits here until you request a payout. We pay out via your configured method within ~3 business days."
+msgstr "Obračunati iznos stoji ovdje dok ne zatražite isplatu. Isplaćujemo putem postavljenog načina u roku od oko 3 radna dana."
+
+msgid "Accrued balance"
+msgstr "Obračunato stanje"
+
+msgid "Available to withdraw to your registered account."
+msgstr "Dostupno za isplatu na vaš registrirani račun."
+
+msgid "Configure a payout method in"
+msgstr "Način isplate najprije postavite u"
+
+msgid "settings"
+msgstr "postavkama"
+
+msgid "first."
+msgstr "korisničkog računa."
+
+#, python-format
+msgid "You need to accrue at least &euro;%(t)s before requesting a payout."
+msgstr "Prije zahtjeva za isplatu potrebno je obračunati najmanje &euro;%(t)s."
+
+msgid "Minimum payout threshold"
+msgstr "Minimalni iznos za isplatu"
+
+msgid "You can request a payout once your balance reaches this amount."
+msgstr "Isplatu možete zatražiti kada stanje dosegne ovaj iznos."
+
+msgid "Paid"
+msgstr "Isplaćeno"
+
+msgid "Reference"
+msgstr "Referenca"
+
+msgid "No payouts yet"
+msgstr "Još nema isplata"
+
+msgid "Once you request a payout it will appear here with its status."
+msgstr "Kada zatražite isplatu, pojavit će se ovdje sa svojim statusom."
+
+msgid "Edit product"
+msgstr "Uredi proizvod"
+
+msgid "Update the copy, price and visibility travellers see for this product."
+msgstr "Ažurirajte tekst, cijenu i vidljivost koju putnici vide za ovaj proizvod."
+
+msgid "Back to products"
+msgstr "Natrag na proizvode"
+
+msgid "Couldn't save."
+msgstr "Spremanje nije uspjelo."
+
+msgid "The title and descriptions shoppers will read."
+msgstr "Naziv i opisi koje će kupci čitati."
+
+msgid "e.g. Homemade Montenegrin lunch box"
+msgstr "npr. Domaći crnogorski ručak za van"
+
+msgid "One-line pitch — appears under the title on category pages."
+msgstr "Opis u jednoj rečenici — prikazuje se ispod naziva na stranicama kategorija."
+
+msgid "Typically 1–2 sentences. Plain text or basic HTML."
+msgstr "Obično 1–2 rečenice. Običan tekst ili osnovni HTML."
+
+msgid "Long description"
+msgstr "Dugi opis"
+
+msgid "The full description — what it is, what makes it special."
+msgstr "Cjelovit opis — što je i po čemu je poseban."
+
+msgid "HTML is OK (paragraphs, bold, italic, links). Avoid scripts or stylesheets."
+msgstr "HTML je dopušten (odlomci, podebljano, kurziv, poveznice). Izbjegavajte skripte i stilove."
+
+msgid "Pricing &amp; visibility"
+msgstr "Cijena i vidljivost"
+
+msgid "What it costs and whether it's shown on the storefront."
+msgstr "Koliko košta i prikazuje li se u trgovini."
+
+msgid "Price"
+msgstr "Cijena"
+
+msgid "For variable products this is the floor — the storefront shows “From …” automatically."
+msgstr "Za proizvode s varijantama ovo je najniža cijena — trgovina automatski prikazuje „Od …“."
+
+msgid "Draft — not shown publicly"
+msgstr "Skica — nije javno prikazano"
+
+msgid "Active — on the shelf"
+msgstr "Aktivno — u ponudi"
+
+msgid "Archived — hidden, kept for history"
+msgstr "Arhivirano — skriveno, čuva se radi povijesti"
+
+msgid "Only Active products appear to shoppers."
+msgstr "Kupcima se prikazuju samo aktivni proizvodi."
+
+msgid "For changes to SKU, format, vendor information or pricing currency, contact our acquisitions team — those fields are platform-managed so the canonical record stays clean."
+msgstr "Za izmjene šifre, formata, podataka o prodavaču ili valute cijene obratite se našem timu za ponudu — ta polja vodi platforma kako bi glavni zapis ostao uredan."
+
+msgid "Manage the copy, pricing and visibility of your product listings."
+msgstr "Upravljajte tekstom, cijenama i vidljivošću svojih proizvoda."
+
+msgid "New listings are accessioned by our team"
+msgstr "Nove proizvode u ponudu unosi naš tim"
+
+msgid "Add product"
+msgstr "Dodaj proizvod"
+
+msgid "You're not an approved vendor yet"
+msgstr "Još niste odobreni kao prodavač"
+
+msgid "Apply to sell on Montenegro Experience — once approved, every product attributed to you appears here to edit."
+msgstr "Prijavite se za prodaju na Montenegro Experienceu — nakon odobrenja ovdje ćete moći uređivati svaki proizvod koji vam je dodijeljen."
+
+msgid "No products listed yet"
+msgstr "Još nema proizvoda"
+
+msgid "Products are accessioned by the Montenegro Experience team. Once an editor adds one, it shows up here for you to manage copy, pricing and status."
+msgstr "Proizvode u ponudu unosi tim Montenegro Experiencea. Kada urednik doda proizvod, pojavit će se ovdje i moći ćete upravljati tekstom, cijenom i statusom."
+
+msgid "In your catalogue"
+msgstr "U vašem katalogu"
+
+msgid "Your products"
+msgstr "Vaši proizvodi"
+
+msgid "Active"
+msgstr "Aktivno"
+
+msgid "Draft"
+msgstr "Skica"
+
+msgid "Featured"
+msgstr "Istaknuto"
+
+#, python-format
+msgid "Updated %(when)s"
+msgstr "Ažurirano %(when)s"
+
+#, python-format
+msgid "Showing %(counter)s product."
+msgid_plural "Showing %(counter)s products."
+msgstr[0] "Prikazan je %(counter)s proizvod."
+msgstr[1] "Prikazana su %(counter)s proizvoda."
+msgstr[2] "Prikazano je %(counter)s proizvoda."
+
+msgid "To add a new title, send the details to our acquisitions team — we accession everything by hand."
+msgstr "Da biste dodali novi proizvod, pošaljite podatke našem timu za ponudu — sve unosimo ručno."
+
+msgid "Manage how your shop appears to customers and how we pay you out."
+msgstr "Upravljajte izgledom svoje trgovine za kupce i načinom na koji vam isplaćujemo novac."
+
+msgid "Shop profile"
+msgstr "Profil trgovine"
+
+msgid "How your shop appears to customers across the site."
+msgstr "Kako vaša trgovina izgleda kupcima na cijelom web-mjestu."
+
+msgid "Vendor name"
+msgstr "Naziv prodavača"
+
+msgid "Your shop or business name"
+msgstr "Naziv vaše trgovine ili tvrtke"
+
+msgid "Description"
+msgstr "Opis"
+
+msgid "Tell customers about your shop and what you sell."
+msgstr "Recite kupcima nešto o svojoj trgovini i onome što prodajete."
+
+msgid "Shown on your public vendor profile."
+msgstr "Prikazuje se na vašem javnom profilu prodavača."
+
+msgid "Where we send vendor announcements and payout notifications."
+msgstr "Adresa na koju šaljemo obavijesti za prodavače i o isplatama."
+
+msgid "Payout method"
+msgstr "Način isplate"
+
+msgid "How we send you the money you earn."
+msgstr "Kako vam šaljemo novac koji zaradite."
+
+msgid "Method"
+msgstr "Način"
+
+msgid "External account reference"
+msgstr "Referenca vanjskog računa"
+
+msgid "Stripe account ID / IBAN / PayPal email"
+msgstr "Stripe ID računa / IBAN / PayPal e-adresa"
+
+msgid "Stored encrypted. We use this to send payouts."
+msgstr "Pohranjuje se šifrirano. Koristimo ga za slanje isplata."
+
+msgid "Save settings"
+msgstr "Spremi postavke"
+
+msgid "off"
+msgstr "popusta"
+
+msgid "Add to cart"
+msgstr "Dodaj u košaricu"
+
+msgid "Make this my default address"
+msgstr "Postavi kao zadanu adresu"
+
+msgid "Add address"
+msgstr "Dodaj adresu"
+
+msgid "Default"
+msgstr "Zadano"
+
+msgid "Delete this address?"
+msgstr "Izbrisati ovu adresu?"
+
+msgid "No addresses saved yet"
+msgstr "Još nema spremljenih adresa"
+
+msgid "Add a shipping or billing address to speed up checkout."
+msgstr "Dodajte adresu za dostavu ili naplatu kako biste brže završili kupnju."
+
+msgid "Your bookings"
+msgstr "Vaše rezervacije"
+
+msgid "Account navigation"
+msgstr "Navigacija korisničkog računa"
+
+msgid "Overview"
+msgstr "Pregled"
+
+#, python-format
+msgid "%(counter)s guest"
+msgid_plural "%(counter)s guests"
+msgstr[0] "%(counter)s gost"
+msgstr[1] "%(counter)s gosta"
+msgstr[2] "%(counter)s gostiju"
+
+msgid "Hotel stays"
+msgstr "Hotelski boravci"
+
+#, python-format
+msgid "%(counter)s night"
+msgid_plural "%(counter)s nights"
+msgstr[0] "%(counter)s noć"
+msgstr[1] "%(counter)s noći"
+msgstr[2] "%(counter)s noći"
+
+#, python-format
+msgid "%(counter)s room"
+msgid_plural "%(counter)s rooms"
+msgstr[0] "%(counter)s soba"
+msgstr[1] "%(counter)s sobe"
+msgstr[2] "%(counter)s soba"
+
+msgid "When you book an experience or a hotel stay, it'll show up here."
+msgstr "Kada rezervirate doživljaj ili boravak u hotelu, pojavit će se ovdje."
+
+msgid "Find a hotel"
+msgstr "Pronađi hotel"
+
+msgid "Cards"
+msgstr "Kartice"
+
+#, python-format
+msgid "Expires %(date)s"
+msgstr "Istječe %(date)s"
+
+msgid "name, email, profile fields"
+msgstr "ime, e-pošta, polja profila"
+
+msgid "every order you've placed, with items + totals"
+msgstr "svaka vaša narudžba, sa stavkama i iznosima"
+
+msgid "shipping/billing addresses on file"
+msgstr "spremljene adrese za dostavu i naplatu"
+
+msgid "reviews you've written"
+msgstr "recenzije koje ste napisali"
+
+msgid "your cookie/privacy decisions"
+msgstr "vaše odluke o kolačićima i privatnosti"
+
+msgid "when applicable"
+msgstr "kada je primjenjivo"
+
+msgid "Want to permanently delete your account instead?"
+msgstr "Želite li umjesto toga trajno izbrisati svoj korisnički račun?"
+
+msgid "Type your email to confirm:"
+msgstr "Upišite svoju e-poštu radi potvrde:"
+
+msgid "Not ready?"
+msgstr "Niste spremni?"
+
+msgid "Downloads"
+msgstr "Preuzimanja"
+
+msgid "Digital purchases appear here with a button to grab the file."
+msgstr "Digitalne kupnje pojavljuju se ovdje s gumbom za preuzimanje datoteke."
+
+#, python-format
+msgid "Order #%(number)s"
+msgstr "Narudžba br. %(number)s"
+
+#, python-format
+msgid "%(used)s of %(total)s used"
+msgstr "Iskorišteno %(used)s od %(total)s"
+
+#, python-format
+msgid "expires %(date)s"
+msgstr "istječe %(date)s"
+
+msgid "Hello"
+msgstr "Pozdrav"
+
+#, python-format
+msgid "Logged in as %(email)s."
+msgstr "Prijavljeni ste kao %(email)s."
+
+msgid "open"
+msgstr "u tijeku"
+
+msgid "Credit:"
+msgstr "Kredit:"
+
+msgid "gift card"
+msgstr "darovna kartica"
+
+msgid "End your session on this device."
+msgstr "Odjavite se na ovom uređaju."
+
+msgid "Placed"
+msgstr "Naručeno"
+
+msgid "Confirmed"
+msgstr "Potvrđeno"
+
+msgid "Processing"
+msgstr "U obradi"
+
+msgid "Shipped"
+msgstr "Poslano"
+
+msgid "Delivered"
+msgstr "Isporučeno"
+
+msgid "Return"
+msgstr "Povrat"
+
+#, python-format
+msgid "Ordered: %(count)s"
+msgstr "Naručeno: %(count)s"
+
+#, python-format
+msgid "Quantity to return for %(name)s"
+msgstr "Količina za povrat: %(name)s"
+
+msgid "When you book an experience, it'll show up here."
+msgstr "Kada rezervirate doživljaj, pojavit će se ovdje."
+
+#, python-format
+msgid "Expires %(month)s/%(year)s"
+msgstr "Istječe %(month)s/%(year)s"
+
+msgid "Remove this card from your account?"
+msgstr "Ukloniti ovu karticu s korisničkog računa?"
+
+msgid "On Stripe's servers, under their PCI-DSS Level 1 vault. We only keep a reference token (pm_…) — useless to anyone who isn't Stripe."
+msgstr "Na Stripeovim poslužiteljima, u njihovu trezoru PCI-DSS razine 1. Mi čuvamo samo referentni token (pm_…) — beskoristan svakome osim Stripeu."
+
+msgid "Guest"
+msgstr "Gost"
+
+msgid "Your return"
+msgstr "Vaš povrat"
+
+msgid "For order"
+msgstr "Za narudžbu"
+
+#, python-format
+msgid "requested %(date)s"
+msgstr "zatraženo %(date)s"
+
+#, python-format
+msgid "Refunded %(amount)s"
+msgstr "Vraćeno %(amount)s"
+
+msgid "Become a Vendor"
+msgstr "Postanite prodavač"
+
+msgid "Switch language"
+msgstr "Promijeni jezik"
+
+msgid "Admin dashboard"
+msgstr "Administracija"
+
+msgid "Become a host"
+msgstr "Postanite domaćin"
+
+msgid "My wishlist"
+msgstr "Moja lista želja"
+
+msgid "My bookings"
+msgstr "Moje rezervacije"
+
+msgid "My account"
+msgstr "Moj korisnički račun"
+
+msgid "Log in"
+msgstr "Prijava"
+
+msgid "Sign up"
+msgstr "Registracija"
+
+msgid "Open menu"
+msgstr "Otvori izbornik"
+
+msgid "Close menu"
+msgstr "Zatvori izbornik"
+
+msgid "Get hand-picked Montenegro experiences"
+msgstr "Primajte pažljivo odabrane doživljaje iz Crne Gore"
+
+msgid "Seasonal guides, hidden gems and exclusive offers — straight to your inbox."
+msgstr "Sezonski vodiči, skriveni dragulji i ekskluzivne ponude — izravno u vaš sandučić."
+
+msgid "you@email.com"
+msgstr "vi@e-posta.com"
+
+msgid "No spam. Unsubscribe anytime."
+msgstr "Bez neželjene pošte. Odjava u bilo kojem trenutku."
+
+msgid "About us"
+msgstr "O nama"
+
+msgid "Browse the directory and contact hosts directly — no checkout needed."
+msgstr "Pregledajte imenik i kontaktirajte domaćine izravno — bez naplate na web-mjestu."
+
+msgid "Free shipping over €40."
+msgstr "Besplatna dostava za narudžbe preko 40 €."
+
+msgid "Sort"
+msgstr "Sortiraj"
+
+msgid "Unforgettable experiences in the heart of the Adriatic."
+msgstr "Nezaboravni doživljaji u srcu Jadrana."
+
+msgid "Experience categories"
+msgstr "Kategorije doživljaja"
+
+msgid "Coastal towns, mountain parks and the places worth the detour"
+msgstr "Primorski gradovi, planinski parkovi i mjesta vrijedna skretanja s puta"
+
+msgid "All destinations"
+msgstr "Sve destinacije"
+
+msgid "From the blog"
+msgstr "S bloga"
+
+msgid "Travel notes, itineraries and stories from across Montenegro — where to go, when to visit and what not to miss along the Adriatic."
+msgstr "Putopisne bilješke, planovi putovanja i priče iz cijele Crne Gore — kamo krenuti, kada doći i što ne propustiti na Jadranu."
+
+msgid "Product images"
+msgstr "Slike proizvoda"
+
+#, python-format
+msgid "View image %(n)s"
+msgstr "Prikaži sliku %(n)s"
+
+#, python-format
+msgid "by %(v)s"
+msgstr "od %(v)s"
+
+#, python-format
+msgid "%(a)s out of 5 from %(c)s reviews"
+msgstr "%(a)s od 5 (broj recenzija: %(c)s)"
+
+msgid "Last reviewed"
+msgstr "Posljednji put provjereno"
+
+msgid "Choose an option"
+msgstr "Odaberite opciju"
+
+msgid "Digital"
+msgstr "Digitalno"
+
+msgid "Access"
+msgstr "Pristup"
+
+msgid "Physical"
+msgstr "Fizički proizvod"
+
+msgid "On sale"
+msgstr "Na akciji"
+
+msgid "Decrease quantity"
+msgstr "Smanji količinu"
+
+msgid "Increase quantity"
+msgstr "Povećaj količinu"
+
+msgid "Out of stock"
+msgstr "Nema na zalihi"
+
+msgid "Drop your email — we'll let you know the moment this is available again."
+msgstr "Ostavite e-adresu — javit ćemo vam čim ovo ponovno bude dostupno."
+
+msgid "your@email.com"
+msgstr "vas@e-posta.com"
+
+msgid "Notify me"
+msgstr "Obavijesti me"
+
+msgid "This product is part of our directory. Reach out to the maker for availability and pricing."
+msgstr "Ovaj proizvod dio je našeg imenika. Za dostupnost i cijenu obratite se proizvođaču."
+
+#, python-format
+msgid "Contact %(v)s"
+msgstr "Kontaktiraj %(v)s"
+
+msgid "Local delivery"
+msgstr "Lokalna dostava"
+
+msgid "Across Montenegro"
+msgstr "Širom Crne Gore"
+
+msgid "Local pickup"
+msgstr "Osobno preuzimanje"
+
+msgid "Meet the maker"
+msgstr "Upoznajte proizvođača"
+
+msgid "Vetted makers"
+msgstr "Provjereni proizvođači"
+
+msgid "Hand-picked goods"
+msgstr "Pažljivo odabrani proizvodi"
+
+msgid "Sold by"
+msgstr "Prodaje"
+
+#, python-format
+msgid "More from %(v)s →"
+msgstr "Još od %(v)s →"
+
+msgid "Details"
+msgstr "Detalji"
+
+msgid "Product codes"
+msgstr "Šifre proizvoda"
+
+msgid "Featured in"
+msgstr "Izdvojeno u"
+
+msgid "About this product"
+msgstr "O ovom proizvodu"
+
+msgid "Questions"
+msgstr "Pitanja"
+
+msgid "Frequently asked"
+msgstr "Često postavljana"
+
+msgid "What others said"
+msgstr "Što kažu drugi"
+
+msgid "More to discover"
+msgstr "Još za otkrivanje"
+
+msgid "Picking up where you left off"
+msgstr "Nastavite gdje ste stali"
+
+msgid "Recently viewed"
+msgstr "Nedavno pregledano"
+
+#, python-format
+msgid "Experiences by %(a)s"
+msgstr "Doživljaji domaćina %(a)s"
+
+#, python-format
+msgid "Results for “%(q)s”"
+msgstr "Rezultati za „%(q)s“"
+
+msgid "Locally made goods, crafts and souvenirs from Montenegro."
+msgstr "Lokalno izrađeni proizvodi, rukotvorine i suveniri iz Crne Gore."
+
+msgid "Maker"
+msgstr "Proizvođač"
+
+msgid "Tag"
+msgstr "Oznaka"
+
+msgid "Clear all"
+msgstr "Obriši sve"
+
+msgid "Search products"
+msgstr "Pretraži proizvode"
+
+msgid "All hosts"
+msgstr "Svi domaćini"
+
+msgid "Price ↑"
+msgstr "Cijena ↑"
+
+msgid "Price ↓"
+msgstr "Cijena ↓"
+
+msgid "Page navigation"
+msgstr "Navigacija po stranicama"
+
+msgid "No products yet"
+msgstr "Još nema proizvoda"
+
+msgid "We're curating local makers and goods — check back soon, or browse experiences in the meantime."
+msgstr "Biramo lokalne proizvođače i proizvode — svratite uskoro, a do tada pogledajte doživljaje."
+
+msgid "AI:"
+msgstr "AI:"
+
+msgid "Verified host"
+msgstr "Provjereni domaćin"
+
+#, python-format
+msgid "%(counter)s category"
+msgid_plural "%(counter)s categories"
+msgstr[0] "%(counter)s kategorija"
+msgstr[1] "%(counter)s kategorije"
+msgstr[2] "%(counter)s kategorija"
+
+#, python-format
+msgid "%(sold)s+ sold"
+msgstr "%(sold)s+ prodano"
+
+#, python-format
+msgid "Host since %(since)s"
+msgstr "Domaćin od %(since)s"
+
+msgid "The makers"
+msgstr "Domaćini i proizvođači"
+
+msgid "Local hosts we work with"
+msgstr "Lokalni domaćini s kojima surađujemo"
+
+msgid "Every experience comes from one of these trusted local hosts — independent guides, makers, and small businesses across Montenegro. Click into one to see everything they offer."
+msgstr "Svaki doživljaj dolazi od jednog od ovih provjerenih lokalnih domaćina — neovisnih vodiča, proizvođača i malih poduzeća širom Crne Gore. Otvorite profil da vidite sve što nude."
+
+msgid "Search hosts"
+msgstr "Pretraži domaćine"
+
+msgid "Clear"
+msgstr "Obriši"
+
+#, python-format
+msgid "Showing %(counter)s result for &ldquo;%(q)s&rdquo;"
+msgid_plural "Showing %(counter)s results for &ldquo;%(q)s&rdquo;"
+msgstr[0] "%(counter)s rezultat za &ldquo;%(q)s&rdquo;"
+msgstr[1] "%(counter)s rezultata za &ldquo;%(q)s&rdquo;"
+msgstr[2] "%(counter)s rezultata za &ldquo;%(q)s&rdquo;"
+
+#, python-format
+msgid "Since %(since)s"
+msgstr "Od %(since)s"
+
+msgid "Visit shop"
+msgstr "Posjeti trgovinu"
+
+msgid "No hosts match your search. Try a different term."
+msgstr "Nijedan domaćin ne odgovara pretraživanju. Pokušajte s drugim pojmom."
+
+msgid "No hosts listed yet — once experiences go live, the hosts appear here."
+msgstr "Još nema domaćina — pojavit će se ovdje čim njihovi doživljaji budu objavljeni."
+
+msgid "Host experiences, sell products, or welcome guests. Join the local hosts already growing their business with us."
+msgstr "Organizirajte doživljaje, prodajte proizvode ili ugostite goste. Pridružite se lokalnim domaćinima koji s nama već razvijaju posao."
+
+msgid "Your wishlist"
+msgstr "Vaša lista želja"
+
+#, python-format
+msgid "%(counter)s saved experience"
+msgid_plural "%(counter)s saved experiences"
+msgstr[0] "%(counter)s spremljeni doživljaj"
+msgstr[1] "%(counter)s spremljena doživljaja"
+msgstr[2] "%(counter)s spremljenih doživljaja"
+
+msgid "No saved experiences yet."
+msgstr "Još nema spremljenih doživljaja."
+
+msgid "Remove from wishlist"
+msgstr "Ukloni s liste želja"
+
+msgid "Looking for more to add?"
+msgstr "Tražite još nešto?"
+
+msgid "Explore more experiences"
+msgstr "Istražite još doživljaja"
+
+msgid "No saved experiences yet"
+msgstr "Još nema spremljenih doživljaja"
+
+msgid "Tap the heart on any experience or product to keep it here for later."
+msgstr "Dodirnite srce na bilo kojem doživljaju ili proizvodu kako biste ga spremili ovdje za kasnije."
+
+msgid "Hotels in Montenegro"
+msgstr "Hoteli u Crnoj Gori"
+
+msgid "No hotels yet."
+msgstr "Još nema hotela."
+
+msgid "Hand-picked hotels, apartments and guesthouses across Montenegro — from the Bay of Kotor to the Adriatic coast and the northern mountains. Book your stay."
+msgstr "Pažljivo odabrani hoteli, apartmani i pansioni širom Crne Gore — od Bokokotorskog zaljeva do jadranske obale i planina na sjeveru. Rezervirajte smještaj."
+
+msgid "Thanks — we'll be in touch about availability and pricing."
+msgstr "Hvala — javit ćemo vam se u vezi s dostupnošću i cijenama."
+
+msgid "Your stay is booked! A confirmation is on its way."
+msgstr "Smještaj je rezerviran! Potvrda vam stiže e-poštom."
+
+msgid "Destination guides to the best places to visit in Montenegro — the Bay of Kotor, the Budva Riviera, Durmitor, Lake Skadar and the southern Adriatic coast."
+msgstr "Vodiči kroz najljepša mjesta u Crnoj Gori — Bokokotorski zaljev, Budvansku rivijeru, Durmitor, Skadarsko jezero i južnu jadransku obalu."
+
+msgid "What's on in Montenegro through the year — Kotor Carnival, the Mimosa Festival, Boka Night, summer theatre in Budva, Lake Fest and the winter ski season."
+msgstr "Što se događa u Crnoj Gori tijekom godine — Kotorski karneval, Praznik mimoze, Bokeljska noć, ljetno kazalište u Budvi, Lake Fest i zimska skijaška sezona."
+
+msgid "Password"
+msgstr "Lozinka"
+
+msgid "Confirm password"
+msgstr "Potvrdite lozinku"
+
+# ── Montenegro labels, hotel copy and about page (v0.80.1) ──
+msgid "Kotor Bay"
+msgstr "Bokokotorski zaljev"
+
+msgid "Budva Riviera"
+msgstr "Budvanska rivijera"
+
+msgid "Durmitor & the North"
+msgstr "Durmitor i sjever"
+
+msgid "Lake Skadar"
+msgstr "Skadarsko jezero"
+
+msgid "Podgorica"
+msgstr "Podgorica"
+
+msgid "Ulcinj & the south coast"
+msgstr "Ulcinj i južna obala"
+
+msgid "Tivat & Luštica"
+msgstr "Tivat i Luštica"
+
+msgid "Cetinje & the Old Royal Capital"
+msgstr "Cetinje, stara prijestolnica"
+
+msgid "Elsewhere in Montenegro"
+msgstr "Ostali krajevi Crne Gore"
+
+msgid "Coastal"
+msgstr "Obala"
+
+msgid "Mountains"
+msgstr "Planine"
+
+msgid "National Parks"
+msgstr "Nacionalni parkovi"
+
+msgid "Cultural Sites"
+msgstr "Kulturne znamenitosti"
+
+msgid "Lakes & Rivers"
+msgstr "Jezera i rijeke"
+
+msgid "Cities & Towns"
+msgstr "Gradovi i mjesta"
+
+msgid "Hotel"
+msgstr "Hotel"
+
+msgid "Resort"
+msgstr "Resort"
+
+msgid "Boutique hotel"
+msgstr "Butik hotel"
+
+msgid "Apartment"
+msgstr "Apartman"
+
+msgid "Villa"
+msgstr "Vila"
+
+msgid "Guesthouse"
+msgstr "Pansion"
+
+msgid "Hostel"
+msgstr "Hostel"
+
+msgid "Mountain lodge"
+msgstr "Planinska koliba"
+
+msgid "Swimming pool"
+msgstr "Bazen"
+
+msgid "Spa & wellness"
+msgstr "Spa i wellness"
+
+msgid "Free WiFi"
+msgstr "Besplatan WiFi"
+
+msgid "Parking"
+msgstr "Parkiralište"
+
+msgid "Restaurant"
+msgstr "Restoran"
+
+msgid "Bar"
+msgstr "Bar"
+
+msgid "Fitness centre"
+msgstr "Fitness centar"
+
+msgid "Airport shuttle"
+msgstr "Prijevoz do zračne luke"
+
+msgid "Beachfront"
+msgstr "Odmah uz plažu"
+
+msgid "Pet friendly"
+msgstr "Kućni ljubimci dobrodošli"
+
+msgid "Family rooms"
+msgstr "Obiteljske sobe"
+
+msgid "Room service"
+msgstr "Usluga u sobu"
+
+msgid "Concierge"
+msgstr "Concierge"
+
+msgid "EV charging"
+msgstr "Punjač za električna vozila"
+
+msgid "Air conditioning"
+msgstr "Klima uređaj"
+
+msgid "Sea view"
+msgstr "Pogled na more"
+
+msgid "Balcony"
+msgstr "Balkon"
+
+msgid "Minibar"
+msgstr "Minibar"
+
+msgid "Kitchenette"
+msgstr "Čajna kuhinja"
+
+msgid "Bathtub"
+msgstr "Kada"
+
+msgid "Cancellation"
+msgstr "Otkazivanje"
+
+msgid "Pets"
+msgstr "Kućni ljubimci"
+
+msgid "Music & festivals"
+msgstr "Glazba i festivali"
+
+msgid "Culture & arts"
+msgstr "Kultura i umjetnost"
+
+msgid "Food & wine"
+msgstr "Hrana i vino"
+
+msgid "Tradition & carnival"
+msgstr "Tradicija i karneval"
+
+msgid "Sport & outdoors"
+msgstr "Sport i priroda"
+
+msgid "the fjord-like Bay of Kotor, ringed by walled medieval towns and steep mountains"
+msgstr "Bokokotorski zaljev nalik fjordu, okružen srednjovjekovnim gradovima pod zidinama i strmim planinama"
+
+msgid "the Budva Riviera, the coast's busiest run of beaches, resorts and old-town nightlife"
+msgstr "Budvanska rivijera, najživlji dio obale s plažama, resortima i noćnim životom staroga grada"
+
+msgid "the Durmitor highlands, with national-park peaks, the Tara River canyon and winter skiing"
+msgstr "predjeli Durmitora s vrhovima nacionalnog parka, kanjonom Tare i zimskim skijanjem"
+
+msgid "Lake Skadar, the Balkans' largest lake and a birdwatching and wine-country retreat"
+msgstr "Skadarsko jezero, najveće jezero na Balkanu, odredište za promatranje ptica i obilazak vinskog kraja"
+
+msgid "Podgorica, Montenegro's capital and main transport hub"
+msgstr "Podgorica, glavni grad Crne Gore i glavno prometno čvorište"
+
+msgid "Ulcinj and the long sandy beaches of the southern coast"
+msgstr "Ulcinj i duge pješčane plaže južne obale"
+
+msgid "Tivat, home to the Porto Montenegro marina and the Luštica peninsula"
+msgstr "Tivat, dom marine Porto Montenegro i poluotoka Luštica"
+
+msgid "Cetinje, the historic royal capital in the hills above the bay"
+msgstr "Cetinje, povijesna prijestolnica u brdima iznad zaljeva"
+
+msgid "Montenegro"
+msgstr "Crna Gora"
+
+msgid "Beach stays"
+msgstr "Odmor na plaži"
+
+msgid "Sun & swimming"
+msgstr "Sunce i kupanje"
+
+msgid "Sea views"
+msgstr "Pogled na more"
+
+msgid "Spa & unwinding"
+msgstr "Spa i opuštanje"
+
+msgid "Dining in"
+msgstr "Obroci u objektu"
+
+msgid "Evenings in"
+msgstr "Večeri u objektu"
+
+msgid "Families"
+msgstr "Obitelji"
+
+msgid "Travelling with pets"
+msgstr "Putovanje s ljubimcima"
+
+msgid "Active stays"
+msgstr "Aktivan odmor"
+
+msgid "Self-catering"
+msgstr "Samostalno kuhanje"
+
+msgid "Fly-in stays"
+msgstr "Dolazak zrakoplovom"
+
+msgid "Road trips"
+msgstr "Putovanje automobilom"
+
+msgid "EV road trips"
+msgstr "Putovanje električnim automobilom"
+
+msgid "Design-led stays"
+msgstr "Dizajnerski smještaj"
+
+msgid "All-in-one breaks"
+msgstr "Sve na jednom mjestu"
+
+msgid "Mountain escapes"
+msgstr "Bijeg u planine"
+
+msgid "Low-key local stays"
+msgstr "Opušten lokalni smještaj"
+
+msgid "Budget & solo travel"
+msgstr "Povoljno i solo putovanje"
+
+msgid "A refined stay"
+msgstr "Profinjen boravak"
+
+msgid "stay"
+msgstr "smještaj"
+
+#, python-format
+msgid "%(name)s is a %(star)s%(type)s in %(loc)s, set in %(region)s."
+msgstr "%(name)s je %(type)s%(star)s u mjestu %(loc)s, regija: %(region)s."
+
+#, python-format
+msgid "It puts %(places)s within reach for day trips."
+msgstr "Za jednodnevne izlete nadohvat ruke su: %(places)s."
+
+msgid "Check transport links and seasonal travel times before you book."
+msgstr "Prije rezervacije provjerite prijevoz i sezonsko vrijeme putovanja."
+
+#, python-format
+msgid "%(head)s and %(last)s"
+msgstr "%(head)s i %(last)s"
+
+msgid "A note from us"
+msgstr "Nekoliko riječi od nas"
+
+msgid "The Montenegro locals would show you"
+msgstr "Crna Gora kakvu bi vam pokazali mještani"
+
+msgid "Montenegro Experience is an independent travel marketplace, run by locals, for travellers. We list experiences from independent local hosts across Montenegro — guides, small operators and family businesses."
+msgstr "Montenegro Experience je nezavisna turistička platforma koju vode mještani, za putnike. Objavljujemo doživljaje nezavisnih lokalnih domaćina diljem Crne Gore — vodiča, malih organizatora i obiteljskih tvrtki."
+
+msgid "How it works"
+msgstr "Kako funkcionira"
+
+msgid "Every host applies to join, and our team reviews each application before their experiences go live."
+msgstr "Svaki domaćin podnosi prijavu, a naš tim pregledava svaku prijavu prije nego što njegovi doživljaji budu objavljeni."
+
+msgid "Prices are shown per guest in euros. A 12%% service fee is added at confirmation, and you always see the full total before you confirm."
+msgstr "Cijene se prikazuju po gostu, u eurima. Naknada za uslugu od 12%% dodaje se pri potvrdi, a ukupan iznos uvijek vidite prije nego što potvrdite."
+
+#, python-format
+msgid "Most experiences can be cancelled up to 24 hours before the start for a full refund — each listing shows its own policy, and <a href=\"%(cancellations_url)s\" class=\"btn-link\" style=\"display:inline-flex;\">cancellations &amp; refunds</a> explains the rest."
+msgstr "Većinu doživljaja možete otkazati najkasnije 24 sata prije početka uz puni povrat novca — svaka ponuda prikazuje vlastita pravila, a stranica <a href=\"%(cancellations_url)s\" class=\"btn-link\" style=\"display:inline-flex;\">otkazivanja i povrati</a> objašnjava ostalo."
+
+msgid "Find us"
+msgstr "Pronađite nas"
+
+#, python-format
+msgid "Drop a line at <a href=\"%(contact_url)s\" class=\"btn-link\" style=\"display:inline-flex;\">contact</a> or browse the <a href=\"%(experiences_url)s\" class=\"btn-link\" style=\"display:inline-flex;\">experiences</a>."
+msgstr "Pišite nam putem stranice <a href=\"%(contact_url)s\" class=\"btn-link\" style=\"display:inline-flex;\">kontakt</a> ili pogledajte <a href=\"%(experiences_url)s\" class=\"btn-link\" style=\"display:inline-flex;\">doživljaje</a>."
+
+#, python-format
+msgid "%(n)s-star "
+msgid_plural "%(n)s-star "
+msgstr[0] " s %(n)s zvjezdicom"
+msgstr[1] " s %(n)s zvjezdice"
+msgstr[2] " s %(n)s zvjezdica"
+
+#, python-format
+msgid "%(counter)s gift card"
+msgid_plural "%(counter)s gift cards"
+msgstr[0] "%(counter)s darovna kartica"
+msgstr[1] "%(counter)s darovne kartice"
+msgstr[2] "%(counter)s darovnih kartica"
+
+# ── Montenegro policy pages, search, checkout and listing copy (v0.80.1) ──
+#, python-format
+msgid "%(name)s in %(location)s, Montenegro"
+msgstr "%(name)s, %(location)s, Crna Gora"
+
+#, python-format
+msgid "%(location)s, Montenegro"
+msgstr "%(location)s, Crna Gora"
+
+msgid "Categories"
+msgstr "Kategorije"
+
+msgid "Nothing here yet"
+msgstr "Ovdje još nema ničega"
+
+#, python-format
+msgid "There is nothing in %(name)s right now. Browse <a href=\"%(experiences_url)s\" style=\"border-bottom: 1px dotted var(--rule);\">all experiences</a> in the meantime."
+msgstr "U kategoriji %(name)s trenutno nema ponude. Do tada pogledajte <a href=\"%(experiences_url)s\" style=\"border-bottom: 1px dotted var(--rule);\">sve doživljaje</a>."
+
+msgid "Two-letter ISO code (e.g. <code>US</code>, <code>DE</code>, <code>GB</code>)."
+msgstr "Dvoslovni ISO kod (npr. <code>US</code>, <code>DE</code>, <code>GB</code>)."
+
+msgid "Gift card"
+msgstr "Darovna kartica"
+
+#, python-format
+msgid "Balance: %(balance)s %(currency)s. Applied at order time."
+msgstr "Stanje: %(balance)s %(currency)s. Primjenjuje se pri narudžbi."
+
+#, python-format
+msgid "Your cart is empty. <a href=\"%(experiences_url)s\" style=\"text-decoration:underline;\">Browse experiences</a>."
+msgstr "Vaša košarica je prazna. <a href=\"%(experiences_url)s\" style=\"text-decoration:underline;\">Pogledajte doživljaje</a>."
+
+#, python-format
+msgid "We're putting this page together. Drop us a line at <a href=\"%(contact_url)s\" class=\"btn-link\" style=\"display: inline-flex;\">contact</a> if you need this answered today."
+msgstr "Ova stranica je u pripremi. Pišite nam putem stranice <a href=\"%(contact_url)s\" class=\"btn-link\" style=\"display: inline-flex;\">kontakt</a> ako vam je odgovor potreban danas."
+
+msgid "Say hello"
+msgstr "Javite nam se"
+
+msgid "Stories from Montenegro"
+msgstr "Priče iz Crne Gore"
+
+msgid "Try again"
+msgstr "Pokušajte ponovo"
+
+msgid "You're in"
+msgstr "Prijavljeni ste"
+
+msgid "Plans change. Here’s how cancellations work across Montenegro Experience."
+msgstr "Planovi se mijenjaju. Evo kako funkcionira otkazivanje na Montenegro Experienceu."
+
+msgid "Most experiences can be cancelled up to <strong>24 hours before</strong> the start time for a full refund. Each listing shows its own cancellation policy on the experience page — always check it before you book."
+msgstr "Većinu doživljaja možete otkazati najkasnije <strong>24 sata prije</strong> početka uz puni povrat novca. Svaka ponuda na stranici doživljaja prikazuje vlastita pravila otkazivanja — provjerite ih prije rezervacije."
+
+msgid "Inside 24 hours"
+msgstr "Manje od 24 sata prije"
+
+msgid "Cancellations made less than 24 hours before the start are at the host’s discretion, as they’ve already reserved your spot and prepared. Reach out to your host first — most will do their best to help."
+msgstr "O otkazivanju manje od 24 sata prije početka odlučuje domaćin, jer vam je već rezervirao mjesto i sve pripremio. Najprije se obratite domaćinu — većina će učiniti sve da pomogne."
+
+msgid "Weather & host cancellations"
+msgstr "Vrijeme i otkazivanje od strane domaćina"
+
+msgid "If a host cancels — for weather, safety, or any reason — you’ll be offered a new date or a full refund, your choice. Outdoor experiences (kayaking, sailing, hiking) may be rescheduled for conditions."
+msgstr "Ako domaćin otkaže — zbog vremena, sigurnosti ili bilo kojeg drugog razloga — bit će vam ponuđen novi termin ili puni povrat novca, po vašem izboru. Aktivnosti na otvorenom (kajak, jedrenje, planinarenje) mogu se odgoditi zbog uvjeta."
+
+msgid "How refunds are paid"
+msgstr "Kako se vraća novac"
+
+msgid "Refunds go back to your original payment method, including the service fee, typically within 3–5 business days."
+msgstr "Novac se vraća na izvorni način plaćanja, uključujući naknadu za uslugu, obično u roku od 3–5 radnih dana."
+
+#, python-format
+msgid "Need help with a booking? <a href=\"%(contact_url)s\" style=\"text-decoration:underline;\">Contact us</a> and we’ll sort it out."
+msgstr "Trebate pomoć oko rezervacije? <a href=\"%(contact_url)s\" style=\"text-decoration:underline;\">Kontaktirajte nas</a> i riješit ćemo to."
+
+#, python-format
+msgid "Results for “<em>%(q)s</em>”"
+msgstr "Rezultati za „<em>%(q)s</em>“"
+
+msgid "Find what you're after"
+msgstr "Pronađite ono što tražite"
+
+msgid "Nothing found"
+msgstr "Ništa nije pronađeno"
+
+#, python-format
+msgid "Try a different keyword, or browse <a href=\"%(experiences_url)s\" style=\"text-decoration: underline;\">all experiences</a>."
+msgstr "Pokušajte s drugim pojmom ili pogledajte <a href=\"%(experiences_url)s\" style=\"text-decoration: underline;\">sve doživljaje</a>."
+
+msgid "No products to feature yet."
+msgstr "Još nema istaknutih proizvoda."
+
+msgid "How booking an experience works, from enquiry to the day itself."
+msgstr "Kako funkcionira rezervacija doživljaja, od upita do samog dana."
+
+msgid "Booking"
+msgstr "Rezervacija"
+
+msgid "Pick a date and the number of guests, or — for listings shown as “Contact for price” — send the host an enquiry with your dates. The host confirms availability, the final price and the meeting point by email. Bookings made through the site are backed by our service guarantee."
+msgstr "Odaberite datum i broj gostiju ili — kod ponuda označenih s „Cijena na upit“ — pošaljite domaćinu upit sa svojim datumima. Domaćin e-poštom potvrđuje dostupnost, konačnu cijenu i mjesto sastanka. Rezervacije napravljene preko web-mjesta pokrivene su našim jamstvom usluge."
+
+msgid "On the day"
+msgstr "Na dan doživljaja"
+
+msgid "You’ll get the exact meeting point and host contact details in your confirmation. Arrive a few minutes early. Each listing’s page shows the duration, what’s included, and what to bring."
+msgstr "U potvrdi ćete dobiti točno mjesto sastanka i kontakt domaćina. Dođite nekoliko minuta ranije. Stranica svake ponude prikazuje trajanje, što je uključeno i što ponijeti."
+
+msgid "Payments"
+msgstr "Plaćanje"
+
+msgid "Prices are per guest in euros (€). A 12%% service fee is added at confirmation. You only ever pay the total shown before you confirm — no hidden charges."
+msgstr "Cijene su po gostu, u eurima (€). Naknada za uslugu od 12%% dodaje se pri potvrdi. Uvijek plaćate samo iznos prikazan prije potvrde — bez skrivenih troškova."
+
+#, python-format
+msgid "Questions? See our <a href=\"%(returns_url)s\" style=\"text-decoration:underline;\">cancellations &amp; refunds</a> page or <a href=\"%(contact_url)s\" style=\"text-decoration:underline;\">get in touch</a>."
+msgstr "Imate pitanja? Pogledajte stranicu <a href=\"%(returns_url)s\" style=\"text-decoration:underline;\">otkazivanja i povrati</a> ili <a href=\"%(contact_url)s\" style=\"text-decoration:underline;\">nam se javite</a>."
+
+# ── Page titles from views (v0.80.1) ──
+msgid "Your enquiries"
+msgstr "Vaši upiti"
+
+#, python-format
+msgid "%(name)s Travel Guide, Tours & Hotels"
+msgstr "%(name)s — vodič, ture i hoteli"
+
+msgid "Sell with us"
+msgstr "Prodajte kod nas"
+
+#, python-format
+msgid "Edit %(name)s"
+msgstr "Uredi: %(name)s"
+
+#, python-format
+msgid "Vendor order %(number)s"
+msgstr "Narudžba prodavača %(number)s"
+
+msgid "Vendor settings"
+msgstr "Postavke prodavača"
+
+#, python-format
+msgid "Search results for %(q)s"
+msgstr "Rezultati pretraživanja za %(q)s"
+
+msgid "Staff picks"
+msgstr "Izbor tima"
+
+#, python-format
+msgid "%(title)s — Journal"
+msgstr "%(title)s — Blog"
+
+msgid "Do not sell my info"
+msgstr "Ne prodajte moje podatke"
+
+msgid "Affiliate programme terms"
+msgstr "Uvjeti partnerskog programa"
+
+msgid "The Marketplace"
+msgstr "Platforma"
+
+# ── Shell titles, descriptions and place facts (v0.80.2) ──
+#, python-format
+msgid "Search: %(q)s"
+msgstr "Pretraživanje: %(q)s"
+
+#, python-format
+msgid "Search results for \"%(q)s\" at %(store)s."
+msgstr "Rezultati pretraživanja za „%(q)s“ — %(store)s."
+
+#, python-format
+msgid "Search %(store)s."
+msgstr "Pretražite %(store)s."
+
+#, python-format
+msgid "About %(store)s."
+msgstr "O nama — %(store)s."
+
+#, python-format
+msgid "Get in touch with %(store)s — questions about an order, or anything else. We read every message."
+msgstr "Kontaktirajte %(store)s — pitanja o narudžbi ili bilo što drugo. Čitamo svaku poruku."
+
+#, python-format
+msgid "Notes and stories from %(store)s."
+msgstr "Bilješke i priče — %(store)s."
+
+msgid "Delivery options, estimated times and shipping rates."
+msgstr "Načini dostave, procijenjeno vrijeme i cijene dostave."
+
+#, python-format
+msgid "How returns, cancellations and refunds work at %(store)s."
+msgstr "Kako funkcioniraju povrati, otkazivanja i povrat novca — %(store)s."
+
+msgid "All books"
+msgstr "Sve knjige"
+
+msgid "All products"
+msgstr "Svi proizvodi"
+
+#, python-format
+msgid "The %(nouns)s behind everything %(store)s offers."
+msgstr "Lokalni %(nouns)s koji stoje iza svega što nudi %(store)s."
+
+#, python-format
+msgid "Everything %(name)s offers on %(store)s."
+msgstr "Sve što %(name)s nudi na platformi %(store)s."
+
+msgid "Marketplace"
+msgstr "Platforma"
+
+#, python-format
+msgid "Every %(noun)s on %(store)s, in one place."
+msgstr "Svaki %(noun)s na platformi %(store)s, na jednom mjestu."
+
+msgid "Looking for a recommendation? Want to suggest an experience? Need help with a booking? We read every message."
+msgstr "Tražite preporuku? Želite predložiti doživljaj? Trebate pomoć oko rezervacije? Čitamo svaku poruku."
+
+msgid "Best time"
+msgstr "Najbolje vrijeme"
+
+msgid "Time needed"
+msgstr "Potrebno vrijeme"
+
+msgid "Getting there"
+msgstr "Kako stići"
+
+msgid "Nearest airport"
+msgstr "Najbliža zračna luka"
+
+msgid "Edit this listing"
+msgstr "Uredi ovu ponudu"
+
+msgid "Top pick"
+msgstr "Preporuka"
+
+msgid "What guests say"
+msgstr "Dojmovi gostiju"
+
+msgid "Any date"
+msgstr "Bilo koji datum"
+
+#, python-format
+msgid "Rated %(r)s out of 5"
+msgstr "Ocjena %(r)s od 5"
+
+#, python-format
+msgid "%(avg)s from %(n)s verified review"
+msgid_plural "%(avg)s from %(n)s verified reviews"
+msgstr[0] "%(avg)s iz %(n)s potvrđene recenzije"
+msgstr[1] "%(avg)s iz %(n)s potvrđene recenzije"
+msgstr[2] "%(avg)s iz %(n)s potvrđenih recenzija"
+
+msgid "At a glance"
+msgstr "Ukratko"
+
+msgid "Languages"
+msgstr "Jezici"
+
+msgid "About this experience"
+msgstr "O ovom doživljaju"
+
+msgid "Places nearby"
+msgstr "Mjesta u blizini"
+
+msgid "Choose a date from today on"
+msgstr "Odaberite datum od danas nadalje"
+
+#, python-format
+msgid "“%(q)s” in Montenegro"
+msgstr "„%(q)s“ u Crnoj Gori"
+
+#, python-format
+msgid "“%(q)s” in %(region)s"
+msgstr "„%(q)s“ — %(region)s"
+
+#, python-format
+msgid "%(category)s experiences in %(region)s"
+msgstr "%(category)s doživljaji — %(region)s"
+
+#, python-format
+msgid "“%(q)s”"
+msgstr "„%(q)s“"
+
+#, python-format
+msgid "No experiences match “%(q)s” on %(date)s"
+msgstr "Nijedan doživljaj ne odgovara upitu „%(q)s“ za %(date)s"
+
+#, python-format
+msgid "No experiences match “%(q)s”"
+msgstr "Nijedan doživljaj ne odgovara upitu „%(q)s“"
+
+#, python-format
+msgid "Nothing left to book on %(date)s"
+msgstr "Za %(date)s nema slobodnih mjesta"
+
+#, python-format
+msgid "No products match “%(q)s”"
+msgstr "Nijedan proizvod ne odgovara upitu „%(q)s“"
+
+#, python-format
+msgid "%(title)s on %(date)s"
+msgstr "%(title)s, %(date)s"
+
+msgid "Try kayaking, Kotor, wine…"
+msgstr "Npr. kajak, Kotor, vino…"
+
+msgid "Search local goods"
+msgstr "Pretražite domaće proizvode"
+
+msgid "Any experience"
+msgstr "Bilo koji doživljaj"
+
+msgid "All of Montenegro"
+msgstr "Cijela Crna Gora"
+
+msgid "Clear search"
+msgstr "Obriši pretraživanje"
+
+msgid "Clear date"
+msgstr "Obriši datum"
+
+msgid "Edit search"
+msgstr "Uredi pretraživanje"
+
+msgid "Close"
+msgstr "Zatvori"
+
+msgid "Suggestions"
+msgstr "Prijedlozi"
+
+msgid "Best match"
+msgstr "Najrelevantnije"
+
+msgid "Active filters"
+msgstr "Aktivni filtri"
+
+#, python-format
+msgid "Remove filter %(label)s"
+msgstr "Ukloni filtar %(label)s"
+
+msgid "Close matches"
+msgstr "Približni rezultati"
+
+msgid "Popular categories"
+msgstr "Popularne kategorije"
+
+# ── Wishlist (the wishlist app's own pages) ──
+msgid "Saved for later"
+msgstr "Spremljeno za kasnije"
+
+msgid "Nothing saved yet."
+msgstr "Još ništa nije spremljeno."
+
+msgid "Browse the shop"
+msgstr "Pregledajte ponudu"
+
+msgid "Shared wishlist"
+msgstr "Podijeljena lista želja"
+
+msgid "Shared with you."
+msgstr "Podijeljeno s vama."
+
+#, python-format
+msgid "Lowest price in the 30 days before this reduction: %(price)s"
+msgstr "Najniža cijena u 30 dana prije ovog sniženja: %(price)s"
+
+#, python-format
+msgid "Average rating %(avg)s out of 5 from %(count)s review"
+msgid_plural "Average rating %(avg)s out of 5 from %(count)s reviews"
+msgstr[0] "Prosječna ocjena %(avg)s od 5, na temelju %(count)s recenzije"
+msgstr[1] "Prosječna ocjena %(avg)s od 5, na temelju %(count)s recenzije"
+msgstr[2] "Prosječna ocjena %(avg)s od 5, na temelju %(count)s recenzija"
+
+#, python-format
+msgid "(%(count)s review)"
+msgid_plural "(%(count)s reviews)"
+msgstr[0] "(%(count)s recenzija)"
+msgstr[1] "(%(count)s recenzije)"
+msgstr[2] "(%(count)s recenzija)"
+
+#, python-format
+msgid "%(percent)s%% verified buyers"
+msgstr "%(percent)s%% provjerenih kupaca"
+
+#, python-format
+msgid "%(count)s ordered in %(window)s"
+msgid_plural "%(count)s ordered in %(window)s"
+msgstr[0] "%(count)s narudžba u %(window)s"
+msgstr[1] "%(count)s narudžbe u %(window)s"
+msgstr[2] "%(count)s narudžbi u %(window)s"
+
+msgid "the last hour"
+msgstr "posljednjem satu"
+
+#, python-format
+msgid "the last %(n)d hour"
+msgid_plural "the last %(n)d hours"
+msgstr[0] "posljednjem %(n)d satu"
+msgstr[1] "posljednja %(n)d sata"
+msgstr[2] "posljednjih %(n)d sati"
+
+msgid "the last day"
+msgstr "posljednjem danu"
+
+#, python-format
+msgid "the last %(n)d day"
+msgid_plural "the last %(n)d days"
+msgstr[0] "posljednjem %(n)d danu"
+msgstr[1] "posljednja %(n)d dana"
+msgstr[2] "posljednjih %(n)d dana"
+
+msgid "the last week"
+msgstr "posljednjem tjednu"
+
+#, python-format
+msgid "the last %(n)d week"
+msgid_plural "the last %(n)d weeks"
+msgstr[0] "posljednjem %(n)d tjednu"
+msgstr[1] "posljednja %(n)d tjedna"
+msgstr[2] "posljednjih %(n)d tjedana"
+
+msgid "This product's description was written with the help of AI."
+msgstr "Opis ovog proizvoda napisan je uz pomoć umjetne inteligencije."
+
+msgid "Product safety information"
+msgstr "Informacije o sigurnosti proizvoda"
+
+msgid "Manufacturer"
+msgstr "Proizvođač"
+
+msgid "Responsible person in the EU"
+msgstr "Odgovorna osoba u EU"
+
+msgid "Warnings and safety information"
+msgstr "Upozorenja i informacije o sigurnosti"
+
+msgid "Instructions and safety information"
+msgstr "Upute i informacije o sigurnosti"
+
+msgid "Add apartment, suite, etc."
+msgstr "Dodajte stan, kat i sl."
+
+msgid "Add a phone number for delivery updates"
+msgstr "Dodajte broj telefona za obavijesti o dostavi"
+
+msgid "Choose a country"
+msgstr "Odaberite državu"
+
+msgid "Express checkout"
+msgstr "Brza naplata"
+
+msgid "Standard delivery"
+msgstr "Standardna dostava"
+
+msgid "The payment did not go through. Try again, or check out below."
+msgstr "Plaćanje nije prošlo. Pokušajte ponovo ili završite kupnju ispod."
+
+msgid "Pay another way"
+msgstr "Platite na drugi način"
+
+msgid "Your cart is empty."
+msgstr "Vaša košarica je prazna."
+
+msgid "We could not price delivery to this address."
+msgstr "Nismo mogli izračunati cijenu dostave na ovu adresu."
+
+msgid "We do not deliver to this address."
+msgstr "Ne dostavljamo na ovu adresu."
+
+msgid "Please check out below."
+msgstr "Završite kupnju ispod."
+
+msgid "A valid email is required."
+msgstr "Potrebna je ispravna adresa e-pošte."
+
+msgid "Please choose a full delivery address."
+msgstr "Odaberite punu adresu za dostavu."
+
+msgid "That delivery option is no longer available. Please choose again."
+msgstr "Ta opcija dostave više nije dostupna. Odaberite ponovo."
+
+msgid "The total changed for this address. Please check it and pay again."
+msgstr "Ukupan iznos za ovu adresu se promijenio. Provjerite ga i platite ponovo."
+
+msgid "The order could not be placed."
+msgstr "Narudžba nije mogla biti izvršena."
+
+msgid "Property type"
+msgstr "Vrsta smještaja"
+
+msgid "Your rating"
+msgstr "Vaša ocjena"
+
+msgid "Time"
+msgstr "Vrijeme"
+
+msgid "Main"
+msgstr "Glavni izbornik"
+
+msgid "Menu"
+msgstr "Izbornik"
+
+msgid "Add-on name"
+msgstr "Naziv dodatka"
+
+msgid "Add-on price"
+msgstr "Cijena dodatka"
+
+msgid "Price per"
+msgstr "Cijena po"
+
+msgid "Notice"
+msgstr "Obavijest"
+
+msgid "The Bay of Kotor, Montenegro"
+msgstr "Bokokotorski zaljev, Crna Gora"
+
+msgid "For investors"
+msgstr "Za investitore"
+
+msgid "The marketplace for Montenegro’s experiences"
+msgstr "Platforma za doživljaje u Crnoj Gori"
+
+msgid "Talk to the team"
+msgstr "Razgovarajte s timom"
+
+msgid "See the opportunity"
+msgstr "Pogledajte priliku"
+
+msgid "On the site today"
+msgstr "Danas na web-mjestu"
+
+msgid "Hotels and stays"
+msgstr "Hoteli i smještaj"
+
+msgid "Local hosts"
+msgstr "Lokalni domaćini"
+
+msgid "Regions covered"
+msgstr "Pokrivenih regija"
+
+msgid "Languages on every page"
+msgstr "Jezika na svakoj stranici"
+
+msgid "01 · The market"
+msgstr "01 · Tržište"
+
+msgid "A small country with a large visitor economy"
+msgstr "Mala zemlja s velikom turističkom privredom"
+
+msgid "Source"
+msgstr "Izvor"
+
+msgid "tourist arrivals in 2025"
+msgstr "dolazaka turista u 2025."
+
+msgid "2.7 million"
+msgstr "2,7 milijuna"
+
+msgid "of overnight stays were by foreign visitors"
+msgstr "noćenja ostvarili su strani gosti"
+
+msgid "95.8%%"
+msgstr "95,8%%"
+
+msgid "tourism revenue in 2024, a central bank estimate"
+msgstr "prihod od turizma u 2024., procjena središnje banke"
+
+msgid "€1.5 billion"
+msgstr "1,5 milijardi €"
+
+msgid "airport passengers in 2025, the first year above three million"
+msgstr "putnika u zračnim lukama u 2025., prvi put više od tri milijuna"
+
+msgid "3.1 million"
+msgstr "3,1 milijun"
+
+msgid "cruise passengers on 496 ship calls in 2025"
+msgstr "putnika s kruzera na 496 uplovljavanja u 2025."
+
+msgid "630,000+"
+msgstr "630.000+"
+
+msgid "02 · The opportunity"
+msgstr "02 · Prilika"
+
+msgid "Experiences are the least digital part of travel"
+msgstr "Doživljaji su najmanje digitalizirani dio putovanja"
+
+msgid "Share of bookings made online"
+msgstr "Udio rezervacija napravljenih online"
+
+msgid "Experiences compared with travel overall, 2025."
+msgstr "Doživljaji u usporedbi s putovanjima općenito, 2025."
+
+msgid "Tours, activities and attractions"
+msgstr "Ture, aktivnosti i atrakcije"
+
+msgid "33%%"
+msgstr "33%%"
+
+msgid "Travel overall"
+msgstr "Putovanja općenito"
+
+msgid "64%%"
+msgstr "64%%"
+
+msgid "$271 billion"
+msgstr "271 milijarda $"
+
+msgid "experiences market, 2025"
+msgstr "tržište doživljaja, 2025."
+
+msgid "$342 billion"
+msgstr "342 milijarde $"
+
+msgid "forecast for 2029"
+msgstr "prognoza za 2029."
+
+msgid "03 · The gap in Montenegro"
+msgstr "03 · Praznina u Crnoj Gori"
+
+msgid "Demand is on the coast. Much of the best of the country is inland."
+msgstr "Potražnja je na obali. Velik dio najboljeg što zemlja nudi je u unutrašnjosti."
+
+msgid "Nine nights in ten on the coast"
+msgstr "Devet od deset noćenja na obali"
+
+msgid "Small, owner-run hosts"
+msgstr "Mali domaćini koje vode sami vlasnici"
+
+msgid "Global sites cover the famous few"
+msgstr "Globalna web-mjesta pokrivaju samo najpoznatije"
+
+msgid "04 · What we built"
+msgstr "04 · Što smo izgradili"
+
+msgid "One place for the whole trip"
+msgstr "Jedno mjesto za cijelo putovanje"
+
+msgid "Experiences, stays and local products"
+msgstr "Doživljaji, smještaj i lokalni proizvodi"
+
+msgid "Search that knows the country"
+msgstr "Pretraživanje koje poznaje zemlju"
+
+msgid "Reviewed local hosts"
+msgstr "Provjereni lokalni domaćini"
+
+msgid "Two languages, properly"
+msgstr "Dva jezika, kako treba"
+
+msgid "Sold where people shop"
+msgstr "Prodaja tamo gdje ljudi kupuju"
+
+msgid "Ready for AI assistants"
+msgstr "Spremno za AI asistente"
+
+msgid "05 · Business model"
+msgstr "05 · Poslovni model"
+
+msgid "How the platform earns"
+msgstr "Kako platforma zarađuje"
+
+msgid "Service fee on every experience booking"
+msgstr "Naknada za uslugu na svaku rezervaciju doživljaja"
+
+msgid "On the site"
+msgstr "Na web-mjestu"
+
+msgid "More to sell on the same trip"
+msgstr "Više za prodaju na istom putovanju"
+
+msgid "New revenue lines"
+msgstr "Novi izvori prihoda"
+
+msgid "Our own engine, so the margin is ours"
+msgstr "Vlastita platforma, pa je i marža naša"
+
+msgid "06 · Scale"
+msgstr "06 · Rast"
+
+msgid "What the fee earns as the share grows"
+msgstr "Koliko naknada donosi kako udio raste"
+
+msgid "Illustrative scenarios, based on 2025 arrivals."
+msgstr "Ilustrativni scenariji, na temelju dolazaka u 2025."
+
+msgid "Share of arrivals"
+msgstr "Udio dolazaka"
+
+msgid "Guests a year"
+msgstr "Gostiju godišnje"
+
+msgid "Booking value"
+msgstr "Vrijednost rezervacija"
+
+msgid "Fee revenue"
+msgstr "Prihod od naknade"
+
+msgid "Try your own numbers"
+msgstr "Isprobajte sa svojim brojevima"
+
+msgid "Move the sliders to see a year at different volumes."
+msgstr "Pomaknite klizače da vidite godinu pri različitom opsegu."
+
+msgid "Guests booked per year"
+msgstr "Gostiju s rezervacijom godišnje"
+
+msgid "Average spend per guest"
+msgstr "Prosječna potrošnja po gostu"
+
+msgid "Share of 2025 tourist arrivals"
+msgstr "Udio dolazaka turista u 2025."
+
+msgid "These are illustrations of the arithmetic, not forecasts or projections of returns."
+msgstr "Ovo su ilustracije računice, a ne prognoze niti projekcije prinosa."
+
+msgid "07 · Room to grow"
+msgstr "07 · Prostor za rast"
+
+msgid "Built to repeat across the region"
+msgstr "Napravljeno da se ponovi u regiji"
+
+msgid "Albania"
+msgstr "Albanija"
+
+msgid "12.5 million"
+msgstr "12,5 milijuna"
+
+msgid "Croatia"
+msgstr "Hrvatska"
+
+msgid "21.8 million"
+msgstr "21,8 milijuna"
+
+msgid "Visitors in 2025: tourist arrivals in Montenegro and Croatia, entries by foreign nationals in Albania."
+msgstr "Posjetitelji u 2025.: dolasci turista u Crnoj Gori i Hrvatskoj, ulasci stranih državljana u Albaniji."
+
+msgid "08 · Where we fit"
+msgstr "08 · Gdje se uklapamo"
+
+msgid "The best way to book this one country"
+msgstr "Najbolji način da se rezervira baš ova zemlja"
+
+msgid "Visitors to Montenegro have three ways to book an experience today."
+msgstr "Posjetitelji Crne Gore danas imaju tri načina da rezerviraju doživljaj."
+
+msgid "Global experience platforms"
+msgstr "Globalne platforme za doživljaje"
+
+msgid "What they lack"
+msgstr "Što im nedostaje"
+
+msgid "Local depth, Serbian, stays and products together, local relationships."
+msgstr "Lokalna dubina, srpski jezik, smještaj i proizvodi na jednom mjestu, lokalne veze."
+
+msgid "Our answer"
+msgstr "Naš odgovor"
+
+msgid "The whole country in one place, in both languages, with reviewed local hosts."
+msgstr "Cijela zemlja na jednom mjestu, na oba jezika, s provjerenim lokalnim domaćinima."
+
+msgid "Hotel booking sites"
+msgstr "Web-mjesta za rezervaciju hotela"
+
+msgid "Little or nothing for what to do after arrival."
+msgstr "Malo ili ništa o tome što raditi po dolasku."
+
+msgid "Stays and experiences in one place, and day trips sold through hotels."
+msgstr "Smještaj i doživljaji na jednom mjestu, i jednodnevni izleti koji se prodaju preko hotela."
+
+msgid "Local agencies and quay kiosks"
+msgstr "Lokalne agencije i kiosci na rivi"
+
+msgid "Booking ahead, comparison, card payment, being found online."
+msgstr "Rezervacija unaprijed, usporedba, plaćanje karticom, vidljivost na internetu."
+
+msgid "We bring these operators online instead of competing with them."
+msgstr "Ove operatere dovodimo na internet umjesto da se s njima natječemo."
+
+msgid "09 · Use of investment"
+msgstr "09 · Namjena investicije"
+
+msgid "What investment speeds up"
+msgstr "Što investicija ubrzava"
+
+msgid "More hosts in every region"
+msgstr "Više domaćina u svakoj regiji"
+
+msgid "Sign, verify and present local hosts across the country ahead of the 2027 season."
+msgstr "Ugovoriti, provjeriti i predstaviti lokalne domaćine diljem zemlje prije sezone 2027."
+
+msgid "Tools hosts run themselves"
+msgstr "Alati kojima domaćini upravljaju sami"
+
+msgid "Calendars, prices and payouts that each host manages on their own."
+msgstr "Kalendari, cijene i isplate kojima svaki domaćin upravlja sam."
+
+msgid "Distribution"
+msgstr "Distribucija"
+
+msgid "Day trips sold through hotels and cruise agents, and more reach through Google, Meta and AI assistants."
+msgstr "Jednodnevni izleti koji se prodaju preko hotela i agenata za kruzere, i veći doseg preko Googlea, Mete i AI asistenata."
+
+msgid "The next country"
+msgstr "Sljedeća zemlja"
+
+msgid "Take the same platform to the region once the model is proven in Montenegro."
+msgstr "Ista platforma u regiji, kada se model dokaže u Crnoj Gori."
+
+msgid "Let’s talk"
+msgstr "Razgovarajmo"
+
+msgid "Contact the team"
+msgstr "Kontaktirajte tim"
+
+msgid "Sources"
+msgstr "Izvori"
+
+msgid "Where the numbers come from"
+msgstr "Odakle su brojevi"
+
+msgid "MONSTAT, Statistical Office of Montenegro"
+msgstr "MONSTAT, Uprava za statistiku Crne Gore"
+
+msgid "MINA news agency"
+msgstr "Agencija MINA"
+
+msgid "This page is for information only. It is not an offer to sell, or a request for an offer to buy, any securities. The scenarios illustrate arithmetic and are not forecasts."
+msgstr "Ova stranica služi samo za informiranje. Nije ponuda za prodaju niti poziv na davanje ponude za kupnju bilo kakvih vrijednosnih papira. Scenariji ilustriraju računicu i nisu prognoze."
+
+msgid "Montenegro Experience brings the country’s tours, activities, stays and local products together in one place, in English and Serbian, on a commerce engine we built ourselves. We are looking for investors to help it grow."
+msgstr "Montenegro Experience okuplja ture, aktivnosti, smještaj i lokalne proizvode iz cijele zemlje na jednom mjestu, na engleskom i srpskom, na platformi za online prodaju koju smo sami izgradili. Tražimo investitore koji će joj pomoći da raste."
+
+msgid "Montenegro has about 620,000 residents and welcomed more than 2.7 million tourists in 2025. Tourism is the core of its economy, nearly all of it international, and it is still growing."
+msgstr "Crna Gora ima oko 620.000 stanovnika, a 2025. ugostila je više od 2,7 milijuna turista. Turizam je okosnica njezina gospodarstva, gotovo u potpunosti međunarodni, i dalje raste."
+
+msgid "Tours, activities and attractions are travel’s third-largest sector, worth $271 billion in 2025 and forecast to reach $342 billion by 2029."
+msgstr "Ture, aktivnosti i atrakcije treći su najveći sektor putovanja, vrijedan 271 milijardu dolara u 2025., a prognoza je 342 milijarde do 2029."
+
+msgid "Yet only a third of experience bookings are made online, against almost two thirds for travel overall, and one operator in three has no online booking at all."
+msgstr "Ipak, samo se trećina rezervacija doživljaja radi online, naspram gotovo dvije trećine kod putovanja općenito, a svaki treći organizator uopće nema online rezervacije."
+
+msgid "Visitors book the flight and the hotel online, then book what they do after they land on the quay, at the hotel desk or not at all. That gap is the market we are building for."
+msgstr "Posjetitelji let i hotel rezerviraju online, a ono što će raditi nakon dolaska rezerviraju na rivi, na recepciji hotela ili nikako. Ta praznina je tržište za koje gradimo."
+
+msgid "In 2025, 92.6%% of overnight stays were in seaside resorts. Mountains, canyons, Lake Skadar, monasteries and wineries are reached on day trips, and a day trip needs a booking made before the visitor leaves the hotel."
+msgstr "U 2025. godini 92,6%% noćenja ostvareno je u primorskim mjestima. Do planina, kanjona, Skadarskog jezera, samostana i vinarija stiže se jednodnevnim izletima, a izlet traži rezervaciju prije nego što gost izađe iz hotela."
+
+msgid "Skippers, mountain guides, family wineries and cooking hosts sell much of what makes the country special. Many of them are hard to find online, and visitors can’t compare them."
+msgstr "Skiperi, planinski vodiči, obiteljske vinarije i domaćini kuhanja prodaju velik dio onoga što zemlju čini posebnom. Mnoge od njih teško je pronaći na internetu, a posjetitelji ih ne mogu usporediti."
+
+msgid "International platforms list the best-known excursions, mostly in English. The long tail of local experiences, stays and products is thin, and few of them offer Serbian, the language of the country and of many regional visitors."
+msgstr "Međunarodne platforme nude najpoznatije izlete, uglavnom na engleskom. Ponuda lokalnih doživljaja, smještaja i proizvoda je oskudna, a malo ih nudi srpski, jezik zemlje i mnogih gostiju iz regije."
+
+msgid "montenegro-experience.me covers what to do, where to stay and what to take home, across the whole country. It is live today."
+msgstr "montenegro-experience.me pokriva što raditi, gdje odsjesti i što ponijeti kući, u cijeloj zemlji. Web-mjesto radi već danas."
+
+msgid "Tours and activities, hotels and stays, an events calendar, gift cards, and a shop of Montenegrin goods such as Vranac wine, olive oil, honey and Njeguši prosciutto."
+msgstr "Ture i aktivnosti, hoteli i smještaj, kalendar događanja, darovne kartice i trgovina crnogorskim proizvodima poput vranca, maslinova ulja, meda i njeguškog pršuta."
+
+msgid "One search for experiences, places and stays, by region, category and date. It understands typos, accents, and Serbian in Latin or Cyrillic script."
+msgstr "Jedno pretraživanje za doživljaje, mjesta i smještaj, po regiji, kategoriji i datumu. Razumije tipfelere, akcente i srpski na latinici ili ćirilici."
+
+msgid "Every host applies to join, and the team reviews each application before the host’s listings go live."
+msgstr "Svaki domaćin podnosi prijavu, a tim pregledava svaku prijavu prije nego što domaćinova ponuda bude objavljena."
+
+msgid "Every page exists in English and in Serbian, and each is linked to the other so search engines show visitors the right one."
+msgstr "Svaka stranica postoji na engleskom i na srpskom, i međusobno su povezane tako da tražilice svakom posjetitelju prikažu pravu."
+
+msgid "The catalogue feeds Google Shopping and the Meta catalogues behind Facebook and Instagram."
+msgstr "Katalog se šalje u Google Shopping i Meta kataloge za Facebook i Instagram."
+
+msgid "The site publishes a machine-readable catalogue and a guide for AI assistants, so trip-planning tools can find and describe what is on offer."
+msgstr "Web-mjesto objavljuje katalog koji strojevi mogu čitati i vodič za AI asistente, pa alati za planiranje putovanja mogu pronaći i opisati ponudu."
+
+#, python-format
+msgid "%(pct)s%%"
+msgstr "%(pct)s%%"
+
+msgid "The fee is added to the guest’s price, so hosts keep their own price. Guests see the full total before they confirm."
+msgstr "Naknada se dodaje na cijenu za gosta, pa domaćini zadržavaju svoju cijenu. Gosti vide ukupan iznos prije potvrde."
+
+msgid "Hotels and stays, gift cards that bring in new guests, and a shop of Montenegrin products for visitors and for the diaspora all year."
+msgstr "Hoteli i smještaj, darovne kartice koje dovode nove goste i trgovina crnogorskim proizvodima za posjetitelje i za dijasporu tijekom cijele godine."
+
+msgid "Promoted listings for hosts, day trips sold through hotels and cruise agents, and bookings that come in through AI assistants."
+msgstr "Istaknute ponude za domaćine, jednodnevni izleti koji se prodaju preko hotela i agenata za kruzere, i rezervacije koje stižu preko AI asistenata."
+
+msgid "The marketplace runs on Morpheus, a commerce engine we build ourselves. We rent no booking engine and pay no platform a share of revenue. Running costs barely grow with each booking, apart from card processing."
+msgstr "Platforma radi na Morpheusu, sustavu za online prodaju koji sami gradimo. Ne iznajmljujemo sustav za rezervacije i nikome ne dajemo dio prihoda. Troškovi rada gotovo ne rastu s brojem rezervacija, osim troškova kartičnog plaćanja."
+
+msgid "The same engine already runs four online stores, so the parts a modern marketplace needs are built in and proven in production."
+msgstr "Isti sustav već pokreće četiri online trgovine, pa su dijelovi koji su suvremenoj platformi potrebni već ugrađeni i provjereni u radu."
+
+#, python-format
+msgid "Each scenario takes a share of Montenegro’s 2025 tourist arrivals, one experience per guest at %(price)s, the median price of an experience on the site today, and the %(pct)s%% service fee. Stays, gift cards and the shop come on top."
+msgstr "Svaki scenarij uzima udio dolazaka turista u Crnu Goru u 2025., jedan doživljaj po gostu po cijeni od %(price)s, što je srednja cijena doživljaja na web-mjestu danas, i naknadu za uslugu od %(pct)s%%. Smještaj, darovne kartice i trgovina dolaze povrh toga."
+
+#, python-format
+msgid "Fee revenue at %(pct)s%%"
+msgstr "Prihod od naknade od %(pct)s%%"
+
+msgid "On our engine, a new country is a new store, not a new build. Montenegro is where we prove the model. Its neighbours are much larger travel markets."
+msgstr "Na našem sustavu nova zemlja je nova trgovina, a ne nova izgradnja. Crna Gora je mjesto gdje dokazujemo model. Susjedne zemlje znatno su veća turistička tržišta."
+
+msgid "We are looking for investors and partners who know travel, marketplaces or the Adriatic region. We’ll walk you through the product, the plan and the numbers behind it."
+msgstr "Tražimo investitore i partnere koji poznaju putovanja, online platforme ili jadransku regiju. Provest ćemo vas kroz proizvod, plan i brojke iza njega."
+
+msgid "Investors"
+msgstr "Investitori"
+
+msgid "Montenegro Experience: the marketplace for the country’s experiences, stays and local products, and the market it serves."
+msgstr "Montenegro Experience: platforma za doživljaje, smještaj i lokalne proizvode Crne Gore, i tržište kojem služi."
+
+msgid "Croatia Experience"
+msgstr "Croatia Experience"
+
+msgid "Join Croatia Experience to book and save your favourites."
+msgstr "Pridružite se platformi Croatia Experience da biste rezervirali i spremili omiljene doživljaje."
+
+#, python-format
+msgid "%(name)s in %(location)s, Croatia"
+msgstr "%(name)s – %(location)s, Hrvatska"
+
+#, python-format
+msgid "%(location)s, Croatia"
+msgstr "%(location)s, Hrvatska"
+
+msgid "Try kayaking, Split, wine…"
+msgstr "Probajte: kajak, Split, vino…"
+
+msgid "All of Croatia"
+msgstr "Cijela Hrvatska"
+
+msgid "Croatia events calendar"
+msgstr "Kalendar događanja u Hrvatskoj"
+
+msgid "Net is your take-home (per-guest price × guests). Croatia Experience keeps the 12%% service fee guests pay on top. Payouts are settled to your registered account."
+msgstr "Neto je iznos koji vi dobivate (cijena po gostu × broj gostiju). Croatia Experience zadržava naknadu za uslugu od 12%% koju gosti plaćaju povrh cijene. Isplate se vrše na vaš registrirani račun."
+
+msgid "List your tours, activities or stays and reach travellers looking for the real Croatia. Apply to become a host and we'll set you up."
+msgstr "Objavite svoje ture, aktivnosti ili smještaj i dođite do putnika koji traže pravu Hrvatsku. Prijavite se kao domaćin i mi ćemo vam sve postaviti."
+
+msgid "e.g. Split sunset kayak tour"
+msgstr "npr. vožnja kajakom u zalazak sunca u Splitu"
+
+msgid "List your first tour, activity or stay and start reaching travellers looking for the real Croatia."
+msgstr "Objavite svoju prvu turu, aktivnost ili smještaj i počnite dolaziti do putnika koji traže pravu Hrvatsku."
+
+msgid "The Croatian Adriatic coast"
+msgstr "Hrvatska jadranska obala"
+
+msgid "The marketplace for Croatia’s experiences"
+msgstr "Platforma za doživljaje u Hrvatskoj"
+
+msgid "The Adriatic’s largest visitor economy"
+msgstr "Najveća turistička ekonomija Jadrana"
+
+msgid "overnight stays in 2025"
+msgstr "noćenja u 2025."
+
+msgid "110 million"
+msgstr "110 milijuna"
+
+msgid "of nights in commercial accommodation were by foreign visitors"
+msgstr "noćenja u komercijalnom smještaju ostvarili su strani gosti"
+
+msgid "90.3%%"
+msgstr "90,3%%"
+
+msgid "spent by foreign visitors in 2025, a central bank figure"
+msgstr "potrošili su strani posjetitelji u 2025., podatak središnje banke"
+
+msgid "€15.3 billion"
+msgstr "15,3 milijarde €"
+
+msgid "airport passengers in 2025"
+msgstr "putnika u zračnim lukama u 2025."
+
+msgid "14 million"
+msgstr "14 milijuna"
+
+msgid "cruise passengers on 758 cruises in 2025"
+msgstr "putnika na kružnim putovanjima, na 758 kružnih putovanja u 2025."
+
+msgid "1.06 million"
+msgstr "1,06 milijuna"
+
+msgid "03 · The gap in Croatia"
+msgstr "03 · Praznina u Hrvatskoj"
+
+msgid "Demand is on the coast. Much of the best of the country is a day trip away."
+msgstr "Potražnja je na obali. Velik dio najboljeg što zemlja nudi udaljen je jedan izlet."
+
+msgid "Visitors stay by the sea"
+msgstr "Gosti borave uz more"
+
+msgid "Visitors in 2025: tourist arrivals in Croatia and Montenegro, entries by foreign nationals in Albania."
+msgstr "Posjetitelji u 2025.: dolasci turista u Hrvatsku i Crnu Goru, ulasci stranih državljana u Albaniju."
+
+msgid "Visitors to Croatia have three ways to book an experience today."
+msgstr "Posjetitelji Hrvatske danas imaju tri načina da rezerviraju doživljaj."
+
+msgid "Local depth, Croatian, stays and products together, local relationships."
+msgstr "Lokalnu dubinu, hrvatski jezik, smještaj i proizvode na jednom mjestu, lokalne veze."
+
+msgid "Take the same platform further along the Adriatic and into Central Europe."
+msgstr "Proširiti istu platformu dalje duž Jadrana i u srednju Europu."
+
+msgid "Croatian National Tourist Board"
+msgstr "Hrvatska turistička zajednica"
+
+msgid "Croatian Bureau of Statistics"
+msgstr "Državni zavod za statistiku"
+
+msgid "Croatia Experience brings the country’s tours, activities, stays and local products together in one place, in English and Croatian, on a commerce engine we built ourselves. We are looking for investors to help it grow."
+msgstr "Croatia Experience okuplja ture, aktivnosti, smještaj i lokalne proizvode iz cijele zemlje na jednom mjestu, na engleskom i hrvatskom, na trgovačkoj platformi koju smo sami izgradili. Tražimo investitore koji će joj pomoći da raste."
+
+msgid "Croatia has about 3.9 million residents and welcomed more than 21.8 million tourists in 2025, over five for every resident. Tourism directly makes up about 12%% of the economy, and nine in ten nights in hotels, camps and other commercial accommodation are spent by visitors from abroad."
+msgstr "Hrvatska ima oko 3,9 milijuna stanovnika, a 2025. je ugostila više od 21,8 milijuna turista, više od pet na svakog stanovnika. Turizam izravno čini oko 12%% gospodarstva, a devet od deset noćenja u hotelima, kampovima i drugom komercijalnom smještaju ostvaruju gosti iz inozemstva."
+
+msgid "Most visitors stay on the coast and the islands. National parks, Istria’s hill towns, wineries and continental Croatia are reached on day trips, and a day trip needs a booking made before the visitor leaves the apartment."
+msgstr "Većina gostiju boravi na obali i otocima. Do nacionalnih parkova, istarskih gradića na brežuljcima, vinarija i kontinentalne Hrvatske stiže se izletima, a izlet treba rezervirati prije nego što gost izađe iz apartmana."
+
+msgid "Skippers, kayak guides, family wineries, olive growers and cooking hosts sell much of what makes the country special. Many of them are hard to find online, and visitors can’t compare them."
+msgstr "Skiperi, vodiči za kajak, obiteljske vinarije, maslinari i domaćini kuharskih radionica nude velik dio onoga što zemlju čini posebnom. Mnoge od njih teško je pronaći na internetu, a posjetitelji ih ne mogu usporediti."
+
+msgid "International platforms list the best-known excursions, mostly in English. The long tail of local experiences, stays and products is thin, and few of them offer Croatian, the language of the country and of its many domestic and regional visitors."
+msgstr "Međunarodne platforme nude najpoznatije izlete, uglavnom na engleskom. Ponuda manjih lokalnih doživljaja, smještaja i proizvoda je oskudna, a malo ih je na hrvatskom, jeziku zemlje i brojnih domaćih i regionalnih gostiju."
+
+msgid "croatia-experience.me covers what to do, where to stay and what to take home, across the whole country, on the same platform as Montenegro Experience."
+msgstr "croatia-experience.me pokriva što raditi, gdje odsjesti i što ponijeti kući, u cijeloj zemlji, na istoj platformi kao Montenegro Experience."
+
+msgid "Tours and activities, hotels and stays, an events calendar, gift cards, and a shop of Croatian goods such as Istrian olive oil, Dalmatian wine, Pag cheese and lavender from Hvar."
+msgstr "Ture i aktivnosti, hoteli i smještaj, kalendar događanja, poklon-kartice i trgovina hrvatskih proizvoda poput istarskog maslinovog ulja, dalmatinskog vina, paškog sira i hvarske lavande."
+
+msgid "One search for experiences, places and stays, by region, category and date. It understands typos and Croatian letters, typed with accents or without."
+msgstr "Jedna pretraga za doživljaje, mjesta i smještaj, po regiji, kategoriji i datumu. Razumije tipfelere i hrvatska slova, upisana s dijakriticima ili bez njih."
+
+msgid "Every page exists in English and in Croatian, and each is linked to the other so search engines show visitors the right one."
+msgstr "Svaka stranica postoji na engleskom i na hrvatskom, a međusobno su povezane kako bi tražilice posjetiteljima prikazale pravu."
+
+msgid "Hotels and stays, gift cards that bring in new guests, and a shop of Croatian products for visitors and for the diaspora all year."
+msgstr "Hoteli i smještaj, poklon-kartice koje dovode nove goste i trgovina hrvatskih proizvoda za posjetitelje i iseljenike tijekom cijele godine."
+
+msgid "The same engine already runs other online stores, Montenegro Experience among them, so the parts a modern marketplace needs are built in and proven in production."
+msgstr "Ista platforma već pokreće druge internetske trgovine, među njima i Montenegro Experience, pa su dijelovi koje moderna platforma treba već ugrađeni i provjereni u radu."
+
+#, python-format
+msgid "Each scenario takes a share of Croatia’s 2025 tourist arrivals, one experience per guest at %(price)s, the median price of an experience on the site today, and the %(pct)s%% service fee. Stays, gift cards and the shop come on top."
+msgstr "Svaki scenarij uzima udio dolazaka turista u Hrvatsku u 2025., jedan doživljaj po gostu po cijeni od %(price)s, što je srednja cijena doživljaja na stranici danas, i naknadu za uslugu od %(pct)s%%. Smještaj, poklon-kartice i trgovina dolaze povrh toga."
+
+msgid "On our engine, a new country is a new store, not a new build. Montenegro Experience already runs on it, and Croatia is the largest travel market on the eastern Adriatic."
+msgstr "Na našoj platformi nova zemlja je nova trgovina, a ne nova izgradnja. Montenegro Experience već radi na njoj, a Hrvatska je najveće turističko tržište istočnog Jadrana."
+
+msgid "Shop Croatia"
+msgstr "Trgovina Hrvatska"
+
+msgid "Locally made Croatian products from trusted vendors — shipped or ready for pickup along the Adriatic coast."
+msgstr "Lokalno izrađeni hrvatski proizvodi od pouzdanih prodavača — s dostavom ili za preuzimanje duž jadranske obale."
+
+msgid "Sail between the Dalmatian islands, walk the lakes of Plitvice, raft the Cetina river or meet local olive oil and wine producers. Compare activities by destination, pace and travel style."
+msgstr "Plovite između dalmatinskih otoka, prošetajte Plitvičkim jezerima, spustite se raftingom niz Cetinu ili upoznajte lokalne proizvođače maslinovog ulja i vina. Usporedite aktivnosti po odredištu, tempu i stilu putovanja."
+
+msgid "How to choose a Croatia experience"
+msgstr "Kako odabrati doživljaj u Hrvatskoj"
+
+msgid "Start with Dubrovnik or Split and an island day, then add the lakes of Plitvice or Krka."
+msgstr "Počnite s Dubrovnikom ili Splitom i jednim danom na otoku, a zatim dodajte Plitvička jezera ili Krku."
+
+msgid "Look for Cetina rafting, Velebit and Paklenica hiking, sea kayaking and guided island cycling."
+msgstr "Potražite rafting na Cetini, planinarenje po Velebitu i Paklenici, vožnju morskim kajakom i vođenu vožnju biciklom po otocima."
+
+msgid "Choose old-town walks, Istrian hill towns, konoba food, wine tastings and host-led workshops."
+msgstr "Odaberite šetnje starim gradovima, istarske gradiće na brežuljcima, hranu iz konobe, degustacije vina i radionice s domaćinima."
+
+msgid "All places in Croatia"
+msgstr "Sva mjesta u Hrvatskoj"
+
+msgid "Explore Croatia"
+msgstr "Upoznajte Hrvatsku"
+
+msgid "From walled coastal towns to a thousand islands and the lakes inland, discover every corner of Croatia — where to go, when to visit, and what not to miss."
+msgstr "Od obalnih gradova okruženih zidinama do tisuću otoka i jezera u unutrašnjosti, otkrijte svaki kutak Hrvatske — kamo ići, kada doći i što ne propustiti."
+
+msgid "Explore Croatia by region"
+msgstr "Upoznajte Hrvatsku po regijama"
+
+msgid "Explore Croatia destinations"
+msgstr "Odredišta u Hrvatskoj"
+
+msgid "Where to stay in Croatia"
+msgstr "Gdje odsjesti u Hrvatskoj"
+
+msgid "Stay in Dubrovnik or Split for old-town atmosphere, choose an island or the Makarska Riviera for beaches, or head inland to Plitvice and Istria for quieter green country. Use the filters below, then compare each property with our destination guides before you book."
+msgstr "Odsjednite u Dubrovniku ili Splitu zbog atmosfere starog grada, odaberite otok ili Makarsku rivijeru zbog plaža ili krenite u unutrašnjost, na Plitvice i u Istru, zbog mirnijeg zelenog krajolika. Koristite filtre u nastavku, a zatim prije rezervacije usporedite svaki smještaj s našim vodičima po odredištima."
+
+msgid "Destination guides"
+msgstr "Vodiči po odredištima"
+
+msgid "Planning your Croatia stay"
+msgstr "Planiranje boravka u Hrvatskoj"
+
+msgid "Now accepting hosts across Croatia"
+msgstr "Primamo domaćine iz cijele Hrvatske"
+
+msgid "List your Croatia"
+msgstr "Objavite svoju Hrvatsku"
+
+msgid "Everything you need to grow your business in Croatia's booming tourism market."
+msgstr "Sve što vam treba za razvoj posla na rastućem turističkom tržištu Hrvatske."
+
+msgid "Be found by travellers planning a Croatia trip — in search, and in the AI assistants they increasingly ask."
+msgstr "Neka vas pronađu putnici koji planiraju put u Hrvatsku — u tražilicama i u AI asistentima koje sve češće pitaju."
+
+msgid "Your listing gets its own page in English and Croatian, structured data for Google, and a feed built for AI assistants — so travellers asking ChatGPT what to do in Split can be shown your tour. That is work most small operators never get to."
+msgstr "Vaša ponuda dobiva vlastitu stranicu na engleskom i hrvatskom, strukturirane podatke za Google i feed napravljen za AI asistente — pa putnicima koji ChatGPT pitaju što raditi u Splitu može biti prikazana vaša tura. To je posao do kojeg većina malih pružatelja usluga nikad ne stigne."
+
+msgid "Be one of the first hosts on a new Croatian platform — and set your terms while it is still being built."
+msgstr "Budite među prvim domaćinima na novoj hrvatskoj platformi — i postavite svoje uvjete dok se ona još gradi."
+
+msgid "Apply to become a vendor on Croatia Experience and reach travellers looking for the real thing."
+msgstr "Prijavite se kao prodavač na Croatia Experience i dođite do putnika koji traže ono pravo."
+
+msgid "e.g. Dalmatian olive oil gift box"
+msgstr "npr. poklon-paket dalmatinskog maslinovog ulja"
+
+msgid "Apply to sell on Croatia Experience — once approved, every product attributed to you appears here to edit."
+msgstr "Prijavite se za prodaju na Croatia Experience — nakon odobrenja ovdje će se pojaviti svaki proizvod koji vam je dodijeljen, spreman za uređivanje."
+
+msgid "Products are accessioned by the Croatia Experience team. Once an editor adds one, it shows up here for you to manage copy, pricing and status."
+msgstr "Proizvode unosi tim Croatia Experiencea. Kad urednik doda proizvod, pojavit će se ovdje kako biste uređivali tekst, cijenu i status."
+
+msgid "The Croatia locals would show you"
+msgstr "Hrvatska koju bi vam pokazali mještani"
+
+msgid "Croatia Experience is an independent travel marketplace, run by locals, for travellers. We list experiences from independent local hosts across Croatia — guides, small operators and family businesses."
+msgstr "Croatia Experience je neovisna turistička platforma koju vode mještani, za putnike. Nudimo doživljaje neovisnih lokalnih domaćina iz cijele Hrvatske — vodiča, malih pružatelja usluga i obiteljskih tvrtki."
+
+msgid "Bring Croatia home"
+msgstr "Ponesite Hrvatsku kući"
+
+msgid "Discover the beauty of Croatia through unique, handcrafted experiences."
+msgstr "Otkrijte ljepotu Hrvatske kroz jedinstvene, pažljivo osmišljene doživljaje."
+
+msgid "Get hand-picked Croatia experiences"
+msgstr "Primajte pomno odabrane doživljaje iz Hrvatske"
+
+msgid "Croatia Experience — tours, stays & hidden gems"
+msgstr "Croatia Experience — ture, smještaj i skriveni dragulji"
+
+msgid "Unforgettable experiences along the Adriatic. Hand-picked tours, stays and hidden gems from trusted local hosts across Croatia."
+msgstr "Nezaboravni doživljaji duž Jadrana. Pomno odabrane ture, smještaj i skriveni dragulji pouzdanih lokalnih domaćina iz cijele Hrvatske."
+
+msgid "Discover Croatia"
+msgstr "Otkrijte Hrvatsku"
+
+msgid "Digital gift cards delivered instantly. Valid for 2 years. Redeemable on any experience across Croatia."
+msgstr "Digitalne poklon-kartice stižu odmah. Vrijede 2 godine. Mogu se iskoristiti za bilo koji doživljaj u Hrvatskoj."
+
+msgid "Stories from Croatia"
+msgstr "Priče iz Hrvatske"
+
+msgid "Travel notes, itineraries and stories from across Croatia — where to go, when to visit and what not to miss along the Adriatic."
+msgstr "Putne bilješke, itinerari i priče iz cijele Hrvatske — kamo ići, kada doći i što ne propustiti duž Jadrana."
+
+msgid "Across Croatia"
+msgstr "Diljem Hrvatske"
+
+msgid "Locally made goods, crafts and souvenirs from Croatia."
+msgstr "Lokalno izrađeni proizvodi, rukotvorine i suveniri iz Hrvatske."
+
+msgid "Plans change. Here’s how cancellations work across Croatia Experience."
+msgstr "Planovi se mijenjaju. Evo kako funkcioniraju otkazivanja na Croatia Experienceu."
+
+msgid "Every experience comes from one of these trusted local hosts — independent guides, makers, and small businesses across Croatia. Click into one to see everything they offer."
+msgstr "Svaki doživljaj dolazi od jednog od ovih pouzdanih lokalnih domaćina — neovisnih vodiča, obrtnika i malih tvrtki iz cijele Hrvatske. Kliknite na nekoga da vidite sve što nudi."
+
+msgid "Share your Croatia"
+msgstr "Podijelite svoju Hrvatsku"
+
+msgid "Istria"
+msgstr "Istra"
+
+msgid "Kvarner & the islands"
+msgstr "Kvarner i otoci"
+
+msgid "Zadar & Kornati"
+msgstr "Zadar i Kornati"
+
+msgid "Šibenik & Krka"
+msgstr "Šibenik i Krka"
+
+msgid "Split & the central islands"
+msgstr "Split i srednjodalmatinski otoci"
+
+msgid "Dubrovnik & the south"
+msgstr "Dubrovnik i jug"
+
+msgid "Lika & Plitvice"
+msgstr "Lika i Plitvice"
+
+msgid "Zagreb"
+msgstr "Zagreb"
+
+msgid "Continental Croatia"
+msgstr "Kontinentalna Hrvatska"
+
+msgid "Elsewhere in Croatia"
+msgstr "Drugdje u Hrvatskoj"
+
+msgid "the Istrian peninsula, with Venetian harbour towns on the coast and hill towns, vineyards and truffle woods inland"
+msgstr "Istarski poluotok, s venecijanskim lučkim gradićima na obali te gradićima na brežuljcima, vinogradima i šumama tartufa u unutrašnjosti"
+
+msgid "the Kvarner Gulf, with Rijeka, the Opatija Riviera and the islands of Krk, Cres, Lošinj and Rab"
+msgstr "Kvarnerski zaljev, s Rijekom, Opatijskom rivijerom i otocima Krkom, Cresom, Lošinjem i Rabom"
+
+msgid "Zadar and its islands, between the Kornati archipelago and Paklenica"
+msgstr "Zadar i njegovi otoci, između otočja Kornati i Paklenice"
+
+msgid "Šibenik and the waterfalls of Krka National Park"
+msgstr "Šibenik i slapovi Nacionalnog parka Krka"
+
+msgid "Split, Diocletian's Palace and the islands of Brač, Hvar and Vis"
+msgstr "Split, Dioklecijanova palača i otoci Brač, Hvar i Vis"
+
+msgid "Dubrovnik's walled old town, the Elaphiti islands and the Pelješac peninsula"
+msgstr "Dubrovačka stara jezgra unutar zidina, Elafitski otoci i poluotok Pelješac"
+
+msgid "the Lika highlands, home to the Plitvice Lakes and the Velebit mountains"
+msgstr "Ličko gorje, dom Plitvičkih jezera i Velebita"
+
+msgid "Zagreb, Croatia's capital and main transport hub"
+msgstr "Zagreb, glavni grad Hrvatske i glavno prometno središte"
+
+msgid "continental Croatia, from the Zagorje hills to the Slavonian plains on the Danube"
+msgstr "Kontinentalna Hrvatska, od zagorskih brežuljaka do slavonskih ravnica na Dunavu"
+
+msgid "Experiences in Croatia"
+msgstr "Doživljaji u Hrvatskoj"
+
+msgid "Experiences in Croatia — book with local hosts"
+msgstr "Doživljaji u Hrvatskoj — rezervirajte kod lokalnih domaćina"
+
+#, python-format
+msgid "%(category)s experiences in Croatia"
+msgstr "%(category)s – doživljaji u Hrvatskoj"
+
+#, python-format
+msgid "Book %(category)s experiences in Croatia with trusted local hosts — instant confirmation, free cancellation on most tours."
+msgstr "Rezervirajte doživljaje iz kategorije %(category)s u Hrvatskoj kod pouzdanih lokalnih domaćina — trenutna potvrda, besplatno otkazivanje za većinu tura."
+
+#, python-format
+msgid "“%(q)s” in Croatia"
+msgstr "„%(q)s” u Hrvatskoj"
+
+msgid "Shop Croatia — local goods"
+msgstr "Trgovina Hrvatska — lokalni proizvodi"
+
+msgid "Destination guides to the best places to visit in Croatia — Istria, Kvarner, Dalmatia and its islands, Dubrovnik, the Plitvice Lakes and Zagreb."
+msgstr "Vodiči po najboljim mjestima za posjetiti u Hrvatskoj — Istra, Kvarner, Dalmacija i njezini otoci, Dubrovnik, Plitvička jezera i Zagreb."
+
+msgid "Croatia Events Calendar"
+msgstr "Kalendar događanja u Hrvatskoj"
+
+msgid "What's on in Croatia through the year — carnivals, summer festivals, open-air concerts, wine and food fairs and Advent in Zagreb."
+msgstr "Što se događa u Hrvatskoj tijekom godine — karnevali, ljetni festivali, koncerti na otvorenom, sajmovi vina i hrane te Advent u Zagrebu."
+
+#, python-format
+msgid "%(name)s in Croatia. Dates, location and what to expect."
+msgstr "%(name)s u Hrvatskoj. Datumi, lokacija i što možete očekivati."
+
+msgid "Hotels & stays in Croatia"
+msgstr "Hoteli i smještaj u Hrvatskoj"
+
+msgid "Hand-picked hotels, apartments and guesthouses across Croatia — from Istria and the Dalmatian islands to Dubrovnik and the lakes inland. Book your stay."
+msgstr "Pomno odabrani hoteli, apartmani i pansioni diljem Hrvatske — od Istre i dalmatinskih otoka do Dubrovnika i jezera u unutrašnjosti. Rezervirajte svoj boravak."
+
+msgid "Croatia Experience: the marketplace for the country’s experiences, stays and local products, and the market it serves."
+msgstr "Croatia Experience: platforma za doživljaje, smještaj i lokalne proizvode Hrvatske, i tržište kojem služi."
+
+msgid "Split and Dubrovnik combine historic old towns, ferries to the islands and easy day trips. Istria suits food and wine stays, while the Plitvice Lakes are the strongest choice for hiking."
+msgstr "Split i Dubrovnik spajaju povijesne stare gradove, trajekte do otoka i jednostavne izlete. Istra je dobar izbor za boravak uz hranu i vino, a Plitvička jezera najbolji su izbor za planinarenje."
+
+#, python-format
+msgid "Experiences to book in %(count)d region of Croatia"
+msgid_plural "Experiences to book in %(count)d regions of Croatia"
+msgstr[0] "Doživljaji za rezervaciju u %(count)d regiji Hrvatske"
+msgstr[1] "Doživljaji za rezervaciju u %(count)d regije Hrvatske"
+msgstr[2] "Doživljaji za rezervaciju u %(count)d regija Hrvatske"
+

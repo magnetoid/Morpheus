@@ -1,0 +1,53 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
+{% comment %}Head (title, ItemList, breadcrumbs) and the FAQPage node come from the
+head document; the planning questions below are the view's `page_faqs`, so the
+page and its markup say the same thing. The hand-written FAQPage this template
+used to carry asked differently worded questions than the ones shown.{% endcomment %}
+{% block content %}
+{% booking_listing_mode as listing_mode %}
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{% trans "Where to stay in Croatia" %}</h1>
+  <p class="text-muted-foreground mb-6">{% trans "Hand-picked hotels, resorts and apartments across the coast and mountains." %}</p>
+
+  <section class="rounded-2xl border border-border bg-card p-5 md:p-6 mb-8">
+    <h2 class="text-xl font-semibold text-foreground mb-2">{% trans "Find the right base for your trip" %}</h2>
+    <p class="text-muted-foreground leading-7">{% trans "Stay in Dubrovnik or Split for old-town atmosphere, choose an island or the Makarska Riviera for beaches, or head inland to Plitvice and Istria for quieter green country. Use the filters below, then compare each property with our destination guides before you book." %}</p>
+    <div class="flex flex-wrap gap-3 mt-4 text-sm font-medium">
+      <a href="/places/" class="text-primary hover:underline">{% trans "Destination guides" %}</a>
+      <a href="/regions/" class="text-primary hover:underline">{% trans "Explore Croatia by region" %}</a>
+    </div>
+  </section>
+
+  <form method="get" class="flex flex-wrap items-center gap-2 mb-8">
+    <select name="region" aria-label="{% trans 'Region' %}" onchange="this.form.submit()" class="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground">
+      <option value="">{% trans "All regions" %}</option>
+      {% for value, label in region_choices %}<option value="{{ value }}" {% if value == active_region %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="type" aria-label="{% trans 'Property type' %}" onchange="this.form.submit()" class="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground">
+      <option value="">{% trans "All types" %}</option>
+      {% for value, label in type_choices %}<option value="{{ value }}" {% if value == active_type %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </form>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    {% for p in properties %}{% include "booking_marketplace/stays/_hotel_card.html" %}
+    {% empty %}<p class="text-muted-foreground col-span-full">{% trans "No hotels match your filters yet." %}</p>{% endfor %}
+  </div>
+  {% if page_obj.has_other_pages %}
+  <nav aria-label="{% trans 'Pages' %}" class="flex flex-wrap items-center justify-center gap-2 mt-10 pt-6 border-t border-border">
+    {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Previous" %}</a>{% endif %}
+    <span class="px-4 text-sm text-muted-foreground">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+    {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Next" %}</a>{% endif %}
+  </nav>
+  {% endif %}
+
+  {% if page_faqs %}
+  <section class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-5" aria-labelledby="hotel-faq-heading">
+    <h2 id="hotel-faq-heading" class="md:col-span-3 text-2xl font-semibold text-foreground">{% trans "Planning your Croatia stay" %}</h2>
+    {% for f in page_faqs %}<article class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-2">{{ f.q }}</h3><p class="text-sm text-muted-foreground leading-6">{{ f.a }}</p></article>
+    {% endfor %}
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% load i18n %}
+
+{% comment %}The journal's name in this store's words. `{{ block.super }}` renders the
+base's `{% storefront_head %}` with the title below as its fallback, so the head
+document still owns every tag — the `{% block title %}` this replaced was never
+rendered (no base defines that block).{% endcomment %}
+{% block seo %}{% trans "Blog" as theme_title %}{% with seo_title=theme_title %}{{ block.super }}{% endwith %}{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <p class="eyebrow">{% trans "From the blog" %}</p>
+    <h1 class="display display-xl" style="margin: 1.5rem 0 1rem;">
+      {% trans "Stories from Croatia" %}<span class="text-accent">.</span>
+    </h1>
+    <p class="lede">
+      {% trans "Travel notes, itineraries and stories from across Croatia — where to go, when to visit and what not to miss along the Adriatic." %}
+    </p>
+  </div>
+</section>
+
+<section class="tight" style="padding-top: 1rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <div style="display: grid; gap: 2rem;">
+      {% for entry in entries %}
+      <article style="border-top: 1px solid var(--rule); padding-top: 1.25rem;">
+        <p class="meta">{{ entry.date_label }}</p>
+        <h2 style="font-family: var(--serif); font-size: 1.6rem; font-weight: 500; line-height: 1.2; margin: 0.6rem 0;">
+          <a href="/journal/{{ entry.slug }}/">{{ entry.title }}</a>
+        </h2>
+        <p style="color: var(--ink-2); line-height: 1.55;">{{ entry.excerpt }}</p>
+      </article>
+      {% endfor %}
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="{% trans 'Journal pages' %}" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);">
+      {% if page_obj.has_previous %}<a class="btn" href="{% page_href page_obj.previous_page_number %}" rel="prev">&larr; {% trans "Newer" %}</a>{% else %}<span></span>{% endif %}
+      <span class="meta">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+      {% if page_obj.has_next %}<a class="btn" href="{% page_href page_obj.next_page_number %}" rel="next">{% trans "Older" %} &rarr;</a>{% else %}<span></span>{% endif %}
+    </nav>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

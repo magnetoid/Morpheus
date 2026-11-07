@@ -1,0 +1,19 @@
+{% load i18n %}{% load booking_tags %}
+{% comment %}One block of a host's page — their experiences, stays or local goods.
+Contributed by booking_marketplace through STOREFRONT_VENDOR_SECTIONS; the
+storefront's vendor_detail renders each section with `section` in context.
+Reuses the listing cards so a host's page looks like the rest of the store.{% endcomment %}
+{% booking_listing_mode as listing_mode %}
+<section class="mb-12" aria-labelledby="host-{{ section.key }}">
+  <h2 id="host-{{ section.key }}" class="font-display text-xl font-semibold text-foreground mb-6 flex items-baseline gap-2">
+    {{ section.title }}
+    <span class="text-sm font-normal text-muted-foreground tabular-nums">{{ section.count }}</span>
+  </h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    {% if section.context.kind == 'stays' %}
+      {% for p in section.context.items %}{% include "booking_marketplace/stays/_hotel_card.html" %}{% endfor %}
+    {% else %}
+      {% for s in section.context.items %}{% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode %}{% endfor %}
+    {% endif %}
+  </div>
+</section>

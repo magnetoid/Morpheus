@@ -16,11 +16,12 @@ from django.utils.translation import get_language
 from django.utils.translation import gettext as _
 
 from core.utils.i18n import localized_path
+from plugins.installed.booking_marketplace import country
 
 # Django's own `sr` catalog names days and months in Cyrillic (суб., Окт.) on a store
 # written in Latin. Babel and the browser's Intl both follow CLDR, so the server's label
 # and search.js's agree.
-_DATE_LOCALES = {'sr': ('sr_Latn_ME', 'sr-Latn-ME')}
+_DATE_LOCALES = {'sr': ('sr_Latn_ME', 'sr-Latn-ME'), 'hr': ('hr_HR', 'hr-HR')}
 _DEFAULT_DATE_LOCALE = ('en_GB', 'en-GB')
 QUERY_MAX_CHARS = 200
 
@@ -39,10 +40,10 @@ class SearchParams:
 
 def read_params(request) -> SearchParams:
     """The search in `request.GET`."""
-    from plugins.installed.booking_marketplace.models import REGIONS
+    from plugins.installed.booking_marketplace.country import regions
 
     get = request.GET
-    labels = {key: str(label) for key, label in REGIONS}
+    labels = {key: str(label) for key, label in regions()}
     region = (get.get('region') or '').strip()
     if region not in labels:
         region = ''
@@ -128,7 +129,7 @@ def _title(params: SearchParams) -> str:
     if params.q:
         if params.region_label:
             return _('“%(q)s” in %(region)s') % {'q': params.q, 'region': params.region_label}
-        return _('“%(q)s” in Montenegro') % {'q': params.q}
+        return str(country.text('query_in')) % {'q': params.q}
     if params.category is not None:
         name = params.category.name
         if params.region_label:
@@ -136,8 +137,8 @@ def _title(params: SearchParams) -> str:
                 'category': name,
                 'region': params.region_label,
             }
-        return _('%(category)s experiences in Montenegro') % {'category': name}
-    return _('Experiences in Montenegro')
+        return str(country.text('category_experiences')) % {'category': name}
+    return str(country.text('experiences'))
 
 
 def chips(request, params: SearchParams) -> list[dict]:
@@ -214,7 +215,8 @@ def suggestions(request, q: str) -> dict:
 
 def _suggested_experiences(request, index, terms) -> list[dict]:
     from core.templatetags.morph import money_filter
-    from plugins.installed.booking_marketplace.models import REGIONS, BookableService
+    from plugins.installed.booking_marketplace.country import regions as country_regions
+    from plugins.installed.booking_marketplace.models import BookableService
     from plugins.installed.booking_marketplace.views import _image_url, listing_mode
 
     live = BookableService.objects.filter(
@@ -229,7 +231,7 @@ def _suggested_experiences(request, index, terms) -> list[dict]:
         live.filter(pk__in=found.scores),
         key=lambda s: (-found.scores[s.pk], not s.is_bestseller, s.name.casefold()),
     )[:5]
-    regions = {key: str(label) for key, label in REGIONS}
+    regions = {key: str(label) for key, label in country_regions()}
     hide_price = listing_mode()
     return [
         {
@@ -295,7 +297,7 @@ def bar_context(request, variant: str, search: dict | None = None) -> dict:
     summary = [search['q'] or (_('Search local goods') if shop else _('Any experience'))]
     if not shop:
         summary += [
-            search['region_label'] or _('All of Montenegro'),
+            search['region_label'] or str(country.text('all_regions')),
             search['date_label'] or _('Any date'),
         ]
         # A phone hides the Category field, yet a hidden select still submits: name it.

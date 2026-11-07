@@ -1,4 +1,4 @@
-"""schema.org nodes for the Montenegro inventory: experiences, places, stays, events.
+"""schema.org nodes for the store's inventory: experiences, places, stays, events.
 
 Kept out of the shared `seo` app on purpose — TouristDestination, Hotel and
 experience Product markup are this vertical's knowledge, not generic store
@@ -16,6 +16,8 @@ every node is anchored to the page's canonical URL.
 """
 
 from __future__ import annotations
+
+from plugins.installed.booking_marketplace import country
 
 
 def _abs(request, path: str) -> str:
@@ -64,12 +66,12 @@ def _destination_node(place, *, url: str, request=None) -> dict:
             'latitude': str(place.latitude),
             'longitude': str(place.longitude),
         }
-    address = {'@type': 'PostalAddress', 'addressCountry': 'ME'}
+    address = {'@type': 'PostalAddress', 'addressCountry': country.current().code}
     region_label = place.get_region_display() if place.region else ''
     if region_label:
         address['addressRegion'] = region_label
     node['address'] = address
-    node['containedInPlace'] = {'@type': 'Country', 'name': 'Montenegro'}
+    node['containedInPlace'] = {'@type': 'Country', 'name': str(country.current().name)}
     # sameAs: authoritative outbound references (UNESCO, tourism board,
     # Wikipedia) strengthen entity disambiguation for AEO / knowledge graphs.
     same_as = [
@@ -210,7 +212,7 @@ def _hotel_node(prop, *, url: str, request=None, with_prices=True) -> dict:
     }
     if prop.image:
         node['image'] = _abs(request, prop.image.url)
-    address = {'@type': 'PostalAddress', 'addressCountry': 'ME'}
+    address = {'@type': 'PostalAddress', 'addressCountry': country.current().code}
     if prop.address:
         address['streetAddress'] = prop.address
     if prop.location:
@@ -294,12 +296,13 @@ def event_nodes(event, *, url: str, request=None) -> list[dict]:
             node['image'] = _abs(request, event.image.url)
         if event.official_url:
             node['sameAs'] = event.official_url
-        address = {'@type': 'PostalAddress', 'addressCountry': 'ME'}
+        address = {'@type': 'PostalAddress', 'addressCountry': country.current().code}
         if event.place:
             address['addressLocality'] = event.place.name
         node['location'] = {
             '@type': 'Place',
-            'name': event.venue or (event.place.name if event.place else 'Montenegro'),
+            'name': event.venue
+            or (event.place.name if event.place else str(country.current().name)),
             'address': address,
         }
         nodes.append(node)

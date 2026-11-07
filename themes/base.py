@@ -106,6 +106,12 @@ class MorpheusTheme:
     vendor_noun: str = 'Seller'
     vendor_noun_plural: str = 'Sellers'
 
+    # The country a travel store serves, as an ISO code ("ME", "HR"). The booking
+    # app reads it for the store's regions, its structured-data address country and
+    # the pages that name the country (booking_marketplace/country.py). Empty keeps
+    # the booking app's default, Montenegro.
+    country: str = ''
+
     # ── Internal ──────────────────────────────────────────────────────────────
     _config_cache: dict | None = None
 
