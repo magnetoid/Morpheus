@@ -200,6 +200,19 @@ def _cart_totals(request, cart: dict) -> dict:
         return {}
 
 
+def _nothing_to_pay(request, totals: dict) -> bool:
+    """True when the order will cost nothing: no shipping to add, total 0.
+
+    Checkout then marks the order paid without a gateway (a free download, a
+    cart a gift card covers), so the page asks for no payment method."""
+    if _cart_requires_shipping(request):
+        return False
+    try:
+        return float(((totals or {}).get('total') or {}).get('amount')) == 0
+    except (TypeError, ValueError):
+        return False
+
+
 def _stamp_checkout_email(request, email: str) -> None:
     """Persist the checkout-entered email onto the visitor's cart metadata.
 
@@ -553,6 +566,7 @@ def checkout_review(request):
             'address': addr,
             'rate_label': rate_label,
             'error': error,
+            'nothing_to_pay': _nothing_to_pay(request, _cart_totals(request, cart)),
             'show_withdrawal_waiver': _waiver['enabled'] and _cart_has_digital(request),
             'withdrawal_waiver_text': _waiver['text'],
         },

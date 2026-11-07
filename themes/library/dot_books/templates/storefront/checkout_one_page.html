@@ -149,11 +149,11 @@
 
         <button type="submit" class="btn btn-primary"
                 style="height: 56px; padding: 0 2.5rem; font-size: 1rem;">
-          Continue to payment
+          {% if nothing_to_pay %}Place order{% else %}Continue to payment{% endif %}
         </button>
         <p class="meta" style="margin-top: 1rem;">
-          You'll enter card details on the next step. We don't store cards;
-          Stripe handles encryption + 3-D Secure.
+          {% if nothing_to_pay %}There is nothing to pay: your order goes straight through.{% else %}You'll enter card details on the next step. We don't store cards;
+          Stripe handles encryption + 3-D Secure.{% endif %}
         </p>
       </form>
     </div>

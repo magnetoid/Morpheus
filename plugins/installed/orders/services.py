@@ -135,7 +135,10 @@ class CartService:
         )
         # A price of 0 means the merchant has not priced it yet (18 such products
         # were buyable for nothing on a live store) — not for sale until it is.
-        if unit_price.amount <= 0:
+        # The one exception is a download the merchant gives away on purpose: a
+        # variant whose own price is 0 and that ships nothing (``is_free``).
+        free = bool(getattr(target, 'is_free', False))
+        if unit_price.amount < 0 or (unit_price.amount == 0 and not free):
             raise ValueError('This product is not available to buy yet.')
 
         # Single-currency cart invariant. calculate_cart_breakdown sums the
@@ -258,7 +261,13 @@ def _is_inventoried(product, variant) -> bool:
 def _resolve_unit_price(target, currency: str | None, *, fallback, customer=None) -> Money:
     """Return a ``Money`` honoring ``target.localized_prices[currency]``
     when present, else the default MoneyField price — then let the
-    ``PRODUCT_CALCULATE_PRICE`` filter adjust it."""
+    ``PRODUCT_CALCULATE_PRICE`` filter adjust it.
+
+    A free download (``ProductVariant.is_free``) costs 0 in every currency: the
+    product's own per-currency prices are the book's, not the download's."""
+    if getattr(target, 'is_free', False):
+        code = (currency or str(target.price.currency)).upper()
+        return apply_price_filter(Money(0, code), product=fallback, customer=customer)
     default_price = (
         target.effective_price if hasattr(target, 'effective_price') else target.price
     ) or fallback.price
@@ -760,3 +769,19 @@ def merge_session_cart_on_login(request, user) -> None:
         return
 
     merge_carts(source_cart=session_cart, target_cart=customer_cart)
+
+
+def settle_free_order(order: Order) -> None:
+    """Mark an order with nothing to pay as paid (a free download, or a cart a
+    gift card covers in full).
+
+    No gateway can take a payment of 0 (Stripe refuses one), so checkout ends
+    here instead: the order is confirmed and marked paid inside the caller's
+    transaction, and ORDER_PAID fires once that transaction commits, so the
+    download links, the receipt and the stock commit see the saved order.
+    """
+    order.payment_status = 'paid'
+    if order.status == 'pending':
+        order.confirm()
+    order.save(update_fields=['payment_status', 'status'])
+    transaction.on_commit(lambda: hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order))

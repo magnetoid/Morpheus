@@ -273,6 +273,10 @@ class FeedMapper:
             return None
         if len(variants) < 2:
             return None
+        # A free download is not listed: shopping channels refuse a price of 0,
+        # and the book's own price would be a false claim. The paid editions
+        # keep their own items (and ids).
+        variants = [v for v in variants if not getattr(v, 'is_free', False)]
 
         items: list[dict] = []
         for v in variants:
@@ -280,7 +284,9 @@ class FeedMapper:
             vi['item_group_id'] = base_item['id']
             vi['id'] = (getattr(v, 'sku', '') or '').strip() or f'{base_item["id"]}-{v.pk}'
 
-            vprice = getattr(v, 'price', None)
+            # 0 on a variant that ships means "the product's price", as a
+            # missing one does (ProductVariant.effective_price).
+            vprice = getattr(v, 'price', None) or None
             vcompare = getattr(v, 'compare_at_price', None)
             if vcompare and vprice and vcompare > vprice:
                 vi['price'] = self._money(vcompare)

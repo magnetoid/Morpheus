@@ -165,7 +165,7 @@ class ProductVariantType:
         # PDP headline and another in the variant selector (displayed≠charged).
         parent = getattr(self, 'product', None)
         own = self.price
-        if own:
+        if own or self.is_free:
             adj = apply_price_filter(own, product=parent)
             return MoneyType(amount=str(adj.amount), currency=str(adj.currency))
         parent_price = getattr(parent, 'price', None) if parent else None
@@ -175,9 +175,17 @@ class ProductVariantType:
         return None
 
     @strawberry.field(
+        description='True for a download given away: its own price is 0 and nothing ships. A variant that ships is never free; 0 there means it takes the product price.'
+    )
+    def is_free(self) -> bool:
+        return bool(self.is_free)
+
+    @strawberry.field(
         description='Compare-at (was-price) for the variant. Falls back to Product.compare_at_price when blank, so the strikethrough renders on per-product sales even if the variant has no override.'
     )
     def compare_at_price(self) -> MoneyType | None:
+        if self.is_free:
+            return None  # the book's was-price is not the free download's
         own = getattr(self, 'compare_at_price', None)
         if own:
             return MoneyType(amount=str(own.amount), currency=str(own.currency))
@@ -200,6 +208,8 @@ class ProductVariantType:
         description='True when this specific variant is discounted (compare_at_price > price). Computed per-variant so the picker can badge only the discounted editions.'
     )
     def is_on_sale(self) -> bool:
+        if self.is_free:
+            return False  # free is a price, not a reduction with a was-price
         try:
             from decimal import Decimal
 
@@ -215,6 +225,8 @@ class ProductVariantType:
 
     @strawberry.field(description='Integer percent off when this variant is on sale, else 0.')
     def discount_percentage(self) -> int:
+        if self.is_free:
+            return 0
         try:
             from decimal import Decimal
 
@@ -396,15 +408,10 @@ class ProductType:
     )
     def price(self) -> MoneyType:
         if getattr(self, 'product_type', '') == 'variable':
-            cheapest = None
             # Python-filter the prefetched variants — `.filter()` here re-queries
             # per product (N+1 down a product list); `.all()` uses the cache.
-            for v in (x for x in self.variants.all() if x.is_active):
-                ep = v.effective_price
-                if ep is None:
-                    continue
-                if cheapest is None or ep.amount < cheapest.amount:
-                    cheapest = ep
+            # A free download counts only when every edition is free.
+            cheapest = models.cheapest_variant_price(x for x in self.variants.all() if x.is_active)
             if cheapest is not None:
                 adj = apply_price_filter(cheapest, product=self)
                 return MoneyType(amount=str(adj.amount), currency=str(adj.currency))
@@ -420,8 +427,19 @@ class ProductType:
     def price_starts_from(self) -> bool:
         if getattr(self, 'product_type', '') != 'variable':
             return False
-        # Count in Python over the prefetched variants (see .price above).
-        return sum(1 for v in self.variants.all() if v.is_active) > 1
+        # Count in Python over the prefetched variants (see .price above); a
+        # free download is not a price the book starts from.
+        active = [v for v in self.variants.all() if v.is_active]
+        paid = [v for v in active if not v.is_free]
+        return len(paid or active) > 1
+
+    @strawberry.field(
+        description='The edition a product page selects first: the first active one that costs something, else the first active one. Null without variants.'
+    )
+    def default_variant_id(self) -> strawberry.ID | None:
+        active = [v for v in self.variants.all() if v.is_active]
+        chosen = next((v for v in active if not v.is_free), None) or (active[0] if active else None)
+        return strawberry.ID(str(chosen.pk)) if chosen is not None else None
 
     @strawberry.field(description='Compare at price (original price before discount)')
     def compare_at_price(self) -> MoneyType | None:

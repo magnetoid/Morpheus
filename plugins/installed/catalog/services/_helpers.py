@@ -222,8 +222,10 @@ def _serialize_variant(v) -> dict:
         'size': getattr(v, 'size', '') or '',
         'short_description': getattr(v, 'short_description', '') or '',
         'description': getattr(v, 'description', '') or '',
-        'price_amount': str(getattr(v.price, 'amount', '')) if v.price else '',
-        'price_currency': str(getattr(v.price, 'currency', '')) if v.price else '',
+        # `is not None`: a price of 0 (a free download) is a price.
+        'price_amount': str(getattr(v.price, 'amount', '')) if v.price is not None else '',
+        'price_currency': str(getattr(v.price, 'currency', '')) if v.price is not None else '',
+        'is_free': bool(getattr(v, 'is_free', False)),
         'variant_type': getattr(v, 'variant_type', 'physical'),
         'requires_shipping': bool(getattr(v, 'requires_shipping', True)),
         'is_taxable': bool(getattr(v, 'is_taxable', True)),

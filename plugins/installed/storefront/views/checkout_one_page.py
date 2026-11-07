@@ -37,6 +37,7 @@ from plugins.installed.storefront.views.checkout import (
     _cart_has_digital,
     _cart_requires_shipping,
     _checkout_base_context,
+    _nothing_to_pay,
     _withdrawal_waiver,
     record_waiver,
     waiver_gate,
@@ -297,7 +298,8 @@ def _render_form(request, *, addr: dict | None, rate_id: str, error: str, paymen
         ctx['form'] = addr
     ctx['selected_rate_id'] = rate_id
     ctx['error'] = error
-    ctx['payment_methods'] = _payment_methods(request)
+    ctx['nothing_to_pay'] = _nothing_to_pay(request, ctx.get('totals'))
+    ctx['payment_methods'] = [] if ctx['nothing_to_pay'] else _payment_methods(request)
     # Keep the shopper's pick across re-renders; default to the gateway the
     # picker flags as default (Stripe when it is set up, else the first method
     # that can take payment) so a working method is pre-selected.

@@ -28,7 +28,7 @@
 
         <div style="border:1px solid var(--rule); border-radius:6px; padding:1.25rem; background:var(--paper);">
           <p class="eyebrow" style="margin-bottom:.5rem;">Payment</p>
-          <p class="meta">After you place the order we'll redirect to a secure payment page (Stripe). Your card never touches our server.</p>
+          {% if nothing_to_pay %}<p class="meta">There is nothing to pay: place the order and it goes straight through.</p>{% else %}<p class="meta">After you place the order we'll redirect to a secure payment page (Stripe). Your card never touches our server.</p>{% endif %}
         </div>
 
         {% if show_withdrawal_waiver %}

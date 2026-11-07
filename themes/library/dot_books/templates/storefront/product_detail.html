@@ -331,14 +331,16 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
           <p class="eyebrow" style="margin-bottom: 0.75rem;" id="pdp-variants-label">Choose an edition</p>
           <div class="pdp-variants" role="radiogroup" aria-labelledby="pdp-variants-label">
             {% for v in product.variants %}{% if v.isActive %}
+            {% comment %}The edition selected first is the first one that costs something
+               (defaultVariantId), so the price above matches it; a free PDF is one click away.{% endcomment %}
             <button type="button"
-                    class="pdp-variant{% if forloop.first %} is-selected{% endif %}{% if v.isOnSale %} is-on-sale{% endif %}"
+                    class="pdp-variant{% if v.id == product.defaultVariantId %} is-selected{% endif %}{% if v.isOnSale %} is-on-sale{% endif %}"
                     role="radio"
-                    aria-checked="{% if forloop.first %}true{% else %}false{% endif %}"
-                    tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+                    aria-checked="{% if v.id == product.defaultVariantId %}true{% else %}false{% endif %}"
+                    tabindex="{% if v.id == product.defaultVariantId %}0{% else %}-1{% endif %}"
                     data-variant-id="{{ v.id }}"
                     data-variant-type="{{ v.variantType|default:'physical' }}"
-                    data-variant-price="{% if v.price %}{{ v.price|money }}{% endif %}"
+                    data-variant-price="{% if v.isFree %}{% translate "Free" %}{% elif v.price %}{{ v.price|money }}{% endif %}"
                     data-variant-compare="{% if v.isOnSale and v.compareAtPrice %}{{ v.compareAtPrice|money }}{% endif %}"
                     data-variant-on-sale="{% if v.isOnSale %}1{% else %}0{% endif %}"
                     data-variant-image="{{ v.imageUrl|default:'' }}"
@@ -353,7 +355,11 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
                 <span class="pdp-variant__sale-pill" title="On sale">−{{ v.discountPercentage }}%</span>
               {% endif %}
               <span class="pdp-variant__name">{{ v.name }}{% if v.size %} <span class="pdp-variant__size">· {{ v.size }}</span>{% endif %}</span>
-              {% if v.price %}
+              {% if v.isFree %}
+              <span class="pdp-variant__price-line">
+                <span class="pdp-variant__price">{% translate "Free" %}</span>
+              </span>
+              {% elif v.price %}
               <span class="pdp-variant__price-line">
                 <span class="pdp-variant__price">{{ v.price|money }}</span>
                 {% if v.isOnSale and v.compareAtPrice %}<span class="pdp-variant__compare">{{ v.compareAtPrice|money }}</span>{% endif %}
@@ -368,9 +374,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 
         <form method="post" action="/cart/add/{{ product.id }}/" style="display:flex; gap: 0.6rem; align-items:center; margin: 1.5rem 0 1rem;" toolname="add_this_product_to_cart" tooldescription="Add the product on this page to the cart" toolautosubmit>
           {% csrf_token %}
-          {% with product.variants|first as first_v %}
-          <input type="hidden" name="variant_id" value="{{ first_v.id|default:'' }}" data-pdp-variant-input>
-          {% endwith %}
+          <input type="hidden" name="variant_id" value="{{ product.defaultVariantId|default:'' }}" data-pdp-variant-input>
           <label for="pdp-qty" class="sr-only">Quantity</label>
           <input id="pdp-qty" type="number" name="quantity" value="1" min="1" max="20" toolparamdescription="Number of units to add (1-20)"
                  inputmode="numeric" autocomplete="off"
