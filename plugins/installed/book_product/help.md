@@ -4,7 +4,7 @@ summary: Adds book details like author and series to products, and builds genre,
 
 ## What it's for
 
-This app turns a regular product into a book. It adds book fields — author, series, format, page count, language and more — to the product page's Book details card, and it builds browsable pages for genres, topics, authors, publishers, series and imprints. Shoppers can filter the all-books page by genre, topic, author, format or length. As a shopper types in the search box, matching genres and authors appear above the books. If a book has a cover file, its product page shows an interactive 3D preview of the cover, and if it has more than one language edition linked together, shoppers can switch between them.
+This app turns a regular product into a book. It adds book fields — author, series, format, page count, language and more — to the product page's Book details card, and it builds browsable pages for genres, topics, authors, publishers, series and imprints. Shoppers can filter the all-books page by genre, topic, author, format or length. A book card names the book's formats (Print · PDF); a PDF or audiobook you give away (its variant priced 0) shows as Free PDF or Free audiobook beside the printed price. As a shopper types in the search box, matching genres and authors appear above the books. If a book has a cover file, its product page shows an interactive 3D preview of the cover, and if it has more than one language edition linked together, shoppers can switch between them.
 
 ## Common tasks
 

@@ -434,17 +434,12 @@ class Product(models.Model):
 
         Variable products: the LOWEST active variant.effective_price, so
         PLP cards render "From $X" instead of the parent's $0 (which
-        ProductForm.clean() auto-sets when product_type='variable').
-        Simple / Digital / Bundle: just self.price.
+        ProductForm.clean() auto-sets when product_type='variable'); a free
+        download counts only when every edition is free
+        (``cheapest_variant_price``). Simple / Digital / Bundle: just self.price.
         """
         if self.product_type == 'variable':
-            cheapest = None
-            for v in self._active_variants():
-                ep = v.effective_price
-                if ep is None:
-                    continue
-                if cheapest is None or ep.amount < cheapest.amount:
-                    cheapest = ep
+            cheapest = cheapest_variant_price(self._active_variants())
             if cheapest is not None:
                 return cheapest
         return self.price
@@ -456,7 +451,20 @@ class Product(models.Model):
         """
         if self.product_type != 'variable':
             return False
-        return len(self._active_variants()) > 1
+        # A free download is listed as Free beside the editions, not as the
+        # price the book starts from (``cheapest_variant_price``).
+        return sum(1 for v in self._active_variants() if not v.is_free) > 1
+
+    @property
+    def is_free(self) -> bool:
+        """Every active edition is a free download (``ProductVariant.is_free``).
+
+        Such a product is shown as Free and listed in no shopping feed; one with
+        a paid edition is shown at that edition's price."""
+        if self.product_type != 'variable':
+            return False
+        active = self._active_variants()
+        return bool(active) and all(v.is_free for v in active)
 
     def _active_variants(self) -> list:
         # Filtered in Python, like primary_image below: a .filter() bypasses
@@ -774,8 +782,40 @@ class ProductVariant(models.Model):
         return f'{self.product.name} - {self.name}'
 
     @property
+    def is_free(self) -> bool:
+        """A download given away: its own price is 0 and nothing ships.
+
+        A variant that ships is never free: 0 on it means "use the product's
+        price", as a missing price does (10 printed editions on dotbooks carry
+        a 0 and are sold at the book's price)."""
+        price = self.price
+        return price is not None and price.amount == 0 and not self.requires_shipping
+
+    @property
     def effective_price(self):
-        return self.price or self.product.price
+        if self.price or self.is_free:
+            return self.price
+        return self.product.price
+
+
+def cheapest_variant_price(variants):
+    """The lowest price a shopper pays for one of ``variants`` (active ones).
+
+    A free download does not count while an edition costs something: a book
+    with a free PDF is still shown at its printed price, and the PDF says Free
+    where the editions are listed. Only when every edition is free is the
+    price 0. None when no variant has a price.
+    """
+    paid, free = None, None
+    for v in variants:
+        price = v.effective_price
+        if price is None:
+            continue
+        if v.is_free:
+            free = free or price
+        elif paid is None or price.amount < paid.amount:
+            paid = price
+    return paid if paid is not None else free
 
 
 class Review(models.Model):

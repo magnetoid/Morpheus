@@ -60,7 +60,7 @@ UUID in both (the live PDP posts the GraphQL id to /cart/add/<uuid>/).
        so the shelf can never quote a different number than the PDP and cart.{% endcomment %}
     {% if bc.formats_line %}<p class="book__formats">{{ bc.formats_line }}</p>{% endif %}
     {% storefront_price product as card_price %}
-    <p class="price">{% if product.price_starts_from or product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{% if card_price %}{{ card_price|money }}{% endif %}</p>
+    <p class="price">{% if product.price_starts_from or product.priceStartsFrom %}<span class="text-meta">{% translate "From" %} </span>{% endif %}{% if product.is_free %}{% translate "Free" %}{% elif card_price %}{{ card_price|money }}{% endif %}</p>
     <div class="book__actions">
       <form method="post" action="/cart/add/{{ product.id }}/" class="book__add">
         {% csrf_token %}

@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.141.0 — 2026-11-07
+
+**Free downloads: a PDF priced 0 is free, and an order with nothing to pay is paid at once**
+
+- A variant that ships nothing and is priced 0 (a PDF) is free: it goes through the cart at no cost in every currency, and its edition says Free on the product page. A variant that ships is never free; 0 there still means the product's price.
+- An order with nothing to pay (a free download, or a cart a gift card covers in full) is confirmed and marked paid as it is placed: no payment step, straight to the confirmation page, download link at once. Stripe refuses an amount of 0, so such an order could not be placed before.
+- A book with a free PDF is shown at its print price (no From); dotbooks' card says Print · Free PDF, and its product page opens on the printed edition.
+- Shopping channel feeds leave a free download out (they refuse a price of 0); the paid editions keep their items.
+- Product structured data offers each edition at the price it is sold at: printed editions priced 0 were published at 0.00 while checkout charged the book's price.
+
 ## v0.140.0 — 2026-11-07
 
 **Leads you can find: a Leads tab in the CRM, and the ones without an account under Contacts**

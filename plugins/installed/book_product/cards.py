@@ -13,24 +13,32 @@ import contextlib
 
 CACHE_TTL = 600
 _LABELS = {'print': 'Print', 'digital': 'PDF', 'audiobook': 'Audiobook'}
+# A format the store gives away says so on the card, beside the price the book
+# costs in print (ProductVariant.is_free: price 0 and nothing ships).
+_FREE_LABELS = {'digital': 'Free PDF', 'audiobook': 'Free audiobook'}
 
 
 def _formats(variants) -> list[str]:
     """Card labels for a book's active formats, in Print, PDF, Audiobook order."""
-    kinds = set()
+    kinds: dict[str, bool] = {}  # kind -> every active variant of it is free
     for v in variants:
         if not getattr(v, 'is_active', True):
             continue
         name = (v.name or '').lower()
         if v.variant_type == 'audiobook' or 'audio' in name:
-            kinds.add('audiobook')
+            kind = 'audiobook'
         elif v.variant_type == 'digital':
-            kinds.add('digital')
+            kind = 'digital'
         else:
-            kinds.add('print')
+            kind = 'print'
+        kinds[kind] = kinds.get(kind, True) and bool(getattr(v, 'is_free', False))
     if not kinds:
-        kinds.add('print')  # a book with no variants is a printed book
-    return [_LABELS[k] for k in ('print', 'digital', 'audiobook') if k in kinds]
+        kinds['print'] = False  # a book with no variants is a printed book
+    return [
+        _FREE_LABELS[k] if kinds[k] and k in _FREE_LABELS else _LABELS[k]
+        for k in ('print', 'digital', 'audiobook')
+        if k in kinds
+    ]
 
 
 def meta_from(product) -> dict:
@@ -73,7 +81,7 @@ def card_meta(product) -> dict:
 
     from plugins.installed.catalog.models import Product
 
-    key = f'book_card:v1:{pid}'
+    key = f'book_card:v2:{pid}'
     try:
         hit = cache.get(key)
     except Exception:  # noqa: BLE001 — a cache outage never breaks a grid

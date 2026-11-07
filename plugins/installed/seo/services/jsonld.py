@@ -277,7 +277,10 @@ def _apply_variants(out: dict, orm, *, slug: str, currency: str) -> None:
     parent_price = _money(_safe_field(orm, 'price'))
     members = []
     for variant in variants:
-        price = _money(_safe_field(variant, 'price'))
+        own = _safe_field(variant, 'price')
+        # The price charged (ProductVariant.effective_price): a free download
+        # is offered at 0; a 0 on a variant that ships means the product's.
+        price = _money(own) if (own or getattr(variant, 'is_free', False)) else None
         price = parent_price if price is None else price
         if price is None:
             continue

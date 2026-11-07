@@ -366,6 +366,14 @@ class OrdersMutationExtension:
                 # (create_from_cart raises GiftCardRedeemFailed / CouponNoLongerValid
                 # / InsufficientStockError directly on a bad checkout, rolling this
                 # block back — the caller-level except turns it into CHECKOUT_FAILED.)
+                if order.total.amount <= 0:
+                    # Nothing to pay (a free download, a cart a gift card covers):
+                    # no gateway takes 0, so the order is paid here and the
+                    # shopper goes straight to the confirmation page.
+                    from plugins.installed.orders.services import settle_free_order
+
+                    settle_free_order(order)
+                    return OrderPayload(order_number=order.order_number, errors=[])
                 # Route to the shopper-selected gateway. Empty / unknown /
                 # disabled slug → default (stripe), so the live Stripe path
                 # is unchanged when no method is picked.

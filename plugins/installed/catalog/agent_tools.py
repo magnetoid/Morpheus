@@ -483,7 +483,9 @@ def products_update_status_tool(
         'Pass `id`/`sku`/`slug` to find the product, optional '
         '`variant_id` for a variant-specific change, and the new '
         '`price` as a numeric string ("19.99"). Currency stays the '
-        'same. Requires `confirmed=True`.'
+        'same. A price of "0" on a variant that ships nothing (a PDF) gives it '
+        'away free; on one that ships, 0 means it takes the product price. '
+        'Requires `confirmed=True`.'
     ),
     scopes=['catalog.write'],
     schema={
