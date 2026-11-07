@@ -75,6 +75,13 @@ class ContactsLeadsTabTests(_StaffCase):
         tab = next(t for t in response.context['source_tabs'] if t['value'] == 'lead_form')
         self.assertEqual(tab['count'], 1)
 
+    def test_all_counts_the_accounts_it_lists(self):
+        # All lists accounts only; the leads in the Leads badge are not among its rows.
+        response = self.client.get('/dashboard/customers/')
+        tab = next(t for t in response.context['source_tabs'] if t['value'] == '')
+        self.assertEqual(tab['count'], User.objects.count())
+        self.assertEqual(response.context['page_obj'].paginator.count, User.objects.count())
+
     def test_search_reaches_the_leads(self):
         response = self.client.get('/dashboard/customers/?source=lead_form&q=nobody-matches')
         self.assertNotContains(response, 'no-account-marker@example.test')

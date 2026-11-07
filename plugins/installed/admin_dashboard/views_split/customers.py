@@ -40,13 +40,12 @@ CUSTOMER_SOURCE_CHOICES = (
 )
 
 
-def _contacts_leads(request: HttpRequest, search: str, counts: dict, *, listed: bool):
+def _contacts_leads(request: HttpRequest, search: str, *, listed: bool):
     """Leads without an account, from the app that keeps them (CONTACTS_LEADS).
 
-    Puts their number in ``counts['lead_form']`` and returns ``(rows,
-    paging_ctx)``; ``rows`` is None unless ``listed`` (the Leads tab is open)
-    and when no app answers (the CRM is off), so the tab lists `lead_form`
-    accounts as it always did.
+    Returns ``(count, rows, paging_ctx)``. ``count`` is None when no app answers
+    (the CRM is off), so the Leads tab lists `lead_form` accounts as it always
+    did; ``rows`` is None unless ``listed`` (the Leads tab is open).
     """
     try:
         from morpheus.core import MorpheusEvents, hook_registry
@@ -55,17 +54,30 @@ def _contacts_leads(request: HttpRequest, search: str, counts: dict, *, listed: 
             MorpheusEvents.CONTACTS_LEADS, None, search=search, request=request
         )
         if not (isinstance(answer, dict) and callable(answer.get('row'))):
-            return None, {}
+            return None, None, {}
         queryset = answer['queryset']
-        counts['lead_form'] = queryset.count()
         if not listed:
-            return None, {}
+            return queryset.count(), None, {}
         page_obj, paging_ctx = paginate_and_sort(
             request, queryset, default_sort='-created_at', allowed_sorts=('email', 'created_at')
         )
-        return [answer['row'](lead) for lead in page_obj.object_list], paging_ctx
+        rows = [answer['row'](lead) for lead in page_obj.object_list]
     except Exception:  # noqa: BLE001 — a broken answer must not take Contacts down
-        return None, {}
+        return None, None, {}
+    return page_obj.paginator.count, rows, paging_ctx
+
+
+def _tab_count(value: str, account_counts: dict[str, int], lead_count: int | None) -> int:
+    """A source tab's badge counts the rows that tab lists.
+
+    All lists accounts only, so it counts accounts; Leads counts the contributed
+    leads when an app answers, else the `lead_form` accounts.
+    """
+    if not value:
+        return sum(account_counts.values())
+    if value == 'lead_form' and lead_count is not None:
+        return lead_count
+    return account_counts.get(value, 0)
 
 
 @staff_member_required
@@ -182,8 +194,8 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         customers = rows
     except Exception:  # noqa: BLE001
         customers = []
-    lead_rows, lead_paging = _contacts_leads(
-        request, search, source_counts, listed=source_filter == 'lead_form' and not admin_filter
+    lead_count, lead_rows, lead_paging = _contacts_leads(
+        request, search, listed=source_filter == 'lead_form' and not admin_filter
     )
     if lead_rows is not None:
         customers, paging_ctx = [], lead_paging
@@ -191,7 +203,7 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         {
             'value': value,
             'label': label,
-            'count': (source_counts.get(value, 0) if value else sum(source_counts.values())),
+            'count': _tab_count(value, source_counts, lead_count),
             'active': not admin_filter and source_filter == value,
         }
         for value, label in CUSTOMER_SOURCE_CHOICES
