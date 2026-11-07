@@ -15,7 +15,7 @@ def crm_home(request):
 
     from plugins.installed.crm.models import CrmTask, Deal, Interaction, Lead
 
-    open_leads = Lead.objects.exclude(status__in=['converted', 'lost']).count()
+    open_leads = Lead.objects.exclude(status__in=Lead.CLOSED_STATUSES).count()
     open_tasks = CrmTask.objects.filter(completed_at__isnull=True).count()
     overdue_tasks = CrmTask.objects.filter(
         completed_at__isnull=True, due_at__lt=timezone.now()
@@ -42,10 +42,48 @@ def crm_home(request):
 @staff_member_required
 @require_capability('crm.read')
 def leads_list(request):
+    # Sibling-app import, declared in the manifest's `requires`: the shell's
+    # paging helper keeps ?q= and ?status= on every page link.
+    from plugins.installed.admin_dashboard.views_split._shared import paginate_and_sort
+    from plugins.installed.crm.contacts import leads_matching
     from plugins.installed.crm.models import Lead
 
-    leads = Lead.objects.all().order_by('-created_at')[:200]
-    return render(request, 'crm/leads.html', {'leads': leads, 'active_nav': 'crm'})
+    search = request.GET.get('q', '').strip()[:80]
+    status = request.GET.get('status', '').strip()
+    matching = leads_matching(search)
+    counts = {key: matching.filter(status=key).count() for key, _ in Lead.STATUS_CHOICES}
+    status_tabs = [
+        {'value': '', 'label': 'All', 'count': sum(counts.values())},
+        {
+            'value': 'open',
+            'label': 'Open',
+            'count': sum(c for key, c in counts.items() if key not in Lead.CLOSED_STATUSES),
+        },
+    ] + [{'value': key, 'label': label, 'count': counts[key]} for key, label in Lead.STATUS_CHOICES]
+    if status == 'open':
+        matching = matching.exclude(status__in=Lead.CLOSED_STATUSES)
+    elif status in counts:
+        matching = matching.filter(status=status)
+    else:
+        status = ''
+    page_obj, paging_ctx = paginate_and_sort(
+        request,
+        matching,
+        default_sort='-created_at',
+        allowed_sorts=('email', 'source', 'status', 'score', 'created_at'),
+    )
+    return render(
+        request,
+        'crm/leads.html',
+        {
+            'leads': page_obj.object_list,
+            'search': search,
+            'status_filter': status,
+            'status_tabs': status_tabs,
+            'active_nav': 'crm',
+            **paging_ctx,
+        },
+    )
 
 
 @staff_member_required

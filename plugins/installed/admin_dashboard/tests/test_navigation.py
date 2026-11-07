@@ -146,7 +146,7 @@ class SidebarTests(_Staff):
         self.assertEqual(nav['section'], 'crm')
         self.assertEqual(
             [t['label'] for t in nav['tabs']],
-            ['Overview', 'Inbox', 'Support chat', 'Pipeline', 'Tasks'],
+            ['Overview', 'Leads', 'Inbox', 'Support chat', 'Pipeline', 'Tasks'],
         )
         self.assertEqual([t['label'] for t in nav['tabs'] if t['active']], ['Pipeline'])
         customers = {t.label for t in navigation.tabs() if t.section == 'customers'}

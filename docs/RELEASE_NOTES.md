@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.140.0 — 2026-11-07
+
+**Leads you can find: a Leads tab in the CRM, and the ones without an account under Contacts**
+
+- The CRM overview counted open leads while no page in the menu listed them (dotbooks: 341). CRM now has a Leads tab with search, a status filter and pages, and the Open leads number opens it at the open ones. The old list showed only the newest 200.
+- Contacts → Leads lists the leads that have no account (newsletter signups, contact forms, chats), asked for through the new CONTACTS_LEADS hook, which the CRM answers. A converted lead, or an address that already has an account, shows as that account. Staff who may not read the CRM, and a store with the CRM switched off, get the tab as before.
+- Leads stay leads: they are not turned into accounts, because an account made for a newsletter address would block that person's own sign-up.
+
 ## v0.139.0 — 2026-11-07
 
 **A theme for croatia-experience.me, and the travel app follows the store's country**

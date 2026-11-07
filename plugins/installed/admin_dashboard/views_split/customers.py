@@ -40,6 +40,34 @@ CUSTOMER_SOURCE_CHOICES = (
 )
 
 
+def _contacts_leads(request: HttpRequest, search: str, counts: dict, *, listed: bool):
+    """Leads without an account, from the app that keeps them (CONTACTS_LEADS).
+
+    Puts their number in ``counts['lead_form']`` and returns ``(rows,
+    paging_ctx)``; ``rows`` is None unless ``listed`` (the Leads tab is open)
+    and when no app answers (the CRM is off), so the tab lists `lead_form`
+    accounts as it always did.
+    """
+    try:
+        from morpheus.core import MorpheusEvents, hook_registry
+
+        answer = hook_registry.filter(
+            MorpheusEvents.CONTACTS_LEADS, None, search=search, request=request
+        )
+        if not (isinstance(answer, dict) and callable(answer.get('row'))):
+            return None, {}
+        queryset = answer['queryset']
+        counts['lead_form'] = queryset.count()
+        if not listed:
+            return None, {}
+        page_obj, paging_ctx = paginate_and_sort(
+            request, queryset, default_sort='-created_at', allowed_sorts=('email', 'created_at')
+        )
+        return [answer['row'](lead) for lead in page_obj.object_list], paging_ctx
+    except Exception:  # noqa: BLE001 — a broken answer must not take Contacts down
+        return None, {}
+
+
 @staff_member_required
 def customers_list(request: HttpRequest) -> HttpResponse:
     """Unified Contacts list — customers, leads, signups in one table.
@@ -154,6 +182,11 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         customers = rows
     except Exception:  # noqa: BLE001
         customers = []
+    lead_rows, lead_paging = _contacts_leads(
+        request, search, source_counts, listed=source_filter == 'lead_form' and not admin_filter
+    )
+    if lead_rows is not None:
+        customers, paging_ctx = [], lead_paging
     source_tabs = [
         {
             'value': value,
@@ -168,6 +201,7 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         'admin_dashboard/customers.html',
         {
             'customers': customers,
+            'lead_rows': lead_rows,
             'search': search,
             'source_filter': source_filter,
             'source_choices': CUSTOMER_SOURCE_CHOICES,

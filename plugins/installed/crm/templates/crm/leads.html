@@ -1,35 +1,70 @@
 {% extends "admin_dashboard/base.html" %}
+{% load morph_dashboard %}
 {% block title %}Leads · Morpheus admin{% endblock %}
 
 {% block content %}
-<h1 class="text-xl font-semibold mb-4">Leads</h1>
+<div class="space-y-4">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Leads</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">People the store has an address for: newsletter signups, contact forms and support chats. Someone who registers becomes Converted.</p>
+  </div>
 
-<div class="card">
-  <table class="morph-table">
-    <thead>
-      <tr><th>Email</th><th>Name</th><th>Company</th><th>Source</th><th>Status</th><th>Score</th><th>Created</th></tr>
-    </thead>
-    <tbody>
-    {% for l in leads %}
-      <tr>
-        <td>{{ l.email }}</td>
-        <td>{{ l.display_name }}</td>
-        <td>{{ l.company }}</td>
-        <td>{{ l.source }}</td>
-        <td>
-          <span class="pill {% if l.status == 'converted' %}pill-success{% elif l.status == 'lost' %}pill-danger{% elif l.status == 'qualified' %}pill-info{% else %}pill-neutral{% endif %}">
-            {{ l.status }}
-          </span>
-        </td>
-        <td>{{ l.score }}</td>
-        <td>{{ l.created_at|date:"M j" }}</td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--text-muted);">
-        No leads yet.
-      </td></tr>
+  <nav class="tab-list overflow-x-auto" aria-label="Lead status">
+    {% for t in status_tabs %}
+    <a href="?{% if t.value %}status={{ t.value }}{% endif %}{% if search %}{% if t.value %}&{% endif %}q={{ search|urlencode }}{% endif %}"
+       class="tab{% if t.value == status_filter %} is-active{% endif %} inline-flex items-center gap-2 whitespace-nowrap">
+      {{ t.label }}
+      <span class="pill pill-neutral pill-xs">{{ t.count }}</span>
+    </a>
     {% endfor %}
-    </tbody>
-  </table>
+  </nav>
+
+  <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+    <div class="relative flex-1 min-w-[200px]">
+      <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
+      <input name="q" value="{{ search }}" placeholder="Email, name or company" aria-label="Search leads" class="input input-search">
+    </div>
+    <button class="btn btn-primary">Search</button>
+  </form>
+
+  <div class="card overflow-hidden">
+    {% if leads %}
+    <table class="morph-table">
+      <thead>
+        <tr>
+          <th>{% sort_link "email" "Lead" %}</th>
+          <th>Company</th>
+          <th>{% sort_link "source" "Source" %}</th>
+          <th>{% sort_link "status" "Status" %}</th>
+          <th class="text-right">{% sort_link "score" "Score" %}</th>
+          <th>{% sort_link "created_at" "Captured" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for l in leads %}
+        <tr>
+          <td>
+            <div class="font-medium truncate">{{ l.display_name }}</div>
+            {% if l.display_name != l.email %}<div class="text-xs text-[color:var(--text-muted)] truncate">{{ l.email }}</div>{% endif %}
+          </td>
+          <td>{{ l.company|default:"—" }}</td>
+          <td><span class="pill pill-neutral">{{ l.get_source_display }}</span></td>
+          <td>
+            <span class="pill {% if l.status == 'converted' %}pill-success{% elif l.status == 'lost' %}pill-danger{% elif l.status == 'qualified' %}pill-info{% else %}pill-neutral{% endif %}">
+              {{ l.get_status_display }}
+            </span>
+          </td>
+          <td class="text-right">{{ l.score }}</td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ l.created_at|date:"M j, Y" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    {% include "admin_dashboard/_empty_state.html" with icon="user-plus" title="No leads here" hint="Newsletter signups, contact forms and support chats land here." search=search %}
+    {% endif %}
+    {% if page_obj %}{% include "admin_dashboard/_pagination.html" %}{% endif %}
+  </div>
 </div>
 {% endblock %}

@@ -606,6 +606,16 @@ class MorpheusEvents:
     CART_CALCULATE_TOTAL = 'cart.calculate_total'  # DEPRECATED — use CART_CALCULATE_BREAKDOWN
     ACCOUNT_SUMMARY_FIELDS = 'account.summary_fields'  # filter
     CUSTOMER_DETAIL_PANELS = 'customer.detail_panels'  # filter
+    # CONTACTS_LEADS — filter, value=None, kwargs: search (str), request. The
+    #   dashboard's Contacts list shows accounts; its Leads tab asks here for the
+    #   people the store has an address for and no account (newsletter signups,
+    #   contact forms, chats). The app that keeps them answers
+    #   {'queryset': QuerySet with `email` and `created_at`, 'row': callable(obj)
+    #   -> {'email', 'name', 'source_display', 'status', 'status_display',
+    #   'created_at'}}, already narrowed to `search` and to what the viewer may
+    #   read. No answer: the tab lists accounts whose source is `lead_form`, as
+    #   before. Fired by admin_dashboard's customers_list; crm answers.
+    CONTACTS_LEADS = 'contacts.leads'  # filter
     # ORDER_DETAIL_PANELS — filter, value=list[dict], kwargs: order=Order,
     #   request=HttpRequest. The CUSTOMER_DETAIL_PANELS contract on the dashboard
     #   order page: an app appends {'label': str, 'html': SafeString,
