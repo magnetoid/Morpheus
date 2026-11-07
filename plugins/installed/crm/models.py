@@ -40,6 +40,9 @@ class Lead(models.Model):
         ('converted', 'Converted'),
         ('lost', 'Lost'),
     ]
+    # A lead in neither is open: the CRM overview counts those, its Leads tab
+    # filters on them, and Contacts leaves out converted ones (they have an account).
+    CLOSED_STATUSES = ('converted', 'lost')
     SOURCE_CHOICES = [
         ('storefront', 'Storefront form'),
         ('newsletter', 'Newsletter signup'),

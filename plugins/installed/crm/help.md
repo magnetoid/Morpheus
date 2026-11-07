@@ -12,6 +12,7 @@ Connect a support mailbox — its address and sign-in details — from the [Inbo
 
 ## Common tasks
 
+- Find a lead by email, name or company, and filter by status, on [Leads](page:leads).
 - Reply to a customer's email from the shared [Inbox](page:inbox).
 - Answer a shopper's live chat message from [Support chat](page:chat).
 - Move a deal to its next stage on the [Pipeline](page:pipeline) board.
@@ -20,6 +21,6 @@ Connect a support mailbox — its address and sign-in details — from the [Inbo
 
 ## Good to know
 
-A lead is created automatically when someone registers, places an order, subscribes to the newsletter, or messages support; a cart left abandoned creates a 24-hour follow-up task. A connected mailbox is checked for new mail every five minutes, and Sync now says how many new messages arrived or which mailbox could not be reached. Staff are notified the first time a chat thread has an unanswered message waiting.
+A lead is created automatically when someone registers, places an order, subscribes to the newsletter, or messages support; a cart left abandoned creates a 24-hour follow-up task. Someone who registers becomes a converted lead and is listed with the other accounts in [Customers](section:customers). The leads with no account also show there, under the Leads tab, for staff who may read the CRM. The Open leads number on the [Overview](page:home) opens the Leads tab at its open leads. A connected mailbox is checked for new mail every five minutes, and Sync now says how many new messages arrived or which mailbox could not be reached. Staff are notified the first time a chat thread has an unanswered message waiting.
 
 The inbox shows an email's text, links and layout without its styles, scripts or images, so an email cannot change the page or tell the sender you opened it. The earlier message an email quotes is folded under "Show quoted text". A reply goes to the other side of the conversation and stays in the same thread.

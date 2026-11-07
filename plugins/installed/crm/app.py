@@ -20,7 +20,7 @@ class CrmPlugin(Plugin):
         'Account Manager agent that drives the day-to-day relationship work.'
     )
     has_models = True
-    requires = ['customers', 'orders', 'agent_core']
+    requires = ['customers', 'orders', 'agent_core', 'admin_dashboard']
 
     def ready(self) -> None:
         self.register_graphql_extension('plugins.installed.crm.graphql.queries')
@@ -45,6 +45,10 @@ class CrmPlugin(Plugin):
         self.register_hook(events.NEWSLETTER_SUBSCRIBED, self.on_newsletter_subscribed, priority=70)
         # Contribute newsletter-signup activity to the dashboard home feed.
         self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=60)
+        # Contacts → Leads lists the leads that have no account.
+        from plugins.installed.crm.contacts import contacts_leads  # noqa: PLC0415
+
+        self.register_hook(events.CONTACTS_LEADS, contacts_leads, priority=50)
         self._register_beat_schedule()
 
     def _register_beat_schedule(self) -> None:
@@ -249,12 +253,9 @@ class CrmPlugin(Plugin):
         return [AccountManagerAgent()]
 
     def contribute_dashboard_pages(self) -> list:
-        # NOTE: 'Leads' page intentionally removed. Contacts (renamed
-        # from 'Customers') is the single contact table — every record
-        # has a `source` field that distinguishes order customers,
-        # signups, lead-form captures, etc. The Lead model remains in
-        # place for now to preserve historical data; a follow-up will
-        # migrate Lead rows into Customer with source='lead_form'.
+        # Leads live here and, without an account, under Contacts → Leads too
+        # (CONTACTS_LEADS). They never become Customer rows: an account made
+        # for a newsletter address would block that person's own sign-up.
         return [
             DashboardPage(
                 label='Overview',
@@ -265,12 +266,21 @@ class CrmPlugin(Plugin):
                 order=30,
             ),
             DashboardPage(
+                label='Leads',
+                slug='leads',
+                view='plugins.installed.crm.views.leads_list',
+                icon='user-plus',
+                section='crm',
+                order=31,
+                url='/dashboard/crm/leads/',
+            ),
+            DashboardPage(
                 label='Inbox',
                 slug='inbox',
                 view='plugins.installed.crm.views.inbox_list',
                 icon='inbox',
                 section='crm',
-                order=31,
+                order=32,
             ),
             DashboardPage(
                 label='Support chat',
@@ -278,7 +288,7 @@ class CrmPlugin(Plugin):
                 view='plugins.installed.crm.chat_views.chat_inbox',
                 icon='message-circle',
                 section='crm',
-                order=32,
+                order=33,
                 url='/dashboard/crm/chat/',
             ),
             DashboardPage(
@@ -287,7 +297,7 @@ class CrmPlugin(Plugin):
                 view='plugins.installed.crm.views.pipeline_board',
                 icon='kanban',
                 section='crm',
-                order=33,
+                order=34,
             ),
             DashboardPage(
                 label='Tasks',
@@ -295,7 +305,7 @@ class CrmPlugin(Plugin):
                 view='plugins.installed.crm.views.tasks_list',
                 icon='list-checks',
                 section='crm',
-                order=34,
+                order=35,
             ),
         ]
 

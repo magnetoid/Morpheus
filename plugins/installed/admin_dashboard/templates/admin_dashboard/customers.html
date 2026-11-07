@@ -62,7 +62,36 @@
   </div>
 
   <div class="card overflow-hidden">
-    {% if customers %}
+    {% if lead_rows is not None %}
+    {% comment %}Leads without an account, from the app that keeps them (CONTACTS_LEADS): no account to open, edit or bulk-change.{% endcomment %}
+    {% if lead_rows %}
+    <table class="morph-table">
+      <thead>
+        <tr>
+          <th>{% sort_link "email" "Lead" %}</th>
+          <th>Source</th>
+          <th>Status</th>
+          <th>{% sort_link "created_at" "Captured" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lead in lead_rows %}
+        <tr data-lead-row>
+          <td>
+            <div class="font-medium truncate">{{ lead.name|default:lead.email }}</div>
+            {% if lead.name %}<div class="text-xs text-[color:var(--text-muted)] truncate">{{ lead.email }}</div>{% endif %}
+          </td>
+          <td><span class="pill pill-info">{{ lead.source_display }}</span></td>
+          <td><span class="pill pill-neutral">{{ lead.status_display }}</span></td>
+          <td class="text-[color:var(--text-muted)] whitespace-nowrap">{{ lead.created_at|date:"M j, Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    {% include "admin_dashboard/_empty_state.html" with icon="user-plus" title="No leads yet" hint="Newsletter signups and contact forms appear here until the person creates an account." search=search %}
+    {% endif %}
+    {% elif customers %}
     <table class="morph-table">
       <thead>
         <tr>
