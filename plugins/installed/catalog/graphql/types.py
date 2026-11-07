@@ -429,9 +429,7 @@ class ProductType:
             return False
         # Count in Python over the prefetched variants (see .price above); a
         # free download is not a price the book starts from.
-        active = [v for v in self.variants.all() if v.is_active]
-        paid = [v for v in active if not v.is_free]
-        return len(paid or active) > 1
+        return sum(1 for v in self.variants.all() if v.is_active and not v.is_free) > 1
 
     @strawberry.field(
         description='The edition a product page selects first: the first active one that costs something, else the first active one. Null without variants.'

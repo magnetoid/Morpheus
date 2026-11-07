@@ -451,11 +451,20 @@ class Product(models.Model):
         """
         if self.product_type != 'variable':
             return False
-        active = self._active_variants()
         # A free download is listed as Free beside the editions, not as the
         # price the book starts from (``cheapest_variant_price``).
-        paid = [v for v in active if not v.is_free]
-        return len(paid or active) > 1
+        return sum(1 for v in self._active_variants() if not v.is_free) > 1
+
+    @property
+    def is_free(self) -> bool:
+        """Every active edition is a free download (``ProductVariant.is_free``).
+
+        Such a product is shown as Free and listed in no shopping feed; one with
+        a paid edition is shown at that edition's price."""
+        if self.product_type != 'variable':
+            return False
+        active = self._active_variants()
+        return bool(active) and all(v.is_free for v in active)
 
     def _active_variants(self) -> list:
         # Filtered in Python, like primary_image below: a .filter() bypasses

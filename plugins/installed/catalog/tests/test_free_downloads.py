@@ -159,7 +159,40 @@ class FreeDownloadFeedTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        from plugins.installed.catalog.models import ProductImage
+
         cls.book, cls.pdf, cls.printed = _book('free-feed')
+        # A book with one free edition, and one whose editions are all free.
+        cls.single, single_pdf, single_print = _book('free-single')
+        single_print.delete()
+        cls.all_free, _pdf, all_print = _book('free-all')
+        all_print.is_active = False
+        all_print.save()
+        for product in (cls.book, cls.single, cls.all_free):
+            # A stored name is all the feed reads; no file is written.
+            ProductImage.objects.create(
+                product=product, image=f'products/{product.slug}.png', is_primary=True
+            )
+
+    def _feeds(self):
+        for channel, factory in (
+            ('google_shopping', 'feed_settings'),
+            ('meta_commerce', 'meta_settings'),
+        ):
+            mapping = importlib.import_module(f'plugins.installed.{channel}.services.mapping')
+            settings_mod = importlib.import_module(f'plugins.installed.{channel}.services.settings')
+            yield channel, mapping, getattr(settings_mod, factory)()
+
+    def test_a_product_with_no_paid_edition_is_not_listed(self):
+        # The feed builders list the product's own item when it has no
+        # variant items, so a free-only product must not map at all.
+        self.assertTrue(self.single.is_free)
+        self.assertTrue(self.all_free.is_free)
+        self.assertFalse(self.book.is_free)
+        for channel, mapping, fs in self._feeds():
+            self.assertIsNotNone(mapping.map_product(self.book, fs), channel)
+            self.assertIsNone(mapping.map_product(self.single, fs), channel)
+            self.assertIsNone(mapping.map_product(self.all_free, fs), channel)
 
     def test_every_channel_leaves_the_free_download_out(self):
         for channel, factory in (

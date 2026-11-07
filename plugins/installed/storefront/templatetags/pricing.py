@@ -36,7 +36,11 @@ def storefront_price(context, product):
     if isinstance(product, dict):
         return product.get('display_price') or product.get('price')
 
-    price = getattr(product, 'display_price', None) or getattr(product, 'price', None)
+    # `is None`, never `or`: a display price of 0 (every edition a free
+    # download) is a price, and `or` swapped in the product's own paid price.
+    price = getattr(product, 'display_price', None)
+    if price is None:
+        price = getattr(product, 'price', None)
     if price is None:
         return None
 

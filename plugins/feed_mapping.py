@@ -208,6 +208,10 @@ class FeedMapper:
         over = self._overrides(product)
         if str(over.get('excluded', '')).lower() in ('1', 'true', 'yes'):
             return None
+        if getattr(product, 'is_free', False):
+            # Every edition is a free download: channels refuse a price of 0,
+            # and the product's own price would be a false claim.
+            return None
 
         image_link = self._primary_image_link(product)
         if not image_link:
