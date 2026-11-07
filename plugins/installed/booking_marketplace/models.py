@@ -22,19 +22,12 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _l
 from djmoney.models.fields import MoneyField
 
-# Montenegro regions — used to browse experiences by area (parity with the
-# reference site's region tiles). Stored as a slug-ish key; label shown in UI.
-REGIONS = [
-    ('kotor', _l('Kotor Bay')),
-    ('budva', _l('Budva Riviera')),
-    ('durmitor', _l('Durmitor & the North')),
-    ('skadar', _l('Lake Skadar')),
-    ('podgorica', _l('Podgorica')),
-    ('ulcinj', _l('Ulcinj & the south coast')),
-    ('tivat', _l('Tivat & Luštica')),
-    ('cetinje', _l('Cetinje & the Old Royal Capital')),
-    ('other', _l('Elsewhere in Montenegro')),
-]
+from plugins.installed.booking_marketplace.country import MONTENEGRO, region_choices
+
+# Montenegro's regions, kept for its seeders and tests. A page, form or field reads the
+# store's own regions from country.py (`regions()`, `region_choices`), which follow the
+# active theme's country.
+REGIONS = list(MONTENEGRO.regions)
 
 PLACE_TYPES = [
     ('coastal', _l('Coastal')),
@@ -64,7 +57,9 @@ class BookableService(models.Model):
         blank=True,
         related_name='bookable_services',
     )
-    region = models.CharField(max_length=20, choices=REGIONS, blank=True, default='', db_index=True)
+    region = models.CharField(
+        max_length=20, choices=region_choices, blank=True, default='', db_index=True
+    )
     location = models.CharField(
         max_length=120, blank=True, default='', help_text='Town / specific place, e.g. Kotor.'
     )
@@ -314,7 +309,9 @@ class Place(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=120)
     slug = models.SlugField(max_length=140, unique=True)
-    region = models.CharField(max_length=20, choices=REGIONS, blank=True, default='', db_index=True)
+    region = models.CharField(
+        max_length=20, choices=region_choices, blank=True, default='', db_index=True
+    )
     place_type = models.CharField(
         max_length=20, choices=PLACE_TYPES, blank=True, default='', db_index=True
     )
@@ -500,7 +497,9 @@ class Property(models.Model):
     star_rating = models.PositiveSmallIntegerField(default=0)  # 0–5
     short_description = models.CharField(max_length=300, blank=True, default='')
     description = models.TextField(blank=True, default='')
-    region = models.CharField(max_length=20, choices=REGIONS, blank=True, default='', db_index=True)
+    region = models.CharField(
+        max_length=20, choices=region_choices, blank=True, default='', db_index=True
+    )
     location = models.CharField(max_length=120, blank=True, default='')
     address = models.CharField(max_length=255, blank=True, default='')
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
@@ -703,7 +702,9 @@ class Event(models.Model):
     category = models.CharField(
         max_length=20, choices=EVENT_CATEGORIES, blank=True, default='', db_index=True
     )
-    region = models.CharField(max_length=20, choices=REGIONS, blank=True, default='', db_index=True)
+    region = models.CharField(
+        max_length=20, choices=region_choices, blank=True, default='', db_index=True
+    )
     place = models.ForeignKey(
         'booking_marketplace.Place',
         on_delete=models.SET_NULL,

@@ -1,0 +1,561 @@
+{% load morph %}{% load seo %}{% load tracking %}{% load caching %}{% load i18n %}{% load static %}{% load booking_tags %}<!DOCTYPE html>
+<html lang="{% get_current_language as LANG %}{{ LANG|default:'en' }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f9fc">
+{% comment %}The entire SEO head — title, description, canonical, robots, Open Graph,
+Twitter, hreflang, pagination, verification metas and the JSON-LD graph — comes from
+one core tag (ADR 0036). The theme supplies fallback copy for a store that has not
+filled in its SEO settings; everything else is resolved per page by the seo app, which
+reads the `seo_title`/`seo_description`/`seo_object` this theme's views already put in
+the context. Do NOT add a <title>, canonical, robots, og:* or JSON-LD tag alongside
+this call: that is how this theme previously shipped three pages under one title and
+a 404 with two <meta name="robots">.{% endcomment %}
+{% static 'croatia/og-default.jpg' as og_default %}
+{% image_frame_style %}
+{% block seo %}
+{% comment %}`seo_image` is what the page resolver reads for og:image / twitter:image.
+The theme's bundled card is the fallback: without it every page loses its share
+image the moment a store has not filled in Settings -> SEO -> default OG image,
+which is exactly what this theme was relying on before it adopted the contract.{% endcomment %}
+{% with seo_image=seo_image|default:og_default %}{% storefront_head title=seo_title description=seo_description %}{% endwith %}
+{% endblock %}
+
+{# Legacy favicon.ico — pwa plugin injects manifest/SVG/apple-touch below body; this covers /favicon.ico (was 404). #}
+<link rel="icon" href="{% static 'croatia/favicon.ico' %}" sizes="32x32">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+{% seo_preconnect %}
+{% storefront_blocks "global_head" %}
+{% caching_resource_hints %}
+{% caching_preload_fonts %}
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+{% caching_font_display %}
+{% caching_service_worker_register %}
+
+<!-- Legacy bespoke CSS for pages not yet ported to Tailwind (listing/detail/places/regions).
+     Loaded BEFORE Tailwind + the new tokens so the new :root values win on any conflict. -->
+<link rel="stylesheet" href="{% static 'croatia/legacy.css' %}">
+
+<!-- Adriatic Design System — compiled Tailwind (self-hosted from theme static; CSP-clean,
+     no runtime CDN/FOUC). Rebuild after class changes: ./scripts/build-css.sh -->
+<link rel="stylesheet" href="{% static 'croatia/tailwind.css' %}">
+{% comment %}Layout fixes and polish over the compiled Tailwind file, which has no build
+step here: a class it never saw does not exist, so new rules live in refresh.css.{% endcomment %}
+<link rel="stylesheet" href="{% static 'croatia/refresh.css' %}">
+
+<style>
+  :root {
+    --background: 210 40% 99%; --foreground: 214 30% 13%;
+    --card: 0 0% 100%; --card-foreground: 214 30% 13%;
+    --popover: 0 0% 100%; --popover-foreground: 214 30% 13%;
+    --primary: 212 68% 32%; --primary-foreground: 0 0% 100%;
+    --secondary: 210 30% 96%; --secondary-foreground: 214 30% 13%;
+    --muted: 210 30% 96%; --muted-foreground: 214 12% 40%;
+    --accent: 210 30% 96%; --accent-foreground: 214 30% 13%;
+    --accent-warm: 12 70% 46%; --accent-warm-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%; --destructive-foreground: 0 0% 100%;
+    --border: 212 20% 90%; --input: 212 20% 90%; --ring: 212 68% 32%;
+    --radius: 0.75rem; --rating: 38 92% 50%;
+    --shadow-soft: 0 1px 2px rgba(15,30,60,.06);
+    --shadow-card: 0 4px 14px rgba(15,30,60,.08);
+    --shadow-card-hover: 0 10px 30px rgba(15,30,60,.14);
+    --shadow-elevated: 0 14px 40px rgba(15,30,60,.18);
+  }
+  /* Base typography — mirrors index.css @layer base */
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; font-weight: 600; letter-spacing: -0.01em; }
+  h4, h5, h6 { font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.01em; }
+  /* The footer's column titles are h2 (they follow the page's own h2/h3; h4 skipped a level) and keep the h4 look. */
+  footer h2 { font-family: 'Inter', sans-serif; }
+  /* Custom utilities — mirrors index.css @layer utilities/components */
+  .font-display { font-family: 'Playfair Display', Georgia, serif; }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-card-hover { box-shadow: var(--shadow-card-hover); }
+  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+  .hover-lift { transition: all .2s ease-out; }
+  .hover-lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-card-hover); }
+  .img-zoom { transition: transform .5s ease-out; }
+  .group:hover .img-zoom { transform: scale(1.04); }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  /* Megamenu: CSS hover/focus reveal (replaces Radix NavigationMenu JS) */
+  .nav-item > .nav-panel { opacity: 0; visibility: hidden; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease, visibility .18s; }
+  .nav-item:hover > .nav-panel, .nav-item:focus-within > .nav-panel { opacity: 1; visibility: visible; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body class="bg-background text-foreground antialiased min-h-screen flex flex-col">
+{% include "storefront/_admin_bar.html" %}
+{% booking_listing_mode as listing_mode %}
+{% get_current_language as CUR_LANG %}
+
+<!-- ============ HEADER (1:1 port of components/Header.tsx) ============ -->
+<header class="sticky top-0 z-50 w-full bg-background border-b border-border">
+  <div class="container mx-auto px-4">
+    <div class="flex items-center justify-between h-[72px]">
+      <!-- Logo -->
+      <a href="/" class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+          <span class="text-primary-foreground font-bold text-lg">C</span>
+        </div>
+        <span class="text-base font-semibold text-foreground hidden sm:block tracking-tight">croatia<span class="text-primary">experience</span></span>
+      </a>
+
+      <!-- Desktop Navigation — Megamenu -->
+      <nav class="hidden lg:flex items-center gap-1" aria-label="{% trans 'Main' %}">
+        <!-- Experiences -->
+        <div class="nav-item relative">
+          <button class="bg-transparent hover:bg-muted rounded-full px-4 py-2.5 text-sm font-medium inline-flex items-center gap-1 transition-colors">
+            {% trans "Experiences" %}
+            <svg class="w-3.5 h-3.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="nav-panel absolute left-0 top-full pt-2 z-50">
+            <div class="w-[600px] p-6 bg-popover rounded-2xl shadow-elevated border border-border">
+              <div class="grid grid-cols-2 gap-6">
+                <div>
+                  <h4 class="text-sm font-semibold text-muted-foreground mb-3">{% trans "Browse by category" %}</h4>
+                  <ul class="space-y-1">
+                    {% comment %}
+                    `storefront_nav` is the booking plugin's namespaced payload.
+                    Catalog now publishes `catalog_nav_categories` instead, so
+                    the two plugins can no longer clobber each other.
+                    {% endcomment %}
+                    {% if storefront_nav.categories %}{% for c in storefront_nav.categories %}
+                    <li>
+                      <a href="{% if c.href %}{{ c.href }}{% else %}/bookings/?category={{ c.slug }}{% endif %}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group">
+                        <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors text-primary [&_svg]:w-4 [&_svg]:h-4">{{ c.icon|default:'<svg viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot;><circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;8&quot;/></svg>'|safe }}</div>
+                        <div>
+                          <p class="text-sm font-medium text-foreground">{% firstof c.label c.name %}</p>
+                          {% if c.desc %}<p class="text-xs text-muted-foreground">{{ c.desc }}</p>{% endif %}
+                        </div>
+                      </a>
+                    </li>
+                    {% endfor %}{% endif %}
+                    {% comment %}
+                    Legacy fallback: a store whose nav arrives under the bare
+                    `nav_categories` key still renders a menu. `firstof` is
+                    used for the label because a `|default:` chain evaluates
+                    BOTH sides and raises on the missing one.
+                    {% endcomment %}
+                    {% if not storefront_nav.categories %}{% for c in nav_categories %}
+                    <li>
+                      <a href="/bookings/?category={{ c.slug }}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group">
+                        <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors text-primary [&_svg]:w-4 [&_svg]:h-4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg></div>
+                        <div>
+                          <p class="text-sm font-medium text-foreground">{% firstof c.label c.name %}</p>
+                        </div>
+                      </a>
+                    </li>
+                    {% endfor %}{% endif %}
+                  </ul>
+                </div>
+                <div>
+                  <h4 class="text-sm font-semibold text-muted-foreground mb-3">{% trans "Popular destinations" %}</h4>
+                  <ul class="grid grid-cols-2 gap-1">
+                    {% if storefront_nav.destinations %}{% for d in storefront_nav.destinations %}
+                    <li>
+                      <a href="{% if d.href %}{{ d.href }}{% else %}/places/{{ d.slug }}/{% endif %}" class="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors text-sm text-foreground">
+                        <svg class="w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                        {{ d.name }}
+                      </a>
+                    </li>
+                    {% endfor %}{% elif nav_destinations %}{% for d in nav_destinations %}
+                    <li>
+                      <a href="{% if d.href %}{{ d.href }}{% else %}/places/{{ d.slug }}/{% endif %}" class="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors text-sm text-foreground">
+                        <svg class="w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                        {% firstof d.name d.label %}
+                      </a>
+                    </li>
+                    {% endfor %}{% endif %}
+                  </ul>
+                  <div class="mt-4 pt-4 border-t border-border">
+                    <a href="/bookings/" class="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
+                      <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+                        <span class="text-sm font-medium">{% trans "View all experiences" %}</span>
+                      </div>
+                      <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Places -->
+        <div class="nav-item relative">
+          <button class="bg-transparent hover:bg-muted rounded-full px-4 py-2.5 text-sm font-medium inline-flex items-center gap-1 transition-colors">
+            {% trans "Places" %}
+            <svg class="w-3.5 h-3.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="nav-panel absolute left-0 top-full pt-2 z-50">
+            <div class="w-[680px] p-6 bg-popover rounded-2xl shadow-elevated border border-border">
+              <div class="grid grid-cols-3 gap-6">
+                <div>
+                  <h4 class="text-sm font-semibold text-muted-foreground mb-3">{% trans "Coastal towns" %}</h4>
+                  <ul class="space-y-1">
+                    {% if storefront_nav.places.coastal %}{% for p in storefront_nav.places.coastal %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
+                    {% endfor %}{% elif nav_places_coastal %}{% for p in nav_places_coastal %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{% firstof p.name p.label %}</a></li>
+                    {% endfor %}{% endif %}
+                  </ul>
+                </div>
+                <div>
+                  <h4 class="text-sm font-semibold text-muted-foreground mb-3">{% trans "Mountains &amp; parks" %}</h4>
+                  <ul class="space-y-1">
+                    {% if storefront_nav.places.mountains %}{% for p in storefront_nav.places.mountains %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
+                    {% endfor %}{% elif nav_places_mountains %}{% for p in nav_places_mountains %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{% firstof p.name p.label %}</a></li>
+                    {% endfor %}{% endif %}
+                  </ul>
+                  <h4 class="text-sm font-semibold text-muted-foreground mb-3 mt-5">{% trans "Cities &amp; towns" %}</h4>
+                  <ul class="space-y-1">
+                    {% if storefront_nav.places.cities %}{% for p in storefront_nav.places.cities %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
+                    {% endfor %}{% elif nav_places_cities %}{% for p in nav_places_cities %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{% firstof p.name p.label %}</a></li>
+                    {% endfor %}{% endif %}
+                  </ul>
+                </div>
+                <div>
+                  <h4 class="text-sm font-semibold text-muted-foreground mb-3">{% trans "Landmarks &amp; nature" %}</h4>
+                  <ul class="space-y-1">
+                    {% if storefront_nav.places.landmarks %}{% for p in storefront_nav.places.landmarks %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{{ p.name }}</a></li>
+                    {% endfor %}{% elif nav_places_landmarks %}{% for p in nav_places_landmarks %}
+                    <li><a href="{% if p.href %}{{ p.href }}{% else %}/places/{{ p.slug }}/{% endif %}" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"><svg class="w-3 h-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{% firstof p.name p.label %}</a></li>
+                    {% endfor %}{% endif %}
+                  </ul>
+                </div>
+              </div>
+              <div class="mt-4 pt-4 border-t border-border">
+                <a href="/places/" class="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
+                  <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span class="text-sm font-medium">{% trans "View all destinations" %}</span>
+                  </div>
+                  <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gift Cards -->
+        <div class="nav-item relative">
+          <button class="bg-transparent hover:bg-muted rounded-full px-4 py-2.5 text-sm font-medium inline-flex items-center gap-1 transition-colors">
+            {% trans "Gift Cards" %}
+            <svg class="w-3.5 h-3.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="nav-panel absolute right-0 top-full pt-2 z-50">
+            <div class="w-[400px] p-6 bg-popover rounded-2xl shadow-elevated border border-border">
+              <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-primary-foreground">
+                  <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8"/></svg>
+                </div>
+                <div class="flex-1">
+                  {% comment %}This card sold gift cards and linked the catalogue — which has no
+                  gift card (or any active product) on this store, so it landed on an empty
+                  grid. It points at the local goods that are actually for sale.{% endcomment %}
+                  <h4 class="text-base font-semibold text-foreground mb-1">{% trans "Bring Croatia home" %}</h4>
+                  <p class="text-sm text-muted-foreground mb-4">{% trans "Local wine, olive oil, honey and crafts from the makers you meet." %}</p>
+                  <a href="{% url 'booking_marketplace:shop' %}" class="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+                    {% trans "Shop local goods" %}
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hotels -->
+        <a href="/hotels/" class="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted rounded-full transition-colors">{% trans "Hotels" %}</a>
+        <!-- Events -->
+        <a href="/events/" class="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted rounded-full transition-colors">{% trans "Events" %}</a>
+        <!-- Shop -->
+        <a href="/shop/" class="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted rounded-full transition-colors">{% trans "Shop" %}</a>
+        <!-- Blog -->
+        <a href="/journal/" class="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted rounded-full transition-colors">{% trans "Blog" %}</a>
+        <!-- Become a Vendor -->
+        <a href="/vendor/apply/" class="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted rounded-full transition-colors">{% trans "Become a Vendor" %}</a>
+      </nav>
+
+      <!-- Right Actions -->
+      <div class="flex items-center gap-2">
+        <!-- Language toggle -->
+        <form action="{% url 'set_language' %}" method="post" class="flex">{% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <input type="hidden" name="language" value="{% if CUR_LANG == 'hr' %}en{% else %}hr{% endif %}">
+          <button type="submit" class="h-10 px-3 rounded-full hover:bg-muted flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors" aria-label="{% trans 'Switch language' %}">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/></svg>
+            <span class="hidden sm:inline">{% if CUR_LANG == 'hr' %}EN{% else %}HR{% endif %}</span>
+          </button>
+        </form>
+        <!-- Account dropdown -->
+        <div class="relative" data-account-menu>
+          <button type="button" aria-haspopup="true" aria-expanded="false" aria-label="{% trans 'Account' %}"
+            class="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </button>
+          <div data-account-panel class="hidden absolute right-0 mt-2 w-60 rounded-2xl border border-border bg-card shadow-elevated py-2 z-[70]">
+          {% with item_cls="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:bg-muted" %}
+          {% if request.user.is_authenticated %}
+            <div class="px-4 py-2 mb-1 border-b border-border">
+              <p class="text-sm font-medium text-foreground truncate">{{ request.user.email|default:request.user.get_username }}</p>
+            </div>
+            {% if request.user.is_staff %}
+            <a href="/dashboard/" class="{{ item_cls }}">
+              <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+              {% trans "Admin dashboard" %}
+            </a>
+            {% endif %}
+            {% if is_vendor %}
+            <a href="/vendor/me/" class="{{ item_cls }}">
+              <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+              {% trans "Vendor dashboard" %}
+            </a>
+            {% else %}
+            <a href="/vendor/apply/" class="{{ item_cls }}">
+              <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7 3 4h18l1 3M4 7v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7M2 7h20M8 11h8"/></svg>
+              {% trans "Become a host" %}
+            </a>
+            {% endif %}
+            {% if is_affiliate %}
+            <a href="/affiliates/me/" class="{{ item_cls }}">
+              <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 0-6-6M2 12a10 10 0 0 1 10-10"/><circle cx="12" cy="12" r="2"/><path d="m16 16 4 4M8 16l-4 4"/></svg>
+              {% trans "Affiliate dashboard" %}
+            </a>
+            {% endif %}
+            <a href="/wishlist/" class="{{ item_cls }}">
+              <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+              {% trans "My wishlist" %}
+            </a>
+            <a href="{% url 'booking_marketplace:account_bookings' %}" class="{{ item_cls }}">
+              <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+              {% trans "My bookings" %}
+            </a>
+            <a href="{% url 'storefront:account_home' %}" class="{{ item_cls }}">
+              <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              {% trans "My account" %}
+            </a>
+            <div class="mt-1 pt-1 border-t border-border">
+              <a href="/auth/logout/" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/5 transition-colors">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                {% trans "Sign out" %}
+              </a>
+            </div>
+          {% else %}
+            <a href="/auth/login/" class="{{ item_cls }} font-medium">
+              <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+              {% trans "Log in" %}
+            </a>
+            <a href="/auth/signup/" class="{{ item_cls }}">
+              <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+              {% trans "Sign up" %}
+            </a>
+            <div class="mt-1 pt-1 border-t border-border">
+              <a href="/vendor/apply/" class="{{ item_cls }}">
+                <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7 3 4h18l1 3M4 7v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7M2 7h20M8 11h8"/></svg>
+                {% trans "Become a host" %}
+              </a>
+            </div>
+          {% endif %}
+          {% endwith %}
+          </div>
+        </div>
+        <script nonce="{{ csp_nonce }}">
+        (function(){
+          if (window.__accountMenuBound) return; window.__accountMenuBound = true;
+          // Listeners, never onclick attributes: the cart and checkout enforce a
+          // CSP that runs only scripts carrying the page's nonce.
+          document.addEventListener('click', function(e){
+            var toggle = e.target.closest('[data-account-menu] > button[aria-haspopup]');
+            if (toggle) {
+              var hid = toggle.parentNode.querySelector('[data-account-panel]').classList.toggle('hidden');
+              toggle.setAttribute('aria-expanded', String(!hid));
+            }
+            var open = e.target.closest('[data-mobile-menu-open]');
+            if (open || e.target.closest('[data-mobile-menu-close]')) {
+              document.getElementById('mobile-menu').classList.toggle('hidden', !open);
+              document.body.style.overflow = open ? 'hidden' : '';
+            }
+            document.querySelectorAll('[data-account-menu]').forEach(function(menu){
+              if (menu.contains(e.target)) return;
+              var p = menu.querySelector('[data-account-panel]');
+              if (p && !p.classList.contains('hidden')) {
+                p.classList.add('hidden');
+                var btn = menu.querySelector('button[aria-haspopup]');
+                if (btn) btn.setAttribute('aria-expanded','false');
+              }
+            });
+          });
+          document.addEventListener('keydown', function(e){
+            if (e.key !== 'Escape') return;
+            document.querySelectorAll('[data-account-panel]:not(.hidden)').forEach(function(p){
+              p.classList.add('hidden');
+              var btn = p.parentNode.querySelector('button[aria-haspopup]');
+              if (btn) btn.setAttribute('aria-expanded','false');
+            });
+          });
+        })();
+        </script>
+        {# Bookings never use the cart; show it only once something is in it. #}
+        {% if not listing_mode and cart_item_count %}
+        <a href="/cart/" class="relative w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center text-foreground transition-colors" aria-label="{% trans 'Cart' %}">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+        </a>
+        {% endif %}
+        <!-- Mobile menu trigger -->
+        <button type="button" data-mobile-menu-open class="lg:hidden w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center text-foreground transition-colors" aria-label="{% trans 'Open menu' %}">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M4 6h16M4 18h16"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Mobile menu -->
+<div id="mobile-menu" class="hidden fixed inset-0 z-[60] lg:hidden">
+  <div class="absolute inset-0 bg-black/40" data-mobile-menu-close></div>
+  <div class="absolute inset-y-0 left-0 w-full sm:max-w-md bg-background shadow-elevated flex flex-col">
+    <div class="p-4 border-b border-border flex items-center justify-between">
+      <span class="flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"><span class="text-primary-foreground font-bold text-lg">C</span></span>
+        <span class="text-base font-semibold">croatia<span class="text-primary">experience</span></span>
+      </span>
+      <button type="button" data-mobile-menu-close class="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center" aria-label="{% trans 'Close menu' %}">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-2" aria-label="{% trans 'Menu' %}">
+      <a href="/bookings/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Experiences" %}</a>
+      <a href="/places/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Places" %}</a>
+      <a href="/hotels/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Hotels" %}</a>
+      <a href="/events/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Events" %}</a>
+      <a href="/regions/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Regions" %}</a>
+      <a href="/shop/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Shop" %}</a>
+      <a href="/journal/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Blog" %}</a>
+      {% if request.user.is_authenticated %}
+      {% if request.user.is_staff %}<a href="/dashboard/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Admin dashboard" %}</a>{% endif %}
+      {% if is_vendor %}<a href="/vendor/me/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Vendor dashboard" %}</a>{% else %}<a href="/vendor/apply/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Become a host" %}</a>{% endif %}
+      {% if is_affiliate %}<a href="/affiliates/me/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Affiliate dashboard" %}</a>{% endif %}
+      <a href="/wishlist/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "My wishlist" %}</a>
+      <a href="{% url 'booking_marketplace:account_bookings' %}" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "My bookings" %}</a>
+      <a href="{% url 'storefront:account_home' %}" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "My account" %}</a>
+      <a href="/auth/logout/" class="block px-4 py-4 text-base font-medium border-b border-border text-destructive hover:bg-destructive/5 rounded-lg">{% trans "Sign out" %}</a>
+      {% else %}
+      <a href="/vendor/apply/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Become a host" %}</a>
+      <a href="/auth/login/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Log in" %}</a>
+      <a href="/auth/signup/" class="block px-4 py-4 text-base font-medium border-b border-border hover:bg-muted/50 rounded-lg">{% trans "Sign up" %}</a>
+      {% endif %}
+      <form action="{% url 'set_language' %}" method="post" class="px-4 py-4">{% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <input type="hidden" name="language" value="{% if CUR_LANG == 'hr' %}en{% else %}hr{% endif %}">
+        <button type="submit" class="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary">
+          <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/></svg>
+          {% if CUR_LANG == 'hr' %}🇬🇧 English{% else %}🇭🇷 Hrvatski{% endif %}
+        </button>
+      </form>
+    </nav>
+  </div>
+</div>
+
+<main class="flex-1">
+{% block content %}{% endblock %}
+</main>
+
+<!-- ============ FOOTER (1:1 port of components/Footer.tsx) ============ -->
+<footer class="bg-muted border-t border-border">
+  <div class="container mx-auto px-4 py-12">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-8 items-start">
+      <div class="max-w-md">
+        <h2 class="font-semibold text-foreground mb-2">Croatia Experience</h2>
+        <p class="text-sm text-muted-foreground">{% trans "Discover the beauty of Croatia through unique, handcrafted experiences." %}</p>
+      </div>
+      <div class="w-full">
+        <div class="rounded-2xl bg-background border border-border p-5">
+          <h2 class="font-semibold text-foreground mb-1">{% trans "Get hand-picked Croatia experiences" %}</h2>
+          <p class="text-sm text-muted-foreground mb-3">{% trans "Seasonal guides, hidden gems and exclusive offers — straight to your inbox." %}</p>
+          <form class="flex flex-col sm:flex-row gap-2">
+            <input type="email" required placeholder="{% trans 'you@email.com' %}" class="flex-1 h-11 rounded-lg border border-input bg-background px-3.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="submit" class="h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">{% trans "Subscribe" %}</button>
+          </form>
+          <p class="text-xs text-muted-foreground mt-2">{% trans "No spam. Unsubscribe anytime." %}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8">
+      <div>
+        <h2 class="font-semibold text-foreground mb-4">{% trans "Support" %}</h2>
+        <ul class="space-y-3">
+          <li><a href="/p/help-center/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Help center" %}</a></li>
+          <li><a href="/p/safety-info/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Safety information" %}</a></li>
+          <li><a href="/p/cancellation-policy/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Cancellation options" %}</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="font-semibold text-foreground mb-4">{% trans "Hosting" %}</h2>
+        <ul class="space-y-3">
+          <li><a href="/vendor/apply/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Become a Vendor" %}</a></li>
+          <li><a href="/p/hosting-resources/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Hosting resources" %}</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="font-semibold text-foreground mb-4">Croatia Experience</h2>
+        <ul class="space-y-3">
+          <li><a href="/events/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Events calendar" %}</a></li>
+          <li><a href="/journal/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Blog" %}</a></li>
+          <li><a href="/about/" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "About us" %}</a></li>
+          <li><a href="{% url 'booking_marketplace:shop' %}" class="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">{% trans "Local goods" %}</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-border pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <span>© {% now "Y" %} Croatia Experience</span>
+        <span>·</span>
+        <a href="/p/privacy/" class="hover:underline">{% trans "Privacy" %}</a>
+        <span>·</span>
+        <a href="/p/terms/" class="hover:underline">{% trans "Terms" %}</a>
+        <span>·</span>
+        <a href="/sitemap.xml" class="hover:underline">{% trans "Sitemap" %}</a>
+        {% storefront_blocks "footer_legal" %}
+      </div>
+      <div class="flex items-center gap-4">
+        <form action="{% url 'set_language' %}" method="post" class="flex items-center gap-2 text-sm font-medium">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/></svg>
+          <button type="submit" name="language" value="en" class="{% if CUR_LANG != 'hr' %}text-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %} transition-colors">English</button>
+          <span class="text-muted-foreground">·</span>
+          <button type="submit" name="language" value="hr" class="{% if CUR_LANG == 'hr' %}text-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %} transition-colors">Hrvatski</button>
+        </form>
+        <span class="text-muted-foreground">€ EUR</span>
+        {% comment %}Social icons only for a profile the store has (Settings → store
+        social_links); they all linked to "#".{% endcomment %}
+        <div class="flex items-center gap-3 text-foreground">
+          {% if STORE_SOCIAL_LINKS.facebook %}          <a href="{{ STORE_SOCIAL_LINKS.facebook }}" target="_blank" rel="noopener" class="hover:text-muted-foreground transition-colors" aria-label="Facebook"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>{% endif %}
+          {% if STORE_SOCIAL_LINKS.twitter %}          <a href="{{ STORE_SOCIAL_LINKS.twitter }}" target="_blank" rel="noopener" class="hover:text-muted-foreground transition-colors" aria-label="Twitter"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg></a>{% endif %}
+          {% if STORE_SOCIAL_LINKS.instagram %}          <a href="{{ STORE_SOCIAL_LINKS.instagram }}" target="_blank" rel="noopener" class="hover:text-muted-foreground transition-colors" aria-label="Instagram"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg></a>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% storefront_blocks "footer_extra" %}
+</footer>
+
+{% storefront_blocks "global_below_body" %}
+<script nonce="{{ csp_nonce }}" src="{% static 'core/error-capture.js' %}" {% error_capture_attrs %} defer></script>
+</body>
+</html>

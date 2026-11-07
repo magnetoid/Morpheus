@@ -1,0 +1,36 @@
+{% extends "storefront/base.html" %}
+{% load seo %}
+{% load i18n %}
+
+{% block extra_head %}
+<link rel="amphtml" href="/journal/{{ entry.slug }}/amp/">
+{% seo_article_jsonld headline=entry.title body=entry.body|striptags|truncatechars:5000 author=entry.author|default:"Croatia Experience staff" published=entry.published_at modified=entry.updated_at|default:entry.published_at image=entry.image %}
+{% seo_speakable_jsonld %}
+{% seo_breadcrumb_jsonld items=breadcrumb_items %}
+{% seo_llms_link %}
+{% endblock %}
+
+{% block content %}
+<article class="mx-article">
+  <div class="mx-article__wrap">
+    <header>
+      <p class="mx-article__crumb"><a href="/journal/">{% trans "Blog" %}</a></p>
+      <h1 class="mx-article__title">{{ entry.title }}<span>.</span></h1>
+      <p class="mx-article__meta" itemprop="author" itemscope itemtype="https://schema.org/Person">
+        {% if entry.author %}<span itemprop="name">{{ entry.author }}</span>{% endif %}
+        {% if entry.author and entry.date_label %} · {% endif %}{{ entry.date_label }}
+      </p>
+    </header>
+    <div class="mx-article__body mx-prose" itemprop="articleBody">
+      {% if entry.is_html %}
+        {{ entry.body|safe }}
+      {% else %}
+        {{ entry.body|linebreaks }}
+      {% endif %}
+    </div>
+    <footer class="mx-article__foot">
+      <a href="/journal/">&larr; {% trans "All entries" %}</a>
+    </footer>
+  </div>
+</article>
+{% endblock %}

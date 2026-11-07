@@ -61,12 +61,8 @@ STOPWORDS = frozenset(
         'ture',
         'izlet',
         'izleti',
-        # The whole store is Montenegro, and everything on it is an experience
-        'montenegro',
-        'crna',
-        'gora',
-        'crnoj',
-        'gori',
+        # Everything on the store is an experience; the store's own country is
+        # a stopword too (country.py: search_stop_words).
         'experience',
         'experiences',
         'activity',
@@ -228,10 +224,13 @@ def _forms(word: str) -> set[str]:
 
 def parse_query(q: str) -> list[Term]:
     """The query's words, folded, without stopwords or repeats, each with its variants."""
+    from plugins.installed.booking_marketplace.country import current
+
+    country_stops = {fold(w) for w in current().search_stop_words}
     terms: list[Term] = []
     seen: set[str] = set()
     for word in fold((q or '')[:MAX_QUERY_CHARS]).split():
-        if word in STOPWORDS or word in seen:
+        if word in STOPWORDS or word in country_stops or word in seen:
             continue
         seen.add(word)
         variants: set[str] = set()
@@ -344,15 +343,16 @@ def _flatten(value) -> str:
 
 
 def _region_names() -> dict[str, str]:
-    """Each region's label in English and in Serbian, so `boka` finds Kotor Bay."""
+    """Each region's label in English and in the store's second language, so `boka` finds Kotor Bay."""
     from django.utils import translation
 
-    from plugins.installed.booking_marketplace.models import REGIONS
+    from plugins.installed.booking_marketplace.country import current
 
+    here = current()
     names = {}
-    for key, label in REGIONS:
+    for key, label in here.regions:
         spellings = []
-        for language in ('en', 'sr'):
+        for language in ('en', here.language):
             with translation.override(language):
                 spellings.append(str(label))
         names[key] = ' '.join(dict.fromkeys(spellings))

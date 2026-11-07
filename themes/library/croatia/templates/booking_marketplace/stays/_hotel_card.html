@@ -1,0 +1,19 @@
+{% load i18n %}
+<a href="/hotels/{{ p.slug }}/" class="group block rounded-2xl overflow-hidden border border-border bg-card shadow-card hover:shadow-lg transition-shadow">
+  <div class="aspect-[4/3] bg-muted overflow-hidden">
+    {% if p.image %}<img src="{{ p.image.url }}" alt="{{ p.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+    {% else %}<div class="w-full h-full flex items-center justify-center text-muted-foreground">
+      <svg class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
+    </div>{% endif %}
+  </div>
+  <div class="p-4">
+    {% if p.star_rating %}<div class="flex items-center gap-0.5 text-primary text-xs mb-1">{% for _ in ""|center:p.star_rating %}★{% endfor %}</div>{% endif %}
+    <h3 class="font-semibold text-foreground group-hover:text-primary transition-colors">{{ p.name }}</h3>
+    <p class="text-sm text-muted-foreground">{{ p.location }}{% if p.get_region_display %} · {{ p.get_region_display }}{% endif %}</p>
+    {% if not listing_mode %}
+      <p class="mt-2 text-sm text-foreground">{% trans "from" %} <span class="font-semibold">{{ p.price_from }}</span> <span class="text-muted-foreground">/ {% trans "night" %}</span></p>
+    {% else %}
+      <p class="mt-2 text-sm text-primary font-medium">{% trans "Contact for price" %}</p>
+    {% endif %}
+  </div>
+</a>

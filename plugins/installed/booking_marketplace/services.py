@@ -544,12 +544,13 @@ def active_categories():
 
 
 def live_regions() -> list[dict]:
-    """Regions with a live experience, in REGIONS order, with counts: the search bar's Where.
+    """Regions with a live experience, in the country's region order, with counts: the search bar's Where.
 
     Fails soft to [] like active_categories(): the bar renders on the home page.
     """
     try:
-        from plugins.installed.booking_marketplace.models import REGIONS, BookableService
+        from plugins.installed.booking_marketplace.country import regions
+        from plugins.installed.booking_marketplace.models import BookableService
 
         counts = dict(
             BookableService.objects.filter(
@@ -562,7 +563,7 @@ def live_regions() -> list[dict]:
         )
         return [
             {'key': key, 'label': str(label), 'count': counts[key]}
-            for key, label in REGIONS
+            for key, label in regions()
             if counts.get(key)
         ]
     except Exception:  # noqa: BLE001 — table missing / not migrated yet

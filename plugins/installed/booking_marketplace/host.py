@@ -19,8 +19,8 @@ from django.utils.translation import gettext
 from django.views.decorators.http import require_http_methods
 from djmoney.money import Money
 
+from plugins.installed.booking_marketplace.country import regions
 from plugins.installed.booking_marketplace.models import (
-    REGIONS,
     AddOn,
     AvailabilityWindow,
     BookableService,
@@ -128,7 +128,7 @@ def host_service_form(request, slug=None):  # noqa: PLR0912, PLR0915 — one bra
             svc.short_description = (request.POST.get('short_description') or '').strip()
             svc.description = (request.POST.get('description') or '').strip()
             region = (request.POST.get('region') or '').strip()
-            svc.region = region if region in dict(REGIONS) else ''
+            svc.region = region if region in dict(regions()) else ''
             cat_id = request.POST.get('category') or ''
             from plugins.installed.catalog.models import Category
 
@@ -257,7 +257,7 @@ def host_service_form(request, slug=None):  # noqa: PLR0912, PLR0915 — one bra
             'vendor': vendor,
             'svc': svc,
             'categories': Category.objects.filter(is_active=True).order_by('name'),
-            'regions': REGIONS,
+            'regions': regions(),
             'weekdays': AvailabilityWindow.WEEKDAYS,
             'selected_wd': selected,
             'start_times': start_times,

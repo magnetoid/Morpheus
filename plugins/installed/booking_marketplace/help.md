@@ -22,4 +22,6 @@ This app ships off until a store turns it on. Once on, a few important behaviour
 
 However it is configured, this app never takes payment itself: a submission either becomes an enquiry — a lead for the host to follow up — or, where confirmed bookings are switched on, a hold on inventory with nothing charged. Any money changes hands outside the store, arranged by the host or the merchant. A review only counts toward a listing's rating once it comes from a real, confirmed booking.
 
+The country the store serves comes from its theme: the Montenegro theme lists Montenegro's regions and the Croatia theme Croatia's, and listings, search and every page that names the country follow it. A listing's region is picked from that country's list.
+
 Where the shop's theme includes one, the app also shows an investor page, shared by link and kept out of search results. It shows public figures about the market and what the site lists today, counted live; it never shows bookings, enquiries or revenue.

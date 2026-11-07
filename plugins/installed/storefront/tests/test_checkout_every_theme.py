@@ -19,7 +19,7 @@ from themes.registry import theme_registry
 
 THEMES = ['dot_books', 'supernatural_shop']
 if apps.is_installed('plugins.installed.booking_marketplace'):
-    THEMES.append('montenegro')
+    THEMES += ['montenegro', 'croatia']
 
 
 class CheckoutEveryThemeTests(TestCase):

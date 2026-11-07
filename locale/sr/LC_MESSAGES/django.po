@@ -4782,3 +4782,7 @@ msgstr "Investitori"
 
 msgid "Montenegro Experience: the marketplace for the country’s experiences, stays and local products, and the market it serves."
 msgstr "Montenegro Experience: platforma za doživljaje, smještaj i lokalne proizvode Crne Gore, i tržište kojem služi."
+
+#, python-format
+msgid "%(name)s in Montenegro. Dates, location and what to expect."
+msgstr "%(name)s u Crnoj Gori. Datumi, lokacija i šta možete očekivati."

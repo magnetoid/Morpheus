@@ -20,6 +20,7 @@ from __future__ import annotations
 from urllib.parse import urljoin
 
 from core.utils.site import absolutize, site_base_url
+from plugins.installed.booking_marketplace import country
 
 
 def _money(value) -> tuple[str, str] | None:
@@ -86,7 +87,7 @@ def _property_item(prop, base: str) -> dict:
     node = {'@type': 'Hotel', **_common(prop, url)}
     if prop.star_rating:
         node['starRating'] = {'@type': 'Rating', 'ratingValue': prop.star_rating}
-    address = {'@type': 'PostalAddress', 'addressCountry': 'ME'}
+    address = {'@type': 'PostalAddress', 'addressCountry': country.current().code}
     if prop.address:
         address['streetAddress'] = prop.address
     if prop.location:

@@ -8,12 +8,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 
 from core.utils.pagination import paginate_or_404
-from plugins.installed.booking_marketplace import seo_jsonld, stay_content, stays
+from plugins.installed.booking_marketplace import country, seo_jsonld, stay_content, stays
 from plugins.installed.booking_marketplace.models import (
     AMENITY_LABELS,
     POLICY_LABELS,
     PROPERTY_TYPES,
-    REGIONS,
     Property,
     RoomType,
 )
@@ -27,7 +26,7 @@ from plugins.installed.booking_marketplace.views import (
 
 
 def _planning_questions() -> list[dict]:
-    """The "Planning your Montenegro stay" questions the hotels index shows.
+    """The "Planning your stay" questions the hotels index shows.
 
     One list for the page AND its FAQPage node: the template used to hardcode
     the visible answers while a separate hand-written JSON-LD block published
@@ -36,11 +35,7 @@ def _planning_questions() -> list[dict]:
     return [
         {
             'q': _('Which area is best for a first visit?'),
-            'a': _(
-                'The Bay of Kotor combines historic towns, water access and easy day trips. '
-                'Budva suits beach-focused stays, while Durmitor is the strongest choice for '
-                'hiking.'
-            ),
+            'a': str(country.text('stays_first_visit')),
         },
         {
             'q': _('When should I book?'),
@@ -103,14 +98,11 @@ def stays_index(request):
             'listing_mode': listing_mode(),
             'active_region': region,
             'active_type': ptype,
-            'region_choices': REGIONS,
+            'region_choices': country.regions(),
             'type_choices': PROPERTY_TYPES,
             'page_faqs': _planning_questions(),
-            'seo_title': _('Hotels & stays in Montenegro'),
-            'seo_description': _(
-                'Hand-picked hotels, apartments and guesthouses across Montenegro — from the '
-                'Bay of Kotor to the Adriatic coast and the northern mountains. Book your stay.'
-            ),
+            'seo_title': str(country.text('stays_title')),
+            'seo_description': str(country.text('stays_description')),
             'breadcrumb_items': _crumbs(request, (_('Hotels'), '/hotels/')),
             'jsonld_items': seo_jsonld.listing_items(
                 [(p.name, f'/hotels/{p.slug}/', _image_url(p)) for p in properties[:60]],
@@ -149,7 +141,7 @@ def stay_detail(request, slug):
             'listing_mode': listing_mode(),
             # Per-page SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
             'seo_object': prop,
-            'seo_title': f'{prop.name} · {prop.location or _("Montenegro")}',
+            'seo_title': f'{prop.name} · {prop.location or country.current().name}',
             'seo_description': (prop.short_description or prop.description)[:155],
             'seo_image': prop.image.url if prop.image else '',
             'seo_og_type': 'product',

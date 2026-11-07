@@ -23,8 +23,8 @@ from django.utils.translation import ngettext
 from core.utils.i18n import localized_path
 from core.utils.pagination import paginate_or_404
 from morpheus.core import MorpheusEvents, hook_registry
-from plugins.installed.booking_marketplace import search, search_page, seo_jsonld
-from plugins.installed.booking_marketplace.models import REGIONS, BookableService, Place
+from plugins.installed.booking_marketplace import country, search, search_page, seo_jsonld
+from plugins.installed.booking_marketplace.models import BookableService, Place
 from plugins.installed.booking_marketplace.services import (
     BookingError,
     available_dates,
@@ -148,16 +148,12 @@ def services_list(request):
     # echo whatever `?category=` held, one indexable title per string anyone typed.
     label = params.category.name if params.category is not None else ''
     seo_title = (
-        _('%(category)s experiences in Montenegro') % {'category': label}
+        str(country.text('category_experiences')) % {'category': label}
         if label
-        else _('Experiences in Montenegro — book with local hosts')
+        else str(country.text('experiences_title'))
     )
     seo_description = (
-        _(
-            'Book %(category)s experiences in Montenegro with trusted local hosts '
-            '— instant confirmation, free cancellation on most tours.'
-        )
-        % {'category': label}
+        str(country.text('category_description')) % {'category': label}
         if label
         else _('Tours, activities and rentals from trusted local hosts across the Adriatic.')
     )
@@ -222,11 +218,8 @@ def products_list(request):
                 close=bool(matches and matches.close),
                 kind='product',
             ),
-            'seo_title': _('Shop Montenegro — local goods'),
-            'seo_description': _(
-                'Locally made Montenegrin products from trusted vendors — shipped '
-                'or ready for pickup across the Adriatic coast.'
-            ),
+            'seo_title': str(country.text('shop_title')),
+            'seo_description': str(country.text('shop_description')),
             'breadcrumb_items': _crumbs(request, (_('Shop'), '/shop/')),
             'jsonld_items': seo_jsonld.listing_items(
                 [(p.name, f'/bookings/{p.slug}/', _image_url(p)) for p in products[:60]],
@@ -254,7 +247,7 @@ def suggest(request):
 
 
 def places_index(request):
-    """Directory of Montenegro destinations (editorial), grouped by region."""
+    """Directory of the country's destinations (editorial), grouped by region."""
     from plugins.installed.booking_marketplace.models import PLACE_TYPES
 
     place_type = (request.GET.get('type') or '').strip()
@@ -263,20 +256,20 @@ def places_index(request):
         qs = qs.filter(place_type=place_type)
     places = list(qs)
 
-    # Group by region, in canonical REGIONS order (blank/unknown regions last).
-    region_labels = dict(REGIONS)
+    # Group by region, in the country's region order (blank/unknown regions last).
+    region_labels = dict(country.regions())
     by_region: dict[str, list] = {}
     for p in places:
         by_region.setdefault(p.region, []).append(p)
     region_groups = [
         {'key': key, 'label': str(label), 'places': by_region[key]}
-        for key, label in REGIONS
+        for key, label in country.regions()
         if key in by_region
     ]
     for key, group_places in by_region.items():
         if key not in region_labels:
             region_groups.append(
-                {'key': key, 'label': key or _('Elsewhere in Montenegro'), 'places': group_places}
+                {'key': key, 'label': key or str(country.text('elsewhere')), 'places': group_places}
             )
 
     used = set(
@@ -293,12 +286,8 @@ def places_index(request):
             'region_groups': region_groups,
             'type_filters': type_filters,
             'selected_type': place_type,
-            'seo_title': _('Explore Montenegro'),
-            'seo_description': _(
-                'Destination guides to the best places to visit in Montenegro — the Bay of '
-                'Kotor, the Budva Riviera, Durmitor, Lake Skadar and the southern Adriatic '
-                'coast.'
-            ),
+            'seo_title': str(country.text('places_title')),
+            'seo_description': str(country.text('places_description')),
             'breadcrumb_items': _crumbs(request, (_('Places'), '/places/')),
             'jsonld_items': seo_jsonld.listing_items(
                 [(p.name, f'/places/{p.slug}/', _image_url(p)) for p in places],
@@ -370,7 +359,7 @@ def _lead_with_names(lead: str, names, limit: int = 155) -> str:
 
 
 def regions_index(request):
-    """Directory of Montenegro regions with experiences, each with a count + a cover.
+    """Directory of the country's regions with experiences, each with a count + a cover.
 
     Only regions with something to book: the directory linked every region,
     including ones whose page said "No experiences here yet".
@@ -383,7 +372,7 @@ def regions_index(request):
         .values_list('region', 'n')
     )
     regions = []
-    for key, label in REGIONS:
+    for key, label in country.regions():
         cover = (
             BookableService.objects.filter(region=key, is_active=True, vendor__is_active=True)
             .exclude(image='')
@@ -404,14 +393,9 @@ def regions_index(request):
         'booking_marketplace/regions/index.html',
         {
             'regions': regions,
-            'seo_title': _('Explore Montenegro by region'),
+            'seo_title': str(country.text('regions_title')),
             'seo_description': _lead_with_names(
-                ngettext(
-                    'Experiences to book in %(count)d region of Montenegro',
-                    'Experiences to book in %(count)d regions of Montenegro',
-                    len(regions),
-                )
-                % {'count': len(regions)},
+                ngettext(*country.text('regions_count'), len(regions)) % {'count': len(regions)},
                 [r['label'] for r in regions],
             ),
             'breadcrumb_items': _crumbs(request, (_('Regions'), '/regions/')),
@@ -427,7 +411,7 @@ def regions_index(request):
 def region_detail(request, region):
     # str() now, in the visitor's language: a lazy label cannot be JSON-encoded
     # (the breadcrumb) and must not be re-translated later.
-    labels = {key: str(label) for key, label in REGIONS}
+    labels = {key: str(label) for key, label in country.regions()}
     if region not in labels:
         raise Http404('Unknown region')
     services = list(
@@ -508,7 +492,7 @@ def service_detail(request, slug):
         'has_map': service.latitude is not None and service.longitude is not None,
         # Per-page SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
         'seo_object': service,
-        'seo_title': f'{service.name} · {service.location or _("Montenegro")}',
+        'seo_title': f'{service.name} · {service.location or country.current().name}',
         'seo_description': (service.short_description or service.description)[:155],
         'seo_image': service.image.url if service.image else '',
         'seo_og_type': 'product',
@@ -665,7 +649,7 @@ def _detail_url(service) -> str:
 
 
 def events_index(request):
-    """Calendar of Montenegro events, grouped by month.
+    """Calendar of the country's events, grouped by month.
 
     Grouped by `month` rather than by date because most editions are annual
     fixtures with no announced date yet (see the Event model docstring). Events
@@ -705,12 +689,8 @@ def events_index(request):
                 {'key': k, 'label': str(v)} for k, v in EVENT_CATEGORIES if k in used
             ],
             'selected_category': category,
-            'seo_title': _('Montenegro Events Calendar'),
-            'seo_description': _(
-                "What's on in Montenegro through the year — Kotor Carnival, the Mimosa "
-                'Festival, Boka Night, summer theatre in Budva, Lake Fest and the winter '
-                'ski season.'
-            ),
+            'seo_title': str(country.text('events_title')),
+            'seo_description': str(country.text('events_description')),
             'breadcrumb_items': _crumbs(request, (_('Events'), '/events/')),
             'jsonld_items': seo_jsonld.listing_items(
                 [(e.name, f'/events/{e.slug}/', _image_url(e)) for e in events],
@@ -754,9 +734,11 @@ def event_detail(request, slug):
             'same_month': same_month,
             'services': services,
             'listing_mode': listing_mode(),
-            'seo_title': f'{event.name} — {event.when_display or _("Montenegro")}'.strip(' —'),
+            'seo_title': (
+                f'{event.name} — {event.when_display or country.current().name}'.strip(' —')
+            ),
             'seo_description': (
-                event.summary or f'{event.name} in Montenegro. Dates, location and what to expect.'
+                event.summary or str(country.text('event_description')) % {'name': event.name}
             )[:300],
             'seo_image': event.image.url if event.image else '',
             'seo_og_type': 'article',

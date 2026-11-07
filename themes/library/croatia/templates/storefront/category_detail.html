@@ -1,0 +1,87 @@
+{% extends "storefront/base.html" %}
+{% load morph %}
+{% load seo %}
+{% load caching %}
+{% load i18n %}
+{% block extra_head %}
+  {% seo_breadcrumb_jsonld items=breadcrumb_items %}
+  {% seo_collection_jsonld items=collection_items name=category.name description=category.description %}
+<style>
+  /* The category's long description: the guide below the products. */
+  .category-guide__body { line-height: 1.75; font-size: 1.05rem; }
+  .category-guide__body p { margin: 0 0 1.1em; }
+  .category-guide__body h2 { font-size: 1.35rem; line-height: 1.25; margin: 2rem 0 .75rem; }
+  .category-guide__body h3 { font-size: 1.15rem; line-height: 1.3; margin: 1.5rem 0 .5rem; }
+  .category-guide__body :is(ul, ol) { padding-left: 1.25rem; margin: 0 0 1.1em; }
+  .category-guide__body li { margin: .35em 0; }
+  .category-guide__body a { text-decoration: underline; text-underline-offset: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section style="padding: 4rem 0 2rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <nav aria-label="{% trans 'Breadcrumb' %}" class="breadcrumb" style="margin-bottom: 1.25rem;">
+      {% for item in breadcrumb_items %}
+        {% if forloop.last %}
+          <span aria-current="page">{{ item.name }}</span>
+        {% else %}
+          <a href="{{ item.url }}" style="color: var(--muted);">{{ item.name }}</a>
+          <span style="margin: 0 0.5rem; color: var(--muted);">/</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
+    <p class="eyebrow">{{ intro_eyebrow|default:"Experiences" }}</p>
+    <h1 class="display display-xl" style="margin: 1rem 0 1rem;">
+      {{ category.name }}<span class="text-accent">.</span>
+    </h1>
+    {% if intro_lede %}<p class="lede">{{ intro_lede|linebreaksbr }}</p>{% endif %}
+  </div>
+</section>
+
+<section style="padding-top: 1.5rem; padding-bottom: 5rem;">
+  <div class="wrap">
+    {% if products %}
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:2rem; flex-wrap:wrap;">
+      <p class="meta" style="margin:0;">{% blocktrans count c=page_obj.paginator.count %}{{ c }} experience{% plural %}{{ c }} experiences{% endblocktrans %}</p>
+      <form method="get" style="display:flex; align-items:center; gap:0.5rem; margin:0;">
+        <label for="sort" class="meta" style="margin:0;">{% translate "Sort" %}</label>
+        <select name="sort" id="sort" onchange="this.form.submit()"
+                style="font-size:0.85rem; padding:0.45rem 0.7rem; border:1px solid var(--rule); border-radius:999px; background:var(--paper); color:var(--ink); cursor:pointer;">
+          {% for value, label in sort_options %}
+          <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+    <div class="grid-books">
+      {% for p in products %}
+      {% include "storefront/_product_card.html" with product=p %}
+      {% endfor %}
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="{% trans 'Pages' %}" style="display:flex; gap:0.75rem; justify-content:center; align-items:center; margin-top:3rem; flex-wrap:wrap;">
+      {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="btn btn-ghost">{% trans "← Prev" %}</a>{% endif %}
+      <span class="meta" style="margin:0;">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+      {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="btn btn-ghost">{% trans "Next →" %}</a>{% endif %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <div style="text-align: center; padding: 5rem 2rem; border: 1px dashed var(--rule); border-radius: 4px;">
+      <p class="display display-m" style="margin: 0 0 1rem;">{% trans "Nothing here yet" %}<span class="text-accent">.</span></p>
+      {% url 'booking_marketplace:list' as experiences_url %}
+      <p class="lede" style="margin: 0 auto;">{% blocktrans trimmed with name=category.name %}
+        There is nothing in {{ name }} right now. Browse <a href="{{ experiences_url }}" style="border-bottom: 1px dotted var(--rule);">all experiences</a> in the meantime.
+      {% endblocktrans %}</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% if category.long_description %}
+<section class="category-guide" style="padding: 1rem 0 4rem;">
+  <div class="wrap" style="max-width: 720px;">
+    <div class="category-guide__body">{{ category.long_description|safe }}</div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

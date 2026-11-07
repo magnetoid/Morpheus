@@ -34,9 +34,7 @@ class ListingForm(forms.ModelForm):
         required=False,
         help_text='Shown struck through beside the price. Leave empty for no discount.',
     )
-    languages = forms.CharField(
-        required=False, help_text='Comma-separated, e.g. English, Montenegrin.'
-    )
+    languages = forms.CharField(required=False, help_text='Comma-separated, e.g. English, German.')
     highlights = forms.CharField(
         required=False, widget=forms.Textarea(attrs={'rows': 4}), help_text='One per line.'
     )
