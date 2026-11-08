@@ -28,8 +28,14 @@ _GOOD = {'cf-turnstile-response': 'good-token'}
 
 
 def _siteverify(url, data=None, timeout=None):
-    answer = mock.Mock()
-    answer.json.return_value = {'success': data.get('response') == 'good-token'}
+    # Any form's action: these tests are about which forms ask; the action and
+    # hostname checks themselves are in test_turnstile.SpinSiteverifyTests.
+    answer = mock.Mock(status_code=200, ok=True)
+    answer.json.return_value = {
+        'success': data.get('response') == 'good-token',
+        'action': mock.ANY,
+        'hostname': 'testserver',
+    }
     return answer
 
 

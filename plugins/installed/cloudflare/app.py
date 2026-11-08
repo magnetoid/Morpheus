@@ -37,10 +37,16 @@ class CloudflarePlugin(Plugin):
         # hooks above sees them and the edge kept serving the old page.
         self.register_hook(events.EDGE_PURGE_URLS, self.on_edge_purge_urls, priority=85)
         # Turnstile on the public forms (core/bot_check.py asks; we answer).
-        from plugins.installed.cloudflare.services import turnstile_passes, turnstile_widget
+        from plugins.installed.cloudflare.services import (
+            turnstile_health,
+            turnstile_passes,
+            turnstile_widget,
+        )
 
         self.register_hook(events.BOT_CHECK_WIDGET, turnstile_widget, priority=50)
         self.register_hook(events.BOT_CHECK_PASSES, turnstile_passes, priority=50)
+        # The nightly health check: a refused secret key refuses every visitor.
+        self.register_hook(events.HEALTH_CHECKS, turnstile_health, priority=60)
 
     def contribute_dashboard_pages(self) -> list:
         return [

@@ -21,3 +21,10 @@ switch on the Cloudflare app's settings.
   scripts that post with fetch reset the widget after each answer (a token is single-use).
 - The footer newsletter puts Turnstile's script on payment pages too: its origin joins
   `PAYMENT_PAGE_SCRIPT_ORIGINS` and `docs/CHECKOUT_SCRIPTS.md`.
+- Server-side check brought up to Cloudflare's Turnstile Spin (GA 2026-08-10,
+  developers.cloudflare.com/turnstile/spin/): `success`, the widget's `action`, a `hostname` the
+  store answers on (request host or `site_base_url()`; local hosts refused unless `DEBUG`; skipped
+  for Cloudflare's published test secrets, whose answers name no real page), token ≤ 2,048
+  characters, one retry with the same `idempotency_key` on a 5xx / `internal-error` / network
+  failure, then fail closed. A `HEALTH_CHECKS` entry sends a made-up token nightly: a refused
+  secret (`invalid-input-secret`) or a test secret is reported.

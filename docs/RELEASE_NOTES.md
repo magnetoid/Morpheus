@@ -22,6 +22,8 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - The Cloudflare app's Turnstile now protects the contact page, forms built in Content, Do not sell, every newsletter sign-up (footer, page sections, pop-up), sign-in, sign-up, password reset and the emailed sign-in code, as well as the affiliate application.
 - Each kind of form has its own switch on Settings → Turnstile; nothing is protected until Turnstile is on and both keys are set, and the checkout never asks for it.
 - The widget stays invisible unless Cloudflare needs a click. A refused form keeps the visitor on the page with the reason.
+- Every answer is checked the way Cloudflare's Turnstile Spin sets a backend up: it must be for the same form (`action`) and solved on the store's own address (`hostname`, never `localhost` or `127.0.0.1` in production), the token at most 2,048 characters. A siteverify that does not answer is tried once more with the same `idempotency_key`, then the form is refused. Until now any successful token passed, whichever site or form it was solved on.
+- The nightly health check reports a secret key Cloudflare refuses (every protected form would refuse visitors) and a Cloudflare test key (it lets everyone through).
 
 ## v0.141.1 — 2026-11-08
 

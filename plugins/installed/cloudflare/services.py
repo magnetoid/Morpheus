@@ -514,33 +514,168 @@ def turnstile_site_key() -> str:
     return (cfg.get('turnstile_site_key') or '').strip()
 
 
-def verify_turnstile(request) -> bool:
-    """Verify a Turnstile challenge server-side. True when Turnstile is disabled
-    (not enforced) or the token validates; False when enforced and the token is
-    missing/invalid. Fail-CLOSED while enforced."""
+SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
+# Cloudflare's longest token; anything longer is refused before the call.
+TOKEN_MAX_LENGTH = 2048
+_LOCAL_HOSTS = frozenset({'localhost', '127.0.0.1', '::1', '[::1]'})
+# Cloudflare's published test secrets (always pass / always fail / token spent):
+# their answers name no real page, so the hostname check cannot apply, and a live
+# store set up with one is not protected at all (`turnstile_health`).
+TEST_SECRETS = frozenset(
+    {
+        '1x0000000000000000000000000000000AA',
+        '2x0000000000000000000000000000000AA',
+        '3x0000000000000000000000000000000AA',
+    }
+)
+
+
+def turnstile_action(form: str) -> str:
+    """The widget's `data-action` for a kind of form; the answer must name it back."""
+    return (form or '').replace('_', '-')[:32]
+
+
+def _client_ip(request) -> str:
+    return (
+        (request.META.get('HTTP_CF_CONNECTING_IP') or request.META.get('REMOTE_ADDR', ''))
+        .split(',')[0]
+        .strip()
+    )
+
+
+def _expected_hostnames(request) -> set[str]:
+    """The hosts a token may have been solved on: the one the form was posted to
+    and the store's own address. Never a local host in production, because a
+    widget set up with Spin allows localhost and 127.0.0.1 for development."""
+    from urllib.parse import urlsplit  # noqa: PLC0415
+
+    from django.conf import settings  # noqa: PLC0415
+
+    hosts: set[str] = set()
+    try:
+        hosts.add(request.get_host().rsplit(':', 1)[0].lower())
+    except Exception as e:  # noqa: BLE001 — a host Django refuses names nothing
+        logger.debug('cloudflare: no request host for Turnstile: %s', e)
+    try:
+        from core.utils.site import site_base_url  # noqa: PLC0415
+
+        base = (urlsplit(site_base_url()).hostname or '').lower()
+        if base:
+            hosts.add(base)
+    except Exception as e:  # noqa: BLE001
+        logger.debug('cloudflare: no store address for Turnstile: %s', e)
+    if not settings.DEBUG:
+        hosts -= _LOCAL_HOSTS
+    return hosts
+
+
+def _siteverify(secret: str, token: str, ip: str = '') -> dict:
+    """One answer from siteverify, retried once with the same idempotency key
+    when Cloudflare could not answer. Never raises: an unreachable siteverify is
+    `success: False`, so an enforced form fails closed."""
+    import time  # noqa: PLC0415
+    import uuid  # noqa: PLC0415
+
+    import requests  # noqa: PLC0415 — matches the lazy-import style in this module
+
+    payload = {'secret': secret, 'response': token, 'idempotency_key': str(uuid.uuid4())}
+    if ip:
+        payload['remoteip'] = ip
+    for attempt in (1, 2):
+        try:
+            resp = requests.post(SITEVERIFY_URL, data=payload, timeout=(5, 10))
+            if resp.status_code < 500:
+                data = resp.json() if resp.ok else {}
+                codes = data.get('error-codes') or []
+                if 'internal-error' not in codes or attempt == 2:
+                    return (
+                        data
+                        if resp.ok
+                        else {'success': False, 'error-codes': [f'http-{resp.status_code}']}
+                    )
+        except (requests.RequestException, ValueError) as e:
+            logger.info('cloudflare: Turnstile siteverify attempt %s failed: %s', attempt, e)
+        if attempt == 1:
+            time.sleep(0.5)
+    return {'success': False, 'error-codes': ['siteverify-unreachable']}
+
+
+def verify_turnstile(request, action: str = '') -> bool:
+    """Verify a Turnstile token server-side, the way Cloudflare's Spin wires it.
+
+    True when Turnstile is off (not enforced). While it is on, the answer must say
+    `success`, name the `action` the widget was rendered with (when given), and
+    name a `hostname` this store answers on. Anything else, a missing or overlong
+    token, or a siteverify that cannot be reached, is False: fail closed.
+    """
     cfg = _turnstile_config()
     if not cfg.get('turnstile_enabled'):
         return True
     secret = (cfg.get('turnstile_secret_key') or '').strip()
     token = (request.POST.get('cf-turnstile-response') or '').strip()
-    if not (secret and token):
+    if not (secret and token) or len(token) > TOKEN_MAX_LENGTH:
         return False
-    ip = (
-        (request.META.get('HTTP_CF_CONNECTING_IP') or request.META.get('REMOTE_ADDR', ''))
-        .split(',')[0]
-        .strip()
-    )
-    import requests  # noqa: PLC0415 — matches the lazy-import style in this module
-
-    try:
-        resp = requests.post(
-            'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-            data={'secret': secret, 'response': token, 'remoteip': ip},
-            timeout=8,
+    result = _siteverify(secret, token, _client_ip(request))
+    if not result.get('success'):
+        codes = result.get('error-codes') or []
+        if {'invalid-input-secret', 'missing-input-secret'} & set(codes):
+            logger.error('cloudflare: Turnstile refused the secret key (%s)', ', '.join(codes))
+        else:
+            logger.info('cloudflare: Turnstile token refused (%s)', ', '.join(codes) or 'no reason')
+        return False
+    if action and result.get('action') != action:
+        logger.warning(
+            'cloudflare: Turnstile token for action %r used on %r', result.get('action'), action
         )
-        return bool(resp.json().get('success'))
-    except Exception:  # noqa: BLE001 — fail closed while enforced
         return False
+    if secret not in TEST_SECRETS:
+        hostname = (result.get('hostname') or '').lower()
+        if hostname not in _expected_hostnames(request):
+            logger.warning('cloudflare: Turnstile token solved on another host: %r', hostname)
+            return False
+    return True
+
+
+def turnstile_health(value=None, **kwargs):
+    """HEALTH_CHECKS: while Turnstile is on, Cloudflare accepts its secret key.
+
+    A made-up token is sent: a working secret gets `invalid-input-response`, a
+    wrong one `invalid-input-secret`, which would refuse every visitor on every
+    protected form. A test secret passes every token, so it protects nothing.
+    """
+    value = list(value or [])
+    cfg = _turnstile_config()
+    if not cfg.get('turnstile_enabled'):
+        return value
+    name = 'Turnstile secret key works'
+    secret = (cfg.get('turnstile_secret_key') or '').strip()
+    if not secret or not (cfg.get('turnstile_site_key') or '').strip():
+        value.append({'name': name, 'ok': False, 'detail': 'Turnstile is on but a key is missing.'})
+        return value
+    if secret in TEST_SECRETS:
+        value.append(
+            {
+                'name': name,
+                'ok': False,
+                'detail': "The secret is one of Cloudflare's test keys: no form is protected.",
+            }
+        )
+        return value
+    codes = set(_siteverify(secret, 'health-check').get('error-codes') or [])
+    if {'invalid-input-secret', 'missing-input-secret'} & codes:
+        detail, ok = (
+            'Cloudflare refused the secret key: every protected form refuses visitors.',
+            False,
+        )
+    elif 'siteverify-unreachable' in codes:
+        detail, ok = (
+            'Cloudflare could not be reached: protected forms refuse visitors meanwhile.',
+            False,
+        )
+    else:
+        detail, ok = 'Cloudflare accepts the secret key.', True
+    value.append({'name': name, 'ok': ok, 'detail': detail})
+    return value
 
 
 # The settings switch for each kind of public form (core/bot_check.py names the kinds).
@@ -588,7 +723,7 @@ def turnstile_widget(value='', form='', context=None, **kwargs):
         '<div class="cf-turnstile" data-sitekey="{}" data-action="{}" '
         'data-appearance="interaction-only"></div>',
         _turnstile_config().get('turnstile_site_key', '').strip(),
-        form.replace('_', '-'),
+        turnstile_action(form),
     )
     request = context.get('request') if context is not None else None
     if request is None or not getattr(request, '_turnstile_script', False):
@@ -605,4 +740,4 @@ def turnstile_passes(value=True, request=None, form='', **kwargs):
     """BOT_CHECK_PASSES: verify the request's token when `form` is protected."""
     if not turnstile_protects(form) or request is None:
         return value
-    return verify_turnstile(request)
+    return verify_turnstile(request, action=turnstile_action(form))
