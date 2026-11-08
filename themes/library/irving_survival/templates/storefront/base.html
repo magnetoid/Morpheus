@@ -834,6 +834,7 @@ the theme's own defaults.
         {% csrf_token %}
         <input type="email" name="email" placeholder="{% translate 'your@email.com' %}" aria-label="{% translate 'Email' %}" required toolparamdescription="The email address to subscribe">
         <button type="submit">{% translate "Subscribe" %}</button>
+        {% bot_check "newsletter" %}
       </form>
       <p id="footer-newsletter-msg" class="meta" style="margin:.25rem 0 0;" aria-live="polite"></p>
       <script nonce="{{ csp_nonce }}">
@@ -848,6 +849,8 @@ the theme's own defaults.
           fetch(f.action, { method: 'POST', credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' }, body: new FormData(f) })
             .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
             .then(function (res) {
+              // A Turnstile token answers once; get a fresh one for the next try.
+              if (window.turnstile) { var tw = f.querySelector('.cf-turnstile'); if (tw) window.turnstile.reset(tw); }
               if (btn) { btn.disabled = false; }
               if (res.ok) { msg.textContent = "{% translate 'Thanks. You are on the list.' %}"; f.reset(); }
               else { msg.textContent = (res.data && res.data.error) || "{% translate 'That did not work. Please check the address.' %}"; }

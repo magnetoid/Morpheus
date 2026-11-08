@@ -133,19 +133,15 @@ def apply(request: HttpRequest) -> HttpResponse:
     existing = Affiliate.objects.filter(user=request.user).first()
 
     if request.method == 'POST' and existing is None:
-        # Cloudflare Turnstile bot check (fail-soft: no-op when Turnstile/cloudflare off).
-        try:
-            from plugins.installed.cloudflare.services import verify_turnstile
+        # The bot check, when an app protects this form (core/bot_check.py).
+        from core import bot_check
 
-            turnstile_ok = verify_turnstile(request)
-        except Exception:  # noqa: BLE001 — cloudflare plugin may be disabled
-            turnstile_ok = True
-        if not turnstile_ok:
+        if not bot_check.passes(request, 'affiliates'):
             return render(
                 request,
                 'affiliates/apply.html',
                 {
-                    'error': 'Bot check failed — please try again.',
+                    'error': bot_check.REFUSED,
                     'existing': None,
                     'programs': list(AffiliateProgram.objects.filter(is_active=True)),
                     'seo_title': 'Become an affiliate',

@@ -13,8 +13,10 @@ email's form.
 
 from __future__ import annotations
 
+import functools
 import logging
 
+from django.contrib import messages
 from django.contrib.auth import login
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse
@@ -23,6 +25,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
+from core import bot_check
 from core.auth.services import consume_otp, issue_otp, send_otp_email
 from core.hooks import MorpheusEvents, hook_registry
 from core.utils.rate_limit import RateLimitExceeded, check_and_consume
@@ -45,6 +48,25 @@ def _safe_next(request: HttpRequest) -> str:
     return '/account/'
 
 
+def bot_checked(view, form: str = 'sign_in'):
+    """`view` with its POSTs behind the bot check (core/bot_check.py).
+
+    morph/urls.py mounts allauth's sign-in, sign-up and password-reset views through
+    this under their own names. A refused POST goes back to the same form with the
+    reason; anything else runs the view untouched, so a sign-in still reaches
+    ``AccountAdapter.pre_login`` and the second factor.
+    """
+
+    @functools.wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if request.method == 'POST' and not bot_check.passes(request, form):
+            messages.error(request, bot_check.REFUSED)
+            return redirect(request.get_full_path())
+        return view(request, *args, **kwargs)
+
+    return wrapped
+
+
 @csrf_protect
 @require_http_methods(['GET', 'POST'])
 def otp_request(request: HttpRequest) -> HttpResponse:
@@ -53,7 +75,9 @@ def otp_request(request: HttpRequest) -> HttpResponse:
 
     if request.method == 'POST':
         email = (request.POST.get('email') or '').strip().lower()
-        if not email or '@' not in email:
+        if not bot_check.passes(request, 'sign_in'):
+            error = bot_check.REFUSED
+        elif not email or '@' not in email:
             error = 'Enter a valid email address.'
         else:
             code, obj = issue_otp(email, request_ip=_client_ip(request))

@@ -1,3 +1,4 @@
+{% load morph %}
 <section style="padding: 4rem 0; background: var(--paper-2);">
   <div class="wrap" style="max-width: 600px; text-align: center;">
     {% if settings.heading %}<h2 class="display display-l" style="margin: 0 0 .85rem;">{{ settings.heading }}</h2>{% endif %}
@@ -8,6 +9,7 @@
              style="flex: 1; height: 44px; padding: 0 1rem; border: 1px solid var(--rule);
                     border-radius: 999px; background: var(--paper); font-size: .95rem;">
       <button type="submit" class="btn btn-primary">{{ settings.cta_label|default:"Subscribe" }}</button>
+      {% bot_check "newsletter" %}
     </form>
   </div>
 </section>

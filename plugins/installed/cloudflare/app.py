@@ -36,6 +36,17 @@ class CloudflarePlugin(Plugin):
         # HTML without touching the product or category row, so none of the
         # hooks above sees them and the edge kept serving the old page.
         self.register_hook(events.EDGE_PURGE_URLS, self.on_edge_purge_urls, priority=85)
+        # Turnstile on the public forms (core/bot_check.py asks; we answer).
+        from plugins.installed.cloudflare.services import (
+            turnstile_health,
+            turnstile_passes,
+            turnstile_widget,
+        )
+
+        self.register_hook(events.BOT_CHECK_WIDGET, turnstile_widget, priority=50)
+        self.register_hook(events.BOT_CHECK_PASSES, turnstile_passes, priority=50)
+        # The nightly health check: a refused secret key refuses every visitor.
+        self.register_hook(events.HEALTH_CHECKS, turnstile_health, priority=60)
 
     def contribute_dashboard_pages(self) -> list:
         return [
@@ -117,7 +128,7 @@ class CloudflarePlugin(Plugin):
     # dashboard page (views.overview). No separate SettingsPanel for that — it
     # was a duplicate "Cloudflare" entry whose schema nothing read (ADR 0003).
 
-    # Turnstile config IS read (by verify_turnstile + the {% turnstile %} tag),
+    # Turnstile config IS read (by services.turnstile_passes / turnstile_widget),
     # so it's a real schema-driven settings panel, not a duplicate.
     def get_config_schema(self) -> dict:
         return {
@@ -127,7 +138,7 @@ class CloudflarePlugin(Plugin):
                     'type': 'boolean',
                     'default': False,
                     'title': 'Enable Cloudflare Turnstile',
-                    'description': 'Bot/CAPTCHA-free protection on public forms (affiliate apply, contact, signup).',
+                    'description': 'A bot check on the public forms switched on below, once both keys are set. The checkout never asks for one.',
                 },
                 'turnstile_site_key': {
                     'type': 'string',
@@ -141,6 +152,30 @@ class CloudflarePlugin(Plugin):
                     'default': '',
                     'title': 'Turnstile secret key',
                     'description': 'Private key — used server-side to verify the challenge. Keep it secret.',
+                },
+                'turnstile_contact': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Protect contact forms',
+                    'description': 'The contact page, forms built in Content and Do not sell.',
+                },
+                'turnstile_newsletter': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Protect newsletter sign-ups',
+                    'description': 'The newsletter forms in the footer, page sections and the pop-up.',
+                },
+                'turnstile_sign_in': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Protect sign-in pages',
+                    'description': 'Sign-in, sign-up, password reset and the emailed sign-in code.',
+                },
+                'turnstile_affiliates': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Protect the affiliate application',
+                    'description': 'The form people use to apply to the affiliate programme.',
                 },
             },
         }
