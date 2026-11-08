@@ -299,9 +299,22 @@ def _finish(page: SeoPage, request, context) -> SeoPage:
     # An empty shelf is a soft 404 to a search engine: a 200 page that says
     # "nothing here". 181 of 520 sitemap urls on the travel store were exactly
     # that. Follow the links, keep it out of the index.
-    if page.kind == KIND_LISTING and _item_count(page, context) == 0:
-        page.deny_index('empty listing')
+    if page.kind == KIND_LISTING:
+        _hold_back_thin_listing(page, context)
     return page
+
+
+def _hold_back_thin_listing(page: SeoPage, context) -> None:
+    """An empty listing, or one below its owner's floor, stays out of the index.
+
+    The owner's floor (`seo_index_min_items`, the same number its sitemap entry
+    obeys): a one-book topic page is the product page again with chrome around it.
+    """
+    count = _item_count(page, context)
+    if count == 0:
+        page.deny_index('empty listing')
+    elif count is not None and count < _index_min(context):
+        page.deny_index(f'thin listing: {count} item(s), indexed from {_index_min(context)}')
 
 
 def _deny_before_launch(page: SeoPage) -> None:
@@ -322,6 +335,12 @@ def _search_query(request) -> str:
         return (request.GET.get('q') or '').strip() if request is not None else ''
     except Exception:  # noqa: BLE001 — a request-like object without a QueryDict
         return ''
+
+
+def _index_min(context) -> int:
+    """How many items the listing's owner wants before the page is indexed."""
+    least = (context or {}).get('seo_index_min_items')
+    return least if isinstance(least, int) and not isinstance(least, bool) and least > 1 else 1
 
 
 def _item_count(page: SeoPage, context) -> int | None:

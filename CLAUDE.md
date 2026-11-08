@@ -1159,7 +1159,13 @@ didn't. A rating is claimable only from reviews carrying evidence of a guest —
 booking `create_review` requires (`booking_marketplace/services.py:verified_reviews`)
 — and the aggregate and the `Review` nodes come from that one set. Guarded by
 `booking_marketplace/tests/test_ai_feed.py::AiFeedRatingClaimTests` +
-`test_experience_jsonld.py`.
+`test_experience_jsonld.py`. **A default is not the merchant's answer either** (v0.143.0): `StoreSettings.store_name`
+defaults to "Morpheus Store" and `core.utils.site.store_name` falls back to the same
+`STORE_NAME` env default, so a structured-data fallback reads the column and skips its
+default (`seo/services/jsonld.py:_store_setting`); and `store_logo_url` falls back to
+the 1200×630 share image, which is no `logo`. A value Google does not read is no claim
+at all: `variesBy` takes six axes, and dotbooks' `bookFormat` groups claimed none
+(`seo/tests/test_structured_data_2026_11.py`).
 
 **Landmine — an SEO gap is what the page RENDERS empty, never what one column
 holds; and a collector nothing ever calls fails silently for months.**

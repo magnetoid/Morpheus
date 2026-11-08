@@ -30,7 +30,10 @@ def organization_jsonld() -> dict | None:
     s = site_settings()
     if not getattr(s, 'jsonld_organization', True):
         return None
-    if not s.organization_name:
+    # The SEO settings' own name first; a store that never opened them (every
+    # new store) is still the business its General settings name.
+    name = (s.organization_name or '').strip() or _store_setting('store_name')
+    if not name:
         return None
     # @type comes from PluginConfig['seo']['organization_type'] —
     # merchant can pick Store / OnlineStore / BookStore / Publisher
@@ -58,18 +61,19 @@ def organization_jsonld() -> dict | None:
     out = {
         '@context': 'https://schema.org',
         '@type': org_type,
-        'name': s.organization_name,
+        'name': name,
         'url': _site_base_url(),
     }
-    if s.organization_logo_url:
-        out['logo'] = s.organization_logo_url
+    logo = s.organization_logo_url or _store_logo()
+    if logo:
+        out['logo'] = logo
     if same_as:
         out['sameAs'] = same_as
 
     # Contact + postal address from PluginConfig (no migration) — powers the
     # merchant/brand knowledge panel. All optional; emitted only when set.
     cfg = _seo_plugin_cfg()
-    email = (cfg.get('org_email') or '').strip()
+    email = (cfg.get('org_email') or '').strip() or _store_setting('contact_email')
     phone = (cfg.get('org_phone') or '').strip()
     if email or phone:
         cp = {'@type': 'ContactPoint', 'contactType': 'customer service'}
@@ -94,7 +98,44 @@ def organization_jsonld() -> dict | None:
     return out
 
 
+def _store_setting(field: str) -> str:
+    """A field of the merchant's own Settings → General, or ''.
+
+    The column's default ("Morpheus Store") is not the merchant's answer, and
+    neither is `core.utils.site.store_name`'s STORE_NAME env fallback: either
+    would name the business after the engine.
+    """
+    try:
+        from core.models import StoreSettings
+
+        value = str(getattr(StoreSettings.objects.first(), field, '') or '').strip()
+        default = StoreSettings._meta.get_field(field).default
+        return '' if value == default else value
+    except Exception:  # noqa: BLE001 — no row or no table
+        return ''
+
+
+def _store_logo() -> str:
+    """The logo uploaded in Settings → General, never the social image.
+
+    `core.utils.site.store_logo_url` falls back to the share image, a 1200×630
+    banner; Google shows an Organization `logo` as a square mark beside the
+    result, so a banner is a wrong claim, not a fallback.
+    """
+    from core.utils.site import absolutize
+
+    try:
+        from core.models import StoreSettings
+
+        logo = getattr(StoreSettings.objects.first(), 'logo', None)
+        return absolutize(logo.url) if logo else ''
+    except Exception:  # noqa: BLE001 — no row, no table or no file
+        return ''
+
+
 def website_jsonld() -> dict | None:
+    from urllib.parse import urlsplit
+
     s = site_settings()
     if not getattr(s, 'jsonld_website', True):
         return None
@@ -104,8 +145,15 @@ def website_jsonld() -> dict | None:
         '@type': 'WebSite',
         'url': base,
     }
-    if s.organization_name:
-        out['name'] = s.organization_name
+    name = (s.organization_name or '').strip() or _store_setting('store_name')
+    if name:
+        out['name'] = name
+        # Google's site names read `name`, then `alternateName`: the domain is
+        # the other name a shop goes by ("dotbooks.store"), and the one Google
+        # falls back to when it does not trust the first.
+        host = (urlsplit(base).hostname or '').removeprefix('www.')
+        if host and host.lower() != name.lower() and '.' in host:
+            out['alternateName'] = host
     if s.enable_sitelinks_search:
         out['potentialAction'] = {
             '@type': 'SearchAction',
@@ -185,20 +233,32 @@ def _compare_at(rendered, orm):
 
 
 def _variant_axis(variants) -> list[str]:
-    """What actually differs between these variants.
+    """What actually differs between these variants, in Google's words.
 
     `variesBy` tells Google why the group has more than one member. Guessing it
     would be worse than omitting it, so only axes that genuinely differ across
-    the set are claimed.
+    the set are claimed, and only the six Google reads (color, size,
+    suggestedAge, suggestedGender, material, pattern). Print vs digital is a
+    real difference, but `bookFormat` is not one of the six, so every edition
+    group on dotbooks claimed an axis Google does not read. The editions still
+    say what they are by name.
     """
     axes = []
     if len({(getattr(v, 'size', '') or '').strip() for v in variants} - {''}) > 1:
         axes.append('https://schema.org/size')
-    if len({(getattr(v, 'variant_type', '') or '').strip() for v in variants} - {''}) > 1:
-        # Print vs digital vs audiobook is a material difference, and
-        # `bookFormat` is the property a book shop varies on.
-        axes.append('https://schema.org/bookFormat')
     return axes
+
+
+def _variant_gtin(barcode) -> dict:
+    """`gtin8/12/13/14` from a variant's barcode, when it is one.
+
+    A barcode field holds whatever the merchant typed (an internal code, an
+    ISBN with dashes); only a number of a GTIN's length is claimed as one.
+    """
+    raw = str(barcode or '').replace('-', '').replace(' ', '')
+    if raw.isdigit() and len(raw) in (8, 12, 13, 14):
+        return {f'gtin{len(raw)}': raw}
+    return {}
 
 
 def _money(value):
@@ -252,7 +312,16 @@ def _variant_availability(variant) -> str:
         return SCHEMA_AVAILABILITY['in_stock']
 
 
-def _apply_variants(out: dict, orm, *, slug: str, currency: str) -> None:
+def _variant_image(variant, abs_url) -> str:
+    image = getattr(variant, 'image', None)
+    file = getattr(image, 'image', None)
+    try:
+        return abs_url(file.url) if file else ''
+    except ValueError:  # an empty FileField raises on .url
+        return ''
+
+
+def _apply_variants(out: dict, orm, *, slug: str, currency: str, abs_url=lambda u: u) -> None:
     """Turn a multi-variant product into a ProductGroup with real offers."""
     try:
         variants = list(orm.variants.filter(is_active=True).order_by('sort_order', 'name')[:20])
@@ -297,12 +366,24 @@ def _apply_variants(out: dict, orm, *, slug: str, currency: str) -> None:
         )
         if was:
             offer['priceSpecification'] = was
+        # Each member is a merchant listing of its own, judged on its own name,
+        # image and offer. "Print" alone named nothing a shopper searches for.
+        base_name = str(out.get('name') or '').strip()
+        own_name = (variant.name or '').strip()
         member = {
             '@type': 'Product',
             'sku': variant.sku or '',
-            'name': variant.name or '',
+            'name': f'{base_name} – {own_name}'
+            if base_name and own_name
+            else base_name or own_name,
             'offers': offer,
         }
+        if out.get('url'):
+            member['@id'] = f'{out["url"]}#variant-{variant.sku or variant.pk}'
+        image = _variant_image(variant, abs_url)
+        if image:
+            member['image'] = image
+        member.update(_variant_gtin(getattr(variant, 'barcode', '')))
         if (getattr(variant, 'size', '') or '').strip():
             member['size'] = variant.size.strip()
         members.append(member)
@@ -606,7 +687,7 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
     # since v0.30 and never once ran on a product page: it was guarded on the
     # ORM, and the page renders a dict.
     if orm is not None:
-        _apply_variants(out, orm, slug=slug, currency=offer_curr)
+        _apply_variants(out, orm, slug=slug, currency=offer_curr, abs_url=_abs)
 
     # Entity-graph sameAs links via metafield 'seo.same_as' (comma- or
     # newline-separated URLs). March-2026 core update made this the #1
@@ -745,6 +826,14 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
         if reviews and 'review' not in out:
             out['review'] = reviews
 
+    # A variant with no photo of its own shows the product's: Google lists
+    # `image` as required on every merchant listing, members included.
+    group_image = out.get('image')
+    group_image = group_image[0] if isinstance(group_image, list) else group_image
+    if group_image:
+        for member in out.get('hasVariant') or []:
+            member.setdefault('image', group_image)
+
     return out
 
 
@@ -777,6 +866,7 @@ def collection_page_jsonld(
     kind: str = 'CollectionPage',
     total: int | None = None,
     offers: dict | None = None,
+    start: int = 1,
 ) -> dict:
     """CollectionPage + ItemList for PLP/category pages.
 
@@ -789,7 +879,9 @@ def collection_page_jsonld(
     to len(items) when unset (backward-compatible). `kind` is the outer
     @type and defaults to 'CollectionPage'. `offers` (an AggregateOffer
     dict) advertises the collection's price range — Google + AI Overviews
-    reward "Books from $5–$30" signals on category pages.
+    reward "Books from $5–$30" signals on category pages. `start` is the
+    position of the first item: page 2 of a listing continues the numbering
+    of page 1 instead of claiming its books are the list's first.
     """
     base = _site_base_url().rstrip('/')
     out = {
@@ -806,7 +898,7 @@ def collection_page_jsonld(
             'itemListElement': [
                 {
                     '@type': 'ListItem',
-                    'position': idx + 1,
+                    'position': start + idx,
                     'url': it.get('url') or '',
                     'name': (it.get('name') or '')[:120],
                     **({'image': it['image']} if it.get('image') else {}),

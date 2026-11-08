@@ -10,6 +10,7 @@ llms.txt, PWA manifest) live in ``crawler_files`` instead.
 
 from __future__ import annotations
 
+import re
 from datetime import timedelta
 from typing import Iterable
 from urllib.parse import urljoin
@@ -142,28 +143,52 @@ def _iter_book_facet_entries(base: str) -> Iterable[dict]:
                     'changefreq': 'weekly',
                     'priority': '0.5',
                 }
-        # Curated taxonomies (Genre, Topic) — only those with ≥1 active book (an
-        # empty term renders but is held out of the index). One annotated query
-        # per model, not one EXISTS per term: dotbooks has 1,527 topics.
-        from django.db.models import Count, Q
+        # Curated taxonomies (Genre, Topic) — only those the topic page itself
+        # lets into the index: a genre with one active book, a topic with
+        # TOPIC_MIN_BOOKS (a one-book topic page is the product page again, and
+        # 1,186 of dotbooks' 1,526 listed topics were exactly that). One
+        # annotated query per model, not one EXISTS per term. lastmod is the
+        # newest change to a book on the shelf.
+        from django.db.models import Count, Max, Q
 
+        from plugins.installed.book_product.listing_facets import TOPIC_MIN_BOOKS
         from plugins.installed.book_product.models import Genre, Topic
 
-        for prefix, model in (('genre', Genre), ('topic', Topic)):
+        active_books = Q(books__product__status='active')
+        for prefix, model, least in (('genre', Genre, 1), ('topic', Topic, TOPIC_MIN_BOOKS)):
             stocked = (
                 model.objects.filter(is_active=True)
-                .annotate(_n=Count('books', filter=Q(books__product__status='active')))
-                .filter(_n__gt=0)
-                .values_list('slug', flat=True)
+                .annotate(
+                    _n=Count('books', filter=active_books, distinct=True),
+                    _changed=Max('books__product__updated_at', filter=active_books),
+                )
+                .filter(_n__gte=least)
+                .values_list('slug', '_changed')
             )
-            for slug in stocked:
+            for slug, changed in stocked:
                 yield {
                     'loc': urljoin(base, f'/{prefix}/{slug}/'),
+                    'lastmod': changed.isoformat() if changed else '',
                     'changefreq': 'weekly',
                     'priority': '0.6',
                 }
     except Exception as e:  # noqa: BLE001 — book_product plugin optional
         logger.debug('seo: sitemap book facets skipped: %s', e)
+
+
+def cms_page_path(page) -> str:
+    """The one public path of a CMS page: a journal post at ``/journal/<slug>/``,
+    a page another app renders at a route of its own at the path it claims
+    (``CMS_PAGE_PATH``), any other page at ``/p/<slug>/``. The sitemap and the
+    IndexNow ping both read it, so a ping names the url the sitemap lists."""
+    from core.hooks import MorpheusEvents, hook_registry
+
+    if (page.metadata or {}).get('category') == 'journal':
+        return f'/journal/{page.slug}/'
+    path = hook_registry.filter(MorpheusEvents.CMS_PAGE_PATH, f'/p/{page.slug}/', page=page)
+    if not isinstance(path, str) or not path.startswith('/'):
+        path = f'/p/{page.slug}/'
+    return path
 
 
 def _iter_cms_page_entries(base: str) -> Iterable[dict]:
@@ -179,7 +204,6 @@ def _iter_cms_page_entries(base: str) -> Iterable[dict]:
     try:
         from django.utils import timezone
 
-        from core.hooks import MorpheusEvents, hook_registry
         from plugins.installed.cms.models import Page
 
         now = timezone.now()
@@ -188,15 +212,8 @@ def _iter_cms_page_entries(base: str) -> Iterable[dict]:
         ):
             if p.publish_at and p.publish_at > now:
                 continue
-            is_journal = (p.metadata or {}).get('category') == 'journal'
-            if is_journal:
-                path = f'/journal/{p.slug}/'
-            else:
-                path = hook_registry.filter(MorpheusEvents.CMS_PAGE_PATH, f'/p/{p.slug}/', page=p)
-                if not isinstance(path, str) or not path.startswith('/'):
-                    path = f'/p/{p.slug}/'
             yield {
-                'loc': urljoin(base, path),
+                'loc': urljoin(base, cms_page_path(p)),
                 'lastmod': p.updated_at.isoformat() if p.updated_at else '',
                 'changefreq': 'monthly',
                 'priority': '0.5',
@@ -277,7 +294,6 @@ def iter_sitemap_entries() -> Iterable[dict]:
                 'lastmod': p.updated_at.isoformat() if p.updated_at else '',
                 'changefreq': 'weekly',
                 'priority': '0.8',
-                'md_alternate': urljoin(base, f'/md/products/{p.slug}'),
             }
         # Same membership `category_detail` renders: the primary category OR
         # the cross-listing M2M.
@@ -534,6 +550,33 @@ def regenerate_sitemap(triggered_by: str = 'dashboard') -> dict:
     return result
 
 
+_FRACTION = re.compile(r'(T\d{2}:\d{2}:\d{2})\.\d+')
+
+
+def _newest_lastmod(entries) -> str:
+    """The latest `lastmod` among sitemap entries, in W3C form, or ''."""
+    from datetime import datetime
+
+    newest = None
+    for entry in entries:
+        try:
+            when = datetime.fromisoformat(str(entry.get('lastmod') or ''))
+        except ValueError:
+            continue
+        if when.tzinfo is None:
+            continue  # a naive time cannot be compared with the rest
+        if newest is None or when > newest:
+            newest = when
+    return _w3c(newest.isoformat()) if newest else ''
+
+
+def _w3c(lastmod: str) -> str:
+    """A lastmod to the second: `2026-10-16T20:04:57+00:00`, never with
+    microseconds. The W3C format allows a fraction, but nothing reads one and
+    every entry carried six digits of it."""
+    return _FRACTION.sub(r'\1', lastmod)
+
+
 def _sitemap_max_urls() -> int:
     """Read the configured per-file cap; clamp to Google's hard limit
     of 50,000 entries (https://www.sitemaps.org/protocol.html)."""
@@ -570,16 +613,11 @@ def render_sitemap_xml() -> str:
         parts.append('<url>')
         parts.append(f'<loc>{escape(e["loc"])}</loc>')
         if e.get('lastmod'):
-            parts.append(f'<lastmod>{escape(e["lastmod"])}</lastmod>')
+            parts.append(f'<lastmod>{escape(_w3c(e["lastmod"]))}</lastmod>')
         if e.get('changefreq'):
             parts.append(f'<changefreq>{escape(e["changefreq"])}</changefreq>')
         if e.get('priority'):
             parts.append(f'<priority>{escape(e["priority"])}</priority>')
-        if e.get('md_alternate'):
-            parts.append(
-                f'<xhtml:link rel="alternate" type="text/markdown" '
-                f'href="{escape(e["md_alternate"])}"/>'
-            )
         parts.append('</url>')
         count += 1
     parts.append('</urlset>')
@@ -597,11 +635,13 @@ def render_sitemap_index_xml() -> str:
     when serving them) and a listed-but-404 child wastes crawl budget on a
     dead fetch every time.
     """
-    from django.utils import timezone
-
     base = _site_base_url().rstrip('/')
-    now = timezone.now().replace(microsecond=0).isoformat()
-    children = [f'{base}/sitemap.xml']
+    # A child's lastmod is when something in it last changed. The index used to
+    # stamp every child with the time of the request, so each fetch claimed the
+    # whole site had just changed, and Google learns to ignore a lastmod that
+    # always says now. The image and news children carry none: their newest
+    # change is not cheaper to know than to fetch them.
+    children = [(f'{base}/sitemap.xml', _newest_lastmod(_merged_sitemap_entries()))]
     seo_plugin = _seo_plugin()
     image_enabled, news_enabled = True, False
     if seo_plugin is not None:
@@ -614,17 +654,18 @@ def render_sitemap_index_xml() -> str:
         except Exception:  # noqa: BLE001
             news_enabled = False
     if image_enabled:
-        children.append(f'{base}/sitemap-images.xml')
+        children.append((f'{base}/sitemap-images.xml', ''))
     if news_enabled:
-        children.append(f'{base}/sitemap-news.xml')
+        children.append((f'{base}/sitemap-news.xml', ''))
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ]
-    for child in children:
+    for child, lastmod in children:
         parts.append('<sitemap>')
         parts.append(f'<loc>{escape(child)}</loc>')
-        parts.append(f'<lastmod>{escape(now)}</lastmod>')
+        if lastmod:
+            parts.append(f'<lastmod>{escape(lastmod)}</lastmod>')
         parts.append('</sitemap>')
     parts.append('</sitemapindex>')
     return ''.join(parts)

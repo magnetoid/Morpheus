@@ -19,6 +19,7 @@ from django.utils.text import slugify
 
 from core.utils.pagination import paginate_or_404
 from morpheus.app.views import Http404
+from plugins.installed.book_product.listing_facets import TOPIC_MIN_BOOKS
 
 # A shelf of 860 paperbacks rendered as one 1.5 MB page; 48 is four rows of the
 # themes' book grid.
@@ -154,6 +155,9 @@ def _render(request, label, value, products, *, term=None, index_url=None):
             # An empty curated term renders, but the SEO layer holds it out of
             # the index; the sitemap already leaves it out.
             'seo_item_count': count,
+            # A topic needs as many books to be indexed as to be a filter
+            # (a one-book topic is the product page again); the sitemap obeys it.
+            'seo_index_min_items': TOPIC_MIN_BOOKS if label == 'Topic' else 1,
             'active_nav': '',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/'},

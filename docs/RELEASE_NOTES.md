@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.143.0 — 2026-11-08
+
+**Search and AI answers: a cleaner sitemap and fuller product markup on every store**
+
+- The sitemap lists what the store wants found: no Markdown copies beside the product pages, dates to the second, a date on every genre and topic page, and no topic with a single book (1,186 of dotbooks' 1,526 topics). Such a topic page now asks search engines not to index it, and its links still count.
+- The sitemap index says when the main sitemap last changed instead of the time of each request, so search engines can trust it.
+- Each edition of a book is described as its own item, as Google's shopping results read it: named after the book ("The Valley of Fear – Print"), with a photo and its barcode. Editions no longer claim to differ by book format, a value Google does not read.
+- The store itself is described with the name, logo and contact e-mail from the general settings when the SEO settings leave them empty, the domain as its other name, and its return policy, so every page says what returns cost.
+- A category or genre list counts every item it holds, and page 2 goes on numbering from page 1.
+- Bing hears at once when a product, category or collection is deleted, and a CMS page is reported at its real address (it was reported under /journal/, where it does not exist).
+- robots.txt names the answer bots it was missing: DuckDuckGo's DuckAssistBot, Meta's search indexer and fetcher, Amazon's Rufus and Alexa bots and Mistral's Le Chat fetcher.
+
 ## v0.141.1 — 2026-11-08
 
 **dotbooks: the cover is big again on the product page**

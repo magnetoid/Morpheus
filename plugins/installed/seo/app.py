@@ -34,7 +34,6 @@ class SeoPlugin(Plugin):
         'catalog.product': '/products/{slug}/',
         'catalog.category': '/category/{slug}/',
         'catalog.collection': '/collection/{slug}/',
-        'cms.page': '/journal/{slug}/',
     }
 
     # catalog is the one HARD dependency: products, categories and collections
@@ -236,7 +235,17 @@ class SeoPlugin(Plugin):
             return
         if not getattr(instance, 'is_live', True):
             return
-        self._indexnow_push(model_label='cms.page', slug=instance.slug)
+        # The path the sitemap lists: only journal posts live under /journal/;
+        # every other page was pinged there and answered 404.
+        try:
+            from plugins.installed.seo.services import _site_base_url  # noqa: PLC0415
+            from plugins.installed.seo.services.sitemaps import cms_page_path  # noqa: PLC0415
+
+            url = f'{_site_base_url().rstrip("/")}{cms_page_path(instance)}'
+        except Exception as e:  # noqa: BLE001 — a ping must never fail a save
+            logger.debug('seo: IndexNow path for cms page %s failed: %s', instance.pk, e)
+            return
+        self._indexnow_push(url=url)
 
     def on_product_created(self, product, **kwargs):
         try:

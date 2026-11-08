@@ -36,16 +36,29 @@ AI_CRAWLERS = [
     # Perplexity
     ('PerplexityBot', 'Perplexity · indexing crawler', 'search'),
     ('Perplexity-User', 'Perplexity · user-triggered fetch', 'user'),
-    # Google
-    ('Google-Extended', 'Google · Bard / Vertex AI training opt-out', 'training'),
-    # Apple
+    # Google: Search and AI Overviews crawl as Googlebot, which this list never
+    # names. Google-Extended is a robots token only: it decides whether pages
+    # train Gemini and ground its answers.
+    ('Google-Extended', 'Google · Gemini training and grounding opt-out', 'training'),
+    # Apple: Applebot is a search crawler like Googlebot and bingbot, which
+    # this list never names (the "block AI bots by default" switch must not
+    # take a store out of Siri and Spotlight).
     ('Applebot-Extended', 'Apple · Apple Intelligence training opt-out', 'training'),
+    # Microsoft: Copilot answers from Bing's index (bingbot), not a bot of its own.
+    # DuckDuckGo
+    ('DuckAssistBot', 'DuckDuckGo · Duck.ai answers fetcher', 'search'),
     # Meta
-    ('Meta-ExternalAgent', 'Meta · AI training crawler', 'training'),
+    ('meta-externalagent', 'Meta · AI training crawler', 'training'),
+    ('meta-webindexer', 'Meta · Meta AI search indexer', 'search'),
+    ('meta-externalfetcher', 'Meta · user-triggered fetch', 'user'),
+    # Amazon
+    ('Amazonbot', 'Amazon · crawler that may train models', 'training'),
+    ('Amzn-SearchBot', 'Amazon · Rufus and Alexa search retrieval', 'search'),
+    ('Amzn-User', 'Amazon · user-triggered fetch', 'user'),
+    # Mistral
+    ('MistralAI-User', 'Mistral · Le Chat user-triggered fetch', 'user'),
     # ByteDance (TikTok)
     ('Bytespider', 'ByteDance · LLM training crawler', 'training'),
-    # Amazon
-    ('Amazonbot', 'Amazon · Alexa + AI fetcher', 'search'),
     # Cohere
     ('cohere-ai', 'Cohere · RAG / grounding fetcher', 'search'),
     # Common Crawl
