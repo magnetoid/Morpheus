@@ -317,6 +317,13 @@ the country reads it from there, never from a literal: the app said Montenegro i
 `addressCountry: 'ME'` among them. A theme that names no country keeps Montenegro. The croatia theme
 is a copy of montenegro's (owner, 2026-11-07), so a fix to one theme's templates is not in the other.
 Croatian lives in `locale/hr`. Guarded by `booking_marketplace/tests/test_croatia_store.py`.
+Croatia's catalogue comes from `manage.py seed_croatia` (`seed_data/croatia/`, owner 2026-11-08):
+real places, hotels and events, experiences hosted by the store's own vendor, and no reviews, ratings,
+"was" prices, bestseller flags, rooms or rates, since nothing could back them. A hotel with no rooms has
+`price_from` 0, so a card or page that prints it must check the amount: it said "from €0.00 / night" and
+offered no form. It now says "Contact for price" and `stay_book` takes a room-less enquiry. A seed fills
+only empty fields, so a second run never overwrites a merchant's edit. Guarded by
+`booking_marketplace/tests/test_croatia_catalogue.py`.
 
 **Convention — the travel store's search is one engine (v0.112.0).** `booking_marketplace/search.py`
 folds text (case, accents, Serbian Cyrillic, `đ` both ways) and ranks the active listings and
@@ -1159,7 +1166,7 @@ didn't. A rating is claimable only from reviews carrying evidence of a guest —
 booking `create_review` requires (`booking_marketplace/services.py:verified_reviews`)
 — and the aggregate and the `Review` nodes come from that one set. Guarded by
 `booking_marketplace/tests/test_ai_feed.py::AiFeedRatingClaimTests` +
-`test_experience_jsonld.py`. **A default is not the merchant's answer either** (v0.143.0): `StoreSettings.store_name`
+`test_experience_jsonld.py`. **A default is not the merchant's answer either** (v0.146.0): `StoreSettings.store_name`
 defaults to "Morpheus Store" and `core.utils.site.store_name` falls back to the same
 `STORE_NAME` env default, so a structured-data fallback reads the column and skips its
 default (`seo/services/jsonld.py:_store_setting`); and `store_logo_url` falls back to

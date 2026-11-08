@@ -15,7 +15,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
-## v0.143.0 — 2026-11-08
+## v0.146.0 — 2026-11-08
 
 **Search and AI answers: a cleaner sitemap and fuller product markup on every store**
 
@@ -26,6 +26,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - A category or genre list counts every item it holds, and page 2 goes on numbering from page 1.
 - Bing hears at once when a product, category or collection is deleted, and a CMS page is reported at its real address (it was reported under /journal/, where it does not exist).
 - robots.txt names the answer bots it was missing: DuckDuckGo's DuckAssistBot, Meta's search indexer and fetcher, Amazon's Rufus and Alexa bots and Mistral's Le Chat fetcher.
+
+## v0.144.0 — 2026-11-08
+
+**Croatia Experience: real places, experiences, hotels and events**
+
+- A new command fills a Croatian store with 110 real places, 120 experiences, 152 hotels and 34 events across every region of Croatia. It refuses to run on any other store.
+- Experiences are real activities at real places, priced at 2026 market rates and hosted by the store itself as Croatia Experience until local hosts join. Nothing carries reviews, a rating, a "was" price or a bestseller badge.
+- Hotels are listed by real name, town, region and official stars, without rooms or rates. Their card says "Contact for price" instead of "from €0.00", and their page asks for the guest's dates and sends an enquiry.
+- The hotel page now shows a confirmation after an enquiry or booking, on both travel stores; before, the guest saw nothing.
+- A second run adds nothing and never overwrites an edit made in the dashboard. Every place was checked against Wikipedia's coordinates, and covers are still generic photos until real ones arrive.
 
 ## v0.141.2 — 2026-11-08
 

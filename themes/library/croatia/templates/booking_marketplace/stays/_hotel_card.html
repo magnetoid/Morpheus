@@ -10,7 +10,7 @@
     {% if p.star_rating %}<div class="flex items-center gap-0.5 text-primary text-xs mb-1">{% for _ in ""|center:p.star_rating %}★{% endfor %}</div>{% endif %}
     <h3 class="font-semibold text-foreground group-hover:text-primary transition-colors">{{ p.name }}</h3>
     <p class="text-sm text-muted-foreground">{{ p.location }}{% if p.get_region_display %} · {{ p.get_region_display }}{% endif %}</p>
-    {% if not listing_mode %}
+    {% if not listing_mode and p.price_from.amount %}
       <p class="mt-2 text-sm text-foreground">{% trans "from" %} <span class="font-semibold">{{ p.price_from }}</span> <span class="text-muted-foreground">/ {% trans "night" %}</span></p>
     {% else %}
       <p class="mt-2 text-sm text-primary font-medium">{% trans "Contact for price" %}</p>
