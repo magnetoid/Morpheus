@@ -15,7 +15,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
-## v0.142.0 — 2026-11-08
+## v0.145.0 — 2026-11-08
 
 **Turnstile on every public form**
 
@@ -24,6 +24,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - The widget stays invisible unless Cloudflare needs a click. A refused form keeps the visitor on the page with the reason.
 - Every answer is checked the way Cloudflare's Turnstile Spin sets a backend up: it must be for the same form (`action`) and solved on the store's own address (`hostname`, never `localhost` or `127.0.0.1` in production), the token at most 2,048 characters. A siteverify that does not answer is tried once more with the same `idempotency_key`, then the form is refused. Until now any successful token passed, whichever site or form it was solved on.
 - The nightly health check reports a secret key Cloudflare refuses (every protected form would refuse visitors) and a Cloudflare test key (it lets everyone through).
+
+## v0.144.0 — 2026-11-08
+
+**Croatia Experience: real places, experiences, hotels and events**
+
+- A new command fills a Croatian store with 110 real places, 120 experiences, 152 hotels and 34 events across every region of Croatia. It refuses to run on any other store.
+- Experiences are real activities at real places, priced at 2026 market rates and hosted by the store itself as Croatia Experience until local hosts join. Nothing carries reviews, a rating, a "was" price or a bestseller badge.
+- Hotels are listed by real name, town, region and official stars, without rooms or rates. Their card says "Contact for price" instead of "from €0.00", and their page asks for the guest's dates and sends an enquiry.
+- The hotel page now shows a confirmation after an enquiry or booking, on both travel stores; before, the guest saw nothing.
+- A second run adds nothing and never overwrites an edit made in the dashboard. Every place was checked against Wikipedia's coordinates, and covers are still generic photos until real ones arrive.
 
 ## v0.141.2 — 2026-11-08
 
