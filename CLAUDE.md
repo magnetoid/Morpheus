@@ -322,8 +322,12 @@ real places, hotels and events, experiences hosted by the store's own vendor, an
 "was" prices, bestseller flags, rooms or rates, since nothing could back them. A hotel with no rooms has
 `price_from` 0, so a card or page that prints it must check the amount: it said "from €0.00 / night" and
 offered no form. It now says "Contact for price" and `stay_book` takes a room-less enquiry. A seed fills
-only empty fields, so a second run never overwrites a merchant's edit. Guarded by
-`booking_marketplace/tests/test_croatia_catalogue.py`.
+only empty fields, so a second run never overwrites a merchant's edit. A hotel's stars are the Ministry of
+Tourism's register (mint.gov.hr), 0 where it gives none: a "special standard" hotel (Lone, the Westin) has no
+star category, and 42 of the 114 first guesses were wrong. Places and experiences carry a free Wikimedia Commons
+photo (CC0, public domain, CC BY, CC BY-SA), whose page names the author and licence (`photo_credit`). The
+credit names the file it is for, so an uploaded photo drops it, and the seed replaces only a bundled
+stand-in cover, recognised by its bytes. Guarded by `booking_marketplace/tests/test_croatia_catalogue.py`.
 
 **Convention — the travel store's search is one engine (v0.112.0).** `booking_marketplace/search.py`
 folds text (case, accents, Serbian Cyrillic, `đ` both ways) and ranks the active listings and

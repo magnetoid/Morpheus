@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.147.0 — 2026-11-08
+
+**Croatia: hotel stars from the official register, and real photos with their credits**
+
+- Hotel stars come from the Ministry of Tourism's register of categorised hotels. A special-standard or heritage hotel the register gives no stars (Lone, the Westin, both Sheratons) shows none, and six hotels carry their registered names.
+- Each place and experience on croatia-experience.me shows a free Wikimedia Commons photo, and its page names the photographer and the licence. A photo the merchant uploads replaces it, and its credit goes with it.
+- seed_croatia replaces only a bundled stand-in cover, recognised by its bytes, so an uploaded photo is never overwritten.
+
 ## v0.146.0 — 2026-11-08
 
 **Search and AI answers: a cleaner sitemap and fuller product markup on every store**

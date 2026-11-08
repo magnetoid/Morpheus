@@ -126,3 +126,27 @@ with real locations, as many as possible.
   link goes to Croatian Wikipedia, which has the only article.
 - Dropped as uncertain while writing: seven hotels and a few events. Covers are still the seven
   bundled seed images; real photos are the next step.
+
+## Stars and photos (2026-11-08)
+- Hotel stars come from the Ministry of Tourism's register of categorised facilities
+  (mint.gov.hr, "Popis kategoriziranih ugostiteljskih i turističkih objekata u RH", 31.10.2026).
+  Of the 114 hotels the first pass gave stars, 72 matched and 42 were wrong: 10 too low, 16 too
+  high, and 16 now 0. Those 16 are either "special standard" or heritage hotels the register
+  gives no stars (Lone, the Westin, both Sheratons, Radisson Blu Split, Angelo d'Oro, Isabella's
+  two units at 4 and 5 stars), or hotels it does not list. 32 hotels that had 0 got the register's
+  stars. Six names were out of date, among them Meliá Coral (now Pelegrin Plava Laguna), Valamar
+  Koralj (Krk Sunny Hotel by Valamar) and Spa Golfer (Hotel Terme Sveti Martin); the register
+  marks each as "ex …". Not in the register, so possibly closed or registered under another kind:
+  Casa Garzotto, Mozart (Opatija), Niko (Zadar), Colentum (Murter), Marjan (Split), Podstine
+  (Hvar), Waterman Svpetrus, Bluesun Marina (Tučepi), Arena (Zagreb), Bizovačke toplice, Nehaj,
+  Rajna, Lešić Dimitri and the Chillout hostel. The owner decides whether they stay listed.
+- Photos: each place and experience names its subject's Wikipedia article. The photo is the
+  first Commons *Quality image* in that article's Commons category (Wikidata P373) that is a
+  landscape JPEG, at least 1000 px wide, under CC0, public domain, CC BY or CC BY-SA, with no
+  extra restrictions. Failing that, it is the article's lead image. Every choice was looked at on
+  contact sheets, and about 65 of the 230 were wrong: a football match for Karlovac, Prague's
+  Dancing House for Zagreb, a cat for the Cerovac caves, a US aircraft carrier for a sunset sail,
+  New Zealand's Blue Lake for Imotski, panoramas too wide to crop. Those were replaced by hand from
+  Commons searches, wider than 2:1 refused. 229 rows have a photo; Lopar keeps its stand-in, since
+  Commons search kept answering with a Spanish beach of the same name. `seed_croatia` downloads
+  them (1280 px) and stores the author and licence.

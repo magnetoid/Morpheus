@@ -11,6 +11,13 @@ PLACES: list[dict] = [
     {
         'name': 'Split',
         'slug': 'split',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Promenade%2C_Split_%28P1080864%29.jpg/1280px-Promenade%2C_Split_%28P1080864%29.jpg',
+            'author': 'Matti Blume',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Promenade,_Split_(P1080864).jpg',
+        },
         'region': 'split',
         'place_type': 'cities',
         'featured': True,
@@ -152,6 +159,13 @@ PLACES: list[dict] = [
     {
         'name': 'Trogir',
         'slug': 'trogir',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Magasin_et_restaurant_%C3%A0_Trogir.jpg/1280px-Magasin_et_restaurant_%C3%A0_Trogir.jpg',
+            'author': 'Sebring12Hrs',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Magasin_et_restaurant_%C3%A0_Trogir.jpg',
+        },
         'region': 'split',
         'place_type': 'cultural',
         'featured': True,
@@ -287,6 +301,13 @@ PLACES: list[dict] = [
     {
         'name': 'Kaštela',
         'slug': 'kastela',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Split_mountains_%2820785899568%29.jpg/1280px-Split_mountains_%2820785899568%29.jpg',
+            'author': 'Nick Savchenko from Kiev, Ukraine',
+            'licence': 'CC BY-SA 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Split_mountains_(20785899568).jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -416,6 +437,13 @@ PLACES: list[dict] = [
     {
         'name': 'Klis Fortress',
         'slug': 'klis-fortress',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Fortress_of_Klis_05.jpg/1280px-Fortress_of_Klis_05.jpg',
+            'author': 'Bernard Gagnon',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Fortress_of_Klis_05.jpg',
+        },
         'region': 'split',
         'place_type': 'cultural',
         'featured': False,
@@ -549,6 +577,13 @@ PLACES: list[dict] = [
     {
         'name': 'Salona',
         'slug': 'salona',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Salona_-_Porta_Cesarea.jpg/1280px-Salona_-_Porta_Cesarea.jpg',
+            'author': 'Pudelek (Marcin Szala)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Salona_-_Porta_Cesarea.jpg',
+        },
         'region': 'split',
         'place_type': 'cultural',
         'featured': False,
@@ -681,6 +716,13 @@ PLACES: list[dict] = [
     {
         'name': 'Omiš',
         'slug': 'omis',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Omis_fortice_Starigrad.jpg/1280px-Omis_fortice_Starigrad.jpg',
+            'author': 'Larisa Uhryn',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Omis_fortice_Starigrad.jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -812,6 +854,13 @@ PLACES: list[dict] = [
     {
         'name': 'Cetina River',
         'slug': 'cetina-river',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Cetina_%28HR%29%2C_Quelle_%22Blue_Eye%22_und_Dinara_--_2022_--_0042.jpg/1280px-Cetina_%28HR%29%2C_Quelle_%22Blue_Eye%22_und_Dinara_--_2022_--_0042.jpg',
+            'author': 'Anil Öztas',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Cetina_(HR),_Quelle_%22Blue_Eye%22_und_Dinara_--_2022_--_0042.jpg',
+        },
         'region': 'split',
         'place_type': 'lakes',
         'featured': False,
@@ -940,6 +989,13 @@ PLACES: list[dict] = [
     {
         'name': 'Makarska',
         'slug': 'makarska',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Urbanisti%C4%8Dka_cjelina_Makarske.jpg/1280px-Urbanisti%C4%8Dka_cjelina_Makarske.jpg',
+            'author': 'SKas',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Urbanisti%C4%8Dka_cjelina_Makarske.jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -1072,6 +1128,13 @@ PLACES: list[dict] = [
     {
         'name': 'Brela',
         'slug': 'brela',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Brela_BW_2024-10-04_16-08-03.jpg/1280px-Brela_BW_2024-10-04_16-08-03.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Brela_BW_2024-10-04_16-08-03.jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -1193,6 +1256,12 @@ PLACES: list[dict] = [
     {
         'name': 'Baška Voda',
         'slug': 'baska-voda',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Baska_Voda-mountain.jpg/1280px-Baska_Voda-mountain.jpg',
+            'author': 'László Szalai ( Beyond silence )',
+            'licence': 'Public domain',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Baska_Voda-mountain.jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -1323,6 +1392,13 @@ PLACES: list[dict] = [
     {
         'name': 'Tučepi',
         'slug': 'tucepi',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/8/88/Tu%C4%8Depi_II.jpg',
+            'author': 'Nikolaj Potanin',
+            'licence': 'CC BY-SA 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Tu%C4%8Depi_II.jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -1453,6 +1529,13 @@ PLACES: list[dict] = [
     {
         'name': 'Biokovo Nature Park',
         'slug': 'biokovo-nature-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Biokovo_10_2019.jpg/1280px-Biokovo_10_2019.jpg',
+            'author': 'SKas',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Biokovo_10_2019.jpg',
+        },
         'region': 'split',
         'place_type': 'mountains',
         'featured': False,
@@ -1581,6 +1664,13 @@ PLACES: list[dict] = [
     {
         'name': 'Sinj',
         'slug': 'sinj',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/e/ec/Sinj_-_ca._2010-_kulturnadobra.hr_Z-5117.jpg',
+            'author': 'Unknown author Unknown author',
+            'licence': 'CC BY-SA 3.0 hr',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/hr/deed.en',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Sinj_-_ca._2010-_kulturnadobra.hr_Z-5117.jpg',
+        },
         'region': 'split',
         'place_type': 'cultural',
         'featured': False,
@@ -1694,6 +1784,13 @@ PLACES: list[dict] = [
     {
         'name': 'Imotski',
         'slug': 'imotski',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Imotski_-_Crkva_sv._Franje_2020-08-06a.jpg/1280px-Imotski_-_Crkva_sv._Franje_2020-08-06a.jpg',
+            'author': 'Stjepko Krehula',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Imotski_-_Crkva_sv._Franje_2020-08-06a.jpg',
+        },
         'region': 'split',
         'place_type': 'lakes',
         'featured': False,
@@ -1822,6 +1919,13 @@ PLACES: list[dict] = [
     {
         'name': 'Hvar',
         'slug': 'hvar',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/J32_715_Loggia%2C_Trg_Svjetog_Stjepana.jpg/1280px-J32_715_Loggia%2C_Trg_Svjetog_Stjepana.jpg',
+            'author': 'Falk2',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:J32_715_Loggia,_Trg_Svjetog_Stjepana.jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': True,
@@ -1943,6 +2047,13 @@ PLACES: list[dict] = [
     {
         'name': 'Stari Grad',
         'slug': 'stari-grad',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Aerial_image_of_the_Stari_Grad_Plain_%28view_from_the_southwest%29.jpg/1280px-Aerial_image_of_the_Stari_Grad_Plain_%28view_from_the_southwest%29.jpg',
+            'author': 'Carsten Steger',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aerial_image_of_the_Stari_Grad_Plain_(view_from_the_southwest).jpg',
+        },
         'region': 'split',
         'place_type': 'cultural',
         'featured': False,
@@ -2059,6 +2170,13 @@ PLACES: list[dict] = [
     {
         'name': 'Jelsa',
         'slug': 'jelsa',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Aerial_image_of_Jelsa_%28view_from_the_south%29.jpg/1280px-Aerial_image_of_Jelsa_%28view_from_the_south%29.jpg',
+            'author': 'Carsten Steger',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aerial_image_of_Jelsa_(view_from_the_south).jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -2174,6 +2292,13 @@ PLACES: list[dict] = [
     {
         'name': 'Bol',
         'slug': 'bol',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/J35_870_Bol%2C_Riva.jpg/1280px-J35_870_Bol%2C_Riva.jpg',
+            'author': 'Falk2',
+            'licence': 'CC BY-SA 3.0 de',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/de/deed.en',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:J35_870_Bol,_Riva.jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -2299,6 +2424,13 @@ PLACES: list[dict] = [
     {
         'name': 'Supetar',
         'slug': 'supetar',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Supetar_Waterfront.jpg/1280px-Supetar_Waterfront.jpg',
+            'author': 'WeatheredAviation',
+            'licence': 'CC0',
+            'licence_url': 'https://creativecommons.org/publicdomain/zero/1.0/deed.en',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Supetar_Waterfront.jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -2424,6 +2556,13 @@ PLACES: list[dict] = [
     {
         'name': 'Vis',
         'slug': 'vis',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/J32_433_Vis-Stadt.jpg/1280px-J32_433_Vis-Stadt.jpg',
+            'author': 'Falk2',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:J32_433_Vis-Stadt.jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -2538,6 +2677,13 @@ PLACES: list[dict] = [
     {
         'name': 'Komiža',
         'slug': 'komiza',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Komi%C5%BEa_Island_Vis.jpg/1280px-Komi%C5%BEa_Island_Vis.jpg',
+            'author': 'ModriDirkac',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Komi%C5%BEa_Island_Vis.jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -2658,6 +2804,13 @@ PLACES: list[dict] = [
     {
         'name': 'Biševo',
         'slug': 'bisevo',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Aerial_image_of_Bi%C5%A1evo_%28view_from_the_southwest%29.jpg/1280px-Aerial_image_of_Bi%C5%A1evo_%28view_from_the_southwest%29.jpg',
+            'author': 'Carsten Steger',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aerial_image_of_Bi%C5%A1evo_(view_from_the_southwest).jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,
@@ -2775,6 +2928,13 @@ PLACES: list[dict] = [
     {
         'name': 'Šolta',
         'slug': 'solta',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/%C5%A0olta_Maslinica_Hrvatska_Hafen_2012_a.jpg/1280px-%C5%A0olta_Maslinica_Hrvatska_Hafen_2012_a.jpg',
+            'author': 'Joadl',
+            'licence': 'CC BY-SA 3.0 at',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/at/deed.en',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:%C5%A0olta_Maslinica_Hrvatska_Hafen_2012_a.jpg',
+        },
         'region': 'split',
         'place_type': 'coastal',
         'featured': False,

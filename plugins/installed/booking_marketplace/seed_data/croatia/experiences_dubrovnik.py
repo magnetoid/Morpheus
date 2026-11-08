@@ -52,6 +52,13 @@ EXPERIENCES: list[dict] = [
     # ================= DUBROVNIK =================
     {
         'slug': 'dubrovnik-old-town-and-city-walls-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/City_walls_of_Dubrovnik_05.jpg/1280px-City_walls_of_Dubrovnik_05.jpg',
+            'author': 'Bernard Gagnon',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:City_walls_of_Dubrovnik_05.jpg',
+        },
         'name': 'Dubrovnik Old Town and the City Walls',
         'category': 'Culture',
         'region': 'dubrovnik',
@@ -103,6 +110,12 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'dubrovnik-old-town-food-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Main_street-Dubrovnik-1.jpg/1280px-Main_street-Dubrovnik-1.jpg',
+            'author': 'László Szalai (Beyond silence)',
+            'licence': 'Public domain',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Main_street-Dubrovnik-1.jpg',
+        },
         'name': 'A Taste of Dubrovnik: Old Town Food Walk',
         'category': 'Dining',
         'region': 'dubrovnik',
@@ -147,6 +160,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'dubrovnik-sea-kayaking-city-walls-and-lokrum',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Fort_Lovrijenac_-_Dubrovnik.jpg/1280px-Fort_Lovrijenac_-_Dubrovnik.jpg',
+            'author': 'Sumitsurai',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Fort_Lovrijenac_-_Dubrovnik.jpg',
+        },
         'name': 'Sea Kayaking Beneath the Walls to Lokrum',
         'category': 'Water Sports',
         'region': 'dubrovnik',
@@ -196,6 +216,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'dubrovnik-sunset-kayak-and-cave-swim',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Casco_viejo_de_Dubrovnik%2C_Croacia%2C_2014-04-14%2C_DD_04.JPG/1280px-Casco_viejo_de_Dubrovnik%2C_Croacia%2C_2014-04-14%2C_DD_04.JPG',
+            'author': 'Diego Delso',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Casco_viejo_de_Dubrovnik,_Croacia,_2014-04-14,_DD_04.JPG',
+        },
         'name': 'Sunset Kayak and Cave Swim',
         'category': 'Water Sports',
         'region': 'dubrovnik',
@@ -241,6 +268,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'dubrovnik-mount-srd-sunset-hike',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/View_of_Dubrovnik_from_atop_the_city_walls_%2843%29_%2830084998281%29.jpg/1280px-View_of_Dubrovnik_from_atop_the_city_walls_%2843%29_%2830084998281%29.jpg',
+            'author': 'Richard Mortel from Riyadh, Saudi Arabia',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:View_of_Dubrovnik_from_atop_the_city_walls_(43)_(30084998281).jpg',
+        },
         'name': 'Mount Srđ at Sunset: the Hike Above the Old Town',
         'category': 'Adventure',
         'region': 'dubrovnik',
@@ -279,6 +313,13 @@ EXPERIENCES: list[dict] = [
     # ================= LOKRUM =================
     {
         'slug': 'lokrum-island-day-trip-swim-and-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Boats_-_Lokrum_island.jpg/1280px-Boats_-_Lokrum_island.jpg',
+            'author': 'Pudelek (Marcin Szala)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Boats_-_Lokrum_island.jpg',
+        },
         'name': 'Lokrum Island: A Day of Pines, Ruins and Swimming',
         'category': 'Adventure',
         'region': 'dubrovnik',
@@ -316,6 +357,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'lokrum-sunrise-yoga-and-sea-swim',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Lokrum_Island%2C_Croatia.jpg/1280px-Lokrum_Island%2C_Croatia.jpg',
+            'author': 'Bernard Gagnon',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Lokrum_Island,_Croatia.jpg',
+        },
         'name': 'Sunrise Yoga and a Sea Swim on Lokrum',
         'category': 'Wellness',
         'region': 'dubrovnik',
@@ -354,6 +402,12 @@ EXPERIENCES: list[dict] = [
     # ================= ELAPHITI ISLANDS =================
     {
         'slug': 'elaphiti-islands-boat-day-with-lunch',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Island_of_Kolo%C4%8Dep.JPG/1280px-Island_of_Kolo%C4%8Dep.JPG',
+            'author': 'Lasta',
+            'licence': 'Public domain',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Island_of_Kolo%C4%8Dep.JPG',
+        },
         'name': 'Elaphiti Islands by Boat: Koločep, Lopud and Šipan',
         'category': 'Water Sports',
         'region': 'dubrovnik',
@@ -397,6 +451,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'sipan-island-cycling-and-olive-groves',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Su%C4%91ura%C4%91%2C_Croatia.jpg/1280px-Su%C4%91ura%C4%91%2C_Croatia.jpg',
+            'author': 'Jalapeño',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Su%C4%91ura%C4%91,_Croatia.jpg',
+        },
         'name': 'Cycling Šipan: Olive Groves and Old Summer Villas',
         'category': 'Adventure',
         'region': 'dubrovnik',
@@ -434,6 +495,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'lopud-sunj-beach-walk-and-swim',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/e/e2/LOPUD.JPG',
+            'author': 'August Dominus',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:LOPUD.JPG',
+        },
         'name': 'Lopud Slow Day: the Village, a Hill Walk and Šunj Beach',
         'category': 'Wellness',
         'region': 'dubrovnik',
@@ -472,6 +540,13 @@ EXPERIENCES: list[dict] = [
     # ================= MLJET NATIONAL PARK =================
     {
         'slug': 'mljet-national-park-day-trip-lakes-and-cycling',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Road_along_the_lake_Veliko_Jezero_on_Mljet%2C_Croatia_%2848739047462%29.jpg/1280px-Road_along_the_lake_Veliko_Jezero_on_Mljet%2C_Croatia_%2848739047462%29.jpg',
+            'author': 'dronepicr',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Road_along_the_lake_Veliko_Jezero_on_Mljet,_Croatia_(48739047462).jpg',
+        },
         'name': 'Mljet National Park: Salt Lakes and Cycling',
         'category': 'Adventure',
         'region': 'dubrovnik',
@@ -517,6 +592,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'mljet-lakes-kayak-and-st-mary-islet',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Tiny_Island_of_Saint_Mary.jpg/1280px-Tiny_Island_of_Saint_Mary.jpg',
+            'author': 'Bpavkovic',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Tiny_Island_of_Saint_Mary.jpg',
+        },
         'name': 'Kayaking the Mljet Lakes to St Mary',
         'category': 'Water Sports',
         'region': 'dubrovnik',
@@ -555,6 +637,12 @@ EXPERIENCES: list[dict] = [
     # ================= STON =================
     {
         'slug': 'ston-walls-and-oyster-tasting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Ston-Fort-04.jpg/1280px-Ston-Fort-04.jpg',
+            'author': 'László Szalai ( Beyond silence )',
+            'licence': 'Public domain',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Ston-Fort-04.jpg',
+        },
         'name': 'Ston Walls and Oysters from the Bay',
         'category': 'Dining',
         'region': 'dubrovnik',
@@ -596,6 +684,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'ston-salt-pans-and-walls-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Adriatic_Sea_in_Croatia_by_Pudelek.jpg/1280px-Adriatic_Sea_in_Croatia_by_Pudelek.jpg',
+            'author': 'Pudelek (Marcin Szala)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Adriatic_Sea_in_Croatia_by_Pudelek.jpg',
+        },
         'name': 'Ston Salt Pans and the Long Wall',
         'category': 'Culture',
         'region': 'dubrovnik',
@@ -631,6 +726,13 @@ EXPERIENCES: list[dict] = [
     # ================= OREBIĆ / PELJEŠAC =================
     {
         'slug': 'peljesac-wine-road-plavac-mali-and-dingac',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Vinogradi%2C_Dinga%C4%8D_111820.jpg/1280px-Vinogradi%2C_Dinga%C4%8D_111820.jpg',
+            'author': 'Quahadi Añtó 09:05, 18 December 2013 (UTC)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Vinogradi,_Dinga%C4%8D_111820.jpg',
+        },
         'name': 'The Pelješac Wine Road: Plavac Mali and Dingač',
         'category': 'Wine',
         'region': 'dubrovnik',
@@ -678,6 +780,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'peljesac-vineyard-cycling-from-orebic',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/K00_152_Orebi%C4%87%2C_Sv._Ilija.jpg/1280px-K00_152_Orebi%C4%87%2C_Sv._Ilija.jpg',
+            'author': 'Falk2',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:K00_152_Orebi%C4%87,_Sv._Ilija.jpg',
+        },
         'name': 'Cycling the Pelješac Coast from Orebić',
         'category': 'Adventure',
         'region': 'dubrovnik',
@@ -713,6 +822,12 @@ EXPERIENCES: list[dict] = [
     # ================= KORČULA =================
     {
         'slug': 'korcula-old-town-walk-and-moreska',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/More%C5%A1ka_in_Kor%C4%8Dula.jpg/1280px-More%C5%A1ka_in_Kor%C4%8Dula.jpg',
+            'author': 'Luka Jačov',
+            'licence': 'Public domain',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:More%C5%A1ka_in_Kor%C4%8Dula.jpg',
+        },
         'name': 'Korčula Old Town and the Moreška Sword Dance',
         'category': 'Culture',
         'region': 'dubrovnik',
@@ -760,6 +875,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'korcula-posip-wine-and-olive-oil-tasting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Kor%C4%8Dula%2C_Croatia.jpg/1280px-Kor%C4%8Dula%2C_Croatia.jpg',
+            'author': 'Quintin Soloviev',
+            'licence': 'CC BY 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Kor%C4%8Dula,_Croatia.jpg',
+        },
         'name': 'Korčula Pošip: Wine and Olive Oil Tasting in the Hills',
         'category': 'Wine',
         'region': 'dubrovnik',
@@ -802,6 +924,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'korcula-sea-kayaking-to-badija-island',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Badija_Samostan02634.JPG/1280px-Badija_Samostan02634.JPG',
+            'author': 'Anto ( talk ) 07:46, 7 August 2009 (UTC)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Badija_Samostan02634.JPG',
+        },
         'name': 'Sea Kayaking from Korčula to Badija Island',
         'category': 'Water Sports',
         'region': 'dubrovnik',
@@ -837,6 +966,13 @@ EXPERIENCES: list[dict] = [
     # ================= KONAVLE =================
     {
         'slug': 'konavle-village-and-folk-heritage-day',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Cavtat%2C_Croacia%2C_2014-04-19%2C_DD_05.JPG/1280px-Cavtat%2C_Croacia%2C_2014-04-19%2C_DD_05.JPG',
+            'author': 'Diego Delso',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Cavtat,_Croacia,_2014-04-19,_DD_05.JPG',
+        },
         'name': 'Konavle: Villages, Costumes and Folk Heritage',
         'category': 'Culture',
         'region': 'dubrovnik',
@@ -874,6 +1010,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'konavle-home-cooking-and-malvasija',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Cavtat%2C_Croacia%2C_2014-04-19%2C_DD_09.JPG/1280px-Cavtat%2C_Croacia%2C_2014-04-19%2C_DD_09.JPG',
+            'author': 'Diego Delso',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Cavtat,_Croacia,_2014-04-19,_DD_09.JPG',
+        },
         'name': 'Konavle Table: Home Cooking and Malvasija',
         'category': 'Dining',
         'region': 'dubrovnik',
@@ -908,6 +1051,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'konavle-valley-cycling',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Cavtat%2C_Croacia%2C_2014-04-19%2C_DD_01.JPG/1280px-Cavtat%2C_Croacia%2C_2014-04-19%2C_DD_01.JPG',
+            'author': 'Diego Delso',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Cavtat,_Croacia,_2014-04-19,_DD_01.JPG',
+        },
         'name': 'Cycling the Konavle Valley',
         'category': 'Adventure',
         'region': 'dubrovnik',
@@ -943,6 +1093,13 @@ EXPERIENCES: list[dict] = [
     # ================= NERETVA DELTA =================
     {
         'slug': 'neretva-delta-boat-safari-and-tangerines',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Panorama_of_Mandarin_from_the_Neretva_River_valley.jpg/1280px-Panorama_of_Mandarin_from_the_Neretva_River_valley.jpg',
+            'author': 'otrow_photography',
+            'licence': 'CC0',
+            'licence_url': 'https://creativecommons.org/publicdomain/zero/1.0/deed.en',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Panorama_of_Mandarin_from_the_Neretva_River_valley.jpg',
+        },
         'name': 'Neretva Delta by Boat: Reeds, Birds and Tangerines',
         'category': 'Adventure',
         'region': 'dubrovnik',
@@ -984,6 +1141,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'neretva-delta-eel-and-frog-tasting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Opuzen_panorama5.jpg/1280px-Opuzen_panorama5.jpg',
+            'author': 'Miroslav Vajdic from Zagreb, Croatia',
+            'licence': 'CC BY-SA 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Opuzen_panorama5.jpg',
+        },
         'name': 'Neretva Delta Flavours: Eel, Frog and Brudet',
         'category': 'Dining',
         'region': 'dubrovnik',
@@ -1019,6 +1183,13 @@ EXPERIENCES: list[dict] = [
     # ================= TRSTENO =================
     {
         'slug': 'trsteno-arboretum-slow-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Arboretum-Trsteno1.jpg/1280px-Arboretum-Trsteno1.jpg',
+            'author': 'Oktoober',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Arboretum-Trsteno1.jpg',
+        },
         'name': 'Trsteno Arboretum: A Slow Garden Walk',
         'category': 'Wellness',
         'region': 'dubrovnik',
@@ -1054,6 +1225,13 @@ EXPERIENCES: list[dict] = [
     # ================= CAVTAT =================
     {
         'slug': 'cavtat-coastal-walk-and-swim',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Cavtat%2C_Croacia%2C_2014-04-19%2C_DD_02.JPG/1280px-Cavtat%2C_Croacia%2C_2014-04-19%2C_DD_02.JPG',
+            'author': 'Diego Delso',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Cavtat,_Croacia,_2014-04-19,_DD_02.JPG',
+        },
         'name': 'Cavtat Coastal Walk and Swim',
         'category': 'Adventure',
         'region': 'dubrovnik',
@@ -1088,6 +1266,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'cavtat-bukovac-house-and-racic-mausoleum',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Cavtat%2C_Croacia%2C_2014-04-19%2C_DD_11.JPG/1280px-Cavtat%2C_Croacia%2C_2014-04-19%2C_DD_11.JPG',
+            'author': 'Diego Delso',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Cavtat,_Croacia,_2014-04-19,_DD_11.JPG',
+        },
         'name': 'Cavtat: Vlaho Bukovac and the Račić Mausoleum',
         'category': 'Culture',
         'region': 'dubrovnik',
@@ -1123,6 +1308,13 @@ EXPERIENCES: list[dict] = [
     # ================= LASTOVO =================
     {
         'slug': 'lastovo-nature-park-walk-and-swim',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/7/74/Uska_%28Island_of_Lastovo%29.JPG',
+            'author': 'August Dominus',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Uska_(Island_of_Lastovo).JPG',
+        },
         'name': 'Lastovo: A Day in the Nature Park',
         'category': 'Adventure',
         'region': 'dubrovnik',

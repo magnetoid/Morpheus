@@ -10,6 +10,13 @@ PLACES: list[dict] = [
     {
         'name': 'Varaždin',
         'slug': 'varazdin',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Castle_of_Varazdin_%2817%29.jpg/1280px-Castle_of_Varazdin_%2817%29.jpg',
+            'author': 'Krzysztof Golik',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Castle_of_Varazdin_(17).jpg',
+        },
         'region': 'continental',
         'place_type': 'cultural',
         'featured': False,
@@ -114,6 +121,13 @@ PLACES: list[dict] = [
     {
         'name': 'Trakošćan Castle',
         'slug': 'trakoscan-castle',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Dvorac_Trako%C5%A1%C4%87an.jpg/1280px-Dvorac_Trako%C5%A1%C4%87an.jpg',
+            'author': 'Miroslav.vajdic',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Dvorac_Trako%C5%A1%C4%87an.jpg',
+        },
         'region': 'continental',
         'place_type': 'cultural',
         'featured': False,
@@ -218,6 +232,13 @@ PLACES: list[dict] = [
     {
         'name': 'Krapina',
         'slug': 'krapina',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Ansicht_Krapina_von_Tr%C5%A1ki_Vrh.JPG/1280px-Ansicht_Krapina_von_Tr%C5%A1ki_Vrh.JPG',
+            'author': 'Zeitblick',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Ansicht_Krapina_von_Tr%C5%A1ki_Vrh.JPG',
+        },
         'region': 'continental',
         'place_type': 'cultural',
         'featured': False,
@@ -320,6 +341,13 @@ PLACES: list[dict] = [
     {
         'name': 'Marija Bistrica',
         'slug': 'marija-bistrica',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Marija_Bistrica_-_crkva.JPG/1280px-Marija_Bistrica_-_crkva.JPG',
+            'author': 'Silverije',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Marija_Bistrica_-_crkva.JPG',
+        },
         'region': 'continental',
         'place_type': 'cultural',
         'featured': False,
@@ -423,6 +451,13 @@ PLACES: list[dict] = [
     {
         'name': 'Kumrovec',
         'slug': 'kumrovec',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Croatia-00616_-_Birth_House_of_Tito_%289372902892%29.jpg/1280px-Croatia-00616_-_Birth_House_of_Tito_%289372902892%29.jpg',
+            'author': 'Dennis G. Jarvis',
+            'licence': 'CC BY-SA 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia-00616_-_Birth_House_of_Tito_(9372902892).jpg',
+        },
         'region': 'continental',
         'place_type': 'cultural',
         'featured': False,
@@ -521,6 +556,13 @@ PLACES: list[dict] = [
     {
         'name': 'Karlovac',
         'slug': 'karlovac',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Korana_Karlovac.jpg/1280px-Korana_Karlovac.jpg',
+            'author': 'Suradnik13',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Korana_Karlovac.jpg',
+        },
         'region': 'continental',
         'place_type': 'cities',
         'featured': False,
@@ -623,6 +665,13 @@ PLACES: list[dict] = [
     {
         'name': 'Osijek',
         'slug': 'osijek',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Firingera_in_Osijek_%282%29.jpg/1280px-Firingera_in_Osijek_%282%29.jpg',
+            'author': 'Tournasol7',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Firingera_in_Osijek_(2).jpg',
+        },
         'region': 'continental',
         'place_type': 'cities',
         'featured': False,
@@ -727,6 +776,13 @@ PLACES: list[dict] = [
     {
         'name': 'Kopački Rit Nature Park',
         'slug': 'kopacki-rit-nature-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Kopa%C4%8Dki_rit_wooden_trail.JPG/1280px-Kopa%C4%8Dki_rit_wooden_trail.JPG',
+            'author': 'Misalalic',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Kopa%C4%8Dki_rit_wooden_trail.JPG',
+        },
         'region': 'continental',
         'place_type': 'lakes',
         'featured': False,
@@ -831,6 +887,13 @@ PLACES: list[dict] = [
     {
         'name': 'Vukovar',
         'slug': 'vukovar',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Franjo_Tu%C4%91man_Square%2C_Vukovar.JPG/1280px-Franjo_Tu%C4%91man_Square%2C_Vukovar.JPG',
+            'author': 'Pudelek (Marcin Szala)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Franjo_Tu%C4%91man_Square,_Vukovar.JPG',
+        },
         'region': 'continental',
         'place_type': 'cultural',
         'featured': False,
@@ -938,6 +1001,13 @@ PLACES: list[dict] = [
     {
         'name': 'Ilok',
         'slug': 'ilok',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Ilok_001.jpg/1280px-Ilok_001.jpg',
+            'author': 'No machine-readable author provided. Goran.Smith2~commonswiki assumed (based on copyright claims).',
+            'licence': 'CC BY-SA 2.5',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/2.5',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Ilok_001.jpg',
+        },
         'region': 'continental',
         'place_type': 'cultural',
         'featured': False,
@@ -1040,6 +1110,13 @@ PLACES: list[dict] = [
     {
         'name': 'Đakovo',
         'slug': 'dakovo',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Cathedral_Dakovo%2C_Croatia.JPG/1280px-Cathedral_Dakovo%2C_Croatia.JPG',
+            'author': 'Modzzak',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Cathedral_Dakovo,_Croatia.JPG',
+        },
         'region': 'continental',
         'place_type': 'cultural',
         'featured': False,
@@ -1145,6 +1222,13 @@ PLACES: list[dict] = [
     {
         'name': 'Lonjsko Polje Nature Park',
         'slug': 'lonjsko-polje-nature-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Muzilovcica.JPG/1280px-Muzilovcica.JPG',
+            'author': 'Philipp Weigell',
+            'licence': 'CC BY 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Muzilovcica.JPG',
+        },
         'region': 'continental',
         'place_type': 'lakes',
         'featured': False,
