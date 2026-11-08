@@ -233,10 +233,22 @@ class VariantMarkupTests(TestCase):
         self.assertEqual(prices['VP-1-P'], '16.00')
         self.assertEqual(prices['VP-1-D'], '9.00')
 
-    def test_the_group_says_what_it_varies_by(self):
-        """Print vs digital is a material difference; claiming an axis the
-        variants do not differ on would be worse than claiming none."""
-        self.assertEqual(self._node()['variesBy'], 'https://schema.org/bookFormat')
+    def test_the_group_claims_only_an_axis_google_reads(self):
+        """Print vs digital is a material difference, but `bookFormat` is not
+        one of the six `variesBy` values Google reads (color, size,
+        suggestedAge, suggestedGender, material, pattern); the editions say
+        what they are by name instead."""
+        node = self._node()
+        self.assertNotIn('variesBy', node)
+        names = {v['sku']: v['name'] for v in node['hasVariant']}
+        self.assertEqual(names['VP-1-P'], 'Variant Probe – Print')
+
+    def test_a_size_difference_is_claimed(self):
+        self.print_variant.size = 'A5'
+        self.print_variant.save(update_fields=['size'])
+        self.digital.size = 'A4'
+        self.digital.save(update_fields=['size'])
+        self.assertEqual(self._node()['variesBy'], 'https://schema.org/size')
 
     def test_a_single_variant_is_not_a_group(self):
         """A chooser for one option is a chooser the shopper does not have."""

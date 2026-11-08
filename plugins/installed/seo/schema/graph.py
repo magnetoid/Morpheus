@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 from contextlib import suppress
 
+from plugins.installed.seo.pages.resolve import _item_count
 from plugins.installed.seo.pages.types import (
     KIND_ARTICLE,
     KIND_LISTING,
@@ -303,6 +304,12 @@ def _list_nodes(page: SeoPage, url: str) -> list[dict]:
     if not items:
         return []
     normalised, prices, currency = _normalise_items(items)
+    # The list is the whole listing, not this page of it: schema.org's
+    # numberOfItems counts every item across the pages, and the positions go
+    # on from the previous page.
+    total = _item_count(page, page.context)
+    start = getattr(page.page_obj, 'start_index', None)
+    start = start() if callable(start) else 1
     node = _safe(
         collection_page_jsonld,
         name=page.title or 'Collection',
@@ -310,6 +317,8 @@ def _list_nodes(page: SeoPage, url: str) -> list[dict]:
         description=page.description or '',
         items=normalised,
         offers=_safe(aggregate_offer, prices, currency),
+        total=max(total, len(normalised)) if total is not None else None,
+        start=start if isinstance(start, int) and start > 0 else 1,
     )
     node = _strip_context(node)
     if not node:

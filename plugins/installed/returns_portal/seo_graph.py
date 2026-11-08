@@ -19,14 +19,25 @@ _DEFAULT_WINDOW_DAYS = 30
 
 
 def on_seo_jsonld_graph(value, page=None, request=None, **kwargs):
-    """`SEO_JSONLD_GRAPH` subscriber: add the return policy to the offer."""
+    """`SEO_JSONLD_GRAPH` subscriber: the return policy, on the store and the offer.
+
+    On the store's own node (Google reads an Organization-level policy since
+    June 2025) it covers every product the store sells, so a product page whose
+    offer Google cannot pair with a policy, and every listing page, still says
+    what returns cost the shopper. On the offer it states the same policy
+    where Google looks first.
+    """
     try:
         offer = _product_offer(value)
-        if offer is None:
+        store = _store_node(value)
+        if offer is None and store is None:
             return value
         policy = return_policy()
         if policy:
-            offer['hasMerchantReturnPolicy'] = policy
+            if offer is not None:
+                offer['hasMerchantReturnPolicy'] = policy
+            if store is not None:
+                store['hasMerchantReturnPolicy'] = dict(policy)
     except Exception as e:  # noqa: BLE001 — never lose the graph over an enricher
         logger.warning('returns_portal: JSON-LD enrichment failed: %s', e, exc_info=True)
     return value
@@ -95,4 +106,14 @@ def _product_offer(graph) -> dict | None:
         offer = node.get('offers')
         if isinstance(offer, dict):
             return offer
+    return None
+
+
+def _store_node(graph) -> dict | None:
+    """The graph's node for the store itself (seo names it `…#organization`)."""
+    if not isinstance(graph, dict):
+        return None
+    for node in graph.get('@graph') or []:
+        if isinstance(node, dict) and str(node.get('@id', '')).endswith('#organization'):
+            return node
     return None

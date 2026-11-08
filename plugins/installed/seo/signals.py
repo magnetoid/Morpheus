@@ -56,6 +56,41 @@ def wire() -> None:
         _on_template_changed, sender=SeoTemplate, dispatch_uid='seo.template_delete'
     )
     _wire_slug_watchers()
+    _wire_removal_pings()
+
+
+def _wire_removal_pings() -> None:
+    """Tell IndexNow when a product, category or collection is deleted.
+
+    A save already pings (`on_product_updated` & co.), an unpublish included,
+    since the URL then answers 404; a delete fired nothing, so Bing kept a
+    removed product in its index until it next happened to crawl the URL.
+    """
+    from django.apps import apps
+
+    for label in ('catalog.product', 'catalog.category', 'catalog.collection'):
+        try:
+            model = apps.get_model(label)
+        except LookupError:
+            continue
+        post_delete.connect(
+            _on_public_object_deleted, sender=model, dispatch_uid=f'seo.gone.{label}'
+        )
+
+
+def _on_public_object_deleted(sender, instance=None, **kwargs):
+    from django.db import transaction
+
+    from plugins.registry import app_registry
+
+    slug = getattr(instance, 'slug', '') or ''
+    plugin = app_registry.get('seo')
+    # A model signal skips the hook bus's disable gate, so it checks itself.
+    if not slug or plugin is None or not app_registry.is_active('seo'):
+        return
+    label = sender._meta.label_lower
+    # After the commit: a delete that rolls back must not report a page gone.
+    transaction.on_commit(lambda: plugin._indexnow_push(model_label=label, slug=slug))
 
 
 def _on_redirect_saved(sender, instance=None, **kwargs):
