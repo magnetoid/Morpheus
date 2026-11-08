@@ -15,6 +15,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.141.1 — 2026-11-08
+
+**dotbooks: the cover is big again on the product page**
+
+- The product page's two columns were plain fr tracks, which never shrink below their content. The Recommended book rail in the details column is about 1160px of cards, so on a 1440px screen the details took 1152px and the cover shrank to a 96px thumbnail. The columns can shrink now: at 1440x900 the cover is 412x618, and it still fits on one screen with its thumbnails.
+- On a phone the single column grew to the rail's width as well, the page was about 1000px wide, and the browser zoomed the whole product page out to fit. The rail now scrolls inside the page's own width.
+
 ## v0.141.0 — 2026-11-07
 
 **Free downloads: a PDF priced 0 is free, and an order with nothing to pay is paid at once**
