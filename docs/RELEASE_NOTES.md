@@ -25,6 +25,13 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - Every answer is checked the way Cloudflare's Turnstile Spin sets a backend up: it must be for the same form (`action`) and solved on the store's own address (`hostname`, never `localhost` or `127.0.0.1` in production), the token at most 2,048 characters. A siteverify that does not answer is tried once more with the same `idempotency_key`, then the form is refused. Until now any successful token passed, whichever site or form it was solved on.
 - The nightly health check reports a secret key Cloudflare refuses (every protected form would refuse visitors) and a Cloudflare test key (it lets everyone through).
 
+## v0.141.2 — 2026-11-08
+
+**Croatia: a lighthouse behind the search**
+
+- The Croatia Experience home page shows a lighthouse on the Adriatic with mountains behind it, behind the search (photo by Daria Andraczko, Unsplash), in three sizes as WebP and JPEG.
+- On a wide screen the photo's offset follows the screen width, so the lighthouse stays in view under the search from 1280 to 1920 px instead of hiding behind it or being cut off at the bottom.
+
 ## v0.141.1 — 2026-11-08
 
 **dotbooks: the cover is big again on the product page**

@@ -11,9 +11,16 @@
 <!-- ============ HERO (1:1 port of components/Hero.tsx) ============ -->
 <section class="relative min-h-[360px] sm:min-h-[440px] lg:min-h-[560px] flex items-center">
   <div class="absolute inset-0 overflow-hidden">
+    {% comment %}A lighthouse on the Adriatic, mountains behind (photo: Daria Andraczko, Unsplash).
+    The lighthouse sits halfway down the photo, where the search is. On a wide screen the
+    photo is cropped top and bottom, and a fixed percentage either hid it behind the search
+    (1366 px) or cut it off at the bottom (1920 px), so the offset follows the width: it
+    keeps the lighthouse about 460 px down the 560 px hero, under the search, and never
+    opens a gap above the photo (min with 0).{% endcomment %}
     <picture>
-      <source type="image/webp" srcset="{% static 'croatia/hero-coast-800.webp' %} 800w, {% static 'croatia/hero-coast.webp' %} 1600w" sizes="100vw">
-      <img src="{% static 'croatia/hero-coast.jpg' %}" srcset="{% static 'croatia/hero-coast-800.jpg' %} 800w, {% static 'croatia/hero-coast.jpg' %} 1600w" sizes="100vw" alt="{% trans 'The Croatian Adriatic coast' %}" width="1600" height="900" fetchpriority="high" decoding="async" class="w-full h-full object-cover">
+      <source type="image/webp" srcset="{% static 'croatia/hero-lighthouse-800.webp' %} 800w, {% static 'croatia/hero-lighthouse-1280.webp' %} 1280w, {% static 'croatia/hero-lighthouse.webp' %} 1920w" sizes="100vw">
+      <img src="{% static 'croatia/hero-lighthouse-1280.jpg' %}" srcset="{% static 'croatia/hero-lighthouse-800.jpg' %} 800w, {% static 'croatia/hero-lighthouse-1280.jpg' %} 1280w, {% static 'croatia/hero-lighthouse.jpg' %} 1920w" sizes="100vw" alt="{% trans 'A lighthouse on the Adriatic coast, mountains behind it' %}" width="1920" height="1280" fetchpriority="high" decoding="async" class="w-full h-full object-cover" style="object-position: 50% min(0px, calc(460px - 32.3vw))">
+    </picture>
     <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60"></div>
   </div>
   <div class="container mx-auto px-4 relative z-10">
