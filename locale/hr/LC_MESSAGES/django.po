@@ -4737,6 +4737,9 @@ msgstr "Objavite svoju prvu turu, aktivnost ili smještaj i počnite dolaziti do
 msgid "The Croatian Adriatic coast"
 msgstr "Hrvatska jadranska obala"
 
+msgid "A lighthouse on the Adriatic coast, mountains behind it"
+msgstr "Svjetionik na jadranskoj obali, iza njega planine"
+
 msgid "The marketplace for Croatia’s experiences"
 msgstr "Platforma za doživljaje u Hrvatskoj"
 
