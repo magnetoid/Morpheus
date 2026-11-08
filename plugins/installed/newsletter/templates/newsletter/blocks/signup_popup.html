@@ -1,3 +1,4 @@
+{% load morph %}
 {% load newsletter_tags %}
 {% active_signup_popup as popup %}
 {% if popup %}
@@ -16,6 +17,7 @@
              style="flex:1;min-width:12rem;padding:.6rem .75rem;border:1px solid #ccc;border-radius:8px;">
       <button type="submit"
               style="padding:.6rem 1.1rem;border:0;border-radius:8px;background:#111;color:#fff;cursor:pointer;">{{ popup.button_label }}</button>
+      {% bot_check "newsletter" %}
     </form>
     <p data-nl-msg style="margin:.75rem 0 0;min-height:1.2rem;font-size:.9rem;"></p>
   </div>
@@ -62,9 +64,13 @@
       const res = await fetch('/newsletter/subscribe/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ email, source: 'popup' }),
+        // The whole form, so a bot-check token (core/bot_check.py) goes too.
+        body: (() => { const b = new URLSearchParams(new FormData(e.target)); b.set('email', email); b.set('source', 'popup'); return b; })(),
       });
       const data = await res.json();
+      // A Turnstile token answers once; get a fresh one for the next try.
+      const tw = e.target.querySelector('.cf-turnstile');
+      if (tw && window.turnstile) window.turnstile.reset(tw);
       if (data.ok) {
         msg.style.color = '#2a7'; msg.textContent = '{{ popup.success_message|escapejs }}' || 'Thanks — check your inbox!';
         e.target.reset();

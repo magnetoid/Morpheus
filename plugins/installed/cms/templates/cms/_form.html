@@ -1,3 +1,4 @@
+{% load morph %}
 {# Renders a CMS Form. Themes can shadow cms/_form.html. #}
 <form method="post" action="/forms/{{ form.key }}/submit/" class="cms-form" style="display:grid; gap: 1rem; max-width: 480px;">
   {% csrf_token %}
@@ -20,4 +21,5 @@
   </div>
   {% endfor %}
   <div><button type="submit" class="btn btn-primary">{{ form.submit_label }}</button></div>
+  {% bot_check "contact" %}
 </form>

@@ -9,12 +9,15 @@ exposed in production.
 Plugin URLs are injected at runtime by the plugin registry.
 """
 
+from allauth.account import views as allauth_views
 from django.conf import settings
 from django.conf.urls.i18n import i18n_patterns
 from django.conf.urls.static import static
 from django.http import HttpResponse
 from django.urls import include, path, re_path
 from django.views.generic import RedirectView
+
+from core.auth.views import bot_checked
 
 
 def _healthz(_request):
@@ -66,6 +69,15 @@ urlpatterns = [
     # external bookmark or third-party doc that still references it.
     # Passwordless OTP lives at /auth/otp/ alongside allauth's flows.
     path('auth/otp/', include('core.auth.urls', namespace='core_auth')),
+    # allauth's three forms a bot can post, behind the bot check (core/bot_check.py).
+    # Same names, so every {% url %} still lands here; the rest of allauth follows.
+    path('auth/login/', bot_checked(allauth_views.login), name='account_login'),
+    path('auth/signup/', bot_checked(allauth_views.signup), name='account_signup'),
+    path(
+        'auth/password/reset/',
+        bot_checked(allauth_views.password_reset),
+        name='account_reset_password',
+    ),
     path('auth/', include('allauth.urls')),
     re_path(
         r'^accounts/(?P<rest>.*)$',

@@ -449,6 +449,16 @@ def error_capture_attrs():
         return ''
 
 
+@register.simple_tag(takes_context=True)
+def bot_check(context, form: str) -> str:
+    """The bot-check widget for a public form of kind `form`, inside its <form>.
+    Empty unless an app protects that kind (core/bot_check.py); the view checks
+    the answer with `bot_check.passes(request, form)`."""
+    from core.bot_check import widget
+
+    return mark_safe(widget(context, form))
+
+
 @register.simple_tag
 def product_card_meta(product) -> dict:
     """Extra lines for a storefront product card, from the apps that own them

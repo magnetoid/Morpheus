@@ -12,6 +12,7 @@ from django.http import HttpResponse
 from django.utils.translation import gettext
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
+from core import bot_check
 from morpheus.app.views import render
 from plugins.installed.storefront.services import store_blurb, store_name
 from plugins.registry import app_registry
@@ -82,7 +83,10 @@ def about(request):
 
 def contact(request):
     sent = False
-    if request.method == 'POST':
+    bot_check_error = ''
+    if request.method == 'POST' and not bot_check.passes(request, 'contact'):
+        bot_check_error = bot_check.REFUSED
+    elif request.method == 'POST':
         from django.db import DatabaseError
 
         email = (request.POST.get('email') or '').strip().lower()
@@ -118,6 +122,7 @@ def contact(request):
         'storefront/contact.html',
         {
             'sent': sent,
+            'bot_check_error': bot_check_error,
             'breadcrumb_items': breadcrumb_items,
             'seo_title': gettext('Contact'),
             'seo_description': (
@@ -403,7 +408,10 @@ def do_not_sell(request):
     from django.contrib import messages  # noqa: PLC0415
 
     submitted = False
-    if request.method == 'POST':
+    bot_check_error = ''
+    if request.method == 'POST' and not bot_check.passes(request, 'contact'):
+        bot_check_error = bot_check.REFUSED
+    elif request.method == 'POST':
         from django.http import HttpResponse  # noqa: PLC0415
 
         with contextlib.suppress(Exception):
@@ -436,6 +444,7 @@ def do_not_sell(request):
         'storefront/do_not_sell.html',
         {
             'submitted': submitted,
+            'bot_check_error': bot_check_error,
             'breadcrumb_items': breadcrumb_items,
             'seo_title': gettext('Do not sell my info'),
             # Describes the RIGHT, not the store's data practices. The old

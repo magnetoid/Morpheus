@@ -1095,6 +1095,18 @@ class MorpheusEvents:
     #   disabling the plugin reverts to single-factor email-OTP exactly.
     AUTH_SECOND_FACTOR = 'auth.second_factor'  # filter
 
+    # ── Bot check on public forms (filter) ────────────────────────────────
+    # BOT_CHECK_WIDGET — filter, value='' (HTML), kwargs: form=str (the form's
+    #   kind: 'contact', 'newsletter', 'sign_in', 'affiliates'), context=the
+    #   template Context. The `{% bot_check %}` tag fires it inside a form; an
+    #   app that protects that kind (cloudflare's Turnstile) returns its widget.
+    # BOT_CHECK_PASSES — filter, value=True, kwargs: request=HttpRequest,
+    #   form=str. The form's view fires it before acting; the protecting app
+    #   returns False for a missing or failed check. Nothing answers → the
+    #   value stays True and every form works (core/bot_check.py).
+    BOT_CHECK_WIDGET = 'bot_check.widget'  # filter
+    BOT_CHECK_PASSES = 'bot_check.passes'  # filter
+
     # ── Inventory (fire) ──────────────────────────────────────────────────
     PRODUCT_LOW_STOCK = 'product.low_stock'
     PRODUCT_OUT_OF_STOCK = 'product.out_of_stock'

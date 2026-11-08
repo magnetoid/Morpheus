@@ -65,7 +65,9 @@ _CSP_REPORT_ONLY = '; '.join(
         'https://static.cloudflareinsights.com '
         # AMP story player (webstories plugin's <amp-story-player> PDP embed)
         # loads amp-story-player-v0.js / amp-loader / v0.js from Google's AMP CDN.
-        'https://cdn.ampproject.org',
+        'https://cdn.ampproject.org '
+        # Cloudflare Turnstile, the bot check on the public forms (cloudflare app).
+        'https://challenges.cloudflare.com',
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com "
         # unpkg.com — Leaflet's stylesheet on the travel store's map pages
         # (its script already loads from unpkg under script-src).
@@ -83,7 +85,8 @@ _CSP_REPORT_ONLY = '; '.join(
         # AMP story runtime fetches its strings; the Cloudflare beacon reports.
         'https://cdn.ampproject.org '
         'https://cloudflareinsights.com',
-        "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+        "frame-src 'self' https://js.stripe.com https://hooks.stripe.com "
+        'https://challenges.cloudflare.com',
         "worker-src 'self' blob:",
         "object-src 'none'",
         "base-uri 'self'",
@@ -147,6 +150,8 @@ PAYMENT_PAGE_SCRIPT_ORIGINS = (
     'https://sc-static.net',
     'https://www.redditstatic.com',
     'https://bat.bing.com',
+    # Turnstile, on the footer's newsletter form (cloudflare app).
+    'https://challenges.cloudflare.com',
 )
 
 # Where a payment page's forms may send the shopper. The one-page checkout

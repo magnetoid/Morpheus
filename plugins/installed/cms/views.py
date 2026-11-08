@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from core import bot_check
 from morpheus.app.views import (
     Http404,
     csrf_protect,
@@ -84,6 +85,9 @@ def form_submit(request, key: str):
     from plugins.installed.cms.services import submit_form
 
     form = get_object_or_404(Form, key=key, is_active=True)
+    if not bot_check.passes(request, 'contact'):
+        messages.error(request, bot_check.REFUSED)
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     submit_form(form=form, payload=dict(request.POST.items()), request=request)
     messages.success(request, form.success_message)
     return redirect(request.META.get('HTTP_REFERER', '/'))
