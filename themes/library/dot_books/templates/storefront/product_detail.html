@@ -55,8 +55,16 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 @media (min-width: 900px) {
   /* Gallery (left) narrower than details (right) — a portrait book cover
      doesn't need half the page. 2fr/3fr ≈ 40/60, the editorial "old"
-     proportion rather than the 50/50 Shopify split. */
-  .pdp-grid { grid-template-columns: 2fr 3fr !important; gap: 4rem !important; align-items: start !important; }
+     proportion rather than the 50/50 Shopify split. The minmax(0, …) matters:
+     a bare `fr` track never shrinks below its content's min-content width, and
+     the "Recommended" book rail in the details column is ~1160px of cards, so
+     with `2fr 3fr` the details took 1152px of 1248 and squeezed the cover to a
+     96px thumbnail. The cover's own height cap (product_gallery's
+     _pdp_hero_slider.html) keeps it, its thumbnails included, inside one screen.
+     The phone layout's single column (inline on .pdp-grid) is minmax(0, 1fr) for
+     the same reason: as `1fr` it grew to the rail's width, the page was ~1000px
+     wide, and phones shrank the whole product page to fit. */
+  .pdp-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) !important; gap: 4rem !important; align-items: start !important; }
   /* Pin the cover column while the details column scrolls past. Top offset
      clears the sticky topbar (64px) + a comfortable breathing margin. */
   .pdp-grid > div:first-child { position: sticky; top: 84px; align-self: start; }
@@ -285,7 +293,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
       {% endwith %}
     </p>
 
-    <div style="display:grid; gap: 3.5rem; grid-template-columns: 1fr;" class="pdp-grid">
+    <div style="display:grid; gap: 3.5rem; grid-template-columns: minmax(0, 1fr);" class="pdp-grid">
       <!-- Cover hero — PDP slider (Phase 1 of docs/plans/product-slider.md).
            Renders every ProductImage (up to 15) as a horizontal slider with
            arrows, thumbnail strip, and keyboard nav. CSS scroll-snap is the

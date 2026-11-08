@@ -14,6 +14,11 @@
   beside it when the stylesheet arrived — a layout shift of 0.275 on every
   Lighthouse run (threshold 0.1), identical across runs because the parse
   boundary is deterministic. Page CSS belongs in ``extra_head``.
+* The columns were bare ``fr`` tracks, which never shrink below their content's
+  min-content width. The "Recommended" book rail in the details column is
+  ~1160px of cards, so on a 1440px screen the details took 1152px and the cover
+  shrank to a 96px thumbnail, and on a phone the single column grew to ~1000px
+  and the browser zoomed the whole page out to fit.
 """
 
 from __future__ import annotations
@@ -71,11 +76,27 @@ class DotBooksPdpImagesTests(TestCase):
 
     def test_two_column_rule_precedes_the_grid(self):
         body = self.client.get('/products/related-probe-1/').content.decode()
-        rule_at = body.index('grid-template-columns: 2fr 3fr')
+        rule_at = body.index('grid-template-columns: minmax(0, 2fr) minmax(0, 3fr)')
         grid_at = body.index('class="pdp-grid"')
         head_ends = body.index('</head>')
         self.assertLess(rule_at, head_ends, 'the two-column rule is not in <head>')
         self.assertLess(rule_at, grid_at)
+
+    def test_columns_can_shrink_below_their_content(self):
+        import re
+
+        body = self.client.get('/products/related-probe-1/').content.decode()
+        grid = re.search(r'<div style="([^"]*)" class="pdp-grid">', body)
+        self.assertIsNotNone(grid, 'the product grid is not rendered')
+        self.assertIn('grid-template-columns: minmax(0, 1fr)', grid.group(1))
+        head = body[: body.index('</head>')]
+        rules = re.findall(r'\.pdp-grid\s*\{[^}]*grid-template-columns:\s*([^;!]+)', head)
+        self.assertTrue(rules, 'no column rule for .pdp-grid in <head>')
+        for columns in rules:
+            for track in re.split(r'\s+(?![^(]*\))', columns.strip()):
+                self.assertTrue(
+                    track.startswith('minmax(0,'), f'{track!r} cannot shrink: {columns!r}'
+                )
 
     def test_hero_is_not_preloaded_as_the_raw_original(self):
         body = self.client.get('/products/related-probe-1/').content.decode()
