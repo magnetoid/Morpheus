@@ -1,15 +1,13 @@
-"""Cloudflare Turnstile — verify helper + {% turnstile %} tag."""
+"""Cloudflare Turnstile — the verify helper (the forms: test_turnstile_forms.py)."""
 
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
 from unittest.mock import patch
 
-from django.template import Context, Template
 from django.test import RequestFactory, TestCase
 
 _CFG = 'plugins.installed.cloudflare.services._turnstile_config'
-_SITE = 'plugins.installed.cloudflare.services.turnstile_site_key'
 
 
 class TurnstileTests(TestCase):
@@ -45,14 +43,3 @@ class TurnstileTests(TestCase):
 
         with patch(_CFG, return_value={'turnstile_enabled': True, 'turnstile_site_key': '0xABC'}):
             self.assertEqual(turnstile_site_key(), '0xABC')
-
-    def test_tag_renders_widget_when_site_key(self):
-        with patch(_SITE, return_value='0xABC'):
-            out = Template('{% load cloudflare %}{% turnstile %}').render(Context())
-        self.assertIn('cf-turnstile', out)
-        self.assertIn('0xABC', out)
-
-    def test_tag_empty_when_disabled(self):
-        with patch(_SITE, return_value=''):
-            out = Template('{% load cloudflare %}{% turnstile %}').render(Context())
-        self.assertNotIn('cf-turnstile', out)

@@ -72,6 +72,7 @@ or when the table and the list disagree.
 | `https://sc-static.net` | snapchat_commerce | Snap Pixel | Pixel ID set; shopper allows marketing |
 | `https://www.redditstatic.com` | reddit_ads | Reddit Pixel | Pixel ID set; shopper allows marketing |
 | `https://bat.bing.com` | microsoft_commerce | Microsoft Advertising UET tag | Tag ID set; shopper allows marketing |
+| `https://challenges.cloudflare.com` | cloudflare | Turnstile, the bot check on the newsletter form in the page footer (the checkout's own forms ask for none) | Turnstile is on, both keys are set and newsletter sign-ups are protected |
 
 A store whose Google tag runs through its own server-side tagging domain loads
 `gtag.js` / `gtm.js` from that domain instead of `www.googletagmanager.com`.

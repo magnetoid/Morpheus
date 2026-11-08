@@ -27,8 +27,11 @@ def subscribe_view(request):
         check_and_consume(key=f'newsletter:subscribe:{ip}', max_per_window=10, window_seconds=60)
     except RateLimitExceeded:
         return JsonResponse({'ok': False, 'error': 'Too many attempts.'}, status=429)
+    from core import bot_check  # noqa: PLC0415
     from plugins.installed.newsletter.services import subscribe
 
+    if not bot_check.passes(request, 'newsletter'):
+        return JsonResponse({'ok': False, 'error': str(bot_check.REFUSED)}, status=400)
     email = (request.POST.get('email') or '').strip()
     source = (request.POST.get('source') or 'popup').strip()[:12]
     customer = request.user if getattr(request.user, 'is_authenticated', False) else None

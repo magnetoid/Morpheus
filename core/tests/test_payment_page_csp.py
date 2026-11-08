@@ -140,6 +140,12 @@ _APP_CONFIG = {
     'microsoft_commerce': {'uet_enabled': True, 'uet_tag_id': '123456789'},
     'google_shopping': {'remarketing_enabled': True, 'remarketing_id': 'AW-123456789'},
     'storefront': {'service_worker_enabled': True},
+    # Turnstile on the footer's newsletter form (the checkout itself asks for none).
+    'cloudflare': {
+        'turnstile_enabled': True,
+        'turnstile_site_key': '0x4AAAAAAATEST',
+        'turnstile_secret_key': '0x4AAAAAAATESTSECRET',
+    },
 }
 # What the switched-on apps write, so a setup that silently stopped enabling
 # one fails here instead of passing on a page with fewer scripts.
@@ -153,6 +159,7 @@ _EXPECTED_ON_THE_CART = (
     'www.googletagmanager.com',
     'js.stripe.com',
     'serviceWorker',
+    'challenges.cloudflare.com',
 )
 _TRACKING = {
     'gtm': {'gtm_container_id': 'GTM-ABC1234', 'measurement_id': ''},

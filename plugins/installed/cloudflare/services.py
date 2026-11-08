@@ -541,3 +541,68 @@ def verify_turnstile(request) -> bool:
         return bool(resp.json().get('success'))
     except Exception:  # noqa: BLE001 — fail closed while enforced
         return False
+
+
+# The settings switch for each kind of public form (core/bot_check.py names the kinds).
+# Spelled out, not built from the kind: core/tests/test_settings_keys_have_readers.py
+# looks for each key's reader.
+TURNSTILE_FORMS = {
+    'contact': 'turnstile_contact',
+    'newsletter': 'turnstile_newsletter',
+    'sign_in': 'turnstile_sign_in',
+    'affiliates': 'turnstile_affiliates',
+}
+
+
+def turnstile_protects(form: str) -> bool:
+    """True when Turnstile is on, both keys are set and `form`'s switch is on.
+
+    A missing key protects nothing: a widget that cannot render, or a secret that
+    cannot verify, would refuse every real visitor.
+    """
+    cfg = _turnstile_config()
+    key = TURNSTILE_FORMS.get(form)
+    if not (key and cfg.get('turnstile_enabled')):
+        return False
+    if not (
+        (cfg.get('turnstile_site_key') or '').strip()
+        and (cfg.get('turnstile_secret_key') or '').strip()
+    ):
+        return False
+    return bool(cfg.get(key, True))
+
+
+def turnstile_widget(value='', form='', context=None, **kwargs):
+    """BOT_CHECK_WIDGET: the Turnstile widget for a protected form.
+
+    `interaction-only` keeps it invisible unless Cloudflare needs a click, so a
+    footer form shows no box. The script tag is written once per page.
+    """
+    if not turnstile_protects(form):
+        return value
+    from django.utils.html import format_html  # noqa: PLC0415
+
+    from core.security_headers import script_nonce  # noqa: PLC0415
+
+    html = format_html(
+        '<div class="cf-turnstile" data-sitekey="{}" data-action="{}" '
+        'data-appearance="interaction-only"></div>',
+        _turnstile_config().get('turnstile_site_key', '').strip(),
+        form.replace('_', '-'),
+    )
+    request = context.get('request') if context is not None else None
+    if request is None or not getattr(request, '_turnstile_script', False):
+        if request is not None:
+            request._turnstile_script = True
+        html += format_html(
+            '<script{} src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>',
+            script_nonce(context) if context is not None else '',
+        )
+    return (value or '') + html
+
+
+def turnstile_passes(value=True, request=None, form='', **kwargs):
+    """BOT_CHECK_PASSES: verify the request's token when `form` is protected."""
+    if not turnstile_protects(form) or request is None:
+        return value
+    return verify_turnstile(request)

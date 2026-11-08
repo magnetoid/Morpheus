@@ -63,10 +63,6 @@
     },
     {
       "importer": "affiliates",
-      "target": "cloudflare"
-    },
-    {
-      "importer": "affiliates",
       "target": "metafields"
     },
     {

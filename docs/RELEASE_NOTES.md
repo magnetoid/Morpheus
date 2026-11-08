@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.142.0 — 2026-11-08
+
+**Turnstile on every public form**
+
+- The Cloudflare app's Turnstile now protects the contact page, forms built in Content, Do not sell, every newsletter sign-up (footer, page sections, pop-up), sign-in, sign-up, password reset and the emailed sign-in code, as well as the affiliate application.
+- Each kind of form has its own switch on Settings → Turnstile; nothing is protected until Turnstile is on and both keys are set, and the checkout never asks for it.
+- The widget stays invisible unless Cloudflare needs a click. A refused form keeps the visitor on the page with the reason.
+
 ## v0.141.0 — 2026-11-07
 
 **Free downloads: a PDF priced 0 is free, and an order with nothing to pay is paid at once**

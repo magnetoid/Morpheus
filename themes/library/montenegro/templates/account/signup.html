@@ -1,4 +1,5 @@
 {% extends "storefront/base.html" %}
+{% load morph %}
 {% load i18n account socialaccount %}
 {% comment %}
   Montenegro-themed allauth signup override (Adriatic design).
@@ -89,6 +90,7 @@
         {% if redirect_field_value %}<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">{% endif %}
 
         <button type="submit" class="w-full h-11 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">{% trans "Create account" %}</button>
+        {% bot_check "sign_in" %}
       </form>
 
       <!-- Social providers (renders only if any are configured) -->
