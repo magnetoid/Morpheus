@@ -18,6 +18,11 @@
     <p class="text-muted-foreground">{{ property.location }} · {{ property.get_property_type_display }}</p>
   </div>
 
+  {# The enquiry and booking forms post, then come back here: say what happened. #}
+  {% if messages %}{% for m in messages %}
+  <div role="status" class="mb-6 rounded-xl border px-4 py-3 text-sm {% if m.tags == 'error' %}border-destructive/40 bg-destructive/5 text-destructive{% else %}border-primary/30 bg-primary/5 text-foreground{% endif %}">{{ m }}</div>
+  {% endfor %}{% endif %}
+
   {% if property.image %}<img src="{{ property.image.url }}" alt="{{ property.name }}" class="w-full rounded-2xl mb-6 object-cover max-h-[420px]">{% endif %}
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -79,7 +84,7 @@
       {% endif %}
 
       <section>
-        <h2 class="text-lg font-semibold text-foreground mb-3">{% trans "Rooms" %}</h2>
+        <h2 class="text-lg font-semibold text-foreground mb-3">{% if room_types %}{% trans "Rooms" %}{% else %}{% trans "Availability and prices" %}{% endif %}</h2>
         <div class="space-y-4">
           {% for r in room_types %}
           <div class="rounded-2xl border border-border bg-card shadow-card p-4">
@@ -108,6 +113,27 @@
               <button type="submit" class="col-span-2 sm:col-span-3 rounded-full bg-primary text-primary-foreground font-medium px-5 py-2.5 hover:opacity-90 transition-opacity">
                 {% if listing_mode %}{% trans "Contact for price" %}{% elif enquiry_only %}{% trans "Request to book" %}{% else %}{% trans "Book now" %}{% endif %}
               </button>
+            </form>
+          </div>
+          {% empty %}
+          {% comment %}A hotel listed with no rooms or rates (Croatia's real hotels): the guest
+          asks, and stay_book records an enquiry naming no room.{% endcomment %}
+          <div class="rounded-2xl border border-border bg-card shadow-card p-4">
+            <p class="text-sm text-muted-foreground">{% trans "Tell us your dates and we'll come back to you with availability and prices." %}</p>
+            <form method="post" action="/hotels/{{ property.slug }}/book/" class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3" data-stay-enquiry>
+              {% csrf_token %}
+              <label class="text-xs text-muted-foreground">{% trans "Check-in" %}<input type="date" name="check_in" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              <label class="text-xs text-muted-foreground">{% trans "Check-out" %}<input type="date" name="check_out" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              <label class="text-xs text-muted-foreground">{% trans "Rooms" %}<input type="number" name="rooms" value="1" min="1" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              <label class="text-xs text-muted-foreground">{% trans "Adults" %}<input type="number" name="adults" value="2" min="1" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              <label class="text-xs text-muted-foreground">{% trans "Children" %}<input type="number" name="children" value="0" min="0" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              <label class="text-xs text-muted-foreground">{% trans "Phone" %}<input type="tel" name="phone" autocomplete="tel" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              <div class="col-span-2 sm:col-span-3 grid grid-cols-2 gap-3">
+                <label class="text-xs text-muted-foreground">{% trans "Your name" %}<input type="text" name="name" required autocomplete="name" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+                <label class="text-xs text-muted-foreground">{% trans "Email" %}<input type="email" name="email" required autocomplete="email" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></label>
+              </div>
+              <label class="col-span-2 sm:col-span-3 text-xs text-muted-foreground">{% trans "Message" %}<textarea name="message" rows="3" class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"></textarea></label>
+              <button type="submit" class="col-span-2 sm:col-span-3 rounded-full bg-primary text-primary-foreground font-medium px-5 py-2.5 hover:opacity-90 transition-opacity">{% trans "Send enquiry" %}</button>
             </form>
           </div>
           {% endfor %}

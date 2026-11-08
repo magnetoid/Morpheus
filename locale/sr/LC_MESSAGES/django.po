@@ -4786,3 +4786,9 @@ msgstr "Montenegro Experience: platforma za doživljaje, smještaj i lokalne pro
 #, python-format
 msgid "%(name)s in Montenegro. Dates, location and what to expect."
 msgstr "%(name)s u Crnoj Gori. Datumi, lokacija i šta možete očekivati."
+
+msgid "Availability and prices"
+msgstr "Dostupnost i cijene"
+
+msgid "Tell us your dates and we'll come back to you with availability and prices."
+msgstr "Javite nam datume, a mi ćemo vam se javiti sa dostupnošću i cijenama."
