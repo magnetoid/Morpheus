@@ -84,6 +84,54 @@ class EditionMarkupTests(TestCase):
         self.assertTrue(member_id.endswith('/products/edition-probe/#variant-EP-1-P'), member_id)
 
 
+class EditionPhotoQueryTests(TestCase):
+    """An edition's own photo is loaded with the editions, not one query each."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.product = Product.objects.create(
+            name='Photo Probe',
+            slug='photo-probe',
+            sku='PP-1',
+            status='active',
+            product_type='variable',
+            price=Money(Decimal('10.00'), 'USD'),
+        )
+
+    def _add_editions(self, count):
+        from plugins.installed.catalog.models import ProductImage
+
+        start = self.product.variants.count()
+        for i in range(start, start + count):
+            # bulk_create skips ProductImage.save(), which renders files.
+            [image] = ProductImage.objects.bulk_create(
+                [ProductImage(product=self.product, image=f'products/pp-{i}.jpg')]
+            )
+            ProductVariant.objects.create(
+                product=self.product,
+                name=f'Edition {i}',
+                sku=f'PP-1-{i}',
+                image=image,
+                price=Money(Decimal('10.00'), 'USD'),
+            )
+
+    def _image_queries(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        with CaptureQueriesContext(connection) as queries:
+            node = product_jsonld({'slug': 'photo-probe'}, model=self.product)
+        photos = [m['image'] for m in node['hasVariant']]
+        self.assertTrue(all(p.endswith('.jpg') for p in photos), photos)
+        return sum('catalog_productimage' in q['sql'] for q in queries.captured_queries)
+
+    def test_more_editions_cost_no_more_photo_queries(self):
+        self._add_editions(2)
+        two = self._image_queries()
+        self._add_editions(3)
+        self.assertEqual(self._image_queries(), two)
+
+
 class StoreIdentityTests(TestCase):
     def test_a_store_that_never_opened_seo_settings_is_named_from_general(self):
         from plugins.installed.seo.services import organization_jsonld, website_jsonld

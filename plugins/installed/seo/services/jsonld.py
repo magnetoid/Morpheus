@@ -324,7 +324,12 @@ def _variant_image(variant, abs_url) -> str:
 def _apply_variants(out: dict, orm, *, slug: str, currency: str, abs_url=lambda u: u) -> None:
     """Turn a multi-variant product into a ProductGroup with real offers."""
     try:
-        variants = list(orm.variants.filter(is_active=True).order_by('sort_order', 'name')[:20])
+        # The photo comes with its edition: one query, not one per edition.
+        variants = list(
+            orm.variants.filter(is_active=True)
+            .select_related('image')
+            .order_by('sort_order', 'name')[:20]
+        )
     except Exception:  # noqa: BLE001 — an unmigrated variant table
         return
     if len(variants) < 2:
