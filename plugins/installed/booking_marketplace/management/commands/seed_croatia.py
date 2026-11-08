@@ -126,7 +126,10 @@ def _set_photo(obj, photo: dict | None, stand_in: str) -> bool:
         return False
     if obj.image:
         obj.image.delete(save=False)
-    obj.image.save(f'{obj.slug}.jpg', ContentFile(content), save=False)
+    # Named after its bytes: a file name is an address that browsers, the CDN and seo's
+    # /img/ copies remember, so the photo must never take the stand-in's old name.
+    digest = hashlib.sha256(content).hexdigest()[:10]
+    obj.image.save(f'{obj.slug}-{digest}.jpg', ContentFile(content), save=False)
     obj.image_credit = {key: photo[key] for key in CREDIT_KEYS} | {'for': obj.image.name}
     obj.save(update_fields=['image', 'image_credit'])
     return True

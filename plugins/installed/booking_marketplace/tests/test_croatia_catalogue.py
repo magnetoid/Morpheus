@@ -287,12 +287,15 @@ class SeedPhotoTests(_SeedFixture, TestCase):
         place = Place.objects.get(slug=data.PLACES[0]['slug'])
         self.assertTrue(seed_croatia._is_stand_in(place.image))
         self.assertIsNone(place.photo_credit)
+        stand_in_name = place.image.name
 
         self.download.return_value = self.photo
         self._run()
         place.refresh_from_db()
         self.assertEqual(self._bytes(place.image), self.photo)
         self.assertIsNotNone(place.photo_credit)
+        # A new address: browsers, the CDN and seo's /img/ copies cached the stand-in's.
+        self.assertNotEqual(place.image.name, stand_in_name)
         service = BookableService.objects.get(slug=data.EXPERIENCES[0]['slug'])
         (copy,) = service.product.images.all()
         self.assertEqual(self._bytes(copy.image), self.photo)
