@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.144.0 — 2026-11-08
+
+**Croatia Experience: real places, experiences, hotels and events**
+
+- A new command fills a Croatian store with 110 real places, 120 experiences, 152 hotels and 34 events across every region of Croatia. It refuses to run on any other store.
+- Experiences are real activities at real places, priced at 2026 market rates and hosted by the store itself as Croatia Experience until local hosts join. Nothing carries reviews, a rating, a "was" price or a bestseller badge.
+- Hotels are listed by real name, town, region and official stars, without rooms or rates. Their card says "Contact for price" instead of "from €0.00", and their page asks for the guest's dates and sends an enquiry.
+- The hotel page now shows a confirmation after an enquiry or booking, on both travel stores; before, the guest saw nothing.
+- A second run adds nothing and never overwrites an edit made in the dashboard. Every place was checked against Wikipedia's coordinates, and covers are still generic photos until real ones arrive.
+
 ## v0.141.2 — 2026-11-08
 
 **Croatia: a lighthouse behind the search**

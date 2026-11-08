@@ -193,6 +193,8 @@ def stay_book(request, slug):
     prop = get_object_or_404(Property, slug=slug, is_active=True, vendor__is_active=True)
     if request.method != 'POST':
         return redirect('booking_marketplace:stay_detail', slug=slug)
+    if not prop.room_types.filter(is_active=True).exists():
+        return _enquire_without_rooms(request, prop)
     room_type = get_object_or_404(
         RoomType, pk=request.POST.get('room_type'), property=prop, is_active=True
     )
@@ -236,3 +238,29 @@ def stay_book(request, slug):
     except BookingError as e:
         messages.error(request, str(e))
     return redirect('booking_marketplace:stay_detail', slug=slug)
+
+
+def _enquire_without_rooms(request, prop):
+    """A hotel listed with no rooms or rates (Croatia's real hotels): the form asks.
+
+    There is nothing to book, so the submit is an enquiry whatever the payment setup
+    says, and it names no room type.
+    """
+    try:
+        stays.submit_stay_enquiry(
+            property=prop,
+            customer=request.user,
+            name=request.POST.get('name', ''),
+            email=request.POST.get('email', ''),
+            phone=request.POST.get('phone', ''),
+            message=request.POST.get('message', ''),
+            check_in=request.POST.get('check_in'),
+            check_out=request.POST.get('check_out'),
+            rooms=request.POST.get('rooms'),
+            adults=request.POST.get('adults'),
+            children=request.POST.get('children'),
+        )
+        messages.success(request, _("Thanks — we'll be in touch about availability and pricing."))
+    except BookingError as e:
+        messages.error(request, str(e))
+    return redirect('booking_marketplace:stay_detail', slug=prop.slug)

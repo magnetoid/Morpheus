@@ -5,7 +5,7 @@
 <ul>
 {% for p in properties %}
   <li><a href="/hotels/{{ p.slug }}/">{{ p.name }}</a> — {{ p.location }}
-    {% if not listing_mode %}(from {{ p.price_from }}){% endif %}</li>
+    {% if not listing_mode and p.price_from.amount %}(from {{ p.price_from }}){% endif %}</li>
 {% empty %}
   <li>{% trans "No hotels yet." %}</li>
 {% endfor %}

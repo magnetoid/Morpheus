@@ -5079,3 +5079,8 @@ msgstr[0] "Doživljaji za rezervaciju u %(count)d regiji Hrvatske"
 msgstr[1] "Doživljaji za rezervaciju u %(count)d regije Hrvatske"
 msgstr[2] "Doživljaji za rezervaciju u %(count)d regija Hrvatske"
 
+msgid "Availability and prices"
+msgstr "Dostupnost i cijene"
+
+msgid "Tell us your dates and we'll come back to you with availability and prices."
+msgstr "Javite nam datume, a mi ćemo vam se javiti s dostupnošću i cijenama."
