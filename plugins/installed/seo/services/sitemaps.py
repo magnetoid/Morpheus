@@ -590,6 +590,39 @@ def _sitemap_max_urls() -> int:
     return max(100, min(cap, 50000))
 
 
+def _prolog() -> str:
+    """The XML declaration, then the stylesheet a browser shows people.
+
+    Search engines read the elements and ignore the stylesheet. Without one,
+    Safari showed every sitemap as one run of text (addresses, dates and
+    numbers glued together), and Chrome did the same with any sitemap holding
+    an XHTML element, so a valid sitemap looked broken to anyone who opened it.
+    CSS rather than XSLT: Chrome is removing XSLT from the web platform.
+    """
+    declaration = '<?xml version="1.0" encoding="UTF-8"?>'
+    try:
+        from django.templatetags.static import static
+
+        href = static('seo/sitemap.css')
+    except Exception:  # noqa: BLE001 — a missing file must never cost the sitemap
+        return declaration
+    return f'{declaration}\n<?xml-stylesheet type="text/css" href="{escape(href)}"?>'
+
+
+_LINE_STARTS = ('<url>', '<sitemap>', '</urlset>', '</sitemapindex>')
+
+
+def _join(parts: list[str]) -> str:
+    """One line per entry, so the source reads as a list and not as one line
+    of several hundred kilobytes."""
+    return ''.join(
+        f'\n{part}'
+        if part.startswith(_LINE_STARTS) or part.startswith(('<urlset', '<sitemapindex'))
+        else part
+        for part in parts
+    )
+
+
 def render_sitemap_xml() -> str:
     """Render the primary /sitemap.xml. Capped at
     `sitemap_max_urls_per_file` so we don't emit a > 50 MB document
@@ -601,9 +634,8 @@ def render_sitemap_xml() -> str:
     never has to import a sibling to know its routes exist."""
     cap = _sitemap_max_urls()
     parts = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
-        'xmlns:xhtml="http://www.w3.org/1999/xhtml">',
+        _prolog(),
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ]
     count = 0
     for e in _merged_sitemap_entries():
@@ -621,7 +653,7 @@ def render_sitemap_xml() -> str:
         parts.append('</url>')
         count += 1
     parts.append('</urlset>')
-    return ''.join(parts)
+    return _join(parts)
 
 
 def render_sitemap_index_xml() -> str:
@@ -658,7 +690,7 @@ def render_sitemap_index_xml() -> str:
     if news_enabled:
         children.append((f'{base}/sitemap-news.xml', ''))
     parts = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
+        _prolog(),
         '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ]
     for child, lastmod in children:
@@ -668,7 +700,7 @@ def render_sitemap_index_xml() -> str:
             parts.append(f'<lastmod>{escape(lastmod)}</lastmod>')
         parts.append('</sitemap>')
     parts.append('</sitemapindex>')
-    return ''.join(parts)
+    return _join(parts)
 
 
 def render_news_sitemap_xml() -> str:
@@ -698,7 +730,7 @@ def render_news_sitemap_xml() -> str:
     cutoff = timezone.now() - timedelta(hours=max_age_hours)
 
     parts = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
+        _prolog(),
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
         'xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">',
     ]
@@ -707,7 +739,7 @@ def render_news_sitemap_xml() -> str:
     except Exception as exc:  # noqa: BLE001 — cms plugin not installed
         logger.debug('seo.news_sitemap: cms.Page unavailable: %s', exc)
         parts.append('</urlset>')
-        return ''.join(parts)
+        return _join(parts)
 
     s = site_settings()
     pub_name = s.organization_name or 'Morpheus'
@@ -735,7 +767,7 @@ def render_news_sitemap_xml() -> str:
         parts.append('</news:news>')
         parts.append('</url>')
     parts.append('</urlset>')
-    return ''.join(parts)
+    return _join(parts)
 
 
 def render_image_sitemap_xml() -> str:
@@ -747,7 +779,7 @@ def render_image_sitemap_xml() -> str:
     """
     base = _site_base_url().rstrip('/')
     parts = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
+        _prolog(),
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
         'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
     ]
@@ -782,7 +814,7 @@ def render_image_sitemap_xml() -> str:
     except Exception:  # noqa: BLE001
         pass
     parts.append('</urlset>')
-    return ''.join(parts)
+    return _join(parts)
 
 
 def render_opensearch_xml() -> str:

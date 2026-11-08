@@ -127,3 +127,54 @@ class CmsPagePingTests(TestCase):
         urls = self._pinged(slug='a-post', title='A post', metadata={'category': 'journal'})
         self.assertTrue(urls, 'no ping was sent')
         self.assertTrue(all(u.endswith('/journal/a-post/') for u in urls), urls)
+
+
+class SitemapForPeopleTests(TestCase):
+    """A sitemap opened in a browser reads as a list, not one run of text.
+
+    Safari shows XML with no stylesheet as its text glued together, and Chrome
+    did the same with dotbooks' sitemap because of its XHTML elements: every
+    address, date and priority on one line, which the owner read as broken XML.
+    """
+
+    _STYLESHEET = re.compile(
+        r'^<\?xml version="1.0" encoding="UTF-8"\?>\n'
+        r'<\?xml-stylesheet type="text/css" href="[^"]*seo/sitemap[^"]*\.css"\?>\n<'
+    )
+
+    def setUp(self):
+        Product.objects.create(
+            name='Listed', slug='listed', sku='LS-1', status='active', price=Money(5, 'USD')
+        )
+
+    def _documents(self):
+        from plugins.installed.seo.services import sitemaps
+
+        return {
+            'sitemap.xml': sitemaps.render_sitemap_xml(),
+            'sitemap-index.xml': sitemaps.render_sitemap_index_xml(),
+            'sitemap-images.xml': sitemaps.render_image_sitemap_xml(),
+            'sitemap-news.xml': sitemaps.render_news_sitemap_xml(),
+        }
+
+    def test_every_sitemap_names_its_stylesheet_and_stays_well_formed(self):
+        from xml.dom import minidom
+
+        for name, xml in self._documents().items():
+            with self.subTest(name):
+                self.assertRegex(xml, self._STYLESHEET)
+                minidom.parseString(xml.encode())
+
+    def test_one_entry_per_line(self):
+        xml = self._documents()['sitemap.xml']
+        self.assertIn('\n<url><loc>', xml)
+        self.assertNotIn('</url><url>', xml)
+        self.assertTrue(xml.endswith('\n</urlset>'))
+
+    def test_the_stylesheet_ships_and_the_view_links_it(self):
+        from django.contrib.staticfiles import finders
+
+        self.assertTrue(finders.find('seo/sitemap.css'))
+        body = self.client.get('/sitemap.xml').content.decode()
+        self.assertIn('<?xml-stylesheet type="text/css"', body)
+        self.assertNotIn('xmlns:xhtml', body)

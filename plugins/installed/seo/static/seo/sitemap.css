@@ -1,0 +1,137 @@
+/*
+  What a person sees on opening a sitemap in a browser. Search engines read the
+  XML elements and never fetch this file. Without a stylesheet Safari shows a
+  sitemap as one run of text, every address, date and number glued together.
+*/
+@namespace url(http://www.sitemaps.org/schemas/sitemap/0.9);
+@namespace image url(http://www.google.com/schemas/sitemap-image/1.1);
+@namespace news url(http://www.google.com/schemas/sitemap-news/0.9);
+
+urlset,
+sitemapindex {
+  display: block;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #1f2328;
+  background: #ffffff;
+  counter-reset: entries;
+  color-scheme: light dark;
+}
+
+urlset::before,
+sitemapindex::before {
+  display: block;
+  margin-bottom: 1.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+urlset::before {
+  content: "Sitemap: the pages this store asks search engines to index";
+}
+
+sitemapindex::before {
+  content: "Sitemap index: the sitemaps this store publishes";
+}
+
+url,
+sitemap {
+  display: block;
+  padding: 0.625rem 0;
+  border-top: 1px solid #d8dee4;
+  counter-increment: entries;
+}
+
+loc {
+  display: block;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+url > loc::before,
+sitemap > loc::before {
+  content: counter(entries) ". ";
+  font-weight: 400;
+  color: #59636e;
+}
+
+lastmod,
+changefreq,
+priority {
+  display: inline-block;
+  margin-right: 1.25rem;
+  font-size: 0.8125rem;
+  color: #59636e;
+}
+
+lastmod::before {
+  content: "Changed ";
+}
+
+changefreq::before {
+  content: "Changes ";
+}
+
+priority::before {
+  content: "Priority ";
+}
+
+image|image {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: #59636e;
+  overflow-wrap: anywhere;
+}
+
+image|loc::before {
+  content: "Image ";
+}
+
+news|news {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+news|publication {
+  display: none;
+}
+
+news|title {
+  display: block;
+}
+
+news|publication_date {
+  display: block;
+  font-size: 0.8125rem;
+  color: #59636e;
+}
+
+news|publication_date::before {
+  content: "Published ";
+}
+
+@media (prefers-color-scheme: dark) {
+  urlset,
+  sitemapindex {
+    color: #e6edf3;
+    background: #0d1117;
+  }
+
+  url,
+  sitemap {
+    border-top-color: #30363d;
+  }
+
+  url > loc::before,
+  sitemap > loc::before,
+  lastmod,
+  changefreq,
+  priority,
+  image|image,
+  news|publication_date {
+    color: #9198a1;
+  }
+}
