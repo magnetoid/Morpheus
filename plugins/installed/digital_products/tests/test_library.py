@@ -158,6 +158,14 @@ class OrderPageDeliveryTests(LibraryTestCase):
         self.assertEqual(self._render(ebook), f'ready|/account/library/{ebook.pk}/file/')
         self.assertEqual(self._render(mug), 'none')
 
+    def test_closed_order_shows_no_delivery_state(self):
+        _, cancelled = self._order(
+            payment_status='unpaid', status='cancelled', payment_gateway='cod'
+        )
+        _, refunded = self._order(payment_status='refunded', status='processing')
+        self.assertEqual(self._render(cancelled), 'none')
+        self.assertEqual(self._render(refunded), 'none')
+
     def test_guest_gets_the_emailed_link(self):
         from plugins.installed.digital_products.app import DigitalProductsPlugin
         from plugins.installed.digital_products.models import DownloadToken
