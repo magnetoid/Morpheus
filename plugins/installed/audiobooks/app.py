@@ -74,7 +74,9 @@ class AudiobooksPlugin(Plugin):
         return value
 
     def on_delivery_file(self, value, variant=None, **kwargs):
-        """An audiobook edition delivers its narration once there is one."""
+        """An audiobook edition delivers its narration once there is one, and until
+        then only a file uploaded on the edition itself (digital_products never hands
+        an audiobook edition the book's PDF)."""
         if variant is None or getattr(variant, 'variant_type', '') != 'audiobook':
             return value
         from plugins.installed.audiobooks.models import Audiobook
@@ -115,7 +117,8 @@ class AudiobooksPlugin(Plugin):
                 ab.provider = provider
             ab.voice = (post.get('audiobook_voice') or '').strip()[:80]
             files = files or {}
-            if files.get('audiobook_audio'):
+            uploaded = bool(files.get('audiobook_audio'))
+            if uploaded:
                 ab.audio_file = files['audiobook_audio']
                 ab.source = 'uploaded'
                 ab.status = 'ready'
@@ -124,6 +127,10 @@ class AudiobooksPlugin(Plugin):
             if files.get('audiobook_source_pdf'):
                 ab.source_pdf = files['audiobook_source_pdf']
             ab.save()
+            if uploaded:
+                from plugins.installed.audiobooks.services import announce_ready
+
+                announce_ready(ab)
         except Exception as exc:  # noqa: BLE001
             import logging
 

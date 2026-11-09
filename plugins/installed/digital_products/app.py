@@ -53,6 +53,8 @@ class DigitalProductsPlugin(Plugin):
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
         # Fulfilling or shipping an order delivers its digital lines (library.py).
         self.register_hook(events.ORDER_FULFILLED, self.on_order_paid, priority=80)
+        # An edition whose file arrives after the sale (an audiobook narrated later).
+        self.register_hook(events.DIGITAL_FILE_READY, self.on_file_ready, priority=80)
         # Contribute the size of the customer's library into the account summary —
         # only while enabled, so disabling the plugin removes the Library tile
         # (ADR 0013) instead of storefront hard-coding the query.
@@ -98,6 +100,19 @@ class DigitalProductsPlugin(Plugin):
                 self.on_order_paid(placed)
 
         transaction.on_commit(issue)
+
+    def on_file_ready(self, variant=None, **kwargs) -> None:
+        """An edition's file arrived after it was sold: issue the links its delivered
+        orders were still waiting for (on_order_paid skips a line with a link)."""
+        if variant is None:
+            return
+        from plugins.installed.orders.models import Order
+
+        waiting = Order.objects.filter(
+            items__variant=variant, items__download_tokens__isnull=True
+        ).distinct()
+        for order in waiting:
+            self.on_order_paid(order)
 
     def on_account_summary(self, value, user=None, **kwargs):
         """Fold the size of this customer's library into the account summary.

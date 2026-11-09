@@ -101,7 +101,10 @@ def delivery_file(item):
     variant = getattr(item, 'variant', None)
     product = getattr(item, 'product', None)
     digital = (getattr(variant, 'digital_file', None) if variant is not None else None) or None
-    if not digital and product is not None:
+    # The product's file stands in for an edition without one, except an audiobook:
+    # the book's PDF is not its narration, whether or not the audiobooks app is on.
+    edition = getattr(variant, 'variant_type', '') if variant is not None else ''
+    if not digital and product is not None and edition != 'audiobook':
         digital = getattr(product, 'digital_file', None) or None
     try:
         from morpheus.core import MorpheusEvents, hook_registry

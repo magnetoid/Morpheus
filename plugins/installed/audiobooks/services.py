@@ -580,7 +580,8 @@ def _store(audiobook, fileobj, *, size: int, kbps: int, source: str) -> None:
     target = audiobook.sample_file if audiobook.job == 'sample' else audiobook.audio_file
     old = target.name if target else ''
     target.save(name, File(fileobj), save=False)
-    if audiobook.job == 'full':
+    full = audiobook.job == 'full'
+    if full:
         audiobook.source = source
         audiobook.status = 'ready'
         audiobook.duration_seconds = round(size * 8 / (kbps * 1000)) if kbps else None
@@ -593,6 +594,16 @@ def _store(audiobook, fileobj, *, size: int, kbps: int, source: str) -> None:
             target.storage.delete(old)
         except Exception:  # noqa: BLE001 — a leftover file is harmless
             logger.warning('could not delete the old narration %s', old, exc_info=True)
+    if full:
+        announce_ready(audiobook)
+
+
+def announce_ready(audiobook) -> None:
+    """Tell the delivery layer the narration exists, so orders paid before it was
+    made get their download links (a guest has no Library to find it in)."""
+    from morpheus.core import MorpheusEvents, hook_registry
+
+    hook_registry.fire(MorpheusEvents.DIGITAL_FILE_READY, variant=audiobook.variant)
 
 
 def _fail(audiobook, reason: str) -> None:

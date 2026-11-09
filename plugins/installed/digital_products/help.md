@@ -17,4 +17,4 @@ Set [](field:digital_products.token_ttl_hours) to control how many hours an emai
 
 ## Good to know
 
-A digital item never needs a shipment or a tracking number, and an order with nothing but downloads offers no fulfilment at all. A cancelled or refunded order delivers nothing. An item shows as being prepared while its file is missing, such as an audiobook whose narration is not finished; it becomes downloadable the moment the file exists. A guest checkout has no Library, so a guest uses the emailed link.
+A digital item never needs a shipment or a tracking number, and an order with nothing but downloads offers no fulfilment at all. A cancelled or refunded order delivers nothing. An item shows as being prepared while its file is missing, such as an audiobook whose narration is not finished; it becomes downloadable the moment the file exists. A guest checkout has no Library, so a guest uses the emailed link; a guest who bought an audiobook before its narration was finished is emailed the link once it is.

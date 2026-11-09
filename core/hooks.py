@@ -607,11 +607,11 @@ class MorpheusEvents:
     ACCOUNT_SUMMARY_FIELDS = 'account.summary_fields'  # filter
     # DIGITAL_DELIVERY_FILE — filter, value=FieldFile|None, kwargs: order_item,
     #   variant (ProductVariant or None), product. The file a digital order line
-    #   delivers: digital_products passes the variant's file, else the product's,
-    #   and an app whose edition keeps its file elsewhere answers for its own
-    #   variants (audiobooks returns the narration). The library page, the emailed
-    #   links and the file view all read it, so a disabled app's edition delivers
-    #   nothing instead of a file nobody can update.
+    #   delivers: digital_products passes the variant's file, else the product's
+    #   (never to an audiobook edition, which must not deliver the book's PDF), and
+    #   an app whose edition keeps its file elsewhere answers for its own variants
+    #   (audiobooks returns the narration). The library page, the emailed links and
+    #   the file view all read it, so a disabled app's edition delivers nothing.
     DIGITAL_DELIVERY_FILE = 'digital.delivery_file'  # filter
     # ORDER_LINE_DELIVERY — filter, value=None, kwargs: order_item. How one order
     #   line reaches its buyer when nothing is shipped, for the order pages
@@ -1171,3 +1171,8 @@ class MorpheusEvents:
 
     # ── Digital products (fire) ───────────────────────────────────────────
     # 'digital.tokens_issued' — kwargs: order=Order, tokens=list[DownloadToken].
+    # DIGITAL_FILE_READY — fire, kwargs: variant (ProductVariant). A digital
+    #   edition's file arrived after the edition was sold (audiobooks: a finished
+    #   or uploaded narration). digital_products issues the download links that
+    #   delivered orders were still waiting for, which a guest has no Library to find.
+    DIGITAL_FILE_READY = 'digital.file_ready'

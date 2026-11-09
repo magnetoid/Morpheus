@@ -183,6 +183,49 @@ class OrderPageDeliveryTests(LibraryTestCase):
 
 
 class AudiobookDeliveryTests(LibraryTestCase):
+    def _edition(self, product):
+        from plugins.installed.audiobooks.models import Audiobook
+        from plugins.installed.catalog.models import ProductVariant
+
+        variant = ProductVariant.objects.create(
+            product=product,
+            name='Audiobook',
+            sku=f'{product.sku}-AUDIO',
+            variant_type='audiobook',
+            requires_shipping=False,
+        )
+        return variant, Audiobook.objects.create(variant=variant, status='generating')
+
+    def test_unnarrated_edition_never_delivers_the_books_pdf(self):
+        # The e-book's PDF is passed along as the product's file; an audiobook
+        # bought before its narration exists is "being prepared", not that PDF.
+        from plugins.installed.digital_products.library import library
+        from plugins.registry import app_registry
+
+        variant, _ = self._edition(self.ebook)
+        self._order(variant=variant, payment_status='paid', status='processing')
+        [item] = library(self.buyer)
+        self.assertEqual(item.state, 'preparing')
+        app_registry.deactivate('audiobooks')
+        self.addCleanup(app_registry.activate, 'audiobooks')
+        [item] = library(self.buyer)
+        self.assertEqual(item.state, 'preparing')
+
+    def test_finished_narration_sends_the_links_a_guest_waited_for(self):
+        from plugins.installed.audiobooks.services import announce_ready
+        from plugins.installed.digital_products.models import DownloadToken
+
+        variant, audiobook = self._edition(self.mug)
+        order, line = self._order(
+            product=self.mug, variant=variant, customer=None, payment_status='paid'
+        )
+        audiobook.audio_file.save('book.mp3', ContentFile(b'ID3 audio'), save=False)
+        audiobook.status = 'ready'
+        audiobook.save()
+        announce_ready(audiobook)
+        announce_ready(audiobook)  # a second announcement issues nothing twice
+        self.assertEqual(DownloadToken.objects.filter(order_item=line).count(), 1)
+
     def test_audiobook_edition_delivers_its_narration_once_ready(self):
         from plugins.installed.audiobooks.models import Audiobook
         from plugins.installed.catalog.models import ProductVariant

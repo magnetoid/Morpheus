@@ -71,3 +71,14 @@ class NothingToShipTests(TestCase):
     def test_a_parcel_still_gets_its_fulfilment(self):
         body = self._page(self._order(self.ebook, self.mug))
         self.assertIn('Create fulfillment', body)
+
+    def test_switched_off_downloads_app_keeps_the_fulfilment(self):
+        # The promise is the digital_products app's to make: without it nothing
+        # issues the links, so the page offers the fulfilment form as before.
+        from plugins.registry import app_registry
+
+        app_registry.deactivate('digital_products')
+        self.addCleanup(app_registry.activate, 'digital_products')
+        body = self._page(self._order(self.ebook))
+        self.assertIn('Create fulfillment', body)
+        self.assertNotIn('Nothing to ship', body)
