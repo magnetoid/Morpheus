@@ -58,9 +58,12 @@
     <tr><td>Subtotal</td><td class="num">{{ order.subtotal }}</td></tr>
     {% if order.discount_total.amount %}<tr><td>Discount</td><td class="num">&minus;{{ order.discount_total }}</td></tr>{% endif %}
     <tr><td>Shipping</td><td class="num">{{ order.shipping_total }}</td></tr>
-    {% for line in order.tax_lines %}<tr data-tax-line><td>{{ line.label }}</td><td class="num">{{ line.amount }}</td></tr>{% empty %}<tr><td>Tax</td><td class="num">{{ order.tax_total }}</td></tr>{% endfor %}
+    {% with included=order.tax_included_lines %}
+    {% if not included %}{% for line in order.tax_lines %}<tr data-tax-line><td>{{ line.label }}</td><td class="num">{{ line.amount }}</td></tr>{% empty %}<tr><td>Tax</td><td class="num">{{ order.tax_total }}</td></tr>{% endfor %}{% endif %}
     {% for extra in order.extra_lines %}<tr><td>{{ extra.label }}</td><td class="num">{{ extra.amount }}</td></tr>{% endfor %}
     <tr class="grand"><td>Total</td><td class="num">{{ order.total }}</td></tr>
+    {% for line in included %}<tr data-tax-included><td class="muted">Includes {{ line.label }}</td><td class="num muted">{{ line.amount }}</td></tr>{% endfor %}
+    {% endwith %}
   </table>
 
   <div class="actions">

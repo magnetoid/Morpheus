@@ -34,13 +34,13 @@ class UnifiedShippingDashboardTests(TestCase):
             self.url,
             {
                 'kind': 'config',
-                'tax_shipping': 'on',
                 'shippo_api_key': 'shippo_test_key',
                 'shippo_default_address': '{"country": "US", "zip": "10001"}',
             },
         )
         cfg = PluginConfig.objects.get(plugin_name='shipping').config
-        self.assertTrue(cfg['tax_shipping'])
+        # Whether shipping is taxed lives on the Tax page now (tax app).
+        self.assertNotIn('tax_shipping', cfg)
         self.assertEqual(cfg['shippo_api_key'], 'shippo_test_key')
         self.assertEqual(cfg['shippo_default_address'], {'country': 'US', 'zip': '10001'})
         # The quote path reads via _shipping_config — it must see the same dict.

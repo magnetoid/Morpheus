@@ -25,8 +25,9 @@ class UnifiedTaxDashboardTests(TestCase):
         self.assertContains(r, 'Regions')
         self.assertContains(r, 'Rates')
         self.assertContains(r, 'Tax calculation')
-        # Controls that did nothing are not offered.
-        self.assertNotContains(r, 'prices_include_tax')
+        # Both switches are read at checkout since v0.149.0; Stripe Tax never was.
+        self.assertContains(r, 'name="prices_include_tax"')
+        self.assertContains(r, 'name="shipping_taxable"')
         self.assertNotContains(r, 'Stripe Tax')
 
     def test_config_saves_to_taxconfiguration_model(self):
@@ -84,3 +85,35 @@ class UnifiedTaxDashboardTests(TestCase):
         r = self.client.get(reverse('tax_dashboard:rates'))
         self.assertEqual(r.status_code, 302)
         self.assertIn('/dashboard/tax/regions/', r['Location'])
+
+    def test_the_two_switches_save(self):
+        from plugins.installed.tax.models import TaxConfiguration
+
+        self.client.post(
+            self.url,
+            {
+                'kind': 'config',
+                'provider': 'local',
+                'prices_include_tax': 'on',
+                'shipping_taxable': 'on',
+            },
+        )
+        cfg = TaxConfiguration.objects.get()
+        self.assertTrue(cfg.prices_include_tax)
+        self.assertTrue(cfg.shipping_taxable)
+        self.client.post(self.url, {'kind': 'config', 'provider': 'local'})
+        cfg.refresh_from_db()
+        self.assertFalse(cfg.prices_include_tax)
+        self.assertFalse(cfg.shipping_taxable)
+
+    def test_a_category_is_added_and_deleted_with_its_rates(self):
+        from plugins.installed.tax.models import TaxCategory, TaxRate, TaxRegion
+
+        self.client.post(self.url, {'kind': 'category', 'action': 'create', 'name': 'Books'})
+        self.assertTrue(TaxCategory.objects.filter(code='books', name='Books').exists())
+        region = TaxRegion.objects.create(name='DE', country='DE')
+        TaxRate.objects.create(name='VAT 7%', region=region, category_id='books', rate_percent=7)
+        self.assertContains(self.client.get(self.url), 'Books')
+        self.client.post(self.url, {'kind': 'category', 'action': 'delete', 'code': 'books'})
+        self.assertFalse(TaxCategory.objects.exists())
+        self.assertFalse(TaxRate.objects.exists())
