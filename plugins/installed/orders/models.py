@@ -268,6 +268,17 @@ class Order(models.Model):
                 return []
         return lines
 
+    @property
+    def total_tax(self):
+        """All the tax in ``total``: what checkout added (``tax_total``) plus what
+        tax-inclusive prices already held. Exports and tracking report this."""
+        from djmoney.money import Money  # noqa: PLC0415
+
+        if self.tax_total is None:
+            return None
+        included = sum((line['amount'].amount for line in self.tax_included_lines), Decimal('0'))
+        return self.tax_total + Money(included, self.tax_total.currency)
+
     def save(self, *args, **kwargs):
         if not self.order_number:
             self.order_number = self._generate_order_number()

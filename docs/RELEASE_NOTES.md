@@ -24,7 +24,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - Products and variants marked not taxable pay no tax; before, they were taxed anyway.
 - Every standard rate of a region applies, in priority order, and a compound rate is charged on the price plus the taxes before it. Before, only the first rate was charged. Check each store's tax regions: a region with two standard rates now charges both.
 - New switch on the Tax page: charge tax on shipping. It starts off. The old checkbox on the Shipping page did nothing and is gone.
-- New switch: prices include tax. The shopper pays the price as shown, and the invoice, order page and confirmation email say how much of it is tax.
+- New switch: prices include tax. The shopper pays the price as shown. The invoice, order page and order email say how much of it is tax, and the orders export and the purchase sent to analytics report that tax.
 - Linda can create tax categories, put products in them and change these settings, each after your yes.
 
 ## v0.148.2 — 2026-11-09

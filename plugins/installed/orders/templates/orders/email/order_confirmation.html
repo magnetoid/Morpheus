@@ -48,7 +48,6 @@
                 <td style="padding-top:8px;border-top:1px solid #d9d2bf;font-family:'Fraunces',Georgia,serif;font-size:18px;font-weight:600;">Total</td>
                 <td align="right" style="padding-top:8px;border-top:1px solid #d9d2bf;font-family:'Fraunces',Georgia,serif;font-size:18px;font-weight:600;">{{ order.total }}</td>
               </tr>
-              {% for line in order.tax_included_lines %}<tr><td style="color:#6b6b66;">Includes {{ line.label }}</td><td align="right" style="color:#6b6b66;">{{ line.amount }}</td></tr>{% endfor %}
             </table>
           </td>
         </tr>

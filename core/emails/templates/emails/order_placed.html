@@ -26,9 +26,12 @@
     <tr><td>Subtotal</td><td class="right">{{ order.subtotal }}</td></tr>
     {% if order.discount_total.amount %}<tr><td>Discount</td><td class="right">&minus;{{ order.discount_total }}</td></tr>{% endif %}
     <tr><td>Shipping</td><td class="right">{{ order.shipping_total }}</td></tr>
-    <tr><td>Tax</td><td class="right">{{ order.tax_total }}</td></tr>
+    {% with included=order.tax_included_lines %}
+    {% if not included %}<tr><td>Tax</td><td class="right">{{ order.tax_total }}</td></tr>{% endif %}
     {% for extra in order.extra_lines %}<tr><td>{{ extra.label }}</td><td class="right">{{ extra.amount }}</td></tr>{% endfor %}
     <tr class="grand"><td>Total</td><td class="right">{{ order.total }}</td></tr>
+    {% for line in included %}<tr><td>Includes {{ line.label }}</td><td class="right">{{ line.amount }}</td></tr>{% endfor %}
+    {% endwith %}
   </table>
 
   <p class="muted" style="margin-top:18px;">You'll get another email once payment is confirmed and your order ships.</p>

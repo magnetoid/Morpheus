@@ -13,10 +13,12 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.http import QueryDict
+from django.template.loader import render_to_string
 from django.test import TestCase
 from djmoney.money import Money
 
 from morpheus.core import MorpheusEvents, agent_registry, hook_registry
+from plugins.installed.admin_dashboard.views_split.orders import _EXPORT_HEADER, _order_export_row
 from plugins.installed.catalog.models import Product, ProductVariant
 from plugins.installed.orders.models import Cart, CartItem
 from plugins.installed.orders.services import OrderService
@@ -28,6 +30,7 @@ from plugins.installed.tax.models import (
     TaxRegion,
 )
 from plugins.installed.tax.services import delete_category
+from plugins.installed.tracking.services.event_mapping import purchase
 
 
 def _eur(n):
@@ -169,6 +172,16 @@ class CartTaxTests(TestCase):
         self.assertEqual(order.total, _eur(120))
         self.assertEqual(order.tax_lines, [])
         self.assertEqual(order.tax_included_lines, [{'label': 'VAT 20%', 'amount': _eur('20.00')}])
+        # Reports count the included tax, though checkout added none.
+        self.assertEqual(order.total_tax, _eur('20.00'))
+        row = _order_export_row(order)
+        self.assertEqual(row[_EXPORT_HEADER.index('Tax')], '20.00')
+        self.assertEqual(purchase(order)[1]['tax'], 20.0)
+        html = render_to_string('emails/order_placed.html', {'order': order})
+        text = render_to_string('emails/order_placed.txt', {'order': order})
+        for body in (html, text):
+            self.assertIn('Includes VAT 20%', body)
+            self.assertNotIn('Tax:', body.replace('<td>Tax</td>', 'Tax:'))
 
 
 class CategoryTests(TestCase):

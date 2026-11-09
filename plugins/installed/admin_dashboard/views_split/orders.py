@@ -607,7 +607,7 @@ def _order_export_row(order) -> list:
         amount(order.subtotal),
         amount(order.discount_total),
         amount(order.shipping_total),
-        amount(order.tax_total),
+        amount(order.total_tax),
         f'{extras:.2f}',
         amount(order.total),
         str(order.total.currency) if order.total is not None else '',
