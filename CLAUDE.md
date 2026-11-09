@@ -327,7 +327,11 @@ Tourism's register (mint.gov.hr), 0 where it gives none: a "special standard" ho
 star category, and 42 of the 114 first guesses were wrong. Places and experiences carry a free Wikimedia Commons
 photo (CC0, public domain, CC BY, CC BY-SA), whose page names the author and licence (`photo_credit`). The
 credit names the file it is for, so an uploaded photo drops it, and the seed replaces only a bundled
-stand-in cover, recognised by its bytes. Guarded by `booking_marketplace/tests/test_croatia_catalogue.py`.
+stand-in cover, recognised by its bytes. It deletes a replaced cover's file only once its part commits: the
+first live run deleted at once, a later row failed, and 13 places rolled back to files that were gone (a
+missing file is not a stand-in, so a rerun skipped them). Commons answers a burst with 429, so downloads go 2 s
+apart and wait out a refusal; a public-domain photo has no `licence_url`. Guarded by
+`booking_marketplace/tests/test_croatia_catalogue.py`.
 
 **Convention — the travel store's search is one engine (v0.112.0).** `booking_marketplace/search.py`
 folds text (case, accents, Serbian Cyrillic, `đ` both ways) and ranks the active listings and

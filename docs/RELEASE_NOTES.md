@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.148.2 — 2026-11-09
+
+**seed_croatia keeps every photo when a part fails**
+
+- A public-domain photo has no licence page, and the seed stopped on the first one; it now credits the photo without a licence link.
+- A replaced cover's file is deleted only once its part has committed, so a part that fails keeps every page's photo (the first live run left 13 places showing missing images).
+- Commons downloads go out 2 s apart, wait out a 429 and say which store is asking, so a full run fetches every photo in about ten minutes.
+
 ## v0.148.1 — 2026-11-09
 
 **Cancelled orders no longer say a download waits for payment**

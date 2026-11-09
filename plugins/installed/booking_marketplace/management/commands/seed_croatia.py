@@ -14,7 +14,10 @@ empty, so an edit made in the dashboard is never overwritten.
 Places and experiences get a free photo from Wikimedia Commons (`photo` in the data),
 downloaded here, with its author and licence stored beside it for the page to show. It
 replaces only an empty cover or one of the bundled stand-in covers, never a photo someone
-uploaded; a download that fails leaves the stand-in, and the next run tries again.
+uploaded; a download that fails leaves the stand-in, and the next run tries again. The
+downloads go out 2 s apart and wait out a 429: Commons refuses a burst at once, and the
+whole catalogue takes about ten minutes. A replaced cover's file is deleted only once its
+part has committed, so a part that fails keeps every page's photo.
 
     python manage.py seed_croatia [--only places|experiences|hotels|events]
 
@@ -26,6 +29,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import time
 from functools import cache
 from pathlib import Path
 
@@ -65,7 +69,15 @@ PHOTO_HOST = 'https://upload.wikimedia.org/'
 PHOTO_MAX_BYTES = 8 * 1024 * 1024
 # Wikimedia refuses requests that do not say who is asking.
 PHOTO_USER_AGENT = 'Morpheus seed_croatia/1.0 (store catalogue photos from Wikimedia Commons)'
+# A public-domain photo has no licence page, so `licence_url` may be absent.
 CREDIT_KEYS = ('author', 'licence', 'licence_url', 'source_url')
+# Commons answered a burst from the store's server with 429 at once (2026-11-09); 2 s
+# apart, waiting 20, 40 and 80 s after a refusal, fetched all 229 photos.
+PHOTO_GAP_S = 2.0
+PHOTO_RETRY_WAITS = (20, 40, 80)
+PHOTO_MAX_WAIT_S = 120
+_RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
+_last_request = {'at': 0.0}  # monotonic time of the last download
 
 logger = logging.getLogger('morpheus.booking_marketplace')
 
@@ -94,18 +106,41 @@ def _is_stand_in(fieldfile) -> bool:
         return False
 
 
+def _pace() -> None:
+    """Keep downloads PHOTO_GAP_S apart."""
+    wait = _last_request['at'] + PHOTO_GAP_S - time.monotonic()
+    if wait > 0:
+        time.sleep(wait)
+    _last_request['at'] = time.monotonic()
+
+
+def _retry_wait(response, wait: int) -> float:
+    """The longer of our own wait and the server's Retry-After (in seconds), capped."""
+    try:
+        asked = float(response.headers.get('Retry-After', 0))
+    except (TypeError, ValueError):  # an HTTP date: our own wait is long enough
+        asked = 0
+    return min(max(asked, wait), PHOTO_MAX_WAIT_S)
+
+
 def _download(url: str) -> bytes | None:
     from core.net import outbound_request
+    from core.utils.site import site_base_url
 
     if not url.startswith(PHOTO_HOST):
         return None
-    try:
-        response = outbound_request(
-            'get', url, timeout=30, headers={'User-Agent': PHOTO_USER_AGENT}
-        )
-    except Exception:  # noqa: BLE001 — the stand-in stays and the next run tries again
-        logger.warning('seed_croatia: could not download %s', url, exc_info=True)
-        return None
+    # Wikimedia asks a client to say who it is and how to reach them.
+    headers = {'User-Agent': f'{PHOTO_USER_AGENT} {site_base_url()}'}
+    for wait in (*PHOTO_RETRY_WAITS, None):
+        _pace()
+        try:
+            response = outbound_request('get', url, timeout=30, headers=headers)
+        except Exception:  # noqa: BLE001 — the stand-in stays and the next run tries again
+            logger.warning('seed_croatia: could not download %s', url, exc_info=True)
+            return None
+        if response.status_code not in _RETRY_STATUSES or wait is None:
+            break
+        time.sleep(_retry_wait(response, wait))
     kind = response.headers.get('Content-Type', '')
     if response.status_code != 200 or not kind.startswith('image/'):
         logger.warning('seed_croatia: %s answered %s %s', url, response.status_code, kind)
@@ -113,6 +148,14 @@ def _download(url: str) -> bytes | None:
     if len(response.content) > PHOTO_MAX_BYTES:
         return None
     return response.content
+
+
+def _delete_after_commit(fieldfile) -> None:
+    """Delete the file once the part commits. Deleted at once, a part that then failed
+    rolled back to rows naming files that were gone (13 Istria places, live 2026-11-09),
+    and a rerun skipped them, since a missing file is not a stand-in."""
+    storage, name = fieldfile.storage, fieldfile.name
+    transaction.on_commit(lambda: storage.delete(name))
 
 
 def _set_photo(obj, photo: dict | None, stand_in: str) -> bool:
@@ -125,23 +168,32 @@ def _set_photo(obj, photo: dict | None, stand_in: str) -> bool:
             _attach(obj.image, f'{obj.slug}.jpg', stand_in)
         return False
     if obj.image:
-        obj.image.delete(save=False)
+        _delete_after_commit(obj.image)
     # Named after its bytes: a file name is an address that browsers, the CDN and seo's
     # /img/ copies remember, so the photo must never take the stand-in's old name.
     digest = hashlib.sha256(content).hexdigest()[:10]
     obj.image.save(f'{obj.slug}-{digest}.jpg', ContentFile(content), save=False)
-    obj.image_credit = {key: photo[key] for key in CREDIT_KEYS} | {'for': obj.image.name}
+    credit = {key: photo.get(key, '') for key in CREDIT_KEYS}
+    obj.image_credit = credit | {'for': obj.image.name}
     obj.save(update_fields=['image', 'image_credit'])
     return True
 
 
 def _refresh_product_photo(service) -> None:
     """Swap the product's copy of a stand-in cover for the listing's new photo."""
+    from django.db.models import FileField
+
     from plugins.installed.booking_marketplace.products import _copy_images
 
     product = service.product
     stale = [img for img in product.images.all() if _is_stand_in(img.image)]
     for img in stale:
+        # A ProductImage deletes its files with its row: hand them to the commit instead.
+        for field in img._meta.concrete_fields:
+            fieldfile = getattr(img, field.attname) if isinstance(field, FileField) else None
+            if fieldfile:
+                _delete_after_commit(fieldfile)
+                fieldfile.name = ''
         img.delete()
     if stale:
         _copy_images(service, product)
