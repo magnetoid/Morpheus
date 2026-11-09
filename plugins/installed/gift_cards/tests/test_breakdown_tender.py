@@ -99,7 +99,7 @@ class GiftCardOrderingIntegrationTests(TestCase):
         cart.metadata = {'shipping_rate_id': 'r1'}
         cart.save(update_fields=['gift_card', 'metadata', 'updated_at'])
 
-        # subtotal = $40; inject tax $5 + shipping $10 via the real 20/30 handlers.
+        # subtotal = $40; inject tax $5 + shipping $10 via the real tax and shipping handlers.
         with (
             patch(
                 'plugins.installed.tax.services.compute_tax_for_cart',

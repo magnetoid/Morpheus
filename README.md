@@ -4,18 +4,18 @@
 
 ### Commerce you own. Run by an AI you can actually trust with the keys. Bought by agents.
 
-*Describe your shop in one sentence and get a real, stocked storefront. Toggle 97 capabilities on and off like apps. Then hand the back office to an AI operator who knows your catalog, briefs you every morning, and proposes improvements to her own source code — every one of them reviewed by a panel of independent models, and then by you.*
+*Describe your shop in one sentence and get a real, stocked storefront. Toggle 98 capabilities on and off like apps. Then hand the back office to an AI operator who knows your catalog, briefs you every morning, and proposes improvements to her own source code — every one of them reviewed by a panel of independent models, and then by you.*
 
 [![Status: beta](https://img.shields.io/badge/status-beta-f59e0b.svg)](docs/RELEASE_NOTES.md)
 [![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
-[![Live stores](https://img.shields.io/badge/live-3%20stores%2C%20one%20codebase-ff5722.svg)](#-three-live-stores-one-codebase)
-[![Apps](https://img.shields.io/badge/apps-97%20toggleable-2563eb.svg)](#-whats-in-the-box-all-97-apps)
+[![Live stores](https://img.shields.io/badge/live-5%20stores%2C%20one%20codebase-ff5722.svg)](#-five-live-stores-one-codebase)
+[![Apps](https://img.shields.io/badge/apps-98%20toggleable-2563eb.svg)](#-whats-in-the-box-all-98-apps)
 [![AI operator](https://img.shields.io/badge/AI-built--in%20operator%20(Linda)-e11d48.svg)](#-meet-linda--the-ai-operator)
 [![Agentic](https://img.shields.io/badge/agentic-MCP%20%2F%20ACP%20%2F%20UCP-7c3aed.svg)](#-agentic-commerce-be-transactable-by-ai)
 [![Stack](https://img.shields.io/badge/django%206-postgres%20%C2%B7%20celery%20%C2%B7%20graphql-092e20.svg)](#-tech-stack)
 [![Contact](https://img.shields.io/badge/contact-marko%40morpheus.direct-0ea5e9.svg)](mailto:marko@morpheus.direct)
 
-**[▶ See it live](https://dotbooks.store) · [✉ Talk to us](#-get-in-touch) · [🚀 Run your own](#-quick-start) · [🧩 What's in the box](#-whats-in-the-box-all-97-apps) · [🧱 Architecture](#-architecture-a-small-kernel-a-deep-ecosystem) · [🧭 Roadmap](#-roadmap) · [📚 Docs](#-documentation)**
+**[▶ See it live](https://dotbooks.store) · [✉ Talk to us](#-get-in-touch) · [🚀 Run your own](#-quick-start) · [🧩 What's in the box](#-whats-in-the-box-all-98-apps) · [🧱 Architecture](#-architecture-a-small-kernel-a-deep-ecosystem) · [🧭 Roadmap](#-roadmap) · [📚 Docs](#-documentation)**
 
 </div>
 
@@ -34,7 +34,7 @@
 
 **And both are about to have the same problem.** A growing share of shopping now starts inside an assistant. If a model can't read your catalog, quote your real shipping, and complete a cart, you don't lose a ranking — you lose the conversation entirely, to whoever the model *can* transact with.
 
-Morpheus is the third option: **a full commerce engine you run yourself, built from the ground up to be operated by an AI and transacted with by one.** It already runs three live stores — a bookshop, a longevity pantry and a travel marketplace — from one codebase.
+Morpheus is the third option: **a full commerce engine you run yourself, built from the ground up to be operated by an AI and transacted with by one.** It already runs five live stores — a bookshop, a longevity pantry, a survival and preparedness shop and two travel marketplaces — from one codebase.
 
 ---
 
@@ -44,7 +44,7 @@ Three convictions, and each one shows up as code rather than a roadmap item.
 
 ### 1. The AI is staff, not a subscription
 
-One generalist operator — **Linda** — runs on your servers. She reads your catalog, executes real back-office work through a typed tool registry of 198 tools, writes you a morning brief, and writes up defects in her own platform for the team to fix — in words, never patches.
+One generalist operator — **Linda** — runs on your servers. She reads your catalog, executes real back-office work through a typed tool registry of 208 tools, writes you a morning brief, and writes up defects in her own platform for the team to fix — in words, never patches.
 
 That last sentence is only safe because of the part nobody advertises: **the harness.** Every tool call passes a scope check, a budget, a deadline, and an approval gate. Destructive writes create a server-side, fingerprint-bound, single-use approval record and **fail closed** if the approver is unreachable. An agent can stage a change as a proposal instead of executing it. Merchants get a kill switch and daily spend caps. Every call and every refusal writes an audit row.
 
@@ -73,13 +73,13 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 
 - [Why Morpheus](#-why-morpheus)
 - [By the numbers](#-by-the-numbers)
-- [Three live stores, one codebase](#-three-live-stores-one-codebase)
+- [Five live stores, one codebase](#-five-live-stores-one-codebase)
 - [Meet Linda — the AI operator](#-meet-linda--the-ai-operator)
 - [Agentic commerce: be transactable by AI](#-agentic-commerce-be-transactable-by-ai)
 - [Found by search, and by answer engines](#-found-by-search-and-by-answer-engines)
 - [A tour: shoppers, merchants, developers](#-a-tour-shoppers-merchants-developers)
 - [Architecture: a small kernel, a deep ecosystem](#-architecture-a-small-kernel-a-deep-ecosystem)
-- [What's in the box: all 97 apps](#-whats-in-the-box-all-97-apps)
+- [What's in the box: all 98 apps](#-whats-in-the-box-all-98-apps)
 - [It runs itself](#-it-runs-itself)
 - [The self-improvement loop](#-the-self-improvement-loop)
 - [Safety, security & compliance](#-safety-security--compliance)
@@ -104,9 +104,9 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 |---|---|---|---|
 | **AI operator** | Built in, governed, on *your* infra | Add-on / per-seat copilot | Bring your own |
 | **Agent-transactable** | MCP + ACP + UCP, native | Emerging, platform-mediated | Rare |
-| **Feature model** | 100 apps, disable-safe by construction | Apps (billed, sandboxed) | Extensions / modules |
+| **Feature model** | 98 apps, disable-safe by construction | Apps (billed, sandboxed) | Extensions / modules |
 | **Sales channels** | 9 ad and AI-shopping channels, four dropshipping suppliers and a multivendor marketplace, built in | Per-channel apps | Per-channel extensions |
-| **Migration in** | Shopify, WooCommerce, Magento, BigCommerce, CSV importers | — | Varies |
+| **Migration in** | Shopify, WooCommerce and CSV importers | — | Varies |
 | **Own your data & code** | Yes — self-hosted; source-available under BUSL-1.1, each version turning Apache 2.0 after four years | No | Yes |
 | **Platform fees** | A per-store licence; no revenue share, no seat count | % of revenue + app fees | None |
 | **Self-improving** | Code changes reviewed by an LLM panel, then by you | — | — |
@@ -123,44 +123,46 @@ The design goal is deliberate: shoppers **discover** you inside an assistant and
 
 ## 📊 By the numbers
 
-Measured at **v0.123.0 (22 October 2026)** by a script over the tree, not from memory. Counts drift with every release — each row names its source of truth, and that source wins over this table. The dashboard's **Settings → Apps** page is the always-current catalogue.
+Measured at **v0.148.2 (9 November 2026)** by `scripts/measure_readme.py`, not from memory: it boots the app with every opt-in app on and reads the registries. Counts drift with every release — each row names its source of truth, and that source wins over this table. Re-run the script rather than editing a figure by hand. The dashboard's **Settings → Apps** page is the always-current catalogue.
 
 | Metric | Value | Source of truth |
 |---|---|---|
-| Toggleable apps in the tree | **100** (94 on by default + 6 opt-in: the Montenegro booking vertical, four dropshipping apps — DSers, Zendrop, CJdropshipping and AliExpress — and demo data) | `plugins/installed/` · `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` |
-| Typed events on the hooks bus | **107**, with **276** subscriptions | `MorpheusEvents` in `core/hooks.py` |
-| Agent tools in the typed registry | **198** — 55 of them require a human's approval | `core/agents/registry.py` at boot |
+| Toggleable apps in the tree | **98** (92 on by default + 6 opt-in: the travel booking vertical, four dropshipping apps — DSers, Zendrop, CJdropshipping and AliExpress — and demo data) | `plugins/installed/` · `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` |
+| Typed events on the hooks bus | **117**, with **298** subscriptions | `MorpheusEvents` in `core/hooks.py` |
+| Agent tools in the typed registry | **208** — 60 of them require a human's approval | `core/agents/registry.py` at boot |
 | MCP token scopes | **40** | `plugins/installed/agent_mcp/scopes.py` |
-| RBAC capabilities | **32** · gating **284 views** | `plugins/installed/rbac/models.py` · `@require_capability` sites |
-| GraphQL surface | **36** queries · **50** mutations · **96** types | `api/schema.py` |
-| URL routes | **668**, of which **296** dashboard | `python manage.py show_urls`-style walk of the resolver |
-| Dashboard pages · settings panels · storefront blocks | **120** · **59** · **72** across 19 theme slots | the app registry at boot |
-| Scheduled jobs · management commands | **61** · **64** | `CELERY_BEAT_SCHEDULE` · `manage.py help` |
+| RBAC capabilities | **32** · gating **286 views** | `plugins/installed/rbac/models.py` · `@require_capability` sites |
+| GraphQL surface | **36** queries · **50** mutations · **101** types | `api/schema.py` |
+| URL routes | **681**, of which **302** dashboard | a walk of the URL resolver |
+| Dashboard pages · settings panels · storefront blocks | **123** · **57** · **78** across 20 theme slots | the app registry at boot |
+| Scheduled jobs · management commands | **61** · **66** | `CELERY_BEAT_SCHEDULE` · `manage.py help` |
 | Payment gateways | **5** — Stripe, PayPal, cash on delivery, bank transfer, sandbox | `payments.gateway_registry` |
-| Production releases since v0.1.0 (2026-06-20) | **305 in 124 days** | `docs/RELEASE_NOTES.md` |
-| Tests | **5,284** test functions; the full suite ran 5,255 tests on 2026-10-22 | `grep -rc "def test_"` |
-| Python | **~286k lines** in `core/`, `plugins/`, `themes/`, `api/`, `morph/`, `morpheus/`, `scripts/` (~85k of it tests) | the tree |
-| Templates, CSS & JS | **720** templates · **~73k** lines | the tree |
-| Migrations | **272** | `*/migrations/` |
+| Production releases since v0.1.0 (2026-06-20) | **343 in 142 days** | `docs/RELEASE_NOTES.md` |
+| Tests | **5,762** test functions | `def test_` in the tree |
+| Python | **~338k lines** in `core/`, `plugins/`, `themes/`, `api/`, `morph/`, `morpheus/`, `scripts/` (~93k of it tests) | the tree |
+| Templates, CSS & JS | **833** templates · **~88k** lines | the tree |
+| Migrations | **280** | `*/migrations/` |
 | Architecture decision records | **39** | `.torsor/architecture/decisions/` |
 | `core/` imports from apps | **0 — enforced** | `scripts/check_core_boundary.py` (empty allowlist) |
-| Live stores on one codebase | **3** | [below](#-three-live-stores-one-codebase) |
+| Live stores on one codebase | **5** | [below](#-five-live-stores-one-codebase) |
 
-That release cadence is the practical proof of the architecture: every merge to `main` deploys straight to three live stores, and the boundary ratchets, disable-safety suites, and real-Postgres migration gates are what make shipping twice a day survivable.
+That release cadence is the practical proof of the architecture: every merge to `main` deploys straight to five live stores, and the boundary ratchets, disable-safety suites, and real-Postgres migration gates are what make shipping twice a day survivable.
 
 ---
 
-## 🏪 Three live stores, one codebase
+## 🏪 Five live stores, one codebase
 
-The same `main` branch deploys to all three. Each store has its own database, its own theme and its own set of enabled apps; nothing is forked.
+The same `main` branch deploys to all five. Each store has its own database, its own theme and its own set of enabled apps; nothing is forked.
 
 | Store | What it sells | Theme | What it exercises |
 |---|---|---|---|
 | **[dotbooks.store](https://dotbooks.store)** | An independent bookshop: new and rare titles from independent presses, in print, digital and audio | `dot_books` — editorial, type-forward; cream paper, ink black, a single red dot | The book vertical end to end: print-on-demand fulfilment through Bookvault, audiobook editions, digital downloads, the 3D bookstore walkthrough, filters by genre, topic, author, format and length, plant-a-tree at checkout |
 | **[supernatural-shop.com](https://supernatural-shop.com)** | A longevity pantry: magnesium, omega-3, fibre, mushrooms, matcha and pantry foods, chosen on evidence and modestly priced, with plain guides that cite their sources | `supernatural_shop` — light editorial; linen paper, dark ink, a single brass mark | A general catalog on the same storefront contract as the bookshop, with a different theme and app mix: shelf carousels between editorial content, and guides from the journal |
 | **[montenegro-experience.me](https://montenegro-experience.me)** | Hand-picked tours, stays and hidden gems from local hosts across Montenegro | `montenegro` — Mediterranean; sea-tinted paper, Adriatic teal, sandstone accent | The `booking_marketplace` vertical: bookable experiences and stays (each one a catalog product), destination guides, hotels and an events calendar, an operator inbox for enquiries, a search that reads accents, Serbian Cyrillic and typos, bilingual English/Serbian with hreflang |
+| **[beta.irvingsurvival.com](https://beta.irvingsurvival.com)** | Survival and preparedness for households anywhere in the world: plain guides and the gear they point to | `irving_survival` — calm and practical; warm grey, ink and one orange signal, set in Geist | A third general catalog on the same contract, with a supply calculator and a readiness check built into the theme |
+| **[croatia-experience.me](https://croatia-experience.me)** | Experiences, hotels, places and events across Croatia | `croatia` — Adriatic; sea-tinted paper, deep Adriatic blue, terracotta accent | The same booking vertical for a second country, which the theme names (regions, address code, page titles), bilingual English/Croatian; a catalogue of real places and hotels, star ratings from the Ministry of Tourism register, and credited Wikimedia Commons photos |
 
-A fourth store starts the same way these did: `docker compose up`, then one sentence at `/dashboard/start/`.
+A sixth store starts the same way these did: `docker compose up`, then one sentence at `/dashboard/start/`.
 
 ---
 
@@ -276,7 +278,7 @@ What that buys you, concretely:
 
 - **A dashboard of 121 pages** in sections, tabs and cards (Tailwind + shadcn/ui), every page the same full width, in light or dark — with **built-in help for every app**, written for staff and showing what the running code offers — plus a command bar and a chat that talk to Linda.
 - **Orders**: lifecycle from placed to fulfilled, refunds through one service that locks the order (a double-click can never charge twice), partial refunds that re-credit gift cards, points and credit pro rata, shipped notifications with tracking, printable invoices, notes, CSV export, an *awaiting payment* queue, draft orders and quotes that convert on payment.
-- **Catalog and stock**: products, variants, bundles via lookbooks, collections, metafields on anything, a unified asset manager with one uploader for every image, bulk CSV import/export, importers for Shopify, WooCommerce, Magento and BigCommerce; warehouses, stock movements, reservations, low-stock alerts and a 28-day stockout forecast.
+- **Catalog and stock**: products, variants, bundles via lookbooks, collections, metafields on anything, a unified asset manager with one uploader for every image, bulk CSV import/export, importers for Shopify and WooCommerce; warehouses, stock movements, reservations, low-stock alerts and a 28-day stockout forecast.
 - **Pricing and promotions**: a rule engine that stacks predicates (cart total, channel, country, customer group, product) with actions (% off, fixed off, free shipping, gift); coupons; per-market pricing and currency; B2B price lists, quotes and net terms.
 - **Growth**: email campaigns, newsletter with double opt-in and signup popups, abandoned-cart recovery, an affiliate platform with its own portal, payouts and embeddable widgets, a pre-launch mode, drops and raffles, live shopping events.
 - **Channels**: Google Shopping and Ads, Meta, TikTok, Pinterest, Microsoft, Snapchat, Reddit, Amazon Ads and ChatGPT Shopping — feeds, pixels, server-side conversions and campaign reporting — with one overview of coverage, pixel state and ROAS. A multivendor **marketplace** with vendor onboarding, a vendor portal, vendors you edit from the dashboard, vendor orders and payouts. **Dropshipping** through DSers, Zendrop, CJdropshipping and AliExpress.
@@ -341,14 +343,14 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/PLUGIN_DEVELOPMENT.md`](doc
 
 ---
 
-## 🧩 What's in the box: all 97 apps
+## 🧩 What's in the box: all 98 apps
 
-Every shipped capability is a toggleable app, and every app below is described from its own manifest (written at v0.76.0, brought up to date at v0.119.0). The always-current version is **Settings → Apps** in the dashboard; the source of truth for the count is `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`.
+Every shipped capability is a toggleable app, and every app below is described from its own manifest (written at v0.76.0, brought up to date at v0.148.2). The always-current version is **Settings → Apps** in the dashboard; the source of truth for the count is `MORPHEUS_DEFAULT_APPS` in `morph/settings.py`.
 
 > **Apps and plugins are the same thing.** "App" is the word the product uses — in the dashboard, in these docs, and at every seam you touch as an author (`app.py`, `morpheus.app`, `app_registry`). Two things still read "plugin" on purpose: the directory `plugins/installed/` and the base class `MorpheusPlugin`, because renaming them would rewrite roughly two thousand import paths for no user-visible gain. Upgrading an out-of-tree app: [`docs/MIGRATING.md`](docs/MIGRATING.md).
 
 <details open>
-<summary><strong>Commerce core</strong> — 9 apps</summary>
+<summary><strong>Commerce core</strong> — 8 apps</summary>
 
 | App | What it does |
 |---|---|
@@ -418,7 +420,7 @@ Every shipped capability is a toggleable app, and every app below is described f
 </details>
 
 <details>
-<summary><strong>CRM, retention & growth</strong> — 9 apps</summary>
+<summary><strong>CRM, retention & growth</strong> — 8 apps</summary>
 
 | App | What it does |
 |---|---|
@@ -499,7 +501,8 @@ Every shipped capability is a toggleable app, and every app below is described f
 | `notifications_center` | A persistent staff inbox for what needs follow-up: pending RMAs, low stock, failed agent runs, overdue tasks |
 | `workflows` | No-code automation: a trigger, a condition, one or more actions — including "run an agent skill" |
 | `cloudflare` | Cache purge on product and collection changes, DNS integration |
-| `importers` | Idempotent migration from Shopify, WooCommerce, Magento and BigCommerce, plus bulk CSV import and export |
+| `importers` | Idempotent migration from Shopify and WooCommerce, plus bulk CSV import and export |
+| `product_safety` | Shows each product's manufacturer, EU responsible person and safety warnings on its page, as EU product safety rules require |
 | `feature_adoption` | Per-install feature-usage aggregates and an install-health score, with no PII |
 | `feedback` | Staff bug reports with a screen capture and the recent JavaScript errors attached, as tickets under Settings |
 | `release_notes` | Help for every app inside the dashboard (a guide per app next to what the running code offers), About Morpheus OS, and Version & updates |
@@ -601,9 +604,9 @@ Two documents drive the plan, and they deliberately disagree: [`docs/product_roa
 | **Janus, the agent** | v0.83–v0.105 · Oct | Linda as a real agent on Janus: chats she keeps, a model per message with backups, automations on a schedule, runs visible in Observability and the AI-Act export, an interactive chat with Approve / Decline, a shop memory, guardrails on every model call, role-narrowed tools, bug reports |
 | **Agent-ready** | v0.89–v0.96 · Oct | UCP profile to spec, ACP feed with variants, a ChatGPT Shopping feed, WebMCP tools and agent-drivable forms on the storefront, MCP 2026-07-28 on every endpoint, Web Bot Auth verified at the origin, Janus for external agents over MCP and GraphQL |
 | **Verticals & catalogue** | v0.78–v0.114 · Oct | Four dropshipping apps (DSers, Zendrop, CJdropshipping, AliExpress), experiences as catalog products, a travel search that reads what visitors type, categories that include their subcategories, book filters |
-| **Safe deploys, parts 1–2** | v0.118–v0.119 · Oct | A database backup before every migration, a record of each deploy, an honest updates page, and a release gate that refuses migrations the previous version can't run on |
+| **Safe deploys, parts 1–4** | v0.118–v0.121 · Oct | A database backup before every migration, a record of each deploy, an honest updates page, a release gate that refuses migrations the previous version can't run on, a restore command and page that say what a restore would lose, and automatic code rollback when a store doesn't come up |
 
-The full dated record — all 299 entries — is [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md); every deploy is required by CI to add one.
+The full dated record — all 343 entries — is [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md); every deploy is required by CI to add one.
 
 ### Now — Q4 2026
 
@@ -613,7 +616,7 @@ The full dated record — all 299 entries — is [`docs/RELEASE_NOTES.md`](docs/
 | **RBAC `enforce` flip readiness** | in progress | Coverage and GraphQL wiring are done; what remains is operational — provision role bindings, run a week of `log`-mode traffic, confirm zero would-deny warnings, then flip. Deliberately a human decision. |
 | **Agent execution boundaries, remainder** | next up | The SSRF egress gate shipped; still open: a per-run wall-clock at the runtime level, an agent/read-only database role in `core/db_router.py`, and process/container isolation for the sandbox |
 | **SEO 3.0 phase 3** | specified | Audit engine, an issues queue with one-click fixes, the rebuilt SEO dashboard IA |
-| **Safe deploys, parts 3–4** | next up | Parts 1–2 shipped (backup before migrating, deploy records, the migration gate). Next: a restore command and page that say what a restore would lose, then automatic code rollback when a store doesn't come up, with an email |
+| **The commerce engine's second layer** | in progress | A November comparison with Medusa, Saleor and Shopify found models that nothing reads yet: tax categories, coupon scope, B2B price lists, warehouses, partial fulfilment, payment capture, order editing. [`docs/plans/platform-gap-analysis-2026-11.md`](docs/plans/platform-gap-analysis-2026-11.md) lists each gap with its evidence and the release that closes it; tax is first |
 
 ### Next
 
@@ -641,12 +644,12 @@ The full dated record — all 299 entries — is [`docs/RELEASE_NOTES.md`](docs/
 
 A README that only lists wins is a sales page. Here is the honest edge of the thing, because you will find it anyway on day two:
 
-- **This is a 0.x project.** It runs three real stores in production and ships most days, but the version number means what it says.
+- **This is a 0.x project.** It runs five real stores in production and ships most days, but the version number means what it says.
 - **Card payments are wired, not yet battle-tested.** Stripe and PayPal are integrated and gated so a store never offers a method it can't charge, but the reference stores currently sell on cash on delivery and the Stripe card-collection leg has not yet been run against a live Stripe account.
 - **Some surfaces are deeper than others.** Core commerce, the agent layer, security, and SEO have had the most attention. Search Console integration, the site crawler and bulk AI content tooling are specified and not yet built.
 - **A few screens are still ahead of their data.** Keyword tracking, for instance, has a page but nothing yet writes positions into it — it is waiting on the Search Console work.
-- **Some apps are scaffolds.** Four say so in their own help: 3D and AR previews, the feed-style product rails, post-purchase sending, and the storefront stylist chat. They are listed in the catalogue as what they are, and the dashboard shows the same words.
-- **Restoring data is still by hand.** Every update that changes the database is backed up first, and the backup is easy to find, but the restore command and its page are the next release; until then a restore is an operator's job.
+- **Some apps are ahead of their code.** About eighteen do less than their names suggest and say so in their own help, among them 3D and AR previews, the feed-style product rails, post-purchase emails, the storefront stylist chat, drops, the discovery quiz and the customer side of returns. Finishing them is part of the gap analysis.
+- **The engine's second layer is thin.** The money path (reservations, tenders, refunds, the price seam) is solid, but tax categories, scoped coupons, B2B prices, order editing, partial fulfilment and payment capture are modelled before they are wired. The gap analysis names each one and the order they ship in.
 - **RBAC ships in log mode by default.** The capability checks run everywhere and record what they *would* deny; flipping a store to `enforce` is a deliberate per-store step after its role bindings exist. That default is honest, not timid — an enforcement flip with no bindings provisioned would lock out every non-superuser on day one.
 - **It is not open source — yet.** The code is public under the Business Source License 1.1: free to read, evaluate, develop and test; production use needs a commercial licence; each version turns Apache 2.0 four years after it is released. Versions up to v0.76.0 were published under Apache 2.0 and stay that way.
 - **It is opinionated to the point of being bossy.** One AI worker, not many. Everything is an app. Core imports nothing. If you disagree with those, you will be fighting the grain of the codebase rather than riding it.
@@ -769,7 +772,7 @@ The knowledge base is semantically indexed (fastembed `bge-small`, hybrid retrie
 - `/readyz` reports the live version and health, and a smoke workflow confirms production actually converges on the version you pushed.
 - On boot the web container backs the database up before migrating (`manage.py safe_migrate`), and a failed backup stops the boot before anything changes; `manage.py release` refuses a release whose migrations the version before it could not run on.
 - Batch local commits into one deploy. Rapid merges thrash the builder.
-- One push, three stores: each Coolify app points at the same repository with its own database, environment and enabled apps.
+- One push, five stores: each Coolify app points at the same repository with its own database, environment and enabled apps.
 
 Guides: [`docs/deploy-coolify.md`](docs/deploy-coolify.md) · [`docs/deploy-plesk-nginx.md`](docs/deploy-plesk-nginx.md) · recovery procedures in [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md).
 
@@ -803,13 +806,13 @@ Guides: [`docs/deploy-coolify.md`](docs/deploy-coolify.md) · [`docs/deploy-ples
 
 ## ✉ Get in touch
 
-Morpheus is built and run by **Marko Tiosavljevic**, and the three live stores are his proof that it holds up. He reads and answers every message himself.
+Morpheus is built and run by **Marko Tiosavljevic**, and the five live stores are his proof that it holds up. He reads and answers every message himself.
 
 **[marko@morpheus.direct](mailto:marko@morpheus.direct)** · [morpheus.direct](https://morpheus.direct)
 
 Write if you are:
 
-- **A merchant** who wants a store on Morpheus — set up, themed, migrated from Shopify, WooCommerce, Magento or BigCommerce, and run with an AI operator — under a per-store licence, with no share of your sales.
+- **A merchant** who wants a store on Morpheus — set up, themed, migrated from Shopify or WooCommerce, and run with an AI operator — under a per-store licence, with no share of your sales.
 - **An agency or developer** who wants to build on it, ship an app or a theme, or bring a client's store across.
 - **A partner or investor** who sees the same shift to agentic commerce and wants to talk about the road ahead.
 - **Anyone** who found a bug, has a question, or wants a walkthrough of a live store.

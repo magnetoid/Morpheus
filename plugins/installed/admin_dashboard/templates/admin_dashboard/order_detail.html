@@ -125,6 +125,7 @@
           <div class="flex justify-between text-[color:var(--text-muted)]"><span>Tax</span><span>{{ order.tax_total }}</span></div>
           {% for extra in order.extra_lines %}<div class="flex justify-between text-[color:var(--text-muted)]"><span>{{ extra.label }}</span><span>{{ extra.amount }}</span></div>{% endfor %}
           <div class="flex justify-between font-semibold pt-1 border-t border-[color:var(--border)]"><span>Total</span><span>{{ order.total }}</span></div>
+          {% for line in order.tax_included_lines %}<div class="flex justify-between text-xs text-[color:var(--text-muted)]"><span>Includes {{ line.label }}</span><span>{{ line.amount }}</span></div>{% endfor %}
         </div>
       </div>
 

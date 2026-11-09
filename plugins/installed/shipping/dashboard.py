@@ -111,7 +111,6 @@ def _save_config(request) -> None:
             messages.error(request, f'{field.replace("_", " ")}: must be a JSON object.')
             return
         addresses[field] = parsed
-    instance.set_config('tax_shipping', bool(request.POST.get('tax_shipping')))
     instance.set_config('shippo_api_key', (request.POST.get('shippo_api_key') or '').strip())
     instance.set_config('easypost_api_key', (request.POST.get('easypost_api_key') or '').strip())
     for field, val in addresses.items():

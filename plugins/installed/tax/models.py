@@ -6,10 +6,10 @@ Designed to handle three common cases:
    merchant's nominal rate. Smallest setup.
 2. **US sales tax by state**: `TaxRate` per `country=US, region=<state>`.
 3. **EU VAT / OSS**: `TaxRate` per EU country, optionally with category-specific
-   reduced rates via `TaxCategory`.
+   reduced rates via `TaxCategory`, assigned to products by `ProductTaxCategory`.
 
-A future Stripe Tax adapter can replace the local lookup by setting
-`TaxConfiguration.provider='stripe'` and reading rates from the API.
+Several standard rates in one region all apply, in `priority` order; a compound
+rate is charged on the price plus the taxes before it (services.py).
 """
 
 from __future__ import annotations
@@ -23,8 +23,8 @@ from morpheus.app import models
 class TaxCategory(models.Model):
     """Reduced-rate categories (e.g. books, food, children's clothing).
 
-    Products link via `Product.tax_category_code` (string match) so we don't
-    introduce an FK from the catalog plugin into tax. Loose coupling.
+    A product joins one through `ProductTaxCategory`, which this app owns, so
+    the catalog never learns about tax.
     """
 
     code = models.SlugField(primary_key=True, max_length=64)
@@ -117,4 +117,27 @@ class TaxConfiguration(models.Model):
         blank=True,
         help_text='Used when no shipping address is available.',
     )
+    shipping_taxable = models.BooleanField(
+        default=False,
+        db_default=False,
+        help_text="Charge the region's standard rates on the shipping cost too.",
+    )
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class ProductTaxCategory(models.Model):
+    """The tax category a product is sold under. A product with no row is taxed
+    at its region's standard rates."""
+
+    product = models.OneToOneField(
+        'catalog.Product',
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='tax_category_link',
+    )
+    category = models.ForeignKey(
+        TaxCategory, on_delete=models.CASCADE, related_name='product_links'
+    )
+
+    def __str__(self) -> str:
+        return f'{self.product_id} → {self.category_id}'

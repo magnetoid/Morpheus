@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.149.0 — 2026-11-09
+
+**Tax is charged correctly: reduced rates, discounts, shipping and prices that include tax**
+
+- A product can now pay a reduced rate: create a tax category (Books, Food), give it a rate per region, and pick it on the product form. A category with no rate in a region pays that region's standard rates. Until now no category rate could ever apply.
+- Tax is charged on what the shopper pays: each line less its share of the coupons and member discounts. Carts with a discount paid too much tax before. Gift cards, points and store credit still never lower it.
+- Products and variants marked not taxable pay no tax; before, they were taxed anyway.
+- Every standard rate of a region applies, in priority order, and a compound rate is charged on the price plus the taxes before it. Before, only the first rate was charged. Check each store's tax regions: a region with two standard rates now charges both.
+- New switch on the Tax page: charge tax on shipping. It starts off. The old checkbox on the Shipping page did nothing and is gone.
+- New switch: prices include tax. The shopper pays the price as shown. The invoice, order page and order email say how much of it is tax, and the orders export and the purchase sent to analytics report that tax.
+- Linda can create tax categories, put products in them and change these settings, each after your yes.
+
 ## v0.148.2 — 2026-11-09
 
 **seed_croatia keeps every photo when a part fails**

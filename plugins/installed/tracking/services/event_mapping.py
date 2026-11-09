@@ -221,7 +221,12 @@ def purchase(order) -> tuple[str, dict[str, Any]]:
 
     total = getattr(order, 'total', None) or getattr(order, 'grand_total', None)
     shipping = getattr(order, 'shipping_total', None) or getattr(order, 'shipping', None)
-    tax = getattr(order, 'tax_total', None) or getattr(order, 'tax', None)
+    # ``total_tax`` counts tax-inclusive prices too, whose tax_total is 0.
+    tax = (
+        getattr(order, 'total_tax', None)
+        or getattr(order, 'tax_total', None)
+        or getattr(order, 'tax', None)
+    )
     coupon = ''
     if hasattr(order, 'coupon_code'):
         coupon = (order.coupon_code or '').strip()

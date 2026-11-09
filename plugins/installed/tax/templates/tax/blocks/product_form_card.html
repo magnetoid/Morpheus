@@ -1,0 +1,16 @@
+{# "Tax category" card, contributed into the dashboard product form through #}
+{# PRODUCT_FORM_CARDS; the choice is saved by tax's PRODUCT_FORM_SAVED handler. #}
+<div class="card card-padded space-y-2" id="tax-category-card">
+  <h2 class="font-semibold text-sm flex items-center gap-2">
+    <i data-lucide="percent" class="h-4 w-4"></i> Tax category
+  </h2>
+  <input type="hidden" name="tax_category_submitted" value="1">
+  <label class="block text-sm" for="tax-category">
+    <span class="sr-only">Tax category</span>
+    <select name="tax_category" id="tax-category" class="input">
+      <option value="" {% if not tax_category %}selected{% endif %}>Standard rates</option>
+      {% for cat in tax_categories %}<option value="{{ cat.code }}" {% if cat.code == tax_category %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}
+    </select>
+  </label>
+  <p class="text-xs text-[color:var(--text-muted)]">A product in a category pays that category's rate in each region that has one, and the standard rates elsewhere. Rates are set on the <a class="underline" href="{% url 'tax_dashboard:regions' %}">Tax regions</a> page.</p>
+</div>

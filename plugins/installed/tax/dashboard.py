@@ -12,6 +12,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Count
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 
@@ -100,6 +101,8 @@ def regions(request):  # noqa: PLR0912, PLR0915 — flat region+rate dispatch vi
                 _delete_rate(request, rate_id)
         elif kind == 'config':
             _save_config(request)
+        elif kind == 'category':
+            _save_category(request, action)
         return HttpResponseRedirect(request.get_full_path())
 
     edit_kind = (request.GET.get('edit_kind') or '').strip()
@@ -124,7 +127,9 @@ def regions(request):  # noqa: PLR0912, PLR0915 — flat region+rate dispatch vi
             'region_rows': region_rows,
             'regions': region_rows,
             'rate_rows': list(rate_qs.order_by('region', 'priority', 'category')),
-            'categories': list(TaxCategory.objects.all().order_by('name')),
+            'categories': list(
+                TaxCategory.objects.annotate(products=Count('product_links')).order_by('name')
+            ),
             'region_filter': region_filter,
             'edit_region': edit_region,
             'edit_rate': edit_rate,
@@ -140,17 +145,40 @@ def _save_config(request) -> None:
 
     config = TaxConfiguration.objects.first() or TaxConfiguration()
     # Only what compute_tax honours is offered: 'stripe' (Stripe Tax) was never
-    # implemented and taxed exactly like local rates, and prices-include-tax was
-    # saved but never read — both were controls that did nothing.
+    # implemented and taxed exactly like local rates.
     provider = (request.POST.get('provider') or 'local').strip()
     config.provider = provider if provider in {'local', 'none'} else 'local'
     region_id = (request.POST.get('default_region') or '').strip()
     config.default_region_id = region_id or None
+    config.prices_include_tax = bool(request.POST.get('prices_include_tax'))
+    config.shipping_taxable = bool(request.POST.get('shipping_taxable'))
     try:
         config.save()
         messages.success(request, 'Tax settings saved.')
     except Exception as exc:  # noqa: BLE001
         messages.error(request, f'Could not save tax settings: {exc}')
+
+
+def _save_category(request, action: str) -> None:
+    from plugins.installed.tax.services import delete_category, set_category  # noqa: PLC0415
+
+    code = (request.POST.get('code') or '').strip()
+    if action == 'delete':
+        if delete_category(code):
+            messages.success(request, 'Tax category deleted; its products pay standard rates.')
+        else:
+            messages.error(request, 'Tax category not found.')
+        return
+    try:
+        category, created = set_category(
+            code, request.POST.get('name') or '', request.POST.get('description') or ''
+        )
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return
+    messages.success(
+        request, f'Tax category "{category.name}" {"created" if created else "saved"}.'
+    )
 
 
 def _create_rate(request) -> None:

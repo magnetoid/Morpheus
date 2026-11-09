@@ -1509,8 +1509,8 @@ config + enum existed, the class did not). Add the resolution test alongside
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a
 handler that reads `value['tax']`/`value['shipping']` at a priority **below** tax
-(20) / shipping (30) reads **zero**. The live order is: coupon/promo (10) → tax
-(20) → shipping (30) → member discount (40) → **loyalty points (45)** → **store
+(42) / shipping (30) reads **zero**. The live order is: coupon/promo (10) →
+shipping (30) → member discount (40) → tax (42) → **loyalty points (45)** → **store
 credit (46)** → **gift card (50)** → eco_impact (60). A **discount** (reduces
 what's owed, may precede tax) differs from a **tender** (pays down the *final*
 total): gift cards, points and store credit are tenders and MUST cap against
@@ -1520,11 +1520,15 @@ a tender at priority 50 must recompute `total` itself (nothing after it does).
 (Deep-debug #7: the gift-card tender shipped inside `promotions.on_cart_breakdown`
 at priority 10 and capped against the bare subtotal — the customer overpaid the
 tax+shipping and the card balance was stranded. Fixed by moving it to its owner
-`gift_cards.on_cart_breakdown`@50 + loyalty 15→45.) NB tax computes from the
-cart's line items, not from `value['discount']`, so a tender folded into
-`discount` does **not** move the tax base — but don't assume that for a new
-discount type; check `tax/services.py:compute_tax_for_cart`. Guarded by
-`gift_cards/tests/test_breakdown_tender.py`.
+`gift_cards.on_cart_breakdown`@50 + loyalty 15→45.) Tax sits at 42 since v0.149.0,
+after shipping and the member discount, so it can tax shipping and nets each line's
+pro-rata share of `value['discount']` — at 42 that holds merchandise discounts only;
+the tenders fold into `discount` later and never lower the base. A new *discount*
+goes below 42, a new *tender* above it. Prices that include tax put no tax in
+`value['tax']` (every handler after it recomputes `total` from it): the included
+amounts travel in `meta['tax_included']` to the order's `metadata`, and the invoice
+and email print "Includes VAT". Guarded by `gift_cards/tests/test_breakdown_tender.py`
+and `tax/tests/test_cart_tax.py`.
 
 **Convention — `format: password` settings fields are write-only.** In the
 shared dashboard settings-panel renderer

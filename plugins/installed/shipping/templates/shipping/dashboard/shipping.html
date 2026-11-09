@@ -179,14 +179,10 @@
       <i data-lucide="sliders-horizontal" class="h-4 w-4"></i> Carriers &amp; options
     </h2>
     <div class="card card-padded">
-      <p class="text-xs text-[color:var(--text-muted)] mb-3">Live-rate carrier credentials (used by the Shippo / EasyPost rate types) and tax handling for the shipping cost.</p>
+      <p class="text-xs text-[color:var(--text-muted)] mb-3">Live-rate carrier credentials (used by the Shippo / EasyPost rate types). Whether shipping is taxed is set on the Tax page.</p>
       <form method="post" class="space-y-3">
         {% csrf_token %}
         <input type="hidden" name="kind" value="config">
-        <label class="flex items-center gap-2 text-xs">
-          <input type="checkbox" name="tax_shipping" {% if shipping_config.tax_shipping %}checked{% endif %}>
-          <span>Apply tax to shipping cost</span>
-        </label>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label class="block text-xs">
             <span class="text-[color:var(--text-muted)]">Shippo · API key</span>

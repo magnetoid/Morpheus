@@ -32,12 +32,75 @@
             {% for reg in regions %}<option value="{{ reg.id }}" {% if tax_config.default_region_id == reg.id %}selected{% endif %}>{{ reg.name }} ({{ reg.country }}{% if reg.region %}-{{ reg.region }}{% endif %})</option>{% endfor %}
           </select>
         </label>
+        <label class="flex items-start gap-2 text-xs md:col-span-3">
+          <input type="checkbox" name="prices_include_tax" class="mt-0.5" {% if tax_config.prices_include_tax %}checked{% endif %}>
+          <span><span class="font-medium">Prices include tax.</span> <span class="text-[color:var(--text-muted)]">Shoppers pay the prices as shown, and invoices say how much of each price is tax (the usual way in the EU). Off: tax is added at checkout.</span></span>
+        </label>
+        <label class="flex items-start gap-2 text-xs md:col-span-3">
+          <input type="checkbox" name="shipping_taxable" class="mt-0.5" {% if tax_config.shipping_taxable %}checked{% endif %}>
+          <span><span class="font-medium">Charge tax on shipping.</span> <span class="text-[color:var(--text-muted)]">The shipping cost pays the region's standard rates.</span></span>
+        </label>
         <div class="md:col-span-3 flex justify-end">
           <button type="submit" class="btn btn-primary">Save settings</button>
         </div>
       </form>
-      <p class="text-xs text-[color:var(--text-muted)] mt-2">Checkout uses these to decide whether and how to apply the rates below.</p>
+      <p class="text-xs text-[color:var(--text-muted)] mt-2">Checkout uses these to decide whether and how to apply the rates below. Tax is charged on what the shopper pays after discounts; gift cards, points and store credit do not lower it.</p>
     </div>
+  </section>
+
+  {# ───────────────────────── Categories ───────────────────────── #}
+  <section class="space-y-3" id="categories">
+    <h2 class="text-base font-semibold flex items-center gap-2">
+      <i data-lucide="tags" class="h-4 w-4"></i> Categories
+    </h2>
+    <div class="card card-padded">
+      <p class="text-xs text-[color:var(--text-muted)] mb-3">For products taxed at another rate, such as books or food. Give a category a rate in a region below, then pick the category on each product's page. Where a region has no rate for the category, its products pay the standard rates.</p>
+      <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        {% csrf_token %}
+        <input type="hidden" name="kind" value="category">
+        <input type="hidden" name="action" value="save">
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Name</span>
+          <input type="text" name="name" required maxlength="120"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm"
+                 placeholder="e.g. Books">
+        </label>
+        <label class="block text-xs md:col-span-2">
+          <span class="text-[color:var(--text-muted)]">Description (optional)</span>
+          <input type="text" name="description"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm"
+                 placeholder="e.g. Printed books and e-books">
+        </label>
+        <div class="md:col-span-3 flex justify-end">
+          <button type="submit" class="btn btn-primary">Add category</button>
+        </div>
+      </form>
+    </div>
+    {% if categories %}
+    <div class="card overflow-hidden">
+      <table class="morph-table morph-table-zebra">
+        <thead><tr><th>Name</th><th>Code</th><th>Products</th><th class="text-right">Actions</th></tr></thead>
+        <tbody>
+        {% for cat in categories %}
+          <tr>
+            <td class="font-medium">{{ cat.name }}{% if cat.description %}<div class="text-xs text-[color:var(--text-muted)]">{{ cat.description }}</div>{% endif %}</td>
+            <td><code class="font-mono text-xs">{{ cat.code }}</code></td>
+            <td>{{ cat.products }}</td>
+            <td class="text-right whitespace-nowrap">
+              <form method="post" class="inline">{% csrf_token %}
+                <input type="hidden" name="kind" value="category">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="code" value="{{ cat.code }}">
+                <button type="submit" class="btn btn-ghost text-xs text-red-600"
+                        data-confirm="Delete the category {{ cat.name }}? Its rates go with it, and its products pay the standard rates.">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
   </section>
 
   {# ───────────────────────── Regions ───────────────────────── #}
