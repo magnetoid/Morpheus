@@ -54,6 +54,10 @@ SEED_ASSETS = Path(seed_croatia.SEED_DIR)
 
 
 FREE_LICENCE = re.compile(r'^(CC0|Public domain|CC BY(-SA)? \d\.\d( [a-z]{2})?)$')
+# A public-domain photo has no licence page, so its row names no licence_url.
+PUBLIC_DOMAIN_PLACE = next(
+    p for p in data.PLACES if p.get('photo') and 'licence_url' not in p['photo']
+)
 
 
 def _jpeg(colour=(20, 120, 200)) -> bytes:
@@ -324,6 +328,113 @@ class SeedPhotoTests(_SeedFixture, TestCase):
             self.assertIn('mx-photo-credit', body, url)
             self.assertIn(escape(photo['author']), body, url)
             self.assertIn(f'href="{escape(photo["source_url"])}"', body, url)
+
+    def test_a_public_domain_photo_is_credited_without_a_licence_link(self):
+        # Ten photos are in the public domain, which has no licence page: the live run
+        # raised KeyError on the first of them and rolled back the whole part.
+        row = PUBLIC_DOMAIN_PLACE
+        with mock.patch.object(data, 'PLACES', [row]):
+            self._run()
+        place = Place.objects.get(slug=row['slug'])
+        self.assertEqual(place.photo_credit['licence'], row['photo']['licence'])
+        self.assertEqual(place.photo_credit['licence_url'], '')
+        body = self.client.get(f'/places/{row["slug"]}/').content.decode()
+        self.assertIn(escape(row['photo']['author']), body)
+        self.assertNotIn('rel="license', body)
+
+    def test_a_part_that_fails_keeps_the_covers_it_had(self):
+        self.download.return_value = None
+        self._run()
+        place = Place.objects.get(slug=data.PLACES[0]['slug'])
+        service = BookableService.objects.get(slug=data.EXPERIENCES[0]['slug'])
+        (product_cover,) = service.product.images.all()
+        covers = [place.image.name, service.image.name, product_cover.image.name]
+
+        # In each part the first row gets its photo and the second one's download blows up.
+        for part in ('places', 'experiences'):
+            self.download.side_effect = [self.photo, RuntimeError('Commons went away')]
+            with self.captureOnCommitCallbacks(execute=True), self.assertRaises(RuntimeError):
+                call_command('seed_croatia', only=part, stdout=StringIO())
+        place.refresh_from_db()
+        service.refresh_from_db()
+        (still,) = service.product.images.all()
+        self.assertEqual([place.image.name, service.image.name, still.image.name], covers)
+        for name in covers:
+            self.assertTrue(place.image.storage.exists(name), f'{name}: the page shows no photo')
+
+    def test_a_replaced_cover_is_deleted_once_its_part_commits(self):
+        self.download.return_value = None
+        self._run()
+        place = Place.objects.get(slug=data.PLACES[0]['slug'])
+        service = BookableService.objects.get(slug=data.EXPERIENCES[0]['slug'])
+        (product_cover,) = service.product.images.all()
+        old = [place.image.name, service.image.name, product_cover.image.name]
+
+        self.download.return_value = self.photo
+        with self.captureOnCommitCallbacks(execute=True):
+            self._run()
+        storage = place.image.storage
+        for name in old:
+            self.assertFalse(storage.exists(name), name)
+        (copy,) = service.product.images.all()
+        self.assertEqual(self._bytes(copy.image), self.photo)
+
+
+def _response(status=200, kind='image/jpeg', content=b'jpeg', **headers):
+    return mock.Mock(status_code=status, headers={'Content-Type': kind, **headers}, content=content)
+
+
+class CommonsDownloadTests(SimpleTestCase):
+    """Commons answers a burst with 429, so downloads are paced and wait out a refusal."""
+
+    URL = seed_croatia.PHOTO_HOST + 'wikipedia/commons/thumb/a/ab/Pula.jpg/1280px-Pula.jpg'
+
+    def setUp(self):
+        clock = mock.patch.dict(seed_croatia._last_request, at=0.0)
+        clock.start()
+        self.addCleanup(clock.stop)
+        for name in ('sleep', 'monotonic'):
+            patcher = mock.patch.object(seed_croatia.time, name)
+            self.addCleanup(patcher.stop)
+            setattr(self, name, patcher.start())
+        self.monotonic.return_value = 1000.0
+        get = mock.patch('core.net.outbound_request')
+        self.addCleanup(get.stop)
+        self.get = get.start()
+
+    def _waits(self) -> list[float]:
+        return [c.args[0] for c in self.sleep.call_args_list]
+
+    def test_downloads_go_out_two_seconds_apart(self):
+        self.get.return_value = _response()
+        seed_croatia._download(self.URL)
+        self.assertEqual(self._waits(), [])
+        self.monotonic.return_value = 1000.5
+        self.assertEqual(seed_croatia._download(self.URL), b'jpeg')
+        self.assertEqual(self._waits(), [1.5])
+
+    def test_a_refusal_is_waited_out(self):
+        self.get.side_effect = [_response(429, 'text/html', **{'Retry-After': '10'}), _response()]
+        self.assertEqual(seed_croatia._download(self.URL), b'jpeg')
+        self.assertIn(20, self._waits())
+        self.assertEqual(self.get.call_count, 2)
+
+    def test_a_long_retry_after_is_capped_and_the_last_refusal_gives_up(self):
+        self.get.return_value = _response(429, 'text/html', **{'Retry-After': '3600'})
+        self.assertIsNone(seed_croatia._download(self.URL))
+        self.assertEqual(self.get.call_count, len(seed_croatia.PHOTO_RETRY_WAITS) + 1)
+        self.assertEqual(max(self._waits()), seed_croatia.PHOTO_MAX_WAIT_S)
+
+    def test_it_says_who_is_asking(self):
+        self.get.return_value = _response()
+        seed_croatia._download(self.URL)
+        agent = self.get.call_args.kwargs['headers']['User-Agent']
+        self.assertTrue(agent.startswith(seed_croatia.PHOTO_USER_AGENT), agent)
+        self.assertIn('://', agent.removeprefix(seed_croatia.PHOTO_USER_AGENT))
+
+    def test_another_host_is_never_asked(self):
+        self.assertIsNone(seed_croatia._download('https://example.com/a.jpg'))
+        self.get.assert_not_called()
 
 
 class HotelWithoutRoomsTests(TestCase):
