@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.148.0 — 2026-11-09
+
+**Digital purchases arrive at once; audiobooks narrated by ElevenLabs, Studio or Qwen**
+
+- A digital item downloads the moment the order is paid by card, or as soon as an order paid on delivery or by bank transfer is placed. It never waits for a shipment, and an order of downloads only offers no fulfilment on the dashboard.
+- Every order page shows a Download button (and a player for audiobooks) next to its digital items, in all five themes; the account's Library lists every digital purchase with its state.
+- The order history in the customer account showed no orders for anyone: it sorted on a date field orders do not have. It lists them again, with their dates.
+- Audiobooks: choose ElevenLabs, ElevenLabs Studio (a project you can publish to ElevenReader) or Qwen TTS per book, make a short sample before the whole book, and follow the progress and any error on the product card. A long book is narrated in pieces that resume after a failure.
+- Only the book's PDF is narrated, never the product description, and the full recording is private: buyers get it from their Library.
+- Linda can check a book's narration (audiobooks.status) and start one with your yes (audiobooks.generate).
+
 ## v0.147.0 — 2026-11-08
 
 **Croatia: hotel stars from the official register, and real photos with their credits**

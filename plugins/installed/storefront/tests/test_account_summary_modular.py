@@ -44,7 +44,7 @@ class AccountSummaryModularityTests(TestCase):
         user = get_user_model().objects.create_user(username='nodata', password='x')
         s = _account_summary(user)
         self.assertNotIn('gift_card_count', s)
-        self.assertNotIn('download_count', s)
+        self.assertNotIn('library_count', s)
 
     def test_gift_cards_tile_contributed_end_to_end(self):
         # GiftCard present → the gift_cards subscriber folds the tile in via the hook.

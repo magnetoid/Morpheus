@@ -605,6 +605,20 @@ class MorpheusEvents:
     CUSTOMER_ANONYMISE = 'customer.anonymise'  # fire
     CART_CALCULATE_TOTAL = 'cart.calculate_total'  # DEPRECATED — use CART_CALCULATE_BREAKDOWN
     ACCOUNT_SUMMARY_FIELDS = 'account.summary_fields'  # filter
+    # DIGITAL_DELIVERY_FILE — filter, value=FieldFile|None, kwargs: order_item,
+    #   variant (ProductVariant or None), product. The file a digital order line
+    #   delivers: digital_products passes the variant's file, else the product's,
+    #   and an app whose edition keeps its file elsewhere answers for its own
+    #   variants (audiobooks returns the narration). The library page, the emailed
+    #   links and the file view all read it, so a disabled app's edition delivers
+    #   nothing instead of a file nobody can update.
+    DIGITAL_DELIVERY_FILE = 'digital.delivery_file'  # filter
+    # ORDER_LINE_DELIVERY — filter, value=None, kwargs: order_item. How one order
+    #   line reaches its buyer when nothing is shipped, for the order pages
+    #   ({% order_line_delivery %}): a dict with state ('ready' | 'waiting' |
+    #   'preparing'), state_label, kind ('audio' | 'file'), file_url and listen_url.
+    #   digital_products answers for digital lines; None for goods that ship.
+    ORDER_LINE_DELIVERY = 'order.line_delivery'  # filter
     CUSTOMER_DETAIL_PANELS = 'customer.detail_panels'  # filter
     # CONTACTS_LEADS — filter, value=None, kwargs: search (str), request. The
     #   dashboard's Contacts list shows accounts; its Leads tab asks here for the

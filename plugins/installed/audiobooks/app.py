@@ -2,7 +2,8 @@
 
 Adds an audiobook EDITION to a book as a real, purchasable digital
 ``catalog.ProductVariant``, attaches the narration audio + a modal player to it,
-and generates the narration with ElevenLabs. Requires book_product;
+and narrates the book's PDF with ElevenLabs, ElevenLabs Studio (ready for
+ElevenReader) or Qwen TTS (services.py). Requires book_product;
 disable it and the player + generation + settings vanish while the variant stays
 a plain digital edition. See docs/plans/audiobooks-2026-06.md.
 """
@@ -21,8 +22,8 @@ class AudiobooksPlugin(Plugin):
     version = '0.1.0'
     description = (
         'Audiobook editions for books — a priced digital variant with a modal '
-        'player on the product page, plus ElevenLabs narration. Requires '
-        'book_product.'
+        'player on the product page, narrated from the book PDF with ElevenLabs, '
+        'ElevenLabs Studio or Qwen TTS. Requires book_product.'
     )
     requires = ['book_product']
     has_models = True
@@ -33,6 +34,9 @@ class AudiobooksPlugin(Plugin):
         # show the card.
         self.register_hook(events.PRODUCT_FORM_CARDS, self.on_product_form_cards, priority=50)
         self.register_hook(events.PRODUCT_FORM_SAVED, self.on_product_form_saved, priority=50)
+        # The buyer of an audiobook edition gets its narration (digital_products'
+        # library, order pages and emailed links read this).
+        self.register_hook(events.DIGITAL_DELIVERY_FILE, self.on_delivery_file, priority=50)
         # ElevenLabs narration: the dashboard "Generate" button enqueues a task.
         self.register_urls(
             'plugins.installed.audiobooks.urls',
@@ -52,13 +56,32 @@ class AudiobooksPlugin(Plugin):
             ab = Audiobook.for_product(product)
         except Exception:  # noqa: BLE001
             ab = None
+        from plugins.installed.audiobooks.narrators import QWEN_VOICES
+        from plugins.installed.audiobooks.services import _config
+
+        cfg = _config()
         value.append(
             {
                 'template': 'audiobooks/blocks/product_form_card.html',
-                'context': {'audiobook': ab},
+                'context': {
+                    'audiobook': ab,
+                    'store_provider': cfg['provider'],
+                    'qwen_voices': QWEN_VOICES,
+                },
                 'order': 45,
             }
         )
+        return value
+
+    def on_delivery_file(self, value, variant=None, **kwargs):
+        """An audiobook edition delivers its narration once there is one."""
+        if variant is None or getattr(variant, 'variant_type', '') != 'audiobook':
+            return value
+        from plugins.installed.audiobooks.models import Audiobook
+
+        audiobook = Audiobook.objects.filter(variant=variant).first()
+        if audiobook is not None and audiobook.is_ready:
+            return audiobook.audio_file
         return value
 
     def on_product_form_saved(self, product=None, post=None, files=None, **kwargs):
@@ -87,6 +110,10 @@ class AudiobooksPlugin(Plugin):
                 variant.save(update_fields=['price'])
 
             ab.narrator = (post.get('audiobook_narrator') or '')[:200]
+            provider = post.get('audiobook_provider', '')
+            if provider in dict(ab.PROVIDER_CHOICES):
+                ab.provider = provider
+            ab.voice = (post.get('audiobook_voice') or '').strip()[:80]
             files = files or {}
             if files.get('audiobook_audio'):
                 ab.audio_file = files['audiobook_audio']
@@ -103,6 +130,14 @@ class AudiobooksPlugin(Plugin):
             logging.getLogger('morpheus.audiobooks').warning(
                 'audiobook product-form save failed: %s', exc, exc_info=True
             )
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.audiobooks.agent_tools import (
+            audiobooks_generate_tool,
+            audiobooks_status_tool,
+        )
+
+        return [audiobooks_status_tool, audiobooks_generate_tool]
 
     def contribute_storefront_blocks(self) -> list:
         # PDP "Listen to a sample" modal player — self-gates on a ready audiobook
@@ -121,7 +156,7 @@ class AudiobooksPlugin(Plugin):
         # the settings surface redacts it. Disabling the plugin removes the panel.
         return SettingsPanel(
             label='Audiobooks',
-            description='ElevenLabs narration + audiobook-edition defaults.',
+            description='Narration services and voices for audiobook editions.',
             schema=self.get_config_schema(),
             category='general',
         )
@@ -146,7 +181,29 @@ class AudiobooksPlugin(Plugin):
                 'elevenlabs_model': {
                     'type': 'string',
                     'default': 'eleven_multilingual_v2',
-                    'title': 'Model',
+                    'title': 'ElevenLabs model',
+                },
+                'narration_provider': {
+                    'type': 'string',
+                    'enum': ['elevenlabs', 'studio', 'qwen'],
+                    'default': 'elevenlabs',
+                    'title': 'Narration service',
+                    'description': (
+                        'Used when a book does not pick its own. elevenlabs: ElevenLabs '
+                        'text-to-speech. studio: an ElevenLabs Studio project you can publish '
+                        'to ElevenReader. qwen: Qwen TTS, with the Qwen key from Settings → AI.'
+                    ),
+                },
+                'qwen_voice': {
+                    'type': 'string',
+                    'default': 'Jennifer',
+                    'title': 'Qwen voice',
+                    'description': 'A Qwen TTS voice name, such as Jennifer, Ryan, Cherry or Ethan.',
+                },
+                'qwen_model': {
+                    'type': 'string',
+                    'default': 'qwen3-tts-flash',
+                    'title': 'Qwen TTS model',
                 },
             },
         }

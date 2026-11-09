@@ -1,10 +1,11 @@
 """Digital Products plugin manifest.
 
-Wires download fulfilment for `product_type == 'digital'` items:
+Wires download delivery for digital order lines (library.py has the rule):
 
-  * On `events.ORDER_PAID`, create a ``DownloadToken`` for every digital
-    order line and fire the ``digital.tokens_issued`` event so the email
-    layer can mail the customer.
+  * When an order is delivered (paid; placed to be paid later; fulfilled), create a
+    ``DownloadToken`` for every digital line and fire ``digital.tokens_issued`` so
+    the email layer mails the links.
+  * Answers ``ORDER_LINE_DELIVERY`` so the order pages show each line's download.
   * Exposes ``/digital/download/<token>/`` — token-protected file serve
     with expiry + download-count limits.
   * Configurable defaults via the schema panel: token TTL (hours) and
@@ -48,14 +49,19 @@ class DigitalProductsPlugin(Plugin):
         )
         self.register_celery_tasks('plugins.installed.digital_products.tasks')
         self.register_hook(events.ORDER_PAID, self.on_order_paid, priority=80)
-        # Contribute the customer's active-download count into the account
-        # summary — only while enabled, so disabling the plugin removes the
-        # Downloads tile (ADR 0013) instead of storefront hard-coding the query.
+        # An order paid later (cash on delivery, bank transfer) delivers when placed.
+        self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
+        # Fulfilling or shipping an order delivers its digital lines (library.py).
+        self.register_hook(events.ORDER_FULFILLED, self.on_order_paid, priority=80)
+        # Contribute the size of the customer's library into the account summary —
+        # only while enabled, so disabling the plugin removes the Library tile
+        # (ADR 0013) instead of storefront hard-coding the query.
         self.register_hook(events.ACCOUNT_SUMMARY_FIELDS, self.on_account_summary, priority=40)
+        self.register_hook(events.ORDER_LINE_DELIVERY, self.on_line_delivery, priority=50)
         self._register_beat_schedule()
 
     def contribute_storefront_blocks(self) -> list:
-        # Account-home tile → /account/downloads/. Lives with the plugin so a
+        # Account-home tile → /account/downloads/ (the library). Lives with the plugin so a
         # disabled plugin drops the tile (registry-gated contribution).
         return [
             StorefrontBlock(
@@ -65,26 +71,48 @@ class DigitalProductsPlugin(Plugin):
             ),
         ]
 
+    def on_line_delivery(self, value, order_item=None, **kwargs):
+        if order_item is None:
+            return value
+        try:
+            from plugins.installed.digital_products.library import line_delivery
+
+            return line_delivery(order_item) or value
+        except Exception as exc:  # noqa: BLE001 — an order page must still render
+            logger.warning('order line delivery failed: %s', exc, exc_info=True)
+            return value
+
+    def on_order_placed(self, order, **kwargs) -> None:
+        """ORDER_PLACED fires inside checkout's transaction: issue the links once it
+        commits, so a rolled-back checkout mails nothing and a failure here cannot
+        abort the order."""
+        from django.db import transaction
+
+        order_id = order.pk
+
+        def issue():
+            from plugins.installed.orders.models import Order
+
+            placed = Order.objects.filter(pk=order_id).first()
+            if placed is not None:
+                self.on_order_paid(placed)
+
+        transaction.on_commit(issue)
+
     def on_account_summary(self, value, user=None, **kwargs):
-        """Fold this customer's active download count into the account summary.
+        """Fold the size of this customer's library into the account summary.
         Mutate the dict + return it; fail-soft — never break the account page."""
         if user is None:
             return value
         try:
-            from django.utils import timezone
+            from plugins.installed.digital_products.library import count
 
-            from plugins.installed.digital_products.models import DownloadToken
-
-            count = DownloadToken.objects.filter(
-                order__customer=user,
-                expires_at__gt=timezone.now(),
-                revoked_at__isnull=True,
-            ).count()
-            if count:
-                value['download_count'] = count
+            n = count(user)
+            if n:
+                value['library_count'] = n
         except Exception as exc:  # noqa: BLE001
             logging.getLogger('morpheus.digital_products').warning(
-                'account_summary download fold failed: %s', exc, exc_info=True
+                'account_summary library fold failed: %s', exc, exc_info=True
             )
         return value
 
@@ -134,64 +162,50 @@ class DigitalProductsPlugin(Plugin):
         )
 
     def on_order_paid(self, order, **kwargs) -> None:
-        """Mint DownloadTokens for each digital line on a paid order, fire
-        the ``digital.tokens_issued`` event so the email layer ships them.
+        """Mint a DownloadToken for each delivered digital line that has a file, and
+        fire ``digital.tokens_issued`` so the email layer sends the links.
+
+        Runs on payment, on placing an order paid later and on fulfilment
+        (``library.is_delivered``). Idempotent per line:
+        a line that already has a link gets none, so a second payment or a fulfil
+        after payment sends nothing twice, while an audiobook narrated after the
+        payment gets its link on the next delivery event.
         """
         from datetime import timedelta
         from django.utils import timezone
+        from plugins.installed.digital_products.library import (
+            delivery_file,
+            is_delivered,
+            is_digital,
+        )
         from plugins.installed.digital_products.models import DownloadToken
 
-        # Idempotent: ORDER_PAID can fire more than once (a manual "mark paid"
-        # after a gateway payment, a second successful transaction) and this used
-        # to mint a fresh set of tokens + send a duplicate download email each
-        # time. If this order already has tokens, do nothing.
-        if DownloadToken.objects.filter(order=order).exists():
+        if not is_delivered(order):
             return
-
         cfg = self.get_config()
         ttl_hours = int(cfg.get('token_ttl_hours', 168) or 168)
         max_dl = int(cfg.get('max_downloads_per_token', 5) or 5)
         expires_at = timezone.now() + timedelta(hours=ttl_hours)
 
+        done = set(
+            DownloadToken.objects.filter(order=order).values_list('order_item_id', flat=True)
+        )
         tokens = []
-        for item in order.items.all():
-            product = getattr(item, 'product', None)
-            if product is None:
+        for item in order.items.select_related('product', 'variant'):
+            product = item.product
+            if product is None or item.pk in done:
                 continue
-            variant = getattr(item, 'variant', None)
-
-            # Resolve the actual file to deliver. Variant-level file wins
-            # (lets a single product sell PDF + EPUB + MP3 as separate
-            # variants); falls back to the product-level digital_file
-            # (single-SKU digital products).
-            variant_is_digital = bool(
-                variant and getattr(variant, 'variant_type', '') in ('digital', 'audiobook')
-            )
-            variant_has_file = bool(variant and getattr(variant, 'digital_file', None))
-            product_has_file = bool(getattr(product, 'digital_file', None))
-
-            # Issue a token when there's actually a file to deliver:
-            #   - product_type='digital' + product.digital_file set, OR
-            #   - the ordered variant is variant_type='digital' + has its
-            #     own digital_file (most common case for multi-format books).
-            ptype = getattr(product, 'product_type', '')
-            if variant_is_digital and variant_has_file:
-                # variant-level digital — fine regardless of product_type
-                pass
-            elif ptype == 'digital' and product_has_file:
-                # single-SKU digital — legacy / simple case
-                pass
-            else:
+            if not is_digital(item) or not delivery_file(item):
                 continue
-
-            tok = DownloadToken.objects.create(
-                order=order,
-                order_item=item,
-                product=product,
-                expires_at=expires_at,
-                max_downloads=max_dl,
+            tokens.append(
+                DownloadToken.objects.create(
+                    order=order,
+                    order_item=item,
+                    product=product,
+                    expires_at=expires_at,
+                    max_downloads=max_dl,
+                )
             )
-            tokens.append(tok)
 
         if not tokens:
             return

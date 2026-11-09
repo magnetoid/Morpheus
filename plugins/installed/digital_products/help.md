@@ -1,15 +1,20 @@
 ---
-summary: Delivers a digital product's file to the buyer automatically once their order is paid.
+summary: Delivers digital products to the buyer at once and lists them in the buyer's library and order pages.
 ---
 
 ## What it's for
 
-This app delivers a product's digital file to the buyer once their order is paid — automatically, with no staff action needed. It emails the buyer a link, and the same links are listed on their account page. A link stops working after it expires or has been downloaded too many times.
+This app hands a digital product's file to the buyer with no staff action. A buyer paying by card gets the download the moment the payment goes through. An order paid later, by cash on delivery or bank transfer, gets it as soon as it is placed. The buyer is emailed a link, each order page shows a Download button next to the item, and the account's Library lists every digital purchase with its state. An audiobook edition plays right there in the Library.
 
 ## Set it up
 
-Set [](field:digital_products.token_ttl_hours) to control how many hours a download link stays valid, and [](field:digital_products.max_downloads_per_token) to control how many times it can be used, in [Settings](settings:digital_products).
+Set [](field:digital_products.token_ttl_hours) to control how many hours an emailed link stays valid, and [](field:digital_products.max_downloads_per_token) to control how many times it can be used, in [Settings](settings:digital_products). The Library has no such limits: a signed-in buyer can download their purchase whenever they like.
+
+## Common tasks
+
+- Look at an order on the dashboard to see each digital line's state: download ready, waiting for payment, or being prepared.
+- Mark an order fulfilled or shipped to deliver a digital item that was still waiting for payment.
 
 ## Good to know
 
-A link is created automatically as soon as an order with a digital product is marked paid, and the buyer is emailed it right away. There is currently no dashboard screen for staff to see which links have been issued or to revoke one — a buyer can always find their own active links on their account's downloads page.
+A digital item never needs a shipment or a tracking number, and an order with nothing but downloads offers no fulfilment at all. A cancelled or refunded order delivers nothing. An item shows as being prepared while its file is missing, such as an audiobook whose narration is not finished; it becomes downloadable the moment the file exists. A guest checkout has no Library, so a guest uses the emailed link.

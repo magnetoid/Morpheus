@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import tempfile
 from decimal import Decimal
-from unittest import mock
 
 from django.test import TestCase, override_settings
 from djmoney.money import Money
@@ -188,65 +187,8 @@ class StorefrontPlayerTests(TestCase):
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
-class GenerationTests(TestCase):
-    """ElevenLabs generation (HTTP mocked — no real API key needed)."""
-
-    def _audiobook(self):
-        from plugins.installed.audiobooks.models import Audiobook
-        from plugins.installed.book_product.models import BookProduct
-        from plugins.installed.catalog.models import Product, ProductVariant
-
-        product = Product.objects.create(
-            name='A Book',
-            slug='ab-gen',
-            sku='ABG-1',
-            status='active',
-            price=Money(Decimal('9.99'), 'USD'),
-        )
-        BookProduct.objects.create(product=product, author='An Author', synopsis='A short tale.')
-        variant = ProductVariant.objects.create(
-            product=product,
-            name='Audiobook',
-            sku='ABG-1-A',
-            variant_type='digital',
-            requires_shipping=False,
-        )
-        return Audiobook.objects.create(variant=variant, status='none')
-
-    @mock.patch(
-        'plugins.installed.audiobooks.services._config',
-        return_value={'api_key': 'k', 'voice_id': 'v', 'model': 'eleven_multilingual_v2'},
-    )
-    @mock.patch('plugins.installed.audiobooks.services._tts', return_value=b'FAKE_MP3_BYTES')
-    def test_generate_success_sets_ready(self, _tts, _cfg):
-        from plugins.installed.audiobooks.services import generate
-
-        ab = self._audiobook()
-        result = generate(ab)
-        self.assertTrue(result['ok'], result)
-        ab.refresh_from_db()
-        self.assertEqual(ab.status, 'ready')
-        self.assertEqual(ab.source, 'elevenlabs')
-        self.assertTrue(ab.audio_file)
-        self.assertTrue(_tts.called)
-
-    @mock.patch(
-        'plugins.installed.audiobooks.services._config',
-        return_value={'api_key': '', 'voice_id': ''},
-    )
-    def test_generate_without_key_fails(self, _cfg):
-        from plugins.installed.audiobooks.services import generate
-
-        ab = self._audiobook()
-        result = generate(ab)
-        self.assertFalse(result['ok'])
-        ab.refresh_from_db()
-        self.assertEqual(ab.status, 'failed')
-
-
-@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
 class PdfNarrationSourceTests(TestCase):
-    """source_text() narrates the book PDF when present, else the blurb."""
+    """source_text() reads the book PDF, and only the book PDF."""
 
     def _audiobook(self, *, synopsis=''):
         from plugins.installed.audiobooks.models import Audiobook
@@ -295,9 +237,10 @@ class PdfNarrationSourceTests(TestCase):
         self.assertIn('real book body text', text)
         self.assertNotIn('Marketing blurb', text)
 
-    def test_source_text_falls_back_to_blurb_without_pdf(self):
+    def test_no_pdf_means_nothing_to_narrate(self):
+        """The marketing copy is never narrated: a buyer who pays for an audiobook
+        must not get a recording of the product description."""
         from plugins.installed.audiobooks.services import source_text
 
         ab = self._audiobook(synopsis='A short tale.')
-        text = source_text(ab)
-        self.assertIn('short tale', text)
+        self.assertEqual(source_text(ab), '')

@@ -42,20 +42,13 @@ def download(request, token: str) -> HttpResponse:
     if tok.downloads_used >= tok.max_downloads:
         return _refuse('Download limit reached.', status=410)
 
-    # Variant-level file wins (multi-format products: PDF / EPUB / MP3
-    # as separate variants). Falls back to product-level digital_file
-    # for single-SKU digital products.
-    variant = getattr(tok.order_item, 'variant', None) if tok.order_item_id else None
-    digital = None
-    if variant is not None:
-        digital = getattr(variant, 'digital_file', None) or None
+    # The same file the library serves: the variant's, the product's, or the one
+    # the edition's own app answers (an audiobook's narration).
+    from plugins.installed.digital_products.library import delivery_file  # noqa: PLC0415
+
+    digital = delivery_file(tok.order_item) if tok.order_item_id else None
     if not digital:
-        digital = getattr(tok.product, 'digital_file', None) or None
-    if not digital:
-        logger.warning(
-            'digital token %s — neither variant nor product carries a file',
-            tok.id,
-        )
+        logger.warning('digital token %s — the order line delivers no file', tok.id)
         raise Http404('File missing')
 
     # Atomically claim a download slot: increment only while still under the

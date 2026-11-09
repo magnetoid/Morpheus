@@ -137,6 +137,19 @@ def orders_list(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _line_ships(item) -> bool:
+    """Whether an order line is a parcel. Catalog's digital types never are, whatever
+    their shipping box says; anything else follows its variant's or product's flag."""
+    variant = item.variant if item.variant_id else None
+    product = item.product
+    if variant is not None and variant.variant_type in ('digital', 'audiobook'):
+        return False
+    if product is not None and product.product_type == 'digital':
+        return False
+    holder = variant or product
+    return holder is None or bool(getattr(holder, 'requires_shipping', True))
+
+
 @staff_member_required
 def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
     order = None
@@ -145,7 +158,7 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
 
         order = (
             Order.objects.select_related('customer', 'channel')
-            .prefetch_related('items', 'items__product', 'events', 'fulfillments')
+            .prefetch_related('items', 'items__product', 'items__variant', 'events', 'fulfillments')
             .get(order_number=order_number)
         )
     except Exception:  # noqa: BLE001
@@ -197,6 +210,10 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
             detail_panels = []
     cur_status = getattr(order, 'status', '') if order else ''
     cur_idx = happy_path.index(cur_status) if cur_status in happy_path else -1
+    # An order of downloads only has nothing to fulfil or track: its lines reach
+    # the buyer by themselves (the digital_products app), so the page offers no
+    # fulfilment. Until v0.148.0 the owner delivered a PDF by "shipping" it.
+    nothing_to_ship = order is not None and not any(_line_ships(it) for it in order.items.all())
     status_steps = [
         {
             'key': k,
@@ -211,6 +228,7 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
         'admin_dashboard/order_detail.html',
         {
             'order': order,
+            'nothing_to_ship': nothing_to_ship,
             'order_detail_panels': detail_panels,
             'refunds': refunds,
             'refunded_total': refunded_total,

@@ -13,7 +13,7 @@
     </p>
     <h1 class="display display-l" style="margin: .5rem 0 1rem;">Order #{{ order.order_number }}<span class="text-accent">.</span></h1>
     <p class="lede" style="margin-bottom: 2rem;">
-      Placed {{ order.created_at|date:"F j, Y" }} · status: <strong>{{ order.get_status_display }}</strong>
+      Placed {{ order.placed_at|date:"F j, Y" }} · status: <strong>{{ order.get_status_display }}</strong>
     </p>
 
     {% if order.status == 'cancelled' %}
@@ -31,6 +31,11 @@
             {% if item.product %}{{ item.product.name }}{% else %}{{ item.product_name }}{% endif %}
           </p>
           <p class="meta">{{ item.quantity }} × {{ item.unit_price|money }}</p>
+          {% order_line_delivery item as delivery %}
+          {% if delivery %}
+          <p class="meta" style="margin-top: .35rem;">{% if delivery.file_url %}<a href="{{ delivery.file_url }}" class="btn-link">Download</a>{% else %}{{ delivery.state_label }}{% endif %}</p>
+          {% if delivery.listen_url %}<audio controls preload="none" src="{{ delivery.listen_url }}" style="width: 100%; margin-top: .5rem;"></audio>{% endif %}
+          {% endif %}
         </div>
         <div>
           <p style="font-family: var(--serif); font-weight: 600;">{{ item.total_price|money }}</p>

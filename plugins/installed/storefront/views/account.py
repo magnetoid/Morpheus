@@ -110,8 +110,12 @@ def account_orders(request):
     try:
         from plugins.installed.orders.models import Order
 
-        orders = list(Order.objects.filter(customer=request.user).order_by('-created_at')[:50])
-    except Exception:  # noqa: BLE001
+        # An order is dated by placed_at. Sorting on a created_at it never had raised a
+        # FieldError this block swallowed, so every customer's history was empty
+        # until v0.148.0; a failure here is now logged as the error it is.
+        orders = list(Order.objects.filter(customer=request.user).order_by('-placed_at')[:50])
+    except Exception:  # noqa: BLE001 — the account page still renders
+        logger.exception('account orders failed')
         orders = []
     return render(request, 'storefront/account_orders.html', {'orders': orders})
 

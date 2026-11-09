@@ -14,4 +14,9 @@ urlpatterns = [
         dashboard_views.generate_audiobook_view,
         name='generate',
     ),
+    path(
+        '<uuid:audiobook_id>/status/',
+        dashboard_views.audiobook_status_view,
+        name='status',
+    ),
 ]

@@ -1,5 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
-{% load metafields_tags morph_dashboard %}
+{% load metafields_tags morph_dashboard %}{% load order_line_delivery from morph %}
 {% block title %}Order · Morpheus{% endblock %}
 
 {% block content %}
@@ -34,6 +34,8 @@
         {% csrf_token %}<input type="hidden" name="action" value="process">
         <button class="btn btn-primary"><i data-lucide="cog" class="h-4 w-4"></i> Start processing</button>
       </form>
+      {% elif nothing_to_ship %}
+      <span class="text-sm text-[color:var(--text-muted)]">Nothing to ship: downloads reach the buyer by themselves</span>
       {% elif order.status == 'processing' or order.status == 'partially_fulfilled' %}
       <a href="{% url 'admin_dashboard:order_fulfill' order_number=order.order_number %}" class="btn btn-primary">
         <i data-lucide="package-check" class="h-4 w-4"></i> Create fulfillment
@@ -62,7 +64,7 @@
             <button class="dropdown-item"><i data-lucide="credit-card" class="h-4 w-4"></i> Mark as paid</button>
           </form>
           {% endif %}
-          {% if order.status != 'cancelled' and order.status != 'refunded' %}
+          {% if order.status != 'cancelled' and order.status != 'refunded' and not nothing_to_ship %}
           <a href="{% url 'admin_dashboard:order_fulfill' order_number=order.order_number %}" class="dropdown-item">
             <i data-lucide="package-check" class="h-4 w-4"></i> Add fulfillment
           </a>
@@ -106,6 +108,8 @@
                 <div class="font-medium">{{ it.product_name }}</div>
                 {% if it.variant_name %}<div class="text-xs text-[color:var(--text-muted)]">{{ it.variant_name }}</div>{% endif %}
                 <div class="text-xs text-[color:var(--text-muted)]">{{ it.sku }}</div>
+                {% order_line_delivery it as delivery %}
+                {% if delivery %}<div class="mt-1">{% if delivery.state == 'ready' %}<span class="pill pill-success">Download ready</span>{% else %}<span class="pill pill-warn">{{ delivery.state_label }}</span>{% endif %}</div>{% endif %}
               </td>
               <td class="text-right">{{ it.quantity }}</td>
               <td class="text-right text-[color:var(--text-muted)]">{{ it.unit_price }}</td>
