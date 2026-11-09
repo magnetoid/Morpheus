@@ -14,4 +14,9 @@ app_name = 'digital_products_account'
 
 urlpatterns = [
     path('account/downloads/', storefront_views.account_downloads, name='account_downloads'),
+    path(
+        'account/library/<uuid:item_id>/file/',
+        storefront_views.account_library_file,
+        name='account_library_file',
+    ),
 ]

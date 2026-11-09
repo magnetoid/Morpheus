@@ -1,12 +1,14 @@
 {# Audiobook-edition card, contributed into the dashboard product form via the #}
-{# PRODUCT_FORM_CARDS extension point. Inputs submit with the product form. #}
-<div class="card card-padded space-y-3" id="audiobook-card">
+{# PRODUCT_FORM_CARDS extension point. Inputs submit with the product form; the #}
+{# narration buttons post on their own and the card follows the job's progress. #}
+<div class="card card-padded space-y-3" id="audiobook-card"
+     {% if audiobook %}data-generate-url="/dashboard/audiobooks/{{ audiobook.id }}/generate/" data-status-url="/dashboard/audiobooks/{{ audiobook.id }}/status/"{% endif %}>
   <h2 class="font-semibold text-sm flex items-center gap-2">
     <i data-lucide="headphones" class="h-4 w-4"></i> Audiobook edition
   </h2>
   <p class="text-xs text-[color:var(--text-muted)]">
-    A priced <strong>digital edition</strong> with a player on the product page — shown in the
-    storefront's &ldquo;Choose an edition&rdquo; picker. Upload narration now; ElevenLabs generation is coming.
+    A priced <strong>digital edition</strong> with a player on the product page, shown in the
+    storefront's &ldquo;Choose an edition&rdquo; picker. Upload a recording, or narrate the book's PDF.
   </p>
 
   <label class="flex items-center gap-2 text-sm">
@@ -16,52 +18,143 @@
 
   <div class="grid grid-cols-2 gap-3">
     <div>
-      <label class="block text-sm font-medium mb-1">Price</label>
-      <input type="text" name="audiobook_price" class="input"
+      <label class="block text-sm font-medium mb-1" for="audiobook-price">Price</label>
+      <input type="text" name="audiobook_price" id="audiobook-price" class="input"
              value="{% if audiobook and audiobook.variant.price %}{{ audiobook.variant.price.amount }}{% endif %}"
              placeholder="14.99">
     </div>
     <div>
-      <label class="block text-sm font-medium mb-1">SKU</label>
-      <input type="text" name="audiobook_sku" class="input"
+      <label class="block text-sm font-medium mb-1" for="audiobook-sku">SKU</label>
+      <input type="text" name="audiobook_sku" id="audiobook-sku" class="input"
              value="{% if audiobook %}{{ audiobook.variant.sku }}{% endif %}" placeholder="auto">
     </div>
   </div>
 
   <div>
-    <label class="block text-sm font-medium mb-1">Narrator</label>
-    <input type="text" name="audiobook_narrator" class="input"
+    <label class="block text-sm font-medium mb-1" for="audiobook-narrator">Narrator</label>
+    <input type="text" name="audiobook_narrator" id="audiobook-narrator" class="input"
            value="{% if audiobook %}{{ audiobook.narrator }}{% endif %}" placeholder="e.g. Jane Doe">
   </div>
 
   <div>
-    <label class="block text-sm font-medium mb-1">Audio file (full narration)</label>
-    <input type="file" name="audiobook_audio" accept="audio/*" class="input">
-    {% if audiobook and audiobook.is_ready %}<p class="text-xs text-[color:var(--text-muted)] mt-1">Current: {{ audiobook.audio_file.name }} &middot; ready &check;</p>{% endif %}
+    <label class="block text-sm font-medium mb-1" for="audiobook-audio">Audio file (full narration)</label>
+    <input type="file" name="audiobook_audio" id="audiobook-audio" accept="audio/*" class="input">
+    {% if audiobook and audiobook.is_ready %}<p class="text-xs text-[color:var(--text-muted)] mt-1">Current: {{ audiobook.audio_file.name }} &middot; ready &check;{% if audiobook.duration_seconds %} &middot; about {% widthratio audiobook.duration_seconds 60 1 %} min{% endif %}</p>{% endif %}
   </div>
 
   <div>
-    <label class="block text-sm font-medium mb-1">Sample clip (free preview)</label>
-    <input type="file" name="audiobook_sample" accept="audio/*" class="input">
+    <label class="block text-sm font-medium mb-1" for="audiobook-sample">Sample clip (free preview)</label>
+    <input type="file" name="audiobook_sample" id="audiobook-sample" accept="audio/*" class="input">
+    {% if audiobook and audiobook.sample_file %}<audio controls preload="none" src="{{ audiobook.sample_file.url }}" class="w-full mt-2"></audio>{% endif %}
   </div>
 
   <div>
-    <label class="block text-sm font-medium mb-1">Source PDF (narration script)</label>
-    <input type="file" name="audiobook_source_pdf" accept="application/pdf,.pdf" class="input">
+    <label class="block text-sm font-medium mb-1" for="audiobook-source-pdf">Source PDF (what is read aloud)</label>
+    <input type="file" name="audiobook_source_pdf" id="audiobook-source-pdf" accept="application/pdf,.pdf" class="input">
     {% if audiobook and audiobook.source_pdf %}<p class="text-xs text-[color:var(--text-muted)] mt-1">Current: {{ audiobook.source_pdf.name }}</p>{% endif %}
-    <p class="text-xs text-[color:var(--text-muted)] mt-1">The book PDF to narrate. Falls back to the product&rsquo;s digital file when empty.</p>
+    <p class="text-xs text-[color:var(--text-muted)] mt-1">The book PDF to narrate. When empty, the product's or the e-book edition's PDF is read.</p>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <label class="block text-sm font-medium mb-1" for="audiobook-provider">Narration service</label>
+      <select name="audiobook_provider" id="audiobook-provider" class="input" data-ab-provider>
+        <option value="" {% if not audiobook.provider %}selected{% endif %}>Store default ({% if store_provider == 'studio' %}ElevenLabs Studio{% elif store_provider == 'qwen' %}Qwen TTS{% else %}ElevenLabs{% endif %})</option>
+        <option value="elevenlabs" {% if audiobook.provider == 'elevenlabs' %}selected{% endif %}>ElevenLabs</option>
+        <option value="studio" {% if audiobook.provider == 'studio' %}selected{% endif %}>ElevenLabs Studio (for ElevenReader)</option>
+        <option value="qwen" {% if audiobook.provider == 'qwen' %}selected{% endif %}>Qwen TTS</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1" for="audiobook-voice">Voice</label>
+      <input type="text" name="audiobook_voice" id="audiobook-voice" class="input" list="audiobook-qwen-voices" data-ab-voice
+             value="{% if audiobook %}{{ audiobook.voice }}{% endif %}" placeholder="Store default">
+      <datalist id="audiobook-qwen-voices">{% for name in qwen_voices %}<option value="{{ name }}">{% endfor %}</datalist>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">An ElevenLabs voice ID, or a Qwen voice name.</p>
+    </div>
   </div>
 
   {% if audiobook %}
   <div class="flex items-center gap-2 flex-wrap">
-    <button type="button" class="btn btn-secondary text-xs"
-            onclick="fetch('/dashboard/audiobooks/{{ audiobook.id }}/generate/', {method:'POST', headers:{'X-CSRFToken': (document.querySelector('[name=csrfmiddlewaretoken]')||{}).value}}).then(r=>r.json()).then(d=>{this.textContent = d.ok ? 'Generating… refresh shortly' : ('Failed: '+(d.error||d.reason||''));}).catch(function(){this.textContent='Request failed';}.bind(this));">
-      <i data-lucide="sparkles" class="h-3 w-3"></i> Generate with ElevenLabs
+    <button type="button" class="btn btn-secondary text-xs" data-ab-job="sample">
+      <i data-lucide="play-circle" class="h-3 w-3"></i> Make a sample
     </button>
-    <span class="text-xs text-[color:var(--text-muted)]">Status: {{ audiobook.get_status_display }}</span>
+    <button type="button" class="btn btn-secondary text-xs" data-ab-job="full">
+      <i data-lucide="sparkles" class="h-3 w-3"></i> Narrate the whole book
+    </button>
+    <span class="text-xs text-[color:var(--text-muted)]" data-ab-status>Status: {{ audiobook.get_status_display }}{% if audiobook.job %} &middot; making {% if audiobook.job == 'sample' %}a sample{% else %}the full narration{% endif %}, {{ audiobook.progress_percent }}%{% endif %}</span>
   </div>
-  <p class="text-xs text-[color:var(--text-muted)]">Narrates the <strong>source PDF</strong> (the book itself) with your configured ElevenLabs voice — or the title, author, synopsis &amp; description when no PDF is set. Set the key + voice in Settings &rarr; Product Types &rarr; Audiobooks.</p>
+  <div class="h-1.5 rounded bg-[color:var(--border)] overflow-hidden" {% if not audiobook.job %}hidden{% endif %} data-ab-bar>
+    <div class="h-full bg-[color:var(--primary)]" style="width: {{ audiobook.progress_percent }}%" data-ab-fill></div>
+  </div>
+  <p class="text-xs text-[color:var(--danger)]" {% if not audiobook.last_error %}hidden{% endif %} data-ab-error>{{ audiobook.last_error }}</p>
+  <p class="text-xs text-[color:var(--text-muted)]">
+    Make a sample first: it reads the opening of the book, so you can hear the voice before narrating
+    everything. The whole book takes an hour or more and is paid for per character. With ElevenLabs Studio
+    the book becomes a Studio project{% if audiobook.studio_project_id %} (<code>{{ audiobook.studio_project_id }}</code>){% endif %} that
+    you can publish to ElevenReader from your ElevenLabs account. A ready edition keeps selling its
+    current recording until a new one is finished.
+  </p>
+  <script>
+  (function () {
+    var card = document.getElementById('audiobook-card');
+    if (!card || card.dataset.abBound) return;
+    card.dataset.abBound = '1';
+    var statusEl = card.querySelector('[data-ab-status]');
+    var bar = card.querySelector('[data-ab-bar]');
+    var fill = card.querySelector('[data-ab-fill]');
+    var errorEl = card.querySelector('[data-ab-error]');
+    var timer = null;
+    function token() {
+      var form = card.closest('form');
+      var input = (form || document).querySelector('[name=csrfmiddlewaretoken]');
+      return input ? input.value : '';
+    }
+    function show(state) {
+      if (!state) return;
+      var text = 'Status: ' + state.status_label;
+      if (state.job) {
+        text += ' · making ' + (state.job === 'sample' ? 'a sample' : 'the full narration') + ', ' + state.percent + '%';
+        if (state.stalled) text += ' (stopped: start it again to carry on)';
+      }
+      statusEl.textContent = text;
+      bar.hidden = !state.job;
+      fill.style.width = state.percent + '%';
+      errorEl.hidden = !state.last_error;
+      errorEl.textContent = state.last_error || '';
+      if (state.running) { schedule(); } else if (timer) { clearTimeout(timer); timer = null; }
+    }
+    function poll() {
+      timer = null;
+      if (!document.body.contains(card)) return;
+      fetch(card.dataset.statusUrl, {credentials: 'same-origin'})
+        .then(function (r) { return r.json(); })
+        .then(function (d) { show(d.state); })
+        .catch(function () { schedule(); });
+    }
+    function schedule() { if (!timer) timer = setTimeout(poll, 5000); }
+    card.addEventListener('click', function (ev) {
+      var button = ev.target.closest('[data-ab-job]');
+      if (!button) return;
+      var body = new FormData();
+      body.append('job', button.dataset.abJob);
+      body.append('provider', card.querySelector('[data-ab-provider]').value);
+      body.append('voice', card.querySelector('[data-ab-voice]').value);
+      button.disabled = true;
+      fetch(card.dataset.generateUrl, {method: 'POST', body: body, credentials: 'same-origin', headers: {'X-CSRFToken': token()}})
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          show(d.state);
+          if (!d.ok) { errorEl.hidden = false; errorEl.textContent = d.reason || 'Could not start the narration.'; }
+          else { schedule(); }
+        })
+        .catch(function () { errorEl.hidden = false; errorEl.textContent = 'Request failed.'; })
+        .finally(function () { button.disabled = false; });
+    });
+    {% if audiobook.job %}schedule();{% endif %}
+  })();
+  </script>
   {% else %}
-  <p class="text-xs text-[color:var(--text-muted)]">Save the audiobook edition first, then ElevenLabs can generate the narration here.</p>
+  <p class="text-xs text-[color:var(--text-muted)]">Save the audiobook edition first, then you can narrate it here.</p>
   {% endif %}
 </div>

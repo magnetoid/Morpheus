@@ -1,47 +1,54 @@
 {% extends "storefront/base.html" %}
 {% load seo %}
+{% comment %}The customer's library (digital_products/library.py): every e-book and
+audiobook from their orders, listed like orders. `items` are LibraryItem rows: name,
+edition, kind ('audio' | 'file'), image_url, order_number, ordered_at, state
+('ready' | 'waiting' | 'preparing'), state_label, product_url, file_url, listen_url.{% endcomment %}
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">
-  <div class="wrap" style="max-width: 720px;">
-    <p class="eyebrow">Account</p>
-    <h1 class="display display-l" style="margin: 1.25rem 0 .5rem;">
-      Your downloads<span class="text-accent">.</span>
-    </h1>
-    <p class="meta" style="margin-bottom: 2rem;">
-      <a href="/account/" style="text-decoration: underline;">&larr; Back to account</a>
+  <div class="wrap" style="max-width: 880px;">
+    <p class="meta" style="margin-bottom: 1rem;">
+      <a href="{% url 'storefront:account_home' %}" style="color: var(--muted);">Account</a>
+      <span style="margin: 0 0.5rem;">/</span>
+      Library
     </p>
+    <h1 class="display display-l" style="margin: .5rem 0 2rem;">Your library<span class="text-accent">.</span></h1>
 
-    {% if tokens %}
-    <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
-      {% for t in tokens %}
-      <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1.5rem; {% if t.is_expired or t.is_exhausted %}opacity: .55;{% endif %}">
-        <div style="display:flex; justify-content:space-between; gap: 1rem; align-items:flex-start; flex-wrap:wrap;">
-          <div style="flex: 1; min-width: 0;">
-            <p class="title" style="margin: 0;">{{ t.product.name }}</p>
+    {% if items %}
+    <div style="display: grid; gap: 1rem;">
+      {% for item in items %}
+      <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1.5rem;">
+        <div style="display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
+          {% if item.image_url %}<img src="{{ item.image_url }}" alt="" width="56" height="80" loading="lazy" style="width: 56px; height: 80px; object-fit: cover; border-radius: 3px; flex-shrink: 0;">{% endif %}
+          <div style="flex: 1; min-width: 12rem;">
+            <p style="font-family: var(--serif); font-size: 1.1rem; margin: 0;">
+              {% if item.product_url %}<a href="{{ item.product_url }}" style="text-decoration: none;">{{ item.name }}</a>{% else %}{{ item.name }}{% endif %}
+            </p>
             <p class="meta" style="margin-top: .25rem;">
-              Order #{{ t.order.order_number }}
-              · {{ t.downloads_used }} of {{ t.max_downloads }} used
-              {% if t.expires_at %} · expires {{ t.expires_at|date:"M j, Y" }}{% endif %}
+              {% if item.edition %}{{ item.edition }} · {% endif %}<a href="{% url 'storefront:account_order_detail' item.order_number %}" style="color: inherit;">#{{ item.order_number }}</a>{% if item.ordered_at %} · {{ item.ordered_at|date:"F j, Y" }}{% endif %}
             </p>
           </div>
-          <div>
-            {% if t.is_expired %}
-              <span style="color: var(--muted);">Expired</span>
-            {% elif t.is_exhausted %}
-              <span style="color: var(--muted);">Limit reached</span>
+          <div style="display: flex; gap: .5rem; align-items: center; flex-wrap: wrap;">
+            {% if item.state == 'ready' %}
+              <a href="{{ item.file_url }}" class="btn btn-primary" style="white-space: nowrap;">Download</a>
             {% else %}
-              <a href="/digital/download/{{ t.token }}/" class="btn btn-primary" style="white-space: nowrap;">Download</a>
+              <span class="meta" style="color: var(--muted);">{{ item.state_label }}</span>
             {% endif %}
           </div>
         </div>
+        {% if item.listen_url %}
+        <audio controls preload="none" src="{{ item.listen_url }}" style="width: 100%; margin-top: 1rem;">Your browser can&rsquo;t play this audiobook here; download it instead.</audio>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
+    <p class="meta" style="margin-top: 1.5rem;">An e-book or audiobook is ready once its order is paid or on its way. An audiobook still being recorded appears here when it&rsquo;s done.</p>
     {% else %}
-    <p class="meta" style="padding: 2rem; border: 1px dashed var(--rule); border-radius: 6px; text-align: center;">
-      No active downloads. Digital purchases will appear here with a button to grab the file.
-    </p>
+    <div style="padding: 4rem 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 4px;">
+      <p class="lede" style="margin: 0 auto 1rem;">No e-books or audiobooks yet.</p>
+      <a href="{% url 'storefront:product_list' %}" class="btn btn-primary">Browse the shelf</a>
+    </div>
     {% endif %}
   </div>
 </section>

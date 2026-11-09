@@ -137,6 +137,19 @@ def orders_list(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _delivered_without_parcel(item) -> bool:
+    """Whether an app delivers this order line itself (digital_products answers
+    ORDER_LINE_DELIVERY for its downloads). A switched-off app answers nothing, so
+    its lines fall back to the fulfilment form instead of a promise nobody keeps."""
+    from morpheus.core import MorpheusEvents, hook_registry
+
+    try:
+        answer = hook_registry.filter(MorpheusEvents.ORDER_LINE_DELIVERY, None, order_item=item)
+    except Exception:  # noqa: BLE001 — a broken answer keeps the fulfilment form
+        return False
+    return answer is not None
+
+
 @staff_member_required
 def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
     order = None
@@ -145,7 +158,7 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
 
         order = (
             Order.objects.select_related('customer', 'channel')
-            .prefetch_related('items', 'items__product', 'events', 'fulfillments')
+            .prefetch_related('items', 'items__product', 'items__variant', 'events', 'fulfillments')
             .get(order_number=order_number)
         )
     except Exception:  # noqa: BLE001
@@ -197,6 +210,12 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
             detail_panels = []
     cur_status = getattr(order, 'status', '') if order else ''
     cur_idx = happy_path.index(cur_status) if cur_status in happy_path else -1
+    # An order of downloads only has nothing to fulfil or track: its lines reach
+    # the buyer by themselves (the digital_products app answers for them), so the
+    # page offers no fulfilment. Until v0.148.0 the owner delivered a PDF by
+    # "shipping" it.
+    lines = list(order.items.all()) if order is not None else []
+    nothing_to_ship = bool(lines) and all(_delivered_without_parcel(it) for it in lines)
     status_steps = [
         {
             'key': k,
@@ -211,6 +230,7 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
         'admin_dashboard/order_detail.html',
         {
             'order': order,
+            'nothing_to_ship': nothing_to_ship,
             'order_detail_panels': detail_panels,
             'refunds': refunds,
             'refunded_total': refunded_total,

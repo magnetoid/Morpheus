@@ -51,6 +51,7 @@ dj-database-url>=3.1.2
 python-decouple>=3.8
 reportlab>=5.0.1
 pypdf>=6.21.4
+lameenc>=1.9.0  # MP3 encoding of Qwen TTS narration (audiobooks); wheels bundle LAME
 qrcode>=8.2
 pyotp>=2.10.0
 nats-py>=2.16.0

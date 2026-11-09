@@ -26,6 +26,11 @@
             {% if item.product %}{{ item.product.name }}{% else %}{{ item.product_name }}{% endif %}
           </p>
           <p class="meta">{{ item.quantity }} × {{ item.unit_price|money }}</p>
+          {% order_line_delivery item as delivery %}
+          {% if delivery %}
+          <p class="meta" style="margin-top: .35rem;">{% if delivery.file_url %}<a href="{{ delivery.file_url }}" class="btn-link">Download</a>{% else %}{{ delivery.state_label }}{% endif %}</p>
+          {% if delivery.listen_url %}<audio controls preload="none" src="{{ delivery.listen_url }}" style="width: 100%; margin-top: .5rem;"></audio>{% endif %}
+          {% endif %}
         </div>
         <p style="font-family: var(--serif); font-weight: 600;">{{ item.total_price|money }}</p>
       </div>

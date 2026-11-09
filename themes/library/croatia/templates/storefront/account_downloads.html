@@ -1,10 +1,10 @@
 {% extends "storefront/base.html" %}
 {% load seo %}{% load i18n %}
-{% comment %}Adriatic Tailwind port of the digital downloads page (owned by the
-digital_products plugin). Account shell (breadcrumb + heading + inline account nav)
-+ card list of download tokens. Context vars preserved exactly: tokens (DownloadToken
-list: product.name, order.order_number, downloads_used, max_downloads, expires_at,
-is_expired, is_exhausted, token). Download link unchanged: /digital/download/<token>/.{% endcomment %}
+{% comment %}Adriatic Tailwind port of the customer's library (owned by the
+digital_products plugin, library.py). Account shell (breadcrumb + heading + inline
+account nav) + a card per digital order line. `items` are LibraryItem rows: name,
+edition, kind ('audio' | 'file'), image_url, order_number, ordered_at, state ('ready'
+| 'waiting' | 'preparing'), state_label, product_url, file_url, listen_url.{% endcomment %}
 
 {% block content %}
 <section class="container mx-auto px-4 py-8 sm:py-12">
@@ -14,14 +14,14 @@ is_expired, is_exhausted, token). Download link unchanged: /digital/download/<to
     <nav class="flex items-center gap-1.5 text-sm mb-4" aria-label="{% trans 'Breadcrumb' %}">
       <a href="{% url 'storefront:account_home' %}" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Account" %}</a>
       <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-      <span class="text-foreground font-medium">{% trans "Downloads" %}</span>
+      <span class="text-foreground font-medium">{% trans "Library" %}</span>
     </nav>
 
     <!-- Page heading -->
     <div class="mb-6">
       <p class="text-sm font-medium text-primary mb-1">{% trans "Your account" %}</p>
-      <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground">{% trans "Your downloads" %}<span class="text-accent-warm">.</span></h1>
-      <p class="text-muted-foreground mt-1">{% trans "Digital purchases appear here with a button to grab the file." %}</p>
+      <h1 class="font-display text-2xl md:text-3xl font-bold text-foreground">{% trans "Your library" %}<span class="text-accent-warm">.</span></h1>
+      <p class="text-muted-foreground mt-1">{% trans "Digital purchases from your orders, ready once the order is paid or on its way." %}</p>
     </div>
 
     <!-- Account nav -->
@@ -36,7 +36,7 @@ is_expired, is_exhausted, token). Download link unchanged: /digital/download/<to
       </a>
       <span class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-primary bg-muted">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        {% trans "Downloads" %}
+        {% trans "Library" %}
       </span>
       <a href="{% url 'storefront:account_addresses' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -48,37 +48,38 @@ is_expired, is_exhausted, token). Download link unchanged: /digital/download/<to
       </a>
     </nav>
 
-    {% if tokens %}
+    {% if items %}
     <div class="grid gap-4">
-      {% for t in tokens %}
-      <div class="rounded-2xl border border-border shadow-card bg-card p-6 {% if t.is_expired or t.is_exhausted %}opacity-60{% endif %}">
+      {% for item in items %}
+      <div class="rounded-2xl border border-border shadow-card bg-card p-6">
         <div class="flex items-start justify-between gap-4 flex-wrap">
           <div class="flex items-start gap-3 flex-1 min-w-0">
             <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             </span>
             <div class="min-w-0">
-              <p class="font-semibold text-foreground truncate">{{ t.product.name }}</p>
+              <p class="font-semibold text-foreground truncate">{{ item.name }}</p>
               <p class="text-sm text-muted-foreground mt-1">
-                {% blocktrans with number=t.order.order_number %}Order #{{ number }}{% endblocktrans %}
-                · {% blocktrans with used=t.downloads_used total=t.max_downloads %}{{ used }} of {{ total }} used{% endblocktrans %}
-                {% if t.expires_at %} · {% blocktrans with date=t.expires_at|date:"M j, Y" %}expires {{ date }}{% endblocktrans %}{% endif %}
+                {% if item.edition %}{{ item.edition }} · {% endif %}{% blocktrans with number=item.order_number %}Order #{{ number }}{% endblocktrans %}{% if item.ordered_at %} · {{ item.ordered_at|date:"M j, Y" }}{% endif %}
               </p>
             </div>
           </div>
           <div class="shrink-0">
-            {% if t.is_expired %}
-              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground">{% trans "Expired" %}</span>
-            {% elif t.is_exhausted %}
-              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground">{% trans "Limit reached" %}</span>
-            {% else %}
-              <a href="/digital/download/{{ t.token }}/" class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring whitespace-nowrap">
+            {% if item.state == 'ready' %}
+              <a href="{{ item.file_url }}" class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring whitespace-nowrap">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
                 {% trans "Download" %}
               </a>
+            {% elif item.state == 'waiting' %}
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground">{% trans "Waiting for payment" %}</span>
+            {% else %}
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground">{% trans "Being prepared" %}</span>
             {% endif %}
           </div>
         </div>
+        {% if item.listen_url %}
+        <audio controls preload="none" src="{{ item.listen_url }}" class="w-full mt-4"></audio>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
@@ -87,7 +88,7 @@ is_expired, is_exhausted, token). Download link unchanged: /digital/download/<to
       <span class="mx-auto mb-4 w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       </span>
-      <p class="text-muted-foreground">{% trans "No active downloads. Digital purchases will appear here with a button to grab the file." %}</p>
+      <p class="text-muted-foreground">{% trans "No digital purchases yet." %}</p>
     </div>
     {% endif %}
   </div>

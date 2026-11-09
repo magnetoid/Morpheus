@@ -4792,3 +4792,21 @@ msgstr "Dostupnost i cijene"
 
 msgid "Tell us your dates and we'll come back to you with availability and prices."
 msgstr "Javite nam datume, a mi ćemo vam se javiti sa dostupnošću i cijenama."
+
+msgid "Library"
+msgstr "Biblioteka"
+
+msgid "Your library"
+msgstr "Vaša biblioteka"
+
+msgid "Digital purchases from your orders, ready once the order is paid or on its way."
+msgstr "Digitalne kupovine iz vaših narudžbi, spremne kad je narudžba plaćena ili poslata."
+
+msgid "No digital purchases yet."
+msgstr "Još nema digitalnih kupovina."
+
+msgid "Waiting for payment"
+msgstr "Čeka uplatu"
+
+msgid "Being prepared"
+msgstr "U pripremi"

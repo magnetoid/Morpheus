@@ -1311,6 +1311,25 @@ gets the file through a `digital_products` download token, and the preview is a
 PDF of the first pages built on the server. Never put a sold file's `.url` in a
 storefront page. Guarded by `flipbook/tests/test_private_source.py`.
 
+**Convention — a digital line delivers itself, and the buyer's Library lists it (v0.148.0).**
+One rule, `digital_products/library.py:is_delivered`: a digital line (variant type `digital` or
+`audiobook`, or product type `digital`) is delivered when its order is paid, placed with an offline
+gateway (`orders.tasks.OFFLINE_GATEWAYS`: cash on delivery, bank transfer; owner, 2026-11-09), or
+fulfilled or shipped; it never waits for a shipment, and a dashboard order with nothing that ships
+offers no fulfilment (dotbooks' owner delivered a PDF by "shipping" it). The file comes from
+`DIGITAL_DELIVERY_FILE` (variant, product, then the app that owns the edition: audiobooks answers
+with its narration) and the order pages show it through `{% order_line_delivery %}`
+(`ORDER_LINE_DELIVERY`), so a theme imports no app. `/account/downloads/` is the Library;
+`/account/library/<line>/file/` serves the buyer's own file through its storage, never a disk
+path (tests run on InMemoryStorage), with byte ranges for the player. Audiobook narration
+(`audiobooks/services.py`) runs in resumable slices under the 5-minute task limit, each slice
+narrating at least one piece, and reads only the book's PDF: it used to fall back to the product
+copy, which a buyer would have paid for as the audiobook. Found on the way: the order history sorted
+on a `created_at` an Order never had, and the swallowed FieldError showed every customer an empty
+history; an order is dated by `placed_at`. Guarded by `digital_products/tests/test_library.py`,
+`audiobooks/tests/test_narration.py`, `storefront/tests/test_account_order_history.py` and
+`admin_dashboard/tests/test_order_nothing_to_ship.py`.
+
 **Convention — the dashboard has ONE media uploader.** `admin_dashboard/static/
 admin_dashboard/media-uploader.js` + `media-uploader.css` (loaded by base.html),
 two modes: the product gallery (`_media_uploader.html`, instant uploads, reorder,

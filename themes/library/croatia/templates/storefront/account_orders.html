@@ -2,7 +2,7 @@
 {% load seo %}{% load i18n %}
 {% comment %}Adriatic Tailwind port of pages/Orders.tsx (+ Bookings.tsx list). Account
 shell + clean order rows with status badges. Context vars preserved exactly:
-orders, each o.order_number, o.created_at, o.state, o.total. Links to
+orders, each o.order_number, o.placed_at, o.state, o.total. Links to
 storefront:account_order_detail; empty-state CTA to storefront:product_list.{% endcomment %}
 
 {% block content %}
@@ -62,7 +62,7 @@ storefront:account_order_detail; empty-state CTA to storefront:product_list.{% e
             </div>
             <p class="text-sm text-muted-foreground mt-1.5 flex items-center gap-1.5">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
-              {{ o.created_at|date:"F j, Y" }}
+              {{ o.placed_at|date:"F j, Y" }}
             </p>
           </div>
           <div class="text-right flex items-center gap-3 ml-auto">
