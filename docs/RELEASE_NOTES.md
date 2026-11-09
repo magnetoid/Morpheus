@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.148.1 — 2026-11-09
+
+**Cancelled orders no longer say a download waits for payment**
+
+- An order page showed "Waiting for payment" beside a digital item of a cancelled order. A cancelled or refunded order now shows no download state, as the Library already left those orders out.
+
 ## v0.148.0 — 2026-11-09
 
 **Digital purchases arrive at once; audiobooks narrated by ElevenLabs, Studio or Qwen**

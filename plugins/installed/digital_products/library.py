@@ -76,10 +76,15 @@ def digital_lines(user):
     )
 
 
+def is_closed(order) -> bool:
+    """A cancelled or refunded order, which delivers nothing."""
+    return order.status in CLOSED_STATUSES or order.payment_status == 'refunded'
+
+
 def is_delivered(order) -> bool:
     from plugins.installed.orders.tasks import OFFLINE_GATEWAYS
 
-    if order.status in CLOSED_STATUSES or order.payment_status == 'refunded':
+    if is_closed(order):
         return False
     return (
         order.payment_status == 'paid'
@@ -156,6 +161,10 @@ def line_delivery(item) -> dict | None:
     emailed download link, the only door a guest has.
     """
     if not is_digital(item):
+        return None
+    # A closed order delivers nothing and its page already says why; "waiting for
+    # payment" on a cancelled order was wrong (v0.148.1).
+    if is_closed(item.order):
         return None
     entry = _item(item)
     if entry.state == READY and item.order.customer_id is None:
