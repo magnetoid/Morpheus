@@ -9,10 +9,15 @@ croatia-experience.me opened empty. `manage.py seed_croatia` fills it from
 
 A hotel with no rooms used to show "from €0.00 / night" and a Rooms section with no form.
 Now it says "Contact for price" and takes an enquiry.
+
+Places and experiences carry a free Wikimedia Commons photo, and its page names the
+author and licence. The photo replaces only a bundled stand-in cover, never one someone
+uploaded.
 """
 
 from __future__ import annotations
 
+import io
 import re
 import shutil
 import tempfile
@@ -20,9 +25,12 @@ from io import StringIO
 from pathlib import Path
 from unittest import mock
 
+from django.core.files.base import ContentFile
 from django.core.management import CommandError, call_command
 from django.db import models
 from django.test import SimpleTestCase, TestCase, override_settings
+from django.utils.html import escape
+from PIL import Image
 
 from plugins.installed.booking_marketplace import country
 from plugins.installed.booking_marketplace.management.commands import seed_croatia
@@ -43,6 +51,15 @@ from themes.test_head_contract import _activate_theme
 REGIONS = {key for key, _ in country.CROATIA.regions}
 SLUG = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*$')
 SEED_ASSETS = Path(seed_croatia.SEED_DIR)
+
+
+FREE_LICENCE = re.compile(r'^(CC0|Public domain|CC BY(-SA)? \d\.\d( [a-z]{2})?)$')
+
+
+def _jpeg(colour=(20, 120, 200)) -> bytes:
+    buf = io.BytesIO()
+    Image.new('RGB', (8, 6), colour).save(buf, 'JPEG')
+    return buf.getvalue()
 
 
 def _in_croatia(lat, lon) -> bool:
@@ -122,6 +139,23 @@ class CroatiaDataTests(_FieldLimits, SimpleTestCase):
             self.assertTrue(h['description'].strip(), label)
             self.assertFits(Property, h, label)
 
+    def test_every_photo_is_free_and_credited(self):
+        rows = data.PLACES + data.EXPERIENCES
+        with_photo = [r for r in rows if r.get('photo')]
+        self.assertGreaterEqual(len(with_photo), len(rows) * 0.9)
+        files = [r['photo']['source_url'] for r in with_photo]
+        self.assertEqual(len(files), len(set(files)), 'two rows share a photo')
+        for r in with_photo:
+            photo, label = r['photo'], r['slug']
+            self.assertTrue(photo['src'].startswith(seed_croatia.PHOTO_HOST), label)
+            self.assertTrue(
+                photo['source_url'].startswith('https://commons.wikimedia.org/wiki/File:'), label
+            )
+            self.assertRegex(photo['licence'], FREE_LICENCE, label)
+            self.assertTrue(photo['author'].strip(), label)
+            if photo['licence'].startswith('CC BY'):
+                self.assertTrue(photo['licence_url'].startswith('https://'), label)
+
     def test_events_point_at_seeded_places(self):
         self.assertUniqueSlugs(data.EVENTS, 'event')
         places = {p['slug'] for p in data.PLACES}
@@ -142,7 +176,9 @@ def _sample(rows, n=2):
     return list(rows[:n])
 
 
-class SeedCroatiaTests(TestCase):
+class _SeedFixture:
+    """The data cut to a sample, media in a temp dir, downloads faked."""
+
     def setUp(self):
         media = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, media, ignore_errors=True)
@@ -159,12 +195,19 @@ class SeedCroatiaTests(TestCase):
             patcher = mock.patch.object(data, name, rows)
             patcher.start()
             self.addCleanup(patcher.stop)
+        # Never the network: every photo "downloads" as this small JPEG.
+        self.photo = _jpeg()
+        downloader = mock.patch.object(seed_croatia, '_download', return_value=self.photo)
+        self.download = downloader.start()
+        self.addCleanup(downloader.stop)
 
     def _run(self) -> str:
         out = StringIO()
         call_command('seed_croatia', stdout=out)
         return out.getvalue()
 
+
+class SeedCroatiaTests(_SeedFixture, TestCase):
     def test_it_refuses_a_store_that_is_not_croatian(self):
         _activate_theme(self, 'montenegro')
         with self.assertRaises(CommandError):
@@ -209,6 +252,78 @@ class SeedCroatiaTests(TestCase):
         self._run()
         place.refresh_from_db()
         self.assertEqual(place.summary, 'Edited in the dashboard')
+
+
+class SeedPhotoTests(_SeedFixture, TestCase):
+    """The Commons photo, its credit, and the stand-in it may replace."""
+
+    def setUp(self):
+        super().setUp()
+        _activate_theme(self, 'croatia')
+
+    @staticmethod
+    def _bytes(fieldfile) -> bytes:
+        with fieldfile.storage.open(fieldfile.name, 'rb') as fh:
+            return fh.read()
+
+    def test_the_photo_comes_with_its_author_and_licence(self):
+        self._run()
+        row = data.PLACES[0]
+        place = Place.objects.get(slug=row['slug'])
+        self.assertEqual(self._bytes(place.image), self.photo)
+        self.assertEqual(place.photo_credit['author'], row['photo']['author'])
+        self.assertEqual(place.photo_credit['licence'], row['photo']['licence'])
+
+        service = BookableService.objects.get(slug=data.EXPERIENCES[0]['slug'])
+        self.assertEqual(self._bytes(service.image), self.photo)
+        # The product keeps its own copy, so deleting one never empties the other.
+        (copy,) = service.product.images.all()
+        self.assertEqual(self._bytes(copy.image), self.photo)
+        self.assertNotEqual(copy.image.name, service.image.name)
+
+    def test_a_failed_download_keeps_the_stand_in_until_the_next_run(self):
+        self.download.return_value = None
+        self._run()
+        place = Place.objects.get(slug=data.PLACES[0]['slug'])
+        self.assertTrue(seed_croatia._is_stand_in(place.image))
+        self.assertIsNone(place.photo_credit)
+        stand_in_name = place.image.name
+
+        self.download.return_value = self.photo
+        self._run()
+        place.refresh_from_db()
+        self.assertEqual(self._bytes(place.image), self.photo)
+        self.assertIsNotNone(place.photo_credit)
+        # A new address: browsers, the CDN and seo's /img/ copies cached the stand-in's.
+        self.assertNotEqual(place.image.name, stand_in_name)
+        service = BookableService.objects.get(slug=data.EXPERIENCES[0]['slug'])
+        (copy,) = service.product.images.all()
+        self.assertEqual(self._bytes(copy.image), self.photo)
+
+    def test_an_uploaded_photo_is_kept_and_carries_no_credit(self):
+        self._run()
+        place = Place.objects.get(slug=data.PLACES[0]['slug'])
+        mine = _jpeg((200, 40, 40))
+        place.image.save('mine.jpg', ContentFile(mine), save=True)
+        self.assertIsNone(place.photo_credit, 'the credit named a photo that is gone')
+
+        self.download.reset_mock()
+        self._run()
+        place.refresh_from_db()
+        self.assertEqual(self._bytes(place.image), mine)
+        self.download.assert_not_called()
+
+    def test_the_pages_name_the_author_and_link_the_licence(self):
+        self._run()
+        place_row, exp_row = data.PLACES[0], data.EXPERIENCES[0]
+        for url, photo in (
+            (f'/places/{place_row["slug"]}/', place_row['photo']),
+            (f'/bookings/{exp_row["slug"]}/', exp_row['photo']),
+        ):
+            body = self.client.get(url).content.decode()
+            self.assertIn('mx-photo-credit', body, url)
+            self.assertIn(escape(photo['author']), body, url)
+            self.assertIn(f'href="{escape(photo["source_url"])}"', body, url)
 
 
 class HotelWithoutRoomsTests(TestCase):

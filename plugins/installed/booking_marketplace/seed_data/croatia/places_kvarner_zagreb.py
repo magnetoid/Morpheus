@@ -11,6 +11,13 @@ PLACES: list[dict] = [
     {
         'name': 'Rijeka',
         'slug': 'rijeka',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Croatia_Trsat_Castle_BW_2014-10-14_12-19-23.jpg/1280px-Croatia_Trsat_Castle_BW_2014-10-14_12-19-23.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_Trsat_Castle_BW_2014-10-14_12-19-23.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'cities',
         'featured': False,
@@ -163,6 +170,13 @@ PLACES: list[dict] = [
     {
         'name': 'Opatija',
         'slug': 'opatija',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Croatia_Opatija_Maiden_with_the_Seagull_BW_2014-10-10_10-35-13.jpg/1280px-Croatia_Opatija_Maiden_with_the_Seagull_BW_2014-10-10_10-35-13.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_Opatija_Maiden_with_the_Seagull_BW_2014-10-10_10-35-13.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'coastal',
         'featured': True,
@@ -315,6 +329,13 @@ PLACES: list[dict] = [
     {
         'name': 'Lovran',
         'slug': 'lovran',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Croatia_BW_2014-10-10_14-59-40.jpg/1280px-Croatia_BW_2014-10-10_14-59-40.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_BW_2014-10-10_14-59-40.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'coastal',
         'featured': False,
@@ -462,6 +483,12 @@ PLACES: list[dict] = [
     {
         'name': 'Učka Nature Park',
         'slug': 'ucka-nature-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Ucka-Kvarner1.jpg/1280px-Ucka-Kvarner1.jpg',
+            'author': 'Sl-Ziga',
+            'licence': 'Public domain',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Ucka-Kvarner1.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'mountains',
         'featured': False,
@@ -614,6 +641,13 @@ PLACES: list[dict] = [
     {
         'name': 'Risnjak National Park',
         'slug': 'risnjak-national-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Forest%2C_Risnjak_National_Park%2C_Croatia_05.jpg/1280px-Forest%2C_Risnjak_National_Park%2C_Croatia_05.jpg',
+            'author': 'Michal Klajban',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Forest,_Risnjak_National_Park,_Croatia_05.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'national_parks',
         'featured': False,
@@ -768,6 +802,13 @@ PLACES: list[dict] = [
     {
         'name': 'Krk',
         'slug': 'krk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Croatia_Krk_BW_2014-10-12_12-09-54.jpg/1280px-Croatia_Krk_BW_2014-10-12_12-09-54.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_Krk_BW_2014-10-12_12-09-54.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'coastal',
         'featured': False,
@@ -917,6 +958,13 @@ PLACES: list[dict] = [
     {
         'name': 'Baška',
         'slug': 'baska',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/BaskaKrkIsand.jpg/1280px-BaskaKrkIsand.jpg',
+            'author': 'Abrget47j',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:BaskaKrkIsand.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'coastal',
         'featured': False,
@@ -1061,6 +1109,13 @@ PLACES: list[dict] = [
     {
         'name': 'Vrbnik',
         'slug': 'vrbnik',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Vrbnik_krk_croatia.jpg/1280px-Vrbnik_krk_croatia.jpg',
+            'author': 'Arne Müseler',
+            'licence': 'CC BY-SA 3.0 de',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/de/deed.en',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Vrbnik_krk_croatia.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'cultural',
         'featured': False,
@@ -1204,6 +1259,13 @@ PLACES: list[dict] = [
     {
         'name': 'Cres',
         'slug': 'cres',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Cres_croatia.jpg/1280px-Cres_croatia.jpg',
+            'author': 'Arne Müseler',
+            'licence': 'CC BY-SA 3.0 de',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/de/deed.en',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Cres_croatia.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'coastal',
         'featured': False,
@@ -1354,6 +1416,13 @@ PLACES: list[dict] = [
     {
         'name': 'Mali Lošinj',
         'slug': 'mali-losinj',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Mali_Lo%C5%A1inj_croatia.jpg/1280px-Mali_Lo%C5%A1inj_croatia.jpg',
+            'author': 'Arne Müseler',
+            'licence': 'CC BY-SA 3.0 de',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/de/deed.en',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Mali_Lo%C5%A1inj_croatia.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'coastal',
         'featured': False,
@@ -1504,6 +1573,13 @@ PLACES: list[dict] = [
     {
         'name': 'Veli Lošinj',
         'slug': 'veli-losinj',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/J32_257_Hafen_Veli_Lo%C5%A1inj.jpg/1280px-J32_257_Hafen_Veli_Lo%C5%A1inj.jpg',
+            'author': 'Falk2',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:J32_257_Hafen_Veli_Lo%C5%A1inj.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'coastal',
         'featured': False,
@@ -1652,6 +1728,13 @@ PLACES: list[dict] = [
     {
         'name': 'Rab',
         'slug': 'rab',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Rab1.jpg/1280px-Rab1.jpg',
+            'author': 'Herbert Ortner',
+            'licence': 'CC BY 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Rab1.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'coastal',
         'featured': False,
@@ -1946,6 +2029,13 @@ PLACES: list[dict] = [
     {
         'name': 'Crikvenica',
         'slug': 'crikvenica',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Crikvenica_072.jpg/1280px-Crikvenica_072.jpg',
+            'author': 'János Korom Dr.',
+            'licence': 'CC BY-SA 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Crikvenica_072.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'coastal',
         'featured': False,
@@ -2093,6 +2183,13 @@ PLACES: list[dict] = [
     {
         'name': 'Senj',
         'slug': 'senj',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/d/d4/Fortress_Nehaj.jpg',
+            'author': 'Bvlahov',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Fortress_Nehaj.jpg',
+        },
         'region': 'kvarner',
         'place_type': 'cultural',
         'featured': False,
@@ -2243,6 +2340,13 @@ PLACES: list[dict] = [
     {
         'name': 'Zagreb',
         'slug': 'zagreb',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Teatro_Nacional%2C_Zagreb%2C_Croacia%2C_2014-04-13%2C_DD_03.JPG/1280px-Teatro_Nacional%2C_Zagreb%2C_Croacia%2C_2014-04-13%2C_DD_03.JPG',
+            'author': 'Diego Delso',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Teatro_Nacional,_Zagreb,_Croacia,_2014-04-13,_DD_03.JPG',
+        },
         'region': 'zagreb',
         'place_type': 'cities',
         'featured': True,
@@ -2398,6 +2502,13 @@ PLACES: list[dict] = [
     {
         'name': 'Samobor',
         'slug': 'samobor',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Trg_kralja_Tomislava_8_in_Samobor_%281%29.jpg/1280px-Trg_kralja_Tomislava_8_in_Samobor_%281%29.jpg',
+            'author': 'Tournasol7',
+            'licence': 'CC BY 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Trg_kralja_Tomislava_8_in_Samobor_(1).jpg',
+        },
         'region': 'zagreb',
         'place_type': 'cultural',
         'featured': False,
@@ -2547,6 +2658,13 @@ PLACES: list[dict] = [
     {
         'name': 'Medvednica Nature Park',
         'slug': 'medvednica-nature-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Jarun_Lake_-_view_of_Medvednica.jpg/1280px-Jarun_Lake_-_view_of_Medvednica.jpg',
+            'author': 'Hrvoje Bađinec',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Jarun_Lake_-_view_of_Medvednica.jpg',
+        },
         'region': 'zagreb',
         'place_type': 'mountains',
         'featured': False,

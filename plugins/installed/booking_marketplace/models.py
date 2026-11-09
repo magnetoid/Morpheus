@@ -39,6 +39,19 @@ PLACE_TYPES = [
 ]
 
 
+def photo_credit(obj) -> dict | None:
+    """Who took the photo shown now and under which licence, or None.
+
+    A free photo from Wikimedia Commons must carry its author and licence. The credit
+    names the file it belongs to, so it disappears as soon as someone uploads another
+    photo in its place.
+    """
+    credit = obj.image_credit or {}
+    if obj.image and credit.get('for') == obj.image.name and credit.get('author'):
+        return credit
+    return None
+
+
 class BookableService(models.Model):
     """An experience a host offers — booked by date + guest count."""
 
@@ -64,6 +77,8 @@ class BookableService(models.Model):
         max_length=120, blank=True, default='', help_text='Town / specific place, e.g. Kotor.'
     )
     image = models.ImageField(upload_to='experiences/', blank=True, null=True)
+    # {author, licence, licence_url, source_url, for: the image file it credits}
+    image_credit = models.JSONField(null=True, blank=True)
     duration_minutes = models.PositiveIntegerField(default=120)
     duration_label = models.CharField(
         max_length=60,
@@ -143,6 +158,10 @@ class BookableService(models.Model):
 
     def __str__(self) -> str:
         return f'{self.name} ({self.vendor_id})'
+
+    @property
+    def photo_credit(self) -> dict | None:
+        return photo_credit(self)
 
 
 class AvailabilityWindow(models.Model):
@@ -350,6 +369,8 @@ class Place(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     image = models.ImageField(upload_to='places/', blank=True, null=True)
+    # {author, licence, licence_url, source_url, for: the image file it credits}
+    image_credit = models.JSONField(null=True, blank=True)
     is_featured = models.BooleanField(default=False, db_index=True)
     is_active = models.BooleanField(default=True, db_index=True)
     sort_order = models.PositiveIntegerField(default=0)
@@ -361,6 +382,10 @@ class Place(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    @property
+    def photo_credit(self) -> dict | None:
+        return photo_credit(self)
 
 
 class ServiceImage(models.Model):

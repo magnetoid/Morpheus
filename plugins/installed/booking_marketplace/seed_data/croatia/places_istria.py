@@ -11,6 +11,13 @@ PLACES: list[dict] = [
     {
         'name': 'Pula',
         'slug': 'pula',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Anfiteatro_de_Pula%2C_Croacia%2C_2017-04-17%2C_DD_13-18_HDR_PAN.jpg/1280px-Anfiteatro_de_Pula%2C_Croacia%2C_2017-04-17%2C_DD_13-18_HDR_PAN.jpg',
+            'author': 'Diego Delso',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Anfiteatro_de_Pula,_Croacia,_2017-04-17,_DD_13-18_HDR_PAN.jpg',
+        },
         'region': 'istria',
         'place_type': 'cities',
         'featured': True,
@@ -159,6 +166,13 @@ PLACES: list[dict] = [
     {
         'name': 'Rovinj',
         'slug': 'rovinj',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Croatia_Rovinj_St_Euphemia_church_BW_2014-10-08_14-23-33.jpg/1280px-Croatia_Rovinj_St_Euphemia_church_BW_2014-10-08_14-23-33.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_Rovinj_St_Euphemia_church_BW_2014-10-08_14-23-33.jpg',
+        },
         'region': 'istria',
         'place_type': 'coastal',
         'featured': True,
@@ -303,6 +317,13 @@ PLACES: list[dict] = [
     {
         'name': 'Poreč',
         'slug': 'porec',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Croatia_BW_2014-10-08_11-16-01.jpg/1280px-Croatia_BW_2014-10-08_11-16-01.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_BW_2014-10-08_11-16-01.jpg',
+        },
         'region': 'istria',
         'place_type': 'coastal',
         'featured': False,
@@ -444,6 +465,13 @@ PLACES: list[dict] = [
     {
         'name': 'Novigrad',
         'slug': 'novigrad',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Novigrad_town_wall.jpg/1280px-Novigrad_town_wall.jpg',
+            'author': 'APneunzehn74',
+            'licence': 'CC0',
+            'licence_url': 'https://creativecommons.org/publicdomain/zero/1.0/deed.en',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Novigrad_town_wall.jpg',
+        },
         'region': 'istria',
         'place_type': 'coastal',
         'featured': False,
@@ -583,6 +611,13 @@ PLACES: list[dict] = [
     {
         'name': 'Umag',
         'slug': 'umag',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Houses_of_Umag_with_peaking_tower_of_the_Church_of_the_Assumption%2C_Croatia.jpg/1280px-Houses_of_Umag_with_peaking_tower_of_the_Church_of_the_Assumption%2C_Croatia.jpg',
+            'author': 'Michal Klajban',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Houses_of_Umag_with_peaking_tower_of_the_Church_of_the_Assumption,_Croatia.jpg',
+        },
         'region': 'istria',
         'place_type': 'coastal',
         'featured': False,
@@ -720,6 +755,13 @@ PLACES: list[dict] = [
     {
         'name': 'Vrsar',
         'slug': 'vrsar',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Aerial_view_to_Vrsar.jpg/1280px-Aerial_view_to_Vrsar.jpg',
+            'author': 'Ekaterina Polischuk',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aerial_view_to_Vrsar.jpg',
+        },
         'region': 'istria',
         'place_type': 'coastal',
         'featured': False,
@@ -853,6 +895,13 @@ PLACES: list[dict] = [
     {
         'name': 'Lim Bay',
         'slug': 'lim-bay',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Limski_Istria_1.jpg/1280px-Limski_Istria_1.jpg',
+            'author': 'Aconcagua ( talk )',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Limski_Istria_1.jpg',
+        },
         'region': 'istria',
         'place_type': 'coastal',
         'featured': False,
@@ -989,6 +1038,13 @@ PLACES: list[dict] = [
     {
         'name': 'Motovun',
         'slug': 'motovun',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Aerial_view_to_Motovun.jpg/1280px-Aerial_view_to_Motovun.jpg',
+            'author': 'Ekaterina Polischuk',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aerial_view_to_Motovun.jpg',
+        },
         'region': 'istria',
         'place_type': 'cultural',
         'featured': False,
@@ -1126,6 +1182,13 @@ PLACES: list[dict] = [
     {
         'name': 'Grožnjan',
         'slug': 'groznjan',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Groznjan_Istria_church_tower.jpg/1280px-Groznjan_Istria_church_tower.jpg',
+            'author': 'Aconcagua ( talk )',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Groznjan_Istria_church_tower.jpg',
+        },
         'region': 'istria',
         'place_type': 'cultural',
         'featured': False,
@@ -1264,6 +1327,13 @@ PLACES: list[dict] = [
     {
         'name': 'Hum',
         'slug': 'hum',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/%D0%A5%D1%83%D0%BC%2C_2023_%D1%80%D1%96%D0%BA.jpg/1280px-%D0%A5%D1%83%D0%BC%2C_2023_%D1%80%D1%96%D0%BA.jpg',
+            'author': 'Anton.ash',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:%D0%A5%D1%83%D0%BC,_2023_%D1%80%D1%96%D0%BA.jpg',
+        },
         'region': 'istria',
         'place_type': 'cultural',
         'featured': False,
@@ -1401,6 +1471,13 @@ PLACES: list[dict] = [
     {
         'name': 'Buzet',
         'slug': 'buzet',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/A_street_in_Buzet%2C_Istria_County%2C_Croatia.jpg/1280px-A_street_in_Buzet%2C_Istria_County%2C_Croatia.jpg',
+            'author': 'Michal Klajban',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:A_street_in_Buzet,_Istria_County,_Croatia.jpg',
+        },
         'region': 'istria',
         'place_type': 'cultural',
         'featured': False,
@@ -1537,6 +1614,13 @@ PLACES: list[dict] = [
     {
         'name': 'Pazin',
         'slug': 'pazin',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Pazinska_jama%2C_Croatia%2C_June_2024%2C_author_Istriana.jpg/1280px-Pazinska_jama%2C_Croatia%2C_June_2024%2C_author_Istriana.jpg',
+            'author': 'Istriana',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Pazinska_jama,_Croatia,_June_2024,_author_Istriana.jpg',
+        },
         'region': 'istria',
         'place_type': 'cultural',
         'featured': False,
@@ -1675,6 +1759,12 @@ PLACES: list[dict] = [
     {
         'name': 'Labin',
         'slug': 'labin',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Labin.JPG/1280px-Labin.JPG',
+            'author': 'A. Rehazek (user Senne )',
+            'licence': 'Public domain',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Labin.JPG',
+        },
         'region': 'istria',
         'place_type': 'cultural',
         'featured': False,
@@ -1811,6 +1901,13 @@ PLACES: list[dict] = [
     {
         'name': 'Rabac',
         'slug': 'rabac',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Rabac.JPG/1280px-Rabac.JPG',
+            'author': 'Orlovic',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Rabac.JPG',
+        },
         'region': 'istria',
         'place_type': 'coastal',
         'featured': False,
@@ -1945,6 +2042,13 @@ PLACES: list[dict] = [
     {
         'name': 'Vodnjan',
         'slug': 'vodnjan',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Crkva_sv._Bla%C5%BEa%2C_Vodnjan_%28Dignano%29_-_pro%C4%8Delje.jpg/1280px-Crkva_sv._Bla%C5%BEa%2C_Vodnjan_%28Dignano%29_-_pro%C4%8Delje.jpg',
+            'author': 'Silverije',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Crkva_sv._Bla%C5%BEa,_Vodnjan_(Dignano)_-_pro%C4%8Delje.jpg',
+        },
         'region': 'istria',
         'place_type': 'cultural',
         'featured': False,
@@ -2083,6 +2187,13 @@ PLACES: list[dict] = [
     {
         'name': 'Brijuni National Park',
         'slug': 'brijuni-national-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Brijuni_-_pla%C5%BEa_kod_luke_na_Velom_Brijunu.3.jpg/1280px-Brijuni_-_pla%C5%BEa_kod_luke_na_Velom_Brijunu.3.jpg',
+            'author': 'Silverije',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Brijuni_-_pla%C5%BEa_kod_luke_na_Velom_Brijunu.3.jpg',
+        },
         'region': 'istria',
         'place_type': 'national_parks',
         'featured': False,
@@ -2224,6 +2335,13 @@ PLACES: list[dict] = [
     {
         'name': 'Cape Kamenjak',
         'slug': 'cape-kamenjak',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Rt_Kamenjak%2C_Croatia4.JPG/1280px-Rt_Kamenjak%2C_Croatia4.JPG',
+            'author': 'Croq',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Rt_Kamenjak,_Croatia4.JPG',
+        },
         'region': 'istria',
         'place_type': 'coastal',
         'featured': False,

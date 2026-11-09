@@ -71,6 +71,13 @@ EXPERIENCES: list[dict] = [
     # ================= ZADAR =================
     {
         'slug': 'kornati-national-park-boat-day',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/NP02_Kornati_%C5%A0ibenik-_Knin%2C_Zadar_03.jpg/1280px-NP02_Kornati_%C5%A0ibenik-_Knin%2C_Zadar_03.jpg',
+            'author': 'Miroslav.vajdic',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:NP02_Kornati_%C5%A0ibenik-_Knin,_Zadar_03.jpg',
+        },
         'name': 'A Day Among the Kornati Islands',
         'category': 'Water Sports',
         'region': 'zadar',
@@ -125,6 +132,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'telascica-nature-park-dugi-otok-boat-day',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Dugi_otok_island.jpg/1280px-Dugi_otok_island.jpg',
+            'author': 'Ivo Finka',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Dugi_otok_island.jpg',
+        },
         'name': 'Telašćica Bay and the Cliffs of Dugi Otok',
         'category': 'Water Sports',
         'region': 'zadar',
@@ -174,6 +188,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'paklenica-canyon-hiking',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Paklenica_-_watermills.JPG/1280px-Paklenica_-_watermills.JPG',
+            'author': 'Pudelek (Marcin Szala)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Paklenica_-_watermills.JPG',
+        },
         'name': 'Hiking the Velika Paklenica Canyon',
         'category': 'Adventure',
         'region': 'zadar',
@@ -224,6 +245,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'paklenica-sport-climbing-introduction',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Three_climbers_on_a_rock.jpg/1280px-Three_climbers_on_a_rock.jpg',
+            'author': 'Danilo Tic',
+            'licence': 'CC BY-SA 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Three_climbers_on_a_rock.jpg',
+        },
         'name': 'Rock Climbing Introduction in Paklenica',
         'category': 'Adventure',
         'region': 'zadar',
@@ -272,6 +300,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'zrmanja-river-kayaking',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Zadar_%28HR%29%2C_Krupa-Canyon_--_2022_--_0112.jpg/1280px-Zadar_%28HR%29%2C_Krupa-Canyon_--_2022_--_0112.jpg',
+            'author': 'Anil Öztas',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Zadar_(HR),_Krupa-Canyon_--_2022_--_0112.jpg',
+        },
         'name': 'Kayaking Down the Zrmanja River',
         'category': 'Water Sports',
         'region': 'zadar',
@@ -318,6 +353,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'zrmanja-river-rafting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Zadar_%28HR%29%2C_Krupa-Canyon_--_2022_--_0003.jpg/1280px-Zadar_%28HR%29%2C_Krupa-Canyon_--_2022_--_0003.jpg',
+            'author': 'Anil Öztas',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Zadar_(HR),_Krupa-Canyon_--_2022_--_0003.jpg',
+        },
         'name': 'Rafting the Zrmanja Rapids',
         'category': 'Water Sports',
         'region': 'zadar',
@@ -364,6 +406,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'zadar-old-town-sea-organ-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Zadar-Sea-Organ.jpg/1280px-Zadar-Sea-Organ.jpg',
+            'author': 'Ben Snooks',
+            'licence': 'CC BY-SA 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Zadar-Sea-Organ.jpg',
+        },
         'name': 'Zadar Old Town and the Sea Organ',
         'category': 'Culture',
         'region': 'zadar',
@@ -417,6 +466,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'pag-cheese-and-lace-day',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Lace_on_Display_-_Pag_-_Croatia.jpg/1280px-Lace_on_Display_-_Pag_-_Croatia.jpg',
+            'author': 'Adam Jones Adam63',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Lace_on_Display_-_Pag_-_Croatia.jpg',
+        },
         'name': 'Pag Cheese, Salt and Lace',
         'category': 'Dining',
         'region': 'zadar',
@@ -465,6 +521,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'nin-salt-pans-and-old-town',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Nin_-_city_wall_2.jpg/1280px-Nin_-_city_wall_2.jpg',
+            'author': 'Pudelek (Marcin Szala)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Nin_-_city_wall_2.jpg',
+        },
         'name': 'Nin: Salt Pans and the Old Royal Town',
         'category': 'Culture',
         'region': 'zadar',
@@ -511,6 +574,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'vrana-lake-cycling-day',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Pako%C5%A1tane_%28HR%29%2C_Vraner_See_--_2022_--_0088.jpg/1280px-Pako%C5%A1tane_%28HR%29%2C_Vraner_See_--_2022_--_0088.jpg',
+            'author': 'Anil Öztas',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Pako%C5%A1tane_(HR),_Vraner_See_--_2022_--_0088.jpg',
+        },
         'name': 'Cycling Around Vrana Lake',
         'category': 'Adventure',
         'region': 'zadar',
@@ -558,6 +628,13 @@ EXPERIENCES: list[dict] = [
     # ================= ŠIBENIK =================
     {
         'slug': 'krka-national-park-day-trip',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Skradinski_buk_waterfall_%E2%80%93_NP_Krka_%E2%80%93_2016.jpg/1280px-Skradinski_buk_waterfall_%E2%80%93_NP_Krka_%E2%80%93_2016.jpg',
+            'author': 'Skot',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Skradinski_buk_waterfall_%E2%80%93_NP_Krka_%E2%80%93_2016.jpg',
+        },
         'name': 'Krka National Park: Waterfalls and Boat Day',
         'category': 'Adventure',
         'region': 'sibenik',
@@ -617,6 +694,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'skradin-old-town-and-krka-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Skradin_BW_2024-09-30_13-38-20.jpg/1280px-Skradin_BW_2024-09-30_13-38-20.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Skradin_BW_2024-09-30_13-38-20.jpg',
+        },
         'name': 'Skradin Old Town and Skradinski Buk Walk',
         'category': 'Culture',
         'region': 'sibenik',
@@ -662,6 +746,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'sibenik-fortresses-and-cathedral-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Cathedral_of_St._James%2C_%C5%A0ibenik_01.jpg/1280px-Cathedral_of_St._James%2C_%C5%A0ibenik_01.jpg',
+            'author': 'Bernard Gagnon',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Cathedral_of_St._James,_%C5%A0ibenik_01.jpg',
+        },
         'name': 'Šibenik: Cathedral and Fortresses',
         'category': 'Culture',
         'region': 'sibenik',
@@ -709,6 +800,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'primosten-babic-wine-tasting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Aerial_image_of_Primo%C5%A1ten_%28view_from_the_southeast%29.jpg/1280px-Aerial_image_of_Primo%C5%A1ten_%28view_from_the_southeast%29.jpg',
+            'author': 'Carsten Steger',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aerial_image_of_Primo%C5%A1ten_(view_from_the_southeast).jpg',
+        },
         'name': 'Babić Wine Tasting in Primošten',
         'category': 'Wine',
         'region': 'sibenik',
@@ -756,6 +854,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'vodice-sea-kayaking',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Pristav_I._-_panoramio.jpg/1280px-Pristav_I._-_panoramio.jpg',
+            'author': 'romano1999',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Pristav_I._-_panoramio.jpg',
+        },
         'name': 'Sea Kayaking from Vodice',
         'category': 'Water Sports',
         'region': 'sibenik',
@@ -800,6 +905,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'murter-island-cycling-olive-groves',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/MURTERSK%C3%81_%C4%8CIST%C3%81_VODA_-_MURTERS_CLEAR_WATER_-_panoramio.jpg/1280px-MURTERSK%C3%81_%C4%8CIST%C3%81_VODA_-_MURTERS_CLEAR_WATER_-_panoramio.jpg',
+            'author': 'ANDREJ NEUHERZ',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:MURTERSK%C3%81_%C4%8CIST%C3%81_VODA_-_MURTERS_CLEAR_WATER_-_panoramio.jpg',
+        },
         'name': 'Cycling Murter Island: Olives and Coves',
         'category': 'Adventure',
         'region': 'sibenik',
@@ -845,6 +957,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'zlarin-island-sailing-day',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/3/36/Zlarin_vala.JPG',
+            'author': 'Shanticm ( talk )',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Zlarin_vala.JPG',
+        },
         'name': 'Zlarin Island by Boat from Šibenik',
         'category': 'Water Sports',
         'region': 'sibenik',
@@ -890,6 +1009,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'drnis-mestrovic-otavice-cultural-day',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Mestrovic_mausoleum.jpg/1280px-Mestrovic_mausoleum.jpg',
+            'author': 'User:Elephantus',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Mestrovic_mausoleum.jpg',
+        },
         'name': 'Drniš and the Meštrović Mausoleum at Otavice',
         'category': 'Culture',
         'region': 'sibenik',
@@ -935,6 +1061,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'tribunj-sunrise-yoga-by-the-sea',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Lukovnik_island_%28left%29_and_Tribunj.jpg/1280px-Lukovnik_island_%28left%29_and_Tribunj.jpg',
+            'author': 'Ante Pletikosić',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Lukovnik_island_(left)_and_Tribunj.jpg',
+        },
         'name': 'Sunrise Yoga in Tribunj',
         'category': 'Wellness',
         'region': 'sibenik',
@@ -981,6 +1114,13 @@ EXPERIENCES: list[dict] = [
     # ================= LIKA =================
     {
         'slug': 'plitvice-lakes-guided-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Plitvice_Lakes_National_Park_BW_2014-10-13_14-08-48.jpg/1280px-Plitvice_Lakes_National_Park_BW_2014-10-13_14-08-48.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Plitvice_Lakes_National_Park_BW_2014-10-13_14-08-48.jpg',
+        },
         'name': 'Plitvice Lakes: Guided Walk Through the Upper Lakes',
         'category': 'Adventure',
         'region': 'lika',
@@ -1036,6 +1176,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'plitvice-lakes-full-day-grand-tour',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Plitvice_Lakes_National_Park_BW_2014-10-13_12-19-57.jpg/1280px-Plitvice_Lakes_National_Park_BW_2014-10-13_12-19-57.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Plitvice_Lakes_National_Park_BW_2014-10-13_12-19-57.jpg',
+        },
         'name': 'Plitvice Lakes: Full-Day Grand Tour',
         'category': 'Adventure',
         'region': 'lika',
@@ -1082,6 +1229,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'rastoke-slunj-waterfalls-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Rastoke_1126.JPG/1280px-Rastoke_1126.JPG',
+            'author': 'Karl Gruber',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Rastoke_1126.JPG',
+        },
         'name': 'Rastoke: Watermills and Waterfalls of Slunj',
         'category': 'Culture',
         'region': 'lika',
@@ -1127,6 +1281,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'premuzic-trail-day-hike',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/2/25/Premu%C5%BEi%C4%87_trail_along_the_abyss.jpg',
+            'author': 'rom@nski photo',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Premu%C5%BEi%C4%87_trail_along_the_abyss.jpg',
+        },
         'name': 'The Premužić Trail: A Day on the Velebit Ridge',
         'category': 'Adventure',
         'region': 'lika',
@@ -1183,6 +1344,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'northern-velebit-rozanski-kukovi-hike',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Planinarska_ku%C4%87a_Alan_%2814759251807%29.jpg/1280px-Planinarska_ku%C4%87a_Alan_%2814759251807%29.jpg',
+            'author': 'Petr Kadlec from Prague, Czech Republic',
+            'licence': 'CC BY-SA 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Planinarska_ku%C4%87a_Alan_(14759251807).jpg',
+        },
         'name': 'Hiking Rožanski and Hajdučki Kukovi',
         'category': 'Adventure',
         'region': 'lika',
@@ -1229,6 +1397,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'gospic-tesla-smiljan-visit',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Nikola_Tesla_Smiljan_04.jpg/1280px-Nikola_Tesla_Smiljan_04.jpg',
+            'author': 'Zátonyi Sándor, (ifj.) Fizped',
+            'licence': 'CC BY 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Nikola_Tesla_Smiljan_04.jpg',
+        },
         'name': 'Smiljan: The Birthplace of Nikola Tesla',
         'category': 'Culture',
         'region': 'lika',
@@ -1275,6 +1450,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'cerovac-caves-guided-tour',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Cerova%C4%8Dke_%C5%A1pilje_%284%29.jpg/1280px-Cerova%C4%8Dke_%C5%A1pilje_%284%29.jpg',
+            'author': 'Marko Jukić -Majkl',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Cerova%C4%8Dke_%C5%A1pilje_(4).jpg',
+        },
         'name': 'Underground at the Cerovac Caves',
         'category': 'Adventure',
         'region': 'lika',
@@ -1321,6 +1503,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'krasno-velebit-forest-bathing',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Velebit_Forest.jpg/1280px-Velebit_Forest.jpg',
+            'author': 'Fraxinus',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Velebit_Forest.jpg',
+        },
         'name': 'Forest Bathing Above Krasno',
         'category': 'Wellness',
         'region': 'lika',
@@ -1366,6 +1555,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'gacka-river-walk-and-trout-lunch',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Gacka.JPG/1280px-Gacka.JPG',
+            'author': 'Croq',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Gacka.JPG',
+        },
         'name': 'The Gacka River Walk and Trout Lunch',
         'category': 'Dining',
         'region': 'lika',

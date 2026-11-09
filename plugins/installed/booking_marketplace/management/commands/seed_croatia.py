@@ -11,6 +11,11 @@ owner's rules (docs/plans/croatia-catalogue-2026-11.md):
 Keyed by slug. A second run creates nothing. A run fills only the fields that are still
 empty, so an edit made in the dashboard is never overwritten.
 
+Places and experiences get a free photo from Wikimedia Commons (`photo` in the data),
+downloaded here, with its author and licence stored beside it for the page to show. It
+replaces only an empty cover or one of the bundled stand-in covers, never a photo someone
+uploaded; a download that fails leaves the stand-in, and the next run tries again.
+
     python manage.py seed_croatia [--only places|experiences|hotels|events]
 
 It refuses to run unless the active theme's country is Croatia: on any other store it
@@ -19,9 +24,13 @@ would publish Croatian destinations.
 
 from __future__ import annotations
 
+import hashlib
+import logging
+from functools import cache
 from pathlib import Path
 
 from django.core.files import File
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils.text import slugify
@@ -32,7 +41,7 @@ SEED_DIR = Path(__file__).resolve().parents[2] / 'seed_assets'
 HOST_NAME = 'Croatia Experience'
 CATEGORIES = ('Adventure', 'Water Sports', 'Culture', 'Dining', 'Wine', 'Wellness')
 
-# Covers until real photos come: the bundled seed images, chosen by type.
+# Stand-in covers, chosen by type, for a row whose Commons photo could not be fetched.
 PLACE_COVER = {
     'coastal': 'sailing.jpg',
     'mountains': 'hiking.jpg',
@@ -52,12 +61,90 @@ EXPERIENCE_COVER = {
 
 PARTS = ('places', 'experiences', 'hotels', 'events')
 
+PHOTO_HOST = 'https://upload.wikimedia.org/'
+PHOTO_MAX_BYTES = 8 * 1024 * 1024
+# Wikimedia refuses requests that do not say who is asking.
+PHOTO_USER_AGENT = 'Morpheus seed_croatia/1.0 (store catalogue photos from Wikimedia Commons)'
+CREDIT_KEYS = ('author', 'licence', 'licence_url', 'source_url')
+
+logger = logging.getLogger('morpheus.booking_marketplace')
+
 
 def _attach(field, name: str, filename: str) -> None:
     src = SEED_DIR / filename
     if src.exists():
         with src.open('rb') as fh:
             field.save(name, File(fh), save=True)
+
+
+@cache
+def _stand_ins() -> frozenset[str]:
+    """Digests of the bundled covers, which a real photo may replace."""
+    return frozenset(hashlib.sha256(f.read_bytes()).hexdigest() for f in SEED_DIR.glob('*.jpg'))
+
+
+def _is_stand_in(fieldfile) -> bool:
+    """Empty, or one of the bundled covers: never a photo someone uploaded."""
+    if not fieldfile:
+        return True
+    try:
+        with fieldfile.storage.open(fieldfile.name, 'rb') as fh:
+            return hashlib.sha256(fh.read()).hexdigest() in _stand_ins()
+    except OSError:  # a file missing from storage is somebody's to fix, not ours
+        return False
+
+
+def _download(url: str) -> bytes | None:
+    from core.net import outbound_request
+
+    if not url.startswith(PHOTO_HOST):
+        return None
+    try:
+        response = outbound_request(
+            'get', url, timeout=30, headers={'User-Agent': PHOTO_USER_AGENT}
+        )
+    except Exception:  # noqa: BLE001 — the stand-in stays and the next run tries again
+        logger.warning('seed_croatia: could not download %s', url, exc_info=True)
+        return None
+    kind = response.headers.get('Content-Type', '')
+    if response.status_code != 200 or not kind.startswith('image/'):
+        logger.warning('seed_croatia: %s answered %s %s', url, response.status_code, kind)
+        return None
+    if len(response.content) > PHOTO_MAX_BYTES:
+        return None
+    return response.content
+
+
+def _set_photo(obj, photo: dict | None, stand_in: str) -> bool:
+    """Give the row its Commons photo and credit; True when the photo changed."""
+    if not _is_stand_in(obj.image):
+        return False
+    content = _download(photo['src']) if photo else None
+    if content is None:
+        if not obj.image:
+            _attach(obj.image, f'{obj.slug}.jpg', stand_in)
+        return False
+    if obj.image:
+        obj.image.delete(save=False)
+    # Named after its bytes: a file name is an address that browsers, the CDN and seo's
+    # /img/ copies remember, so the photo must never take the stand-in's old name.
+    digest = hashlib.sha256(content).hexdigest()[:10]
+    obj.image.save(f'{obj.slug}-{digest}.jpg', ContentFile(content), save=False)
+    obj.image_credit = {key: photo[key] for key in CREDIT_KEYS} | {'for': obj.image.name}
+    obj.save(update_fields=['image', 'image_credit'])
+    return True
+
+
+def _refresh_product_photo(service) -> None:
+    """Swap the product's copy of a stand-in cover for the listing's new photo."""
+    from plugins.installed.booking_marketplace.products import _copy_images
+
+    product = service.product
+    stale = [img for img in product.images.all() if _is_stand_in(img.image)]
+    for img in stale:
+        img.delete()
+    if stale:
+        _copy_images(service, product)
 
 
 def _fill(obj, values: dict) -> None:
@@ -138,8 +225,7 @@ class Command(BaseCommand):
             )
             if not was_created:
                 _fill(place, values)
-            if not place.image:
-                _attach(place.image, f'{place.slug}.jpg', PLACE_COVER[p['place_type']])
+            _set_photo(place, p.get('photo'), PLACE_COVER[p['place_type']])
             created += was_created
         return created, len(data.PLACES)
 
@@ -186,11 +272,11 @@ class Command(BaseCommand):
                     is_active=True,
                 )
                 created += 1
-            if not service.image:
-                cover = row.get('image') or EXPERIENCE_COVER[row['category']]
-                _attach(service.image, f'{service.slug}.jpg', cover)
+            stand_in = row.get('image') or EXPERIENCE_COVER[row['category']]
+            if _set_photo(service, row.get('photo'), stand_in) and service.product_id:
+                _refresh_product_photo(service)
             # Every listing extends a catalog Product (v0.109): the dashboard, Linda's
-            # product tools and search see it there.
+            # product tools and search see it there, with its own copy of the photo.
             ensure_product(service)
         return created, len(data.EXPERIENCES)
 

@@ -11,6 +11,13 @@ PLACES: list[dict] = [
     {
         'name': 'Zadar',
         'slug': 'zadar',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Zadar_BW_2024-09-29_10-04-47.jpg/1280px-Zadar_BW_2024-09-29_10-04-47.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Zadar_BW_2024-09-29_10-04-47.jpg',
+        },
         'region': 'zadar',
         'place_type': 'cities',
         'featured': True,
@@ -157,6 +164,13 @@ PLACES: list[dict] = [
     {
         'name': 'Nin',
         'slug': 'nin',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Crkva_sv._Kri%C5%BEa_u_Ninu_2010.jpg/1280px-Crkva_sv._Kri%C5%BEa_u_Ninu_2010.jpg',
+            'author': 'Pudelek (Marcin Szala)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Crkva_sv._Kri%C5%BEa_u_Ninu_2010.jpg',
+        },
         'region': 'zadar',
         'place_type': 'cultural',
         'featured': False,
@@ -298,6 +312,13 @@ PLACES: list[dict] = [
     {
         'name': 'Pag',
         'slug': 'pag',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Basilica_of_the_Assumption_of_Mary%2C_Pag_01.jpg/1280px-Basilica_of_the_Assumption_of_Mary%2C_Pag_01.jpg',
+            'author': 'Bernard Gagnon',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Basilica_of_the_Assumption_of_Mary,_Pag_01.jpg',
+        },
         'region': 'zadar',
         'place_type': 'coastal',
         'featured': False,
@@ -439,6 +460,13 @@ PLACES: list[dict] = [
     {
         'name': 'Novalja',
         'slug': 'novalja',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Novalja_Hafen.jpg/1280px-Novalja_Hafen.jpg',
+            'author': 'Palauenc05',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Novalja_Hafen.jpg',
+        },
         'region': 'zadar',
         'place_type': 'coastal',
         'featured': False,
@@ -574,6 +602,13 @@ PLACES: list[dict] = [
     {
         'name': 'Kornati National Park',
         'slug': 'kornati-national-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Kornati_2.JPG/1280px-Kornati_2.JPG',
+            'author': 'Ivana',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Kornati_2.JPG',
+        },
         'region': 'zadar',
         'place_type': 'national_parks',
         'featured': False,
@@ -711,6 +746,13 @@ PLACES: list[dict] = [
     {
         'name': 'Paklenica National Park',
         'slug': 'paklenica-national-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/NP05_Paklenica_Lika-Senj_1.jpg/1280px-NP05_Paklenica_Lika-Senj_1.jpg',
+            'author': 'Miroslav.vajdic',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:NP05_Paklenica_Lika-Senj_1.jpg',
+        },
         'region': 'zadar',
         'place_type': 'national_parks',
         'featured': False,
@@ -857,6 +899,13 @@ PLACES: list[dict] = [
     {
         'name': 'Telašćica Nature Park',
         'slug': 'telascica-nature-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Tela%C5%A1%C4%87ica_Cliff.jpg/1280px-Tela%C5%A1%C4%87ica_Cliff.jpg',
+            'author': 'julien',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Tela%C5%A1%C4%87ica_Cliff.jpg',
+        },
         'region': 'zadar',
         'place_type': 'national_parks',
         'featured': False,
@@ -993,6 +1042,13 @@ PLACES: list[dict] = [
     {
         'name': 'Dugi Otok',
         'slug': 'dugi-otok',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Isola_Lunga.JPG/1280px-Isola_Lunga.JPG',
+            'author': 'No machine-readable author provided. Ivana51~commonswiki assumed (based on copyright claims).',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Isola_Lunga.JPG',
+        },
         'region': 'zadar',
         'place_type': 'coastal',
         'featured': False,
@@ -1131,6 +1187,13 @@ PLACES: list[dict] = [
     {
         'name': 'Biograd na Moru',
         'slug': 'biograd-na-moru',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Biograd-na-more-1.JPG/1280px-Biograd-na-more-1.JPG',
+            'author': 'japus',
+            'licence': 'CC BY 2.5',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.5',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Biograd-na-more-1.JPG',
+        },
         'region': 'zadar',
         'place_type': 'coastal',
         'featured': False,
@@ -1266,6 +1329,13 @@ PLACES: list[dict] = [
     {
         'name': 'Vrana Lake Nature Park',
         'slug': 'vrana-lake-nature-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Jezero_Vrana.jpg/1280px-Jezero_Vrana.jpg',
+            'author': 'This Photo was taken by Miha Peče . Feel free to use my photos, but please mention me as the author. I would much appreciate if you send me an email pc.osx.linux@gmail.com or write on my talk page , f',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Jezero_Vrana.jpg',
+        },
         'region': 'zadar',
         'place_type': 'lakes',
         'featured': False,
@@ -1406,6 +1476,13 @@ PLACES: list[dict] = [
     {
         'name': 'Ugljan',
         'slug': 'ugljan',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Island_of_Ugljan_2011_02.jpg/1280px-Island_of_Ugljan_2011_02.jpg',
+            'author': 'Photograph by Mike Peel ( www.mikepeel.net ).',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Island_of_Ugljan_2011_02.jpg',
+        },
         'region': 'zadar',
         'place_type': 'coastal',
         'featured': False,
@@ -1542,6 +1619,13 @@ PLACES: list[dict] = [
     {
         'name': 'Zrmanja River',
         'slug': 'zrmanja-river',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Zadar_%28HR%29%2C_Krupa-Canyon%2C_Kudin-Br%C3%BCcke_--_2022_--_0059-68.jpg/1280px-Zadar_%28HR%29%2C_Krupa-Canyon%2C_Kudin-Br%C3%BCcke_--_2022_--_0059-68.jpg',
+            'author': 'Anil Öztas',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Zadar_(HR),_Krupa-Canyon,_Kudin-Br%C3%BCcke_--_2022_--_0059-68.jpg',
+        },
         'region': 'zadar',
         'place_type': 'lakes',
         'featured': False,
@@ -1677,6 +1761,13 @@ PLACES: list[dict] = [
     {
         'name': 'Šibenik',
         'slug': 'sibenik',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/%C5%A0ibenik_BW_2024-09-30_10-50-35.jpg/1280px-%C5%A0ibenik_BW_2024-09-30_10-50-35.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:%C5%A0ibenik_BW_2024-09-30_10-50-35.jpg',
+        },
         'region': 'sibenik',
         'place_type': 'cities',
         'featured': True,
@@ -1822,6 +1913,13 @@ PLACES: list[dict] = [
     {
         'name': 'Krka National Park',
         'slug': 'krka-national-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Krka_Nationalpark_BW_2024-09-30_13-53-15.jpg/1280px-Krka_Nationalpark_BW_2024-09-30_13-53-15.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Krka_Nationalpark_BW_2024-09-30_13-53-15.jpg',
+        },
         'region': 'sibenik',
         'place_type': 'national_parks',
         'featured': True,
@@ -1972,6 +2070,13 @@ PLACES: list[dict] = [
     {
         'name': 'Skradin',
         'slug': 'skradin',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Skradin_BW_2024-09-30_13-52-23.jpg/1280px-Skradin_BW_2024-09-30_13-52-23.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Skradin_BW_2024-09-30_13-52-23.jpg',
+        },
         'region': 'sibenik',
         'place_type': 'cultural',
         'featured': False,
@@ -2108,6 +2213,13 @@ PLACES: list[dict] = [
     {
         'name': 'Primošten',
         'slug': 'primosten',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Primo%C5%A1ten_Croatia.jpg/1280px-Primo%C5%A1ten_Croatia.jpg',
+            'author': 'Martin Vorel',
+            'licence': 'CC0',
+            'licence_url': 'https://creativecommons.org/publicdomain/zero/1.0/deed.en',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Primo%C5%A1ten_Croatia.jpg',
+        },
         'region': 'sibenik',
         'place_type': 'coastal',
         'featured': False,
@@ -2239,6 +2351,13 @@ PLACES: list[dict] = [
     {
         'name': 'Vodice',
         'slug': 'vodice',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Vodice_CRO.jpg/1280px-Vodice_CRO.jpg',
+            'author': 'Tadam',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Vodice_CRO.jpg',
+        },
         'region': 'sibenik',
         'place_type': 'coastal',
         'featured': False,
@@ -2372,6 +2491,13 @@ PLACES: list[dict] = [
     {
         'name': 'Tribunj',
         'slug': 'tribunj',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Tribunj.jpg/1280px-Tribunj.jpg',
+            'author': 'Sztudva Gyöngyi',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Tribunj.jpg',
+        },
         'region': 'sibenik',
         'place_type': 'coastal',
         'featured': False,
@@ -2508,6 +2634,13 @@ PLACES: list[dict] = [
     {
         'name': 'Murter',
         'slug': 'murter',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Betina-Murter.jpg/1280px-Betina-Murter.jpg',
+            'author': 'This Photo was taken by Miha Peče . Feel free to use my photos, but please mention me as the author. I would much appreciate if you send me an email pc.osx.linux@gmail.com or write on my talk page , f',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Betina-Murter.jpg',
+        },
         'region': 'sibenik',
         'place_type': 'coastal',
         'featured': False,
@@ -2641,6 +2774,13 @@ PLACES: list[dict] = [
     {
         'name': 'Zlarin',
         'slug': 'zlarin',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/5/5f/Zlarinsss.JPG',
+            'author': 'Shanticm ( talk )',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Zlarinsss.JPG',
+        },
         'region': 'sibenik',
         'place_type': 'coastal',
         'featured': False,
@@ -2774,6 +2914,13 @@ PLACES: list[dict] = [
     {
         'name': 'Drniš',
         'slug': 'drnis',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/b/be/Drni%C5%A1_-_panoramio_%282%29.jpg',
+            'author': 'gorchfin',
+            'licence': 'CC BY 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Drni%C5%A1_-_panoramio_(2).jpg',
+        },
         'region': 'sibenik',
         'place_type': 'cultural',
         'featured': False,

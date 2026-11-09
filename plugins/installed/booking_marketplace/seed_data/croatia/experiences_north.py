@@ -50,6 +50,13 @@ EXPERIENCES: list[dict] = [
     # ======================= ISTRIA =======================
     {
         'slug': 'buzet-truffle-hunting-with-dogs',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/City_walls_in_Buzet%2C_Istria_County%2C_Croatia_09.jpg/1280px-City_walls_in_Buzet%2C_Istria_County%2C_Croatia_09.jpg',
+            'author': 'Michal Klajban',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:City_walls_in_Buzet,_Istria_County,_Croatia_09.jpg',
+        },
         'name': 'Truffle Hunting in the Mirna Valley Woods',
         'category': 'Dining',
         'region': 'istria',
@@ -109,6 +116,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'motovun-malvazija-teran-wine-tasting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/RRI-0036-1962_view_to_Motovun.jpg/1280px-RRI-0036-1962_view_to_Motovun.jpg',
+            'author': 'Ekaterina Polischuk',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:RRI-0036-1962_view_to_Motovun.jpg',
+        },
         'name': 'Malvazija and Teran Tasting Above the Mirna Valley',
         'category': 'Wine',
         'region': 'istria',
@@ -158,6 +172,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'parenzana-trail-guided-bike-ride-groznjan',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Croatia_Gro%C5%BEnjan_Loggia_Trg_Lode-1577.jpg/1280px-Croatia_Gro%C5%BEnjan_Loggia_Trg_Lode-1577.jpg',
+            'author': 'Isiwal',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_Gro%C5%BEnjan_Loggia_Trg_Lode-1577.jpg',
+        },
         'name': 'Parenzana Trail by Bike Through Hilltop Istria',
         'category': 'Adventure',
         'region': 'istria',
@@ -207,6 +228,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'rovinj-sea-kayaking-at-sunset',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Croatia_BW_2014-10-08_14-50-04.jpg/1280px-Croatia_BW_2014-10-08_14-50-04.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_BW_2014-10-08_14-50-04.jpg',
+        },
         'name': 'Sunset Sea Kayaking Around Rovinj',
         'category': 'Water Sports',
         'region': 'istria',
@@ -250,6 +278,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'rovinj-old-town-walking-tour',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Rovinj_Valdibora_Crkva_svete_Eufemije-1663.jpg/1280px-Rovinj_Valdibora_Crkva_svete_Eufemije-1663.jpg',
+            'author': 'Isiwal',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Rovinj_Valdibora_Crkva_svete_Eufemije-1663.jpg',
+        },
         'name': 'Rovinj Old Town: Alleys, Churches and Fishing History',
         'category': 'Culture',
         'region': 'istria',
@@ -294,6 +329,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'pula-arena-and-roman-city-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Templo_de_Augusto_y_ayuntamiento%2C_Pula%2C_Croacia%2C_2017-04-17%2C_DD_68-70_HDR.jpg/1280px-Templo_de_Augusto_y_ayuntamiento%2C_Pula%2C_Croacia%2C_2017-04-17%2C_DD_68-70_HDR.jpg',
+            'author': 'Diego Delso',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Templo_de_Augusto_y_ayuntamiento,_Pula,_Croacia,_2017-04-17,_DD_68-70_HDR.jpg',
+        },
         'name': 'Pula Arena and the Roman City Walk',
         'category': 'Culture',
         'region': 'istria',
@@ -341,6 +383,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'brijuni-national-park-day-trip',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Croatia_Brijuni_BW_2014-10-11_14-59-41.jpg/1280px-Croatia_Brijuni_BW_2014-10-11_14-59-41.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_Brijuni_BW_2014-10-11_14-59-41.jpg',
+        },
         'name': 'Brijuni National Park Island Day Trip',
         'category': 'Culture',
         'region': 'istria',
@@ -382,6 +431,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'cape-kamenjak-kayak-and-snorkel',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Zna%C4%8Dajni_krajobraz_Donji_Kamenjak_i_medulinski_arhipelag.jpg/1280px-Zna%C4%8Dajni_krajobraz_Donji_Kamenjak_i_medulinski_arhipelag.jpg',
+            'author': 'Anne2be',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Zna%C4%8Dajni_krajobraz_Donji_Kamenjak_i_medulinski_arhipelag.jpg',
+        },
         'name': 'Cape Kamenjak Kayak and Snorkel Coast Trip',
         'category': 'Water Sports',
         'region': 'istria',
@@ -423,6 +479,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'porec-euphrasian-basilica-old-town-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Croatia_BW_2014-10-08_11-10-58.jpg/1280px-Croatia_BW_2014-10-08_11-10-58.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_BW_2014-10-08_11-10-58.jpg',
+        },
         'name': 'Poreč: Euphrasian Basilica and the Roman Streets',
         'category': 'Culture',
         'region': 'istria',
@@ -464,6 +527,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'lim-bay-boat-trip-shellfish-tasting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Limski_Kanal_view.jpg/1280px-Limski_Kanal_view.jpg',
+            'author': 'Einaz80',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Limski_Kanal_view.jpg',
+        },
         'name': 'Lim Bay by Boat with a Shellfish Tasting',
         'category': 'Dining',
         'region': 'istria',
@@ -512,6 +582,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'hum-smallest-town-glagolitic-alley-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Sigh_for_Hum_the_smallest_town_in_the_world_%2852829711548%29.jpg/1280px-Sigh_for_Hum_the_smallest_town_in_the_world_%2852829711548%29.jpg',
+            'author': 'Jernej Furman from Slovenia',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Sigh_for_Hum_the_smallest_town_in_the_world_(52829711548).jpg',
+        },
         'name': 'Hum, the Smallest Town, and the Glagolitic Alley',
         'category': 'Culture',
         'region': 'istria',
@@ -553,6 +630,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'rabac-coastal-yoga-and-sea-swim',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Rabac%2C_rocks_01.jpg/1280px-Rabac%2C_rocks_01.jpg',
+            'author': 'Czeva',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Rabac,_rocks_01.jpg',
+        },
         'name': 'Morning Coastal Yoga and Sea Swim in Rabac',
         'category': 'Wellness',
         'region': 'istria',
@@ -595,6 +679,12 @@ EXPERIENCES: list[dict] = [
     # ======================= KVARNER =======================
     {
         'slug': 'mali-losinj-dolphin-watching-boat-trip',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/a/a8/Mali_Losinj_01.jpg',
+            'author': 'K. Korlevic',
+            'licence': 'Public domain',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Mali_Losinj_01.jpg',
+        },
         'name': 'Dolphin Watching Around the Lošinj Islands',
         'category': 'Water Sports',
         'region': 'kvarner',
@@ -648,6 +738,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'opatija-lungomare-coastal-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Croatia_BW_2014-10-10_10-26-54.jpg/1280px-Croatia_BW_2014-10-10_10-26-54.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_BW_2014-10-10_10-26-54.jpg',
+        },
         'name': 'Opatija and the Lungomare Seaside Promenade',
         'category': 'Culture',
         'region': 'kvarner',
@@ -690,6 +787,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'lovran-forest-and-coast-wellness-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Croatia_Lovran_BW_2014-10-10_14-52-11.jpg/1280px-Croatia_Lovran_BW_2014-10-10_14-52-11.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Croatia_Lovran_BW_2014-10-10_14-52-11.jpg',
+        },
         'name': 'Lovran Forest Walk with Sea Breathing and a Herbal Tea',
         'category': 'Wellness',
         'region': 'kvarner',
@@ -731,6 +835,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'ucka-nature-park-vojak-summit-hike',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Forest%2C_Nature_park_U%C4%8Dka%2C_Croatia.jpg/1280px-Forest%2C_Nature_park_U%C4%8Dka%2C_Croatia.jpg',
+            'author': 'Michal Klajban',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Forest,_Nature_park_U%C4%8Dka,_Croatia.jpg',
+        },
         'name': 'Učka Nature Park: Hike to Vojak, the Summit',
         'category': 'Adventure',
         'region': 'kvarner',
@@ -773,6 +884,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'risnjak-national-park-leska-educational-trail',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/A_forest_in_Risnjak_National_Park_%28view_from_%C4%86unina_glava%29%2C_Risnjak_National_Park%2C_Croatia.jpg/1280px-A_forest_in_Risnjak_National_Park_%28view_from_%C4%86unina_glava%29%2C_Risnjak_National_Park%2C_Croatia.jpg',
+            'author': 'Michal Klajban',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:A_forest_in_Risnjak_National_Park_(view_from_%C4%86unina_glava),_Risnjak_National_Park,_Croatia.jpg',
+        },
         'name': 'Risnjak National Park: Leska Trail and the Kupa Spring',
         'category': 'Adventure',
         'region': 'kvarner',
@@ -816,6 +934,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'baska-sea-kayak-along-the-coast',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Sunshades_on_the_beach_of_Ba%C5%A1ka%2C_Croatia.jpg/1280px-Sunshades_on_the_beach_of_Ba%C5%A1ka%2C_Croatia.jpg',
+            'author': 'Ruta Badina',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Sunshades_on_the_beach_of_Ba%C5%A1ka,_Croatia.jpg',
+        },
         'name': 'Baška Sea Kayak Tour Along the Krk Coast',
         'category': 'Water Sports',
         'region': 'kvarner',
@@ -856,6 +981,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'vrbnik-zlahtina-wine-cellar-tasting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Vrbnik%2C_Croatia_-_panoramio_-_Arek_N._%285%29.jpg/1280px-Vrbnik%2C_Croatia_-_panoramio_-_Arek_N._%285%29.jpg',
+            'author': 'Arek N.',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Vrbnik,_Croatia_-_panoramio_-_Arek_N._(5).jpg',
+        },
         'name': 'Vrbnik Žlahtina Tasting in a Family Cellar',
         'category': 'Wine',
         'region': 'kvarner',
@@ -897,6 +1029,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'cres-tramontana-hike-to-beli',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Aerial_image_of_the_northern_part_of_Cres_%28view_from_the_south%29.jpg/1280px-Aerial_image_of_the_northern_part_of_Cres_%28view_from_the_south%29.jpg',
+            'author': 'Carsten Steger',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aerial_image_of_the_northern_part_of_Cres_(view_from_the_south).jpg',
+        },
         'name': 'Cres Tramontana Hike Towards Beli',
         'category': 'Adventure',
         'region': 'kvarner',
@@ -938,6 +1077,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'rab-old-town-four-bell-towers-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Rab_Hotel_Arbiana.jpg/1280px-Rab_Hotel_Arbiana.jpg',
+            'author': 'Palauenc05',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Rab_Hotel_Arbiana.jpg',
+        },
         'name': 'Rab Old Town and the Four Bell Towers',
         'category': 'Culture',
         'region': 'kvarner',
@@ -979,6 +1125,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'rijeka-central-market-and-city-food-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Rijeka_market_trznica.jpg',
+            'author': 'Antonio199cro',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Rijeka_market_trznica.jpg',
+        },
         'name': 'Rijeka Central Market and City Food Walk',
         'category': 'Dining',
         'region': 'kvarner',
@@ -1028,6 +1181,13 @@ EXPERIENCES: list[dict] = [
     # ======================= ZAGREB =======================
     {
         'slug': 'zagreb-food-and-history-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Dolac_01.JPG/1280px-Dolac_01.JPG',
+            'author': 'Rilegator',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Dolac_01.JPG',
+        },
         'name': 'Zagreb Food and History Walk: Dolac Market and the Upper Town',
         'category': 'Dining',
         'region': 'zagreb',
@@ -1075,6 +1235,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'zagreb-upper-town-history-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Iglesia_de_San_Marco%2C_Zagreb%2C_Croacia%2C_2014-04-20%2C_DD_01.JPG/1280px-Iglesia_de_San_Marco%2C_Zagreb%2C_Croacia%2C_2014-04-20%2C_DD_01.JPG',
+            'author': 'Diego Delso',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Iglesia_de_San_Marco,_Zagreb,_Croacia,_2014-04-20,_DD_01.JPG',
+        },
         'name': 'Zagreb Upper Town: Gates, Churches and Legends',
         'category': 'Culture',
         'region': 'zagreb',
@@ -1116,6 +1283,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'samobor-plesivica-wine-road-tasting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Saint_John_the_Baptist_chapel_in_Samobor_%282%29.jpg/1280px-Saint_John_the_Baptist_chapel_in_Samobor_%282%29.jpg',
+            'author': 'Tournasol7',
+            'licence': 'CC BY 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Saint_John_the_Baptist_chapel_in_Samobor_(2).jpg',
+        },
         'name': 'Plešivica Wine Road Day from Samobor',
         'category': 'Wine',
         'region': 'zagreb',
@@ -1157,6 +1331,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'medvednica-nature-park-sljeme-hike',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Medvednica_Nature_Park.jpg/1280px-Medvednica_Nature_Park.jpg',
+            'author': 'Fraxinus',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Medvednica_Nature_Park.jpg',
+        },
         'name': 'Medvednica Nature Park: Hike to Sljeme above Zagreb',
         'category': 'Adventure',
         'region': 'zagreb',
@@ -1200,6 +1381,13 @@ EXPERIENCES: list[dict] = [
     # ======================= CONTINENTAL =======================
     {
         'slug': 'varazdin-baroque-city-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Herzer_Palace_in_Varazdin_%281%29.jpg/1280px-Herzer_Palace_in_Varazdin_%281%29.jpg',
+            'author': 'Krzysztof Golik',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Herzer_Palace_in_Varazdin_(1).jpg',
+        },
         'name': 'Varaždin: The Baroque City Walk',
         'category': 'Culture',
         'region': 'continental',
@@ -1242,6 +1430,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'kopacki-rit-birdwatching-boat-trip',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Kopa%C4%8Dki_Rit_Nature_Reserve_near_Osijek%2C_Croatia.JPG/1280px-Kopa%C4%8Dki_Rit_Nature_Reserve_near_Osijek%2C_Croatia.JPG',
+            'author': 'Misalalic',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Kopa%C4%8Dki_Rit_Nature_Reserve_near_Osijek,_Croatia.JPG',
+        },
         'name': 'Birdwatching by Boat in Kopački Rit Nature Park',
         'category': 'Adventure',
         'region': 'continental',
@@ -1284,6 +1479,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'ilok-traminac-wine-cellars-tasting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Ilok_vinski_podrum.jpg/1280px-Ilok_vinski_podrum.jpg',
+            'author': 'Igor Karacic',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Ilok_vinski_podrum.jpg',
+        },
         'name': 'Ilok Cellars and Traminac Tasting on the Danube',
         'category': 'Wine',
         'region': 'continental',
@@ -1325,6 +1527,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'trakoscan-castle-and-zagorje-hills-tour',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Dvorac_Trako%C5%A1%C4%87an_%28Trakostyan_Castle_-_Croatia%29_-_panoramio_%2814%29.jpg/1280px-Dvorac_Trako%C5%A1%C4%87an_%28Trakostyan_Castle_-_Croatia%29_-_panoramio_%2814%29.jpg',
+            'author': 'Nikolai Karaneschev',
+            'licence': 'CC BY 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Dvorac_Trako%C5%A1%C4%87an_(Trakostyan_Castle_-_Croatia)_-_panoramio_(14).jpg',
+        },
         'name': 'Trakošćan Castle and the Hills of Zagorje',
         'category': 'Culture',
         'region': 'continental',

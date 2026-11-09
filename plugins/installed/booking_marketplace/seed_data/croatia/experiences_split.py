@@ -57,6 +57,13 @@ EXPERIENCES: list[dict] = [
     # ================= SPLIT =================
     {
         'slug': 'split-diocletians-palace-walking-tour',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/View_of_Diocletian%27s_Palace%2C_Split_02.jpg/1280px-View_of_Diocletian%27s_Palace%2C_Split_02.jpg',
+            'author': 'Bernard Gagnon',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:View_of_Diocletian%27s_Palace,_Split_02.jpg',
+        },
         'name': "Walking Through Diocletian's Palace",
         'category': 'Culture',
         'region': 'split',
@@ -98,6 +105,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'split-marjan-hill-sunrise-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/J32_392_Telegrin.jpg/1280px-J32_392_Telegrin.jpg',
+            'author': 'Falk2',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:J32_392_Telegrin.jpg',
+        },
         'name': 'Marjan Hill at Sunrise',
         'category': 'Adventure',
         'region': 'split',
@@ -133,6 +147,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'split-market-and-street-food-walk',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Old_Town%2C_Split_%28P1080892-Pano%29.jpg/1280px-Old_Town%2C_Split_%28P1080892-Pano%29.jpg',
+            'author': 'Matti Blume',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Old_Town,_Split_(P1080892-Pano).jpg',
+        },
         'name': 'Split Green Market and Street Food Walk',
         'category': 'Dining',
         'region': 'split',
@@ -174,6 +195,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'split-dalmatian-cooking-class',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Split_080620-133710-IMG_0968x.jpg/1280px-Split_080620-133710-IMG_0968x.jpg',
+            'author': 'Tatyana Peshkova',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Split_080620-133710-IMG_0968x.jpg',
+        },
         'name': 'Cook a Dalmatian Dinner in Split',
         'category': 'Dining',
         'region': 'split',
@@ -215,6 +243,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'split-sea-kayaking-marjan-sunset',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Marjan_from_the_Riva.jpg/1280px-Marjan_from_the_Riva.jpg',
+            'author': 'DIREKTOR',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Marjan_from_the_Riva.jpg',
+        },
         'name': 'Sunset Sea Kayaking Around Marjan',
         'category': 'Water Sports',
         'region': 'split',
@@ -250,6 +285,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'split-sunset-sailing-cruise',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/View_of_Split_harbour_01.jpg/1280px-View_of_Split_harbour_01.jpg',
+            'author': 'Bernard Gagnon',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:View_of_Split_harbour_01.jpg',
+        },
         'name': 'Sunset Sailing Off Split',
         'category': 'Water Sports',
         'region': 'split',
@@ -285,6 +327,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'split-blue-cave-and-five-islands-boat-day',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Inside_the_Blue_Cave_on_Bisevo_island%2C_Croatia_%2848693429148%29.jpg/1280px-Inside_the_Blue_Cave_on_Bisevo_island%2C_Croatia_%2848693429148%29.jpg',
+            'author': 'dronepicr',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Inside_the_Blue_Cave_on_Bisevo_island,_Croatia_(48693429148).jpg',
+        },
         'name': 'Blue Cave and Five Islands Boat Day from Split',
         'category': 'Water Sports',
         'region': 'split',
@@ -335,6 +384,13 @@ EXPERIENCES: list[dict] = [
     # ================= TROGIR / KAŠTELA / KLIS / SALONA =================
     {
         'slug': 'trogir-old-town-walking-tour',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Trogir_Old-town_Church-John-Baptist_20250526_091723.jpg/1280px-Trogir_Old-town_Church-John-Baptist_20250526_091723.jpg',
+            'author': 'Rigorius',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Trogir_Old-town_Church-John-Baptist_20250526_091723.jpg',
+        },
         'name': 'Trogir Old Town on an Island',
         'category': 'Culture',
         'region': 'split',
@@ -370,6 +426,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'trogir-kayak-around-ciovo',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Trogir_BW_2024-10-02_14-53-29.jpg/1280px-Trogir_BW_2024-10-02_14-53-29.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Trogir_BW_2024-10-02_14-53-29.jpg',
+        },
         'name': 'Kayaking Around Trogir and Čiovo',
         'category': 'Water Sports',
         'region': 'split',
@@ -405,6 +468,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'kastela-old-zinfandel-wine-tasting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Ka%C5%A1tel_Novi_sunset_20220130.jpg/1280px-Ka%C5%A1tel_Novi_sunset_20220130.jpg',
+            'author': 'Argo Navis',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Ka%C5%A1tel_Novi_sunset_20220130.jpg',
+        },
         'name': 'Kaštela and the Roots of Zinfandel',
         'category': 'Wine',
         'region': 'split',
@@ -440,6 +510,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'klis-fortress-guided-visit',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Fortress_of_Klis_09_-_Cannon.jpg/1280px-Fortress_of_Klis_09_-_Cannon.jpg',
+            'author': 'Bernard Gagnon',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Fortress_of_Klis_09_-_Cannon.jpg',
+        },
         'name': 'Klis Fortress: the Gate to Dalmatia',
         'category': 'Culture',
         'region': 'split',
@@ -475,6 +552,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'salona-roman-city-tour',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Salona_-_ancient_tomb.JPG/1280px-Salona_-_ancient_tomb.JPG',
+            'author': 'Pudelek (Marcin Szala)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Salona_-_ancient_tomb.JPG',
+        },
         'name': 'Salona, the Roman Capital of Dalmatia',
         'category': 'Culture',
         'region': 'split',
@@ -511,6 +595,13 @@ EXPERIENCES: list[dict] = [
     # ================= OMIŠ / CETINA =================
     {
         'slug': 'cetina-river-rafting-omis',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Cetina_%28HR%29%2C_Kirche_%22Hram_Vaznesenja_Gospodnjeg%22_--_2022_--_0218.jpg/1280px-Cetina_%28HR%29%2C_Kirche_%22Hram_Vaznesenja_Gospodnjeg%22_--_2022_--_0218.jpg',
+            'author': 'Anil Öztas',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Cetina_(HR),_Kirche_%22Hram_Vaznesenja_Gospodnjeg%22_--_2022_--_0218.jpg',
+        },
         'name': 'Rafting the Cetina River Near Omiš',
         'category': 'Adventure',
         'region': 'split',
@@ -551,6 +642,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'cetina-canyoning-adventure',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Hrvace_%28HR%29%2C_Peru%C4%87a-See_--_2022_--_0056.jpg/1280px-Hrvace_%28HR%29%2C_Peru%C4%87a-See_--_2022_--_0056.jpg',
+            'author': 'Anil Öztas',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Hrvace_(HR),_Peru%C4%87a-See_--_2022_--_0056.jpg',
+        },
         'name': 'Canyoning the Cetina Gorge',
         'category': 'Adventure',
         'region': 'split',
@@ -586,6 +684,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'omis-pirate-fortress-starigrad-hike',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Omi%C5%A1_city_panorama_%282018-05-16%29.jpg/1280px-Omi%C5%A1_city_panorama_%282018-05-16%29.jpg',
+            'author': 'Sergei Gussev',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Omi%C5%A1_city_panorama_(2018-05-16).jpg',
+        },
         'name': 'Omiš and the Pirate Fortress',
         'category': 'Adventure',
         'region': 'split',
@@ -622,6 +727,13 @@ EXPERIENCES: list[dict] = [
     # ================= MAKARSKA RIVIERA / BIOKOVO =================
     {
         'slug': 'makarska-sea-kayaking-coves',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Nugal_beach_MakarskaTucepi.jpg/1280px-Nugal_beach_MakarskaTucepi.jpg',
+            'author': 'Tengilorg',
+            'licence': 'CC BY 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Nugal_beach_MakarskaTucepi.jpg',
+        },
         'name': 'Sea Kayaking Under Biokovo from Makarska',
         'category': 'Water Sports',
         'region': 'split',
@@ -657,6 +769,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'biokovo-skywalk-jeep-tour',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/7._SKYWALK_%28BIOKOVO%29.jpg/1280px-7._SKYWALK_%28BIOKOVO%29.jpg',
+            'author': 'Marko Jukić -Majkl',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:7._SKYWALK_(BIOKOVO).jpg',
+        },
         'name': 'Biokovo Skywalk and Sveti Jure Summit by 4x4',
         'category': 'Adventure',
         'region': 'split',
@@ -699,6 +818,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'biokovo-sunrise-hike',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/The_highest_peak_Sv_Jure_%281762_m%29_in_Biokovo_Nature_Park.jpg/1280px-The_highest_peak_Sv_Jure_%281762_m%29_in_Biokovo_Nature_Park.jpg',
+            'author': 'SKas',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:The_highest_peak_Sv_Jure_(1762_m)_in_Biokovo_Nature_Park.jpg',
+        },
         'name': 'Biokovo Sunrise Hike',
         'category': 'Adventure',
         'region': 'split',
@@ -734,6 +860,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'brela-yoga-and-sea-swim',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Brela_BW_2024-10-04_15-43-18.jpg/1280px-Brela_BW_2024-10-04_15-43-18.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Brela_BW_2024-10-04_15-43-18.jpg',
+        },
         'name': 'Morning Yoga and Sea Swim in Brela',
         'category': 'Wellness',
         'region': 'split',
@@ -769,6 +902,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'baska-voda-stand-up-paddle',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Baska_Voda-2011.jpg/1280px-Baska_Voda-2011.jpg',
+            'author': 'Leonid Dzhepko - User: (WT-shared) Л.П. Джепко at wts wikivoyage',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Baska_Voda-2011.jpg',
+        },
         'name': 'Stand-Up Paddling from Baška Voda',
         'category': 'Water Sports',
         'region': 'split',
@@ -804,6 +944,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'tucepi-coastal-cycling-to-makarska',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/By_Niederkasseler_-_panoramio_%282%29.jpg/1280px-By_Niederkasseler_-_panoramio_%282%29.jpg',
+            'author': 'Niederkasseler',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:By_Niederkasseler_-_panoramio_(2).jpg',
+        },
         'name': 'Coastal Cycling from Tučepi to Makarska',
         'category': 'Adventure',
         'region': 'split',
@@ -840,6 +987,13 @@ EXPERIENCES: list[dict] = [
     # ================= ZAGORA: SINJ / IMOTSKI =================
     {
         'slug': 'sinj-alka-heritage-and-old-town',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Sinjski_alkari_u_%C4%8Cakovcu.JPG/1280px-Sinjski_alkari_u_%C4%8Cakovcu.JPG',
+            'author': 'Silverije',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Sinjski_alkari_u_%C4%8Cakovcu.JPG',
+        },
         'name': 'Sinj and the Alka Tradition',
         'category': 'Culture',
         'region': 'split',
@@ -875,6 +1029,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'imotski-blue-and-red-lakes',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Red_Lake_near_Imotski%2C_Croatia.JPG/1280px-Red_Lake_near_Imotski%2C_Croatia.JPG',
+            'author': 'Modzzak',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Red_Lake_near_Imotski,_Croatia.JPG',
+        },
         'name': 'Imotski: the Blue and Red Lakes',
         'category': 'Adventure',
         'region': 'split',
@@ -911,6 +1072,13 @@ EXPERIENCES: list[dict] = [
     # ================= HVAR =================
     {
         'slug': 'hvar-pakleni-islands-sea-kayaking',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gali%C5%A1nik_Island%2C_Hvar.jpg/1280px-Gali%C5%A1nik_Island%2C_Hvar.jpg',
+            'author': 'Bernard Gagnon',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Gali%C5%A1nik_Island,_Hvar.jpg',
+        },
         'name': 'Sea Kayaking to the Pakleni Islands from Hvar',
         'category': 'Water Sports',
         'region': 'split',
@@ -946,6 +1114,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'hvar-lavender-fields-and-wine',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/4/42/Champ_de_lavande_-_Hvar.jpg',
+            'author': 'Pierre Mounier',
+            'licence': 'CC BY-SA 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Champ_de_lavande_-_Hvar.jpg',
+        },
         'name': 'Hvar Lavender Fields and Wine Tasting',
         'category': 'Wine',
         'region': 'split',
@@ -981,6 +1156,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'stari-grad-plain-vineyards-and-tasting',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Stari_Grad_Plain_20250920_02.jpg/1280px-Stari_Grad_Plain_20250920_02.jpg',
+            'author': 'Argo Navis',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Stari_Grad_Plain_20250920_02.jpg',
+        },
         'name': 'Stari Grad Plain: Greek Fields and Hvar Wine',
         'category': 'Wine',
         'region': 'split',
@@ -1016,6 +1198,12 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'jelsa-mediterranean-herbs-and-aromatherapy',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Jelsa%2C_Hvar%2C_Croatia.JPG/1280px-Jelsa%2C_Hvar%2C_Croatia.JPG',
+            'author': 'DaBler',
+            'licence': 'Public domain',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Jelsa,_Hvar,_Croatia.JPG',
+        },
         'name': 'Jelsa Herb Walk and Essential Oils',
         'category': 'Wellness',
         'region': 'split',
@@ -1052,6 +1240,13 @@ EXPERIENCES: list[dict] = [
     # ================= BRAČ =================
     {
         'slug': 'bol-zlatni-rat-and-vidova-gora-hike',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/f/f3/Zlatni_rat_beach_seen_from_Vidova_gora_mountain.jpg',
+            'author': 'Marin0110',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Zlatni_rat_beach_seen_from_Vidova_gora_mountain.jpg',
+        },
         'name': 'Vidova Gora and Zlatni Rat from Bol',
         'category': 'Adventure',
         'region': 'split',
@@ -1087,6 +1282,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'brac-stone-quarries-and-olive-oil',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Pu%C4%8Di%C5%A1%C4%87a_BW_2024-10-04_11-44-12.jpg/1280px-Pu%C4%8Di%C5%A1%C4%87a_BW_2024-10-04_11-44-12.jpg',
+            'author': 'Berthold Werner',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Pu%C4%8Di%C5%A1%C4%87a_BW_2024-10-04_11-44-12.jpg',
+        },
         'name': 'Brač Stone and Olive Oil',
         'category': 'Culture',
         'region': 'split',
@@ -1123,6 +1325,13 @@ EXPERIENCES: list[dict] = [
     # ================= ŠOLTA =================
     {
         'slug': 'solta-island-cycling-and-olive-oil',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/%C5%A0olta_Stomorska_Hrvatska_Westufer_2012_c.jpg/1280px-%C5%A0olta_Stomorska_Hrvatska_Westufer_2012_c.jpg',
+            'author': 'Joadl',
+            'licence': 'CC BY-SA 3.0 at',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/at/deed.en',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:%C5%A0olta_Stomorska_Hrvatska_Westufer_2012_c.jpg',
+        },
         'name': 'Šolta by Bike: Olive Groves and Island Flavours',
         'category': 'Dining',
         'region': 'split',
@@ -1159,6 +1368,13 @@ EXPERIENCES: list[dict] = [
     # ================= VIS / KOMIŽA / BIŠEVO =================
     {
         'slug': 'vis-military-history-tour',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/George_the_Third_Fortress_on_Vis_island%2C_Croatia_%2848693840901%29.jpg/1280px-George_the_Third_Fortress_on_Vis_island%2C_Croatia_%2848693840901%29.jpg',
+            'author': 'dronepicr',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:George_the_Third_Fortress_on_Vis_island,_Croatia_(48693840901).jpg',
+        },
         'name': 'Vis: the Secret Military Island',
         'category': 'Culture',
         'region': 'split',
@@ -1194,6 +1410,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'komiza-vugava-wine-and-vineyards',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Aerial_view_of_Komiza_on_Vis_island%2C_Croatia_%2848608309188%29.jpg/1280px-Aerial_view_of_Komiza_on_Vis_island%2C_Croatia_%2848608309188%29.jpg',
+            'author': 'dronepicr',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aerial_view_of_Komiza_on_Vis_island,_Croatia_(48608309188).jpg',
+        },
         'name': 'Vis Wines: Vugava and Plavac Mali from Komiža',
         'category': 'Wine',
         'region': 'split',
@@ -1229,6 +1452,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'bisevo-blue-cave-boat-from-komiza',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Exit_to_the_Blue_Cave_on_Bisevo_island_in_Croatia_%2848693763026%29.jpg/1280px-Exit_to_the_Blue_Cave_on_Bisevo_island_in_Croatia_%2848693763026%29.jpg',
+            'author': 'dronepicr',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Exit_to_the_Blue_Cave_on_Bisevo_island_in_Croatia_(48693763026).jpg',
+        },
         'name': 'Blue Cave on Biševo by Boat from Komiža',
         'category': 'Water Sports',
         'region': 'split',
@@ -1271,6 +1501,13 @@ EXPERIENCES: list[dict] = [
     },
     {
         'slug': 'vis-stiniva-cove-sea-kayaking',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Aerial_view_of_the_Adriatic_Sea_at_Stiniva_Bay_on_Vis_island_in_Croatia_%2848608804397%29.jpg/1280px-Aerial_view_of_the_Adriatic_Sea_at_Stiniva_Bay_on_Vis_island_in_Croatia_%2848608804397%29.jpg',
+            'author': 'dronepicr',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aerial_view_of_the_Adriatic_Sea_at_Stiniva_Bay_on_Vis_island_in_Croatia_(48608804397).jpg',
+        },
         'name': 'Kayaking to Stiniva Cove, Vis',
         'category': 'Water Sports',
         'region': 'split',

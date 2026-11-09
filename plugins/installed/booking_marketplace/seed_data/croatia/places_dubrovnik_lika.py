@@ -13,6 +13,13 @@ PLACES: list[dict] = [
     {
         'name': 'Dubrovnik',
         'slug': 'dubrovnik',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Casco_viejo_de_Dubrovnik%2C_Croacia%2C_2014-04-14%2C_DD_07.JPG/1280px-Casco_viejo_de_Dubrovnik%2C_Croacia%2C_2014-04-14%2C_DD_07.JPG',
+            'author': 'Diego Delso',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Casco_viejo_de_Dubrovnik,_Croacia,_2014-04-14,_DD_07.JPG',
+        },
         'region': 'dubrovnik',
         'place_type': 'cities',
         'featured': True,
@@ -129,6 +136,13 @@ PLACES: list[dict] = [
     {
         'name': 'Cavtat',
         'slug': 'cavtat',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/View_of_Cavtat_20180820-2.jpg/1280px-View_of_Cavtat_20180820-2.jpg',
+            'author': 'Suicasmo',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:View_of_Cavtat_20180820-2.jpg',
+        },
         'region': 'dubrovnik',
         'place_type': 'coastal',
         'featured': False,
@@ -239,6 +253,12 @@ PLACES: list[dict] = [
     {
         'name': 'Lokrum',
         'slug': 'lokrum',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Lokrum2.JPG/1280px-Lokrum2.JPG',
+            'author': 'Timur Voronkov',
+            'licence': 'Public domain',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Lokrum2.JPG',
+        },
         'region': 'dubrovnik',
         'place_type': 'coastal',
         'featured': False,
@@ -350,6 +370,13 @@ PLACES: list[dict] = [
     {
         'name': 'Elaphiti Islands',
         'slug': 'elaphiti-islands',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Insel_Lopud_in_Kroatien_%2848612708518%29.jpg/1280px-Insel_Lopud_in_Kroatien_%2848612708518%29.jpg',
+            'author': 'dronepicr',
+            'licence': 'CC BY 2.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Insel_Lopud_in_Kroatien_(48612708518).jpg',
+        },
         'region': 'dubrovnik',
         'place_type': 'coastal',
         'featured': False,
@@ -463,6 +490,13 @@ PLACES: list[dict] = [
     {
         'name': 'Ston',
         'slug': 'ston',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/St._Blaise_Church%2C_Ston_01.jpg/1280px-St._Blaise_Church%2C_Ston_01.jpg',
+            'author': 'Bernard Gagnon',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:St._Blaise_Church,_Ston_01.jpg',
+        },
         'region': 'dubrovnik',
         'place_type': 'cultural',
         'featured': False,
@@ -573,6 +607,13 @@ PLACES: list[dict] = [
     {
         'name': 'Orebić',
         'slug': 'orebic',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Izme%C4%91u_dvi_stine1140337.JPG/1280px-Izme%C4%91u_dvi_stine1140337.JPG',
+            'author': 'Quahadi Añtó 15:42, 15 January 2011 (UTC)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Izme%C4%91u_dvi_stine1140337.JPG',
+        },
         'region': 'dubrovnik',
         'place_type': 'coastal',
         'featured': False,
@@ -682,6 +723,13 @@ PLACES: list[dict] = [
     {
         'name': 'Korčula',
         'slug': 'korcula',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Kor%C4%8Dula_23h.jpg/1280px-Kor%C4%8Dula_23h.jpg',
+            'author': 'Miroslav.vajdic',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Kor%C4%8Dula_23h.jpg',
+        },
         'region': 'dubrovnik',
         'place_type': 'cultural',
         'featured': True,
@@ -797,6 +845,13 @@ PLACES: list[dict] = [
     {
         'name': 'Mljet National Park',
         'slug': 'mljet-national-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Zalazak.jpg/1280px-Zalazak.jpg',
+            'author': 'Jaganjac',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Zalazak.jpg',
+        },
         'region': 'dubrovnik',
         'place_type': 'national_parks',
         'featured': False,
@@ -911,6 +966,13 @@ PLACES: list[dict] = [
     {
         'name': 'Lastovo',
         'slug': 'lastovo',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Skrivena_luka%2C_Lastovo.jpg/1280px-Skrivena_luka%2C_Lastovo.jpg',
+            'author': 'Dijana Župan',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Skrivena_luka,_Lastovo.jpg',
+        },
         'region': 'dubrovnik',
         'place_type': 'coastal',
         'featured': False,
@@ -1021,6 +1083,13 @@ PLACES: list[dict] = [
     {
         'name': 'Trsteno Arboretum',
         'slug': 'trsteno-arboretum',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Arboretum_Trsteno_%28by_Pudelek%29.JPG/1280px-Arboretum_Trsteno_%28by_Pudelek%29.JPG',
+            'author': 'Pudelek (Marcin Szala)',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Arboretum_Trsteno_(by_Pudelek).JPG',
+        },
         'region': 'dubrovnik',
         'place_type': 'cultural',
         'featured': False,
@@ -1133,6 +1202,13 @@ PLACES: list[dict] = [
     {
         'name': 'Konavle',
         'slug': 'konavle',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Konavle_%2811%29.jpg/1280px-Konavle_%2811%29.jpg',
+            'author': 'Ivan Petrović Poljak',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Konavle_(11).jpg',
+        },
         'region': 'dubrovnik',
         'place_type': 'cultural',
         'featured': False,
@@ -1241,6 +1317,13 @@ PLACES: list[dict] = [
     {
         'name': 'Neretva Delta',
         'slug': 'neretva-delta',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/U%C5%A1%C4%87e_Neretve_002.jpg/1280px-U%C5%A1%C4%87e_Neretve_002.jpg',
+            'author': 'Ivan25',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:U%C5%A1%C4%87e_Neretve_002.jpg',
+        },
         'region': 'dubrovnik',
         'place_type': 'lakes',
         'featured': False,
@@ -1353,6 +1436,13 @@ PLACES: list[dict] = [
     {
         'name': 'Plitvice Lakes National Park',
         'slug': 'plitvice-lakes-national-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Plitvice_Lakes1.jpg/1280px-Plitvice_Lakes1.jpg',
+            'author': 'Tesla Delacroix',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Plitvice_Lakes1.jpg',
+        },
         'region': 'lika',
         'place_type': 'national_parks',
         'featured': True,
@@ -1471,6 +1561,13 @@ PLACES: list[dict] = [
     {
         'name': 'Rastoke',
         'slug': 'rastoke',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Rastoke_1510.JPG/1280px-Rastoke_1510.JPG',
+            'author': 'Karl Gruber',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Rastoke_1510.JPG',
+        },
         'region': 'lika',
         'place_type': 'cultural',
         'featured': False,
@@ -1580,6 +1677,13 @@ PLACES: list[dict] = [
     {
         'name': 'Northern Velebit National Park',
         'slug': 'northern-velebit-national-park',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Karstformationen_Nationalpark-Nord-Velebit.JPG/1280px-Karstformationen_Nationalpark-Nord-Velebit.JPG',
+            'author': 'Rootmaker',
+            'licence': 'CC BY-SA 3.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Karstformationen_Nationalpark-Nord-Velebit.JPG',
+        },
         'region': 'lika',
         'place_type': 'national_parks',
         'featured': False,
@@ -1701,6 +1805,13 @@ PLACES: list[dict] = [
     {
         'name': 'Gospić',
         'slug': 'gospic',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/e/e8/Gospic_panorama_s_novog_mosta.JPG',
+            'author': 'INekic',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Gospic_panorama_s_novog_mosta.JPG',
+        },
         'region': 'lika',
         'place_type': 'cities',
         'featured': False,
@@ -1809,6 +1920,13 @@ PLACES: list[dict] = [
     {
         'name': 'Cerovac Caves',
         'slug': 'cerovac-caves',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Posjetitelji_kod_jezerca%2C_Gornja_%C5%A1pilja.jpg/1280px-Posjetitelji_kod_jezerca%2C_Gornja_%C5%A1pilja.jpg',
+            'author': 'Nikola Turkalj',
+            'licence': 'CC BY 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Posjetitelji_kod_jezerca,_Gornja_%C5%A1pilja.jpg',
+        },
         'region': 'lika',
         'place_type': 'mountains',
         'featured': False,
@@ -1918,6 +2036,13 @@ PLACES: list[dict] = [
     {
         'name': 'Krasno',
         'slug': 'krasno',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Krasnarsko_polje.JPG/1280px-Krasnarsko_polje.JPG',
+            'author': 'Damir Jelic',
+            'licence': 'CC BY 2.5',
+            'licence_url': 'https://creativecommons.org/licenses/by/2.5',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Krasnarsko_polje.JPG',
+        },
         'region': 'lika',
         'place_type': 'mountains',
         'featured': False,
@@ -2030,6 +2155,13 @@ PLACES: list[dict] = [
     {
         'name': 'Gacka River',
         'slug': 'gacka-river',
+        'photo': {
+            'src': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Izvor_Gacke_Majerovo_vrilo.jpg/1280px-Izvor_Gacke_Majerovo_vrilo.jpg',
+            'author': '1Moment.hr',
+            'licence': 'CC BY-SA 4.0',
+            'licence_url': 'https://creativecommons.org/licenses/by-sa/4.0',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Izvor_Gacke_Majerovo_vrilo.jpg',
+        },
         'region': 'lika',
         'place_type': 'lakes',
         'featured': False,
