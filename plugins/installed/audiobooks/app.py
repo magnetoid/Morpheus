@@ -29,6 +29,7 @@ class AudiobooksPlugin(Plugin):
     has_models = True
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         # Contribute the "Audiobook edition" card into the dashboard product form
         # (modular extension point) and persist it on save. Only book products
         # show the card.
@@ -44,6 +45,29 @@ class AudiobooksPlugin(Plugin):
             namespace='audiobooks',
         )
         self.register_celery_tasks('plugins.installed.audiobooks.tasks')
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Audiobook editions (by the book's name or the narrator) in the dashboard's
+        search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.audiobooks.models import Audiobook
+
+        return ds.add(
+            value,
+            Audiobook.objects.select_related('variant__product'),
+            query,
+            words,
+            fields=('narrator', 'variant__product__name'),
+            section='Audiobooks',
+            kind='audiobook',
+            icon='headphones',
+            capability='catalog.write',
+            label=lambda a: f'{a.variant.product.name} (audiobook)',
+            hint=lambda a: ' · '.join(
+                x for x in (f'read by {a.narrator}' if a.narrator else '', a.status) if x
+            ),
+            url=lambda a: f'/dashboard/products/{a.variant.product_id}/',
+        )
 
     def on_product_form_cards(self, value, product=None, **kwargs):
         """Contribute the 'Audiobook edition' card for book products."""

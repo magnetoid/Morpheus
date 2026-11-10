@@ -32,6 +32,7 @@ class BookingMarketplacePlugin(Plugin):
     enabled_by_default = False
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         # Storefront /bookings/ surface — only wired while the plugin is enabled.
         self.register_urls(
             'plugins.installed.booking_marketplace.urls',
@@ -116,6 +117,31 @@ class BookingMarketplacePlugin(Plugin):
             uid = f'booking_search_{model._meta.label_lower}'
             post_save.connect(booking_search.bump, sender=model, dispatch_uid=uid)
             post_delete.connect(booking_search.bump, sender=model, dispatch_uid=uid)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Experiences and stays (by name, address, place or region) in the
+        dashboard's search box: a listing that has its catalog product opens there."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.booking_marketplace.models import BookableService
+
+        return ds.add(
+            value,
+            BookableService,
+            query,
+            words,
+            fields=('name', 'slug', 'location', 'region'),
+            section='Listings',
+            kind='listing',
+            icon='map-pin',
+            capability='catalog.read',
+            label=lambda s: s.name,
+            hint=lambda s: ' · '.join(x for x in (s.location, s.region) if x),
+            url=lambda s: (
+                f'/dashboard/products/{s.product_id}/'
+                if s.product_id
+                else f'/dashboard/listings/{s.pk}/edit/'
+            ),
+        )
 
     def on_health_checks(self, value, **kwargs):
         """HEALTH_CHECKS: the listings and an experience page load for a visitor."""

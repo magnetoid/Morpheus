@@ -23,6 +23,7 @@ class RbacPlugin(Plugin):
     has_models = True
 
     def ready(self) -> None:
+        self.register_hook(MorpheusEvents.DASHBOARD_SEARCH, self.on_dashboard_search)
         # Bootstrap default roles after migrate runs at boot.
         try:
             from django.db import DatabaseError
@@ -42,6 +43,26 @@ class RbacPlugin(Plugin):
         # locking anyone out. Priority 50: this is the authority, not a filter
         # over someone else's answer.
         self.register_hook(MorpheusEvents.AUTHZ_CAPABILITY_CHECK, self.on_capability_check)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Roles (by name) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.rbac.models import Role
+
+        return ds.add(
+            value,
+            Role,
+            query,
+            words,
+            fields=('name', 'slug'),
+            section='Roles',
+            kind='role',
+            icon='shield',
+            capability='system.write',
+            label=lambda r: r.name,
+            hint=lambda r: 'Staff role',
+            url=lambda r: f'/dashboard/apps/rbac/roles/#{r.slug}',
+        )
 
     def on_capability_check(self, value, *, user=None, capability='', channel=None, **_kw):
         """Resolve one capability from the user's role bindings.

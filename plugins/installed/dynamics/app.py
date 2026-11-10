@@ -74,6 +74,7 @@ class DynamicsPlugin(Plugin):
 
     # ── Lifecycle ────────────────────────────────────────────────────────
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_urls(
             'plugins.installed.dynamics.urls',
             prefix='dashboard/dynamics/',
@@ -122,6 +123,26 @@ class DynamicsPlugin(Plugin):
             },
         )
         self.register_hook(events.ORDER_PLACED, self.on_order_placed, priority=80)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Product blocks (by name or heading) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.dynamics.models import DynamicBlock
+
+        return ds.add(
+            value,
+            DynamicBlock,
+            query,
+            words,
+            fields=('name', 'heading'),
+            section='Product blocks',
+            kind='dynamic_block',
+            icon='layout-grid',
+            capability='marketing.write',
+            label=lambda b: b.name,
+            hint=lambda b: ' · '.join(x for x in (b.heading, b.slot) if x),
+            url=lambda b: f'/dashboard/dynamics/{b.pk}/',
+        )
 
     def on_product_viewed(self, product=None, request=None, **kwargs):
         """Maintain session['recently_viewed'] (idempotent, capped)."""

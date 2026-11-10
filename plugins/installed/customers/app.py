@@ -14,6 +14,7 @@ class CustomersPlugin(Plugin):
     has_models = True
 
     def ready(self):
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_graphql_extension('plugins.installed.customers.graphql.queries')
         self.register_graphql_extension('plugins.installed.customers.graphql.mutations')
         # Allauth's signup signal is bridged onto the hook bus in signals.py —
@@ -31,6 +32,37 @@ class CustomersPlugin(Plugin):
         self.register_celery_beat(
             'customers:recompute_rfm',
             {'task': 'customers.recompute_rfm', 'schedule': crontab(hour=4, minute=30)},
+        )
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Customers and staff (by email, name, username, phone or company) in the
+        dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.customers.models import Customer
+
+        def label(c):
+            return f'{c.first_name} {c.last_name}'.strip() or c.email
+
+        def hint(c):
+            parts = (
+                c.email if label(c) != c.email else '',
+                c.company,
+                'staff' if c.is_staff else '',
+            )
+            return ' · '.join(x for x in parts if x)
+
+        return ds.add(
+            value,
+            Customer.objects.order_by('-date_joined'),
+            query,
+            words,
+            fields=('email', 'first_name', 'last_name', 'username', 'phone', 'company'),
+            section='Customers',
+            kind='customer',
+            icon='user',
+            label=label,
+            hint=hint,
+            url=lambda c: f'/dashboard/customers/{c.pk}/',
         )
 
     def on_restore_losses(self, value, since=None, **kwargs):

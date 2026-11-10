@@ -28,6 +28,7 @@ class NewsletterPlugin(Plugin):
     requires = ['marketing']
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         # Public capture + one-click confirm/unsubscribe endpoints.
         self.register_urls('plugins.installed.newsletter.urls', prefix='', namespace='newsletter')
         # Merchant dashboard (subscribers + popups + campaign sending), under Marketing.
@@ -39,6 +40,26 @@ class NewsletterPlugin(Plugin):
         # Win-back: the nightly RFM rescore fires this on segment flips; we act
         # on the drop to at-risk (consent-gated + deduped inside send_winback).
         self.register_hook(events.CUSTOMER_SEGMENT_CHANGED, self.on_segment_changed, priority=50)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Sign-up popups (by name or headline) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.newsletter.models import SignupPopup
+
+        return ds.add(
+            value,
+            SignupPopup,
+            query,
+            words,
+            fields=('name', 'headline'),
+            section='Newsletter',
+            kind='popup',
+            icon='megaphone',
+            capability='marketing.write',
+            label=lambda p: p.name,
+            hint=lambda p: f'Sign-up popup · {p.headline}',
+            url=lambda p: f'/dashboard/newsletter/popups/{p.pk}/',
+        )
 
     def on_segment_changed(self, customer=None, new=None, **kwargs):
         """Queue a win-back email when a customer slips to at-risk.

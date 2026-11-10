@@ -24,6 +24,8 @@ class TaxPlugin(Plugin):
     def ready(self) -> None:
         from morpheus.core import events  # noqa: PLC0415
 
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
+
         # After shipping (30) and the member discount (40), so both are in the
         # base it taxes; before the tenders (points 45, store credit 46, gift
         # card 50), which pay the total and must not lower it.
@@ -35,6 +37,41 @@ class TaxPlugin(Plugin):
             'plugins.installed.tax.urls_dashboard',
             prefix='dashboard/tax/',
             namespace='tax_dashboard',
+        )
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Tax regions (by name or country) and rates in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.tax.models import TaxRate, TaxRegion
+
+        page = '/dashboard/tax/regions/'
+        ds.add(
+            value,
+            TaxRegion,
+            query,
+            words,
+            fields=('name', 'country', 'region'),
+            section='Tax',
+            kind='tax_region',
+            icon='globe',
+            capability='tax.write',
+            label=lambda r: r.name,
+            hint=lambda r: f'Tax region · {r.country}',
+            url=lambda r: f'{page}?edit_kind=region&edit={r.pk}',
+        )
+        return ds.add(
+            value,
+            TaxRate.objects.select_related('region'),
+            query,
+            words,
+            fields=('name',),
+            section='Tax',
+            kind='tax_rate',
+            icon='percent',
+            capability='tax.write',
+            label=lambda r: r.name,
+            hint=lambda r: f'{r.rate_percent}% · {r.region.name}',
+            url=lambda r: f'{page}?edit_kind=rate&edit={r.pk}',
         )
 
     def on_cart_breakdown(self, value, cart=None, address=None, **kwargs):

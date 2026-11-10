@@ -942,6 +942,34 @@ def on_user_menu(self, value, **kwargs):
     return value
 ```
 
+### Answering the dashboard's search box
+
+Cmd+K lists the dashboard's pages, every app, each field of every settings
+panel, the emails and the guides by itself. Records are yours to add: subscribe
+`DASHBOARD_SEARCH` (a filter; `value` is the list of hits, kwargs `query`,
+`words`, `user`) and append rows of your own models with
+`plugins.dashboard_search.add()`. Name the fields a word may be in, the label,
+the link and the capability the page needs; a row matches when every word, as
+typed, is in one of the fields. A switched-off app's handler is skipped, so its
+records leave the search with it; a handler that raises is skipped too, which is
+why its test should call it directly.
+
+```python
+def on_dashboard_search(self, value, query='', words=None, **kwargs):
+    from plugins import dashboard_search as ds
+    from plugins.installed.marketing.models import Coupon
+
+    return ds.add(
+        value, Coupon, query, words, fields=('code', 'name'),
+        section='Coupons', kind='coupon', icon='ticket', capability='marketing.write',
+        label=lambda c: c.code, hint=lambda c: c.name,
+        url=lambda c: f'/dashboard/marketing/coupons/{c.pk}/',
+    )
+```
+
+The link must be a dashboard address (`/…`; anything else is dropped) and the
+icon a name the dashboard draws (`base.html`'s glyph map).
+
 **Your routes resolve before the app-discovery router.** Plugin URL mounts are
 included most-specific-prefix first, so anything you register under
 `dashboard/apps/<name>/` wins over the shell's

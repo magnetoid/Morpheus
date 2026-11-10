@@ -21,6 +21,7 @@ class SubscriptionsPlugin(Plugin):
     requires = ['customers']
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_urls(
             'plugins.installed.subscriptions.urls',
             prefix='dashboard/subscriptions/',
@@ -63,6 +64,25 @@ class SubscriptionsPlugin(Plugin):
                 'task': 'plugins.installed.subscriptions.tasks.send_renewal_reminders',
                 'schedule': 60 * 60 * 24,  # daily
             },
+        )
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Subscription plans (by name) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.subscriptions.models import Plan
+
+        return ds.add(
+            value,
+            Plan,
+            query,
+            words,
+            fields=('name', 'slug'),
+            section='Subscriptions',
+            kind='plan',
+            icon='repeat',
+            label=lambda p: p.name,
+            hint=lambda p: f'Plan · {p.price} every {p.interval}',
+            url=lambda p: f'/dashboard/subscriptions/#{p.slug}',
         )
 
     def contribute_storefront_blocks(self) -> list:

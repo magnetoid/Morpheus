@@ -795,6 +795,14 @@ class MorpheusEvents:
     #   links leave with the help app. Fired by admin_dashboard's
     #   `dashboard_page_help` tag and the catalogue; release_notes answers.
     DASHBOARD_PAGE_HELP = 'dashboard.page_help'  # filter
+    # DASHBOARD_SEARCH — filter, value=list of hits, kwargs: query (str, two
+    #   characters at least), words (its words, folded), user. The dashboard's
+    #   search box (/dashboard/palette/search/) lists pages, apps, settings fields
+    #   and emails itself; every app appends the records it owns, built with
+    #   `plugins.dashboard_search.hit()` ({'section', 'kind', 'label', 'hint', 'url',
+    #   'icon', 'capability', 'score'}). The shell drops a hit whose capability the
+    #   user lacks, ranks and caps. Every value is text, which the palette escapes.
+    DASHBOARD_SEARCH = 'dashboard.search'  # filter
     # CHANNELS_OVERVIEW — filter, value=list[dict], no kwargs. The unified
     #   sales-channels dashboard (channels plugin). Each commerce-channel
     #   plugin (google_shopping, meta_commerce, tiktok_commerce, …) appends

@@ -21,6 +21,7 @@ class CloudflarePlugin(Plugin):
     has_models = True
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_graphql_extension('plugins.installed.cloudflare.graphql.queries')
         self.register_graphql_extension('plugins.installed.cloudflare.graphql.mutations')
         self.register_urls(
@@ -47,6 +48,26 @@ class CloudflarePlugin(Plugin):
         self.register_hook(events.BOT_CHECK_PASSES, turnstile_passes, priority=50)
         # The nightly health check: a refused secret key refuses every visitor.
         self.register_hook(events.HEALTH_CHECKS, turnstile_health, priority=60)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Cloudflare zones (by domain) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.cloudflare.models import CloudflareZone
+
+        return ds.add(
+            value,
+            CloudflareZone,
+            query,
+            words,
+            fields=('domain', 'zone_id'),
+            section='Cloudflare',
+            kind='cloudflare_zone',
+            icon='cloud',
+            capability='system.write',
+            label=lambda z: z.domain,
+            hint=lambda z: 'Cloudflare zone',
+            url=lambda z: f'/dashboard/cloudflare/zones/{z.pk}/',
+        )
 
     def contribute_dashboard_pages(self) -> list:
         return [

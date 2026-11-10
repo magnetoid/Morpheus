@@ -30,6 +30,7 @@ class WebhooksUiPlugin(Plugin):
     has_models = True
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_urls(
             'plugins.installed.webhooks_ui.urls',
             prefix='dashboard/webhooks/',
@@ -40,6 +41,26 @@ class WebhooksUiPlugin(Plugin):
         # Core's dispatcher is the only trigger (after commit, honours '*');
         # this app takes each delivery so the merchant keeps the log and replay.
         self.register_hook(events.WEBHOOK_DELIVER, _take_delivery, priority=50)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Webhook endpoints (by name or address) in the dashboard's search box."""
+        from core.models import WebhookEndpoint
+        from plugins import dashboard_search as ds
+
+        return ds.add(
+            value,
+            WebhookEndpoint,
+            query,
+            words,
+            fields=('name', 'url'),
+            section='Webhooks',
+            kind='webhook',
+            icon='webhook',
+            capability='system.write',
+            label=lambda w: w.name or w.url,
+            hint=lambda w: w.url,
+            url=lambda w: f'/dashboard/webhooks/{w.pk}/edit/',
+        )
 
     def contribute_dashboard_pages(self) -> list:
         return [

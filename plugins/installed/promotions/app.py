@@ -35,6 +35,8 @@ class PromotionsPlugin(Plugin):
     def ready(self) -> None:
         from morpheus.core import events
 
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
+
         # CART_CALCULATE_TOTAL is deprecated — the canonical event is
         # CART_CALCULATE_BREAKDOWN, fired from OrderService since 2026-04.
         self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=10)
@@ -42,6 +44,26 @@ class PromotionsPlugin(Plugin):
             'plugins.installed.promotions.urls',
             prefix='dashboard/promotions/',
             namespace='promotions',
+        )
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Promotions (by name, slug or description) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.promotions.models import Promotion
+
+        return ds.add(
+            value,
+            Promotion,
+            query,
+            words,
+            fields=('name', 'slug', 'description'),
+            section='Promotions',
+            kind='promotion',
+            icon='percent',
+            capability='marketing.write',
+            label=lambda p: p.name,
+            hint=lambda p: 'Promotion' if p.is_active else 'Promotion · off',
+            url=lambda p: f'/dashboard/promotions/{p.pk}/',
         )
 
     def on_cart_breakdown(  # noqa: PLR0912, PLR0915

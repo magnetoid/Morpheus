@@ -19,6 +19,7 @@ class CatalogPlugin(Plugin):
     has_models = True
 
     def ready(self):
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_graphql_extension('plugins.installed.catalog.graphql.queries')
         # GDPR slice: contribute this plugin's data to the export/erasure.
         from plugins.installed.catalog import gdpr  # noqa: PLC0415
@@ -35,6 +36,54 @@ class CatalogPlugin(Plugin):
         # Morpheus Brain: contribute the catalog content-gap counts.
         self.register_hook(events.BRAIN_SIGNALS, self.on_brain_signals, priority=50)
         from plugins.installed.catalog import signals  # noqa - register signals
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Products (by name, SKU, slug, or a variant's SKU or barcode), categories
+        and collections, in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.catalog.models import Category, Collection, Product
+
+        ds.add(
+            value,
+            Product.objects.distinct(),
+            query,
+            words,
+            fields=('name', 'sku', 'slug', 'variants__sku', 'variants__barcode'),
+            section='Products',
+            kind='product',
+            icon='package',
+            capability='catalog.write',
+            label=lambda p: p.name,
+            hint=lambda p: ' · '.join(x for x in (p.sku, p.status) if x),
+            url=lambda p: f'/dashboard/products/{p.pk}/',
+        )
+        ds.add(
+            value,
+            Category,
+            query,
+            words,
+            fields=('name', 'slug'),
+            section='Categories',
+            kind='category',
+            icon='folder',
+            capability='catalog.write',
+            label=lambda c: c.name,
+            hint=lambda c: 'Category',
+            url=lambda c: f'/dashboard/categories/{c.pk}/edit/',
+        )
+        return ds.add(
+            value,
+            Collection,
+            query,
+            words,
+            fields=('name', 'slug'),
+            section='Collections',
+            kind='collection',
+            icon='layers',
+            label=lambda c: c.name,
+            hint=lambda c: 'Collection',
+            url=lambda c: f'/dashboard/collections/{c.pk}/edit/',
+        )
 
     def on_restore_losses(self, value, since=None, **kwargs):
         """RESTORE_LOSSES: the products added or changed since the backup was made."""

@@ -24,6 +24,7 @@ class CmsPlugin(Plugin):
     has_models = True
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_urls('plugins.installed.cms.urls', prefix='', namespace='cms')
         # Parameterised page CRUD under /dashboard/cms/ (new/edit/duplicate/delete).
         # The Pages LIST stays at /dashboard/apps/cms/pages/ via
@@ -62,6 +63,38 @@ class CmsPlugin(Plugin):
             importlib.import_module(f'themes.library.{theme}.sections')
         except Exception as exc:  # noqa: BLE001 — theme may not ship sections
             logger.debug('cms: no sections module for theme: %s', exc)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Pages (by title, address or excerpt) and menus in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.cms.models import Menu, Page
+
+        ds.add(
+            value,
+            Page,
+            query,
+            words,
+            fields=('title', 'slug', 'excerpt'),
+            section='Content',
+            kind='page',
+            icon='file-text',
+            label=lambda p: p.title,
+            hint=lambda p: f'/{p.slug} · {p.state}',
+            url=lambda p: f'/dashboard/cms/pages/{p.pk}/edit/',
+        )
+        return ds.add(
+            value,
+            Menu,
+            query,
+            words,
+            fields=('key', 'label'),
+            section='Content',
+            kind='menu',
+            icon='menu',
+            label=lambda m: m.label or m.key,
+            hint=lambda m: f'Menu · {m.key}',
+            url=lambda m: f'/dashboard/cms/menus/{m.pk}/edit/',
+        )
 
     def on_storefront_page_intro(self, value, page=None, **kwargs):
         """Supply the intro copy for a built-in storefront listing page.

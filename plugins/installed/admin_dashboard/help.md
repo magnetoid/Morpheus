@@ -13,7 +13,7 @@ Settings, near the bottom of the sidebar, is where every app's configuration liv
 ## Common tasks
 
 - Open a section from the sidebar, then its pages from the tabs at the top.
-- Jump anywhere by clicking the search box (or pressing Cmd+K) and typing a page, order, product or customer.
+- Press Cmd+K (or click the search box) to find any page, app, setting, email, guide, order, product, customer or coupon.
 - Open Settings and pick a category to change how an app behaves.
 - Turn an app on or off, or see what it adds, from the Apps catalogue.
 - Switch the dashboard between light, dark and system appearance from your account menu, top right.
@@ -22,4 +22,4 @@ Settings, near the bottom of the sidebar, is where every app's configuration liv
 
 ## Good to know
 
-A sidebar section appears only once an app contributes something to it, except Home, Linda, Orders, Products, Customers and Analytics, which always show. The same is true of Settings categories: General and Notifications always show; the rest appear only once an app has something there. This app is the dashboard shell itself, so it cannot be switched off.
+Settings categories work like sidebar sections: General and Notifications always show; the rest appear only once an app has something there. Search forgives a missing accent or a typo in page, app and setting names; records must match what you type. This app is the dashboard shell itself, so it cannot be switched off.

@@ -23,6 +23,8 @@ class ShippingPlugin(Plugin):
     def ready(self) -> None:
         from morpheus import events  # noqa: PLC0415
 
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
+
         self.register_graphql_extension('plugins.installed.shipping.graphql.queries')
         # Tax must run BEFORE shipping (so shipping doesn't get taxed unless
         # we explicitly want that). Tax uses priority 20; we use 30.
@@ -40,6 +42,41 @@ class ShippingPlugin(Plugin):
             'plugins.installed.shipping.urls_dashboard',
             prefix='dashboard/shipping/',
             namespace='shipping_dashboard',
+        )
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Shipping zones and rates (by name) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.shipping.models import ShippingRate, ShippingZone
+
+        page = '/dashboard/shipping/zones/'
+        ds.add(
+            value,
+            ShippingZone,
+            query,
+            words,
+            fields=('name',),
+            section='Shipping',
+            kind='shipping_zone',
+            icon='map',
+            capability='shipping.write',
+            label=lambda z: z.name,
+            hint=lambda z: 'Shipping zone',
+            url=lambda z: f'{page}?edit_kind=zone&edit={z.pk}',
+        )
+        return ds.add(
+            value,
+            ShippingRate.objects.select_related('zone'),
+            query,
+            words,
+            fields=('name', 'description'),
+            section='Shipping',
+            kind='shipping_rate',
+            icon='truck',
+            capability='shipping.write',
+            label=lambda r: r.name,
+            hint=lambda r: f'Shipping rate · {r.zone.name}',
+            url=lambda r: f'{page}?edit_kind=rate&edit={r.pk}',
         )
 
     def on_checkout_rates(self, value, cart=None, address=None, **kwargs):
