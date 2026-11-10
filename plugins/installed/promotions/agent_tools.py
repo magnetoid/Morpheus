@@ -102,7 +102,13 @@ _PROMOTION_FIELDS = {
     },
     'buy_qty': {'type': 'integer', 'description': 'bogo: units to buy.'},
     'free_qty': {'type': 'integer', 'description': 'bogo: units that get the discount.'},
-    'gift_product': {'type': 'string', 'description': 'gift: SKU or slug of the free product.'},
+    'gift_product': {
+        'type': 'string',
+        'description': (
+            'gift: SKU or slug of the free product; for a product with several '
+            'variants, the SKU of the variant to give.'
+        ),
+    },
     'tiers': {'type': 'string', 'description': 'tiered: "items:percent" pairs, e.g. "3:10, 5:15".'},
     'min_subtotal': {'type': 'number'},
     'max_subtotal': {'type': 'number'},

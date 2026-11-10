@@ -23,7 +23,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - The code box refuses a code that has expired, or that applies to nothing in the cart, and tells the shopper which.
 - Buy X get Y coupons work: every X items let the cheapest Y items take the coupon's percent off (100 means free). They used to take off nothing.
 - Signed-in shoppers get automatic promotions again: a customer-group check failed and skipped every promotion for anyone signed in. A first-order promotion now goes only to a signed-in customer with no order yet, and a promotion can depend on categories.
-- A free-gift promotion adds the product to the order at no charge, while it is on sale and in stock. The cart page does not list the gift yet; the order does.
+- A free-gift promotion adds the product to the order at no charge, while it is on sale and the item to give is in stock. For a product with several variants, the promotion names the one to give by its SKU. The cart page does not list the gift yet; the order does.
 - A promotion can be set not to combine: it then applies only on its own, never beside another promotion or a code.
 - Promotions can be created and edited under Marketing, Promotions, and switched off and on from the list.
 - Linda can list, create and change promotions and coupons, each change after your yes.

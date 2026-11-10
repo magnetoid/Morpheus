@@ -1513,8 +1513,9 @@ collections discounts only those lines (`marketing/scope.py`, read by that step 
 which refuses an expired code or one nothing in the cart can use, and says which); until v0.150.0
 nothing read the scope, so a coupon for one shelf discounted the whole cart. A promotion that does not
 combine (`Promotion.combinable`) applies only on its own. A gift rule adds a zero-priced order line
-(`meta['gift_lines']`, added before the stock reservation) only while the product is shoppable and not
-out of stock; the cart page does not list it yet. `first_order` needs a signed-in customer with no order,
+(`meta['gift_lines']`, added before the stock reservation) only while the product is shoppable, names a
+variant when it has several, and that variant's stock (`VARIANT_STOCK_SUMMARY`, answered by inventory)
+covers the cart's own units of it plus the gift; the cart page does not list it yet. `first_order` needs a signed-in customer with no order,
 so a guest never matches. Signed-in shoppers got no promotion at all until v0.150.0: `customer.groups` is
 a related manager, iterating it raised, and the step's `except` skipped every promotion. Guarded by
 `promotions/tests/test_eligibility.py`, `test_gift_and_combinable.py` and

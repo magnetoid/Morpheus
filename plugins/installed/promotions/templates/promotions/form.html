@@ -83,7 +83,7 @@
         <div>
           <label class="block text-sm font-medium mb-1" for="p-gift">Gift product (Free gift)</label>
           <input id="p-gift" type="text" name="gift_product" class="input font-mono" value="{{ form.gift_product.value|default:'' }}">
-          <p class="text-xs text-[color:var(--text-muted)] mt-1">The SKU or slug of the product added free to the order.</p>
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">The SKU or slug of the product added free to the order; for a product with several variants, the SKU of the variant to give.</p>
           {% if form.gift_product.errors %}<p class="field-error">{{ form.gift_product.errors.0 }}</p>{% endif %}
         </div>
         <div>

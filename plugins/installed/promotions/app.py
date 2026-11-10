@@ -9,6 +9,16 @@ from morpheus.app import DashboardCard, DashboardPage, Plugin
 logger = logging.getLogger('morpheus.promotions')
 
 
+def _units_of(lines, variant_id) -> int:
+    """How many units of ``variant_id`` the cart's own lines hold."""
+    total = 0
+    for it in lines:
+        get = it.get if isinstance(it, dict) else lambda k, it=it: getattr(it, k, None)
+        if str(get('variant_id') or '') == str(variant_id):
+            total += int(get('quantity') or 0)
+    return total
+
+
 class PromotionsPlugin(Plugin):
     name = 'promotions'
     label = 'Promotions'
@@ -72,7 +82,7 @@ class PromotionsPlugin(Plugin):
         free_shipping = free_shipping or coupon_free_shipping
 
         try:
-            from plugins.installed.promotions.services import evaluate
+            from plugins.installed.promotions.services import _cart_lines, evaluate
 
             country = (address or {}).get('country', '') if address else ''
             applied = evaluate(
@@ -88,7 +98,7 @@ class PromotionsPlugin(Plugin):
                     free_shipping = True
                 if a.discount_amount:
                     discount_total += Decimal(str(a.discount_amount))
-                gift = self._gift_line(a) if a.gift_product_id else None
+                gift = self._gift_line(a, _cart_lines(cart)) if a.gift_product_id else None
                 if gift:
                     meta.setdefault('gift_lines', []).append(gift)
                 meta['applied_promotions'].append(
@@ -185,29 +195,43 @@ class PromotionsPlugin(Plugin):
         return discount, free_shipping
 
     @staticmethod
-    def _gift_line(applied):
-        """The free line a gift rule adds, or None when its product is not on
-        sale or the stock app says it is out (a gift must never stop a checkout:
-        the order's stock reservation would refuse the whole order)."""
+    def _gift_line(applied, lines):
+        """The free line a gift rule adds, or None when it cannot be given.
+
+        A gift must never stop a checkout: the order's stock reservation would
+        refuse the whole order. So there is no gift when the product is not on
+        sale; when it has several active variants and the rule names none (a
+        line without a variant reserves no stock and tells nobody what to ship);
+        or when the stock app says the variant cannot cover the cart's own
+        units of it plus the gift."""
         from morpheus.core import MorpheusEvents, hook_registry
         from plugins.installed.catalog.models import Product
 
         product = Product.objects.shoppable().filter(pk=applied.gift_product_id).first()
         if product is None:
             return None
-        variants = product.variants.filter(is_active=True)
-        variant = None
+        variants = list(product.variants.filter(is_active=True))
         if applied.gift_variant_id:
-            variant = variants.filter(pk=applied.gift_variant_id).first()
+            variant = next((v for v in variants if str(v.pk) == str(applied.gift_variant_id)), None)
             if variant is None:
                 return None
-        elif variants.count() == 1:
-            variant = variants.first()
-        stock = hook_registry.filter(
-            MorpheusEvents.PRODUCT_STOCK_SUMMARY, value={}, product_ids=[product.pk]
-        )
-        if ((stock or {}).get(str(product.pk)) or {}).get('out'):
+        elif len(variants) > 1:
             return None
+        else:
+            variant = variants[0] if variants else None
+        if variant is None:
+            stock = hook_registry.filter(
+                MorpheusEvents.PRODUCT_STOCK_SUMMARY, value={}, product_ids=[product.pk]
+            )
+            if ((stock or {}).get(str(product.pk)) or {}).get('out'):
+                return None
+        else:
+            stock = hook_registry.filter(
+                MorpheusEvents.VARIANT_STOCK_SUMMARY, value={}, variant_ids=[variant.pk]
+            )
+            available = (stock or {}).get(str(variant.pk))
+            if available is not None and int(available) < _units_of(lines, variant.pk) + 1:
+                return None
         return {
             'product_id': str(product.pk),
             'variant_id': str(variant.pk) if variant else '',

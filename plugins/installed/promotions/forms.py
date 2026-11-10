@@ -47,6 +47,13 @@ def _find_products(tokens):
     return found, unknown
 
 
+def _find_variant(token):
+    """The variant whose SKU is ``token``, or None."""
+    from plugins.installed.catalog.models import ProductVariant
+
+    return ProductVariant.objects.filter(sku__iexact=token).select_related('product').first()
+
+
 def parse_tiers(text: str) -> list[dict]:
     """``"3:10, 5:15"`` → ``[{'min_qty': 3, 'percent': 10}, …]``."""
     tiers = []
@@ -102,15 +109,24 @@ class PromotionForm(forms.Form):
 
     @staticmethod
     def _initial(promo, rule) -> dict:
-        from plugins.installed.catalog.models import Product
+        from plugins.installed.catalog.models import Product, ProductVariant
 
         action = (rule.action if rule else {}) or {}
         pred = (rule.predicates if rule else {}) or {}
         gift = ''
-        if action.get('product_id'):
+        if action.get('variant_id'):
+            v = ProductVariant.objects.filter(pk=action['variant_id']).first()
+            gift = v.sku if v else ''
+        if not gift and action.get('product_id'):
             p = Product.objects.filter(pk=action['product_id']).first()
             gift = (p.sku or p.slug) if p else ''
-        products = Product.objects.filter(pk__in=pred.get('product_ids') or [])
+        # A buy-X-get-Y rule keeps its products in the action (the set it
+        # counts); every other kind keeps them as a condition.
+        if action.get('kind') == 'bogo':
+            product_ids = action.get('product_ids')
+        else:
+            product_ids = pred.get('product_ids')
+        products = Product.objects.filter(pk__in=product_ids or [])
         return {
             'name': promo.name,
             'slug': promo.slug,
@@ -163,11 +179,7 @@ class PromotionForm(forms.Form):
         if kind == 'bogo' and value is not None and value > 100:
             self.add_error('value', 'Enter a percent up to 100, or leave it empty for free.')
         if kind == 'gift':
-            found, unknown = _find_products(_tokens(cd.get('gift_product') or ''))
-            if unknown or len(found) != 1:
-                self.add_error('gift_product', 'Enter the SKU or slug of one product.')
-            else:
-                cd['_gift'] = found[0]
+            self._clean_gift(cd)
         if kind == 'tiered':
             try:
                 cd['_tiers'] = parse_tiers(cd.get('tiers') or '')
@@ -184,12 +196,38 @@ class PromotionForm(forms.Form):
             self.add_error('ends_at', 'The end must be after the start.')
         return cd
 
+    def _clean_gift(self, cd) -> None:
+        """The product to give and, when it has several variants, which one:
+        an order line without a variant reserves no stock and tells nobody
+        what to ship."""
+        tokens = _tokens(cd.get('gift_product') or '')
+        variant = _find_variant(tokens[0]) if len(tokens) == 1 else None
+        if variant is not None:
+            if not variant.is_active:
+                self.add_error('gift_product', 'That variant is switched off.')
+                return
+            cd['_gift'], cd['_gift_variant'] = variant.product, variant
+            return
+        found, unknown = _find_products(tokens)
+        if unknown or len(found) != 1:
+            self.add_error('gift_product', 'Enter the SKU or slug of one product.')
+        elif found[0].variants.filter(is_active=True).count() > 1:
+            self.add_error(
+                'gift_product',
+                'This product has several variants: enter the SKU of the one to give.',
+            )
+        else:
+            cd['_gift'], cd['_gift_variant'] = found[0], None
+
     def _action(self, cd) -> dict:
         kind = cd['kind']
         if kind in ('percent_off', 'fixed_off'):
             return {'kind': kind, 'value': float(cd['value'])}
         if kind == 'gift':
-            return {'kind': 'gift', 'product_id': str(cd['_gift'].pk)}
+            action = {'kind': 'gift', 'product_id': str(cd['_gift'].pk)}
+            if cd.get('_gift_variant') is not None:
+                action['variant_id'] = str(cd['_gift_variant'].pk)
+            return action
         if kind == 'bogo':
             action = {
                 'kind': 'bogo',

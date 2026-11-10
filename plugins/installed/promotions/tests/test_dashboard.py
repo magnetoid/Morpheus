@@ -94,6 +94,43 @@ class PromotionFormTests(TestCase):
         rule = Promotion.objects.get().rules.get()
         self.assertEqual(rule.action, {'kind': 'gift', 'product_id': str(self.bookmark.pk)})
 
+    def test_a_gift_with_several_variants_needs_the_variant(self):
+        from plugins.installed.catalog.models import ProductVariant
+
+        ProductVariant.objects.create(product=self.bookmark, name='Red', sku='BM-RED')
+        blue = ProductVariant.objects.create(product=self.bookmark, name='Blue', sku='BM-BLUE')
+        resp = self._post(reverse('promotions:new'), kind='gift', value='', gift_product='bookmark')
+        self.assertContains(resp, 'enter the SKU of the one to give')
+        self.assertFalse(Promotion.objects.exists())
+        self._post(reverse('promotions:new'), kind='gift', value='', gift_product='bm-blue')
+        promo = Promotion.objects.get()
+        self.assertEqual(
+            promo.rules.get().action,
+            {'kind': 'gift', 'product_id': str(self.bookmark.pk), 'variant_id': str(blue.pk)},
+        )
+        page = self.client.get(reverse('promotions:edit', kwargs={'promotion_id': promo.pk}))
+        self.assertContains(page, 'value="BM-BLUE"')
+
+    def test_editing_a_buy_x_get_y_keeps_the_products_it_counts(self):
+        promo = promotion(
+            'Two plus one',
+            {'kind': 'bogo', 'buy_qty': 2, 'free_qty': 1, 'product_ids': [str(self.book.pk)]},
+        )
+        page = self.client.get(reverse('promotions:edit', kwargs={'promotion_id': promo.pk}))
+        self.assertContains(page, 'name="products" class="input font-mono" value="BOOK"')
+        self._post(
+            reverse('promotions:edit', kwargs={'promotion_id': promo.pk}),
+            name='Two plus one, renamed',
+            kind='bogo',
+            value='',
+            buy_qty='2',
+            free_qty='1',
+            products='BOOK',
+        )
+        rule = promo.rules.get()
+        self.assertEqual(rule.action['product_ids'], [str(self.book.pk)])
+        self.assertEqual(rule.predicates, {})
+
     def test_an_unknown_product_is_refused(self):
         resp = self._post(reverse('promotions:new'), products='NOPE')
         self.assertEqual(resp.status_code, 200)

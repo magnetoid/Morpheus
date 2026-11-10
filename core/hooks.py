@@ -662,6 +662,14 @@ class MorpheusEvents:
     #   untracked and left out — never reported as zero. With inventory off
     #   nothing answers, the value stays {} and the surface shows no stock.
     PRODUCT_STOCK_SUMMARY = 'product.stock_summary'  # filter
+    # VARIANT_STOCK_SUMMARY — filter, value=dict, kwargs: variant_ids=list.
+    #   Fired by a flow that adds an order line the shopper did not pick
+    #   (promotions' free gift) and must not let the order's stock reservation
+    #   refuse the whole order. The inventory app answers {str(variant_id): int}:
+    #   the units the reservation could take from active warehouses. A variant
+    #   with no stock row is untracked (the reservation skips it) and left out,
+    #   never reported as zero. With inventory off the value stays {}.
+    VARIANT_STOCK_SUMMARY = 'variant.stock_summary'  # filter
     # CATEGORY_FORM_CARDS / COLLECTION_FORM_CARDS / PAGE_FORM_CARDS — filters,
     #   value=list[dict], kwargs: category= / collection= / page= (the object, or
     #   None while creating). CATEGORY_FORM_SAVED / COLLECTION_FORM_SAVED /

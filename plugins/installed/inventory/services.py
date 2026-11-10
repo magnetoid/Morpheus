@@ -454,6 +454,25 @@ def low_stock_threshold() -> int:
         return 5
 
 
+def variant_stock_summary(variant_ids) -> dict:
+    """Units the order's stock reservation could take, per variant, for the
+    ``VARIANT_STOCK_SUMMARY`` filter: ``{str(variant_id): int}``, counted as
+    ``allocator.plan_allocation`` counts them (active warehouses, quantity less
+    reserved). A variant with no stock row anywhere is untracked — the
+    reservation skips it — and is left out of the answer."""
+    ids = [pk for pk in variant_ids or [] if pk]
+    if not ids:
+        return {}
+    levels = StockLevel.objects.filter(variant_id__in=ids).select_related('warehouse')
+    summary: dict = {}
+    for level in levels:
+        key = str(level.variant_id)
+        summary.setdefault(key, 0)
+        if level.warehouse.is_active:
+            summary[key] += level.available_quantity
+    return summary
+
+
 def stock_summary(product_ids) -> dict:
     """Sellable units per product, for the ``PRODUCT_STOCK_SUMMARY`` filter.
 

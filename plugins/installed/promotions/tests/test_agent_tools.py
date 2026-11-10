@@ -67,6 +67,16 @@ class PromotionToolTests(TestCase):
         self.assertEqual(rule.action, {'kind': 'percent_off', 'value': 10.0})
         self.assertEqual(rule.predicates, {'category_slugs': ['fiction']})
 
+    def test_update_keeps_a_buy_x_get_y_rules_products(self):
+        book = product('book', 20)
+        promo = promotion(
+            'Two plus one',
+            {'kind': 'bogo', 'buy_qty': 2, 'free_qty': 1, 'product_ids': [str(book.pk)]},
+        )
+        _call('promotions.update', promotion='two-plus-one', name='Renamed')
+        rule = promo.rules.get()
+        self.assertEqual(rule.action['product_ids'], [str(book.pk)])
+
     def test_update_an_unknown_promotion(self):
         with self.assertRaises(ToolError):
             _call('promotions.update', promotion='nope', is_active=False)
