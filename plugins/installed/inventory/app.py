@@ -29,6 +29,7 @@ class InventoryPlugin(Plugin):
         self.register_hook(events.DASHBOARD_HOME_PANELS, self.on_dashboard_panels, priority=50)
         # Stock for surfaces that show it without owning it (the vendor portal).
         self.register_hook(events.PRODUCT_STOCK_SUMMARY, self.on_stock_summary, priority=50)
+        self.register_hook(events.VARIANT_STOCK_SUMMARY, self.on_variant_stock_summary, priority=50)
         self.register_hook('order.paid', self.on_order_paid, priority=5)
         self.register_hook('order.cancelled', self.on_order_cancelled, priority=5)
         self.register_hook('return.refunded', self.on_return_refunded, priority=5)
@@ -106,6 +107,14 @@ class InventoryPlugin(Plugin):
 
         answer = dict(value or {})
         answer.update(stock_summary(product_ids))
+        return answer
+
+    def on_variant_stock_summary(self, value=None, variant_ids=None, **kwargs):
+        """VARIANT_STOCK_SUMMARY: the units the reservation could take, per variant."""
+        from plugins.installed.inventory.services import variant_stock_summary  # noqa: PLC0415
+
+        answer = dict(value or {})
+        answer.update(variant_stock_summary(variant_ids))
         return answer
 
     def reserve_stock_filter(self, value=0, order=None, **kwargs):

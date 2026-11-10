@@ -30,6 +30,7 @@ class AppliedPromotion:
     discount_amount: Decimal = Decimal('0')
     free_shipping: bool = False
     gift_product_id: str | None = None
+    gift_variant_id: str | None = None
     note: str = ''
 
 
@@ -84,6 +85,73 @@ def _cart_product_ids(cart) -> list[str]:
     return out
 
 
+def _customer_groups(customer) -> set[str]:
+    """Group names for ``customer``: a Customer's auth groups, or a dict's list."""
+    if customer is None:
+        return set()
+    if isinstance(customer, dict):
+        return {str(g) for g in (customer.get('groups') or [])}
+    groups = getattr(customer, 'groups', None)
+    if groups is None:
+        return set()
+    if hasattr(groups, 'values_list'):
+        # Customer.groups is a related manager; iterating it raised TypeError,
+        # which the cart step swallowed, so every promotion was skipped for a
+        # signed-in shopper whenever one rule named a group (until v0.150.0).
+        return {str(g) for g in groups.values_list('name', flat=True)}
+    return {str(g) for g in groups}
+
+
+def _is_first_order(customer) -> bool:
+    """A signed-in customer with no order that counts. A guest has no history
+    the store can check, so a first-order rule never matches one."""
+    if customer is None:
+        return False
+    if isinstance(customer, dict):
+        return int(customer.get('order_count') or 0) == 0
+    if int(getattr(customer, 'purchase_count', 0) or 0) > 0:
+        return False
+    orders = getattr(customer, 'orders', None)
+    if orders is None:
+        return True
+    return not orders.exclude(status='cancelled').exists()
+
+
+def _cart_lines(cart) -> list:
+    """Cart lines as model rows (an ``items`` manager) or a plain list."""
+    if cart is None:
+        return []
+    if isinstance(cart, dict):
+        return list(cart.get('items') or [])
+    items = getattr(cart, 'items', None)
+    if items is None:
+        return []
+    if hasattr(items, 'all'):
+        return list(items.select_related('product', 'variant').all())
+    return list(items)
+
+
+def _in_category_slugs(cart, slugs) -> bool:
+    """A cart line whose product sits in one of the categories named by
+    ``slugs``, or in a category below one (``catalog/category_tree.py``)."""
+    from plugins.installed.catalog.category_tree import subtree_ids
+    from plugins.installed.catalog.models import Category
+
+    roots = Category.objects.filter(slug__in=[str(s) for s in slugs or []], is_active=True)
+    ids = subtree_ids(roots)
+    if not ids:
+        return False
+    for it in _cart_lines(cart):
+        product = it.get('product') if isinstance(it, dict) else getattr(it, 'product', None)
+        if product is None or isinstance(product, (str, dict)):
+            continue
+        if product.category_id in ids:
+            return True
+        if product.additional_categories.filter(pk__in=ids).exists():
+            return True
+    return False
+
+
 def _matches(predicates: dict, *, cart, channel, customer, country, coupon) -> bool:  # noqa: PLR0911
     if not predicates:
         return True
@@ -101,16 +169,18 @@ def _matches(predicates: dict, *, cart, channel, customer, country, coupon) -> b
     ]:
         return False
     if 'customer_groups' in predicates:
-        groups = list(getattr(customer, 'groups', []) or [])
-        if isinstance(customer, dict):
-            groups = list(customer.get('groups') or [])
-        if not any(g in predicates['customer_groups'] for g in (str(x) for x in groups)):
+        wanted = {str(g) for g in predicates['customer_groups'] or []}
+        if not wanted.intersection(_customer_groups(customer)):
             return False
     if 'product_ids' in predicates:
         cart_pids = set(_cart_product_ids(cart))
         if not cart_pids.intersection(set(str(x) for x in predicates['product_ids'])):
             return False
-    if predicates.get('first_order') and getattr(customer, 'order_count', 0) > 0:  # noqa: SIM103
+    if predicates.get('category_slugs') and not _in_category_slugs(
+        cart, predicates['category_slugs']
+    ):
+        return False
+    if predicates.get('first_order') and not _is_first_order(customer):  # noqa: SIM103
         return False
     return True
 
@@ -155,7 +225,8 @@ def _apply_action(  # noqa: PLR0911
         pct = Decimal(str(action.get('value', 0)))
         return (subtotal * pct / Decimal('100')).quantize(Decimal('0.01')), False, None
     if kind == 'fixed_off':
-        return Decimal(str(action.get('value', 0))).quantize(Decimal('0.01')), False, None
+        value = Decimal(str(action.get('value', 0))).quantize(Decimal('0.01'))
+        return min(value, subtotal), False, None
     if kind == 'free_shipping':
         return Decimal('0'), True, None
     if kind == 'gift':
@@ -167,48 +238,53 @@ def _apply_action(  # noqa: PLR0911
     return Decimal('0'), False, None
 
 
-def _apply_bogo(action: dict, *, cart: Any) -> Decimal:
-    """Buy ``buy_qty`` get ``free_qty`` free across the eligible product set.
+def buy_x_get_y_discount(lines, *, buy_qty: int, free_qty: int, percent=100) -> Decimal:
+    """For every ``buy_qty`` units bought, ``free_qty`` more get ``percent`` off.
 
-    Algorithm:
-      1. Filter cart line items to those in ``product_ids`` (or all if
-         the list is empty/missing).
-      2. Expand each line into per-unit prices (cheaper units come
-         first so the customer doesn't get gamed by ordering).
-      3. Total qualifying units = sum of quantities.
-      4. Sets = total // (buy_qty + free_qty); the cheapest
-         ``sets * free_qty`` units are discounted at full price.
-
-    Cart-less call (e.g. tests) returns 0.
+    The lines' units are pooled and sorted cheapest first, so a shopper can't
+    game it by ordering; each full set of ``buy_qty + free_qty`` units makes the
+    cheapest ``free_qty`` of the pool discounted. Shared by the ``bogo`` rule and
+    the Buy X get Y coupon.
     """
-    if cart is None:
-        return Decimal('0')
-    buy_qty = max(1, int(action.get('buy_qty', 2) or 2))
-    free_qty = max(1, int(action.get('free_qty', 1) or 1))
-    eligible_ids = {str(x) for x in (action.get('product_ids') or [])}
-
+    buy_qty = max(1, int(buy_qty or 1))
+    free_qty = max(1, int(free_qty or 1))
+    pct = Decimal(str(percent or 0))
+    if pct <= 0 or pct > 100:
+        pct = Decimal('100')
     units: list[Decimal] = []
-    try:
-        items = cart.items.all() if hasattr(cart, 'items') else []
-    except Exception:  # noqa: BLE001
-        items = []
-    for it in items:
-        pid = str(getattr(getattr(it, 'product', None), 'id', '') or '')
-        if eligible_ids and pid not in eligible_ids:
-            continue
+    for it in lines:
         unit = Decimal(str(getattr(it.unit_price, 'amount', it.unit_price)))
-        for _ in range(int(it.quantity)):
-            units.append(unit)
-    if not units:
+        units.extend([unit] * int(it.quantity))
+    sets = len(units) // (buy_qty + free_qty)
+    if not sets:
         return Decimal('0')
     units.sort()  # cheapest first
-    bundle_size = buy_qty + free_qty
-    sets = len(units) // bundle_size
-    if sets == 0:
+    free = sum(units[: sets * free_qty], Decimal('0'))
+    return (free * pct / Decimal('100')).quantize(Decimal('0.01'))
+
+
+def _apply_bogo(action: dict, *, cart: Any) -> Decimal:
+    """Buy ``buy_qty`` get ``free_qty`` free across the eligible product set
+    (``product_ids``, or every line when the list is empty). Cart-less call
+    (e.g. tests) returns 0."""
+    if cart is None:
         return Decimal('0')
-    free_units = sets * free_qty
-    discount = sum(units[:free_units], Decimal('0'))
-    return discount.quantize(Decimal('0.01'))
+    eligible_ids = {str(x) for x in (action.get('product_ids') or [])}
+    lines = [
+        it
+        for it in _cart_lines(cart)
+        if not isinstance(it, dict)
+        and (
+            not eligible_ids
+            or str(getattr(getattr(it, 'product', None), 'id', '') or '') in eligible_ids
+        )
+    ]
+    return buy_x_get_y_discount(
+        lines,
+        buy_qty=action.get('buy_qty', 2) or 2,
+        free_qty=action.get('free_qty', 1) or 1,
+        percent=action.get('percent', 100),
+    )
 
 
 def _apply_tiered(action: dict, *, subtotal: Decimal, cart: Any) -> Decimal:
@@ -241,7 +317,16 @@ def evaluate(
     customer: Any = None,
     country: str | None = None,
     coupon: str | None = None,
+    coupon_applied: bool = False,
 ) -> list[AppliedPromotion]:
+    """The promotions that apply to ``cart``, lowest priority number first.
+
+    A promotion with ``combinable`` off applies only when nothing applied before
+    it and ``coupon_applied`` is False (a code the shopper typed always applies;
+    a promotion that the same code unlocks is that code's own and still
+    combines), and no promotion after it applies. Each promotion is evaluated on
+    its own, so a rule that fails to evaluate skips that promotion only.
+    """
     from plugins.installed.promotions.models import Promotion
 
     now = timezone.now()
@@ -252,43 +337,67 @@ def evaluate(
     out: list[AppliedPromotion] = []
     subtotal = _cart_subtotal(cart)
 
-    for promo in qs.order_by('priority'):
+    for promo in qs.order_by('priority', 'created_at'):
         if promo.channels and channel_slug and channel_slug not in promo.channels:
             continue
+        unlocked_by_coupon = bool(promo.requires_coupon)
         if promo.requires_coupon and (
             not coupon or coupon.lower() != promo.requires_coupon.lower()
         ):
             continue
         if promo.usage_limit and promo.times_used >= promo.usage_limit:
             continue
-        for rule in promo.rules.all():
-            if not _matches(
-                rule.predicates or {},
+        exclusive = not promo.combinable
+        if exclusive and (out or (coupon_applied and not unlocked_by_coupon)):
+            continue
+        try:
+            applied = _first_matching_rule(
+                promo,
                 cart=cart,
                 channel=channel,
                 customer=customer,
                 country=country,
                 coupon=coupon,
-            ):
-                continue
-            amount, free_ship, gift_pid = _apply_action(
-                rule.action or {},
                 subtotal=subtotal,
-                cart=cart,
             )
-            out.append(
-                AppliedPromotion(
-                    promotion_id=str(promo.id),
-                    promotion_name=promo.name,
-                    rule_id=str(rule.id),
-                    discount_amount=amount,
-                    free_shipping=free_ship,
-                    gift_product_id=gift_pid,
-                    note=rule.label or '',
-                )
-            )
-            break  # one rule per promo
+        except Exception as e:  # noqa: BLE001 — one broken rule skips its own promotion
+            logger.warning('promotions: %s skipped: %s', promo.slug, e, exc_info=True)
+            continue
+        if applied is None:
+            continue
+        out.append(applied)
+        if exclusive:
+            break
     return out
+
+
+def _first_matching_rule(promo, *, cart, channel, customer, country, coupon, subtotal):
+    for rule in promo.rules.all():
+        if not _matches(
+            rule.predicates or {},
+            cart=cart,
+            channel=channel,
+            customer=customer,
+            country=country,
+            coupon=coupon,
+        ):
+            continue
+        amount, free_ship, gift_pid = _apply_action(
+            rule.action or {},
+            subtotal=subtotal,
+            cart=cart,
+        )
+        return AppliedPromotion(
+            promotion_id=str(promo.id),
+            promotion_name=promo.name,
+            rule_id=str(rule.id),
+            discount_amount=amount,
+            free_shipping=free_ship,
+            gift_product_id=gift_pid,
+            gift_variant_id=str((rule.action or {}).get('variant_id') or '') or None,
+            note=rule.label or '',
+        )
+    return None
 
 
 def models_q_active(now):

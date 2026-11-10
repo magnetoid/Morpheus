@@ -198,7 +198,8 @@ opt-in via rbac's `enforcement_mode` (`off` | `log` | `enforce`, default
 gated on a capability that is not in `rbac._DEFAULT_TEMPLATES` looks fine, tests
 green, until someone switches to `enforce` — then it denies everyone but
 superusers, forever, because no role grants it. (`marketing.write` was written
-this way and caught before it shipped; there is no `marketing.*` capability.)
+this way and caught before it shipped; the templates hold it now, and the
+promotions pages are gated on it.)
 Guarded by `core/tests/test_authz.py::CapabilityVocabularyTests`, which scans
 every `@require_capability` on disk against the vocabulary. When gating a new
 view, use an existing capability or add it to the templates in the same change.
@@ -1504,6 +1505,21 @@ returns the unconfigured mock — the dashboard shows *"No AI provider selected"
 even though the provider is offered in Settings (this shipped for apikey.fun:
 config + enum existed, the class did not). Add the resolution test alongside
 (`core/agents/tests/test_llm.py::ProviderResolutionTests`).
+
+**Convention — a discount applies where it says, and the code box says why not (v0.150.0).**
+The cart's discount step is promotions' `on_cart_breakdown` (priority 10): the coupon first, then the
+automatic promotions in priority order. A coupon limited to products, categories (the subtree rule) or
+collections discounts only those lines (`marketing/scope.py`, read by that step and by `applyCoupon`,
+which refuses an expired code or one nothing in the cart can use, and says which); until v0.150.0
+nothing read the scope, so a coupon for one shelf discounted the whole cart. A promotion that does not
+combine (`Promotion.combinable`) applies only on its own. A gift rule adds a zero-priced order line
+(`meta['gift_lines']`, added before the stock reservation) only while the product is shoppable, names a
+variant when it has several, and that variant's stock (`VARIANT_STOCK_SUMMARY`, answered by inventory)
+covers the cart's own units of it plus the gift; the cart page does not list it yet. `first_order` needs a signed-in customer with no order,
+so a guest never matches. Signed-in shoppers got no promotion at all until v0.150.0: `customer.groups` is
+a related manager, iterating it raised, and the step's `except` skipped every promotion. Guarded by
+`promotions/tests/test_eligibility.py`, `test_gift_and_combinable.py` and
+`marketing/tests/test_coupon_scope.py`.
 
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first

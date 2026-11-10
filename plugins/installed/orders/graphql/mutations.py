@@ -181,6 +181,7 @@ class OrdersMutationExtension:
 
         try:
             from plugins.installed.marketing.models import Coupon
+            from plugins.installed.marketing.scope import refusal
 
             coupon = Coupon.objects.filter(code__iexact=input.code, is_active=True).first()
             if coupon is None:
@@ -189,6 +190,11 @@ class OrdersMutationExtension:
                     errors=[
                         ErrorType(code='INVALID_COUPON', message='Coupon not found or expired.')
                     ],
+                )
+            reason = refusal(coupon, cart.items.select_related('product', 'variant').all())
+            if reason:
+                return CartPayload(
+                    cart=cart, errors=[ErrorType(code='INVALID_COUPON', message=reason)]
                 )
             cart.coupon = coupon
             cart.save(update_fields=['coupon', 'updated_at'])
