@@ -5,7 +5,10 @@
 <h1 class="text-xl font-semibold mb-2">Bulk CSV products</h1>
 <p class="meta mb-4">Header row required. Recognised columns:
   <code>sku, name, slug, price, currency, status, short_description, description,
-  weight, category_slug, is_featured, compare_at_price</code>. Rows are upserted by SKU when present, else by slug.</p>
+  weight, category_slug, is_featured, compare_at_price</code>. Rows are upserted by SKU when present, else by slug.
+  Two more set stock and are left out of the export: <code>stock</code> (units on hand) and
+  <code>warehouse_code</code> (empty = the default warehouse). Stock is set only for a product sold in one form,
+  and only while the inventory app is on.</p>
 
 {% if error %}
 <div class="callout callout-error" style="margin-bottom:1rem;">

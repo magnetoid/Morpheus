@@ -108,6 +108,12 @@ class _Reservations:
                 'plugins.installed.inventory.cart_reservations._reservations_enabled',
                 return_value=self.enabled,
             ),
+            # The fake ids have no stock rows; the tracked check has its own tests
+            # (test_backorder_policy.py).
+            patch(
+                'plugins.installed.inventory.cart_reservations._is_tracked',
+                return_value=True,
+            ),
         ]
         for p in self._patches:
             p.start()
@@ -168,6 +174,10 @@ class ReserveTests(TestCase):
             ),
             patch(
                 'plugins.installed.inventory.cart_reservations._reservations_enabled',
+                return_value=True,
+            ),
+            patch(
+                'plugins.installed.inventory.cart_reservations._is_tracked',
                 return_value=True,
             ),
         ):

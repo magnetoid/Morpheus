@@ -23,7 +23,7 @@ PRODUCT_DETAIL_QUERY = """
 query ProductDetail($slug: String!) {
   product(slug: $slug) {
     id name slug description shortDescription productType
-    price { amount currency } priceStartsFrom defaultVariantId
+    price { amount currency } priceStartsFrom defaultVariantId hasOnlyDefaultVariant
     compareAtPrice { amount }
     images { url altText isPrimary sortOrder }
     variants {

@@ -18,6 +18,11 @@ class InventoryPlugin(Plugin):
             prefix='',
             namespace='inventory',
         )
+        self.register_urls(
+            'plugins.installed.inventory.urls_dashboard',
+            prefix='dashboard/inventory/',
+            namespace='inventory_dashboard',
+        )
         self.register_graphql_extension('plugins.installed.inventory.graphql.queries')
         self.register_graphql_extension('plugins.installed.inventory.graphql.mutations')
         # Fail-closed stock gate: reserve inside create_from_cart's transaction
@@ -30,6 +35,12 @@ class InventoryPlugin(Plugin):
         # Stock for surfaces that show it without owning it (the vendor portal).
         self.register_hook(events.PRODUCT_STOCK_SUMMARY, self.on_stock_summary, priority=50)
         self.register_hook(events.VARIANT_STOCK_SUMMARY, self.on_variant_stock_summary, priority=50)
+        # The "Stock" card on the product form (stock_card.py).
+        self.register_hook(events.PRODUCT_FORM_CARDS, self.on_product_form_cards, priority=45)
+        self.register_hook(events.PRODUCT_FORM_SAVED, self.on_product_form_saved, priority=45)
+        # A CSV import's `stock` column (importers fire it, this app answers).
+        self.register_hook(events.INVENTORY_SET_STOCK, self.on_set_stock, priority=50)
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search, priority=50)
         self.register_hook('order.paid', self.on_order_paid, priority=5)
         self.register_hook('order.cancelled', self.on_order_cancelled, priority=5)
         self.register_hook('return.refunded', self.on_return_refunded, priority=5)
@@ -77,6 +88,76 @@ class InventoryPlugin(Plugin):
                 'task': 'inventory.run_stockout_forecast',
                 'schedule': crontab(hour=6, minute=0),  # 06:00 UTC daily
             },
+        )
+
+    def on_product_form_cards(self, value, product=None, **kwargs):
+        """The "Stock" card, on a saved product that has stock to count."""
+        from plugins.installed.inventory import stock_card  # noqa: PLC0415
+
+        context = stock_card.card(product)
+        if context is not None:
+            value.append(
+                {
+                    'template': 'inventory/blocks/product_stock_card.html',
+                    'context': context,
+                    'order': 45,
+                }
+            )
+        return value
+
+    def on_product_form_saved(self, product=None, post=None, user=None, **kwargs):
+        from plugins.installed.inventory import stock_card  # noqa: PLC0415
+
+        stock_card.save(product, post, user=user)
+
+    def on_set_stock(self, value=False, product=None, quantity=None, warehouse_code='', **kwargs):
+        """INVENTORY_SET_STOCK: ``quantity`` units of ``product`` (sold in one form)
+        in the warehouse with ``warehouse_code``, else the default one. True when
+        it was written; a product with several variants is left as it was."""
+        from plugins.installed.catalog.variants import ensure_stock_variant  # noqa: PLC0415
+        from plugins.installed.inventory.models import Warehouse  # noqa: PLC0415
+        from plugins.installed.inventory.services import (  # noqa: PLC0415
+            InventoryService,
+            default_warehouse,
+        )
+
+        if product is None or quantity is None:
+            return value
+        variant = ensure_stock_variant(product)
+        code = (warehouse_code or '').strip()
+        warehouse = (
+            (
+                Warehouse.objects.filter(code__iexact=code).first()
+                or Warehouse.objects.filter(name__iexact=code).first()
+            )
+            if code
+            else default_warehouse(create=True)
+        )
+        if variant is None or warehouse is None:
+            return value
+        InventoryService.set_quantity(
+            variant, warehouse, int(quantity), reason=kwargs.get('reason') or 'Imported'
+        )
+        return True
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Warehouses (by name or code) in the dashboard's search box."""
+        from plugins import dashboard_search as ds  # noqa: PLC0415
+        from plugins.installed.inventory.models import Warehouse  # noqa: PLC0415
+
+        return ds.add(
+            value,
+            Warehouse,
+            query,
+            words,
+            fields=('name', 'code'),
+            section='Inventory',
+            kind='warehouse',
+            icon='package',
+            capability='inventory.write',
+            label=lambda w: w.name,
+            hint=lambda w: f'Warehouse · {w.code}' + ('' if w.is_active else ' · off'),
+            url=lambda w: f'/dashboard/inventory/warehouses/?edit={w.pk}',
         )
 
     def on_dashboard_panels(self, value, date_range=None, **kwargs):
@@ -178,6 +259,17 @@ class InventoryPlugin(Plugin):
 
         return [
             DashboardPage(
+                label='Warehouses',
+                slug='warehouses',
+                view='plugins.installed.inventory.dashboard.warehouses',
+                icon='package',
+                section='shipping',
+                order=20,
+                nav='settings',
+                url='/dashboard/inventory/warehouses/',
+                hint='Where stock is kept, and moving it between them',
+            ),
+            DashboardPage(
                 label='Stockout forecast',
                 slug='stockout-forecast',
                 view='plugins.installed.inventory.views.stockout_forecast_view',
@@ -185,21 +277,31 @@ class InventoryPlugin(Plugin):
                 section='products',
                 nav='hidden',
                 order=80,
-            )
+            ),
         ]
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.inventory.agent_tools import (  # noqa: PLC0415
             adjust_stock_tool,
+            create_warehouse_tool,
             list_back_in_stock_tool,
             low_stock_report_tool,
             schedule_price_change_tool,
+            set_stock_tool,
+            stock_levels_tool,
             stockout_forecast_tool,
+            transfer_stock_tool,
+            warehouses_tool,
         )
 
         return [
             low_stock_report_tool,
+            stock_levels_tool,
+            warehouses_tool,
             adjust_stock_tool,
+            set_stock_tool,
+            transfer_stock_tool,
+            create_warehouse_tool,
             list_back_in_stock_tool,
             schedule_price_change_tool,
             stockout_forecast_tool,
@@ -211,29 +313,42 @@ class InventoryPlugin(Plugin):
         from core.agents import Skill  # noqa: PLC0415
         from plugins.installed.inventory.agent_tools import (  # noqa: PLC0415
             adjust_stock_tool,
+            create_warehouse_tool,
             list_back_in_stock_tool,
             low_stock_report_tool,
             schedule_price_change_tool,
+            set_stock_tool,
+            stock_levels_tool,
+            transfer_stock_tool,
+            warehouses_tool,
         )
 
         return [
             Skill(
                 name='inventory',
                 label='Inventory Operations',
-                description='Stock levels, restocks, scheduled price changes.',
+                description='Stock levels, restocks, transfers, scheduled price changes.',
                 tools=(
                     low_stock_report_tool,
+                    stock_levels_tool,
+                    warehouses_tool,
                     adjust_stock_tool,
+                    set_stock_tool,
+                    transfer_stock_tool,
+                    create_warehouse_tool,
                     list_back_in_stock_tool,
                     schedule_price_change_tool,
                 ),
                 system_prompt_prelude=(
                     'You are working on inventory. Standard workflow:\n'
-                    '  • Read first with low_stock_report to see what needs '
-                    'attention; never assume stock state.\n'
-                    '  • Be extremely careful with adjust_stock — always confirm '
-                    'the SKU and quantity with the merchant before applying. A '
-                    'wrong adjust_stock corrupts the audit trail.\n'
+                    '  • Read first with stock_levels or low_stock_report; never '
+                    'assume stock state.\n'
+                    '  • set_stock writes a counted number, adjust_stock a change '
+                    '(a delivery, a write-off); confirm the SKU, warehouse and '
+                    'quantity with the merchant before either. Each leaves a '
+                    'movement in the audit log.\n'
+                    '  • transfer_stock moves free units only; units held for open '
+                    'orders stay put.\n'
                     '  • Scheduled price changes are reversible — surface the '
                     'effective date so the merchant can spot conflicts.'
                 ),

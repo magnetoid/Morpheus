@@ -6,6 +6,22 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.152.0 — stock writes name one variant, and agent_core has no stock tool
+
+Every stock write goes through the inventory app's `InventoryService`, which records a
+`StockMovement` and fires `product.low_stock` / `product.out_of_stock`.
+- **An API client calling `setStock` or `adjustStock` with `productSlug`** for a product with
+  several variants gets an error now; pass that variant's `variantSku`. Until v0.152.0 the
+  product's first variant (an arbitrary one) was written. A product sold in one form still
+  works by slug: `setStock` gives it a default variant the first time.
+- **No warehouse in the input** now means the store's default warehouse (it was the one with the
+  lowest id), and `setStock` makes "Main warehouse" for a store that has none. `warehouse`
+  matches a code as well as a name.
+- **Code that imported `plugins.installed.agent_core.tools.inventory`**: the module is gone. The
+  tool keeps its name, `inventory.set_stock`, and its arguments (`variant_sku`, `product_slug`,
+  `warehouse` still work beside `sku` and `warehouse_code`); it lives in
+  `plugins.installed.inventory.agent_tools`.
+
 ## v0.137.0 — scripts on the payment pages carry the page's nonce
 
 The cart, the checkout steps, saved cards and the membership card form now enforce a

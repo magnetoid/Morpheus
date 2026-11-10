@@ -439,6 +439,14 @@ class ProductType:
         chosen = next((v for v in active if not v.is_free), None) or (active[0] if active else None)
         return strawberry.ID(str(chosen.pk)) if chosen is not None else None
 
+    @strawberry.field(
+        description='True when the product offers no choice: it is not a variable product and its one active variant is the default one that only counts its stock. A product page shows no variant picker for it, and still sends defaultVariantId when adding to the cart.'
+    )
+    def has_only_default_variant(self) -> bool:
+        from plugins.installed.catalog.variants import has_only_default_variant  # noqa: PLC0415
+
+        return has_only_default_variant(self, list(self.variants.all()))
+
     @strawberry.field(description='Compare at price (original price before discount)')
     def compare_at_price(self) -> MoneyType | None:
         if not self.compare_at_price:

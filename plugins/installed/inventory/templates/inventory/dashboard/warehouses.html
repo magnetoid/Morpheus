@@ -1,0 +1,188 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Warehouses · Morpheus{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Warehouses</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">The places stock is kept. Orders take units from the switched-on warehouses, the default one first; units on hand per product are set on its page.</p>
+  </div>
+
+  <section class="card card-padded space-y-3" id="warehouse-form">
+    <h2 class="text-sm font-semibold">{% if editing %}Edit {{ editing.name }}{% else %}Add a warehouse{% endif %}</h2>
+    <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="{% if editing %}edit{% else %}create{% endif %}">
+      {% if editing %}<input type="hidden" name="warehouse_id" value="{{ editing.pk }}">{% endif %}
+      <label class="block text-xs">
+        <span class="text-[color:var(--text-muted)]">Name</span>
+        <input type="text" name="name" required maxlength="200" class="input mt-1 w-full"
+               value="{{ editing.name|default:'' }}" placeholder="e.g. Main warehouse, Shop floor">
+      </label>
+      <label class="block text-xs">
+        <span class="text-[color:var(--text-muted)]">Code (made from the name when empty)</span>
+        <input type="text" name="code" maxlength="20" class="input mt-1 w-full font-mono"
+               value="{{ editing.code|default:'' }}" placeholder="MAIN">
+      </label>
+      <label class="flex items-center gap-2 text-xs">
+        <input type="checkbox" name="is_default" {% if editing.is_default %}checked{% endif %}>
+        <span>Default warehouse (orders take from it first)</span>
+      </label>
+      <div class="md:col-span-3 flex gap-2 justify-end">
+        {% if editing %}<a href="{% url 'inventory_dashboard:warehouses' %}" class="btn btn-ghost">Cancel</a>{% endif %}
+        <button type="submit" class="btn btn-primary">{% if editing %}Save{% else %}Add warehouse{% endif %}</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card overflow-hidden">
+    {% if warehouse_rows %}
+    <div class="overflow-x-auto">
+      <table class="morph-table morph-table-zebra">
+        <thead>
+          <tr>
+            <th class="text-left">Warehouse</th>
+            <th class="text-left">Code</th>
+            <th class="text-right">On hand</th>
+            <th class="text-right">Held for orders</th>
+            <th class="text-right">Items stocked</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for w in warehouse_rows %}
+          <tr>
+            <td>
+              <span class="font-medium">{{ w.name }}</span>
+              {% if w.is_default %}<span class="badge-soft badge-soft-success ml-1">Default</span>{% endif %}
+              {% if not w.is_active %}<span class="badge-soft badge-soft-neutral ml-1">Off</span>{% endif %}
+            </td>
+            <td><code class="font-mono text-xs">{{ w.code }}</code></td>
+            <td class="text-right tabular-nums">{{ w.on_hand|default:0 }}</td>
+            <td class="text-right tabular-nums">{{ w.held|default:0 }}</td>
+            <td class="text-right tabular-nums">{{ w.stocked }}</td>
+            <td class="text-right">
+              <div class="inline-flex flex-wrap justify-end gap-1">
+                <a href="?edit={{ w.pk }}#warehouse-form" class="btn btn-ghost btn-sm">Edit</a>
+                {% if w.is_active and not w.is_default %}
+                <form method="post">{% csrf_token %}
+                  <input type="hidden" name="action" value="default">
+                  <input type="hidden" name="warehouse_id" value="{{ w.pk }}">
+                  <button type="submit" class="btn btn-ghost btn-sm">Make default</button>
+                </form>
+                {% endif %}
+                <form method="post">{% csrf_token %}
+                  <input type="hidden" name="action" value="toggle">
+                  <input type="hidden" name="warehouse_id" value="{{ w.pk }}">
+                  {% if w.is_active %}
+                  <button type="submit" class="btn btn-ghost btn-sm"
+                          data-confirm="Switch off {{ w.name }}? Its {{ w.on_hand|default:0 }} unit(s) stop being sold until you switch it on again.">Switch off</button>
+                  {% else %}
+                  <button type="submit" class="btn btn-ghost btn-sm">Switch on</button>
+                  {% endif %}
+                </form>
+                {% if not w.records %}
+                <form method="post">{% csrf_token %}
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="warehouse_id" value="{{ w.pk }}">
+                  <button type="submit" class="btn btn-ghost btn-sm text-red-600" data-confirm="Delete warehouse {{ w.name }}?">Delete</button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon"><i data-lucide="package" class="h-6 w-6"></i></div>
+      <h3>No warehouse yet</h3>
+      <p>Add one above, or enter stock on a product's page: the store then gets "Main warehouse".</p>
+    </div>
+    {% endif %}
+  </section>
+
+  {% if active_warehouses|length > 1 %}
+  <section class="card card-padded space-y-3" id="transfer">
+    <h2 class="text-sm font-semibold">Move stock between warehouses</h2>
+    <form method="post" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="transfer">
+      <label class="block text-xs md:col-span-2">
+        <span class="text-[color:var(--text-muted)]">SKU (a variant's, or a one-form product's SKU or slug)</span>
+        <input type="text" name="sku" required class="input mt-1 w-full font-mono">
+      </label>
+      <label class="block text-xs">
+        <span class="text-[color:var(--text-muted)]">From</span>
+        <select name="from_id" class="input mt-1 w-full" required>
+          {% for w in active_warehouses %}<option value="{{ w.pk }}">{{ w.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="block text-xs">
+        <span class="text-[color:var(--text-muted)]">To</span>
+        <select name="to_id" class="input mt-1 w-full" required>
+          {% for w in active_warehouses %}<option value="{{ w.pk }}" {% if forloop.counter == 2 %}selected{% endif %}>{{ w.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="block text-xs">
+        <span class="text-[color:var(--text-muted)]">Units</span>
+        <input type="number" name="quantity" min="1" step="1" required class="input mt-1 w-full tabular-nums">
+      </label>
+      <label class="block text-xs md:col-span-4">
+        <span class="text-[color:var(--text-muted)]">Note (optional)</span>
+        <input type="text" name="reason" maxlength="500" class="input mt-1 w-full" placeholder="e.g. Restocking the shop floor">
+      </label>
+      <div class="flex justify-end">
+        <button type="submit" class="btn btn-primary">Move</button>
+      </div>
+    </form>
+    <p class="text-xs text-[color:var(--text-muted)]">Only free units move: units held for open orders stay where they are.</p>
+  </section>
+  {% endif %}
+
+  <section class="space-y-2">
+    <h2 class="text-sm font-semibold">Recent stock changes</h2>
+    {% if movements %}
+    <div class="card overflow-x-auto">
+      <table class="morph-table">
+        <thead>
+          <tr>
+            <th class="text-left">When</th>
+            <th class="text-left">Item</th>
+            <th class="text-left">Warehouse</th>
+            <th class="text-left">Change</th>
+            <th class="text-right">Units</th>
+            <th class="text-right">Now</th>
+            <th class="text-left">Note</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for m in movements %}
+          <tr>
+            <td class="whitespace-nowrap text-xs">{{ m.created_at|date:"j M Y, H:i" }}</td>
+            <td>
+              {{ m.stock_level.variant.product.name }}
+              <span class="block text-xs font-mono text-[color:var(--text-muted)]">{{ m.stock_level.variant.sku }}</span>
+            </td>
+            <td>{{ m.stock_level.warehouse.name }}</td>
+            <td>{{ m.get_movement_type_display }}</td>
+            <td class="text-right tabular-nums">{% if m.quantity_change > 0 %}+{% endif %}{{ m.quantity_change }}</td>
+            <td class="text-right tabular-nums">{{ m.quantity_after }}</td>
+            <td class="text-xs">
+              {{ m.notes|default:m.reference|truncatechars:80 }}
+              {% if m.created_by %}<span class="block text-[color:var(--text-muted)]">{{ m.created_by.email }}</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-sm text-[color:var(--text-muted)]">No stock has been entered, moved or written off yet.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -241,7 +241,8 @@ def _is_inventoried(product, variant) -> bool:
       - the product is digital, virtual, or bundle;
       - the product or variant doesn't require shipping;
       - the variant's variant_type is digital, audiobook, or virtual;
-      - the merchant turned track_inventory off on the product.
+      - the merchant turned track_inventory off on the product;
+      - the variant takes backorders (it is sold when none is left).
 
     The DB-side reserve_for_order at checkout is still the correctness
     boundary for everything that DOES track inventory.
@@ -254,6 +255,8 @@ def _is_inventoried(product, variant) -> bool:
         return False
     variant_type = getattr(variant, 'variant_type', 'physical')
     if variant_type in ('digital', 'audiobook', 'virtual'):
+        return False
+    if getattr(variant, 'inventory_policy', 'deny') == 'continue':
         return False
     return getattr(variant, 'requires_shipping', True) is not False
 

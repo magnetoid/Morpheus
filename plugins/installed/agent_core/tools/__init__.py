@@ -54,9 +54,10 @@ from plugins.installed.agent_core.tools.content import (
     draft_product_description_tool,
     fill_missing_content_tool,
 )
-from plugins.installed.agent_core.tools.inventory import (
-    set_stock_tool,
-)
+
+# Stock tools (inventory.set_stock, inventory.adjust_stock) are the inventory
+# app's: agent_core's copy of set_stock wrote stock rows without a movement
+# until v0.152.0.
 from plugins.installed.agent_core.tools.orders import (
     list_recent_orders_tool,
     mark_order_fulfilled_tool,
@@ -121,7 +122,6 @@ def all_builtin_tools() -> list:
         create_category_tool,
         update_category_tool,
         archive_category_tool,
-        set_stock_tool,
         add_to_cart_tool,
         get_cart_summary_tool,
         list_recent_orders_tool,

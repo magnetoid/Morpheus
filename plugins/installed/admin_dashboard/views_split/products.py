@@ -325,6 +325,7 @@ def _fire_product_form_saved(product, request) -> None:
         product=product,
         post=request.POST,
         files=request.FILES,
+        user=getattr(request, 'user', None),
     )
 
 

@@ -1,0 +1,58 @@
+{% load l10n %}
+{# "Stock" card, contributed into the dashboard product form through PRODUCT_FORM_CARDS; #}
+{# inventory's PRODUCT_FORM_SAVED handler writes it (inventory/stock_card.py). #}
+<div class="card card-padded space-y-3" id="stock-card">
+  <div class="flex items-center justify-between gap-3">
+    <h2 class="font-semibold text-sm flex items-center gap-2">
+      <i data-lucide="box" class="h-4 w-4"></i> Stock
+    </h2>
+    <a class="text-xs underline" href="{% url 'inventory_dashboard:warehouses' %}">Warehouses</a>
+  </div>
+  <input type="hidden" name="stock_submitted" value="1">
+  {% if stock_own_toggle %}
+  <input type="hidden" name="stock_track_submitted" value="1">
+  <label class="flex items-start gap-2 text-sm">
+    <input type="checkbox" name="stock_track" class="mt-0.5" {% if stock_tracked %}checked{% endif %}>
+    <span>Count stock for this product <span class="block text-xs text-[color:var(--text-muted)]">Off: it can always be bought, whatever the numbers below say.</span></span>
+  </label>
+  {% elif not stock_tracked %}
+  <p class="text-xs text-amber-600">Stock isn't counted for this product: tick <strong>Track inventory</strong> above and save to count it. Until then it can always be bought.</p>
+  {% endif %}
+  <div class="overflow-x-auto">
+    <table class="morph-table">
+      <thead>
+        <tr>
+          <th class="text-left">{% if stock_rows|length > 1 %}Variant{% else %}Item{% endif %}</th>
+          {% for col in stock_columns %}<th class="text-left">{{ col.name }}</th>{% endfor %}
+          <th class="text-left">Keep selling at 0</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in stock_rows %}
+        <tr>
+          <td>
+            <input type="hidden" name="stock_rows" value="{{ row.key }}">
+            <span class="font-medium">{{ row.label }}</span>
+            {% if row.sku %}<span class="block text-xs font-mono text-[color:var(--text-muted)]">{{ row.sku }}</span>{% endif %}
+            {% if row.reserved %}<span class="block text-xs text-[color:var(--text-muted)]">{{ row.reserved }} held for open orders</span>{% endif %}
+          </td>
+          {% for cell in row.cells %}
+          <td>
+            <label class="sr-only" for="{{ cell.name }}">{{ cell.label }}</label>
+            <input type="number" min="0" step="1" inputmode="numeric" class="input w-20 tabular-nums"
+                   id="{{ cell.name }}" name="{{ cell.name }}" value="{{ cell.value|unlocalize }}" placeholder="—">
+          </td>
+          {% endfor %}
+          <td>
+            <label class="inline-flex items-center gap-2 text-xs">
+              <input type="checkbox" name="backorder__{{ row.key }}" {% if row.backorder %}checked{% endif %}>
+              <span class="sr-only">Keep selling {{ row.label }} when none is left</span> Backorders
+            </label>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-xs text-[color:var(--text-muted)]">Units on hand. An empty box isn't counted there. With backorders on, shoppers can buy it when none is left; the order's timeline says how many were ordered beyond stock. Moving stock between warehouses is on the <a class="underline" href="{% url 'inventory_dashboard:warehouses' %}">Warehouses</a> page.</p>
+</div>
