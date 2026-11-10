@@ -17,6 +17,7 @@ class OrdersPlugin(Plugin):
     requires = ['catalog', 'customers']
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_graphql_extension('plugins.installed.orders.graphql.queries')
         self.register_graphql_extension('plugins.installed.orders.graphql.mutations')
         # NB: no PAYMENT_CAPTURED subscriber here. The gateways confirm the
@@ -83,6 +84,57 @@ class OrdersPlugin(Plugin):
         self.register_hook(events.DASHBOARD_SETUP_STEPS, dashboard.on_setup_steps, priority=20)
         # Register signals on import.
         from plugins.installed.orders import signals  # noqa: F401, PLC0415
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Orders (by number, email, tracking number, coupon, or the name on the
+        order or its customer) and returns (by RMA or order number), in the
+        dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.orders.models import Order
+        from plugins.installed.orders.refunds import ReturnRequest
+
+        def name(order):
+            addr = order.shipping_address if isinstance(order.shipping_address, dict) else {}
+            whole = f'{addr.get("first_name") or ""} {addr.get("last_name") or ""}'.strip()
+            return str(addr.get('name') or whole)
+
+        ds.add(
+            value,
+            Order.objects.order_by('-placed_at'),
+            query,
+            words,
+            fields=(
+                'order_number',
+                'email',
+                'tracking_number',
+                'coupon_code',
+                'shipping_address__first_name',
+                'shipping_address__last_name',
+                'shipping_address__name',
+                'customer__first_name',
+                'customer__last_name',
+            ),
+            section='Orders',
+            kind='order',
+            icon='shopping-bag',
+            label=lambda o: f'#{o.order_number}',
+            hint=lambda o: ' · '.join(x for x in (name(o), o.email, o.get_status_display()) if x),
+            url=lambda o: f'/dashboard/orders/{o.order_number}/',
+        )
+        return ds.add(
+            value,
+            ReturnRequest.objects.select_related('order'),
+            query,
+            words,
+            fields=('rma_number', 'order__order_number'),
+            section='Returns',
+            kind='return',
+            icon='undo-2',
+            capability='orders.write',
+            label=lambda r: r.rma_number,
+            hint=lambda r: f'Return for #{r.order.order_number} · {r.state}',
+            url=lambda r: f'/dashboard/returns/{r.pk}/',
+        )
 
     def get_config_schema(self):
         return {

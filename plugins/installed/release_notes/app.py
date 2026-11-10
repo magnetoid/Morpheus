@@ -55,6 +55,7 @@ class ReleaseNotesPlugin(Plugin):
         )
         self.register_hook(MorpheusEvents.DASHBOARD_USER_MENU, self.on_user_menu)
         self.register_hook(MorpheusEvents.DASHBOARD_PAGE_HELP, self.on_page_help)
+        self.register_hook(MorpheusEvents.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_hook(MorpheusEvents.AGENT_SYSTEM_PROMPT, self.on_system_prompt, priority=60)
 
     def contribute_dashboard_pages(self) -> list:
@@ -131,6 +132,27 @@ class ReleaseNotesPlugin(Plugin):
             'label': 'Help',
             'title': f'Help for {inst.label or inst.name}',
         }
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """The guides that mention every word: each app's help, where the search
+        box finds what an app does and how ("narration", "ElevenReader")."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.release_notes.help_search import search
+
+        for row in search(query, limit=ds.LIMIT):
+            off = '' if row['active'] else ' · switched off'
+            value.append(
+                ds.hit(
+                    section='Help',
+                    kind='help',
+                    label=f'{row["label"]} guide',
+                    hint=(row['snippet'] or row['summary']) + off,
+                    url=f'/dashboard/help/{row["name"]}/',
+                    icon='help-circle',
+                    query_words=words,
+                )
+            )
+        return value
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.release_notes.help_tools import help_apps_tool, help_read_tool

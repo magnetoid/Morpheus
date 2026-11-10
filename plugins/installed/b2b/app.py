@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from morpheus.app import DashboardPage, Plugin
+from morpheus.core import events
 
 
 class B2bPlugin(Plugin):
@@ -18,6 +19,7 @@ class B2bPlugin(Plugin):
     requires = ['catalog', 'orders', 'crm']
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_urls(
             'plugins.installed.b2b.urls_dashboard',
             prefix='dashboard/b2b/',
@@ -28,6 +30,26 @@ class B2bPlugin(Plugin):
             'plugins.installed.b2b.urls',
             prefix='b2b/',
             namespace='b2b',
+        )
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Price lists (by name) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.b2b.models import PriceList
+
+        return ds.add(
+            value,
+            PriceList,
+            query,
+            words,
+            fields=('name', 'description'),
+            section='Price lists',
+            kind='price_list',
+            icon='tags',
+            capability='b2b.write',
+            label=lambda p: p.name,
+            hint=lambda p: 'Price list',
+            url=lambda p: f'/dashboard/b2b/pricelists/{p.pk}/',
         )
 
     def contribute_agent_tools(self) -> list:

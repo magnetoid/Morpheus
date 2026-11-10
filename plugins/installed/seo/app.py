@@ -42,6 +42,7 @@ class SeoPlugin(Plugin):
     requires = ['catalog']
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         # The storefront head. Core seeds a fallback title, fires the filter, and
         # this handler produces the real document — so ANY theme that calls
         # `{% storefront_head %}` gets complete, correct SEO, and a store with
@@ -115,6 +116,26 @@ class SeoPlugin(Plugin):
         from plugins.installed.seo import signals  # noqa: PLC0415
 
         signals.wire()
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Redirects (by either address or the note) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.seo.models import Redirect
+
+        return ds.add(
+            value,
+            Redirect,
+            query,
+            words,
+            fields=('from_path', 'to_path', 'note'),
+            section='Redirects',
+            kind='redirect',
+            icon='corner-up-right',
+            capability='seo.read',
+            label=lambda r: r.from_path,
+            hint=lambda r: f'→ {r.to_path}',
+            url=lambda r: f'/dashboard/seo/redirects/?edit={r.pk}',
+        )
 
     # Each shell names its object with its own kwarg (product=, category=,
     # collection=, page=), so the handler has to know which one to look for.

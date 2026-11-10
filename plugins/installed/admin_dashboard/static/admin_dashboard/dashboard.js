@@ -409,8 +409,8 @@
         html += '<div class="mp-section-title">' + escapeHtml(k) + '</div>';
         groups[k].forEach(function (h) {
           html += (
-            '<div class="mp-row" data-kind="' + h.kind + '" data-idx="' + flatIdx + '" data-url="' + h.url + '">'
-            + '<span class="mp-icon-wrap"><i data-lucide="' + (h.icon || 'circle') + '" class="h-3.5 w-3.5"></i></span>'
+            '<div class="mp-row" data-kind="' + escapeHtml(h.kind || '') + '" data-idx="' + flatIdx + '" data-url="' + escapeHtml(h.url) + '">'
+            + '<span class="mp-icon-wrap"><i data-lucide="' + escapeHtml(h.icon || 'circle') + '" class="h-3.5 w-3.5"></i></span>'
             + '<div style="flex:1; min-width:0;">'
             + '<div class="mp-label">' + escapeHtml(h.label) + '</div>'
             + (h.hint ? '<div class="mp-hint">' + escapeHtml(h.hint) + '</div>' : '')

@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.151.0 — 2026-11-10
+
+**Dashboard search finds every part of the store**
+
+- Cmd+K finds every app by its name and opens its settings, else its first page, or its card in Apps while it is switched off.
+- Every field of every app's settings can be searched and opens that field: "ElevenLabs", "Qwen voice" or "Turnstile" go straight to it.
+- Guides and emails can be searched: a word from an app's guide finds the guide, and an email opens its editor.
+- Every app lists its own records: products by name or a variant's SKU or barcode, orders by number, email, tracking number or the name on the order, returns, customers, pages and menus, coupons, promotions, gift cards, draft orders, affiliates, vendors, leads, emails and chats, sign-up popups, price lists, shipping zones and rates, tax regions and rates, redirects, media, markets, product blocks, workflows, webhooks, live events, books by author or series, audiobooks by narrator, Cloudflare zones, feedback, roles, plans, and the experiences and stays on Montenegro and Croatia.
+- Case, a missing accent (č, ć, š, đ) and one typo no longer matter in the names of pages, apps and settings; records match the words as you type them, and "#1042" finds order 1042.
+- A switched-off app's records leave the search with it. While staff roles are enforced, a record whose page your role cannot open is left out.
+- For app authors: the DASHBOARD_SEARCH filter and plugins/dashboard_search.py (docs/PLUGIN_DEVELOPMENT.md).
+
 ## v0.150.0 — 2026-11-10
 
 **Promotions and coupons that do what they say**

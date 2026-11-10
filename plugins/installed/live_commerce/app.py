@@ -10,6 +10,7 @@ pipeline (no analytics beacon changes).
 from __future__ import annotations
 
 from morpheus.app import DashboardCard, DashboardPage, Plugin, StorefrontBlock
+from morpheus.core import events
 
 
 class LiveCommercePlugin(Plugin):
@@ -24,6 +25,7 @@ class LiveCommercePlugin(Plugin):
     requires = ['catalog', 'orders']
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_urls(
             'plugins.installed.live_commerce.urls',
             prefix='dashboard/live/',
@@ -33,6 +35,26 @@ class LiveCommercePlugin(Plugin):
             'plugins.installed.live_commerce.urls_storefront',
             prefix='',
             namespace='live_commerce_storefront',
+        )
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Live events (by title) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.live_commerce.models import LiveEvent
+
+        return ds.add(
+            value,
+            LiveEvent,
+            query,
+            words,
+            fields=('title', 'slug'),
+            section='Live events',
+            kind='live_event',
+            icon='video',
+            capability='cms.write',
+            label=lambda e: e.title,
+            hint=lambda e: f'Live event · {e.status}',
+            url=lambda e: f'/dashboard/live/{e.pk}/',
         )
 
     def contribute_storefront_blocks(self) -> list:

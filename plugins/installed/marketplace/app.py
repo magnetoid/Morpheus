@@ -19,6 +19,7 @@ class MarketplacePlugin(Plugin):
     requires = ['catalog', 'orders']
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_graphql_extension('plugins.installed.marketplace.graphql.queries')
         self.register_urls('plugins.installed.marketplace.urls', prefix='', namespace='marketplace')
         self.register_urls(
@@ -33,6 +34,26 @@ class MarketplacePlugin(Plugin):
         from plugins.installed.marketplace.customer_panel import vendor_panel  # noqa: PLC0415
 
         self.register_hook(events.CUSTOMER_DETAIL_PANELS, vendor_panel, priority=30)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Vendors (by name or slug) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.catalog.models import Vendor
+
+        return ds.add(
+            value,
+            Vendor,
+            query,
+            words,
+            fields=('name', 'slug'),
+            section='Vendors',
+            kind='vendor',
+            icon='store',
+            capability='system.write',
+            label=lambda v: v.name,
+            hint=lambda v: 'Vendor' if v.is_active else 'Vendor · off',
+            url=lambda v: f'/dashboard/marketplace/vendors/{v.pk}/',
+        )
 
     def contribute_storefront_blocks(self) -> list:
         # Account-page tile linking the signed-in vendor to their dashboard

@@ -23,6 +23,7 @@ class CrmPlugin(Plugin):
     requires = ['customers', 'orders', 'agent_core', 'admin_dashboard']
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_graphql_extension('plugins.installed.crm.graphql.queries')
         self.register_graphql_extension('plugins.installed.crm.graphql.mutations')
         self.register_urls(
@@ -50,6 +51,57 @@ class CrmPlugin(Plugin):
 
         self.register_hook(events.CONTACTS_LEADS, contacts_leads, priority=50)
         self._register_beat_schedule()
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Leads (by email, name, company or phone), emails (by subject or sender) and
+        chats in the dashboard's search box."""
+        from urllib.parse import quote
+
+        from plugins import dashboard_search as ds
+        from plugins.installed.crm.models import ChatThread, Lead, MailMessage
+
+        ds.add(
+            value,
+            Lead.objects.order_by('-created_at'),
+            query,
+            words,
+            fields=('email', 'first_name', 'last_name', 'company', 'phone'),
+            section='CRM',
+            kind='lead',
+            icon='target',
+            capability='crm.read',
+            label=lambda lead: f'{lead.first_name} {lead.last_name}'.strip() or lead.email,
+            hint=lambda lead: ' · '.join(x for x in ('Lead', lead.company, lead.status) if x),
+            url=lambda lead: f'/dashboard/crm/leads/?q={quote(lead.email or lead.last_name)}',
+        )
+        ds.add(
+            value,
+            MailMessage.objects.order_by('-created_at'),
+            query,
+            words,
+            fields=('subject', 'from_address'),
+            section='CRM',
+            kind='mail',
+            icon='mail',
+            capability='crm.write',
+            label=lambda m: m.subject or '(no subject)',
+            hint=lambda m: f'Email · {m.from_address}',
+            url=lambda m: f'/dashboard/crm/inbox/{m.pk}/',
+        )
+        return ds.add(
+            value,
+            ChatThread.objects.order_by('-created_at'),
+            query,
+            words,
+            fields=('email', 'subject'),
+            section='CRM',
+            kind='chat',
+            icon='message-circle',
+            capability='crm.write',
+            label=lambda t: t.subject or t.email or 'Chat',
+            hint=lambda t: ' · '.join(x for x in ('Chat', t.email) if x),
+            url=lambda t: f'/dashboard/crm/chat/{t.pk}/',
+        )
 
     def _register_beat_schedule(self) -> None:
         from celery.schedules import crontab  # noqa: PLC0415

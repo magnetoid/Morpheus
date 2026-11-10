@@ -20,6 +20,7 @@ class BookProductPlugin(Plugin):
     requires = ['catalog']
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         # Contribute the "Book details" card into the dashboard product form via
         # the modular extension point (PRODUCT_FORM_CARDS) and persist it on save
         # (PRODUCT_FORM_SAVED) — so the card lives in this plugin and DISABLING
@@ -72,6 +73,65 @@ class BookProductPlugin(Plugin):
 
         self.register_context_processor(nav_genres)
         self.register_context_processor(nav_topics)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Books by author, subtitle, publisher, imprint or series, and the genres,
+        topics, authors, publishers and series pages, in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.book_product.models import (
+            BookProduct,
+            BookTaxonomyTerm,
+            Genre,
+            Topic,
+        )
+
+        ds.add(
+            value,
+            BookProduct.objects.select_related('product'),
+            query,
+            words,
+            fields=('author', 'subtitle', 'publisher', 'imprint', 'series'),
+            section='Books',
+            kind='book',
+            icon='book-open',
+            capability='catalog.write',
+            label=lambda b: b.product.name,
+            hint=lambda b: ' · '.join(
+                x for x in (f'by {b.author}' if b.author else '', b.series) if x
+            ),
+            url=lambda b: f'/dashboard/products/{b.product_id}/',
+        )
+        for model, kind in ((Genre, 'genre'), (Topic, 'topic')):
+            ds.add(
+                value,
+                model,
+                query,
+                words,
+                fields=('name', 'slug'),
+                section='Books',
+                kind=kind,
+                icon='tags',
+                capability='catalog.write',
+                label=lambda t: t.name,
+                hint=lambda t, kind=kind: kind.title(),
+                url=lambda t, kind=kind: (
+                    f'/dashboard/book-taxonomies/curated/{kind}/{t.slug}/edit/'
+                ),
+            )
+        return ds.add(
+            value,
+            BookTaxonomyTerm,
+            query,
+            words,
+            fields=('name', 'slug'),
+            section='Books',
+            kind='book_term',
+            icon='tags',
+            capability='catalog.write',
+            label=lambda t: t.name,
+            hint=lambda t: t.taxonomy.title(),
+            url=lambda t: f'/dashboard/book-taxonomies/{t.taxonomy}/{t.slug}/edit/',
+        )
 
     # Every route this app mounts, and what it is in SEO terms. Author landings
     # are entity pages (they get a Person node); the rest are listings of books

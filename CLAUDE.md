@@ -274,6 +274,20 @@ when nothing in scope would fill it. Guarded by `book_product/tests/test_listing
 `storefront/tests/test_listing_facets_seam.py`, `themes/test_dot_books_listing_filters.py` and
 `themes/test_dot_books_book_card.py`.
 
+**Convention — one dashboard search, and every app answers it (v0.151.0).** Cmd+K
+(`admin_dashboard/views_split/palette.py`) lists what the registry knows: every page and settings
+tool, every app (to its settings, its first page, or its card in Apps while it is off), every field
+of every settings panel (`#f-<key>`), every email, and every guide (release_notes). Records come from
+`DASHBOARD_SEARCH`: each app appends its own rows with `plugins/dashboard_search.py:add()`, so a
+switched-off app's records leave with it; the shell never queries another app's model. Text kept in
+Python folds case and accents and forgives one typo; a row matches each word as typed (the stores
+have no unaccent). A hit names the capability its page needs and is dropped only while rbac enforces:
+filtering in log mode hid every record from staff without a role, and pages deny nothing then. Until
+v0.151.0 the box read the menu and six models, so an app's name, its settings, its guide and every
+other app's records found nothing. Guarded by `admin_dashboard/tests/test_dashboard_search.py` and
+`test_dashboard_search_records.py`, which call each handler directly (the bus swallows a FieldError)
+and resolve every link.
+
 **Convention — a search suggestion is what was typed (v0.131.0).** The storefront's search
 dropdown (`/api/quick-search/`, `storefront/search_suggest.py`) suggests products only when every word
 starts a word of the name, then the product's text (words of 4+ letters, since shorter ones match its

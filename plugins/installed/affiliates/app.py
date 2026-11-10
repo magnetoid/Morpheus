@@ -22,6 +22,7 @@ class AffiliatesPlugin(Plugin):
     requires = ['orders', 'customers', 'catalog']
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         # GDPR slice: contribute this plugin's data to the export/erasure.
         from plugins.installed.affiliates import gdpr  # noqa: PLC0415
 
@@ -47,6 +48,41 @@ class AffiliatesPlugin(Plugin):
         from plugins.installed.affiliates.customer_panel import affiliate_panel
 
         self.register_hook(events.CUSTOMER_DETAIL_PANELS, affiliate_panel, priority=40)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Affiliates (by handle, name, company or payout email) and programs in the
+        dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.affiliates.models import Affiliate, AffiliateProgram
+
+        ds.add(
+            value,
+            Affiliate,
+            query,
+            words,
+            fields=('handle', 'display_name', 'company', 'payout_email'),
+            section='Affiliates',
+            kind='affiliate',
+            icon='users-round',
+            capability='affiliates.write',
+            label=lambda a: a.display_name or a.handle,
+            hint=lambda a: f'@{a.handle} · {a.status}',
+            url=lambda a: f'/dashboard/affiliates/affiliates/{a.pk}/',
+        )
+        return ds.add(
+            value,
+            AffiliateProgram,
+            query,
+            words,
+            fields=('name', 'slug'),
+            section='Affiliates',
+            kind='affiliate_program',
+            icon='award',
+            capability='affiliates.write',
+            label=lambda p: p.name,
+            hint=lambda p: 'Affiliate program',
+            url=lambda p: f'/dashboard/affiliates/programs/{p.pk}/',
+        )
 
     def contribute_storefront_blocks(self) -> list:
         # Account-page tile linking the signed-in affiliate to their

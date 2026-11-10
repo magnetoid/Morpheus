@@ -19,6 +19,7 @@ class GiftCardsPlugin(Plugin):
     has_models = True
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_urls(
             'plugins.installed.gift_cards.urls',
             prefix='dashboard/gift-cards/',
@@ -47,6 +48,27 @@ class GiftCardsPlugin(Plugin):
         # without this the shopper forfeited it. ORDER_CANCELLED alone only
         # covered the whole-order void.
         self.register_hook(events.PAYMENT_REFUNDED, self.on_payment_refunded, priority=60)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Gift cards (by code, the email they went to, or their note) in the
+        dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.gift_cards.models import GiftCard
+
+        return ds.add(
+            value,
+            GiftCard,
+            query,
+            words,
+            fields=('code', 'issued_to_email', 'note'),
+            section='Gift cards',
+            kind='gift_card',
+            icon='gift',
+            capability='gift_cards.write',
+            label=lambda g: g.code,
+            hint=lambda g: ' · '.join(x for x in (str(g.balance), g.issued_to_email, g.state) if x),
+            url=lambda g: f'/dashboard/gift-cards/{g.pk}/',
+        )
 
     def on_order_paid(self, order=None, **kwargs):
         """Issue purchased gift cards on payment (idempotent; fail-soft —

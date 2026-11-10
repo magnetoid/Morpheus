@@ -1,4 +1,5 @@
 from morpheus.app import DashboardCard, DashboardPage, Plugin
+from morpheus.core import events
 
 
 class MarketingPlugin(Plugin):
@@ -10,10 +11,31 @@ class MarketingPlugin(Plugin):
     requires = ['catalog']
 
     def ready(self):
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_graphql_extension('plugins.installed.marketing.graphql.queries')
         self.register_graphql_extension('plugins.installed.marketing.graphql.mutations')
         # Cart-recovery email is owned solely by the cart_abandonment plugin's
         # consent-checked drip — marketing no longer subscribes to cart.abandoned.
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Coupons (by code or name) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.marketing.models import Coupon
+
+        return ds.add(
+            value,
+            Coupon,
+            query,
+            words,
+            fields=('code', 'name'),
+            section='Coupons',
+            kind='coupon',
+            icon='ticket',
+            capability='marketing.write',
+            label=lambda c: c.code,
+            hint=lambda c: ' · '.join(x for x in (c.name, '' if c.is_active else 'off') if x),
+            url=lambda c: f'/dashboard/marketing/coupons/{c.pk}/',
+        )
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.marketing.agent_tools import (

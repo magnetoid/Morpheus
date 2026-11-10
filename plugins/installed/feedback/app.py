@@ -34,6 +34,7 @@ class FeedbackPlugin(Plugin):
     )
 
     def ready(self) -> None:
+        self.register_hook(MorpheusEvents.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_urls(
             'plugins.installed.feedback.urls',
             prefix='dashboard/apps/feedback/',
@@ -41,6 +42,26 @@ class FeedbackPlugin(Plugin):
         )
         self.register_hook(MorpheusEvents.DASHBOARD_USER_MENU, self.on_user_menu)
         self.register_hook(MorpheusEvents.DASHBOARD_BODY_END, self.on_body_end)
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Feedback tickets (by message, page or reporter) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.feedback.models import FeedbackTicket
+
+        return ds.add(
+            value,
+            FeedbackTicket.objects.order_by('-created_at'),
+            query,
+            words,
+            fields=('message', 'page_title', 'reporter_label'),
+            section='Feedback',
+            kind='feedback',
+            icon='message-square-warning',
+            capability='system.read',
+            label=lambda t: (t.message or '')[:80] or 'Feedback',
+            hint=lambda t: ' · '.join(x for x in (t.page_title, t.status) if x),
+            url=lambda t: f'/dashboard/apps/feedback/tickets/{t.pk}/',
+        )
 
     def contribute_dashboard_pages(self) -> list:
         return [

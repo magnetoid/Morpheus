@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from morpheus.app import DashboardPage, Plugin
+from morpheus.core import events
 
 logger = logging.getLogger('morpheus.media')
 
@@ -23,10 +24,31 @@ class MediaPlugin(Plugin):
     has_models = True
 
     def ready(self) -> None:
+        self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_urls(
             'plugins.installed.media.urls',
             prefix='dashboard/media/',
             namespace='media',
+        )
+
+    def on_dashboard_search(self, value, query='', words=None, **kwargs):
+        """Media files (by file name, title or alt text) in the dashboard's search box."""
+        from plugins import dashboard_search as ds
+        from plugins.installed.media.models import MediaAsset
+
+        return ds.add(
+            value,
+            MediaAsset.objects.order_by('-created_at'),
+            query,
+            words,
+            fields=('filename', 'title', 'alt_text'),
+            section='Media',
+            kind='media',
+            icon='image',
+            capability='cms.write',
+            label=lambda m: m.title or m.filename,
+            hint=lambda m: f'{m.kind} · {m.filename}',
+            url=lambda m: f'/dashboard/media/{m.pk}/edit/',
         )
 
     def contribute_agent_tools(self) -> list:
