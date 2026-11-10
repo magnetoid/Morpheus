@@ -37,6 +37,7 @@ ANSWERING = {
     'dynamics',
     'feedback',
     'gift_cards',
+    'inventory',
     'live_commerce',
     'marketing',
     'marketplace',
@@ -217,6 +218,14 @@ class RecordsOpenTheirPageTests(TestCase):
             'zebrafinch vat', 'Tax', f'/dashboard/tax/regions/?edit_kind=rate&edit={tax.pk}'
         )
         self.assertFinds('zebrafinch market', 'Markets', f'/dashboard/markets/{market.pk}/')
+
+    def test_warehouses(self):
+        from plugins.installed.inventory.models import Warehouse
+
+        w = Warehouse.objects.create(name='Zebrafinch depot', code='ZQ-DEPOT')
+        url = f'/dashboard/inventory/warehouses/?edit={w.pk}'
+        self.assertFinds('zebrafinch depot', 'Inventory', url)
+        self.assertFinds('zq-depot', 'Inventory', url)
 
     def test_store_setup(self):
         from core.models import WebhookEndpoint

@@ -116,7 +116,7 @@ POST: /cart/add/{{ product.id }}/  ·  /back-in-stock/subscribe/{{ product.id }}
       {% storefront_blocks "pdp_below_price" %}
 
       {% if not listing_mode %}
-      {% if product.variants %}
+      {% if product.variants and not product.hasOnlyDefaultVariant %}
       {# Variant picker: selecting one swaps the price + the hidden variant_id sent to /cart/add/. #}
       <div data-pdp-variant-picker class="space-y-3">
         <p class="text-xs font-semibold uppercase tracking-wider text-foreground" id="pdp-variants-label">{% trans "Choose an option" %}</p>

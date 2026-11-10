@@ -15,6 +15,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.152.0 — 2026-11-10
+
+**Stock you can enter: a Stock card, a Warehouses page, transfers and backorders**
+
+- Products: a Stock card on every product page sets units on hand per variant and warehouse, with a Backorders box to keep selling a variant at 0. A product sold in one form gets a default variant the first time stock is entered (no theme offers it as a choice), and a store with no warehouse gets "Main warehouse". While staff roles are enforced, the card changes stock only for a role allowed to change stock, not for every role that may edit products
+- Settings → Shipping & delivery → Warehouses: add, rename and make a warehouse the default, switch one off (its stock stops selling, units already held stay held), delete one only while it holds no stock records, move free units between warehouses, and see the latest stock changes and who made them
+- Backorders work: a variant set to keep selling takes what is free at checkout and the order's timeline names the units ordered beyond stock; the reservation used to refuse it
+- Checkout and the cart hold count the same stock: a product with Track inventory off is never refused, a variant with no stock row is not counted (the cart refused it with "Only 0 left"), and a switched-off warehouse is not stock anywhere
+- One way to change stock: the card, the page, Linda, GraphQL setStock and adjustStock, and the CSV import all write through the inventory service, so every change is in the history. Low-stock and out-of-stock notifications are sent for the first time: the code meant to send them was never loaded
+- Linda: inventory.stock_levels, inventory.warehouses, inventory.transfer_stock and inventory.create_warehouse; inventory.set_stock moved from agent_core into the inventory app with the same arguments. Every write asks first
+- CSV import: optional stock and warehouse_code columns; the export leaves stock out
+- API: setStock and adjustStock by productSlug refuse a product with several variants (they wrote its first variant), and no warehouse means the default one (see docs/MIGRATING.md)
+
 ## v0.151.0 — 2026-11-10
 
 **Dashboard search finds every part of the store**

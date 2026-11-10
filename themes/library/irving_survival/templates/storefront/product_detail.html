@@ -337,7 +337,7 @@ form[action^="/cart/add/"] [data-pdp-cta] { flex: 1; height: 56px !important; fo
 
         {% storefront_blocks "pdp_below_price" %}
 
-        {% if product.variants %}
+        {% if product.variants and not product.hasOnlyDefaultVariant %}
         {# Variant picker: card shows name+size+badge+price+desc, selecting one swaps the price + hidden variant_id sent to /cart/add/. #}
         <div class="pdp-variants-wrap" data-pdp-variant-picker style="margin: 1.5rem 0;">
           <p class="eyebrow" style="margin-bottom: 0.75rem;" id="pdp-variants-label">Choose a size</p>

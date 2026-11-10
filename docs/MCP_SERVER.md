@@ -300,8 +300,16 @@ using the returned `id`").
 
 | Tool / Mutation | Purpose |
 |---|---|
-| `inventory.set_stock` / `setStock` | Absolute quantity per variant (approval-gated) |
-| `inventory.adjust_stock` / `adjustStock` | Delta by `variant_sku`/`warehouse_code`, refuses negative result (approval-gated) |
+| `inventory.stock_levels` | One variant's (or one-form product's) stock per warehouse: on hand, held, free, backorders |
+| `inventory.warehouses` | The warehouses: code, name, default, on or off, units on hand |
+| `inventory.set_stock` / `setStock` | Absolute quantity per variant; a one-form product by SKU or slug gets its default variant, a store with no warehouse gets "Main warehouse" (approval-gated) |
+| `inventory.adjust_stock` / `adjustStock` | Delta by `variant_sku`/`warehouse_code`; the tool stops at 0, the mutation refuses a negative result (approval-gated) |
+| `inventory.transfer_stock` | Move free units between two warehouses (approval-gated) |
+| `inventory.create_warehouse` | Add a warehouse, optionally the default (approval-gated) |
+
+Every write goes through `InventoryService`: it leaves a `StockMovement` and fires
+the low-stock / out-of-stock events (v0.152.0). A warehouse is named by its code or
+its name; none = the default one. A product with several variants needs the variant SKU.
 
 ### Orders
 

@@ -4,6 +4,11 @@ Schema (header row, in any order):
     sku, name, slug, price, currency, status, short_description,
     description, weight, category_slug, is_featured, compare_at_price
 
+Two optional columns set stock, and are never exported: ``stock`` (units on
+hand) and ``warehouse_code`` (else the default warehouse). The inventory app
+writes them through the INVENTORY_SET_STOCK filter, so a store with it off, or
+a product with several variants, imports the product and leaves stock alone.
+
 Rows are upserted by SKU when present, else by slug. Idempotent.
 """
 
@@ -107,6 +112,34 @@ class CsvProductImporter(BaseImporter):
         else:
             obj, created = Product.objects.update_or_create(slug=slug, defaults=defaults)
         self.upsert(source_id=sku or slug, dest_obj=obj)
+        self._set_stock(row, obj)
+
+    def _set_stock(self, row: dict, product) -> None:
+        """The optional ``stock`` column: units on hand, written by inventory."""
+        from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+        raw = str(row.get('stock') or '').strip()
+        if not raw:
+            return
+        try:
+            quantity = int(Decimal(raw))
+        except (InvalidOperation, ValueError):
+            quantity = -1
+        if quantity < 0:
+            self.summary.increment('stock_errored')
+            self.summary.errors.append(
+                f'{product.sku or product.slug}: stock {raw!r} is not a count'
+            )
+            return
+        written = hook_registry.filter(
+            MorpheusEvents.INVENTORY_SET_STOCK,
+            False,
+            product=product,
+            quantity=quantity,
+            warehouse_code=(row.get('warehouse_code') or '').strip(),
+            reason='CSV import',
+        )
+        self.summary.increment('stock_set' if written else 'stock_skipped')
 
 
 def _money(value, currency: str, *, allow_blank: bool = False):

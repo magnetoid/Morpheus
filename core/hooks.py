@@ -642,8 +642,9 @@ class MorpheusEvents:
     #   book/bookvault cards). The view renders each template with the product.
     PRODUCT_FORM_CARDS = 'product.form_cards'  # filter
     # PRODUCT_FORM_SAVED — fire, kwargs: product=Product, post=QueryDict,
-    #   files=MultiValueDict. Fired after a product is saved in the dashboard so
-    #   a plugin can persist its own product-form fields (its card's inputs).
+    #   files=MultiValueDict, user=the staff member who saved. Fired after a
+    #   product is saved in the dashboard so a plugin can persist its own
+    #   product-form fields (its card's inputs).
     PRODUCT_FORM_SAVED = 'product.form_saved'  # fire
     # PRODUCT_LIST_COLUMNS — filter, value=list[dict], kwargs:
     #   products=list[Product], request=HttpRequest. A plugin appends
@@ -1138,8 +1139,17 @@ class MorpheusEvents:
     BOT_CHECK_PASSES = 'bot_check.passes'  # filter
 
     # ── Inventory (fire) ──────────────────────────────────────────────────
+    # PRODUCT_LOW_STOCK / PRODUCT_OUT_OF_STOCK — kwargs: stock_level=StockLevel.
+    #   Fired by the inventory app once, after the write commits, when a change
+    #   takes a stock row to its reorder point / to nothing left.
     PRODUCT_LOW_STOCK = 'product.low_stock'
     PRODUCT_OUT_OF_STOCK = 'product.out_of_stock'
+    # INVENTORY_SET_STOCK — filter, value=False, kwargs: product=Product,
+    #   quantity=int, warehouse_code=str (a code or name; '' = the default warehouse),
+    #   reason=str. Fired by an importer for a row's stock; the inventory app
+    #   sets the units on hand of a product sold in one form and returns True.
+    #   Nothing answers (inventory off) → False, and the stock is not imported.
+    INVENTORY_SET_STOCK = 'inventory.set_stock'  # filter
 
     # ── Returns (fire) ────────────────────────────────────────────────────
     # 'return.requested'  — kwargs: return_request=ReturnRequest.

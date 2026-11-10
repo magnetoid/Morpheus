@@ -26,13 +26,19 @@ metadata:
 | `catalog.list_categories` | Categories |
 | `inventory.low_stock_report` | Below a threshold, now |
 | `inventory.stockout_forecast` | What will run out soon |
+| `inventory.stock_levels` | One item's stock per warehouse, held units, backorders |
+| `inventory.warehouses` | The warehouses and their codes |
 
 ## Stock
 
-1. `inventory.low_stock_report`.
+1. `inventory.low_stock_report`, or `inventory.stock_levels` for one item.
 2. Propose `inventory.adjust_stock` for "+12" style changes, or
    `inventory.set_stock` for an absolute count. Stock never goes negative; if the
-   tool refuses, report it.
+   tool refuses, report it. A product with several variants needs the variant SKU.
+3. `inventory.transfer_stock` moves free units between warehouses;
+   `inventory.create_warehouse` adds one. Units held for orders cannot move.
+4. Keep selling at 0 (backorders) is set per variant on the product's page; say so
+   when asked.
 
 ## Changes (each needs the merchant's yes; say old → new)
 

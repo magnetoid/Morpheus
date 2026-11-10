@@ -6,7 +6,9 @@ setStock(): replace the absolute quantity.
 adjustStock(): add or subtract a delta. Useful for "decrement by 1
 after a manual sale" style updates.
 
-If no warehouse is specified the first warehouse (lowest id) is used.
+Both write through ``InventoryService`` (a movement in the audit log, the
+low-stock alert). No warehouse given = the default one; setStock makes "Main
+warehouse" for a store that has none.
 """
 
 from __future__ import annotations
@@ -37,25 +39,33 @@ def _err(msg: str) -> StockMutationResult:
     )
 
 
-def _resolve_variant(variant_sku: str, product_slug: str):
-    from plugins.installed.catalog.models import Product, ProductVariant
+def _resolve_variant(variant_sku: str, product_slug: str, *, create: bool = False):
+    """The variant to count: by its SKU, or a one-form product by slug (its
+    default variant, made when ``create``). A product with several variants
+    needs the variant's SKU; until v0.152.0 its first variant was taken."""
+    from plugins.installed.inventory.services import resolve_variant  # noqa: PLC0415
 
-    if variant_sku:
-        return ProductVariant.objects.filter(sku=variant_sku).first()
-    if product_slug:
-        product = Product.objects.filter(slug=product_slug).first()
-        if product is None:
-            return None
-        return product.variants.first()
-    return None
+    code = (variant_sku or product_slug or '').strip()
+    return resolve_variant(code, create=create) if code else None
 
 
-def _resolve_warehouse(name: str):
-    from plugins.installed.inventory.models import Warehouse
+def _resolve_warehouse(name: str, *, create: bool = False):
+    """A warehouse by code or name; none given = the default one."""
+    from plugins.installed.inventory.models import Warehouse  # noqa: PLC0415
+    from plugins.installed.inventory.services import default_warehouse  # noqa: PLC0415
 
+    name = (name or '').strip()
     if name:
-        return Warehouse.objects.filter(name=name).first()
-    return Warehouse.objects.order_by('id').first()
+        return (
+            Warehouse.objects.filter(code__iexact=name).first()
+            or Warehouse.objects.filter(name__iexact=name).first()
+        )
+    return default_warehouse(create=create)
+
+
+def _person(info):
+    user = getattr(getattr(info.context, 'request', None), 'user', None)
+    return user if getattr(user, 'is_authenticated', False) else None
 
 
 def _serialize_stock(s) -> StockMutationResult:
@@ -97,22 +107,17 @@ class InventoryMutationExtension:
         if input.quantity < 0:
             return _err('quantity must be >= 0')
 
-        from plugins.installed.inventory.models import StockLevel
+        from plugins.installed.inventory.services import InventoryService  # noqa: PLC0415
 
-        variant = _resolve_variant(input.variant_sku, input.product_slug)
+        variant = _resolve_variant(input.variant_sku, input.product_slug, create=True)
         if variant is None:
             return _err('variant not found (provide variant_sku or product_slug)')
-        warehouse = _resolve_warehouse(input.warehouse)
+        warehouse = _resolve_warehouse(input.warehouse, create=True)
         if warehouse is None:
-            return _err('no warehouse configured')
-
-        stock, _ = StockLevel.objects.get_or_create(
-            variant=variant,
-            warehouse=warehouse,
-            defaults={'quantity': 0},
+            return _err('warehouse not found')
+        stock = InventoryService.set_quantity(
+            variant, warehouse, input.quantity, reason='Set over the API', user=_person(info)
         )
-        stock.quantity = input.quantity
-        stock.save(update_fields=['quantity', 'updated_at'])
         return _serialize_stock(stock)
 
     @strawberry.mutation(
@@ -123,7 +128,8 @@ class InventoryMutationExtension:
         if err:
             return _err(err)
 
-        from plugins.installed.inventory.models import StockLevel
+        from plugins.installed.inventory.models import StockLevel  # noqa: PLC0415
+        from plugins.installed.inventory.services import InventoryService  # noqa: PLC0415
 
         variant = _resolve_variant(input.variant_sku, input.product_slug)
         if variant is None:
@@ -131,17 +137,17 @@ class InventoryMutationExtension:
         warehouse = _resolve_warehouse(input.warehouse)
         if warehouse is None:
             return _err('no warehouse configured')
-
-        stock, _ = StockLevel.objects.get_or_create(
-            variant=variant,
-            warehouse=warehouse,
-            defaults={'quantity': 0},
+        current = (
+            StockLevel.objects.filter(variant=variant, warehouse=warehouse)
+            .values_list('quantity', flat=True)
+            .first()
+            or 0
         )
-        new_qty = stock.quantity + input.delta
-        if new_qty < 0:
+        if current + input.delta < 0:
             return _err(
-                f'adjust would put quantity below zero (current={stock.quantity}, delta={input.delta})'
+                f'adjust would put quantity below zero (current={current}, delta={input.delta})'
             )
-        stock.quantity = new_qty
-        stock.save(update_fields=['quantity', 'updated_at'])
+        stock = InventoryService.adjust(
+            variant, warehouse, input.delta, reason='Changed over the API', user=_person(info)
+        )
         return _serialize_stock(stock)

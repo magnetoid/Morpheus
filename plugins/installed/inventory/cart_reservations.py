@@ -70,8 +70,14 @@ def reserve(*, variant_id: str, cart_id: str, quantity: int) -> ReservationResul
             ok=True, held=0, available=_available(variant_id), reason='zero qty'
         )
 
-    if not _reservations_enabled():
-        return ReservationResult(ok=True, held=quantity, available=0, reason='disabled')
+    # A variant with no stock row is not counted, so nothing caps it. Reading its
+    # empty sum as 0 refused every add of a tracked product whose stock was never
+    # entered ("Only 0 left in stock"), while checkout would have taken the order.
+    skip = 'disabled' if not _reservations_enabled() else ''
+    if not skip and not _is_tracked(variant_id):
+        skip = 'untracked'
+    if skip:
+        return ReservationResult(ok=True, held=quantity, available=0, reason=skip)
 
     ttl = _ttl_seconds()
     try:
@@ -290,8 +296,25 @@ def _current_held(variant_id: str, cart_id: str) -> int:
         return 0
 
 
+def _is_tracked(variant_id: str) -> bool:
+    """The order's reservation caps this variant: it has a stock row, its
+    product counts stock, and it does not keep selling at 0 (backorders)."""
+    from plugins.installed.inventory.models import StockLevel  # noqa: PLC0415
+
+    try:
+        return (
+            StockLevel.objects.filter(variant_id=variant_id, variant__product__track_inventory=True)
+            .exclude(variant__inventory_policy='continue')
+            .exists()
+        )
+    except Exception:  # noqa: BLE001 — never block a cart add on a failed lookup
+        logger.exception('cart_reservations: tracked lookup failed')
+        return False
+
+
 def _absolute_available(variant_id: str) -> int:
-    """StockLevel.available_quantity sum minus existing DB reservations.
+    """StockLevel.available_quantity sum minus existing DB reservations, in the
+    active warehouses (the ones the order's reservation takes from).
 
     This is the "absolute" cap that cart reservations + DB reservations
     must together not exceed.
@@ -300,7 +323,10 @@ def _absolute_available(variant_id: str) -> int:
     from plugins.installed.inventory.models import StockLevel  # noqa: PLC0415
 
     try:
-        return sum(sl.available_quantity for sl in StockLevel.objects.filter(variant_id=variant_id))
+        return sum(
+            sl.available_quantity
+            for sl in StockLevel.objects.filter(variant_id=variant_id, warehouse__is_active=True)
+        )
     except Exception:  # noqa: BLE001
         logger.exception('cart_reservations: _absolute_available query failed')
         return 0

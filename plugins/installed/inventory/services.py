@@ -13,6 +13,9 @@ Public surface
   decrements (called by the payments plugin when payment succeeds).
 * `release_reservation(order)` — undoes reservations on cancel.
 * `available(variant)` — sum across warehouses of `quantity - reserved`.
+* `set_quantity` / `adjust` / `transfer` — every stock write a person, Linda,
+  an import or a transfer makes: a movement in the audit log for each, and
+  the low-stock events when stock crosses its line.
 """
 
 from __future__ import annotations
@@ -34,8 +37,12 @@ class InsufficientStockError(RuntimeError):
 class InventoryService:
     @classmethod
     def available(cls, variant) -> int:
-        """Total reservable units across all warehouses for one variant."""
-        return sum(sl.available_quantity for sl in StockLevel.objects.filter(variant=variant))
+        """Total reservable units across the switched-on warehouses for one
+        variant (the allocator takes from those only)."""
+        return sum(
+            sl.available_quantity
+            for sl in StockLevel.objects.filter(variant=variant, warehouse__is_active=True)
+        )
 
     @classmethod
     def is_in_stock(cls, variant, qty: int = 1) -> bool:
@@ -47,6 +54,13 @@ class InventoryService:
         Reserve stock for every order item that points at a tracked variant.
         Idempotent: reservations are tagged in StockMovement.reference with
         the order's number, so re-running on the same order is a no-op.
+
+        A line counts the stock of its variant, or, when it names none, of its
+        product's one stock variant (``catalog.variants.stock_variant``). A
+        product whose merchant switched tracking off is never counted, whatever
+        stock rows it has: its pages call it in stock, so checkout must too. A
+        variant that accepts backorders (``inventory_policy='continue'``) takes
+        what is free and the rest is noted on the order's timeline.
 
         Returns the number of stock movements written.
         """
@@ -62,33 +76,35 @@ class InventoryService:
         from plugins.installed.inventory.allocator import plan_allocation
 
         movements = 0
-        for item in order.items.select_related('variant').all():
-            if item.variant_id is None or item.quantity <= 0:
+        backordered: list[tuple] = []
+        for item in order.items.select_related('variant', 'product').all():
+            if item.quantity <= 0:
                 continue
-            plan = plan_allocation(item.variant_id, item.quantity)
-            if not plan:
-                # An empty plan is ambiguous: either (a) NO StockLevel exists —
-                # the variant is untracked, so skip; or (b) StockLevels exist but
-                # nothing is available (fully reserved / zero on hand) — a genuine
-                # stockout that MUST block the order. The old code skipped both,
-                # so a sold-out tracked variant sailed through → oversell.
-                if StockLevel.objects.filter(variant_id=item.variant_id).exists():
-                    raise InsufficientStockError(
-                        f'Out of stock for variant {item.variant_id}: '
-                        f'wanted {item.quantity}, none available'
-                    )
-                logger.warning(
-                    'inventory: no StockLevel for variant %s on order %s',
-                    item.variant_id,
-                    order.order_number,
-                )
+            variant = _line_variant(item)
+            if variant is None:
                 continue
+            plan = plan_allocation(variant.pk, item.quantity)
             allocated = sum(a.qty for a in plan)
             if allocated < item.quantity:
-                raise InsufficientStockError(
-                    f'Short stock for variant {item.variant_id}: '
-                    f'wanted {item.quantity}, allocated {allocated}'
-                )
+                # An empty plan is ambiguous: either (a) NO StockLevel exists —
+                # the variant is untracked, so skip; or (b) StockLevels exist but
+                # not enough is available (fully reserved / zero on hand) — a
+                # genuine stockout that MUST block the order, unless the variant
+                # takes backorders. The old code skipped both, so a sold-out
+                # tracked variant sailed through → oversell.
+                if not StockLevel.objects.filter(variant_id=variant.pk).exists():
+                    logger.warning(
+                        'inventory: no StockLevel for variant %s on order %s',
+                        variant.pk,
+                        order.order_number,
+                    )
+                    continue
+                if getattr(variant, 'inventory_policy', 'deny') != 'continue':
+                    raise InsufficientStockError(
+                        f'Short stock for variant {variant.pk}: '
+                        f'wanted {item.quantity}, available {allocated}'
+                    )
+                backordered.append((variant, item.quantity - allocated))
             for alloc in plan:
                 try:
                     with transaction.atomic():
@@ -98,6 +114,7 @@ class InventoryService:
                                 f'Lost race on level {sl.pk}: wanted {alloc.qty}, '
                                 f'available {sl.available_quantity}'
                             )
+                        before = sl.available_quantity
                         sl.reserved_quantity = (sl.reserved_quantity or 0) + alloc.qty
                         sl.save(update_fields=['reserved_quantity', 'updated_at'])
                         StockMovement.objects.create(
@@ -109,28 +126,137 @@ class InventoryService:
                             reference=order.order_number,
                             notes=f'Reserved {alloc.qty}× for {order.order_number}',
                         )
+                        _announce(sl.pk, before, sl.available_quantity)
                         movements += 1
                 except DatabaseError as e:
                     logger.error(
                         'inventory: reserve failed for order=%s variant=%s level=%s: %s',
                         order.order_number,
-                        item.variant_id,
+                        variant.pk,
                         alloc.stock_level.pk,
                         e,
                         exc_info=True,
                     )
                     # FAIL CLOSED. This runs under ORDER_RESERVE_STOCK fired with
-                    # raise_errors=True (orders/services.py:602) precisely so a
+                    # raise_errors=True (orders/services.py) precisely so a
                     # reservation that cannot be confirmed aborts the order.
                     # Swallowing it here let checkout proceed believing stock was
                     # held — a silent oversell on any DB hiccup. Surfaced as
                     # InsufficientStockError so the caller's existing
                     # can't-fulfil path handles it, rather than a raw DB error.
                     raise InsufficientStockError(
-                        f'Could not confirm reservation for variant {item.variant_id} '
+                        f'Could not confirm reservation for variant {variant.pk} '
                         f'on {order.order_number}: {e}'
                     ) from e
+        for variant, short in backordered:
+            order.log_event(
+                'backordered',
+                f'{short}× {variant.sku} ordered beyond the stock on hand; '
+                'it ships once it is restocked.',
+            )
         return movements
+
+    # ── Stock written by people and tools ─────────────────────────────────
+    # Every write a merchant, Linda, an import or a transfer makes goes through
+    # ``set_quantity`` / ``adjust`` / ``transfer``: each leaves a movement in the
+    # audit log and tells the low-stock subscribers once when stock crosses the
+    # line. ``inventory.adjust_stock`` used to save the level directly, so a
+    # tool's change left no trace.
+
+    @classmethod
+    def set_quantity(
+        cls, variant, warehouse, quantity: int, *, reason: str = '', reference: str = '', user=None
+    ):
+        """Make ``quantity`` the units on hand of ``variant`` in ``warehouse``
+        (never below 0). A variant with no stock row there gets one, and is
+        counted from then on. Returns the StockLevel."""
+        return cls._write(
+            variant, warehouse, absolute=quantity, reason=reason, reference=reference, user=user
+        )
+
+    @classmethod
+    def adjust(
+        cls, variant, warehouse, delta: int, *, reason: str = '', reference: str = '', user=None
+    ):
+        """Add ``delta`` units (negative removes; never below 0)."""
+        return cls._write(
+            variant, warehouse, delta=delta, reason=reason, reference=reference, user=user
+        )
+
+    @classmethod
+    def _write(
+        cls,
+        variant,
+        warehouse,
+        *,
+        absolute=None,
+        delta=None,
+        reason='',
+        reference='',
+        user=None,
+    ):
+        with transaction.atomic():
+            level, _created = StockLevel.objects.get_or_create(variant=variant, warehouse=warehouse)
+            sl = StockLevel.objects.select_for_update().get(pk=level.pk)
+            target = int(absolute) if absolute is not None else sl.quantity + int(delta or 0)
+            change = max(0, target) - sl.quantity
+            if change == 0:
+                return sl
+            before = sl.available_quantity
+            StockMovement.record(
+                sl,
+                'adjustment',
+                change,
+                reference=(reference or '')[:200],
+                notes=reason or '',
+                user=_person(user),
+            )
+            sl.refresh_from_db()
+            _announce(sl.pk, before, sl.available_quantity)
+            return sl
+
+    @classmethod
+    def transfer(
+        cls, variant, source, destination, quantity: int, *, reason: str = '', user=None
+    ) -> int:
+        """Move ``quantity`` free units of ``variant`` from ``source`` to
+        ``destination`` in one transaction: two ``transfer`` movements, or none.
+        Units held for open orders stay where they are. Returns the units moved."""
+        qty = int(quantity)
+        if qty <= 0:
+            raise ValueError('Move at least one unit.')
+        if source.pk == destination.pk:
+            raise ValueError('Pick two different warehouses.')
+        reference = f'Transfer {source.code} → {destination.code}'[:200]
+        with transaction.atomic():
+            StockLevel.objects.get_or_create(variant=variant, warehouse=destination)
+            levels = {
+                sl.warehouse_id: sl
+                for sl in StockLevel.objects.select_for_update()
+                .filter(variant=variant, warehouse__in=[source, destination])
+                .order_by('pk')
+            }
+            src, dst = levels.get(source.pk), levels[destination.pk]
+            free = src.available_quantity if src is not None else 0
+            if free < qty:
+                raise InsufficientStockError(f'{source.name} has {free} free to move, not {qty}.')
+            before = src.available_quantity
+            for sl, change in ((src, -qty), (dst, qty)):
+                had = sl.quantity
+                sl.quantity = had + change
+                sl.save(update_fields=['quantity', 'updated_at'])
+                StockMovement.objects.create(
+                    stock_level=sl,
+                    movement_type='transfer',
+                    quantity_change=change,
+                    quantity_before=had,
+                    quantity_after=sl.quantity,
+                    reference=reference,
+                    notes=reason or '',
+                    created_by=_person(user),
+                )
+            _announce(src.pk, before, src.available_quantity)
+        return qty
 
     @classmethod
     def release_reservation(cls, order) -> int:
@@ -197,23 +323,22 @@ class InventoryService:
             reference=order.order_number,
         ).exists():
             return 0
-        # Find the levels we previously reserved on.
-        reservation_levels = StockMovement.objects.filter(
+        # Sum what this order reserved on each level, as release does: two lines
+        # can hold the same level (a line that names no variant and one that
+        # names the product's only variant), and counting only the first
+        # reservation sold too little and left the rest held forever.
+        by_level: dict[str, int] = defaultdict(int)
+        for mv in StockMovement.objects.filter(
             movement_type='reserve', reference=order.order_number
-        ).select_related('stock_level')
+        ):
+            by_level[str(mv.stock_level_id)] += _qty_from_note(mv.notes)
         movements = 0
-        seen: set[str] = set()
-        for mv in reservation_levels:
-            level_key = str(mv.stock_level_id)
-            if level_key in seen:
-                continue
-            seen.add(level_key)
-            qty = _qty_from_note(mv.notes)
+        for level_id, qty in by_level.items():
             if qty <= 0:
                 continue
             try:
                 with transaction.atomic():
-                    sl = StockLevel.objects.select_for_update().get(pk=mv.stock_level_id)
+                    sl = StockLevel.objects.select_for_update().get(pk=level_id)
                     sl.reserved_quantity = max(0, (sl.reserved_quantity or 0) - qty)
                     sl.quantity = max(0, sl.quantity - qty)
                     sl.save(update_fields=['reserved_quantity', 'quantity', 'updated_at'])
@@ -231,7 +356,7 @@ class InventoryService:
                 logger.error(
                     'inventory: commit failed for order=%s level=%s: %s',
                     order.order_number,
-                    mv.stock_level_id,
+                    level_id,
                     e,
                     exc_info=True,
                 )
@@ -254,18 +379,24 @@ class InventoryService:
         except Exception:  # noqa: BLE001
             return 0
         items_by_id = {
-            str(oi.id): oi for oi in OrderItem.objects.filter(order=return_request.order)
+            str(oi.id): oi
+            for oi in OrderItem.objects.filter(order=return_request.order).select_related(
+                'variant', 'product'
+            )
         }
         movements = 0
         for entry in return_request.items or []:
             oi = items_by_id.get(str(entry.get('order_item_id', '')))
-            if not oi or not getattr(oi, 'variant_id', None):
+            # The variant the sale took the units from, found the way checkout
+            # found it: a line that names no variant sold its product's one.
+            variant = _line_variant(oi) if oi else None
+            if variant is None:
                 continue
             qty = int(entry.get('quantity', 0) or 0)
             if qty <= 0:
                 continue
             sl = (
-                StockLevel.objects.filter(variant_id=oi.variant_id, warehouse__is_active=True)
+                StockLevel.objects.filter(variant_id=variant.pk, warehouse__is_active=True)
                 .order_by('-quantity')
                 .first()
             )
@@ -310,6 +441,134 @@ def _qty_from_note(note: str) -> int:
         elif digits:
             break
     return int(digits) if digits else 0
+
+
+def _line_variant(item):
+    """The variant whose stock an order line takes, or None when it takes none."""
+    product = getattr(item, 'product', None)
+    if product is not None and getattr(product, 'track_inventory', True) is False:
+        return None
+    if item.variant_id:
+        return item.variant
+    from plugins.installed.catalog.variants import stock_variant  # noqa: PLC0415
+
+    return stock_variant(product)
+
+
+def _person(user):
+    """A signed-in person for ``StockMovement.created_by``, else None."""
+    return user if getattr(user, 'is_authenticated', False) else None
+
+
+def _announce(level_id, before: int, after: int) -> None:
+    """Tell the low-stock subscribers once, after the write commits, when a
+    change takes a stock row across its line: to nothing left
+    (PRODUCT_OUT_OF_STOCK) or to its reorder point (PRODUCT_LOW_STOCK).
+
+    These events had subscribers (staff notifications, Pulse, workflows) and no
+    producer: the post_save receiver meant to fire them was in a module nothing
+    imported, and it would have fired on every save of a low row."""
+    if after >= before:
+        return
+
+    def _fire():
+        from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+        sl = (
+            StockLevel.objects.select_related('variant', 'variant__product', 'warehouse')
+            .filter(pk=level_id)
+            .first()
+        )
+        if sl is None:
+            return
+        if before > 0 >= after:
+            hook_registry.fire(MorpheusEvents.PRODUCT_OUT_OF_STOCK, stock_level=sl)
+        elif before > sl.reorder_point >= after:
+            hook_registry.fire(MorpheusEvents.PRODUCT_LOW_STOCK, stock_level=sl)
+
+    transaction.on_commit(_fire)
+
+
+def default_warehouse(*, create: bool = False):
+    """The store's default active warehouse (else its first active one). With
+    ``create``, a store with none gets "Main warehouse" (code MAIN)."""
+    from plugins.installed.inventory.models import Warehouse  # noqa: PLC0415
+
+    found = Warehouse.objects.filter(is_active=True).order_by('-is_default', 'name').first()
+    if found is not None or not create:
+        return found
+    main, made = Warehouse.objects.get_or_create(
+        code='MAIN', defaults={'name': 'Main warehouse', 'is_default': True}
+    )
+    if not made and not (main.is_active and main.is_default):
+        main.is_active = True
+        main.is_default = True
+        main.save(update_fields=['is_active', 'is_default'])
+    return main
+
+
+def make_default_warehouse(warehouse) -> None:
+    """``warehouse`` becomes the one default (and is switched on)."""
+    from plugins.installed.inventory.models import Warehouse  # noqa: PLC0415
+
+    with transaction.atomic():
+        for other in Warehouse.objects.filter(is_default=True).exclude(pk=warehouse.pk):
+            other.is_default = False
+            other.save(update_fields=['is_default'])
+        warehouse.is_default = True
+        warehouse.is_active = True
+        warehouse.save(update_fields=['is_default', 'is_active'])
+
+
+def warehouse_code(raw: str) -> str:
+    """A warehouse code from what was typed or from its name: capitals, digits
+    and dashes, at most 20."""
+    from django.utils.text import slugify  # noqa: PLC0415
+
+    return slugify(raw or '').upper()[:20].strip('-')
+
+
+def create_warehouse(name: str, code: str = '', *, make_default: bool = False, address=None):
+    """A new active warehouse. The store's first one is its default. Raises
+    ValueError for a missing name or a code already taken."""
+    from plugins.installed.inventory.models import Warehouse  # noqa: PLC0415
+
+    name = (name or '').strip()[:200]
+    if not name:
+        raise ValueError('A warehouse needs a name.')
+    code = warehouse_code(code or name)
+    if not code:
+        raise ValueError('A warehouse needs a code of letters or digits.')
+    if Warehouse.objects.filter(code=code).exists():
+        raise ValueError(f'The code {code} is taken by another warehouse.')
+    first = not Warehouse.objects.filter(is_active=True).exists()
+    warehouse = Warehouse.objects.create(name=name, code=code, address=address or {})
+    if make_default or first:
+        make_default_warehouse(warehouse)
+    return warehouse
+
+
+def resolve_variant(code: str, *, create: bool = False):
+    """A variant by its SKU, else the stock variant of the product with that
+    SKU or slug (a product sold in one form; with ``create``, made when the
+    product has no variant yet). None when nothing matches or the product has
+    several variants to choose from."""
+    from plugins.installed.catalog.models import Product, ProductVariant  # noqa: PLC0415
+    from plugins.installed.catalog.variants import (  # noqa: PLC0415
+        ensure_stock_variant,
+        stock_variant,
+    )
+
+    code = (code or '').strip()
+    if not code:
+        return None
+    variant = ProductVariant.objects.select_related('product').filter(sku=code).first()
+    if variant is not None:
+        return variant
+    product = Product.objects.filter(sku=code).first() or Product.objects.filter(slug=code).first()
+    if product is None:
+        return None
+    return ensure_stock_variant(product) if create else stock_variant(product)
 
 
 # ── Availability, for anything that describes a product to the outside ──
