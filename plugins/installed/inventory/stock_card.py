@@ -15,6 +15,17 @@ import logging
 logger = logging.getLogger('morpheus.inventory')
 
 NEW = 'new'
+CAPABILITY = 'inventory.write'
+
+
+def may_change_stock(user) -> bool:
+    """Whether the card takes this person's numbers. The product form asks for
+    ``catalog.write`` only, and stock is ``inventory.write``, as on the
+    Warehouses page and in the API; like every capability it denies only while
+    the store enforces roles."""
+    from core import authz  # noqa: PLC0415
+
+    return authz.enforcement_mode() != authz.MODE_ENFORCE or authz.has_capability(user, CAPABILITY)
 
 
 def _stocked_variants(product) -> list:
@@ -27,8 +38,9 @@ def _stocked_variants(product) -> list:
     ]
 
 
-def card(product) -> dict | None:
-    """The card's context, or None when the product has no stock to count."""
+def card(product, user=None) -> dict | None:
+    """The card's context, or None when the product has no stock to count. A
+    person who may not change stock sees the numbers and no boxes to change."""
     from plugins.installed.catalog.variants import UNSTOCKED_TYPES  # noqa: PLC0415
     from plugins.installed.inventory.models import StockLevel, Warehouse  # noqa: PLC0415
 
@@ -76,6 +88,7 @@ def card(product) -> dict | None:
         'stock_rows': rows,
         'stock_tracked': bool(product.track_inventory),
         'stock_own_toggle': product.product_type == 'variable',
+        'stock_locked': not may_change_stock(user),
     }
 
 
@@ -83,6 +96,10 @@ def save(product, post, user=None) -> None:
     """Write what the card posted. A form without the card leaves stock alone;
     an empty box leaves that warehouse as it was."""
     if product is None or post is None or 'stock_submitted' not in post:
+        return
+    from core import authz  # noqa: PLC0415
+
+    if not authz.check(user, CAPABILITY, target=f'product:{product.pk}'):
         return
     # A variable product's form hides the shell's "Track inventory" box (it sits in
     # a card for one-form products, and a hidden box still posts its old value), so

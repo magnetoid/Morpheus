@@ -12,7 +12,7 @@ Nothing to switch on. Stock is counted only for a product with **Track inventory
 
 ## Common tasks
 
-- Enter or correct units on hand per warehouse in the Stock card on a product's page, and tick **Backorders** to keep selling a variant when none is left.
+- Enter or correct units on hand per warehouse in the Stock card on a product's page, and tick **Backorders** to keep selling a variant when none is left. While staff roles are enforced, changing stock takes its own permission: someone who may edit a product but not stock sees the numbers without boxes to change.
 - Add a warehouse, choose the default one, or switch one off on the [Warehouses](page:warehouses) page.
 - Move free units from one warehouse to another on the same page; its list shows the latest stock changes and who made them.
 - Set stock for many products at once with the `stock` and `warehouse_code` columns of the CSV import.

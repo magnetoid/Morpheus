@@ -19,7 +19,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 **Stock you can enter: a Stock card, a Warehouses page, transfers and backorders**
 
-- Products: a Stock card on every product page sets units on hand per variant and warehouse, with a Backorders box to keep selling a variant at 0. A product sold in one form gets a default variant the first time stock is entered (no theme offers it as a choice), and a store with no warehouse gets "Main warehouse"
+- Products: a Stock card on every product page sets units on hand per variant and warehouse, with a Backorders box to keep selling a variant at 0. A product sold in one form gets a default variant the first time stock is entered (no theme offers it as a choice), and a store with no warehouse gets "Main warehouse". While staff roles are enforced, the card changes stock only for a role allowed to change stock, not for every role that may edit products
 - Settings → Shipping & delivery → Warehouses: add, rename and make a warehouse the default, switch one off (its stock stops selling, units already held stay held), delete one only while it holds no stock records, move free units between warehouses, and see the latest stock changes and who made them
 - Backorders work: a variant set to keep selling takes what is free at checkout and the order's timeline names the units ordered beyond stock; the reservation used to refuse it
 - Checkout and the cart hold count the same stock: a product with Track inventory off is never refused, a variant with no stock row is not counted (the cart refused it with "Only 0 left"), and a switched-off warehouse is not stock anywhere

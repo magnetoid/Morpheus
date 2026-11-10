@@ -5,10 +5,13 @@ enter a stock count at all."""
 from __future__ import annotations
 
 import contextlib
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.http import QueryDict
+from django.template.loader import render_to_string
 from django.test import TestCase
 
 from core.hooks import MorpheusEvents, hook_registry
@@ -145,3 +148,74 @@ class StockCardOnTheProductPageTests(TestCase):
                 MorpheusEvents.PRODUCT_FORM_CARDS, value=[], product=self.product
             )
             self.assertNotIn(TEMPLATE, [c.get('template') for c in cards])
+
+
+class StockCardPermissionTests(TestCase):
+    """Review of PR #144: the product form asks for ``catalog.write``, and stock
+    is ``inventory.write``. While roles are enforced, a person without it sees
+    the card's numbers without boxes, and a posted card changes nothing."""
+
+    def setUp(self):
+        self.product = Product.objects.create(name='Mug', slug='mug', sku='MUG', price=5)
+        self.main = Warehouse.objects.create(name='Main', code='MAIN', is_default=True)
+        self.variant = ProductVariant.objects.create(
+            product=self.product, name='Default', sku='MUG'
+        )
+        StockLevel.objects.create(variant=self.variant, warehouse=self.main, quantity=4)
+        self.key = str(self.variant.pk)
+        self.post = _post(
+            {
+                'stock_submitted': '1',
+                f'stock__{self.key}__{self.main.pk}': '0',
+                f'backorder__{self.key}': 'on',
+            },
+            {'stock_rows': [self.key]},
+        )
+
+    def _roles(self, *, inventory: bool):
+        enforce = patch('core.authz.enforcement_mode', return_value='enforce')
+        # Everything but stock is allowed: the clerk may edit the product.
+        grant = patch(
+            'core.authz.has_capability',
+            side_effect=lambda user, cap, **kw: inventory or cap != 'inventory.write',
+        )
+        enforce.start()
+        grant.start()
+        self.addCleanup(enforce.stop)
+        self.addCleanup(grant.stop)
+
+    def _save(self):
+        hook_registry.fire(
+            MorpheusEvents.PRODUCT_FORM_SAVED, product=self.product, post=self.post, user=None
+        )
+
+    def test_without_stock_permission_the_card_is_read_only_and_a_post_changes_nothing(self):
+        self._roles(inventory=False)
+        cards = hook_registry.filter(
+            MorpheusEvents.PRODUCT_FORM_CARDS,
+            value=[],
+            product=self.product,
+            request=SimpleNamespace(user=None),
+        )
+        card = next(c for c in cards if c.get('template') == TEMPLATE)
+        self.assertTrue(card['context']['stock_locked'])
+        html = render_to_string(TEMPLATE, card['context'])
+        self.assertNotIn('name="stock_submitted"', html)
+        self.assertIn('disabled', html)
+        self._save()
+        self.variant.refresh_from_db()
+        self.assertEqual(StockLevel.objects.get(variant=self.variant).quantity, 4)
+        self.assertEqual(self.variant.inventory_policy, 'deny')
+
+    def test_with_stock_permission_the_post_is_written(self):
+        self._roles(inventory=True)
+        self.assertFalse(stock_card.card(self.product)['stock_locked'])
+        self._save()
+        self.variant.refresh_from_db()
+        self.assertEqual(StockLevel.objects.get(variant=self.variant).quantity, 0)
+        self.assertEqual(self.variant.inventory_policy, 'continue')
+
+    def test_while_roles_are_only_logged_nobody_is_locked_out(self):
+        self.assertFalse(stock_card.card(self.product)['stock_locked'])
+        self._save()
+        self.assertEqual(StockLevel.objects.get(variant=self.variant).quantity, 0)

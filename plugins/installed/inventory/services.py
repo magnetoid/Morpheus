@@ -323,23 +323,22 @@ class InventoryService:
             reference=order.order_number,
         ).exists():
             return 0
-        # Find the levels we previously reserved on.
-        reservation_levels = StockMovement.objects.filter(
+        # Sum what this order reserved on each level, as release does: two lines
+        # can hold the same level (a line that names no variant and one that
+        # names the product's only variant), and counting only the first
+        # reservation sold too little and left the rest held forever.
+        by_level: dict[str, int] = defaultdict(int)
+        for mv in StockMovement.objects.filter(
             movement_type='reserve', reference=order.order_number
-        ).select_related('stock_level')
+        ):
+            by_level[str(mv.stock_level_id)] += _qty_from_note(mv.notes)
         movements = 0
-        seen: set[str] = set()
-        for mv in reservation_levels:
-            level_key = str(mv.stock_level_id)
-            if level_key in seen:
-                continue
-            seen.add(level_key)
-            qty = _qty_from_note(mv.notes)
+        for level_id, qty in by_level.items():
             if qty <= 0:
                 continue
             try:
                 with transaction.atomic():
-                    sl = StockLevel.objects.select_for_update().get(pk=mv.stock_level_id)
+                    sl = StockLevel.objects.select_for_update().get(pk=level_id)
                     sl.reserved_quantity = max(0, (sl.reserved_quantity or 0) - qty)
                     sl.quantity = max(0, sl.quantity - qty)
                     sl.save(update_fields=['reserved_quantity', 'quantity', 'updated_at'])
@@ -357,7 +356,7 @@ class InventoryService:
                 logger.error(
                     'inventory: commit failed for order=%s level=%s: %s',
                     order.order_number,
-                    mv.stock_level_id,
+                    level_id,
                     e,
                     exc_info=True,
                 )
@@ -380,18 +379,24 @@ class InventoryService:
         except Exception:  # noqa: BLE001
             return 0
         items_by_id = {
-            str(oi.id): oi for oi in OrderItem.objects.filter(order=return_request.order)
+            str(oi.id): oi
+            for oi in OrderItem.objects.filter(order=return_request.order).select_related(
+                'variant', 'product'
+            )
         }
         movements = 0
         for entry in return_request.items or []:
             oi = items_by_id.get(str(entry.get('order_item_id', '')))
-            if not oi or not getattr(oi, 'variant_id', None):
+            # The variant the sale took the units from, found the way checkout
+            # found it: a line that names no variant sold its product's one.
+            variant = _line_variant(oi) if oi else None
+            if variant is None:
                 continue
             qty = int(entry.get('quantity', 0) or 0)
             if qty <= 0:
                 continue
             sl = (
-                StockLevel.objects.filter(variant_id=oi.variant_id, warehouse__is_active=True)
+                StockLevel.objects.filter(variant_id=variant.pk, warehouse__is_active=True)
                 .order_by('-quantity')
                 .first()
             )

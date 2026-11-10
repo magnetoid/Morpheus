@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from types import SimpleNamespace
 
 from django.test import TestCase
 from djmoney.money import Money
@@ -133,3 +134,52 @@ class CartHoldTrackedTests(TestCase):
         self.main.is_active = False
         self.main.save()
         self.assertEqual(cart_reservations._absolute_available(str(self.variant.pk)), 0)
+
+
+class LinesThatShareALevelTests(TestCase):
+    """Review of PR #144: a line that names no variant takes its product's one
+    variant, so two lines of one order can hold the same stock level, and a
+    return of such a line must find the variant the sale took the units from."""
+
+    def setUp(self):
+        self.product = Product.objects.create(
+            name='Mug', slug='mug', sku='MUG', status='active', price=8
+        )
+        self.main = Warehouse.objects.create(name='Main', code='MAIN', is_default=True)
+
+    def _order(self):
+        # A cart from before stock was entered holds a line without a variant;
+        # after the default variant exists, the shopper adds the same mug again.
+        cart = CartService.get_or_create_cart(session_key='two-lines')
+        CartService.add_item(cart, str(self.product.id), quantity=2)
+        self.variant = ensure_stock_variant(self.product)
+        InventoryService.set_quantity(self.variant, self.main, 10)
+        CartService.add_item(
+            cart, str(self.product.id), quantity=3, variant_id=str(self.variant.id)
+        )
+        order = OrderService.create_from_cart(cart, 'buyer@example.com', _ADDR, _ADDR)
+        self.assertEqual(order.items.count(), 2)
+        return order
+
+    def _level(self):
+        return StockLevel.objects.get(variant=self.variant, warehouse=self.main)
+
+    def test_payment_takes_the_units_of_every_line_on_the_level(self):
+        order = self._order()
+        self.assertEqual(self._level().reserved_quantity, 5)
+        InventoryService.commit_for_order(order)
+        level = self._level()
+        self.assertEqual((level.quantity, level.reserved_quantity), (5, 0))
+
+    def test_a_return_of_a_line_without_a_variant_restocks_its_variant(self):
+        order = self._order()
+        InventoryService.commit_for_order(order)
+        line = order.items.get(variant__isnull=True)
+        rma = SimpleNamespace(
+            rma_number='RMA-MUG',
+            id='rma-mug',
+            order=order,
+            items=[{'order_item_id': str(line.id), 'quantity': 2}],
+        )
+        self.assertEqual(InventoryService.restock_for_return(rma), 1)
+        self.assertEqual(self._level().quantity, 7)

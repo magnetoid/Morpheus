@@ -90,11 +90,11 @@ class InventoryPlugin(Plugin):
             },
         )
 
-    def on_product_form_cards(self, value, product=None, **kwargs):
+    def on_product_form_cards(self, value, product=None, request=None, **kwargs):
         """The "Stock" card, on a saved product that has stock to count."""
         from plugins.installed.inventory import stock_card  # noqa: PLC0415
 
-        context = stock_card.card(product)
+        context = stock_card.card(product, user=getattr(request, 'user', None))
         if context is not None:
             value.append(
                 {

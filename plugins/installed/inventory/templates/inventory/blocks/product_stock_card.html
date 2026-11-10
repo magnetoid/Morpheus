@@ -8,11 +8,15 @@
     </h2>
     <a class="text-xs underline" href="{% url 'inventory_dashboard:warehouses' %}">Warehouses</a>
   </div>
+  {% if stock_locked %}
+  <p class="text-xs text-amber-600">Your role can see stock here but not change it. Ask someone who manages stock to give your role that permission.</p>
+  {% else %}
   <input type="hidden" name="stock_submitted" value="1">
+  {% endif %}
   {% if stock_own_toggle %}
-  <input type="hidden" name="stock_track_submitted" value="1">
+  {% if not stock_locked %}<input type="hidden" name="stock_track_submitted" value="1">{% endif %}
   <label class="flex items-start gap-2 text-sm">
-    <input type="checkbox" name="stock_track" class="mt-0.5" {% if stock_tracked %}checked{% endif %}>
+    <input type="checkbox" name="stock_track" class="mt-0.5" {% if stock_tracked %}checked{% endif %}{% if stock_locked %} disabled{% endif %}>
     <span>Count stock for this product <span class="block text-xs text-[color:var(--text-muted)]">Off: it can always be bought, whatever the numbers below say.</span></span>
   </label>
   {% elif not stock_tracked %}
@@ -40,12 +44,12 @@
           <td>
             <label class="sr-only" for="{{ cell.name }}">{{ cell.label }}</label>
             <input type="number" min="0" step="1" inputmode="numeric" class="input w-20 tabular-nums"
-                   id="{{ cell.name }}" name="{{ cell.name }}" value="{{ cell.value|unlocalize }}" placeholder="—">
+                   id="{{ cell.name }}" name="{{ cell.name }}" value="{{ cell.value|unlocalize }}" placeholder="—"{% if stock_locked %} disabled{% endif %}>
           </td>
           {% endfor %}
           <td>
             <label class="inline-flex items-center gap-2 text-xs">
-              <input type="checkbox" name="backorder__{{ row.key }}" {% if row.backorder %}checked{% endif %}>
+              <input type="checkbox" name="backorder__{{ row.key }}" {% if row.backorder %}checked{% endif %}{% if stock_locked %} disabled{% endif %}>
               <span class="sr-only">Keep selling {{ row.label }} when none is left</span> Backorders
             </label>
           </td>
