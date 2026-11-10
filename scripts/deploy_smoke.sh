@@ -11,9 +11,9 @@
 set -euo pipefail
 
 # Space-separated. SMOKE_BASE_URL (singular) still works for a one-store check.
-DEFAULT_URLS="https://dotbooks.store https://supernatural-shop.com https://montenegro-experience.me https://beta.irvingsurvival.com"
+DEFAULT_URLS="https://dotbooks.store https://supernatural-shop.com https://montenegro-experience.me https://beta.irvingsurvival.com https://croatia-experience.me"
 BASE_URLS="${SMOKE_BASE_URLS:-${SMOKE_BASE_URL:-$DEFAULT_URLS}}"
-DEADLINE_SECS="${SMOKE_DEADLINE_SECS:-1500}" # Coolify builds take ~5-10 min, four of them in a queue
+DEADLINE_SECS="${SMOKE_DEADLINE_SECS:-1800}" # Coolify builds take ~5-10 min, five of them in a queue
 POLL_SECS="${SMOKE_POLL_SECS:-20}"
 # Where to write the version each store serves at the first check, one
 # "base version" line per healthy store: scripts/deploy_guard.py puts a store

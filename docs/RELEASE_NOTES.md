@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.149.1 — 2026-11-10
+
+**A README for founders, and Croatia in every deploy check**
+
+- The README is rewritten for founders: what Morpheus does for a store, the five live stores, an install that was run end to end on a clean copy, what it costs, how it compares with Shopify, WooCommerce, Medusa and Saleor, and what is not finished yet.
+- croatia-experience.me is in the post-deploy smoke and in the accessibility audit; axe found nothing on its six audited pages.
+- The quick start no longer tells you to run docker-compose.yml on a laptop: it is the Coolify manifest, publishes no port and needs passwords Coolify generates. The laptop path needs Redis and a two-line .env, and loads a sample store with morph_seed_demo.
+- Store bootstrap's Try again link pointed at /dashboard/start/, a 404 since the page moved under /dashboard/apps/store_bootstrap/start/.
+
 ## v0.149.0 — 2026-11-09
 
 **Tax is charged correctly: reduced rates, discounts, shipping and prices that include tax**

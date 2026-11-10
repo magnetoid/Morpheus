@@ -1,6 +1,6 @@
 name: accessibility
 
-# Runs axe-core against the four live storefronts (one job per store). axe catches a different
+# Runs axe-core against the five live storefronts (one job per store). axe catches a different
 # set of violations than Lighthouse's accessibility audit (Lighthouse
 # uses axe-core under the hood but with a narrower ruleset). This
 # workflow runs the full WCAG 2.2 AA ruleset and fails on any new
@@ -71,6 +71,14 @@ jobs:
               https://beta.irvingsurvival.com/products/
               https://beta.irvingsurvival.com/products/workplace-emergency-kit/
               https://beta.irvingsurvival.com/cart/
+          - store: croatia
+            urls: >-
+              https://croatia-experience.me/
+              https://croatia-experience.me/hr/
+              https://croatia-experience.me/bookings/
+              https://croatia-experience.me/bookings/brijuni-national-park-day-trip/
+              https://croatia-experience.me/hotels/
+              https://croatia-experience.me/journal/
     steps:
       - uses: actions/checkout@v7
 

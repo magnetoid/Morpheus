@@ -25,8 +25,8 @@ python manage.py release --check             # version bump and RELEASE_NOTES in
 python manage.py release --patch|--minor|--major "Headline" -m "bullet" [--commit]
 
 # Run locally
-docker compose up                            # full stack (postgres, redis, worker, beat) at localhost:8000
-python manage.py runserver                   # sqlite; .delay() work needs Redis
+python manage.py runserver                   # .env: DEBUG=True, DATABASE_URL=sqlite:///db.sqlite3; needs Redis (README → Install it)
+# docker-compose.yml is the Coolify manifest: no published port, passwords Coolify generates; it does not run locally as is
 ```
 
 ## Where things live
@@ -1794,13 +1794,14 @@ means:
 1. Make the change.
 2. Compile / syntax check (`python -m py_compile <files>` for Python,
    tag balance for Django templates).
-3. Smoke locally before reaching for prod. `docker compose up` boots the
-   full stack (postgres + redis + worker + beat) at `localhost:8000`; the
-   no-Docker `runserver` path (SQLite, in [`docs/QUICK_START.md`](docs/QUICK_START.md))
-   covers sync request/response paths but **not** async ones —
-   `CELERY_TASK_ALWAYS_EAGER` is on *only* under tests
-   (`settings._RUNNING_TESTS`), so `.delay()` work needs Redis or the
-   compose stack to actually fire.
+3. Smoke locally before reaching for prod. The `runserver` path (SQLite plus a
+   local Redis, in [`docs/QUICK_START.md`](docs/QUICK_START.md)) covers
+   request/response paths but **not** async ones — `CELERY_TASK_ALWAYS_EAGER`
+   is on *only* under tests (`settings._RUNNING_TESTS`), so `.delay()` work
+   only queues until a worker runs (`celery -A morph worker`). Without Redis
+   every `.delay()` retries the connection 20 times, a second apart, and a demo
+   seed stalls. `docker-compose.yml` is the Coolify manifest (no
+   published port, passwords Coolify generates) and does not run locally as is.
 4. Deploy + smoke prod *when the change warrants it* (rsync → `docker
    build` on tetra → `docker compose up -d --no-build --force-recreate
    web` → `migrate` → curl the public URL). Merging to `main` is itself a

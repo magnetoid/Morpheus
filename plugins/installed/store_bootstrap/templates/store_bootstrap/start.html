@@ -14,7 +14,7 @@
           prompt, or check your LLM provider at
           <a href="/dashboard/settings/ai/" class="underline">AI settings</a>.
         </p>
-        <a href="/dashboard/start/" class="btn btn-secondary mt-3">Try again</a>
+        <a href="{% url 'store_bootstrap:start' %}" class="btn btn-secondary mt-3">Try again</a>
       {% else %}
         <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">
           Your store is seeded
