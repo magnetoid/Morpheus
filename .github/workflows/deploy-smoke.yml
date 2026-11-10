@@ -15,9 +15,9 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    # 25 minutes of smoke, up to 8 minutes deciding which stores are down, then
+    # 30 minutes of smoke, up to 8 minutes deciding which stores are down, then
     # up to 30 minutes for the stores put back to come up.
-    timeout-minutes: 70
+    timeout-minutes: 75
     env:
       MORPHEUS_DEPLOY_HOOKS: ${{ secrets.MORPHEUS_DEPLOY_HOOKS }}
       SMOKE_BEFORE_FILE: .smoke-before.txt # what each store served before this deploy

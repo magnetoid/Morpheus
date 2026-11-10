@@ -1,6 +1,6 @@
 # Morpheus as an e-commerce platform — gap analysis and completion plan (Nov 2026)
 
-**Status:** approved by the owner on 2026-11-09. Phase A1 (tax) is in progress on `feat/tax-correctness`. Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
+**Status:** approved by the owner on 2026-11-09. A1 (tax) shipped in v0.149.0 (PR #140) and is live on all five stores; A2 (promotions) is next. Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
 
 ## Context
 
@@ -112,7 +112,7 @@ Order follows the owner's lens (general engine first) and dependencies. One rele
 
 | # | Release | Goal | Size | Depends on | Status |
 |---|---|---|---|---|---|
-| A1 | Tax correctness | category rates reachable, `is_taxable` honoured, discount-aware base, shipping tax, inclusive prices, compound | M 3 | — | in progress |
+| A1 | Tax correctness | category rates reachable, `is_taxable` honoured, discount-aware base, shipping tax, inclusive prices, compound | M 3 | — | live, v0.149.0 |
 | A2 | Promotions & coupons | eligibility bugs, coupon scope, BxGy, gift line, `combinable`, dashboard CRUD, Linda CRUD | L 5 | — | planned |
 | A3 | Inventory operations | stock card, warehouses page, transfers, backorder policy, default variant, CSV stock | M 3 | — | planned |
 | A4 | Fulfilment & shipping rates | partial fulfilment, per-shipment tracking/email, labels, rate editor, pickup | L 5 | — | planned |
@@ -192,7 +192,7 @@ Multi-store in one process (ADR 0018) — needs a tenant seam through settings, 
 
 ## Verification
 
-Per release: `ruff check . && ruff format --check .` (0.15.8); `DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<touched> plugins.installed.admin_dashboard.tests.test_disable_guards core.tests.test_settings_keys_have_readers`; `python manage.py check && makemigrations --check --dry-run`; the three boundary/standard scripts; `release --check`; Postgres rehearsal for every release with a migration (memory `releases-2026-10-22`); full serial suite before A1, A2, A6, B3, D2 and E6. After merge: watch all five stores to the new commit (`/readyz` ok + home 200), then the live probe named in each release (A1: a reduced-rate book's cart tax on dotbooks; A2: a scoped coupon on an out-of-scope cart refuses; B3: register + `me` over `/graphql/` with `enforce_csrf_checks`; D2: `/.well-known/ucp` lists capabilities and a checkout session round-trips on a staging token). Croatia deploys only on the owner's explicit yes each time.
+Per release: `ruff check . && ruff format --check .` (0.15.8); `DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<touched> plugins.installed.admin_dashboard.tests.test_disable_guards core.tests.test_settings_keys_have_readers`; `python manage.py check && makemigrations --check --dry-run`; the three boundary/standard scripts; `release --check`; Postgres rehearsal for every release with a migration (memory `releases-2026-10-22`); full serial suite before A1, A2, A6, B3, D2 and E6. After merge: watch all five stores to the new commit (`/readyz` ok + home 200), then the live probe named in each release (A1: a reduced-rate book's cart tax on dotbooks; A2: a scoped coupon on an out-of-scope cart refuses; B3: register + `me` over `/graphql/` with `enforce_csrf_checks`; D2: `/.well-known/ucp` lists capabilities and a checkout session round-trips on a staging token). Croatia is part of every deploy (owner, 2026-11-10): it builds from the same `main` and is in the smoke and accessibility checks.
 
 ## Sources
 
