@@ -1,0 +1,183 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}{% if promotion %}{{ promotion.name }}{% else %}New promotion{% endif %} · Morpheus{% endblock %}
+
+{% block breadcrumb %}
+<div class="mb-4"><nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
+  <a href="/dashboard/" class="hover:underline">Dashboard</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <a href="{% url 'admin_dashboard:marketing' %}" class="hover:underline">Marketing</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <a href="{% url 'promotions:index' %}" class="hover:underline">Promotions</a>
+  <i data-lucide="chevron-right" class="h-3.5 w-3.5 opacity-60"></i>
+  <span class="font-medium text-[color:var(--text)]">{% if promotion %}{{ promotion.name }}{% else %}New promotion{% endif %}</span>
+</nav></div>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto space-y-4">
+
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">{% if promotion %}{{ promotion.name }}{% else %}New promotion{% endif %}</h1>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'promotions:index' %}" class="btn">Cancel</a>
+      <button type="submit" form="promotion-form" class="btn btn-primary">
+        <i data-lucide="save" class="h-4 w-4"></i> Save
+      </button>
+    </div>
+  </div>
+
+  {% if form.non_field_errors %}<p class="field-error">{{ form.non_field_errors.0 }}</p>{% endif %}
+  {% if extra_rules > 0 %}
+  <p class="text-sm text-[color:var(--text-muted)]">This promotion has {{ extra_rules|add:1 }} rules. This page edits the first one; the others stay as they are.</p>
+  {% endif %}
+
+  <form method="post" id="promotion-form" class="space-y-4" data-morph-dirty>
+    {% csrf_token %}
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">Name</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-name">Name</label>
+          <input id="p-name" type="text" name="name" class="input" required value="{{ form.name.value|default:'' }}">
+          {% if form.name.errors %}<p class="field-error">{{ form.name.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-slug">Slug</label>
+          <input id="p-slug" type="text" name="slug" class="input font-mono" value="{{ form.slug.value|default:'' }}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Left empty, it is made from the name.</p>
+          {% if form.slug.errors %}<p class="field-error">{{ form.slug.errors.0 }}</p>{% endif %}
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="p-description">Description</label>
+        <textarea id="p-description" name="description" rows="2" class="input">{{ form.description.value|default:'' }}</textarea>
+      </div>
+    </div>
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">What the shopper gets</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-kind">Discount</label>
+          <select id="p-kind" name="kind" class="input">
+            {% for value, label in form.fields.kind.choices %}
+            <option value="{{ value }}" {% if form.kind.value == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-value">Value</label>
+          <input id="p-value" type="number" step="0.01" min="0" name="value" class="input" value="{{ form.value.value|default_if_none:'' }}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Percent off (10), amount off (5.00), or for Buy X get Y the percent off the Y items (empty = free).</p>
+          {% if form.value.errors %}<p class="field-error">{{ form.value.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-buy">Buy X (Buy X get Y)</label>
+          <input id="p-buy" type="number" min="1" name="buy_qty" class="input" value="{{ form.buy_qty.value|default_if_none:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-free">Get Y (Buy X get Y)</label>
+          <input id="p-free" type="number" min="1" name="free_qty" class="input" value="{{ form.free_qty.value|default_if_none:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-gift">Gift product (Free gift)</label>
+          <input id="p-gift" type="text" name="gift_product" class="input font-mono" value="{{ form.gift_product.value|default:'' }}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">The SKU or slug of the product added free to the order.</p>
+          {% if form.gift_product.errors %}<p class="field-error">{{ form.gift_product.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-tiers">Tiers (Buy more, save more)</label>
+          <input id="p-tiers" type="text" name="tiers" class="input font-mono" value="{{ form.tiers.value|default:'' }}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Items:percent, for example 3:10, 5:15.</p>
+          {% if form.tiers.errors %}<p class="field-error">{{ form.tiers.errors.0 }}</p>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">When it applies</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">Every condition you fill in must hold. Leave them all empty to apply to every cart.</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-min">Cart at least</label>
+          <input id="p-min" type="number" step="0.01" min="0" name="min_subtotal" class="input" value="{{ form.min_subtotal.value|default_if_none:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-max">Cart at most</label>
+          <input id="p-max" type="number" step="0.01" min="0" name="max_subtotal" class="input" value="{{ form.max_subtotal.value|default_if_none:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-products">Products</label>
+          <input id="p-products" type="text" name="products" class="input font-mono" value="{{ form.products.value|default:'' }}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">SKUs or slugs, separated by commas. The cart must hold one; for Buy X get Y, the products it counts.</p>
+          {% if form.products.errors %}<p class="field-error">{{ form.products.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-categories">Categories</label>
+          <select id="p-categories" name="categories" class="input" multiple size="5">
+            {% for value, label in form.fields.categories.choices %}
+            <option value="{{ value }}" {% if value in form.categories.value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">The cart must hold a product in one of them or a category below it.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-countries">Shipping countries</label>
+          <input id="p-countries" type="text" name="countries" class="input font-mono" value="{{ form.countries.value|default:'' }}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Two-letter codes, for example DE, AT.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-groups">Customer groups</label>
+          <input id="p-groups" type="text" name="customer_groups" class="input" value="{{ form.customer_groups.value|default:'' }}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Group names, separated by commas. Only signed-in customers belong to a group.</p>
+        </div>
+      </div>
+      <label class="inline-flex items-center gap-2 text-sm">
+        <input type="checkbox" name="first_order" {% if form.first_order.value %}checked{% endif %}>
+        First order only (a signed-in customer who has not ordered yet)
+      </label>
+    </div>
+
+    <div class="card card-padded space-y-3">
+      <h2 class="font-semibold text-sm">Running it</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-priority">Priority</label>
+          <input id="p-priority" type="number" name="priority" class="input" required value="{{ form.priority.value|default_if_none:100 }}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Lower numbers run first.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-limit">Usage limit</label>
+          <input id="p-limit" type="number" min="1" name="usage_limit" class="input" value="{{ form.usage_limit.value|default_if_none:'' }}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Orders it may discount in total. Empty = no limit.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-starts">Starts at</label>
+          <input id="p-starts" type="datetime-local" name="starts_at" class="input" value="{{ form.starts_at.value|date:'Y-m-d\TH:i'|default:'' }}">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-ends">Ends at</label>
+          <input id="p-ends" type="datetime-local" name="ends_at" class="input" value="{{ form.ends_at.value|date:'Y-m-d\TH:i'|default:'' }}">
+          {% if form.ends_at.errors %}<p class="field-error">{{ form.ends_at.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="p-coupon">Only with the code</label>
+          <input id="p-coupon" type="text" name="requires_coupon" class="input font-mono" value="{{ form.requires_coupon.value|default:'' }}">
+          <p class="text-xs text-[color:var(--text-muted)] mt-1">Left empty, it applies without a code.</p>
+        </div>
+      </div>
+      <label class="inline-flex items-center gap-2 text-sm">
+        <input type="checkbox" name="combinable" {% if form.combinable.value %}checked{% endif %}>
+        Combines with other promotions and coupons
+      </label>
+      <label class="inline-flex items-center gap-2 text-sm">
+        <input type="checkbox" name="is_active" {% if form.is_active.value %}checked{% endif %}>
+        Active
+      </label>
+    </div>
+
+  </form>
+
+</div>
+{% endblock %}

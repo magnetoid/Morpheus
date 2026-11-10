@@ -291,6 +291,33 @@ def _resolve_unit_price(target, currency: str | None, *, fallback, customer=None
     return apply_price_filter(localized, product=fallback, customer=customer)
 
 
+def _add_gift_lines(order, breakdown: dict, currency: str) -> None:
+    """The free lines a promotion gave (``meta['gift_lines']``, from the
+    promotions app's cart step), added at no charge before the order reserves
+    its stock, so a gift is reserved and shipped like any other line."""
+    from plugins.installed.catalog.models import Product, ProductVariant
+
+    for gift in (breakdown.get('meta') or {}).get('gift_lines') or []:
+        product = Product.objects.filter(pk=gift.get('product_id') or None).first()
+        if product is None:
+            continue
+        variant = None
+        if gift.get('variant_id'):
+            variant = ProductVariant.objects.filter(pk=gift['variant_id'], product=product).first()
+        quantity = max(1, int(gift.get('quantity') or 1))
+        OrderItem.objects.create(
+            order=order,
+            product=product,
+            variant=variant,
+            product_name=product.name,
+            variant_name=variant.name if variant else '',
+            sku=variant.sku if variant else product.sku,
+            quantity=quantity,
+            unit_price=Money(Decimal('0'), currency),
+            total_price=Money(Decimal('0'), currency),
+        )
+
+
 def _order_metadata(visitor_id: str, breakdown: dict, consent: dict | None = None) -> dict:
     """Order metadata, including any named charges the breakdown added on top
     of the priced lines (``Order.extra_lines``), so a receipt adds up."""
@@ -331,6 +358,18 @@ def _order_metadata(visitor_id: str, breakdown: dict, consent: dict | None = Non
     if included:
         # Tax already inside the prices (Order.tax_included_lines).
         metadata['tax_included'] = included
+    gifts = [
+        {
+            'product_id': str(g.get('product_id') or ''),
+            'name': str(g.get('name') or ''),
+            'promotion': str(g.get('promotion_name') or ''),
+        }
+        for g in (breakdown.get('meta') or {}).get('gift_lines') or []
+        if g.get('product_id')
+    ]
+    if gifts:
+        # Which $0 lines are a promotion's gift, for the timeline and returns.
+        metadata['gift_lines'] = gifts
     store_credit = (breakdown.get('meta') or {}).get('store_credit') or {}
     if store_credit.get('amount'):
         # Read back on cancel / refund to re-credit what was spent.
@@ -500,6 +539,7 @@ class OrderService:
                 unit_price=cart_item.unit_price,
                 total_price=cart_item.total_price,
             )
+        _add_gift_lines(order, breakdown, currency)
 
         try:
             meta = breakdown.get('meta') or {}
@@ -537,7 +577,9 @@ class OrderService:
 
                 coupon_meta = meta.get('coupon') or {}
                 coupon_discount = Decimal(str(coupon_meta.get('discount_amount') or '0'))
-                if coupon_discount > 0:
+                # A free-shipping code saves no merchandise amount but is still
+                # a use: until v0.150.0 its limits were never counted.
+                if coupon_discount > 0 or coupon_meta.get('free_shipping'):
                     # Lock the Coupon row so two concurrent checkouts can't
                     # both bypass `usage_limit` (each would otherwise read
                     # times_used=N, both apply, both increment).

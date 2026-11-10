@@ -45,6 +45,14 @@ class Promotion(models.Model):
 
     times_used = models.PositiveIntegerField(default=0)
     usage_limit = models.PositiveIntegerField(null=True, blank=True)
+    combinable = models.BooleanField(
+        default=True,
+        db_default=True,
+        help_text=(
+            'Off: applies only when no earlier promotion and no coupon has applied, '
+            'and no later promotion applies after it.'
+        ),
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -70,15 +78,15 @@ class PromotionRule(models.Model):
     #   countries: [str]
     #   customer_groups: [str]
     #   product_ids: [str]
-    #   category_slugs: [str]
-    #   first_order: bool
+    #   category_slugs: [str]  (each with every category below it)
+    #   first_order: bool  (a signed-in customer with no order yet; a guest never)
     predicates = models.JSONField(default=dict, blank=True)
 
     # Action — exactly one shape. Recognised:
     #   {"kind": "percent_off", "value": 10}
     #   {"kind": "fixed_off", "value": 5, "currency": "USD"}
     #   {"kind": "free_shipping"}
-    #   {"kind": "gift", "product_id": "..."}
+    #   {"kind": "gift", "product_id": "...", "variant_id": "..." (optional)}
     #   {"kind": "bogo", "buy_qty": 2, "free_qty": 1, "product_ids": [...]}
     #   {"kind": "tiered", "tiers": [
     #       {"min_qty": 3, "percent": 10},

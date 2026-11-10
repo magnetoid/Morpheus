@@ -43,6 +43,12 @@ class Coupon(models.Model):
     applicable_collections = models.ManyToManyField('catalog.Collection', blank=True)
     exclude_sale_items = models.BooleanField(default=False)
 
+    # Buy X get Y: for every ``buy_quantity`` units of eligible products in the
+    # cart, the cheapest ``get_quantity`` units get ``discount_value`` percent
+    # off (100, or 0, = free).
+    buy_quantity = models.PositiveSmallIntegerField(default=1, db_default=1)
+    get_quantity = models.PositiveSmallIntegerField(default=1, db_default=1)
+
     # Validity
     is_active = models.BooleanField(default=True)
     starts_at = models.DateTimeField(null=True, blank=True)

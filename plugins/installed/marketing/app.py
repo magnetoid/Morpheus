@@ -7,12 +7,22 @@ class MarketingPlugin(Plugin):
     version = '1.1.0'
     description = 'Coupons, discount engine, email campaigns, abandoned-cart recovery.'
     has_models = True
+    requires = ['catalog']
 
     def ready(self):
         self.register_graphql_extension('plugins.installed.marketing.graphql.queries')
         self.register_graphql_extension('plugins.installed.marketing.graphql.mutations')
         # Cart-recovery email is owned solely by the cart_abandonment plugin's
         # consent-checked drip — marketing no longer subscribes to cart.abandoned.
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.marketing.agent_tools import (
+            create_coupon_tool,
+            list_coupons_tool,
+            update_coupon_tool,
+        )
+
+        return [list_coupons_tool, create_coupon_tool, update_coupon_tool]
 
     def contribute_dashboard_cards(self) -> list:
         # A card on the Marketing landing, beside other apps' cards.

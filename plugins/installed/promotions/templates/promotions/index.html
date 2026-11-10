@@ -2,31 +2,41 @@
 {% block title %}Promotions · Morpheus{% endblock %}
 
 {% block content %}
-<h1 class="text-xl font-semibold mb-4">Promotions</h1>
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">Promotions</h1>
+  <a href="{% url 'promotions:new' %}" class="btn btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> New promotion</a>
+</div>
 
 <div class="card mb-6">
   <table class="morph-table">
     <thead>
       <tr>
         <th>Name</th><th>Slug</th><th>Type</th><th>Priority</th>
-        <th>Channels</th><th>Coupon gate</th><th>Used</th><th>Active</th>
+        <th>Channels</th><th>Coupon gate</th><th>Combines</th><th>Used</th><th>Active</th><th></th>
       </tr>
     </thead>
     <tbody>
     {% for p in promotions %}
       <tr>
-        <td>{{ p.name }}</td>
+        <td><a href="{% url 'promotions:edit' promotion_id=p.pk %}" class="hover:underline font-medium">{{ p.name }}</a></td>
         <td><code>{{ p.slug }}</code></td>
         <td>{{ p.get_type_display }}</td>
         <td>{{ p.priority }}</td>
         <td>{% if p.channels %}<code style="font-size:.75rem;">{{ p.channels|join:", " }}</code>{% else %}<span class="meta">all</span>{% endif %}</td>
         <td>{% if p.requires_coupon %}<code>{{ p.requires_coupon }}</code>{% else %}<span class="meta">—</span>{% endif %}</td>
+        <td>{% if p.combinable %}yes{% else %}<span class="pill">no</span>{% endif %}</td>
         <td>{{ p.times_used }}{% if p.usage_limit %} / {{ p.usage_limit }}{% endif %}</td>
         <td>{% if p.is_active %}<span class="pill pill-success">on</span>{% else %}<span class="pill">off</span>{% endif %}</td>
+        <td>
+          <form method="post" action="{% url 'promotions:toggle' promotion_id=p.pk %}">
+            {% csrf_token %}
+            <button class="btn btn-sm">{% if p.is_active %}Switch off{% else %}Switch on{% endif %}</button>
+          </form>
+        </td>
       </tr>
     {% empty %}
-      <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">
-        No promotions yet — create one via Linda or the Django admin.
+      <tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted);">
+        No promotions yet. Create one with New promotion, or ask Linda.
       </td></tr>
     {% endfor %}
     </tbody>

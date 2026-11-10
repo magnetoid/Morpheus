@@ -43,6 +43,14 @@ class CouponForm(forms.Form):
     starts_at = forms.DateTimeField(required=False)
     expires_at = forms.DateTimeField(required=False)
 
+    # Where it applies (marketing/scope.py reads these at checkout).
+    applicable_products = forms.CharField(required=False)
+    applicable_categories = forms.MultipleChoiceField(required=False, choices=())
+    applicable_collections = forms.MultipleChoiceField(required=False, choices=())
+    exclude_sale_items = forms.BooleanField(required=False)
+    buy_quantity = forms.IntegerField(min_value=1, required=False)
+    get_quantity = forms.IntegerField(min_value=1, required=False)
+
     def __init__(self, *args, instance=None, **kwargs):
         self.instance = instance
         if instance is not None and 'initial' not in kwargs:
@@ -65,8 +73,66 @@ class CouponForm(forms.Form):
                 'is_active': instance.is_active,
                 'starts_at': instance.starts_at,
                 'expires_at': instance.expires_at,
+                'applicable_products': ', '.join(
+                    p.sku or p.slug for p in instance.applicable_products.all()
+                ),
+                'applicable_categories': [
+                    str(pk) for pk in instance.applicable_categories.values_list('pk', flat=True)
+                ],
+                'applicable_collections': [
+                    str(pk) for pk in instance.applicable_collections.values_list('pk', flat=True)
+                ],
+                'exclude_sale_items': instance.exclude_sale_items,
+                'buy_quantity': instance.buy_quantity,
+                'get_quantity': instance.get_quantity,
             }
         super().__init__(*args, **kwargs)
+        from plugins.installed.catalog.category_tree import display_tree
+        from plugins.installed.catalog.models import Collection
+
+        self.fields['applicable_categories'].choices = [
+            (str(c.pk), ('— ' * c.depth) + c.name) for c in display_tree()
+        ]
+        self.fields['applicable_collections'].choices = [
+            (str(c.pk), c.name) for c in Collection.objects.order_by('name')
+        ]
+
+    def clean_applicable_products(self):
+        from django.db.models import Q
+
+        from plugins.installed.catalog.models import Product
+
+        tokens = [
+            t.strip()
+            for t in (self.cleaned_data.get('applicable_products') or '')
+            .replace('\n', ',')
+            .split(',')
+            if t.strip()
+        ]
+        found, unknown = [], []
+        for tok in tokens:
+            product = (
+                Product.objects.filter(
+                    Q(sku__iexact=tok) | Q(slug=tok) | Q(variants__sku__iexact=tok)
+                )
+                .distinct()
+                .first()
+            )
+            if product is None:
+                unknown.append(tok)
+            elif product not in found:
+                found.append(product)
+        if unknown:
+            raise forms.ValidationError(f'No product with SKU or slug: {", ".join(unknown)}.')
+        return found
+
+    def clean(self):
+        cd = super().clean()
+        if cd.get('discount_type') == 'buy_x_get_y' and (cd.get('discount_value') or 0) > 100:
+            self.add_error(
+                'discount_value', 'For Buy X get Y, enter the percent off the Y items (100 = free).'
+            )
+        return cd
 
     def clean_code(self):
         code = self.cleaned_data['code'].strip().upper()
@@ -106,5 +172,11 @@ class CouponForm(forms.Form):
         coupon.is_active = bool(cd.get('is_active'))
         coupon.starts_at = cd.get('starts_at')
         coupon.expires_at = cd.get('expires_at')
+        coupon.exclude_sale_items = bool(cd.get('exclude_sale_items'))
+        coupon.buy_quantity = cd.get('buy_quantity') or 1
+        coupon.get_quantity = cd.get('get_quantity') or 1
         coupon.save()
+        coupon.applicable_products.set(cd.get('applicable_products') or [])
+        coupon.applicable_categories.set(cd.get('applicable_categories') or [])
+        coupon.applicable_collections.set(cd.get('applicable_collections') or [])
         return coupon
