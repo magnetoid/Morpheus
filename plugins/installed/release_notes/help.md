@@ -19,8 +19,8 @@ It also holds [About Morpheus OS](page:about), on the platform and its licence, 
 
 Every staff member can read help, whatever their role. The screens it links to still decide who may open them.
 
-Before an update that changes the database, the store backs the database up first and keeps the last five of these backups; if the backup fails, the update stops before changing anything. A store that runs from a built image, as most do, updates when a new version is released, so its Version & updates page has no update button.
+Before an update that changes the database, the store backs the database up first and keeps the last five of these backups; if the backup fails, the update stops before changing anything. Daily, the store asks morpheus.direct if a new version is out. A copy of the code gets an Update now button; a built image is told what to run.
 
-A restore puts all the store's data back as it was when the backup was made, or changes nothing if it fails. The store first backs up its data as it is, so a restore can be undone the same way, and shows everyone a "restoring" page while it runs. Access goes back as it was too: staff accounts and API tokens revoked since then work again. Linda cannot restore a backup: it replaces everything saved since.
+A restore puts all the store's data back as it was when the backup was made, or changes nothing if it fails. The store first backs up its data as it is, so a restore can be undone, and shows everyone a "restoring" page while it runs. Access goes back as it was too: staff accounts and API tokens revoked since then work again. Linda cannot restore a backup: it replaces everything saved since.
 
 If an update leaves the store down for several minutes, the store goes back by itself to the version it ran before. Version & updates says which version failed, and the owners get an email unless the update failed before the store started.

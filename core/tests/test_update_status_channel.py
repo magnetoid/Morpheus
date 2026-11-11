@@ -6,10 +6,12 @@ import json
 import shutil
 import subprocess
 import tempfile
+from io import StringIO
 from pathlib import Path
 from unittest import mock
 
 from django.core.cache import cache
+from django.core.management import call_command
 from django.test import SimpleTestCase, override_settings
 
 from core.signing import generate_keypair, sign_manifest
@@ -134,3 +136,21 @@ class StatusChannelTests(SimpleTestCase):
             status = platform_update_status()
         self.assertEqual(status['available'], 'unavailable')
         self.assertEqual(status['path'], 'manual')
+
+
+class CheckCommandPathTests(SimpleTestCase):
+    def test_update_line_names_the_path(self):
+        status = {
+            'available': 'yes',
+            'latest': 'v9.0.0',
+            'current': 'v1.0.0',
+            'path': 'manual',
+            'components': [],
+        }
+        out = StringIO()
+        with mock.patch(
+            'core.management.commands.morph_check_updates.platform_update_status',
+            return_value=status,
+        ):
+            call_command('morph_check_updates', '--no-fetch', stdout=out)
+        self.assertIn('latest v9.0.0 (deployed v1.0.0, path: manual).', out.getvalue())

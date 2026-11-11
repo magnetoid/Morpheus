@@ -293,42 +293,71 @@ than redeploying: a redeploy builds the branch head, which is the release that f
 
 ---
 
+## Updates from morpheus.direct
+
+Every install asks one signed file, `https://morpheus.direct/updates/stable.json`, whether a
+newer release is out. The morpheus-web repository signs and publishes it every 3 hours, only for a
+release whose deploy-smoke passed and whose image exists on GHCR.
+
+- **What is checked, and how often:** once a day, by the beat job `core-check-for-updates`
+  (04:45 UTC, `core.tasks.check_for_updates`). The Version & updates page reads the cached answer
+  and never fetches on a page load; Check fetches it again.
+- **What is sent:** one GET with the header `User-Agent: morpheus-updater/<MORPHEUS_VERSION>`.
+  No store name, domain or id.
+- **What comes back:** the release's version, its `commit`, the pinned `image`, whether it is
+  `breaking`, and its notes. The signature is checked against the public key below; an unsigned
+  file, a wrong key or a bad signature is ignored entirely (fails closed).
+- **Turning it off:** `MORPHEUS_UPDATE_MANIFEST_URL=off`. Nothing is fetched and the page says
+  checks are off.
+- **The two paths** (`core.updates.update_path()`):
+  - `git`: a git checkout that can update itself. Check, then **Update now** fast-forwards to
+    exactly the commit the signed release names, never past it.
+  - `manual`: a built image. The page and Linda name the new version and show the pinned image,
+    `ghcr.io/magnetoid/morpheus:<sha>@sha256:<digest>`, with the docker compose commands whoever
+    runs the server uses, plus the upgrade-steps link when the release is breaking. A store that
+    Coolify deploys from this repository's `main` branch runs each release as it is published.
+- **Forks:** a deployment that sets only `MORPHEUS_UPDATE_REPO` now follows the signed
+  morpheus.direct channel, because the default manifest URL wins. A fork that wants its own GitHub
+  releases sets `MORPHEUS_UPDATE_MANIFEST_URL=` (empty) plus `MORPHEUS_UPDATE_REPO`. A fork with
+  its own channel sets both `MORPHEUS_UPDATE_MANIFEST_URL` and `MORPHEUS_UPDATE_PUBLIC_KEY`: a URL
+  without a key inherits the morpheus.direct key, fails closed and logs an error on every check.
+- **Key rotation:** `MORPHEUS_UPDATE_PUBLIC_KEY` holds a comma-separated list. A release first
+  adds the new key to the baked list; the signer switches only after that release is live; the old
+  key is dropped in a later release.
+- **The public key** (Ed25519, base64): `C5sqsZab9ZAiYPX1Mnieid9xBahDy61RNvvf7ykJtQI=`. The private
+  key is never in this repository.
+
+---
+
 ## What does not work, and why
 
-### The updater is inert on this production deployment
+### The in-app updater is not a button on every deployment
 
-`platform_update_status()` and `apply_platform_update()` both begin by checking
-for `.git` in the deployment root, and return `unavailable` without it:
+`platform_update_status()` reads the signed channel first, so every install learns that a new
+release is out. `apply_platform_update()` still needs git metadata and returns `unavailable`
+without it:
 
 > *"No git metadata in this deployment (built image / non-git install)."*
 
 **Verified 2026-08-11 on dotbooks.store:** `/app/.git` does not exist in the
-running web container. So `morph_apply_update` refuses, by design. Since v0.118.0
-the Version & updates page and Linda say so plainly, instead of offering check and
-apply buttons that cannot work there. Everything above is correct code that this
-deployment cannot reach.
+running web container. So `morph_apply_update` refuses there, by design, and the Version &
+updates page and Linda show the manual path (the pinned image and its commands) instead of an
+update button that cannot work.
 
-This is not a bug in the updater — it is the deployment model. Coolify builds an
-image from a source copy without git metadata, and updates happen by
-**rebuild + redeploy** (a push to `main`), not by the in-place updater. That is
-a legitimate and arguably safer model. It just means: **do not rely on the
-in-app updater on a container deployment. Redeploy.**
+This is the deployment model, not a bug. Coolify builds an image from a source copy without git
+metadata, and updates happen by **rebuild + redeploy** (a push to `main`), or by running the
+pinned image the release names.
 
-Since v0.43.2 the *check* half no longer depends on git — set
-`MORPHEUS_UPDATE_REPO` and the section above takes over, so the dashboard can at
-least tell you a newer version exists. **Applying** still requires git and is
-still the wrong tool here; the answer on a container remains "redeploy".
+### Applying still depends on how the code got there
 
-### The channel model does not fit open-core distribution
+The check works on every install; applying does not:
 
-The current source is **git fast-forward from the deployment's own upstream
-branch**. That works for an operator who deployed by cloning the repository. It
-does not work for anyone else, and "anyone else" is the whole point of an
-open-core product:
-
-- An operator who runs a **published image** has no upstream branch to fast-forward.
-- An operator who installed from a **tarball or package index** has no git at all.
-- Nobody gets **integrity guarantees on the git path** — a fast-forward trusts whatever the remote says. (The signed-manifest source added in v0.43.3 does verify; the git path does not and cannot.)
+- An operator who runs a **published image** has no upstream branch to fast-forward, and takes
+  the release by running the pinned image.
+- An operator who installed from a **tarball or package index** has no git at all and takes the
+  release the same manual way.
+- The **git path** fast-forwards only to the commit the signed release names, so it no longer
+  trusts whatever the remote says.
 - Apps and themes that ship with core have no channel of their own — they are the platform. Apps and themes installed **on their own** do (v0.44.0, above).
 
 Phase 3 of the plan ("a pluggable `UpdateSource` per component") was designed
@@ -336,20 +365,17 @@ for exactly this. The interface exists (v0.43.2) with two implementations, and
 since v0.44.0 the signed-manifest source resolves individual apps and themes
 too (`UpdateSource.components()`); the GitHub source deliberately does not —
 it authenticates the transport, not the publisher, and an app update is
-arbitrary code imported at boot. The status log records the interim decision —
-*"Channel decided = git refs/tags"* — which this section supersedes for
-distributed installs.
+arbitrary code imported at boot.
 
 ---
 
 ## Design: a release channel on `morpheus.direct`
 
-This is the shape the open-core product needs. **Mostly implemented as of
-v0.44.0** — signing, verification, per-component check and per-component apply
-exist; **hosting** does not (nothing is published at `morpheus.direct` yet —
-though the repository is public since 2026-08-21, so anonymous clients can
-reach the GitHub releases). What is built and what is not is marked inline
-below.
+This is the shape the open-core product needs, and it is built: signing,
+verification, per-component check and apply, and the hosting. The channel
+file is live at `https://morpheus.direct/updates/stable.json`; its manifest carries the
+release's `commit` and the pinned `image`. The core apply is a fast-forward to the release commit
+for git checkouts, and a new image for built images.
 
 **Built:** `core/signing.py` (Ed25519 sign/verify with a canonical JSON form),
 `SignedManifestSource` in `core/update_sources.py` (core + `apps` + `themes`),
@@ -366,8 +392,8 @@ MORPHEUS_SIGNING_KEY=… python manage.py morph_sign_manifest \
     --sha256 … --out stable.json
 ```
 
-Deployments then set `MORPHEUS_UPDATE_MANIFEST_URL` and
-`MORPHEUS_UPDATE_PUBLIC_KEY`. A signed manifest takes precedence over the
+Deployments read the morpheus.direct channel by default; a fork sets its own
+`MORPHEUS_UPDATE_MANIFEST_URL` and `MORPHEUS_UPDATE_PUBLIC_KEY`. A signed manifest takes precedence over the
 GitHub source, because it proves the *publisher* produced the bytes; HTTPS only
 proves you reached a server.
 

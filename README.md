@@ -28,6 +28,8 @@
 
 **You own all of it.** Your server, your Postgres database, your code. Every version becomes Apache 2.0 four years after it ships.
 
+**You hear about new versions.** Once a day your store asks morpheus.direct whether a new version is out and checks the answer against a signed key before it believes it. The only thing it sends is `User-Agent: morpheus-updater/<version>`: no store name, domain or id. Set `MORPHEUS_UPDATE_MANIFEST_URL=off` to switch it off ([`docs/UPDATING.md`](docs/UPDATING.md)).
+
 **You are EU-ready on day one.** The lowest price of the last 30 days on every sale (Omnibus), manufacturer and safety details on every product (GPSR), a mark on text an AI wrote (AI Act, Article 50), a cookie banner that every tag and every server-side send obeys, WCAG audits on every deploy, and checkout pages that run only the scripts they list (PCI DSS 4.0).
 
 ---
@@ -168,7 +170,6 @@ You would find these on day two, so here they are now:
 - **Returns** are handled by staff; a customer cannot start one yet.
 - **About eighteen apps do less than their names suggest**, and each one says so in its own help: 3D and AR previews, the feed-style product rails, post-purchase emails, the storefront stylist chat, drops, the discovery quiz.
 - **Roles and permissions** guard 291 staff pages but only record what they would deny until a store switches them to enforce.
-- **Updates from morpheus.direct:** a store that does not run from a git checkout is not told when a new release is out. A signed update channel on morpheus.direct is being designed ([`docs/plans/morpheus-direct-distribution-2026-11.md`](docs/plans/morpheus-direct-distribution-2026-11.md)).
 
 The order these get done in is in [`docs/plans/platform-gap-analysis-2026-11.md`](docs/plans/platform-gap-analysis-2026-11.md), and each release is in [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md).
 
