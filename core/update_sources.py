@@ -375,9 +375,11 @@ def configured_source() -> UpdateSource | None:
     config: the updater must resolve before any app is guaranteed active, and
     `core/updates.py` is permanently core for the same reason.
 
-        MORPHEUS_UPDATE_MANIFEST_URL  a signed manifest (preferred)
-        MORPHEUS_UPDATE_PUBLIC_KEY    base64 Ed25519 key that must sign it
-        MORPHEUS_UPDATE_REPO          e.g. 'magnetoid/morpheus' (fallback)
+        MORPHEUS_UPDATE_MANIFEST_URL  a signed manifest; the morpheus.direct channel
+                                      is the default, and `off` switches checks off
+        MORPHEUS_UPDATE_PUBLIC_KEY    base64 Ed25519 key(s) that must sign it
+        MORPHEUS_UPDATE_REPO          e.g. 'magnetoid/morpheus'; used only when the
+                                      manifest URL is set empty
         MORPHEUS_UPDATE_TOKEN         optional; required for a private repository
 
     The signed manifest wins when configured: it is the only source that proves
@@ -480,7 +482,7 @@ def check_for_update(current_version: str) -> dict:
         return {
             'source': 'none',
             'available': 'unavailable',
-            'reason': 'No update source configured (set MORPHEUS_UPDATE_REPO).',
+            'reason': 'No update source configured (set MORPHEUS_UPDATE_MANIFEST_URL with its key, or MORPHEUS_UPDATE_REPO).',
             'current': current_version,
             'components': [],
         }

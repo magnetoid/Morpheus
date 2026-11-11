@@ -77,31 +77,56 @@ def can_self_update() -> bool:
     return (_repo_root() / '.git').exists() and shutil.which('git') is not None
 
 
-def platform_update_status(*, fetch: bool = False) -> dict:
-    """Compare the deployed git checkout against its upstream.
+def update_path() -> str:
+    """How this install updates its own code: 'git' (fast-forward) or 'manual'."""
+    return 'git' if can_self_update() else 'manual'
 
-    Returns ``{source, available, current, sha, branch, upstream, behind,
-    ahead, latest, reason?}``. ``available`` ∈ {yes, no, unknown, unavailable}.
-    ``fetch=True`` refreshes remote refs first (network; best-effort).
+
+def platform_update_status(*, fetch: bool = False) -> dict:  # noqa: PLR0911
+    """Where this install stands against the update channel.
+
+    A signed manifest source is asked first: ``fetch=True`` asks it (network),
+    a page load (``fetch=False``) reads the cached answer and never fetches.
+    Without one, compares the deployed git checkout against its upstream.
+    Returns ``{source, available, current, ..., path}``; ``available`` is one
+    of yes, no, unknown, unavailable; ``path`` is ``update_path()``.
+    ``fetch=True`` also refreshes git's remote refs (best-effort).
     """
+    from core.update_sources import (
+        SignedManifestSource,
+        check_for_update,
+        checks_off,
+        configured_source,
+    )
+    from core.versioning import core_version
+
+    path = update_path()
+    if isinstance(configured_source(), SignedManifestSource):
+        if fetch:
+            return {**check_for_update(core_version()), 'path': path}
+        cached = cached_update_status()
+        if cached and cached.get('source') == 'manifest':
+            return {**cached, 'path': path}
+        return {
+            'source': 'manifest',
+            'available': 'unknown',
+            'reason': 'Not checked yet. The store checks once a day; Check for updates checks now.',
+            'current': core_version(),
+            'components': [],
+            'path': path,
+        }
+
     root = _repo_root()
     if not (root / '.git').exists():
-        # No git metadata — a built image, which is how this platform actually
-        # deploys. Historically that ended the story and the updater reported
-        # `unavailable` forever, so a container install could not even ASK
-        # whether an update existed. Fall back to the configured release source
-        # (see core/update_sources.py) before giving up.
-        from core.update_sources import check_for_update, configured_source
-
-        if configured_source() is not None:
-            from core.versioning import component_versions
-
-            current = str((component_versions() or {}).get('core') or 'unknown')
-            return check_for_update(current)
+        # No git metadata: a built image. Checks switched off say so; a
+        # repository source (MORPHEUS_UPDATE_REPO) is asked before giving up.
+        if checks_off() or configured_source() is not None:
+            return {**check_for_update(core_version()), 'path': path}
         return {
             'source': 'git',
             'available': 'unavailable',
             'reason': 'No git metadata in this deployment (built image / non-git install).',
+            'path': path,
         }
     if fetch:
         _git(['fetch', '--quiet'], root, timeout=30)
@@ -111,6 +136,7 @@ def platform_update_status(*, fetch: bool = False) -> dict:
         'current': _git(['describe', '--tags', '--always', '--dirty'], root) or 'unknown',
         'sha': _git(['rev-parse', '--short', 'HEAD'], root) or '',
         'branch': _git(['rev-parse', '--abbrev-ref', 'HEAD'], root) or '',
+        'path': path,
     }
     upstream = _git(['rev-parse', '--abbrev-ref', '@{u}'], root)
     out['upstream'] = upstream or ''

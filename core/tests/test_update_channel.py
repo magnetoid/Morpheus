@@ -108,6 +108,21 @@ class UpdateChannelTests(SimpleTestCase):
         self.assertIs(release.breaking, True)
         self.assertEqual(release.url, 'https://github.com/magnetoid/Morpheus/releases/tag/v9.0.0')
 
+    def test_check_for_update_carries_the_release_fields(self):
+        priv, pub = generate_keypair()
+        with (
+            override_settings(MORPHEUS_UPDATE_MANIFEST_URL=URL, MORPHEUS_UPDATE_PUBLIC_KEY=pub),
+            _serve(_signed(priv)),
+        ):
+            result = check_for_update('v1.0.0')
+        self.assertEqual(result['commit'], COMMIT)
+        self.assertEqual(result['image'], IMAGE)
+        self.assertIs(result['breaking'], True)
+        self.assertEqual(result['notes'], 'Notes')
+        self.assertEqual(
+            result['notes_url'], 'https://github.com/magnetoid/Morpheus/releases/tag/v9.0.0'
+        )
+
     def test_a_malformed_commit_is_dropped(self):
         priv, pub = generate_keypair()
         with _serve(_signed(priv, commit='abc')):
