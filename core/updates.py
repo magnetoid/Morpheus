@@ -247,6 +247,15 @@ def apply_platform_update(  # noqa: PLR0911, PLR0912
             'status': 'unavailable',
             'reason': 'No git metadata in this deployment.',
         }
+    if not can_self_update():
+        return {
+            'ok': False,
+            'status': 'unavailable',
+            'reason': (
+                'This install cannot update its own code (git is not installed). '
+                'Take the new version as a new image.'
+            ),
+        }
 
     status = platform_update_status(fetch=True)
     if status.get('available') == 'no':
@@ -263,13 +272,21 @@ def apply_platform_update(  # noqa: PLR0911, PLR0912
             'reason': status.get('reason', 'Update status could not be determined.'),
         }
 
-    upstream = status['upstream']
+    # The channel names the commit to move to; a git source moves to its upstream.
+    from_channel = status.get('source') == 'manifest'
+    target = status.get('commit') if from_channel else status['upstream']
+    if from_channel and not target:
+        return {
+            'ok': False,
+            'status': 'no_commit',
+            'reason': 'The release names no commit to update to.',
+        }
     prior_sha = _git(['rev-parse', 'HEAD'], root) or ''
     plan = {
         'from': status.get('current'),
         'to': status.get('latest'),
         'behind': status.get('behind'),
-        'upstream': upstream,
+        'target': target,
     }
 
     if not confirm:
@@ -288,20 +305,29 @@ def apply_platform_update(  # noqa: PLR0911, PLR0912
             'reason': 'Self-update is disabled. Set MORPHEUS_SELF_UPDATE_ENABLED=1 to allow.',
         }
 
-    # Fast-forward only: HEAD must be an ancestor of upstream.
-    if not _git_ok(['merge-base', '--is-ancestor', 'HEAD', upstream], root):
-        return {
-            'ok': False,
-            'status': 'diverged',
-            'plan': plan,
-            'reason': 'Local has diverged from upstream; fast-forward not possible. Resolve manually.',
-        }
+    if from_channel:
+        # The commit may not be in the checkout yet: fetch exactly that one.
+        _git(['fetch', '--quiet', 'origin', target], root, timeout=60)
+        if not _git_ok(['cat-file', '-e', f'{target}^{{commit}}'], root):
+            return {
+                'ok': False,
+                'status': 'apply_failed',
+                'plan': plan,
+                'reason': "Could not fetch the release's commit.",
+            }
+        diverged = "The release's commit is not a later commit than this checkout. Update by hand."
+    else:
+        diverged = 'Local has diverged from upstream; fast-forward not possible. Resolve manually.'
+
+    # Fast-forward only: HEAD must be an ancestor of the target.
+    if not _git_ok(['merge-base', '--is-ancestor', 'HEAD', target], root):
+        return {'ok': False, 'status': 'diverged', 'plan': plan, 'reason': diverged}
 
     # Dependency guard — an in-place git apply does NOT pip-install, so if
     # upstream changed requirements the new code would import missing/native
     # packages and crash at boot. Refuse (rebuild the image instead) unless
     # the caller explicitly accepts responsibility for installing them.
-    dep_changes = _dependency_changes(root, upstream)
+    dep_changes = _dependency_changes(root, target)
     if dep_changes and not allow_dependency_changes:
         return {
             'ok': False,
@@ -321,7 +347,7 @@ def apply_platform_update(  # noqa: PLR0911, PLR0912
     except Exception:  # noqa: BLE001 — proceed even if backup is unavailable, but note it
         plan['backup'] = 'failed'
 
-    if not _git_ok(['merge', '--ff-only', upstream], root):
+    if not _git_ok(['merge', '--ff-only', target], root):
         return {
             'ok': False,
             'status': 'apply_failed',
