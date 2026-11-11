@@ -713,6 +713,24 @@ def low_stock_threshold() -> int:
         return 5
 
 
+def low_stock_levels(limit: int = 50) -> list:
+    """Stock rows whose free units (on hand minus held) are at or below
+    ``low_stock_threshold()``, fewest first: switched-on warehouses only, and
+    products that count stock. The Warehouses page lists them; the dashboard
+    home and Pulse show them."""
+    from django.db.models import F
+
+    from plugins.installed.inventory.models import StockLevel
+
+    return list(
+        StockLevel.objects.filter(warehouse__is_active=True, variant__product__track_inventory=True)
+        .annotate(free=F('quantity') - F('reserved_quantity'))
+        .filter(free__lte=low_stock_threshold())
+        .select_related('variant', 'variant__product', 'warehouse')
+        .order_by('free', 'variant__product__name')[:limit]
+    )
+
+
 def variant_stock_summary(variant_ids) -> dict:
     """Units the order's stock reservation could take, per variant, for the
     ``VARIANT_STOCK_SUMMARY`` filter: ``{str(variant_id): int}``, counted as

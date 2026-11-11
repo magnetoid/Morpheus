@@ -35,9 +35,11 @@ def _load_cart_items(request):
 
 
 def _item_ships(item) -> bool:
-    """Whether one cart item needs shipping (variant overrides product)."""
-    target = item.variant if item.variant is not None else item.product
-    return bool(getattr(target, 'requires_shipping', True))
+    """Whether one cart item needs shipping (variant overrides product): orders'
+    rule, which payments also reads to leave cash on delivery out."""
+    from plugins.installed.orders.services import line_ships
+
+    return line_ships(item)
 
 
 def _cart_requires_shipping(request) -> bool:

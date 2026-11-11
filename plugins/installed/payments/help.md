@@ -6,7 +6,7 @@ summary: Takes payment by Stripe, PayPal or cash on delivery, refunds through th
 
 This app gets your store paid: it offers Stripe, PayPal and cash on delivery at checkout, takes the charge, and refunds through whichever one took the money. A method appears at checkout only once it is switched on and fully set up. While Stripe is set up, the cart page also shows Apple Pay, Google Pay and Link buttons, so a shopper can pay from their wallet without filling in the checkout form.
 
-It also scores every new order for fraud from 0 to 100, from signs such as many orders from one IP address or email, differing shipping and billing countries, past refunds, or an unusually large first order. The score shows in a Fraud check card on the order's page.
+It also scores every new order for fraud from 0 to 100 (many orders from one IP address or email, differing shipping and billing countries, past refunds, an unusually large first order) in a Fraud check card on the order's page.
 
 ## Set it up
 
@@ -16,9 +16,7 @@ The fraud check needs nothing. The amount above which a first order counts as un
 
 ## Common tasks
 
-- Add or update Stripe and PayPal credentials.
 - Turn the wallet buttons on the cart page on or off, or ask Linda.
-- Turn cash on delivery on or off, and edit its instructions.
 - Try checkout as staff by choosing "Test payment".
 - Mark a cash-on-delivery or bank-transfer order as paid once the money arrives.
 - Refund an order, from its own page or by asking Linda.
@@ -27,6 +25,8 @@ The fraud check needs nothing. The amount above which a first order counts as un
 ## Good to know
 
 A wallet order is placed only for the total the wallet showed, with your shipping rates and tax. A declined wallet payment finishes on the checkout's payment page. A cart holding a download uses the checkout form while the digital-content acknowledgement is on. Apple Pay also needs your domain registered with Stripe.
+
+Cash on delivery is offered only when everything in the cart ships, since the courier collects the money: a cart with a download never offers it.
 
 A refund moves money only for an order charged through Stripe or PayPal; any other refund is recorded, and you settle it outside the store.
 

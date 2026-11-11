@@ -143,6 +143,40 @@
   </section>
   {% endif %}
 
+  <section class="space-y-2" id="low-stock">
+    <h2 class="text-sm font-semibold">Running low</h2>
+    <p class="text-xs text-[color:var(--text-muted)]">Free units (on hand, less those held for open orders) at or below {{ low_stock_threshold }}, fewest first. Open an item to enter what came in.</p>
+    {% if low_stock %}
+    <div class="card overflow-x-auto">
+      <table class="morph-table">
+        <thead>
+          <tr>
+            <th class="text-left">Item</th>
+            <th class="text-left">Warehouse</th>
+            <th class="text-right">Free</th>
+            <th class="text-right">On hand</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for sl in low_stock %}
+          <tr>
+            <td>
+              <a class="font-medium underline" href="{% url 'admin_dashboard:product_edit' sl.variant.product_id %}#stock-card">{{ sl.variant.product.name }}</a>
+              <span class="block text-xs text-[color:var(--text-muted)]">{% if sl.variant.name and sl.variant.name != 'Default' %}{{ sl.variant.name }} · {% endif %}<span class="font-mono">{{ sl.variant.sku }}</span></span>
+            </td>
+            <td>{{ sl.warehouse.name }}</td>
+            <td class="text-right tabular-nums {% if sl.available_quantity <= 0 %}text-danger{% else %}text-warn{% endif %}">{{ sl.available_quantity }}</td>
+            <td class="text-right tabular-nums">{{ sl.quantity }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-sm text-[color:var(--text-muted)]">Nothing is running low.</p>
+    {% endif %}
+  </section>
+
   <section class="space-y-2">
     <h2 class="text-sm font-semibold">Recent stock changes</h2>
     {% if movements %}

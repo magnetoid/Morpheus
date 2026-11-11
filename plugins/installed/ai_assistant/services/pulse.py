@@ -163,28 +163,29 @@ def _sig(payload: dict) -> str:
 
 
 def _low_stock_signal() -> dict | None:
-    from plugins.installed.inventory.models import StockLevel
+    """The list the Warehouses page shows under "Running low", and a link to it."""
+    from plugins.registry import app_registry
 
-    rows = list(
-        StockLevel.objects.select_related('variant', 'variant__product').filter(quantity__lte=5)[
-            :50
-        ]
-    )
-    rows = [s for s in rows if s.available_quantity <= 5]
+    if not app_registry.is_active('inventory'):
+        return None
+    from plugins.installed.inventory.services import low_stock_levels, low_stock_threshold
+
+    rows = low_stock_levels(limit=50)
     if not rows:
         return None
+    threshold = low_stock_threshold()
     examples = ', '.join(f'{s.variant.product.name} ({s.available_quantity})' for s in rows[:3])
     return {
         'insight_type': 'risk',
         'priority': 'high' if len(rows) >= 3 else 'medium',
         'title': f'{len(rows)} SKU(s) low or out of stock',
-        'body': f'On the shelf with ≤5 units: {examples}'
+        'body': f'On the shelf with ≤{threshold} units: {examples}'
         + (f' and {len(rows) - 3} more.' if len(rows) > 3 else '.'),
         'estimated_impact': 'Restock to avoid lost orders this week.',
         'suggested_action': {
             'kind': 'open_view',
-            'url': '/dashboard/inventory/?filter=low_stock',
-            'label': 'Open inventory',
+            'url': '/dashboard/inventory/warehouses/#low-stock',
+            'label': 'See what is running low',
         },
     }
 

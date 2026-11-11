@@ -6,7 +6,7 @@ summary: Connects the store to an AI provider and turns it into product search, 
 This is where you connect the store to an AI provider — OpenAI, Anthropic, Gemini, OpenRouter, Grok, DeepSeek, Qwen Cloud and others — and switch on what it powers: smarter product search and "you might also like" suggestions on the storefront, the daily Insights list and the Pulse cards on the dashboard home, and, if you choose, automatic price changes. Linda, the assistant, uses this same connection to answer questions and work in the background.
 
 ## Set it up
-Add an API key for at least one provider and choose it as the active provider; a blank key falls back to a server-level key where one is set. Then switch on only the features you want: meaning-based search, zero-shot product classification, dynamic pricing, or the autonomous operator, which lets scheduled runs act on their own timing instead of only when someone runs them by hand.
+Add an API key for at least one provider and choose it as the active provider; a blank key falls back to a server-level key where one is set. For Qwen Cloud use a pay-as-you-go key: a Token Plan key (it starts with `sk-sp-`) is refused, because Qwen allows Token Plan only in interactive coding and agent tools, not in a shop's backend. Then switch on only the features you want: meaning-based search, zero-shot product classification, dynamic pricing, or the autonomous operator, which lets scheduled runs act on their own timing instead of only when someone runs them by hand.
 
 ## Common tasks
 - Add a key and choose the active provider in [](settings:ai_assistant).

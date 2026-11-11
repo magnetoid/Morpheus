@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.152.1 — 2026-11-11
+
+**No cash on delivery for downloads; a real low-stock link**
+
+- Cash on delivery is offered only when everything in the cart ships, since the courier collects the money: a cart with a download leaves it out of the picker, an order that posts it anyway is charged by another method, and a store whose only method is cash on delivery says why such a cart cannot be paid.
+- Pulse's low-stock card opened /dashboard/inventory/?filter=low_stock, a page that never existed. It now opens a new Running low list on the Warehouses page, and the card, the dashboard home and that list read one list: switched-on warehouses, products that count stock, the store's low-stock threshold.
+- Settings → AI: a Qwen Cloud Token Plan key (sk-sp-) got "HTTP 401: Incorrect API key". The test now says why: Qwen allows Token Plan only in interactive coding and agent tools, not in a shop's backend, so use a pay-as-you-go key.
+
 ## v0.152.0 — 2026-11-10
 
 **Stock you can enter: a Stock card, a Warehouses page, transfers and backorders**

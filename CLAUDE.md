@@ -1335,7 +1335,11 @@ One rule, `digital_products/library.py:is_delivered`: a digital line (variant ty
 `audiobook`, or product type `digital`) is delivered when its order is paid, placed with an offline
 gateway (`orders.tasks.OFFLINE_GATEWAYS`: cash on delivery, bank transfer; owner, 2026-11-09), or
 fulfilled or shipped; it never waits for a shipment, and a dashboard order with nothing that ships
-offers no fulfilment (dotbooks' owner delivered a PDF by "shipping" it). The file comes from
+offers no fulfilment (dotbooks' owner delivered a PDF by "shipping" it). Cash on delivery is never
+offered for a cart with a line that does not ship (owner, 2026-11-11, v0.152.1): a gateway with
+`paid_on_delivery` drops out of `enabled_gateways(ships=False)`, the picker asks with the cart's lines
+(`CHECKOUT_GATEWAYS`, `ships=`) and `routing.create_payment_intent_for` with the order's
+(`orders.services.line_ships`, the one rule checkout's address step reads). The file comes from
 `DIGITAL_DELIVERY_FILE` (variant, product, then the app that owns the edition: audiobooks answers
 with its narration) and the order pages show it through `{% order_line_delivery %}`
 (`ORDER_LINE_DELIVERY`), so a theme imports no app. `/account/downloads/` is the Library;

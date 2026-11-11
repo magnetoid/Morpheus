@@ -328,4 +328,6 @@ def _payment_methods(request=None) -> list[dict]:
     from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
 
     user = getattr(request, 'user', None)
-    return hook_registry.filter(MorpheusEvents.CHECKOUT_GATEWAYS, [], user=user) or []
+    # A download can't be paid in cash on delivery: say whether every line ships.
+    ships = not _cart_has_digital(request) if request is not None else True
+    return hook_registry.filter(MorpheusEvents.CHECKOUT_GATEWAYS, [], user=user, ships=ships) or []

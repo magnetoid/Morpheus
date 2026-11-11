@@ -264,6 +264,14 @@ def probe_moonshot(*, api_key: str, base_url: str = '') -> dict:
 
 
 def probe_qwen(*, api_key: str, base_url: str = '') -> dict:
+    if api_key.startswith('sk-sp-'):
+        # Its own endpoint answers it, but Qwen's terms allow a Token Plan only in
+        # interactive coding and agent tools, never an application's backend.
+        return _fail(
+            'This is a Token Plan key (sk-sp-). Qwen allows Token Plan only in interactive '
+            "coding and agent tools, not in a shop's backend, and the normal endpoint "
+            "refuses it. Create a pay-as-you-go API key in Qwen Cloud's console instead."
+        )
     return _probe_openai_compatible(
         api_key=api_key,
         base_url=base_url,

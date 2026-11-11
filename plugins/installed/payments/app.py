@@ -140,11 +140,12 @@ class PaymentsPlugin(Plugin):
         )
         return value
 
-    def on_checkout_gateways(self, value, user=None, **kwargs):
-        """CHECKOUT_GATEWAYS: enabled-gateway dicts for the checkout picker."""
+    def on_checkout_gateways(self, value, user=None, ships=True, **kwargs):
+        """CHECKOUT_GATEWAYS: enabled-gateway dicts for the checkout picker
+        (no cash on delivery when ``ships`` is False)."""
         from plugins.installed.payments.services.routing import picker_gateways  # noqa: PLC0415
 
-        return picker_gateways(user=user)
+        return picker_gateways(user=user, ships=ships)
 
     def on_order_placed(self, order, **kwargs):
         """
