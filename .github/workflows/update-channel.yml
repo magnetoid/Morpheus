@@ -1,0 +1,45 @@
+name: update-channel
+
+# Starts morpheus-web's `channel` workflow once deploy-smoke has passed, so a
+# release reaches https://morpheus.direct/updates/stable.json minutes after it
+# is live. The channel's own 3-hourly schedule has never fired in that private
+# repository (2026-11-11), and a release used to wait for a hand-started run.
+#
+# It hangs off deploy-smoke's completion, never off the push: the channel
+# publishes only a release whose deploy-smoke run has completed with success,
+# and a run still in progress is not one. A run with nothing new publishes
+# nothing (no push, no site deploy), so a green smoke on a docs-only push costs
+# one short channel run.
+#
+# The token is a fine-grained one with "Actions: write" on morpheus-web only,
+# stored here as CHANNEL_DISPATCH_TOKEN. Without it this job says so and passes.
+
+on:
+  workflow_run:
+    workflows: ["deploy-smoke"]
+    types: [completed]
+    branches: ["main"]
+
+permissions: {}
+
+concurrency:
+  group: update-channel
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Start the channel in morpheus-web
+        env:
+          GH_TOKEN: ${{ secrets.CHANNEL_DISPATCH_TOKEN }}
+          SMOKED: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::CHANNEL_DISPATCH_TOKEN is not set; the channel was not started."
+            exit 0
+          fi
+          gh workflow run channel.yml --repo magnetoid/morpheus-web --ref main
+          echo "Channel started after deploy-smoke passed on ${SMOKED:0:7}."
