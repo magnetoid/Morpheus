@@ -77,6 +77,12 @@ class UpdaterCardChannelTests(TestCase):
         r = self._page(_status(available='no'), can_self_update=False)
         self.assertContains(r, reverse('admin_dashboard:updates_check'))
 
+    def test_check_button_shows_for_a_github_releases_install_without_git(self):
+        status = _status(source='github', available='unknown', reason='Not checked yet.')
+        r = self._page(status, can_self_update=False)
+        self.assertContains(r, reverse('admin_dashboard:updates_check'))
+        self.assertNotContains(r, reverse('admin_dashboard:updates_apply'))
+
     def test_off_shows_the_reason_on_a_built_image(self):
         off = {
             'source': 'none',

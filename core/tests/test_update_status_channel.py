@@ -217,6 +217,25 @@ class StaleCacheAndOffTests(SimpleTestCase):
         self.assertEqual((cached['available'], cached['latest']), ('yes', 'v2.0.0'))
         self.assertEqual(cached['path'], 'manual')
 
+    def test_a_cached_github_yes_follows_the_running_version(self):
+        cache.set(
+            _UPDATE_STATUS_CACHE_KEY,
+            {'source': 'github', 'available': 'yes', 'latest': 'v2.0.0', 'current': 'v1.0.0'},
+            60,
+        )
+        with (
+            override_settings(
+                MORPHEUS_UPDATE_MANIFEST_URL='',
+                MORPHEUS_UPDATE_REPO='o/r',
+                MORPHEUS_VERSION='v2.0.0',
+                BASE_DIR=self.tmp,
+            ),
+            mock.patch('core.update_sources.urllib.request.urlopen') as urlopen,
+        ):
+            status = platform_update_status(fetch=False)
+        urlopen.assert_not_called()
+        self.assertEqual((status['available'], status['current']), ('no', 'v2.0.0'))
+
 
 class CheckCommandPathTests(SimpleTestCase):
     def test_update_line_names_the_path(self):

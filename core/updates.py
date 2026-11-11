@@ -94,14 +94,15 @@ def current_view(status: dict) -> dict:
 
     The cache outlives a deploy, so "vX is out" can be stale the moment a store
     takes vX. Returns a copy whose ``current`` is the running version and, for a
-    manifest answer, whose ``available`` is re-derived from it.
+    release answer (the signed channel or GitHub releases), whose ``available``
+    is re-derived from it.
     """
     from core.update_sources import is_newer
     from core.versioning import core_version
 
     out = {**status, 'current': core_version()}
     if (
-        status.get('source') == 'manifest'
+        status.get('source') in ('manifest', 'github')
         and status.get('available') in ('yes', 'no')
         and status.get('latest')
     ):

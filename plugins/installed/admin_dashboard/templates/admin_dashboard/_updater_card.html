@@ -15,7 +15,7 @@ there (safe-deploys spec, part 5).
       <p class="text-sm text-[color:var(--text-muted)]">{% if running.commit %}Commit <code>{{ running.commit_short }}</code>{% endif %}{% if running.commit and running.deployed_at %} · {% endif %}{% if running.deployed_at %}Installed {{ running.deployed_at|date:"j M Y, H:i" }}{% endif %}</p>
       {% endif %}
     </div>
-    {% if running.self_update or platform.source == 'manifest' %}
+    {% if running.self_update or platform.source == 'manifest' or platform.source == 'github' %}
     <form method="post" action="{% url 'admin_dashboard:updates_check' %}">
       {% csrf_token %}
       <button type="submit" class="btn btn-ghost text-sm"><i data-lucide="refresh-cw" class="h-4 w-4"></i> Check for updates</button>
