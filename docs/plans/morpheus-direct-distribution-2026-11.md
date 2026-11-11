@@ -74,7 +74,7 @@ Today only the owner's five stores get new versions, because Coolify builds `mai
 - **Where the key lives.** The private key goes in one place: the morpheus-web GitHub secret `MORPHEUS_SIGNING_KEY`, with a copy in the owner's Keychain. It never goes in the Morpheus repo, a store, or a deployment.
 - **Why not sign in Morpheus.** The alternative was for Morpheus's own workflows to sign after deploy-smoke and publish the file. That works too. But when the marketplace returns, its registry lives on morpheus.direct, and one signer in one place stays true.
 
-**A new workflow in morpheus-web, `channel.yml`,** runs every 3 hours and on manual dispatch (every 3 hours rather than hourly, because the private repo's Actions minutes are limited; my call). Each run:
+**A new workflow in morpheus-web, `channel.yml`,** runs every 3 hours and on manual dispatch (every 3 hours rather than hourly, because the private repo's Actions minutes are limited; my call). *Amended 2026-11-11 (owner yes): the schedule never fired, even after a disable and enable, so Morpheus' `update-channel` workflow dispatches `channel.yml` once deploy-smoke passes, with a fine-grained token (`CHANNEL_DISPATCH_TOKEN`, Actions: write on morpheus-web only).* Each run:
 
 1. **Finds the newest release.** It reads the newest GitHub Release of `magnetoid/Morpheus` (public, no token) and resolves its tag to the commit. Tags are annotated, so the tag ref names a tag object; dereference it (`refs/tags/vX.Y.Z^{}`).
 2. **Waits for deploy-smoke.** It publishes a release only once the `deploy-smoke` workflow run for that commit concluded `success`. A release that left the owner's stores down, and was rolled back, is never offered. The channel keeps naming the previous good one, and the run logs why.
