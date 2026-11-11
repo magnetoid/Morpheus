@@ -29,6 +29,20 @@ class ProbeCoverageTests(SimpleTestCase):
         self.assertFalse(out['ok'])
         self.assertIn('API key', out['error'])
 
+    def test_a_qwen_token_plan_key_says_what_to_use_instead(self):
+        """A Token Plan key got "HTTP 401: Incorrect API key" from the normal
+        endpoint, and Qwen's terms keep Token Plan out of application backends."""
+        from unittest import mock
+
+        from plugins.installed.ai_assistant.services import probe as probes
+
+        with mock.patch.object(probes, '_http_get') as http:
+            out = probes.probe('qwen', api_key='sk-sp-example', base_url='')
+        http.assert_not_called()
+        self.assertFalse(out['ok'])
+        self.assertIn('Token Plan', out['error'])
+        self.assertIn('pay-as-you-go', out['error'])
+
     def test_unknown_provider_still_reported(self):
         from plugins.installed.ai_assistant.services.probe import probe
 

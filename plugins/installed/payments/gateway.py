@@ -42,6 +42,9 @@ class PaymentGateway(ABC):
     supports_webhooks: bool = True
     # Offered only to staff (a sandbox method a merchant uses to test checkout).
     staff_only: bool = False
+    # Paid to the courier when the parcel arrives (cash on delivery): offered
+    # only while every line of the order ships, so never for a download.
+    paid_on_delivery: bool = False
 
     def is_configured(self) -> bool:
         """Whether this gateway can take a payment right now.
@@ -90,14 +93,16 @@ class GatewayRegistry:
     def all(self) -> list[PaymentGateway]:
         return list(self._gateways.values())
 
-    def enabled_gateways(self, *, user=None) -> list[PaymentGateway]:
+    def enabled_gateways(self, *, user=None, ships: bool = True) -> list[PaymentGateway]:
         """Registered gateways that are switched on, set up, and offered to ``user``.
 
         Backs the checkout payment-method picker AND server-side
         validation of the submitted slug (see
         ``payments.services.routing``): checkout resolves the chosen
         gateway against this list and falls back to ``default()`` for an
-        empty / unknown / disabled slug.
+        empty / unknown / disabled slug. ``ships=False`` (a line that does
+        not go out in a parcel, such as a download) leaves out a method
+        paid on delivery.
         """
         from plugins.installed.payments.models import is_enabled
 
@@ -105,16 +110,19 @@ class GatewayRegistry:
         return [
             g
             for g in self._gateways.values()
-            if is_enabled(g.slug) and (is_staff or not g.staff_only) and _configured(g)
+            if is_enabled(g.slug)
+            and (is_staff or not g.staff_only)
+            and (ships or not g.paid_on_delivery)
+            and _configured(g)
         ]
 
-    def default(self, *, user=None) -> PaymentGateway | None:
+    def default(self, *, user=None, ships: bool = True) -> PaymentGateway | None:
         """Stripe when it can take payments, else the first working method.
 
         A staff-only method is the default only when nothing else is offered;
         ``None`` means the store cannot take a payment at all.
         """
-        offered = self.enabled_gateways(user=user)
+        offered = self.enabled_gateways(user=user, ships=ships)
         for g in offered:
             if g.slug == 'stripe':
                 return g

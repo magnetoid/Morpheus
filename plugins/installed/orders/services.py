@@ -233,6 +233,15 @@ def merge_carts(*, source_cart: Cart, target_cart: Cart) -> Cart:
     return target_cart
 
 
+def line_ships(item) -> bool:
+    """Whether a cart or order line goes out in a parcel: the variant's
+    ``requires_shipping`` overrides the product's, and a line whose product is
+    gone counts as shipping. Checkout reads it to skip the address step and to
+    leave cash on delivery out for a download."""
+    target = item.variant if getattr(item, 'variant', None) is not None else item.product
+    return bool(getattr(target, 'requires_shipping', True))
+
+
 def _is_inventoried(product, variant) -> bool:
     """True when this product/variant tracks physical stock and should
     therefore go through cart-time Redis reservation.

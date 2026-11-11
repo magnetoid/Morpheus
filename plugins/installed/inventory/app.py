@@ -161,25 +161,15 @@ class InventoryPlugin(Plugin):
         )
 
     def on_dashboard_panels(self, value, date_range=None, **kwargs):
-        """Fold the low-stock list (+ threshold) into the home context.
-
-        available_quantity is a Python property, so pull a small page and
-        filter in-memory rather than denormalising a column for one tile.
-        """
-        from plugins.installed.inventory.models import StockLevel  # noqa: PLC0415
-        from plugins.installed.inventory.services import low_stock_threshold  # noqa: PLC0415
-
-        threshold = low_stock_threshold()
-        candidates = list(
-            StockLevel.objects.select_related('variant', 'variant__product', 'warehouse').filter(
-                quantity__lte=threshold + 50
-            )[:200]
+        """Fold the low-stock list (+ threshold) into the home context: the six
+        fewest of the list the Warehouses page shows."""
+        from plugins.installed.inventory.services import (  # noqa: PLC0415
+            low_stock_levels,
+            low_stock_threshold,
         )
-        value['low_stock'] = sorted(
-            (sl for sl in candidates if sl.available_quantity <= threshold),
-            key=lambda sl: sl.available_quantity,
-        )[:6]
-        value['low_stock_threshold'] = threshold
+
+        value['low_stock'] = low_stock_levels(limit=6)
+        value['low_stock_threshold'] = low_stock_threshold()
         return value
 
     def on_stock_summary(self, value=None, product_ids=None, **kwargs):

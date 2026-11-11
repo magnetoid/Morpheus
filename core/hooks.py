@@ -578,8 +578,9 @@ class MorpheusEvents:
     CHECKOUT_SHIPPING_RATES = 'checkout.shipping_rates'  # filter
     # CHECKOUT_GATEWAYS — filter, value=list. The checkout payment-method
     #   picker. Subscriber (payments) returns its enabled gateway dicts
-    #   (payments.services.routing.picker_gateways). Plugin disabled → []
-    #   and the picker renders no gateway choices.
+    #   (payments.services.routing.picker_gateways). kwargs: user, ships=bool
+    #   (False when a cart line does not ship, which leaves cash on delivery
+    #   out). Plugin disabled → [] and the picker renders no gateway choices.
     CHECKOUT_GATEWAYS = 'checkout.gateways'  # filter
     # SEARCH_RANKED_IDS — filter, value=list. Semantic/hybrid ranking for
     #   storefront search. kwargs: query=str, limit=int. Subscriber

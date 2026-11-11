@@ -17,6 +17,9 @@ class CashOnDeliveryGateway(PaymentGateway):
     label = 'Cash on delivery'
     supports_refunds = False
     supports_webhooks = False
+    # The courier collects the money, so a download (nothing to deliver) can't
+    # be paid this way (owner, 2026-11-11).
+    paid_on_delivery = True
 
     def create_payment_intent(self, *, order, **kwargs) -> dict:
         # Order is accepted now; payment is collected by the courier on
