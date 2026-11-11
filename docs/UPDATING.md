@@ -1,8 +1,10 @@
 # Updating Morpheus
 
-> Status of this document: **verified against the running deployment on
-> 2026-08-11 (v0.42.0)**, updated 2026-08-13 for v0.44.0 and 2026-10-19 for v0.118.0 (safe deploys). Claims here were checked, not assumed. Where a
-> capability exists but does not currently function, this says so plainly.
+> Status of this document: the claim that the updater is inert on a built image was **verified
+> against the running deployment on 2026-08-11 (v0.42.0)**. Later sections were updated for v0.44.0,
+> v0.118.0 (safe deploys) and, for "Updates from morpheus.direct", v0.153.0's code (read from the
+> code, not re-verified on a running deployment). Where a capability exists but does not currently
+> function, this says so plainly.
 
 Morpheus updates three kinds of thing, and they do **not** share a mechanism:
 
@@ -27,11 +29,13 @@ shipped. Concretely:
 apps + active themes with their versions. Read-only, fail-soft.
 CLI: `manage.py morph_versions [--json]`.
 
-**Status check** — `core/updates.py:platform_update_status(fetch=False)` compares
-the deployed git checkout against its upstream branch and returns
-`{source, available, current, sha, branch, upstream, behind, ahead, latest}`,
-where `available ∈ {yes, no, unknown, unavailable}`. Cached for 36h under
-`morpheus:update_status` so a missed daily run doesn't blank the page.
+**Status check** — `core/updates.py:platform_update_status(fetch=False)` reads the signed
+morpheus.direct channel first (see "Updates from morpheus.direct"); a page load (`fetch=False`)
+reads the cached answer and never fetches. Only when no signed source is configured does it fall
+back to git: it compares the deployed checkout against its upstream branch. It returns
+`{source, available, current, ..., path}` (git adds `sha, branch, upstream, behind, ahead`),
+where `available ∈ {yes, no, unknown, unavailable}` and `path` is `git` or `manual`. Cached for 36h
+under `morpheus:update_status` so a missed daily run doesn't blank the page.
 CLI: `manage.py morph_check_updates`.
 
 **Apply + rollback** — `core/updates.py:apply_platform_update()`. This is the
@@ -55,11 +59,13 @@ this loudly. Treat any update that migrates as backup-first.
 ## Update checks without git (v0.43.2)
 
 `core/update_sources.py` adds a pluggable `UpdateSource`, with a
-`GitHubReleaseSource` implementation. When a deployment has no `.git`,
-`platform_update_status()` now falls back to the configured source instead of
-giving up, so a container install can finally *ask* whether an update exists:
+`GitHubReleaseSource` implementation. The default source is now the signed
+morpheus.direct channel (see "Updates from morpheus.direct"). The GitHub source is a fork's
+opt-out: it is used only when `MORPHEUS_UPDATE_MANIFEST_URL` is set empty and
+`MORPHEUS_UPDATE_REPO` is set, so a container install can still *ask* whether an update exists:
 
 ```bash
+MORPHEUS_UPDATE_MANIFEST_URL=             # empty: do not use the signed channel
 MORPHEUS_UPDATE_REPO=magnetoid/morpheus   # owner/repo
 MORPHEUS_UPDATE_TOKEN=…                   # optional now the repo is public (raises the GitHub API rate limit)
 ```
@@ -82,9 +88,9 @@ Two behaviours worth knowing:
   none.
 
 Signing landed in v0.43.3 and the per-app / per-theme channel in v0.44.0 (both
-below). Still missing: **artifact verification for the *core* apply** — the
-core path is git fast-forward and carries no artifact to verify; a
-container deployment redeploys instead.
+below). The *core* apply carries no downloaded artifact to verify: on a git checkout it
+fast-forwards to the commit the signed release names, and a built image takes the release
+by running the pinned image, which the manifest names by digest.
 
 ---
 
@@ -293,42 +299,73 @@ than redeploying: a redeploy builds the branch head, which is the release that f
 
 ---
 
+## Updates from morpheus.direct
+
+Every install asks one signed file, `https://morpheus.direct/updates/stable.json`, whether a
+newer release is out. The morpheus-web repository signs and publishes it every 3 hours, only for a
+release whose deploy-smoke passed and whose image exists on GHCR.
+
+- **What is checked, and how often:** once a day, by the beat job `core-check-for-updates`
+  (04:45 UTC, `core.tasks.check_for_updates`). The Version & updates page reads the cached answer
+  and never fetches on a page load; Check fetches it again.
+- **What is sent:** one GET with the header `User-Agent: morpheus-updater/<MORPHEUS_VERSION>`.
+  No store name, domain or id.
+- **What comes back:** the release's version, its `commit`, the pinned `image`, whether it is
+  `breaking`, and its notes. The signature is checked against the public key below; an unsigned
+  file, a wrong key or a bad signature is ignored entirely (fails closed).
+- **Turning it off:** `MORPHEUS_UPDATE_MANIFEST_URL=off`. Nothing is fetched, git included (a checkout
+  fetches nothing and Update now refuses), and the page says checks are off.
+- **The two paths** (`core.updates.update_path()`):
+  - `git`: a git checkout that can update itself (`can_self_update()`: a git checkout with git
+    installed). Check, then **Update now** fast-forwards to exactly the commit the signed release
+    names, never past it, but only when `MORPHEUS_SELF_UPDATE_ENABLED` is on (it is off by
+    default).
+  - `manual`: a built image. The page and Linda name the new version and show the pinned image,
+    `ghcr.io/magnetoid/morpheus:<sha>@sha256:<digest>`, with the docker compose commands whoever
+    runs the server uses, plus the upgrade-steps link when the release is breaking. A store that
+    Coolify deploys from this repository's `main` branch runs each release as it is published.
+- **Forks:** a deployment that sets only `MORPHEUS_UPDATE_REPO` now follows the signed
+  morpheus.direct channel, because the default manifest URL wins. A fork that wants its own GitHub
+  releases sets `MORPHEUS_UPDATE_MANIFEST_URL=` (empty) plus `MORPHEUS_UPDATE_REPO`. A fork with
+  its own channel sets both `MORPHEUS_UPDATE_MANIFEST_URL` and `MORPHEUS_UPDATE_PUBLIC_KEY`: a URL
+  without a key inherits the morpheus.direct key, fails closed and logs an error on every check.
+- **Key rotation:** `MORPHEUS_UPDATE_PUBLIC_KEY` holds a comma-separated list. A release first
+  adds the new key to the baked list; the signer switches only after that release is live; the old
+  key is dropped in a later release.
+- **The public key** (Ed25519, base64): `C5sqsZab9ZAiYPX1Mnieid9xBahDy61RNvvf7ykJtQI=`. The private
+  key is never in this repository.
+
+---
+
 ## What does not work, and why
 
-### The updater is inert on this production deployment
+### The in-app updater is not a button on every deployment
 
-`platform_update_status()` and `apply_platform_update()` both begin by checking
-for `.git` in the deployment root, and return `unavailable` without it:
+`platform_update_status()` reads the signed channel first, so every install learns that a new
+release is out. `apply_platform_update()` still needs git metadata and returns `unavailable`
+without it:
 
 > *"No git metadata in this deployment (built image / non-git install)."*
 
 **Verified 2026-08-11 on dotbooks.store:** `/app/.git` does not exist in the
-running web container. So `morph_apply_update` refuses, by design. Since v0.118.0
-the Version & updates page and Linda say so plainly, instead of offering check and
-apply buttons that cannot work there. Everything above is correct code that this
-deployment cannot reach.
+running web container. So `morph_apply_update` refuses there, by design, and the Version &
+updates page and Linda show the manual path (the pinned image and its commands) instead of an
+update button that cannot work.
 
-This is not a bug in the updater — it is the deployment model. Coolify builds an
-image from a source copy without git metadata, and updates happen by
-**rebuild + redeploy** (a push to `main`), not by the in-place updater. That is
-a legitimate and arguably safer model. It just means: **do not rely on the
-in-app updater on a container deployment. Redeploy.**
+This is the deployment model, not a bug. Coolify builds an image from a source copy without git
+metadata, and updates happen by **rebuild + redeploy** (a push to `main`), or by running the
+pinned image the release names.
 
-Since v0.43.2 the *check* half no longer depends on git — set
-`MORPHEUS_UPDATE_REPO` and the section above takes over, so the dashboard can at
-least tell you a newer version exists. **Applying** still requires git and is
-still the wrong tool here; the answer on a container remains "redeploy".
+### Applying still depends on how the code got there
 
-### The channel model does not fit open-core distribution
+The check works on every install; applying does not:
 
-The current source is **git fast-forward from the deployment's own upstream
-branch**. That works for an operator who deployed by cloning the repository. It
-does not work for anyone else, and "anyone else" is the whole point of an
-open-core product:
-
-- An operator who runs a **published image** has no upstream branch to fast-forward.
-- An operator who installed from a **tarball or package index** has no git at all.
-- Nobody gets **integrity guarantees on the git path** — a fast-forward trusts whatever the remote says. (The signed-manifest source added in v0.43.3 does verify; the git path does not and cannot.)
+- An operator who runs a **published image** has no upstream branch to fast-forward, and takes
+  the release by running the pinned image.
+- An operator who installed from a **tarball or package index** has no git at all and takes the
+  release the same manual way.
+- The **git path** fast-forwards only to the commit the signed release names, so it no longer
+  trusts whatever the remote says.
 - Apps and themes that ship with core have no channel of their own — they are the platform. Apps and themes installed **on their own** do (v0.44.0, above).
 
 Phase 3 of the plan ("a pluggable `UpdateSource` per component") was designed
@@ -336,20 +373,17 @@ for exactly this. The interface exists (v0.43.2) with two implementations, and
 since v0.44.0 the signed-manifest source resolves individual apps and themes
 too (`UpdateSource.components()`); the GitHub source deliberately does not —
 it authenticates the transport, not the publisher, and an app update is
-arbitrary code imported at boot. The status log records the interim decision —
-*"Channel decided = git refs/tags"* — which this section supersedes for
-distributed installs.
+arbitrary code imported at boot.
 
 ---
 
 ## Design: a release channel on `morpheus.direct`
 
-This is the shape the open-core product needs. **Mostly implemented as of
-v0.44.0** — signing, verification, per-component check and per-component apply
-exist; **hosting** does not (nothing is published at `morpheus.direct` yet —
-though the repository is public since 2026-08-21, so anonymous clients can
-reach the GitHub releases). What is built and what is not is marked inline
-below.
+This is the shape the source-available product needs, and it is built: signing,
+verification, per-component check and apply, and the hosting. The channel
+file is live at `https://morpheus.direct/updates/stable.json`; its manifest carries the
+release's `commit` and the pinned `image`. The core apply is a fast-forward to the release commit
+for git checkouts, and a new image for built images.
 
 **Built:** `core/signing.py` (Ed25519 sign/verify with a canonical JSON form),
 `SignedManifestSource` in `core/update_sources.py` (core + `apps` + `themes`),
@@ -366,8 +400,8 @@ MORPHEUS_SIGNING_KEY=… python manage.py morph_sign_manifest \
     --sha256 … --out stable.json
 ```
 
-Deployments then set `MORPHEUS_UPDATE_MANIFEST_URL` and
-`MORPHEUS_UPDATE_PUBLIC_KEY`. A signed manifest takes precedence over the
+Deployments read the morpheus.direct channel by default; a fork sets its own
+`MORPHEUS_UPDATE_MANIFEST_URL` and `MORPHEUS_UPDATE_PUBLIC_KEY`. A signed manifest takes precedence over the
 GitHub source, because it proves the *publisher* produced the bytes; HTTPS only
 proves you reached a server.
 
@@ -378,9 +412,9 @@ code is worse than not updating. (Authorization fails *open* because locking a
 merchant out of their own dashboard is worse than a missed permission check —
 the two postures are opposite on purpose.)
 
-**Not built:** hosting the manifest anywhere, and downloading/verifying a
-*core* artifact — the core apply is still git fast-forward, and a container
-install redeploys. Per-app / per-theme entries are read and applied (v0.44.0).
+**Not built:** downloading and verifying a *core* artifact. The core apply is a git
+fast-forward to the release's `commit`, and a container install runs the pinned `image`.
+Per-app / per-theme entries are read and applied (v0.44.0).
 
 ### 1. A signed release manifest
 
@@ -435,9 +469,14 @@ the merchant's message while code swaps, and staff keep access.
 ### 4. Container installs update by tag, not by patch
 
 For image-based deployments the honest update path is "pull the new tag and
-recreate", not an in-place file swap. The manifest should carry the image
-reference so the dashboard can *tell the operator what to pull* and verify the
-running version afterwards, rather than pretending it can self-patch.
+recreate", not an in-place file swap. The manifest carries the image
+reference so the dashboard can *tell the operator what to pull*, rather than pretending it can
+self-patch.
+
+**Built:** the signed manifest carries `commit` and an `image` pinned by digest
+(`ghcr.io/magnetoid/morpheus:<sha>@sha256:<digest>`), and Version & updates and Linda show the
+docker compose commands for it, with the upgrade-steps link when the release is breaking.
+**Not built:** an "Update now" for a store Coolify deploys; that is a later release.
 
 ---
 

@@ -119,7 +119,7 @@ class GitlessDeploymentTests(SimpleTestCase):
                 GitHubReleaseSource, 'latest', return_value=ReleaseInfo(version='v99.0.0')
             ),
         ):
-            out = updates.platform_update_status()
+            out = updates.platform_update_status(fetch=True)
         self.assertEqual(out['source'], 'github')
         self.assertEqual(out['available'], 'yes')
 

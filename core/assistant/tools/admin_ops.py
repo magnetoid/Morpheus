@@ -17,9 +17,10 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
     name='updates.status',
     description=(
         'Report what this store runs: version, commit, when it was installed, the backup of '
-        'the database made before the last update that changed it, and whether the store '
-        'can update itself. Where it can (a git checkout), also whether an update is '
-        'available and how many commits behind upstream. Read-only.'
+        'the database made before the last update that changed it, and whether a newer '
+        'release is out. Every install learns about new releases from the signed channel '
+        '(the answer is the daily check; the dashboard has Check for updates). A git checkout '
+        'can apply one; a built image is told the image and commands to take it. Read-only.'
     ),
     scopes=['system.read'],
     schema={'type': 'object', 'properties': {}},
@@ -30,17 +31,20 @@ def updates_status_tool() -> ToolResult:
     from core.versioning import component_versions  # noqa: PLC0415
 
     running = running_release()
-    status = platform_update_status(fetch=True)
+    status = platform_update_status(fetch=False)
     versions = component_versions()
     output = {'running': _as_json(running), 'platform': status, 'core': versions.get('core')}
     if not running['self_update']:
         return ToolResult(output=output, display=_built_image_summary(running, status))
+    available = status.get('available')
+    if available == 'yes' and status.get('latest'):
+        what = f'{status["latest"]} is out'
+    else:
+        what = f'Update {available}'
+    behind = f', {status["behind"]} behind' if status.get('behind') else ''
     return ToolResult(
         output=output,
-        display=(
-            f'Update {status.get("available")} — deployed {status.get("current")}'
-            f'{", " + str(status.get("behind")) + " behind" if status.get("behind") else ""}.'
-        ),
+        display=f'{what} — deployed {status.get("current")}{behind}.',
     )
 
 
@@ -62,9 +66,18 @@ def _built_image_summary(running: dict, status: dict) -> str:
         parts.append(f' (commit {running["commit_short"]})')
     if running['deployed_at']:
         parts.append(f', installed {running["deployed_at"]:%Y-%m-%d %H:%M} UTC')
-    parts.append('. This store updates when a new version is released; it cannot update itself.')
+    parts.append('. This store cannot update itself.')
     if status.get('available') == 'yes' and status.get('latest'):
         parts.append(f' {status["latest"]} is out.')
+        if status.get('path') == 'manual' and status.get('image'):
+            parts.append(
+                f' To take it, set MORPHEUS_IMAGE={status["image"]}, then run docker compose pull'
+                ' and docker compose up -d --no-build.'
+            )
+        if status.get('breaking') and status.get('migrating_url'):
+            parts.append(f' It has upgrade steps: {status["migrating_url"]}.')
+    elif status.get('source') == 'none' and status.get('reason'):
+        parts.append(f' {status["reason"]}')
     if running['backup']:
         taken = running['backup']['taken_at']
         parts.append(

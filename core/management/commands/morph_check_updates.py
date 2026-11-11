@@ -45,7 +45,8 @@ class Command(BaseCommand):
             )
             self.stdout.write(
                 self.style.WARNING(
-                    f'Update available: {detail} (deployed {status.get("current")}).'
+                    f'Update available: {detail} (deployed {status.get("current")}, '
+                    f'path: {status.get("path")}).'
                 )
             )
         elif avail == 'no':

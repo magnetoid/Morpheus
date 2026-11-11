@@ -98,6 +98,19 @@ class UpdatesToolsTests(TestCase):
             r = updates_status_tool.invoke({})
         self.assertEqual(r.output['platform']['available'], 'yes')
 
+    def test_status_reads_the_cached_answer_and_names_what_is_out(self):
+        from core.assistant.tools.admin_ops import updates_status_tool
+
+        status = {'available': 'yes', 'latest': 'v9.0.0', 'current': 'v1.0.0'}
+        with (
+            patch('core.updates.can_self_update', return_value=True),
+            patch('core.updates.platform_update_status', return_value=status) as pus,
+            patch('core.versioning.component_versions', return_value={'core': '1.0'}),
+        ):
+            r = updates_status_tool.invoke({})
+        pus.assert_called_once_with(fetch=False)
+        self.assertIn('v9.0.0 is out', r.display)
+
     def test_apply_requires_hard_gate(self):
         from core.assistant.tools.admin_ops import updates_apply_tool
 
@@ -135,10 +148,32 @@ class UpdatesToolsTests(TestCase):
             patch('core.updates.platform_update_status', return_value=status),
         ):
             r = updates_status_tool.invoke({})
-        self.assertIn('This store updates when a new version is released', r.display)
+        self.assertIn('This store cannot update itself', r.display)
         self.assertNotIn('Update unavailable', r.display)
         self.assertEqual(r.output['running']['version'], settings.MORPHEUS_VERSION)
         self.assertFalse(r.output['running']['self_update'])
+
+    def test_status_says_how_a_built_image_takes_the_release(self):
+        from core.assistant.tools.admin_ops import updates_status_tool
+
+        status = {
+            'source': 'manifest',
+            'available': 'yes',
+            'latest': 'v9.0.0',
+            'image': 'ghcr.io/magnetoid/morpheus:' + 'a' * 40,
+            'path': 'manual',
+            'breaking': True,
+            'migrating_url': 'https://example.test/MIGRATING.md',
+        }
+        with (
+            patch('core.updates.can_self_update', return_value=False),
+            patch('core.updates.platform_update_status', return_value=status),
+        ):
+            r = updates_status_tool.invoke({})
+        self.assertIn('MORPHEUS_IMAGE=ghcr.io/magnetoid/morpheus:', r.display)
+        self.assertNotIn('updates when a new version is released', r.display)
+        self.assertIn('docker compose up -d --no-build', r.display)
+        self.assertIn('upgrade steps: https://example.test/MIGRATING.md', r.display)
 
     def test_status_output_is_plain_json(self):
         # Tool output is stored as JSON (the audit trail, Linda's chat history)

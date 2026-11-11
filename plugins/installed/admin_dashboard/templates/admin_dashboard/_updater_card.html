@@ -15,7 +15,7 @@ there (safe-deploys spec, part 5).
       <p class="text-sm text-[color:var(--text-muted)]">{% if running.commit %}Commit <code>{{ running.commit_short }}</code>{% endif %}{% if running.commit and running.deployed_at %} · {% endif %}{% if running.deployed_at %}Installed {{ running.deployed_at|date:"j M Y, H:i" }}{% endif %}</p>
       {% endif %}
     </div>
-    {% if running.self_update %}
+    {% if running.self_update or platform.source == 'manifest' or platform.source == 'github' %}
     <form method="post" action="{% url 'admin_dashboard:updates_check' %}">
       {% csrf_token %}
       <button type="submit" class="btn btn-ghost text-sm"><i data-lucide="refresh-cw" class="h-4 w-4"></i> Check for updates</button>
@@ -38,7 +38,40 @@ there (safe-deploys spec, part 5).
   </div>
   {% endif %}
   <div class="mt-3 pt-3 border-t border-[color:var(--border)] text-sm">
-    {% if not running.self_update %}
+    {% if platform.source == 'manifest' %}
+      {% if platform.available == 'yes' %}
+        <span class="pill pill-warn">Update available</span>
+        <strong>{{ platform.latest }} is out</strong>
+        <span class="text-[color:var(--text-muted)]">· running <code>{{ platform.current }}</code></span>
+        {% if platform.notes %}<p class="mt-2">{{ platform.notes|linebreaksbr }}</p>{% endif %}
+        <div class="mt-2 flex items-center gap-2 flex-wrap">
+          {% if platform.notes_url %}<a href="{{ platform.notes_url }}" class="text-sm underline" target="_blank" rel="noopener">Release notes</a>{% endif %}
+          {% if platform.breaking and platform.migrating_url %}<a href="{{ platform.migrating_url }}" class="pill pill-warn" target="_blank" rel="noopener">Has upgrade steps</a>{% endif %}
+        </div>
+        {% if platform.path == 'git' %}
+        <div class="mt-2 flex items-center gap-2 flex-wrap">
+          <form method="post" action="{% url 'admin_dashboard:updates_apply' %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary text-sm"
+                    data-confirm="Apply update? This backs up first, moves the deployment from {{ platform.current }} to {{ platform.latest }}, boot-probes the new code, runs migrations, and auto-rolls-back on any failure.">
+              <i data-lucide="download" class="h-4 w-4"></i> Update now
+            </button>
+          </form>
+          {% if not self_update_enabled %}<span class="text-xs text-[color:var(--text-muted)]">Self-update is off — set <code>MORPHEUS_SELF_UPDATE_ENABLED=1</code> to allow one-click apply.</span>{% endif %}
+        </div>
+        {% elif platform.image %}
+        <p class="mt-2">To update: set <code>MORPHEUS_IMAGE={{ platform.image }}</code> in your .env, then run <code>docker compose pull</code> and <code>docker compose up -d --no-build</code>.</p>
+        {% endif %}
+      {% elif platform.available == 'no' %}
+        <span class="pill pill-success">Up to date</span>
+        <span class="text-[color:var(--text-muted)]">at <code>{{ platform.current }}</code></span>
+      {% else %}
+        <span class="pill">Version check {{ platform.available }}</span>
+        <span class="text-[color:var(--text-muted)]">{{ platform.reason }}</span>
+      {% endif %}
+    {% elif platform.source == 'none' %}
+      <span class="text-[color:var(--text-muted)]">{{ platform.reason }}</span>
+    {% elif not running.self_update %}
       This store updates when a new version is released.{% if platform.available == 'yes' and platform.latest %} {{ platform.latest }} is out.{% endif %}
     {% elif platform.available == 'yes' %}
       <span class="pill pill-warn">Update available</span>

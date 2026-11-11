@@ -105,7 +105,7 @@ class SignedManifestSourceTests(SimpleTestCase):
         return mock.patch(
             'urllib.request.urlopen',
             return_value=mock.MagicMock(
-                __enter__=lambda s: mock.MagicMock(read=lambda: json.dumps(doc).encode()),
+                __enter__=lambda s: mock.MagicMock(read=lambda size=-1: json.dumps(doc).encode()),
                 __exit__=lambda *a: False,
             ),
         )

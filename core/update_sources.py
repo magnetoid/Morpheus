@@ -30,7 +30,30 @@ from dataclasses import dataclass
 logger = logging.getLogger('morpheus.updates')
 
 _TIMEOUT = 10  # seconds; an update check must never hold a request open
-_USER_AGENT = 'morpheus-updater'
+_USER_AGENT = 'morpheus-updater'  # bare name: the per-component channel still sends it
+
+_COMMIT_RE = re.compile(r'[0-9a-f]{40}')
+_CHANNEL_IMAGE_REPO = 'ghcr.io/magnetoid/morpheus'
+_MAX_MANIFEST_BYTES = 256 * 1024
+_SIGNATURE_FAILURE = (
+    "The update channel answered, but its signature did not match this install's keys. "
+    'If Morpheus has changed its release key, take the next release by hand; it carries the new key.'
+)
+MIGRATING_URL = 'https://github.com/magnetoid/Morpheus/blob/main/docs/MIGRATING.md'
+
+
+def user_agent() -> str:
+    """`morpheus-updater/<version>`: the only thing a check tells the publisher."""
+    from core.versioning import core_version
+
+    return f'morpheus-updater/{core_version()}'
+
+
+def checks_off() -> bool:
+    """True when the operator switched update checks off (`...MANIFEST_URL=off`)."""
+    from django.conf import settings
+
+    return str(getattr(settings, 'MORPHEUS_UPDATE_MANIFEST_URL', '') or '').strip().lower() == 'off'
 
 
 def _ssl_context():
@@ -65,6 +88,9 @@ class ReleaseInfo:
     sha256: str = ''
     signature: str = ''
     prerelease: bool = False
+    commit: str = ''
+    image: str = ''
+    breaking: bool = False
 
 
 COMPONENT_KINDS = ('app', 'theme')
@@ -162,7 +188,7 @@ class GitHubReleaseSource(UpdateSource):
             url,
             headers={
                 'Accept': 'application/vnd.github+json',
-                'User-Agent': _USER_AGENT,
+                'User-Agent': user_agent(),
                 **({'Authorization': f'Bearer {self.token}'} if self.token else {}),
             },
         )
@@ -226,9 +252,11 @@ class SignedManifestSource(UpdateSource):
 
     def __init__(self, url: str, public_key_b64: str) -> None:
         self.url = (url or '').strip()
-        self.public_key = (public_key_b64 or '').strip()
+        self.public_keys = [k.strip() for k in (public_key_b64 or '').split(',') if k.strip()]
+        self.public_key = self.public_keys[0] if self.public_keys else ''
         self._doc: dict | None = None
         self._fetched = False
+        self.last_failure = ''  # 'signature' when the answer came but did not verify
 
     def _verified_document(self) -> dict | None:  # noqa: PLR0911 — flat guard clauses
         """Fetch the manifest once and return it only if its signature verifies.
@@ -245,7 +273,7 @@ class SignedManifestSource(UpdateSource):
         if not self.url.lower().startswith('https://'):
             logger.error('updates: refusing a non-HTTPS manifest URL')
             return None
-        if not self.public_key:
+        if not self.public_keys:
             logger.error(
                 'updates: a manifest URL is set but no public key — refusing to '
                 'trust an unverifiable manifest. Set MORPHEUS_UPDATE_PUBLIC_KEY.'
@@ -253,19 +281,26 @@ class SignedManifestSource(UpdateSource):
             return None
         try:
             req = urllib.request.Request(  # noqa: S310 — https enforced above
-                self.url, headers={'User-Agent': _USER_AGENT, 'Accept': 'application/json'}
+                self.url, headers={'User-Agent': user_agent(), 'Accept': 'application/json'}
             )
             with urllib.request.urlopen(  # noqa: S310  # nosec B310 — https enforced at line 245
                 req, timeout=_TIMEOUT, context=_ssl_context()
             ) as resp:
-                doc = json.loads(resp.read().decode('utf-8'))
+                body = resp.read(_MAX_MANIFEST_BYTES + 1)
+                if len(body) > _MAX_MANIFEST_BYTES:
+                    logger.warning('updates: manifest at %s is larger than the cap', self.url)
+                    return None
+                doc = json.loads(body.decode('utf-8'))
+            if not isinstance(doc, dict):
+                raise ValueError('manifest is not an object')
         except Exception:  # noqa: BLE001 — unreachable/malformed: unknown, not "no"
             logger.warning('updates: manifest unreachable at %s', self.url, exc_info=True)
             return None
 
         from core.signing import verify_manifest
 
-        if not verify_manifest(doc, self.public_key):
+        if not any(verify_manifest(doc, key) for key in self.public_keys):
+            self.last_failure = 'signature'
             logger.error(
                 'updates: manifest at %s failed signature verification — ignoring it '
                 'entirely. This is either a misconfigured key or a tampered channel.',
@@ -279,18 +314,50 @@ class SignedManifestSource(UpdateSource):
         doc = self._verified_document()
         if doc is None:
             return None
-        core = doc.get('core') or {}
+        core = doc.get('core')
+        if not isinstance(core, dict):
+            return None
         version = str(core.get('version') or '').strip()
         if not version:
             return None
+        commit = core.get('commit')
+        commit = commit if isinstance(commit, str) and _COMMIT_RE.fullmatch(commit) else ''
+        notes_url = str(core.get('notes_url') or '')
+        if not notes_url.startswith('https://'):
+            notes_url = ''  # it becomes an href: a javascript: link would run on click
         return ReleaseInfo(
             version=version,
             notes=str(core.get('notes') or ''),
-            url=str(core.get('notes') or ''),
+            url=notes_url,
             artifact=str(core.get('artifact') or ''),
             sha256=str(core.get('sha256') or ''),
             signature=str(doc.get('signature') or ''),
+            commit=commit,
+            image=self._clean_image(core.get('image'), commit),
+            breaking=core.get('breaking') is True,
         )
+
+    def _clean_image(self, value, commit: str) -> str:
+        """An image reference only in the exact pinned shape, tagged with this
+        release's own commit. While the baked release key is one of the keys that
+        verify, it may name nothing but our own registry, so a leaked key on a fork
+        cannot redirect installs."""
+        from django.conf import settings
+
+        image = value if isinstance(value, str) else ''
+        if not commit or len(image) > 200:
+            return ''
+        m = re.fullmatch(
+            r'(?P<repo>[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]{1,5})?(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+)'
+            rf':{commit}@sha256:[0-9a-f]{{64}}',
+            image,
+        )
+        if not m:
+            return ''
+        release_key = str(getattr(settings, 'MORPHEUS_UPDATE_RELEASE_KEY', '') or '').strip()
+        if release_key and release_key in self.public_keys and m['repo'] != _CHANNEL_IMAGE_REPO:
+            return ''
+        return image
 
     def components(self) -> list[ComponentRelease]:
         """Every app/theme entry of a *verified* manifest — nothing otherwise.
@@ -334,9 +401,11 @@ def configured_source() -> UpdateSource | None:
     config: the updater must resolve before any app is guaranteed active, and
     `core/updates.py` is permanently core for the same reason.
 
-        MORPHEUS_UPDATE_MANIFEST_URL  a signed manifest (preferred)
-        MORPHEUS_UPDATE_PUBLIC_KEY    base64 Ed25519 key that must sign it
-        MORPHEUS_UPDATE_REPO          e.g. 'magnetoid/morpheus' (fallback)
+        MORPHEUS_UPDATE_MANIFEST_URL  a signed manifest; the morpheus.direct channel
+                                      is the default, and `off` switches checks off
+        MORPHEUS_UPDATE_PUBLIC_KEY    base64 Ed25519 key(s) that must sign it
+        MORPHEUS_UPDATE_REPO          e.g. 'magnetoid/morpheus'; used only when the
+                                      manifest URL is set empty
         MORPHEUS_UPDATE_TOKEN         optional; required for a private repository
 
     The signed manifest wins when configured: it is the only source that proves
@@ -344,6 +413,9 @@ def configured_source() -> UpdateSource | None:
     deployment tracking its own repository, and carries no such proof.
     """
     from django.conf import settings
+
+    if checks_off():
+        return None
 
     manifest_url = str(getattr(settings, 'MORPHEUS_UPDATE_MANIFEST_URL', '') or '').strip()
     if manifest_url:
@@ -422,33 +494,51 @@ def check_for_update(current_version: str) -> dict:
     updates (see `component_updates`); it is empty for a source that cannot
     vouch for component artifacts.
     """
+    if checks_off():
+        return {
+            'source': 'none',
+            'available': 'unavailable',
+            'reason': 'Update checks are switched off (MORPHEUS_UPDATE_MANIFEST_URL=off).',
+            'current': current_version,
+            'components': [],
+        }
+
     source = configured_source()
     if source is None:
         return {
             'source': 'none',
             'available': 'unavailable',
-            'reason': 'No update source configured (set MORPHEUS_UPDATE_REPO).',
+            'reason': 'No update source configured (set MORPHEUS_UPDATE_MANIFEST_URL with its key, or MORPHEUS_UPDATE_REPO).',
             'current': current_version,
             'components': [],
         }
 
     release = source.latest()
     if release is None:
+        failed_signature = getattr(source, 'last_failure', '') == 'signature'
         return {
             'source': source.name,
             'available': 'unknown',
-            'reason': 'Update source unreachable, or its releases are not visible to us.',
+            'reason': _SIGNATURE_FAILURE
+            if failed_signature
+            else 'Update source unreachable, or its releases are not visible to us.',
             'current': current_version,
             'components': [],
         }
 
     newer = is_newer(release.version, current_version)
+    migrating = {'migrating_url': MIGRATING_URL} if release.breaking else {}
     return {
+        **migrating,
         'source': source.name,
         'available': 'yes' if newer else 'no',
         'current': current_version,
         'latest': release.version,
         'notes_url': release.url,
+        'notes': release.notes,
+        'commit': release.commit,
+        'image': release.image,
+        'breaking': release.breaking,
         'artifact': release.artifact,
         'prerelease': release.prerelease,
         'components': component_updates(source, core_version=current_version),

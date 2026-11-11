@@ -43,7 +43,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.152.1')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.153.0')
 
 # The release stage shown beside the version (the dashboard, the README badge, the
 # GitHub Release title) while Morpheus is not finalized; '' once it is. The version
@@ -78,15 +78,28 @@ MORPHEUS_REPORTS_URL = config(
     'MORPHEUS_REPORTS_URL', default='https://github.com/magnetoid/Morpheus/issues/new'
 )
 
-# Preferred channel: a signed manifest. Unlike the GitHub source above, this
-# proves the *publisher* produced the bytes rather than merely that we reached
-# a server — HTTPS authenticates the host, not the payload. Verification fails
-# CLOSED: a manifest with no signature, a bad one, or no configured public key
-# is ignored entirely. Generate a keypair with `manage.py morph_sign_manifest
-# --generate-key`; the private key belongs on the release machine and nowhere
-# near a deployment.
-MORPHEUS_UPDATE_MANIFEST_URL = config('MORPHEUS_UPDATE_MANIFEST_URL', default='')
-MORPHEUS_UPDATE_PUBLIC_KEY = config('MORPHEUS_UPDATE_PUBLIC_KEY', default='')
+# The update channel: a signed manifest that morpheus.direct publishes. Unlike
+# the GitHub source above, it proves the *publisher* produced the bytes rather
+# than merely that we reached a server — HTTPS authenticates the host, not the
+# payload. Every install reads it by default; `MORPHEUS_UPDATE_MANIFEST_URL=off`
+# switches the check off, and another URL points a fork at its own channel.
+# Verification fails CLOSED: a manifest with no signature, a bad one, or no
+# configured public key is ignored entirely. The public key is a comma-separated
+# list, so a key can be rotated. Generate a keypair with `manage.py
+# morph_sign_manifest --generate-key`; the private key belongs on the release
+# machine and nowhere near a deployment. Tests default both to '' (no network).
+MORPHEUS_UPDATE_CHANNEL_URL = 'https://morpheus.direct/updates/stable.json'
+# The release key baked into this version. A constant, never read from env: while it is
+# among the keys that verify a manifest, the manifest's image must live in our registry.
+MORPHEUS_UPDATE_RELEASE_KEY = 'C5sqsZab9ZAiYPX1Mnieid9xBahDy61RNvvf7ykJtQI='
+MORPHEUS_UPDATE_MANIFEST_URL = config(
+    'MORPHEUS_UPDATE_MANIFEST_URL',
+    default='' if _RUNNING_TESTS else MORPHEUS_UPDATE_CHANNEL_URL,
+)
+MORPHEUS_UPDATE_PUBLIC_KEY = config(
+    'MORPHEUS_UPDATE_PUBLIC_KEY',
+    default='' if _RUNNING_TESTS else MORPHEUS_UPDATE_RELEASE_KEY,
+)
 
 # Optional Google Places API key — when set, checkout/address forms
 # surface address autocomplete. Empty string disables the feature

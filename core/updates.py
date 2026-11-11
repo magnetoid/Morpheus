@@ -1,10 +1,10 @@
-"""Git-based platform update-check — phase 3 of the updating system.
+"""Platform update-check and apply — phases 3 and 4 of the updating system.
 
-Self-hosted Morpheus runs from a git checkout, so "is an update available?"
-= is the tracked upstream ahead of the deployed HEAD. Read-only + fail-soft:
-with no ``.git`` (a built container image, a tarball install) it reports
-``unavailable`` rather than erroring. Channel = git refs/tags (decided
-2026-06-03). Apply/rollback is phase 4 and routes through ``core/safety.py``.
+The signed channel (``core/update_sources.py``, morpheus.direct) is read first.
+Git is the fallback: a checkout with no signed channel asks whether its tracked
+upstream is ahead of the deployed HEAD. Read-only + fail-soft: with no ``.git``
+(a built container image, a tarball install) it reports ``unavailable`` rather
+than erroring. Apply/rollback routes through ``core/safety.py``.
 
 All git calls are fixed-arg ``subprocess`` (no shell), timeout-bounded, and
 read-only except an explicit ``fetch`` which only updates remote refs (never
@@ -17,6 +17,7 @@ the working tree / code).
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -24,7 +25,13 @@ from pathlib import Path
 
 # Dependency manifests — if any of these change upstream, an in-place git apply
 # is unsafe (it doesn't pip-install), so we refuse unless explicitly allowed.
-_DEP_FILES = ('requirements.txt', 'requirements/', 'pyproject.toml', 'poetry.lock')
+_DEP_FILES = (
+    'requirements.txt',
+    'requirements.lock.txt',
+    'requirements/',
+    'pyproject.toml',
+    'poetry.lock',
+)
 
 
 def _git(args: list[str], cwd: Path, timeout: int = 10) -> str | None:
@@ -77,31 +84,95 @@ def can_self_update() -> bool:
     return (_repo_root() / '.git').exists() and shutil.which('git') is not None
 
 
-def platform_update_status(*, fetch: bool = False) -> dict:
-    """Compare the deployed git checkout against its upstream.
+def update_path() -> str:
+    """How this install updates its own code: 'git' (fast-forward) or 'manual'."""
+    return 'git' if can_self_update() else 'manual'
 
-    Returns ``{source, available, current, sha, branch, upstream, behind,
-    ahead, latest, reason?}``. ``available`` ∈ {yes, no, unknown, unavailable}.
-    ``fetch=True`` refreshes remote refs first (network; best-effort).
+
+def current_view(status: dict) -> dict:
+    """A cached channel status, restated against the version running now.
+
+    The cache outlives a deploy, so "vX is out" can be stale the moment a store
+    takes vX. Returns a copy whose ``current`` is the running version and, for a
+    release answer (the signed channel or GitHub releases), whose ``available``
+    is re-derived from it.
     """
+    from core.update_sources import is_newer
+    from core.versioning import core_version
+
+    out = {**status, 'current': core_version()}
+    if (
+        status.get('source') in ('manifest', 'github')
+        and status.get('available') in ('yes', 'no')
+        and status.get('latest')
+    ):
+        out['available'] = 'yes' if is_newer(status['latest'], core_version()) else 'no'
+    return out
+
+
+def _not_checked_yet(source: str, path: str) -> dict:
+    from core.versioning import core_version
+
+    return {
+        'source': source,
+        'available': 'unknown',
+        'reason': 'Not checked yet. The store checks once a day; Check for updates checks now.',
+        'current': core_version(),
+        'components': [],
+        'path': path,
+    }
+
+
+def platform_update_status(*, fetch: bool = False) -> dict:  # noqa: PLR0911
+    """Where this install stands against the update channel.
+
+    Checks switched off (``MORPHEUS_UPDATE_MANIFEST_URL=off``) answer first and
+    touch nothing: no git, no network. A signed manifest source is asked next:
+    ``fetch=True`` asks it (network), a page load (``fetch=False``) reads the
+    cached answer, restated against the running version, and never fetches.
+    A repository source on an install with no git metadata works the same way.
+    Otherwise compares the deployed git checkout against its upstream.
+    Returns ``{source, available, current, ..., path}``; ``available`` is one
+    of yes, no, unknown, unavailable; ``path`` is ``update_path()``.
+    ``fetch=True`` refreshes git's remote refs only on the git branch (best-effort).
+    """
+    from core.update_sources import (
+        SignedManifestSource,
+        check_for_update,
+        checks_off,
+        configured_source,
+    )
+    from core.versioning import core_version
+
+    path = update_path()
+    if checks_off():
+        return {**check_for_update(core_version()), 'path': path}
+    source = configured_source()
+    if isinstance(source, SignedManifestSource):
+        if fetch:
+            return {**check_for_update(core_version()), 'path': path}
+        cached = cached_update_status()
+        if cached and cached.get('source') == 'manifest':
+            return {**current_view(cached), 'path': path}
+        return _not_checked_yet('manifest', path)
+
     root = _repo_root()
     if not (root / '.git').exists():
-        # No git metadata — a built image, which is how this platform actually
-        # deploys. Historically that ended the story and the updater reported
-        # `unavailable` forever, so a container install could not even ASK
-        # whether an update existed. Fall back to the configured release source
-        # (see core/update_sources.py) before giving up.
-        from core.update_sources import check_for_update, configured_source
-
-        if configured_source() is not None:
-            from core.versioning import component_versions
-
-            current = str((component_versions() or {}).get('core') or 'unknown')
-            return check_for_update(current)
+        # No git metadata: a built image. A repository source
+        # (MORPHEUS_UPDATE_REPO) is asked before giving up, but a page load
+        # reads the daily answer instead of calling GitHub.
+        if source is not None:
+            if fetch:
+                return {**check_for_update(core_version()), 'path': path}
+            cached = cached_update_status()
+            if cached and cached.get('source') == source.name:
+                return {**current_view(cached), 'path': path}
+            return _not_checked_yet(source.name, path)
         return {
             'source': 'git',
             'available': 'unavailable',
             'reason': 'No git metadata in this deployment (built image / non-git install).',
+            'path': path,
         }
     if fetch:
         _git(['fetch', '--quiet'], root, timeout=30)
@@ -111,6 +182,7 @@ def platform_update_status(*, fetch: bool = False) -> dict:
         'current': _git(['describe', '--tags', '--always', '--dirty'], root) or 'unknown',
         'sha': _git(['rev-parse', '--short', 'HEAD'], root) or '',
         'branch': _git(['rev-parse', '--abbrev-ref', 'HEAD'], root) or '',
+        'path': path,
     }
     upstream = _git(['rev-parse', '--abbrev-ref', '@{u}'], root)
     out['upstream'] = upstream or ''
@@ -191,7 +263,8 @@ def _boot_probe(root: Path) -> tuple[bool, str]:
 def apply_platform_update(  # noqa: PLR0911, PLR0912
     *, confirm: bool = False, run_migrations: bool = True, allow_dependency_changes: bool = False
 ) -> dict:
-    """Fast-forward the deployed checkout to its upstream — phase 4.
+    """Fast-forward the deployed checkout to the release's commit (the signed
+    channel's), else to its upstream — phase 4.
 
     Conservative + reliable by construction:
       * **dry-run by default** — without ``confirm=True`` it only returns a
@@ -221,6 +294,15 @@ def apply_platform_update(  # noqa: PLR0911, PLR0912
             'status': 'unavailable',
             'reason': 'No git metadata in this deployment.',
         }
+    if not can_self_update():
+        return {
+            'ok': False,
+            'status': 'unavailable',
+            'reason': (
+                'This install cannot update its own code (git is not installed). '
+                'Take the new version as a new image.'
+            ),
+        }
 
     status = platform_update_status(fetch=True)
     if status.get('available') == 'no':
@@ -237,13 +319,21 @@ def apply_platform_update(  # noqa: PLR0911, PLR0912
             'reason': status.get('reason', 'Update status could not be determined.'),
         }
 
-    upstream = status['upstream']
+    # The channel names the commit to move to; a git source moves to its upstream.
+    from_channel = status.get('source') == 'manifest'
+    target = status.get('commit') if from_channel else status['upstream']
+    if from_channel and not re.fullmatch(r'[0-9a-f]{40}', target or ''):
+        return {
+            'ok': False,
+            'status': 'no_commit',
+            'reason': 'The release names no commit to update to.',
+        }
     prior_sha = _git(['rev-parse', 'HEAD'], root) or ''
     plan = {
         'from': status.get('current'),
         'to': status.get('latest'),
         'behind': status.get('behind'),
-        'upstream': upstream,
+        'target': target,
     }
 
     if not confirm:
@@ -262,20 +352,29 @@ def apply_platform_update(  # noqa: PLR0911, PLR0912
             'reason': 'Self-update is disabled. Set MORPHEUS_SELF_UPDATE_ENABLED=1 to allow.',
         }
 
-    # Fast-forward only: HEAD must be an ancestor of upstream.
-    if not _git_ok(['merge-base', '--is-ancestor', 'HEAD', upstream], root):
-        return {
-            'ok': False,
-            'status': 'diverged',
-            'plan': plan,
-            'reason': 'Local has diverged from upstream; fast-forward not possible. Resolve manually.',
-        }
+    if from_channel:
+        # The commit may not be in the checkout yet: fetch exactly that one.
+        _git(['fetch', '--quiet', 'origin', target], root, timeout=60)
+        if not _git_ok(['cat-file', '-e', f'{target}^{{commit}}'], root):
+            return {
+                'ok': False,
+                'status': 'apply_failed',
+                'plan': plan,
+                'reason': "Could not fetch the release's commit.",
+            }
+        diverged = "The release's commit is not a later commit than this checkout. Update by hand."
+    else:
+        diverged = 'Local has diverged from upstream; fast-forward not possible. Resolve manually.'
+
+    # Fast-forward only: HEAD must be an ancestor of the target.
+    if not _git_ok(['merge-base', '--is-ancestor', 'HEAD', target], root):
+        return {'ok': False, 'status': 'diverged', 'plan': plan, 'reason': diverged}
 
     # Dependency guard — an in-place git apply does NOT pip-install, so if
     # upstream changed requirements the new code would import missing/native
     # packages and crash at boot. Refuse (rebuild the image instead) unless
     # the caller explicitly accepts responsibility for installing them.
-    dep_changes = _dependency_changes(root, upstream)
+    dep_changes = _dependency_changes(root, target)
     if dep_changes and not allow_dependency_changes:
         return {
             'ok': False,
@@ -295,13 +394,16 @@ def apply_platform_update(  # noqa: PLR0911, PLR0912
     except Exception:  # noqa: BLE001 — proceed even if backup is unavailable, but note it
         plan['backup'] = 'failed'
 
-    if not _git_ok(['merge', '--ff-only', upstream], root):
-        return {
-            'ok': False,
-            'status': 'apply_failed',
-            'plan': plan,
-            'reason': 'git fast-forward failed; working tree unchanged.',
-        }
+    if not _git_ok(['merge', '--ff-only', target], root, timeout=120):
+        head_now = _git(['rev-parse', 'HEAD'], root) or ''
+        if head_now == prior_sha:
+            reason = 'git fast-forward failed; working tree unchanged.'
+        else:
+            reason = (
+                f'git fast-forward failed part way; HEAD is now {head_now[:7] or "unknown"} '
+                f'(it was {prior_sha[:7]}). Check the checkout by hand.'
+            )
+        return {'ok': False, 'status': 'apply_failed', 'plan': plan, 'reason': reason}
 
     def _rollback(reason: str) -> dict:
         _git_ok(['reset', '--hard', prior_sha], root)
