@@ -65,6 +65,13 @@ def _built_image_summary(running: dict, status: dict) -> str:
     parts.append('. This store updates when a new version is released; it cannot update itself.')
     if status.get('available') == 'yes' and status.get('latest'):
         parts.append(f' {status["latest"]} is out.')
+        if status.get('path') == 'manual' and status.get('image'):
+            parts.append(
+                f' To take it, set MORPHEUS_IMAGE={status["image"]}, then run docker compose pull'
+                ' and docker compose up -d --no-build.'
+            )
+        if status.get('breaking') and status.get('migrating_url'):
+            parts.append(f' It has upgrade steps: {status["migrating_url"]}.')
     if running['backup']:
         taken = running['backup']['taken_at']
         parts.append(

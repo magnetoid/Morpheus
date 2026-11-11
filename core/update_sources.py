@@ -35,6 +35,7 @@ _USER_AGENT = 'morpheus-updater'  # bare name: the per-component channel still s
 _COMMIT_RE = re.compile(r'^[0-9a-f]{40}$')
 _IMAGE_RE = re.compile(r'^[^\s@]+:[0-9a-f]{40}@sha256:[0-9a-f]{64}$')
 _CHANNEL_IMAGE_PREFIX = 'ghcr.io/magnetoid/morpheus:'
+MIGRATING_URL = 'https://github.com/magnetoid/Morpheus/blob/main/docs/MIGRATING.md'
 
 
 def user_agent() -> str:
@@ -307,10 +308,13 @@ class SignedManifestSource(UpdateSource):
             return None
         commit = core.get('commit')
         commit = commit if isinstance(commit, str) and _COMMIT_RE.match(commit) else ''
+        notes_url = str(core.get('notes_url') or '')
+        if not notes_url.startswith('https://'):
+            notes_url = ''  # it becomes an href: a javascript: link would run on click
         return ReleaseInfo(
             version=version,
             notes=str(core.get('notes') or ''),
-            url=str(core.get('notes_url') or ''),
+            url=notes_url,
             artifact=str(core.get('artifact') or ''),
             sha256=str(core.get('sha256') or ''),
             signature=str(doc.get('signature') or ''),
@@ -498,7 +502,9 @@ def check_for_update(current_version: str) -> dict:
         }
 
     newer = is_newer(release.version, current_version)
+    migrating = {'migrating_url': MIGRATING_URL} if release.breaking else {}
     return {
+        **migrating,
         'source': source.name,
         'available': 'yes' if newer else 'no',
         'current': current_version,

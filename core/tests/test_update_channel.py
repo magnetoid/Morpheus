@@ -153,3 +153,11 @@ class UpdateChannelTests(SimpleTestCase):
         ):
             result = check_for_update('v1.0.0')
         self.assertEqual(result['available'], 'unknown')
+
+
+class NotesUrlTests(SimpleTestCase):
+    def test_a_non_https_notes_url_is_dropped(self):
+        priv, pub = generate_keypair()
+        with _serve(_signed(priv, notes_url='javascript:alert(1)')):
+            release = SignedManifestSource(URL, pub).latest()
+        self.assertEqual(release.url, '')
