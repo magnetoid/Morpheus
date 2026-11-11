@@ -17,6 +17,7 @@ the working tree / code).
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -275,7 +276,7 @@ def apply_platform_update(  # noqa: PLR0911, PLR0912
     # The channel names the commit to move to; a git source moves to its upstream.
     from_channel = status.get('source') == 'manifest'
     target = status.get('commit') if from_channel else status['upstream']
-    if from_channel and not target:
+    if from_channel and not re.fullmatch(r'[0-9a-f]{40}', target or ''):
         return {
             'ok': False,
             'status': 'no_commit',

@@ -120,9 +120,8 @@ class ApplyToManifestCommitTests(TestCase):
         self.pusher = base / 'pusher'
         _run(['init', '-q', '--bare', '-b', 'main', str(self.origin)], base)
         _run(['clone', '-q', str(self.origin), str(self.pusher)], base)
-        for repo in (self.pusher,):
-            _run(['config', 'user.name', 'T'], repo)
-            _run(['config', 'user.email', 't@example.test'], repo)
+        _run(['config', 'user.name', 'T'], self.pusher)
+        _run(['config', 'user.email', 't@example.test'], self.pusher)
         self.a = _commit(self.pusher, 'a')
         _run(['push', '-q', 'origin', 'main'], self.pusher)
         _run(['clone', '-q', str(self.origin), str(self.work)], base)
@@ -190,6 +189,18 @@ class ApplyToManifestCommitTests(TestCase):
         out = self._apply('')
         self.assertEqual(out['status'], 'no_commit')
         self.assertEqual(out['reason'], 'The release names no commit to update to.')
+
+    def test_a_target_that_is_not_a_commit_id_is_refused(self):
+        self._push_more()
+        for target in ('main', '--upload-pack=x', 'A' * 40):
+            with (
+                self.subTest(target=target),
+                patch('core.updates._git', wraps=updates._git) as git,
+            ):
+                out = self._apply(target)
+                self.assertEqual(out['status'], 'no_commit')
+                self.assertEqual(self._head(), self.a)
+                self.assertFalse([c for c in git.call_args_list if c.args[0][0] == 'fetch'])
 
     def test_an_unfetchable_commit_is_apply_failed(self):
         out = self._apply('f' * 40)
