@@ -89,13 +89,16 @@ MORPHEUS_REPORTS_URL = config(
 # morph_sign_manifest --generate-key`; the private key belongs on the release
 # machine and nowhere near a deployment. Tests default both to '' (no network).
 MORPHEUS_UPDATE_CHANNEL_URL = 'https://morpheus.direct/updates/stable.json'
+# The release key baked into this version. A constant, never read from env: while it is
+# among the keys that verify a manifest, the manifest's image must live in our registry.
+MORPHEUS_UPDATE_RELEASE_KEY = 'C5sqsZab9ZAiYPX1Mnieid9xBahDy61RNvvf7ykJtQI='
 MORPHEUS_UPDATE_MANIFEST_URL = config(
     'MORPHEUS_UPDATE_MANIFEST_URL',
     default='' if _RUNNING_TESTS else MORPHEUS_UPDATE_CHANNEL_URL,
 )
 MORPHEUS_UPDATE_PUBLIC_KEY = config(
     'MORPHEUS_UPDATE_PUBLIC_KEY',
-    default='' if _RUNNING_TESTS else 'C5sqsZab9ZAiYPX1Mnieid9xBahDy61RNvvf7ykJtQI=',
+    default='' if _RUNNING_TESTS else MORPHEUS_UPDATE_RELEASE_KEY,
 )
 
 # Optional Google Places API key — when set, checkout/address forms

@@ -1,6 +1,6 @@
 # Updates from morpheus.direct — design (2026-11)
 
-**Status: design, waiting for the owner's approval. No code until then.**
+**Status: approved by the owner 2026-11-11. R1 is live; R2 is this release.**
 
 ## What the owner asked, and what they decided
 

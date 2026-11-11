@@ -69,6 +69,8 @@ there (safe-deploys spec, part 5).
         <span class="pill">Version check {{ platform.available }}</span>
         <span class="text-[color:var(--text-muted)]">{{ platform.reason }}</span>
       {% endif %}
+    {% elif platform.source == 'none' %}
+      <span class="text-[color:var(--text-muted)]">{{ platform.reason }}</span>
     {% elif not running.self_update %}
       This store updates when a new version is released.{% if platform.available == 'yes' and platform.latest %} {{ platform.latest }} is out.{% endif %}
     {% elif platform.available == 'yes' %}

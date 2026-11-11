@@ -25,7 +25,7 @@ class _Resp:
     def __init__(self, body: bytes):
         self._body = body
 
-    def read(self):
+    def read(self, size=-1):
         return self._body
 
     def __enter__(self):
@@ -136,6 +136,86 @@ class StatusChannelTests(SimpleTestCase):
             status = platform_update_status()
         self.assertEqual(status['available'], 'unavailable')
         self.assertEqual(status['path'], 'manual')
+
+
+class StaleCacheAndOffTests(SimpleTestCase):
+    def setUp(self):
+        self.priv, self.pub = generate_keypair()
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        cache.delete(_UPDATE_STATUS_CACHE_KEY)
+        self.addCleanup(cache.delete, _UPDATE_STATUS_CACHE_KEY)
+
+    def test_a_cached_yes_follows_the_running_version(self):
+        cache.set(
+            _UPDATE_STATUS_CACHE_KEY,
+            {'source': 'manifest', 'available': 'yes', 'latest': 'v2.0.0', 'current': 'v1.0.0'},
+            60,
+        )
+        with override_settings(
+            MORPHEUS_UPDATE_MANIFEST_URL=URL,
+            MORPHEUS_UPDATE_PUBLIC_KEY=self.pub,
+            MORPHEUS_VERSION='v2.0.0',
+            BASE_DIR=self.tmp,
+        ):
+            status = platform_update_status()
+        self.assertEqual(status['available'], 'no')
+        self.assertEqual(status['current'], 'v2.0.0')
+
+    def test_a_cached_yes_stays_yes_while_behind(self):
+        cache.set(
+            _UPDATE_STATUS_CACHE_KEY,
+            {'source': 'manifest', 'available': 'yes', 'latest': 'v2.0.0', 'current': 'v0.5.0'},
+            60,
+        )
+        with override_settings(
+            MORPHEUS_UPDATE_MANIFEST_URL=URL,
+            MORPHEUS_UPDATE_PUBLIC_KEY=self.pub,
+            MORPHEUS_VERSION='v1.0.0',
+            BASE_DIR=self.tmp,
+        ):
+            status = platform_update_status()
+        self.assertEqual((status['available'], status['current']), ('yes', 'v1.0.0'))
+
+    def test_off_with_a_git_checkout_runs_no_git(self):
+        (self.tmp / '.git').mkdir()
+        for fetch in (True, False):
+            with (
+                self.subTest(fetch=fetch),
+                override_settings(MORPHEUS_UPDATE_MANIFEST_URL='off', BASE_DIR=self.tmp),
+                mock.patch('core.updates.shutil.which', return_value='/usr/bin/git'),
+                mock.patch('core.updates._git') as git,
+                mock.patch('core.updates.subprocess.run') as run,
+                mock.patch('core.update_sources.urllib.request.urlopen') as urlopen,
+            ):
+                status = platform_update_status(fetch=fetch)
+            git.assert_not_called()
+            run.assert_not_called()
+            urlopen.assert_not_called()
+            self.assertEqual(status['source'], 'none')
+            self.assertIn('switched off', status['reason'])
+            self.assertEqual(status['path'], 'git')
+
+    def test_a_repo_source_page_load_never_calls_github(self):
+        with (
+            override_settings(
+                MORPHEUS_UPDATE_MANIFEST_URL='', MORPHEUS_UPDATE_REPO='o/r', BASE_DIR=self.tmp
+            ),
+            mock.patch('core.update_sources.urllib.request.urlopen') as urlopen,
+        ):
+            status = platform_update_status(fetch=False)
+            cache.set(
+                _UPDATE_STATUS_CACHE_KEY,
+                {'source': 'github', 'available': 'yes', 'latest': 'v2.0.0'},
+                60,
+            )
+            with override_settings(MORPHEUS_VERSION='v1.0.0'):
+                cached = platform_update_status(fetch=False)
+        urlopen.assert_not_called()
+        self.assertEqual(status['available'], 'unknown')
+        self.assertIn('Not checked yet', status['reason'])
+        self.assertEqual((cached['available'], cached['latest']), ('yes', 'v2.0.0'))
+        self.assertEqual(cached['path'], 'manual')
 
 
 class CheckCommandPathTests(SimpleTestCase):

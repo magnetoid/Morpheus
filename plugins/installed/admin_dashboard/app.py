@@ -25,18 +25,21 @@ class AdminDashboardPlugin(Plugin):
         found the deployment behind upstream. No git/network here — reads cache."""
         from django.utils import timezone  # noqa: PLC0415
 
-        from core.updates import cached_update_status  # noqa: PLC0415
+        from core.updates import cached_update_status, current_view  # noqa: PLC0415
 
-        status = cached_update_status() or {}
+        status = current_view(cached_update_status() or {})
         if status.get('available') == 'yes':
-            behind = status.get('behind') or 0
             latest = status.get('latest') or ''
             value.append(
                 {
                     'kind': 'update',
                     'icon': 'download',
                     'label': f'Morpheus update available — {latest}'.rstrip(' —'),
-                    'hint': f'{behind} commit(s) behind upstream',
+                    'hint': (
+                        f'running {status.get("current")}'
+                        if status.get('source') == 'manifest'
+                        else f'{status.get("behind") or 0} commit(s) behind upstream'
+                    ),
                     'url': '/dashboard/updates/',
                     'when': timezone.now(),
                 }

@@ -254,3 +254,69 @@ def _core_entry(commit):
         'notes_url': 'https://github.com/magnetoid/Morpheus/releases/tag/v0.2.12',
         'breaking': False,
     }
+
+
+@override_settings(MORPHEUS_SELF_UPDATE_ENABLED=True)
+class ApplyOffAndMergeTests(TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        (self.root / '.git').mkdir()
+        for p in (
+            patch('core.updates._repo_root', return_value=self.root),
+            patch('core.updates.shutil.which', return_value='/usr/bin/git'),
+        ):
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_off_refuses_and_runs_no_git(self):
+        with (
+            override_settings(MORPHEUS_UPDATE_MANIFEST_URL='off'),
+            patch('core.updates._git') as git,
+            patch('core.updates._git_ok') as git_ok,
+            patch('core.updates.subprocess.run') as run,
+        ):
+            out = updates.apply_platform_update(confirm=True)
+        self.assertFalse(out['ok'])
+        self.assertIn('switched off', out['reason'])
+        git.assert_not_called()
+        git_ok.assert_not_called()
+        run.assert_not_called()
+
+    def _merge_fails(self, heads):
+        status = {
+            'source': 'manifest',
+            'available': 'yes',
+            'current': 'v1',
+            'latest': 'v2',
+            'commit': 'a' * 40,
+            'path': 'git',
+        }
+        calls = []
+
+        def git_ok(args, cwd, timeout=10):
+            calls.append((args[0], timeout))
+            return args[0] != 'merge'
+
+        with (
+            patch('core.updates.platform_update_status', return_value=status),
+            patch('core.updates._git', side_effect=['b' * 40, *heads]),
+            patch('core.updates._git_ok', side_effect=git_ok),
+            patch('core.updates._dependency_changes', return_value=[]),
+            patch('django.core.management.call_command'),
+        ):
+            out = updates.apply_platform_update(confirm=True)
+        return out, calls
+
+    def test_merge_gets_a_long_timeout_and_unchanged_head_says_so(self):
+        out, calls = self._merge_fails(['b' * 40, 'b' * 40])  # fetch, then HEAD again
+        self.assertIn(('merge', 120), calls)
+        self.assertEqual(out['status'], 'apply_failed')
+        self.assertIn('working tree unchanged', out['reason'])
+
+    def test_merge_failure_with_a_moved_head_reports_it(self):
+        out, _ = self._merge_fails(['b' * 40, 'c' * 40])
+        self.assertNotIn('unchanged', out['reason'])
+        self.assertIn('ccccccc', out['reason'])
+        self.assertIn('by hand', out['reason'])

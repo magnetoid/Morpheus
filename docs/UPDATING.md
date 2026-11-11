@@ -313,8 +313,8 @@ release whose deploy-smoke passed and whose image exists on GHCR.
 - **What comes back:** the release's version, its `commit`, the pinned `image`, whether it is
   `breaking`, and its notes. The signature is checked against the public key below; an unsigned
   file, a wrong key or a bad signature is ignored entirely (fails closed).
-- **Turning it off:** `MORPHEUS_UPDATE_MANIFEST_URL=off`. Nothing is fetched and the page says
-  checks are off.
+- **Turning it off:** `MORPHEUS_UPDATE_MANIFEST_URL=off`. Nothing is fetched, git included (a checkout
+  fetches nothing and Update now refuses), and the page says checks are off.
 - **The two paths** (`core.updates.update_path()`):
   - `git`: a git checkout that can update itself (`can_self_update()`: a git checkout with git
     installed). Check, then **Update now** fast-forwards to exactly the commit the signed release
@@ -379,7 +379,7 @@ arbitrary code imported at boot.
 
 ## Design: a release channel on `morpheus.direct`
 
-This is the shape the open-core product needs, and it is built: signing,
+This is the shape the source-available product needs, and it is built: signing,
 verification, per-component check and apply, and the hosting. The channel
 file is live at `https://morpheus.direct/updates/stable.json`; its manifest carries the
 release's `commit` and the pinned `image`. The core apply is a fast-forward to the release commit

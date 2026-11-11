@@ -77,5 +77,73 @@ class UpdaterCardChannelTests(TestCase):
         r = self._page(_status(available='no'), can_self_update=False)
         self.assertContains(r, reverse('admin_dashboard:updates_check'))
 
+    def test_off_shows_the_reason_on_a_built_image(self):
+        off = {
+            'source': 'none',
+            'available': 'unavailable',
+            'reason': 'Update checks are switched off <here>.',
+            'current': 'v1.0.0',
+            'components': [],
+            'path': 'manual',
+        }
+        r = self._page(off)
+        self.assertContains(r, 'Update checks are switched off &lt;here&gt;.')
+        self.assertNotContains(r, 'updates when a new version is released')
+
+    def test_the_manual_path_offers_no_update_now(self):
+        r = self._page(_status(path='manual'))
+        self.assertNotContains(r, reverse('admin_dashboard:updates_apply'))
+        self.assertNotContains(r, 'Apply update?')
+
+    def test_a_stale_cache_shows_up_to_date_after_the_version_moves(self):
+        from django.core.cache import cache
+        from django.test import override_settings
+
+        from core.updates import _UPDATE_STATUS_CACHE_KEY
+
+        cache.set(
+            _UPDATE_STATUS_CACHE_KEY,
+            {'source': 'manifest', 'available': 'yes', 'latest': 'v2.0.0', 'current': 'v1.0.0'},
+            60,
+        )
+        self.addCleanup(cache.delete, _UPDATE_STATUS_CACHE_KEY)
+        with (
+            override_settings(
+                MORPHEUS_UPDATE_MANIFEST_URL='https://updates.example.test/stable.json',
+                MORPHEUS_UPDATE_PUBLIC_KEY='AAAA',
+                MORPHEUS_VERSION='v2.0.0',
+            ),
+            patch('core.updates.can_self_update', return_value=False),
+        ):
+            r = self.client.get(reverse('admin_dashboard:updates'), follow=True)
+        self.assertContains(r, 'Up to date')
+        self.assertNotContains(r, 'v2.0.0 is out')
+
     def test_the_card_compiles(self):
         get_template('admin_dashboard/_updater_card.html')
+
+
+class UpdateFeedTests(TestCase):
+    def _feed(self, cached, version='v1.0.0'):
+        from django.test import override_settings
+
+        from plugins.installed.admin_dashboard.app import AdminDashboardPlugin
+
+        with (
+            override_settings(MORPHEUS_VERSION=version),
+            patch('core.updates.cached_update_status', return_value=cached),
+        ):
+            return AdminDashboardPlugin().on_activity_feed([])
+
+    def test_a_channel_hint_names_the_running_version(self):
+        items = self._feed({'source': 'manifest', 'available': 'yes', 'latest': 'v2.0.0'})
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]['hint'], 'running v1.0.0')
+
+    def test_a_cache_older_than_the_running_version_adds_nothing(self):
+        cached = {'source': 'manifest', 'available': 'yes', 'latest': 'v2.0.0'}
+        self.assertEqual(self._feed(cached, version='v2.0.0'), [])
+
+    def test_the_git_hint_is_unchanged(self):
+        items = self._feed({'source': 'git', 'available': 'yes', 'latest': 'v2', 'behind': 3})
+        self.assertEqual(items[0]['hint'], '3 commit(s) behind upstream')

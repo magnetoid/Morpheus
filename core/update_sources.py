@@ -32,9 +32,13 @@ logger = logging.getLogger('morpheus.updates')
 _TIMEOUT = 10  # seconds; an update check must never hold a request open
 _USER_AGENT = 'morpheus-updater'  # bare name: the per-component channel still sends it
 
-_COMMIT_RE = re.compile(r'^[0-9a-f]{40}$')
-_IMAGE_RE = re.compile(r'^[^\s@]+:[0-9a-f]{40}@sha256:[0-9a-f]{64}$')
-_CHANNEL_IMAGE_PREFIX = 'ghcr.io/magnetoid/morpheus:'
+_COMMIT_RE = re.compile(r'[0-9a-f]{40}')
+_CHANNEL_IMAGE_REPO = 'ghcr.io/magnetoid/morpheus'
+_MAX_MANIFEST_BYTES = 256 * 1024
+_SIGNATURE_FAILURE = (
+    "The update channel answered, but its signature did not match this install's keys. "
+    'If Morpheus has changed its release key, take the next release by hand; it carries the new key.'
+)
 MIGRATING_URL = 'https://github.com/magnetoid/Morpheus/blob/main/docs/MIGRATING.md'
 
 
@@ -252,6 +256,7 @@ class SignedManifestSource(UpdateSource):
         self.public_key = self.public_keys[0] if self.public_keys else ''
         self._doc: dict | None = None
         self._fetched = False
+        self.last_failure = ''  # 'signature' when the answer came but did not verify
 
     def _verified_document(self) -> dict | None:  # noqa: PLR0911 — flat guard clauses
         """Fetch the manifest once and return it only if its signature verifies.
@@ -281,7 +286,13 @@ class SignedManifestSource(UpdateSource):
             with urllib.request.urlopen(  # noqa: S310  # nosec B310 — https enforced at line 245
                 req, timeout=_TIMEOUT, context=_ssl_context()
             ) as resp:
-                doc = json.loads(resp.read().decode('utf-8'))
+                body = resp.read(_MAX_MANIFEST_BYTES + 1)
+                if len(body) > _MAX_MANIFEST_BYTES:
+                    logger.warning('updates: manifest at %s is larger than the cap', self.url)
+                    return None
+                doc = json.loads(body.decode('utf-8'))
+            if not isinstance(doc, dict):
+                raise ValueError('manifest is not an object')
         except Exception:  # noqa: BLE001 — unreachable/malformed: unknown, not "no"
             logger.warning('updates: manifest unreachable at %s', self.url, exc_info=True)
             return None
@@ -289,6 +300,7 @@ class SignedManifestSource(UpdateSource):
         from core.signing import verify_manifest
 
         if not any(verify_manifest(doc, key) for key in self.public_keys):
+            self.last_failure = 'signature'
             logger.error(
                 'updates: manifest at %s failed signature verification — ignoring it '
                 'entirely. This is either a misconfigured key or a tampered channel.',
@@ -302,12 +314,14 @@ class SignedManifestSource(UpdateSource):
         doc = self._verified_document()
         if doc is None:
             return None
-        core = doc.get('core') or {}
+        core = doc.get('core')
+        if not isinstance(core, dict):
+            return None
         version = str(core.get('version') or '').strip()
         if not version:
             return None
         commit = core.get('commit')
-        commit = commit if isinstance(commit, str) and _COMMIT_RE.match(commit) else ''
+        commit = commit if isinstance(commit, str) and _COMMIT_RE.fullmatch(commit) else ''
         notes_url = str(core.get('notes_url') or '')
         if not notes_url.startswith('https://'):
             notes_url = ''  # it becomes an href: a javascript: link would run on click
@@ -319,21 +333,29 @@ class SignedManifestSource(UpdateSource):
             sha256=str(core.get('sha256') or ''),
             signature=str(doc.get('signature') or ''),
             commit=commit,
-            image=self._clean_image(core.get('image')),
+            image=self._clean_image(core.get('image'), commit),
             breaking=core.get('breaking') is True,
         )
 
-    def _clean_image(self, value) -> str:
-        """An image reference only in the exact pinned shape; the default channel
-        may name nothing but our own registry, so a leaked key cannot redirect installs."""
+    def _clean_image(self, value, commit: str) -> str:
+        """An image reference only in the exact pinned shape, tagged with this
+        release's own commit. While the baked release key is one of the keys that
+        verify, it may name nothing but our own registry, so a leaked key on a fork
+        cannot redirect installs."""
         from django.conf import settings
 
         image = value if isinstance(value, str) else ''
-        if len(image) > 200 or not _IMAGE_RE.match(image):
+        if not commit or len(image) > 200:
             return ''
-        if self.url == getattr(
-            settings, 'MORPHEUS_UPDATE_CHANNEL_URL', ''
-        ) and not image.startswith(_CHANNEL_IMAGE_PREFIX):
+        m = re.fullmatch(
+            r'(?P<repo>[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]{1,5})?(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+)'
+            rf':{commit}@sha256:[0-9a-f]{{64}}',
+            image,
+        )
+        if not m:
+            return ''
+        release_key = str(getattr(settings, 'MORPHEUS_UPDATE_RELEASE_KEY', '') or '').strip()
+        if release_key and release_key in self.public_keys and m['repo'] != _CHANNEL_IMAGE_REPO:
             return ''
         return image
 
@@ -493,10 +515,13 @@ def check_for_update(current_version: str) -> dict:
 
     release = source.latest()
     if release is None:
+        failed_signature = getattr(source, 'last_failure', '') == 'signature'
         return {
             'source': source.name,
             'available': 'unknown',
-            'reason': 'Update source unreachable, or its releases are not visible to us.',
+            'reason': _SIGNATURE_FAILURE
+            if failed_signature
+            else 'Update source unreachable, or its releases are not visible to us.',
             'current': current_version,
             'components': [],
         }
