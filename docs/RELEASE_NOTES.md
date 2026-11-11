@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.153.0 — 2026-11-11
+
+**Every Morpheus install hears about new versions from morpheus.direct**
+
+- Every store now asks morpheus.direct once a day whether a new version is out. It sends only "morpheus-updater/<version>" as its User-Agent (no store name, domain or id) and believes the answer only when it is signed with the Morpheus release key that ships in the code. MORPHEUS_UPDATE_MANIFEST_URL=off switches the check off completely; a fork points it at its own channel and keys (docs/UPDATING.md).
+- Version & updates and Linda say which version is out and how to take it: a store run from a copy of the code gets Check and Update now, which moves the code to exactly the commit the release names and never past it; a store run from a built image is shown the image for that release, pinned to the commit and its digest, and the commands to run it, with a link to the upgrade steps when the release needs them.
+- A page load and Linda read the last answer instead of asking again, and that answer follows the version the store runs, so a store that has just updated says it is up to date. Update now refuses a store that cannot update its own code, and a failed signature is reported as one, not as an unreachable channel.
+
 ## v0.152.1 — 2026-11-11
 
 **No cash on delivery for downloads; a real low-stock link**
