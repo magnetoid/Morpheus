@@ -22,7 +22,7 @@
 
 **You keep your margin.** No percentage of your sales and no per-seat pricing: one licence per store. The things other platforms bill monthly, one app at a time (reviews, loyalty points, subscriptions, gift cards, affiliates, abandoned-cart email, B2B quotes, feeds for nine ad channels), are already here as 98 apps you switch on and off.
 
-**You get an operator, not a chatbot.** Linda reads your catalog, orders and customers and does the work: refunds, stock, product copy, newsletters, reports, a brief every morning. Of the 211 tools Linda can use, the 63 that move money or delete things wait for your "yes", in your own words. A kill switch and a daily spend cap cover every AI call the store makes.
+**You get an operator, not a chatbot.** Linda reads your catalog, orders and customers and does the work: refunds, stock, product copy, newsletters, reports, a brief every morning. Of the 220 tools Linda can use, the 69 that move money or delete things wait for your "yes", in your own words. A kill switch and a daily spend cap cover every AI call the store makes.
 
 **Shoppers find you where they now start.** Search engines and AI assistants get what they need to read your store and send buyers to it: structured data built from your real prices, stock, shipping and returns, sitemaps, `llms.txt`, a ChatGPT Shopping feed, MCP servers, an Agentic Commerce Protocol checkout and a UCP manifest. The sale happens on your storefront, and the customer stays yours.
 
@@ -121,7 +121,7 @@ Rather not run it yourself? Your store can be set up, themed, moved over from Sh
 | **EU rules (Omnibus, GPSR, AI Act, consent)** | Built in | Partly, plus apps | Plugins | Not built in |
 | **Order editing, partial shipments, labels, delayed card capture** | **Not yet**, in the plan below | Yes | Mostly, some through plugins | Mostly |
 
-Morpheus is ahead on owning the store, the AI operator and EU compliance, and behind on the second layer of the order engine. That gap is written down with evidence in [`docs/plans/platform-gap-analysis-2026-11.md`](docs/plans/platform-gap-analysis-2026-11.md), with the release that closes each part. Tax came first and shipped in v0.149.0.
+Morpheus is ahead on owning the store, the AI operator and EU compliance, and behind on the second layer of the order engine. That gap is written down with evidence in [`docs/plans/platform-gap-analysis-2026-11.md`](docs/plans/platform-gap-analysis-2026-11.md), with the release that closes each part. Tax shipped in v0.149.0, promotions in v0.150.0 and stock operations in v0.152.0.
 
 ---
 
@@ -149,7 +149,7 @@ Every tool declares what it may touch, and a caller sees only what it may call. 
 Stripe (cards, Apple Pay, Google Pay, Link, Klarna), PayPal, cash on delivery and bank transfer. A method is offered only once its credentials are in. The live stores currently sell with cash on delivery; the Stripe card flow has not yet been run against a live Stripe account.
 
 **Is it stable enough to run a business on?**
-It is a 0.x beta that five stores run on daily. There have been 344 releases in 142 days, and 5,779 tests run before each one. Every deploy backs up the database before migrating. When a release leaves a store down, the store goes back to the release before it on its own.
+It is a 0.x beta that five stores run on daily. There have been 349 releases in 144 days, and 5,962 tests run before each one. Every deploy backs up the database before migrating. When a release leaves a store down, the store goes back to the release before it on its own.
 
 **What happens if you disappear?**
 The code is public and yours to run, your data sits in your own Postgres, and every version turns Apache 2.0 four years after release.
@@ -164,10 +164,11 @@ It is source-available: free to read and build on, with a licence needed for pro
 You would find these on day two, so here they are now:
 
 - **Orders after checkout:** no order editing yet, a shipment always covers the whole order, there are no shipping labels, and cards are charged at checkout rather than when the order ships.
-- **Pricing depth:** B2B price lists and net terms exist, but they do not change what a customer is charged yet. Scoped coupons and buy-X-get-Y are next in line.
+- **Pricing depth:** B2B price lists and net terms exist, but they do not change what a customer is charged yet.
 - **Returns** are handled by staff; a customer cannot start one yet.
 - **About eighteen apps do less than their names suggest**, and each one says so in its own help: 3D and AR previews, the feed-style product rails, post-purchase emails, the storefront stylist chat, drops, the discovery quiz.
-- **Roles and permissions** guard 286 staff pages but only record what they would deny until a store switches them to enforce.
+- **Roles and permissions** guard 291 staff pages but only record what they would deny until a store switches them to enforce.
+- **Updates from morpheus.direct:** a store that does not run from a git checkout is not told when a new release is out. A signed update channel on morpheus.direct is being designed ([`docs/plans/morpheus-direct-distribution-2026-11.md`](docs/plans/morpheus-direct-distribution-2026-11.md)).
 
 The order these get done in is in [`docs/plans/platform-gap-analysis-2026-11.md`](docs/plans/platform-gap-analysis-2026-11.md), and each release is in [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md).
 
@@ -190,25 +191,25 @@ Two rules hold for every app, and CI tests both:
 
 ### By the numbers
 
-Measured at **v0.149.0 (10 November 2026)** by `scripts/measure_readme.py`, which boots the app with every opt-in app on and reads the registries. Re-run the script rather than editing a figure by hand; each row names its source of truth, and that source wins.
+Measured at **v0.152.1 (11 November 2026)** by `scripts/measure_readme.py`, which boots the app with every opt-in app on and reads the registries. Re-run the script rather than editing a figure by hand; each row names its source of truth, and that source wins.
 
 | Metric | Value | Source of truth |
 |---|---|---|
 | Apps in the tree | **98** (92 on by default + 6 opt-in: the travel booking vertical, four dropshipping apps and demo data) | `plugins/installed/` · `MORPHEUS_DEFAULT_APPS` in `morph/settings.py` |
-| Typed events on the hooks bus | **117**, with **300** subscriptions | `MorpheusEvents` in `core/hooks.py` |
-| Agent tools | **211**, 63 of them need a human's approval | `core/agents/registry.py` at boot |
+| Typed events on the hooks bus | **120**, with **335** subscriptions | `MorpheusEvents` in `core/hooks.py` |
+| Agent tools | **220**, 69 of them need a human's approval | `core/agents/registry.py` at boot |
 | MCP token scopes | **40** | `plugins/installed/agent_mcp/scopes.py` |
-| RBAC capabilities | **32**, gating **286** views | `plugins/installed/rbac/models.py` · `@require_capability` |
+| RBAC capabilities | **32**, gating **291** views | `plugins/installed/rbac/models.py` · `@require_capability` |
 | GraphQL surface | **36** queries · **50** mutations · **101** types | `api/schema.py` |
-| URL routes | **681**, of which **302** dashboard | a walk of the URL resolver |
-| Dashboard pages · settings panels · storefront blocks | **123** · **57** · **78** across 20 theme slots | the app registry at boot |
+| URL routes | **685**, of which **306** dashboard | a walk of the URL resolver |
+| Dashboard pages · settings panels · storefront blocks | **124** · **57** · **78** across 20 theme slots | the app registry at boot |
 | Scheduled jobs · management commands | **61** · **66** | `CELERY_BEAT_SCHEDULE` · `manage.py help` |
 | Payment gateways | **5**: Stripe, PayPal, cash on delivery, bank transfer, a staff-only test gateway | `payments.gateway_registry` |
-| Production releases since v0.1.0 (2026-06-20) | **344 in 142 days** | `docs/RELEASE_NOTES.md` |
-| Tests | **5,779** test functions | `def test_` in the tree |
-| Python | **~339k lines** in `core/`, `plugins/`, `themes/`, `api/`, `morph/`, `morpheus/`, `scripts/` (~94k of it tests) | the tree |
-| Templates, CSS and JS | **834** templates · **~88k** lines | the tree |
-| Migrations | **281** | `*/migrations/` |
+| Production releases since v0.1.0 (2026-06-20) | **349 in 144 days** | `docs/RELEASE_NOTES.md` |
+| Tests | **5,962** test functions | `def test_` in the tree |
+| Python | **~345k lines** in `core/`, `plugins/`, `themes/`, `api/`, `morph/`, `morpheus/`, `scripts/` (~96k of it tests) | the tree |
+| Templates, CSS and JS | **837** templates · **~88k** lines | the tree |
+| Migrations | **283** | `*/migrations/` |
 | Architecture decision records | **39** | `.torsor/architecture/decisions/` |
 | `core/` imports from apps | **0, enforced** | `scripts/check_core_boundary.py` |
 | Live stores on one codebase | **5** | [above](#five-live-stores-one-codebase) |
