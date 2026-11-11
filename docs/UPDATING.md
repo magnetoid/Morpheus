@@ -303,11 +303,8 @@ than redeploying: a redeploy builds the branch head, which is the release that f
 
 Every install asks one signed file, `https://morpheus.direct/updates/stable.json`, whether a
 newer release is out. The morpheus-web repository signs and publishes it, only for a release
-whose deploy-smoke passed and whose image exists on GHCR. This repository's `update-channel`
-workflow starts that run as soon as deploy-smoke passes, with the `CHANNEL_DISPATCH_TOKEN`
-secret: a fine-grained token with "Actions: write" on morpheus-web only. Without the secret the
-workflow says so and passes. The channel's own 3-hourly schedule has never fired in that private
-repository, so do not count on it.
+whose deploy-smoke passed and whose image exists on GHCR. How and when that runs is that
+repository's business, so a release can reach the channel some time after it is live.
 
 - **What is checked, and how often:** once a day, by the beat job `core-check-for-updates`
   (04:45 UTC, `core.tasks.check_for_updates`). The Version & updates page reads the cached answer
