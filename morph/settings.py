@@ -78,15 +78,25 @@ MORPHEUS_REPORTS_URL = config(
     'MORPHEUS_REPORTS_URL', default='https://github.com/magnetoid/Morpheus/issues/new'
 )
 
-# Preferred channel: a signed manifest. Unlike the GitHub source above, this
-# proves the *publisher* produced the bytes rather than merely that we reached
-# a server — HTTPS authenticates the host, not the payload. Verification fails
-# CLOSED: a manifest with no signature, a bad one, or no configured public key
-# is ignored entirely. Generate a keypair with `manage.py morph_sign_manifest
-# --generate-key`; the private key belongs on the release machine and nowhere
-# near a deployment.
-MORPHEUS_UPDATE_MANIFEST_URL = config('MORPHEUS_UPDATE_MANIFEST_URL', default='')
-MORPHEUS_UPDATE_PUBLIC_KEY = config('MORPHEUS_UPDATE_PUBLIC_KEY', default='')
+# The update channel: a signed manifest that morpheus.direct publishes. Unlike
+# the GitHub source above, it proves the *publisher* produced the bytes rather
+# than merely that we reached a server — HTTPS authenticates the host, not the
+# payload. Every install reads it by default; `MORPHEUS_UPDATE_MANIFEST_URL=off`
+# switches the check off, and another URL points a fork at its own channel.
+# Verification fails CLOSED: a manifest with no signature, a bad one, or no
+# configured public key is ignored entirely. The public key is a comma-separated
+# list, so a key can be rotated. Generate a keypair with `manage.py
+# morph_sign_manifest --generate-key`; the private key belongs on the release
+# machine and nowhere near a deployment. Tests default both to '' (no network).
+MORPHEUS_UPDATE_CHANNEL_URL = 'https://morpheus.direct/updates/stable.json'
+MORPHEUS_UPDATE_MANIFEST_URL = config(
+    'MORPHEUS_UPDATE_MANIFEST_URL',
+    default='' if _RUNNING_TESTS else MORPHEUS_UPDATE_CHANNEL_URL,
+)
+MORPHEUS_UPDATE_PUBLIC_KEY = config(
+    'MORPHEUS_UPDATE_PUBLIC_KEY',
+    default='' if _RUNNING_TESTS else 'C5sqsZab9ZAiYPX1Mnieid9xBahDy61RNvvf7ykJtQI=',
+)
 
 # Optional Google Places API key — when set, checkout/address forms
 # surface address autocomplete. Empty string disables the feature
