@@ -427,9 +427,10 @@ class MorpheusEvents:
     # FULFILLMENT_CREATED — kwargs: order=Order, fulfillment=Fulfillment,
     #                      complete=bool, announced=bool. A parcel was recorded,
     #                      after commit (orders.fulfilment.create_fulfillment).
-    #                      ``announced``: ORDER_FULFILLED fired with it, and its
-    #                      email told the buyer. core.emails tells the buyer about
-    #                      every other parcel.
+    #                      ``announced``: ORDER_FULFILLED fired with it (this
+    #                      parcel took the order to fulfilled or shipped).
+    #                      core.emails decides from it, the parcel count and
+    #                      orders' ``parcel_emails`` setting which email goes out.
     # FULFILLMENT_TRACKING_ADDED — kwargs: order=Order, fulfillment=Fulfillment.
     #                      A parcel recorded without tracking got it later, after
     #                      commit (shipping: a label bought for the parcel).
@@ -454,8 +455,21 @@ class MorpheusEvents:
     ORDER_RESERVE_STOCK = 'order.reserve_stock'
 
     # ── Payments (fire) ────────────────────────────────────────────────────
-    # PAYMENT_CAPTURED  — kwargs: payment=Payment.
-    # PAYMENT_FAILED    — kwargs: payment=Payment, error=str.
+    # PAYMENT_CAPTURED  — kwargs: payment=PaymentTransaction, order=Order. The
+    #                     money was taken (at checkout, or later from a held
+    #                     authorization: payments' capture_mode).
+    # PAYMENT_FAILED    — kwargs: payment=PaymentTransaction, order=Order,
+    #                     error=str. A card payment was declined or failed
+    #                     (the Stripe webhook), once per transaction, after its
+    #                     row is saved. orders records it on the timeline.
+    # PAYMENT_CAPTURE_MODE — filter, value=str ('immediate' | 'first_parcel' |
+    #                     'all_shipped' | 'manual'), kwargs: order=Order. When
+    #                     the order's card payment is taken. Asked once per
+    #                     order as its payment starts (payments.services.capture);
+    #                     the answer is kept on order.metadata['capture_mode'].
+    #                     The value comes in as the payments setting; an app may
+    #                     answer per order. An unknown answer counts as
+    #                     'immediate'.
     # PAYMENT_REFUNDED  — kwargs: refund=Refund, order=Order, amount=Money,
     #                     actor=User|None. Fired by RefundService.process()
     #                     for every refund (admin-initiated OR return-driven).
@@ -465,8 +479,8 @@ class MorpheusEvents:
     #                     Fired by
     #                     payments.services.stripe.process_webhook for every
     #                     Stripe event type payments does NOT own itself (it
-    #                     handles only payment_intent.succeeded /
-    #                     payment_intent.payment_failed). Lets an OPTIONAL
+    #                     handles payment_intent.succeeded, .payment_failed,
+    #                     .amount_capturable_updated and .canceled). Lets an OPTIONAL
     #                     consumer plugin (subscriptions' billing reconciler)
     #                     react to invoice.* / customer.subscription.* WITHOUT
     #                     payments importing it. Idempotent: the
@@ -475,6 +489,7 @@ class MorpheusEvents:
     #                     isolates a broken subscriber.
     PAYMENT_CAPTURED = 'payment.captured'
     PAYMENT_FAILED = 'payment.failed'
+    PAYMENT_CAPTURE_MODE = 'payment.capture_mode'  # filter
     PAYMENT_REFUNDED = 'payment.refunded'
     STRIPE_WEBHOOK_EVENT = 'payments.stripe_webhook_event'  # fire
 
@@ -599,6 +614,12 @@ class MorpheusEvents:
     #   (False when a cart line does not ship, which leaves cash on delivery
     #   out). Plugin disabled → [] and the picker renders no gateway choices.
     CHECKOUT_GATEWAYS = 'checkout.gateways'  # filter
+    # SHIPPING_LABEL_RATE — filter, value=dict (the carrier rate shipping chose
+    #   by its ``label_rate`` setting), kwargs: rates=list (every rate the
+    #   carrier offered, in its own shape), provider=str ('shippo' |
+    #   'easypost'), order=Order. An app may answer with another rate from
+    #   ``rates``; anything not in the list is ignored.
+    SHIPPING_LABEL_RATE = 'shipping.label_rate'  # filter
     # SEARCH_RANKED_IDS — filter, value=list. Semantic/hybrid ranking for
     #   storefront search. kwargs: query=str, limit=int. Subscriber
     #   (ai_assistant) returns ranked product pks; empty/absent → storefront

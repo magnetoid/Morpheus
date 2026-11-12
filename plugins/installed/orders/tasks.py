@@ -35,6 +35,10 @@ DEFAULT_EXPIRY_MINUTES = 60
 #: store whose only payment method was cash on delivery.
 OFFLINE_GATEWAYS = ('cod', 'manual')
 
+#: An order whose card was charged, or authorized and held until it ships
+#: (payments' capture_mode), is not an abandoned checkout.
+PAID_OR_HELD = ('paid', 'authorized')
+
 
 def _expiry_minutes() -> int:
     """Merchant knob, read fresh (a plugin config cache is per-process)."""
@@ -70,7 +74,7 @@ def expire_pending_orders() -> int:
     cutoff = timezone.now() - timezone.timedelta(minutes=minutes)
     candidates = list(
         Order.objects.filter(status='pending', placed_at__lt=cutoff)
-        .exclude(payment_status='paid')
+        .exclude(payment_status__in=PAID_OR_HELD)
         .exclude(payment_gateway__in=OFFLINE_GATEWAYS)
         .values_list('id', flat=True)[:500]
     )
@@ -80,8 +84,8 @@ def expire_pending_orders() -> int:
         try:
             with transaction.atomic():
                 order = Order.objects.select_for_update().get(pk=order_id)
-                if order.status != 'pending' or order.payment_status == 'paid':
-                    continue  # paid or advanced between select and lock
+                if order.status != 'pending' or order.payment_status in PAID_OR_HELD:
+                    continue  # paid, held or advanced between select and lock
                 order.cancel(reason=f'Unpaid for over {minutes} minutes — expired automatically.')
                 order.save(update_fields=['status', 'cancelled_at', 'staff_notes'])
             cancelled += 1

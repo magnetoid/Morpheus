@@ -70,6 +70,7 @@ class OrdersPlugin(Plugin):
         self.register_hook(
             events.CUSTOMER_EMAIL_VERIFIED, self.on_customer_email_verified, priority=30
         )
+        self.register_hook(events.PAYMENT_FAILED, self.on_payment_failed, priority=30)
         # Nav-bar cart item count — contributed to every template (it reads
         # orders.Cart). The aggregator in plugins/context_processors.py runs it
         # only while orders is active, so the count vanishes on disable.
@@ -151,6 +152,42 @@ class OrdersPlugin(Plugin):
                         'cancelled automatically, which releases the '
                         'reservation and refunds any gift-card or loyalty '
                         'tender. Set 0 to disable and reconcile by hand.'
+                    ),
+                },
+                'offline_refund_default': {
+                    'type': 'string',
+                    'enum': ['later', 'store_credit', 'external'],
+                    'default': 'later',
+                    'title': 'Refunds of orders paid offline',
+                    'description': (
+                        'How a refund is paid back by default when the order was paid '
+                        'by cash on delivery or bank transfer, which cannot send money '
+                        "back: 'later' records it to settle by hand, 'store_credit' "
+                        "adds it to the customer's store credit (guests get 'later'), "
+                        "'external' records it as already paid back. The refund form "
+                        'can choose otherwise each time.'
+                    ),
+                },
+                'parcel_emails': {
+                    'type': 'string',
+                    'enum': ['each_parcel', 'when_complete'],
+                    'default': 'each_parcel',
+                    'title': 'Shipping emails for an order sent in parcels',
+                    'description': (
+                        "'each_parcel': the customer gets an email with each parcel's "
+                        "items and tracking. 'when_complete': one email once the last "
+                        'parcel is sent, listing every parcel and its tracking.'
+                    ),
+                },
+                'fulfil_marks_shipped': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'The last parcel ships the order',
+                    'description': (
+                        'When on, the parcel that completes an order marks it shipped '
+                        "(the parcel form's box starts ticked, and Linda ships unless "
+                        'told otherwise). When off, it marks the order fulfilled, and '
+                        'someone ships it afterwards.'
                     ),
                 },
                 'skip_shipping_for_digital_carts': {
@@ -338,6 +375,16 @@ class OrdersPlugin(Plugin):
                 logger.info('orders: linked %d guest order(s) to customer %s', linked, customer.pk)
         except Exception:  # noqa: BLE001 — never break sign-in over this
             logger.warning('orders: guest-order linking failed', exc_info=True)
+
+    def on_payment_failed(self, order=None, error='', **kwargs):
+        """PAYMENT_FAILED: the declined card goes on the order's timeline, so
+        staff see why an order is still unpaid."""
+        if order is None:
+            return
+        from core.errors.services import redact_secrets  # noqa: PLC0415
+
+        reason = redact_secrets(str(error or '')).strip()[:240]
+        order.log_event('PAYMENT_FAILED', message=reason or 'The card payment failed')
 
     def on_customer_login(self, customer=None, request=None, **kwargs):
         """CUSTOMER_LOGIN: adopt/merge the anonymous-session cart onto the

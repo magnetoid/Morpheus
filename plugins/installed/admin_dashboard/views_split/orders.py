@@ -298,9 +298,11 @@ def _mark_order_paid(order) -> bool:
     the payment-confirmed email — hangs off ORDER_PAID, so simply flipping
     ``payment_status`` (as this used to) silently delivered nothing. Idempotent:
     a no-op (returns False) when the order is already paid, so a double click
-    can't double-fire the event.
+    can't double-fire the event. A card payment held until the order ships is
+    never marked paid by hand: the money would stay held, and "Charge now" on
+    the Payment panel takes it.
     """
-    if order.payment_status == 'paid':
+    if order.payment_status in ('paid', 'authorized'):
         return False
     from morpheus.core import MorpheusEvents, hook_registry
 
@@ -315,6 +317,18 @@ def _mark_order_paid(order) -> bool:
     order.log_event('PAYMENT_MARKED_PAID', message='Marked paid via dashboard')
     hook_registry.fire(MorpheusEvents.ORDER_PAID, order=order)
     return True
+
+
+def _mark_paid_action(request: HttpRequest, order) -> None:
+    """The order page's "Mark as paid": refused for a held card payment."""
+    if order.payment_status == 'authorized':
+        messages.error(
+            request,
+            'This card payment is held, not charged: use "Charge now" on the Payment panel.',
+        )
+        return
+    _mark_order_paid(order)
+    messages.success(request, f'Order #{order.order_number} marked paid.')
 
 
 @staff_member_required
@@ -356,8 +370,7 @@ def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
             order.save()
             messages.success(request, f'Order #{order.order_number} marked as delivered.')
         elif action == 'mark_paid':
-            _mark_order_paid(order)
-            messages.success(request, f'Order #{order.order_number} marked paid.')
+            _mark_paid_action(request, order)
         elif action == 'add_tracking':
             tracking = (request.POST.get('tracking_number') or '').strip()[:200]
             method = (request.POST.get('shipping_method') or '').strip()[:100]

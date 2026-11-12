@@ -1,0 +1,16 @@
+<div class="space-y-2 text-sm" data-payment-panel>
+  {% if held %}
+  <p><span class="pill pill-warn">Held</span> {{ tx.amount }} is held on the card since {{ tx.authorized_at|date:"j M Y, H:i" }}; it is charged {{ when }}.</p>
+  <p class="text-xs text-[color:var(--text-muted)]">If it is still held on {{ settle_by|date:"j M Y" }}, it is {% if settle_action == "release" %}given back without charging{% else %}charged then, so the sale is not lost{% endif %} (Settings → Payments).</p>
+  {% if failure %}<p class="text-xs text-[color:var(--danger)]">The last attempt to charge it failed ({{ failure.created_at|date:"j M, H:i" }}): {{ failure.message }}</p>{% endif %}
+  <form method="post" action="{% url 'payments_dashboard:capture' order.order_number %}">{% csrf_token %}
+    <button type="submit" class="btn btn-primary text-xs" data-confirm="Charge {{ tx.amount }} to the customer's card now?">Charge now</button>
+  </form>
+  <p class="text-xs text-[color:var(--text-muted)]">Cancelling the order gives the hold back instead.</p>
+  {% elif released %}
+  <p><span class="pill">Released</span> The {{ tx.amount }} held on the card was given back; nothing was charged.</p>
+  {% if order.status != "cancelled" and order.status != "refunded" %}<p class="text-xs text-[color:var(--danger)]">The order is still open and unpaid: cancel it, or ask the customer to pay another way before it ships.</p>{% endif %}
+  {% elif charged %}
+  <p><span class="pill pill-success">Charged</span> {{ tx.amount }} was held from {{ tx.authorized_at|date:"j M Y" }} and has been charged.</p>
+  {% endif %}
+</div>

@@ -4,30 +4,33 @@ summary: Takes payment by Stripe, PayPal or cash on delivery, refunds through th
 
 ## What it's for
 
-This app gets your store paid: it offers Stripe, PayPal and cash on delivery at checkout, takes the charge, and refunds through whichever one took the money. A method appears at checkout only once it is switched on and fully set up. While Stripe is set up, the cart page also shows Apple Pay, Google Pay and Link buttons, so a shopper can pay from their wallet without filling in the checkout form.
+This app takes payment by Stripe, PayPal or cash on delivery and refunds through whichever one took the money. A method appears at checkout once it is switched on and set up. With Stripe set up, the cart page also shows Apple Pay, Google Pay and Link buttons.
 
-It also scores every new order for fraud from 0 to 100 (many orders from one IP address or email, differing shipping and billing countries, past refunds, an unusually large first order) in a Fraud check card on the order's page.
+It also scores each new order for fraud from 0 to 100 (many orders from one IP address or email, mismatched countries, past refunds, a large first order) on the order's page.
 
 ## Set it up
 
-Add your Stripe secret key, public key and webhook secret on [Payment gateways](settings:payments) to take card payments. To offer PayPal, turn it on and add its client ID, secret and webhook ID. On the same page, turn cash on delivery on or off and write the instructions shown at checkout. Turn test payment on only while you need it: only signed-in staff see it.
+Add your Stripe secret key, public key and webhook secret on [Payment gateways](settings:payments); PayPal needs its client ID, secret and webhook ID. The same page switches cash on delivery and its instructions, the staff-only test payment, and the amount above which a first order looks large (500 by default).
 
-The fraud check needs nothing. The amount above which a first order counts as unusually large (500 by default) is on the same page.
+Cards are charged at checkout, or held and charged with the first parcel, with the last one, or when you press Charge now. A hold older than the days you set (six at most) is charged or given back. Holding needs your Stripe webhook to send "payment_intent.amount_capturable_updated" and "payment_intent.canceled". You can also show signed-in shoppers their saved cards, or offer to save a new one.
 
 ## Common tasks
 
-- Turn the wallet buttons on the cart page on or off, or ask Linda.
-- Try checkout as staff by choosing "Test payment".
-- Mark a cash-on-delivery or bank-transfer order as paid once the money arrives.
-- Refund an order, from its own page or by asking Linda.
-- Read an order's fraud score and its reasons on its page, or ask Linda.
+- Turn the cart's wallet buttons on or off.
+- Mark a cash-on-delivery or bank-transfer order paid once the money arrives.
+- Charge a held card from the Payment panel on its order.
+- Refund an order from its page.
+- Read an order's fraud score and its reasons.
+- Ask Linda to do any of these.
 
 ## Good to know
 
-A wallet order is placed only for the total the wallet showed, with your shipping rates and tax. A declined wallet payment finishes on the checkout's payment page. A cart holding a download uses the checkout form while the digital-content acknowledgement is on. Apple Pay also needs your domain registered with Stripe.
+A wallet order is placed only for the total the wallet showed; a declined one finishes on the payment page. A cart with a download uses the checkout form while the digital-content acknowledgement is on. Apple Pay also needs your domain registered with Stripe.
 
-Cash on delivery is offered only when everything in the cart ships, since the courier collects the money: a cart with a download never offers it.
+Cash on delivery is offered only when everything in the cart ships.
 
-A refund moves money only for an order charged through Stripe or PayPal; any other refund is recorded, and you settle it outside the store.
+Only Stripe and PayPal refunds move money; for other orders the refund form adds the amount to store credit, records it as paid back, or leaves it to settle by hand.
 
-The fraud score only informs you: no order is held or cancelled because of it. Orders older than the check have no score.
+A held payment cannot be marked paid or refunded until it is charged; cancelling the order gives it back. An order with a download is charged at checkout. A declined card is noted on the order's timeline.
+
+The fraud score only informs you: no order is held or cancelled because of it.

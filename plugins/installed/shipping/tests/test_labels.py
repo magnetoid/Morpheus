@@ -356,8 +356,8 @@ class LabelTests(TestCase):
         shippo, _calls = _shippo()
         real = labels._shippo
 
-        def bought(*args):
-            return {**real(*args), 'no_such_column': 'x'}  # the update refuses it
+        def bought(*args, **kwargs):
+            return {**real(*args, **kwargs), 'no_such_column': 'x'}  # the update refuses it
 
         with (
             mock.patch('requests.post', shippo),

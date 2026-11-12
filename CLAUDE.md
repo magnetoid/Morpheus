@@ -1334,7 +1334,8 @@ storefront page. Guarded by `flipbook/tests/test_private_source.py`.
 One rule, `digital_products/library.py:is_delivered`: a digital line (variant type `digital` or
 `audiobook`, or product type `digital`) is delivered when its order is paid, placed with an offline
 gateway (`orders.tasks.OFFLINE_GATEWAYS`: cash on delivery, bank transfer; owner, 2026-11-09), or
-fulfilled or shipped; it never waits for a shipment, and a dashboard order with nothing that ships
+fulfilled or shipped, and never while its card is only held or the hold was given back (v0.155.0);
+it never waits for a shipment, and a dashboard order with nothing that ships
 offers no fulfilment (dotbooks' owner delivered a PDF by "shipping" it). Cash on delivery is never
 offered for a cart with a line that does not ship (owner, 2026-11-11, v0.152.1): a gateway with
 `paid_on_delivery` drops out of `enabled_gateways(ships=False)`, the picker asks with the cart's lines
@@ -1570,11 +1571,12 @@ is protected, so `refresh_from_db()` raises), refusing one that changed meanwhil
 fires `FULFILLMENT_CREATED` with `announced` (whether `ORDER_FULFILLED`, the "on its way" email, went
 out with it, which happens only for an order's one parcel): core.emails mails every other parcel its own
 lines and tracking, so a box is announced once, and the "on its way" email lists its parcel's lines
-(it stays quiet for an order sent in several). The tracking goes on the order before the transition,
+(it stays quiet for an order sent in several; with `parcel_emails='when_complete'` the last parcel sends
+one email listing every parcel instead). The tracking goes on the order before the transition,
 so that email quotes this parcel. A label bought for an order stays *purchasing* until its parcel is
 recorded, so a second click waits. `ORDER_DELIVERED` fires on
 `delivered` (post_purchase re-times its follow-ups from it). Labels are shipping's
-(`shipping/labels.py`, `ShippingLabel`): a fresh carrier shipment, the cheapest rate, from the order
+(`shipping/labels.py`, `ShippingLabel`): a fresh carrier shipment, the rate `label_rate` picks, from the order
 page's panel or `shipping.buy_label`. A purchase spends money, so it runs in three steps: under the
 lock, check the order (as loaded, able to ship) and commit a *purchasing* row, which stops a second
 click; ask the carrier outside any transaction; store its answer and commit, and only then record the
@@ -1588,6 +1590,38 @@ Carrier keys are write-only, like `format: password` fields. Guarded by
 `orders/tests/test_partial_fulfilment.py`, `admin_dashboard/tests/test_fulfil_form.py`,
 `post_purchase/tests/test_delivered_retime.py`, `shipping/tests/test_rate_editor.py`,
 `test_pickup.py` and `test_labels.py`.
+
+**Convention — a card is charged when the merchant says, and every such choice is a setting (v0.155.0).**
+Owner's rule (2026-11-12): a commerce choice is a setting in the owning app's schema (default = what the
+store did before), read in the same change, with a hook where an app may decide; safety constants stay
+code. payments' `capture_mode` (`immediate` | `first_parcel` | `all_shipped` | `manual`) is decided once
+per order as its payment starts (`services/capture.py:capture_mode`, the `PAYMENT_CAPTURE_MODE` filter)
+and kept in `metadata['capture_mode']`, so a retry sends Stripe the same parameters; a parcel mode with a
+line that does not ship falls back to `immediate`. A held card is `PaymentTransaction.AUTHORIZED` and
+`payment_status='authorized'`: the order is confirmed, never paid, so it is not expired, not marked paid
+by hand, not refunded, and a download waits until it is charged. Capture goes through the gateway's
+`capture()` (the base fails closed, as does `void()`), on `FULFILLMENT_CREATED` / `ORDER_FULFILLED` after
+commit, the order page's Charge now, or `payments.capture`; cancelling releases it; the hourly sweep
+charges (or releases) a hold older than `authorization_days` (at most 6: Stripe drops it at 7), timed
+from the Stripe event's `created`, never the delivery. A hold is charged only on an open order nothing
+paid (`capture.surplus_reason`, read from the order as the database has it, not the caller's copy): one
+on a cancelled or refunded order, or a second confirmed attempt on an order already paid (by a gateway
+or marked paid by hand) or held, is given back by whoever meets it (the webhook, Charge now, the sweep,
+which retries a failed release every hour), and never lowers `paid`. A charge and a release of one hold
+never run at once (a cache claim); an order that closes while Stripe charges is flagged
+`PAYMENT_CHARGED_AFTER_CLOSE` for the merchant to refund. A parcel saves only the order fields it changed, and the cart's wallet sheet asks
+Stripe for the same `captureMethod` the order's PaymentIntent will carry (`capture.cart_mode`), or the
+wallet cannot confirm. Stripe must send `payment_intent.amount_capturable_updated` and
+`payment_intent.canceled` (a health check says when this store's endpoint lacks them; several stores can share one Stripe
+account, so it counts only an endpoint on a host the store answers on). Refunds take `settle` ('' gateway, `store_credit`, `external`), defaulting
+for offline gateways from orders' `offline_refund_default`; `PAYMENT_REFUNDED` carries `settled_as` for
+the email. Saved cards at checkout (`checkout_show_saved_cards`, `checkout_offer_save_card`) put the
+customer on the PaymentIntent and a CustomerSession on the payment page. `PAYMENT_FAILED` fires once per
+transaction and orders writes it on the timeline. Labels are bought at shipping's `label_rate` (cheapest |
+fastest | preferred carrier/service, `SHIPPING_LABEL_RATE` filter); orders' `parcel_emails` and
+`fulfil_marks_shipped` set the parcel emails and whether the last parcel ships the order. Guarded by
+`payments/tests/test_manual_capture.py`, `test_saved_card_intent.py`, `test_payment_failed_event.py`,
+`orders/tests/test_offline_refund.py`, `test_parcel_settings.py` and `shipping/tests/test_label_rate.py`.
 
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first

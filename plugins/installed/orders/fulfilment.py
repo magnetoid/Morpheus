@@ -32,6 +32,19 @@ class FulfilmentError(ValueError):
     """A parcel that cannot be recorded; the message is fit for the merchant."""
 
 
+def marks_shipped_default() -> bool:
+    """orders' ``fulfil_marks_shipped`` setting: whether the parcel that
+    completes an order ships it (the default) or marks it fulfilled, when the
+    caller does not say."""
+    from plugins.registry import app_registry  # noqa: PLC0415
+
+    plugin = app_registry.get('orders')
+    try:
+        return bool(plugin.get_config_value('fulfil_marks_shipped', True)) if plugin else True
+    except Exception:  # noqa: BLE001 — a config problem keeps the default
+        return True
+
+
 def open_lines(order) -> list[tuple]:
     """``[(item, remaining)]`` for every line that ships and still has units to send."""
     from plugins.installed.orders.services import line_ships  # noqa: PLC0415
@@ -168,7 +181,9 @@ def create_fulfillment(  # noqa: PLR0913
         # without a parcel, nor when it could not move on, and for the last of
         # several parcels it stays quiet, so the parcel's own email tells the buyer.
         announced = not earlier and complete and prior not in ('fulfilled', order.status)
-        order.save()
+        # Only what this function changed: a full save would write back whatever
+        # the caller loaded, a payment taken in the meantime included.
+        order.save(update_fields=['status', 'tracking_number', 'updated_at'])
 
         def _announce():
             try:

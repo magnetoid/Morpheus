@@ -125,6 +125,13 @@ def _save_config(request) -> None:
             instance.set_config(key, '')
     for field, val in addresses.items():
         instance.set_config(field, val)
+    # Which rate a label is bought at (shipping.labels._choose_rate).
+    rule = (request.POST.get('label_rate') or 'cheapest').strip()
+    instance.set_config(
+        'label_rate', rule if rule in ('cheapest', 'fastest', 'preferred') else 'cheapest'
+    )
+    for key in ('label_carrier', 'label_service'):
+        instance.set_config(key, (request.POST.get(key) or '').strip()[:100])
     messages.success(request, 'Carrier settings saved.')
 
 

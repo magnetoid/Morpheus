@@ -105,6 +105,26 @@ def on_fulfillment_created(
     never gets two emails for one box."""
     if order is None or fulfillment is None or announced:
         return
+    if _parcel_emails() == 'when_complete':
+        # orders' parcel_emails: one email once the last parcel is sent, listing
+        # every parcel and its tracking; nothing for the parcels before it.
+        if not complete:
+            return
+        parcels = list(order.fulfillments.order_by('created_at'))
+        if len(parcels) > 1:
+            _send(
+                template_base='emails/order_fulfilled',
+                subject=f'Order #{order.order_number} is on its way',
+                to=_order_recipient(order),
+                ctx={
+                    'order': order,
+                    'parcels': [
+                        {'fulfillment': p, 'items': list(p.items.select_related('order_item'))}
+                        for p in parcels
+                    ],
+                },
+            )
+            return
     subject = (
         f'Order #{order.order_number} is on its way'
         if complete
@@ -205,7 +225,11 @@ def on_customer_registered(customer: Any = None, **kwargs: Any) -> None:
     )
 
 
-def on_payment_refunded(refund: Any = None, order: Any = None, **kwargs: Any) -> None:
+def on_payment_refunded(
+    refund: Any = None, order: Any = None, settled_as: str = '', **kwargs: Any
+) -> None:
+    """The refund email. ``settled_as`` says where the money went: '' back to
+    the payment method, 'store_credit' or 'external' (paid back directly)."""
     target = order or getattr(refund, 'order', None)
     if target is None:
         return
@@ -213,11 +237,24 @@ def on_payment_refunded(refund: Any = None, order: Any = None, **kwargs: Any) ->
         template_base='emails/refund_issued',
         subject=f'Refund issued for order #{target.order_number}',
         to=_order_recipient(target),
-        ctx={'order': target, 'refund': refund},
+        ctx={'order': target, 'refund': refund, 'settled_as': settled_as or ''},
     )
 
 
 # ── Internals ────────────────────────────────────────────────────────────────
+
+
+def _parcel_emails() -> str:
+    """orders' ``parcel_emails`` setting: 'each_parcel' (the default) or
+    'when_complete'."""
+    from plugins.registry import app_registry  # noqa: PLC0415
+
+    plugin = app_registry.get('orders')
+    try:
+        mode = plugin.get_config_value('parcel_emails', 'each_parcel') if plugin else ''
+    except Exception:  # noqa: BLE001 — a config problem keeps the default
+        mode = ''
+    return mode if mode in ('each_parcel', 'when_complete') else 'each_parcel'
 
 
 def _order_recipient(order: Any) -> str | None:

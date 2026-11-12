@@ -115,6 +115,47 @@ class ReturnRequest(models.Model):
         super().save(*args, **kwargs)
 
 
+#: How a refund is paid back: '' through the order's payment method (the
+#: gateway refunds it), 'store_credit' into the customer's store credit,
+#: 'external' already paid back outside the store (cash, a bank transfer).
+SETTLE_CHOICES = ('', 'store_credit', 'external')
+OFFLINE_REFUND_DEFAULTS = ('later', 'store_credit', 'external')
+
+
+def _refuse_uncharged(order) -> None:
+    """A card held, not taken (payments' capture_mode), or a hold given back:
+    nothing was charged, so nothing can be paid back."""
+    if order.payment_status == 'authorized':
+        raise ValueError(
+            f'Order {order.order_number} is only authorized, not charged yet: charge it '
+            'first, or cancel the order to release the held payment.'
+        )
+    if order.payment_status == 'released':
+        raise ValueError(
+            f'Order {order.order_number} was never charged: its held payment was given back.'
+        )
+
+
+def default_settle(order) -> str:
+    """How the refund form pays a refund of this order back unless staff choose
+    otherwise: through the payment method, except for an order paid offline
+    (cash on delivery, bank transfer), where orders' ``offline_refund_default``
+    decides ('later' leaves it to settle by hand). A guest has no store credit."""
+    from plugins.installed.orders.tasks import OFFLINE_GATEWAYS  # noqa: PLC0415
+    from plugins.registry import app_registry  # noqa: PLC0415
+
+    if (getattr(order, 'payment_gateway', '') or '') not in OFFLINE_GATEWAYS:
+        return ''
+    plugin = app_registry.get('orders')
+    try:
+        mode = plugin.get_config_value('offline_refund_default', 'later') if plugin else 'later'
+    except Exception:  # noqa: BLE001 — a config problem keeps the default
+        mode = 'later'
+    if mode == 'store_credit' and not getattr(order, 'customer_id', None):
+        return ''
+    return mode if mode in ('store_credit', 'external') else ''
+
+
 class RefundService:
     """Process refunds against the underlying payment provider."""
 
@@ -128,18 +169,33 @@ class RefundService:
         reason: str = 'customer_request',
         notes: str = '',
         actor=None,
+        settle: str = '',
     ) -> Refund:  # noqa: F821
         """Create a Refund row and call the provider. Idempotent on
         ``(order, amount, reason)`` — retries reuse the same Refund row
         (which carries a deterministic Stripe idempotency_key) so the
-        provider can never be billed twice."""
+        provider can never be billed twice.
+
+        ``settle`` (SETTLE_CHOICES) pays it back another way, with no gateway
+        call: 'store_credit' adds it to the customer's store credit, 'external'
+        records it as already paid back. Either way the refund is processed and
+        PAYMENT_REFUNDED fires."""
         from plugins.installed.orders.models import Order, Refund
+
+        if settle not in SETTLE_CHOICES:
+            raise ValueError(f'Unknown way to pay a refund back: {settle!r}.')
+        if settle == 'store_credit' and not order.customer_id:
+            raise ValueError(
+                f'Order {order.order_number} was placed by a guest, who has no store credit.'
+            )
 
         # Lock the order first. Without it two concurrent requests (a
         # double-clicked "Refund") both find no matching row below and both
         # create one, and the dedup and the over-refund cap each see only
         # their own transaction.
-        Order.objects.select_for_update().filter(pk=order.pk).exists()
+        locked = Order.objects.select_for_update().filter(pk=order.pk).first()
+        if locked is not None:
+            _refuse_uncharged(locked)
 
         # Guard against over-refunding: the sum of already-processed refunds
         # plus this one must not exceed what was charged (order.total). The
@@ -186,6 +242,9 @@ class RefundService:
         elif refund.is_processed:
             return refund
 
+        if settle:
+            return cls._settle_without_gateway(refund, order, settle, actor)
+
         # Drive the ACTUAL provider refund through the payments plugin — the
         # same 'refund.requested' path the dashboard uses. This used to call a
         # broken inline `_provider_refund` that filtered payments by statuses
@@ -206,6 +265,43 @@ class RefundService:
         return refund
 
     @classmethod
+    def _settle_without_gateway(cls, refund, order, settle: str, actor=None):
+        """Pay a refund back as store credit or record it as paid back
+        outside the store (``process(settle=…)``), inside its transaction."""
+        from plugins.installed.orders import store_credit  # noqa: PLC0415
+
+        if settle == 'store_credit':
+            staff = actor if getattr(actor, 'is_authenticated', False) else None
+            store_credit.issue(
+                order.customer,
+                amount=refund.amount,
+                # Its own reference: recredit_refund (':r:') returns the credit
+                # SPENT on the order; this is the refund itself.
+                reference=f'{order.order_number}:refund-credit:{refund.pk}',
+                note=f'Refund of order #{order.order_number}',
+                created_by=staff,
+            )
+            order.log_event(
+                'REFUND_STORE_CREDIT',
+                message=f"{refund.amount} added to the customer's store credit",
+            )
+        else:
+            order.log_event(
+                'REFUND_RECORDED', message=f'{refund.amount} — paid back outside the store'
+            )
+        refund.is_processed = True
+        refund.processed_at = timezone.now()
+        refund.save(update_fields=['is_processed', 'processed_at'])
+        hook_registry.fire(
+            MorpheusEvents.PAYMENT_REFUNDED,
+            refund=refund,
+            order=order,
+            amount=refund.amount,
+            settled_as=settle,
+        )
+        return refund
+
+    @classmethod
     @transaction.atomic
     def record_external(cls, *, order, reason: str = 'other', notes: str = '', actor=None):
         """Record a refund already made outside Morpheus (in the gateway's own
@@ -220,6 +316,7 @@ class RefundService:
         from plugins.installed.orders.models import Order, Refund
 
         locked = Order.objects.select_for_update().get(pk=order.pk)
+        _refuse_uncharged(locked)
         already = sum(
             (r.amount.amount for r in locked.refunds.filter(is_processed=True)),
             Decimal('0'),
@@ -237,7 +334,11 @@ class RefundService:
         )
         locked.log_event('REFUND_RECORDED', message=f'{refund.amount} — {refund.notes}')
         hook_registry.fire(
-            MorpheusEvents.PAYMENT_REFUNDED, refund=refund, order=locked, amount=refund.amount
+            MorpheusEvents.PAYMENT_REFUNDED,
+            refund=refund,
+            order=locked,
+            amount=refund.amount,
+            settled_as='external',
         )
         if locked.status != 'refunded':
             locked.mark_refunded(reason=refund.notes)

@@ -137,6 +137,20 @@ class CartPageTests(_Cart):
         self.addCleanup(plugin.invalidate_config_cache)
         self.assertNotContains(self.client.get('/cart/'), 'data-express-checkout')
 
+    def test_the_sheet_asks_for_the_capture_the_order_will_use(self):
+        from plugins.installed.payments.services.capture import cart_mode
+
+        plugin = app_registry.get('payments')
+        self.addCleanup(plugin.invalidate_config_cache)
+        self.assertEqual(_config(self.client.get('/cart/'))['captureMethod'], 'automatic')
+        for mode in ('first_parcel', 'manual'):
+            plugin.set_config('capture_mode', mode)
+            self.assertEqual(_config(self.client.get('/cart/'))['captureMethod'], 'manual')
+        # A download has no parcel to wait for: its order is charged at once.
+        plugin.set_config('capture_mode', 'all_shipped')
+        self.assertEqual(cart_mode(False), 'immediate')
+        self.assertEqual(cart_mode(True), 'all_shipped')
+
     def test_a_cart_that_needs_the_withdrawal_tick_goes_through_the_form(self):
         orders = app_registry.get('orders')
         orders.set_config('digital_withdrawal_waiver_enabled', True)

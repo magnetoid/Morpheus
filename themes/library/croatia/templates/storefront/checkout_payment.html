@@ -44,6 +44,7 @@
       var stripe = Stripe('{{ stripe_publishable_key|escapejs }}');
       var elements = stripe.elements({
         clientSecret: '{{ client_secret|escapejs }}',
+        {% if customer_session_secret %}customerSessionClientSecret: '{{ customer_session_secret|escapejs }}',{% endif %}
         appearance: {
           theme: 'stripe',
           variables: {

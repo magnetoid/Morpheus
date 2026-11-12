@@ -41,6 +41,25 @@ class PaymentsPlugin(Plugin):
         self.register_hook(events.ORDER_PLACED, risk.on_order_placed, priority=85)
         self.register_hook(events.ORDER_DETAIL_PANELS, risk.order_panel, priority=40)
 
+        # Charging later (capture_mode): a parcel takes the money the card holds,
+        # a cancelled order gives the hold back, and the order page shows it.
+        self.register_hook(events.FULFILLMENT_CREATED, self.on_fulfillment_created, priority=20)
+        self.register_hook(events.ORDER_FULFILLED, self.on_order_fulfilled, priority=20)
+        self.register_hook(events.ORDER_CANCELLED, self.on_order_cancelled, priority=20)
+        from plugins.installed.payments import order_panel
+
+        self.register_hook(events.ORDER_DETAIL_PANELS, order_panel.order_panel, priority=20)
+        self.register_urls(
+            'plugins.installed.payments.urls_dashboard',
+            prefix='dashboard/payments/',
+            namespace='payments_dashboard',
+        )
+        # A card holds an authorization for about a week: charge or release it first.
+        self.register_celery_beat(
+            'payments:release_stale_authorizations',
+            {'task': 'payments.release_stale_authorizations', 'schedule': 60 * 60},
+        )
+
         # Register GraphQL extensions if we want mutations like `processPayment`
         self.register_graphql_extension('plugins.installed.payments.graphql.mutations')
 
@@ -115,9 +134,42 @@ class PaymentsPlugin(Plugin):
         ]
 
     def contribute_agent_tools(self) -> list:
-        from plugins.installed.payments.agent_tools import order_risk_tool
+        from plugins.installed.payments.agent_tools import capture_payment_tool, order_risk_tool
 
-        return [order_risk_tool]
+        return [order_risk_tool, capture_payment_tool]
+
+    def on_fulfillment_created(self, order=None, fulfillment=None, complete=False, **kwargs):
+        """FULFILLMENT_CREATED: the first parcel, or the last, takes the held money."""
+        from plugins.installed.payments.services.capture import schedule_capture, stored_mode
+
+        if order is None:
+            return
+        mode = stored_mode(order)
+        if mode == 'first_parcel' or (mode == 'all_shipped' and complete):
+            schedule_capture(order)
+
+    def on_order_fulfilled(self, order=None, **kwargs):
+        """ORDER_FULFILLED: an order fulfilled without a parcel (GraphQL, an
+        agent) is charged too, in either parcel mode. A parcel's own
+        FULFILLMENT_CREATED charges an order that has one."""
+        from plugins.installed.payments.services.capture import (
+            PARCEL_MODES,
+            schedule_capture,
+            stored_mode,
+        )
+
+        if order is None or stored_mode(order) not in PARCEL_MODES:
+            return
+        if order.fulfillments.exists():
+            return
+        schedule_capture(order)
+
+    def on_order_cancelled(self, order=None, **kwargs):
+        """ORDER_CANCELLED: a cancelled order's hold is always given back."""
+        from plugins.installed.payments.services.capture import schedule_release
+
+        if order is not None:
+            schedule_release(order, 'The order was cancelled, so the held payment was released')
 
     def on_health_checks(self, value, **kwargs):
         """HEALTH_CHECKS: checkout offers at least one payment method that works."""
@@ -138,7 +190,34 @@ class PaymentsPlugin(Plugin):
                 else 'No payment method is switched on and set up; every checkout fails.',
             }
         )
+        self._capture_health(value, offered)
         return value
+
+    @staticmethod
+    def _capture_health(value, offered) -> None:
+        """While cards are charged later, Stripe must tell the store about a
+        held payment, or the order looks unpaid and expires."""
+        from plugins.installed.payments.services.capture import setting_mode  # noqa: PLC0415
+        from plugins.installed.payments.services.stripe import PaymentService  # noqa: PLC0415
+
+        if 'stripe' not in offered or setting_mode() == 'immediate':
+            return
+        needed = ('payment_intent.amount_capturable_updated', 'payment_intent.canceled')
+        sends = PaymentService.webhook_sends(needed)
+        if sends is None:
+            return
+        value.append(
+            {
+                'name': 'Stripe tells the store about held card payments',
+                'ok': sends,
+                'detail': 'The Stripe webhook sends the held-payment events.'
+                if sends
+                else 'Cards are charged later, but no Stripe webhook to this store sends '
+                + ' and '.join(needed)
+                + '. Add them to the webhook in your Stripe dashboard, or held orders '
+                'look unpaid and are cancelled after the pending-order window.',
+            }
+        )
 
     def on_checkout_gateways(self, value, user=None, ships=True, **kwargs):
         """CHECKOUT_GATEWAYS: enabled-gateway dicts for the checkout picker
@@ -292,6 +371,40 @@ class PaymentsPlugin(Plugin):
                     'description': 'Offered to signed-in staff only, and never charges. Leave OFF once the store is live.',
                     'default': False,
                 },
+                'capture_mode': {
+                    'type': 'string',
+                    'enum': ['immediate', 'first_parcel', 'all_shipped', 'manual'],
+                    'default': 'immediate',
+                    'title': 'When card payments are charged',
+                    'description': 'immediate: at checkout. first_parcel: the card is held at checkout and charged when the first parcel is recorded. all_shipped: charged when the last parcel is recorded. manual: charged when you press Charge on the order (or ask Linda). An order with a download is charged at checkout in both parcel modes, and in manual mode its download waits until you charge it. Cancelling an order gives its hold back. Stripe must send payment_intent.amount_capturable_updated and payment_intent.canceled to the store.',
+                },
+                'authorization_days': {
+                    'type': 'integer',
+                    'minimum': 1,
+                    'maximum': 6,
+                    'default': 6,
+                    'title': 'Days a held card payment waits',
+                    'description': 'A card holds the money for about seven days. After this many days the hold is settled as below.',
+                },
+                'authorization_expiry': {
+                    'type': 'string',
+                    'enum': ['capture', 'release'],
+                    'default': 'capture',
+                    'title': 'When a hold reaches its time limit',
+                    'description': 'capture: charge it, so the sale is not lost. release: give it back without charging; the order stays open and unpaid until you cancel it.',
+                },
+                'checkout_show_saved_cards': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Show saved cards at checkout',
+                    'description': 'Signed-in shoppers see the cards they saved before (Stripe).',
+                },
+                'checkout_offer_save_card': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Offer to save the card at checkout',
+                    'description': 'Signed-in shoppers can tick "save this card" for their next order (Stripe).',
+                },
                 'high_value_threshold': {
                     'type': 'number',
                     'title': 'Fraud check: a first order above this amount adds risk',
@@ -306,7 +419,7 @@ class PaymentsPlugin(Plugin):
         # page via admin_dashboard's generic settings_category view.
         return SettingsPanel(
             label='Payment gateways',
-            description='Stripe and PayPal credentials, express checkout on the cart page, cash on delivery, the staff-only test payment and the fraud check.',
+            description='Stripe and PayPal credentials, when cards are charged, saved cards, express checkout on the cart page, cash on delivery, the staff-only test payment and the fraud check.',
             schema=self.get_config_schema(),
             category='payments',
         )

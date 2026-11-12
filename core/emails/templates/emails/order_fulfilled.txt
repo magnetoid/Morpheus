@@ -2,10 +2,13 @@ Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
 
 Your order #{{ order.order_number }} is on the way.
 
-{% if order.tracking_number %}Tracking: {{ order.tracking_number }}{% if order.shipping_method %} ({{ order.shipping_method }}){% endif %}
+{% if parcels %}{% for parcel in parcels %}Parcel {{ forloop.counter }}{% if parcel.fulfillment.tracking_number %} — tracking {{ parcel.fulfillment.tracking_number }}{% if parcel.fulfillment.carrier %} ({{ parcel.fulfillment.carrier }}){% endif %}{% endif %}
+{% for fi in parcel.items %}- {{ fi.quantity }}× {{ fi.order_item.product_name }}{% if fi.order_item.variant_name %} ({{ fi.order_item.variant_name }}){% endif %}
+{% endfor %}
+{% endfor %}{% else %}{% if order.tracking_number %}Tracking: {{ order.tracking_number }}{% if order.shipping_method %} ({{ order.shipping_method }}){% endif %}
 {% endif %}
 {% if box %}{% for fi in box %}- {{ fi.quantity }}× {{ fi.order_item.product_name }}{% if fi.order_item.variant_name %} ({{ fi.order_item.variant_name }}){% endif %}
 {% endfor %}{% else %}{% for it in order.items.all %}- {{ it.quantity }}× {{ it.product_name }}{% if it.variant_name %} ({{ it.variant_name }}){% endif %}
-{% endfor %}{% endif %}
+{% endfor %}{% endif %}{% endif %}
 
 — The team

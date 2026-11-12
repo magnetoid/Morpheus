@@ -86,6 +86,10 @@ def is_delivered(order) -> bool:
 
     if is_closed(order):
         return False
+    if order.payment_status in ('authorized', 'released'):
+        # A card held, not charged (payments' capture_mode), or given back:
+        # the download waits for the money, whatever has shipped.
+        return False
     return (
         order.payment_status == 'paid'
         or order.status in DELIVERED_STATUSES

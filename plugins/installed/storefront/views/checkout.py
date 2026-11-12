@@ -588,18 +588,14 @@ def checkout_payment(request):
     # Append public_token to the Stripe return URL so guest checkout
     # users keep access to the confirmation page (the view requires
     # either auth-owner or matching token).
-    token = ''
+    order = None
     try:
         from plugins.installed.orders.models import Order as _Order
 
-        token = (
-            _Order.objects.filter(order_number=order_no)
-            .values_list('public_token', flat=True)
-            .first()
-            or ''
-        )
+        order = _Order.objects.filter(order_number=order_no).first()
     except Exception:  # noqa: BLE001
-        token = ''
+        order = None
+    token = getattr(order, 'public_token', '') or ''
     return_path = f'/order/confirmation/{order_no}/'
     if token:
         return_path = f'{return_path}?token={token}'
@@ -611,5 +607,11 @@ def checkout_payment(request):
             'client_secret': client_secret,
             'stripe_publishable_key': publishable,
             'return_url': request.build_absolute_uri(return_path),
+            # The shopper's saved cards, and the box to save this one, when the
+            # payments settings offer them (checkout_show_saved_cards /
+            # checkout_offer_save_card) and the shopper is signed in.
+            'customer_session_secret': (
+                PaymentService.checkout_customer_session(order, request.user) if order else ''
+            ),
         },
     )

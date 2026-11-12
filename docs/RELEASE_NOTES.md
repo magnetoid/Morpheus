@@ -15,6 +15,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.155.0 — 2026-11-12
+
+**Cards charged when you choose, saved cards at checkout, refunds without a gateway**
+
+- Payments: Payment gateways now sets when a card is charged: at checkout (as before), when the first parcel is sent, when the last one is, or only when you press Charge now on the order's Payment panel. A held card confirms the order but does not pay it; after the days you set (six at most, since Stripe drops a hold at seven) it is charged, or given back if you prefer, and cancelling the order gives it back. Holding cards needs your Stripe webhook to also send payment_intent.amount_capturable_updated and payment_intent.canceled; the nightly check says when they are missing
+- Saved cards: signed-in shoppers can see the cards saved on their account at checkout, and be offered to save the new one; each is a switch on Payment gateways, off by default
+- A declined card is noted once on the order's timeline, with the reason
+- Refunds: an order paid by cash on delivery or bank transfer can be refunded into the customer's store credit or recorded as already paid back. Either returns the gift cards and points spent on it and emails the customer how the money came back. Checkout, cart & invoices sets the default for such orders; the refund form and Linda can choose otherwise
+- Parcels: Checkout, cart & invoices can send one on-its-way email listing every parcel once the last is sent, instead of one per parcel, and choose whether the last parcel ships the order or leaves it fulfilled
+- Shipping labels are bought at the cheapest rate (as before), the fastest, or the carrier and service you name on the Shipping page
+- Linda: payments.capture charges a held card, asking first; orders.refund takes how the money goes back
+- For app authors: PAYMENT_CAPTURE_MODE and SHIPPING_LABEL_RATE filters let an app decide when a card is charged and which label rate is bought; PAYMENT_FAILED now fires
+
 ## v0.154.0 — 2026-11-12
 
 **Orders ship in parcels, shipping rates in the store's currency, carrier labels**

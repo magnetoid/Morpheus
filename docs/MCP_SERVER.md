@@ -320,10 +320,12 @@ its name; none = the default one. A product with several variants needs the vari
 | `orders.mark_shipped` / `markOrderShipped` | FSM ship() + tracking number, no parcel recorded | no |
 | `orders.cancel` / `cancelOrder` | FSM cancel() | **yes** |
 | `orders.mark_refunded` / `markOrderRefunded` | Record a refund made outside the store: the rest of the total as a processed refund, `PAYMENT_REFUNDED` fired, tenders re-credited | **yes** |
+| `orders.refund` | Refund all or part of an order; `settle` pays it back through the payment method (''), into store credit (`store_credit`) or as already paid back (`external`); left out, an order paid offline follows orders' `offline_refund_default` | **yes** |
+| `payments.capture` | Charge a card payment held on an order (payments' `capture_mode`: charged when a parcel ships or when the merchant says) | **yes** |
 
 Every parcel goes through `orders/fulfilment.py:create_fulfillment` (the dashboard's
 fulfil form, `orders.fulfill_lines`, the supplier apps), which fires
-`fulfillment.created` after commit; `orders.get` lists each parcel with its id (v0.154.0).
+`fulfillment.created` after commit; `orders.get` lists each parcel with its id (v0.154.0). Left out, `mark_shipped` follows orders' `fulfil_marks_shipped` (v0.155.0).
 
 ### Shipping
 
@@ -334,7 +336,7 @@ fulfil form, `orders.fulfill_lines`, the supplier apps), which fires
 | `shipping.set_rate` | Create or update a rate by zone and rate name: flat, free over an amount, weight or order-total tiers, pickup (carrier-quoted rates are set on the Shipping page) | **yes** |
 | `shipping.buy_label` | Buy a Shippo or EasyPost label for a parcel (`parcel` = its id from `orders.get`), or ship every open unit with one label | **yes** |
 
-A label always buys the carrier's cheapest rate for a fresh shipment. The order is
+A label buys a fresh shipment's rate by the Shipping page's `label_rate`: the cheapest (the default), the fastest, or a preferred carrier and service (v0.155.0). The order is
 checked before anything is bought, a paid label is kept on the order even when recording
 the parcel fails, and an answer that does not say whether the carrier charged comes back
 as an error asking the merchant to check their carrier account (the label is kept as
