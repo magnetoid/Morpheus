@@ -46,6 +46,31 @@ def store_name() -> str:
     return (getattr(settings, 'STORE_NAME', '') or '').strip()
 
 
+def store_timezone():
+    """The merchant's time zone (Settings → General), else ``TIME_ZONE``.
+
+    ``TIME_ZONE`` is UTC and nothing activates the store's zone, so a report
+    that says "today" asks for it: a Belgrade store's day starts at 23:00 UTC.
+    """
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    try:
+        from core.models import StoreSettings
+
+        return ZoneInfo(str(StoreSettings.get('timezone') or settings.TIME_ZONE))
+    except (ZoneInfoNotFoundError, ValueError):
+        return ZoneInfo(settings.TIME_ZONE)
+    except Exception:  # noqa: BLE001 — the settings table may not exist yet
+        return ZoneInfo(settings.TIME_ZONE)
+
+
+def store_today():
+    """Today's date on the store's clock."""
+    from django.utils import timezone
+
+    return timezone.now().astimezone(store_timezone()).date()
+
+
 def store_slug(suffix: str = '') -> str:
     """Machine-readable form of :func:`store_name`, for manifest ``name``
     fields that want an identifier rather than a display string.

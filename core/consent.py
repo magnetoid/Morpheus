@@ -54,6 +54,44 @@ def allowed(category: str, *, order=None, request=None) -> bool:
     return _permits(decision_for(request), category)
 
 
+# ── Where a visitor came from, carried through the banner ───────────────────
+#
+# The banner is a form POST that redirects back, so the first page an analytics
+# session or GA4 sees after "Accept" has the store itself as its referrer, and
+# every consenting visitor's search, social or AI referral was lost. The banner
+# posts the page's own referrer and address; the consent app keeps them in this
+# short-lived cookie, written only once analytics is allowed, and each reader
+# (the analytics session, the GA4 tag) takes them from here.
+
+ENTRY_COOKIE = 'morpheus_entry'
+ENTRY_MAX_AGE = 120
+_ENTRY_SALT = 'core.consent.entry'
+
+
+def entry_cookie_value(referrer: str, landing: str) -> str:
+    from django.core import signing
+
+    return signing.dumps(
+        {'r': (referrer or '')[:500], 'l': (landing or '')[:500]}, salt=_ENTRY_SALT, compress=True
+    )
+
+
+def entry(request) -> dict | None:
+    """``{'referrer', 'landing'}`` the visitor arrived with, while the cookie is fresh."""
+    from django.core import signing
+
+    raw = (getattr(request, 'COOKIES', None) or {}).get(ENTRY_COOKIE)
+    if not raw:
+        return None
+    try:
+        data = signing.loads(raw, salt=_ENTRY_SALT, max_age=ENTRY_MAX_AGE)
+    except signing.BadSignature:
+        return None
+    if not isinstance(data, dict) or not data.get('l'):
+        return None
+    return {'referrer': str(data.get('r') or ''), 'landing': str(data['l'])}
+
+
 def marketing_customer_ids() -> set | None:
     """Customers whose latest decision allows marketing; ``None`` when the store
     does not manage consent (no restriction). Fails closed to an empty set."""

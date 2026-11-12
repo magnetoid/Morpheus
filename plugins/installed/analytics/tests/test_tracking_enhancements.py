@@ -45,7 +45,10 @@ class AnalyticsTrackingTests(TestCase):
             'is_realtime': True,
         }
         request = self.factory.post(
-            '/track/beacon/', data=json.dumps(payload), content_type='application/json'
+            '/track/beacon/',
+            data=json.dumps(payload),
+            content_type='application/json',
+            HTTP_USER_AGENT='Mozilla/5.0 (X11; Linux x86_64) Firefox/131.0',
         )
         # Mock session behavior for test
         request.COOKIES['morph_aid'] = 'test-cookie-123'
@@ -67,7 +70,10 @@ class AnalyticsTrackingTests(TestCase):
             'error_context': {'code': 500, 'message': 'Internal Server Error'},
         }
         request = self.factory.post(
-            '/track/beacon/', data=json.dumps(payload), content_type='application/json'
+            '/track/beacon/',
+            data=json.dumps(payload),
+            content_type='application/json',
+            HTTP_USER_AGENT='Mozilla/5.0 (X11; Linux x86_64) Firefox/131.0',
         )
         response = track_beacon(request)
         self.assertEqual(response.status_code, 204)

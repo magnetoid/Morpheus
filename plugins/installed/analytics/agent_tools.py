@@ -15,7 +15,11 @@ from morpheus.core import ToolResult, tool
 
 @tool(
     name='analytics.traffic_summary',
-    description='Headline numbers for the last N days (sessions, pageviews, orders, revenue, conversion funnel).',
+    description=(
+        'Headline numbers for today and the N-1 days before it on the store clock: visits '
+        "(the 'sessions' key; a visit ends after 30 quiet minutes), visitors, pageviews, "
+        'orders, revenue and the funnel counts.'
+    ),
     scopes=['analytics.read'],
     schema={
         'type': 'object',
@@ -32,7 +36,7 @@ def analytics_summary_tool(*, days: int = 7) -> ToolResult:
         s['revenue'] = {'amount': str(s['revenue'].amount), 'currency': str(s['revenue'].currency)}
     return ToolResult(
         output=s,
-        display=f'{s["sessions"]} sessions, {s["orders"]} orders, last {s["window_days"]}d',
+        display=f'{s["sessions"]} visits, {s.get("visitors", 0)} visitors, {s["orders"]} orders, last {s["window_days"]}d',
     )
 
 

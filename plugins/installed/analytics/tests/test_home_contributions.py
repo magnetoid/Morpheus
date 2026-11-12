@@ -6,7 +6,6 @@ from __future__ import annotations
 from datetime import timedelta
 
 from django.test import TestCase
-from django.utils import timezone
 
 from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.analytics.models import AnalyticsEvent, DailyMetric
@@ -14,15 +13,19 @@ from plugins.installed.analytics.models import AnalyticsEvent, DailyMetric
 
 class HomeKpiTests(TestCase):
     def test_kpis_appended(self):
-        yesterday = timezone.now().date() - timedelta(days=1)
-        DailyMetric.objects.create(day=yesterday, metric='sessions', value_int=42)
-        DailyMetric.objects.create(day=yesterday, metric='conversion_rate', value_int=240)
+        # Today on the store's clock, with no range picked (v0.156.0): visits and
+        # the purchases of counted visitors over them.
+        from core.utils.site import store_today
+
+        today = store_today()
+        DailyMetric.objects.create(day=today, metric='sessions', value_int=50)
+        DailyMetric.objects.create(day=today, metric='counted_purchases', value_int=1)
+        DailyMetric.objects.create(day=today - timedelta(days=1), metric='sessions', value_int=40)
         kpis = hook_registry.filter(MorpheusEvents.DASHBOARD_KPIS, value=[])
-        labels = {k['label'] for k in kpis}
-        self.assertIn('Sessions', labels)
-        self.assertIn('Conversion rate', labels)
-        conv = next(k for k in kpis if k['label'] == 'Conversion rate')
-        self.assertEqual(conv['value'], '2.40%')
+        by_label = {k['label']: k for k in kpis}
+        self.assertEqual(by_label['Visits']['value'], '50')
+        self.assertEqual(by_label['Visits']['delta'], '+25%')
+        self.assertEqual(by_label['Conversion rate']['value'], '2.00%')
 
     def test_activity_feed_surfaces_anomalies(self):
         AnalyticsEvent.objects.create(

@@ -17,8 +17,10 @@ _BROWSER = (
 
 class ConsentGatingTests(TestCase):
     def setUp(self):
+        from django.core.cache import cache
         from django.test import Client
 
+        cache.clear()  # the beacon's per-IP limit outlives the test that filled it
         self.client = Client(HTTP_USER_AGENT=_BROWSER)
 
     def test_no_session_without_consent(self):
@@ -28,6 +30,9 @@ class ConsentGatingTests(TestCase):
 
     def test_pageview_still_recorded_sessionless(self):
         self.client.get('/')
+        self.client.post(
+            '/api/analytics/track/', data='{"name": "pageview"}', content_type='application/json'
+        )
         evt = AnalyticsEvent.objects.filter(kind='pageview').first()
         self.assertIsNotNone(evt)
         self.assertIsNone(evt.session_id)

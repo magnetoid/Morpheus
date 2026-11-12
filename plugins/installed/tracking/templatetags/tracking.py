@@ -30,6 +30,7 @@ from django import template
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
+from core.consent import ENTRY_COOKIE, entry
 from core.security_headers import script_nonce
 from plugins.installed.tracking.models import TrackingSettings
 
@@ -106,6 +107,18 @@ def browser_tagging(s) -> bool:
     )
 
 
+def _arrival(request) -> dict:
+    """GA4's ``page_location`` and ``page_referrer`` for the page the visitor
+    landed on before the consent banner reloaded it; {} otherwise."""
+    carried = entry(request) if request is not None else None
+    if not carried:
+        return {}
+    out = {'page_location': carried['landing'][:1000]}
+    if carried['referrer']:
+        out['page_referrer'] = carried['referrer'][:1000]
+    return out
+
+
 @register.simple_tag(takes_context=True)
 def tracking_head(context):
     """Consent Mode v2 defaults, the visitor's own decision, then GTM — or GA4's
@@ -144,9 +157,16 @@ def tracking_head(context):
         js.append(f'gtag("set","linker",{_js({"domains": domains})});')
     uid = _browser_user_id(s, request)
     origin = _tag_origin(s)
+    arrival = _arrival(request)
+    if arrival:
+        # The banner's reload replaced the page the visitor landed on and its
+        # referrer; GA4 hears the real ones once, and the cookie is gone.
+        js.append(f'document.cookie={_js(f"{ENTRY_COOKIE}=;Max-Age=0;path=/;SameSite=Lax")};')
     if gtm:
         if uid:
             js.append(f'dataLayer.push({_js({"user_id": uid})});')
+        if arrival:
+            js.append(f'dataLayer.push({_js(arrival)});')
         js.append(
             "dataLayer.push({'gtm.start':new Date().getTime(),event:'gtm.js'});"
             '(function(d,s){var f=d.getElementsByTagName(s)[0],j=d.createElement(s);'
@@ -154,7 +174,7 @@ def tracking_head(context):
             "f.parentNode.insertBefore(j,f);})(document,'script');"
         )
         return mark_safe(f'<script{n}>{"".join(js)}</script>')
-    config: dict[str, Any] = {}
+    config: dict[str, Any] = {**arrival}
     if uid:
         config['user_id'] = uid
     if origin != _GOOGLE:

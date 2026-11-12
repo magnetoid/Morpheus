@@ -52,9 +52,16 @@ class CrawlerVisitorTests(TestCase):
         self.assertEqual(AnalyticsEvent.objects.count(), events)
 
     def test_a_browser_still_counts(self):
+        from django.core.cache import cache
+
+        cache.clear()  # the beacon's per-IP limit outlives the test that filled it
         # No consent cookie: a session-less pageview (consent gating), not a session.
         pageviews = AnalyticsEvent.objects.filter(kind='pageview').count()
-        Client().get('/', HTTP_USER_AGENT=_BROWSER)
+        client = Client(HTTP_USER_AGENT=_BROWSER)
+        self.assertIn(b'data-morph-hit', client.get('/').content)
+        client.post(
+            '/api/analytics/track/', data='{"name": "pageview"}', content_type='application/json'
+        )
         self.assertEqual(AnalyticsEvent.objects.filter(kind='pageview').count(), pageviews + 1)
 
     def test_a_crawler_product_view_is_not_recorded(self):

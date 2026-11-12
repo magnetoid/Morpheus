@@ -19,12 +19,18 @@
   </div>
 </div>
 
-<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
   <div class="card card-padded kpi">
-    <span class="kpi__label flex items-center">Sessions 
-      <span class="context-help" aria-label="Total unique visits to your storefront"><i data-lucide="help-circle" class="h-3.5 w-3.5"></i></span>
+    <span class="kpi__label flex items-center">Visits
+      <span class="context-help" aria-label="A visit ends after 30 minutes without a page"><i data-lucide="help-circle" class="h-3.5 w-3.5"></i></span>
     </span>
     <span class="kpi__value">{{ summary.sessions }}</span>
+  </div>
+  <div class="card card-padded kpi">
+    <span class="kpi__label flex items-center">Visitors
+      <span class="context-help" aria-label="People who allowed analytics cookies, plus those counted without cookies when that setting is on"><i data-lucide="help-circle" class="h-3.5 w-3.5"></i></span>
+    </span>
+    <span class="kpi__value">{{ summary.visitors }}</span>
   </div>
   <div class="card card-padded kpi">
     <span class="kpi__label flex items-center">Pageviews</span>

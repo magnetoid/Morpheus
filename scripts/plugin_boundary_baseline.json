@@ -103,10 +103,6 @@
     },
     {
       "importer": "analytics",
-      "target": "consent"
-    },
-    {
-      "importer": "analytics",
       "target": "notifications_center"
     },
     {

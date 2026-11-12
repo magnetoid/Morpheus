@@ -7,76 +7,99 @@ disabled plugin contributes nothing (hook bus gates on active state).
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 
+from django.db.models import Sum
 from django.utils import timezone
 
+from core.utils.site import store_timezone, store_today
 
-def _metric(day, name) -> int:
+
+def _days(start, end) -> tuple[date, date]:
+    """A dashboard window (``end`` exclusive) as the store's first and last day."""
+    tz = store_timezone()
+    return start.astimezone(tz).date(), (end - timedelta(microseconds=1)).astimezone(tz).date()
+
+
+def _total(first: date, last: date, metric: str, **filters) -> int:
     from plugins.installed.analytics.models import DailyMetric  # noqa: PLC0415
 
-    row = DailyMetric.objects.filter(day=day, metric=name, dimension='').first()
-    return row.value_int if row else 0
+    if not any(k.startswith('dimension') for k in filters):
+        filters['dimension'] = ''
+    agg = DailyMetric.objects.filter(
+        day__gte=first, day__lte=last, metric=metric, **filters
+    ).aggregate(n=Sum('value_int'))
+    return int(agg['n'] or 0)
+
+
+def _window(date_range):
+    """(current, previous) store-day windows: the dashboard's range when it
+    sends one, else today against yesterday. The tiles used to show yesterday
+    whatever range was picked."""
+    if date_range is not None and getattr(date_range, 'start', None):
+        return _days(date_range.start, date_range.end), _days(
+            date_range.prev_start, date_range.prev_end
+        )
+    today = store_today()
+    yesterday = today - timedelta(days=1)
+    return (today, today), (yesterday, yesterday)
 
 
 def on_dashboard_kpis(value, date_range=None, **kwargs):
-    """Sessions + conversion rate (yesterday's rollup, delta vs the day
-    before) and AI-referred sessions over the trailing 7 rolled days."""
-    from plugins.installed.analytics.models import DailyMetric  # noqa: PLC0415
+    """Visits, conversion rate and AI referrals for the dashboard's range, each
+    against the period before it. Today's numbers are rolled every hour."""
+    (first, last), (prev_first, prev_last) = _window(date_range)
+    label = getattr(date_range, 'label', '') or 'today'
 
-    yday = timezone.now().date() - timedelta(days=1)
-    prior = yday - timedelta(days=1)
-
-    sessions, sessions_prior = _metric(yday, 'sessions'), _metric(prior, 'sessions')
+    visits, visits_prior = (
+        _total(first, last, 'sessions'),
+        _total(prev_first, prev_last, 'sessions'),
+    )
     delta = ''
     trend = 'flat'
-    if sessions_prior:
-        pct = (sessions - sessions_prior) / sessions_prior * 100
+    if visits_prior:
+        pct = (visits - visits_prior) / visits_prior * 100
         delta = f'{pct:+.0f}%'
         trend = 'up' if pct > 0 else ('down' if pct < 0 else 'flat')
     value.append(
         {
-            'label': 'Sessions',
-            'value': f'{sessions:,}',
+            'label': 'Visits',
+            'value': f'{visits:,}',
             'delta': delta,
             'trend': trend,
             'icon': 'activity',
             'series': None,
-            'hint': 'Consented visitor sessions yesterday (daily rollup).',
+            'hint': f'Visits by counted visitors, {label}. A visit ends after 30 minutes without a page.',
         }
     )
 
-    conv_bp = _metric(yday, 'conversion_rate')
-    conv_prior = _metric(prior, 'conversion_rate')
-    conv_delta = f'{(conv_bp - conv_prior) / 100:+.2f}pp' if conv_prior else ''
+    def _rate(a, b) -> float:
+        visits_in = _total(a, b, 'sessions')
+        return _total(a, b, 'counted_purchases') / visits_in * 100 if visits_in else 0.0
+
+    conv, conv_prior = _rate(first, last), _rate(prev_first, prev_last)
     value.append(
         {
             'label': 'Conversion rate',
-            'value': f'{conv_bp / 100:.2f}%',
-            'delta': conv_delta,
-            'trend': 'up' if conv_bp >= conv_prior else 'down',
+            'value': f'{conv:.2f}%',
+            'delta': f'{conv - conv_prior:+.2f}pp' if conv_prior else '',
+            'trend': 'up' if conv >= conv_prior else 'down',
             'icon': 'target',
             'series': None,
-            'hint': 'Purchases / sessions yesterday.',
+            'hint': f'Purchases by counted visitors over their visits, {label}.',
         }
     )
 
-    week_ago = yday - timedelta(days=6)
-    ai_sessions = sum(
-        row.value_int
-        for row in DailyMetric.objects.filter(
-            day__gte=week_ago, metric='top_sources', dimension__startswith='ai:'
-        )
-    )
+    ai_visits = _total(first, last, 'top_sources', dimension__startswith='ai:')
     value.append(
         {
             'label': 'AI referrals',
-            'value': f'{ai_sessions:,}',
+            'value': f'{ai_visits:,}',
             'delta': '',
             'trend': 'flat',
             'icon': 'bot',
             'series': None,
-            'hint': 'Sessions referred by AI assistants (ChatGPT, Perplexity, …), last 7 days.',
+            'hint': f'Visitors referred by AI assistants (ChatGPT, Perplexity, …), {label}.',
         }
     )
     return value
