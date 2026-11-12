@@ -190,6 +190,7 @@ def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (si
                     request,
                     referrer=str(body.get('referrer') or '')[:500],
                     landing=str(body.get('url') or '')[:500],
+                    session=session,
                 )
 
             record_event(

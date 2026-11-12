@@ -1664,7 +1664,10 @@ attribution. Guarded by `orders/tests/test_net_sales.py`.
 **Convention — a visit's source is its own first page (v0.158.0).** The pageview beacon stores where a
 visit starting on that page came from (`payload['arr']`, from `analytics/sources.py:classify`: the link's
 utm tags or a paid click id, else the referring site, a search engine, social or webmail site, AI assistant
-or other site; nothing when the referrer is the store itself or a payment page). `roll_daily` replays the
+or other site; nothing when the referrer is the store itself or a payment page; a paid click id beats a
+bare `utm_source`, an explicit `utm_medium` beats both). The page the consent banner reloads takes the
+carried entry and clears its cookie, so a session's first page within two minutes of its creation that
+names no arrival takes the session's saved referrer (`services._first_page`). `roll_daily` replays the
 day into one `AnalyticsVisit` per visit (`analytics/visits.py`) under its first page's arrival; a visit
 that runs past midnight keeps the previous day's row. The Sources page, its card, `analytics.traffic_sources`
 and the home tile's AI visits (`top_sources`, `ai:<name>`) read those rows, and a visit's sales are its

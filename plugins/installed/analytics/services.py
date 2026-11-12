@@ -194,7 +194,7 @@ def _arrival(request, *, referrer=None, landing=None) -> tuple[str, str, dict, b
     return referrer or '', parts.path or '', parse_qs(parts.query), bool(carried)
 
 
-def page_arrival(request, *, referrer: str, landing: str) -> dict:
+def page_arrival(request, *, referrer: str, landing: str, session=None) -> dict:
     """What a page would start a visit with (``sources.classify``), plus the
     visitor's country and device, for the visit's row on the Sources page.
 
@@ -205,12 +205,17 @@ def page_arrival(request, *, referrer: str, landing: str) -> dict:
 
     from plugins.installed.analytics.sources import classify
 
-    arrived_from, _path, query, _carried = _arrival(request, referrer=referrer, landing=landing)
+    arrived_from, _path, query, carried = _arrival(request, referrer=referrer, landing=landing)
     try:
         host = request.get_host().split(':')[0]
     except DisallowedHost:
         host = ''
     arrival = classify(arrived_from, query, host)
+    if not arrival and not carried and _first_page(session):
+        # The reload after "Accept": the page itself took the carried entry (and
+        # the cookie went with its answer), so this beacon's referrer is the
+        # store's own page. The session was saved with the visitor's real one.
+        arrival = classify(session.referrer, query, host)
     country = (request.META.get('HTTP_CF_IPCOUNTRY') or '').strip().upper()
     if len(country) == 2 and country.isalpha() and country != 'XX':
         arrival['cc'] = country
@@ -218,6 +223,18 @@ def page_arrival(request, *, referrer: str, landing: str) -> dict:
     if device:
         arrival['d'] = device
     return arrival
+
+
+def _first_page(session) -> bool:
+    """Is this the first page of a session made moments ago from a referrer?"""
+    from core.consent import ENTRY_MAX_AGE
+    from plugins.installed.analytics.models import AnalyticsEvent
+
+    if session is None or not session.referrer or session.first_seen_at is None:
+        return False
+    if timezone.now() - session.first_seen_at > timedelta(seconds=ENTRY_MAX_AGE):
+        return False
+    return not AnalyticsEvent.objects.filter(session_id=session.pk, kind='pageview').exists()
 
 
 def _analytics_consent_granted(request) -> bool:

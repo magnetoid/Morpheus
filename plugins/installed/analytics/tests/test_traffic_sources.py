@@ -51,6 +51,12 @@ class ClassifyTests(TestCase):
             ('https://www.google.com/', 'gclid=1'): ('paid', 'google'),
             ('', 'utm_source=google&utm_medium=cpc'): ('paid', 'google'),
             ('', 'msclkid=1'): ('paid', 'bing'),
+            # An ad's click id beside a bare source tag is still the ad (review of PR #154).
+            ('https://www.google.com/', 'gclid=1&utm_source=google'): ('paid', 'google'),
+            ('', 'msclkid=1&utm_source=bing'): ('paid', 'bing'),
+            ('', 'ttclid=1&utm_source=tiktok'): ('paid', 'tiktok'),
+            ('', 'gclid=1&utm_source=google&utm_medium=email'): ('email', 'google'),
+            ('', 'fbclid=1&utm_source=facebook'): ('social', 'facebook'),
             ('https://l.facebook.com/', ''): ('social', 'facebook'),
             ('', 'fbclid=1'): ('social', 'facebook'),
             ('https://t.co/x', ''): ('social', 'x'),
@@ -103,6 +109,69 @@ class BeaconArrivalTests(TestCase):
         self.assertNotIn('order', hit.payload)
         self.assertNotIn('results', hit.payload)
         self.assertEqual(hit.payload['arr']['ch'], 'direct')
+
+
+class ConsentReloadTests(TestCase):
+    """The reload after "Accept" keeps where the visit came from (review of PR #154).
+
+    The page the banner reloads takes the carried entry and clears its cookie,
+    so the beacon that follows names the store's own page as its referrer.
+    """
+
+    _STORE = 'http://testserver/'
+    _BLOG = 'https://someblog.example/post'
+
+    def setUp(self):
+        from core.models import StoreSettings
+
+        cache.clear()
+        row = StoreSettings.objects.first() or StoreSettings()
+        row.gdpr_enabled = True
+        row.save()
+        cache.delete('morph:gdpr_enabled')
+        self.client = Client(HTTP_USER_AGENT=_BROWSER)
+
+    def _beacon(self, url, referrer):
+        seen = set(AnalyticsEvent.objects.values_list('pk', flat=True))
+        self.client.post(
+            _TRACK,
+            data=json.dumps({'name': 'pageview', 'url': url, 'referrer': referrer}),
+            content_type='application/json',
+        )
+        return AnalyticsEvent.objects.exclude(pk__in=seen).get(kind='pageview')
+
+    def test_the_reloaded_page_is_filed_under_the_site_that_sent_the_visitor(self):
+        from core.consent import ENTRY_COOKIE
+
+        self.client.get('/', HTTP_REFERER=self._BLOG)
+        self.assertIsNone(self._beacon('/', self._BLOG).session_id)  # no consent, no visit
+        self.client.post(
+            '/consent/save/',
+            {'accept_all': '1', 'entry_url': self._STORE, 'entry_referrer': self._BLOG},
+            HTTP_REFERER=self._STORE,
+        )
+        page = self.client.get('/', HTTP_REFERER=self._STORE)
+        self.assertEqual(page.cookies[ENTRY_COOKIE]['max-age'], 0)  # the page took the entry
+
+        first = self._beacon('/', self._STORE)
+        self.assertEqual(
+            (first.payload['arr'].get('ch'), first.payload['arr'].get('s')),
+            ('referral', 'someblog.example'),
+        )
+        self.assertNotIn('ch', self._beacon('/books/', self._STORE).payload['arr'])
+
+    def test_a_returning_visitor_is_not_filed_under_an_old_referrer(self):
+        session = AnalyticsSession.objects.create(
+            cookie_id='returning', referrer='https://l.facebook.com/', is_consented=True
+        )
+        AnalyticsSession.objects.filter(pk=session.pk).update(
+            first_seen_at=session.first_seen_at - timedelta(days=200)
+        )
+        self.client.cookies['morpheus_consent'] = _CONSENT
+        self.client.cookies[services.COOKIE_NAME] = 'returning'
+        hit = self._beacon('/', self._STORE)
+        self.assertEqual(hit.session_id, session.pk)
+        self.assertNotIn('ch', hit.payload['arr'])
 
 
 def _event(at, *, session=None, kind='pageview', name=None, url='/', payload=None, query=''):
