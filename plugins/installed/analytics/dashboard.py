@@ -7,76 +7,117 @@ disabled plugin contributes nothing (hook bus gates on active state).
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 
+from django.db.models import Sum
 from django.utils import timezone
 
+from core.utils.site import store_today
 
-def _metric(day, name) -> int:
+
+def _period(date_range, today: date) -> tuple[date, date]:
+    """The store days a dashboard range covers: a rolling range is its number
+    of whole days ending today, a named one is read on the store's calendar.
+
+    The range arrives as UTC instants, and reading those as dates gave "Last 7
+    days" eight days (the eighth also in the comparison) and "Today" in New
+    York yesterday as well."""
+    preset = getattr(date_range, 'preset', None)
+    if preset == '':  # a custom range names its own days
+        return date_range.start.date(), (date_range.end - timedelta(days=1)).date()
+    month = today.replace(day=1)
+    yesterday = today - timedelta(days=1)
+    named = {
+        'yesterday': (yesterday, yesterday),
+        'this_month': (month, today),
+        'last_month': ((month - timedelta(days=1)).replace(day=1), month - timedelta(days=1)),
+        'this_year': (today.replace(month=1, day=1), today),
+        'all_time': (date_range.start.date(), today),
+    }
+    if preset in named:
+        return named[preset]
+    days = max(1, int(getattr(date_range, 'days', 1) or 1))  # today, 7d, 30d, …
+    return today - timedelta(days=days - 1), today
+
+
+def _total(first: date, last: date, metric: str, **filters) -> int:
     from plugins.installed.analytics.models import DailyMetric  # noqa: PLC0415
 
-    row = DailyMetric.objects.filter(day=day, metric=name, dimension='').first()
-    return row.value_int if row else 0
+    if not any(k.startswith('dimension') for k in filters):
+        filters['dimension'] = ''
+    agg = DailyMetric.objects.filter(
+        day__gte=first, day__lte=last, metric=metric, **filters
+    ).aggregate(n=Sum('value_int'))
+    return int(agg['n'] or 0)
+
+
+def _window(date_range):
+    """(current, previous) store-day windows: the dashboard's range when it
+    sends one, else today, each against as many days just before it, which
+    never overlap. The tiles used to show yesterday whatever range was picked."""
+    today = store_today()
+    first = last = today
+    if date_range is not None and getattr(date_range, 'start', None):
+        first, last = _period(date_range, today)
+    length = last - first + timedelta(days=1)
+    return (first, last), (first - length, first - timedelta(days=1))
 
 
 def on_dashboard_kpis(value, date_range=None, **kwargs):
-    """Sessions + conversion rate (yesterday's rollup, delta vs the day
-    before) and AI-referred sessions over the trailing 7 rolled days."""
-    from plugins.installed.analytics.models import DailyMetric  # noqa: PLC0415
+    """Visits, conversion rate and AI referrals for the dashboard's range, each
+    against the period before it. Today's numbers are rolled every hour."""
+    (first, last), (prev_first, prev_last) = _window(date_range)
+    label = getattr(date_range, 'label', '') or 'today'
 
-    yday = timezone.now().date() - timedelta(days=1)
-    prior = yday - timedelta(days=1)
-
-    sessions, sessions_prior = _metric(yday, 'sessions'), _metric(prior, 'sessions')
+    visits, visits_prior = (
+        _total(first, last, 'sessions'),
+        _total(prev_first, prev_last, 'sessions'),
+    )
     delta = ''
     trend = 'flat'
-    if sessions_prior:
-        pct = (sessions - sessions_prior) / sessions_prior * 100
+    if visits_prior:
+        pct = (visits - visits_prior) / visits_prior * 100
         delta = f'{pct:+.0f}%'
         trend = 'up' if pct > 0 else ('down' if pct < 0 else 'flat')
     value.append(
         {
-            'label': 'Sessions',
-            'value': f'{sessions:,}',
+            'label': 'Visits',
+            'value': f'{visits:,}',
             'delta': delta,
             'trend': trend,
             'icon': 'activity',
             'series': None,
-            'hint': 'Consented visitor sessions yesterday (daily rollup).',
+            'hint': f'Visits by counted visitors, {label}. A visit ends after 30 minutes without a page.',
         }
     )
 
-    conv_bp = _metric(yday, 'conversion_rate')
-    conv_prior = _metric(prior, 'conversion_rate')
-    conv_delta = f'{(conv_bp - conv_prior) / 100:+.2f}pp' if conv_prior else ''
+    def _rate(a, b) -> float:
+        visits_in = _total(a, b, 'sessions')
+        return _total(a, b, 'counted_purchases') / visits_in * 100 if visits_in else 0.0
+
+    conv, conv_prior = _rate(first, last), _rate(prev_first, prev_last)
     value.append(
         {
             'label': 'Conversion rate',
-            'value': f'{conv_bp / 100:.2f}%',
-            'delta': conv_delta,
-            'trend': 'up' if conv_bp >= conv_prior else 'down',
+            'value': f'{conv:.2f}%',
+            'delta': f'{conv - conv_prior:+.2f}pp' if conv_prior else '',
+            'trend': 'up' if conv >= conv_prior else 'down',
             'icon': 'target',
             'series': None,
-            'hint': 'Purchases / sessions yesterday.',
+            'hint': f'Purchases by counted visitors over their visits, {label}.',
         }
     )
 
-    week_ago = yday - timedelta(days=6)
-    ai_sessions = sum(
-        row.value_int
-        for row in DailyMetric.objects.filter(
-            day__gte=week_ago, metric='top_sources', dimension__startswith='ai:'
-        )
-    )
+    ai_visits = _total(first, last, 'top_sources', dimension__startswith='ai:')
     value.append(
         {
             'label': 'AI referrals',
-            'value': f'{ai_sessions:,}',
+            'value': f'{ai_visits:,}',
             'delta': '',
             'trend': 'flat',
             'icon': 'bot',
             'series': None,
-            'hint': 'Sessions referred by AI assistants (ChatGPT, Perplexity, …), last 7 days.',
+            'hint': f'Visitors referred by AI assistants (ChatGPT, Perplexity, …), {label}.',
         }
     )
     return value

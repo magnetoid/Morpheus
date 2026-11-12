@@ -276,11 +276,12 @@ def product_list(request):
     paginator = page_obj.paginator
     products = list(page_obj.object_list)
 
-    if q:
+    if q and page_obj.number == 1:
         # Server-side SEARCH_PERFORMED truth (ad-blocker-proof) — the header
         # quick-search posts here, so this is the authoritative count site. The
         # total (not the page slice) is what the zero_search collector reads as
-        # `result_count`; 0 → the analyzer proposes a synonym mapping.
+        # `result_count`; 0 → the analyzer proposes a synonym mapping. The next
+        # page of results is the same search, so it fires on the first only.
         with contextlib.suppress(Exception):
             hook_registry.fire(
                 MorpheusEvents.SEARCH_PERFORMED,

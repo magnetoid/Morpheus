@@ -1318,6 +1318,23 @@ never edge-cached (`morpheus_consent` is a private cookie). A product page or li
 hands the tags a GraphQL dict whose price is `{amount, currency}`: the first live
 `view_item` said 0 USD for an $8 book until v0.127.1, because the test passed a number.
 Guarded by `tracking/tests/test_browser_tags.py` and `test_server_identity.py`.
+**The store's own numbers have the same trap (v0.156.0).** Montenegro's pages are edge-cached, so a
+pageview recorded by the server missed most of them; "sessions" were two-year cookies, and every
+event without consent counted as one more; conversion could pass 100 %; "today" ended at midnight
+UTC; the banner's reload named the store as every consented visit's referrer. Now a pageview is
+`analytics/hit.js`, which analytics' middleware writes before `</body>` of a 200 HTML page (never a
+crawler's, never staff's, never while the app is off) and the beacon records; a visit is a visitor's
+events with no 30-minute gap (`services.visits_and_visitors`, rolled hourly on the store's clock,
+`day_bounds`); conversion is purchases by counted visitors over their visits. A purchase finds its
+visit from the shopper's request (`core.errors.context.current_request`, never in `/dashboard/` or for
+staff) and stamps
+`order.metadata['analytics']`, so a webhook's later event joins that visit. The banner posts the
+landing page and referrer; consent keeps them in a signed two-minute cookie (`core.consent.entry`)
+that analytics and the GA4 tag read once. Cookieless counting (`cookieless_visits`, off) keys a
+visitor by a daily salt in the cache, never beside a customer or on an event about an order (a
+guest's order holds their email and address). Guarded by
+`analytics/tests/test_true_numbers.py`, `consent/tests/test_entry_carry.py` and
+`tracking/tests/test_entry_referrer.py`.
 
 **Landmine — product text is rich HTML; anywhere but the PDP it must become
 plain text first, never be sliced raw.** Web Stories cut `short_description`

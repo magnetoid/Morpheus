@@ -13,3 +13,5 @@ This app has no settings of its own. The banner, and everything it gates, only r
 ## Good to know
 
 A shopper's browser can send a "do not track" signal (Global Privacy Control); the banner treats that the same as refusing everything but necessary cookies, though the shopper can still open the preferences page and opt in anyway. Turning GDPR features off for the store, or turning this app off, stops the banner and lets every tag load for every visitor, with nothing held back.
+
+When a shopper accepts analytics, the banner passes on the page they landed on and the site that sent them, so the visit is credited to Google, a newsletter or an AI assistant rather than to your own store after the page reloads.

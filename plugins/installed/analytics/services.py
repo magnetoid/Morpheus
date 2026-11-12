@@ -10,17 +10,26 @@ Two responsibilities:
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import hmac
+import ipaddress
 import logging
 import secrets
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
+from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import DatabaseError
-from django.db.models import Count, F, Sum
+from django.db.models import Count, F, Q, Sum
+from django.db.models.fields.json import KT
 from django.utils import timezone
 from djmoney.money import Money
+
+from core.utils.site import store_timezone, store_today
 
 logger = logging.getLogger('morpheus.analytics')
 
@@ -28,9 +37,60 @@ logger = logging.getLogger('morpheus.analytics')
 COOKIE_NAME = 'morph_aid'
 COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 2  # 2 years
 
+#: A visit ends after this long without an event (GA4 and Shopify use 30 minutes).
+VISIT_GAP = timedelta(minutes=30)
+
+#: Events about an order, which never carry a cookieless visitor's key.
+_ORDER_KINDS = frozenset({'purchase', 'refund'})
+
+
+def _network(ip: str) -> str:
+    """The visitor's network, never the address: the last IPv4 octet (or the
+    last 80 bits of an IPv6 address) dropped."""
+    try:
+        addr = ipaddress.ip_address((ip or '').strip())
+    except ValueError:
+        return ''
+    prefix = 24 if addr.version == 4 else 48
+    return str(ipaddress.ip_network(f'{addr}/{prefix}', strict=False).network_address)
+
 
 def _hash_ip(ip: str) -> str:
-    return hashlib.sha256((ip or '').encode('utf-8')).hexdigest()[:32] if ip else ''
+    """A keyed hash of the visitor's network. A plain hash of an address is
+    reversed by hashing all four billion of them."""
+    net = _network(ip)
+    if not net:
+        return ''
+    return hmac.new(settings.SECRET_KEY.encode(), net.encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def _client_ip(request) -> str:
+    from core.ratelimit import client_ip
+
+    return client_ip(request)
+
+
+def visitor_key(request) -> str:
+    """A key that counts a visitor who has not allowed analytics cookies, when
+    the merchant switches cookieless counting on; '' otherwise.
+
+    It follows CNIL's conditions for audience measurement without consent: a
+    hash of the visitor's network and browser under a salt that lives one day in
+    the cache and is then gone, so the key cannot be recomputed or linked to a
+    customer, a cookie or another day.
+    """
+    if request is None or not _config().get('cookieless_visits', False):
+        return ''
+    from django.core.cache import cache
+
+    name = f'analytics:visitor-salt:{store_today().isoformat()}'
+    cache.add(name, secrets.token_hex(16), timeout=60 * 60 * 36)
+    salt = cache.get(name)
+    if not salt:
+        return ''
+    ua = (request.META.get('HTTP_USER_AGENT', '') or '')[:300]
+    material = f'{_network(_client_ip(request))}|{ua}'.encode()
+    return hmac.new(str(salt).encode(), material, hashlib.sha256).hexdigest()[:16]
 
 
 def _device_from_ua(ua: str) -> str:
@@ -99,33 +159,70 @@ def should_track_customer(customer) -> bool:
     return not _excluded_user(customer)
 
 
-def _inferred_ai_source(request) -> str:
-    """'ai:chatgpt' when the visit's referrer is an AI assistant, else ''."""
-    src = ai_source_from_referrer(request.META.get('HTTP_REFERER', '') or '')
-    return f'ai:{src}' if src else ''
+def _source(referrer: str, utm_source: str) -> tuple[str, str]:
+    """(utm_source, utm_medium) for a new visit.
+
+    An AI assistant shows as 'ai:<name>' whether it is the referrer or the tag:
+    ChatGPT adds ``utm_source=chatgpt.com`` to its links, and that used to
+    escape the AI-referral count.
+    """
+    tagged = (utm_source or '').strip()
+    ai = ai_source_from_referrer(f'https://{tagged}') if tagged else ''
+    if not tagged:
+        ai = ai_source_from_referrer(referrer)
+    if ai:
+        return f'ai:{ai}', 'ai-assistant'
+    return tagged, ''
+
+
+def _arrival(request, *, referrer=None, landing=None) -> tuple[str, str, dict, bool]:
+    """(referrer, landing path, landing query, carried) for a new visit.
+
+    The consent banner's answer carries the page the visitor landed on and its
+    referrer (``core.consent.entry``); without it the reload after "Accept"
+    named the store itself as the referrer.
+    """
+    from core.consent import entry
+
+    carried = entry(request)
+    if carried:
+        referrer, landing = carried['referrer'], carried['landing']
+    if referrer is None:
+        referrer = request.META.get('HTTP_REFERER', '') or ''
+    if landing is None:
+        landing = request.get_full_path()
+    try:
+        parts = urlsplit(landing or '')
+    except ValueError:
+        parts = urlsplit('')
+    return referrer or '', parts.path or '', parse_qs(parts.query), bool(carried)
 
 
 def _analytics_consent_granted(request) -> bool:
-    """True when the visitor granted the 'analytics' consent category.
+    """Has this visitor allowed analytics? The one rule (``core.consent``): a
+    store that does not manage consent counts everyone, as its tags do; one that
+    does counts a visitor only once they said yes. It used to read the consent
+    app's cookie directly, so a store without the app had no sessions at all."""
+    from core.consent import allowed
 
-    Reads the ONE canonical consent cookie via the consent plugin (single source
-    of truth). This used to check a cookie named 'cookie_consent' that nothing
-    ever set — so analytics tracking was permanently off even after "Accept all".
-    Fail-soft: if the consent plugin is absent/disabled, deny (privacy-safe).
-    """
     try:
-        from plugins.installed.consent.services import read_consent_from_cookie
-
-        return bool(read_consent_from_cookie(request).get('analytics'))
-    except Exception:  # noqa: BLE001 — consent plugin missing/disabled → deny
+        return allowed('analytics', request=request)
+    except Exception:  # noqa: BLE001 — never count on a failure
         return False
 
 
-def get_or_create_session(request, *, response=None):
-    """Resolve the visitor's analytics session. Sets the cookie if missing."""
+def get_or_create_session(request, *, response=None, referrer=None, landing=None):
+    """Resolve the visitor's analytics session. Sets the cookie if missing.
+
+    ``referrer`` and ``landing`` describe the page when the request is not the
+    page itself (the beacon is a POST from it).
+    """
+    from core.consent import ENTRY_COOKIE
     from plugins.installed.analytics.models import AnalyticsSession
 
-    cookie_id = (request.COOKIES.get(COOKIE_NAME) or '').strip()
+    cookie_id = (request.COOKIES.get(COOKIE_NAME) or '').strip() or getattr(
+        request, '_morph_aid', ''
+    )
     is_consented = _analytics_consent_granted(request)
 
     # GDPR/ePrivacy: no consent → no visitor-level persistence. Events still
@@ -136,16 +233,20 @@ def get_or_create_session(request, *, response=None):
         return None
 
     if not cookie_id:
+        # One id per request: a product view fired in the view and the page's
+        # own session must not mint two visitors.
         cookie_id = secrets.token_urlsafe(24)[:48]
-        if response is not None and is_consented:
-            response.set_cookie(
-                COOKIE_NAME,
-                cookie_id,
-                max_age=COOKIE_MAX_AGE,
-                samesite='Lax',
-                secure=True,
-                httponly=False,
-            )
+        with contextlib.suppress(AttributeError):
+            request._morph_aid = cookie_id
+    if response is not None and not request.COOKIES.get(COOKIE_NAME):
+        response.set_cookie(
+            COOKIE_NAME,
+            cookie_id,
+            max_age=COOKIE_MAX_AGE,
+            samesite='Lax',
+            secure=True,
+            httponly=False,
+        )
 
     customer = getattr(request, 'user', None)
     customer = customer if (customer is not None and customer.is_authenticated) else None
@@ -157,8 +258,6 @@ def get_or_create_session(request, *, response=None):
     else:
         cross_device_id = hashlib.sha256(cookie_id.encode()).hexdigest()[:32]
 
-    # Geolocation and Device specs tracking
-    ip_addr = request.META.get('REMOTE_ADDR', '')
     geo_location = {
         'country': request.META.get('HTTP_CF_IPCOUNTRY', ''),
         'city': request.headers.get('x-city', ''),
@@ -168,30 +267,30 @@ def get_or_create_session(request, *, response=None):
         'mobile': request.headers.get('sec-ch-ua-mobile', ''),
         'browser': request.META.get('HTTP_USER_AGENT', '')[:100],
     }
+    arrived_from, landing_path, query, carried = _arrival(
+        request, referrer=referrer, landing=landing
+    )
+
+    def _q(name: str, size: int) -> str:
+        return ((query.get(name) or [''])[0] or '').strip()[:size]
+
+    utm_source, inferred_medium = _source(arrived_from, _q('utm_source', 200))
 
     try:
         session, created = AnalyticsSession.objects.get_or_create(
             cookie_id=cookie_id,
             defaults={
                 'user_agent': (request.META.get('HTTP_USER_AGENT', '') or '')[:300],
-                'ip_hash': _hash_ip(ip_addr),
+                'ip_hash': _hash_ip(_client_ip(request)),
                 'device': _device_from_ua(request.META.get('HTTP_USER_AGENT', '')),
                 'device_specs': device_specs,
                 'geo_location': geo_location,
-                'referrer': (request.META.get('HTTP_REFERER', '') or '')[:500],
-                'landing_url': (request.path or '')[:500],
-                # No explicit utm_source → infer AI-assistant referrals
-                # ('ai:chatgpt', …) so every existing source rollup segments
-                # them (same inference GA does for organic/referral).
-                'utm_source': (
-                    (request.GET.get('utm_source') or '').strip() or _inferred_ai_source(request)
-                )[:80],
-                'utm_medium': (
-                    (request.GET.get('utm_medium') or '').strip()
-                    or ('ai-assistant' if _inferred_ai_source(request) else '')
-                )[:80],
-                'utm_campaign': (request.GET.get('utm_campaign') or '')[:120],
-                'utm_content': (request.GET.get('utm_content') or '')[:120],
+                'referrer': arrived_from[:500],
+                'landing_url': landing_path[:500],
+                'utm_source': utm_source[:80],
+                'utm_medium': (_q('utm_medium', 80) or inferred_medium)[:80],
+                'utm_campaign': _q('utm_campaign', 120),
+                'utm_content': _q('utm_content', 120),
                 'customer': customer,
                 'cross_device_id': cross_device_id,
                 'is_consented': is_consented,
@@ -210,6 +309,8 @@ def get_or_create_session(request, *, response=None):
     except DatabaseError as e:
         logger.warning('analytics: session resolution failed: %s', e)
         return None
+    if carried and response is not None:
+        response.delete_cookie(ENTRY_COOKIE)
     return session
 
 
@@ -239,6 +340,16 @@ def record_event(
         session = get_or_create_session(request)
     if customer is None and session is not None:
         customer = session.customer
+    if session is None and request is not None and customer is None:
+        # A visitor without analytics cookies, counted only when the merchant
+        # switched cookieless counting on (``visitor_key``). Never beside a
+        # customer or an order: the key must not tie a person to what they
+        # browsed, and a guest's order holds their email and address. Such an
+        # event only notes that its visitor is counted, for the conversion rate.
+        key = visitor_key(request)
+        if key:
+            about_order = kind in _ORDER_KINDS or revenue is not None or 'order' in (payload or {})
+            payload = {**(payload or {}), **({'cookieless': True} if about_order else {'v': key})}
 
     # Exclude staff / (optionally) logged-in customers on the event-hook path
     # too — these events carry a customer but no HttpRequest to gate upstream.
@@ -278,13 +389,102 @@ def record_event(
         return None
 
 
+def shopper_request():
+    """The storefront request being served, for an event fired without one.
+
+    None for a staff member's request (a draft order converted in the dashboard
+    is not the shopper's visit) and outside a request.
+    """
+    from core.errors.context import current_request
+
+    request = current_request.get()
+    if request is None or not hasattr(request, 'COOKIES'):
+        return None
+    if (getattr(request, 'path', '') or '').startswith('/dashboard/'):
+        return None
+    return request if should_track_request(request) else None
+
+
+def link_order(order, evt) -> None:
+    """Note on the order which visit placed it, so its later events (the
+    payment captured by a webhook, a refund) are that visit's too.
+
+    Only a visit the shopper allowed cookies for: a cookieless key never sits on
+    an order (``visitor_key``).
+    """
+    if not getattr(evt, 'session_id', None) or not getattr(order, 'pk', None):
+        return
+    model = type(order)
+    try:
+        # Read it again: an earlier ORDER_PLACED handler may have written its own key.
+        stored = model.objects.filter(pk=order.pk).values_list('metadata', flat=True).first()
+        meta = {**(stored or {}), 'analytics': {'visitor': str(evt.session_id)}}
+        model.objects.filter(pk=order.pk).update(metadata=meta)
+        order.metadata = meta
+    except DatabaseError as e:
+        logger.warning('analytics: could not link order %s to its visit: %s', order.pk, e)
+
+
+def order_session(order):
+    """The visit an order was placed in, from ``link_order``; None if unknown."""
+    from plugins.installed.analytics.models import AnalyticsSession
+
+    link = (getattr(order, 'metadata', None) or {}).get('analytics') or {}
+    visitor = link.get('visitor') if isinstance(link, dict) else None
+    if not visitor:
+        return None
+    try:
+        return AnalyticsSession.objects.filter(pk=visitor).first()
+    except (DatabaseError, ValueError, ValidationError):
+        return None
+
+
+def day_bounds(day: date) -> tuple[datetime, datetime]:
+    """The store's own day: midnight to midnight on its clock, not UTC's."""
+    tz = store_timezone()
+    return (
+        datetime.combine(day, time.min, tzinfo=tz),
+        datetime.combine(day + timedelta(days=1), time.min, tzinfo=tz),
+    )
+
+
+def visits_and_visitors(qs) -> tuple[int, int]:
+    """Visits (a visitor's events with no gap over ``VISIT_GAP``) and visitors.
+
+    A visitor is an analytics session (a cookie, given with consent) or, when
+    cookieless counting is on, the day's key for one without (``payload.v``).
+    Events with neither belong to no visitor and count toward no visit: every
+    one of them used to add up to one more "session".
+    """
+    last: dict[str, datetime] = {}
+    visits = 0
+    rows = (
+        qs.annotate(v=KT('payload__v'))
+        .order_by('created_at')
+        .values_list('session_id', 'v', 'created_at')
+    )
+    for session_id, v, at in rows.iterator():
+        key = f's:{session_id}' if session_id else (f'v:{v}' if v else '')
+        if not key:
+            continue
+        previous = last.get(key)
+        if previous is None or at - previous > VISIT_GAP:
+            visits += 1
+        last[key] = at
+    return visits, len(last)
+
+
+#: The ranked lists ``roll_daily`` writes, one row per product, query, source or agent.
+_RANKED_METRICS = ('top_products', 'top_searches', 'top_sources', 'agent_runs')
+
+
 def roll_daily(*, day: date | None = None) -> int:
-    """Compute DailyMetric rows for `day` (default: yesterday). Idempotent."""
+    """Compute DailyMetric rows for `day` (default: yesterday, on the store's
+    clock). Idempotent, so today can be rolled again as it fills."""
     from plugins.installed.analytics.models import AnalyticsEvent, DailyMetric
 
-    target = day or (timezone.now().date() - timedelta(days=1))
-    start = datetime.combine(target, datetime.min.time(), tzinfo=UTC)
-    end = start + timedelta(days=1)
+    target = day or (store_today() - timedelta(days=1))
+    start, end = day_bounds(target)
 
     written = 0
 
@@ -301,9 +501,17 @@ def roll_daily(*, day: date | None = None) -> int:
         written += 1
 
     qs = AnalyticsEvent.objects.filter(created_at__gte=start, created_at__lt=end)
+    # Today is rolled every hour: a product that fell out of the top 25 since
+    # the last roll must not keep its earlier count.
+    DailyMetric.objects.filter(day=target, metric__in=_RANKED_METRICS).delete()
 
-    upsert('pageviews', value_int=qs.filter(kind='pageview').count())
-    upsert('sessions', value_int=qs.values('session_id').distinct().count())
+    # A pageview is the page's own hit (name 'pageview'); the beacon's leave
+    # event used to be filed as one too.
+    upsert('pageviews', value_int=qs.filter(name='pageview').count())
+    visits_n, visitors_n = visits_and_visitors(qs)
+    # 'sessions' keeps its name on the Traffic page and in history; it is visits now.
+    upsert('sessions', value_int=visits_n)
+    upsert('visitors', value_int=visitors_n)
     upsert(
         'unique_customers',
         value_int=qs.exclude(customer__isnull=True).values('customer_id').distinct().count(),
@@ -323,12 +531,22 @@ def roll_daily(*, day: date | None = None) -> int:
     # Ratios are stored as BASIS POINTS in value_int (240 = 2.40%): value_int
     # is a plain integer while value_money is currency-tagged (wrong type for
     # a ratio). aov is a true money amount → value_money.
-    sessions_n = qs.values('session_id').distinct().count()
     purchases_n = rev_agg.get('n') or 0
     cart_adds_n = qs.filter(name='cart.add').count()
     checkouts_n = qs.filter(name='checkout.started').count()
 
-    conversion_bp = round(purchases_n / sessions_n * 10_000) if sessions_n else 0
+    # Purchases by counted visitors over their visits: the same population on
+    # both sides, so the rate can no longer pass 100 % on a store where few
+    # visitors allow cookies.
+    counted_purchases = (
+        qs.filter(kind='purchase')
+        .filter(
+            Q(session__isnull=False) | Q(payload__v__isnull=False) | Q(payload__cookieless=True)
+        )
+        .count()
+    )
+    upsert('counted_purchases', value_int=counted_purchases)
+    conversion_bp = round(counted_purchases / visits_n * 10_000) if visits_n else 0
     upsert('conversion_rate', value_int=conversion_bp)
 
     total_rev = rev_agg.get('total')
@@ -385,7 +603,9 @@ def summary_for(*, days: int = 7) -> dict:
     """Headline numbers for the dashboard overview card."""
     from plugins.installed.analytics.models import DailyMetric
 
-    since = timezone.now().date() - timedelta(days=days)
+    # Today and the days before it on the store's clock: "Today" used to show
+    # yesterday and today together, and 7 days meant eight.
+    since = store_today() - timedelta(days=max(1, int(days)) - 1)
 
     def _sum_int(metric: str) -> int:
         agg = DailyMetric.objects.filter(metric=metric, day__gte=since).aggregate(
@@ -411,6 +631,7 @@ def summary_for(*, days: int = 7) -> dict:
         'window_days': days,
         'pageviews': _sum_int('pageviews'),
         'sessions': _sum_int('sessions'),
+        'visitors': _sum_int('visitors'),
         'unique_customers': _sum_int('unique_customers'),
         'product_views': _sum_int('product_views'),
         'cart_adds': _sum_int('cart_adds'),
@@ -499,14 +720,14 @@ def record_ai_crawler_hit(bot: str) -> None:
 
     try:
         _, created = DailyMetric.objects.get_or_create(
-            day=timezone.now().date(),
+            day=store_today(),
             metric='ai_crawler_hits',
             dimension=bot[:120],
             defaults={'value_int': 1},
         )
         if not created:
             DailyMetric.objects.filter(
-                day=timezone.now().date(), metric='ai_crawler_hits', dimension=bot[:120]
+                day=store_today(), metric='ai_crawler_hits', dimension=bot[:120]
             ).update(value_int=F('value_int') + 1)
     except DatabaseError as e:
         logger.debug('analytics: ai crawler counter failed: %s', e)
@@ -612,7 +833,7 @@ def funnel_for(*, steps: list[str], days: int = 30) -> list[dict]:
 def top_products(*, days: int = 30, limit: int = 10) -> list[dict]:
     from plugins.installed.analytics.models import DailyMetric
 
-    since = timezone.now().date() - timedelta(days=days)
+    since = store_today() - timedelta(days=max(1, int(days)) - 1)
     rows = (
         DailyMetric.objects.filter(metric='top_products', day__gte=since)
         .values('dimension')
@@ -625,7 +846,7 @@ def top_products(*, days: int = 30, limit: int = 10) -> list[dict]:
 def top_searches(*, days: int = 30, limit: int = 10) -> list[dict]:
     from plugins.installed.analytics.models import DailyMetric
 
-    since = timezone.now().date() - timedelta(days=days)
+    since = store_today() - timedelta(days=max(1, int(days)) - 1)
     rows = (
         DailyMetric.objects.filter(metric='top_searches', day__gte=since)
         .values('dimension')
@@ -638,7 +859,7 @@ def top_searches(*, days: int = 30, limit: int = 10) -> list[dict]:
 def agent_activity(*, days: int = 30) -> list[dict]:
     from plugins.installed.analytics.models import DailyMetric
 
-    since = timezone.now().date() - timedelta(days=days)
+    since = store_today() - timedelta(days=max(1, int(days)) - 1)
     rows = (
         DailyMetric.objects.filter(metric='agent_runs', day__gte=since)
         .values('dimension')
@@ -657,8 +878,8 @@ def real_time(*, minutes: int = 30) -> dict:
     return {
         'window_minutes': minutes,
         'events': qs.count(),
-        'sessions': qs.values('session_id').distinct().count(),
-        'pageviews': qs.filter(kind='pageview').count(),
+        'sessions': visits_and_visitors(qs)[1],
+        'pageviews': qs.filter(name='pageview').count(),
         'cart_adds': qs.filter(name='cart.add').count(),
         'orders': qs.filter(kind='purchase').count(),
         'recent': list(
@@ -678,7 +899,7 @@ def predictive_trends(*, days: int = 30) -> dict:
     """Predictive trend forecasting using simple moving average and linear projection."""
     from plugins.installed.analytics.models import DailyMetric
 
-    since = timezone.now().date() - timedelta(days=days)
+    since = store_today() - timedelta(days=max(1, int(days)) - 1)
 
     # Fetch historical revenue
     historical = list(DailyMetric.objects.filter(metric='revenue', day__gte=since).order_by('day'))
@@ -713,4 +934,14 @@ def trim_old_events(*, keep_days: int = 90) -> int:
 
     cutoff = timezone.now() - timedelta(days=keep_days)
     deleted, _ = AnalyticsEvent.objects.filter(created_at__lt=cutoff).delete()
+    return deleted
+
+
+def trim_old_visitors(*, keep_days: int = 395) -> int:
+    """Delete visitors not seen for `keep_days` (13 months by default, CNIL's
+    limit for audience measurement). They used to be kept for ever."""
+    from plugins.installed.analytics.models import AnalyticsSession
+
+    cutoff = timezone.now() - timedelta(days=keep_days)
+    deleted, _ = AnalyticsSession.objects.filter(last_seen_at__lt=cutoff).delete()
     return deleted

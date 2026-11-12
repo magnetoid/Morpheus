@@ -25,11 +25,23 @@ class PageviewsArePagesTests(TestCase):
         before = self._pageviews()
         response = Client(HTTP_USER_AGENT=_BROWSER).get('/csrf/')
         self.assertTrue(response['Content-Type'].startswith('application/json'))
+        self.assertNotIn(b'data-morph-hit', response.content)
         self.assertEqual(self._pageviews(), before)
 
     def test_a_page_still_is(self):
+        from django.core.cache import cache
+
+        cache.clear()  # the beacon's per-IP limit outlives the test that filled it
+        # The page carries the hit; the browser's hit is the pageview (v0.156.0),
+        # so a page the edge cache served still counts.
         before = self._pageviews()
-        Client(HTTP_USER_AGENT=_BROWSER).get('/')
+        client = Client(HTTP_USER_AGENT=_BROWSER)
+        self.assertIn(b'data-morph-hit', client.get('/').content)
+        client.post(
+            '/api/analytics/track/',
+            data='{"name": "pageview", "kind": "pageview"}',
+            content_type='application/json',
+        )
         self.assertEqual(self._pageviews(), before + 1)
 
     def test_a_form_post_or_a_head_request_is_not_a_pageview(self):

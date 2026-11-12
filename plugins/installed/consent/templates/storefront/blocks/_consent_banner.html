@@ -24,6 +24,9 @@ even when GTM/analytics never load (which is the default state).
         class="card card-padded"
         style="background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.12); padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: .85rem;">
     {% csrf_token %}
+    {# Where the visitor came from, so accepting keeps their referral (the reload that follows has this page as its referrer). #}
+    <input type="hidden" name="entry_referrer" value="">
+    <input type="hidden" name="entry_url" value="">
     <p style="margin: 0; font-family: var(--serif); font-size: .98rem; line-height: 1.4; color: var(--ink);">
       We use cookies for the cart, login, and to understand how the shop is used. Necessary cookies are always on.
     </p>
@@ -60,4 +63,13 @@ even when GTM/analytics never load (which is the default state).
     </div>
   </form>
 </div>
+<script nonce="{{ csp_nonce }}">
+(function (f) {
+  if (!f) return;
+  f.addEventListener('submit', function () {
+    f.elements.entry_referrer.value = document.referrer || '';
+    f.elements.entry_url.value = location.href;
+  });
+})(document.querySelector('#morpheus-consent-banner form'));
+</script>
 {% endif %}

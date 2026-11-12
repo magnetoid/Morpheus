@@ -5,6 +5,27 @@ from __future__ import annotations
 from morpheus.app import DashboardPage, Plugin, SettingsPanel, StorefrontBlock
 from morpheus.core import events
 
+#: Events a crawler can cause by browsing; the rest are orders and accounts.
+_BROWSING = (events.PRODUCT_VIEWED, events.SEARCH_PERFORMED, events.ADD_TO_CART)
+#: The name an event is stored under, where the funnels and rollups use another.
+_NAMES = {events.ADD_TO_CART: 'cart.add'}
+
+
+def _payload(kwargs: dict) -> dict:
+    """What an event keeps beyond its columns: the order it is about, so a
+    report can read the order's net amount, and a search's result count, so a
+    search that found nothing can be told from one that did."""
+    payload = {'src': 'hook'}
+    order_pk = getattr(kwargs.get('order'), 'pk', None)
+    if order_pk:
+        payload['order'] = str(order_pk)
+    try:
+        if kwargs.get('result_count') is not None:
+            payload['results'] = int(kwargs['result_count'])
+    except (TypeError, ValueError):
+        pass
+    return payload
+
 
 class AnalyticsPlugin(Plugin):
     name = 'analytics'
@@ -35,6 +56,7 @@ class AnalyticsPlugin(Plugin):
         for event in [
             events.ORDER_PLACED,
             events.PAYMENT_CAPTURED,
+            events.ADD_TO_CART,
             events.BEGIN_CHECKOUT,
             events.PRODUCT_VIEWED,
             events.SEARCH_PERFORMED,
@@ -52,13 +74,17 @@ class AnalyticsPlugin(Plugin):
         except Exception:  # noqa: BLE001, S110
             pass
 
-        # Beat: roll daily metrics + trim old events.
+        # Beat: roll today's and yesterday's metrics, trim old events and visitors.
         self.register_celery_beat(
             'analytics:roll_daily',
             {
                 'task': 'analytics.roll_daily',
-                'schedule': 60 * 60 * 6,  # every 6 hours
+                'schedule': 60 * 60,  # hourly, so today's numbers are an hour old at most
             },
+        )
+        self.register_celery_beat(
+            'analytics:trim_old_visitors',
+            {'task': 'analytics.trim_old_visitors', 'schedule': 60 * 60 * 24},
         )
         self.register_celery_beat(
             'analytics:trim_old_events',
@@ -98,6 +124,7 @@ class AnalyticsPlugin(Plugin):
 
         def _handler(**kwargs):
             try:
+                from plugins.installed.analytics import services
                 from plugins.installed.analytics.services import record_event
                 from plugins.installed.analytics.tasks import _kind_for
 
@@ -117,24 +144,36 @@ class AnalyticsPlugin(Plugin):
                 # Server-side storefront fires pass request= so the event
                 # joins the visitor's session (funnels group by session_id).
                 request = kwargs.get('request')
-                # Browsing by a crawler is not a visitor's product view or
-                # search. Transactional events are kept whoever the client is.
-                if event_name in (events.PRODUCT_VIEWED, events.SEARCH_PERFORMED) and request:
+                session = None
+                order = kwargs.get('order')
+                if event_name == events.ORDER_PLACED and request is None:
+                    # Checkout fires it without the request; the shopper's own
+                    # request is the one being served. A later event (a webhook
+                    # capturing the payment) runs on someone else's request.
+                    request = services.shopper_request()
+                if request is None and order is not None:
+                    session = services.order_session(order)
+                # Browsing by a crawler is not a visitor's product view, search
+                # or cart. Orders are kept whoever the client is.
+                if event_name in _BROWSING and request:
                     from core.utils.crawlers import is_crawler_user_agent  # noqa: PLC0415
 
                     if is_crawler_user_agent(request.META.get('HTTP_USER_AGENT', '')):
                         return
-                record_event(
-                    name=event_name,
+                evt = record_event(
+                    name=_NAMES.get(event_name, event_name),
                     kind=_kind_for(event_name),
                     request=request,
+                    session=session,
                     customer=customer,
                     revenue=revenue,
                     product_slug=product_slug,
                     search_query=str(kwargs.get('query') or '')[:200],
                     url=(getattr(request, 'path', '') or '')[:500],
-                    payload={'src': 'hook'},
+                    payload=_payload(kwargs),
                 )
+                if event_name == events.ORDER_PLACED and evt is not None and order is not None:
+                    services.link_order(order, evt)
             except Exception:  # noqa: BLE001, S110
                 pass
 
@@ -262,6 +301,24 @@ class AnalyticsPlugin(Plugin):
                         "Don't record the owner's own browsing — they're logged into the "
                         'dashboard, so their storefront visits would skew customer analytics.'
                     ),
+                },
+                'cookieless_visits': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Count visitors who decline analytics cookies',
+                    'description': (
+                        'Counts their visits with a key that changes every day and is '
+                        'never stored with a customer or an order, so it cannot follow '
+                        'anyone. Check with your privacy adviser that audience '
+                        'measurement without consent is allowed where you sell.'
+                    ),
+                },
+                'keep_visitor_days': {
+                    'type': 'integer',
+                    'default': 395,
+                    'minimum': 30,
+                    'maximum': 730,
+                    'title': 'Days to keep a visitor who has not come back',
                 },
                 'exclude_logged_in': {
                     'type': 'boolean',

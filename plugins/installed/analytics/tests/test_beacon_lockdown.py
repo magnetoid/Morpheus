@@ -12,6 +12,8 @@ from django.test import TestCase
 from plugins.installed.analytics.models import AnalyticsEvent
 
 _URL = '/api/analytics/track/'
+# The beacon ignores clients that are not browsers; the test client sends no user agent.
+_BROWSER = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128.0 Safari/537.36'
 
 
 class BeaconKindTests(TestCase):
@@ -20,6 +22,7 @@ class BeaconKindTests(TestCase):
             _URL,
             data=json.dumps({'name': f'evt-{kind}', 'kind': kind}),
             content_type='application/json',
+            HTTP_USER_AGENT=_BROWSER,
         )
 
     def test_money_and_auth_kinds_downgrade_to_custom(self):

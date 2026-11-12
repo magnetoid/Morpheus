@@ -61,6 +61,18 @@ def custom_events_config(request):
         return JsonResponse({'events': []})
 
 
+def _beacon_kind(body: dict, name: str) -> str:
+    """The kind a beacon event is filed under: one the browser may claim, else custom.
+
+    A pageview is the page's own hit (analytics/hit.js), once per page load; the
+    tracker's leave event was filed as one on every tab switch.
+    """
+    if name == 'pageview':
+        return 'pageview'
+    kind = str(body.get('kind') or 'custom').strip()
+    return kind if kind in _ALLOWED_KINDS and kind != 'pageview' else 'custom'
+
+
 @csrf_exempt
 @require_http_methods(['POST'])
 def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (size/rate/shape checks)
@@ -73,7 +85,11 @@ def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (si
 
     # Per-IP rate limit: open unauthenticated endpoint. Cache counter,
     # 120 events/min; race-tolerant (worst case a few extra slip through).
-    ip = request.META.get('REMOTE_ADDR', '') or 'unknown'
+    # The visitor's own address: REMOTE_ADDR is the last proxy's, which put
+    # every visitor of a store in one bucket.
+    from core.ratelimit import client_ip  # noqa: PLC0415
+
+    ip = client_ip(request) or 'unknown'
     rl_key = f'analytics:beacon-rl:{ip}'
     from django.core.cache import cache  # noqa: PLC0415
 
@@ -97,9 +113,11 @@ def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (si
     if not name:
         return HttpResponseBadRequest('Missing name')
 
-    kind = (body.get('kind') or 'custom').strip()
-    if kind not in _ALLOWED_KINDS:
-        kind = 'custom'
+    kind = _beacon_kind(body, name)
+    from core.utils.crawlers import is_crawler_user_agent  # noqa: PLC0415
+
+    if is_crawler_user_agent(request.META.get('HTTP_USER_AGENT', '')):
+        return HttpResponse(status=204)  # a crawler that runs scripts is not a visitor
 
     payload = {
         k: (v[:_MAX_PAYLOAD_VALUE_LEN] if isinstance(v, str) else v)
@@ -115,6 +133,7 @@ def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (si
             'duration_ms',
             'error_context',
             'is_realtime',
+            'referrer',
         )
     }
     if len(payload) > _MAX_PAYLOAD_KEYS:
@@ -131,7 +150,14 @@ def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (si
         response = HttpResponse(status=204)
         # Skip staff/admin browsing so it doesn't pollute customer analytics.
         if should_track_request(request):
-            session = get_or_create_session(request, response=response)
+            # The beacon posts from the page: the page's address and its own
+            # referrer describe the visit, not this request's.
+            session = get_or_create_session(
+                request,
+                response=response,
+                referrer=str(body.get('referrer') or '')[:500] if name == 'pageview' else '',
+                landing=str(body.get('url') or '')[:500],
+            )
 
             # Extract new metrics
             scroll_depth = None

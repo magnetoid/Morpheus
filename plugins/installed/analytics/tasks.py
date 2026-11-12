@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 from morph.celery import app
 
@@ -45,7 +46,7 @@ def _kind_for(name: str) -> str:  # noqa: PLR0911
         return 'product_view'
     if name == 'search.performed':
         return 'search'
-    if name == 'cart.abandoned':
+    if name in ('cart.abandoned', 'cart.item_added', 'cart.add'):
         return 'cart'
     if name == 'customer.registered':
         return 'signup'
@@ -58,9 +59,12 @@ def _kind_for(name: str) -> str:  # noqa: PLR0911
 
 @app.task(name='analytics.roll_daily', ignore_result=True, time_limit=300, soft_time_limit=180)
 def roll_daily_task() -> int:
+    from core.utils.site import store_today
     from plugins.installed.analytics.services import roll_daily
 
-    written = roll_daily()
+    today = store_today()
+    # Yesterday too: its last hour is rolled after midnight.
+    written = roll_daily(day=today - timedelta(days=1)) + roll_daily(day=today)
     logger.info('analytics: rolled %d daily metric rows', written)
     return written
 
@@ -78,6 +82,20 @@ def trim_old_events_task(keep_days: int | None = None) -> int:
         keep_days = max(7, min(keep_days, 730))
     n = trim_old_events(keep_days=keep_days)
     logger.info('analytics: trimmed %d old events (keep_days=%d)', n, keep_days)
+    return n
+
+
+@app.task(name='analytics.trim_old_visitors', ignore_result=True, time_limit=120)
+def trim_old_visitors_task() -> int:
+    from plugins.installed.analytics.services import _config, trim_old_visitors
+
+    # The merchant's "Days to keep a visitor" setting; 395 (13 months) when unset.
+    try:
+        keep_days = int(_config().get('keep_visitor_days') or 395)
+    except (TypeError, ValueError):
+        keep_days = 395
+    n = trim_old_visitors(keep_days=max(30, min(keep_days, 730)))
+    logger.info('analytics: trimmed %d visitors', n)
     return n
 
 

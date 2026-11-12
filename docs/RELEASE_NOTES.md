@@ -15,6 +15,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.156.0 — 2026-11-12
+
+**Numbers you can trust**
+
+- Pageviews are counted by the visitor's browser, so pages served from a store's edge cache count too; a redirect, a missing page or a crawler never does
+- A visit ends after 30 minutes without a page, and only visitors are counted: a "session" used to be a two-year cookie, and every event of a visitor without cookies counted as one more
+- Conversion rate is purchases by counted visitors over their visits and can no longer pass 100%; the dashboard tiles follow the range you pick, with today against yesterday by default
+- Days follow the store's time zone and today's numbers are rolled every hour; a product that drops out of the day's top 25 no longer keeps its earlier count
+- An order belongs to the visit that placed it, and so does its payment when a webhook confirms it later; add-to-cart is counted by the store itself, crawlers excepted
+- Accepting cookies keeps the page the visitor landed on and the site that sent them, for the store's numbers and for GA4; links tagged by ChatGPT count as AI referrals
+- New settings: count visitors who decline cookies with a daily key never stored with a customer (off), and how long to keep a visitor who has not come back (13 months)
+- A search is counted once, on its first page of results, together with how many results it found
+
 ## v0.155.1 — 2026-11-12
 
 **No false claims in search results and AI files**

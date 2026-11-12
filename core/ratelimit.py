@@ -64,6 +64,15 @@ _BYPASS = (
 INTERNAL_REQUEST_ENVIRON_KEY = 'morpheus.internal_request'
 
 
+def client_ip(request) -> str:
+    """The visitor's address behind Cloudflare and the proxies (see below).
+
+    ``REMOTE_ADDR`` is the last proxy's address on every store, so anything
+    that counts or limits visitors by address reads this instead.
+    """
+    return _client_id(request)
+
+
 def _client_id(request) -> str:
     # Behind Cloudflare the real client IP is CF-Connecting-IP (the payments +
     # cloudflare plugins resolve it the same way). The XFF first-hop can collapse

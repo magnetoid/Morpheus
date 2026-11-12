@@ -1,6 +1,6 @@
 {# The beacon runs only with analytics consent; an unmanaged store (GDPR features off, consent app off) keeps it. #}
 {% if not consent.managed or consent.analytics %}
-{# Storefront analytics beacon — emits product views, search queries, cart adds, scroll depth, and custom no-code events. #}
+{# Storefront analytics beacon — scroll depth, time on page and no-code events. Product views, searches and cart adds are counted on the server, the pageview by hit.js. #}
 <script nonce="{{ csp_nonce }}">
 (function() {
   var TRACK_URL = '/api/analytics/track/';
@@ -49,28 +49,14 @@
     }, true);
   });
 
-  // Auto-detect product detail pages: /products/<slug>/
-  var m = location.pathname.match(/^\/products\/([\w-]+)\/?$/);
-  if (m) send('product.viewed', 'product_view', {product_slug: m[1]});
+  // Product views, searches and cart adds are recorded by the server, where
+  // they happen; the pageview is the page's own hit (analytics/hit.js). This
+  // script sent all three again, so each counted twice.
 
-  // Search results page
-  var search = new URLSearchParams(location.search).get('q');
-  if (search && location.pathname.indexOf('/search') >= 0) {
-    send('search.performed', 'search', {search_query: search});
-  }
-
-  // Cart-add buttons (form action="/cart/add/<id>/" pattern)
-  document.addEventListener('submit', function(e) {
-    var form = e.target;
-    if (form && form.action && /\/cart\/add\//.test(form.action)) {
-      send('cart.add', 'cart');
-    }
-  }, true);
-
-  // Before unload event (tracks session duration and final scroll depth)
+  // Time on page and final scroll depth when the visitor leaves the page.
   window.addEventListener('visibilitychange', function(e) {
     if (document.visibilityState === 'hidden') {
-      send('page.leave', 'pageview', {}, false);
+      send('page.leave', 'custom', {}, false);
     }
   });
 

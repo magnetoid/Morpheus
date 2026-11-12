@@ -3,7 +3,7 @@ summary: Runs Google Analytics 4 or Tag Manager on every page, sends purchase an
 ---
 
 ## What it's for
-Tracking connects your store to Google Analytics 4 and Google Tag Manager. In the shopper's browser it loads your GTM container, or GA4 itself when you have no container, on every page. From the server it sends purchases, refunds, cart changes, checkout starts, searches, sign-ups and sign-ins, joined to the same visit as the browser's events, so ad blockers can't lose them. Every server-side event is logged with whether it was sent, deduplicated or failed, and why.
+Tracking connects your store to Google Analytics 4 and Google Tag Manager. In the shopper's browser it loads your GTM container, or GA4 itself when you have no container, on every page. From the server it sends purchases, refunds, cart changes, checkout starts, searches, sign-ups and sign-ins, joined to the same visit as the browser's events, so ad blockers can't lose them. Each server-side event is logged with its outcome.
 
 ## Set it up
 Open [Tracking](page:overview) and click Settings:
@@ -16,8 +16,8 @@ Separately, add a Google Ads conversion ID and label on [](settings:tracking) to
 ## Common tasks
 - Check the last 24 hours' send rate and top events on the main Tracking page
 - Fire a test event, such as a purchase or a search, without placing a real order
-- Run a connection check that validates your measurement ID and API secret without touching your reports
-- Look up one event's full payload and response in the event log when something looks wrong
+- Check your measurement ID and API secret without touching your reports
+- Look up one event's full payload and response in the event log
 - Download a ready-made GTM container to import into your workspace
 
 ## Good to know
@@ -25,6 +25,7 @@ Separately, add a Google Ads conversion ID and label on [](settings:tracking) to
 - Product views come from the browser's tag when one is set up, so none counts twice; otherwise the server sends them, skipping known crawlers.
 - Searches send the words the shopper typed.
 - Purchases go out from both the browser and the server with the same transaction ID, which GA4 uses to count each order once.
+- After a shopper accepts cookies, GA4 hears where the visit began, not the reloaded page.
 - Debug mode shows server-side events in GA4's DebugView; turn it off afterwards.
 - Scrolls, outbound clicks, downloads and video plays are switched in GA4 itself (Enhanced Measurement).
 - Cross-domain measurement needs the same domain list in GA4 → Admin → Data streams → Configure your domains.

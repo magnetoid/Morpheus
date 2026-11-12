@@ -111,7 +111,10 @@ def _ranked(rows, matches, sort: str) -> list:
 
 def _searched(request, q: str, count: int) -> None:
     """SEARCH_PERFORMED, as the storefront's own search fires it: search trends, the
-    zero-result report and the GA4 search event read it. Close matches count as none."""
+    zero-result report and the GA4 search event read it. Close matches count as none.
+    The next page of results is the same search, so only the first page fires."""
+    if (request.GET.get('page') or '1').strip() != '1':
+        return
     with contextlib.suppress(Exception):
         hook_registry.fire(
             MorpheusEvents.SEARCH_PERFORMED, query=q, result_count=count, request=request
