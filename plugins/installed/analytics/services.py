@@ -24,7 +24,7 @@ from urllib.parse import parse_qs, urlsplit
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError
-from django.db.models import Count, F, Sum
+from django.db.models import Count, F, Q, Sum
 from django.utils import timezone
 from djmoney.money import Money
 
@@ -38,6 +38,9 @@ COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 2  # 2 years
 
 #: A visit ends after this long without an event (GA4 and Shopify use 30 minutes).
 VISIT_GAP = timedelta(minutes=30)
+
+#: Events about an order, which never carry a cookieless visitor's key.
+_ORDER_KINDS = frozenset({'purchase', 'refund'})
 
 
 def _network(ip: str) -> str:
@@ -382,10 +385,13 @@ def record_event(
     if session is None and request is not None and customer is None:
         # A visitor without analytics cookies, counted only when the merchant
         # switched cookieless counting on (``visitor_key``). Never beside a
-        # customer: the key must not tie a person to what they browsed.
+        # customer or an order: the key must not tie a person to what they
+        # browsed, and a guest's order holds their email and address. Such an
+        # event only notes that its visitor is counted, for the conversion rate.
         key = visitor_key(request)
         if key:
-            payload = {**(payload or {}), 'v': key}
+            about_order = kind in _ORDER_KINDS or revenue is not None or 'order' in (payload or {})
+            payload = {**(payload or {}), **({'cookieless': True} if about_order else {'v': key})}
 
     # Exclude staff / (optionally) logged-in customers on the event-hook path
     # too — these events carry a customer but no HttpRequest to gate upstream.
@@ -580,7 +586,11 @@ def roll_daily(*, day: date | None = None) -> int:
     # both sides, so the rate can no longer pass 100 % on a store where few
     # visitors allow cookies.
     counted_purchases = (
-        qs.filter(kind='purchase').exclude(session__isnull=True, payload__v__isnull=True).count()
+        qs.filter(kind='purchase')
+        .filter(
+            Q(session__isnull=False) | Q(payload__v__isnull=False) | Q(payload__cookieless=True)
+        )
+        .count()
     )
     upsert('counted_purchases', value_int=counted_purchases)
     conversion_bp = round(counted_purchases / visits_n * 10_000) if visits_n else 0

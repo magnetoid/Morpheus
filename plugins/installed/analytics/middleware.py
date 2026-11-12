@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 
+from plugins.registry import app_registry
+
 logger = logging.getLogger('morpheus.analytics')
 
 # Paths that should NOT generate pageview events. Admin, API, healthchecks,
@@ -59,7 +61,13 @@ class AnalyticsMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         path = request.path or ''
-        if request.method != 'GET' or path.startswith(_EXCLUDED_PREFIXES):
+        # The middleware is installed whether the app is on or not: switched
+        # off, it sets no cookie and writes no pageview script.
+        if (
+            request.method != 'GET'
+            or path.startswith(_EXCLUDED_PREFIXES)
+            or not app_registry.is_active('analytics')
+        ):
             return response
         try:
             from plugins.installed.analytics.services import (

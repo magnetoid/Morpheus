@@ -1323,14 +1323,16 @@ pageview recorded by the server missed most of them; "sessions" were two-year co
 event without consent counted as one more; conversion could pass 100 %; "today" ended at midnight
 UTC; the banner's reload named the store as every consented visit's referrer. Now a pageview is
 `analytics/hit.js`, which analytics' middleware writes before `</body>` of a 200 HTML page (never a
-crawler's, never staff's) and the beacon records; a visit is a visitor's events with no 30-minute gap
-(`services.visits_and_visitors`, rolled hourly on the store's clock, `day_bounds`); conversion is
-purchases by counted visitors over their visits. A purchase finds its visit from the shopper's
-request (`core.errors.context.current_request`, never in `/dashboard/` or for staff) and stamps
+crawler's, never staff's, never while the app is off) and the beacon records; a visit is a visitor's
+events with no 30-minute gap (`services.visits_and_visitors`, rolled hourly on the store's clock,
+`day_bounds`); conversion is purchases by counted visitors over their visits. A purchase finds its
+visit from the shopper's request (`core.errors.context.current_request`, never in `/dashboard/` or for
+staff) and stamps
 `order.metadata['analytics']`, so a webhook's later event joins that visit. The banner posts the
 landing page and referrer; consent keeps them in a signed two-minute cookie (`core.consent.entry`)
 that analytics and the GA4 tag read once. Cookieless counting (`cookieless_visits`, off) keys a
-visitor by a daily salt in the cache and never beside a customer. Guarded by
+visitor by a daily salt in the cache, never beside a customer or on an event about an order (a
+guest's order holds their email and address). Guarded by
 `analytics/tests/test_true_numbers.py`, `consent/tests/test_entry_carry.py` and
 `tracking/tests/test_entry_referrer.py`.
 

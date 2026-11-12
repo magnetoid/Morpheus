@@ -72,6 +72,7 @@ def compute_cohorts(
     cohort_count: int = DEFAULT_COHORT_COUNT,
     period_count: int = DEFAULT_PERIOD_COUNT,
     metric: str = 'order',
+    currency: str = '',
 ) -> dict:
     """Return cohort table data for the dashboard.
 
@@ -119,7 +120,7 @@ def compute_cohorts(
                 else order_active
             )
             revenue = (
-                _sum_revenue(user_ids, period_start, period_end)
+                _sum_revenue(user_ids, period_start, period_end, currency)
                 if metric == 'revenue'
                 else Decimal('0')
             )
@@ -223,18 +224,22 @@ def _count_users_with_event(user_ids: list[int], start: date, end: date) -> int:
     )
 
 
-def _sum_revenue(user_ids: list[int], start: date, end: date) -> Decimal:
+def _sum_revenue(user_ids: list[int], start: date, end: date, currency: str = '') -> Decimal:
     """The cohort's sales in this period (``orders.reports``): 'paid' and
     'completed' were never order statuses, so shipped and delivered orders
-    used to count for nothing."""
+    used to count for nothing. Only ``currency`` is summed (the table's one
+    currency); orders in another are left out, never added or relabelled."""
     if not user_ids:
         return Decimal('0')
     from plugins.installed.orders.models import Order  # noqa: PLC0415
     from plugins.installed.orders.reports import net_sales  # noqa: PLC0415
 
-    return net_sales(
+    sales = net_sales(
         Order.objects.filter(customer_id__in=user_ids, placed_at__gte=start, placed_at__lt=end)
-    ).net
+    )
+    if not currency or sales.currency == currency:
+        return sales.net
+    return sales.others.get(currency, Decimal('0'))
 
 
 # ---------------------------------------------------------------------------

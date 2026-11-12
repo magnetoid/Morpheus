@@ -32,14 +32,14 @@ def on_seo_jsonld_graph(value, page=None, request=None, **kwargs):
     a 30-day return window on every experience and hotel.
     """
     try:
-        offer = _product_offer(value) if page_product_ships(page) else None
+        offers = _product_offers(value) if page_product_ships(page) else []
         store = _store_node(value) if store_ships_goods() else None
-        if offer is None and store is None:
+        if not offers and store is None:
             return value
         policy = return_policy()
         if policy:
-            if offer is not None:
-                offer['hasMerchantReturnPolicy'] = policy
+            for offer in offers:
+                offer['hasMerchantReturnPolicy'] = dict(policy)
             if store is not None:
                 store['hasMerchantReturnPolicy'] = dict(policy)
     except Exception as e:  # noqa: BLE001 — never lose the graph over an enricher
@@ -133,16 +133,29 @@ def _store_country() -> str:
         return ''
 
 
-def _product_offer(graph) -> dict | None:
+def _product_offers(graph) -> list[dict]:
+    """Every offer on the graph's Product nodes, variants' included.
+
+    A product with several editions is a ProductGroup whose offers sit on its
+    `hasVariant` members, not on the group.
+    """
     if not isinstance(graph, dict):
-        return None
+        return []
+    found: list[dict] = []
+
+    def collect(node):
+        offers = node.get('offers')
+        for offer in offers if isinstance(offers, list) else [offers]:
+            if isinstance(offer, dict):
+                found.append(offer)
+        for member in node.get('hasVariant') or []:
+            if isinstance(member, dict):
+                collect(member)
+
     for node in graph.get('@graph') or []:
-        if not isinstance(node, dict) or 'Product' not in str(node.get('@type', '')):
-            continue
-        offer = node.get('offers')
-        if isinstance(offer, dict):
-            return offer
-    return None
+        if isinstance(node, dict) and 'Product' in str(node.get('@type', '')):
+            collect(node)
+    return found
 
 
 def _store_node(graph) -> dict | None:
