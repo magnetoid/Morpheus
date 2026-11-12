@@ -78,6 +78,11 @@
       Scanned {{ site_report.generated_at|slice:":16" }}
     </span>
   </div>
+  {% if site_report.checks and not site_report.checks.orphans_checked %}
+  <p class="text-xs text-[color:var(--text-muted)]" style="margin:0 0 .6rem;">
+    Pages nothing links to were not looked for: {{ site_report.checks.orphans_skipped_because }}.
+  </p>
+  {% endif %}
 
   {% for f in site_report.findings %}
   <details style="border-bottom:1px solid var(--border);padding:.65rem 0;">
@@ -94,10 +99,10 @@
     <div style="padding:.6rem 0 .2rem 3.4rem;">
       <p class="text-sm text-[color:var(--text-muted)]" style="margin:0 0 .5rem;">{{ f.why }}</p>
       <ul style="margin:0 0 .6rem;padding-left:1rem;">
-        {% for example in f.examples %}
+        {% for example in f.examples|slice:":5" %}
         <li class="text-xs" style="color:var(--text-muted);font-family:var(--mono, monospace);">{{ example }}</li>
         {% endfor %}
-        {% if f.count > f.examples|length %}
+        {% if f.count > 5 %}
         <li class="text-xs" style="color:var(--text-muted);">
           …and {{ f.count|add:"-5" }} more
         </li>

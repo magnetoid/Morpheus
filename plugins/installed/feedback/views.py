@@ -178,7 +178,10 @@ def ticket_list(request):
 def ticket_detail(request, pk):
     ticket = get_object_or_404(FeedbackTicket, pk=pk)
     if request.method == 'POST':
-        enforce(request, 'system.write')
+        # The 403 must be RETURNED: a bare `enforce(...)` built it and threw it
+        # away, so a read-only role changed ticket statuses until v0.164.0.
+        if (denied := enforce(request, 'system.write')) is not None:
+            return denied
         new_status = request.POST.get('status') or ''
         # Anything outside the vocabulary falls back silently (same shape as
         # paginate_and_sort's ?sort= handling) — only a tampered form sends it.

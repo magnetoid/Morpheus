@@ -49,6 +49,17 @@ def _metafields(obj) -> dict:
         return {}
 
 
+def metafield_keys(limit: int = 500) -> list[str]:
+    """Every metafield key the store holds (bare, as a pattern names it), sorted."""
+    try:
+        from plugins.installed.metafields.models import Metafield
+
+        keys = Metafield.objects.values_list('key', flat=True).distinct()[:limit]
+        return sorted({str(k) for k in keys if k})
+    except Exception:  # noqa: BLE001 — no metafields app, or its table is missing
+        return []
+
+
 def expand_tokens(text: str, obj) -> str:
     """Replace ``{token}`` in ``text`` with product field / metafield values.
 

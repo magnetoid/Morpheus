@@ -972,10 +972,19 @@ per-tag arrangement shipped two `og:type` tags on every PDP, two `WebSite` nodes
 on most pages, the brand appended twice on category/collection/journal titles,
 and `/search/` with **no `<title>` at all** (the theme's title lived inside the
 `{% block seo %}` that page overrode to force `noindex`). None of that is visible
-in a browser. Guards: `themes/test_head_contract.py` (one title/canonical/robots/
-JSON-LD per page kind, no hardcoded brand, survives a seo disable) and
-`seo/tests/test_head_parity.py` (a recorded profile of every page type; re-record
-deliberately and review the diff — a shrinking profile is the bug). Corollaries:
+in a browser. Guards: `themes/test_head_contract.py` renders every page kind under
+EVERY registered theme and reads the output (one title/canonical/robots/og:title, one
+JSON-LD block in the whole document and it is the head's graph, none on a noindex or
+non-self-canonical page, no hardcoded brand, survives a seo disable, a theme without
+`head_contract` fails); until v0.164.0 it rendered only the active theme and grepped
+the others for `application/ld+json`, which a `{% seo_*_jsonld %}` tag writing the
+block at render time passed, and the travel themes' journal, about and contact pages
+carried three such tags with "Montenegro Experience" typed in. Those 24 legacy head
+tags are deleted (`docs/MIGRATING.md`, v0.164.0), and a template calling one fails the
+guard; booking_marketplace's `test_head_contract_travel.py` covers the travel page
+kinds under montenegro and croatia. Also `seo/tests/test_head_parity.py` (a recorded
+profile of every page type; re-record deliberately and review the diff — a shrinking
+profile is the bug). Corollaries:
 a page title is the **clean page name**, the brand is applied at render from
 settings (ADR 0007) — never append the shop name in a view; and machine endpoints
 (`robots.txt`, `sitemap*.xml`, `llms.txt`, `.well-known/*`) must register with
@@ -1806,6 +1815,38 @@ part whole. Guarded by `shipping/tests/test_organization_shipping.py`,
 `returns_portal/tests/test_return_terms.py`, `catalog/tests/test_brand.py`, `test_variant_axes.py`,
 `seo/tests/test_schema_editor.py`, `test_article_markup.py`, `test_sitemap_images.py` and
 `booking_marketplace/tests/test_listing_claims.py`.
+
+**Convention — the audit checks what the markup claims (v0.164.0).** The site audit
+(`seo/services/site_audit.py`, nightly and on demand) renders every sitemap URL and reads each
+Product node's offer back against the page and its owners:
+- the price is in the page's visible text, as `|money` prints it in the page's language or as a
+  plain decimal (`markup_price_not_on_page`);
+- it is the price `core.pricing.apply_price_filter` gives now, variants matched by SKU
+  (`markup_price_stale`: a page cached before an edit);
+- the availability is `plugins/feed_mapping.availability_to_schema`'s (`markup_availability_wrong`);
+  never for a service, whose sessions answer;
+- every image answers 200 with `image/*` (`markup_image_broken`); another host's is counted, never
+  fetched;
+- og:image's declared size is its file's (`og_image_size_wrong`, `seo.services.images.image_size`).
+
+A claim it cannot match to a row (no SKU, no product slug) is counted
+(`checks.products_without_owner`), never guessed: a wrong owner turns a true claim into a finding.
+Links: one hop to a redirect is `link_to_redirect`, two or more `redirect_chain` (at most 5 hops,
+never off the host). A redirect that ends at sign-in is the door to an account page, not a detour.
+`orphan_page` (a sitemap page nothing links to) is named only after a whole-sitemap scan, with
+listing pages followed through rel=next; a partial scan says why in
+`checks.orphans_skipped_because`. Its extra requests use their own client, are cached per run and
+capped, and stop 300 s before the task's 1,800 s soft limit; `checks` and `measured` say what ran.
+A scan is queued once (`queue_site_audit`: refused while one runs and for ten minutes after the
+last), from the Overview button (`seo.write`) or Linda's `seo.run_site_audit`; she reads it with
+`seo.audit_results`. Index rules and title patterns save through one function each
+(`services/index_rules.save_index_rule`, `services/templating.save_template`), called by the page
+and by `seo.set_index_rule` / `seo.set_template` (approval). A pattern naming a token the store
+cannot fill (its fields, the site's, a metafield key it holds, `SEO_TEMPLATE_TOKENS`) is refused
+with the list; it used to render empty. And `core.authz.enforce()` returns the 403 to send: a bare
+call denies nothing (feedback's ticket status until v0.164.0). Guarded by
+`seo/tests/test_site_audit_claims.py`, `test_audit_tools.py`, `core/tests/test_enforce_return_used.py`
+and `feedback/tests/test_feedback.py::TicketStatusPermissionTests`.
 
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first

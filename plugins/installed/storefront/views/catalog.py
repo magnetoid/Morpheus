@@ -316,9 +316,9 @@ def product_list(request):
     selected_cat = next((c for c in categories_list if c.slug == cat_slug), None)
 
     # SEO title/name for the listing. This drives the <title> (via seo_title →
-    # {% seo_meta %}), the CollectionPage JSON-LD name, and the OG title — the
+    # {% storefront_head %}), the CollectionPage JSON-LD name, and the OG title — the
     # theme's {% block title %} is NOT what renders <title> (base.html emits it
-    # through seo_meta), so this must mirror that block's precedence or filtered
+    # through the head), so this must mirror that block's precedence or filtered
     # PLPs all title as the catalogue label. Order: author > publisher > category > tag
     # > search > default.
     def _single(key):

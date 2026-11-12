@@ -5,7 +5,8 @@ list of ``{type, data}`` entries; :func:`build_block` turns each into a
 ready-to-emit JSON-LD dict. The dashboard JS consumes :func:`registry_json`.
 The page's graph (``seo/schema/graph.py``) adds the blocks to the object's page
 (v0.163.0): until then they reached no page, because only the legacy
-``{% seo_meta %}`` tag rendered them and the head contract silences it.
+``{% seo_meta %}`` tag rendered them and the head contract silenced it (the tag
+was deleted in v0.164.0).
 
 Adding a type = add an entry to ``SCHEMA_TYPES`` + a builder in ``_BUILDERS``.
 Keep it to types Google's Search Gallery lists or answer engines read
