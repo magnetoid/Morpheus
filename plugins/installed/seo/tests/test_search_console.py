@@ -220,6 +220,46 @@ class PullTests(_Base):
         self.assertEqual((kit.clicks, kit.impressions, kit.position), (12, 500, 6.0))
         self.assertEqual(sc.last_pull()['ok'], True)
 
+    def test_another_subdomains_pages_are_left_out(self):
+        # A domain property holds every subdomain; a blog's /products/kit/ is not the store's.
+        d = self.day.isoformat()
+        self.rows[('date', 'page')] += [
+            _row([d, 'https://blog.shop.test/products/kit/'], 90, 900, 1.0),
+            _row([d, 'https://www.blog.shop.test/about/'], 9, 90, 2.0),
+        ]
+        self.connect()
+        self.google(rows=self.rows)
+        sc.pull(today=self.today)
+        pages = dict(SearchConsoleRow.objects.filter(kind='page').values_list('key', 'clicks'))
+        self.assertEqual(pages, {'/products/kit/': 12, '/': 18})
+
+    def test_a_paths_query_strings_are_one_row_with_its_visits_once(self):
+        from plugins.installed.analytics.models import AnalyticsVisit
+
+        d = self.day.isoformat()
+        self.rows[('date', 'page')] = [
+            _row([d, 'https://www.shop.test/products/?color=red'], 4, 100, 2.0),
+            _row([d, 'https://www.shop.test/products/?color=blue'], 6, 300, 6.0),
+            _row([d, 'https://shop.test/products/'], 0, 100, 10.0),
+        ]
+        self.connect()
+        self.google(rows=self.rows)
+        sc.pull(today=self.today)
+        AnalyticsVisit.objects.create(
+            visitor='a',
+            channel='organic',
+            source='google',
+            landing='/products/',
+            day=self.day,
+            started_at='2026-01-01T00:00Z',
+            last_seen_at='2026-01-01T00:00Z',
+        )
+        (row,) = sc.report(days=7, by='page')['rows']
+        self.assertEqual(
+            (row['key'], row['clicks'], row['impressions'], row['position'], row['visits']),
+            ('/products/', 10, 500, 6.0, 1),
+        )
+
     def test_a_later_pull_refetches_the_last_unsettled_days_and_drops_old_rows(self):
         self.connect()
         SearchConsoleRow.objects.create(day=self.day, kind='total', clicks=1, impressions=1)
@@ -408,6 +448,8 @@ class PageTests(_Base):
         self.assertContains(resp, 'data-search-performance-rows')
         self.assertContains(resp, 'lantern')
         self.assertContains(resp, _KEY['client_email'])
+        # sc-domain:shop.test: Google's totals count every subdomain of it.
+        self.assertContains(resp, 'any other subdomain of it')
         resp = self.client.post(self.url, {'action': 'inspect', 'url': '/products/kit/'})
         self.assertContains(resp, 'data-url-inspection')
         self.assertContains(resp, 'Discovered')
@@ -447,6 +489,15 @@ class ToolTests(_Base):
         self.assertEqual(out['end'], end.isoformat())
         self.assertEqual(out['rows'][0]['key'], '/a/')
         self.assertIsNone(out['rows'][0]['sales'])
+
+    def test_settings_list_never_shows_the_key(self):
+        from core.assistant.tools.ecommerce import settings_list_tool
+
+        self.connect()
+        listed = json.dumps(settings_list_tool.invoke({}).output)
+        self.assertNotIn('PRIVATE KEY', listed)
+        self.assertNotIn(_KEY['client_email'], listed)
+        self.assertNotIn('private_key', listed)
 
     def test_inspect_url_explains_a_refusal(self):
         from core.agents.tools import ToolError

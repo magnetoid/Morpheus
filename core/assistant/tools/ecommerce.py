@@ -41,6 +41,47 @@ def _money_amount(value: Any) -> Decimal:
 # ── Settings / configuration ────────────────────────────────────────────
 
 
+_SECRET_NAMES = ('api_key', 'secret', 'password', 'token', 'webhook_secret')
+
+
+def _password_fields(plugin_name: str) -> set[str]:
+    """The settings an app's schema marks ``format: password``: the dashboard
+    never shows them again, so neither does an agent tool."""
+    from plugins.registry import app_registry  # noqa: PLC0415
+
+    schemas = []
+    plugin = app_registry.get(plugin_name)
+    if plugin is not None:
+        schemas.append(plugin.get_config_schema() or {})
+    panel = app_registry.settings_panel(plugin_name)
+    if panel is not None:
+        schemas.append(panel.schema or {})
+    return {
+        key
+        for schema in schemas
+        for key, prop in (schema.get('properties') or {}).items()
+        if isinstance(prop, dict) and prop.get('format') == 'password'
+    }
+
+
+def _secret_name(key: Any) -> bool:
+    return any(s in str(key).lower() for s in _SECRET_NAMES)
+
+
+def _redacted(value: Any, secret: bool = False) -> Any:
+    """``value`` with every secret inside it redacted, nested ones too (an API
+    token is a ``token`` inside a list of dicts)."""
+    if isinstance(value, dict):
+        return {k: _redacted(v, secret or _secret_name(k)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redacted(v, secret) for v in value]
+    if not secret:
+        return value
+    if isinstance(value, str) and len(value) > 4:
+        return value[:2] + '…(redacted)…' + value[-2:]
+    return '(redacted)'
+
+
 @tool(
     name='settings.list',
     description=(
@@ -58,21 +99,14 @@ def settings_list_tool() -> ToolResult:
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'plugins.models unavailable: {e}') from e
     out: dict[str, Any] = {}
-    SECRET_KEYS = ('api_key', 'secret', 'password', 'token', 'webhook_secret')
     for cfg in PluginConfig.objects.all():
-        data = dict(cfg.config or {})
-        # Redact anything that looks like a secret.
-        for k in list(data.keys()):
-            lk = k.lower()
-            if any(s in lk for s in SECRET_KEYS):
-                v = data[k]
-                if isinstance(v, str) and len(v) > 4:
-                    data[k] = v[:2] + '…(redacted)…' + v[-2:]
-                else:
-                    data[k] = '(redacted)'
+        hidden = _password_fields(cfg.plugin_name)
         out[cfg.plugin_name] = {
             'is_enabled': cfg.is_enabled,
-            'config': data,
+            'config': {
+                k: _redacted(v, k in hidden or _secret_name(k))
+                for k, v in (cfg.config or {}).items()
+            },
         }
     return ToolResult(
         output={'plugins': out, 'count': len(out)}, display=f'{len(out)} plugin config(s)'

@@ -844,6 +844,7 @@ def search_performance_page(request):
     days = days if days in dict(_SEARCH_PERIODS) else 28
     by = request.GET.get('by') if request.GET.get('by') in ('query', 'page') else 'query'
     cfg = search_console.read_config()
+    last_pull = search_console.last_pull()
     return render(
         request,
         'seo/search_performance.html',
@@ -854,7 +855,10 @@ def search_performance_page(request):
             'periods': _SEARCH_PERIODS,
             'key_state': search_console.key_state(cfg),
             'account_email': search_console.account_email(cfg),
-            'last_pull': search_console.last_pull(),
+            'last_pull': last_pull,
+            'domain_property': str((last_pull or {}).get('property') or '').startswith(
+                'sc-domain:'
+            ),
             'inspection': inspection,
             'inspect_error': inspect_error,
             'inspect_url': (request.POST.get('url') or '') if request.method == 'POST' else '',
