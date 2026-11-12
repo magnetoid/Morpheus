@@ -13,3 +13,5 @@ Set how many days a customer has to return something on [Returns portal](setting
 ## Good to know
 
 This app does not yet add its own screen for a customer to choose a refund, an exchange, or store credit, or to leave feedback about why they are returning something — those parts are not built, even though they are part of its original idea. What is live is the return window itself: it is published correctly wherever your store states its policies, and it is left out entirely if your store's country is not set.
+
+The same window is the one product pages state, in themes that show a returns line; at zero the line disappears. It is published only for goods you ship: a download, an experience or a service carries no return policy, and a store that sells no goods publishes none.

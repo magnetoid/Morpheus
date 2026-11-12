@@ -84,6 +84,6 @@ class ExperienceTripJsonLdTests(MontenegroThemeMixin, TestCase):
             vendor=self.vendor,
             itinerary=['Meet', {'detail': 'no title'}, {'title': 'Paddle'}],
         )
-        node = seo_jsonld._trip_node(service, url='https://x.test/bookings/x/', with_prices=False)
+        node = seo_jsonld._trip_node(service, url='https://x.test/bookings/x/')
         steps = node['itinerary']['itemListElement']
         self.assertEqual([(s['position'], s['name']) for s in steps], [(1, 'Paddle')])

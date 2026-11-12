@@ -22,9 +22,13 @@ _MAX_ZONES = 3
 
 
 def on_seo_jsonld_graph(value, page=None, request=None, **kwargs):
-    """`SEO_JSONLD_GRAPH` subscriber: add shipping to the product's offer."""
+    """`SEO_JSONLD_GRAPH` subscriber: add shipping to the product's offer.
+
+    Only for a product that ships: a booked experience or a download has no
+    delivery to describe.
+    """
     try:
-        offer = _product_offer(value)
+        offer = _product_offer(value) if _ships(page) else None
         if offer is None:
             return value
         details = shipping_details(currency=offer.get('priceCurrency') or 'USD')
@@ -33,6 +37,13 @@ def on_seo_jsonld_graph(value, page=None, request=None, **kwargs):
     except Exception as e:  # noqa: BLE001 — a graph enricher must never lose the graph
         logger.warning('shipping: JSON-LD enrichment failed: %s', e, exc_info=True)
     return value
+
+
+def _ships(page) -> bool:
+    obj = getattr(page, 'obj', None)
+    if obj is None or getattr(obj, 'product_type', '') == 'service':
+        return False
+    return bool(getattr(obj, 'requires_shipping', False))
 
 
 def shipping_details(*, currency: str = 'USD') -> list[dict]:

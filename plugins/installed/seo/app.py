@@ -10,6 +10,18 @@ from morpheus.core import events
 logger = logging.getLogger('morpheus.seo')
 
 
+def _on_sale(product) -> bool:
+    """Whether `/products/<slug>/` is a page worth pinging a search engine about.
+
+    A draft has no public page, and a booked service lives at the booking
+    app's own address, so pinging either sent engines to a 404 or a redirect.
+    """
+    return (
+        getattr(product, 'status', '') == 'active'
+        and getattr(product, 'product_type', '') != 'service'
+    )
+
+
 class SeoPlugin(Plugin):
     name = 'seo'
     label = 'SEO'
@@ -280,7 +292,8 @@ class SeoPlugin(Plugin):
             store_audit(product, audit_product(product))
         except Exception as e:  # noqa: BLE001 — autofill is best-effort
             logger.warning('seo: autofill/audit failed for %s: %s', product.id, e, exc_info=True)
-        self._indexnow_push(model_label='catalog.product', slug=getattr(product, 'slug', ''))
+        if _on_sale(product):
+            self._indexnow_push(model_label='catalog.product', slug=getattr(product, 'slug', ''))
 
     def on_product_updated(self, product, **kwargs):
         """Refresh the SEO score when a product changes."""
@@ -290,7 +303,8 @@ class SeoPlugin(Plugin):
             store_audit(product, audit_product(product))
         except Exception as e:  # noqa: BLE001
             logger.debug('seo: refresh-audit failed for %s: %s', product.id, e)
-        self._indexnow_push(model_label='catalog.product', slug=getattr(product, 'slug', ''))
+        if _on_sale(product):
+            self._indexnow_push(model_label='catalog.product', slug=getattr(product, 'slug', ''))
 
     def on_category_updated(self, category, **kwargs):
         self._indexnow_push(model_label='catalog.category', slug=getattr(category, 'slug', ''))

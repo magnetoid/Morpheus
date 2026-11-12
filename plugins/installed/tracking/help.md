@@ -23,7 +23,8 @@ Separately, add a Google Ads conversion ID and label on [](settings:tracking) to
 ## Good to know
 - The visitor's consent decides both the browser tags and the server events: tags load once analytics is allowed, then tell Google what was chosen. Only the debug switch overrides that, and never on a live store serving EU consumers.
 - Product views come from the browser's tag when one is set up, so none counts twice; otherwise the server sends them, skipping known crawlers.
+- Searches send the words the shopper typed.
 - Purchases go out from both the browser and the server with the same transaction ID, which GA4 uses to count each order once.
-- Debug mode marks server-side events so they show in GA4's DebugView. Turn it off once you've checked them.
+- Debug mode shows server-side events in GA4's DebugView; turn it off afterwards.
 - Scrolls, outbound clicks, downloads and video plays are switched in GA4 itself (Enhanced Measurement).
 - Cross-domain measurement needs the same domain list in GA4 → Admin → Data streams → Configure your domains.

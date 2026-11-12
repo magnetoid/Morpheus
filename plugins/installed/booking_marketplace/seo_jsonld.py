@@ -93,17 +93,44 @@ def place_nodes(place, *, url: str, request=None) -> list[dict]:
     return nodes
 
 
-def _offer(service, url: str) -> dict:
-    return {
+_IN_STOCK = 'https://schema.org/InStock'
+_OUT_OF_STOCK = 'https://schema.org/OutOfStock'
+
+
+def _offer(service, url: str, sessions=None) -> dict | None:
+    """The listing's price as an Offer, saying only what the page can back.
+
+    No price, no offer: a listing priced 0 is not free, it has no price yet.
+    Availability is claimed only where a guest can book and pay online: in
+    stock while a departure has a seat (``sessions``, the dates the page
+    offers), out of stock when none does. An enquiry is not a sale, so a store
+    that takes enquiries only, and a product listing (quantity and enquiry),
+    claim none. Every experience used to be in stock, whatever its dates.
+    """
+    from plugins.installed.booking_marketplace.views import takes_enquiry_only  # noqa: PLC0415
+
+    price = service.price
+    amount = getattr(price, 'amount', None)
+    if amount is None or amount <= 0:
+        return None
+    offer = {
         '@type': 'Offer',
-        'price': str(service.price.amount),
-        'priceCurrency': str(service.price.currency),
-        'availability': 'https://schema.org/InStock',
+        'price': f'{amount:.2f}',
+        'priceCurrency': str(price.currency),
         'url': url,
     }
+    if service.listing_kind == 'experience' and not takes_enquiry_only():
+        if sessions is None:
+            from plugins.installed.booking_marketplace.services import (  # noqa: PLC0415
+                available_sessions,
+            )
+
+            sessions = available_sessions(service, limit=1)
+        offer['availability'] = _IN_STOCK if sessions else _OUT_OF_STOCK
+    return offer
 
 
-def _product_node(service, *, url: str, request=None, with_prices=True) -> dict:
+def _product_node(service, *, url: str, request=None, offer=None) -> dict:
     node = {
         '@type': 'Product',
         '@id': f'{url}#product',
@@ -114,8 +141,8 @@ def _product_node(service, *, url: str, request=None, with_prices=True) -> dict:
     if service.image:
         node['image'] = _abs(request, service.image.url)
     node['brand'] = {'@type': 'Organization', 'name': service.vendor.name}
-    if with_prices:  # listing mode shows "Contact for price": claim none
-        node['offers'] = _offer(service, url)
+    if offer:
+        node['offers'] = offer
     # Never from the denormalised rating/review_count columns: they count
     # seeded rows too (services.verified_reviews). The aggregate and the
     # Review nodes come from the same verified set.
@@ -144,7 +171,7 @@ def _product_node(service, *, url: str, request=None, with_prices=True) -> dict:
     return node
 
 
-def _trip_node(service, *, url: str, request=None, with_prices=True) -> dict:
+def _trip_node(service, *, url: str, request=None, offer=None) -> dict:
     """TouristTrip: the experience as a trip, its itinerary an ordered list of steps."""
     node = {
         '@type': 'TouristTrip',
@@ -171,23 +198,27 @@ def _trip_node(service, *, url: str, request=None, with_prices=True) -> dict:
                 for position, step in enumerate(steps, start=1)
             ],
         }
-    if with_prices:
-        node['offers'] = _offer(service, url)
+    if offer:
+        node['offers'] = dict(offer)
     return node
 
 
-def experience_nodes(service, *, url: str, request=None, with_prices=True) -> list[dict]:
+def experience_nodes(
+    service, *, url: str, request=None, with_prices=True, sessions=None
+) -> list[dict]:
     """Product (+ Offer, verified rating), TouristTrip (+ itinerary) and the visible FAQPage.
 
     The Product is left out when it would carry nothing Google accepts it with (no
     offer in listing mode, no verified rating): the trip is then the page's main entity.
     """
     nodes = []
-    product = _product_node(service, url=url, request=request, with_prices=with_prices)
+    # Listing mode shows "Contact for price": claim none.
+    offer = _offer(service, url, sessions) if with_prices else None
+    product = _product_node(service, url=url, request=request, offer=offer)
     if any(key in product for key in ('offers', 'aggregateRating', 'review')):
         nodes.append(product)
     if service.listing_kind != 'product':
-        nodes.append(_trip_node(service, url=url, request=request, with_prices=with_prices))
+        nodes.append(_trip_node(service, url=url, request=request, offer=offer))
     faq = faq_node(getattr(service, 'faqs', None), url)
     if faq:
         nodes.append(faq)
@@ -244,18 +275,19 @@ def _hotel_node(prop, *, url: str, request=None, with_prices=True) -> dict:
         node['checkoutTime'] = prop.check_out_time.strftime('%H:%M')
     if with_prices:
         if prop.price_from and prop.price_from.amount:
-            node['priceRange'] = f'From €{int(prop.price_from.amount)}'
+            node['priceRange'] = f'From {int(prop.price_from.amount)} {prop.price_from.currency}'
+        # A room's rate, in its own currency. No availability: the store does
+        # not know which nights are free, and a stay is booked by enquiry.
         offers = [
             {
                 '@type': 'Offer',
                 'name': r.name,
                 'price': str(r.base_rate.amount),
-                'priceCurrency': 'EUR',
-                'availability': 'https://schema.org/InStock',
+                'priceCurrency': str(r.base_rate.currency),
                 'url': url,
             }
             for r in prop.room_types.all()
-            if r.is_active and r.base_rate and r.base_rate.amount
+            if r.is_active and r.base_rate and r.base_rate.amount > 0
         ]
         if offers:
             node['makesOffer'] = offers

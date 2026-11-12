@@ -394,6 +394,10 @@ def _apply_variants(out: dict, orm, *, slug: str, currency: str, abs_url=lambda 
         members.append(member)
     if members:
         out['hasVariant'] = members
+        # Each variant carries its own offer; a group-level one repeated the
+        # parent price beside variants that cost something else (a free PDF
+        # edition next to a priced print one).
+        out.pop('offers', None)
 
 
 def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, model=None) -> dict:
@@ -596,18 +600,10 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
         was = _strikethrough(offer_price, _compare_at(product, orm), offer_curr)
         if was:
             out['offers']['priceSpecification'] = was
-        # priceValidUntil — Google emits a "missing field" warning without it.
-        # Roll a year forward from today so the offer never reads as expired.
-        try:
-            from datetime import timedelta
-
-            from django.utils import timezone
-
-            out['offers']['priceValidUntil'] = (
-                timezone.now().date() + timedelta(days=365)
-            ).isoformat()
-        except Exception:  # noqa: BLE001
-            pass
+        # No priceValidUntil: it says when this price stops, and nothing in the
+        # store knows that. It used to be today + 365 on every product, a date
+        # no one chose; Google drops an offer past its date, so a guess can only
+        # hurt. A sale that really ends can add it from the app that owns it.
         # Shipping and returns are NOT written here any more, and their absence
         # is deliberate. This block used to synthesise both from plugin-config
         # keys that no settings screen ever wrote, so every store on the

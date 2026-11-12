@@ -236,3 +236,59 @@ class AvailabilityTests(TestCase):
         StockLevel.objects.create(variant=variant, warehouse=warehouse, quantity=0)
 
         self.assertEqual(availability_to_schema(self.product), 'https://schema.org/OutOfStock')
+
+
+class GoodsOnlyPolicyTests(TestCase):
+    """Returns and shipping describe a parcel: a download or a booked service has none."""
+
+    def setUp(self):
+        from core.models import StoreSettings
+        from plugins.installed.shipping.models import ShippingRate, ShippingZone
+
+        StoreSettings.objects.create(store_name='Goods Test', country='GB')
+        zone = ShippingZone.objects.create(name='Home', countries=['GB'])
+        ShippingRate.objects.create(
+            zone=zone, name='Standard', computation='flat', flat_amount=Money(Decimal('4'), 'GBP')
+        )
+        self.product = Product.objects.create(
+            name='Guide PDF',
+            slug='guide-pdf',
+            sku='GD-1',
+            status='active',
+            product_type='digital',
+            requires_shipping=False,
+            price=Money(Decimal('9.00'), 'GBP'),
+        )
+
+    def _graph(self):
+        return build_graph(
+            SeoPage(
+                kind=KIND_PRODUCT,
+                obj=self.product,
+                rendered={
+                    'slug': 'guide-pdf',
+                    'name': 'Guide PDF',
+                    'price': {'amount': '9.00', 'currency': 'GBP'},
+                },
+                path='/products/guide-pdf/',
+                title='Guide PDF',
+            )
+        )
+
+    def _store(self, graph):
+        return next(n for n in graph['@graph'] if str(n.get('@id', '')).endswith('#organization'))
+
+    def test_a_download_carries_no_return_or_shipping_claim(self):
+        graph = self._graph()
+        offer = _offer(graph)
+        self.assertNotIn('hasMerchantReturnPolicy', offer)
+        self.assertNotIn('shippingDetails', offer)
+        # The store sells nothing that ships, so it states no goods policy either.
+        self.assertNotIn('hasMerchantReturnPolicy', self._store(graph))
+
+    def test_the_store_states_its_policy_once_it_sells_goods(self):
+        Product.objects.create(
+            name='Mug', slug='goods-mug', sku='GM-1', status='active', price=Money(5, 'GBP')
+        )
+        policy = self._store(self._graph()).get('hasMerchantReturnPolicy') or {}
+        self.assertEqual(policy.get('applicableCountry'), 'GB')

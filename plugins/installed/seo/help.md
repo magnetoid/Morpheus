@@ -19,3 +19,5 @@ Fill in your organisation name, social profile links and search-engine verificat
 
 ## Good to know
 Changing a setting here never rewrites anything already stored on a product — a title you typed yourself always wins over anything this app generates. When the organisation name, logo or e-mail is empty here, search engines get the ones from your general store settings, and each edition of a product is described with the book's name, a photo and its barcode. Hiding the store until launch stops new pages reaching search and AI crawlers, but shoppers can still browse the storefront normally. Linda can read your SEO details — meta tags, 404s, audit scores — freely, but anything that changes the store, such as setting a title, running an audit, creating a redirect, adding links, or changing site settings, always needs your go-ahead first.
+
+Files for AI crawlers name your store, list only categories with products and quote only approved reviews. Search engines are pinged only about products on sale, and the speed card gives load time in seconds, as Google does.

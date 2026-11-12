@@ -23,7 +23,7 @@ PRODUCT_IDENTIFIERS: tuple[tuple[str, str, str | None, str], ...] = (
     ('upc', 'UPC / GTIN-12', 'gtin12', ''),
     ('gtin14', 'GTIN-14', 'gtin14', ''),
     ('mpn', 'MPN (manufacturer part no.)', 'mpn', ''),
-    ('asin', 'ASIN', 'asin', ''),
+    ('asin', 'ASIN', None, ''),  # schema.org has no ASIN property
     ('barcode', 'Barcode', None, ''),
 )
 

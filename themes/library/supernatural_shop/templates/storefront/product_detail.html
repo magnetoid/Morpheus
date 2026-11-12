@@ -408,15 +408,17 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
               <p>{% translate "Options and costs for your address, before you pay" %}</p>
             </div>
           </div>
+          {% if return_window_days %}{% comment %}The window the returns app holds, never this template's own.{% endcomment %}
           <div class="trust-strip__item" data-reveal style="--reveal-delay: 90ms;">
             <span class="trust-strip__icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-2"/><path d="M4 12l3 3 5-7"/></svg>
             </span>
             <div>
-              <strong>{% translate "30-day returns, unopened" %}</strong>
+              <strong>{% blocktranslate with days=return_window_days %}{{ days }}-day returns, unopened{% endblocktranslate %}</strong>
               <p><a href="/returns/">{% translate "How returns work" %}</a></p>
             </div>
           </div>
+          {% endif %}
           <div class="trust-strip__item" data-reveal style="--reveal-delay: 180ms;">
             <span class="trust-strip__icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-4z"/></svg>

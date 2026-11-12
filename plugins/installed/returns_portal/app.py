@@ -38,6 +38,13 @@ class ReturnsPortalPlugin(Plugin):
         # app used to publish a complete policy — 30 days, free, by mail, US —
         # assembled from constants in its own source, on every store.
         self.register_hook(events.SEO_JSONLD_GRAPH, self.on_seo_jsonld_graph, priority=50)
+        # The same window for the pages: a theme says "30-day returns" from
+        # `return_window_days`, never from its own copy.
+        from plugins.installed.returns_portal.context_processors import (  # noqa: PLC0415
+            return_window,
+        )
+
+        self.register_context_processor(return_window)
 
     def on_seo_jsonld_graph(self, value, page=None, request=None, **kwargs):
         from plugins.installed.returns_portal.seo_graph import (  # noqa: PLC0415

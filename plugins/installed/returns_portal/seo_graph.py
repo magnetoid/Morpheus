@@ -26,10 +26,14 @@ def on_seo_jsonld_graph(value, page=None, request=None, **kwargs):
     offer Google cannot pair with a policy, and every listing page, still says
     what returns cost the shopper. On the offer it states the same policy
     where Google looks first.
+
+    It is a policy for goods sent to the shopper, so only a product that ships
+    gets it, and the store only while it sells one: the travel stores published
+    a 30-day return window on every experience and hotel.
     """
     try:
-        offer = _product_offer(value)
-        store = _store_node(value)
+        offer = _product_offer(value) if page_product_ships(page) else None
+        store = _store_node(value) if store_ships_goods() else None
         if offer is None and store is None:
             return value
         policy = return_policy()
@@ -49,23 +53,7 @@ def return_policy() -> dict | None:
     Returns None when the country is unknown: `applicableCountry` is required,
     and a policy that names the wrong country is worse than no policy at all.
     """
-    from plugins.registry import app_registry
-
-    plugin = app_registry.get('returns_portal')
-    config = (plugin.get_config() if plugin else {}) or {}
-    # `get_config` returns what was SAVED, not the schema defaults, so an
-    # untouched store has an empty dict — and its policy is still the documented
-    # 30 days, which is what the returns portal itself honours. An explicit 0 is
-    # a different statement ("no returns") and is preserved.
-    try:
-        days = int(
-            _DEFAULT_WINDOW_DAYS
-            if 'return_window_days' not in config
-            else (config.get('return_window_days') or 0)
-        )
-    except (TypeError, ValueError):
-        days = _DEFAULT_WINDOW_DAYS
-
+    days = window_days()
     country = _store_country()
     if not country:
         return None
@@ -84,6 +72,54 @@ def return_policy() -> dict | None:
         'returnPolicyCategory': 'https://schema.org/MerchantReturnFiniteReturnWindow',
         'merchantReturnDays': days,
     }
+
+
+def window_days() -> int:
+    """The return window the merchant set, in days (0 = no returns).
+
+    `get_config` returns what was SAVED, not the schema defaults, so an
+    untouched store has an empty dict — and its policy is still the documented
+    30 days, which is what the returns portal itself honours. An explicit 0 is
+    a different statement ("no returns") and is preserved.
+    """
+    from plugins.registry import app_registry
+
+    plugin = app_registry.get('returns_portal')
+    config = (plugin.get_config() if plugin else {}) or {}
+    try:
+        return max(
+            int(
+                _DEFAULT_WINDOW_DAYS
+                if 'return_window_days' not in config
+                else (config.get('return_window_days') or 0)
+            ),
+            0,
+        )
+    except (TypeError, ValueError):
+        return _DEFAULT_WINDOW_DAYS
+
+
+def page_product_ships(page) -> bool:
+    """Whether the page is about a product that goes out in a parcel.
+
+    A booked service or a download is not returned by post; neither is a
+    listing that is not a catalog product (a hotel, an experience row).
+    """
+    obj = getattr(page, 'obj', None)
+    if obj is None or getattr(obj, 'product_type', '') == 'service':
+        return False
+    return bool(getattr(obj, 'requires_shipping', False))
+
+
+def store_ships_goods() -> bool:
+    """Whether the store sells anything that ships."""
+    from django.apps import apps
+
+    try:
+        product = apps.get_model('catalog', 'Product')
+        return product.objects.shoppable().filter(requires_shipping=True).exists()
+    except Exception:  # noqa: BLE001 — no catalog, or an unmigrated DB during a deploy
+        return False
 
 
 def _store_country() -> str:

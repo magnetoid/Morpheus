@@ -132,7 +132,11 @@ def _entity_nodes(name: str, ctx: dict, url: str, request) -> list[dict]:
 
     if name == 'detail' and ctx.get('service') is not None:
         return seo_jsonld.experience_nodes(
-            ctx['service'], url=url, request=request, with_prices=not ctx.get('listing_mode')
+            ctx['service'],
+            url=url,
+            request=request,
+            with_prices=not ctx.get('listing_mode'),
+            sessions=ctx.get('sessions'),
         )
     if name == 'place' and ctx.get('place') is not None:
         return seo_jsonld.place_nodes(ctx['place'], url=url, request=request)

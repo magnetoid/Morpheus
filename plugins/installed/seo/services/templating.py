@@ -112,11 +112,15 @@ def _dict_field(obj: dict, key: str) -> str:
 def _token_values(obj, kind: str) -> dict:
     """The full vocabulary for one render: site tokens + object fields +
     bare metafield keys + owner-contributed tokens."""
+    from plugins.installed.seo.services.jsonld import _store_setting
     from plugins.installed.seo.services.meta import site_settings
 
     site = site_settings()
     values: dict[str, str] = {
-        'site_name': str(getattr(site, 'org_name', '') or ''),
+        # The model field is `organization_name`; reading `org_name` left the
+        # token empty in every template. The store's own name stands in.
+        'site_name': str(getattr(site, 'organization_name', '') or '')
+        or _store_setting('store_name'),
         'sep': '—',
     }
     if isinstance(obj, dict):

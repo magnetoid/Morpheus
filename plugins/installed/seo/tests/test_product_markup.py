@@ -52,7 +52,7 @@ class ProductMarkupFromRenderedPayloadTests(TestCase):
         self.assertEqual(node['offers']['priceCurrency'], 'USD')
         self.assertIn('availability', node['offers'])
         self.assertIn('itemCondition', node['offers'])
-        self.assertIn('priceValidUntil', node['offers'])
+        self.assertNotIn('priceValidUntil', node['offers'])  # no date anyone chose
 
     def test_the_model_row_supplies_what_a_dict_cannot_carry(self):
         """The fix. Identifiers are the clearest case: a GTIN/ISBN is what lets

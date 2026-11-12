@@ -1541,7 +1541,6 @@
           "itemCondition",
           "price",
           "priceCurrency",
-          "priceValidUntil",
           "url"
         ],
         "type": "Offer",

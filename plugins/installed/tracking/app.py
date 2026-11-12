@@ -171,8 +171,10 @@ class TrackingPlugin(Plugin):
     def on_login(self, customer=None, request=None, **_):
         self._fire('login', customer=customer, request=request)
 
-    def on_search(self, search_term='', request=None, **_):
-        self._fire('search', search_term=search_term, request=request)
+    def on_search(self, query='', search_term='', request=None, **_):
+        # SEARCH_PERFORMED carries `query` (storefront, booking_marketplace);
+        # reading only `search_term` sent every GA4 search with no term.
+        self._fire('search', search_term=query or search_term, request=request)
 
     def _fire(self, event_kind: str, **ctx) -> None:  # noqa: PLR0912, PLR0911, C901
         """Build the GA4 payload and POST via Measurement Protocol.

@@ -72,11 +72,13 @@ def _service_item(svc, base: str) -> dict:
     priced = _money(svc.price)
     if priced:
         amount, currency = priced
+        # No availability: whether a date is open changes by the hour, and the
+        # page's own markup states it from the dates it offers. Every
+        # experience used to be in stock here, whatever its dates.
         node['offers'] = {
             '@type': 'Offer',
             'price': amount,
             'priceCurrency': currency,
-            'availability': 'https://schema.org/InStock',
             'url': url,
         }
     return node
