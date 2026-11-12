@@ -162,3 +162,13 @@ class EditorTests(TestCase):
         self.assertEqual(Translation.objects.filter(field='name', reviewed=False).count(), 2)
         page = self.client.get(f'{INDEX}?kind=catalog.product&language=sr&status=draft')
         self.assertContains(page, 'Second Map')
+
+    def test_a_draft_button_drafts_its_own_row_not_the_filtered_list(self):
+        # Each summary row's form posts its kind and language to the filtered list's url.
+        with patch('plugins.installed.localization.views.i18n_queue', return_value=1) as queue:
+            response = self.client.post(
+                f'{INDEX}?kind=cms.page&language=sr',
+                {'action': 'draft_missing', 'kind': 'catalog.product', 'language': 'sr'},
+            )
+        queue.assert_called_once_with('catalog.product', 'sr')
+        self.assertIn('kind=catalog.product', response['Location'])
