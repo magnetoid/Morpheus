@@ -46,6 +46,25 @@
     </div>
   </div>
 
+  <div class="card overflow-hidden" data-no-results-by-filter>
+    <div class="px-4 py-3 border-b border-[color:var(--border)]">
+      <h2 class="font-semibold">Searches that found nothing, by filter</h2>
+      <p class="text-xs text-[color:var(--text-muted)]">A region, date, category or group size shoppers picked when nothing came back.</p>
+    </div>
+    {% if no_results_by_filter %}
+    <table class="morph-table">
+      <thead><tr><th>Filter</th><th class="text-right">Searches</th><th>Last seen</th></tr></thead>
+      <tbody>
+      {% for r in no_results_by_filter %}
+      <tr><td>{{ r.label }}: {{ r.value_label }}</td><td class="text-right">{{ r.count }}</td><td class="whitespace-nowrap">{{ r.last_seen|date:"j M Y, H:i" }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="card-padded text-sm text-[color:var(--text-muted)]">No filtered search came back empty in this period.</p>
+    {% endif %}
+  </div>
+
   <p class="text-xs text-[color:var(--text-muted)]">
     Each search counts once, on its first results page. "Found nothing" is a search the store answered with no products;
     "Searched before an order" counts visits that searched a term and then placed an order.

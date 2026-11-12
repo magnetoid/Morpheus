@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import re
 
+from core.storefront_cache import PRIVATE_VALUE, is_private
+
 # Storefront paths that are safe to cache at the CDN edge.
 # Anything that requires per-user data (cart, account, checkout) stays
 # out of this set.
@@ -67,9 +69,13 @@ class StorefrontCacheControlMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
-    def __call__(self, request):
+    def __call__(self, request):  # noqa: PLR0911 — one bail-out per rule
         response = self.get_response(request)
 
+        # A page carrying something for this visitor alone (core.storefront_cache).
+        if is_private(request):
+            response['Cache-Control'] = PRIVATE_VALUE
+            return response
         # Bail conditions:
         if request.method != 'GET':
             return response

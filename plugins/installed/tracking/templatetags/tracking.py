@@ -13,6 +13,8 @@ gets them from the slots it already emits and they leave with the app:
 
     global_head        → {% tracking_head %}      consent defaults, then GTM or GA4
     global_below_body  → {% tracking_noscript %}  GTM's no-JavaScript fallback
+                         {% tracking_queued_events %}  a conversion made on the
+                         visitor's last request (an enquiry, a booking), sent once
 
 Plus per-event dataLayer push partials surfaced as `{% dl_view_item product %}`
 etc. — these include a small template that prepends `dataLayer.push({ecommerce: null})`
@@ -37,6 +39,9 @@ from plugins.installed.tracking.models import TrackingSettings
 register = template.Library()
 
 _GOOGLE = 'https://www.googletagmanager.com'
+#: Conversions waiting for the visitor's next page (`queue_browser_event`).
+QUEUE_KEY = 'tracking_queued_events'
+_QUEUE_MAX = 5
 _TAG_ID = re.compile(r'^(G|GTM|AW)-[A-Z0-9]{4,20}$')
 
 
@@ -201,6 +206,58 @@ def tracking_noscript(context):
         f'<noscript><iframe src="{src}" '
         'height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>'
     )
+
+
+def queue_browser_event(s, request, event_name: str, params: dict) -> bool | None:
+    """Keep a conversion for the browser's tag on the visitor's next page.
+
+    True when queued, False when it must not be sent at all (its switch is off,
+    or the visitor has not allowed analytics), None when the request has no
+    session to keep it in (the caller sends it from the server instead).
+    """
+    session = getattr(request, 'session', None)
+    if session is None:
+        return None
+    if not s.event_enabled(event_name) or not _visitor_allows(s, request)[0]:
+        return False
+    try:
+        queued = list(session.get(QUEUE_KEY) or [])
+        queued.append({'event': event_name, 'params': params})
+        session[QUEUE_KEY] = queued[-_QUEUE_MAX:]
+    except Exception:  # noqa: BLE001 — an unwritable session: the server sends it
+        return None
+    return True
+
+
+@register.simple_tag(takes_context=True)
+def tracking_queued_events(context):
+    """Send the conversions queued for this visitor (`queue_browser_event`), once:
+    they leave the session as they render, and the page is never shared-cached."""
+    from django.conf import settings
+
+    from core.storefront_cache import keep_private
+
+    request = context.get('request')
+    session = getattr(request, 'session', None)
+    if session is None:
+        return ''
+    # A visitor without a session cookie has nothing queued, unless this very
+    # request queued it; reading the session otherwise would add `Vary: Cookie`
+    # to every cacheable page.
+    if settings.SESSION_COOKIE_NAME not in request.COOKIES and not session.modified:
+        return ''
+    try:
+        queued = session.pop(QUEUE_KEY, None)
+    except Exception:  # noqa: BLE001
+        return ''
+    if not queued:
+        return ''
+    keep_private(request)
+    out = []
+    for item in queued if isinstance(queued, list) else []:
+        if isinstance(item, dict) and item.get('event'):
+            out.append(_datalayer_push(context, str(item['event']), item.get('params') or {}))
+    return mark_safe(''.join(out))
 
 
 @register.simple_tag

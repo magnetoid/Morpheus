@@ -283,6 +283,10 @@ _TEST_EVENT_TEMPLATES = {
         ],
     },
     'search': {'search_term': 'test query'},
+    'generate_lead': {
+        'lead_source': 'experience_enquiry',
+        'items': [{'item_id': 'test-experience', 'item_name': 'Test experience', 'quantity': 2}],
+    },
     'sign_up': {'method': 'email'},
     'login': {'method': 'email'},
     'refund': {

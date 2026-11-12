@@ -39,8 +39,9 @@ COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 2  # 2 years
 #: A visit ends after this long without an event (GA4 and Shopify use 30 minutes).
 VISIT_GAP = timedelta(minutes=30)
 
-#: Events about an order, which never carry a cookieless visitor's key.
-_ORDER_KINDS = frozenset({'purchase', 'refund'})
+#: Events about an order, an enquiry or a booking, which never carry a cookieless
+#: visitor's key: each row holds the guest's name and email.
+_ORDER_KINDS = frozenset({'purchase', 'refund', 'lead', 'booking'})
 
 
 def _network(ip: str) -> str:
@@ -858,9 +859,37 @@ def revenue_by_source(*, days: int = 30) -> dict:
     }
 
 
-def funnel_for(*, steps: list[str], days: int = 30) -> list[dict]:
+#: The Funnel page's own preset, offered with every app's through ANALYTICS_FUNNELS.
+SHOP_FUNNEL = {
+    'key': 'shop',
+    'label': 'Shop',
+    'steps': [
+        {'label': 'Visited', 'events': ['pageview']},
+        {'label': 'Viewed a product', 'events': ['product.viewed']},
+        {'label': 'Added to cart', 'events': ['cart.add']},
+        {'label': 'Started checkout', 'events': ['checkout.started']},
+        {'label': 'Ordered', 'events': ['order.placed']},
+    ],
+}
+
+
+def _funnel_step(step) -> tuple[str, list[str]]:
+    """A step as (label, event names): an event name, a list of them, or
+    ``{'label', 'events'}``. A step with several events is reached by any of them."""
+    if isinstance(step, dict):
+        names = [str(e) for e in (step.get('events') or []) if e]
+        return str(step.get('label') or ' / '.join(names)), names
+    if isinstance(step, (list, tuple)):
+        names = [str(e) for e in step if e]
+        return ' / '.join(names), names
+    return str(step), [str(step)]
+
+
+def funnel_for(*, steps: list, days: int = 30) -> list[dict]:
     """Walk the funnel: count distinct sessions hitting step1, then those
-    that hit both step1 and step2, etc. (loose ordering — not strict path)."""
+    that hit both step1 and step2, etc. (loose ordering — not strict path).
+
+    Each row is ``{'step': label, 'events': [...], 'sessions': n}``."""
     from plugins.installed.analytics.models import AnalyticsEvent
 
     since = timezone.now() - timedelta(days=days)
@@ -869,15 +898,86 @@ def funnel_for(*, steps: list[str], days: int = 30) -> list[dict]:
     qualified: set | None = None
     out = []
     for step in steps:
+        label, names = _funnel_step(step)
         ids_at_step = set(
-            base.filter(name=step)
+            base.filter(name__in=names)
             .exclude(session__isnull=True)
             .values_list('session_id', flat=True)
             .distinct()
         )
         qualified = ids_at_step if qualified is None else qualified & ids_at_step
-        out.append({'step': step, 'sessions': len(qualified)})
+        out.append({'step': label, 'events': names, 'sessions': len(qualified)})
     return out
+
+
+def funnel_presets() -> list[dict]:
+    """The funnels the store's apps offer (ANALYTICS_FUNNELS, core/hooks.py), each
+    ``{'key', 'label', 'steps', 'default'}``; the shop's own when nothing answers."""
+    from morpheus.core import MorpheusEvents, hook_registry
+
+    raw = hook_registry.filter(MorpheusEvents.ANALYTICS_FUNNELS, value=[]) or []
+    out, seen = [], set()
+    for preset in raw if isinstance(raw, list) else []:
+        if not isinstance(preset, dict):
+            continue
+        key = str(preset.get('key') or '')
+        steps = list(preset.get('steps') or [])
+        if not key or key in seen or not steps:
+            continue
+        seen.add(key)
+        out.append(
+            {
+                'key': key,
+                'label': str(preset.get('label') or key),
+                'steps': steps,
+                'default': bool(preset.get('default')),
+            }
+        )
+    return out or [{**SHOP_FUNNEL, 'default': False}]
+
+
+def default_funnel(presets: list[dict]) -> dict:
+    """The preset the page opens on: the first an app marks default, else the shop's."""
+    for preset in presets:
+        if preset.get('default'):
+            return preset
+    return next((p for p in presets if p['key'] == 'shop'), presets[0])
+
+
+def no_results_by_filter(*, days: int = 30, limit: int = 25) -> list[dict]:
+    """Searches that found nothing, grouped by each filter they were made with
+    (SEARCH_PERFORMED's ``filters``): ``{'key', 'label', 'value', 'value_label',
+    'count', 'last_seen'}``, most searched first, over today and the days before."""
+    from plugins.installed.analytics.models import AnalyticsEvent
+
+    first = store_today() - timedelta(days=max(1, int(days)) - 1)
+    rows = (
+        AnalyticsEvent.objects.filter(
+            kind='search', created_at__gte=day_bounds(first)[0], payload__results=0
+        )
+        .order_by('-created_at')
+        .values_list('payload', 'created_at')[:5000]
+    )
+    groups: dict = {}
+    for payload, created in rows:
+        for f in (payload or {}).get('filters') or []:
+            if not isinstance(f, dict) or not f.get('key'):
+                continue
+            group = groups.get((f['key'], f.get('value') or ''))
+            if group is None:
+                # Newest first: the first row seen carries the latest label and time.
+                groups[(f['key'], f.get('value') or '')] = {
+                    'key': f['key'],
+                    'label': f.get('label') or f['key'],
+                    'value': f.get('value') or '',
+                    'value_label': f.get('value_label') or f.get('value') or '',
+                    'count': 1,
+                    'last_seen': created,
+                }
+            else:
+                group['count'] += 1
+    out = sorted(groups.values(), key=lambda g: (-g['count'], -g['last_seen'].timestamp()))
+    return out[: max(1, int(limit))]
 
 
 def top_products(*, days: int = 30, limit: int = 10) -> list[dict]:

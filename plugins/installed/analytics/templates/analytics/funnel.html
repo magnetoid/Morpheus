@@ -3,8 +3,21 @@
 {% block title %}Funnel · Morpheus{% endblock %}
 
 {% block content %}
-<h1 class="text-xl font-semibold mb-2">Funnel</h1>
-<p class="text-sm text-[color:var(--text-muted)] mb-4">Last {{ days }} days · steps: <code>{{ steps|join:" → " }}</code></p>
+<div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+  <div>
+    <h1 class="text-xl font-semibold mb-2">Funnel</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Last {{ days }} days · {% if preset %}{{ preset.label }}: {% endif %}{{ steps|join:" → " }}</p>
+  </div>
+  {% if presets|length > 1 or custom_steps %}
+  <nav class="flex flex-wrap gap-2" aria-label="Funnel" data-funnel-presets>
+    {% for p in presets %}
+    <a href="?preset={{ p.key|urlencode }}&amp;days={{ days }}"
+       class="btn text-xs {% if preset and p.key == preset.key %}btn-primary{% else %}btn-secondary{% endif %}"
+       {% if preset and p.key == preset.key %}aria-current="page"{% endif %}>{{ p.label }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+</div>
 
 <div class="card">
   <table class="morph-table">
@@ -12,7 +25,7 @@
     <tbody>
     {% for r in rows %}
     <tr>
-      <td><code>{{ r.step }}</code></td>
+      <td>{{ r.step }}{% if r.step not in r.events %} <span class="text-xs text-[color:var(--text-muted)]">{{ r.events|join:", " }}</span>{% endif %}</td>
       <td>{{ r.sessions }}</td>
       <td>{{ r.pct }}%</td>
       <td><div style="background:var(--surface-2); height:8px; width:200px; border-radius:4px; overflow:hidden;">
@@ -35,7 +48,7 @@
     <tbody>
     {% for d in dropoffs %}
     <tr>
-      <td><code>{{ d.from_step }}</code> → <code>{{ d.to_step }}</code></td>
+      <td>{{ d.from_step }} → {{ d.to_step }}</td>
       <td>{{ d.prev_count }}</td>
       <td>{{ d.cur_count }}</td>
       <td>{{ d.lost }}</td>

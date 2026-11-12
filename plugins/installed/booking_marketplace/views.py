@@ -111,15 +111,35 @@ def _ranked(rows, matches, sort: str) -> list:
     return rows
 
 
-def _searched(request, q: str, count: int) -> None:
+def _searched(request, q: str, count: int, filters=()) -> None:
     """SEARCH_PERFORMED, as the storefront's own search fires it: search trends, the
     zero-result report and the GA4 search event read it. Close matches count as none.
-    The next page of results is the same search, so only the first page fires."""
+    Any input makes a search, words or filters alone (`search_page.filters`). The next
+    page of results is the same search, so only the first page fires."""
+    if not (q or filters):
+        return
     if (request.GET.get('page') or '1').strip() != '1':
         return
     with contextlib.suppress(Exception):
         hook_registry.fire(
-            MorpheusEvents.SEARCH_PERFORMED, query=q, result_count=count, request=request
+            MorpheusEvents.SEARCH_PERFORMED,
+            query=q,
+            result_count=count,
+            request=request,
+            filters=list(filters),
+        )
+
+
+def _viewed(request, service) -> None:
+    """PRODUCT_VIEWED for an experience page, when its listing extends a Product."""
+    if not service.product_id:
+        return
+    with contextlib.suppress(Exception):
+        hook_registry.fire(
+            MorpheusEvents.PRODUCT_VIEWED,
+            product=service.product,
+            customer=request.user if request.user.is_authenticated else None,
+            request=request,
         )
 
 
@@ -145,7 +165,12 @@ def services_list(request):
             terms, kind='experience', within={row.pk for row in rows}
         )
         rows = _ranked(rows, matches, sort)
-        _searched(request, params.q, 0 if matches.close else len(rows))
+    _searched(
+        request,
+        params.q,
+        0 if matches is not None and matches.close else len(rows),
+        search_page.filters(request, params),
+    )
     # 142 experiences on one page was a 381 KB document; 48 is four rows of
     # the grid. A page past the end is a 404, like every other listing.
     page_obj = paginate_or_404(rows, 48, request)
@@ -608,6 +633,9 @@ def service_detail(request, slug):
             return _submit_enquiry(request, service)
         return _create_booking(request, service)
 
+    # The product as stored, before the page shows its translation (as the
+    # storefront's product page does): the funnel's "viewed an experience".
+    _viewed(request, service)
     # In the page's language before anything reads its text (core.i18n).
     shown.show_listing(service)
     ctx = {
@@ -732,6 +760,7 @@ def _create_booking(request, service):
             tiers=tiers,
             addons=addons,
             user=request.user,
+            request=request,
         )
     except BookingError as e:
         messages.error(request, str(e))
@@ -765,6 +794,7 @@ def _submit_enquiry(request, service):
             tiers=tiers,
             addons=addons,
             user=request.user,
+            request=request,
         )
     except BookingError as e:
         messages.error(request, str(e))

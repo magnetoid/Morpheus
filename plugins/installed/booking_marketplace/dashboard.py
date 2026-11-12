@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 
+from core.authz import require_capability
 from plugins.installed.booking_marketplace.models import BookableService, Booking
 
 
@@ -147,4 +148,21 @@ def stays_list(request):
         request,
         'booking_marketplace/dashboard/stays.html',
         {'stays': stays, 'upcoming': upcoming},
+    )
+
+
+@staff_member_required
+@require_capability('analytics.read')
+def conversions_view(request):
+    """Enquiries, bookings and their value, how far ahead guests ask, and where."""
+    from plugins.installed.booking_marketplace.conversion_report import PERIODS, report
+
+    try:
+        days = int(request.GET.get('days') or 30)
+    except ValueError:
+        days = 30
+    return render(
+        request,
+        'booking_marketplace/dashboard/conversions.html',
+        {'report': report(days=days), 'periods': PERIODS},
     )

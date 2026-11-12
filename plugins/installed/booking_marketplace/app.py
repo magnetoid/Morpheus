@@ -109,6 +109,10 @@ class BookingMarketplacePlugin(Plugin):
         from plugins.installed.booking_marketplace.translations import on_translatable_content
 
         self.register_hook(events.TRANSLATABLE_CONTENT, on_translatable_content, priority=20)
+        # The Funnel page's `bookings` preset: searched, viewed an experience, enquired or booked.
+        from plugins.installed.booking_marketplace.conversion_report import funnel_preset
+
+        self.register_hook(events.ANALYTICS_FUNNELS, funnel_preset, priority=60)
 
         # The search index rebuilds after a listing, a place or a category changes (search.py).
         from django.db.models.signals import post_delete, post_save
@@ -169,11 +173,12 @@ class BookingMarketplacePlugin(Plugin):
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.booking_marketplace.agent_tools import (  # noqa: PLC0415
+            bookings_conversions_tool,
             listings_search_tool,
             listings_update_tool,
         )
 
-        return [listings_search_tool, listings_update_tool]
+        return [listings_search_tool, listings_update_tool, bookings_conversions_tool]
 
     def contribute_dashboard_pages(self) -> list:
         return [
@@ -193,6 +198,16 @@ class BookingMarketplacePlugin(Plugin):
                 icon='inbox',
                 section='orders',
                 order=45,
+                nav='main',
+            ),
+            # What the enquiries and bookings add up to (v0.162.0): this app owns the data.
+            DashboardPage(
+                label='Conversions',
+                slug='conversions',
+                view='plugins.installed.booking_marketplace.dashboard.conversions_view',
+                icon='trending-up',
+                section='orders',
+                order=46,
                 nav='main',
             ),
             # Every experience and local good the storefront sells; the dashboard

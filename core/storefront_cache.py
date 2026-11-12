@@ -6,6 +6,11 @@ storefront responses. Per-route TTL overrides apply when the URL
 matches a known pattern (home / product / category / search) —
 otherwise the base `html_cache_control` setting wins.
 
+A page rendered with something meant for one visitor alone (tracking's
+conversion queued for their browser's tag) calls ``keep_private(request)``;
+this layer and the storefront app's both then answer
+``Cache-Control: private, no-store``, whatever the merchant's knobs say.
+
 Skips:
   - Admin/dashboard paths (`/dashboard/`, `/admin/`, `/auth/`,
     `/api/`, `/graphql/`)
@@ -22,6 +27,21 @@ import re
 from typing import Any
 
 logger = logging.getLogger('morpheus.core.storefront_cache')
+
+#: What a page meant for one visitor answers (``keep_private``).
+PRIVATE_VALUE = 'private, no-store'
+_PRIVATE_FLAG = '_morph_keep_private'
+
+
+def keep_private(request) -> None:
+    """Mark this request's response as one visitor's: no shared cache may store it."""
+    if request is not None:
+        setattr(request, _PRIVATE_FLAG, True)
+
+
+def is_private(request) -> bool:
+    """Did anything rendering this response call ``keep_private``?"""
+    return bool(getattr(request, _PRIVATE_FLAG, False))
 
 
 # URL patterns → TTL config key. First match wins.
@@ -65,6 +85,9 @@ class StorefrontCacheMiddleware:
         return response
 
     def _maybe_set_header(self, request, response) -> None:  # noqa: PLR0911, PLR0912
+        if is_private(request):
+            response['Cache-Control'] = PRIVATE_VALUE
+            return
         if request.method not in ('GET', 'HEAD'):
             return
         if 200 <= response.status_code < 300:

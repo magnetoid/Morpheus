@@ -318,6 +318,7 @@ def sources_view(request):
 @require_capability('analytics.read')
 def search_terms_view(request):
     """What shoppers searched for, what found nothing and what led to an order."""
+    from plugins.installed.analytics.services import no_results_by_filter  # noqa: PLC0415
     from plugins.installed.analytics.visits import search_terms  # noqa: PLC0415
 
     days = _days(request)
@@ -329,6 +330,7 @@ def search_terms_view(request):
             'periods': _PERIODS,
             'top': search_terms(days=days, kind='top', limit=25),
             'no_results': search_terms(days=days, kind='no_results', limit=25),
+            'no_results_by_filter': no_results_by_filter(days=days, limit=25),
             'led_to_sale': search_terms(days=days, kind='led_to_sale', limit=25),
             'active_nav': 'analytics',
         },
@@ -353,23 +355,35 @@ def realtime(request):
 @staff_member_required
 @require_capability('analytics.read')
 def funnel_view(request):
-    """Default funnel: pageview → product.viewed → cart.add → checkout.started → order.placed.
+    """A preset funnel (?preset=, ANALYTICS_FUNNELS) or the steps in ?steps=.
+
+    The page opens on the preset an app marks default (bookings, on a travel
+    store that sells no goods), else the shop's: visited → viewed a product →
+    added to cart → started checkout → ordered.
 
     Augmented (sprint #4): per-step drop-off detail + period comparison
     so engineers can see *which* transition is the worst and whether
     the overall funnel is improving over time, not just the snapshot.
     """
-    from plugins.installed.analytics.services import funnel_for  # noqa: PLC0415
+    from plugins.installed.analytics.services import (  # noqa: PLC0415
+        default_funnel,
+        funnel_for,
+        funnel_presets,
+    )
     from plugins.installed.analytics.services_cohorts import (  # noqa: PLC0415
         period_comparison,
         step_dropoffs,
     )
 
+    presets = funnel_presets()
     raw = (request.GET.get('steps') or '').strip()
+    preset = None
     if raw:
         steps = [s.strip() for s in raw.split(',') if s.strip()]
     else:
-        steps = ['pageview', 'product.viewed', 'cart.add', 'checkout.started', 'order.placed']
+        wanted = (request.GET.get('preset') or '').strip()
+        preset = next((p for p in presets if p['key'] == wanted), None) or default_funnel(presets)
+        steps = preset['steps']
     days = int(request.GET.get('days', 30) or 30)
     rows = funnel_for(steps=steps, days=days)
     # Compute conversion percentages relative to step 1.
@@ -381,7 +395,10 @@ def funnel_view(request):
         'analytics/funnel.html',
         {
             'rows': rows,
-            'steps': steps,
+            'steps': [r['step'] for r in rows],
+            'custom_steps': raw,
+            'preset': preset,
+            'presets': presets,
             'days': days,
             'dropoffs': step_dropoffs(steps=steps, days=days),
             'comparison': period_comparison(days=days),

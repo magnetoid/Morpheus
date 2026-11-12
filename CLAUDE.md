@@ -1755,6 +1755,26 @@ keeps `/bookings/`). A page canonicalised onto another path declares no hreflang
 own. Guarded by `themes/test_breadcrumb_trail.py`, `booking_marketplace/tests/test_breadcrumb_trail.py` and
 `test_region_landing.py`.
 
+**Convention — a booking is a conversion, and its owner says so once (v0.162.0).** booking_marketplace
+fires `ENQUIRY_CREATED`, `BOOKING_CREATED` and `BOOKING_CONFIRMED` (`core/hooks.py`) from
+`transaction.on_commit`, once per row, in one shape (`booking_marketplace/conversions.py`: kind, reference,
+value, items named as stored, never as translated, product, customer, service date, request). A confirmation
+fires only on a pending→confirmed move under a row lock (`services.set_booking_status`, the host page's one
+path), with no request; a booking created confirmed (every stay) fires both at once. Subscribers read the
+kwargs, never the app's models: analytics records them as kinds `lead` and `booking`, with value, lead time
+and filters in the payload and **never as revenue** (sales stay orders); tracking sends GA4 `generate_lead`
+and `purchase` (transaction = the booking's reference, under the existing `purchase` switch). One sender per
+event: with a Google tag on the guest's page the push waits in their session for the next HTML page
+(`{% tracking_queued_events %}` in `global_below_body`), which then answers `Cache-Control: private, no-store`
+through `core.storefront_cache.keep_private`, honoured by both cache layers; otherwise, and always for a later
+confirmation, the Measurement Protocol, joined by the GA ids and the consent stamped on `Booking.metadata`
+when it was made, and sent not at all without them. A search with any input (words, region, date, category,
+guests) fires `SEARCH_PERFORMED` with `filters`, first page only; a word ranker skips the empty query. The
+Funnel page's presets come from `ANALYTICS_FUNNELS` (analytics' `shop`, booking_marketplace's `bookings`, the
+default on a store that sells no goods). Meta CAPI and Ads conversions are not sent for bookings. Guarded by
+`booking_marketplace/tests/test_conversions.py`, `analytics/tests/test_conversion_events.py` and
+`tracking/tests/test_conversions.py`.
+
 **Convention — a listing's claims come from their owners (v0.163.0).** Every claim a product page,
 feed or sitemap makes has one source, and while the source is empty the claim is omitted:
 - Shipping: the store's `hasShippingService` on the Organization comes from the shipping app's flat and

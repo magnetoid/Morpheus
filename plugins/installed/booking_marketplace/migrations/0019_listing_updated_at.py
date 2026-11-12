@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('booking_marketplace', '0017_photo_credit'),
+        ('booking_marketplace', '0018_booking_metadata'),
     ]
 
     operations = [

@@ -35,6 +35,15 @@ def _tracking_settings():
         return None
 
 
+def _keeps_metadata(row) -> bool:
+    """Whether a booking's model has the `metadata` field the GA ids go on."""
+    try:
+        row._meta.get_field('metadata')
+    except Exception:  # noqa: BLE001 — FieldDoesNotExist, or not a model at all
+        return False
+    return True
+
+
 def _filtered(s, request) -> bool:
     """Settings → Tracking → Filters: a blocked path or a listed user agent."""
     if request is None:
@@ -79,6 +88,11 @@ class TrackingPlugin(Plugin):
         self.register_hook(events.CUSTOMER_REGISTERED, self.on_signup, priority=95)
         self.register_hook(events.CUSTOMER_LOGIN, self.on_login, priority=95)
         self.register_hook(events.SEARCH_PERFORMED, self.on_search, priority=95)
+        # Travel conversions (booking_marketplace, core/hooks.py). The guest's GA
+        # ids go on a booking as on an order, for a confirmation that comes later.
+        self.register_hook(events.BOOKING_CREATED, self.on_booking_created, priority=5)
+        self.register_hook(events.ENQUIRY_CREATED, self.on_enquiry, priority=95)
+        self.register_hook(events.BOOKING_CONFIRMED, self.on_booking_confirmed, priority=95)
 
     # ── Hook handlers (all swallow exceptions; tracking must never
     #     break the order flow).
@@ -173,10 +187,105 @@ class TrackingPlugin(Plugin):
 
     def on_search(self, query='', search_term='', request=None, **_):
         # SEARCH_PERFORMED carries `query` (storefront, booking_marketplace);
-        # reading only `search_term` sent every GA4 search with no term.
-        self._fire('search', search_term=query or search_term, request=request)
+        # reading only `search_term` sent every GA4 search with no term. A search
+        # made with filters only (a region, a date) has no term: GA4 gets none.
+        term = (query or search_term or '').strip()
+        if not term:
+            return
+        self._fire('search', search_term=term, request=request)
 
-    def _fire(self, event_kind: str, **ctx) -> None:  # noqa: PLR0912, PLR0911, C901
+    def on_booking_created(self, booking=None, request=None, **_):
+        """Remember the guest's GA client and session on the booking: a host may
+        confirm it days later, when no browser is present."""
+        from plugins.installed.tracking.services.identity import ga_ids
+
+        s = _tracking_settings()
+        if booking is None or s is None or request is None or not _keeps_metadata(booking):
+            return
+        ids = ga_ids(request, s.measurement_id)
+        if not ids:
+            return
+        model = type(booking)
+        try:
+            # Read it again and merge: analytics stamps its visit on the same row.
+            stored = model.objects.filter(pk=booking.pk).values_list('metadata', flat=True).first()
+            booking.metadata = {**(stored or {}), 'ga': ids}
+            model.objects.filter(pk=booking.pk).update(metadata=booking.metadata)
+        except Exception as exc:  # noqa: BLE001 — tracking never breaks a booking
+            logger.warning('tracking: could not stamp GA ids on booking %s: %s', booking.pk, exc)
+
+    def on_enquiry(
+        self, enquiry=None, kind='', items=None, value=None, customer=None, request=None, **_
+    ):
+        if enquiry is None:
+            return
+        self._conversion(
+            'generate_lead',
+            holder=enquiry,
+            request=request,
+            customer=customer,
+            kind=kind,
+            items=items,
+            value=value,
+        )
+
+    def on_booking_confirmed(
+        self, booking=None, reference='', value=None, items=None, customer=None, request=None, **_
+    ):
+        if booking is None:
+            return
+        self._conversion(
+            'booking_purchase',
+            holder=booking,
+            request=request,
+            customer=customer,
+            reference=reference or str(booking.pk),
+            value=value,
+            items=items,
+        )
+
+    def _conversion(self, event_kind: str, *, holder, request, **ctx) -> None:
+        """One sender per conversion. With the guest's browser in the request and a
+        Google tag on the page, the next page it loads sends it; else the
+        Measurement Protocol, joined to the guest by the ids the request or the
+        booking carries (a later confirmation has no request, so always this)."""
+        from plugins.installed.tracking.services import event_mapping
+        from plugins.installed.tracking.templatetags.tracking import (
+            browser_tagging,
+            queue_browser_event,
+        )
+
+        s = _tracking_settings()
+        if s is None or _filtered(s, request):
+            return
+        if request is not None and browser_tagging(s):
+            try:
+                event_name, params = (
+                    event_mapping.generate_lead(
+                        kind=ctx.get('kind') or '', items=ctx.get('items'), value=ctx.get('value')
+                    )
+                    if event_kind == 'generate_lead'
+                    else event_mapping.booking_purchase(
+                        reference=ctx['reference'], value=ctx.get('value'), items=ctx.get('items')
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning('tracking: %s builder failed: %s', event_kind, exc)
+                return
+            # Without a session to queue it in, the server sends it.
+            if queue_browser_event(s, request, event_name, params) is not None:
+                return
+        transaction_id = ctx.get('reference') or ''
+        self._fire(
+            event_kind,
+            order=holder,
+            request=request,
+            require_ids=request is None,
+            transaction_id=transaction_id,
+            **ctx,
+        )
+
+    def _fire(self, event_kind: str, **ctx) -> None:  # noqa: PLR0912, PLR0911, PLR0915, C901
         """Build the GA4 payload and POST via Measurement Protocol.
 
         Wrapped in a broad try so tracking failures never block the
@@ -214,6 +323,10 @@ class TrackingPlugin(Plugin):
         except Exception as exc:  # noqa: BLE001 — an unjoined hit beats none
             logger.warning('tracking: identity for %s failed: %s', event_kind, exc)
             identity = {}
+        # A booking confirmed later belongs to the guest only through the ids
+        # stamped on it; without them GA4 would count a new user from nowhere.
+        if ctx.pop('require_ids', False) and not identity.get('client_id'):
+            return
 
         try:
             from plugins.installed.tracking.services import event_mapping
@@ -256,6 +369,14 @@ class TrackingPlugin(Plugin):
                 event_name, params = 'login', {'method': 'storefront'}
             elif event_kind == 'search':
                 event_name, params = 'search', {'search_term': ctx.get('search_term') or ''}
+            elif event_kind == 'generate_lead':
+                event_name, params = event_mapping.generate_lead(
+                    kind=ctx.get('kind') or '', items=ctx.get('items'), value=ctx.get('value')
+                )
+            elif event_kind == 'booking_purchase':
+                event_name, params = event_mapping.booking_purchase(
+                    reference=ctx['reference'], value=ctx.get('value'), items=ctx.get('items')
+                )
             else:
                 logger.debug('tracking: unknown event_kind %s', event_kind)
                 return
