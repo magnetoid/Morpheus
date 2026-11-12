@@ -1568,9 +1568,11 @@ parcel that leaves units open moves the order to `partially_fulfilled` (`fulfill
 that completes it ships it. It locks the order and works on the caller's own instance (the FSM field
 is protected, so `refresh_from_db()` raises), refusing one that changed meanwhile. After commit it
 fires `FULFILLMENT_CREATED` with `announced` (whether `ORDER_FULFILLED`, the "on its way" email, went
-out with it): core.emails mails every other parcel its own lines and tracking, so a box is announced
-once, including the last parcel of an order already marked fulfilled without one. The tracking goes on
-the order before the transition, so that email quotes this parcel. `ORDER_DELIVERED` fires on
+out with it, which happens only for an order's one parcel): core.emails mails every other parcel its own
+lines and tracking, so a box is announced once, and the "on its way" email lists its parcel's lines
+(it stays quiet for an order sent in several). The tracking goes on the order before the transition,
+so that email quotes this parcel. A label bought for an order stays *purchasing* until its parcel is
+recorded, so a second click waits. `ORDER_DELIVERED` fires on
 `delivered` (post_purchase re-times its follow-ups from it). Labels are shipping's
 (`shipping/labels.py`, `ShippingLabel`): a fresh carrier shipment, the cheapest rate, from the order
 page's panel or `shipping.buy_label`. A purchase spends money, so it runs in three steps: under the

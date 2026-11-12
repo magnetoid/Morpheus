@@ -345,9 +345,12 @@ def _bookvault_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
     return Money(Decimal(str(cheapest['amount'])), str(subtotal.currency))
 
 
-def product_weight_kg(product) -> Decimal:
-    """One unit's weight in kg (0 when the product names none)."""
-    w = getattr(product, 'weight', None)
+def product_weight_kg(product, variant=None) -> Decimal:
+    """One unit's weight in kg (0 when neither names one). A variant's own
+    weight wins over its product's and is in the product's unit."""
+    w = getattr(variant, 'weight', None)
+    if w is None:
+        w = getattr(product, 'weight', None)
     if w is None:
         return Decimal('0')
     unit = (getattr(product, 'weight_unit', 'kg') or 'kg').lower()
@@ -366,7 +369,7 @@ def product_weight_kg(product) -> Decimal:
 
 def list_available_rates(*, cart, country: str, region: str = ''):
     """Return all shippable rates for the cart + address."""
-    items = list(cart.items.select_related('product').all())
+    items = list(cart.items.select_related('product', 'variant').all())
     if not items:
         return []
     subtotal_amount = sum(Decimal(i.unit_price.amount) * i.quantity for i in items)
@@ -375,7 +378,7 @@ def list_available_rates(*, cart, country: str, region: str = ''):
 
     total_weight_kg = Decimal('0')
     for i in items:
-        total_weight_kg += product_weight_kg(i.product) * i.quantity
+        total_weight_kg += product_weight_kg(i.product, i.variant) * i.quantity
 
     out = []
     seen_zones = set()

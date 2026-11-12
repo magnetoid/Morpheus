@@ -148,7 +148,8 @@ def create_fulfillment(  # noqa: PLR0913
 
         complete = is_complete(order)
         prior = order.status
-        if tracking_number or order.fulfillments.exclude(pk=fulfillment.pk).exists():
+        earlier = order.fulfillments.exclude(pk=fulfillment.pk).exists()
+        if tracking_number or earlier:
             # Before the transition: the "on its way" email it sends quotes this
             # parcel, never an earlier box's number when this one has none.
             order.tracking_number = tracking_number
@@ -162,10 +163,11 @@ def create_fulfillment(  # noqa: PLR0913
             order.fulfill()
         elif not complete and can_proceed(order.fulfill_partially):
             order.fulfill_partially(fulfillment)
-        # ORDER_FULFILLED (the "on its way" email) went out in this call; it does
-        # not when the order was already fulfilled without a parcel, nor when it
-        # could not move on, so the parcel's own email must tell the buyer.
-        announced = complete and prior not in ('fulfilled', order.status)
+        # ORDER_FULFILLED (the "on its way" email) went out in this call for the
+        # order's only parcel; it does not when the order was already fulfilled
+        # without a parcel, nor when it could not move on, and for the last of
+        # several parcels it stays quiet, so the parcel's own email tells the buyer.
+        announced = not earlier and complete and prior not in ('fulfilled', order.status)
         order.save()
 
         def _announce():

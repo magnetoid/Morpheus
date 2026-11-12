@@ -133,6 +133,8 @@ class PartialFulfilmentTests(TestCase):
         self.assertEqual(email.subject, f'Order #{order.order_number} is on its way')
         self.assertIn('TRK-B', email.body)
         self.assertNotIn('TRK-A', email.body)
+        self.assertIn('1× Lamp', email.body)  # this box only, not the mugs sent before
+        self.assertNotIn('Mug', email.body)
 
     def test_a_last_parcel_without_tracking_never_quotes_an_earlier_box(self):
         order, (mug, lamp) = self._order((self.mug, 2), (self.lamp, 1))
@@ -145,6 +147,14 @@ class PartialFulfilmentTests(TestCase):
         self.assertEqual(order.tracking_number, '')
         (email,) = mail.outbox
         self.assertNotIn('TRK-A', email.body)
+
+    def test_the_on_its_way_email_lists_the_box_not_the_downloads(self):
+        order, _items = self._order((self.mug, 1), (self.ebook, 1))
+        self._ship(order)
+
+        (email,) = mail.outbox
+        self.assertIn('1× Mug', email.body)
+        self.assertNotIn('Guide', email.body)
 
     def test_an_order_fulfilled_without_a_parcel_still_hears_of_its_parcel(self):
         # GraphQL's markOrderFulfilled leaves an order fulfilled with no parcel;

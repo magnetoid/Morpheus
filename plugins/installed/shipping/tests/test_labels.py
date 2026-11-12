@@ -294,6 +294,46 @@ class LabelTests(TestCase):
         self.assertEqual(ShippingLabel.objects.get().status, 'unconfirmed')
         self.assertFalse(self.order.fulfillments.exists())
 
+    def test_a_second_click_waits_until_the_first_parcel_is_recorded(self):
+        from plugins.installed.orders import fulfilment
+        from plugins.installed.orders.models import Order
+        from plugins.installed.shipping.labels import LabelError, ship_with_label
+
+        post, calls = _shippo()
+        real = fulfilment.create_fulfillment
+        refused = []
+
+        def between(*args, **kwargs):
+            # The label is paid for and stored; the parcel is not recorded yet.
+            try:
+                ship_with_label(Order.objects.get(pk=self.order.pk))
+            except LabelError as exc:
+                refused.append(str(exc))
+            return real(*args, **kwargs)
+
+        with (
+            mock.patch('requests.post', post),
+            mock.patch.object(fulfilment, 'create_fulfillment', between),
+        ):
+            label = ship_with_label(self.order)
+        self.assertIn('being bought', refused[0])
+        self.assertEqual(len([c for c in calls if c[0].endswith('/transactions/')]), 1)
+        self.assertEqual((label.status, label.fulfillment.order_id), ('bought', self.order.pk))
+
+    def test_a_variant_weight_wins_over_its_product(self):
+        from plugins.installed.catalog.models import ProductVariant
+        from plugins.installed.shipping.labels import ship_with_label
+
+        self.item.variant = ProductVariant.objects.create(
+            product=self.lamp, name='Big', sku='LB-LAMP-BIG', price=Money(20, 'EUR'), weight=2
+        )
+        self.item.save()
+        post, calls = _shippo()
+        with mock.patch('requests.post', post):
+            ship_with_label(self.order)
+        shipment = calls[0][1]['json']
+        self.assertEqual(shipment['parcels'][0]['weight'], '4000')
+
     def test_a_gateway_error_on_the_purchase_is_unconfirmed(self):
         from plugins.installed.shipping.labels import LabelUnconfirmed, ship_with_label
         from plugins.installed.shipping.models import ShippingLabel

@@ -77,11 +77,19 @@ def on_order_paid(order: Any, **kwargs: Any) -> None:
 
 
 def on_order_fulfilled(order: Any, **kwargs: Any) -> None:
+    """The order's "on its way" email. With its one parcel recorded it lists
+    that parcel's lines, else the order's. An order sent in several parcels
+    gets one email per parcel instead (``on_fulfillment_created``), the last
+    one included."""
+    parcels = list(order.fulfillments.all()[:2])
+    if len(parcels) > 1:
+        return
+    box = list(parcels[0].items.select_related('order_item')) if parcels else None
     _send(
         template_base='emails/order_fulfilled',
         subject=f'Order #{order.order_number} is on its way',
         to=_order_recipient(order),
-        ctx={'order': order},
+        ctx={'order': order, 'box': box},
     )
 
 

@@ -108,7 +108,11 @@ def _weight_kg(lines) -> Decimal:
     from plugins.installed.shipping.services import product_weight_kg  # noqa: PLC0415
 
     total = sum(
-        (product_weight_kg(item.product) * qty for item, qty in lines if item.product),
+        (
+            product_weight_kg(item.product, item.variant) * qty
+            for item, qty in lines
+            if item.product
+        ),
         Decimal('0'),
     )
     return max(total, MIN_WEIGHT_KG)
@@ -282,9 +286,11 @@ def _plan(order, provider: str | None) -> dict:
     }
 
 
-def _buy(label, plan: dict, lines) -> dict:
+def _buy(label, plan: dict, lines, *, hold: bool = False) -> dict:
     """Step 2 and 3: ask the carrier for the label the *purchasing* row
-    ``label`` stands for, then store its answer and commit."""
+    ``label`` stands for, then store its answer and commit. With ``hold`` the
+    row stays *purchasing* (the caller marks it bought once its parcel is
+    recorded), so a second click still waits until then."""
     from plugins.installed.shipping.models import ShippingLabel  # noqa: PLC0415
 
     buy = _shippo if plan['provider'] == 'shippo' else _easypost
@@ -307,7 +313,7 @@ def _buy(label, plan: dict, lines) -> dict:
         ) from None
     try:
         with transaction.atomic():
-            rows.update(status='bought', **data)
+            rows.update(**data, **({} if hold else {'status': 'bought'}))
     except Exception:
         # Paid for, but its answer cannot be stored (a URL too long for its column).
         logger.exception('shipping: label for order %s could not be stored', label.order_id)
@@ -477,9 +483,12 @@ def ship_with_label(order, *, provider: str | None = None):
     if cut_off:
         raise LabelError(cut_off)
 
-    data = _buy(label, plan, lines)
+    # Held as *purchasing* until the parcel is recorded: the order's open
+    # units do not change before then, so a second click would buy them again.
+    data = _buy(label, plan, lines, hold=True)
 
     url = data['tracking_url']
+    rows = ShippingLabel.objects.filter(pk=label.pk)
     failure = None
     try:
         with transaction.atomic():
@@ -490,15 +499,19 @@ def ship_with_label(order, *, provider: str | None = None):
                 tracking_url=url if len(url) <= 200 else '',
                 carrier=data['carrier'],
             )
-            ShippingLabel.objects.filter(pk=label.pk).update(fulfillment=parcel)
+            rows.update(fulfillment=parcel, status='bought')
     except FulfilmentError as exc:
         failure = str(exc)
     except Exception:
         logger.exception('shipping: label %s bought, parcel not recorded', label.pk)
         failure = 'something went wrong while saving it; the details are in the error log'
     else:
-        label.fulfillment = parcel
+        label.fulfillment, label.status = parcel, 'bought'
     if failure is not None:
+        try:
+            rows.update(status='bought')  # kept on the order, on no parcel
+        except Exception:  # a row left purchasing is reported as cut off later
+            logger.exception('shipping: label %s could not be marked bought', label.pk)
         raise LabelError(
             f'The label was bought (tracking {data["tracking_number"] or "none"}) and is kept on '
             f'the order, but the parcel was not recorded: {failure}'
