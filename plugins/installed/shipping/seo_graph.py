@@ -31,6 +31,41 @@ _MAX_ZONES = 3
 _FIXED = {'flat', 'free_over'}
 _HANDLING_MAX_DAYS = 30
 
+# Google reads `DefinedRegion.addressRegion` (an ISO 3166-2 code without the
+# country prefix) only for these countries; a zone limited to regions anywhere
+# else cannot be stated, so its rate is left out rather than claimed nationwide.
+_REGION_COUNTRIES = {'US', 'AU', 'JP'}
+_UNSTATABLE = object()
+
+
+def _destination(zone):
+    """The `DefinedRegion` a zone ships to, None for everywhere, or `_UNSTATABLE`.
+
+    It follows `ShippingZone.matches`: '*' is everywhere whatever the regions say,
+    and a zone with regions takes only those regions of its country. A region list
+    on a zone of several countries, or in a country Google reads no regions for,
+    cannot be written down, and publishing the country alone would promise the
+    rate where checkout refuses it.
+    """
+    countries = [str(c).strip().upper() for c in (zone.countries or []) if c]
+    if '*' in countries:
+        return None
+    named = [c for c in countries if c]
+    if not named:
+        return None
+    region: dict = {
+        '@type': 'DefinedRegion',
+        'addressCountry': named if len(named) > 1 else named[0],
+    }
+    regions = [str(r).strip().upper() for r in (zone.regions or []) if str(r).strip()]
+    if regions:
+        if len(named) != 1 or named[0] not in _REGION_COUNTRIES:
+            return _UNSTATABLE
+        prefix = f'{named[0]}-'
+        codes = [r[len(prefix) :] if r.startswith(prefix) else r for r in regions]
+        region['addressRegion'] = codes if len(codes) > 1 else codes[0]
+    return region
+
 
 def on_seo_jsonld_graph(value, page=None, request=None, **kwargs):
     """`SEO_JSONLD_GRAPH` subscriber: shipping on the product's offer and the store.
@@ -197,15 +232,12 @@ def _conditions_for(rate, currency: str) -> list[dict]:
     amount = _rate_amount(rate)
     if amount is None:
         return []
+    destination = _destination(rate.zone)
+    if destination is _UNSTATABLE:
+        return []
     base: dict = {'@type': 'ShippingConditions'}
-    named = [
-        c for c in (str(c).strip().upper() for c in (rate.zone.countries or []) if c) if c != '*'
-    ]
-    if named:
-        base['shippingDestination'] = {
-            '@type': 'DefinedRegion',
-            'addressCountry': named if len(named) > 1 else named[0],
-        }
+    if destination:
+        base['shippingDestination'] = destination
     transit = _transit_period(rate)
     if transit:
         base['transitTime'] = transit
@@ -312,11 +344,12 @@ def shipping_details(*, currency: str = 'USD', handling=...) -> list[dict]:
 
 
 def _details_for(rate, currency: str, handling=None) -> dict | None:
-    countries = [str(c).strip().upper() for c in (rate.zone.countries or []) if c]
     # '*' means "everywhere", which `DefinedRegion` cannot express as a country
-    # list. Describing it as one country would be wrong, so leave the region off
-    # and let the rate stand on its own.
-    named = [c for c in countries if c != '*']
+    # list, so the rate stands on its own; a zone limited to regions Google cannot
+    # read is left out (`_destination`).
+    destination = _destination(rate.zone)
+    if destination is _UNSTATABLE:
+        return None
 
     amount = _rate_amount(rate)
     if amount is None:
@@ -332,11 +365,8 @@ def _details_for(rate, currency: str, handling=None) -> dict | None:
             'currency': currency,
         },
     }
-    if named:
-        block['shippingDestination'] = {
-            '@type': 'DefinedRegion',
-            'addressCountry': named if len(named) > 1 else named[0],
-        }
+    if destination:
+        block['shippingDestination'] = destination
     delivery = _delivery_time(rate, handling)
     if delivery:
         block['deliveryTime'] = delivery

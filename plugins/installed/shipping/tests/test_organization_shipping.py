@@ -124,6 +124,37 @@ class OrganizationShippingTests(TestCase):
         )
         self.assertNotIn('hasShippingService', self._store(self._enrich()))
 
+    def _offers(self, graph):
+        return [v['offers'] for v in graph['@graph'][1]['hasVariant']]
+
+    def test_a_zone_limited_to_regions_names_them(self):
+        zone = ShippingZone.objects.create(name='California', countries=['US'], regions=['US-CA'])
+        ShippingRate.objects.create(
+            zone=zone, name='Local', computation='flat', flat_amount=Money(5, 'EUR')
+        )
+        graph = self._enrich()
+        destination = self._store(graph)['hasShippingService']['shippingConditions'][
+            'shippingDestination'
+        ]
+        self.assertEqual(
+            destination, {'@type': 'DefinedRegion', 'addressCountry': 'US', 'addressRegion': 'CA'}
+        )
+        for offer in self._offers(graph):
+            self.assertEqual(offer['shippingDetails']['shippingDestination'], destination)
+
+    def test_regions_google_cannot_read_leave_the_rate_out(self):
+        # Montenegro's regions, and regions on a zone of two countries: stating the
+        # country alone would promise the rate where checkout refuses it.
+        for countries in (['ME'], ['US', 'CA']):
+            zone = ShippingZone.objects.create(name='x', countries=countries, regions=['KO'])
+            ShippingRate.objects.create(
+                zone=zone, name='Local', computation='flat', flat_amount=Money(5, 'EUR')
+            )
+        graph = self._enrich()
+        self.assertNotIn('hasShippingService', self._store(graph))
+        for offer in self._offers(graph):
+            self.assertNotIn('shippingDetails', offer)
+
 
 class HandlingTimeTests(TestCase):
     def setUp(self):
