@@ -343,6 +343,30 @@ class PaymentService:
         cls._mark_transaction_released(intent_id, reason or 'The held payment was released')
         return {'success': True}
 
+    @staticmethod
+    def _is_this_stores_webhook(url: str) -> bool:
+        """Whether a Stripe endpoint URL is this store's webhook receiver.
+
+        Several stores can share one Stripe account, so the path alone would
+        let another store's endpoint answer for this one: the host must be one
+        this store answers on (``ALLOWED_HOSTS``, without the ``*`` wildcard,
+        plus the ``SITE_BASE_URL`` host)."""
+        from urllib.parse import urlsplit  # noqa: PLC0415
+
+        from django.http.request import validate_host  # noqa: PLC0415
+
+        from core.utils.site import site_base_url  # noqa: PLC0415
+
+        parts = urlsplit(str(url or ''))
+        if parts.path.rstrip('/') != '/payments/webhooks/stripe':
+            return False
+        allowed = [h for h in (getattr(settings, 'ALLOWED_HOSTS', None) or []) if h != '*']
+        base_host = urlsplit(site_base_url()).hostname
+        if base_host:
+            allowed.append(base_host)
+        host = (parts.hostname or '').lower()
+        return bool(host) and validate_host(host, allowed)
+
     @classmethod
     def webhook_sends(cls, events: tuple[str, ...]) -> bool | None:
         """Whether a Stripe webhook endpoint pointing at this store sends every
@@ -357,7 +381,7 @@ class PaymentService:
         for endpoint in getattr(endpoints, 'data', []) or []:
             if getattr(endpoint, 'status', 'enabled') != 'enabled':
                 continue
-            if '/payments/webhooks/stripe/' not in str(getattr(endpoint, 'url', '')):
+            if not cls._is_this_stores_webhook(getattr(endpoint, 'url', '')):
                 continue
             enabled = set(getattr(endpoint, 'enabled_events', []) or [])
             if '*' in enabled or set(events) <= enabled:

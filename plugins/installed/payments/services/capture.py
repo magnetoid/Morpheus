@@ -18,7 +18,9 @@ not ship (a download) is charged at checkout.
 
 A hold is only ever charged on an open order that nothing has paid yet: one on a
 cancelled or refunded order, or a second hold on an order already paid or held
-(two payment attempts confirmed), is given back instead, whoever asks.
+(two payment attempts confirmed, or staff marked it paid), is given back
+instead, whoever asks. The order is read again from the database for that
+check, and a charge and a release of the same hold never run at once.
 """
 
 from __future__ import annotations
@@ -37,6 +39,9 @@ MAX_AUTHORIZATION_DAYS = 6
 EXPIRY_ACTIONS = ('capture', 'release')
 #: An order in one of these is never charged: its hold is given back.
 CLOSED_STATUSES = ('cancelled', 'refunded')
+#: An order whose payment status is one of these was paid already, by a
+#: gateway or by hand, so a hold on it is a second payment.
+PAID_STATUSES = ('paid', 'partially_refunded', 'refunded')
 
 
 def _setting(key: str, default):
@@ -126,7 +131,10 @@ def surplus_reason(order, tx) -> str:
     if order.status in CLOSED_STATUSES:
         return f'The order is {order.status}, so the held payment was given back'
     others = PaymentTransaction.objects.filter(order=order).exclude(pk=tx.pk)
-    if others.filter(status=PaymentTransaction.Status.SUCCEEDED).exists():
+    if (
+        order.payment_status in PAID_STATUSES
+        or others.filter(status=PaymentTransaction.Status.SUCCEEDED).exists()
+    ):
         return 'The order was already paid, so this second held payment was given back'
     held = others.filter(status=PaymentTransaction.Status.AUTHORIZED)
     if tx.authorized_at is not None:
@@ -160,9 +168,16 @@ def _clip(text) -> str:
     return redact_secrets(str(text or ''))[:240]
 
 
+def _fresh(order):
+    """The order as the database has it now, not as the caller loaded it
+    (the sweep loads 200 at once; a cancel may land meanwhile)."""
+    return type(order).objects.get(pk=order.pk)
+
+
 def _claim(tx) -> bool:
-    """One charge at a time per hold: a second request (a double click, two
-    parcels' tasks) while the first is with Stripe stops here."""
+    """One charge or release at a time per hold: a second request (a double
+    click, two parcels' tasks, a cancel's release) while the first is with
+    Stripe stops here."""
     from django.core.cache import cache  # noqa: PLC0415
 
     try:
@@ -186,18 +201,21 @@ def capture_order(order) -> dict:
     ``{'success': True}`` once it is taken (the order is then paid and
     ``ORDER_PAID`` has fired), else ``{'success': False, 'error': …}`` with a
     message fit for the merchant, which also goes on the order's timeline.
-    A hold that must not be charged (``surplus_reason``) is given back instead.
+    A hold that must not be charged (``surplus_reason``, read from the order
+    as it is now) is given back instead.
     """
+    order = _fresh(order)
     tx = held_transaction(order)
     if tx is None:
         return {'success': False, 'error': 'Nothing on this order is waiting to be charged.'}
-    reason = surplus_reason(order, tx)
-    if reason:
-        release_transaction(tx, reason=reason)
-        return {'success': False, 'error': f'{reason}; nothing was charged.'}
     if not _claim(tx):
-        return {'success': False, 'error': 'This payment is already being charged.'}
+        return {'success': False, 'error': 'This payment is already being charged or released.'}
     try:
+        order = _fresh(order)  # what the order is now that no release can run
+        reason = surplus_reason(order, tx)
+        if reason:
+            _release(tx, reason)
+            return {'success': False, 'error': f'{reason}; nothing was charged.'}
         gateway = _gateway(tx)
         if gateway is None:
             result = {
@@ -211,6 +229,15 @@ def capture_order(order) -> dict:
     if result.get('success'):
         order.log_event('PAYMENT_CHARGED', message=f'{tx.amount} taken from the held payment')
         _release_others(order, keep=tx)
+        status = _fresh(order).status
+        if status in CLOSED_STATUSES:
+            # It closed while Stripe was charging the card: the money is taken,
+            # so the merchant decides about the refund.
+            order.log_event(
+                'PAYMENT_CHARGED_AFTER_CLOSE',
+                message=f'The order was {status} while its payment was being charged; '
+                'refund it if the customer should not pay.',
+            )
     else:
         order.log_event('PAYMENT_CAPTURE_FAILED', message=_clip(result.get('error')))
     return result
@@ -233,7 +260,18 @@ def release_transaction(tx, *, reason: str = '') -> dict:
 
     The gateway records the release (and its reason) on the order's timeline;
     a failure is recorded here, and the hourly sweep tries a closed order's
-    hold again."""
+    hold again. A hold being charged right now is left to that charge."""
+    if not _claim(tx):
+        result = {'success': False, 'error': 'The payment is being charged right now.'}
+        tx.order.log_event('PAYMENT_RELEASE_FAILED', message=result['error'])
+        return result
+    try:
+        return _release(tx, reason)
+    finally:
+        _unclaim(tx)
+
+
+def _release(tx, reason: str) -> dict:
     gateway = _gateway(tx)
     if gateway is None:
         result = {'success': False, 'error': f'The {tx.provider} payment method is not installed.'}

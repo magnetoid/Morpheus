@@ -689,3 +689,107 @@ class HoldSafetyTests(CaptureTestBase):
             RefundService.process(order=_fresh(order), amount=Money(5, 'USD'), settle='external')
         with self.assertRaisesMessage(ValueError, 'never charged'):
             RefundService.record_external(order=_fresh(order))
+
+    def test_the_charge_reads_the_order_as_it_is_now(self):
+        from plugins.installed.payments.services.capture import capture_order
+
+        self._mode('manual')
+        stale, tx = self._hold(self._order())
+        self._close(stale)  # cancelled after the caller loaded it (the sweep's 200)
+        with (
+            mock.patch('stripe.PaymentIntent.capture') as capture,
+            self._released() as cancel,
+        ):
+            self.assertFalse(capture_order(stale)['success'])
+        capture.assert_not_called()
+        cancel.assert_called_once_with('pi_held')
+
+    def test_a_release_waits_for_a_charge_in_flight(self):
+        from django.core.cache import cache
+
+        from plugins.installed.payments.services.capture import release_transaction
+
+        self._mode('manual')
+        order, tx = self._hold(self._order())
+        cache.add(f'payments:capture:{tx.pk}', 1, 60)
+        self.addCleanup(cache.delete, f'payments:capture:{tx.pk}')
+        with self._released() as cancel:
+            self.assertFalse(release_transaction(tx, reason='cancelled')['success'])
+        cancel.assert_not_called()
+        tx.refresh_from_db()
+        self.assertEqual(tx.status, Status.AUTHORIZED)
+
+    def test_an_order_closed_while_its_card_is_charged_is_flagged(self):
+        from plugins.installed.payments.services.capture import capture_order
+
+        self._mode('manual')
+        order, _ = self._hold(self._order())
+
+        def charge_while_cancelled(*args, **kwargs):
+            self._close(order)
+            return _intent(status='succeeded')
+
+        with mock.patch('stripe.PaymentIntent.capture', side_effect=charge_while_cancelled):
+            self.assertTrue(capture_order(order)['success'])
+        self.assertTrue(order.events.filter(event_type='PAYMENT_CHARGED_AFTER_CLOSE').exists())
+
+    def test_an_order_marked_paid_by_hand_takes_no_late_hold(self):
+        from plugins.installed.payments.services.capture import capture_order
+        from plugins.installed.payments.services.stripe import PaymentService
+
+        self._mode('manual')
+        order = self._order()
+        self._start(order)
+        type(order).objects.filter(pk=order.pk).update(payment_status='paid')
+        with self._released() as cancel, self.captureOnCommitCallbacks(execute=True):
+            PaymentService._mark_transaction_authorized('pi_held')
+        cancel.assert_called_once_with('pi_held')
+        self.assertEqual(_fresh(order).payment_status, 'paid')
+        with mock.patch('stripe.PaymentIntent.capture') as capture:
+            self.assertFalse(capture_order(order)['success'])
+        capture.assert_not_called()
+
+
+class WebhookHealthTests(CaptureTestBase):
+    """The health check counts only this store's webhook (review of v0.155.0):
+    several stores can share one Stripe account."""
+
+    EVENTS = ('payment_intent.amount_capturable_updated', 'payment_intent.canceled')
+
+    def _endpoints(self, *urls):
+        endpoints = SimpleNamespace(
+            data=[
+                SimpleNamespace(url=url, status='enabled', enabled_events=list(self.EVENTS))
+                for url in urls
+            ]
+        )
+        return mock.patch('stripe.WebhookEndpoint.list', return_value=endpoints)
+
+    def _sends(self):
+        from plugins.installed.payments.services.stripe import PaymentService
+
+        return PaymentService.webhook_sends(self.EVENTS)
+
+    def test_another_stores_endpoint_does_not_count(self):
+        with (
+            self.settings(ALLOWED_HOSTS=['shop.example'], SITE_BASE_URL='https://shop.example'),
+            self._endpoints('https://other.example/payments/webhooks/stripe/'),
+        ):
+            self.assertFalse(self._sends())
+
+    def test_this_stores_endpoint_counts(self):
+        with (
+            self.settings(ALLOWED_HOSTS=['*'], SITE_BASE_URL='https://shop.example'),
+            self._endpoints(
+                'https://other.example/payments/webhooks/stripe/',
+                'https://shop.example/payments/webhooks/stripe/',
+            ),
+        ):
+            self.assertTrue(self._sends())
+
+    def test_another_path_on_this_host_does_not_count(self):
+        with (
+            self.settings(ALLOWED_HOSTS=['shop.example'], SITE_BASE_URL=''),
+            self._endpoints('https://shop.example/hooks/stripe/'),
+        ):
+            self.assertFalse(self._sends())

@@ -1604,13 +1604,16 @@ by hand, not refunded, and a download waits until it is charged. Capture goes th
 commit, the order page's Charge now, or `payments.capture`; cancelling releases it; the hourly sweep
 charges (or releases) a hold older than `authorization_days` (at most 6: Stripe drops it at 7), timed
 from the Stripe event's `created`, never the delivery. A hold is charged only on an open order nothing
-paid (`capture.surplus_reason`): one on a cancelled or refunded order, or a second confirmed attempt on
-an order already paid or held, is given back by whoever meets it (the webhook, Charge now, the sweep,
-which retries a failed release every hour), and never lowers `paid`. One charge runs at a time per hold
-(a cache claim), a parcel saves only the order fields it changed, and the cart's wallet sheet asks
+paid (`capture.surplus_reason`, read from the order as the database has it, not the caller's copy): one
+on a cancelled or refunded order, or a second confirmed attempt on an order already paid (by a gateway
+or marked paid by hand) or held, is given back by whoever meets it (the webhook, Charge now, the sweep,
+which retries a failed release every hour), and never lowers `paid`. A charge and a release of one hold
+never run at once (a cache claim); an order that closes while Stripe charges is flagged
+`PAYMENT_CHARGED_AFTER_CLOSE` for the merchant to refund. A parcel saves only the order fields it changed, and the cart's wallet sheet asks
 Stripe for the same `captureMethod` the order's PaymentIntent will carry (`capture.cart_mode`), or the
 wallet cannot confirm. Stripe must send `payment_intent.amount_capturable_updated` and
-`payment_intent.canceled` (a health check says when the endpoint lacks them). Refunds take `settle` ('' gateway, `store_credit`, `external`), defaulting
+`payment_intent.canceled` (a health check says when this store's endpoint lacks them; several stores can share one Stripe
+account, so it counts only an endpoint on a host the store answers on). Refunds take `settle` ('' gateway, `store_credit`, `external`), defaulting
 for offline gateways from orders' `offline_refund_default`; `PAYMENT_REFUNDED` carries `settled_as` for
 the email. Saved cards at checkout (`checkout_show_saved_cards`, `checkout_offer_save_card`) put the
 customer on the PaymentIntent and a CustomerSession on the payment page. `PAYMENT_FAILED` fires once per

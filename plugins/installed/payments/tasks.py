@@ -63,6 +63,7 @@ def release_stale_authorizations() -> int:
     from plugins.installed.payments.models import PaymentTransaction  # noqa: PLC0415
     from plugins.installed.payments.services.capture import (  # noqa: PLC0415
         CLOSED_STATUSES,
+        PAID_STATUSES,
         authorization_days,
         capture_order,
         expiry_action,
@@ -76,7 +77,7 @@ def release_stale_authorizations() -> int:
         .filter(
             Q(authorized_at__lt=cutoff)
             | Q(order__status__in=CLOSED_STATUSES)
-            | Q(order__payment_status='paid')
+            | Q(order__payment_status__in=PAID_STATUSES)
         )
         .select_related('order')
         .order_by('authorized_at')[:200]
