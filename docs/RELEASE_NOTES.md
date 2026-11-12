@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.163.0 — 2026-11-12
+
+**Richer merchant listings**
+
+- Store-level shipping on the Organization (hasShippingService) from the shipping app's flat and free-over rates, plus a handling time and cut-off on the Shipping page, unset by default and claimed nowhere while unset.
+- Return terms as settings (fees, method, refund type), each left out of the markup until set, on the Organization and on every offer.
+- Product variants vary by colour, material and pattern as well as size, from catalog's variant attributes.
+- One brand source for the product page and every channel feed: the PRODUCT_BRAND filter (book publisher), then catalog's default brand, moved from the channel settings; Meta's made-up 'Generic' brand is gone.
+- The schema editor's blocks now reach the page graph, never duplicating a type the store writes itself; types Google no longer shows are listed for deletion, and Linda can read, set and delete blocks with the merchant's yes.
+- Articles state their plain text and their markdown image, ItemList URLs are absolute, sitemaps list every app's images and real lastmod dates, and events that have ended leave the sitemap and lose their Event node.
+
 ## v0.162.0 — 2026-11-12
 
 **Travel conversions**
