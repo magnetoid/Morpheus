@@ -329,6 +329,7 @@ class EmailTemplate(models.Model):
         ('order_placed', 'Order placed'),
         ('order_paid', 'Order paid'),
         ('order_fulfilled', 'Order fulfilled'),
+        ('shipment_sent', 'Parcel shipped'),
         ('order_cancelled', 'Order cancelled'),
         ('refund_issued', 'Refund issued'),
         ('digital_download', 'Digital downloads'),

@@ -161,7 +161,10 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
     ]
     fulfillments = [
         {
-            'state': getattr(f, 'state', ''),
+            # The parcel id shipping.buy_label takes; a Fulfillment has `status`
+            # (it never had `state`, so this read '' until v0.154.0).
+            'id': str(f.pk),
+            'status': f.status,
             'tracking_number': getattr(f, 'tracking_number', ''),
             'carrier': getattr(f, 'carrier', ''),
             'created_at': f.created_at.isoformat() if getattr(f, 'created_at', None) else '',
@@ -743,4 +746,104 @@ def analytics_top_products_tool(
             'products': rows,
         },
         display=f'top {len(rows)} by {by}',
+    )
+
+
+@tool(
+    name='orders.fulfill_lines',
+    description=(
+        'Ship a parcel of an order: the units in it (by SKU, or every unit still '
+        'open when `lines` is empty) and its tracking. The parcel that completes the '
+        'order marks it shipped; the buyer is emailed about each parcel. Downloads '
+        'are never in a parcel: they reach the buyer by themselves.'
+    ),
+    scopes=['orders.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'order_number': {'type': 'string'},
+            'lines': {
+                'type': 'array',
+                'description': 'Units per line, e.g. [{"sku": "MUG-1", "quantity": 2}]. '
+                'Empty: every unit still open.',
+                'items': {
+                    'type': 'object',
+                    'properties': {
+                        'sku': {'type': 'string'},
+                        'quantity': {'type': 'integer', 'minimum': 1},
+                    },
+                    'required': ['sku', 'quantity'],
+                },
+            },
+            'tracking_number': {'type': 'string'},
+            'tracking_url': {'type': 'string'},
+            'carrier': {'type': 'string'},
+            'mark_shipped': {
+                'type': 'boolean',
+                'default': True,
+                'description': 'When this parcel completes the order, mark it shipped.',
+            },
+        },
+        'required': ['order_number'],
+    },
+    requires_approval=True,
+)
+def orders_fulfill_lines_tool(  # noqa: PLR0913
+    *,
+    order_number: str,
+    lines: list | None = None,
+    tracking_number: str = '',
+    tracking_url: str = '',
+    carrier: str = '',
+    mark_shipped: bool = True,
+) -> ToolResult:
+    from plugins.installed.orders.fulfilment import FulfilmentError, create_fulfillment, open_lines
+    from plugins.installed.orders.models import Order
+
+    order = Order.objects.filter(order_number=order_number).first()
+    if order is None:
+        raise ToolError(f'order not found: {order_number}')
+    chosen = None
+    if lines:
+        open_by_sku: dict[str, list] = {}
+        for item, remaining in open_lines(order):
+            open_by_sku.setdefault((item.sku or '').strip().lower(), []).append((item, remaining))
+        chosen = {}
+        for line in lines:
+            sku = str((line or {}).get('sku') or '').strip().lower()
+            matches = open_by_sku.get(sku) or []
+            if not sku or not matches:
+                raise ToolError(f'no open line with SKU {sku!r} on order #{order_number}')
+            if len(matches) > 1:
+                raise ToolError(f'SKU {sku!r} names more than one line on this order')
+            item = matches[0][0]
+            chosen[str(item.pk)] = chosen.get(str(item.pk), 0) + int(line.get('quantity') or 0)
+    try:
+        fulfillment = create_fulfillment(
+            order,
+            chosen,
+            tracking_number=tracking_number,
+            tracking_url=tracking_url,
+            carrier=carrier,
+            mark_shipped=mark_shipped,
+        )
+    except FulfilmentError as exc:
+        raise ToolError(str(exc)) from None
+    # create_fulfillment moved this instance along (a protected status field
+    # cannot be refreshed from the database).
+    shipped = [
+        {'sku': fi.order_item.sku, 'name': fi.order_item.product_name, 'quantity': fi.quantity}
+        for fi in fulfillment.items.select_related('order_item')
+    ]
+    left = sum(remaining for _item, remaining in open_lines(order))
+    return ToolResult(
+        output={
+            'order_number': order.order_number,
+            'status': order.status,
+            'parcel': shipped,
+            'tracking_number': fulfillment.tracking_number,
+            'units_left_to_ship': left,
+        },
+        display=f'#{order.order_number}: parcel of {sum(s["quantity"] for s in shipped)} units, '
+        f'order {order.get_status_display().lower()}',
     )

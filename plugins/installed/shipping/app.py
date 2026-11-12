@@ -14,8 +14,8 @@ class ShippingPlugin(Plugin):
     label = 'Shipping'
     version = '1.0.0'
     description = (
-        'Shipping zones + rates: flat fee, weight tiers, order-total tiers, '
-        'free over threshold, plus stub adapters for Shippo / EasyPost.'
+        'Shipping zones and rates (flat fee, weight or order-total tiers, free over an '
+        'amount, pickup), live Shippo / EasyPost quotes, and carrier labels for parcels.'
     )
     has_models = True
     requires = ['catalog', 'orders']
@@ -38,6 +38,8 @@ class ShippingPlugin(Plugin):
         # knows it. The SEO app used to synthesise this from config nothing
         # wrote, so every product page advertised free shipping.
         self.register_hook(events.SEO_JSONLD_GRAPH, self.on_seo_jsonld_graph, priority=50)
+        # The order page's "Shipping labels" panel, while a carrier is set up.
+        self.register_hook(events.ORDER_DETAIL_PANELS, self.on_order_panels, priority=30)
         self.register_urls(
             'plugins.installed.shipping.urls_dashboard',
             prefix='dashboard/shipping/',
@@ -110,6 +112,11 @@ class ShippingPlugin(Plugin):
         from plugins.installed.shipping.seo_graph import on_seo_jsonld_graph  # noqa: PLC0415
 
         return on_seo_jsonld_graph(value, page=page, request=request, **kwargs)
+
+    def on_order_panels(self, value, order=None, request=None, **kwargs):
+        from plugins.installed.shipping.order_panel import order_panel  # noqa: PLC0415
+
+        return order_panel(value, order=order, request=request, **kwargs)
 
     def on_cart_breakdown(self, value, cart=None, address=None, shipping_rate_id=None, **kwargs):
         if cart is None or not isinstance(value, dict):
@@ -192,10 +199,12 @@ class ShippingPlugin(Plugin):
     def contribute_agent_tools(self) -> list:
         from plugins.installed.shipping.agent_tools import (  # noqa: PLC0415
             add_flat_rate_tool,
+            buy_label_tool,
             list_zones_tool,
+            set_rate_tool,
         )
 
-        return [list_zones_tool, add_flat_rate_tool]
+        return [list_zones_tool, add_flat_rate_tool, set_rate_tool, buy_label_tool]
 
     def contribute_storefront_blocks(self) -> list:
         # "Add X for free shipping" progress bar in the cart summary. Self-hides

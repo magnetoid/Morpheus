@@ -320,6 +320,21 @@ class Order(models.Model):
     @transition(
         field=status,
         source=['processing', 'partially_fulfilled'],
+        target='partially_fulfilled',
+    )
+    def fulfill_partially(self, fulfillment=None):
+        """A parcel went out and units are still to ship (orders.fulfilment)."""
+        units = sum(fi.quantity for fi in fulfillment.items.all()) if fulfillment else 0
+        self.log_event(
+            'ORDER_PARTIALLY_FULFILLED',
+            message=f'{units} units shipped' if units else '',
+            prev_state=self.status,
+            new_state='partially_fulfilled',
+        )
+
+    @transition(
+        field=status,
+        source=['processing', 'partially_fulfilled'],
         target='fulfilled',
     )
     def fulfill(self):

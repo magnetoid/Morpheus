@@ -32,6 +32,10 @@ def register_handlers() -> None:
     hook_registry.register(events.ORDER_PLACED, on_order_placed, priority=70)
     hook_registry.register(events.ORDER_PAID, on_order_paid, priority=70)
     hook_registry.register(events.ORDER_FULFILLED, on_order_fulfilled, priority=70)
+    hook_registry.register(events.FULFILLMENT_CREATED, on_fulfillment_created, priority=70)
+    hook_registry.register(
+        events.FULFILLMENT_TRACKING_ADDED, on_fulfillment_tracking_added, priority=70
+    )
     hook_registry.register(events.ORDER_CANCELLED, on_order_cancelled, priority=70)
     hook_registry.register(events.PAYMENT_REFUNDED, on_payment_refunded, priority=70)
     hook_registry.register(events.CUSTOMER_REGISTERED, on_customer_registered, priority=70)
@@ -78,6 +82,56 @@ def on_order_fulfilled(order: Any, **kwargs: Any) -> None:
         subject=f'Order #{order.order_number} is on its way',
         to=_order_recipient(order),
         ctx={'order': order},
+    )
+
+
+def on_fulfillment_created(
+    order: Any = None,
+    fulfillment: Any = None,
+    complete: bool = False,
+    announced: bool = False,
+    **kwargs: Any,
+) -> None:
+    """One parcel of an order. A parcel whose order's "on its way" email
+    (``order_fulfilled``) went out with it is not announced again, so a buyer
+    never gets two emails for one box."""
+    if order is None or fulfillment is None or announced:
+        return
+    subject = (
+        f'Order #{order.order_number} is on its way'
+        if complete
+        else f'Part of order #{order.order_number} is on its way'
+    )
+    _send(
+        template_base='emails/shipment_sent',
+        subject=subject,
+        to=_order_recipient(order),
+        ctx={
+            'order': order,
+            'fulfillment': fulfillment,
+            'parcel_items': list(fulfillment.items.select_related('order_item')),
+            'complete': complete,
+        },
+    )
+
+
+def on_fulfillment_tracking_added(
+    order: Any = None, fulfillment: Any = None, **kwargs: Any
+) -> None:
+    """A parcel's tracking arrived after its parcel went out (a label bought
+    later), so the buyer gets it in its own short email."""
+    if order is None or fulfillment is None or not fulfillment.tracking_number:
+        return
+    _send(
+        template_base='emails/shipment_sent',
+        subject=f'Tracking for order #{order.order_number}',
+        to=_order_recipient(order),
+        ctx={
+            'order': order,
+            'fulfillment': fulfillment,
+            'parcel_items': list(fulfillment.items.select_related('order_item')),
+            'tracking_added': True,
+        },
     )
 
 

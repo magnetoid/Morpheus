@@ -3,7 +3,7 @@ name: morpheus-orders
 description: >-
   Orders on a Morpheus store: finding an order, fulfilment and shipping,
   cancellations, refunds, and payments that look stuck.
-version: 2.0.0
+version: 2.1.0
 author: Morpheus OS
 license: MIT
 metadata:
@@ -32,16 +32,21 @@ If a search finds nothing, say so.
 1. Pending: was the payment captured? A charge in the payment provider with the
    order still unpaid usually means a missed payment webhook. Flag it; never
    mark an order paid yourself.
-2. Paid, not fulfilled: offer `orders.mark_fulfilled`.
-3. Fulfilled, not shipped: offer `orders.mark_shipped` with the tracking number.
+2. Paid, not shipped: offer `orders.fulfill_lines` (a parcel with some or all of
+   the open units and its tracking number). `orders.get` lists the parcels
+   already sent; downloads never go in a parcel.
+3. A carrier is set up (Shippo or EasyPost): offer `shipping.buy_label` for a
+   parcel, or for everything left on the order. It spends money.
 4. Refund or cancel requests: name the order number and amount.
 
 ## Changes (each needs the merchant's yes)
 
 | Tool | Does |
 |---|---|
-| `orders.mark_fulfilled` | Fulfil a paid order |
-| `orders.mark_shipped` | Ship, with tracking |
+| `orders.fulfill_lines` | Ship a parcel: lines by SKU and quantity (none = all), tracking |
+| `shipping.buy_label` | Buy a carrier label for a parcel, or ship what is left with one |
+| `orders.mark_fulfilled` | Mark fulfilled without recording a parcel |
+| `orders.mark_shipped` | Mark shipped without recording a parcel |
 | `orders.add_note` | Staff note |
 | `orders.update_status` | Other status changes |
 | `orders.cancel` | Cancel (releases stock) |
@@ -58,3 +63,5 @@ after the merchant's yes.
 1. Cancelling when they asked for a refund: different outcome, different money.
 2. Fulfilling an unpaid order.
 3. Marking an order refunded because the provider shows a refund, unless asked.
+4. Shipping with `orders.mark_shipped` when the merchant sends part of an order:
+   only `orders.fulfill_lines` records which units left.

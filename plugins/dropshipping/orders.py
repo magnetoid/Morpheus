@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from urllib.parse import quote
 
-from django.utils import timezone
-
 DEFAULT_TRACKING_URL = 'https://t.17track.net/en#nums={tracking}'
 
 # Paid orders that have not gone out yet. 'processing' is included because a
@@ -51,29 +49,18 @@ def tracking_url(template: str, tracking: str) -> str:
 def ship_with_tracking(order, tracking: str, *, carrier: str = '', url: str = ''):
     """Ship ``order`` with ``tracking`` the platform way and return the Fulfillment.
 
-    Creates the ``orders.Fulfillment`` (+ items for every unfulfilled quantity)
-    and walks the state machine to *shipped* from wherever the order is, so
-    ``ORDER_FULFILLED`` fires once through orders' own signal. Callers wrap this
-    in a transaction together with their own bookkeeping.
+    The parcel holds every unit still open (``orders.fulfilment.create_fulfillment``),
+    and the order walks to *shipped* from wherever it is, so ``ORDER_FULFILLED``
+    fires once through orders' own signal. An order with nothing left to put in a
+    parcel only ships (and returns ``None``). Callers wrap this in a transaction
+    together with their own bookkeeping.
     """
-    from plugins.installed.orders.models import Fulfillment, FulfillmentItem
+    from plugins.installed.orders.fulfilment import create_fulfillment, open_lines
 
-    fulfillment = Fulfillment.objects.create(
-        order=order,
-        status='in_transit',
-        tracking_number=tracking,
-        tracking_url=url,
-        carrier=carrier,
-        shipped_at=timezone.now(),
-    )
-    for item in order.items.all():
-        remaining = item.quantity - item.fulfilled_quantity
-        if remaining > 0:
-            FulfillmentItem.objects.create(
-                fulfillment=fulfillment, order_item=item, quantity=remaining
-            )
-            item.fulfilled_quantity = item.quantity
-            item.save(update_fields=['fulfilled_quantity'])
+    if open_lines(order):
+        return create_fulfillment(
+            order, tracking_number=tracking, tracking_url=url, carrier=carrier
+        )
     if order.status == 'pending':
         order.confirm()
     if order.status == 'confirmed':
@@ -83,4 +70,4 @@ def ship_with_tracking(order, tracking: str, *, carrier: str = '', url: str = ''
     else:
         order.tracking_number = tracking
     order.save()
-    return fulfillment
+    return None

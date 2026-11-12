@@ -91,6 +91,7 @@ def mark_placed(order, zendrop_order_number: str = '') -> None:
 
 def ship_order(order, tracking: str, carrier: str = '', zendrop_order_number: str = '') -> str:
     """Ship one order with ``tracking``. Returns '' on success, else the reason it was skipped."""
+    from plugins.installed.orders.fulfilment import FulfilmentError
     from plugins.installed.zendrop.models import ZendropOrder
 
     tracking = (tracking or '').strip()
@@ -98,19 +99,26 @@ def ship_order(order, tracking: str, carrier: str = '', zendrop_order_number: st
         return 'no tracking number'
     if order.status in ('shipped', 'delivered'):
         return 'already shipped'
-    if order.status == 'cancelled':
-        return 'cancelled'
+    if order.status in ('cancelled', 'refunded'):
+        return order.status
     template = str(_config().get('tracking_url_template') or DEFAULT_TRACKING_URL)
-    with transaction.atomic():
-        ship_with_tracking(order, tracking, carrier=carrier, url=tracking_url(template, tracking))
-        record, _ = ZendropOrder.objects.get_or_create(order=order, defaults={'status': 'placed'})
-        record.status = 'shipped'
-        record.tracking_number = tracking
-        record.carrier = carrier[:100]
-        record.shipped_at = timezone.now()
-        if zendrop_order_number:
-            record.zendrop_order_number = zendrop_order_number[:100]
-        record.save()
+    try:
+        with transaction.atomic():
+            ship_with_tracking(
+                order, tracking, carrier=carrier, url=tracking_url(template, tracking)
+            )
+            record, _ = ZendropOrder.objects.get_or_create(
+                order=order, defaults={'status': 'placed'}
+            )
+            record.status = 'shipped'
+            record.tracking_number = tracking
+            record.carrier = carrier[:100]
+            record.shipped_at = timezone.now()
+            if zendrop_order_number:
+                record.zendrop_order_number = zendrop_order_number[:100]
+            record.save()
+    except FulfilmentError as exc:
+        return str(exc)
     return ''
 
 

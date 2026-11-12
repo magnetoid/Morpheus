@@ -1,5 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
-{% block title %}Fulfill · Order #{{ order.order_number }}{% endblock %}
+{% block title %}Ship a parcel · Order #{{ order.order_number }}{% endblock %}
 
 {% block breadcrumb %}
 <div class="mb-4"><nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-sm text-[color:var(--text-muted)] flex-wrap">
@@ -16,18 +16,41 @@
 {% block content %}
 <div class="mx-auto space-y-4">
 
-  <h1 class="text-xl font-semibold">Create fulfillment</h1>
+  <h1 class="text-xl font-semibold">Ship a parcel</h1>
   <p class="text-sm text-[color:var(--text-muted)]">
-    Records shipping details for the items in this order. Currently fulfills the
-    full remaining quantity in one record — partial-line fulfillment is a future addition.
+    Choose how many units of each line go in this parcel. Lines left open can go in a later parcel;
+    downloads are not listed, they reach the buyer by themselves.
   </p>
 
   {% if form.non_field_errors %}
   <div class="card card-padded form-error-banner">{{ form.non_field_errors }}</div>
   {% endif %}
 
-  <form method="post" class="card card-padded space-y-3">
+  <form method="post" id="fulfil-form" class="card card-padded space-y-3">
     {% csrf_token %}
+
+    {% if form.lines %}
+    <table class="morph-table">
+      <thead><tr><th>Item</th><th>SKU</th><th class="text-right">Left to ship</th><th class="text-right">In this parcel</th></tr></thead>
+      <tbody>
+        {% for line in form.bound_lines %}
+        <tr>
+          <td>{{ line.item.product_name }}{% if line.item.variant_name %} <span class="text-[color:var(--text-muted)]">· {{ line.item.variant_name }}</span>{% endif %}</td>
+          <td class="text-[color:var(--text-muted)]"><code>{{ line.item.sku|default:"—" }}</code></td>
+          <td class="text-right">{{ line.remaining }}</td>
+          <td class="text-right">
+            <label class="sr-only" for="id_{{ line.field }}">Units of {{ line.item.product_name }} in this parcel</label>
+            <input type="number" id="id_{{ line.field }}" name="{{ line.field }}" min="0" max="{{ line.remaining }}" class="input w-24 text-right"
+                   value="{% if line.bound.value is not None %}{{ line.bound.value }}{% endif %}">
+            {% if line.bound.errors %}<div class="text-xs text-[color:var(--danger)]">{{ line.bound.errors|join:" " }}</div>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-sm">Nothing in this order is left to ship.</p>
+    {% endif %}
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <div>
@@ -58,13 +81,13 @@
 
     <label class="inline-flex items-center gap-2 text-sm">
       <input type="checkbox" name="mark_shipped" {% if form.mark_shipped.value or form.mark_shipped.value is None %}checked{% endif %}>
-      Also mark order as shipped
+      When this parcel completes the order, mark it shipped
     </label>
 
     <div class="flex items-center justify-end gap-2 pt-2">
       <a href="{% url 'admin_dashboard:order_packing_slip' order_number=order.order_number %}" target="_blank" rel="noopener" class="btn mr-auto"><i data-lucide="printer" class="h-4 w-4"></i> Print packing slip</a>
       <a href="{% url 'admin_dashboard:order_detail' order_number=order.order_number %}" class="btn">Cancel</a>
-      <button class="btn btn-primary"><i data-lucide="package-check" class="h-4 w-4"></i> Create fulfillment</button>
+      <button class="btn btn-primary"><i data-lucide="package-check" class="h-4 w-4"></i> Record parcel</button>
     </div>
   </form>
 

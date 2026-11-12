@@ -2,7 +2,9 @@
 
 `ShippingZone` is a set of countries (and optional region codes) that share
 shipping rules. A `ShippingRate` belongs to a zone and computes a price
-based on either flat fee, weight tiers, or order-total tiers.
+based on either flat fee, weight tiers, order-total tiers, a free-over
+threshold, or a pickup (the customer collects it; free or a flat fee).
+Amounts are in the store's currency (`shipping/rates.py`).
 
 Carrier integrations (Shippo / EasyPost) plug in via
 `ShippingRate.computation = 'carrier_<name>'`; the rate runs the adapter
@@ -66,6 +68,7 @@ class ShippingRate(models.Model):
         ('weight_tier', 'Weight tiered'),
         ('order_total_tier', 'Order-total tiered'),
         ('free_over', 'Free over threshold'),
+        ('pickup', 'Pickup (the customer collects it)'),
         ('carrier_shippo', 'Shippo (live rates)'),
         ('carrier_easypost', 'EasyPost (live rates)'),
         ('carrier_bookvault', 'Bookvault (live rates · POD books)'),
@@ -108,3 +111,54 @@ class ShippingRate(models.Model):
 
     def __str__(self) -> str:
         return f'{self.zone.name} · {self.name}'
+
+
+class ShippingLabel(models.Model):
+    """A carrier label for an order's parcel (``shipping/labels.py``).
+
+    The row is written before the carrier is asked (*purchasing*), so a second
+    click finds it and a label the carrier charged for is never lost. *bought*
+    holds the carrier's answer; *unconfirmed* means the carrier was asked to buy
+    and its answer did not say whether it did, so the merchant checks their
+    carrier account. ``fulfillment`` is empty for a label bought for every open
+    unit until its parcel is recorded, for one whose parcel could not be
+    recorded, and for an unconfirmed one (so the parcel can be tried again).
+    """
+
+    PROVIDER_CHOICES = [('shippo', 'Shippo'), ('easypost', 'EasyPost')]
+    STATUS_CHOICES = [
+        ('purchasing', 'Being bought'),
+        ('bought', 'Bought'),
+        ('unconfirmed', 'Not confirmed by the carrier'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order = models.ForeignKey(
+        'orders.Order', on_delete=models.CASCADE, related_name='shipping_labels'
+    )
+    fulfillment = models.OneToOneField(
+        'orders.Fulfillment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='shipping_label',
+    )
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='purchasing')
+    provider_id = models.CharField(
+        max_length=120, blank=True, help_text="The carrier service's label id."
+    )
+    label_url = models.URLField(max_length=1000, blank=True)
+    tracking_number = models.CharField(max_length=200, blank=True)
+    tracking_url = models.URLField(max_length=1000, blank=True)
+    carrier = models.CharField(max_length=100, blank=True)
+    service = models.CharField(max_length=120, blank=True)
+    cost_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    cost_currency = models.CharField(max_length=3, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f'{self.get_provider_display()} label {self.tracking_number or self.provider_id}'

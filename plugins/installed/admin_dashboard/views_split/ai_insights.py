@@ -45,6 +45,7 @@ _EMAIL_TEMPLATE_KEYS = [
     ('order_placed', 'Order placed', 'Order #{{ order.order_number }} received'),
     ('order_paid', 'Order paid', 'Payment confirmed for order #{{ order.order_number }}'),
     ('order_fulfilled', 'Order fulfilled', 'Order #{{ order.order_number }} is on its way'),
+    ('shipment_sent', 'Parcel shipped', 'Part of order #{{ order.order_number }} is on its way'),
     ('order_cancelled', 'Order cancelled', 'Order #{{ order.order_number }} cancelled'),
     ('refund_issued', 'Refund issued', 'Refund issued for order #{{ order.order_number }}'),
     ('digital_download', 'Digital downloads', 'Your downloads — order #{{ order.order_number }}'),

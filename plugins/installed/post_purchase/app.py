@@ -19,6 +19,7 @@ class PostPurchasePlugin(Plugin):
 
     def ready(self) -> None:
         from plugins.installed.post_purchase.handlers import (  # noqa: PLC0415
+            on_order_delivered,
             on_order_fulfilled,
             on_order_placed,
         )
@@ -26,6 +27,7 @@ class PostPurchasePlugin(Plugin):
         # Owned, so the bus stops calling them while the app is off.
         self.register_hook(events.ORDER_PLACED, on_order_placed, priority=60)
         self.register_hook(events.ORDER_FULFILLED, on_order_fulfilled, priority=60)
+        self.register_hook(events.ORDER_DELIVERED, on_order_delivered, priority=60)
         self.register_urls(
             'plugins.installed.post_purchase.urls',
             prefix='post-purchase/',

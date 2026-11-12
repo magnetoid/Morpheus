@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.154.0 — 2026-11-12
+
+**Orders ship in parcels, shipping rates in the store's currency, carrier labels**
+
+- Orders: the fulfil form asks how many of each item go in this parcel, so an order can leave in several boxes, each with its own tracking number, link and carrier. A parcel that leaves items behind marks the order partially fulfilled; the last one ships it. Downloads never go in a parcel, and an order whose parcels hold everything that ships is complete
+- Each parcel emails the customer what is in it and its tracking (a new Shipment sent email, editable under Emails), except the one that sends the usual on-its-way email, which now quotes that parcel's tracking; no box is announced twice. Marking a parcel delivered re-times the order's follow-up steps from delivery; those emails are still not sent, which a later release fixes
+- Shipping: a rate can be a flat price, a price that turns free over an amount, up to ten tiers by weight or by order total, or pickup, where the customer collects the order (free or a fee). Every amount is in the store's currency; new rates used to be priced in US dollars. The rates table says what each rate charges
+- Carrier labels: with Shippo or EasyPost set up, an order's Shipping labels panel buys the cheapest label for a recorded parcel, which fills its missing tracking and emails it to the customer, or ships everything left with one label in one step. The order is checked before anything is bought, a second click waits for the first, and a label that was paid for is always kept on the order, even when the parcel could not be recorded. When the carrier's answer does not say whether it charged, the panel says so and asks you to check your carrier account before buying again
+- Carrier keys on the Shipping page are no longer shown back once saved: leave the box empty to keep a key, or tick Remove the saved key
+- Linda: orders.fulfill_lines ships some or all of an order's items, shipping.set_rate creates or changes a rate, shipping.buy_label buys a label; each asks first. shipping.add_flat_rate prices in the store's currency unless told otherwise, and orders.get lists each parcel with its id (it failed on any order that had one)
+- Supplier apps (DSers, Zendrop, CJ, AliExpress) record their shipments through the same parcel path; DSers and Zendrop skip a refunded order instead of stopping the tracking import
+
 ## v0.153.0 — 2026-11-11
 
 **Every Morpheus install hears about new versions from morpheus.direct**

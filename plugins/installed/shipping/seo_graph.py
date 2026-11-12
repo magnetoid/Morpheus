@@ -105,7 +105,9 @@ def _details_for(rate, currency: str) -> dict | None:
 
 def _rate_amount(rate):
     """The advertised price of this rate, or None when it cannot be known."""
-    if rate.computation in {'carrier_shippo', 'carrier_easypost', 'carrier_bookvault'}:
+    # A carrier quotes at checkout; a pickup is not shipping (stated as a
+    # shipping rate, a free pickup would read as free delivery).
+    if rate.computation in {'carrier_shippo', 'carrier_easypost', 'carrier_bookvault', 'pickup'}:
         return None
     if rate.computation in {'weight_tier', 'order_total_tier'}:
         # Tiered rates start at the cheapest tier; that is the "from" price a

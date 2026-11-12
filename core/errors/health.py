@@ -41,7 +41,7 @@ def fetch_failures(paths: list[str]) -> list[str]:
 
 # Every order email core sends (core.emails.handlers).
 _EMAIL_TEMPLATES = (
-    'order_placed', 'order_paid', 'order_fulfilled', 'order_cancelled',
+    'order_placed', 'order_paid', 'order_fulfilled', 'shipment_sent', 'order_cancelled',
     'refund_issued', 'digital_download', 'welcome',
 )  # fmt: skip
 
