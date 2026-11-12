@@ -94,6 +94,21 @@ class TrackingImportTests(TestCase):
         )  # status is a protected FSM field
         self.assertEqual(self.order.tracking_number, 'OLD1')
 
+    def test_a_refunded_order_is_skipped_and_the_rest_of_the_file_still_ships(self):
+        from plugins.installed.orders.models import Fulfillment
+
+        refunded = paid_order([(self.product, self.variant, 1)], status='processing')
+        refunded.mark_refunded()
+        refunded.save()
+        text = (
+            'Order number,Tracking number\n'
+            f'{refunded.order_number},LP1CN\n{self.order.order_number},LP2CN\n'
+        )
+        result = self._import(text)
+        self.assertEqual(result['skipped'], [(refunded.order_number, 'refunded')])
+        self.assertEqual(result['shipped'], [self.order.order_number])
+        self.assertFalse(Fulfillment.objects.filter(order=refunded).exists())
+
     def test_a_file_without_the_two_columns_is_an_error(self):
         from plugins.installed.dsers.services.tracking import TrackingImportError
 

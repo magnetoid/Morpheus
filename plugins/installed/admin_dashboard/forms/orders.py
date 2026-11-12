@@ -65,11 +65,9 @@ class RefundForm(forms.Form):
 
 
 class FulfillmentForm(forms.Form):
-    """Create a `Fulfillment` row covering the entire order's items.
-
-    A line-by-line partial-fulfillment editor would be the next step up;
-    today's form ships the whole order in one Fulfillment record so staff
-    can record tracking + carrier without leaving the dashboard.
+    """One parcel of an order: how many units of each open line go in it, and
+    its tracking. Saving goes through ``orders.fulfilment.create_fulfillment``,
+    the one path every parcel takes (Linda's tool and the supplier apps too).
     """
 
     status = forms.ChoiceField(
@@ -89,43 +87,51 @@ class FulfillmentForm(forms.Form):
     mark_shipped = forms.BooleanField(
         required=False,
         initial=True,
-        help_text="Also transition the order to 'shipped'.",
+        help_text='When this parcel completes the order, also mark it shipped.',
     )
 
     def __init__(self, *args, order=None, **kwargs):
         self.order = order
         super().__init__(*args, **kwargs)
+        self.lines = []
+        if order is None:
+            return
+        from plugins.installed.orders.fulfilment import open_lines
+
+        for item, remaining in open_lines(order):
+            name = f'qty_{item.pk}'
+            self.fields[name] = forms.IntegerField(
+                min_value=0, max_value=remaining, initial=remaining, required=False
+            )
+            self.lines.append({'item': item, 'remaining': remaining, 'field': name})
+
+    def bound_lines(self):
+        """The open lines with their quantity inputs, for the template."""
+        return [dict(line, bound=self[line['field']]) for line in self.lines]
+
+    def clean(self):
+        cd = super().clean()
+        if self.lines and not any(cd.get(line['field']) for line in self.lines):
+            raise forms.ValidationError('Choose at least one unit to ship.')
+        return cd
 
     def save(self):
-        from django.utils import timezone
-
-        from plugins.installed.orders.models import Fulfillment, FulfillmentItem
+        from plugins.installed.orders.fulfilment import create_fulfillment
 
         if self.order is None:
             raise ValueError('FulfillmentForm.save() requires an order.')
         cd = self.cleaned_data
-        f = Fulfillment.objects.create(
-            order=self.order,
-            status=cd['status'],
+        lines = {str(line['item'].pk): cd.get(line['field']) or 0 for line in self.lines}
+        return create_fulfillment(
+            self.order,
+            lines,
             tracking_number=cd.get('tracking_number') or '',
             tracking_url=cd.get('tracking_url') or '',
             carrier=cd.get('carrier') or '',
             notes=cd.get('notes') or '',
-            shipped_at=timezone.now() if cd['status'] != 'pending' else None,
+            status=cd['status'],
+            mark_shipped=bool(cd.get('mark_shipped')),
         )
-        # Mirror every order item into the fulfillment so reports match.
-        for item in self.order.items.all():
-            remaining = max(item.quantity - item.fulfilled_quantity, 0)
-            if remaining <= 0:
-                continue
-            FulfillmentItem.objects.create(
-                fulfillment=f,
-                order_item=item,
-                quantity=remaining,
-            )
-            item.fulfilled_quantity = item.quantity
-            item.save(update_fields=['fulfilled_quantity'])
-        return f
 
 
 class DraftOrderForm(forms.Form):

@@ -414,6 +414,7 @@ class OrdersPlugin(Plugin):
             orders_add_note_tool,
             orders_cancel_tool,
             orders_documents_tool,
+            orders_fulfill_lines_tool,
             orders_get_tool,
             orders_search_tool,
             orders_update_status_tool,
@@ -430,6 +431,7 @@ class OrdersPlugin(Plugin):
             orders_search_tool,
             orders_get_tool,
             orders_documents_tool,
+            orders_fulfill_lines_tool,
             analytics_summary_tool,
             analytics_top_products_tool,
         ]

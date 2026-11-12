@@ -1,0 +1,42 @@
+{% url 'shipping_dashboard:buy_label' order.order_number as buy_url %}
+<div class="space-y-3 text-sm">
+  {% if parcels %}
+  <ul class="space-y-2">
+    {% for row in parcels %}
+    <li class="flex flex-wrap items-center justify-between gap-2">
+      <span>
+        Parcel of {{ row.parcel.created_at|date:"j M Y" }}
+        {% if row.parcel.tracking_number %}<span class="text-[color:var(--text-muted)]">· {{ row.parcel.tracking_number }}</span>{% endif %}
+      </span>
+      {% if row.label and row.label.status == "purchasing" %}
+        <span class="text-xs text-[color:var(--text-muted)]">Label being bought…</span>
+      {% elif row.label %}
+        <a href="{{ row.label.label_url }}" target="_blank" rel="noopener" class="btn btn-ghost text-xs">Open label{% if row.label.carrier %} ({{ row.label.carrier }}){% endif %}</a>
+      {% elif providers %}
+        <form method="post" action="{{ buy_url }}" class="inline">{% csrf_token %}
+          <input type="hidden" name="fulfillment" value="{{ row.parcel.pk }}">
+          {% include "shipping/dashboard/_label_provider.html" %}
+          <button type="submit" class="btn btn-ghost text-xs" data-confirm="Buy a label for this parcel? The carrier charges your account.">Buy label</button>
+        </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% for label in loose_labels %}
+  {% if label.status == "purchasing" %}
+  <p class="text-xs text-[color:var(--text-muted)]">A {{ label.get_provider_display }} label for everything left is being bought (started {{ label.created_at|date:"j M Y, H:i" }}).</p>
+  {% elif label.status == "unconfirmed" %}
+  <p class="text-xs text-[color:var(--danger)]">A {{ label.get_provider_display }} label bought {{ label.created_at|date:"j M Y, H:i" }} was not confirmed{% if label.provider_id %} (reference {{ label.provider_id }}){% endif %}. Check your {{ label.get_provider_display }} account: you may have been charged for it.</p>
+  {% else %}
+  <p class="text-xs text-[color:var(--text-muted)]">A label bought {{ label.created_at|date:"j M Y" }} is not on any parcel{% if label.tracking_number %} (tracking {{ label.tracking_number }}){% endif %}. <a href="{{ label.label_url }}" target="_blank" rel="noopener" class="underline">Open it</a></p>
+  {% endif %}
+  {% endfor %}
+  {% if can_ship_rest %}
+  <form method="post" action="{{ buy_url }}" class="flex flex-wrap items-center gap-2">{% csrf_token %}
+    {% include "shipping/dashboard/_label_provider.html" %}
+    <button type="submit" class="btn btn-primary text-xs" data-confirm="Buy one label for everything left to ship and record the parcel? The carrier charges your account.">Ship everything left with a label</button>
+  </form>
+  <p class="text-xs text-[color:var(--text-muted)]">The cheapest rate the carrier offers is bought, and the buyer gets its tracking by email.</p>
+  {% endif %}
+</div>

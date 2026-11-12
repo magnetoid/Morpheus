@@ -419,12 +419,29 @@ class MorpheusEvents:
     #                      inventory commit, CDP rollups, digital token
     #                      mint, transactional email, webhook fanout.
     # ORDER_CANCELLED   — kwargs: order=Order. Releases stock reservation.
-    # ORDER_FULFILLED   — kwargs: order=Order, fulfillment=Fulfillment.
+    # ORDER_FULFILLED   — kwargs: order=Order. Every unit that ships is in a
+    #                      parcel (orders' FSM signal, on fulfil or ship).
+    # ORDER_DELIVERED   — kwargs: order=Order. The order reached 'delivered'
+    #                      (orders' FSM signal). post_purchase re-times its
+    #                      follow-ups from the delivery.
+    # FULFILLMENT_CREATED — kwargs: order=Order, fulfillment=Fulfillment,
+    #                      complete=bool, announced=bool. A parcel was recorded,
+    #                      after commit (orders.fulfilment.create_fulfillment).
+    #                      ``announced``: ORDER_FULFILLED fired with it, and its
+    #                      email told the buyer. core.emails tells the buyer about
+    #                      every other parcel.
+    # FULFILLMENT_TRACKING_ADDED — kwargs: order=Order, fulfillment=Fulfillment.
+    #                      A parcel recorded without tracking got it later, after
+    #                      commit (shipping: a label bought for the parcel).
+    #                      core.emails sends the buyer the parcel's tracking.
     ORDER_PLACED = 'order.placed'
     ORDER_CONFIRMED = 'order.confirmed'
     ORDER_PAID = 'order.paid'
     ORDER_CANCELLED = 'order.cancelled'
     ORDER_FULFILLED = 'order.fulfilled'
+    ORDER_DELIVERED = 'order.delivered'
+    FULFILLMENT_CREATED = 'fulfillment.created'
+    FULFILLMENT_TRACKING_ADDED = 'fulfillment.tracking_added'
 
     # ── Stock gate (filter, fail-closed) ───────────────────────────────────
     # ORDER_RESERVE_STOCK — value=int, kwargs: order=Order. Fired via

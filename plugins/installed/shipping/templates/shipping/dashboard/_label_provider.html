@@ -1,0 +1,1 @@
+{% if providers|length > 1 %}<select name="provider" aria-label="Carrier service" class="rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1 text-xs">{% for value, name in providers %}<option value="{{ value }}">{{ name }}</option>{% endfor %}</select>{% endif %}

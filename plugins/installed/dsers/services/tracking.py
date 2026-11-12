@@ -32,6 +32,7 @@ def _config() -> dict:
 
 def import_tracking(text: str) -> dict:
     """Ship every order the CSV names. Returns shipped / skipped / unknown."""
+    from plugins.installed.orders.fulfilment import FulfilmentError
     from plugins.installed.orders.models import Order
 
     rows = parse_tracking_rows(text)
@@ -53,16 +54,20 @@ def import_tracking(text: str) -> dict:
             _remember(order, supplier_no=supplier_no)
             result['skipped'].append((number, 'already shipped'))
             continue
-        if order.status == 'cancelled':
-            result['skipped'].append((number, 'cancelled'))
+        if order.status in ('cancelled', 'refunded'):
+            result['skipped'].append((number, order.status))
             continue
-        with transaction.atomic():
-            ship_with_tracking(
-                order, tracking, carrier=carrier, url=tracking_url(template, tracking)
-            )
-            _remember(
-                order, supplier_no=supplier_no, tracking=tracking, carrier=carrier, shipped=True
-            )
+        try:
+            with transaction.atomic():
+                ship_with_tracking(
+                    order, tracking, carrier=carrier, url=tracking_url(template, tracking)
+                )
+                _remember(
+                    order, supplier_no=supplier_no, tracking=tracking, carrier=carrier, shipped=True
+                )
+        except FulfilmentError as exc:
+            result['skipped'].append((number, str(exc)))
+            continue
         result['shipped'].append(number)
     return result
 

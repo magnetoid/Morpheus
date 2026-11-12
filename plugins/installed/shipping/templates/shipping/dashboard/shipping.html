@@ -122,12 +122,47 @@
                  placeholder="2-5 business days">
         </label>
         <label class="block text-xs">
-          <span class="text-[color:var(--text-muted)]">Flat amount (USD)</span>
+          <span class="text-[color:var(--text-muted)]">Price ({{ store_currency }})</span>
           <input type="number" name="flat_amount" step="0.01" min="0"
                  value="{% if edit_rate.flat_amount %}{{ edit_rate.flat_amount.amount }}{% endif %}"
                  class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
                  placeholder="5.99">
+          <span class="mt-1 block text-[color:var(--text-muted)]">A flat fee, the price below the free-over amount, or a pickup fee (blank = free pickup).</span>
         </label>
+        <label class="block text-xs">
+          <span class="text-[color:var(--text-muted)]">Free over ({{ store_currency }})</span>
+          <input type="number" name="free_threshold" step="0.01" min="0"
+                 value="{% if edit_rate.free_threshold %}{{ edit_rate.free_threshold.amount }}{% endif %}"
+                 class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
+                 placeholder="50.00">
+          <span class="mt-1 block text-[color:var(--text-muted)]">Free over threshold only: orders from this amount ship free.</span>
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block text-xs">
+            <span class="text-[color:var(--text-muted)]">Fastest delivery (days)</span>
+            <input type="number" name="estimated_days_min" min="0" max="365" value="{{ edit_rate.estimated_days_min|default_if_none:'' }}"
+                   class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono">
+          </label>
+          <label class="block text-xs">
+            <span class="text-[color:var(--text-muted)]">Slowest delivery (days)</span>
+            <input type="number" name="estimated_days_max" min="0" max="365" value="{{ edit_rate.estimated_days_max|default_if_none:'' }}"
+                   class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono">
+          </label>
+        </div>
+        <details class="md:col-span-3 text-xs" {% if edit_rate.tiers %}open{% endif %}>
+          <summary class="cursor-pointer text-[color:var(--text-muted)]">Tiers (weight tiered and order-total tiered rates)</summary>
+          <p class="mt-2 text-[color:var(--text-muted)]">Each tier applies from its starting point up to the next one; start the first at 0. Weight is in kg, an order total in {{ store_currency }}.</p>
+          <div class="mt-2 grid grid-cols-2 gap-3 md:w-1/2">
+            <span class="text-[color:var(--text-muted)]">From</span>
+            <span class="text-[color:var(--text-muted)]">Price ({{ store_currency }})</span>
+            {% for t in tier_rows %}
+            <input type="number" name="tier_threshold" step="0.01" min="0" value="{{ t.threshold|default:'' }}" aria-label="Tier {{ forloop.counter }} starts at"
+                   class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono">
+            <input type="number" name="tier_amount" step="0.01" min="0" value="{{ t.amount|default:'' }}" aria-label="Tier {{ forloop.counter }} price"
+                   class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono">
+            {% endfor %}
+          </div>
+        </details>
         <label class="block text-xs">
           <span class="text-[color:var(--text-muted)]">Priority (lower first)</span>
           <input type="number" name="priority" min="0" value="{{ edit_rate.priority|default:50 }}"
@@ -146,14 +181,14 @@
     <div class="card overflow-hidden">
       {% if rate_rows %}
       <table class="morph-table morph-table-zebra">
-        <thead><tr><th>Name</th><th>Zone</th><th>Computation</th><th class="text-right">Flat amount</th><th>Active</th><th class="text-right">Priority</th><th class="text-right">Actions</th></tr></thead>
+        <thead><tr><th>Name</th><th>Zone</th><th>Computation</th><th>Charges</th><th>Active</th><th class="text-right">Priority</th><th class="text-right">Actions</th></tr></thead>
         <tbody>
         {% for r in rate_rows %}
           <tr>
             <td class="font-medium">{{ r.name }}</td>
             <td>{{ r.zone.name }}</td>
             <td><code class="font-mono text-xs">{{ r.get_computation_display }}</code></td>
-            <td class="text-right font-mono">{{ r.flat_amount|default:"—" }}</td>
+            <td class="text-xs">{{ r.charges }}</td>
             <td>{% if r.is_active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Paused</span>{% endif %}</td>
             <td class="text-right font-mono text-xs">{{ r.priority }}</td>
             <td class="text-right whitespace-nowrap">
@@ -186,15 +221,17 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label class="block text-xs">
             <span class="text-[color:var(--text-muted)]">Shippo · API key</span>
-            <input type="text" name="shippo_api_key" value="{{ shipping_config.shippo_api_key|default:'' }}" autocomplete="off"
+            <input type="password" name="shippo_api_key" value="" autocomplete="new-password"
                    class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
-                   placeholder="ShippoToken from goshippo.com">
+                   placeholder="{% if shipping_config.shippo_api_key %}Saved; leave blank to keep it{% else %}ShippoToken from goshippo.com{% endif %}">
+            {% if shipping_config.shippo_api_key %}<span class="mt-1 flex items-center gap-2"><input type="checkbox" name="clear_shippo_api_key"> <span>Remove the saved key</span></span>{% endif %}
           </label>
           <label class="block text-xs">
             <span class="text-[color:var(--text-muted)]">EasyPost · API key</span>
-            <input type="text" name="easypost_api_key" value="{{ shipping_config.easypost_api_key|default:'' }}" autocomplete="off"
+            <input type="password" name="easypost_api_key" value="" autocomplete="new-password"
                    class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
-                   placeholder="API key from easypost.com">
+                   placeholder="{% if shipping_config.easypost_api_key %}Saved; leave blank to keep it{% else %}API key from easypost.com{% endif %}">
+            {% if shipping_config.easypost_api_key %}<span class="mt-1 flex items-center gap-2"><input type="checkbox" name="clear_easypost_api_key"> <span>Remove the saved key</span></span>{% endif %}
           </label>
           <label class="block text-xs">
             <span class="text-[color:var(--text-muted)]">Shippo · Origin address (JSON)</span>

@@ -8,17 +8,21 @@ from __future__ import annotations
 
 import json
 import logging
-from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponseRedirect
-from django.shortcuts import render
+from django.http import Http404, HttpResponseRedirect
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_POST
 
 from core.authz import require_capability
 from morpheus.app import dashboard_trail
 
 logger = logging.getLogger('morpheus.shipping')
+
+# Tier rows the rate form shows: the rate's own, then blanks up to this many.
+MIN_TIER_ROWS = 4
 
 
 def _trail(*items):
@@ -111,8 +115,14 @@ def _save_config(request) -> None:
             messages.error(request, f'{field.replace("_", " ")}: must be a JSON object.')
             return
         addresses[field] = parsed
-    instance.set_config('shippo_api_key', (request.POST.get('shippo_api_key') or '').strip())
-    instance.set_config('easypost_api_key', (request.POST.get('easypost_api_key') or '').strip())
+    # The keys are write-only: the page never shows them, so a blank field
+    # keeps the saved key and only a ticked box removes it.
+    for key in ('shippo_api_key', 'easypost_api_key'):
+        typed = (request.POST.get(key) or '').strip()
+        if typed:
+            instance.set_config(key, typed)
+        elif request.POST.get(f'clear_{key}'):
+            instance.set_config(key, '')
     for field, val in addresses.items():
         instance.set_config(field, val)
     messages.success(request, 'Carrier settings saved.')
@@ -126,6 +136,11 @@ def zones(request):
     the existing `zones` URL/name; the `rates` URL redirects here.
     """
     from plugins.installed.shipping.models import ShippingRate, ShippingZone  # noqa: PLC0415
+    from plugins.installed.shipping.rates import (  # noqa: PLC0415
+        MAX_TIERS,
+        describe,
+        store_currency,
+    )
 
     if request.method == 'POST':
         kind = (request.POST.get('kind') or '').strip()
@@ -167,6 +182,11 @@ def zones(request):
     if zone_filter:
         rate_qs = rate_qs.filter(zone_id=zone_filter)
     zone_rows = list(ShippingZone.objects.all().order_by('name'))
+    rate_rows = list(rate_qs.order_by('zone', 'priority', 'name'))
+    for row in rate_rows:
+        row.charges = describe(row)
+    tiers = list(edit_rate.tiers or []) if edit_rate else []
+    tier_rows = tiers + [{}] * max(MIN_TIER_ROWS - len(tiers), 1)
     cfg = _load_config()
     return render(
         request,
@@ -174,8 +194,10 @@ def zones(request):
         {
             'zones': zone_rows,
             'zone_rows': zone_rows,
-            'rate_rows': list(rate_qs.order_by('zone', 'priority', 'name')),
+            'rate_rows': rate_rows,
             'computation_choices': ShippingRate.COMPUTATION_CHOICES,
+            'tier_rows': tier_rows[:MAX_TIERS],
+            'store_currency': store_currency(),
             'zone_filter': zone_filter,
             'edit_zone': edit_zone,
             'edit_rate': edit_rate,
@@ -196,60 +218,64 @@ def zones(request):
     )
 
 
+def _rate_fields(request) -> dict:
+    """The posted rate as model fields; raises ``RateError`` for the merchant."""
+    from plugins.installed.shipping.models import ShippingZone  # noqa: PLC0415
+    from plugins.installed.shipping.rates import RateError, priority, rate_values  # noqa: PLC0415
+
+    post = request.POST
+    name = (post.get('name') or '').strip()[:120]
+    zone = ShippingZone.objects.filter(pk=(post.get('zone') or '').strip() or None).first()
+    if not name or zone is None:
+        raise RateError('Name and zone are required.')
+    values = rate_values(
+        computation=(post.get('computation') or 'flat').strip(),
+        flat_amount=post.get('flat_amount'),
+        free_threshold=post.get('free_threshold'),
+        tiers=list(zip(post.getlist('tier_threshold'), post.getlist('tier_amount'), strict=False)),
+        estimated_days_min=post.get('estimated_days_min'),
+        estimated_days_max=post.get('estimated_days_max'),
+    )
+    values.update(
+        name=name,
+        zone=zone,
+        description=(post.get('description') or '').strip()[:240],
+        is_active=bool(post.get('is_active')),
+        priority=priority(post.get('priority')),
+    )
+    return values
+
+
 def _create_rate(request) -> None:
     from plugins.installed.shipping.models import ShippingRate  # noqa: PLC0415
+    from plugins.installed.shipping.rates import RateError  # noqa: PLC0415
 
-    name = (request.POST.get('name') or '').strip()
-    zone_id = (request.POST.get('zone') or '').strip()
-    if not name or not zone_id:
-        messages.error(request, 'Name and zone are required.')
-        return
     try:
-        flat_raw = (request.POST.get('flat_amount') or '').strip()
-        ShippingRate.objects.create(
-            zone_id=zone_id,
-            name=name,
-            description=(request.POST.get('description') or '').strip(),
-            computation=(request.POST.get('computation') or 'flat').strip(),
-            flat_amount=Decimal(flat_raw) if flat_raw else None,
-            is_active=bool(request.POST.get('is_active')),
-            priority=int((request.POST.get('priority') or '50').strip() or 50),
-        )
-        messages.success(request, f'Rate "{name}" created.')
-    except (InvalidOperation, ValueError):
-        messages.error(request, 'Flat amount must be a decimal; priority must be an integer.')
-    except Exception as exc:  # noqa: BLE001
-        messages.error(request, f'Could not create rate: {exc}')
+        rate = ShippingRate.objects.create(**_rate_fields(request))
+    except RateError as exc:
+        messages.error(request, str(exc))
+        return
+    messages.success(request, f'Rate "{rate.name}" created.')
 
 
 def _edit_rate(request, rate_id: str) -> None:
+    """Save the whole form: a field left blank is cleared, not kept."""
     from plugins.installed.shipping.models import ShippingRate  # noqa: PLC0415
+    from plugins.installed.shipping.rates import RateError  # noqa: PLC0415
 
-    try:
-        obj = ShippingRate.objects.get(pk=rate_id)
-        obj.name = (request.POST.get('name') or obj.name).strip()
-        zone_id = (request.POST.get('zone') or '').strip()
-        if zone_id:
-            obj.zone_id = zone_id
-        obj.description = (request.POST.get('description') or '').strip()
-        comp = (request.POST.get('computation') or '').strip()
-        if comp:
-            obj.computation = comp
-        flat_raw = (request.POST.get('flat_amount') or '').strip()
-        if flat_raw:
-            obj.flat_amount = Decimal(flat_raw)
-        obj.is_active = bool(request.POST.get('is_active'))
-        pr = (request.POST.get('priority') or '').strip()
-        if pr:
-            obj.priority = int(pr)
-        obj.save()
-        messages.success(request, f'Rate "{obj.name}" updated.')
-    except ShippingRate.DoesNotExist:
+    obj = ShippingRate.objects.filter(pk=rate_id).first()
+    if obj is None:
         messages.error(request, 'Rate not found.')
-    except (InvalidOperation, ValueError):
-        messages.error(request, 'Flat amount must be a decimal; priority must be an integer.')
-    except Exception as exc:  # noqa: BLE001
-        messages.error(request, f'Could not save rate: {exc}')
+        return
+    try:
+        fields = _rate_fields(request)
+    except RateError as exc:
+        messages.error(request, str(exc))
+        return
+    for field, value in fields.items():
+        setattr(obj, field, value)
+    obj.save()
+    messages.success(request, f'Rate "{obj.name}" updated.')
 
 
 def _delete_rate(request, rate_id: str) -> None:
@@ -272,3 +298,36 @@ def rates(request):
     zone = (request.GET.get('zone') or '').strip()
     base = '/dashboard/shipping/zones/'
     return HttpResponseRedirect(f'{base}?zone={zone}#rates' if zone else f'{base}#rates')
+
+
+@staff_member_required
+@require_capability('shipping.write')
+@require_POST
+def buy_label(request, order_number: str):
+    """Buy a carrier label for one of the order's parcels, or for everything
+    still open on it (``shipping/labels.py``), from the order page's panel."""
+    from plugins.installed.orders.models import Order  # noqa: PLC0415
+    from plugins.installed.shipping.labels import (  # noqa: PLC0415
+        LabelError,
+        label_for_parcel,
+        parcel_on,
+        ship_with_label,
+    )
+
+    order = get_object_or_404(Order, order_number=order_number)
+    provider = (request.POST.get('provider') or '').strip() or None
+    parcel_id = (request.POST.get('fulfillment') or '').strip()
+    try:
+        if parcel_id:
+            parcel = parcel_on(order, parcel_id)
+            if parcel is None:
+                raise Http404('No such parcel on this order.')
+            label = label_for_parcel(parcel, provider=provider)
+        else:
+            label = ship_with_label(order, provider=provider)
+    except LabelError as exc:
+        messages.error(request, str(exc))
+    else:
+        tracking = f', tracking {label.tracking_number}' if label.tracking_number else ''
+        messages.success(request, f'Label bought from {label.get_provider_display()}{tracking}.')
+    return redirect(reverse('admin_dashboard:order_detail', args=[order.order_number]))

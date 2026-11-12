@@ -11,4 +11,5 @@ app_name = 'shipping_dashboard'
 urlpatterns = [
     path('zones/', dashboard.zones, name='zones'),
     path('rates/', dashboard.rates, name='rates'),
+    path('labels/<str:order_number>/buy/', dashboard.buy_label, name='buy_label'),
 ]

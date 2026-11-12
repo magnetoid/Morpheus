@@ -315,10 +315,30 @@ its name; none = the default one. A product with several variants needs the vari
 
 | Tool / Mutation | Purpose | Approval? |
 |---|---|---|
-| `orders.mark_fulfilled` / `markOrderFulfilled` | FSM fulfill() | no |
-| `orders.mark_shipped` / `markOrderShipped` | FSM ship() + tracking number | no |
+| `orders.fulfill_lines` | Ship a parcel: lines by SKU and quantity (none = every open unit), tracking number, URL, carrier; partial parcels leave the order partially fulfilled, the last one ships it; downloads never go in a parcel | **yes** |
+| `orders.mark_fulfilled` / `markOrderFulfilled` | FSM fulfill(), no parcel recorded | no |
+| `orders.mark_shipped` / `markOrderShipped` | FSM ship() + tracking number, no parcel recorded | no |
 | `orders.cancel` / `cancelOrder` | FSM cancel() | **yes** |
 | `orders.mark_refunded` / `markOrderRefunded` | Record a refund made outside the store: the rest of the total as a processed refund, `PAYMENT_REFUNDED` fired, tenders re-credited | **yes** |
+
+Every parcel goes through `orders/fulfilment.py:create_fulfillment` (the dashboard's
+fulfil form, `orders.fulfill_lines`, the supplier apps), which fires
+`fulfillment.created` after commit; `orders.get` lists each parcel with its id (v0.154.0).
+
+### Shipping
+
+| Tool | Purpose | Approval? |
+|---|---|---|
+| `shipping.list_zones` | Zones, their countries and rates, with what each rate charges | no |
+| `shipping.add_flat_rate` | A flat rate on a zone, in the store's currency unless `currency` names another | **yes** |
+| `shipping.set_rate` | Create or update a rate by zone and rate name: flat, free over an amount, weight or order-total tiers, pickup (carrier-quoted rates are set on the Shipping page) | **yes** |
+| `shipping.buy_label` | Buy a Shippo or EasyPost label for a parcel (`parcel` = its id from `orders.get`), or ship every open unit with one label | **yes** |
+
+A label always buys the carrier's cheapest rate for a fresh shipment. The order is
+checked before anything is bought, a paid label is kept on the order even when recording
+the parcel fails, and an answer that does not say whether the carrier charged comes back
+as an error asking the merchant to check their carrier account (the label is kept as
+*unconfirmed*).
 
 All write operations enforce `info.context.request.user.is_staff` —
 the Bearer-resolved `mcp-service` user satisfies this; sessionless

@@ -1,6 +1,6 @@
 # Morpheus as an e-commerce platform — gap analysis and completion plan (Nov 2026)
 
-**Status:** approved by the owner on 2026-11-09. A1 (tax) shipped in v0.149.0 (PR #140) and is live on all five stores; A2 (promotions) is v0.150.0, in review. Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
+**Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0 and A3 (inventory) v0.152.0 are live on all five stores; A4 (fulfilment and shipping rates) is v0.154.0, in review. Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
 
 ## Context
 
@@ -113,9 +113,9 @@ Order follows the owner's lens (general engine first) and dependencies. One rele
 | # | Release | Goal | Size | Depends on | Status |
 |---|---|---|---|---|---|
 | A1 | Tax correctness | category rates reachable, `is_taxable` honoured, discount-aware base, shipping tax, inclusive prices, compound | M 3 | — | live, v0.149.0 |
-| A2 | Promotions & coupons | eligibility bugs, coupon scope, BxGy, gift line, `combinable`, dashboard CRUD, Linda CRUD | L 5 | — | v0.150.0 in review: `promotions.update` covers switching off (no separate deactivate tool); the cart summary does not list the gift yet (the order does); a coupon's minimum still compares the whole subtotal |
-| A3 | Inventory operations | stock card, warehouses page, transfers, backorder policy, default variant, CSV stock | M 3 | — | planned |
-| A4 | Fulfilment & shipping rates | partial fulfilment, per-shipment tracking/email, labels, rate editor, pickup | L 5 | — | planned |
+| A2 | Promotions & coupons | eligibility bugs, coupon scope, BxGy, gift line, `combinable`, dashboard CRUD, Linda CRUD | L 5 | — | v0.150.0 live: `promotions.update` covers switching off (no separate deactivate tool); the cart summary does not list the gift yet (the order does); a coupon's minimum still compares the whole subtotal |
+| A3 | Inventory operations | stock card, warehouses page, transfers, backorder policy, default variant, CSV stock | M 3 | — | v0.152.0 live |
+| A4 | Fulfilment & shipping rates | partial fulfilment, per-shipment tracking/email, labels, rate editor, pickup | L 5 | — | v0.154.0 in review: labels are a shipping-owned `ShippingLabel` (no Fulfillment columns, no stored carrier rate id: each label buys the cheapest rate of a fresh shipment); GraphQL `markOrderFulfilled` and agent_core's `orders.mark_fulfilled`/`mark_shipped` still record no parcel; no theme shows a parcel's tracking on the account order page yet |
 | A5 | Payments | Stripe manual capture, saved cards at checkout, `PAYMENT_FAILED`, `ORDER_CONFIRMED` subscriber, offline refunds | M 3 | A4 | planned |
 | A6 | Pricing seam | one resolution order, `quantity`/`request` kwargs, b2b + markets subscribers, ECB FX, minor-unit rounding | M 3 | — | planned |
 | A7 | Checkout fields | `CHECKOUT_FIELDS` hook + notes / gift / T&C / opt-in / save-card; dead cart events removed | M 2 | — | planned |

@@ -114,6 +114,14 @@ class ShipTests(TestCase):
         self.assertEqual(ship_order(self.order, 'ZD2'), 'already shipped')
         self.assertEqual(refetch(self.order).tracking_number, 'ZD1')
 
+    def test_a_refunded_order_is_skipped(self):
+        from plugins.installed.zendrop.services.orders import ship_order
+
+        self.order.mark_refunded()
+        self.order.save()
+        self.assertEqual(ship_order(self.order, 'ZD9'), 'refunded')
+        self.assertFalse(self.order.fulfillments.exists())
+
     def test_tracking_csv_matches_headers_by_meaning(self):
         from plugins.installed.zendrop.services.orders import import_tracking
 

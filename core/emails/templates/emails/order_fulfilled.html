@@ -13,10 +13,14 @@
 
   <h2>What's in the box</h2>
   <table class="items" role="presentation" cellspacing="0" cellpadding="0" border="0">
-    {% for it in order.items.all %}
+    {% if box %}{% for fi in box %}
+    <tr>
+      <td>{{ fi.quantity }}× {{ fi.order_item.product_name }}{% if fi.order_item.variant_name %}<br><span class="muted">{{ fi.order_item.variant_name }}</span>{% endif %}</td>
+    </tr>
+    {% endfor %}{% else %}{% for it in order.items.all %}
     <tr>
       <td>{{ it.quantity }}× {{ it.product_name }}{% if it.variant_name %}<br><span class="muted">{{ it.variant_name }}</span>{% endif %}</td>
     </tr>
-    {% endfor %}
+    {% endfor %}{% endif %}
   </table>
 {% endblock %}

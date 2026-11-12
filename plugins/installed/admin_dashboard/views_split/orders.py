@@ -379,27 +379,22 @@ def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
 @staff_member_required
 @require_capability('orders.write')
 def order_fulfill(request: HttpRequest, order_number: str) -> HttpResponse:
-    """Create a Fulfillment record for an order; optionally also flip the
-    order's status to 'shipped' via the FSM."""
+    """Record one parcel of an order: the units in it and its tracking
+    (orders.fulfilment). The parcel that completes the order ships it."""
+    from plugins.installed.orders.fulfilment import FulfilmentError
     from plugins.installed.orders.models import Order
 
     order = get_object_or_404(Order, order_number=order_number)
     if request.method == 'POST':
         form = FulfillmentForm(request.POST, order=order)
         if form.is_valid():
-            f = form.save()
-            if form.cleaned_data.get('mark_shipped') and order.status not in (
-                'shipped',
-                'delivered',
-                'cancelled',
-            ):
-                try:
-                    order.ship(tracking_number=f.tracking_number)
-                    order.save()
-                except Exception as e:  # noqa: BLE001 — FSM rejects illegal moves
-                    logger.warning('order_fulfill: ship transition failed: %s', e)
-            messages.success(request, f'Fulfillment created for order #{order.order_number}.')
-            return redirect('admin_dashboard:order_detail', order_number=order.order_number)
+            try:
+                form.save()
+            except FulfilmentError as exc:
+                form.add_error(None, str(exc))
+            else:
+                messages.success(request, f'Parcel recorded for order #{order.order_number}.')
+                return redirect('admin_dashboard:order_detail', order_number=order.order_number)
     else:
         form = FulfillmentForm(order=order)
     return render(

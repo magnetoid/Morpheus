@@ -1559,6 +1559,36 @@ switched off, never deleted (its movements would go with it). Guarded by
 `test_warehouses_page.py`, `test_stock_tools.py`, `catalog/tests/test_default_variant.py`,
 `themes/test_default_variant_picker.py` and `importers/tests/test_csv_stock.py`.
 
+**Convention — an order ships in parcels, through one path (v0.154.0).** Every parcel goes
+through `orders/fulfilment.py:create_fulfillment(order, {item id: units} | None, tracking…)`: the
+fulfil form (one quantity per open line), Linda's `orders.fulfill_lines` and the supplier apps
+(`plugins/dropshipping/orders.py`). Only lines that ship count (`orders.services.line_ships`), so a
+download never goes in a parcel and an order is complete when every unit that ships is in one. A
+parcel that leaves units open moves the order to `partially_fulfilled` (`fulfill_partially`); the one
+that completes it ships it. It locks the order and works on the caller's own instance (the FSM field
+is protected, so `refresh_from_db()` raises), refusing one that changed meanwhile. After commit it
+fires `FULFILLMENT_CREATED` with `announced` (whether `ORDER_FULFILLED`, the "on its way" email, went
+out with it, which happens only for an order's one parcel): core.emails mails every other parcel its own
+lines and tracking, so a box is announced once, and the "on its way" email lists its parcel's lines
+(it stays quiet for an order sent in several). The tracking goes on the order before the transition,
+so that email quotes this parcel. A label bought for an order stays *purchasing* until its parcel is
+recorded, so a second click waits. `ORDER_DELIVERED` fires on
+`delivered` (post_purchase re-times its follow-ups from it). Labels are shipping's
+(`shipping/labels.py`, `ShippingLabel`): a fresh carrier shipment, the cheapest rate, from the order
+page's panel or `shipping.buy_label`. A purchase spends money, so it runs in three steps: under the
+lock, check the order (as loaded, able to ship) and commit a *purchasing* row, which stops a second
+click; ask the carrier outside any transaction; store its answer and commit, and only then record the
+parcel or its tracking in their own transactions, so nothing that fails afterwards loses a paid label.
+A refusal deletes the row; an answer that does not say whether the carrier charged (no answer, a 5xx, a
+queued label), or a bought one that cannot be stored, keeps it *unconfirmed* and off the parcel, and the panel tells the merchant to check
+their carrier account. Never call either function inside a transaction. A label for a recorded parcel
+fills only its missing tracking and fires `FULFILLMENT_TRACKING_ADDED` (the tracking email). A rate's amounts are in the store currency (`shipping/rates.py`, one
+reader for the Shipping page and `shipping.set_rate`): a new rate used to be USD on a EUR store.
+Carrier keys are write-only, like `format: password` fields. Guarded by
+`orders/tests/test_partial_fulfilment.py`, `admin_dashboard/tests/test_fulfil_form.py`,
+`post_purchase/tests/test_delivered_retime.py`, `shipping/tests/test_rate_editor.py`,
+`test_pickup.py` and `test_labels.py`.
+
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a

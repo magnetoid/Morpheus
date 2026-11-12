@@ -40,6 +40,9 @@ def _quote_one(rate, *, subtotal: Money, total_weight_kg: Decimal = Decimal('0')
         if rate.free_threshold and subtotal.amount >= rate.free_threshold.amount:
             return Money(Decimal('0'), str(subtotal.currency))
         return rate.flat_amount
+    if rate.computation == 'pickup':
+        # Collected by the customer: its fee, or nothing.
+        return rate.flat_amount or Money(Decimal('0'), str(subtotal.currency))
     if rate.computation == 'order_total_tier':
         return _tier_amount(rate.tiers, Decimal(subtotal.amount), str(subtotal.currency))
     if rate.computation == 'weight_tier':
@@ -342,35 +345,40 @@ def _bookvault_quote(rate, *, subtotal: Money, total_weight_kg: Decimal):
     return Money(Decimal(str(cheapest['amount'])), str(subtotal.currency))
 
 
+def product_weight_kg(product, variant=None) -> Decimal:
+    """One unit's weight in kg (0 when neither names one). A variant's own
+    weight wins over its product's and is in the product's unit."""
+    w = getattr(variant, 'weight', None)
+    if w is None:
+        w = getattr(product, 'weight', None)
+    if w is None:
+        return Decimal('0')
+    unit = (getattr(product, 'weight_unit', 'kg') or 'kg').lower()
+    try:
+        w_d = Decimal(str(w))
+    except Exception:  # noqa: BLE001
+        return Decimal('0')
+    if unit in ('kg', 'kgs'):
+        return w_d
+    if unit in ('g', 'gram', 'grams'):
+        return w_d / Decimal('1000')
+    if unit in ('lb', 'lbs', 'pound', 'pounds'):
+        return w_d * Decimal('0.453592')
+    return w_d
+
+
 def list_available_rates(*, cart, country: str, region: str = ''):
     """Return all shippable rates for the cart + address."""
-    items = list(cart.items.select_related('product').all())
+    items = list(cart.items.select_related('product', 'variant').all())
     if not items:
         return []
     subtotal_amount = sum(Decimal(i.unit_price.amount) * i.quantity for i in items)
     currency = str(items[0].unit_price.currency)
     subtotal = Money(subtotal_amount, currency)
 
-    def _weight_kg(product) -> Decimal:
-        w = getattr(product, 'weight', None)
-        if w is None:
-            return Decimal('0')
-        unit = (getattr(product, 'weight_unit', 'kg') or 'kg').lower()
-        try:
-            w_d = Decimal(str(w))
-        except Exception:  # noqa: BLE001
-            return Decimal('0')
-        if unit in ('kg', 'kgs'):
-            return w_d
-        if unit in ('g', 'gram', 'grams'):
-            return w_d / Decimal('1000')
-        if unit in ('lb', 'lbs', 'pound', 'pounds'):
-            return w_d * Decimal('0.453592')
-        return w_d
-
     total_weight_kg = Decimal('0')
     for i in items:
-        total_weight_kg += _weight_kg(i.product) * i.quantity
+        total_weight_kg += product_weight_kg(i.product, i.variant) * i.quantity
 
     out = []
     seen_zones = set()

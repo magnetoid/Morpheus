@@ -1,0 +1,12 @@
+Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
+
+{% if tracking_added %}Here is the tracking for a parcel from your order #{{ order.order_number }}.{% elif complete %}The last parcel of your order #{{ order.order_number }} is on the way.{% else %}Part of your order #{{ order.order_number }} is on the way. The rest follows in another parcel.{% endif %}
+
+{% if fulfillment.tracking_number %}Tracking: {{ fulfillment.tracking_number }}{% if fulfillment.carrier %} ({{ fulfillment.carrier }}){% endif %}
+{% if fulfillment.tracking_url %}{{ fulfillment.tracking_url }}
+{% endif %}{% endif %}
+In this parcel:
+{% for fi in parcel_items %}- {{ fi.quantity }}× {{ fi.order_item.product_name }}{% if fi.order_item.variant_name %} ({{ fi.order_item.variant_name }}){% endif %}
+{% endfor %}
+
+— The team

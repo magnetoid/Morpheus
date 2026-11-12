@@ -29,6 +29,7 @@ logger = logging.getLogger('morpheus.orders')
 # Target FSM state → the platform event fired once the order reaches it.
 _TARGET_EVENTS = {
     'fulfilled': MorpheusEvents.ORDER_FULFILLED,
+    'delivered': MorpheusEvents.ORDER_DELIVERED,
     'cancelled': MorpheusEvents.ORDER_CANCELLED,
 }
 
