@@ -9,12 +9,45 @@ from morpheus.core import events
 _BROWSING = (events.PRODUCT_VIEWED, events.SEARCH_PERFORMED, events.ADD_TO_CART)
 #: The name an event is stored under, where the funnels and rollups use another.
 _NAMES = {events.ADD_TO_CART: 'cart.add'}
+#: An enquiry or a booking (core/hooks.py): recorded with its value in the payload,
+#: never as revenue, since the store's sales are its orders.
+_CONVERSIONS = (events.ENQUIRY_CREATED, events.BOOKING_CREATED, events.BOOKING_CONFIRMED)
 
 
-def _payload(kwargs: dict) -> dict:
+def _filters(raw) -> list[dict]:
+    """A search's filters as SEARCH_PERFORMED names them, kept as short text."""
+    out = []
+    for item in list(raw or [])[:10]:
+        if isinstance(item, dict) and item.get('key'):
+            out.append(
+                {k: str(item.get(k) or '')[:120] for k in ('key', 'label', 'value', 'value_label')}
+            )
+    return out
+
+
+def _lead_days(kwargs: dict) -> int | None:
+    """Days from the row being made (store clock) to the date the guest asked for."""
+    from django.utils import timezone  # noqa: PLC0415
+
+    from core.utils.site import store_timezone, store_today  # noqa: PLC0415
+
+    asked = kwargs.get('service_date')
+    if asked is None:
+        return None
+    row = kwargs.get('booking') or kwargs.get('enquiry')
+    created = getattr(row, 'created_at', None)
+    made = timezone.localtime(created, store_timezone()).date() if created else store_today()
+    try:
+        return (asked - made).days
+    except TypeError:
+        return None
+
+
+def _payload(kwargs: dict, *, conversion: bool = False) -> dict:
     """What an event keeps beyond its columns: the order it is about, so a
-    report can read the order's net amount, and a search's result count, so a
-    search that found nothing can be told from one that did."""
+    report can read the order's net amount, a search's result count and filters,
+    so a search that found nothing can be told from one that did, and an enquiry's
+    or a booking's kind, reference, value and lead time."""
     payload = {'src': 'hook'}
     order_pk = getattr(kwargs.get('order'), 'pk', None)
     if order_pk:
@@ -24,7 +57,29 @@ def _payload(kwargs: dict) -> dict:
             payload['results'] = int(kwargs['result_count'])
     except (TypeError, ValueError):
         pass
+    filters = _filters(kwargs.get('filters'))
+    if filters:
+        payload['filters'] = filters
+    if conversion:
+        payload['kind'] = str(kwargs.get('kind') or '')[:20]
+        payload['reference'] = str(kwargs.get('reference') or '')[:64]
+        value = kwargs.get('value')
+        if hasattr(value, 'amount'):
+            payload['value'] = str(value.amount)
+            payload['currency'] = str(value.currency)
+        lead = _lead_days(kwargs)
+        if lead is not None:
+            payload['lead_days'] = lead
     return payload
+
+
+def _keeps_metadata(row) -> bool:
+    """Whether the row has a `metadata` field to stamp the visit on."""
+    try:
+        row._meta.get_field('metadata')
+    except Exception:  # noqa: BLE001 — FieldDoesNotExist, or not a model at all
+        return False
+    return True
 
 
 class AnalyticsPlugin(Plugin):
@@ -64,8 +119,11 @@ class AnalyticsPlugin(Plugin):
             events.SEARCH_PERFORMED,
             events.CUSTOMER_REGISTERED,
             events.CART_ABANDONED,
+            *_CONVERSIONS,
         ]:
             self.register_hook(event, self._on_event(event), priority=99)
+        # The Funnel page's `shop` preset (an app adds its own, core/hooks.py).
+        self.register_hook(events.ANALYTICS_FUNNELS, self._funnel_presets, priority=10)
 
         # Agent run lifecycle → analytics events.
         try:
@@ -123,6 +181,11 @@ class AnalyticsPlugin(Plugin):
 
     # ── Hook adapters ────────────────────────────────────────────────────────
 
+    def _funnel_presets(self, value, **kwargs):
+        from plugins.installed.analytics.services import SHOP_FUNNEL  # noqa: PLC0415
+
+        return [SHOP_FUNNEL, *(value or [])]
+
     def _landing_traffic(self, value, paths=None, since=None, until=None, **kwargs):
         if not paths or since is None or until is None:
             return value
@@ -173,6 +236,11 @@ class AnalyticsPlugin(Plugin):
                     request = services.shopper_request()
                 if request is None and order is not None:
                     session = services.order_session(order)
+                # A booking confirmed later by its host has no shopper's request:
+                # it belongs to the visit stamped on it when it was made.
+                row = kwargs.get('booking') or kwargs.get('enquiry')
+                if request is None and session is None and row is not None:
+                    session = services.order_session(row)
                 # Browsing by a crawler is not a visitor's product view, search
                 # or cart. Orders are kept whoever the client is.
                 if event_name in _BROWSING and request:
@@ -190,10 +258,13 @@ class AnalyticsPlugin(Plugin):
                     product_slug=product_slug,
                     search_query=str(kwargs.get('query') or '')[:200],
                     url=(getattr(request, 'path', '') or '')[:500],
-                    payload=_payload(kwargs),
+                    payload=_payload(kwargs, conversion=event_name in _CONVERSIONS),
                 )
                 if event_name == events.ORDER_PLACED and evt is not None and order is not None:
                     services.link_order(order, evt)
+                booked = event_name == events.BOOKING_CREATED and evt is not None
+                if booked and row is not None and _keeps_metadata(row):
+                    services.link_order(row, evt)
             except Exception:  # noqa: BLE001, S110
                 pass
 

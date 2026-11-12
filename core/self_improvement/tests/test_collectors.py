@@ -85,6 +85,14 @@ class ZeroSearchRateCapTests(TestCase):
         zero_search.on_search_performed(query='dune', result_count=5)
         self.assertEqual(SiSignal.objects.filter(source='zero_search').count(), 0)
 
+    def test_a_search_by_filters_alone_never_emits(self) -> None:
+        # v0.162.0: a travel search by region or date alone is a search with no
+        # words; nothing a synonym could fix.
+        region = {'key': 'region', 'label': 'Region', 'value': 'kotor', 'value_label': 'Kotor'}
+        zero_search.on_search_performed(query='', result_count=0, filters=[region])
+        zero_search.on_search_performed(query='   ', result_count=0, filters=[region])
+        self.assertEqual(SiSignal.objects.filter(source='zero_search').count(), 0)
+
 
 class SeoGapCollectorTests(TestCase):
     """seo_gap regressions (2026-09).

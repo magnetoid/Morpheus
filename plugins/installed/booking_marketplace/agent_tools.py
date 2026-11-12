@@ -169,3 +169,34 @@ def listings_update_tool(*, slug: str, **fields) -> ToolResult:
 
     save_listing(svc)  # the listing's catalog Product changes with it
     return ToolResult(output={'updated': changed, 'listing': _row(svc)})
+
+
+@tool(
+    name='bookings.conversions',
+    description=(
+        'Enquiries, bookings and booking value guests made over the last 7, 30 or 90 days '
+        '(today included, store clock), each with the same numbers for the period before '
+        'and the change in percent; how far ahead guests asked (lead time); the top '
+        'experiences and hotels; and the same numbers by region. Cancelled bookings are '
+        "not counted; bookings are not orders, so they are not in the store's sales."
+    ),
+    scopes=['analytics.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'days': {'type': 'integer', 'enum': [7, 30, 90], 'default': 30},
+            'limit': {'type': 'integer', 'minimum': 1, 'maximum': 25, 'default': 10},
+        },
+    },
+)
+def bookings_conversions_tool(*, days: int = 30, limit: int = 10) -> ToolResult:
+    from plugins.installed.booking_marketplace.conversion_report import as_data, report
+
+    data = as_data(report(days=int(days or 30), limit=max(1, min(int(limit or 10), 25))))
+    now = data['this_period']
+    return ToolResult(
+        output=data,
+        display=(
+            f'{now["enquiries"]} enquiries, {now["bookings"]} bookings in {data["days"]} days'
+        ),
+    )

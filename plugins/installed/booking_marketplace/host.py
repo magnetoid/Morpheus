@@ -30,6 +30,7 @@ from plugins.installed.booking_marketplace.models import (
     ServiceImage,
 )
 from plugins.installed.booking_marketplace.products import save_listing
+from plugins.installed.booking_marketplace.services import set_booking_status
 
 _ACTIONS = {'confirm': 'confirmed', 'cancel': 'cancelled', 'complete': 'completed'}
 
@@ -280,8 +281,8 @@ def host_bookings(request):
         ).first()
         new_status = _ACTIONS.get(request.POST.get('action'))
         if b and new_status:
-            b.status = new_status
-            b.save(update_fields=['status'])
+            # Through the service: a confirmation is announced once (BOOKING_CONFIRMED).
+            set_booking_status(b, new_status)
             messages.success(request, f'Booking marked {new_status}.')
         else:
             messages.error(request, 'Could not update that booking.')

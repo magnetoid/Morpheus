@@ -94,6 +94,10 @@ class AnalyticsEvent(models.Model):
         ('click', 'Button Click'),
         ('form_submit', 'Form Submission'),
         ('scroll', 'Scroll Depth'),
+        # A guest's enquiry, and a booking made or confirmed (booking_marketplace's
+        # events). Neither is a purchase: the store's sales stay its orders.
+        ('lead', 'Lead'),
+        ('booking', 'Booking'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

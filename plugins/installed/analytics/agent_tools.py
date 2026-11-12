@@ -42,36 +42,59 @@ def analytics_summary_tool(*, days: int = 7) -> ToolResult:
 
 @tool(
     name='analytics.funnel',
-    description='Conversion funnel — distinct sessions hitting each step in order.',
+    description=(
+        'Conversion funnel: distinct visits reaching each step in order. Give `preset` '
+        "(a funnel the store's apps offer, e.g. 'shop' or 'bookings'; the answer lists them) "
+        'or your own `steps` (event names). Without either, the funnel the Funnel page '
+        'opens on.'
+    ),
     scopes=['analytics.read'],
     schema={
         'type': 'object',
         'properties': {
+            'preset': {
+                'type': 'string',
+                'description': "A preset's key, e.g. 'shop' or 'bookings'",
+            },
             'steps': {
                 'type': 'array',
                 'items': {'type': 'string'},
-                'description': 'Ordered list of event names (default: pageview → product.viewed → cart.add → order.placed)',
+                'description': 'Ordered list of event names; overrides the preset',
             },
             'days': {'type': 'integer', 'minimum': 1, 'maximum': 365, 'default': 30},
         },
     },
 )
-def analytics_funnel_tool(*, steps: list[str] | None = None, days: int = 30) -> ToolResult:
-    from plugins.installed.analytics.services import funnel_for
+def analytics_funnel_tool(
+    *, preset: str = '', steps: list[str] | None = None, days: int = 30
+) -> ToolResult:
+    from plugins.installed.analytics.services import default_funnel, funnel_for, funnel_presets
 
-    steps = steps or ['pageview', 'product.viewed', 'cart.add', 'order.placed']
+    presets = funnel_presets()
+    chosen = None
+    if not steps:
+        chosen = next((p for p in presets if p['key'] == preset), None) or default_funnel(presets)
+        steps = chosen['steps']
     rows = funnel_for(steps=steps, days=int(days or 30))
     base = rows[0]['sessions'] if rows else 0
     for r in rows:
         r['conversion_pct'] = round((100.0 * r['sessions'] / base), 1) if base else 0.0
-    return ToolResult(output={'days': days, 'funnel': rows})
+    return ToolResult(
+        output={
+            'days': days,
+            'preset': chosen['key'] if chosen else None,
+            'presets': [{'key': p['key'], 'label': p['label']} for p in presets],
+            'funnel': rows,
+        }
+    )
 
 
 @tool(
     name='analytics.search_trends',
     description=(
         'Search terms shoppers typed in the store over today and the N-1 days before it: '
-        "the most searched ('top'), those that found no products ('no_results'), or those "
+        "the most searched ('top'), those that found no products ('no_results', with the "
+        'filters such searches were made with: region, date, category, guests), or those '
         "searched in visits that then placed an order ('led_to_sale')."
     ),
     scopes=['analytics.read'],
@@ -91,16 +114,22 @@ def analytics_funnel_tool(*, steps: list[str] | None = None, days: int = 30) -> 
 def analytics_search_trends_tool(
     *, days: int = 30, limit: int = 20, kind: str = 'top'
 ) -> ToolResult:
+    from plugins.installed.analytics.services import no_results_by_filter
     from plugins.installed.analytics.visits import SEARCH_REPORTS, search_terms
 
     kind = kind if kind in SEARCH_REPORTS else 'top'
-    return ToolResult(
-        output={
-            'days': days,
-            'kind': kind,
-            'searches': search_terms(days=int(days or 30), kind=kind, limit=int(limit or 20)),
-        }
-    )
+    days, limit = int(days or 30), int(limit or 20)
+    output = {
+        'days': days,
+        'kind': kind,
+        'searches': search_terms(days=days, kind=kind, limit=limit),
+    }
+    if kind == 'no_results':
+        output['filters'] = [
+            {**row, 'last_seen': row['last_seen'].isoformat()}
+            for row in no_results_by_filter(days=days, limit=limit)
+        ]
+    return ToolResult(output=output)
 
 
 @tool(

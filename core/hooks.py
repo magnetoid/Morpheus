@@ -1032,7 +1032,9 @@ class MorpheusEvents:
 
     # ── Catalog (fire) ────────────────────────────────────────────────────
     # PRODUCT_VIEWED    — kwargs: product=Product, customer=User|None,
-    #                     session_key=str. Fires from the storefront PDP.
+    #                     request=HttpRequest. Fires from the storefront PDP and
+    #                     booking_marketplace's experience page, before the page
+    #                     shows a translation (the product as stored).
     # PRODUCT_CREATED   — kwargs: product=Product.
     # PRODUCT_UPDATED   — kwargs: product=Product.
     # CATEGORY_UPDATED  — kwargs: category=Category.
@@ -1242,7 +1244,42 @@ class MorpheusEvents:
     #                       to PAYMENT_REFUNDED.
 
     # ── Search (fire) ─────────────────────────────────────────────────────
+    # SEARCH_PERFORMED — kwargs: query=str (the words typed; '' for a search
+    #   by filters only), result_count=int, request=HttpRequest, and optionally
+    #   filters=list[dict], one {'key', 'label', 'value', 'value_label'} per
+    #   filter the search set (booking_marketplace: region, date, category,
+    #   guests; the value is the raw key, slug or ISO date, the labels may be in
+    #   the visitor's language). Fired on a search's first results page only.
+    #   A reader that ranks words skips an empty query: analytics' top terms,
+    #   GA4's `search` and the zero-result self-improvement collector.
     SEARCH_PERFORMED = 'search.performed'
+
+    # ── Bookings and leads (fire) ─────────────────────────────────────────
+    # Fired by booking_marketplace after the row commits, once per row, with
+    # one shape, so no subscriber reads a booking model:
+    #   enquiry= or booking= (the row), kind ('experience' | 'stay'),
+    #   reference (the row's id as text), value (Money: the booking's total;
+    #   None for an enquiry), items (list of {'id', 'name', 'category',
+    #   'price': Money | None, 'quantity'}, in the store's default language),
+    #   product (the catalog Product, or None: a hotel is none), customer
+    #   (User | None), service_date (the date asked for, or None), request (the
+    #   shopper's; None for a confirmation a host or staff member made later).
+    # ENQUIRY_CREATED   — a guest asked about an experience or a stay.
+    # BOOKING_CREATED   — a booking was made (confirmed or waiting for the host).
+    # BOOKING_CONFIRMED — a booking is confirmed: right after BOOKING_CREATED
+    #   when it is created confirmed (a stay always is), or when a pending one
+    #   is confirmed later. Never twice for one booking. A booking has no order:
+    #   none of the three adds to the store's sales.
+    ENQUIRY_CREATED = 'enquiry.created'
+    BOOKING_CREATED = 'booking.created'
+    BOOKING_CONFIRMED = 'booking.confirmed'
+    # ANALYTICS_FUNNELS — filter, value=list[dict], no kwargs. The funnels the
+    #   analytics Funnel page offers as presets: {'key', 'label', 'steps':
+    #   [{'label', 'events': [event names]}], 'default': bool (optional)}. A
+    #   session reaches a step with any of its events. analytics answers with
+    #   `shop`; an app adds its own (booking_marketplace: `bookings`) and says
+    #   with `default` when it should open first. A disabled app's preset goes.
+    ANALYTICS_FUNNELS = 'analytics.funnels'  # filter
 
     # ── AI (fire) ─────────────────────────────────────────────────────────
     AI_DESCRIPTION_GENERATED = 'ai.description_generated'

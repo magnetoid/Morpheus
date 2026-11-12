@@ -1,0 +1,101 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph %}
+{% block title %}Conversions · Morpheus{% endblock %}
+
+{% block content %}
+<div class="space-y-5" data-conversions>
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Conversions</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Enquiries and bookings guests made from {{ report.first|date:"j M" }} to {{ report.last|date:"j M Y" }}, compared with the {{ report.days }} days before.
+      </p>
+    </div>
+    <nav class="flex flex-wrap gap-2" aria-label="Period">
+      {% for d in periods %}
+      <a href="?days={{ d }}"
+         class="btn text-xs {% if d == report.days %}btn-primary{% else %}btn-secondary{% endif %}"
+         {% if d == report.days %}aria-current="page"{% endif %}>{{ d }} days</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    {% with t=report.totals b=report.before c=report.change %}
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Enquiries</p>
+      <p class="text-2xl font-semibold mt-1" data-enquiries>{{ t.enquiries }}</p>
+      <p class="text-sm mt-1">{% include "booking_marketplace/dashboard/_change.html" with pct=c.enquiries now=t.enquiries %}
+        <span class="text-[color:var(--text-muted)]">vs {{ b.enquiries }} before</span></p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Bookings</p>
+      <p class="text-2xl font-semibold mt-1" data-bookings>{{ t.bookings }}</p>
+      <p class="text-sm mt-1">{% include "booking_marketplace/dashboard/_change.html" with pct=c.bookings now=t.bookings %}
+        <span class="text-[color:var(--text-muted)]">vs {{ b.bookings }} before</span></p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Booking value</p>
+      <p class="text-2xl font-semibold mt-1" data-booking-value>{{ t.value|money }}</p>
+      {% if t.other %}<p class="text-xs text-[color:var(--text-muted)]">plus {% for m in t.other %}{{ m|money }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+      <p class="text-sm mt-1">{% include "booking_marketplace/dashboard/_change.html" with pct=c.value now=t.value.amount %}
+        <span class="text-[color:var(--text-muted)]">vs {{ b.value|money }} before</span></p>
+    </div>
+    {% endwith %}
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+    <div class="card overflow-hidden">
+      <div class="px-4 py-3 border-b border-[color:var(--border)]"><h2 class="font-semibold">How far ahead guests ask</h2></div>
+      <table class="morph-table" data-lead-time>
+        <thead><tr><th>Ahead</th><th class="text-right">Enquiries</th><th class="text-right">Bookings</th></tr></thead>
+        <tbody>
+        {% for row in report.lead_time %}
+        <tr><td>{{ row.label }}</td><td class="text-right">{{ row.enquiries }}</td><td class="text-right">{{ row.bookings }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card overflow-hidden">
+      <div class="px-4 py-3 border-b border-[color:var(--border)]"><h2 class="font-semibold">Top experiences and hotels</h2></div>
+      {% if report.top %}
+      <table class="morph-table" data-top>
+        <thead><tr><th>Listing</th><th class="text-right">Enquiries</th><th class="text-right">Bookings</th><th class="text-right">Value</th></tr></thead>
+        <tbody>
+        {% for row in report.top %}
+        <tr>
+          <td>{{ row.label }} <span class="text-xs text-[color:var(--text-muted)]">{% if row.kind == 'stay' %}hotel{% else %}experience{% endif %}</span></td>
+          <td class="text-right">{{ row.enquiries }}</td><td class="text-right">{{ row.bookings }}</td><td class="text-right whitespace-nowrap">{{ row.value|money }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="card-padded text-sm text-[color:var(--text-muted)]">No enquiries or bookings in this period.</p>
+      {% endif %}
+    </div>
+
+    <div class="card overflow-hidden">
+      <div class="px-4 py-3 border-b border-[color:var(--border)]"><h2 class="font-semibold">By region</h2></div>
+      {% if report.regions %}
+      <table class="morph-table" data-regions>
+        <thead><tr><th>Region</th><th class="text-right">Enquiries</th><th class="text-right">Bookings</th><th class="text-right">Value</th></tr></thead>
+        <tbody>
+        {% for row in report.regions %}
+        <tr><td>{{ row.label }}</td><td class="text-right">{{ row.enquiries }}</td><td class="text-right">{{ row.bookings }}</td><td class="text-right whitespace-nowrap">{{ row.value|money }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="card-padded text-sm text-[color:var(--text-muted)]">No enquiries or bookings in this period.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <p class="text-xs text-[color:var(--text-muted)]">
+    Days follow the store's clock. A cancelled booking is not counted. "Ahead" is the days from the enquiry or booking to the date the guest asked for.
+    Bookings are not orders, so they are not in the store's sales.
+  </p>
+</div>
+{% endblock %}

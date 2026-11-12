@@ -145,6 +145,7 @@ def create_booking(  # noqa: PLR0912 — one branch per validated booking field
     tiers=None,
     addons=None,
     user=None,
+    request=None,
 ):
     """Create a confirmed (or pending) booking with server-derived totals.
 
@@ -152,7 +153,11 @@ def create_booking(  # noqa: PLR0912 — one branch per validated booking field
     add-ons, or (when none are given) the flat per-guest price. Capacity is
     checked while holding a row lock on the service so concurrent requests can't
     overbook. Raises BookingError on any validation failure.
+
+    `request` is the shopper's: BOOKING_CREATED (and BOOKING_CONFIRMED, when the
+    booking needs no approval) carry it once the booking commits.
     """
+    from plugins.installed.booking_marketplace import conversions
     from plugins.installed.booking_marketplace.models import BookableService, Booking
 
     # Lock the service row for the duration of the capacity check + insert.
@@ -223,11 +228,36 @@ def create_booking(  # noqa: PLR0912 — one branch per validated booking field
         notes=notes,
         tier_breakdown=quote['tier_breakdown'],
         addons=quote['addons'],
+        metadata=conversions.consent_stamp(request),
     )
     from plugins.installed.booking_marketplace.email import notify_booking
 
     transaction.on_commit(lambda: notify_booking(booking))
+    conversions.announce_booking(booking, request=request)
     return booking
+
+
+def set_booking_status(booking, status: str):
+    """Move a booking to `status` (a host's confirm, cancel or complete).
+
+    A pending booking that becomes confirmed is announced (BOOKING_CONFIRMED,
+    after commit). Nothing ever puts a booking back to pending and a booking
+    created confirmed never was pending, so each booking is announced once.
+    Returns the booking as saved, or None when it is gone.
+    """
+    from plugins.installed.booking_marketplace import conversions
+    from plugins.installed.booking_marketplace.models import Booking
+
+    with transaction.atomic():
+        row = Booking.objects.select_for_update().filter(pk=booking.pk).first()
+        if row is None:
+            return None
+        previous = row.status
+        row.status = status
+        row.save(update_fields=['status'])
+        if previous == 'pending' and status == 'confirmed':
+            conversions.announce_confirmed(row)
+    return row
 
 
 def submit_enquiry(
@@ -243,13 +273,16 @@ def submit_enquiry(
     tiers=None,
     addons=None,
     user=None,
+    request=None,
 ):
     """Capture a 'Contact for price' lead (listing mode). Anon-allowed.
 
     When a structured selection (tiers/add-ons/departure) is supplied it is
     snapshotted onto the enquiry so hosts receive a qualified lead — prices are
     never exposed to the client, so a bad selection just yields empty snapshots.
+    ENQUIRY_CREATED carries `request` (the shopper's) once the enquiry commits.
     """
+    from plugins.installed.booking_marketplace import conversions
     from plugins.installed.booking_marketplace.models import Enquiry
 
     if not email:
@@ -300,6 +333,7 @@ def submit_enquiry(
         notify_enquiry(enquiry)
     except Exception:  # noqa: BLE001, S110 — best-effort notify; never block the enquiry
         pass
+    conversions.announce_enquiry(enquiry, request=request)
     return enquiry
 
 

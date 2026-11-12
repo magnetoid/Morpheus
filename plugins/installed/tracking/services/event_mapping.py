@@ -254,3 +254,47 @@ def refund(*, order, amount=None) -> tuple[str, dict[str, Any]]:
         'currency': _money_currency(amount or getattr(order, 'total', None)),
         'value': _money_amount(amount if amount is not None else getattr(order, 'total', None)),
     }
+
+
+def _conversion_items(items) -> list[dict[str, Any]]:
+    """ENQUIRY_CREATED / BOOKING_CONFIRMED's items (core/hooks.py) as GA4 items[]."""
+    out = []
+    for index, item in enumerate(list(items or [])[:50]):
+        if not isinstance(item, dict):
+            continue
+        entry: dict[str, Any] = {
+            'item_id': str(item.get('id') or ''),
+            'item_name': str(item.get('name') or ''),
+            'quantity': int(item.get('quantity') or 1),
+        }
+        if item.get('category'):
+            entry['item_category'] = str(item['category'])
+        if item.get('price') is not None:
+            entry['price'] = _money_amount(item['price'])
+        if index:
+            entry['index'] = index + 1
+        out.append(entry)
+    return out
+
+
+def generate_lead(*, kind: str = '', items=None, value=None) -> tuple[str, dict[str, Any]]:
+    """A guest's enquiry (booking_marketplace): GA4's recommended lead event.
+    An enquiry has no price, so it carries a value only when one is given."""
+    params: dict[str, Any] = {'items': _conversion_items(items)}
+    if kind:
+        params['lead_source'] = f'{kind}_enquiry'
+    if value is not None:
+        params['currency'] = _money_currency(value)
+        params['value'] = _money_amount(value)
+    return 'generate_lead', params
+
+
+def booking_purchase(*, reference: str, value=None, items=None) -> tuple[str, dict[str, Any]]:
+    """A confirmed booking (booking_marketplace) as GA4's purchase: its reference
+    is the transaction, so GA4 and the dedup window count it once."""
+    return 'purchase', {
+        'transaction_id': str(reference),
+        'currency': _money_currency(value),
+        'value': _money_amount(value),
+        'items': _conversion_items(items),
+    }

@@ -40,6 +40,8 @@ DEFAULT_EVENT_FIRING = {
     'sign_up': True,
     'login': True,
     'search': True,
+    # A guest's enquiry on a travel store (booking_marketplace's ENQUIRY_CREATED).
+    'generate_lead': True,
 }
 
 DEFAULT_CONSENT_DEFAULT = {

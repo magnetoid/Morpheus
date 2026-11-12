@@ -85,6 +85,59 @@ def _category(raw):
     ).first()
 
 
+def _guests(raw) -> int | None:
+    try:
+        n = int((raw or '').strip())
+    except ValueError:
+        return None
+    return n if 1 <= n <= 99 else None
+
+
+def filters(request, params: SearchParams) -> list[dict]:
+    """What a search was filtered by, for SEARCH_PERFORMED (core/hooks.py): one
+    `{'key', 'label', 'value', 'value_label'}` per filter set. The value is the raw
+    key, slug or ISO date; analytics groups the searches that found nothing by it."""
+    out = []
+    if params.region:
+        out.append(
+            {
+                'key': 'region',
+                'label': _('Region'),
+                'value': params.region,
+                'value_label': params.region_label,
+            }
+        )
+    if params.day:
+        out.append(
+            {
+                'key': 'date',
+                'label': _('Date'),
+                'value': params.day.isoformat(),
+                'value_label': date_label(params.day),
+            }
+        )
+    if params.category is not None:
+        out.append(
+            {
+                'key': 'category',
+                'label': _('Category'),
+                'value': params.category.slug,
+                'value_label': params.category.name,
+            }
+        )
+    guests = _guests(request.GET.get('guests'))
+    if guests:
+        out.append(
+            {
+                'key': 'guests',
+                'label': _('Guests'),
+                'value': str(guests),
+                'value_label': str(guests),
+            }
+        )
+    return out
+
+
 def date_locale() -> tuple[str, str]:
     """(Babel, browser) locale for dates in the visitor's language."""
     return _DATE_LOCALES.get((get_language() or 'en').split('-')[0], _DEFAULT_DATE_LOCALE)

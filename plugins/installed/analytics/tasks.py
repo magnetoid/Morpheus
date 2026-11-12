@@ -50,6 +50,10 @@ def _kind_for(name: str) -> str:  # noqa: PLR0911
         return 'cart'
     if name == 'customer.registered':
         return 'signup'
+    if name == 'enquiry.created':
+        return 'lead'
+    if name in ('booking.created', 'booking.confirmed'):
+        return 'booking'
     if name.startswith('agent.'):
         return 'agent_run'
     if name.startswith('refund.'):
