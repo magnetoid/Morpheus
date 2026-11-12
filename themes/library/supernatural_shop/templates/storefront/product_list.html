@@ -1,11 +1,8 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load breadcrumbs %}
-{% load i18n %}{% load seo %}{% load tracking %}
+{% load i18n %}{% load tracking %}
 
 {% block extra_head %}
-{% seo_collection_jsonld items=plp_items name=plp_name description=seo_description %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
-{% seo_pagination_links page_obj=page_obj %}
 {% dl_view_item_list products list_id=selected_category|default:'all' list_name=plp_name %}
 {% endblock %}
 

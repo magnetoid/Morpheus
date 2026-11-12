@@ -363,8 +363,8 @@ def resolve_meta(
 def _structured_data_for(obj: Any, *, title: str, description: str, image: str) -> dict:
     """Generate sensible JSON-LD for known model types. Empty dict if unknown.
 
-    No Organization fallback here — base.html emits the canonical
-    Organization graph via `{% seo_organization_jsonld %}`, so emitting
+    No Organization fallback here — the head graph carries the canonical
+    Organization node (`schema/graph.py`), so emitting
     a stripped-down second one (only `name`) would just duplicate every
     page's <head> with two `@type: Organization` scripts.
     """
@@ -373,7 +373,7 @@ def _structured_data_for(obj: Any, *, title: str, description: str, image: str) 
     cls_name = type(obj).__name__
     if cls_name == 'Product':
         # No Product block here by design: the PDP emits the single canonical
-        # Product graph via `{% seo_product_jsonld %}` → `product_jsonld()`
+        # Product node through the head graph → `product_jsonld()`
         # (gallery images, brand, Book subtype, offer with shipping/return/
         # aggregateRating). Emitting a stripped-down second Product here just
         # duplicated every PDP's <head> with two `@type: Product` scripts —
@@ -389,8 +389,8 @@ def _structured_data_for(obj: Any, *, title: str, description: str, image: str) 
             'description': description or strip_html(getattr(obj, 'description', '')),
         }
     if cls_name == 'Page':
-        # Journal posts already emit Article (+ a WebPage/speakable node) from
-        # the storefront journal template, so returning a WebPage here would
+        # Journal posts already carry a BlogPosting in the head graph
+        # (`schema/graph.py:_article_nodes`), so returning a WebPage here would
         # duplicate the node — only give NON-journal single pages a default
         # WebPage so they stop shipping bare Organization/WebSite graphs.
         page_meta = getattr(obj, 'metadata', None) or {}

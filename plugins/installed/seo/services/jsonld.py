@@ -865,26 +865,6 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
     return out
 
 
-def speakable_jsonld(selectors: list[str] | None = None) -> dict:
-    """SpeakableSpecification — tells voice assistants which CSS selectors
-    contain text suitable for spoken reading.
-
-    Defaults target the page's headline, the lede paragraph, AND the
-    article body — journal/article templates wrap their copy in
-    ``[itemprop="articleBody"]`` (with no ``.lede``), so without that
-    selector voice assistants only got the H1 on editorial pages.
-    """
-    css = selectors or ['h1', '.lede', '[itemprop="articleBody"]', '[itemprop="description"]']
-    return {
-        '@context': 'https://schema.org',
-        '@type': 'WebPage',
-        'speakable': {
-            '@type': 'SpeakableSpecification',
-            'cssSelector': css,
-        },
-    }
-
-
 def collection_page_jsonld(
     *,
     name: str,

@@ -1,10 +1,6 @@
 {% extends "storefront/base.html" %}
-{% load seo i18n %}
+{% load i18n %}
 
-{% block extra_head %}
-{% seo_aboutpage_jsonld name="About Montenegro Experience" description="Montenegro Experience is an independent travel marketplace, run by locals, for travellers. We list experiences from independent local hosts across Montenegro." %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
-{% endblock %}
 
 {% comment %}
 Every claim on this page is one the site already makes on the page that owns

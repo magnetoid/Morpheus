@@ -1,6 +1,6 @@
 {% extends "storefront/base.html" %}
-{% load morph seo %}
-{% block seo %}{% seo_meta fallback_title=look.title fallback_description=look.description %}{% endblock %}
+{% load morph %}
+{% block seo %}{% with seo_title=look.title seo_description=look.description %}{{ block.super }}{% endwith %}{% endblock %}
 {% block content %}
 <section style="padding: 3rem 0 5rem;">
   <div class="wrap" style="max-width: 1100px;">

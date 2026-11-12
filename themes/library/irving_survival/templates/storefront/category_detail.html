@@ -1,14 +1,11 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load breadcrumbs %}
-{% load seo %}
 {% load caching %}
 {% load i18n %}
 {% comment %}A category, on the direction-1a category design: breadcrumb in mono, the
 category name large with its description and count beside it, sort, then the
 grid. The category's own description (Products → Categories) is the lede.{% endcomment %}
 {% block extra_head %}
-  {% seo_breadcrumb_jsonld items=breadcrumb_items %}
-  {% seo_collection_jsonld items=collection_items name=category.name description=category.description %}
 <style>
   .plp-head { padding: clamp(2.5rem, 5vw, 3.5rem) 0 clamp(1.5rem, 3vw, 2.5rem); }
   .plp-title { display: grid; gap: 1rem; align-items: end; }

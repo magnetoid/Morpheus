@@ -957,7 +957,7 @@ def _video_seo_data(videos, product):
 
 
 def _book_jsonld_data(product_row, product, product_codes, out_of_stock):
-    """Assemble the plain dict for ``{% seo_book_jsonld %}`` from SAFE sources.
+    """Assemble the plain dict for the graph's Book node (``book_jsonld_data``) from SAFE sources.
 
     Book attributes + identifiers come from relation queries keyed on the
     product PK (never the product's *deferred* Money/price field, which would

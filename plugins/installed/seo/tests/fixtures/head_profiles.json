@@ -1020,12 +1020,6 @@
         }
       },
       {
-        "props": [
-          "cssSelector"
-        ],
-        "type": "SpeakableSpecification"
-      },
-      {
         "id": "http://testserver/journal/head-parity-journal-entry/",
         "props": [],
         "type": "WebPage"
@@ -1038,7 +1032,6 @@
           "inLanguage",
           "isPartOf",
           "name",
-          "speakable",
           "url"
         ],
         "type": "WebPage",
@@ -1613,12 +1606,6 @@
         "type": "ReadAction"
       },
       {
-        "props": [
-          "cssSelector"
-        ],
-        "type": "SpeakableSpecification"
-      },
-      {
         "id": "http://testserver/products/head-parity-probe/#webpage",
         "props": [
           "breadcrumb",
@@ -1626,7 +1613,6 @@
           "inLanguage",
           "isPartOf",
           "name",
-          "speakable",
           "url"
         ],
         "type": "WebPage",

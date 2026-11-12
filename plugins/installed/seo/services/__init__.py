@@ -14,7 +14,7 @@ Layout:
   * meta.py         — resolve_meta, _structured_data_for,
                       autofill_meta_for.
   * jsonld.py       — organization / website / breadcrumb / product /
-                      speakable / collection_page / qa_page /
+                      collection_page / qa_page /
                       article / faq JSON-LD generators.
   * sitemaps.py     — iter_sitemap_entries + sitemap_counts +
                       render_sitemap_xml (main + index + news +
@@ -61,7 +61,6 @@ from .jsonld import (
     organization_jsonld,
     product_jsonld,
     qa_page_jsonld,
-    speakable_jsonld,
     video_jsonld,
     website_jsonld,
 )
@@ -165,7 +164,6 @@ __all__ = [
     'organization_jsonld',
     'product_jsonld',
     'qa_page_jsonld',
-    'speakable_jsonld',
     'video_jsonld',
     'website_jsonld',
     # sitemaps

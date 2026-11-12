@@ -1,12 +1,7 @@
 {% extends "storefront/base.html" %}
 {% load morph %}
-{% load seo %}
 {% load i18n %}
 
-{% block extra_head %}
-{% seo_contactpage_jsonld name="Contact Croatia Experience" description="Get in touch with Croatia Experience — recommendations, suggestions, order help." %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
-{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">
