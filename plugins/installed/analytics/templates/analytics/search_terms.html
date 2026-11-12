@@ -1,0 +1,54 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Search terms · Morpheus{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Search terms</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        What shoppers searched for in the store, what found nothing, and what came before an order.
+      </p>
+    </div>
+    <nav class="flex flex-wrap gap-2" aria-label="Period">
+      {% for d, label in periods %}
+      <a href="?days={{ d }}"
+         class="btn text-xs {% if d == days %}btn-primary{% else %}btn-secondary{% endif %}"
+         {% if d == days %}aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3" data-search-terms>
+    <div class="card card-padded">
+      <h3 class="font-semibold mb-3">Most searched</h3>
+      {% for r in top %}
+      <div class="flex items-center justify-between gap-3 text-sm" style="padding:.4rem 0;border-bottom:1px solid var(--border);">
+        <span>{{ r.query }}</span><strong>{{ r.count }}</strong>
+      </div>
+      {% empty %}<p class="text-sm text-[color:var(--text-muted)]">No searches in this period.</p>{% endfor %}
+    </div>
+    <div class="card card-padded">
+      <h3 class="font-semibold mb-3">Found nothing</h3>
+      {% for r in no_results %}
+      <div class="flex items-center justify-between gap-3 text-sm" style="padding:.4rem 0;border-bottom:1px solid var(--border);">
+        <span>{{ r.query }}</span><strong>{{ r.count }}</strong>
+      </div>
+      {% empty %}<p class="text-sm text-[color:var(--text-muted)]">Every search found something.</p>{% endfor %}
+    </div>
+    <div class="card card-padded">
+      <h3 class="font-semibold mb-3">Searched before an order</h3>
+      {% for r in led_to_sale %}
+      <div class="flex items-center justify-between gap-3 text-sm" style="padding:.4rem 0;border-bottom:1px solid var(--border);">
+        <span>{{ r.query }}</span><strong>{{ r.count }}</strong>
+      </div>
+      {% empty %}<p class="text-sm text-[color:var(--text-muted)]">No visit that searched has ordered yet.</p>{% endfor %}
+    </div>
+  </div>
+
+  <p class="text-xs text-[color:var(--text-muted)]">
+    Each search counts once, on its first results page. "Found nothing" is a search the store answered with no products;
+    "Searched before an order" counts visits that searched a term and then placed an order.
+  </p>
+</div>
+{% endblock %}

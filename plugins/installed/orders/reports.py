@@ -99,11 +99,14 @@ def net_sales(qs=None) -> Sales:
     )
 
 
-def net_by_order(order_ids) -> dict[str, Decimal]:
-    """Net sales of each listed order that counts, keyed by its id as text."""
+def net_by_order(order_ids, *, currency: str = '') -> dict[str, Decimal]:
+    """Net sales of each listed order that counts, keyed by its id as text;
+    only the orders in ``currency`` when one is given."""
     from plugins.installed.orders.models import Order  # noqa: PLC0415
 
     orders = counted(Order.objects.filter(pk__in=list(order_ids)))
+    if currency:
+        orders = orders.filter(total_currency=currency)
     out = {str(pk): Decimal(str(total or 0)) for pk, total in orders.values_list('pk', 'total')}
     for row in _refunds_by(orders, 'order_id'):
         key = str(row['order_id'])
