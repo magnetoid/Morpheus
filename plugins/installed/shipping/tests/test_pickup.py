@@ -50,3 +50,44 @@ class PickupTests(TestCase):
         self.assertEqual(card['name'], 'Collect in Kotor')
         price = render_to_string('shipping/blocks/_rate_price.html', {'c': card})
         self.assertIn('Free', price)
+
+
+class VariantOfferShippingTests(TestCase):
+    """A multi-edition product keeps its offers on `hasVariant`, not the group."""
+
+    def _graph(self):
+        offer = lambda p: {'@type': 'Offer', 'price': p, 'priceCurrency': 'EUR'}  # noqa: E731
+        return {
+            '@graph': [
+                {
+                    '@type': 'ProductGroup',
+                    'hasVariant': [
+                        {'@type': 'Product', 'offers': offer('5.00')},
+                        {'@type': 'Product', 'offers': offer('9.00')},
+                    ],
+                }
+            ]
+        }
+
+    def _page(self):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(obj=SimpleNamespace(product_type='simple', requires_shipping=True))
+
+    def test_every_variant_offer_carries_shipping_when_a_rate_exists(self):
+        from plugins.installed.shipping.seo_graph import on_seo_jsonld_graph
+
+        zone = ShippingZone.objects.create(name='EU', countries=['ME'])
+        ShippingRate.objects.create(
+            zone=zone, name='Courier', computation='flat', flat_amount=Money(6, 'EUR')
+        )
+        graph = on_seo_jsonld_graph(self._graph(), page=self._page())
+        for member in graph['@graph'][0]['hasVariant']:
+            self.assertEqual(member['offers']['shippingDetails']['shippingRate']['value'], '6.00')
+
+    def test_nothing_is_claimed_without_a_rate(self):
+        from plugins.installed.shipping.seo_graph import on_seo_jsonld_graph
+
+        graph = on_seo_jsonld_graph(self._graph(), page=self._page())
+        for member in graph['@graph'][0]['hasVariant']:
+            self.assertNotIn('shippingDetails', member['offers'])
