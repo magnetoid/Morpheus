@@ -21,6 +21,13 @@ category's own description. The trail is the page's `breadcrumb_items`.{% endcom
     {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode heading="h2" %}
     {% endfor %}
   </div>
+  {% if page_obj.has_other_pages %}
+  <nav aria-label="{% trans 'Pages' %}" class="flex flex-wrap items-center justify-center gap-2 mt-10 pt-6 border-t border-border">
+    {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Previous" %}</a>{% endif %}
+    <span class="px-4 text-sm text-muted-foreground">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+    {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Next" %}</a>{% endif %}
+  </nav>
+  {% endif %}
   {% else %}
   <p class="text-muted-foreground">{% trans "No experiences here yet." %} <a href="{{ region_url }}" class="text-primary underline">{{ region_label }}</a> · <a href="/bookings/" class="text-primary underline">{% trans "Browse all experiences" %}</a>.</p>
   {% endif %}

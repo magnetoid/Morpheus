@@ -15,6 +15,7 @@ import datetime
 import json
 import re
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase
@@ -134,6 +135,35 @@ class RegionCategoryPageTests(MontenegroThemeMixin, _LandingFixtures, TestCase):
         self.assertTrue(_ROBOTS.search(body).group(1).startswith('index, follow'))
         self.assertEqual(
             _CANONICAL.search(body).group(1), 'http://testserver/regions/kotor/water-fun/'
+        )
+
+    def test_a_broad_category_is_paged(self):
+        BookableService.objects.create(
+            vendor=BookableService.objects.get(slug='kotor-boat').vendor,
+            name='Kotor Kayak',
+            slug='kotor-kayak',
+            listing_kind='experience',
+            region='kotor',
+            category=self.water,
+            price=Money(Decimal('30'), 'EUR'),
+            is_active=True,
+        )
+        with patch('plugins.installed.booking_marketplace.views.LANDING_PER_PAGE', 1):
+            first = self._page('/regions/kotor/water-fun/')
+            second = self._page('/regions/kotor/water-fun/?page=2')
+            self._page('/regions/kotor/water-fun/?page=3', status=404)
+        self.assertIn('rel="next"', first)
+        shown = {
+            slug
+            for slug in ('kotor-boat', 'kotor-kayak')
+            for body in (first, second)
+            if f'/bookings/{slug}/' in body
+        }
+        self.assertEqual(shown, {'kotor-boat', 'kotor-kayak'})
+        self.assertNotEqual('/bookings/kotor-boat/' in first, '/bookings/kotor-boat/' in second)
+        self.assertEqual(
+            _CANONICAL.search(second).group(1),
+            'http://testserver/regions/kotor/water-fun/?page=2',
         )
 
 

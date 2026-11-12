@@ -86,7 +86,11 @@ class HonestLanguagesTests(TestCase):
     def test_the_untranslated_copy_names_the_language_it_is_in(self):
         serbian = self._get('/sr/products/lighthouse-walk/')
         self.assertEqual(_OG_LOCALE.search(serbian).group(1), 'en')
-        self.assertEqual(_webpage(serbian).get('inLanguage'), 'en')
+        # Its canonical is the English page, so the copy declares no graph of its own
+        # (v0.161.0: a duplicate describes nothing); the English page's says 'en'.
+        self.assertEqual(_webpage(serbian), {})
+        english = self._get('/products/lighthouse-walk/')
+        self.assertEqual(_webpage(english).get('inLanguage'), 'en')
 
     def test_a_reviewed_translation_makes_both_pages(self):
         self._translate()

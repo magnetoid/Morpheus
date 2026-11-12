@@ -18,6 +18,13 @@ views.region_category.{% endcomment %}
       </a>
       {% endfor %}
     </div>
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="{% trans 'Pages' %}" style="display:flex; gap:1rem; justify-content:center; margin-top:2rem;">
+      {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev">{% trans "Previous" %}</a>{% endif %}
+      <span class="meta">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+      {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next">{% trans "Next" %}</a>{% endif %}
+    </nav>
+    {% endif %}
     {% else %}
     <p class="lede">{% trans "No experiences here yet." %} <a href="{{ region_url }}">{{ region_label }}</a> · <a href="/bookings/">{% trans "Browse all experiences" %}</a>.</p>
     {% endif %}

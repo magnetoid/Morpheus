@@ -551,6 +551,10 @@ def region_detail(request, region):
     )
 
 
+# A landing page shows four rows of the grid at a time, like `/bookings/`.
+LANDING_PER_PAGE = 48
+
+
 def region_category(request, region, category):
     """`/regions/<key>/<category>/`: the region's experiences in one category's subtree.
 
@@ -565,7 +569,11 @@ def region_category(request, region, category):
     cat = Category.objects.filter(slug=category, is_active=True).first()
     if cat is None:
         raise Http404('Unknown category')
-    services = shown.show_listings(list(landing.experiences(region, cat)))
+    # Paged before translations are applied: a broad parent category can hold every
+    # experience in the region. A page past the end is a 404.
+    page_obj = paginate_or_404(landing.experiences(region, cat), LANDING_PER_PAGE, request)
+    services = shown.show_listings(list(page_obj.object_list))
+    count = page_obj.paginator.count
     title = _('%(category)s in %(region)s') % {'category': cat.name, 'region': label}
     return render(
         request,
@@ -584,9 +592,9 @@ def region_category(request, region, category):
                 ngettext(
                     '%(region)s: %(count)d experience to book with a local host',
                     '%(region)s: %(count)d experiences to book with local hosts',
-                    len(services),
+                    count,
                 )
-                % {'region': title, 'count': len(services)},
+                % {'region': title, 'count': count},
                 [s.name for s in services],
             ),
             'breadcrumb_items': _crumbs(
@@ -599,8 +607,9 @@ def region_category(request, region, category):
                 [(s.name, f'/bookings/{s.slug}/', _image_url(s)) for s in services[:60]],
                 request=request,
             ),
+            'page_obj': page_obj,
             # Nothing to book: rendered, `noindex, follow`, never in the sitemap.
-            'seo_item_count': len(services),
+            'seo_item_count': count,
         },
     )
 
