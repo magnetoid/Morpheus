@@ -684,3 +684,25 @@ class NotFoundLog(models.Model):
 
     class Meta:
         ordering = ['-hit_count', '-last_seen_at']
+
+
+class WebVitalSample(models.Model):
+    """One field Core Web Vitals reading from a shopper's browser (v0.159.1).
+
+    LCP and INP in milliseconds, CLS unitless, as the web-vitals script reports
+    them. Crawlers and test browsers are never stored, a day keeps at most
+    ``seo.web_vitals.DAILY_CAP`` readings per metric, and rows older than 28 days
+    (Google's window) are deleted nightly.
+    """
+
+    METRICS = (('LCP', 'LCP'), ('INP', 'INP'), ('CLS', 'CLS'))
+    DEVICES = (('mobile', 'Mobile'), ('desktop', 'Desktop'))
+
+    day = models.DateField(db_index=True)
+    metric = models.CharField(max_length=4, choices=METRICS)
+    value = models.FloatField()
+    device = models.CharField(max_length=8, choices=DEVICES, default='desktop')
+    path = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['metric', 'day', 'value'])]

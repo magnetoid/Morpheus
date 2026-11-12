@@ -23,7 +23,7 @@
   <div role="status" class="mb-6 rounded-xl border px-4 py-3 text-sm {% if m.tags == 'error' %}border-destructive/40 bg-destructive/5 text-destructive{% else %}border-primary/30 bg-primary/5 text-foreground{% endif %}">{{ m }}</div>
   {% endfor %}{% endif %}
 
-  {% if property.image %}<img src="{{ property.image.url }}" alt="{{ property.name }}" class="w-full rounded-2xl mb-6 object-cover max-h-[420px]">{% endif %}
+  {% if property.image %}{% seo_responsive_image property.image alt=property.name widths="800,1200,1600" sizes="(min-width: 1024px) 66vw, 100vw" css_class="w-full rounded-2xl mb-6 object-cover max-h-[420px]" priority=True %}{% endif %}
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     <div class="lg:col-span-2 space-y-8">
@@ -52,7 +52,7 @@
         <div class="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x mt-4">
           {% for pl in nearby_places %}
           <a href="/places/{{ pl.slug }}/" class="group shrink-0 w-56 snap-start rounded-2xl overflow-hidden border border-border bg-card shadow-card">
-            <div class="aspect-[4/3] bg-muted overflow-hidden">{% if pl.image %}<img src="{{ pl.image.url }}" alt="{{ pl.name }}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">{% endif %}</div>
+            <div class="aspect-[4/3] bg-muted overflow-hidden">{% if pl.image %}{% seo_responsive_image pl.image alt=pl.name widths="400,600,800" sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" css_class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" %}{% endif %}</div>
             <div class="p-3"><h3 class="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">{{ pl.name }}</h3>{% if pl.summary %}<p class="text-xs text-muted-foreground line-clamp-2 mt-1">{{ pl.summary }}</p>{% endif %}</div>
           </a>
           {% endfor %}
@@ -146,7 +146,7 @@
         <div class="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
           {% for s in related_stays %}
           <a href="/hotels/{{ s.slug }}/" class="group shrink-0 w-56 snap-start rounded-2xl overflow-hidden border border-border bg-card shadow-card">
-            <div class="aspect-[4/3] bg-muted overflow-hidden">{% if s.image %}<img src="{{ s.image.url }}" alt="{{ s.name }}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">{% endif %}</div>
+            <div class="aspect-[4/3] bg-muted overflow-hidden">{% if s.image %}{% seo_responsive_image s.image alt=s.name widths="400,600,800" sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" css_class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" %}{% endif %}</div>
             <div class="p-3">
               {% if s.star_rating %}<div class="text-primary text-xs mb-0.5" aria-label="{% blocktrans count stars=s.star_rating %}{{ stars }} star{% plural %}{{ stars }} stars{% endblocktrans %}">{% for _ in ""|center:s.star_rating %}★{% endfor %}</div>{% endif %}
               <h3 class="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">{{ s.name }}</h3>
@@ -162,8 +162,7 @@
     <aside class="space-y-4">
       {% if property.latitude and property.longitude %}
       <div id="stay-map" class="h-64 rounded-2xl border border-border overflow-hidden z-0" data-lat="{{ property.latitude|unlocalize }}" data-lng="{{ property.longitude|unlocalize }}"></div>
-      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+      {% include "booking_marketplace/_leaflet_map.html" with map_id="stay-map" zoom=14 %}
       {% endif %}
       <div class="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
         {% if property.check_in_time %}<p>{% trans "Check-in from" %} {{ property.check_in_time|time:"H:i" }}</p>{% endif %}
@@ -202,8 +201,6 @@
       if (form[n]) form[n].addEventListener('change', function () { clearTimeout(t); t = setTimeout(refresh, 250); });
     });
   });
-  var m = document.getElementById('stay-map');
-  if (m) { var f = function () { if (!window.L) return setTimeout(f, 120); var map = L.map(m).setView([+m.dataset.lat, +m.dataset.lng], 14); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '© OpenStreetMap'}).addTo(map); L.marker([+m.dataset.lat, +m.dataset.lng]).addTo(map); }; f(); }
 })();
 </script>
 {% endblock %}

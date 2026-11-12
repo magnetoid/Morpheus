@@ -3,7 +3,8 @@
 Both head renderers declared every og:image 1200×630 — a product photo, a
 square default social image, a CMS cover alike. Social platforms lay a share
 card out from those numbers before they fetch the file, so a wrong ratio is a
-wrong card. The size is not known where the URL is resolved, so it is omitted.
+wrong card. Since v0.159.1 the size is read from the store's own file
+(``test_images_and_speed.ShareImageSizeTests``); an image with no file here claims none.
 """
 
 from __future__ import annotations

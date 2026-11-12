@@ -150,6 +150,7 @@ def resolve_meta(
     canonical_url: str = '',
     og_type: str = 'website',
     page_kind: str = '',
+    last_resort_image: str = '',
 ) -> ResolvedMeta:
     """Merge per-object SeoMeta + native model SEO fields + fallbacks.
 
@@ -219,6 +220,7 @@ def resolve_meta(
             or fallback_image
             or (site.default_og_image or '')
             or _store_default_social_image()
+            or last_resort_image
         ).strip()
     )
     canonical = stored('canonical_url', 'canonical_url', canonical_url).strip()

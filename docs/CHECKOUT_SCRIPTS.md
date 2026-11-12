@@ -65,7 +65,7 @@ or when the table and the list disagree.
 | `https://*.js.stripe.com` | payments | Parts of Stripe.js that Stripe serves from subdomains | With Stripe.js |
 | `https://maps.googleapis.com` | storefront | Google Places address suggestions on the checkout address form | `GOOGLE_PLACES_API_KEY` is set |
 | `https://www.googletagmanager.com` | tracking, google_shopping | Google Analytics 4 (gtag.js) or the store's Tag Manager container; Google Ads remarketing | A measurement ID or container is set and the shopper allows analytics (remarketing: marketing) |
-| `https://cdn.jsdelivr.net` | themes dot_books, supernatural_shop, irving_survival | `motion@10.18.0` (animations) and `web-vitals@4.2.4` (page-speed measurements for the SEO app) | Every page of those themes |
+| `https://cdn.jsdelivr.net` | themes dot_books, supernatural_shop, irving_survival; seo | `motion@10.18.0` (the themes' animations) and `web-vitals@4.2.4` (field page-speed readings, contributed by seo to every theme's `global_below_body`) | motion: every page of those themes; web-vitals: every page while seo is on |
 | `https://connect.facebook.net` | meta_commerce | Meta Pixel | Pixel ID set and switched on; shopper allows marketing |
 | `https://analytics.tiktok.com` | tiktok_commerce | TikTok Pixel | Pixel ID set; shopper allows marketing |
 | `https://s.pinimg.com` | pinterest_commerce | Pinterest Tag | Tag ID set; shopper allows marketing |

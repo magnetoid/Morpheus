@@ -57,6 +57,9 @@ class SeoPage:
     title: str = ''  # CLEAN page name — the brand is applied at render (ADR 0007)
     description: str = ''
     image: str = ''
+    # The share image when nothing else names one: a listing's or the home page's
+    # first item's (v0.159.1). The page's own, the merchant's defaults all win.
+    fallback_image: str = ''
     og_type: str = 'website'
     subtype: str = ''  # 'category' | 'collection' | 'vendor' | 'author' | …
     noindex: bool = False

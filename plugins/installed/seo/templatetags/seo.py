@@ -23,7 +23,7 @@ robots, keywords, and a JSON-LD <script>.
 from __future__ import annotations
 
 from django import template
-from django.utils.html import escape
+from django.utils.html import conditional_escape, escape
 from django.utils.safestring import mark_safe
 
 from plugins.installed.seo.services import resolve_meta
@@ -710,7 +710,8 @@ def seo_responsive_image(
     Args:
       src: absolute media URL (e.g. ``/media/products/foo.jpg``) or a
         Django FieldFile-like object with a ``.url`` attribute.
-      alt: required alt text. Falls back to '' (mark decorative).
+      alt: required alt text. Falls back to '' (mark decorative). Text a template
+        already escaped (a ``blocktrans asvar``) is not escaped twice.
       sizes: CSS `sizes` attribute (e.g. "(min-width: 900px) 480px, 100vw").
       widths: comma-separated widths to emit; restricted to ALLOWED_IMAGE_WIDTHS.
       priority: when truthy, emits fetchpriority=high + loading=eager
@@ -768,14 +769,14 @@ def seo_responsive_image(
         loading = _loading_for(priority)
         fp = ' fetchpriority="high"' if priority else ''
         return mark_safe(
-            f'<img src="{escape(url)}" alt="{escape(alt)}" '
+            f'<img src="{escape(url)}" alt="{conditional_escape(alt)}" '
             f'loading="{loading}" decoding="async"{fp} '
             f'{f"class={css_class!r}" if css_class else ""} '
             f'{f"style={style!r}" if style else ""}>'
         )
     media_prefix = '/media/'
     if not url.startswith(media_prefix):
-        return mark_safe(f'<img src="{escape(url)}" alt="{escape(alt)}">')
+        return mark_safe(f'<img src="{escape(url)}" alt="{conditional_escape(alt)}">')
     rel = url[len(media_prefix) :]
 
     from plugins.installed.seo.services import ALLOWED_IMAGE_WIDTHS
@@ -813,11 +814,25 @@ def seo_responsive_image(
     # path (`data-src-rel="products/x.jpg"`, which nothing read) was resolved
     # against the page by crawlers and logged ~13k 404s a month on one store.
 
+    # The fallback's own size, so the browser keeps the image's box before it
+    # loads (the /img/ variant only ever scales down). `data-sized` meets seo's
+    # zero-specificity `width:auto; height:auto` in the head: a theme that sizes
+    # the image keeps its rules, and one that does not keeps today's layout.
+    size_attr = ''
+    from plugins.installed.seo.services.images import image_size
+
+    natural = image_size(url)
+    if natural:
+        nat_w, nat_h = natural
+        box_w = min(fallback_w, nat_w)
+        box_h = max(1, round(nat_h * box_w / nat_w))
+        size_attr = f' width="{box_w}" height="{box_h}" data-sized'
+
     return mark_safe(
         f'<picture>'
         f'<source type="image/avif" srcset="{escape(srcset_for("avif"))}"{sizes_attr}>'
         f'<source type="image/webp" srcset="{escape(srcset_for("webp"))}"{sizes_attr}>'
-        f'<img src="{escape(fallback)}" alt="{escape(alt)}" '
+        f'<img src="{escape(fallback)}" alt="{conditional_escape(alt)}"{size_attr} '
         f'loading="{loading}" decoding="async"{fp}'
         f'{class_attr}{style_attr}{id_attr}>'
         f'</picture>'

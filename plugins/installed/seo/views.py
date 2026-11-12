@@ -412,40 +412,33 @@ def indexnow_keyfile(request: HttpRequest, key: str) -> HttpResponse:
 
 
 def web_vitals_beacon(request: HttpRequest) -> JsonResponse:
-    """Receive Real-User-Metrics from the storefront's web-vitals JS.
+    """Receive one field Core Web Vitals reading from the storefront.
 
-    Body: `{name, value, id, navigationType, rating, delta}` — the
-    standard web-vitals.js payload. Stored as an `AuditEvent` row with
-    event_type='cwv.report' so the dashboard can aggregate without a
-    new model.
+    Body: ``{name, value, url}`` from the web-vitals script seo contributes to
+    every theme. Kept in ``seo.WebVitalSample`` (``seo/web_vitals.py``), which
+    drops crawlers and test browsers and caps a day's readings.
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
+    if len(request.body or b'') > 2048:
+        return JsonResponse({'error': 'too large'}, status=400)
     try:
         body = json.loads(request.body.decode('utf-8') or '{}')
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return JsonResponse({'error': 'bad json'}, status=400)
-    metric = (body.get('name') or '').upper()
-    if metric not in ('LCP', 'INP', 'CLS', 'FCP', 'TTFB', 'FID'):
-        return JsonResponse({'error': 'unknown metric'}, status=400)
-    try:
-        from core.audit.services import record
+    if not isinstance(body, dict):
+        return JsonResponse({'error': 'bad json'}, status=400)
+    from plugins.installed.seo.web_vitals import record
 
+    try:
         record(
-            event_type='cwv.report',
-            target=(body.get('url') or request.headers.get('Referer') or '')[:200],
-            metadata={
-                'metric': metric,
-                'value': float(body.get('value') or 0.0),
-                'rating': body.get('rating', ''),
-                'nav_type': body.get('navigationType', ''),
-                'delta': float(body.get('delta') or 0.0),
-                'page_id': body.get('id', ''),
-            },
-            request_id=getattr(request, 'request_id', '') or '',
+            metric=str(body.get('name') or ''),
+            value=body.get('value'),
+            path=str(body.get('url') or ''),
+            user_agent=request.headers.get('User-Agent', ''),
         )
-    except Exception:  # noqa: BLE001
-        pass  # never let beacon failures noise the request
+    except Exception:  # noqa: BLE001 — a beacon never answers with an error page
+        logger.warning('web vitals reading not stored', exc_info=True)
     return JsonResponse({'ok': True})
 
 

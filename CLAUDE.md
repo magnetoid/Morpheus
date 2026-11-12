@@ -1687,6 +1687,23 @@ come from analytics through `LANDING_PAGE_TRAFFIC` (organic, google), so seo imp
 inspection accepts only the store's own host. A failed fetch keeps the stored rows, and its reason shows on
 Search performance and in `seo.search_performance`. Guarded by `seo/tests/test_search_console.py`.
 
+**Convention — an image states its size, and page speed is measured in shoppers' browsers (v0.159.1).**
+`{% seo_responsive_image %}` writes the width and height of the variant it serves, read from the file
+(`seo.services.images.image_size`, cached per file and modification time; only the store's own media and
+static files), plus `data-sized`. seo's `global_head` rule `:where(img[data-sized]){width:auto;height:auto}`
+has no specificity: a theme that sizes the image keeps its rules, and an image no theme sizes keeps the size
+it had, while the browser still knows its ratio before it loads. Never print a listing photo as a raw
+`<img src="{{ x.url }}">`; the travel themes did on every card. `og:image:width`/`height` come from the same
+file, only for the store's own host. A page with no share image falls back, after the merchant's defaults,
+to its first listed item's image (`pages/resolve.py:_first_item_image`, a queryset read with a LIMIT, since
+the head renders before the body). The web-vitals beacon is seo's `global_below_body` block, so every theme
+sends it once and it leaves with the app; never put one in a theme. Readings go to `WebVitalSample`
+(`seo/web_vitals.py`): crawlers and test browsers dropped (`is_crawler_user_agent`), at most 5,000 a metric a
+day, p75 over 28 days in Google's units (LCP s, INP ms, CLS), pruned nightly by `seo.prune_web_vitals`. A
+travel map loads Leaflet only once it nears the screen (`booking_marketplace/_leaflet_map.html` in each travel
+theme). Guarded by `seo/tests/test_images_and_speed.py` and
+`booking_marketplace/tests/test_theme_images_and_maps.py`.
+
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a

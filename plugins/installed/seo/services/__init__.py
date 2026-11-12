@@ -115,6 +115,7 @@ from .images import (
     ALLOWED_IMAGE_FORMATS,
     ALLOWED_IMAGE_WIDTHS,
     generate_image_variant,
+    image_size,
     parse_image_variant_path,
 )
 
@@ -203,6 +204,7 @@ __all__ = [
     # images
     'ALLOWED_IMAGE_FORMATS',
     'ALLOWED_IMAGE_WIDTHS',
+    'image_size',
     'generate_image_variant',
     'parse_image_variant_path',
     # ai feeds

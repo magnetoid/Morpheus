@@ -1,0 +1,6 @@
+{% comment %}
+Images from {% seo_responsive_image %} carry their width and height, so the browser
+keeps their box before they load. This rule has no specificity (`:where`): a theme
+that sizes the image (a card's width:100%, a cover's height) keeps its own rules,
+and an image no theme sizes keeps the size it had before the attributes.
+{% endcomment %}<style>:where(img[data-sized]){width:auto;height:auto}</style>

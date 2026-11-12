@@ -146,14 +146,15 @@ class IndexNowTests(TestCase):
 
 class CoreWebVitalsUnitsTests(TestCase):
     def test_lcp_is_reported_in_seconds(self):
-        from core.audit.models import AuditEvent
+        # Readings live in seo.WebVitalSample since v0.159.1 (test_images_and_speed.py).
+        from core.utils.site import store_today
+        from plugins.installed.seo.models import WebVitalSample
         from plugins.installed.seo.services import cwv_summary
 
+        today = store_today()
         for value in (1200, 1800, 2400, 3000):
-            AuditEvent.objects.create(
-                event_type='cwv.report', metadata={'metric': 'LCP', 'value': value}
-            )
-        AuditEvent.objects.create(event_type='cwv.report', metadata={'metric': 'INP', 'value': 180})
+            WebVitalSample.objects.create(day=today, metric='LCP', value=value)
+        WebVitalSample.objects.create(day=today, metric='INP', value=180)
         summary = cwv_summary()
         self.assertEqual(summary['lcp'], 2.4)  # the beacon's milliseconds, as Google's seconds
         self.assertEqual(summary['inp'], 180)
