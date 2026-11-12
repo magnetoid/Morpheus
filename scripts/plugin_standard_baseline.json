@@ -31,7 +31,6 @@
     "drops:tests.missing",
     "dsers:settings.not_registered",
     "feedback:models.has_models_flag",
-    "localization:tests.missing",
     "markets:structure.apps",
     "media:structure.apps",
     "media_3d:tests.missing",

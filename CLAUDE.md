@@ -1712,6 +1712,32 @@ travel map loads Leaflet only once it nears the screen (`booking_marketplace/_le
 theme). Guarded by `seo/tests/test_images_and_speed.py` and
 `booking_marketplace/tests/test_theme_images_and_maps.py`.
 
+**Convention — a page names only the languages its content is in (v0.160.0).** Montenegro and Croatia
+served every product, experience, place and hotel under `/sr/` or `/hr/` in English while the head claimed
+both languages (hreflang en + sr, a self-canonical on `/sr/x/`, `inLanguage: sr`). The apps that own content
+say what is translatable through `TRANSLATABLE_CONTENT` (catalog: Product, an experience's text included;
+booking_marketplace: Place, Property, Event; cms: a Page whose body it renders, never one built from sections),
+and `core/i18n/services.py` holds the rule: a page about one object exists in a language only when the object
+has a **reviewed** translation there of every registered field it fills (`content_languages`; the default
+language always counts, a page with no registered object keeps every language). Elsewhere `/sr/x/` names `/x/`
+as its canonical (a merchant's own canonical still wins; never `noindex` beside it), `/x/` names only the
+languages the object has, and `og:locale` / `inLanguage` name the language shown. A view overlays the reviewed
+text on the instance it renders (`overlay_translation`: complete objects only, one query per list), and a
+`pre_save` receiver on every model puts the original text back first, so a save in the same request can never
+write Serbian into the English columns. A place's or event's page names its object as `seo_content_object`,
+because a `seo_object` would change its English head. On a translated object the head reads the object's own
+fields, never the English `SeoMeta` row or a title pattern. A person's text is reviewed (the Translations page,
+`i18n.set_translation`, `i18n.translate_product`, GraphQL `setTranslation`); an AI draft
+(`localization/drafting.py`, the guarded provider) is `reviewed=False`, never shown nor counted, never replaces
+reviewed text, and keeps `is_machine_translated` once approved. Reviewed text is under the merchant's editorial
+control, so it carries no AI-text mark (EU AI Act Art. 50(4)). The sitemap is unchanged: it lists default-language
+URLs and claims no other language; hreflang lives in the head. The site audit reports an untranslated page as
+"Not yet translated" (its `/sr/` copy canonicalises to it), not as missing alternates. `Content-Language` names
+the active language, and `locale/sr` carries Django's Latin `sr_Latn` date names (Django's `sr` is Cyrillic).
+Guarded by `seo/tests/test_honest_languages.py`, `core/i18n/tests/test_honest_content.py`,
+`booking_marketplace/tests/test_translated_pages.py`, `storefront/tests/test_pdp_translation.py`,
+`localization/tests/` and `markets/tests/test_content_language.py`.
+
 **Convention — a breadcrumb is one list, rendered twice (v0.161.0).** A view's `breadcrumb_items` is
 the trail: the head builds the BreadcrumbList from it and `{% breadcrumb_trail %}` (storefront) renders the
 visible one from it, with the same urls moved into the page's language tree, site-relative in `href`. A

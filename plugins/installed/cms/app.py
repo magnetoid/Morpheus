@@ -50,6 +50,10 @@ class CmsPlugin(Plugin):
         from plugins.installed.cms.seo_graph import on_seo_jsonld_graph
 
         self.register_hook(events.SEO_JSONLD_GRAPH, on_seo_jsonld_graph, priority=50)
+        # A page's text, for the store's other languages (core.i18n).
+        from plugins.installed.cms.translations import on_translatable_content
+
+        self.register_hook(events.TRANSLATABLE_CONTENT, on_translatable_content, priority=30)
         # Theme sections register on import. Pull the active theme's
         # section bundle so the section_registry is populated before
         # any page render tries to look up a section_id. Other themes

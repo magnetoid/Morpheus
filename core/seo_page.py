@@ -74,7 +74,10 @@ class SeoPage:
     breadcrumbs: list = field(default_factory=list)
     page_obj: Any = None  # Django Paginator page, when the page is paginated
     query: str = ''  # the search term, for search pages
-    language: str = ''
+    language: str = ''  # the language the main content is in (core.i18n)
+    # The languages a page about one object exists in (`core.i18n.content_languages`):
+    # None when no app registered the object, and the page keeps every language.
+    languages: set | None = None
     context: dict = field(default_factory=dict)  # the flattened template context
 
     @property

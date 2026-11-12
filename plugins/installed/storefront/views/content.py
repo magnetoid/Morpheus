@@ -152,8 +152,10 @@ def journal_index(request):
     if app_registry.is_active('cms'):
         from plugins.installed.cms.services import journal_dict, journal_pages
 
+        from core.i18n.services import overlay_translation
+
         page_obj = paginate_or_404(journal_pages(), 24, request)
-        entries = [journal_dict(p) for p in page_obj.object_list]
+        entries = [journal_dict(p) for p in overlay_translation(list(page_obj.object_list))]
     else:
         page_obj = paginate_or_404([], 24, request)
         entries = []

@@ -130,6 +130,12 @@ class EditionHreflangHeadTests(TestCase):
     def test_a_multilingual_store_leaves_hreflang_to_its_interface_languages(self):
         from django.test import override_settings
 
+        from core.i18n.services import set_translation
+
+        # A product page names a language only once its text is translated there
+        # and reviewed (v0.160.0); this edition's one filled field is its name.
+        fr = Product.objects.get(slug='work-fr')
+        set_translation(fr, 'name', 'sr', 'Delo (fr)')
         with override_settings(LANGUAGES=[('en', 'English'), ('sr', 'Srpski')], LANGUAGE_CODE='en'):
             alternates = self._alternates('/products/work-fr/')
         self.assertNotIn('fr', alternates)

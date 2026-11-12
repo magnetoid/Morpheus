@@ -31,14 +31,14 @@ def _resolve_ct(content_type: str):
 
 @strawberry.type
 class LocalizationQueryExtension:
-    @strawberry.field(description='Languages enabled for this store (translation targets).')
+    @strawberry.field(description="The store's languages, the default first.")
     def enabled_languages(self, info: strawberry.Info) -> list[str]:
         require_authenticated(info)
         if not has_scope(info, 'i18n.read'):
             return []
-        from core.i18n.services import list_enabled_languages
+        from core.i18n.services import store_languages
 
-        return list_enabled_languages()
+        return store_languages()
 
     @strawberry.field(
         description="Stored translations for an object. content_type is 'app_label.model' "

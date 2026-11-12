@@ -35,7 +35,31 @@ class CatalogPlugin(Plugin):
         self.register_hook(events.DASHBOARD_SETUP_STEPS, self.on_setup_steps, priority=10)
         # Morpheus Brain: contribute the catalog content-gap counts.
         self.register_hook(events.BRAIN_SIGNALS, self.on_brain_signals, priority=50)
+        # Product text a shopper reads, for the store's other languages (core.i18n).
+        self.register_hook(events.TRANSLATABLE_CONTENT, self.on_translatable_content, priority=10)
         from plugins.installed.catalog import signals  # noqa - register signals
+
+    def on_translatable_content(self, value, **kwargs):
+        """TRANSLATABLE_CONTENT — a product's text, an experience's included (a service Product)."""
+        from plugins.installed.catalog.models import Product
+
+        return [
+            *(value or []),
+            {
+                'key': 'catalog.product',
+                'model': Product,
+                'label': 'Products',
+                'fields': {
+                    'name': 'text',
+                    'short_description': 'html',
+                    'description': 'html',
+                    'meta_title': 'text',
+                    'meta_description': 'text',
+                },
+                'queryset': lambda: Product.objects.filter(status='active'),
+                'url': lambda product: f'/products/{product.slug}/',
+            },
+        ]
 
     def on_dashboard_search(self, value, query='', words=None, **kwargs):
         """Products (by name, SKU, slug, or a variant's SKU or barcode), categories
