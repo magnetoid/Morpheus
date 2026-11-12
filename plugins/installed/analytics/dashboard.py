@@ -12,13 +12,32 @@ from datetime import date, timedelta
 from django.db.models import Sum
 from django.utils import timezone
 
-from core.utils.site import store_timezone, store_today
+from core.utils.site import store_today
 
 
-def _days(start, end) -> tuple[date, date]:
-    """A dashboard window (``end`` exclusive) as the store's first and last day."""
-    tz = store_timezone()
-    return start.astimezone(tz).date(), (end - timedelta(microseconds=1)).astimezone(tz).date()
+def _period(date_range, today: date) -> tuple[date, date]:
+    """The store days a dashboard range covers: a rolling range is its number
+    of whole days ending today, a named one is read on the store's calendar.
+
+    The range arrives as UTC instants, and reading those as dates gave "Last 7
+    days" eight days (the eighth also in the comparison) and "Today" in New
+    York yesterday as well."""
+    preset = getattr(date_range, 'preset', None)
+    if preset == '':  # a custom range names its own days
+        return date_range.start.date(), (date_range.end - timedelta(days=1)).date()
+    month = today.replace(day=1)
+    yesterday = today - timedelta(days=1)
+    named = {
+        'yesterday': (yesterday, yesterday),
+        'this_month': (month, today),
+        'last_month': ((month - timedelta(days=1)).replace(day=1), month - timedelta(days=1)),
+        'this_year': (today.replace(month=1, day=1), today),
+        'all_time': (date_range.start.date(), today),
+    }
+    if preset in named:
+        return named[preset]
+    days = max(1, int(getattr(date_range, 'days', 1) or 1))  # today, 7d, 30d, …
+    return today - timedelta(days=days - 1), today
 
 
 def _total(first: date, last: date, metric: str, **filters) -> int:
@@ -34,15 +53,14 @@ def _total(first: date, last: date, metric: str, **filters) -> int:
 
 def _window(date_range):
     """(current, previous) store-day windows: the dashboard's range when it
-    sends one, else today against yesterday. The tiles used to show yesterday
-    whatever range was picked."""
-    if date_range is not None and getattr(date_range, 'start', None):
-        return _days(date_range.start, date_range.end), _days(
-            date_range.prev_start, date_range.prev_end
-        )
+    sends one, else today, each against as many days just before it, which
+    never overlap. The tiles used to show yesterday whatever range was picked."""
     today = store_today()
-    yesterday = today - timedelta(days=1)
-    return (today, today), (yesterday, yesterday)
+    first = last = today
+    if date_range is not None and getattr(date_range, 'start', None):
+        first, last = _period(date_range, today)
+    length = last - first + timedelta(days=1)
+    return (first, last), (first - length, first - timedelta(days=1))
 
 
 def on_dashboard_kpis(value, date_range=None, **kwargs):

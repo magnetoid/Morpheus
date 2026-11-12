@@ -11,7 +11,7 @@ the reload after the cookie banner.
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -22,9 +22,10 @@ from djmoney.money import Money
 
 from core.errors.context import current_request
 from morpheus.core import MorpheusEvents, hook_registry
-from plugins.installed.analytics import services
+from plugins.installed.analytics import dashboard, services
 from plugins.installed.analytics.models import AnalyticsEvent, AnalyticsSession, DailyMetric
 from plugins.installed.orders.models import Order
+from plugins.registry import app_registry
 
 _BROWSER = (
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 Version/17.5 Safari/605.1.15'
@@ -55,6 +56,23 @@ class PageHitTests(TestCase):
         self.assertNotIn(b'data-morph-hit', self.client.get('/no-such-page-xyz/').content)
         self.assertNotIn(b'data-morph-hit', Client(HTTP_USER_AGENT=_SEMRUSH).get('/').content)
         self.assertNotIn(b'data-morph-hit', self.client.get('/csrf/').content)
+
+    def test_a_switched_off_app_writes_no_script_and_sets_no_cookie(self):
+        self.client.cookies['morpheus_consent'] = _CONSENT
+        on = self.client.get('/')
+        self.assertIn(b'data-morph-hit', on.content)
+        self.assertIn('morph_aid', on.cookies)
+
+        self.assertTrue(app_registry.is_active('analytics'))
+        app_registry._active.discard('analytics')
+        self.addCleanup(app_registry._active.add, 'analytics')
+        cache.clear()
+        client = Client(HTTP_USER_AGENT=_BROWSER)
+        client.cookies['morpheus_consent'] = _CONSENT
+        off = client.get('/')
+        self.assertEqual(off.status_code, 200)
+        self.assertNotIn(b'data-morph-hit', off.content)
+        self.assertNotIn('morph_aid', off.cookies)
 
     def test_the_hit_is_a_pageview_and_only_a_pageview_is(self):
         self.client.post(
@@ -166,6 +184,50 @@ class StoreClockTests(TestCase):
         self.assertEqual(start.utcoffset(), timedelta(0))
 
 
+class DashboardWindowTests(TestCase):
+    """The home tiles sum whole store days, and the comparison never shares one."""
+
+    def _window(self, now, **query):
+        from plugins.installed.admin_dashboard.views_split._shared import _resolve_date_range
+
+        with patch('django.utils.timezone.now', return_value=now):
+            date_range = _resolve_date_range(RequestFactory().get('/dashboard/', query))
+            return date_range, dashboard._window(date_range)
+
+    def test_last_7_days_is_seven_days_against_the_seven_before(self):
+        now = datetime(2026, 11, 12, 12, 0, tzinfo=UTC)
+        date_range, window = self._window(now, preset='7d')
+        self.assertEqual(
+            window,
+            ((date(2026, 11, 6), date(2026, 11, 12)), (date(2026, 10, 30), date(2026, 11, 5))),
+        )
+        for offset in range(14):
+            day = date(2026, 11, 12) - timedelta(days=offset)
+            DailyMetric.objects.create(
+                day=day, metric='sessions', value_int=100 if day == date(2026, 11, 5) else 1
+            )
+        with patch('django.utils.timezone.now', return_value=now):
+            kpis = dashboard.on_dashboard_kpis([], date_range=date_range)
+        visits = {k['label']: k for k in kpis}['Visits']
+        self.assertEqual((visits['value'], visits['delta']), ('7', '-93%'))
+
+    def test_today_and_a_custom_range_are_the_stores_days(self):
+        from core.models import StoreSettings
+
+        StoreSettings.objects.create(timezone='America/New_York')
+        now = datetime(2026, 11, 12, 15, 0, tzinfo=UTC)  # 10:00 in New York
+        _, today = self._window(now, preset='today')
+        self.assertEqual(
+            today,
+            ((date(2026, 11, 12), date(2026, 11, 12)), (date(2026, 11, 11), date(2026, 11, 11))),
+        )
+        _, custom = self._window(now, **{'from': '2026-11-01', 'to': '2026-11-03'})
+        self.assertEqual(
+            custom,
+            ((date(2026, 11, 1), date(2026, 11, 3)), (date(2026, 10, 29), date(2026, 10, 31))),
+        )
+
+
 class CookielessTests(TestCase):
     def _request(self, user=None):
         request = RequestFactory().get('/', HTTP_USER_AGENT=_BROWSER, REMOTE_ADDR='203.0.113.9')
@@ -197,6 +259,47 @@ class CookielessTests(TestCase):
                 name='order.placed', kind='purchase', request=self._request(), customer=customer
             )
         self.assertNotIn('v', evt.payload)
+
+    def test_a_guests_order_never_carries_the_key(self):
+        # The order holds the guest's email and address: the day's key beside
+        # it would name who browsed what. The visit and the purchase still count.
+        cache.clear()
+        order = Order.objects.create(
+            email='guest@example.com',
+            subtotal=Money(Decimal('9.00'), 'EUR'),
+            total=Money(Decimal('9.00'), 'EUR'),
+        )
+        checkout = RequestFactory().post(
+            '/checkout/', HTTP_USER_AGENT=_BROWSER, REMOTE_ADDR='203.0.113.9'
+        )
+        token = current_request.set(checkout)
+        try:
+            with _config(cookieless_visits=True):
+                page = services.record_event(
+                    name='pageview', kind='pageview', request=self._request()
+                )
+                hook_registry.fire(MorpheusEvents.ORDER_PLACED, order=order)
+                refund = services.record_event(
+                    name='refund.created', kind='refund', request=checkout
+                )
+        finally:
+            current_request.reset(token)
+        key = page.payload['v']
+        purchase = AnalyticsEvent.objects.get(name='order.placed')
+        self.assertEqual(purchase.payload['order'], str(order.pk))
+        for evt in (purchase, refund):
+            self.assertNotIn('v', evt.payload)
+            self.assertNotIn(key, json.dumps(evt.payload))
+        self.order = Order.objects.get(pk=order.pk)  # the status field refuses refresh_from_db
+        self.assertNotIn(key, json.dumps(self.order.metadata or {}))
+
+        today = services.store_today()
+        services.roll_daily(day=today)
+        metric = {
+            m.metric: m.value_int for m in DailyMetric.objects.filter(day=today, dimension='')
+        }
+        self.assertEqual(metric['sessions'], 1)
+        self.assertEqual(metric['counted_purchases'], 1)
 
 
 class OrderVisitTests(TestCase):
