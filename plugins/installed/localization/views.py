@@ -57,11 +57,12 @@ def translations_index(request):
             },
         )
     kinds = {s['key']: s for s in specs}
-    kind = _choice(request.GET.get('kind') or request.POST.get('kind') or '', kinds, '')
+    # A draft button posts its own row's kind and language to the filtered list's url:
+    # the posted values name what to draft, the query string only filters the list.
+    params = request.POST if request.method == 'POST' else request.GET
+    kind = _choice(params.get('kind') or '', kinds, '')
     kind = kind or (specs[0]['key'] if specs else '')
-    language = _choice(
-        request.GET.get('language') or request.POST.get('language') or '', languages, languages[0]
-    )
+    language = _choice(params.get('language') or '', languages, languages[0])
 
     if request.method == 'POST':
         if (denied := enforce(request, 'system.write')) is not None:
