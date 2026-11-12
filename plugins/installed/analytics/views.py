@@ -336,6 +336,9 @@ def cohort_view(request):
     from plugins.installed.analytics.services_cohorts import compute_cohorts  # noqa: PLC0415
     from plugins.installed.orders.reports import net_sales  # noqa: PLC0415
 
+    # One currency for the whole table: the one most orders carry. Cohort
+    # cells sum only that currency's sales.
+    currency = net_sales().currency or store_currency()
     metric = (request.GET.get('metric') or 'order').strip()
     if metric not in ('order', 'active', 'revenue'):
         metric = 'order'
@@ -349,9 +352,10 @@ def cohort_view(request):
                 cohort_count=cohort_count,
                 period_count=period_count,
                 metric=metric,
+                currency=currency,
             ),
             'metric': metric,
-            'currency_symbol': currency_symbol(net_sales().currency or store_currency()),
+            'currency_symbol': currency_symbol(currency),
             'cohort_count': cohort_count,
             'period_count': period_count,
             'active_nav': 'analytics',

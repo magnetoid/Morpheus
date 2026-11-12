@@ -7,7 +7,9 @@ raised by each paid order's full total and never lowered: a refund, a
 cancellation after payment and a cash-on-delivery order not yet paid all left
 them wrong.
 
-Each order event refreshes its customer once the transaction commits; the
+Each order event refreshes its customer once the transaction commits. A
+cancellation's event fires before its caller saves the order, so it waits for
+the save (``on_order_saved``); the
 nightly job refreshes everyone, so a write that skipped the events (a
 ``QuerySet.update()``) heals by the next morning.
 """
@@ -69,8 +71,32 @@ def _refresh_soon(customer_id) -> None:
     transaction.on_commit(run)
 
 
+def on_order_cancelled(order=None, **kwargs) -> None:
+    """ORDER_CANCELLED fires from the FSM transition, before the caller's
+    ``save()``: outside a transaction the refresh would read the row still
+    uncancelled. Mark the order; ``on_order_saved`` refreshes once it is stored.
+    An order already stored as cancelled (the event fired after an update) is
+    refreshed now."""
+    customer_id = getattr(order, 'customer_id', None)
+    if not customer_id:
+        return
+    from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+    if Order.objects.filter(pk=order.pk, status='cancelled').exists():
+        _refresh_soon(customer_id)
+    else:
+        order._totals_after_save = True
+
+
+def on_order_saved(sender, instance, **kwargs) -> None:
+    """post_save of an Order marked by ``on_order_cancelled``: refresh once."""
+    if getattr(instance, '_totals_after_save', False):
+        instance._totals_after_save = False
+        _refresh_soon(instance.customer_id)
+
+
 def on_order_changed(order=None, **kwargs) -> None:
-    """ORDER_PLACED, ORDER_PAID, ORDER_CANCELLED and PAYMENT_REFUNDED: the
+    """ORDER_PLACED, ORDER_PAID and PAYMENT_REFUNDED: the
     order's customer bought something else now."""
     customer_id = getattr(order, 'customer_id', None)
     if customer_id:

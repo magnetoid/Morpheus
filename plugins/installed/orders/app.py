@@ -53,10 +53,19 @@ class OrdersPlugin(Plugin):
         for event in (
             events.ORDER_PLACED,
             events.ORDER_PAID,
-            events.ORDER_CANCELLED,
             events.PAYMENT_REFUNDED,
         ):
             self.register_hook(event, customer_totals.on_order_changed, priority=90)
+        # A cancellation fires before its caller saves the order, so it waits
+        # for the save.
+        from django.db.models.signals import post_save  # noqa: PLC0415
+
+        from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+        self.register_hook(events.ORDER_CANCELLED, customer_totals.on_order_cancelled, priority=90)
+        post_save.connect(
+            customer_totals.on_order_saved, sender=Order, dispatch_uid='orders.totals_after_save'
+        )
         self.register_celery_beat(
             'orders:refresh_customer_totals',
             {'task': 'orders.refresh_customer_totals', 'schedule': crontab(hour=4, minute=15)},
