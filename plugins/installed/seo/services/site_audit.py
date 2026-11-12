@@ -954,8 +954,24 @@ def _image_problem(extra: _Extra, url: str, seen: dict[str, str]) -> str:
         seen[url] = ''
         return ''
     ok = status == 200 and kind.split(';', 1)[0].strip().lower().startswith('image/')
+    if not ok and _ships_static_file(url):
+        # A theme's own file (the travel themes' og-default.jpg) may be served by
+        # whatever stands in front of the app (WhiteNoise here, nginx or a CDN
+        # elsewhere, nothing at all under the test runner), so an in-process 404
+        # proves nothing about it; the file being in the build does.
+        ok = True
     seen[url] = '' if ok else f'answers {status or "nothing"} {kind.split(";", 1)[0]}'.strip()
     return seen[url]
+
+
+def _ships_static_file(url: str) -> bool:
+    """Whether a /static/ URL names a file the store's build holds."""
+    from django.conf import settings
+
+    from plugins.installed.seo.services.images import _local_image_path
+
+    static_url = str(getattr(settings, 'STATIC_URL', '/static/') or '/static/')
+    return urlsplit(str(url or '')).path.startswith(static_url) and bool(_local_image_path(url))
 
 
 # ── Links between pages: redirects, chains, orphans ──────────────────────────

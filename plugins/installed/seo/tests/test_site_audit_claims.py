@@ -245,6 +245,16 @@ class ImageClaimTests(_AuditCase):
         self.assertEqual(report['checks']['images'], 1)  # fetched once for both claims
         self.assertEqual(report['checks']['images_off_host'], 1)
 
+    def test_a_static_image_counts_by_the_file_in_the_build(self):
+        # Nothing serves /static/ under the test runner, as nginx or a CDN may
+        # serve it elsewhere: a file the build holds is fine, a missing one is not.
+        shipped = _page(head=self._og('/static/pwa/icon-192.png'))
+        missing = _page(head=self._og('/static/pwa/no-such-icon.png'))
+        finding = _finding(self.audit({'/a/': shipped, '/b/': missing}), 'markup_image_broken')
+        self.assertIsNotNone(finding)
+        self.assertEqual(len(finding['examples']), 1)
+        self.assertTrue(finding['examples'][0].startswith('/b/: '), finding['examples'])
+
     def test_a_declared_size_the_file_does_not_have_is_reported(self):
         wrong = _page(head=self._og(self.good, (1200, 630)))
         right = _page(head=self._og(self.good, (100, 50)))
@@ -379,9 +389,15 @@ class EveryThemeIsQuietTests(_AuditCase):
         for name in themes:
             with self.subTest(theme=name):
                 _activate_theme(self, name)
-                report = self.audit(
-                    {'/products/claim-probe/': None, '/products/grouped-probe/': None}
-                )
+                # A store runs with its own theme's static folder (STATICFILES_DIRS
+                # follows MORPHEUS_ACTIVE_THEME); switching at runtime keeps the
+                # default theme's, so the travel themes' og-default.jpg was "missing".
+                base = Path(settings.BASE_DIR)
+                folders = [base / 'static', base / 'themes' / 'library' / name / 'static']
+                with override_settings(STATICFILES_DIRS=[d for d in folders if d.exists()]):
+                    report = self.audit(
+                        {'/products/claim-probe/': None, '/products/grouped-probe/': None}
+                    )
                 for code in (
                     'markup_price_not_on_page',
                     'markup_price_stale',
