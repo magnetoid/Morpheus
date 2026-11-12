@@ -14,7 +14,11 @@ from contextlib import suppress
 def cwv_summary() -> dict:
     """Aggregate the last 1000 web-vitals beacon reports into p75 per metric —
     the same threshold Google uses to decide pass/fail. Source: AuditEvent rows
-    with event_type='cwv.report'. No new model."""
+    with event_type='cwv.report'. No new model.
+
+    Units are Google's: LCP in seconds, INP in milliseconds, CLS unitless. The
+    web-vitals beacon reports LCP in milliseconds, and the dashboard card,
+    which compares it with 2.5 and prints "s", showed "1834.00s" in red."""
     out = {'lcp': None, 'inp': None, 'cls': None, 'samples': 0}
     with suppress(Exception):
         from core.audit.models import AuditEvent
@@ -35,6 +39,6 @@ def cwv_summary() -> dict:
                     ]
                 )
                 if values:
-                    p75_idx = int(0.75 * (len(values) - 1))
-                    out[metric_key] = values[p75_idx]
+                    p75 = values[int(0.75 * (len(values) - 1))]
+                    out[metric_key] = round(p75 / 1000, 2) if metric_key == 'lcp' else p75
     return out

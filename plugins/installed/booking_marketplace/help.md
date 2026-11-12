@@ -24,6 +24,8 @@ However it is configured, this app never takes payment itself: a submission eith
 
 The country the store serves comes from its theme: the Montenegro theme lists Montenegro's regions and the Croatia theme Croatia's, and listings, search and every page that names the country follow it. A listing's region is picked from that country's list.
 
-A hotel can be listed without rooms or rates: its card says "Contact for price" and its page sends you the guest's enquiry. The Croatia store started that way, with real places, events and hotels, experiences hosted by the store itself until local hosts join, and no reviews or ratings. Its photos come from Wikimedia Commons, and each page names the photographer and licence; a photo you upload replaces it and its credit.
+A hotel can be listed without rooms or rates: its card says "Contact for price" and its page sends you the guest's enquiry. Its photos come from Wikimedia Commons, and each page names the photographer and licence; a photo you upload replaces it and its credit.
 
 Where the shop's theme includes one, the app also shows an investor page, shared by link and kept out of search results. It shows public figures about the market and what the site lists today, counted live; it never shows bookings, enquiries or revenue.
+
+Search engines see an experience as available only while it has an open date and the store takes bookings.

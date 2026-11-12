@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.155.1 — 2026-11-12
+
+**No false claims in search results and AI files**
+
+- Search results: a return policy and shipping details are published only for products that ship, and the store's own policy only while it sells goods. The travel stores no longer tell Google a kayak trip comes with a 30-day return window, and a download carries none
+- Experiences: search engines are told one is available only while it has an open date and the store takes bookings; while it only takes enquiries, its price goes out with no availability, and a listing with no price is offered at no price at all. Room rates keep their own currency and hotels their own price range
+- Prices no longer carry an end date one year out that nobody chose, and a product sold in several editions is described once, through its editions
+- The return window on dot books' and Supernatural's product pages is the one set on Returns portal, and disappears at zero; Irving's journal pages no longer call the shop "Supernatural Shop"
+- AI crawler files: llms.txt is titled with the store's name, lists only categories with products on sale and links the product list only when there is one; each product's text version quotes approved reviews (it failed on every product with a review) and says out of stock when it is
+- The {site_name} pattern word fills in with the store's name (it was always empty); search engines are pinged only about products on sale, never drafts or bookable services; the speed card reports page load in seconds, as Google does; GA4 search events carry the words the shopper typed
+
 ## v0.155.0 — 2026-11-12
 
 **Cards charged when you choose, saved cards at checkout, refunds without a gateway**

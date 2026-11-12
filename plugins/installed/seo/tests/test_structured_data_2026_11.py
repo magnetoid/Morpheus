@@ -167,9 +167,14 @@ class StoreIdentityTests(TestCase):
 
 class StoreReturnPolicyTests(TestCase):
     def test_the_store_node_carries_the_return_policy(self):
+        from djmoney.money import Money
+
+        from plugins.installed.catalog.models import Product
         from plugins.installed.returns_portal.seo_graph import on_seo_jsonld_graph
 
         _store(country='US')
+        # A policy for goods sent back: the store has to sell something that ships.
+        Product.objects.create(name='Mug', slug='rp-mug', status='active', price=Money(5, 'USD'))
         graph = {'@graph': [{'@type': 'OnlineStore', '@id': 'https://s.example#organization'}]}
         on_seo_jsonld_graph(graph)
         policy = graph['@graph'][0]['hasMerchantReturnPolicy']

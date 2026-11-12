@@ -49,17 +49,15 @@ def render_product_markdown(product) -> str:
     price = getattr(product, 'price', None)
     if price is not None:
         try:
+            from plugins.feed_mapping import availability_to_schema
+
             amount = price.amount
             currency = str(price.currency)
-            avail = (
-                'in stock'
-                if not getattr(product, 'track_inventory', False)
-                else (
-                    'in stock'
-                    if (getattr(product, 'stock_quantity', None) or 1) > 0
-                    else 'out of stock'
-                )
-            )
+            # The same answer the page's markup gives (inventory's count), not
+            # a `stock_quantity` the Product model does not have: every
+            # product used to read "in stock" here.
+            state = availability_to_schema(product).rsplit('/', 1)[-1]
+            avail = _AVAILABILITY_WORDS.get(state, 'in stock')
             parts.extend(['', f'Price: {amount} {currency} · {avail}'])
         except Exception:  # noqa: BLE001
             pass
@@ -88,7 +86,7 @@ def render_product_markdown(product) -> str:
         from plugins.installed.catalog.models import Review
 
         revs = list(
-            Review.objects.filter(product=product, status='published')
+            Review.objects.filter(product=product, is_approved=True)
             .order_by('-created_at')[:5]
             .values('rating', 'title', 'body', 'created_at')
         )
@@ -102,6 +100,14 @@ def render_product_markdown(product) -> str:
         pass
     return '\n'.join(parts) + '\n'
 
+
+_AVAILABILITY_WORDS = {
+    'InStock': 'in stock',
+    'OutOfStock': 'out of stock',
+    'PreOrder': 'available to pre-order',
+    'BackOrder': 'available on backorder',
+    'Discontinued': 'discontinued',
+}
 
 #: How long a built feed page is kept. The beat task ``seo.warm_ai_feed`` rebuilds
 #: the first page every 10 minutes, inside this window, so no crawler waits for a

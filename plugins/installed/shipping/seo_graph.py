@@ -22,17 +22,26 @@ _MAX_ZONES = 3
 
 
 def on_seo_jsonld_graph(value, page=None, request=None, **kwargs):
-    """`SEO_JSONLD_GRAPH` subscriber: add shipping to the product's offer."""
+    """`SEO_JSONLD_GRAPH` subscriber: add shipping to the product's offer.
+
+    Only for a product that ships: a booked experience or a download has no
+    delivery to describe.
+    """
     try:
-        offer = _product_offer(value)
-        if offer is None:
-            return value
-        details = shipping_details(currency=offer.get('priceCurrency') or 'USD')
-        if details:
-            offer['shippingDetails'] = details if len(details) > 1 else details[0]
+        for offer in _product_offers(value) if _ships(page) else []:
+            details = shipping_details(currency=offer.get('priceCurrency') or 'USD')
+            if details:
+                offer['shippingDetails'] = details if len(details) > 1 else details[0]
     except Exception as e:  # noqa: BLE001 — a graph enricher must never lose the graph
         logger.warning('shipping: JSON-LD enrichment failed: %s', e, exc_info=True)
     return value
+
+
+def _ships(page) -> bool:
+    obj = getattr(page, 'obj', None)
+    if obj is None or getattr(obj, 'product_type', '') == 'service':
+        return False
+    return bool(getattr(obj, 'requires_shipping', False))
 
 
 def shipping_details(*, currency: str = 'USD') -> list[dict]:
@@ -149,14 +158,26 @@ def _delivery_time(rate) -> dict | None:
     }
 
 
-def _product_offer(graph) -> dict | None:
-    """The offer on the graph's Product node, when the page has one."""
+def _product_offers(graph) -> list[dict]:
+    """Every offer on the graph's Product nodes, variants' included.
+
+    A product with several editions is a ProductGroup whose offers sit on its
+    `hasVariant` members, not on the group.
+    """
     if not isinstance(graph, dict):
-        return None
+        return []
+    found: list[dict] = []
+
+    def collect(node):
+        offers = node.get('offers')
+        for offer in offers if isinstance(offers, list) else [offers]:
+            if isinstance(offer, dict):
+                found.append(offer)
+        for member in node.get('hasVariant') or []:
+            if isinstance(member, dict):
+                collect(member)
+
     for node in graph.get('@graph') or []:
-        if not isinstance(node, dict) or 'Product' not in str(node.get('@type', '')):
-            continue
-        offer = node.get('offers')
-        if isinstance(offer, dict):
-            return offer
-    return None
+        if isinstance(node, dict) and 'Product' in str(node.get('@type', '')):
+            collect(node)
+    return found

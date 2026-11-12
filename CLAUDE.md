@@ -1197,7 +1197,14 @@ defaults to "Morpheus Store" and `core.utils.site.store_name` falls back to the 
 default (`seo/services/jsonld.py:_store_setting`); and `store_logo_url` falls back to
 the 1200×630 share image, which is no `logo`. A value Google does not read is no claim
 at all: `variesBy` takes six axes, and dotbooks' `bookFormat` groups claimed none
-(`seo/tests/test_structured_data_2026_11.py`).
+(`seo/tests/test_structured_data_2026_11.py`). **A policy belongs to what it covers** (v0.155.1):
+a return policy and shipping details go on an offer only for a product that ships, and on the
+store only while it sells goods: Montenegro published a 30-day US return window for every kayak
+trip. An experience is `InStock` only with an open date and only while the store takes bookings
+(nothing while it takes enquiries); an unpriced listing offers nothing; `priceValidUntil` (it said
+today + 365) is omitted; a theme prints the window from `return_window_days` (returns_portal's
+context processor), never "30-day returns". Guarded by `booking_marketplace/tests/test_offer_claims.py`,
+`seo/tests/test_offer_claims.py`, `seo/tests/test_true_claims_2026_11.py` and `themes/test_return_claims.py`.
 
 **Landmine — an SEO gap is what the page RENDERS empty, never what one column
 holds; and a collector nothing ever calls fails silently for months.**

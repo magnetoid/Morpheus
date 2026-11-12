@@ -216,23 +216,29 @@ def render_llms_txt(*, full: bool = False) -> str:  # noqa: PLR0912, PLR0915 —
     # `https://example.com//journal/x/`. They resolve, but llms.txt exists to be
     # read by machines. `render_agents_md` had the rstrip; this never did.
     base = _site_base_url().rstrip('/')
-    name = s.organization_name or 'Morpheus store'
+    from urllib.parse import urlparse
+
+    from plugins.installed.seo.services.jsonld import _store_setting
+
+    # The store's own name; "Morpheus store" named the shop after the engine
+    # (Croatia's file was titled that).
+    name = s.organization_name or _store_setting('store_name') or urlparse(base).hostname or 'Store'
     out = [f'# {name}', '']
     if s.llms_txt_intro:
         out.extend(['> ' + s.llms_txt_intro.strip(), ''])
     else:
         out.extend([f'> {name} — visit {base} to browse.', ''])
 
-    out.extend(
-        [
-            '## Site map',
-            f'- [Home]({base}/)',
-            f'- [All products]({base}/products/)',
-            f'- [Search]({base}/search/?q=)',
-            f'- [Sitemap XML]({base}/sitemap.xml)',
-            '',
-        ]
-    )
+    try:
+        from plugins.installed.catalog.models import Product
+
+        sells_goods = Product.objects.shoppable().exists()
+    except Exception:  # noqa: BLE001
+        sells_goods = False
+    out.extend(['## Site map', f'- [Home]({base}/)'])
+    if sells_goods:  # a travel store's /products/ is an empty, noindex page
+        out.append(f'- [All products]({base}/products/)')
+    out.extend([f'- [Search]({base}/search/?q=)', f'- [Sitemap XML]({base}/sitemap.xml)', ''])
 
     # Read the two new knobs once for the whole render.
     include_price = True
@@ -256,12 +262,26 @@ def render_llms_txt(*, full: bool = False) -> str:  # noqa: PLR0912, PLR0915 —
             pass
 
     try:
+        from plugins.installed.catalog.category_tree import subtree_ids
         from plugins.installed.catalog.models import Category, Product
 
-        out.append('## Categories')
-        for c in Category.objects.filter(parent__isnull=True).order_by('name')[:50]:
-            out.append(f'- [{c.name}]({base}/category/{c.slug}/)')
-        out.append('')
+        # An active top-level category with something on sale under it: a
+        # switched-off or empty one is a noindex page, and the heading used to
+        # open with no row under it.
+        stocked = set(Product.objects.shoppable().values_list('category_id', flat=True)) | set(
+            Product.objects.shoppable()
+            .filter(additional_categories__isnull=False)
+            .values_list('additional_categories', flat=True)
+        )
+        rows = [
+            f'- [{c.name}]({base}/category/{c.slug}/)'
+            for c in Category.objects.filter(parent__isnull=True, is_active=True).order_by('name')[
+                :50
+            ]
+            if stocked and subtree_ids([c]) & stocked
+        ]
+        if rows:
+            out.extend(['## Categories', *rows, ''])
 
         qs = Product.objects.shoppable().order_by('-created_at')
         limit = 200 if full else 50
@@ -295,7 +315,13 @@ def render_llms_txt(*, full: bool = False) -> str:  # noqa: PLR0912, PLR0915 —
                     pass
 
             if full:
-                desc = (p.short_description or p.description or '')[:160]
+                # Product text is rich HTML: plain text first, then the cut.
+                from html import unescape
+
+                from django.utils.html import strip_tags
+
+                text = unescape(strip_tags(p.short_description or p.description or ''))
+                desc = ' '.join(text.split())[:160]
                 if desc:
                     line += f': {desc}'
             out.append(line)
