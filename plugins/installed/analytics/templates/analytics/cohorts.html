@@ -60,7 +60,7 @@
               {% if metric == 'revenue' %}
                 <td class="px-2 py-2 text-right font-mono text-xs"
                     style="background: rgba(56, 189, 248, {% widthratio cell.revenue 5000 1 %})">
-                  {% if cell.revenue %}${{ cell.revenue|floatformat:0 }}{% else %}—{% endif %}
+                  {% if cell.revenue %}{{ currency_symbol }}{{ cell.revenue|floatformat:0 }}{% else %}—{% endif %}
                 </td>
               {% else %}
                 <td class="px-2 py-2 text-right font-mono text-xs"

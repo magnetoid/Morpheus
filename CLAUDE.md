@@ -1647,6 +1647,22 @@ fastest | preferred carrier/service, `SHIPPING_LABEL_RATE` filter); orders' `par
 `payments/tests/test_manual_capture.py`, `test_saved_card_intent.py`, `test_payment_failed_event.py`,
 `orders/tests/test_offline_refund.py`, `test_parcel_settings.py` and `shipping/tests/test_label_rate.py`.
 
+**Convention — one sales figure (v0.157.0).** Every sales number a merchant or Linda reads comes
+from `orders/reports.py`: `counted()` is an order placed and not cancelled (paid, its card held, or an
+offline method paid later; a paid order whatever its status, since Stripe's webhook left older ones
+'pending'), never one left unpaid at checkout, cancelled, or whose hold was given back; `net_sales()` is
+their totals minus the refunds processed on them, in the currency most of them carry (others are
+reported apart, never added in). The home tiles, the Sales page, Analytics' Traffic page, forecast and
+cohorts, Pulse, Contacts and both of Linda's sales summaries read it. A contact's stored purchase count
+and lifetime value (the Contacts sort, RFM, Linda's customer tools) are the same rule per customer
+(`by_customer`), written by orders through `customers.services.set_cdp_metrics` after each order event
+commits and for everyone nightly; they used to add each paid total and never take a refund off. Each
+report had its own rule before: most counted every order, cancelled and unpaid ones too, the cohorts and
+Pulse filtered on statuses no order has ('paid', 'completed'), one tool left out cash on delivery, and the
+Sales page printed "$" on euro stores. A new report reads the same functions, never `Sum('total')` over
+`Order.objects`. Still on their own rule: loyalty tiers (they decide perks) and the event-based
+attribution. Guarded by `orders/tests/test_net_sales.py`.
+
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a

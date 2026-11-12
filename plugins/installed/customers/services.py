@@ -1,8 +1,9 @@
 """Customer-side business logic.
 
-`update_cdp_metrics` is the canonical writer for Customer.lifetime_value /
-.purchase_count / .last_order_at — kept in one place so the dashboard,
-ORDER_PAID hook, and any backfill script all agree on what "LTV" means.
+`set_cdp_metrics` is the one writer for Customer.lifetime_value /
+.purchase_count / .last_order_at; the orders app calls it with its sales rule
+(``orders.customer_totals``), so the Contacts list, RFM and Linda read the same
+figure as every sales report.
 
 `gather_customer_data` / `anonymise_customer` implement the GDPR Art. 15
 (right to access) + Art. 17 (right to be forgotten) workflows used by the
@@ -17,49 +18,20 @@ import logging
 import uuid
 from decimal import Decimal
 
-from django.db import transaction
-from django.db.models import F
-from django.utils import timezone
-
 logger = logging.getLogger('morpheus.customers.cdp')
 
 
-def update_cdp_metrics(order) -> None:
-    """Bump the contact's CDP rollups for a freshly-paid order.
+def set_cdp_metrics(customer_pk, *, purchase_count: int, lifetime_value, last_order_at) -> None:
+    """Write a contact's rollups: what the orders app counts as their sales
+    (``orders.customer_totals``), never a running sum. Each paid order used to
+    add its whole total, so a refund or a cancellation never came off."""
+    from plugins.installed.customers.models import Customer  # noqa: PLC0415
 
-    Uses ``F()`` increments so concurrent ORDER_PAID hooks for the same
-    customer don't trample each other. Idempotency is the caller's job —
-    we expect ORDER_PAID to fire once per state transition.
-    """
-    customer = getattr(order, 'customer', None)
-    if customer is None or not customer.pk:
-        return
-    total_amount = getattr(order, 'total', None)
-    if hasattr(total_amount, 'amount'):
-        total_amount = total_amount.amount
-    if total_amount is None:
-        return
-    try:
-        total_amount = Decimal(str(total_amount))
-    except Exception:  # noqa: BLE001
-        logger.debug('customers.cdp: non-decimal total on order %s', getattr(order, 'pk', '?'))
-        return
-
-    # Order has `placed_at` (set on order create); `created_at` was a typo
-    # that silently fell through to `now()` and clobbered the real placement
-    # time on every paid-order hook fire.
-    placed_at = (
-        getattr(order, 'placed_at', None) or getattr(order, 'created_at', None) or timezone.now()
+    Customer.objects.filter(pk=customer_pk).update(
+        purchase_count=int(purchase_count or 0),
+        lifetime_value=Decimal(str(lifetime_value or 0)),
+        last_order_at=last_order_at,
     )
-    Customer = customer.__class__
-    with transaction.atomic():
-        (
-            Customer.objects.filter(pk=customer.pk).update(
-                lifetime_value=F('lifetime_value') + total_amount,
-                purchase_count=F('purchase_count') + 1,
-                last_order_at=placed_at,
-            )
-        )
 
 
 # ── GDPR Art. 15 / Art. 17 ─────────────────────────────────────────────

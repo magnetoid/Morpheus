@@ -86,10 +86,21 @@ class AnalyticsCurrencyTests(TestCase):
         )
         from plugins.installed.orders.models import Order
 
-        Order.objects.create(email='a@example.com', subtotal=Money(9, 'EUR'), total=Money(9, 'EUR'))
+        # Placed with cash on delivery: an order left unpaid at checkout is no sale.
+        Order.objects.create(
+            email='a@example.com',
+            subtotal=Money(9, 'EUR'),
+            total=Money(9, 'EUR'),
+            status='confirmed',
+        )
         self.assertEqual(analytics_summary_tool.invoke({}).output['currency'], 'EUR')
         self.assertIn('currency', analytics_top_products_tool.invoke({}).output)
-        Order.objects.create(email='b@example.com', subtotal=Money(5, 'USD'), total=Money(5, 'USD'))
+        Order.objects.create(
+            email='b@example.com',
+            subtotal=Money(5, 'USD'),
+            total=Money(5, 'USD'),
+            status='confirmed',
+        )
         self.assertTrue(analytics_summary_tool.invoke({}).output['currency'].startswith('mixed'))
 
 

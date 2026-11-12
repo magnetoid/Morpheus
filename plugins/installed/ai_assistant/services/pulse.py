@@ -236,7 +236,6 @@ def _new_rma_signal() -> dict | None:
 
 
 def _revenue_delta_signal() -> dict | None:
-    from django.db.models import Sum
 
     from plugins.installed.orders.models import Order
 
@@ -245,10 +244,9 @@ def _revenue_delta_signal() -> dict | None:
     day_before = today - timedelta(days=2)
 
     def rev(d):
-        return Order.objects.filter(
-            placed_at__date=d,
-            status__in=('paid', 'fulfilled', 'shipped', 'delivered'),
-        ).aggregate(t=Sum('total'))['t'] or Decimal('0')
+        from plugins.installed.orders.reports import net_sales  # noqa: PLC0415
+
+        return net_sales(Order.objects.filter(placed_at__date=d)).net
 
     y = Decimal(str(rev(yesterday) or 0))
     d = Decimal(str(rev(day_before) or 0))

@@ -76,7 +76,7 @@
         <!-- Data dots with native tooltip -->
         {% for x, y, d in chart_points %}
         <circle cx="{{ x }}" cy="{{ y }}" r="2.5" fill="var(--info)" opacity="0.85">
-          <title>{{ d.day|date:"M j, Y" }} — ${{ d.rev|floatformat:2 }} · {{ d.cnt }} order{{ d.cnt|pluralize }}</title>
+          <title>{{ d.day|date:"M j, Y" }} — {{ currency_symbol }}{{ d.rev|floatformat:2 }} · {{ d.cnt }} order{{ d.cnt|pluralize }}</title>
         </circle>
         {% endfor %}
       </svg>
@@ -99,7 +99,7 @@
         <p class="text-xs text-[color:var(--text-muted)]">Shoppers arriving from AI assistants, and AI crawlers reading your catalog — last {{ ai_traffic.days }} days.</p>
       </div>
       {% if ai_traffic.assistant_revenue_total %}
-      <span class="pill pill-success">${{ ai_traffic.assistant_revenue_total|floatformat:2 }} AI-referred revenue</span>
+      <span class="pill pill-success">{{ currency_symbol }}{{ ai_traffic.assistant_revenue_total|floatformat:2 }} AI-referred revenue</span>
       {% endif %}
     </div>
     <div class="card-padded grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -151,7 +151,7 @@
               <div class="font-medium">{{ p.product_name|default:"—" }}</div>
             </td>
             <td class="text-right text-[color:var(--text-muted)]">{{ p.units|default:0 }}</td>
-            <td class="text-right font-medium">${{ p.rev|default:0|floatformat:2 }}</td>
+            <td class="text-right font-medium">{{ currency_symbol }}{{ p.rev|default:0|floatformat:2 }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -205,7 +205,7 @@
         <div class="grid grid-cols-7 gap-2 items-end" style="height: 140px;">
           {% for w in weekday_pattern %}
           <div class="flex flex-col items-center justify-end gap-1 h-full">
-            <div class="w-full rounded-t" title="{{ w.label }}: {{ w.cnt }} orders, ${{ w.rev|floatformat:2 }}"
+            <div class="w-full rounded-t" title="{{ w.label }}: {{ w.cnt }} orders, {{ currency_symbol }}{{ w.rev|floatformat:2 }}"
                  style="background: var(--primary); opacity: .82;
                         height: {% widthratio w.cnt weekday_max 100 %}%;
                         min-height: 2px;"></div>
@@ -270,7 +270,7 @@
         <tr>
           <td>{{ c.email|default:"—" }}</td>
           <td class="text-right text-[color:var(--text-muted)]">{{ c.orders }}</td>
-          <td class="text-right font-medium">${{ c.spend|default:0|floatformat:2 }}</td>
+          <td class="text-right font-medium">{{ currency_symbol }}{{ c.spend|default:0|floatformat:2 }}</td>
         </tr>
         {% endfor %}
       </tbody>

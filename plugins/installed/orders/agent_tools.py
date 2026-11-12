@@ -645,8 +645,9 @@ def _currency_label(currencies: list[str]) -> str:
 @tool(
     name='analytics.summary',
     description=(
-        'Sales summary for the last `days_back` days: revenue, orders, '
-        'AOV, new customers. Default 7 days. Use this before drilling '
+        'Sales summary for the last `days_back` days: revenue (orders placed and '
+        'not cancelled, after refunds), orders, AOV, new customers. Default 7 days. '
+        'Use this before drilling '
         'into specifics — gives the LLM the right framing.'
     ),
     scopes=['system.read'],
@@ -659,22 +660,22 @@ def _currency_label(currencies: list[str]) -> str:
 )
 def analytics_summary_tool(*, days_back: int = 7) -> ToolResult:
     from django.contrib.auth import get_user_model
-    from django.db.models import Sum
     from django.utils import timezone
 
     from plugins.installed.orders.models import Order
+    from plugins.installed.orders.reports import net_sales
 
     days = max(1, min(int(days_back or 7), 365))
     since = timezone.now() - timedelta(days=days)
     prev_since = since - timedelta(days=days)
-    cur = Order.objects.filter(placed_at__gte=since)
-    prev = Order.objects.filter(placed_at__gte=prev_since, placed_at__lt=since)
-    cur_count = cur.count()
-    cur_rev = cur.aggregate(t=Sum('total'))['t'] or Decimal('0')
-    prev_count = prev.count()
-    prev_rev = prev.aggregate(t=Sum('total'))['t'] or Decimal('0')
-    aov = (cur_rev / cur_count) if cur_count else Decimal('0')
-    currencies = sorted(set((cur | prev).values_list('total_currency', flat=True)))
+    # One rule for every sales figure (orders.reports): cancelled and unpaid
+    # orders left at checkout are out, refunds are netted.
+    cur = net_sales(Order.objects.filter(placed_at__gte=since))
+    prev = net_sales(Order.objects.filter(placed_at__gte=prev_since, placed_at__lt=since))
+    cur_count, cur_rev = cur.orders, cur.net
+    prev_count, prev_rev = prev.orders, prev.net
+    aov = (cur_rev / cur_count).quantize(Decimal('0.01')) if cur_count else Decimal('0')
+    currencies = sorted({c for c in (cur.currency, prev.currency) if c} | set(cur.others))
     User = get_user_model()
     new_customers = User.objects.filter(date_joined__gte=since).count()
 

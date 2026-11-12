@@ -38,7 +38,6 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Sum
 from django.utils import timezone
 
 logger = logging.getLogger('morpheus.analytics.cohorts')
@@ -73,6 +72,7 @@ def compute_cohorts(
     cohort_count: int = DEFAULT_COHORT_COUNT,
     period_count: int = DEFAULT_PERIOD_COUNT,
     metric: str = 'order',
+    currency: str = '',
 ) -> dict:
     """Return cohort table data for the dashboard.
 
@@ -120,7 +120,7 @@ def compute_cohorts(
                 else order_active
             )
             revenue = (
-                _sum_revenue(user_ids, period_start, period_end)
+                _sum_revenue(user_ids, period_start, period_end, currency)
                 if metric == 'revenue'
                 else Decimal('0')
             )
@@ -190,12 +190,15 @@ def _count_users_with_order(user_ids: list[int], start: date, end: date) -> int:
     if not user_ids:
         return 0
     from plugins.installed.orders.models import Order  # noqa: PLC0415
+    from plugins.installed.orders.reports import counted  # noqa: PLC0415
 
     return (
-        Order.objects.filter(
-            customer_id__in=user_ids,
-            placed_at__gte=start,
-            placed_at__lt=end,
+        counted(
+            Order.objects.filter(
+                customer_id__in=user_ids,
+                placed_at__gte=start,
+                placed_at__lt=end,
+            )
         )
         .values('customer_id')
         .distinct()
@@ -221,19 +224,22 @@ def _count_users_with_event(user_ids: list[int], start: date, end: date) -> int:
     )
 
 
-def _sum_revenue(user_ids: list[int], start: date, end: date) -> Decimal:
-    """Sum order totals for the cohort in this period."""
+def _sum_revenue(user_ids: list[int], start: date, end: date, currency: str = '') -> Decimal:
+    """The cohort's sales in this period (``orders.reports``): 'paid' and
+    'completed' were never order statuses, so shipped and delivered orders
+    used to count for nothing. Only ``currency`` is summed (the table's one
+    currency); orders in another are left out, never added or relabelled."""
     if not user_ids:
         return Decimal('0')
     from plugins.installed.orders.models import Order  # noqa: PLC0415
+    from plugins.installed.orders.reports import net_sales  # noqa: PLC0415
 
-    agg = Order.objects.filter(
-        customer_id__in=user_ids,
-        placed_at__gte=start,
-        placed_at__lt=end,
-        status__in=('confirmed', 'paid', 'fulfilled', 'completed'),
-    ).aggregate(total=Sum('total'))
-    return Decimal(str(agg.get('total') or 0))
+    sales = net_sales(
+        Order.objects.filter(customer_id__in=user_ids, placed_at__gte=start, placed_at__lt=end)
+    )
+    if not currency or sales.currency == currency:
+        return sales.net
+    return sales.others.get(currency, Decimal('0'))
 
 
 # ---------------------------------------------------------------------------
@@ -283,19 +289,18 @@ def period_comparison(*, days: int = 30) -> dict:
     `days`-day period. Returns delta + percent change.
     """
     from plugins.installed.orders.models import Order  # noqa: PLC0415
+    from plugins.installed.orders.reports import net_sales  # noqa: PLC0415
 
     now = timezone.now()
     this_start = now - timedelta(days=days)
     prev_start = this_start - timedelta(days=days)
 
-    this_agg = Order.objects.filter(placed_at__gte=this_start).aggregate(
-        n=Count('id'),
-        rev=Sum('total'),
+    this_sales = net_sales(Order.objects.filter(placed_at__gte=this_start))
+    prev_sales = net_sales(
+        Order.objects.filter(placed_at__gte=prev_start, placed_at__lt=this_start)
     )
-    prev_agg = Order.objects.filter(placed_at__gte=prev_start, placed_at__lt=this_start).aggregate(
-        n=Count('id'),
-        rev=Sum('total'),
-    )
+    this_agg = {'n': this_sales.orders, 'rev': this_sales.net}
+    prev_agg = {'n': prev_sales.orders, 'rev': prev_sales.net}
 
     def pct_change(curr, prev):
         if not prev:

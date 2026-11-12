@@ -43,6 +43,33 @@ class OrdersPlugin(Plugin):
                 'schedule': 60 * 10,
             },
         )
+        # A contact's purchase count and lifetime value are this app's sales
+        # rule for them (customer_totals): refreshed by each order event, and
+        # for everyone nightly.
+        from celery.schedules import crontab  # noqa: PLC0415
+
+        from plugins.installed.orders import customer_totals  # noqa: PLC0415
+
+        for event in (
+            events.ORDER_PLACED,
+            events.ORDER_PAID,
+            events.PAYMENT_REFUNDED,
+        ):
+            self.register_hook(event, customer_totals.on_order_changed, priority=90)
+        # A cancellation fires before its caller saves the order, so it waits
+        # for the save.
+        from django.db.models.signals import post_save  # noqa: PLC0415
+
+        from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+        self.register_hook(events.ORDER_CANCELLED, customer_totals.on_order_cancelled, priority=90)
+        post_save.connect(
+            customer_totals.on_order_saved, sender=Order, dispatch_uid='orders.totals_after_save'
+        )
+        self.register_celery_beat(
+            'orders:refresh_customer_totals',
+            {'task': 'orders.refresh_customer_totals', 'schedule': crontab(hour=4, minute=15)},
+        )
         # Contribute order + return activity to the dashboard home feed.
         self.register_hook(events.ACTIVITY_FEED, self.on_activity_feed, priority=10)
         # Contribute order count / open returns / store credit to the

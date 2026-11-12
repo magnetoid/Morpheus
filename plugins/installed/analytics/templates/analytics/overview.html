@@ -1,4 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
+{% load morph %}
 {% block title %}Analytics overview · Morpheus{% endblock %}
 
 {% block content %}
@@ -82,7 +83,7 @@
     <div class="kpi mb-4">
       <span class="kpi__label">Forecasted Revenue</span>
       <span class="kpi__value flex items-center gap-2">
-        ${{ forecast.forecast_next_7d|floatformat:2 }}
+        {% if forecast.forecast %}{{ forecast.forecast|money }}{% else %}—{% endif %}
         {% if forecast.trend_direction == 'up' %}
         <i data-lucide="trending-up" class="h-5 w-5 text-[color:var(--success)]"></i>
         {% elif forecast.trend_direction == 'down' %}

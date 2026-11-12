@@ -613,19 +613,12 @@ def summary_for(*, days: int = 7) -> dict:
         )
         return int(agg.get('s') or 0)
 
-    def _sum_money(metric: str) -> Money | None:
-        rows = list(
-            DailyMetric.objects.filter(
-                metric=metric,
-                day__gte=since,
-                value_money__isnull=False,
-            )
-        )
-        if not rows:
-            return None
-        currency = str(rows[0].value_money.currency)
-        total = sum((Decimal(r.value_money.amount) for r in rows), Decimal('0'))
-        return Money(total, currency)
+    # Orders and revenue are the orders app's sales figure (orders.reports):
+    # the purchase events counted cancelled and unpaid orders and never a refund.
+    from plugins.installed.orders.models import Order  # noqa: PLC0415
+    from plugins.installed.orders.reports import net_sales  # noqa: PLC0415
+
+    sales = net_sales(Order.objects.filter(placed_at__gte=day_bounds(since)[0]))
 
     return {
         'window_days': days,
@@ -637,8 +630,8 @@ def summary_for(*, days: int = 7) -> dict:
         'cart_adds': _sum_int('cart_adds'),
         'checkouts_started': _sum_int('checkouts_started'),
         'searches': _sum_int('searches'),
-        'orders': _sum_int('orders'),
-        'revenue': _sum_money('revenue'),
+        'orders': sales.orders,
+        'revenue': Money(sales.net, sales.currency) if sales.orders else None,
     }
 
 
@@ -896,32 +889,42 @@ def real_time(*, minutes: int = 30) -> dict:
 
 
 def predictive_trends(*, days: int = 30) -> dict:
-    """Predictive trend forecasting using simple moving average and linear projection."""
-    from plugins.installed.analytics.models import DailyMetric
+    """The next 7 days' sales, projected from the window's daily sales
+    (``orders.reports``, days with none counted as 0). It used to project the
+    purchase events' gross totals, cancelled and unpaid orders included, and
+    printed them in dollars."""
+    from plugins.dropshipping.importer import store_currency
+    from plugins.installed.orders.models import Order
+    from plugins.installed.orders.reports import net_by_day, net_sales
 
-    since = store_today() - timedelta(days=max(1, int(days)) - 1)
-
-    # Fetch historical revenue
-    historical = list(DailyMetric.objects.filter(metric='revenue', day__gte=since).order_by('day'))
-    if not historical or len(historical) < 3:
-        return {'forecast_next_7d': 0.0, 'trend_direction': 'flat', 'confidence': 'low'}
-
-    values = [float(h.value_money.amount) for h in historical if h.value_money]
+    days = max(1, int(days))
+    first = store_today() - timedelta(days=days - 1)
+    placed = Order.objects.filter(placed_at__gte=day_bounds(first)[0])
+    currency = net_sales(placed).currency or store_currency()
+    by_day = net_by_day(placed, store_timezone())
+    values = [float(by_day.get(first + timedelta(days=i), (0, 0))[1]) for i in range(days)]
+    if sum(1 for v in values if v) < 3:
+        return {
+            'forecast_next_7d': 0.0,
+            'forecast': None,
+            'trend_direction': 'flat',
+            'confidence': 'low',
+        }
 
     # Calculate simple moving average and slope
     if len(values) >= 7:
         recent_avg = sum(values[-7:]) / 7
-        older_avg = (
-            sum(values[:-7][-7:]) / 7 if len(values) >= 14 else sum(values[:-7]) / len(values[:-7])
-        )
+        older = values[:-7][-7:]
+        older_avg = sum(older) / len(older) if older else 0
         daily_growth = (recent_avg - older_avg) / 7 if older_avg > 0 else 0
     else:
         daily_growth = (values[-1] - values[0]) / len(values)
 
-    forecast_next_7d = sum(max(0, values[-1] + (daily_growth * i)) for i in range(1, 8))
+    forecast_next_7d = round(sum(max(0, values[-1] + (daily_growth * i)) for i in range(1, 8)), 2)
 
     return {
-        'forecast_next_7d': round(forecast_next_7d, 2),
+        'forecast_next_7d': forecast_next_7d,
+        'forecast': Money(Decimal(str(forecast_next_7d)), currency),
         'trend_direction': 'up' if daily_growth > 0 else ('down' if daily_growth < 0 else 'flat'),
         'confidence': 'high' if len(values) >= 14 else 'medium',
     }

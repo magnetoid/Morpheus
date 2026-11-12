@@ -21,7 +21,6 @@ class CustomersPlugin(Plugin):
         # importing it here registers the `@receiver(user_signed_up)`.
         from plugins.installed.customers import signals  # noqa
 
-        self.register_hook(events.ORDER_PAID, self.on_order_paid, priority=20)
         self.register_hook(events.RESTORE_LOSSES, self.on_restore_losses, priority=20)
 
         # Nightly RFM re-scoring (04:30 — before the dynamics 3:30/4:00 jobs have
@@ -94,16 +93,3 @@ class CustomersPlugin(Plugin):
         )
 
         return [customers_search_tool, customers_get_tool]
-
-    def on_order_paid(self, order, **kwargs):
-        from plugins.installed.customers.services import update_cdp_metrics
-
-        try:
-            update_cdp_metrics(order)
-        except Exception as e:  # noqa: BLE001 — CDP failure must not break checkout
-            logger.warning(
-                'customers: CDP update failed for order %s: %s',
-                getattr(order, 'pk', '?'),
-                e,
-                exc_info=True,
-            )
