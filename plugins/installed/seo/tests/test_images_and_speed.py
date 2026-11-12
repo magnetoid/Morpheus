@@ -96,6 +96,21 @@ class ResponsiveImageSizeTests(_MediaRoot, SimpleTestCase):
         os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000))
         self.assertEqual(image_size('/media/products/swap.png'), (40, 80))
 
+    def test_a_photo_turned_by_exif_is_measured_and_encoded_upright(self):
+        from plugins.installed.seo.services.images import generate_image_variant
+
+        path = Path(self.media) / 'products' / 'phone.jpg'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        exif = Image.Exif()
+        exif[0x0112] = 6  # stored landscape, shown portrait
+        Image.new('RGB', (200, 100)).save(path, exif=exif)
+        self.assertEqual(image_size('/media/products/phone.jpg'), (100, 200))
+        out = generate_image_variant(
+            str(path), str(Path(self.media) / 'v.webp'), width=400, fmt='webp'
+        )
+        with Image.open(out) as im:
+            self.assertEqual(im.size, (100, 200))
+
     def test_alt_text_is_escaped_once(self):
         html = _tag('/media/products/a.png', alt='Rafting & lunch "Tara"')
         self.assertIn('alt="Rafting &amp; lunch &quot;Tara&quot;"', html)

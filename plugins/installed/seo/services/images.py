@@ -67,9 +67,12 @@ def generate_image_variant(src_abs: str, cache_abs: str, *, width: int, fmt: str
     if os.path.isfile(cache_abs):
         return cache_abs
     os.makedirs(os.path.dirname(cache_abs), exist_ok=True)
-    from PIL import Image
+    from PIL import Image, ImageOps
 
     with Image.open(src_abs) as im:
+        # A phone photo stores its rotation in EXIF, which a browser applies to the
+        # original but WebP/AVIF re-encoding drops: turn the pixels upright first.
+        im = ImageOps.exif_transpose(im)
         # Keep aspect ratio; only downscale.
         if im.width > width:
             ratio = width / im.width
@@ -125,8 +128,11 @@ def _measure(path: str, mtime_ns: int, size: int) -> tuple[int, int] | None:
     try:
         with Image.open(path) as im:  # reads the header only
             w, h = im.size
+            orientation = im.getexif().get(0x0112)  # EXIF Orientation
     except Exception:  # noqa: BLE001 — not an image Pillow can read
         return None
+    if orientation in (5, 6, 7, 8):  # turned a quarter: shown (and re-encoded) on its side
+        w, h = h, w
     return (int(w), int(h)) if w > 0 and h > 0 else None
 
 
