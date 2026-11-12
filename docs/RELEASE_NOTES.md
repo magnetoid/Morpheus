@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.158.0 — 2026-11-12
+
+**Where visits come from**
+
+- Analytics → Sources lists visits, visitors, conversion and sales after refunds by channel (search, ads, social, email, AI assistants, other sites, direct), source, campaign, landing page, country or device, beside the period before; a card on the Analytics page and Linda's analytics.traffic_sources show the same
+- Each visit is filed under its own first page: the tags in its link, else the site that sent it. A visitor who first came from Facebook and later from Google used to count as Facebook for two years, and a visit from a search engine or a blog without tags had no source at all
+- Analytics → Search terms lists what shoppers searched for, what found nothing and what they searched before ordering; Linda's analytics.search_trends reads the same three lists
+- The dashboard home's AI visits count visits from AI assistants, each once
+- The storefront's tracking script can no longer write the values the server sets, so a forged request cannot add visitors, plant a source or record a purchase
+
 ## v0.157.0 — 2026-11-12
 
 **One sales figure**

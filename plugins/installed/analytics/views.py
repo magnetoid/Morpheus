@@ -43,6 +43,10 @@ _ALLOWED_KINDS = {
 _MAX_BODY_BYTES = 8192
 _MAX_PAYLOAD_KEYS = 30
 _MAX_PAYLOAD_VALUE_LEN = 1000
+#: Payload keys only the server writes: the cookieless visitor key, a page's
+#: arrival, an event's origin, its order and a search's result count. A beacon
+#: that sends one could add visitors, plant a traffic source or a purchase.
+_SERVER_KEYS = ('v', 'arr', 'src', 'order', 'results')
 
 
 @csrf_exempt
@@ -134,6 +138,7 @@ def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (si
             'error_context',
             'is_realtime',
             'referrer',
+            *_SERVER_KEYS,
         )
     }
     if len(payload) > _MAX_PAYLOAD_KEYS:
@@ -142,6 +147,7 @@ def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (si
     try:
         from plugins.installed.analytics.services import (  # noqa: PLC0415
             get_or_create_session,
+            page_arrival,
             record_event,
             should_track_request,
         )
@@ -178,6 +184,13 @@ def track_beacon(request):  # noqa: PLR0911, PLR0912 — guard-clause ladder (si
                     error_context = {'raw': error_context}
 
             is_realtime = bool(body.get('is_realtime', False))
+            if name == 'pageview':
+                # Where a visit that starts on this page came from.
+                payload['arr'] = page_arrival(
+                    request,
+                    referrer=str(body.get('referrer') or '')[:500],
+                    landing=str(body.get('url') or '')[:500],
+                )
 
             record_event(
                 name=name,
@@ -261,6 +274,61 @@ def overview(request):
             'agent_activity': agent_activity(days=days),
             'forecast': predictive_trends(days=days),
             'days': days,
+            'active_nav': 'analytics',
+        },
+    )
+
+
+#: The periods the Sources and Search terms pages offer.
+_PERIODS = ((1, 'Today'), (7, '7 days'), (30, '30 days'), (90, '90 days'))
+
+
+def _days(request) -> int:
+    try:
+        days = int(request.GET.get('days') or 30)
+    except ValueError:
+        days = 30
+    return days if days in dict(_PERIODS) else 30
+
+
+@staff_member_required
+@require_capability('analytics.read')
+def sources_view(request):
+    """Where visits came from, each visit under its own first page."""
+    from plugins.installed.analytics.visits import DIMENSIONS, sources_report  # noqa: PLC0415
+
+    days = _days(request)
+    report = sources_report(days=days, by=request.GET.get('by') or 'channel')
+    return render(
+        request,
+        'analytics/sources.html',
+        {
+            'report': report,
+            'days': days,
+            'periods': _PERIODS,
+            'dimensions': [(key, label) for key, (label, _cols) in DIMENSIONS.items()],
+            'by_label': DIMENSIONS[report['by']][0],
+            'active_nav': 'analytics',
+        },
+    )
+
+
+@staff_member_required
+@require_capability('analytics.read')
+def search_terms_view(request):
+    """What shoppers searched for, what found nothing and what led to an order."""
+    from plugins.installed.analytics.visits import search_terms  # noqa: PLC0415
+
+    days = _days(request)
+    return render(
+        request,
+        'analytics/search_terms.html',
+        {
+            'days': days,
+            'periods': _PERIODS,
+            'top': search_terms(days=days, kind='top', limit=25),
+            'no_results': search_terms(days=days, kind='no_results', limit=25),
+            'led_to_sale': search_terms(days=days, kind='led_to_sale', limit=25),
             'active_nav': 'analytics',
         },
     )

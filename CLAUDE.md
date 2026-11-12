@@ -1661,6 +1661,19 @@ Sales page printed "$" on euro stores. A new report reads the same functions, ne
 `Order.objects`. Still on their own rule: loyalty tiers (they decide perks) and the event-based
 attribution. Guarded by `orders/tests/test_net_sales.py`.
 
+**Convention — a visit's source is its own first page (v0.158.0).** The pageview beacon stores where a
+visit starting on that page came from (`payload['arr']`, from `analytics/sources.py:classify`: the link's
+utm tags or a paid click id, else the referring site, a search engine, social or webmail site, AI assistant
+or other site; nothing when the referrer is the store itself or a payment page). `roll_daily` replays the
+day into one `AnalyticsVisit` per visit (`analytics/visits.py`) under its first page's arrival; a visit
+that runs past midnight keeps the previous day's row. The Sources page, its card, `analytics.traffic_sources`
+and the home tile's AI visits (`top_sources`, `ai:<name>`) read those rows, and a visit's sales are its
+orders through `orders.reports.net_by_order`. Until v0.158.0 the source was the visitor's: the two-year
+cookie kept the first visit's referrer and tags, so someone who first came from Facebook read as Facebook
+for two years, and an untagged referral was no source at all. The beacon never writes a key the server sets
+(`views._SERVER_KEYS`: `v`, `arr`, `src`, `order`, `results`): it used to copy any key it was sent, so a
+forged `v` added cookieless visitors. Guarded by `analytics/tests/test_traffic_sources.py`.
+
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a

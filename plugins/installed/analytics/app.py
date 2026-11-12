@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from morpheus.app import DashboardPage, Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import DashboardCard, DashboardPage, Plugin, SettingsPanel, StorefrontBlock
 from morpheus.core import events
 
 #: Events a crawler can cause by browsing; the rest are orders and accounts.
@@ -211,6 +211,7 @@ class AnalyticsPlugin(Plugin):
             analytics_search_trends_tool,
             analytics_summary_tool,
             analytics_top_products_tool,
+            analytics_traffic_sources_tool,
         )
 
         return [
@@ -221,6 +222,7 @@ class AnalyticsPlugin(Plugin):
             analytics_agent_costs_tool,
             analytics_ai_traffic_tool,
             analytics_top_products_tool,
+            analytics_traffic_sources_tool,
         ]
 
     def contribute_dashboard_pages(self) -> list:
@@ -232,6 +234,22 @@ class AnalyticsPlugin(Plugin):
                 icon='line-chart',
                 section='analytics',
                 order=20,
+            ),
+            DashboardPage(
+                label='Sources',
+                slug='sources',
+                view='plugins.installed.analytics.views.sources_view',
+                icon='route',
+                section='analytics',
+                order=25,
+            ),
+            DashboardPage(
+                label='Search terms',
+                slug='search-terms',
+                view='plugins.installed.analytics.views.search_terms_view',
+                icon='search',
+                section='analytics',
+                order=26,
             ),
             DashboardPage(
                 label='Real-time',
@@ -265,6 +283,20 @@ class AnalyticsPlugin(Plugin):
                 section='analytics',
                 order=60,
             ),
+        ]
+
+    def contribute_dashboard_cards(self) -> list:
+        return [
+            DashboardCard(
+                section='analytics',
+                title='Where visits came from',
+                data='plugins.installed.analytics.cards.sources_card',
+                url='/dashboard/apps/analytics/sources/',
+                cta='Open sources',
+                icon='route',
+                order=40,
+                capability='analytics.read',
+            )
         ]
 
     def contribute_storefront_blocks(self) -> list:

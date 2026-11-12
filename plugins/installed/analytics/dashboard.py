@@ -99,7 +99,7 @@ def on_dashboard_kpis(value, date_range=None, **kwargs):
             'trend': 'flat',
             'icon': 'bot',
             'series': None,
-            'hint': f'Visitors referred by AI assistants (ChatGPT, Perplexity, …), {label}.',
+            'hint': f'Visits that came from AI assistants (ChatGPT, Perplexity, …), {label}.',
         }
     )
     return value

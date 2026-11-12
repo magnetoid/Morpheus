@@ -182,6 +182,39 @@ class DailyMetric(models.Model):
         ]
 
 
+class AnalyticsVisit(models.Model):
+    """One visit on one day, filed under where it came from (v0.158.0).
+
+    Rewritten for its day by ``roll_daily`` from the day's events, so it holds
+    the same visits as the day's 'sessions' figure. ``visitor`` is a hash of
+    the visitor's cookie or cookieless key, never the key itself. Kept as long
+    as the "Days to keep a visitor" setting says.
+    """
+
+    day = models.DateField(db_index=True)
+    visitor = models.CharField(max_length=24)
+    started_at = models.DateTimeField()
+    last_seen_at = models.DateTimeField()
+    channel = models.CharField(max_length=20)
+    source = models.CharField(max_length=80, blank=True)
+    medium = models.CharField(max_length=80, blank=True)
+    campaign = models.CharField(max_length=120, blank=True)
+    landing = models.CharField(max_length=200, blank=True)
+    country = models.CharField(max_length=2, blank=True)
+    device = models.CharField(max_length=10, blank=True)
+    pageviews = models.PositiveIntegerField(default=0)
+    purchases = models.PositiveIntegerField(default=0)
+    #: The orders placed in the visit (ids as text), for their net sales.
+    orders = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ['-day', 'started_at']
+        indexes = [
+            models.Index(fields=['day', 'channel']),
+            models.Index(fields=['day', 'visitor']),
+        ]
+
+
 class FunnelDefinition(models.Model):
     """A named ordered list of event names."""
 

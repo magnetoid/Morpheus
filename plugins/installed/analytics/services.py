@@ -25,7 +25,6 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError
 from django.db.models import Count, F, Sum
-from django.db.models.fields.json import KT
 from django.utils import timezone
 from djmoney.money import Money
 
@@ -193,6 +192,32 @@ def _arrival(request, *, referrer=None, landing=None) -> tuple[str, str, dict, b
     except ValueError:
         parts = urlsplit('')
     return referrer or '', parts.path or '', parse_qs(parts.query), bool(carried)
+
+
+def page_arrival(request, *, referrer: str, landing: str) -> dict:
+    """What a page would start a visit with (``sources.classify``), plus the
+    visitor's country and device, for the visit's row on the Sources page.
+
+    The consent banner's carried landing and referrer win here too, so the
+    reload after "Accept" is filed under where the visitor really came from.
+    """
+    from django.core.exceptions import DisallowedHost
+
+    from plugins.installed.analytics.sources import classify
+
+    arrived_from, _path, query, _carried = _arrival(request, referrer=referrer, landing=landing)
+    try:
+        host = request.get_host().split(':')[0]
+    except DisallowedHost:
+        host = ''
+    arrival = classify(arrived_from, query, host)
+    country = (request.META.get('HTTP_CF_IPCOUNTRY') or '').strip().upper()
+    if len(country) == 2 and country.isalpha() and country != 'XX':
+        arrival['cc'] = country
+    device = _device_from_ua(request.META.get('HTTP_USER_AGENT', ''))
+    if device:
+        arrival['d'] = device
+    return arrival
 
 
 def _analytics_consent_granted(request) -> bool:
@@ -448,34 +473,36 @@ def visits_and_visitors(qs) -> tuple[int, int]:
     A visitor is an analytics session (a cookie, given with consent) or, when
     cookieless counting is on, the day's key for one without (``payload.v``).
     Events with neither belong to no visitor and count toward no visit: every
-    one of them used to add up to one more "session".
+    one of them used to add up to one more "session". The Sources page's visits
+    are the same walk (``visits.replay_visits``).
     """
-    last: dict[str, datetime] = {}
-    visits = 0
-    rows = (
-        qs.annotate(v=KT('payload__v'))
-        .order_by('created_at')
-        .values_list('session_id', 'v', 'created_at')
-    )
-    for session_id, v, at in rows.iterator():
-        key = f's:{session_id}' if session_id else (f'v:{v}' if v else '')
-        if not key:
-            continue
-        previous = last.get(key)
-        if previous is None or at - previous > VISIT_GAP:
-            visits += 1
-        last[key] = at
-    return visits, len(last)
+    from plugins.installed.analytics.visits import replay_visits
+
+    visits = replay_visits(qs)
+    return len(visits), len({visit.key for visit in visits})
 
 
 #: The ranked lists ``roll_daily`` writes, one row per product, query, source or agent.
-_RANKED_METRICS = ('top_products', 'top_searches', 'top_sources', 'agent_runs')
+_RANKED_METRICS = (
+    'top_products',
+    'top_searches',
+    'top_sources',
+    'agent_runs',
+    'searches_no_results',
+    'searches_to_sale',
+)
 
 
 def roll_daily(*, day: date | None = None) -> int:
     """Compute DailyMetric rows for `day` (default: yesterday, on the store's
     clock). Idempotent, so today can be rolled again as it fills."""
     from plugins.installed.analytics.models import AnalyticsEvent, DailyMetric
+    from plugins.installed.analytics.visits import (
+        replay_visits,
+        search_counts,
+        source_counts,
+        write_visits,
+    )
 
     target = day or (store_today() - timedelta(days=1))
     start, end = day_bounds(target)
@@ -502,7 +529,10 @@ def roll_daily(*, day: date | None = None) -> int:
     # A pageview is the page's own hit (name 'pageview'); the beacon's leave
     # event used to be filed as one too.
     upsert('pageviews', value_int=qs.filter(name='pageview').count())
-    visits_n, visitors_n = visits_and_visitors(qs)
+    # One walk gives the day's visits, its visitors and each visit's source.
+    visits = replay_visits(qs)
+    visit_rows = write_visits(target, visits)
+    visits_n, visitors_n = len(visits), len({visit.key for visit in visits})
     # 'sessions' keeps its name on the Traffic page and in history; it is visits now.
     upsert('sessions', value_int=visits_n)
     upsert('visitors', value_int=visitors_n)
@@ -568,14 +598,24 @@ def roll_daily(*, day: date | None = None) -> int:
     ):
         upsert('top_searches', dimension=row['search_query'][:120], value_int=row['c'])
 
+    # Visits per source, each visit under its own first page: the session's
+    # utm_source was the visitor's first visit's, for two years.
+    for source, n in source_counts(visit_rows).most_common(20):
+        upsert('top_sources', dimension=source[:120], value_int=n)
+
+    # Searches the store answered with nothing (the server's own count).
     for row in (
-        qs.exclude(session__isnull=True)
-        .exclude(session__utm_source='')
-        .values('session__utm_source')
-        .annotate(c=Count('session_id', distinct=True))
-        .order_by('-c')[:20]
+        qs.filter(kind='search', payload__results=0)
+        .exclude(search_query='')
+        .values('search_query')
+        .annotate(c=Count('id'))
+        .order_by('-c')[:25]
     ):
-        upsert('top_sources', dimension=row['session__utm_source'][:80], value_int=row['c'])
+        upsert('searches_no_results', dimension=row['search_query'][:120], value_int=row['c'])
+
+    # Terms searched in a visit that then placed an order.
+    for query, n in search_counts(visits).most_common(25):
+        upsert('searches_to_sale', dimension=query[:120], value_int=n)
 
     for row in (
         qs.filter(kind='agent_run')
@@ -933,8 +973,10 @@ def trim_old_events(*, keep_days: int = 90) -> int:
 def trim_old_visitors(*, keep_days: int = 395) -> int:
     """Delete visitors not seen for `keep_days` (13 months by default, CNIL's
     limit for audience measurement). They used to be kept for ever."""
-    from plugins.installed.analytics.models import AnalyticsSession
+    from plugins.installed.analytics.models import AnalyticsSession, AnalyticsVisit
 
     cutoff = timezone.now() - timedelta(days=keep_days)
     deleted, _ = AnalyticsSession.objects.filter(last_seen_at__lt=cutoff).delete()
+    # A visit row is kept as long as a visitor is.
+    AnalyticsVisit.objects.filter(day__lt=store_today() - timedelta(days=keep_days)).delete()
     return deleted

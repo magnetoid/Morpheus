@@ -1,0 +1,93 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph %}
+{% block title %}Traffic sources · Morpheus{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Traffic sources</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Where each visit came from: the tags on its first page, or else the site that sent it.
+      </p>
+    </div>
+    <nav class="flex flex-wrap gap-2" aria-label="Period">
+      {% for d, label in periods %}
+      <a href="?days={{ d }}&amp;by={{ report.by }}"
+         class="btn text-xs {% if d == days %}btn-primary{% else %}btn-secondary{% endif %}"
+         {% if d == days %}aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Visits</span>
+      <span class="kpi__value">{{ report.totals.visits }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Visitors</span>
+      <span class="kpi__value">{{ report.totals.visitors }}</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Conversion</span>
+      <span class="kpi__value">{{ report.totals.conversion }}%</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Sales from these visits</span>
+      <span class="kpi__value">{% if report.totals.sales %}{{ report.totals.sales|money }}{% else %}—{% endif %}</span>
+    </div>
+  </div>
+
+  <div class="card card-padded" data-traffic-sources>
+    <nav class="flex flex-wrap gap-2 mb-4" aria-label="Group visits by">
+      {% for key, label in dimensions %}
+      <a href="?days={{ days }}&amp;by={{ key }}"
+         class="btn text-xs {% if key == report.by %}btn-primary{% else %}btn-ghost{% endif %}"
+         {% if key == report.by %}aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+    {% if report.rows %}
+    <div class="overflow-x-auto">
+      <table class="morph-table">
+        <thead>
+          <tr>
+            <th>{{ by_label }}</th>
+            <th class="text-right">Visits</th>
+            <th class="text-right">Share</th>
+            <th class="text-right">Visitors</th>
+            <th class="text-right">Orders</th>
+            <th class="text-right">Conversion</th>
+            <th class="text-right">Sales</th>
+            <th class="text-right">Visits, period before</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in report.rows %}
+          <tr>
+            <td>{{ r.label }}{% if report.by == 'source' and r.channel_label %} <span class="text-xs text-[color:var(--text-muted)]">{{ r.channel_label }}</span>{% endif %}</td>
+            <td class="text-right">{{ r.visits }}</td>
+            <td class="text-right">{{ r.share }}%</td>
+            <td class="text-right">{{ r.visitors }}</td>
+            <td class="text-right">{{ r.purchases }}</td>
+            <td class="text-right">{{ r.conversion }}%</td>
+            <td class="text-right">{% if r.sales %}{{ r.sales|money }}{% else %}—{% endif %}</td>
+            <td class="text-right">{{ r.visits_before }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-sm text-[color:var(--text-muted)]">
+      No visits counted in this period yet. Each visit is filed under where it came from from the day this report went live.
+    </p>
+    {% endif %}
+  </div>
+
+  <p class="text-xs text-[color:var(--text-muted)]">
+    A visit ends after 30 minutes without a page. Conversion is visits that placed an order over visits.
+    Sales are those orders' net amounts, after refunds. "Not known" is a visit whose first page was counted before this report existed.
+  </p>
+</div>
+{% endblock %}
