@@ -288,7 +288,10 @@ def _internal_url(href: str, page_path: str, host: str, hosts: set[str], *, keep
     href = (href or '').strip()
     if not href or href.lower().startswith(_SKIP_SCHEMES):
         return ''
-    parts = urlsplit(urljoin(f'https://{host}{page_path}', href))
+    try:
+        parts = urlsplit(urljoin(f'https://{host}{page_path}', href))
+    except ValueError:  # href="http://[" in a page's own copy: skip it, scan the rest
+        return ''
     if parts.scheme not in ('http', 'https') or (parts.netloc and parts.netloc not in hosts):
         return ''
     path = parts.path or '/'
@@ -741,8 +744,12 @@ class _Extra:
         return result
 
     def local(self, url: str) -> str:
-        """The site-relative path of a URL on this store, or '' for another host."""
-        parts = urlsplit(url or '')
+        """The site-relative path of a URL on this store, or '' for another host
+        (or for one that does not parse, which nothing could fetch)."""
+        try:
+            parts = urlsplit(url or '')
+        except ValueError:
+            return ''
         if parts.netloc and parts.netloc not in self.hosts:
             return ''
         if parts.scheme and parts.scheme not in ('http', 'https'):
@@ -782,7 +789,11 @@ def _owner(claim: dict, page_path: str, owners: dict):
         else:
             product = Product.objects.filter(sku=claim['sku']).first()
     if product is None and claim['main']:
-        path = _strip_language(urlsplit(claim['url']).path or page_path)
+        try:
+            claimed = urlsplit(claim['url']).path
+        except ValueError:
+            claimed = ''
+        path = _strip_language(claimed or page_path)
         segments = [s for s in path.split('/') if s]
         if segments:
             candidate = Product.objects.filter(slug=unquote(segments[-1])).first()

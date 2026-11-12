@@ -296,6 +296,23 @@ class LinkTests(_AuditCase):
             ['/from/ links to /chain-1/ → /chain-2/ → /products/claim-probe/ (2 hops)'],
         )
 
+    def test_a_url_that_does_not_parse_is_skipped_not_fatal(self):
+        """urlsplit raises on "http://[": one such href in a page's copy, or such an
+        image or url in its markup, must not end the whole scan."""
+        node = {
+            **_product_node(price='12.00'),
+            'url': 'http://[',
+            'image': ['http://['],
+        }
+        broken = _page(
+            graph=[node], body='<p>$12.00</p><a href="http://[">x</a><a href="/old-a/">old</a>'
+        )
+        report = self.audit({'/from/': broken, '/products/claim-probe/': None})
+        one = _finding(report, 'link_to_redirect')
+        self.assertIsNotNone(one, _codes(report))
+        self.assertEqual(one['examples'], ['/from/ links to /old-a/ → /products/claim-probe/'])
+        self.assertIsNone(_finding(report, 'markup_image_broken'), report['findings'])
+
     def test_direct_links_and_switchers_are_quiet(self):
         """The real product page links to the affiliate and vendor sign-ups, which
         send an anonymous visitor to sign in: a door, never a finding."""
