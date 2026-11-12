@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.160.0 — 2026-11-12
+
+**Honest translations**
+
+- A page names only the languages its content is in: an untranslated /sr/ or /hr/ page points its canonical at the English page and claims no other language, and hreflang, og:locale and inLanguage follow the language the text is really in.
+- Products, experiences, hotels, places, events and CMS pages show their reviewed translation on /sr/ and /hr/.
+- Settings → General → Translations shows how much is translated per language and opens an editor beside the source text. AI drafts translations the merchant reviews before shoppers see them, and Linda can check, draft and approve translations.
+- Responses say which language they are in (Content-Language), and Serbian dates and month names are written in Latin script.
+- The site audit lists pages not yet translated as information, not as missing hreflang.
+
 ## v0.159.1 — 2026-11-12
 
 **Images and speed**
