@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.159.0 — 2026-11-12
+
+**Search Console in the dashboard**
+
+- SEO → Search performance shows Google's clicks, impressions, click-through rate and average position for 7 days to 6 months, each beside the period before, by search or by page
+- A page also shows the visits, orders and sales that started on it from Google's results
+- How Google sees a page: inspect one of the store's pages for its index verdict, coverage, last crawl and Google's canonical
+- Tracked keywords show Google's position, clicks and impressions, refreshed each night; the position column used to stay empty
+- Connect once: a Google service account added to the store's Search Console property, its key pasted on Settings → SEO; the page lists the steps
+- Linda reads the same numbers and inspects pages with seo.search_performance and seo.inspect_url
+
 ## v0.158.0 — 2026-11-12
 
 **Where visits come from**

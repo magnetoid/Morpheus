@@ -114,6 +114,11 @@ class SeoPlugin(Plugin):
             'seo:site_audit',
             {'task': 'seo.site_audit', 'schedule': crontab(hour=3, minute=10)},
         )
+        # Google's search numbers for the days it has settled (search_console.py).
+        self.register_celery_beat(
+            'seo:search_console_pull',
+            {'task': 'seo.search_console_pull', 'schedule': crontab(hour=4, minute=40)},
+        )
         # /ai/products.json, rebuilt inside its 20-minute cache so no crawler waits.
         self.register_celery_beat(
             'seo:warm_ai_feed',
@@ -388,7 +393,9 @@ class SeoPlugin(Plugin):
             bulk_set_meta_tool,
             create_redirect_tool,
             get_meta_tool,
+            inspect_url_tool,
             list_404s_tool,
+            search_performance_tool,
             seo_regenerate_sitemap_tool,
             set_meta_tool,
             set_site_settings_tool,
@@ -406,6 +413,8 @@ class SeoPlugin(Plugin):
             apply_internal_links_tool,
             apply_external_links_tool,
             seo_regenerate_sitemap_tool,
+            search_performance_tool,
+            inspect_url_tool,
         ]
 
     def contribute_skills(self) -> list:
@@ -423,7 +432,9 @@ class SeoPlugin(Plugin):
             bulk_set_meta_tool,
             create_redirect_tool,
             get_meta_tool,
+            inspect_url_tool,
             list_404s_tool,
+            search_performance_tool,
             set_meta_tool,
             set_site_settings_tool,
         )
@@ -444,6 +455,8 @@ class SeoPlugin(Plugin):
                     set_site_settings_tool,
                     apply_internal_links_tool,
                     apply_external_links_tool,
+                    search_performance_tool,
+                    inspect_url_tool,
                 ),
                 system_prompt_prelude=(
                     'You are working on SEO for this store. Standard workflow:\n'
@@ -473,6 +486,15 @@ class SeoPlugin(Plugin):
                 section='seo',
                 order=10,
                 url='/dashboard/seo/',
+            ),
+            DashboardPage(
+                label='Search performance',
+                slug='search-performance',
+                view='plugins.installed.seo.views.search_performance_page',
+                icon='trending-up',
+                section='seo',
+                order=15,
+                url='/dashboard/seo/search-performance/',
             ),
             DashboardPage(
                 label='Bulk meta',
@@ -755,6 +777,28 @@ class SeoPlugin(Plugin):
                     'default': True,
                     'title': 'Strip query params from canonical URLs',
                     'description': 'Standard SEO hygiene — the canonical link should point to the clean URL even when the visitor arrived with utm_/fbclid/gclid params.',
+                },
+                # ── Google Search Console ─────────────────────────────
+                'search_console_key': {
+                    'type': 'string',
+                    'format': 'password',
+                    'default': '',
+                    'title': 'Search Console service-account key',
+                    'description': (
+                        'The JSON key of a Google Cloud service account that is a user of this '
+                        "store's Search Console property. Paste the whole file. SEO → Search "
+                        'performance and the tracked keywords read it; it is never shown again.'
+                    ),
+                },
+                'search_console_property': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Search Console property',
+                    'description': (
+                        'Leave blank to use the property the service account can see for this '
+                        "store's domain, or enter one: sc-domain:example.com or "
+                        'https://www.example.com/.'
+                    ),
                 },
                 # ── Performance + UX signals ──────────────────────────
                 'lazy_load_below_fold_images': {

@@ -793,8 +793,74 @@ def keywords_page(request):
                 },
             )
         return redirect('seo_dashboard:keywords')
-    rows = TrackedKeyword.objects.all().order_by('keyword')
-    return render(request, 'seo/keywords.html', {'rows': rows, 'active_nav': 'seo'})
+    from plugins.installed.seo import search_console
+
+    rows = list(TrackedKeyword.objects.all().order_by('keyword'))
+    figures = search_console.keyword_figures([r.keyword for r in rows])
+    for row in rows:
+        row.google = figures.get(row.keyword.strip().lower())
+    return render(
+        request,
+        'seo/keywords.html',
+        {
+            'rows': rows,
+            'connected': search_console.key_state() == 'ok',
+            'active_nav': 'seo',
+        },
+    )
+
+
+#: The periods the Search performance page offers, in days.
+_SEARCH_PERIODS = ((7, '7 days'), (28, '28 days'), (90, '3 months'), (180, '6 months'))
+
+
+@staff_member_required
+@require_capability('seo.read')
+def search_performance_page(request):
+    """Google's clicks, impressions and positions from Search Console, beside the
+    visits and sales Google's results brought to each page."""
+    from plugins.installed.seo import search_console
+
+    inspection = None
+    inspect_error = ''
+    if request.method == 'POST':
+        if request.POST.get('action') == 'pull':
+            # Fetching stores Google's numbers, so it needs seo.write.
+            if (denied := enforce(request, 'seo.write')) is not None:
+                return denied
+            from plugins.installed.seo.tasks import search_console_pull_task
+
+            search_console_pull_task.delay()
+            messages.success(request, 'Fetching from Search Console. Refresh in a minute.')
+            return redirect('seo_dashboard:search_performance')
+        try:
+            inspection = search_console.inspect_url(request.POST.get('url') or '')
+        except search_console.SearchConsoleError as e:
+            inspect_error = str(e)
+    try:
+        days = int(request.GET.get('days') or 28)
+    except ValueError:
+        days = 28
+    days = days if days in dict(_SEARCH_PERIODS) else 28
+    by = request.GET.get('by') if request.GET.get('by') in ('query', 'page') else 'query'
+    cfg = search_console.read_config()
+    return render(
+        request,
+        'seo/search_performance.html',
+        {
+            'report': search_console.report(days=days, by=by, limit=50),
+            'days': days,
+            'by': by,
+            'periods': _SEARCH_PERIODS,
+            'key_state': search_console.key_state(cfg),
+            'account_email': search_console.account_email(cfg),
+            'last_pull': search_console.last_pull(),
+            'inspection': inspection,
+            'inspect_error': inspect_error,
+            'inspect_url': (request.POST.get('url') or '') if request.method == 'POST' else '',
+            'active_nav': 'seo',
+        },
+    )
 
 
 @staff_member_required

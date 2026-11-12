@@ -4,6 +4,10 @@
 {% block content %}
 <a href="{% url 'seo_dashboard:overview' %}" class="text-sm text-[color:var(--text-muted)]">← SEO</a>
 <h1 class="text-xl font-semibold mt-2 mb-4">Tracked keywords</h1>
+<p class="text-sm text-[color:var(--text-muted)] mb-4">
+  {% if connected %}Positions are Google's average over its last settled week, from <a href="{% url 'seo_dashboard:search_performance' %}" class="underline">Search performance</a>; clicks and impressions cover 28 days.
+  {% else %}Positions come from Search Console once it is connected on <a href="{% url 'seo_dashboard:search_performance' %}" class="underline">Search performance</a>.{% endif %}
+</p>
 
 <form method="post" class="card card-padded mb-4" style="display:grid; grid-template-columns: 2fr 1fr 2fr 1fr; gap:.5rem; align-items:end;">
   {% csrf_token %}
@@ -15,17 +19,19 @@
 
 <div class="card">
   <table class="morph-table">
-    <thead><tr><th>Keyword</th><th>Locale</th><th>Target</th><th>Last position</th><th>Last checked</th></tr></thead>
+    <thead><tr><th>Keyword</th><th>Locale</th><th>Target</th><th>Position</th><th>Clicks</th><th>Impressions</th><th>Last checked</th></tr></thead>
     <tbody>
     {% for r in rows %}
       <tr>
         <td>{{ r.keyword }}</td><td>{{ r.locale }}</td>
         <td><code style="font-size:.85rem;">{{ r.target_url|default:"—" }}</code></td>
         <td>{{ r.last_position|default:"—" }}</td>
+        <td>{% if r.google %}{{ r.google.clicks }}{% else %}—{% endif %}</td>
+        <td>{% if r.google %}{{ r.google.impressions }}{% else %}—{% endif %}</td>
         <td>{{ r.last_checked_at|date:"M j"|default:"never" }}</td>
       </tr>
     {% empty %}
-      <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">No tracked keywords yet.</td></tr>
+      <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);">No tracked keywords yet.</td></tr>
     {% endfor %}
     </tbody>
   </table>

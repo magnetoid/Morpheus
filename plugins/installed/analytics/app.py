@@ -118,8 +118,26 @@ class AnalyticsPlugin(Plugin):
 
         self.register_hook(events.DASHBOARD_KPIS, dashboard.on_dashboard_kpis, priority=30)
         self.register_hook(events.ACTIVITY_FEED, dashboard.on_activity_feed, priority=50)
+        # Visits and sales per landing page, for seo's Search performance page.
+        self.register_hook(events.LANDING_PAGE_TRAFFIC, self._landing_traffic, priority=50)
 
     # ── Hook adapters ────────────────────────────────────────────────────────
+
+    def _landing_traffic(self, value, paths=None, since=None, until=None, **kwargs):
+        if not paths or since is None or until is None:
+            return value
+        from plugins.installed.analytics.visits import landing_traffic  # noqa: PLC0415
+
+        return {
+            **(value or {}),
+            **landing_traffic(
+                paths=paths,
+                since=since,
+                until=until,
+                channel=kwargs.get('channel') or '',
+                source=kwargs.get('source') or '',
+            ),
+        }
 
     def _on_event(self, event_name: str):
         """Build a hook handler that records an analytics event for `event_name`."""

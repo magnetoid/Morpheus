@@ -1089,6 +1089,14 @@ class MorpheusEvents:
     #   would be the plugin→plugin coupling the ratchet blocks, so the owner
     #   answers instead.
     SEO_LLMS_SECTIONS = 'seo.llms_sections'  # filter
+    # LANDING_PAGE_TRAFFIC — filter, value=dict, kwargs: paths (list of URL paths),
+    #   since, until (dates on the store clock), channel ('organic'), source
+    #   ('google'). What visits that started on each path brought in:
+    #   {path: {'visits', 'purchases', 'sales': Money | None}}. Fired by seo's
+    #   Search performance page beside Google's clicks for the same pages;
+    #   analytics answers from its visit rows. Nothing answers without analytics,
+    #   and the page shows Google's numbers only.
+    LANDING_PAGE_TRAFFIC = 'analytics.landing_page_traffic'  # filter
     # EDGE_PURGE_URLS — fire, kwargs: urls=list[str] (absolute paths, e.g.
     #   ['/products/x/', '/sitemap.xml']), reason=str. "These URLs just changed
     #   at the origin; drop them from the CDN." Fired by seo when a SeoMeta

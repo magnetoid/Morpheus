@@ -301,6 +301,34 @@ def sources_report(*, days: int = 30, by: str = 'channel', limit: int = 50) -> d
     }
 
 
+def landing_traffic(
+    *, paths, since: date, until: date, channel: str = '', source: str = ''
+) -> dict:
+    """``{path: {'visits', 'purchases', 'sales'}}`` for the visits between two days
+    that started on each path (optionally from one channel and source), with
+    their net sales in the store's currency (``LANDING_PAGE_TRAFFIC``)."""
+    from plugins.installed.analytics.models import AnalyticsVisit  # noqa: PLC0415
+
+    wanted = [p for p in dict.fromkeys(paths or []) if p][:500]
+    if not wanted:
+        return {}
+    rows = AnalyticsVisit.objects.filter(day__gte=since, day__lte=until, landing__in=wanted)
+    if channel:
+        rows = rows.filter(channel=channel)
+    if source:
+        rows = rows.filter(source=source)
+    sales, currency = _sales(rows, ('landing',))
+    out = {}
+    for group in rows.values('landing').annotate(visits=Count('id'), purchases=Sum('purchases')):
+        net = sales.get((group['landing'],))
+        out[group['landing']] = {
+            'visits': group['visits'],
+            'purchases': group['purchases'] or 0,
+            'sales': Money(net, currency) if net else None,
+        }
+    return out
+
+
 def search_terms(*, days: int = 30, kind: str = 'top', limit: int = 20) -> list[dict]:
     """``[{'query', 'count'}]`` over today and the ``days - 1`` days before it:
     the most searched terms ('top'), those that found nothing ('no_results'),
