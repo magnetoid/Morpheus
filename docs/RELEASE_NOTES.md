@@ -25,6 +25,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - Tracked keywords show Google's position, clicks and impressions, refreshed each night; the position column used to stay empty
 - Connect once: a Google service account added to the store's Search Console property, its key pasted on Settings → SEO; the page lists the steps
 - Linda reads the same numbers and inspects pages with seo.search_performance and seo.inspect_url
+- Linda's settings list no longer shows a field the dashboard keeps write-only, nor the API tokens stored inside a setting; it showed both in full
 
 ## v0.158.0 — 2026-11-12
 
