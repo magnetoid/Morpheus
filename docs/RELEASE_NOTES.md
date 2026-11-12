@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.164.0 — 2026-11-12
+
+**Linda and the audit**
+
+- The nightly site scan checks what the markup claims: a price the page does not show or the store no longer charges, availability inventory contradicts, an image that does not load, a declared share-image size the file does not have.
+- Internal links and sitemap URLs that redirect are reported, a chain of two or more hops as critical; a redirect that ends at sign-in is not a finding.
+- Pages nothing links to are reported once a whole-sitemap crawl has run, with listings followed through to their later pages.
+- Linda reads the scan, the index rules and the title patterns, and with the merchant's yes changes rules and patterns and starts a scan; a pattern naming a token the store cannot fill is refused with the list it can.
+- The 24 legacy SEO head tags, which rendered nothing under the head contract, are deleted, and the head guard renders every page under every theme; Speakable leaves the graph.
+- A feedback ticket a staff member may not open answers 403, and a guard fails any permission check whose answer is ignored.
+
 ## v0.163.0 — 2026-11-12
 
 **Richer merchant listings**
