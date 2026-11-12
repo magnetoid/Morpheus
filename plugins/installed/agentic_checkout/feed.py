@@ -54,7 +54,6 @@ class _DefaultFeedSettings:
     ``map_product`` reads. Used when google_shopping is disabled/absent."""
 
     include_out_of_stock: bool = True
-    default_brand: str = ''
     default_condition: str = 'new'
     default_google_product_category: str = ''
     language: str = 'en'

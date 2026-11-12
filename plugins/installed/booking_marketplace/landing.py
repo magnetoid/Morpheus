@@ -11,10 +11,8 @@ experiences, with its count, and the sitemap lists exactly those.
 
 from __future__ import annotations
 
-import datetime
 from collections import Counter, defaultdict
 
-from django.utils import timezone
 from django.utils.text import capfirst
 
 from plugins.installed.booking_marketplace import country
@@ -108,18 +106,15 @@ def upcoming_events(region: str, limit: int = 6) -> list:
     """
     from django.db.models import Q
 
+    from core.utils.site import store_today
     from plugins.installed.booking_marketplace.models import Event
 
-    today = timezone.localdate()
+    today = store_today()
     rows = Event.objects.filter(Q(region=region) | Q(place__region=region), is_active=True)
     rows = rows.select_related('place').distinct()
-    upcoming = [e for e in rows if e.is_annual or _last_day(e) is None or _last_day(e) >= today]
+    upcoming = [e for e in rows if not e.has_ended(today)]
 
     def soon(e):
         return ((e.month - today.month) % 12 if e.month else 12, e.sort_order, e.name)
 
     return sorted(upcoming, key=soon)[:limit]
-
-
-def _last_day(event) -> datetime.date | None:
-    return event.end_date or event.start_date

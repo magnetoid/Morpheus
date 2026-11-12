@@ -1755,6 +1755,38 @@ keeps `/bookings/`). A page canonicalised onto another path declares no hreflang
 own. Guarded by `themes/test_breadcrumb_trail.py`, `booking_marketplace/tests/test_breadcrumb_trail.py` and
 `test_region_landing.py`.
 
+**Convention — a listing's claims come from their owners (v0.163.0).** Every claim a product page,
+feed or sitemap makes has one source, and while the source is empty the claim is omitted:
+- Shipping: the store's `hasShippingService` on the Organization comes from the shipping app's flat and
+  free-over rates, and only while the store ships goods. The handling time is the merchant's
+  (`handling_days_min`/`max`, `handling_cutoff_time` on the Shipping page, unset by default) and goes on that
+  service and on every offer's `deliveryTime`; transit is the rate's `estimated_days`.
+- Returns: returns_portal's `return_fees` (with `return_shipping_fee` for a fixed fee) and the method and
+  refund ticks. One policy object goes on the Organization and on every offer.
+- Brand: `catalog/brand.py:product_brand` fires `PRODUCT_BRAND` (book_product answers with the
+  publisher), else catalog's `default_brand`. It never uses product_safety's manufacturer or the seller's
+  name, and there is no "Generic". The channels' own `default_brand` is gone (plugins 0007 copied the value).
+- Variants: `catalog.variants.variant_axes` (the size field and variant attributes named size, colour,
+  material or pattern). `variesBy` lists the axes that differ, and each member states its own values.
+- Articles: `articleBody` is `core.text.plain_text`, clipped under 5,000 characters. The image is the
+  article's own (metadata cover, then the body's first `<img>` or markdown image), or none.
+- Sitemap: an entry may carry `images` (at most six, absolute, never under a private media prefix), which
+  the image sitemap lists for every entry, not only products. Its `lastmod` is the owner's `updated_at`
+  (Place, Property and Event have one since v0.163.0; null means none is claimed). A one-off event leaves the
+  sitemap once its last day has passed.
+- Events: no Event node once the stored edition is over, annual or not.
+
+The schema editor's blocks (`SeoMeta.schema_blocks`) join the page's graph (`schema/graph.py`). They never
+did before, because `{% seo_meta %}` is shimmed under the head contract. A type the store writes itself
+(`schema_types.OWNED_TYPES`) is refused at save and skipped at render, as is a type Google dropped
+(`RETIRED_TYPES`: listed for deletion). Linda edits blocks through `seo.schema_blocks` and
+`seo.set_schema_block` / `seo.delete_schema_block` (approval). Cut text with `core.text.clip`, never a raw
+slice. A title never carries the brand twice (`meta._without_brand_suffix`), and a long one drops its last
+part whole. Guarded by `shipping/tests/test_organization_shipping.py`,
+`returns_portal/tests/test_return_terms.py`, `catalog/tests/test_brand.py`, `test_variant_axes.py`,
+`seo/tests/test_schema_editor.py`, `test_article_markup.py`, `test_sitemap_images.py` and
+`booking_marketplace/tests/test_listing_claims.py`.
+
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a

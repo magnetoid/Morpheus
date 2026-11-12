@@ -407,12 +407,15 @@ class SeoPlugin(Plugin):
             audit_product_tool,
             bulk_set_meta_tool,
             create_redirect_tool,
+            delete_schema_block_tool,
             get_meta_tool,
             inspect_url_tool,
             list_404s_tool,
+            schema_blocks_tool,
             search_performance_tool,
             seo_regenerate_sitemap_tool,
             set_meta_tool,
+            set_schema_block_tool,
             set_site_settings_tool,
         )
 
@@ -430,6 +433,9 @@ class SeoPlugin(Plugin):
             seo_regenerate_sitemap_tool,
             search_performance_tool,
             inspect_url_tool,
+            schema_blocks_tool,
+            set_schema_block_tool,
+            delete_schema_block_tool,
         ]
 
     def contribute_skills(self) -> list:

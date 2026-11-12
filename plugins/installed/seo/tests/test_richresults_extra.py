@@ -41,10 +41,12 @@ class ProductExtraTests(TestCase):
         self.assertEqual(rev['reviewBody'], 'Loved it.')
         self.assertEqual(rev['datePublished'], '2026-06-01T00:00:00+00:00')
 
-    def test_image_absolutised_and_brand(self):
+    def test_image_absolutised_and_no_brand_from_extra(self):
+        # A brand has one source, catalog's product_brand (v0.163.0); a caller's
+        # extra cannot add a second.
         out = self._base({'image': '/media/products/utopia.png', 'brand': 'Penguin'})
         self.assertEqual(out['image'], 'https://shop.test/media/products/utopia.png')
-        self.assertEqual(out['brand'], {'@type': 'Brand', 'name': 'Penguin'})
+        self.assertNotIn('brand', out)
 
     def test_no_extra_unchanged(self):
         out = self._base(None)

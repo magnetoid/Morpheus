@@ -528,3 +528,170 @@ def inspect_url_tool(*, url: str) -> ToolResult:
         return ToolResult(output=search_console.inspect_url(url))
     except search_console.SearchConsoleError as e:
         raise ToolError(str(e)) from e
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Structured-data editor (SEO → Structured data): the blocks a merchant adds to
+# one page's graph — FAQ, recipe, video, course or a custom type (v0.163.0).
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SCHEMA_TARGET = {
+    'model': {
+        'type': 'string',
+        'description': "The object's kind as app.model, e.g. catalog.product or cms.page.",
+    },
+    'object_id': {'type': 'string', 'description': "The object's id, or its slug."},
+}
+
+
+def _schema_target(model: str, object_id: str):
+    from django.contrib.contenttypes.models import ContentType
+
+    app_label, _, name = (model or '').lower().partition('.')
+    ct = ContentType.objects.filter(app_label=app_label, model=name).first()
+    if ct is None or ct.model_class() is None:
+        raise ToolError(f'Unknown kind of object: {model}')
+    cls = ct.model_class()
+    obj = None
+    try:
+        obj = cls.objects.filter(pk=object_id).first()
+    except Exception:  # noqa: BLE001 — a slug is not a valid pk (UUID, int)
+        obj = None
+    if obj is None and any(f.name == 'slug' for f in cls._meta.get_fields()):
+        obj = cls.objects.filter(slug=object_id).first()
+    if obj is None:
+        raise ToolError(f'No {model} {object_id}.')
+    return ct, obj
+
+
+def _schema_rows(entries: list) -> list[dict]:
+    from plugins.installed.seo.schema_types import block_type, refusal
+
+    return [
+        {
+            'index': index,
+            'type': block_type(entry),
+            'data': (entry.get('data') if isinstance(entry, dict) else None) or {},
+            'shows': not refusal(entry),
+            **({'why_not': refusal(entry)} if refusal(entry) else {}),
+        }
+        for index, entry in enumerate(entries or [])
+    ]
+
+
+@tool(
+    name='seo.schema_blocks',
+    description=(
+        'The structured-data blocks the merchant added to pages (SEO → Structured data): '
+        'FAQ, recipe, video, course or a custom schema.org type. With model and object_id, '
+        "one object's blocks (with each block's index and whether it shows) and the types "
+        'that can be added; without, every object that has blocks.'
+    ),
+    scopes=['seo.read'],
+    schema={'type': 'object', 'properties': dict(_SCHEMA_TARGET)},
+)
+def schema_blocks_tool(*, model: str = '', object_id: str = '') -> ToolResult:
+    from plugins.installed.seo.models import SeoMeta
+    from plugins.installed.seo.schema_types import SCHEMA_TYPES
+
+    types = [{'type': t['key'], 'label': t['label'], 'fields': t['fields']} for t in SCHEMA_TYPES]
+    if model and object_id:
+        ct, obj = _schema_target(model, object_id)
+        meta = SeoMeta.objects.filter(content_type=ct, object_id=str(obj.pk)).first()
+        return ToolResult(
+            output={
+                'object': str(obj),
+                'blocks': _schema_rows(meta.schema_blocks if meta else []),
+                'types': types,
+            }
+        )
+    rows = []
+    for meta in SeoMeta.objects.exclude(schema_blocks=[]).select_related('content_type')[:50]:
+        if not meta.schema_blocks:
+            continue
+        ct = meta.content_type
+        rows.append(
+            {
+                'model': f'{ct.app_label}.{ct.model}',
+                'object_id': meta.object_id,
+                'blocks': _schema_rows(meta.schema_blocks),
+            }
+        )
+    return ToolResult(output={'objects': rows, 'types': types})
+
+
+@tool(
+    name='seo.set_schema_block',
+    description=(
+        "Add a structured-data block to one object's page, or replace the block at index. "
+        'type is FAQPage, Recipe, VideoObject, Course or Custom; data holds the fields '
+        'seo.schema_blocks lists for that type (an FAQ: {"items": [{"question", "answer"}]}). '
+        'A type the store writes itself (Product, Organization, Article, Event, …) is refused.'
+    ),
+    scopes=['seo.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            **_SCHEMA_TARGET,
+            'type': {'type': 'string'},
+            'data': {'type': 'object'},
+            'index': {'type': 'integer', 'description': 'Replace this block instead of adding.'},
+        },
+        'required': ['model', 'object_id', 'type', 'data'],
+    },
+    requires_approval=True,
+)
+def set_schema_block_tool(
+    *, model: str, object_id: str, type: str, data: dict, index: int | None = None
+) -> ToolResult:
+    from plugins.installed.seo.models import SeoMeta
+    from plugins.installed.seo.schema_types import build_block, refusal
+
+    entry = {'type': type, 'data': data if isinstance(data, dict) else {}}
+    if reason := refusal(entry):
+        raise ToolError(reason)
+    if not build_block(entry['type'], entry['data']):
+        raise ToolError('The block has nothing in it: fill its required fields.')
+    ct, obj = _schema_target(model, object_id)
+    meta, _ = SeoMeta.objects.get_or_create(content_type=ct, object_id=str(obj.pk))
+    blocks = list(meta.schema_blocks or [])
+    if index is None:
+        blocks.append(entry)
+    elif 0 <= index < len(blocks):
+        blocks[index] = entry
+    else:
+        raise ToolError(f'There is no block {index}.')
+    meta.schema_blocks = blocks
+    meta.save()
+    return ToolResult(
+        output={'object': str(obj), 'blocks': _schema_rows(blocks)},
+        display=f'Saved a {type} block on {obj}',
+    )
+
+
+@tool(
+    name='seo.delete_schema_block',
+    description="Delete the structured-data block at index from one object's page.",
+    scopes=['seo.write'],
+    schema={
+        'type': 'object',
+        'properties': {**_SCHEMA_TARGET, 'index': {'type': 'integer'}},
+        'required': ['model', 'object_id', 'index'],
+    },
+    requires_approval=True,
+)
+def delete_schema_block_tool(*, model: str, object_id: str, index: int) -> ToolResult:
+    from plugins.installed.seo.models import SeoMeta
+
+    ct, obj = _schema_target(model, object_id)
+    meta = SeoMeta.objects.filter(content_type=ct, object_id=str(obj.pk)).first()
+    blocks = list(meta.schema_blocks or []) if meta else []
+    if not 0 <= index < len(blocks):
+        raise ToolError(f'There is no block {index}.')
+    removed = blocks.pop(index)
+    meta.schema_blocks = blocks
+    meta.save()
+    return ToolResult(
+        output={'object': str(obj), 'blocks': _schema_rows(blocks)},
+        display=f'Deleted a {removed.get("type", "")} block from {obj}',
+    )

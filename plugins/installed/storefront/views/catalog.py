@@ -908,7 +908,7 @@ def _product_codes(product_row) -> list[dict]:
 
 def _product_seo_extra(product_row, primary_image, hero_image, review_summary, reviews):
     """SAFE-assembled Product JSON-LD enrichments (image / aggregateRating /
-    brand / review) for the dict path. Reads aggregates + relations + the
+    review) for the dict path; the brand comes from catalog's one source. Reads aggregates + relations + the
     GraphQL image dict only — never the product's deferred price field.
     """
     extra: dict = {}
@@ -930,15 +930,6 @@ def _product_seo_extra(product_row, primary_image, hero_image, review_summary, r
             for r in (reviews or [])[:5]
             if r.get('stars')
         ]
-    if product_row is not None and app_registry.is_active('book_product'):
-        try:
-            from plugins.installed.book_product.compat import book_attrs
-
-            pub = (book_attrs(product_row) or {}).get('publisher')
-            if pub:
-                extra['brand'] = str(pub)
-        except Exception:  # noqa: BLE001
-            pass
     return extra or None
 
 

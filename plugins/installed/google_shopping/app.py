@@ -231,12 +231,6 @@ class GoogleShoppingPlugin(Plugin):
                     'description': "Leave blank to use each product's own currency.",
                     'default': '',
                 },
-                'default_brand': {
-                    'type': 'string',
-                    'title': 'Default brand',
-                    'description': 'Used when a product has no brand/publisher of its own.',
-                    'default': '',
-                },
                 'default_google_product_category': {
                     'type': 'string',
                     'title': 'Default Google product category',

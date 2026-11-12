@@ -193,7 +193,6 @@ class MicrosoftCommercePlugin(Plugin):
                     'default': False,
                 },
                 'country': {'type': 'string', 'title': 'Target country (ISO)', 'default': 'US'},
-                'default_brand': {'type': 'string', 'title': 'Default brand', 'default': ''},
                 'default_condition': {
                     'type': 'string',
                     'title': 'Default condition',

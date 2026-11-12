@@ -10,6 +10,8 @@ This app's job today is narrow: it tells search engines and shopping feeds your 
 
 Set how many days a customer has to return something on [Returns portal](settings:returns_portal). Leaving it at zero states, truthfully, that you take no returns.
 
+You can also say who pays to send a return back ([](field:returns_portal.return_fees)), how items can come back (by post, in a shop or at a kiosk) and which refunds you give (a full refund, an exchange or store credit). Search engines read each one only once you set it. A fixed fee is stated only with its amount ([](field:returns_portal.return_shipping_fee)).
+
 ## Good to know
 
 This app does not yet add its own screen for a customer to choose a refund, an exchange, or store credit, or to leave feedback about why they are returning something — those parts are not built, even though they are part of its original idea. What is live is the return window itself: it is published correctly wherever your store states its policies, and it is left out entirely if your store's country is not set.

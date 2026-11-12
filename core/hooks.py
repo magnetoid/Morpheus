@@ -583,6 +583,14 @@ class MorpheusEvents:
     #   book app answers {'genre', 'author', 'formats', 'formats_line'}. Read by
     #   core's {% product_card_meta %} so a theme card never loads an app's tags.
     PRODUCT_CARD_META = 'product.card_meta'  # filter
+    # PRODUCT_BRAND — filter, value=str (the brand name, '' when none), kwargs:
+    #   product (a catalog Product row). Fired by catalog's
+    #   `catalog/brand.py:product_brand`, the one place a product's brand is read:
+    #   the product page's structured data and every channel feed. An app that
+    #   knows a product's brand answers with it (book_product: the publisher);
+    #   with no answer the helper falls back to catalog's `default_brand` setting,
+    #   and with neither nothing claims a brand (v0.163.0).
+    PRODUCT_BRAND = 'product.brand'  # filter
     # PRODUCT_BREADCRUMB_CATEGORY — filter, value=list of {'name', 'url'} (absolute
     #   urls), kwargs: product (the PDP's catalog Product row, else its GraphQL dict;
     #   None on the product list), category (the catalog Category the default was
@@ -1006,12 +1014,15 @@ class MorpheusEvents:
     #   sitemap renderer builds its own native URL list (catalog, CMS pages,
     #   book facets, …) then fires this filter so any OTHER plugin can fold
     #   in URLs it owns — {'loc': str (absolute, required), 'lastmod':
-    #   date|datetime|None, 'changefreq': str, 'priority': float|str} —
-    #   without seo importing that plugin's models. Each subscriber appends
-    #   its own dicts and returns the list; seo dedupes by `loc` (first
-    #   wins) and normalises lastmod/priority to strings at the merge point.
-    #   A disabled plugin's URLs simply never appear (bus skips inactive
-    #   owners).
+    #   date|datetime|None, 'changefreq': str, 'priority': float|str,
+    #   'images': [str] (optional, v0.163.0)} — without seo importing that
+    #   plugin's models. Each subscriber appends its own dicts and returns the
+    #   list; seo dedupes by `loc` (first wins) and normalises lastmod/priority
+    #   to strings at the merge point. `images` are the page's pictures for the
+    #   image sitemap: seo keeps at most six absolute public addresses and drops
+    #   any file under a private media prefix (`digital/`). `lastmod` is when
+    #   the row last changed, or None when its owner cannot say. A disabled
+    #   plugin's URLs simply never appear (bus skips inactive owners).
     SITEMAP_URLS = 'seo.sitemap_urls'  # filter
 
     # AI_FEED_ITEMS — filter, value=list[dict], no kwargs. The AI-shopping

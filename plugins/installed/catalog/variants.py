@@ -82,3 +82,42 @@ def ensure_stock_variant(product):
         except IntegrityError:
             continue
     return None
+
+
+#: The variant axes Google reads from a product group (`variesBy`), each with the
+#: attribute names that state it. A variant's size is its own `size` field; a
+#: variant attribute named "Size" stands in when that field is empty. Names are
+#: compared on the attribute's slug or name, lowercased: English, plus "colour".
+VARIANT_AXES: dict[str, tuple[str, ...]] = {
+    'size': ('size',),
+    'color': ('color', 'colour'),
+    'material': ('material',),
+    'pattern': ('pattern',),
+}
+
+
+def variant_axes(variant) -> dict[str, str]:
+    """What a variant is on each axis Google reads: ``{'size': 'M', 'color': 'Red'}``.
+
+    Only an attribute marked as a variant attribute (``Attribute.is_variant``)
+    counts: a filterable "Material" on a product is a description, not one of
+    its choices. An axis the variant says nothing about is left out.
+    """
+    out: dict[str, str] = {}
+    size = (getattr(variant, 'size', '') or '').strip()
+    if size:
+        out['size'] = size
+    try:
+        values = list(variant.attribute_values.all())
+    except Exception:  # noqa: BLE001 — an unsaved variant
+        values = []
+    for value in values:
+        attribute = getattr(value, 'attribute', None)
+        if attribute is None or not attribute.is_variant:
+            continue
+        names = {(attribute.slug or '').strip().lower(), (attribute.name or '').strip().lower()}
+        for axis, accepted in VARIANT_AXES.items():
+            text = (value.name or '').strip()
+            if axis not in out and text and names & set(accepted):
+                out[axis] = text
+    return out

@@ -16,4 +16,4 @@ Turn on [](field:google_shopping.enabled) to publish the feed, shown on [Google 
 - Create a Google Ads Shopping campaign, then pause, enable or report on it
 
 ## Good to know
-The feed itself needs no credentials; only the Content API push, Merchant diagnostics and Google Ads need Google connected. Turning the feed off makes its URL answer not found. The remarketing tag obeys the same marketing consent as the rest of the storefront's ad tags. Linda can check feed coverage, rebuild the feed, and read Merchant diagnostics and the Ads report, but cannot create or change a Google Ads campaign herself.
+The feed itself needs no credentials; only the Content API push, Merchant diagnostics and Google Ads need Google connected. Turning the feed off makes its URL answer not found. The remarketing tag obeys the same marketing consent as the rest of the storefront's ad tags. Linda can check feed coverage, rebuild the feed, and read Merchant diagnostics and the Ads report, but cannot create or change a Google Ads campaign herself. Each product's brand comes from [Catalog](app:catalog): a book's publisher, else your store's default brand; with neither, the feed names none.

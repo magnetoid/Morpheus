@@ -56,6 +56,12 @@ SCHEMA_AVAILABILITY = {
 }
 
 
+def _product_brand(product) -> str:
+    from plugins.installed.catalog.brand import product_brand  # noqa: PLC0415
+
+    return product_brand(product)
+
+
 def _availability_from_inventory(product) -> str:
     """The inventory app's answer, or '' when it is not installed / cannot tell.
 
@@ -236,7 +242,9 @@ class FeedMapper:
             book = {}
 
         gtin, mpn = self._identifiers(product)
-        brand = over.get('brand') or settings.default_brand or book.get('publisher') or ''
+        # A per-product feed override first, then catalog's one brand source
+        # (a book's publisher, else the store's default brand); none → omitted.
+        brand = over.get('brand') or _product_brand(product)
         condition = over.get('condition') or settings.default_condition or 'new'
 
         item: dict = {

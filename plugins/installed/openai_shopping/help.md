@@ -15,4 +15,4 @@ Apply at chatgpt.com/merchants, then either give OpenAI the feed URL shown on [C
 - Check whether the last automatic push succeeded
 
 ## Good to know
-The feed is served publicly at all times, whether or not a push endpoint is configured — OpenAI or Perplexity can fetch it directly even without the automatic push set up. Checkout inside ChatGPT additionally needs the agentic checkout feature to be live, not just this setting switched on. Linda has no tools for this app, so she cannot read its feed coverage or change its settings for you.
+The feed is served publicly at all times, whether or not a push endpoint is configured — OpenAI or Perplexity can fetch it directly even without the automatic push set up. Checkout inside ChatGPT additionally needs the agentic checkout feature to be live, not just this setting switched on. Linda has no tools for this app, so she cannot read its feed coverage or change its settings for you. Each product's brand comes from [Catalog](app:catalog): a book's publisher, else your store's default brand. OpenAI requires one, so a row with neither names none until you set that default.

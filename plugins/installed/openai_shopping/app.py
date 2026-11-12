@@ -166,12 +166,6 @@ class OpenAIShoppingPlugin(Plugin):
                     'description': 'Blank uses /returns/.',
                     'default': '',
                 },
-                'default_brand': {
-                    'type': 'string',
-                    'title': 'Default brand',
-                    'description': 'Used when a product has no brand of its own. Blank uses the seller name.',
-                    'default': '',
-                },
                 'default_condition': {
                     'type': 'string',
                     'title': 'Default condition',

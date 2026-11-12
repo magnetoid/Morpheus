@@ -9,7 +9,6 @@ from dataclasses import dataclass
 class SnapchatSettings:
     enabled: bool
     country: str
-    default_brand: str
     default_condition: str
     include_out_of_stock: bool
     feed_title: str
@@ -19,7 +18,6 @@ class SnapchatSettings:
 _DEFAULTS = {
     'enabled': True,
     'country': 'US',
-    'default_brand': '',
     'default_condition': 'new',
     'include_out_of_stock': True,
     'feed_title': '',  # '' → the store's name

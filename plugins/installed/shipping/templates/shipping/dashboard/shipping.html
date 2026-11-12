@@ -265,6 +265,26 @@
                      class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
             </label>
           </div>
+          <div class="md:col-span-2">
+            <span class="text-xs text-[color:var(--text-muted)]">Handling time · working days between an order and its dispatch. Search engines show it with the delivery time; leave blank to state none.</span>
+            <div class="grid grid-cols-3 gap-3">
+              <label class="block text-xs">
+                <span class="text-[color:var(--text-muted)]">At least (days)</span>
+                <input type="number" min="0" max="30" name="handling_days_min" id="f-shipping-handling_days_min" value="{{ shipping_config.handling_days_min|default_if_none:'' }}"
+                       class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+              </label>
+              <label class="block text-xs">
+                <span class="text-[color:var(--text-muted)]">At most (days)</span>
+                <input type="number" min="0" max="30" name="handling_days_max" id="f-shipping-handling_days_max" value="{{ shipping_config.handling_days_max|default_if_none:'' }}"
+                       class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+              </label>
+              <label class="block text-xs">
+                <span class="text-[color:var(--text-muted)]">Same-day cut-off (store clock)</span>
+                <input type="time" name="handling_cutoff_time" id="f-shipping-handling_cutoff_time" value="{{ shipping_config.handling_cutoff_time|default:'' }}"
+                       class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+              </label>
+            </div>
+          </div>
         </div>
         <div class="flex justify-end">
           <button type="submit" class="btn btn-primary">Save carrier settings</button>

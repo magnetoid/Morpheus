@@ -15,4 +15,4 @@ Turn on [](field:snapchat_commerce.enabled) to publish the feed, shown on [Snapc
 - Pause or enable a campaign, and check spend, swipes and conversions for the last 7, 14 or 30 days
 
 ## Good to know
-The feed itself needs no credentials; the pixel, its server-side events and Ads all need the OAuth connection. The pixel and its matching server-side events only fire when the shopper has agreed to marketing tracking. Linda can check feed coverage, get the feed URL and read the Ads report, but cannot create or change a campaign herself.
+The feed itself needs no credentials; the pixel, its server-side events and Ads all need the OAuth connection. The pixel and its matching server-side events only fire when the shopper has agreed to marketing tracking. Linda can check feed coverage, get the feed URL and read the Ads report, but cannot create or change a campaign herself. Each product's brand comes from [Catalog](app:catalog): a book's publisher, else your store's default brand; with neither, the feed names none.

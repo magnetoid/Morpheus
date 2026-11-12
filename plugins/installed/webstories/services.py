@@ -36,6 +36,8 @@ from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import Any
 
+from core.text import clip  # shared with every app that clips published text (v0.163.0)
+
 logger = logging.getLogger('morpheus.webstories')
 
 #: Bumped when the page shape changes; a story built by an older builder is
@@ -175,26 +177,6 @@ def plain_text(value) -> str:
     if len(blocks) > 1:
         blocks = [b if b.endswith(_TERMINAL) else f'{b}.' for b in blocks]
     return ' '.join(blocks)
-
-
-def clip(text: str, limit: int) -> str:
-    """``text`` cut to ``limit`` characters at a sentence end, else a word (…)."""
-    text = (text or '').strip()
-    if len(text) <= limit:
-        return text
-    window = text[:limit]
-    floor = int(limit * 0.5)
-    sentence_end = -1
-    for m in re.finditer(r'[.!?…](?=\s|$)', window):
-        if m.end() >= floor:
-            sentence_end = m.end()
-    if sentence_end > 0:
-        return window[:sentence_end].strip()
-    cut = window[: limit - 1]
-    space = cut.rfind(' ')
-    if space >= floor:
-        cut = cut[:space]
-    return cut.rstrip(' ,;:–-') + '…'
 
 
 def sentences(text: str) -> list[str]:

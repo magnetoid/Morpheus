@@ -1734,8 +1734,9 @@ def not_found_dismiss(request, pk):
 # --- Visual structured-data (schema.org) editor ---------------------------
 # A per-object editor: pick a schema.org @type from a friendly list and fill
 # labeled fields (no JSON). Entries are stored on SeoMeta.schema_blocks and
-# built into <script type="application/ld+json"> at render time (see
-# services/meta.py:_visual_schema_blocks). Reached from the product/page forms.
+# added to the object's page graph at render time (seo/schema/graph.py:
+# _add_editor_blocks). A type the store writes itself is refused; a block of a
+# retired type stays stored until the merchant deletes it, and renders nowhere.
 
 
 @staff_member_required
@@ -1788,7 +1789,12 @@ def schema_editor(request: HttpRequest, app_label: str, model: str, pk: str) -> 
 
     from morpheus.views import Http404
     from plugins.installed.seo.models import SeoMeta
-    from plugins.installed.seo.schema_types import build_block, registry_json
+    from plugins.installed.seo.schema_types import (
+        build_block,
+        refusal,
+        registry_json,
+        retired_entries,
+    )
 
     ct = ContentType.objects.filter(app_label=app_label, model=model).first()
     if ct is None:
@@ -1806,20 +1812,39 @@ def schema_editor(request: HttpRequest, app_label: str, model: str, pk: str) -> 
         # anything on it needs seo.write.
         if (denied := enforce(request, 'seo.write')) is not None:
             return denied
+        back = redirect('seo_dashboard:schema_editor', app_label=app_label, model=model, pk=str(pk))
+        stored = list(meta.schema_blocks or []) if meta else []
+        retired = retired_entries(stored)
+        if request.POST.get('action') == 'delete_retired':
+            index = request.POST.get('index', '')
+            if meta and index.isdigit() and int(index) in {r['index'] for r in retired}:
+                del stored[int(index)]
+                meta.schema_blocks = stored
+                meta.save(update_fields=['schema_blocks', 'updated_at'])
+                messages.success(request, 'Block deleted.')
+            return back
         try:
             entries = json.loads(request.POST.get('blocks_json') or '[]')
         except (ValueError, TypeError):
             entries = []
-        clean = [
-            {'type': e.get('type', ''), 'data': e.get('data') or {}}
-            for e in entries
-            if isinstance(e, dict) and build_block(e.get('type', ''), e.get('data') or {})
-        ]
+        clean, refused = [], []
+        for e in entries:
+            if not isinstance(e, dict):
+                continue
+            entry = {'type': e.get('type', ''), 'data': e.get('data') or {}}
+            if reason := refusal(entry):
+                refused.append(reason)
+            elif build_block(entry['type'], entry['data']):
+                clean.append(entry)
         meta, _ = SeoMeta.objects.get_or_create(content_type=ct, object_id=str(pk))
-        meta.schema_blocks = clean
+        # The editor's form holds only the blocks it can edit: the retired ones
+        # stay stored (they render nowhere) until the merchant deletes them.
+        meta.schema_blocks = clean + [stored[r['index']] for r in retired]
         meta.save()
+        for reason in dict.fromkeys(refused):
+            messages.error(request, f'A block was not saved. {reason}')
         messages.success(request, f'Structured data saved ({len(clean)} block(s)).')
-        return redirect('seo_dashboard:schema_editor', app_label=app_label, model=model, pk=str(pk))
+        return back
 
     try:
         object_url = obj.get_absolute_url() if (obj and hasattr(obj, 'get_absolute_url')) else ''
@@ -1838,7 +1863,8 @@ def schema_editor(request: HttpRequest, app_label: str, model: str, pk: str) -> 
             # Passed as Python objects → rendered with |json_script, which escapes
             # </script> in user answer text. The editor JS JSON.parses them.
             'schema_types': registry_json(),
-            'existing_blocks': meta.schema_blocks if meta else [],
+            'existing_blocks': [b for b in (meta.schema_blocks if meta else []) if not refusal(b)],
+            'retired_blocks': retired_entries(meta.schema_blocks if meta else []),
             'active_nav': 'seo',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},

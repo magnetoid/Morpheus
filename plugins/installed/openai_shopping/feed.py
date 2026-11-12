@@ -14,9 +14,10 @@ _FEED_LIMIT = 5000
 
 @dataclass(frozen=True)
 class FeedConfig:
-    """The settings panel's values. The three channel-resolver fields
-    (``default_brand``, ``default_condition``, ``include_out_of_stock``) are
-    read by :class:`plugins.feed_mapping.FeedMapper`."""
+    """The settings panel's values. The two channel-resolver fields
+    (``default_condition``, ``include_out_of_stock``) are read by
+    :class:`plugins.feed_mapping.FeedMapper`; the brand comes from catalog
+    (``catalog/brand.py``)."""
 
     enabled: bool = True
     seller_name: str = ''
@@ -28,7 +29,6 @@ class FeedConfig:
     accepts_returns: bool = False
     return_deadline_days: int = 0
     return_policy_url: str = ''
-    default_brand: str = ''
     default_condition: str = 'new'
     include_out_of_stock: bool = True
     push_endpoint: str = ''
@@ -82,7 +82,6 @@ def _row(item: dict, *, cfg: FeedConfig, seller: dict, group: dict | None = None
         'title': item.get('title', ''),
         'description': item.get('description', '') or item.get('title', ''),
         'url': item.get('link', ''),
-        'brand': item.get('brand', '') or seller['seller_name'],
         'image_url': item.get('image_link', ''),
         'availability': str(item.get('availability') or 'in_stock'),
         'price': item.get('price', ''),
@@ -93,6 +92,11 @@ def _row(item: dict, *, cfg: FeedConfig, seller: dict, group: dict | None = None
         'is_eligible_search': True,
         'is_eligible_checkout': bool(cfg.checkout_eligible),
     }
+    # OpenAI lists brand as required with no fallback of its own: an unknown
+    # brand is left out (the merchant sets catalog's default brand), never
+    # filled with the seller's name, which is not the product's brand.
+    if item.get('brand'):
+        row['brand'] = item['brand']
     if item.get('sale_price'):
         row['sale_price'] = item['sale_price']
     if cfg.checkout_eligible:
