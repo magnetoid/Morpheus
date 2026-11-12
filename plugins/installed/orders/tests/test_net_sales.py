@@ -17,7 +17,7 @@ from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 from djmoney.money import Money
 
@@ -265,3 +265,49 @@ class CustomerTotalsTests(TestCase):
         self.assertEqual(self._stored(), (1, Decimal('25.00')))
         ghost.refresh_from_db()
         self.assertEqual((ghost.purchase_count, ghost.lifetime_value), (0, Decimal('0.00')))
+
+
+class CancelOutsideTransactionTests(TransactionTestCase):
+    """A cancellation's event fires before the caller saves the order; with no
+    surrounding transaction the contact's totals must still drop."""
+
+    def test_cancel_then_save_lowers_the_stored_totals(self):
+        buyer = get_user_model().objects.create_user(
+            username='co', email='co@example.com', password='x'
+        )
+        order = _order(80, customer=buyer)
+        _order(20, customer=buyer)
+        from plugins.installed.orders.customer_totals import refresh
+
+        refresh([buyer.pk])
+        buyer.refresh_from_db()
+        self.assertEqual((buyer.purchase_count, buyer.lifetime_value), (2, Decimal('100.00')))
+        order.cancel(reason='test')
+        order.save()
+        buyer.refresh_from_db()
+        self.assertEqual((buyer.purchase_count, buyer.lifetime_value), (1, Decimal('20.00')))
+        order.save()  # a later save of the same order refreshes nothing more
+        buyer.refresh_from_db()
+        self.assertEqual(buyer.purchase_count, 1)
+
+
+class CohortCurrencyTests(TestCase):
+    def test_a_cohort_cell_sums_only_the_tables_currency(self):
+        from plugins.installed.analytics.services_cohorts import _sum_revenue
+
+        usd_buyer = get_user_model().objects.create_user(
+            username='us', email='us@example.com', password='x'
+        )
+        mixed = get_user_model().objects.create_user(
+            username='mx', email='mx@example.com', password='x'
+        )
+        _order(40, currency='USD', customer=usd_buyer)
+        _order(30, currency='EUR', customer=mixed)
+        _order(5, currency='USD', customer=mixed)
+        start = (timezone.now() - timedelta(days=1)).date()
+        end = (timezone.now() + timedelta(days=1)).date()
+        # A cohort that bought only in USD has no euro revenue, not a relabelled 40.
+        self.assertEqual(_sum_revenue([usd_buyer.pk], start, end, 'EUR'), Decimal('0'))
+        # A mixed cohort's euro cell holds its euros only, whichever currency leads.
+        self.assertEqual(_sum_revenue([mixed.pk], start, end, 'EUR'), Decimal('30.00'))
+        self.assertEqual(_sum_revenue([mixed.pk], start, end, 'USD'), Decimal('5.00'))

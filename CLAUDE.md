@@ -1323,14 +1323,16 @@ pageview recorded by the server missed most of them; "sessions" were two-year co
 event without consent counted as one more; conversion could pass 100 %; "today" ended at midnight
 UTC; the banner's reload named the store as every consented visit's referrer. Now a pageview is
 `analytics/hit.js`, which analytics' middleware writes before `</body>` of a 200 HTML page (never a
-crawler's, never staff's) and the beacon records; a visit is a visitor's events with no 30-minute gap
-(`services.visits_and_visitors`, rolled hourly on the store's clock, `day_bounds`); conversion is
-purchases by counted visitors over their visits. A purchase finds its visit from the shopper's
-request (`core.errors.context.current_request`, never in `/dashboard/` or for staff) and stamps
+crawler's, never staff's, never while the app is off) and the beacon records; a visit is a visitor's
+events with no 30-minute gap (`services.visits_and_visitors`, rolled hourly on the store's clock,
+`day_bounds`); conversion is purchases by counted visitors over their visits. A purchase finds its
+visit from the shopper's request (`core.errors.context.current_request`, never in `/dashboard/` or for
+staff) and stamps
 `order.metadata['analytics']`, so a webhook's later event joins that visit. The banner posts the
 landing page and referrer; consent keeps them in a signed two-minute cookie (`core.consent.entry`)
 that analytics and the GA4 tag read once. Cookieless counting (`cookieless_visits`, off) keys a
-visitor by a daily salt in the cache and never beside a customer. Guarded by
+visitor by a daily salt in the cache, never beside a customer or on an event about an order (a
+guest's order holds their email and address). Guarded by
 `analytics/tests/test_true_numbers.py`, `consent/tests/test_entry_carry.py` and
 `tracking/tests/test_entry_referrer.py`.
 
@@ -1664,7 +1666,10 @@ attribution. Guarded by `orders/tests/test_net_sales.py`.
 **Convention — a visit's source is its own first page (v0.158.0).** The pageview beacon stores where a
 visit starting on that page came from (`payload['arr']`, from `analytics/sources.py:classify`: the link's
 utm tags or a paid click id, else the referring site, a search engine, social or webmail site, AI assistant
-or other site; nothing when the referrer is the store itself or a payment page). `roll_daily` replays the
+or other site; nothing when the referrer is the store itself or a payment page; a paid click id beats a
+bare `utm_source`, an explicit `utm_medium` beats both). The page the consent banner reloads takes the
+carried entry and clears its cookie, so a session's first page within two minutes of its creation that
+names no arrival takes the session's saved referrer (`services._first_page`). `roll_daily` replays the
 day into one `AnalyticsVisit` per visit (`analytics/visits.py`) under its first page's arrival; a visit
 that runs past midnight keeps the previous day's row. The Sources page, its card, `analytics.traffic_sources`
 and the home tile's AI visits (`top_sources`, `ai:<name>`) read those rows, and a visit's sales are its
