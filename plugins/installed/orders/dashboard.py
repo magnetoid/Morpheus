@@ -12,8 +12,6 @@ from __future__ import annotations
 from datetime import timedelta
 from decimal import Decimal
 
-from django.db.models import Count, Sum
-from django.db.models.functions import TruncDate
 from django.utils import timezone
 
 
@@ -36,61 +34,52 @@ def _pct_delta(now, before) -> str:
 
 
 def on_dashboard_kpis(value, date_range=None, **kwargs):
-    """Append the sales / orders / average-order KPI tiles."""
+    """Append the sales / orders / average-order KPI tiles (``orders.reports``)."""
+    from djmoney.money import Money  # noqa: PLC0415
+
+    from core.templatetags.morph import money_filter  # noqa: PLC0415
+    from core.utils.site import store_timezone  # noqa: PLC0415
     from plugins.installed.orders.models import Order  # noqa: PLC0415
+    from plugins.installed.orders.reports import net_by_day, net_sales  # noqa: PLC0415
 
-    orders_qs = Order.objects.filter(
-        placed_at__gte=date_range.start,
-        placed_at__lt=date_range.end,
+    sales = net_sales(
+        Order.objects.filter(placed_at__gte=date_range.start, placed_at__lt=date_range.end)
     )
-    order_count = orders_qs.count()
-    revenue = orders_qs.aggregate(total=Sum('total'))['total'] or Decimal('0')
+    prev = net_sales(
+        Order.objects.filter(
+            placed_at__gte=date_range.prev_start, placed_at__lt=date_range.prev_end
+        )
+    )
+    revenue, order_count = sales.net, sales.orders
+    prev_revenue, prev_count = prev.net, prev.orders
     avg_order = (revenue / order_count) if order_count else Decimal('0')
+    currency = sales.currency or prev.currency or 'USD'
 
-    prev_orders = Order.objects.filter(
-        placed_at__gte=date_range.prev_start,
-        placed_at__lt=date_range.prev_end,
-    )
-    prev_count = prev_orders.count()
-    prev_revenue = prev_orders.aggregate(total=Sum('total'))['total'] or Decimal('0')
+    def shown(amount) -> str:
+        return money_filter(Money(amount, currency))
 
-    # 14-day daily series for the sparklines. One aggregate query each;
+    # 14-day daily series for the sparklines, by the store's own day;
     # zero-filled so the visual stays comparable at any store volume.
-    today = timezone.now().date()
-    spark_since = timezone.now() - timedelta(days=14)
+    tz = store_timezone()
+    today = timezone.now().astimezone(tz).date()
     keys = [(today - timedelta(days=i)) for i in range(13, -1, -1)]
-    rev_by_day = {
-        row['day']: row['v']
-        for row in (
-            Order.objects.filter(placed_at__gte=spark_since)
-            .annotate(day=TruncDate('placed_at'))
-            .values('day')
-            .annotate(v=Sum('total'))
-        )
-    }
-    cnt_by_day = {
-        row['day']: row['v']
-        for row in (
-            Order.objects.filter(placed_at__gte=spark_since)
-            .annotate(day=TruncDate('placed_at'))
-            .values('day')
-            .annotate(v=Count('id'))
-        )
-    }
-    rev_series = [float(rev_by_day.get(k, 0) or 0) for k in keys]
-    cnt_series = [float(cnt_by_day.get(k, 0) or 0) for k in keys]
+    by_day = net_by_day(
+        Order.objects.filter(placed_at__gte=timezone.now() - timedelta(days=15)), tz
+    )
+    rev_series = [float(by_day.get(k, (0, 0))[1]) for k in keys]
+    cnt_series = [float(by_day.get(k, (0, 0))[0]) for k in keys]
     aov_series = [(rev_series[i] / cnt_series[i]) if cnt_series[i] else 0 for i in range(len(keys))]
 
     value.extend(
         [
             {
                 'label': 'Total sales',
-                'value': f'${revenue:,.2f}',
+                'value': shown(revenue),
                 'delta': _pct_delta(revenue, prev_revenue),
                 'trend': _trend(revenue, prev_revenue),
                 'icon': 'dollar-sign',
                 'series': rev_series,
-                'hint': 'Gross revenue from all placed orders (before refunds).',
+                'hint': 'Orders placed and not cancelled, after their refunds.',
             },
             {
                 'label': 'Orders',
@@ -99,11 +88,11 @@ def on_dashboard_kpis(value, date_range=None, **kwargs):
                 'trend': _trend(order_count, prev_count),
                 'icon': 'shopping-bag',
                 'series': cnt_series,
-                'hint': 'Total number of completed checkout sessions.',
+                'hint': 'Orders placed and not cancelled; unpaid ones left at checkout are not counted.',
             },
             {
                 'label': 'Average order',
-                'value': f'${avg_order:,.2f}' if order_count else '—',
+                'value': shown(avg_order) if order_count else '—',
                 'delta': '',
                 'trend': 'flat',
                 'icon': 'trending-up',

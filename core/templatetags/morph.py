@@ -219,6 +219,12 @@ _CURRENCY_SYMBOLS = {
 }
 
 
+def currency_symbol(code: str) -> str:
+    """The sign printed before an amount in ``code``: '$', '€', or 'RSD '."""
+    code = (code or 'USD').upper()
+    return _CURRENCY_SYMBOLS.get(code, f'{code} ')
+
+
 @register.filter(name='money')
 def money_filter(value, _arg=None):
     """Render a Money instance OR a GraphQL `{amount, currency}` dict.

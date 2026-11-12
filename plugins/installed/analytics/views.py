@@ -331,7 +331,10 @@ def cohort_view(request):
     whether each marketing dollar is buying recurring revenue or
     just one-time transactions.
     """
+    from core.templatetags.morph import currency_symbol  # noqa: PLC0415
+    from plugins.dropshipping.importer import store_currency  # noqa: PLC0415
     from plugins.installed.analytics.services_cohorts import compute_cohorts  # noqa: PLC0415
+    from plugins.installed.orders.reports import net_sales  # noqa: PLC0415
 
     metric = (request.GET.get('metric') or 'order').strip()
     if metric not in ('order', 'active', 'revenue'):
@@ -348,6 +351,7 @@ def cohort_view(request):
                 metric=metric,
             ),
             'metric': metric,
+            'currency_symbol': currency_symbol(net_sales().currency or store_currency()),
             'cohort_count': cohort_count,
             'period_count': period_count,
             'active_nav': 'analytics',

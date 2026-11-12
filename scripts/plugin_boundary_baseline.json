@@ -106,10 +106,6 @@
       "target": "notifications_center"
     },
     {
-      "importer": "analytics",
-      "target": "orders"
-    },
-    {
       "importer": "audiobooks",
       "target": "catalog"
     },

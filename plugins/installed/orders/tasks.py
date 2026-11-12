@@ -95,3 +95,12 @@ def expire_pending_orders() -> int:
     if cancelled:
         logger.info('orders: expired %s unpaid pending order(s) older than %sm', cancelled, minutes)
     return cancelled
+
+
+@shared_task(name='orders.refresh_customer_totals')
+def refresh_customer_totals() -> int:
+    """Every contact's purchase count and lifetime value from the sales rule,
+    before the 04:30 RFM rescoring reads them."""
+    from plugins.installed.orders.customer_totals import refresh_all  # noqa: PLC0415
+
+    return refresh_all()

@@ -1,5 +1,5 @@
 {% extends "admin_dashboard/base.html" %}
-{% load metafields_tags %}
+{% load metafields_tags morph %}
 {% block title %}{% if customer %}{{ customer.email }}{% else %}New customer{% endif %} · Morpheus{% endblock %}
 
 {% block breadcrumb %}
@@ -126,7 +126,7 @@
           </div>
           <div>
             <div class="text-[color:var(--text-muted)] text-xs">Spent</div>
-            <div class="text-lg font-semibold">${{ order_summary.spent|floatformat:2 }}</div>
+            <div class="text-lg font-semibold">{% if order_summary.spent_money %}{{ order_summary.spent_money|money }}{% else %}—{% endif %}</div>
           </div>
         </div>
       </div>

@@ -16,11 +16,13 @@ from django.db.models import Count, Sum
 from django.db.models.functions import (
     ExtractHour,
     ExtractWeekDay,
-    TruncDate,
 )
+from djmoney.money import Money
 
 from core.authz import require_capability
+from core.templatetags.morph import currency_symbol, money_filter
 from morpheus.app.views import HttpRequest, HttpResponse, render, staff_member_required
+from plugins.dropshipping.importer import store_currency as store_currency_code
 from plugins.installed.admin_dashboard.views_split._shared import (
     DATE_PRESETS,
     Metric,
@@ -45,35 +47,41 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0912, PLR0
     hour_pattern: list[dict] = []
     revenue_total = Decimal('0')
     order_count = 0
+    currency = store_currency_code()
+
+    def shown(amount) -> str:
+        return money_filter(Money(amount, currency))
 
     try:
         from plugins.installed.orders.models import Order, OrderItem
+        from plugins.installed.orders.reports import counted, net_by_day, net_sales
 
-        orders_qs = Order.objects.filter(
+        placed_qs = Order.objects.filter(
             placed_at__gte=date_range.start,
             placed_at__lt=date_range.end,
         )
+        # Sales, orders and every breakdown below read the one rule
+        # (orders.reports): cancelled and unpaid orders left at checkout are
+        # out, refunds are netted. The status breakdown lists every order.
+        orders_qs = counted(placed_qs)
         prev_qs = Order.objects.filter(
             placed_at__gte=date_range.prev_start,
             placed_at__lt=date_range.prev_end,
         )
+        sales, prev_sales = net_sales(placed_qs), net_sales(prev_qs)
+        currency = sales.currency or prev_sales.currency or currency
 
-        order_count = orders_qs.count()
-        prev_count = prev_qs.count()
-        revenue_total = orders_qs.aggregate(t=Sum('total'))['t'] or Decimal('0')
-        prev_revenue = prev_qs.aggregate(t=Sum('total'))['t'] or Decimal('0')
+        order_count, prev_count = sales.orders, prev_sales.orders
+        revenue_total, prev_revenue = sales.net, prev_sales.net
         avg_order = (revenue_total / order_count) if order_count else Decimal('0')
         prev_avg = (prev_revenue / prev_count) if prev_count else Decimal('0')
 
         # Daily series — fill zeros for missing days so charts always
         # span the full window edge-to-edge regardless of activity.
-        bucketed = list(
-            orders_qs.annotate(day=TruncDate('placed_at'))
-            .values('day')
-            .annotate(rev=Sum('total'), cnt=Count('id'))
-            .order_by('day')
-        )
-        by_day = {row['day']: row for row in bucketed}
+        by_day = {
+            day: {'cnt': n, 'rev': net}
+            for day, (n, net) in net_by_day(placed_qs, date_range.start.tzinfo).items()
+        }
         cur = date_range.start.date()
         end = date_range.end.date()
         # Cap series at 366 buckets so long ranges stay performant in
@@ -96,7 +104,7 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0912, PLR0
         metrics = [
             Metric(
                 label='Revenue',
-                value=f'${revenue_total:,.2f}',
+                value=shown(revenue_total),
                 delta=_pct_delta(revenue_total, prev_revenue),
                 trend=_trend(revenue_total, prev_revenue),
                 icon='dollar-sign',
@@ -112,7 +120,7 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0912, PLR0
             ),
             Metric(
                 label='Avg order',
-                value=f'${avg_order:,.2f}' if order_count else '—',
+                value=shown(avg_order) if order_count else '—',
                 delta=_pct_delta(avg_order, prev_avg),
                 trend=_trend(avg_order, prev_avg),
                 icon='trending-up',
@@ -121,10 +129,7 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0912, PLR0
 
         # Top products by revenue.
         top_products = list(
-            OrderItem.objects.filter(
-                order__placed_at__gte=date_range.start,
-                order__placed_at__lt=date_range.end,
-            )
+            OrderItem.objects.filter(order__in=orders_qs.values('pk'))
             .values('product_id', 'product_name')
             .annotate(
                 units=Sum('quantity'),
@@ -134,7 +139,7 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0912, PLR0
         )
 
         # Order-status breakdown for the selected window.
-        status_breakdown = list(orders_qs.values('status').annotate(n=Count('id')).order_by('-n'))
+        status_breakdown = list(placed_qs.values('status').annotate(n=Count('id')).order_by('-n'))
 
         # Day-of-week pattern. ExtractWeekDay returns 1=Sunday..7=Saturday
         # on Postgres; normalise to Mon-first for display.
@@ -192,6 +197,7 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0912, PLR0
         from plugins.installed.orders.refunds import Refund
 
         ref_total = Refund.objects.filter(
+            is_processed=True,
             created_at__gte=date_range.start,
             created_at__lt=date_range.end,
         ).aggregate(t=Sum('amount'))['t'] or Decimal('0')
@@ -199,12 +205,14 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0912, PLR0
             metrics.append(
                 Metric(
                     label='Refunded',
-                    value=f'${ref_total:,.2f}',
+                    value=shown(ref_total),
                     icon='undo-2',
                 )
             )
     except Exception as e:  # noqa: BLE001
         logger.debug('analytics: refunds panel skipped: %s', e)
+
+    symbol = currency_symbol(currency)
 
     # Build SVG points for the daily revenue chart up front so the
     # template stays presentational.
@@ -233,9 +241,9 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0912, PLR0
         chart_area = f'{first_x},{baseline_y} ' + chart_polyline + f' {last_x},{baseline_y}'
     # Y-axis ticks at 0%, 50%, 100% of max.
     chart_yticks = [
-        {'y': chart_pad_t + plot_h, 'label': '$0'},
-        {'y': chart_pad_t + plot_h / 2, 'label': f'${rev_max / 2:,.0f}'},
-        {'y': chart_pad_t, 'label': f'${rev_max:,.0f}'},
+        {'y': chart_pad_t + plot_h, 'label': f'{symbol}0'},
+        {'y': chart_pad_t + plot_h / 2, 'label': f'{symbol}{rev_max / 2:,.0f}'},
+        {'y': chart_pad_t, 'label': f'{symbol}{rev_max:,.0f}'},
     ]
 
     # Pre-compute max bar values so the template can scale via widthratio.
@@ -283,6 +291,7 @@ def analytics_view(request: HttpRequest) -> HttpResponse:  # noqa: PLR0912, PLR0
             'hour_max': hour_max,
             'new_customers': new_customers,
             'ai_traffic': ai_traffic,
+            'currency_symbol': symbol,
             'active_nav': 'analytics',
         },
     )

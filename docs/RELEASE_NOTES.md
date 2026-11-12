@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.157.0 — 2026-11-12
+
+**One sales figure**
+
+- Every sales figure reads one rule (orders.reports): the home tiles, the Sales page, the Traffic page and its forecast, cohorts, the Pulse, Contacts and Linda's two summaries
+- An order counts once it is placed and not cancelled, after the refunds processed on it; an unpaid order left at the payment step and a released card hold do not count, cash on delivery, bank transfer, held cards and older paid orders still marked pending do
+- A contact's purchase count and lifetime value follow the same rule, refreshed after each order, cancellation and refund and for everyone nightly; they used to add each paid total and never take a refund off
+- Cohorts and the Pulse counted statuses no order has, so a shipped order brought in nothing there; Linda's revenue summary left out cash on delivery and held cards
+- The Sales page, Contacts, the cohort table and the 7-day forecast show the store's currency instead of "$", and an order in a second currency is never added in
+
 ## v0.156.0 — 2026-11-12
 
 **Numbers you can trust**

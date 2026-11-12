@@ -10,7 +10,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from django.db.models import Sum
+from djmoney.money import Money
 
 from core.auth.sign_ins import recent_sign_ins
 from core.authz import require_capability
@@ -99,7 +99,7 @@ def customers_list(request: HttpRequest) -> HttpResponse:
         from django.contrib.auth import get_user_model
         from django.db.models import Count, Q
 
-        from plugins.installed.orders.models import Order
+        from plugins.installed.orders.reports import by_customer
 
         User = get_user_model()
         unfiltered = User.objects.all()
@@ -155,19 +155,15 @@ def customers_list(request: HttpRequest) -> HttpResponse:
             ),
         )
         rows = []
+        # The page's sales in one grouped query, by the rule every report reads
+        # (orders.reports): the stored lifetime value used to be shown instead,
+        # a running sum of paid totals that no refund ever lowered.
+        bought = by_customer([user.pk for user in page_obj.object_list])
         for user in page_obj.object_list:
-            order_qs = Order.objects.filter(customer=user)
             source = getattr(user, 'source', '') or ''
-            # Prefer the CDP denormalized fields (cheap), fall back to live
-            # aggregation when they aren't populated yet (pre-backfill row).
-            denormalized_count = getattr(user, 'purchase_count', 0) or 0
-            denormalized_ltv = getattr(user, 'lifetime_value', None) or Decimal('0')
-            if denormalized_count:
-                order_count = denormalized_count
-                spent = denormalized_ltv
-            else:
-                order_count = order_qs.count()
-                spent = order_qs.aggregate(total=Sum('total'))['total'] or Decimal('0')
+            sales = bought.get(str(user.pk))
+            order_count = sales.orders if sales else 0
+            spent = Money(sales.net, sales.currency) if sales else None
             rows.append(
                 {
                     'id': user.pk,
@@ -278,10 +274,13 @@ def customer_edit(request: HttpRequest, customer_id: str) -> HttpResponse:
     order_summary: dict[str, Any] = {'count': 0, 'spent': Decimal('0'), 'recent': []}
     try:
         from plugins.installed.orders.models import Order
+        from plugins.installed.orders.reports import net_sales
 
         orders_qs = Order.objects.filter(customer=customer)
-        order_summary['count'] = orders_qs.count()
-        order_summary['spent'] = orders_qs.aggregate(t=Sum('total'))['t'] or Decimal('0')
+        sales = net_sales(orders_qs)
+        order_summary['count'] = sales.orders
+        order_summary['spent'] = sales.net
+        order_summary['spent_money'] = Money(sales.net, sales.currency) if sales.currency else None
         order_summary['recent'] = list(orders_qs.order_by('-placed_at')[:5])
     except Exception:  # noqa: BLE001
         pass

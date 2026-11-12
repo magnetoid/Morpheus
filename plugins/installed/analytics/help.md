@@ -3,7 +3,7 @@ summary: Tracks sessions, funnels, cohorts and ad attribution across the storefr
 ---
 
 ## What it's for
-Analytics tracks what happens on your storefront — sessions, page views, product views, searches, cart activity, checkouts and orders — and turns it into a traffic overview, a real-time view, a conversion funnel, customer retention cohorts, and ad attribution by channel. It also watches for unusual swings in your daily numbers and flags them. It's for anyone who wants to know how the store is actually performing, not just how much it sold.
+Analytics tracks what happens on your storefront — sessions, page views, product views, searches, cart activity, checkouts and orders — and turns it into a traffic overview, a real-time view, a conversion funnel, customer retention cohorts, and ad attribution by channel. It also watches for unusual swings in your daily numbers and flags them.
 
 ## Set it up
 Nothing to connect — tracking starts as soon as the app is on. On [Analytics](settings:analytics) you can choose how many days of raw events to keep, how long to keep a visitor who hasn't come back (13 months by default), and whether to exclude staff visits (on by default, so your own browsing doesn't skew customer numbers) or all logged-in customers (off by default). You can also count visitors who decline cookies (off by default), with a daily key never stored with a customer or order; ask your privacy adviser whether that is allowed where you sell.
@@ -22,5 +22,6 @@ Nothing to connect — tracking starts as soon as the app is on. On [Analytics](
 - Days follow your store's time zone, and today's numbers are an hour old at most.
 - Conversion rate is purchases by counted visitors over their visits, so it can't pass 100%. An order belongs to the visit that placed it, and so does its payment.
 - Accepting cookies keeps the site the visitor came from, ChatGPT included.
+- Orders and revenue are the store's sales: placed, not cancelled, after refunds.
 - Purchases, checkouts, sign-ups and logins are recorded only from the store's own events, never from the browser.
 - The dashboard home shows visits, conversion rate and AI referrals for the period you pick; a nightly check flags unusual swings.

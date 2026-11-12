@@ -133,7 +133,7 @@
           <td class="text-[color:var(--text-muted)] whitespace-nowrap">{% if c.last_login %}{{ c.last_login|date:"M j, Y H:i" }} UTC{% else %}Never{% endif %}</td>
           <td class="text-[color:var(--text-muted)] whitespace-nowrap">{% if c.last_order_at %}{{ c.last_order_at|date:"M j, Y" }}{% else %}—{% endif %}</td>
           <td class="text-right">{{ c.order_count }}</td>
-          <td class="text-right font-medium">${{ c.spent|floatformat:2 }}</td>
+          <td class="text-right font-medium">{% if c.spent %}{{ c.spent|money }}{% else %}—{% endif %}</td>
           {% customer_row_actions c %}
         </tr>
         {% endfor %}

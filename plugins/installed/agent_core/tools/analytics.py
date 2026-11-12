@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from decimal import Decimal
 
 from morpheus.core import ToolResult, tool
 
@@ -20,20 +19,18 @@ from morpheus.core import ToolResult, tool
     },
 )
 def revenue_summary_tool(*, days: int = 30) -> ToolResult:
-    from django.db.models import Count, Sum
     from django.utils import timezone
 
     from plugins.installed.orders.models import Order
+    from plugins.installed.orders.reports import net_sales
 
     days = max(1, min(int(days or 30), 365))
     since = timezone.now() - timedelta(days=days)
-    # Revenue is money received: payment_status, not a fulfilment status
-    # ('paid' and 'completed' were never order statuses), by placed_at.
-    qs = Order.objects.filter(placed_at__gte=since, payment_status='paid')
-    agg = qs.aggregate(total=Sum('total'), n=Count('id'))
-    # Sum over a MoneyField yields the bare amount, so the currency is read
-    # separately — and named as mixed when the orders add different ones.
-    currencies = sorted(set(qs.values_list('total_currency', flat=True)))
+    # The one sales rule (orders.reports): orders placed and not cancelled,
+    # after their refunds. payment_status='paid' left out cash on delivery,
+    # bank transfers and held cards.
+    sales = net_sales(Order.objects.filter(placed_at__gte=since))
+    currencies = sorted({sales.currency, *sales.others} - {''})
     if len(currencies) == 1:
         currency = currencies[0]
     else:
@@ -41,8 +38,8 @@ def revenue_summary_tool(*, days: int = 30) -> ToolResult:
     return ToolResult(
         output={
             'days': days,
-            'order_count': agg['n'] or 0,
-            'revenue': str(Decimal(agg['total'] or 0).quantize(Decimal('0.01'))),
+            'order_count': sales.orders,
+            'revenue': str(sales.net),
             'currency': currency,
         }
     )

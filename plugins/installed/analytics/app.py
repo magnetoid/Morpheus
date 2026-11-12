@@ -37,6 +37,8 @@ class AnalyticsPlugin(Plugin):
         'reports + storefront beacon. Agent tools so Merchant Ops can ask.'
     )
     has_models = True
+    #: Revenue in every report is the orders app's sales figure (orders.reports).
+    requires = ['orders']
 
     def ready(self):
         self.register_graphql_extension('plugins.installed.analytics.graphql.queries')
