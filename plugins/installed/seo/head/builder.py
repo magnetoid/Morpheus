@@ -67,6 +67,7 @@ def build_document(doc, *, request=None, context=None):
 
     page = resolve_page(request, context)
     doc.note(f'page kind: {page.kind}{"/" + page.subtype if page.subtype else ""}')
+    _section(_apply_content_languages, page, context)
 
     meta = _safe_meta(page)
     # Each section is guarded on its own: a store whose markets rows are broken
@@ -153,8 +154,52 @@ def _apply_title_and_description(doc, page: SeoPage, meta) -> None:
     # in as many words, while the page was publishing it.
 
 
+def _apply_content_languages(page: SeoPage, context: dict) -> None:
+    """Which languages the page's object exists in, and which one the page shows.
+
+    A page about one object exists in a language only when the object has a
+    reviewed translation there (`core.i18n.content_languages`); a page with no
+    registered object keeps every language. A view whose `seo_object` would change
+    the head (a place, an event) names the object as `seo_content_object`.
+    """
+    from django.conf import settings
+    from django.utils.translation import get_language
+
+    from core.i18n.services import active_language, content_languages
+
+    obj = context.get('seo_content_object') or page.obj
+    if obj is None or isinstance(obj, dict):
+        return
+    page.languages = content_languages(obj)
+    if page.languages is None:
+        return
+    page.language = (
+        get_language() if active_language() in page.languages else settings.LANGUAGE_CODE
+    ) or ''
+
+
+def _shown_in_its_language(page: SeoPage) -> bool:
+    from core.i18n.services import active_language
+
+    return page.languages is None or active_language() in page.languages
+
+
+def _default_language_url(url: str) -> str:
+    """The same page in the store's default language."""
+    from django.conf import settings
+    from django.urls import translate_url
+
+    with suppress(Exception):
+        return translate_url(url, settings.LANGUAGE_CODE)
+    return url
+
+
 def _apply_canonical_and_robots(doc, page: SeoPage, meta, request) -> None:
     canonical, blocked_params = canonical_for(request, page.page_obj)
+    if canonical and not _shown_in_its_language(page):
+        # `/sr/x/` showing an object nobody translated is the English page: say so,
+        # never `noindex` beside a canonical naming another url.
+        canonical = _default_language_url(canonical)
     if meta.canonical_url:
         canonical = meta.canonical_url  # an explicit merchant override wins
     if canonical:
@@ -276,7 +321,7 @@ def _apply_social(doc, page: SeoPage, meta) -> None:
     doc.meta(meta.og_type or page.og_type or 'website', property='og:type', source='seo')
     doc.meta(canonical, property='og:url', source='seo')
     doc.meta(meta.site_name, property='og:site_name', source='seo')
-    doc.meta(_og_locale(), property='og:locale', source='seo')
+    doc.meta(_og_locale(page), property='og:locale', source='seo')
 
     if meta.og_image:
         doc.meta(meta.og_image, property='og:image', source='seo')
@@ -411,7 +456,7 @@ def _apply_alternates(doc, page: SeoPage, request) -> None:
     canonical = doc.link_href('canonical')
     if not canonical or not _same_path(canonical, request):
         return
-    languages = _language_alternates(canonical)
+    languages = _language_alternates(canonical, page)
     markets = _market_alternates(canonical)
     for code, href in (*languages, *markets):
         doc.link('alternate', href, hreflang=code, source='seo')
@@ -475,10 +520,12 @@ def _apply_graph(doc, page: SeoPage, request) -> None:
 
 
 # -- helpers -------------------------------------------------------------
-def _og_locale() -> str:
+def _og_locale(page: SeoPage | None = None) -> str:
+    """The language the main content is in: the default one for an untranslated object."""
     from django.utils.translation import get_language
 
-    return (get_language() or 'en-US').replace('-', '_')
+    language = (page.language if page is not None else '') or get_language() or 'en-US'
+    return language.replace('-', '_')
 
 
 def _brand() -> str:
@@ -500,17 +547,22 @@ def _store_description() -> str:
         return ''
 
 
-def _language_alternates(canonical: str) -> list[tuple[str, str]]:
-    """One alternate per configured language, using the i18n URL prefix.
+def _language_alternates(canonical: str, page: SeoPage | None = None) -> list[tuple[str, str]]:
+    """One alternate per language the page exists in, using the i18n URL prefix.
 
     Only meaningful once the store actually serves more than one language —
     `LANGUAGES` is derived from `MORPHEUS_LANGUAGES`, so a single-language shop
-    emits nothing and keeps a clean head.
+    emits nothing and keeps a clean head. A page about one object names only the
+    languages the object has a reviewed translation in (`page.languages`), so an
+    object nobody translated declares no alternates at all.
     """
     from django.conf import settings
     from django.urls import translate_url
 
     languages = [code for code, _ in (getattr(settings, 'LANGUAGES', None) or [])]
+    available = getattr(page, 'languages', None)
+    if available is not None:
+        languages = [code for code in languages if code.lower() in available]
     if not canonical or len(languages) < 2:
         return []
     out: list[tuple[str, str]] = []

@@ -779,7 +779,8 @@ class Event(models.Model):
         if self.when_label:
             return self.when_label
         if self.month:
-            import calendar
+            # Django's month names follow the page's language; calendar's are English.
+            from django.utils.dates import MONTHS
 
-            return calendar.month_name[self.month]
+            return str(MONTHS.get(self.month, ''))
         return ''

@@ -4810,3 +4810,233 @@ msgstr "Čeka uplatu"
 
 msgid "Being prepared"
 msgstr "U pripremi"
+
+# ── Dates (Latin, from Django's sr_Latn catalog: Django's own sr is Cyrillic) ──
+
+msgid "Monday"
+msgstr "ponedeljak"
+
+msgid "Tuesday"
+msgstr "utorak"
+
+msgid "Wednesday"
+msgstr "sreda"
+
+msgid "Thursday"
+msgstr "četvrtak"
+
+msgid "Friday"
+msgstr "petak"
+
+msgid "Saturday"
+msgstr "subota"
+
+msgid "Sunday"
+msgstr "nedelja"
+
+msgid "Mon"
+msgstr "pon."
+
+msgid "Tue"
+msgstr "uto."
+
+msgid "Wed"
+msgstr "sre."
+
+msgid "Thu"
+msgstr "čet."
+
+msgid "Fri"
+msgstr "pet."
+
+msgid "Sat"
+msgstr "sub."
+
+msgid "Sun"
+msgstr "ned."
+
+msgid "January"
+msgstr "januar"
+
+msgid "February"
+msgstr "februar"
+
+msgid "March"
+msgstr "mart"
+
+msgid "April"
+msgstr "april"
+
+msgid "May"
+msgstr "maj"
+
+msgid "June"
+msgstr "jun"
+
+msgid "July"
+msgstr "jul"
+
+msgid "August"
+msgstr "avgust"
+
+msgid "September"
+msgstr "septembar"
+
+msgid "October"
+msgstr "oktobar"
+
+msgid "November"
+msgstr "novembar"
+
+msgid "December"
+msgstr "decembar"
+
+msgid "jan"
+msgstr "jan."
+
+msgid "feb"
+msgstr "feb."
+
+msgid "mar"
+msgstr "mar."
+
+msgid "apr"
+msgstr "apr."
+
+msgid "may"
+msgstr "maj."
+
+msgid "jun"
+msgstr "jun."
+
+msgid "jul"
+msgstr "jul."
+
+msgid "aug"
+msgstr "aug."
+
+msgid "sep"
+msgstr "sep."
+
+msgid "oct"
+msgstr "okt."
+
+msgid "nov"
+msgstr "nov."
+
+msgid "dec"
+msgstr "dec."
+
+msgid "a.m."
+msgstr "pre p."
+
+msgid "p.m."
+msgstr "po p."
+
+msgid "AM"
+msgstr "AM"
+
+msgid "PM"
+msgstr "PM"
+
+msgid "midnight"
+msgstr "ponoć"
+
+msgid "noon"
+msgstr "podne"
+
+msgctxt "abbrev. month"
+msgid "Jan."
+msgstr "Jan."
+
+msgctxt "abbrev. month"
+msgid "Feb."
+msgstr "Feb."
+
+msgctxt "abbrev. month"
+msgid "March"
+msgstr "Mart"
+
+msgctxt "abbrev. month"
+msgid "April"
+msgstr "April"
+
+msgctxt "abbrev. month"
+msgid "May"
+msgstr "Maj"
+
+msgctxt "abbrev. month"
+msgid "June"
+msgstr "Jun"
+
+msgctxt "abbrev. month"
+msgid "July"
+msgstr "Jul"
+
+msgctxt "abbrev. month"
+msgid "Aug."
+msgstr "Avg."
+
+msgctxt "abbrev. month"
+msgid "Sept."
+msgstr "Sept."
+
+msgctxt "abbrev. month"
+msgid "Oct."
+msgstr "Okt."
+
+msgctxt "abbrev. month"
+msgid "Nov."
+msgstr "Nov."
+
+msgctxt "abbrev. month"
+msgid "Dec."
+msgstr "Dec."
+
+msgctxt "alt. month"
+msgid "January"
+msgstr "Januar"
+
+msgctxt "alt. month"
+msgid "February"
+msgstr "Februar"
+
+msgctxt "alt. month"
+msgid "March"
+msgstr "Mart"
+
+msgctxt "alt. month"
+msgid "April"
+msgstr "April"
+
+msgctxt "alt. month"
+msgid "May"
+msgstr "Maj"
+
+msgctxt "alt. month"
+msgid "June"
+msgstr "Jun"
+
+msgctxt "alt. month"
+msgid "July"
+msgstr "Jul"
+
+msgctxt "alt. month"
+msgid "August"
+msgstr "Avgust"
+
+msgctxt "alt. month"
+msgid "September"
+msgstr "Septembar"
+
+msgctxt "alt. month"
+msgid "October"
+msgstr "Oktobar"
+
+msgctxt "alt. month"
+msgid "November"
+msgstr "Novembar"
+
+msgctxt "alt. month"
+msgid "December"
+msgstr "Decembar"

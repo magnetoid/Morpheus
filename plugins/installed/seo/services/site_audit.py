@@ -24,6 +24,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import asdict, dataclass, field
+from urllib.parse import urlsplit
 
 from celery.exceptions import SoftTimeLimitExceeded
 from django.core.cache import cache
@@ -40,9 +41,11 @@ CACHE_KEY = 'seo:site_audit:v1'
 CACHE_TTL = 60 * 60 * 26  # outlive a daily run, so a failed night still shows
 
 # Severity drives ordering and the score penalty. Three levels, because a
-# merchant triaging their own store will not rank five.
-CRITICAL, WARNING, NOTICE = 'critical', 'warning', 'notice'
+# merchant triaging their own store will not rank five; INFO is not a defect (work
+# still to do, such as translations) and costs the score nothing.
+CRITICAL, WARNING, NOTICE, INFO = 'critical', 'warning', 'notice', 'info'
 _PENALTY = {CRITICAL: 12, WARNING: 5, NOTICE: 2}
+_ORDER = {CRITICAL: 0, WARNING: 1, NOTICE: 2, INFO: 3}
 
 _TITLE_RE = re.compile(r'<title[^>]*>(.*?)</title>', re.I | re.S)
 _DESC_RE = re.compile(
@@ -298,9 +301,14 @@ def collect(*, limit: int | None = None) -> dict:
         # Report what was checked rather than lose the whole night's work.
         partial = True
         logger.warning('site_audit: time budget spent after %d pages', len(pages))
-    findings = _not_found_findings(probe) + _analyse(pages)
-    order = {CRITICAL: 0, WARNING: 1, NOTICE: 2}
-    findings.sort(key=lambda f: (order.get(f.severity, 9), -f.count))
+    untranslated: dict[str, list[str]] = {}
+    if not partial:
+        try:
+            untranslated = _untranslated(client, host, pages)
+        except SoftTimeLimitExceeded:
+            partial = True
+    findings = _not_found_findings(probe) + _analyse(pages, untranslated)
+    findings.sort(key=lambda f: (_ORDER.get(f.severity, 9), -f.count))
     score = max(0, 100 - sum(_PENALTY.get(f.severity, 0) for f in findings))
     return {
         'generated_at': timezone.now().isoformat(),
@@ -313,11 +321,51 @@ def collect(*, limit: int | None = None) -> dict:
     }
 
 
-def _analyse(pages: list[PageFacts]) -> list[Finding]:  # noqa: PLR0912 — a linear check list
+def _untranslated(client, host: str, pages: list[PageFacts]) -> dict[str, list[str]]:
+    """`{language: [path]}`: the pages whose copy in that language is not translated yet.
+
+    A page about an object nobody translated declares no alternates on purpose, and
+    its `/sr/` copy names the default-language page as its canonical (core.i18n,
+    `seo.head.builder`). That canonical is how a crawler that sees only HTML can
+    tell "not translated yet" from "alternates missing": only pages without
+    hreflang are fetched again, one request per other language.
+    """
+    from django.conf import settings
+    from django.urls import translate_url
+    from django.utils import translation
+
+    codes = [c.lower() for c, _ in (getattr(settings, 'LANGUAGES', None) or [])]
+    default = (settings.LANGUAGE_CODE or '').lower()
+    others = [c for c in codes if c != default and c != default.split('-')[0]]
+    out: dict[str, list[str]] = {}
+    for page in pages:
+        if page.status != 200 or page.hreflangs or not page.canonical:
+            continue
+        if (urlsplit(page.canonical).path or '/') != page.path:
+            continue
+        for code in others:
+            with translation.override(settings.LANGUAGE_CODE):
+                copy_path = translate_url(page.path, code)
+            if copy_path == page.path:
+                continue  # a route with no copy in that language
+            with translation.override(settings.LANGUAGE_CODE):
+                copy = _facts(client, copy_path, host)
+            if copy.status == 200 and (urlsplit(copy.canonical).path or '/') == page.path:
+                out.setdefault(code, []).append(page.path)
+    return out
+
+
+def _analyse(  # noqa: PLR0912 — a linear check list
+    pages: list[PageFacts], untranslated: dict[str, list[str]] | None = None
+) -> list[Finding]:
     """Turn page facts into findings, most severe first."""
     from django.conf import settings
 
+    from core.i18n.services import language_name
+
     ok = [p for p in pages if p.status == 200]
+    untranslated = untranslated or {}
+    not_yet = {path for paths in untranslated.values() for path in paths}
     out: list[Finding] = []
 
     def add(code, severity, title, why, matches, fix_label='', fix_url=''):
@@ -476,8 +524,19 @@ def _analyse(pages: list[PageFacts]) -> list[Finding]:  # noqa: PLR0912 — a li
             'content, and it usually picks one and treats the other as a '
             'duplicate — so your translation competes with you instead of '
             'reaching a new audience.',
-            [p.path for p in ok if not p.hreflangs],
+            [p.path for p in ok if not p.hreflangs and p.path not in not_yet],
         )
+        for code, paths in sorted(untranslated.items()):
+            add(
+                f'not_translated_{code}',
+                INFO,
+                f'Not yet translated into {language_name(code)}',
+                f'These pages are shown in the default language on the {language_name(code)} '
+                'side of the store, so they name the default-language page as theirs and '
+                'claim no other language. Once their text is translated and reviewed, each '
+                'gets its own page in that language.',
+                paths,
+            )
 
     add(
         'thin_content',
@@ -526,8 +585,7 @@ def _analyse(pages: list[PageFacts]) -> list[Finding]:  # noqa: PLR0912 — a li
         '/dashboard/seo/bulk-meta/',
     )
 
-    order = {CRITICAL: 0, WARNING: 1, NOTICE: 2}
-    out.sort(key=lambda f: (order.get(f.severity, 9), -f.count))
+    out.sort(key=lambda f: (_ORDER.get(f.severity, 9), -f.count))
     return out
 
 

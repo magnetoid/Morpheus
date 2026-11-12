@@ -1,0 +1,62 @@
+{% extends "admin_dashboard/base.html" %}
+{% block title %}Translations · {{ object_label }}{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1.25rem;">
+  <div>
+    <a href="{{ back_url }}" style="font-size:.82rem;">&larr; Back to translations</a>
+    <h1 style="margin:.35rem 0 0; font-size:1.25rem; font-weight:650;">{{ object_label }}</h1>
+    <p style="margin:.35rem 0 0; font-size:.82rem; color: var(--text-subtle);">
+      {{ spec_label }} · {{ default_name }} → {{ language_name }}. Shoppers see the {{ language_name }} page once every field with text is translated and saved.
+    </p>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="draft">
+    <button type="submit" class="btn" style="font-size:.85rem;">Draft with AI</button>
+  </form>
+</div>
+
+{% if has_draft %}
+<div class="card" style="margin-bottom:1rem; font-size:.85rem;">
+  <strong>Draft — not shown to shoppers until you save it.</strong>
+  An AI wrote the marked fields. Read them, correct anything, then save.
+</div>
+{% endif %}
+{% if last_run.message %}
+<div class="card" style="margin-bottom:1rem; font-size:.85rem; color: var(--text-subtle);">
+  The last AI drafting run stopped: {{ last_run.message }}
+</div>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save">
+  {% for field in fields %}
+  <div class="card" style="margin-bottom:1rem;">
+    <div style="display:flex; justify-content:space-between; gap:.5rem; margin-bottom:.5rem;">
+      <label for="f-{{ field.name }}" style="font-weight:600; font-size:.9rem;">{{ field.label }}</label>
+      {% if field.draft %}<span class="pill">Draft</span>{% endif %}
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(16rem, 1fr)); gap:.75rem;">
+      <div>
+        <div style="font-size:.72rem; color: var(--text-subtle); margin-bottom:.25rem;">{{ default_name }}</div>
+        <div style="padding:.5rem .6rem; background: var(--surface-2); border-radius:6px; font-size:.85rem; white-space:pre-wrap; max-height:16rem; overflow:auto;">{{ field.source|default:"—" }}</div>
+      </div>
+      <div>
+        <div style="font-size:.72rem; color: var(--text-subtle); margin-bottom:.25rem;">{{ language_name }}</div>
+        {% if field.html or field.source|length > 120 %}
+        <textarea id="f-{{ field.name }}" name="f-{{ field.name }}" rows="{% if field.html %}10{% else %}4{% endif %}" style="width:100%; padding:.5rem .6rem; border:1px solid var(--border); border-radius:6px; background: var(--surface); color: var(--text); font-size:.85rem;">{{ field.value }}</textarea>
+        {% else %}
+        <input id="f-{{ field.name }}" name="f-{{ field.name }}" type="text" value="{{ field.value }}" style="width:100%; padding:.5rem .6rem; border:1px solid var(--border); border-radius:6px; background: var(--surface); color: var(--text); font-size:.85rem;">
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  <div style="display:flex; gap:.5rem; align-items:center;">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <span style="font-size:.8rem; color: var(--text-subtle);">An emptied field removes its translation.</span>
+  </div>
+</form>
+{% endblock %}

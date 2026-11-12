@@ -9,6 +9,7 @@ import logging
 import re
 
 from django.utils import timezone
+from django.utils.formats import date_format
 
 logger = logging.getLogger('morpheus.cms')
 
@@ -22,7 +23,14 @@ def get_live_page(slug: str):
         return None
     if page.publish_at and page.publish_at > timezone.now():
         return None
-    return page
+    return _shown(page)
+
+
+def _shown(pages):
+    """Pages in the page language's reviewed translation, where they have one."""
+    from plugins.installed.cms.translations import show
+
+    return show(pages)
 
 
 def _str_list(value) -> list[str]:
@@ -179,7 +187,8 @@ def journal_dict(page) -> dict:
         # Visible publish date + honest reading time — e.g. "July 3, 2026 · 4 min
         # read". (The old format was "%B · %-d min read", which rendered the DAY
         # OF MONTH as a fake reading time and showed no actual date.)
-        'date_label': (f'{pub.strftime("%B %-d, %Y")} · {read_min} min read' if pub else ''),
+        # In the page's language: strftime's month is the C locale's, English on /sr/.
+        'date_label': (f'{date_format(pub, "F j, Y")} · {read_min} min read' if pub else ''),
         'excerpt': page.excerpt or '',
         'body': body,
         'published_at': pub,
@@ -207,7 +216,7 @@ def journal_pages():
 
 def list_journal_entries(*, limit: int = 50) -> list[dict]:
     """Published CMS pages tagged with metadata.category == 'journal'."""
-    return [journal_dict(p) for p in journal_pages()[:limit]]
+    return [journal_dict(p) for p in _shown(list(journal_pages()[:limit]))]
 
 
 def get_journal_page(slug: str):
@@ -222,11 +231,12 @@ def get_journal_page(slug: str):
     """
     from plugins.installed.cms.models import Page
 
-    return (
+    page = (
         Page.objects.filter(slug=slug, state='published', metadata__category='journal')
         .exclude(publish_at__gt=timezone.now())
         .first()
     )
+    return _shown(page) if page is not None else None
 
 
 def get_journal_entry(slug: str) -> dict | None:

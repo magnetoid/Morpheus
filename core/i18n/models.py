@@ -23,6 +23,9 @@ class Translation(models.Model):
     )
     value = models.TextField()
     is_machine_translated = models.BooleanField(default=False)
+    # A person wrote or approved this text. An AI draft is stored unreviewed: never
+    # shown to a shopper and never counted for a language until the merchant saves it.
+    reviewed = models.BooleanField(default=True, db_default=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

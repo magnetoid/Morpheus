@@ -9,7 +9,6 @@ Two operating modes (parity with the reference montenegro-experience-hub):
 
 from __future__ import annotations
 
-import calendar
 import contextlib
 
 from django.conf import settings
@@ -17,6 +16,7 @@ from django.contrib import messages
 from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dates import MONTHS
 from django.utils.translation import gettext as _
 from django.utils.translation import ngettext
 
@@ -24,6 +24,7 @@ from core.utils.i18n import localized_path
 from core.utils.pagination import paginate_or_404
 from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.booking_marketplace import country, search, search_page, seo_jsonld
+from plugins.installed.booking_marketplace import translations as shown
 from plugins.installed.booking_marketplace.models import BookableService, Place
 from plugins.installed.booking_marketplace.services import (
     BookingError,
@@ -160,7 +161,7 @@ def services_list(request):
         if label
         else _('Tours, activities and rentals from trusted local hosts across the Adriatic.')
     )
-    services = list(page_obj.object_list)
+    services = shown.show_listings(list(page_obj.object_list))
     return render(
         request,
         'booking_marketplace/list.html',
@@ -207,6 +208,7 @@ def products_list(request):
         )
         products = _ranked(products, matches, 'best')
         _searched(request, q, 0 if matches.close else len(products))
+    shown.show_listings(products)
     return render(
         request,
         'booking_marketplace/list.html',
@@ -257,7 +259,7 @@ def places_index(request):
     qs = Place.objects.filter(is_active=True)
     if place_type:
         qs = qs.filter(place_type=place_type)
-    places = list(qs)
+    places = shown.show(list(qs))
 
     # Group by region, in the country's region order (blank/unknown regions last).
     region_labels = dict(country.regions())
@@ -312,17 +314,23 @@ def _place_meta_description(place) -> str:
 
 def place_detail(request, slug):
     place = get_object_or_404(Place, slug=slug, is_active=True)
-    services = (
-        BookableService.objects.filter(is_active=True, vendor__is_active=True)
-        .filter(Q(location__iexact=place.name) | Q(region=place.region))
-        .select_related('vendor')
-        .distinct()[:12]
+    services = shown.show_listings(
+        list(
+            BookableService.objects.filter(is_active=True, vendor__is_active=True)
+            .filter(Q(location__iexact=place.name) | Q(region=place.region))
+            .select_related('vendor')
+            .distinct()[:12]
+        )
     )
     region_siblings = (
         list(Place.objects.filter(is_active=True, region=place.region).exclude(pk=place.pk)[:6])
         if place.region
         else []
     )
+    place_events = list(place.events.filter(is_active=True)[:6])
+    # In the page's language, after the queries above matched the place's own name.
+    shown.show([place, *region_siblings])
+    shown.show(place_events)
     from plugins.installed.booking_marketplace.place_content import good_for_cards
 
     return render(
@@ -332,9 +340,12 @@ def place_detail(request, slug):
             'place': place,
             'services': services,
             'region_siblings': region_siblings,
-            'place_events': list(place.events.filter(is_active=True)[:6]),
+            'place_events': place_events,
             'good_for_cards': good_for_cards(place.good_for),
             'listing_mode': listing_mode(),
+            # The head's languages and its title follow the place (core.i18n); the
+            # page keeps its own seo_title, so the head reads no SeoMeta row of it.
+            'seo_content_object': place,
             # Per-place SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
             'seo_title': _('%(name)s Travel Guide, Tours & Hotels') % {'name': place.name},
             'seo_description': _place_meta_description(place),
@@ -417,10 +428,12 @@ def region_detail(request, region):
     labels = {key: str(label) for key, label in country.regions()}
     if region not in labels:
         raise Http404('Unknown region')
-    services = list(
-        BookableService.objects.filter(
-            region=region, is_active=True, vendor__is_active=True
-        ).select_related('vendor', 'category')
+    services = shown.show_listings(
+        list(
+            BookableService.objects.filter(
+                region=region, is_active=True, vendor__is_active=True
+            ).select_related('vendor', 'category')
+        )
     )
     return render(
         request,
@@ -479,6 +492,8 @@ def service_detail(request, slug):
             return _submit_enquiry(request, service)
         return _create_booking(request, service)
 
+    # In the page's language before anything reads its text (core.i18n).
+    shown.show_listing(service)
     ctx = {
         'service': service,
         'listing_mode': is_listing,
@@ -491,7 +506,7 @@ def service_detail(request, slug):
         'reviews': list(service.reviews.all()[:20]),
         'review_summary': review_summary(service),
         'can_review': can_review(service, request.user),
-        'similar': _similar_services(service),
+        'similar': shown.show_listings(_similar_services(service)),
         'has_map': service.latitude is not None and service.longitude is not None,
         # Per-page SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
         'seo_object': service,
@@ -520,7 +535,7 @@ def service_detail(request, slug):
     # stay pages already carry (stays.nearby_places).
     from plugins.installed.booking_marketplace.stays import nearby_places
 
-    ctx['nearby_places'] = (
+    ctx['nearby_places'] = shown.show(
         nearby_places(service, limit=4) if service.listing_kind != 'product' else []
     )
     # The storefront staff bar's Edit link opens the dashboard's listing editor.
@@ -664,14 +679,14 @@ def events_index(request):
     qs = Event.objects.filter(is_active=True).select_related('place')
     if category:
         qs = qs.filter(category=category)
-    events = list(qs)
+    events = shown.show(list(qs))
 
     by_month: dict[int, list] = {}
     for e in events:
         by_month.setdefault(e.month, []).append(e)
     # Months 1–12 in order; the 0 ("unset") bucket always goes last.
     month_groups = [
-        {'month': m, 'label': calendar.month_name[m], 'events': by_month[m]}
+        {'month': m, 'label': str(MONTHS[m]), 'events': by_month[m]}
         for m in sorted(k for k in by_month if k)
     ]
     if 0 in by_month:
@@ -719,16 +734,23 @@ def event_detail(request, slug):
         if event.month
         else []
     )
-    services = (
-        BookableService.objects.filter(is_active=True, vendor__is_active=True)
-        .filter(
-            Q(region=event.region) | Q(location__iexact=(event.place.name if event.place else ''))
+    services = shown.show_listings(
+        list(
+            BookableService.objects.filter(is_active=True, vendor__is_active=True)
+            .filter(
+                Q(region=event.region)
+                | Q(location__iexact=(event.place.name if event.place else ''))
+            )
+            .select_related('vendor')
+            .distinct()[:6]
         )
-        .select_related('vendor')
-        .distinct()[:6]
         if (event.region or event.place)
         else []
     )
+    # In the page's language, after the query above matched the place's own name.
+    shown.show([event, *same_month])
+    if event.place is not None:
+        shown.show(event.place)
     return render(
         request,
         'booking_marketplace/events/detail.html',
@@ -737,6 +759,8 @@ def event_detail(request, slug):
             'same_month': same_month,
             'services': services,
             'listing_mode': listing_mode(),
+            # The head's languages and its title follow the event (core.i18n).
+            'seo_content_object': event,
             'seo_title': (
                 f'{event.name} — {event.when_display or country.current().name}'.strip(' —')
             ),

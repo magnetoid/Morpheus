@@ -1,23 +1,11 @@
-"""Localization plugin — merchant-facing surface over core.i18n.
+"""Localization — the work of translating a store's content.
 
-The translation kernel ([`core/i18n/`](../../../core/i18n/)) already provides:
-  - `Translation` generic-FK row model
-  - `{{ obj|trans:"field" }}` template filter
-  - agent tools for machine translation
-  - service helpers for resolve/lookup/cache
-
-What this plugin adds:
-  - A dashboard page at /dashboard/apps/localization/translations/ that
-    lists translatable objects + lets a merchant edit translations
-    inline.
-  - A "Languages" settings page where the merchant picks which target
-    languages the store should ship to.
-  - A storefront block contribution that emits hreflang alternates for
-    each enabled language.
-
-This is intentionally THIN — all the heavy lifting (DB schema, fallback
-chain, agent-driven auto-translation) lives in core.i18n. The plugin is
-purely the merchant-facing surface.
+Settings → General → Translations shows, per language the store is offered in and
+per kind of content (from `TRANSLATABLE_CONTENT`), how much is translated, what
+waits for review and what is missing; an editor puts the source beside its
+translation; AI drafts wait for review (`drafting.py`, `tasks.py`). The storefront
+shows a reviewed translation once an object is fully translated (`core.i18n`), and
+this app adds the footer language switcher.
 """
 
 from __future__ import annotations
@@ -34,12 +22,12 @@ class LocalizationPlugin(Plugin):
     label = 'Localization'
     version = '1.0.0'
     description = (
-        'Merchant-facing surface over the core.i18n translation kernel. '
-        'Edit translations inline, pick target languages, emit hreflang '
-        'alternates from the storefront.'
+        'Translate the store: how much of each language is done, an editor beside '
+        'the source, AI drafts to review, and the footer language switcher.'
     )
     has_models = False
-    requires = ['catalog']
+    # paginate_and_sort and the dashboard shell's templates.
+    requires = ['catalog', 'admin_dashboard']
 
     def ready(self) -> None:
         self.register_urls(
@@ -64,28 +52,23 @@ class LocalizationPlugin(Plugin):
             )
         ]
 
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.localization.agent_tools import (  # noqa: PLC0415
+            draft_translations_tool,
+        )
+
+        return [draft_translations_tool]
+
     def contribute_dashboard_pages(self) -> list:
-        # Two tool cards on Settings › General: what the storefront says in
-        # each language, and which languages it is offered in.
         return [
             DashboardPage(
-                label='Translations & languages',
+                label='Translations',
                 slug='translations',
                 view='plugins.installed.localization.views.translations_index',
                 icon='languages',
                 section='general',
                 order=20,
                 nav='settings',
-                hint='Translate the storefront and its content',
-            ),
-            DashboardPage(
-                label='Languages',
-                slug='languages',
-                view='plugins.installed.localization.views.languages_index',
-                icon='globe',
-                section='general',
-                order=21,
-                nav='settings',
-                hint='The languages the storefront is offered in',
+                hint="Translate the store's content into its other languages",
             ),
         ]

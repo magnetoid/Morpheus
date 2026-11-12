@@ -655,7 +655,7 @@ _SUPPORTED_LANGUAGE_NAMES = {
     'it': 'Italiano',
     'pt': 'Português',
     'nl': 'Nederlands',
-    'sr': 'Српски',
+    'sr': 'Srpski',
     'hr': 'Hrvatski',
     'ru': 'Русский',
     'pl': 'Polski',

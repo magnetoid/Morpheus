@@ -354,12 +354,17 @@ Scopes: `i18n.read` / `i18n.write`.
 
 | Tool / Mutation | Purpose | Approval? |
 |---|---|---|
-| `i18n.languages` | List enabled languages (translation targets) | no |
-| `i18n.get_translations` / `translations(...)` | Read stored translations for an object | no |
-| `i18n.set_translation` / `setTranslation(...)` | Set a field's translation in a language | **yes** (MCP) |
+| `i18n.languages` | The store's languages (the default first) and the ones content can be translated into | no |
+| `i18n.get_translations` / `translations(...)` | Read stored translations for an object, drafts included | no |
+| `i18n.set_translation` / `setTranslation(...)` | Set a field's translation in a language; it is reviewed and published | **yes** (MCP) |
+| `i18n.translation_status` | Per language and kind: translated, drafts waiting, missing; the objects of one kind | no |
+| `i18n.draft_translations` | Queue AI drafts (never shown until reviewed) for up to 50 objects of a kind | **yes** |
+| `i18n.approve_translation` | Publish one object's AI drafts in a language | **yes** |
 
-GraphQL also exposes `enabledLanguages`. The same Bearer token works from MCP or
-GraphQL; the merchant grants `i18n.read`/`i18n.write` when minting the token.
+GraphQL also exposes `enabledLanguages` (the store's languages). The same Bearer token works
+from MCP or GraphQL; the merchant grants `i18n.read`/`i18n.write` when minting the token. A
+translation is shown to shoppers only once every field of the object that has text is translated
+and reviewed (v0.160.0).
 
 ## Read surface
 

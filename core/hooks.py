@@ -591,6 +591,20 @@ class MorpheusEvents:
     #   with what was typed and have something on them (book_product: genres,
     #   authors). Every value is text, which the theme escapes.
     SEARCH_SUGGESTIONS = 'storefront.search_suggestions'  # filter
+    # TRANSLATABLE_CONTENT — filter, value=list of specs, no kwargs. Which content
+    #   a shopper reads can be translated, answered by the app that owns each model:
+    #   {'key': 'catalog.product', 'model': Product, 'label': 'Products',
+    #    'fields': {'name': 'text', 'description': 'html', …},
+    #    'queryset': callable → the objects shoppers can see,
+    #    'url': callable(obj) → its storefront path,
+    #    'applies': optional callable(obj) → False when its text is not all in
+    #               `fields` (a CMS page built from sections)}.
+    #   Read through `core.i18n.services` (`translatable_specs`, `spec_for`,
+    #   `content_languages`): a page about a registered object names a language only
+    #   when the object has a reviewed translation there of every filled field, and
+    #   the localization app lists the work. Fired by core; catalog, cms and
+    #   booking_marketplace answer.
+    TRANSLATABLE_CONTENT = 'i18n.translatable_content'  # filter
     # STOREFRONT_PRODUCTS — filter. The merchandising-takeover hook: storefront
     #   views fire it at every product placeholder so a merchandising owner
     #   (the dynamics plugin) can control WHAT renders there.

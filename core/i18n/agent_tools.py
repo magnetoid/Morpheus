@@ -5,7 +5,10 @@ Two layers: convenience product-by-slug tools (translate_product / list), and
 `i18n.set_translation`) that address ANY translatable object by
 ``content_type`` (``app_label.model``, e.g. ``catalog.product``) + ``object_id``.
 The generic tools are the surface external translators + translation tools use
-over MCP; the GraphQL layer (localization plugin) mirrors them.
+over MCP; the GraphQL layer (localization plugin) mirrors them. Every text written
+through them is reviewed: the merchant approved that exact text. AI drafts are
+queued by the localization app's `i18n.draft_translations` and wait for review
+(`i18n.translation_status`, `i18n.approve_translation`).
 """
 
 from __future__ import annotations
@@ -32,16 +35,24 @@ def _resolve(content_type: str, object_id: str):
 
 @tool(
     name='i18n.languages',
-    description='List the languages enabled for this store (target languages for translation).',
+    description=(
+        'The languages this store is served in: the default first, then the ones '
+        'content can be translated into. They are chosen when the store is deployed.'
+    ),
     scopes=['i18n.read'],
     schema={'type': 'object', 'properties': {}},
 )
 def list_languages_tool() -> ToolResult:
-    from core.i18n.services import list_enabled_languages
+    from core.i18n.services import default_language, store_languages, target_languages
 
-    langs = list_enabled_languages()
+    langs = store_languages()
     return ToolResult(
-        output={'languages': langs}, display=f'{len(langs)} language(s): {", ".join(langs)}'
+        output={
+            'languages': langs,
+            'default': default_language(),
+            'translatable_into': target_languages(),
+        },
+        display=f'{len(langs)} language(s): {", ".join(langs)}',
     )
 
 
@@ -83,7 +94,10 @@ def get_translations_tool(
 
 @tool(
     name='i18n.set_translation',
-    description='Set the translation of one field of any object in one language.',
+    description=(
+        'Set the translation of one field of any object in one language. The text is '
+        'published as written (reviewed): pass the exact text the merchant approved.'
+    ),
     scopes=['i18n.write'],
     schema={
         'type': 'object',
@@ -129,4 +143,121 @@ def set_translation_tool(
             'language': language_code,
         },
         display=f'Set {field} for {content_type}#{object_id} in {language_code}',
+    )
+
+
+def _label(obj) -> str:
+    return str(getattr(obj, 'name', '') or getattr(obj, 'title', '') or obj)
+
+
+def _language_arg(language_code: str) -> str:
+    from core.i18n.services import target_languages
+
+    code = (language_code or '').strip().lower()
+    targets = target_languages()
+    if code not in targets:
+        raise ToolError(
+            f'{code or "(none)"} is not a language this store translates into; '
+            f'it has: {", ".join(targets) or "none (one language only)"}'
+        )
+    return code
+
+
+@tool(
+    name='i18n.translation_status',
+    description=(
+        'How much of the store is translated: per language and kind of content '
+        '(products, places, pages …) the total, the translated (reviewed and complete), '
+        'the AI drafts waiting for review and the missing. Pass `kind` (and optionally '
+        '`language_code` and `status`: missing | draft | translated) to list those objects.'
+    ),
+    scopes=['i18n.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'kind': {'type': 'string', 'description': "A kind key, e.g. 'catalog.product'."},
+            'language_code': {'type': 'string'},
+            'status': {'type': 'string', 'enum': ['missing', 'draft', 'translated']},
+            'limit': {'type': 'integer', 'description': 'Objects to list (default 25, max 100).'},
+        },
+    },
+)
+def translation_status_tool(
+    *, kind: str = '', language_code: str = '', status: str = '', limit: int = 25
+) -> ToolResult:
+    from core.i18n.services import (
+        object_statuses,
+        spec_by_key,
+        status_summary,
+        target_languages,
+        translatable_specs,
+    )
+
+    languages = [_language_arg(language_code)] if language_code else target_languages()
+    specs = translatable_specs()
+    if kind:
+        spec = spec_by_key(kind)
+        if spec is None:
+            raise ToolError(f'Unknown kind {kind}; kinds: {", ".join(s["key"] for s in specs)}')
+        specs = [spec]
+    summary = [status_summary(spec, lang) for lang in languages for spec in specs]
+    output: dict = {'summary': summary, 'kinds': [s['key'] for s in translatable_specs()]}
+    if kind:
+        limit = max(1, min(int(limit or 25), 100))
+        spec = specs[0]
+        wanted = status or 'missing'
+        listed = []
+        for lang in languages:
+            statuses = object_statuses(spec, lang)
+            pks = [pk for pk, st in statuses.items() if st == wanted][:limit]
+            objs = {str(o.pk): o for o in spec['model']._base_manager.filter(pk__in=pks)}
+            listed.extend(
+                {'id': pk, 'name': _label(objs[pk]), 'language': lang, 'status': wanted}
+                for pk in pks
+                if pk in objs
+            )
+        output['objects'] = listed
+    if not languages:
+        display = 'This store is offered in one language: there is nothing to translate.'
+    else:
+        display = '; '.join(
+            f'{row["label"]} in {row["language"]}: {row["translated"]}/{row["total"]} '
+            f'translated, {row["draft"]} draft(s), {row["missing"]} missing'
+            for row in summary
+        )
+    return ToolResult(output=output, display=display)
+
+
+@tool(
+    name='i18n.approve_translation',
+    description=(
+        "Publish one object's AI-drafted translations in a language: they become "
+        'reviewed and shoppers see them. Only after the merchant read and accepted them.'
+    ),
+    scopes=['i18n.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'kind': {'type': 'string', 'description': "A kind key, e.g. 'catalog.product'."},
+            'object_id': {'type': 'string'},
+            'language_code': {'type': 'string'},
+        },
+        'required': ['kind', 'object_id', 'language_code'],
+    },
+    requires_approval=True,
+)
+def approve_translation_tool(*, kind: str, object_id: str, language_code: str) -> ToolResult:
+    from core.i18n.services import approve_drafts, spec_by_key
+
+    spec = spec_by_key(kind)
+    if spec is None:
+        raise ToolError(f'Unknown kind {kind}')
+    language = _language_arg(language_code)
+    obj = spec['model']._base_manager.filter(pk=object_id).first()
+    if obj is None:
+        raise ToolError(f'No {kind} with id {object_id}')
+    n = approve_drafts(obj, language)
+    return ToolResult(
+        output={'kind': kind, 'object_id': str(object_id), 'language': language, 'approved': n},
+        display=f'Approved {n} drafted field(s) of {_label(obj)} in {language}',
     )
