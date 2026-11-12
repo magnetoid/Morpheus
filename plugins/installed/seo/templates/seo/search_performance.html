@@ -50,6 +50,7 @@
       {% if last_pull.ok %}Last fetched {{ last_pull.at|slice:":10" }}: {{ last_pull.start }} to {{ last_pull.end }}.
       {% else %}<strong>The last fetch failed:</strong> {{ last_pull.detail }}{% endif %}
     {% else %}Nothing fetched yet.{% endif %}
+    {% if domain_property %}The totals and queries are the whole domain's, so they count any other subdomain of it too; Pages lists this store's pages only.{% endif %}
   </p>
 
   {% if report.has_data %}

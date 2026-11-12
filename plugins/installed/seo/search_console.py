@@ -234,17 +234,24 @@ def _rows(key: dict, site: str, start: date, end: date, dimensions: list) -> lis
             return out
 
 
-def _page_key(url: str) -> str:
-    """A page's path on the store (Google names it by its full address)."""
+def _page_key(url: str, bare: str) -> str:
+    """A page's path when Google's address for it is on this store (its host,
+    with or without www), else '': a domain property also holds every other
+    subdomain's pages. The query string goes, because analytics files a visit
+    under its landing page's path."""
     parts = urlsplit(url)
-    return (parts.path or '/') + (f'?{parts.query}' if parts.query else '')
+    if (parts.hostname or '').lower().removeprefix('www.') != bare:
+        return ''
+    return parts.path or '/'
 
 
 def _to_rows(fetched: dict) -> list:
-    """Google's rows as ``SearchConsoleRow``s; a path reached on two hosts (a
-    domain property covers www and the bare domain) is one row."""
+    """Google's rows as ``SearchConsoleRow``s. A page row is one of the store's
+    paths: www and the bare host, and every query string, are one row. The
+    totals and queries are the property's, other subdomains included."""
     from plugins.installed.seo.models import SearchConsoleRow  # noqa: PLC0415
 
+    bare = _store_host().removeprefix('www.')
     merged: dict = {}
     for kind, rows in fetched.items():
         for row in rows:
@@ -255,7 +262,7 @@ def _to_rows(fetched: dict) -> list:
                 continue
             name = '' if kind == 'total' else str(keys[1] if len(keys) > 1 else '')
             if kind == 'page':
-                name = _page_key(name)
+                name = _page_key(name, bare)
             if kind != 'total' and not name:
                 continue
             impressions = int(row.get('impressions') or 0)
@@ -478,9 +485,9 @@ def report(*, days: int = 28, by: str = 'query', limit: int = 50) -> dict:
     )
     rows = [{'key': g['key'], **_figures(g['c'], g['i'], g['w'])} for g in groups]
     if by == 'page' and rows:
-        traffic = _landing_traffic([urlsplit(r['key']).path for r in rows], start, end)
+        traffic = _landing_traffic([r['key'] for r in rows], start, end)
         for r in rows:
-            seen = traffic.get(urlsplit(r['key']).path) or {}
+            seen = traffic.get(r['key']) or {}
             r['visits'] = seen.get('visits', 0)
             r['purchases'] = seen.get('purchases', 0)
             r['sales'] = seen.get('sales')

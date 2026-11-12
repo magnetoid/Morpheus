@@ -1323,14 +1323,16 @@ pageview recorded by the server missed most of them; "sessions" were two-year co
 event without consent counted as one more; conversion could pass 100 %; "today" ended at midnight
 UTC; the banner's reload named the store as every consented visit's referrer. Now a pageview is
 `analytics/hit.js`, which analytics' middleware writes before `</body>` of a 200 HTML page (never a
-crawler's, never staff's) and the beacon records; a visit is a visitor's events with no 30-minute gap
-(`services.visits_and_visitors`, rolled hourly on the store's clock, `day_bounds`); conversion is
-purchases by counted visitors over their visits. A purchase finds its visit from the shopper's
-request (`core.errors.context.current_request`, never in `/dashboard/` or for staff) and stamps
+crawler's, never staff's, never while the app is off) and the beacon records; a visit is a visitor's
+events with no 30-minute gap (`services.visits_and_visitors`, rolled hourly on the store's clock,
+`day_bounds`); conversion is purchases by counted visitors over their visits. A purchase finds its
+visit from the shopper's request (`core.errors.context.current_request`, never in `/dashboard/` or for
+staff) and stamps
 `order.metadata['analytics']`, so a webhook's later event joins that visit. The banner posts the
 landing page and referrer; consent keeps them in a signed two-minute cookie (`core.consent.entry`)
 that analytics and the GA4 tag read once. Cookieless counting (`cookieless_visits`, off) keys a
-visitor by a daily salt in the cache and never beside a customer. Guarded by
+visitor by a daily salt in the cache, never beside a customer or on an event about an order (a
+guest's order holds their email and address). Guarded by
 `analytics/tests/test_true_numbers.py`, `consent/tests/test_entry_carry.py` and
 `tracking/tests/test_entry_referrer.py`.
 
@@ -1664,7 +1666,10 @@ attribution. Guarded by `orders/tests/test_net_sales.py`.
 **Convention — a visit's source is its own first page (v0.158.0).** The pageview beacon stores where a
 visit starting on that page came from (`payload['arr']`, from `analytics/sources.py:classify`: the link's
 utm tags or a paid click id, else the referring site, a search engine, social or webmail site, AI assistant
-or other site; nothing when the referrer is the store itself or a payment page). `roll_daily` replays the
+or other site; nothing when the referrer is the store itself or a payment page; a paid click id beats a
+bare `utm_source`, an explicit `utm_medium` beats both). The page the consent banner reloads takes the
+carried entry and clears its cookie, so a session's first page within two minutes of its creation that
+names no arrival takes the session's saved referrer (`services._first_page`). `roll_daily` replays the
 day into one `AnalyticsVisit` per visit (`analytics/visits.py`) under its first page's arrival; a visit
 that runs past midnight keeps the previous day's row. The Sources page, its card, `analytics.traffic_sources`
 and the home tile's AI visits (`top_sources`, `ai:<name>`) read those rows, and a visit's sales are its
@@ -1681,11 +1686,14 @@ itself and sends it only to Google's fixed token address, never to the key's `to
 key could point anywhere. The nightly `seo.search_console_pull` fetches settled days (two days back): 90
 the first time, then the last week again, and keeps 16 months of `SearchConsoleRow`. Each day has a `total`
 row beside its query and page rows, because Google leaves rare searches out of the query rows, so they add
-up to less. A page is stored as its path, www and the bare host merged. Tracked keywords take Google's
-impression-weighted position from the rows; nothing wrote `last_position` before. A page's visits and sales
-come from analytics through `LANDING_PAGE_TRAFFIC` (organic, google), so seo imports no analytics code. URL
-inspection accepts only the store's own host. A failed fetch keeps the stored rows, and its reason shows on
-Search performance and in `seo.search_performance`. Guarded by `seo/tests/test_search_console.py`.
+up to less. A page row is one of the store's paths, as analytics files a landing page: www and the bare
+host, and every query string, are one row, and another host's pages are dropped (a domain property holds
+every subdomain). The totals and queries stay the property's, so a domain property's count its other
+subdomains, and the page says so. Tracked keywords take Google's impression-weighted position from the rows;
+nothing wrote `last_position` before. A page's visits and sales come from analytics through
+`LANDING_PAGE_TRAFFIC` (organic, google), so seo imports no analytics code. URL inspection accepts only the
+store's own host. A failed fetch keeps the stored rows, and its reason shows on Search performance and in
+`seo.search_performance`. Guarded by `seo/tests/test_search_console.py`.
 
 **Convention — an image states its size, and page speed is measured in shoppers' browsers (v0.159.1).**
 `{% seo_responsive_image %}` writes the width and height of the variant it serves, read from the file
@@ -1735,7 +1743,10 @@ shared dashboard settings-panel renderer
 `format: password` property renders masked, is never pre-filled with the stored
 value, and a blank submit preserves the existing secret. Never echo a stored
 secret (API key, SSO client secret) back as cleartext; mark secret fields
-`format: password` (guarded by `test_settings_secret_masking.py`).
+`format: password` (guarded by `test_settings_secret_masking.py`). Linda's
+`settings.list` redacts the same fields, read from each app's schema, besides
+secret-sounding names at any depth: a key named `search_console_key` matched no
+name rule, and the MCP tokens sat inside a list (`core/assistant/tests/test_settings_list_redaction.py`).
 
 **Interim disable-safety (v0.45.0): every remaining shell→optional-plugin
 read is gated on `app_registry.is_active(<name>)`** — the ADR 0013 shape from

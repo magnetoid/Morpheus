@@ -473,8 +473,9 @@ def _plain(value):
         'Google search numbers from Search Console over the last N days Google has '
         'settled: clicks, impressions, click-through rate and average position, against '
         'the N days before, and the top queries or pages. A page row also carries the '
-        "visits Google's results sent to it and their net sales. Says when Search "
-        'Console is not connected.'
+        "visits Google's results sent to it and their net sales. The totals and queries "
+        "are the whole property's (a domain property's count its other subdomains too); "
+        "pages are this store's only. Says when Search Console is not connected."
     ),
     scopes=['seo.read'],
     schema={

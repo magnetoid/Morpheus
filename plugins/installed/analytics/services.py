@@ -24,7 +24,7 @@ from urllib.parse import parse_qs, urlsplit
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError
-from django.db.models import Count, F, Sum
+from django.db.models import Count, F, Q, Sum
 from django.utils import timezone
 from djmoney.money import Money
 
@@ -38,6 +38,9 @@ COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 2  # 2 years
 
 #: A visit ends after this long without an event (GA4 and Shopify use 30 minutes).
 VISIT_GAP = timedelta(minutes=30)
+
+#: Events about an order, which never carry a cookieless visitor's key.
+_ORDER_KINDS = frozenset({'purchase', 'refund'})
 
 
 def _network(ip: str) -> str:
@@ -194,7 +197,7 @@ def _arrival(request, *, referrer=None, landing=None) -> tuple[str, str, dict, b
     return referrer or '', parts.path or '', parse_qs(parts.query), bool(carried)
 
 
-def page_arrival(request, *, referrer: str, landing: str) -> dict:
+def page_arrival(request, *, referrer: str, landing: str, session=None) -> dict:
     """What a page would start a visit with (``sources.classify``), plus the
     visitor's country and device, for the visit's row on the Sources page.
 
@@ -205,12 +208,17 @@ def page_arrival(request, *, referrer: str, landing: str) -> dict:
 
     from plugins.installed.analytics.sources import classify
 
-    arrived_from, _path, query, _carried = _arrival(request, referrer=referrer, landing=landing)
+    arrived_from, _path, query, carried = _arrival(request, referrer=referrer, landing=landing)
     try:
         host = request.get_host().split(':')[0]
     except DisallowedHost:
         host = ''
     arrival = classify(arrived_from, query, host)
+    if not arrival and not carried and _first_page(session):
+        # The reload after "Accept": the page itself took the carried entry (and
+        # the cookie went with its answer), so this beacon's referrer is the
+        # store's own page. The session was saved with the visitor's real one.
+        arrival = classify(session.referrer, query, host)
     country = (request.META.get('HTTP_CF_IPCOUNTRY') or '').strip().upper()
     if len(country) == 2 and country.isalpha() and country != 'XX':
         arrival['cc'] = country
@@ -218,6 +226,18 @@ def page_arrival(request, *, referrer: str, landing: str) -> dict:
     if device:
         arrival['d'] = device
     return arrival
+
+
+def _first_page(session) -> bool:
+    """Is this the first page of a session made moments ago from a referrer?"""
+    from core.consent import ENTRY_MAX_AGE
+    from plugins.installed.analytics.models import AnalyticsEvent
+
+    if session is None or not session.referrer or session.first_seen_at is None:
+        return False
+    if timezone.now() - session.first_seen_at > timedelta(seconds=ENTRY_MAX_AGE):
+        return False
+    return not AnalyticsEvent.objects.filter(session_id=session.pk, kind='pageview').exists()
 
 
 def _analytics_consent_granted(request) -> bool:
@@ -365,10 +385,13 @@ def record_event(
     if session is None and request is not None and customer is None:
         # A visitor without analytics cookies, counted only when the merchant
         # switched cookieless counting on (``visitor_key``). Never beside a
-        # customer: the key must not tie a person to what they browsed.
+        # customer or an order: the key must not tie a person to what they
+        # browsed, and a guest's order holds their email and address. Such an
+        # event only notes that its visitor is counted, for the conversion rate.
         key = visitor_key(request)
         if key:
-            payload = {**(payload or {}), 'v': key}
+            about_order = kind in _ORDER_KINDS or revenue is not None or 'order' in (payload or {})
+            payload = {**(payload or {}), **({'cookieless': True} if about_order else {'v': key})}
 
     # Exclude staff / (optionally) logged-in customers on the event-hook path
     # too — these events carry a customer but no HttpRequest to gate upstream.
@@ -563,7 +586,11 @@ def roll_daily(*, day: date | None = None) -> int:
     # both sides, so the rate can no longer pass 100 % on a store where few
     # visitors allow cookies.
     counted_purchases = (
-        qs.filter(kind='purchase').exclude(session__isnull=True, payload__v__isnull=True).count()
+        qs.filter(kind='purchase')
+        .filter(
+            Q(session__isnull=False) | Q(payload__v__isnull=False) | Q(payload__cookieless=True)
+        )
+        .count()
     )
     upsert('counted_purchases', value_int=counted_purchases)
     conversion_bp = round(counted_purchases / visits_n * 10_000) if visits_n else 0

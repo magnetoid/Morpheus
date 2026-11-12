@@ -176,6 +176,11 @@ def classify(referrer: str, query: dict, store_host: str) -> dict:
     )
     if ai:
         return _arrival('ai', ai, medium or 'ai-assistant', campaign)
+    paid = _paid_click(query)
+    if paid and not medium:
+        # An ad link carries its click id beside a bare ``utm_source=google``,
+        # which on its own names a search engine: the click id says it was an ad.
+        return _arrival('paid', source or paid, 'cpc', campaign)
     if source or medium:
         return _arrival(_tagged_channel(source, medium), source or host, medium, campaign)
     return _untagged(host, query, campaign, (store_host or '').lower().removeprefix('www.'))
@@ -194,10 +199,15 @@ def _tagged_channel(source: str, medium: str) -> str:
     return 'referral'
 
 
-def _untagged(host: str, query: dict, campaign: str, own: str) -> dict:
+def _paid_click(query: dict) -> str:
+    """The ad platform whose click id the address carries, else ''."""
     for key, platform in _PAID_CLICK_IDS:
         if query.get(key):
-            return _arrival('paid', platform, 'cpc', campaign)
+            return platform
+    return ''
+
+
+def _untagged(host: str, query: dict, campaign: str, own: str) -> dict:
     if (own and (host == own or host.endswith('.' + own))) or _within(
         host, _PASS_THROUGH
     ) is not None:
