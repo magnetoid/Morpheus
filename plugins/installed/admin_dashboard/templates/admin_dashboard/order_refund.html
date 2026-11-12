@@ -45,6 +45,17 @@
       </select>
     </div>
 
+    <fieldset>
+      <legend class="block text-sm font-medium mb-1">Pay it back</legend>
+      {% for value, label in form.fields.settle.choices %}
+      <label class="flex items-center gap-2 text-sm py-0.5">
+        <input type="radio" name="settle" value="{{ value }}" {% if form.settle.value|default:'' == value %}checked{% endif %}>
+        {{ label }}
+      </label>
+      {% endfor %}
+      {% if form.settle.errors %}<p class="field-error">{{ form.settle.errors.0 }}</p>{% endif %}
+    </fieldset>
+
     <div>
       <label class="block text-sm font-medium mb-1">Notes</label>
       <textarea name="notes" rows="3" class="input">{{ form.notes.value|default:'' }}</textarea>
@@ -57,9 +68,12 @@
   </form>
 
   <p class="text-xs text-[color:var(--text-muted)]">
-    Issuing a refund here records the amount and reason against this order
-    and writes a timeline event. It does not yet trigger gateway-side
-    reversal — connect a payment app's refund hook to wire that up.
+    Paid back to the payment the customer used, the money goes through that
+    payment method (a card refund takes a few business days). Cash on delivery and
+    bank transfer cannot send money back: add the refund to the customer's store
+    credit or record it as already paid back, and the customer gets the refund
+    email and the gift cards, points and store credit spent on the order back in
+    proportion. Recording it to pay back by hand later sends nothing yet.
   </p>
 
 </div>

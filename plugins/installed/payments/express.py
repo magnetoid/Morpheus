@@ -205,11 +205,17 @@ def cart_offer(request) -> dict:
     ships = cart_ships(cart)
     if offer['amount'] <= 0 or (ships and not offer['shippingRates']):
         return {}
+    from plugins.installed.payments.services.capture import cart_mode  # noqa: PLC0415
+
+    # The sheet must ask Stripe for the same capture as the payment the order
+    # will start (capture_mode): a held card for every mode but immediate.
+    held = cart_mode(all(_item_ships(i) for i in cart.items.all())) != 'immediate'
     return {
         'config': {
             'key': key,
             'amount': offer['amount'],
             'currency': offer['currency'],
+            'captureMethod': 'manual' if held else 'automatic',
             'ships': ships,
             'shippingRates': offer['shippingRates'],
             'rateId': offer['rateId'],

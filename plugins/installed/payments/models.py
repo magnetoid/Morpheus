@@ -110,9 +110,15 @@ class PaymentTransaction(models.Model):
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
+        # The card was authorized and the money is held, not yet taken
+        # (payments' capture_mode); capture makes it SUCCEEDED.
+        AUTHORIZED = 'authorized', 'Authorized'
         SUCCEEDED = 'succeeded', 'Succeeded'
         FAILED = 'failed', 'Failed'
         REFUNDED = 'refunded', 'Refunded'
+        # A held authorization given back without charging (the order was
+        # cancelled, the hold ran out, or Stripe cancelled it).
+        RELEASED = 'released', 'Released'
 
     order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='transactions')
     amount = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
@@ -120,6 +126,9 @@ class PaymentTransaction(models.Model):
     provider = models.CharField(max_length=50, default='stripe')
     provider_transaction_id = models.CharField(max_length=128, blank=True)
     error_message = models.TextField(blank=True)
+    # When the card was authorized: the hold runs out about a week later
+    # (payments.release_stale_authorizations captures or releases it before).
+    authorized_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f'Tx {self.id} for Order {self.order.order_number} - {self.status}'

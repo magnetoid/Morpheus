@@ -13,5 +13,5 @@
   <p class="muted" style="margin-top:14px;"><strong>Note:</strong> {{ refund.notes }}</p>
   {% endif %}
 
-  <p>The refund will land in your original payment method in a few business days.</p>
+  <p>{% if settled_as == 'store_credit' %}The amount has been added to your store credit, ready to spend on your next order.{% elif settled_as == 'external' %}The amount has been paid back to you directly.{% else %}The refund will land in your original payment method in a few business days.{% endif %}</p>
 {% endblock %}

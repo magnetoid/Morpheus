@@ -17,7 +17,9 @@ logger = logging.getLogger('morpheus.errors')
 #: Authorization header in a traceback, a Linda turn token, a database URL. Removed
 #: before anything is stored, shown on the error page or emailed in the digest.
 _SECRETS = (
-    (re.compile(r'\b(?:sk|pk|rk)-[A-Za-z0-9_\-]{16,}'), '<secret>'),
+    # sk-… (OpenAI and others), sk_live_… / rk_test_… (Stripe), whsec_… (webhook secrets).
+    (re.compile(r'\b(?:sk|pk|rk)[-_][A-Za-z0-9_\-]{16,}'), '<secret>'),
+    (re.compile(r'\bwhsec_[A-Za-z0-9]{16,}'), '<secret>'),
     (re.compile(r'(?i)\bbearer\s+[A-Za-z0-9._~+/=\-]{12,}'), 'Bearer <secret>'),
     (re.compile(r'\blt1\.[A-Za-z0-9._\-]{8,}'), '<turn-token>'),
     (

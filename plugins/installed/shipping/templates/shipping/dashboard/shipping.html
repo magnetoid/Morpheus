@@ -245,6 +245,26 @@
                       class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm font-mono"
                       placeholder='{"street1":"…","city":"…","state":"…","zip":"…","country":"US"}'>{{ easypost_address_json }}</textarea>
           </label>
+          <label class="block text-xs">
+            <span class="text-[color:var(--text-muted)]">Labels · Buy the rate that is</span>
+            <select name="label_rate" class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+              <option value="cheapest" {% if shipping_config.label_rate|default:'cheapest' == 'cheapest' %}selected{% endif %}>Cheapest</option>
+              <option value="fastest" {% if shipping_config.label_rate == 'fastest' %}selected{% endif %}>Fastest (then cheapest)</option>
+              <option value="preferred" {% if shipping_config.label_rate == 'preferred' %}selected{% endif %}>From the carrier and service below</option>
+            </select>
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block text-xs">
+              <span class="text-[color:var(--text-muted)]">Labels · Preferred carrier</span>
+              <input type="text" name="label_carrier" value="{{ shipping_config.label_carrier|default:'' }}" placeholder="DHL"
+                     class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+            </label>
+            <label class="block text-xs">
+              <span class="text-[color:var(--text-muted)]">Labels · Preferred service</span>
+              <input type="text" name="label_service" value="{{ shipping_config.label_service|default:'' }}" placeholder="Express"
+                     class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+            </label>
+          </div>
         </div>
         <div class="flex justify-end">
           <button type="submit" class="btn btn-primary">Save carrier settings</button>

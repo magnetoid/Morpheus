@@ -25,10 +25,28 @@ class RefundForm(forms.Form):
         initial='customer_request',
     )
     notes = forms.CharField(widget=forms.Textarea, required=False)
+    settle = forms.ChoiceField(required=False, choices=[('', '')])
 
     def __init__(self, *args, order=None, **kwargs):
         self.order = order
         super().__init__(*args, **kwargs)
+        from plugins.installed.orders.refunds import default_settle
+        from plugins.installed.orders.tasks import OFFLINE_GATEWAYS
+
+        offline = (getattr(order, 'payment_gateway', '') or '') in OFFLINE_GATEWAYS
+        choices = [
+            (
+                '',
+                'Record it now and pay it back by hand later'
+                if offline
+                else 'Back to the payment the customer used',
+            )
+        ]
+        if getattr(order, 'customer_id', None):
+            choices.append(('store_credit', "Add it to the customer's store credit"))
+        choices.append(('external', 'Already paid back outside the store (cash, bank transfer)'))
+        self.fields['settle'].choices = choices
+        self.fields['settle'].initial = default_settle(order) if order is not None else ''
 
     def clean_amount(self):
         amount = self.cleaned_data['amount']
@@ -61,6 +79,7 @@ class RefundForm(forms.Form):
             reason=self.cleaned_data['reason'],
             notes=self.cleaned_data.get('notes') or '',
             actor=actor,
+            settle=self.cleaned_data.get('settle') or '',
         )
 
 
@@ -94,9 +113,11 @@ class FulfillmentForm(forms.Form):
         self.order = order
         super().__init__(*args, **kwargs)
         self.lines = []
+        from plugins.installed.orders.fulfilment import marks_shipped_default, open_lines
+
+        self.fields['mark_shipped'].initial = marks_shipped_default()
         if order is None:
             return
-        from plugins.installed.orders.fulfilment import open_lines
 
         for item, remaining in open_lines(order):
             name = f'qty_{item.pk}'

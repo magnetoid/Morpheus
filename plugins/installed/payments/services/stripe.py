@@ -10,6 +10,16 @@ from plugins.registry import app_registry
 logger = logging.getLogger('morpheus.payments.stripe')
 
 
+def _event_time(created):
+    """A Stripe event's ``created`` (seconds since the epoch) as an aware datetime, or None."""
+    from datetime import UTC, datetime  # noqa: PLC0415
+
+    try:
+        return datetime.fromtimestamp(int(created), tz=UTC) if created else None
+    except (TypeError, ValueError, OverflowError, OSError):
+        return None
+
+
 # ── Saved-card vault helpers ──────────────────────────────────────────────────
 #
 # Stripe stores cards against a Customer object. We mint one lazily the
@@ -160,24 +170,37 @@ class PaymentService:
         if not stripe.api_key:
             return {'success': False, 'error': 'Card payments are not set up for this store yet.'}
 
+        from plugins.installed.payments.services.capture import capture_mode  # noqa: PLC0415
+
         # Amount in the currency's minor units (cents for USD; JPY has none).
         amount_minor = amount_to_minor(order.total.amount, order.total.currency.code)
+        params = {
+            'amount': amount_minor,
+            'currency': order.total.currency.code.lower(),
+            'metadata': {'order_id': str(order.id), 'order_number': order.order_number},
+            # Let Stripe enable every payment method the merchant has turned on
+            # in the dashboard (cards, Apple Pay, Google Pay, Link, Klarna, …).
+            # Required for the Express Checkout + Payment Element combo to
+            # render wallets.
+            'automatic_payment_methods': {'enabled': True},
+        }
+        # idempotency_key prevents duplicate intents on retry — if Stripe has
+        # already seen the same key + amount, it returns the original intent
+        # instead of charging twice. Each parameter that can differ between
+        # orders goes into the key, so one key never meets two shapes.
+        idempotency_key = f'pi-{order.id}-{amount_minor}'
+        if capture_mode(order) != 'immediate':
+            # Authorize now, charge later (a parcel ships, or the merchant says).
+            params['capture_method'] = 'manual'
+            idempotency_key += '-manual'
+        customer_id = cls._checkout_customer_id(order)
+        if customer_id:
+            # The shopper's saved cards, and the card they choose to save.
+            params['customer'] = customer_id
+            idempotency_key += f'-{customer_id}'
 
         try:
-            # idempotency_key prevents duplicate intents on retry — if Stripe
-            # has already seen the same key + amount, it returns the original
-            # intent instead of charging twice.
-            intent = stripe.PaymentIntent.create(
-                amount=amount_minor,
-                currency=order.total.currency.code.lower(),
-                metadata={'order_id': str(order.id), 'order_number': order.order_number},
-                # Let Stripe enable every payment method the merchant has
-                # turned on in the dashboard (cards, Apple Pay, Google Pay,
-                # Link, Klarna, …). Required for the Express Checkout +
-                # Payment Element combo to render wallets.
-                automatic_payment_methods={'enabled': True},
-                idempotency_key=f'pi-{order.id}-{amount_minor}',
-            )
+            intent = stripe.PaymentIntent.create(**params, idempotency_key=idempotency_key)
 
             # Record the pending transaction
             tx = PaymentTransaction.objects.create(
@@ -198,6 +221,148 @@ class PaymentService:
                 'error': 'Card payment could not be started. Please try again or choose '
                 'another payment method.',
             }
+
+    @staticmethod
+    def _saved_card_settings() -> tuple[bool, bool]:
+        """(show saved cards, offer to save the card) at the checkout's payment step."""
+        plugin = app_registry.get('payments')
+        if plugin is None:
+            return False, False
+        return (
+            bool(plugin.get_config_value('checkout_show_saved_cards', False)),
+            bool(plugin.get_config_value('checkout_offer_save_card', False)),
+        )
+
+    @classmethod
+    def _checkout_customer_id(cls, order) -> str:
+        """The Stripe customer a signed-in shopper's checkout payment belongs to,
+        while saved cards are on (else ''). Kept on the order, so the payment
+        page shows that customer's cards."""
+        customer = getattr(order, 'customer', None)
+        if customer is None or not any(cls._saved_card_settings()):
+            return ''
+        try:
+            customer_id = get_or_create_stripe_customer(customer)
+        except Exception:  # noqa: BLE001 — a vault hiccup must not stop the payment
+            logger.warning('stripe: no customer for order %s', order.order_number, exc_info=True)
+            return ''
+        from plugins.installed.payments.services.capture import remember  # noqa: PLC0415
+
+        remember(order, stripe_customer=customer_id)
+        return customer_id
+
+    @classmethod
+    def checkout_customer_session(cls, order, user) -> str:
+        """The client secret of a Stripe CustomerSession for the payment step,
+        so the Payment Element shows the shopper's saved cards and offers to save
+        the new one, by the two settings. '' for a guest, another user's order,
+        or a payment started without a customer."""
+        show, offer = cls._saved_card_settings()
+        md = order.metadata if isinstance(getattr(order, 'metadata', None), dict) else {}
+        customer_id = md.get('stripe_customer') or ''
+        if not (show or offer) or not customer_id:
+            return ''
+        if not getattr(user, 'is_authenticated', False) or order.customer_id != user.pk:
+            return ''
+        features = {
+            'payment_method_redisplay': 'enabled' if show else 'disabled',
+            'payment_method_save': 'enabled' if offer else 'disabled',
+            'payment_method_remove': 'disabled',
+        }
+        if show:
+            # Cards the shopper saved here or on their account page; never one
+            # kept only for a subscription's renewals.
+            features['payment_method_allow_redisplay_filters'] = ['always', 'unspecified']
+        if offer:
+            features['payment_method_save_usage'] = 'off_session'
+        stripe.api_key = cls.get_stripe_api_key()
+        try:
+            session = stripe.CustomerSession.create(
+                customer=customer_id,
+                components={'payment_element': {'enabled': True, 'features': features}},
+            )
+        except Exception:  # noqa: BLE001 — the card form works without saved cards
+            logger.warning(
+                'stripe: customer session for %s failed', order.order_number, exc_info=True
+            )
+            return ''
+        return getattr(session, 'client_secret', '') or ''
+
+    @classmethod
+    def _intent_status(cls, intent_id: str) -> str:
+        try:
+            return str(stripe.PaymentIntent.retrieve(intent_id).status or '')
+        except Exception:  # noqa: BLE001
+            return ''
+
+    @classmethod
+    def capture_intent(cls, intent_id: str, *, idempotency_key: str) -> dict:
+        """Take the money a held PaymentIntent authorized; the order becomes paid."""
+        stripe.api_key = cls.get_stripe_api_key()
+        if not stripe.api_key:
+            return {'success': False, 'error': 'Card payments are not set up for this store.'}
+        if not intent_id:
+            return {'success': False, 'error': 'The payment has no Stripe reference.'}
+        try:
+            status = str(
+                stripe.PaymentIntent.capture(intent_id, idempotency_key=idempotency_key).status
+            )
+        except stripe.error.StripeError as e:
+            logger.warning('stripe: capture of %s failed: %s', intent_id, e)
+            # Already taken (in Stripe's own dashboard, say), or given back.
+            status = cls._intent_status(intent_id)
+            if status == 'canceled':
+                cls._mark_transaction_released(intent_id, 'Stripe says the hold was cancelled')
+            if status != 'succeeded':
+                reason = getattr(e, 'user_message', None) or str(e) or 'no reason given'
+                return {'success': False, 'error': f'Stripe did not charge it: {reason}'}
+        if status != 'succeeded':
+            return {
+                'success': False,
+                'error': f'Stripe answered "{status}"; check the payment there.',
+            }
+        cls._mark_transaction_success(intent_id)
+        return {'success': True}
+
+    @classmethod
+    def cancel_intent(cls, intent_id: str, reason: str = '') -> dict:
+        """Give a PaymentIntent that has not been charged back to the card."""
+        stripe.api_key = cls.get_stripe_api_key()
+        if not (stripe.api_key and intent_id):
+            return {'success': False, 'error': 'Card payments are not set up for this store.'}
+        try:
+            status = str(stripe.PaymentIntent.cancel(intent_id).status)
+        except stripe.error.StripeError as e:
+            logger.warning('stripe: cancel of %s failed: %s', intent_id, e)
+            status = cls._intent_status(intent_id)
+            if status == 'succeeded':
+                return {'success': False, 'error': 'It was already charged; refund it instead.'}
+            if status != 'canceled':
+                reason_text = getattr(e, 'user_message', None) or str(e) or 'no reason given'
+                return {'success': False, 'error': f'Stripe did not release it: {reason_text}'}
+        cls._mark_transaction_released(intent_id, reason or 'The held payment was released')
+        return {'success': True}
+
+    @classmethod
+    def webhook_sends(cls, events: tuple[str, ...]) -> bool | None:
+        """Whether a Stripe webhook endpoint pointing at this store sends every
+        one of ``events`` (None when Stripe cannot be asked)."""
+        stripe.api_key = cls.get_stripe_api_key()
+        if not stripe.api_key:
+            return None
+        try:
+            endpoints = stripe.WebhookEndpoint.list(limit=50)
+        except Exception:  # noqa: BLE001
+            return None
+        for endpoint in getattr(endpoints, 'data', []) or []:
+            if getattr(endpoint, 'status', 'enabled') != 'enabled':
+                continue
+            if '/payments/webhooks/stripe/' not in str(getattr(endpoint, 'url', '')):
+                continue
+            enabled = set(getattr(endpoint, 'enabled_events', []) or [])
+            if '*' in enabled or set(events) <= enabled:
+                return True
+        return False
 
     @classmethod
     def redeem_delegated_token(cls, order, token):
@@ -413,6 +578,17 @@ class PaymentService:
             if event.type == 'payment_intent.succeeded':
                 payment_intent = event.data.object
                 cls._mark_transaction_success(payment_intent.id)
+            elif event.type == 'payment_intent.amount_capturable_updated':
+                # A manual-capture intent was confirmed: the money is held. The
+                # hold's clock starts when Stripe authorized it, not when a
+                # delayed or retried delivery arrives.
+                cls._mark_transaction_authorized(
+                    event.data.object.id, at=_event_time(getattr(event, 'created', None))
+                )
+            elif event.type == 'payment_intent.canceled':
+                cls._mark_transaction_released(
+                    event.data.object.id, 'Stripe cancelled the payment, so nothing was charged'
+                )
             elif event.type == 'payment_intent.payment_failed':
                 payment_intent = event.data.object
                 cls._mark_transaction_failed(
@@ -495,7 +671,8 @@ class PaymentService:
         update can torn-write `status` and `error_message` on the same
         row. Also short-circuits when the transaction is already in a
         terminal state so a re-delivery doesn't overwrite a later
-        success-then-refund history.
+        success-then-refund history. Fires ``PAYMENT_FAILED`` once the
+        row has changed (orders records it on the timeline).
         """
         from django.db import transaction as db_tx  # noqa: PLC0415
 
@@ -505,14 +682,107 @@ class PaymentService:
                 .filter(provider_transaction_id=intent_id)
                 .first()
             )
-            if not tx or tx.status in (
-                PaymentTransaction.Status.FAILED,
-                PaymentTransaction.Status.SUCCEEDED,
-            ):
+            # Only a payment still waiting can fail: a held, taken, released or
+            # refunded one keeps its state when a late failure arrives. A second
+            # decline of the same payment records its reason and fires nothing.
+            Status = PaymentTransaction.Status
+            if not tx or tx.status not in (Status.PENDING, Status.FAILED):
                 return
-            tx.status = PaymentTransaction.Status.FAILED
+            first = tx.status == Status.PENDING
+            tx.status = Status.FAILED
             tx.error_message = error_msg
             tx.save(update_fields=['status', 'error_message'])
+            order = tx.order
+        if not first:
+            return
+
+        from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+        hook_registry.fire(
+            MorpheusEvents.PAYMENT_FAILED, payment=tx, order=order, error=error_msg or ''
+        )
+
+    @classmethod
+    def _mark_transaction_authorized(cls, intent_id, at=None):
+        """The card was authorized and the money held (a manual-capture intent).
+
+        The order is confirmed, as a paid one is, so it is not expired as an
+        abandoned checkout; it becomes paid when the hold is captured. A hold
+        that must never be charged (the order is closed, already paid, or holds
+        another payment: ``capture.surplus_reason``) is recorded and given back,
+        and leaves the order as it was.
+        """
+        from django.db import transaction as db_tx  # noqa: PLC0415
+        from django.utils import timezone  # noqa: PLC0415
+
+        from plugins.installed.payments.services.capture import (  # noqa: PLC0415
+            schedule_release,
+            surplus_reason,
+        )
+
+        with db_tx.atomic():
+            tx = (
+                PaymentTransaction.objects.select_for_update()
+                .filter(provider_transaction_id=intent_id)
+                .first()
+            )
+            # A declined first card leaves the row FAILED; the next card the
+            # shopper tries on the same intent can still be authorized.
+            if not tx or tx.status not in (
+                PaymentTransaction.Status.PENDING,
+                PaymentTransaction.Status.FAILED,
+            ):
+                return
+            tx.status = PaymentTransaction.Status.AUTHORIZED
+            tx.authorized_at = at or timezone.now()
+            tx.error_message = ''
+            tx.save(update_fields=['status', 'authorized_at', 'error_message'])
+            order = type(tx.order).objects.select_for_update().get(pk=tx.order_id)
+            surplus = surplus_reason(order, tx)
+            if surplus:
+                order.log_event('PAYMENT_AUTHORIZED', message=f'{tx.amount} held on the card')
+                schedule_release(order, surplus, tx=tx)
+                return
+            order.payment_status = 'authorized'
+            if order.status == 'pending':
+                order.confirm()
+                order.save(update_fields=['payment_status', 'status'])
+            else:
+                order.save(update_fields=['payment_status'])
+            order.log_event('PAYMENT_AUTHORIZED', message=f'{tx.amount} held on the card')
+
+    @classmethod
+    def _mark_transaction_released(cls, intent_id, reason: str = ''):
+        """A payment that was never charged was given back (or Stripe cancelled it)."""
+        from django.db import transaction as db_tx  # noqa: PLC0415
+
+        with db_tx.atomic():
+            tx = (
+                PaymentTransaction.objects.select_for_update()
+                .filter(provider_transaction_id=intent_id)
+                .first()
+            )
+            if not tx or tx.status not in (
+                PaymentTransaction.Status.PENDING,
+                PaymentTransaction.Status.AUTHORIZED,
+            ):
+                return
+            held = tx.status == PaymentTransaction.Status.AUTHORIZED
+            tx.status = PaymentTransaction.Status.RELEASED
+            tx.save(update_fields=['status'])
+            if held:
+                order = tx.order
+                still_held = (
+                    PaymentTransaction.objects.filter(
+                        order=order, status=PaymentTransaction.Status.AUTHORIZED
+                    )
+                    .exclude(pk=tx.pk)
+                    .exists()
+                )
+                if order.payment_status == 'authorized' and not still_held:
+                    order.payment_status = 'released'
+                    order.save(update_fields=['payment_status'])
+                order.log_event('PAYMENT_RELEASED', message=(reason or '')[:240])
 
     @classmethod
     def _dispatch_stripe_event_hook(cls, event_type, payload):

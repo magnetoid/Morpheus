@@ -4,7 +4,7 @@ summary: Delivers digital products to the buyer at once and lists them in the bu
 
 ## What it's for
 
-This app hands a digital product's file to the buyer with no staff action. A buyer paying by card gets the download the moment the payment goes through. An order paid later, by cash on delivery or bank transfer, gets it as soon as it is placed. The buyer is emailed a link, each order page shows a Download button next to the item, and the account's Library lists every digital purchase with its state. An audiobook edition plays right there in the Library.
+This app hands a digital product's file to the buyer with no staff action. A buyer paying by card gets the download the moment the payment goes through; a card you hold to charge later delivers it once charged. An order paid later, by cash on delivery or bank transfer, gets it as soon as it is placed. The buyer is emailed a link, each order page shows a Download button next to the item, and the account's Library lists every digital purchase with its state. An audiobook edition plays right there in the Library.
 
 ## Set it up
 

@@ -199,7 +199,7 @@ def set_rate_tool(  # noqa: PLR0913
 @tool(
     name='shipping.buy_label',
     description=(
-        "Buy a carrier label (Shippo or EasyPost, the cheapest rate) for an order's parcel. "
+        "Buy a carrier label (Shippo or EasyPost, at the rate the Shipping page's label setting picks) for an order's parcel. "
         'Give `parcel` (an id from orders.get) for a recorded parcel, or leave it out to buy '
         'one label for everything still open and record that parcel. The carrier charges '
         "the store's account; the buyer gets the tracking by email."

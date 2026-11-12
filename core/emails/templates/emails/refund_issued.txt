@@ -6,6 +6,6 @@ Amount: {{ refund.amount }}
 {% if refund.notes %}Note: {{ refund.notes }}
 {% endif %}
 
-The refund will land in your original payment method in a few business days.
+{% if settled_as == 'store_credit' %}The amount has been added to your store credit, ready to spend on your next order.{% elif settled_as == 'external' %}The amount has been paid back to you directly.{% else %}The refund will land in your original payment method in a few business days.{% endif %}
 
 — The team

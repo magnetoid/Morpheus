@@ -58,7 +58,7 @@
           <i data-lucide="more-horizontal" class="h-4 w-4"></i> More
         </button>
         <div class="dropdown-menu" role="menu" hidden>
-          {% if order.payment_status != 'paid' %}
+          {% if order.payment_status != 'paid' and order.payment_status != 'authorized' %}
           <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}">
             {% csrf_token %}<input type="hidden" name="action" value="mark_paid">
             <button class="dropdown-item"><i data-lucide="credit-card" class="h-4 w-4"></i> Mark as paid</button>

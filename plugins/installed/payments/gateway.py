@@ -67,6 +67,11 @@ class PaymentGateway(ABC):
         """
         return {'success': False, 'error': 'capture not supported by this gateway'}
 
+    def void(self, *, transaction, **kwargs) -> dict:
+        """Release a held authorization without charging it. Fails closed:
+        a gateway that cannot release a hold never reports one released."""
+        return {'success': False, 'error': 'releasing a payment is not supported by this gateway'}
+
     def refund(self, *, transaction, amount, **kwargs) -> dict:
         return {'success': False, 'error': 'Not implemented'}
 

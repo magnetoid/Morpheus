@@ -255,6 +255,17 @@ def orders_documents_tool(*, order_number: str) -> ToolResult:
                 'default': 'customer_request',
             },
             'notes': {'type': 'string', 'default': ''},
+            'settle': {
+                'type': 'string',
+                'enum': ['', 'store_credit', 'external'],
+                'description': (
+                    "How it is paid back: '' through the payment the customer used, "
+                    "'store_credit' into their store credit, 'external' already paid "
+                    'back outside the store. Leave it out for the store default (an '
+                    "order paid by cash on delivery or bank transfer follows orders' "
+                    'offline_refund_default).'
+                ),
+            },
             'confirmed': {'type': 'boolean', 'default': False},
             'hard_gate_ack': {'type': 'string', 'default': ''},
             'echo': {'type': 'string', 'default': ''},
@@ -263,12 +274,13 @@ def orders_documents_tool(*, order_number: str) -> ToolResult:
     },
     requires_approval=True,
 )
-def refund_order_tool(
+def refund_order_tool(  # noqa: PLR0913
     *,
     order_number: str,
     amount: float | None = None,
     reason: str = 'customer_request',
     notes: str = '',
+    settle: str | None = None,
     confirmed: bool = False,
     hard_gate_ack: str = '',
     echo: str = '',
@@ -279,7 +291,7 @@ def refund_order_tool(
     _require_confirmed(confirmed)
     _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=order_number, echo=echo)
     from plugins.installed.orders.models import Order
-    from plugins.installed.orders.refunds import RefundService
+    from plugins.installed.orders.refunds import RefundService, default_settle
 
     order = Order.objects.filter(order_number=order_number).first()
     if order is None:
@@ -305,12 +317,16 @@ def refund_order_tool(
             f'per-refund cap; lower the amount or raise the cap in '
             f'Settings → Agent guardrails'
         )
-    refund = RefundService.process(
-        order=order,
-        amount=refund_amount,
-        reason=reason,
-        notes=notes,
-    )
+    try:
+        refund = RefundService.process(
+            order=order,
+            amount=refund_amount,
+            reason=reason,
+            notes=notes,
+            settle=default_settle(order) if settle is None else settle,
+        )
+    except ValueError as exc:
+        raise ToolError(str(exc)) from None
     return ToolResult(
         output={
             'refund_id': str(refund.id),
@@ -780,8 +796,10 @@ def analytics_top_products_tool(
             'carrier': {'type': 'string'},
             'mark_shipped': {
                 'type': 'boolean',
-                'default': True,
-                'description': 'When this parcel completes the order, mark it shipped.',
+                'description': (
+                    'When this parcel completes the order, mark it shipped (true) or '
+                    "fulfilled (false). Leave it out for the store's setting."
+                ),
             },
         },
         'required': ['order_number'],
@@ -795,9 +813,14 @@ def orders_fulfill_lines_tool(  # noqa: PLR0913
     tracking_number: str = '',
     tracking_url: str = '',
     carrier: str = '',
-    mark_shipped: bool = True,
+    mark_shipped: bool | None = None,
 ) -> ToolResult:
-    from plugins.installed.orders.fulfilment import FulfilmentError, create_fulfillment, open_lines
+    from plugins.installed.orders.fulfilment import (
+        FulfilmentError,
+        create_fulfillment,
+        marks_shipped_default,
+        open_lines,
+    )
     from plugins.installed.orders.models import Order
 
     order = Order.objects.filter(order_number=order_number).first()
@@ -825,7 +848,7 @@ def orders_fulfill_lines_tool(  # noqa: PLR0913
             tracking_number=tracking_number,
             tracking_url=tracking_url,
             carrier=carrier,
-            mark_shipped=mark_shipped,
+            mark_shipped=marks_shipped_default() if mark_shipped is None else bool(mark_shipped),
         )
     except FulfilmentError as exc:
         raise ToolError(str(exc)) from None

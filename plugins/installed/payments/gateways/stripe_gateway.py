@@ -27,6 +27,23 @@ class StripeGateway(PaymentGateway):
 
         return PaymentService.create_payment_intent(order)
 
+    def capture(self, *, transaction, **kwargs) -> dict:
+        """Take the money a held PaymentIntent authorized (``capture_mode``)."""
+        from plugins.installed.payments.services.stripe import PaymentService
+
+        return PaymentService.capture_intent(
+            transaction.provider_transaction_id,
+            idempotency_key=kwargs.get('idempotency_key') or f'capture-{transaction.pk}',
+        )
+
+    def void(self, *, transaction, **kwargs) -> dict:
+        """Give a held PaymentIntent back: the card is never charged."""
+        from plugins.installed.payments.services.stripe import PaymentService
+
+        return PaymentService.cancel_intent(
+            transaction.provider_transaction_id, kwargs.get('reason') or ''
+        )
+
     def refund(self, *, transaction, amount, **kwargs) -> dict:
         """Issue a Stripe refund against the transaction's PaymentIntent.
 

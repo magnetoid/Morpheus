@@ -22,7 +22,7 @@ Buying a label spends the merchant's money, so a purchase runs in three steps:
 
 Neither function may run inside a caller's transaction, or step 1 would not
 commit. The carrier is sent a fresh shipment each time (a quoted rate expires),
-and the cheapest rate it returns is bought.
+and the rate the Shipping page's label setting picks (the cheapest by default) is bought.
 """
 
 from __future__ import annotations
@@ -156,16 +156,84 @@ def _post(provider: str, url: str, payload: dict, *, api_key: str, buying: bool 
         raise LabelError(f'{name} sent an answer that could not be read.') from None
 
 
-def _cheapest(rates: list, amount_key: str, name: str) -> dict:
+LABEL_RATE_RULES = ('cheapest', 'fastest', 'preferred')
+
+# Where each carrier service keeps a rate's price, carrier, service and days.
+_RATE_SHAPES = {
+    'shippo': {
+        'amount': lambda r: r.get('amount'),
+        'carrier': lambda r: r.get('provider'),
+        'service': lambda r: (r.get('servicelevel') or {}).get('name'),
+        'days': lambda r: r.get('estimated_days'),
+    },
+    'easypost': {
+        'amount': lambda r: r.get('rate'),
+        'carrier': lambda r: r.get('carrier'),
+        'service': lambda r: r.get('service'),
+        'days': lambda r: r.get('delivery_days'),
+    },
+}
+
+
+def _days(value) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 10_000  # a rate that names no delivery time is never the fastest
+
+
+def _choose_rate(rates: list, provider: str, name: str, order=None) -> dict:
+    """The rate a label is bought at, by the Shipping page's ``label_rate``:
+    the cheapest (the default), the fastest (fewest days, then cheapest), or
+    the preferred carrier and service (cheapest among them; refused when the
+    carrier offers neither). An app may pick another of the offered rates
+    through ``SHIPPING_LABEL_RATE``."""
+    shape = _RATE_SHAPES[provider]
     priced = []
     for rate in rates or []:
+        if not isinstance(rate, dict):
+            continue
         try:
-            priced.append((Decimal(str(rate.get(amount_key))), rate))
+            priced.append((Decimal(str(shape['amount'](rate))), rate))
         except (InvalidOperation, TypeError):
             continue
     if not priced:
         raise LabelError(f'{name} offered no rate for this parcel and address.')
-    return min(priced, key=lambda pair: pair[0])[1]
+    cfg = _config()
+    rule = str(cfg.get('label_rate') or 'cheapest')
+    candidates = priced
+    if rule == 'preferred':
+        carrier = str(cfg.get('label_carrier') or '').strip().lower()
+        service = str(cfg.get('label_service') or '').strip().lower()
+        candidates = [
+            (amount, rate)
+            for amount, rate in priced
+            if (not carrier or str(shape['carrier'](rate) or '').strip().lower() == carrier)
+            and (not service or str(shape['service'](rate) or '').strip().lower() == service)
+        ]
+        if not candidates:
+            offered = sorted(
+                {
+                    f'{shape["carrier"](rate) or ""} {shape["service"](rate) or ""}'.strip()
+                    for _, rate in priced
+                }
+            )
+            wanted = ' '.join(x for x in (cfg.get('label_carrier'), cfg.get('label_service')) if x)
+            raise LabelError(
+                f'{name} offered no {wanted} rate for this parcel. It offered: '
+                f'{", ".join(offered)[:300]}. Change the preferred carrier on the Shipping page.'
+            )
+    if rule == 'fastest':
+        chosen = min(candidates, key=lambda pair: (_days(shape['days'](pair[1])), pair[0]))[1]
+    else:
+        chosen = min(candidates, key=lambda pair: pair[0])[1]
+    from morpheus.core import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+    offered = [rate for _, rate in priced]
+    answer = hook_registry.filter(
+        MorpheusEvents.SHIPPING_LABEL_RATE, chosen, rates=offered, provider=provider, order=order
+    )
+    return answer if any(answer is rate for rate in offered) else chosen
 
 
 def _money(amount, currency) -> tuple[Decimal | None, str]:
@@ -175,7 +243,7 @@ def _money(amount, currency) -> tuple[Decimal | None, str]:
         return None, ''
 
 
-def _shippo(api_key: str, origin: dict, dest: dict, weight_kg: Decimal) -> dict:
+def _shippo(api_key: str, origin: dict, dest: dict, weight_kg: Decimal, order=None) -> dict:
     parcel = {
         'length': '10',
         'width': '10',
@@ -190,7 +258,7 @@ def _shippo(api_key: str, origin: dict, dest: dict, weight_kg: Decimal) -> dict:
         {'address_from': origin, 'address_to': dest, 'parcels': [parcel], 'async': False},
         api_key=api_key,
     )
-    rate = _cheapest(shipment.get('rates'), 'amount', 'Shippo')
+    rate = _choose_rate(shipment.get('rates'), 'shippo', 'Shippo', order)
     txn = _post(
         'shippo',
         'https://api.goshippo.com/transactions/',
@@ -225,7 +293,7 @@ def _shippo(api_key: str, origin: dict, dest: dict, weight_kg: Decimal) -> dict:
     }
 
 
-def _easypost(api_key: str, origin: dict, dest: dict, weight_kg: Decimal) -> dict:
+def _easypost(api_key: str, origin: dict, dest: dict, weight_kg: Decimal, order=None) -> dict:
     shipment = _post(
         'easypost',
         'https://api.easypost.com/v2/shipments',
@@ -238,7 +306,7 @@ def _easypost(api_key: str, origin: dict, dest: dict, weight_kg: Decimal) -> dic
         },
         api_key=api_key,
     )
-    rate = _cheapest(shipment.get('rates'), 'rate', 'EasyPost')
+    rate = _choose_rate(shipment.get('rates'), 'easypost', 'EasyPost', order)
     bought = _post(
         'easypost',
         f'https://api.easypost.com/v2/shipments/{shipment.get("id")}/buy',
@@ -296,7 +364,9 @@ def _buy(label, plan: dict, lines, *, hold: bool = False) -> dict:
     buy = _shippo if plan['provider'] == 'shippo' else _easypost
     rows = ShippingLabel.objects.filter(pk=label.pk)
     try:
-        data = buy(plan['api_key'], plan['origin'], plan['dest'], _weight_kg(lines))
+        data = buy(
+            plan['api_key'], plan['origin'], plan['dest'], _weight_kg(lines), order=label.order
+        )
     except LabelUnconfirmed as exc:
         rows.update(status='unconfirmed', fulfillment=None, provider_id=exc.provider_id[:120])
         raise

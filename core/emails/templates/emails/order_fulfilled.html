@@ -5,6 +5,21 @@
   <p>Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},</p>
   <p>Your order <strong>#{{ order.order_number }}</strong> is on the way.</p>
 
+  {% if parcels %}
+  {% for parcel in parcels %}
+  <h2>Parcel {{ forloop.counter }}</h2>
+  {% if parcel.fulfillment.tracking_number %}
+  <p><strong>Tracking:</strong> {% if parcel.fulfillment.tracking_url %}<a href="{{ parcel.fulfillment.tracking_url }}">{{ parcel.fulfillment.tracking_number }}</a>{% else %}{{ parcel.fulfillment.tracking_number }}{% endif %}{% if parcel.fulfillment.carrier %} <span class="muted">({{ parcel.fulfillment.carrier }})</span>{% endif %}</p>
+  {% endif %}
+  <table class="items" role="presentation" cellspacing="0" cellpadding="0" border="0">
+    {% for fi in parcel.items %}
+    <tr>
+      <td>{{ fi.quantity }}× {{ fi.order_item.product_name }}{% if fi.order_item.variant_name %}<br><span class="muted">{{ fi.order_item.variant_name }}</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endfor %}
+  {% else %}
   {% if order.tracking_number %}
   <p>
     <strong>Tracking:</strong> {{ order.tracking_number }}{% if order.shipping_method %} <span class="muted">({{ order.shipping_method }})</span>{% endif %}
@@ -23,4 +38,5 @@
     </tr>
     {% endfor %}{% endif %}
   </table>
+  {% endif %}
 {% endblock %}

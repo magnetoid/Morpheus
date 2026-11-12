@@ -62,7 +62,12 @@
   }
 
   var stripe = Stripe(cfg.key);
-  var elements = stripe.elements({ mode: 'payment', amount: cfg.amount, currency: cfg.currency });
+  var elements = stripe.elements({
+    mode: 'payment',
+    amount: cfg.amount,
+    currency: cfg.currency,
+    captureMethod: cfg.captureMethod || 'automatic',
+  });
 
   function setAmount(amount) {
     state.amount = amount;
