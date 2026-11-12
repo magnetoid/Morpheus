@@ -185,8 +185,34 @@ def services_list(request):
             # Zero results (an empty region or category filter) is held out of
             # the index; a `?q=` search is search results whatever it finds.
             'seo_item_count': page_obj.paginator.count,
+            'seo_canonical': _landing_canonical(request, params, page_obj),
         },
     )
+
+
+# What the search form and the sort menu send besides the region and the category:
+# any of them set makes the page a search, not a region's or a category's page.
+_SEARCH_ONLY = ('q', 'date', 'guests', 'sort')
+
+
+def _landing_canonical(request, params, page_obj) -> str:
+    """`/regions/<key>/[<category>/]` when `/bookings/` is only filtered to that page.
+
+    `?region=kotor&category=boat-tours` lists exactly what `/regions/kotor/boat-tours/`
+    lists, so the landing page is its canonical (and `?region=kotor` names the
+    region's page). A query, a date, guests, a sort or a later page keeps the
+    request's own canonical (`/bookings/`), as does a category alone: no page lists
+    a category across every region. No redirect, because the search form submits
+    here.
+    """
+    if not params.region or page_obj.number > 1:
+        return ''
+    if any((request.GET.get(key) or '').strip() for key in _SEARCH_ONLY):
+        return ''
+    path = f'/regions/{params.region}/'
+    if params.category is not None:
+        path += f'{params.category.slug}/'
+    return localized_path(request, path)
 
 
 def products_list(request):
@@ -411,26 +437,52 @@ def regions_index(request):
     )
 
 
-def region_detail(request, region):
-    # str() now, in the visitor's language: a lazy label cannot be JSON-encoded
-    # (the breadcrumb) and must not be re-translated later.
+def _region_label(region: str) -> str:
+    """The region's name in the visitor's language; 404 for a key the store does not have."""
+    # str() now: a lazy label cannot be JSON-encoded (the breadcrumb) and must not be
+    # re-translated later.
     labels = {key: str(label) for key, label in country.regions()}
     if region not in labels:
         raise Http404('Unknown region')
+    return labels[region]
+
+
+def region_detail(request, region):
+    """A region's landing page: its geography, what to book, where to stay, what to see.
+
+    Each section below the experiences shows only when it has rows; the chips link
+    the region × category pages that have experiences (landing.py).
+    """
+    from plugins.installed.booking_marketplace import landing
+
+    label = _region_label(region)
     services = list(
         BookableService.objects.filter(
             region=region, is_active=True, vendor__is_active=True
         ).select_related('vendor', 'category')
     )
+    region_categories = [
+        {
+            'name': category.name,
+            'count': count,
+            'url': localized_path(request, f'/regions/{region}/{category.slug}/'),
+        }
+        for category, count in landing.category_counts().get(region, [])
+    ]
     return render(
         request,
         'booking_marketplace/regions/region.html',
         {
             'region_key': region,
-            'region_label': labels[region],
+            'region_label': label,
+            'region_intro': landing.region_intro(region),
             'services': services,
+            'region_categories': region_categories,
+            'region_hotels': landing.hotels(region),
+            'region_places': landing.places(region),
+            'region_events': landing.upcoming_events(region),
             'listing_mode': listing_mode(),
-            'seo_title': _('%(region)s experiences') % {'region': labels[region]},
+            'seo_title': _('%(region)s experiences') % {'region': label},
             # Named in the order /bookings/ recommends them, not the page's A–Z.
             'seo_description': _lead_with_names(
                 ngettext(
@@ -438,7 +490,7 @@ def region_detail(request, region):
                     '%(region)s: %(count)d experiences to book with local hosts',
                     len(services),
                 )
-                % {'region': labels[region], 'count': len(services)},
+                % {'region': label, 'count': len(services)},
                 [
                     s.name
                     for s in sorted(
@@ -448,7 +500,7 @@ def region_detail(request, region):
                 ],
             ),
             'breadcrumb_items': _crumbs(
-                request, (_('Regions'), '/regions/'), (labels[region], f'/regions/{region}/')
+                request, (_('Regions'), '/regions/'), (label, f'/regions/{region}/')
             ),
             'jsonld_items': seo_jsonld.listing_items(
                 [(s.name, f'/bookings/{s.slug}/', _image_url(s)) for s in services[:60]],
@@ -456,6 +508,60 @@ def region_detail(request, region):
             ),
             # A known region with nothing to book renders, but stays out of the
             # index (and out of the sitemap).
+            'seo_item_count': len(services),
+        },
+    )
+
+
+def region_category(request, region, category):
+    """`/regions/<key>/<category>/`: the region's experiences in one category's subtree.
+
+    The page a search for "Kotor boat tours" should find. An unknown region, or a
+    category that is unknown or switched off, is a 404; a real pair with nothing to
+    book renders, held out of the index (`seo_item_count`) and the sitemap.
+    """
+    from plugins.installed.booking_marketplace import landing
+    from plugins.installed.catalog.models import Category
+
+    label = _region_label(region)
+    cat = Category.objects.filter(slug=category, is_active=True).first()
+    if cat is None:
+        raise Http404('Unknown category')
+    services = list(landing.experiences(region, cat))
+    title = _('%(category)s in %(region)s') % {'category': cat.name, 'region': label}
+    return render(
+        request,
+        'booking_marketplace/regions/region_category.html',
+        {
+            'region_key': region,
+            'region_label': label,
+            'region_url': localized_path(request, f'/regions/{region}/'),
+            'region_intro': landing.region_intro(region),
+            'category': cat,
+            'landing_title': title,
+            'services': services,
+            'listing_mode': listing_mode(),
+            'seo_title': title,
+            'seo_description': _lead_with_names(
+                ngettext(
+                    '%(region)s: %(count)d experience to book with a local host',
+                    '%(region)s: %(count)d experiences to book with local hosts',
+                    len(services),
+                )
+                % {'region': title, 'count': len(services)},
+                [s.name for s in services],
+            ),
+            'breadcrumb_items': _crumbs(
+                request,
+                (_('Regions'), '/regions/'),
+                (label, f'/regions/{region}/'),
+                (cat.name, f'/regions/{region}/{cat.slug}/'),
+            ),
+            'jsonld_items': seo_jsonld.listing_items(
+                [(s.name, f'/bookings/{s.slug}/', _image_url(s)) for s in services[:60]],
+                request=request,
+            ),
+            # Nothing to book: rendered, `noindex, follow`, never in the sitemap.
             'seo_item_count': len(services),
         },
     )

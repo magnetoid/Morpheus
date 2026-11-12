@@ -1712,6 +1712,23 @@ travel map loads Leaflet only once it nears the screen (`booking_marketplace/_le
 theme). Guarded by `seo/tests/test_images_and_speed.py` and
 `booking_marketplace/tests/test_theme_images_and_maps.py`.
 
+**Convention — a breadcrumb is one list, rendered twice (v0.161.0).** A view's `breadcrumb_items` is
+the trail: the head builds the BreadcrumbList from it and `{% breadcrumb_trail %}` (storefront) renders the
+visible one from it, with the same urls moved into the page's language tree, site-relative in `href`. A
+theme restyles it by overriding `storefront/_breadcrumb_trail.html` and loops over `breadcrumb_items`; it
+never writes a trail of its own. Until v0.161.0 every product page's markup named `/products/?category=`,
+which canonicalises to `/products/`, while the themes showed `/category/` or `/genre/` links, another
+catalogue label and no product, and the travel listings marked up a trail they never showed. A category
+crumb is the category's page and its active parents (`storefront/breadcrumbs.py`); the product page asks
+`PRODUCT_BREADCRUMB_CATEGORY` first (book_product answers with the book's genre page). The last item is the
+page itself, unlinked, and keeps its url in the markup. A page that knows a better address than its request
+hands it to the head as `seo_canonical` (`SeoPage.canonical`; a path or the store's own host, and a
+merchant's canonical still wins): `/bookings/?region=kotor&category=boat-tours` names
+`/regions/kotor/boat-tours/` (booking_marketplace's `landing.py`; a query, date, guests, sort or later page
+keeps `/bookings/`). A page canonicalised onto another path declares no hreflang, prev/next or graph of its
+own. Guarded by `themes/test_breadcrumb_trail.py`, `booking_marketplace/tests/test_breadcrumb_trail.py` and
+`test_region_landing.py`.
+
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a

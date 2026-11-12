@@ -1,0 +1,13 @@
+{% load i18n %}{% comment %}The Adriatic look for the shared trail (storefront/_breadcrumb_trail.html):
+muted links with a chevron between them, the page itself last and unlinked. "hero" is the
+white version over a photo (a place's banner). It loops over `breadcrumb_items`, the list the
+head's BreadcrumbList is built from; never add a crumb here. Every class is one the compiled
+tailwind.css already has. The croatia theme carries a copy of this file.{% endcomment %}{% if breadcrumb_items %}
+<nav aria-label="{% translate 'Breadcrumb' %}" class="text-sm {% if breadcrumb_variant == 'hero' %}text-white/70 mb-3{% else %}mb-4{% endif %}">
+  <ol class="flex flex-wrap items-center gap-1.5">
+    {% for item in breadcrumb_items %}
+    <li class="flex items-center gap-1.5 min-w-0">{% if not forloop.first %}<svg class="w-4 h-4 shrink-0{% if breadcrumb_variant != 'hero' %} text-muted-foreground{% endif %}" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>{% endif %}{% if forloop.last %}<span aria-current="page" class="font-medium truncate max-w-[220px] {% if breadcrumb_variant == 'hero' %}text-white{% else %}text-foreground{% endif %}">{{ item.name }}</span>{% else %}<a href="{{ item.href }}" class="transition-colors {% if breadcrumb_variant == 'hero' %}hover:text-white{% else %}text-muted-foreground hover:text-foreground{% endif %}">{{ item.name }}</a>{% endif %}</li>
+    {% endfor %}
+  </ol>
+</nav>
+{% endif %}

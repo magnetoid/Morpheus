@@ -8,7 +8,7 @@ This app turns part of your catalogue into bookable experiences, stays, and loca
 
 ## Set it up
 
-This app ships off until a store turns it on. Once on, a few important behaviours — whether prices are shown, and whether a submission can hold a confirmed booking rather than only create an enquiry — are set outside the dashboard, not on a settings screen here. Each listing needs a host to belong to.
+This app ships off until a store turns it on. Once on, whether prices are shown and whether a submission can hold a confirmed booking rather than only create an enquiry are set outside the dashboard, not on a settings screen here. Each listing needs a host to belong to.
 
 ## Common tasks
 
@@ -22,10 +22,12 @@ This app ships off until a store turns it on. Once on, a few important behaviour
 
 However it is configured, this app never takes payment itself: a submission either becomes an enquiry — a lead for the host to follow up — or, where confirmed bookings are switched on, a hold on inventory with nothing charged. Any money changes hands outside the store, arranged by the host or the merchant. A review only counts toward a listing's rating once it comes from a real, confirmed booking.
 
-The country the store serves comes from its theme: the Montenegro theme lists Montenegro's regions and the Croatia theme Croatia's, and listings, search and every page that names the country follow it. A listing's region is picked from that country's list.
+The country comes from the theme (Montenegro or Croatia): a listing's region is picked from its regions, and every page that names the country follows it.
 
-A hotel can be listed without rooms or rates: its card says "Contact for price" and its page sends you the guest's enquiry. Its photos come from Wikimedia Commons, and each page names the photographer and licence; a photo you upload replaces it and its credit.
+Each region's page shows its geography and experiences, then any hotels, places and upcoming events, and links to each activity there (boat tours around Kotor, say) with their counts; search engines are sent to those pages rather than to a filtered search.
 
-Where the shop's theme includes one, the app also shows an investor page, shared by link and kept out of search results. It shows public figures about the market and what the site lists today, counted live; it never shows bookings, enquiries or revenue.
+A hotel can be listed without rooms or rates: its card says "Contact for price" and its page sends you the guest's enquiry. Seeded photos come from Wikimedia Commons and name their photographer and licence; one you upload replaces the photo and its credit.
+
+Where the theme includes one, an investor page, shared by link and kept out of search results, shows public market figures and what the site lists today, counted live; never bookings, enquiries or revenue.
 
 Search engines see an experience as available only while it has an open date and the store takes bookings.

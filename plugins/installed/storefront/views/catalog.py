@@ -26,6 +26,7 @@ from django.utils.translation import gettext
 from api.client import internal_graphql
 from morpheus.core import MorpheusEvents, hook_registry
 from morpheus.app.views import render
+from plugins.installed.storefront.breadcrumbs import category_crumbs, product_category_crumbs
 from plugins.installed.storefront.services import catalogue_label, page_intro, store_name
 from plugins.registry import app_registry
 
@@ -413,12 +414,8 @@ def product_list(request):
         {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')},
     ]
     if selected_cat:
-        breadcrumb_items.append(
-            {
-                'name': selected_cat.name,
-                'url': request.build_absolute_uri(f'/products/?category={selected_cat.slug}'),
-            }
-        )
+        # The category's own page and its parents, as on a product page.
+        breadcrumb_items.extend(product_category_crumbs(request, category=selected_cat))
     # Only the unfiltered shelf uses the page-level intro — a filtered view is
     # introduced by its own Category/Tag/author copy just below the h1, and a
     # sitewide "everything we shelve" lede under a genre's results is simply
@@ -642,24 +639,20 @@ def product_detail(request, slug):
     )[:2]
     primary_image = primary_images[0] if primary_images else None
     hero_image = primary_image or (images[0] if images else None)
-    breadcrumb_items = [{'name': gettext('Home'), 'url': request.build_absolute_uri('/')}]
-    breadcrumb_items.append(
-        {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')}
-    )
-    cat = (product or {}).get('category') or {}
-    if cat.get('slug'):
-        breadcrumb_items.append(
-            {
-                'name': cat.get('name') or cat['slug'],
-                'url': request.build_absolute_uri(f'/products/?category={cat["slug"]}'),
-            }
-        )
-    breadcrumb_items.append(
-        {
-            'name': product.get('name') or slug,
-            'url': request.build_absolute_uri(request.path),
-        }
-    )
+    # One list for the visible trail and the BreadcrumbList: the category crumb is
+    # the category's own page (or the page an app answers with, a book's genre),
+    # never the `/products/?category=` filter address, which canonicalises to
+    # /products/ (storefront/breadcrumbs.py).
+    breadcrumb_items = [
+        {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
+        {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')},
+        *product_category_crumbs(
+            request,
+            product=product_row if product_row is not None else product,
+            category=_pdp_category(product_row, product),
+        ),
+        {'name': product.get('name') or slug, 'url': request.build_absolute_uri(request.path)},
+    ]
     last_reviewed = None
     if product_row is not None:
         last_reviewed = product_row.updated_at
@@ -782,6 +775,19 @@ def product_detail(request, slug):
             'seo_og_type': 'product',
         },
     )
+
+
+def _pdp_category(product_row, product):
+    """The product page's primary category row, or None."""
+    from plugins.installed.catalog.models import Category  # noqa: PLC0415
+
+    try:
+        if product_row is not None:
+            return product_row.category if product_row.category_id else None
+        slug = ((product or {}).get('category') or {}).get('slug')
+        return Category.objects.filter(slug=slug).first() if slug else None
+    except Exception:  # noqa: BLE001 — a trail without its category beats a broken page
+        return None
 
 
 def _pdp_faqs(slug: str, *, product_row=None) -> list[dict]:
@@ -1380,7 +1386,8 @@ def category_detail(request, slug):
     breadcrumb_items = [
         {'name': gettext('Home'), 'url': request.build_absolute_uri('/')},
         {'name': catalogue_label(), 'url': request.build_absolute_uri('/products/')},
-        {'name': category.name, 'url': request.build_absolute_uri(request.path)},
+        # Its active parents, root first, then the category itself.
+        *category_crumbs(category, request),
     ]
     collection_items = [
         {

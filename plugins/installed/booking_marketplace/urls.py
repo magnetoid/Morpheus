@@ -27,6 +27,7 @@ urlpatterns = [
     path('investors/', investors.investors, name='investors'),
     path('regions/', views.regions_index, name='regions'),
     path('regions/<slug:region>/', views.region_detail, name='region'),
+    path('regions/<slug:region>/<slug:category>/', views.region_category, name='region_category'),
     path('places/', views.places_index, name='places'),
     path('places/<slug:slug>/', views.place_detail, name='place'),
     path('events/', views.events_index, name='events'),

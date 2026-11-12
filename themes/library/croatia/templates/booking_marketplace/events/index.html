@@ -1,11 +1,12 @@
 {% extends "storefront/base.html" %}
-{% load seo %}{% load i18n %}
+{% load seo %}{% load i18n %}{% load breadcrumbs %}
 {% comment %}Events calendar — gradient hero + category filter + month-grouped
 cards. Grouped by month rather than date because most Montenegro fixtures are
 annual and announce exact dates only weeks ahead (see the Event model).
 The ItemList is the head document's (the view's `jsonld_items`).{% endcomment %}
 {% block content %}
 <section class="relative bg-gradient-to-br from-primary/10 via-background to-background py-16 md:py-24">
+  <div class="container mx-auto px-4">{% breadcrumb_trail %}</div>
   <div class="container mx-auto px-4 text-center">
     <div class="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-medium mb-4">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>

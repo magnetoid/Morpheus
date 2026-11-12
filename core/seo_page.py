@@ -54,6 +54,11 @@ class SeoPage:
     # a matter of luck.
     rendered: Any = None
     path: str = ''
+    # The page's canonical when its owner knows a better address than the request's
+    # (v0.161.0): `/bookings/?region=kotor` is the Kotor page, `/regions/kotor/`. A
+    # path or an absolute url on the store's own host; a view hands it over as the
+    # `seo_canonical` context key. A merchant's own canonical still wins.
+    canonical: str = ''
     title: str = ''  # CLEAN page name — the brand is applied at render (ADR 0007)
     description: str = ''
     image: str = ''

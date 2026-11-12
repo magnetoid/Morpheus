@@ -23,6 +23,9 @@ Four rules run through all of it:
   an indexable canonical), no prev/next, no graph, and a canonical only when it
   is the page itself. `noindex` beside a canonical naming a different URL is two
   claims about two URLs, and the noindex can travel to the target.
+* **A duplicate declares nothing of its own.** A page whose canonical names
+  another path (its owner's `SeoPage.canonical`, a merchant override) gets no
+  hreflang, prev/next or graph either: those describe the canonical page.
 """
 
 from __future__ import annotations
@@ -81,11 +84,19 @@ def build_document(doc, *, request=None, context=None):
     _section(_apply_site_links, doc, request)
     # Decided by `_apply_canonical_and_robots` above (blocked parameters, the
     # merchant's robots, thin content), so the gate reads it afterwards.
-    if not page.noindex:
+    # A page canonicalised onto another path is a duplicate of that page: it
+    # declares no alternates, prev/next or graph of its own (the graph's `@id`s
+    # would be the other page's, with this page's trail and items in them).
+    if not page.noindex and _canonical_is_here(doc, request):
         _section(_apply_alternates, doc, page, request)
         _section(_apply_pagination, doc, page, request)
         _section(_apply_graph, doc, page, request)
     return doc
+
+
+def _canonical_is_here(doc, request) -> bool:
+    canonical = doc.link_href('canonical')
+    return not canonical or _same_path(canonical, request)
 
 
 def _section(func, *args) -> None:
@@ -155,6 +166,9 @@ def _apply_title_and_description(doc, page: SeoPage, meta) -> None:
 
 def _apply_canonical_and_robots(doc, page: SeoPage, meta, request) -> None:
     canonical, blocked_params = canonical_for(request, page.page_obj)
+    owned = _owner_canonical(page.canonical, request)
+    if owned:
+        canonical = owned  # the page's owner names its better address
     if meta.canonical_url:
         canonical = meta.canonical_url  # an explicit merchant override wins
     if canonical:
@@ -190,6 +204,26 @@ def _apply_canonical_and_robots(doc, page: SeoPage, meta, request) -> None:
         # `/products/?q=x` canonicalised to `/products/` — "this search result
         # is the catalogue" beside "do not index me". Say nothing instead.
         doc.remove('link:canonical')
+
+
+def _owner_canonical(value: str, request) -> str:
+    """A page's own canonical (`SeoPage.canonical`) as an absolute url, or ''.
+
+    A path, or an absolute http(s) url on the host being served: anything else would
+    hand this page's ranking to another site, so it is ignored.
+    """
+    value = (value or '').strip()
+    if not value or request is None:
+        return ''
+    try:
+        if value.startswith('/') and not value.startswith('//'):
+            return request.build_absolute_uri(value)
+        parts = urlsplit(value)
+        if parts.scheme in ('http', 'https') and parts.netloc == request.get_host():
+            return value
+    except Exception:  # noqa: BLE001
+        return ''
+    return ''
 
 
 def _apply_error_head(doc, page: SeoPage) -> None:

@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}
+{% load morph %}{% load breadcrumbs %}
 {% load seo %}
 {% load caching %}
 {% load i18n %}
@@ -11,9 +11,6 @@ grid. The category's own description (Products → Categories) is the lede.{% en
   {% seo_collection_jsonld items=collection_items name=category.name description=category.description %}
 <style>
   .plp-head { padding: clamp(2.5rem, 5vw, 3.5rem) 0 clamp(1.5rem, 3vw, 2.5rem); }
-  .plp-crumbs { font: 400 .8125rem var(--mono); color: var(--ink2); margin: 0 0 .75rem; }
-  .plp-crumbs a { color: var(--ink2); }
-  .plp-crumbs span[aria-hidden] { margin: 0 .4rem; }
   .plp-title { display: grid; gap: 1rem; align-items: end; }
   @media (min-width: 900px) { .plp-title { grid-template-columns: minmax(0, 1fr) minmax(0, 26rem); } .plp-title .plp-aside { text-align: right; } .plp-title .lede { margin-left: auto; } }
   .plp-title h1 { font-size: clamp(2.6rem, 6vw, 4.5rem); letter-spacing: -.04em; }
@@ -41,11 +38,7 @@ grid. The category's own description (Products → Categories) is the lede.{% en
 {% block content %}
 <section class="plp-head">
   <div class="wrap">
-    <nav aria-label="{% translate 'Breadcrumb' %}" class="plp-crumbs">
-      {% for item in breadcrumb_items %}
-        {% if forloop.last %}<span aria-current="page">{{ item.name }}</span>{% else %}<a href="{{ item.url }}">{{ item.name }}</a><span aria-hidden="true">/</span>{% endif %}
-      {% endfor %}
-    </nav>
+    {% breadcrumb_trail %}
     <div class="plp-title">
       <h1 class="display">{{ category.name }}</h1>
       <div class="plp-aside">

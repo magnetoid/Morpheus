@@ -34,6 +34,7 @@ _LISTINGS = {
     'shop': 'shop',
     'regions': 'regions',
     'region': 'region',
+    'region_category': 'region_category',
     'places': 'places',
     'events': 'events',
     'stays': 'stays',

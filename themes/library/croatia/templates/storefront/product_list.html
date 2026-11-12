@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load i18n %}{% load seo %}{% load tracking %}{% load booking_tags %}
+{% load morph %}{% load breadcrumbs %}{% load i18n %}{% load seo %}{% load tracking %}{% load booking_tags %}
 {% comment %}1:1 Adriatic port of pages/Shop.tsx — product grid with search + filters.
 Keeps every context var + GET form/URL from the original storefront PLP view
 (catalog.product_list): products, categories, facets, available_authors,
@@ -21,16 +21,7 @@ Branches on booking_listing_mode (prices hidden / no cart in listing mode).
 <main class="container mx-auto px-4 py-8">
 
   <!-- Breadcrumb -->
-  <nav aria-label="{% trans 'Breadcrumb' %}" class="flex flex-wrap items-center gap-1.5 text-sm mb-6">
-    {% for item in breadcrumb_items %}
-      {% if forloop.last %}
-        <span class="text-foreground font-medium" aria-current="page">{{ item.name }}</span>
-      {% else %}
-        <a href="{{ item.url }}" class="text-muted-foreground hover:text-foreground transition-colors">{{ item.name }}</a>
-        <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-      {% endif %}
-    {% endfor %}
-  </nav>
+  {% breadcrumb_trail %}
 
   <!-- Title -->
   <div class="flex items-center gap-3 mb-6">

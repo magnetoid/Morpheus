@@ -4810,3 +4810,13 @@ msgstr "Čeka uplatu"
 
 msgid "Being prepared"
 msgstr "U pripremi"
+
+#, python-format
+msgid "%(category)s in %(region)s"
+msgstr "%(category)s — %(region)s"
+
+msgid "Experiences by activity"
+msgstr "Doživljaji po aktivnosti"
+
+msgid "Upcoming events"
+msgstr "Predstojeći događaji"

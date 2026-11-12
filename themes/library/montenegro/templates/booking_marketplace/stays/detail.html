@@ -1,16 +1,10 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load i18n %}{% load l10n %}{% load booking_tags %}{% load seo %}
+{% load morph %}{% load i18n %}{% load breadcrumbs %}{% load l10n %}{% load booking_tags %}{% load seo %}
 {% block content %}
 {% booking_listing_mode as listing_mode %}
 {% booking_enquiry_only as enquiry_only %}
 <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-  <nav aria-label="{% trans 'Breadcrumb' %}" class="flex items-center gap-1.5 text-sm mb-4">
-    <a href="/" class="text-muted-foreground hover:text-foreground">{% trans "Home" %}</a>
-    <span class="text-muted-foreground">/</span>
-    <a href="/hotels/" class="text-muted-foreground hover:text-foreground">{% trans "Hotels" %}</a>
-    <span class="text-muted-foreground">/</span>
-    <span class="text-foreground font-medium truncate max-w-[220px]">{{ property.name }}</span>
-  </nav>
+  {% breadcrumb_trail %}
 
   <div class="mb-6">
     {% if property.star_rating %}<div class="flex items-center gap-0.5 text-primary text-sm mb-1">{% for _ in ""|center:property.star_rating %}★{% endfor %}</div>{% endif %}

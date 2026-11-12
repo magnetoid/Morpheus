@@ -1,10 +1,11 @@
 {% extends "storefront/base.html" %}
-{% load seo %}{% load i18n %}
+{% load seo %}{% load i18n %}{% load breadcrumbs %}
 {% comment %}Places index — gradient hero + type filter + region-grouped card
 sections (richer cards with type badge + good_for pills). The CollectionPage
 ItemList is the head document's (the view's `jsonld_items`).{% endcomment %}
 {% block content %}
 <section class="relative bg-gradient-to-br from-primary/10 via-background to-background py-16 md:py-24">
+  <div class="container mx-auto px-4">{% breadcrumb_trail %}</div>
   <div class="container mx-auto px-4 text-center">
     <div class="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-medium mb-4">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>

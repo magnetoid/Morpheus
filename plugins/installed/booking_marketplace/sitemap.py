@@ -11,7 +11,8 @@ A list page is listed only when it has something on it — an empty one answers
 200 with "nothing here", a soft 404 the sitemap would be inviting crawlers to.
 The rows obey the same rule as the detail views: an inactive host's listings
 404, so they are never here either. `/shop/` and the region pages were missing
-altogether, although the nav links both.
+altogether, although the nav links both. A region × category page
+(`/regions/<key>/<category>/`, v0.161.0) is listed when an experience is on it.
 
 None of the models here carry an `updated_at` field (only `created_at`), so
 every contributed entry's `lastmod` is `None` — nothing to report.
@@ -77,6 +78,13 @@ def contribute_sitemap_urls(value, **kwargs):
         add('/regions/')
     for region in sorted(stocked_regions):
         add(f'/regions/{region}/', priority='0.6')
+    # Each region × category landing page with a live experience on it, never an
+    # empty one (landing.category_counts counts what the page lists).
+    from plugins.installed.booking_marketplace.landing import category_counts
+
+    for region, rows in sorted(category_counts().items()):
+        for category, _count in rows:
+            add(f'/regions/{region}/{category.slug}/', priority='0.5')
 
     for svc in live.only('slug'):
         add(f'/bookings/{svc.slug}/')

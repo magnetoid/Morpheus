@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load i18n %}{% load booking_tags %}{% load seo %}
+{% load morph %}{% load i18n %}{% load breadcrumbs %}{% load booking_tags %}{% load seo %}
 {% comment %}Head (title, ItemList, breadcrumbs) and the FAQPage node come from the
 head document; the planning questions below are the view's `page_faqs`, so the
 page and its markup say the same thing. The hand-written FAQPage this template
@@ -7,6 +7,7 @@ used to carry asked differently worded questions than the ones shown.{% endcomme
 {% block content %}
 {% booking_listing_mode as listing_mode %}
 <div class="container mx-auto px-4 py-8">
+  {% breadcrumb_trail %}
   <h1 class="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{% trans "Where to stay in Montenegro" %}</h1>
   <p class="text-muted-foreground mb-6">{% trans "Hand-picked hotels, resorts and apartments across the coast and mountains." %}</p>
 

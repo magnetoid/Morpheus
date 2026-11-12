@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}
+{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}{% load breadcrumbs %}
 
 {% block extra_head %}
 {# No <link rel=preload> of the raw original — the hero renders through the responsive proxy. #}
@@ -274,15 +274,7 @@ stays discoverable via its own embed block + the sitemap.{% endcomment %}
 {% block content %}
 <section style="padding: 2.5rem 0 5rem;">
   <div class="wrap">
-    <p class="meta" style="margin-bottom: 1.25rem;">
-      <a href="/" style="color: var(--muted);">Home</a>
-      <span style="margin: 0 0.5rem;">/</span>
-      <a href="/products/" style="color: var(--muted);">Shop</a>
-      {% if product.category %}
-      <span style="margin: 0 0.5rem;">/</span>
-      <a href="/category/{{ product.category.slug }}/" style="color: var(--muted);">{{ product.category.name }}</a>
-      {% endif %}
-    </p>
+    {% breadcrumb_trail %}
 
     <div style="display:grid; gap: 3.5rem; grid-template-columns: 1fr;" class="pdp-grid">
       <!-- Cover hero — PDP slider (Phase 1 of docs/plans/product-slider.md).
