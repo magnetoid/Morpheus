@@ -14,6 +14,9 @@ from django.core.exceptions import ValidationError
 
 from morpheus.core import ToolError, ToolResult, tool
 
+# ProductMarketPrice.price is a MoneyField(14, 2): twelve digits before the point.
+MAX_FIXED_PRICE = Decimal(10) ** 12
+
 
 def _row(m) -> dict:
     return {
@@ -163,7 +166,8 @@ _FIELDS = {
     description=(
         'Create a market, or change the one with that code. Only the fields you give change. '
         'A market in another currency can be switched on only once that currency has an '
-        'exchange rate (markets.set_rate or markets.refresh_rates). Affects prices shoppers '
+        "exchange rate (markets.set_rate or markets.refresh_rates). Changing a market's currency "
+        'removes the prices fixed for its products. Affects prices shoppers '
         'will see once markets go live.'
     ),
     scopes=['markets.write'],
@@ -179,7 +183,10 @@ _FIELDS = {
 )
 def markets_save_tool(*, code: str, **fields) -> ToolResult:
     from plugins.installed.markets.models import Market  # noqa: PLC0415
-    from plugins.installed.markets.services import save_market  # noqa: PLC0415
+    from plugins.installed.markets.services import (  # noqa: PLC0415
+        removed_prices_note,
+        save_market,
+    )
 
     code = (code or '').strip().lower()
     market = Market.objects.filter(code=code).first()
@@ -190,8 +197,15 @@ def markets_save_tool(*, code: str, **fields) -> ToolResult:
     except ValidationError as e:
         raise ToolError(_text(e)) from e
     return ToolResult(
-        output={'market': _row(saved), 'created': market is None},
-        display=f'{"Created" if market is None else "Updated"} market {saved.label}',
+        output={
+            'market': _row(saved),
+            'created': market is None,
+            'removed_fixed_prices': saved.removed_fixed_prices,
+        },
+        display=(
+            f'{"Created" if market is None else "Updated"} market {saved.label}. '
+            f'{removed_prices_note(saved)}'
+        ).strip(),
     )
 
 
@@ -268,6 +282,8 @@ def markets_set_product_price_tool(
     if not value.is_finite() or quantize(value, currency) <= 0:
         raise ToolError('The price must be more than zero.')
     price = Money(quantize(value, currency), currency)
+    if price.amount >= MAX_FIXED_PRICE:
+        raise ToolError('The price must be less than 1,000,000,000,000.')
     ProductMarketPrice.objects.update_or_create(
         market=market, product=item, defaults={'price': price, 'is_visible': True}
     )
@@ -311,6 +327,7 @@ def markets_set_rate_tool(*, currency: str, rate=None, clear: bool = False) -> T
         'set': f'Set {code} to {value}',
         'daily': f'Removed your rate for {code}; the daily rate applies again',
         'cleared': f'Removed your rate for {code}; no market uses it, so there is no rate for it now',
+        'none': f'There was no rate of yours for {code} to remove',
     }[outcome]
     return ToolResult(
         output={'currency': code, 'rate': None if value is None else str(value), 'result': outcome},

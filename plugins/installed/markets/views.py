@@ -18,7 +18,7 @@ from morpheus.app.views import staff_member_required
 from plugins.installed.markets import rates
 from plugins.installed.markets.models import Market
 from plugins.installed.markets.pricing import preview
-from plugins.installed.markets.services import delete_market, save_market
+from plugins.installed.markets.services import delete_market, removed_prices_note, save_market
 from plugins.installed.markets.tasks import rate_source
 
 logger = logging.getLogger('morpheus.markets.views')
@@ -104,7 +104,9 @@ def market_form(request: HttpRequest, market_id=None) -> HttpResponse:
                 )
             messages.error(request, text)
         else:
-            messages.success(request, f'Saved market "{saved.label}".')
+            messages.success(
+                request, f'Saved market "{saved.label}". {removed_prices_note(saved)}'.strip()
+            )
             return redirect('markets:edit', market_id=saved.pk)
 
     values = posted or {
@@ -165,13 +167,16 @@ def rate(request: HttpRequest, market_id) -> HttpResponse:
             messages.success(request, f'Saved your rate for {currency}.')
         else:
             outcome = rates.set_manual_rate(currency, None)
-            messages.success(
-                request,
-                f'Removed your rate for {currency}; the daily rate applies again.'
-                if outcome == 'daily'
-                else f'Removed your rate for {currency}. No active market uses it, '
-                'so there is no rate for it now.',
-            )
+            if outcome == 'none':
+                messages.info(request, f'There was no rate of yours for {currency} to remove.')
+            else:
+                messages.success(
+                    request,
+                    f'Removed your rate for {currency}; the daily rate applies again.'
+                    if outcome == 'daily'
+                    else f'Removed your rate for {currency}. No active market uses it, '
+                    'so there is no rate for it now.',
+                )
     except ValidationError as e:
         messages.error(request, ' '.join(e.messages))
     return redirect('markets:edit', market_id=market.pk)

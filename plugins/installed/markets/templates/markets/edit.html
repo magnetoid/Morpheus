@@ -149,7 +149,7 @@
       {% endif %}
     </div>
     <p class="text-xs text-[color:var(--text-muted)]">
-      How many {{ rate.currency }} one {{ store_currency }} buys. {% if rates_by_hand %}Rates are typed by hand in this store, so none are fetched.{% else %}A rate you enter is never replaced by the daily fetch. Leave the box empty and save to remove it: the European Central Bank's rate takes its place, and if it publishes none for {{ rate.currency }} your rate stays while a market uses it.{% endif %}
+      How many {{ rate.currency }} one {{ store_currency }} buys. {% if rates_by_hand %}Rates are typed by hand in this store, so none are fetched.{% else %}The European Central Bank's daily rates are fetched while an active market uses a currency other than {{ store_currency }}. A rate you enter is never replaced by the daily fetch. Leave the box empty and save to remove it: the European Central Bank's rate takes its place, and if it publishes none for {{ rate.currency }} your rate stays while a market uses it.{% endif %}
     </p>
     {% endif %}
   </div>

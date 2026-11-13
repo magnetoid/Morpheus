@@ -10,11 +10,14 @@ logger = logging.getLogger('morpheus.markets')
 
 
 def rate_source() -> str:
-    """The merchant's choice, read fresh (a plugin config cache is per-process)."""
+    """The merchant's choice, read fresh (a plugin config cache is per-process, and a
+    worker would keep the first value it read)."""
     try:
         from plugins.registry import app_registry
 
-        return str(app_registry.get('markets').get_config_value('rate_source', 'ecb'))
+        plugin = app_registry.get('markets')
+        plugin.invalidate_config_cache()
+        return str(plugin.get_config_value('rate_source', 'ecb'))
     except Exception:  # noqa: BLE001 — a config problem must not stop the fetch
         return 'ecb'
 

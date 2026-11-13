@@ -12,6 +12,7 @@ from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 logger = logging.getLogger('morpheus.markets')
@@ -19,9 +20,11 @@ logger = logging.getLogger('morpheus.markets')
 ECB_URL = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
 STALE_AFTER = timedelta(days=3)
 _EIGHT = Decimal('0.00000001')
+# ExchangeRate.rate is Decimal(18, 8).
+MAX_RATE = Decimal(1_000_000_000)
 
 
-def fetch_ecb() -> dict:
+def fetch_ecb() -> dict:  # noqa: PLR0912
     """Read the ECB's daily table and store a rate per currency against the store's.
 
     Raises on an HTTP or parse failure. Returns
@@ -55,24 +58,28 @@ def fetch_ecb() -> dict:
         raise ValueError(f'The ECB does not list {store}, the store currency.')
     eur_to_store = per_eur[store]
 
-    manual = set(
-        ExchangeRate.objects.filter(base_currency=store, source='manual').values_list(
-            'quote_currency', flat=True
-        )
-    )
     written, kept = 0, []
+    now = timezone.now()
     for code, per in sorted(per_eur.items()):
         if code == store:
             continue
-        if code in manual:
+        rate = (per / eur_to_store).quantize(_EIGHT)
+        # A manual row is never overwritten, even one saved while this ran.
+        pair = ExchangeRate.objects.filter(base_currency=store, quote_currency=code)
+        if pair.exclude(source='manual').update(rate=rate, source='ecb', fetched_at=now):
+            written += 1
+        elif pair.exists():
             kept.append(code)
-            continue
-        ExchangeRate.objects.update_or_create(
-            base_currency=store,
-            quote_currency=code,
-            defaults={'rate': (per / eur_to_store).quantize(_EIGHT), 'source': 'ecb'},
-        )
-        written += 1
+        else:
+            try:
+                with transaction.atomic():
+                    ExchangeRate.objects.create(
+                        base_currency=store, quote_currency=code, rate=rate, source='ecb'
+                    )
+                written += 1
+            except IntegrityError:  # someone saved this pair meanwhile
+                if pair.filter(source='manual').exists():
+                    kept.append(code)
     return {'written': written, 'kept_manual': kept, 'date': date}
 
 
@@ -81,16 +88,17 @@ def parse_decimal(raw) -> Decimal:
     return Decimal(str(raw).strip().replace(',', '.'))
 
 
-def set_manual_rate(currency: str, rate: Decimal | None) -> str:
+def set_manual_rate(currency: str, rate: Decimal | None) -> str:  # noqa: PLR0912
     """Fix the rate for ``store currency -> currency``; ``None`` removes the manual row.
 
-    Returns what happened: ``'set'``, ``'cleared'`` (nothing else replaces it, and
-    no active market needs it) or ``'daily'`` (the ECB's rate took its place).
+    Returns what happened: ``'set'``; ``'none'`` (removal asked, but you had no
+    rate of your own for it); ``'daily'`` (removed, and a rate still resolves,
+    normally the ECB's); ``'cleared'`` (removed, and no active market needs one).
     There is one row per pair, so removing yours leaves nothing until the ECB's
-    is fetched; if an active market needs the currency and no daily rate can be
-    had, the removal is refused and your rate stays.
+    is fetched; if an active market needs the currency and no rate can be had,
+    your rate is put back and the removal refused.
     """
-    from django.db import transaction
+    from babel.numbers import list_currencies
 
     from core.models import ExchangeRate
     from core.pricing import exchange_rate, store_currency
@@ -99,13 +107,17 @@ def set_manual_rate(currency: str, rate: Decimal | None) -> str:
     currency, store = (currency or '').upper(), store_currency()
     if len(currency) != 3 or currency == store:
         raise ValidationError(f'Enter a currency other than {store}.')
+    if currency not in list_currencies():
+        raise ValidationError(f'"{currency}" is not a currency code (use three letters, like EUR).')
     if rate is not None:
         try:
             rate = Decimal(str(rate))
         except InvalidOperation:
             raise ValidationError('The rate must be a number.') from None
-        if not rate.is_finite() or rate <= 0:
+        if not rate.is_finite() or rate.quantize(_EIGHT) <= 0:
             raise ValidationError('The rate must be more than zero.')
+        if rate > MAX_RATE:
+            raise ValidationError('The rate must be 1,000,000,000 or less.')
         ExchangeRate.objects.update_or_create(
             base_currency=store,
             quote_currency=currency,
@@ -113,28 +125,40 @@ def set_manual_rate(currency: str, rate: Decimal | None) -> str:
         )
         return 'set'
 
-    with transaction.atomic():
-        ExchangeRate.objects.filter(
-            base_currency=store, quote_currency=currency, source='manual'
-        ).delete()
-        if currency not in foreign_currencies() or exchange_rate(store, currency) is not None:
-            return 'cleared'
+    manual = ExchangeRate.objects.filter(
+        base_currency=store, quote_currency=currency, source='manual'
+    ).first()
+    if manual is None:
+        return 'none'
+    remembered = manual.rate
+    manual.delete()
+    if exchange_rate(store, currency) is not None:
+        return 'daily'
+    if currency not in foreign_currencies():
+        return 'cleared'
+    # An active market needs a rate and none resolves: try the ECB, outside any
+    # transaction (the request can take 20 s and must not hold a row).
+    if rate_source() == 'manual':
+        why = 'rates are set by hand in this store'
+    else:
         why = ''
-        if rate_source() == 'manual':
-            why = 'rates are set by hand in this store'
-        else:
-            try:
-                fetch_ecb()
-            except Exception:  # noqa: BLE001 — told to the merchant below
-                logger.warning('rate fetch after clearing %s failed', currency, exc_info=True)
-                why = 'the daily rates could not be fetched just now'
-        if exchange_rate(store, currency) is not None:
-            return 'daily'
-        why = why or f'the European Central Bank does not publish {currency}'
-        raise ValidationError(
-            f'Your rate stays: switch the {currency} market off first, or type another rate. '
-            f'There is no daily rate for {currency} to fall back on ({why}).'
-        )
+        try:
+            fetch_ecb()
+        except Exception:  # noqa: BLE001 — told to the merchant below
+            logger.warning('rate fetch after clearing %s failed', currency, exc_info=True)
+            why = 'the daily rates could not be fetched just now'
+    if exchange_rate(store, currency) is not None:
+        return 'daily'
+    ExchangeRate.objects.update_or_create(
+        base_currency=store,
+        quote_currency=currency,
+        defaults={'rate': remembered, 'source': 'manual'},
+    )
+    why = why or f'the European Central Bank does not publish {currency}'
+    raise ValidationError(
+        f'Your rate stays: switch the {currency} market off first, or type another rate. '
+        f'There is no daily rate for {currency} to fall back on ({why}).'
+    )
 
 
 def foreign_currencies() -> list[str]:

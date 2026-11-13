@@ -35,6 +35,14 @@ def _typed_price(prices, currency: str) -> Decimal | None:
 def _round(amount: Decimal, currency: str, rounding: str) -> Decimal:
     if amount <= 0:
         return quantize(amount, currency)
+    # A positive price never rounds down to free: at least one minor unit.
+    return max(
+        _round_positive(amount, currency, rounding),
+        Decimal(1).scaleb(-get_currency_precision(currency)),
+    )
+
+
+def _round_positive(amount: Decimal, currency: str, rounding: str) -> Decimal:
     if rounding == 'whole':
         # Never let a cheap item round down to free.
         return max(amount.quantize(Decimal(1), rounding=ROUND_HALF_UP), Decimal(1))
@@ -65,7 +73,10 @@ def market_price(product, market, variant=None) -> Money | None:
 
     from plugins.installed.markets.models import ProductMarketPrice
 
-    fixed = ProductMarketPrice.objects.filter(market=market, product=product).first()
+    # A fixed price counts only in the currency it was entered in.
+    fixed = ProductMarketPrice.objects.filter(
+        market=market, product=product, price_currency=currency
+    ).first()
     if fixed is not None:
         return apply_price_filter(
             Money(fixed.price.amount, currency), product=product, customer=None

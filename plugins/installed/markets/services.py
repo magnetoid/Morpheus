@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal, InvalidOperation
-from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_slug
@@ -54,45 +53,6 @@ def resolve_market(request) -> Market | None:  # noqa: F821
                 return m
 
     return Market.objects.filter(is_active=True, is_default=True).first()
-
-
-def price_for(*, product, market) -> Any:  # noqa: PLR0911
-    """Return the Money price of `product` in `market`.
-
-    Resolution order:
-      1. ProductMarketPrice override row, if one exists for this pair.
-      2. Channel base price * (1 + market.base_price_adjustment_pct/100).
-      3. Bare `product.price` (currency unchanged) if no market.
-    """
-    if market is None:
-        return getattr(product, 'price', None)
-    try:
-        from djmoney.money import Money
-
-        from plugins.installed.markets.models import ProductMarketPrice
-
-        override = ProductMarketPrice.objects.filter(
-            product=product,
-            market=market,
-            is_visible=True,
-        ).first()
-        if override is not None:
-            return override.price
-        base = getattr(product, 'price', None)
-        if base is None:
-            return None
-        adj = market.base_price_adjustment_pct or Decimal('0')
-        if adj == 0:
-            # Re-quote in market currency without changing amount.
-            if str(base.currency) != market.currency:
-                return Money(base.amount, market.currency)
-            return base
-        amount = Decimal(base.amount) * (Decimal('100') + Decimal(adj)) / Decimal('100')
-        amount = amount.quantize(Decimal('0.01'))
-        return Money(amount, market.currency)
-    except Exception as e:  # noqa: BLE001
-        logger.debug('price_for failed: %s', e)
-        return getattr(product, 'price', None)
 
 
 def market_context(request) -> dict:
@@ -176,6 +136,8 @@ def channel_pk(request) -> str:
 # ── The one write path for a market (dashboard form and Linda) ───────────────
 
 ROUNDINGS = ('exact', 'whole', 'ninety_nine')
+# Territories Babel lists that are not countries (Kosovo, XK, is one in practice).
+_NOT_COUNTRIES = frozenset({'ZZ', 'EU', 'EZ', 'UN', 'QO', 'XA', 'XB'})
 
 
 def _countries(raw) -> list[str]:
@@ -189,7 +151,7 @@ def _countries(raw) -> list[str]:
         code = str(item).strip().upper()
         if not code:
             continue
-        if len(code) != 2 or not code.isalpha() or code == 'ZZ' or code not in known:
+        if len(code) != 2 or not code.isalpha() or code in _NOT_COUNTRIES or code not in known:
             raise ValidationError(f'"{item}" is not a country code (use two letters, like US).')
         if code not in out:
             out.append(code)
@@ -198,6 +160,10 @@ def _countries(raw) -> list[str]:
 
 def save_market(data: dict, market=None):  # noqa: PLR0912, PLR0915
     """Create a market, or update ``market``, from plain values.
+
+    When an existing market changes currency, its fixed product prices (typed in
+    the old one) are removed; the count is on ``market.removed_fixed_prices``
+    (``removed_prices_note`` words it).
 
     A key missing from ``data`` keeps the market's current value (a new market
     takes the model's defaults). Raises ``ValidationError`` with a sentence a
@@ -276,17 +242,37 @@ def save_market(data: dict, market=None):  # noqa: PLR0912, PLR0915
         'is_active': is_active,
         'is_default': is_default,
     }
+    removed, old_currency = 0, ''
     with transaction.atomic():
         if market is None:
             market = Market.objects.create(**values)
         else:
+            old_currency = (market.currency or '').upper()
+            if old_currency != currency:
+                # A fixed price was typed in the old currency; it means nothing in the new.
+                removed = market.product_prices.count()
+                market.product_prices.all().delete()
             for key, value in values.items():
                 setattr(market, key, value)
             market.save()
         # Only one default at a time.
         if is_default:
             Market.objects.exclude(pk=market.pk).update(is_default=False)
+    # What a currency change took with it, for the caller to tell the merchant.
+    market.removed_fixed_prices = removed
+    market.removed_fixed_currency = old_currency if removed else ''
     return market
+
+
+def removed_prices_note(market) -> str:
+    """One sentence about fixed prices a currency change removed, or ''."""
+    n = getattr(market, 'removed_fixed_prices', 0)
+    if not n:
+        return ''
+    return (
+        f'Removed {n} fixed price{"s" if n != 1 else ""} in {market.removed_fixed_currency}, '
+        f'since the market now uses {market.currency}.'
+    )
 
 
 def delete_market(market) -> None:
