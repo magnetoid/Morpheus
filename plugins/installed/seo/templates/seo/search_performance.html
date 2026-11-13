@@ -1,0 +1,162 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph %}
+{% block title %}Search performance · SEO{% endblock %}
+
+{% block content %}
+<div class="space-y-5" data-search-performance>
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight">Search performance</h1>
+      <p class="text-sm text-[color:var(--text-muted)]">
+        Google's clicks, impressions and positions for this store, from Search Console.
+      </p>
+    </div>
+    {% if key_state == 'ok' %}
+    <div class="flex flex-wrap items-center gap-2">
+      <nav class="flex flex-wrap gap-2" aria-label="Period">
+        {% for d, label in periods %}
+        <a href="?days={{ d }}&amp;by={{ by }}"
+           class="btn text-xs {% if d == days %}btn-primary{% else %}btn-secondary{% endif %}"
+           {% if d == days %}aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
+      </nav>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="pull">
+        <button type="submit" class="btn btn-ghost text-xs">Fetch now</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if key_state != 'ok' %}
+  <div class="card card-padded" data-search-console-connect>
+    <h3 class="font-semibold mb-3">Connect Search Console</h3>
+    {% if key_state == 'invalid' %}
+    <p class="text-sm mb-3">The key on Settings → SEO is not a service account's JSON key. Paste the whole file again.</p>
+    {% endif %}
+    <ol class="text-sm space-y-2" style="padding-left:1.2rem;list-style:decimal;">
+      <li>In Google Cloud, create a service account (IAM &amp; Admin → Service accounts) and add a key of type JSON. The file downloads.</li>
+      <li>In the same project, turn on the Google Search Console API.</li>
+      <li>In Search Console, open this store's property, then Settings → Users and permissions → Add user: the service account's email, with Full permission (a restricted user cannot inspect pages). The store only ever asks Google for read access.</li>
+      <li>Paste the whole JSON file into “Search Console service-account key” on <a href="/dashboard/settings/seo/#f-search_console_key" class="underline">Settings → SEO</a>. The numbers arrive overnight, or at once with Fetch now.</li>
+    </ol>
+  </div>
+  {% else %}
+
+  <p class="text-xs text-[color:var(--text-muted)]">
+    Reading as {{ account_email }}{% if last_pull.property %} from {{ last_pull.property }}{% endif %}.
+    {% if last_pull %}
+      {% if last_pull.ok %}Last fetched {{ last_pull.at|slice:":10" }}: {{ last_pull.start }} to {{ last_pull.end }}.
+      {% else %}<strong>The last fetch failed:</strong> {{ last_pull.detail }}{% endif %}
+    {% else %}Nothing fetched yet.{% endif %}
+    {% if domain_property %}The totals and queries are the whole domain's, so they count any other subdomain of it too; Pages lists this store's pages only.{% endif %}
+  </p>
+
+  {% if report.has_data %}
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Clicks</span>
+      <span class="kpi__value">{{ report.totals.clicks }}</span>
+      <span class="text-xs text-[color:var(--text-muted)]">{{ report.before.clicks }} the {{ days }} days before</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Impressions</span>
+      <span class="kpi__value">{{ report.totals.impressions }}</span>
+      <span class="text-xs text-[color:var(--text-muted)]">{{ report.before.impressions }} the {{ days }} days before</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Click-through rate</span>
+      <span class="kpi__value">{{ report.totals.ctr }}%</span>
+      <span class="text-xs text-[color:var(--text-muted)]">{{ report.before.ctr }}% the {{ days }} days before</span>
+    </div>
+    <div class="card card-padded kpi">
+      <span class="kpi__label">Average position</span>
+      <span class="kpi__value">{{ report.totals.position|default:"—" }}</span>
+      <span class="text-xs text-[color:var(--text-muted)]">{{ report.before.position|default:"—" }} the {{ days }} days before</span>
+    </div>
+  </div>
+
+  <div class="card card-padded" data-search-performance-rows>
+    <nav class="flex flex-wrap gap-2 mb-4" aria-label="Show">
+      <a href="?days={{ days }}&amp;by=query" class="btn text-xs {% if by == 'query' %}btn-primary{% else %}btn-ghost{% endif %}"
+         {% if by == 'query' %}aria-current="page"{% endif %}>Queries</a>
+      <a href="?days={{ days }}&amp;by=page" class="btn text-xs {% if by == 'page' %}btn-primary{% else %}btn-ghost{% endif %}"
+         {% if by == 'page' %}aria-current="page"{% endif %}>Pages</a>
+    </nav>
+    {% if report.rows %}
+    <div class="overflow-x-auto">
+      <table class="morph-table">
+        <thead>
+          <tr>
+            <th>{% if by == 'page' %}Page{% else %}Query{% endif %}</th>
+            <th class="text-right">Clicks</th>
+            <th class="text-right">Impressions</th>
+            <th class="text-right">CTR</th>
+            <th class="text-right">Position</th>
+            {% if by == 'page' %}
+            <th class="text-right">Visits from Google</th>
+            <th class="text-right">Orders</th>
+            <th class="text-right">Sales</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in report.rows %}
+          <tr>
+            <td>{% if by == 'page' %}<code style="font-size:.85rem;">{{ r.key }}</code>{% else %}{{ r.key }}{% endif %}</td>
+            <td class="text-right">{{ r.clicks }}</td>
+            <td class="text-right">{{ r.impressions }}</td>
+            <td class="text-right">{{ r.ctr }}%</td>
+            <td class="text-right">{{ r.position|default:"—" }}</td>
+            {% if by == 'page' %}
+            <td class="text-right">{{ r.visits }}</td>
+            <td class="text-right">{{ r.purchases }}</td>
+            <td class="text-right">{% if r.sales %}{{ r.sales|money }}{% else %}—{% endif %}</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-sm text-[color:var(--text-muted)]">Google showed the store for nothing in this period.</p>
+    {% endif %}
+  </div>
+  <p class="text-xs text-[color:var(--text-muted)]">
+    {{ report.start }} to {{ report.end }}. Google's numbers settle about two days later.
+    Google leaves rare searches out of the queries, so they add up to less than the clicks above.
+    {% if by == 'page' %}Visits, orders and sales are the store's own, for visits that started on the page from Google's results.{% endif %}
+  </p>
+  {% else %}
+  <div class="card card-padded"><p class="text-sm text-[color:var(--text-muted)]">No numbers from Google yet. They arrive overnight, or at once with Fetch now.</p></div>
+  {% endif %}
+
+  <div class="card card-padded" data-url-inspection>
+    <h3 class="font-semibold mb-3">How Google sees a page</h3>
+    <form method="post" class="flex flex-wrap items-end gap-2 mb-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="inspect">
+      <label class="text-sm" style="flex:1 1 18rem;">Page
+        <input type="text" name="url" value="{{ inspect_url }}" placeholder="/products/example/" class="input" required>
+      </label>
+      <button type="submit" class="btn btn-secondary">Inspect</button>
+    </form>
+    {% if inspect_error %}<p class="text-sm">{{ inspect_error }}</p>{% endif %}
+    {% if inspection %}
+    <dl class="text-sm" style="display:grid;grid-template-columns:max-content 1fr;gap:.35rem 1rem;">
+      <dt class="text-[color:var(--text-muted)]">Page</dt><dd><code style="font-size:.85rem;">{{ inspection.url }}</code></dd>
+      <dt class="text-[color:var(--text-muted)]">Verdict</dt><dd>{{ inspection.verdict|default:"—" }}</dd>
+      <dt class="text-[color:var(--text-muted)]">Coverage</dt><dd>{{ inspection.coverage|default:"—" }}</dd>
+      <dt class="text-[color:var(--text-muted)]">Indexing allowed</dt><dd>{{ inspection.indexing|default:"—" }}</dd>
+      <dt class="text-[color:var(--text-muted)]">robots.txt</dt><dd>{{ inspection.robots|default:"—" }}</dd>
+      <dt class="text-[color:var(--text-muted)]">Last fetch</dt><dd>{{ inspection.fetch|default:"—" }} {{ inspection.last_crawl }}</dd>
+      <dt class="text-[color:var(--text-muted)]">Google's canonical</dt><dd>{{ inspection.google_canonical|default:"—" }}</dd>
+      <dt class="text-[color:var(--text-muted)]">The page's canonical</dt><dd>{{ inspection.user_canonical|default:"—" }}</dd>
+    </dl>
+    {% if inspection.link %}<p class="text-sm mt-3"><a href="{{ inspection.link }}" class="underline" target="_blank" rel="noopener">Open in Search Console</a></p>{% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

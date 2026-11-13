@@ -1679,6 +1679,22 @@ for two years, and an untagged referral was no source at all. The beacon never w
 (`views._SERVER_KEYS`: `v`, `arr`, `src`, `order`, `results`): it used to copy any key it was sent, so a
 forged `v` added cookieless visitors. Guarded by `analytics/tests/test_traffic_sources.py`.
 
+**Convention — Google's numbers come from the store's Search Console property, read by a service
+account (v0.159.0).** The merchant pastes a service account's JSON key into seo's `search_console_key`
+(write-only) and adds its email as a user of the property. `seo/search_console.py` signs the token request
+itself and sends it only to Google's fixed token address, never to the key's `token_uri`, which an edited
+key could point anywhere. The nightly `seo.search_console_pull` fetches settled days (two days back): 90
+the first time, then the last week again, and keeps 16 months of `SearchConsoleRow`. Each day has a `total`
+row beside its query and page rows, because Google leaves rare searches out of the query rows, so they add
+up to less. A page row is one of the store's paths, as analytics files a landing page: www and the bare
+host, and every query string, are one row, and another host's pages are dropped (a domain property holds
+every subdomain). The totals and queries stay the property's, so a domain property's count its other
+subdomains, and the page says so. Tracked keywords take Google's impression-weighted position from the rows;
+nothing wrote `last_position` before. A page's visits and sales come from analytics through
+`LANDING_PAGE_TRAFFIC` (organic, google), so seo imports no analytics code. URL inspection accepts only the
+store's own host. A failed fetch keeps the stored rows, and its reason shows on Search performance and in
+`seo.search_performance`. Guarded by `seo/tests/test_search_console.py`.
+
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a
@@ -1710,7 +1726,10 @@ shared dashboard settings-panel renderer
 `format: password` property renders masked, is never pre-filled with the stored
 value, and a blank submit preserves the existing secret. Never echo a stored
 secret (API key, SSO client secret) back as cleartext; mark secret fields
-`format: password` (guarded by `test_settings_secret_masking.py`).
+`format: password` (guarded by `test_settings_secret_masking.py`). Linda's
+`settings.list` redacts the same fields, read from each app's schema, besides
+secret-sounding names at any depth: a key named `search_console_key` matched no
+name rule, and the MCP tokens sat inside a list (`core/assistant/tests/test_settings_list_redaction.py`).
 
 **Interim disable-safety (v0.45.0): every remaining shell→optional-plugin
 read is gated on `app_registry.is_active(<name>)`** — the ADR 0013 shape from

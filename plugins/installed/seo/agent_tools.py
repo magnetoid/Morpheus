@@ -450,3 +450,81 @@ def seo_regenerate_sitemap_tool() -> ToolResult:
             f'ping {"sent" if res.get("pinged") else "skipped"}.'
         ),
     )
+
+
+def _plain(value):
+    """A report value Linda can read as JSON (dates as text, money as amount and currency)."""
+    from datetime import date  # noqa: PLC0415
+
+    if isinstance(value, dict):
+        return {k: _plain(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_plain(v) for v in value]
+    if isinstance(value, date):
+        return value.isoformat()
+    if hasattr(value, 'amount') and hasattr(value, 'currency'):
+        return {'amount': str(value.amount), 'currency': str(value.currency)}
+    return value
+
+
+@tool(
+    name='seo.search_performance',
+    description=(
+        'Google search numbers from Search Console over the last N days Google has '
+        'settled: clicks, impressions, click-through rate and average position, against '
+        'the N days before, and the top queries or pages. A page row also carries the '
+        "visits Google's results sent to it and their net sales. The totals and queries "
+        "are the whole property's (a domain property's count its other subdomains too); "
+        "pages are this store's only. Says when Search Console is not connected."
+    ),
+    scopes=['seo.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'days': {'type': 'integer', 'minimum': 1, 'maximum': 486, 'default': 28},
+            'by': {'type': 'string', 'enum': ['query', 'page'], 'default': 'query'},
+            'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100, 'default': 25},
+        },
+    },
+)
+def search_performance_tool(*, days: int = 28, by: str = 'query', limit: int = 25) -> ToolResult:
+    from plugins.installed.seo import search_console
+
+    state = search_console.key_state()
+    out = _plain(search_console.report(days=days, by=by, limit=min(int(limit or 25), 100)))
+    out['connected'] = state == 'ok'
+    if state != 'ok':
+        out['note'] = (
+            'Search Console is not connected: paste a service account key on Settings → SEO '
+            'and add its email as a user of the property in Search Console.'
+        )
+    last = search_console.last_pull()
+    if last and not last.get('ok'):
+        out['last_fetch_error'] = last.get('detail', '')
+    return ToolResult(output=out)
+
+
+@tool(
+    name='seo.inspect_url',
+    description=(
+        "Ask Google how it sees one of the store's pages (Search Console URL inspection): "
+        'verdict, coverage, whether indexing is allowed, robots.txt, the last fetch and '
+        "Google's chosen canonical against the page's own. Takes a path or a full address "
+        'on this store.'
+    ),
+    scopes=['seo.read'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'url': {'type': 'string', 'description': 'A path (/products/x/) or full URL.'}
+        },
+        'required': ['url'],
+    },
+)
+def inspect_url_tool(*, url: str) -> ToolResult:
+    from plugins.installed.seo import search_console
+
+    try:
+        return ToolResult(output=search_console.inspect_url(url))
+    except search_console.SearchConsoleError as e:
+        raise ToolError(str(e)) from e

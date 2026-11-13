@@ -647,6 +647,29 @@ class TrackedKeyword(models.Model):
         ordering = ['keyword']
 
 
+class SearchConsoleRow(models.Model):
+    """One day of Google search numbers from Search Console (v0.159.0).
+
+    ``kind`` is 'total' (the day, key ''), 'query' (a search term) or 'page'
+    (a path on the store). Google leaves rare queries out of the query rows,
+    so the day's total is pulled on its own. ``position`` is Google's average
+    for the row; reports weight it by impressions.
+    """
+
+    KINDS = (('total', 'Total'), ('query', 'Query'), ('page', 'Page'))
+
+    day = models.DateField(db_index=True)
+    kind = models.CharField(max_length=8, choices=KINDS)
+    key = models.CharField(max_length=500, blank=True)
+    clicks = models.PositiveIntegerField(default=0)
+    impressions = models.PositiveIntegerField(default=0)
+    position = models.FloatField(default=0)
+
+    class Meta:
+        ordering = ['-day', 'kind', '-clicks']
+        indexes = [models.Index(fields=['kind', 'day'])]
+
+
 class NotFoundLog(models.Model):
     """Aggregated 404 log — used to surface auto-redirect candidates."""
 

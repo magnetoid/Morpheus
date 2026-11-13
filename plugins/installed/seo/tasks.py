@@ -96,3 +96,15 @@ def site_audit_task(limit: int = 0) -> None:
         )
     except Exception:  # noqa: BLE001
         logger.warning('seo.site_audit failed', exc_info=True)
+
+
+@app.task(name='seo.search_console_pull', ignore_result=True, soft_time_limit=600, time_limit=660)
+def search_console_pull_task() -> None:
+    """Google's clicks, impressions and positions for the days it has settled
+    (``search_console.pull``). A store without a key does nothing."""
+    from plugins.installed.seo.search_console import pull
+
+    try:
+        pull()
+    except Exception:  # noqa: BLE001 — the next night tries again
+        logger.error('seo.search_console_pull failed', exc_info=True)
