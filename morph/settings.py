@@ -344,12 +344,11 @@ MIDDLEWARE = [
     # SecurityHeadersMiddleware, which then leaves that page's policy alone.
     'django.middleware.csp.ContentSecurityPolicyMiddleware',
     'core.storefront_cache.StorefrontCacheMiddleware',
-    # Gzip-compresses responses > 200 bytes. Cloudflare also compresses
-    # at the edge but origin compression saves bytes on the CF↔origin
-    # hop AND for clients that bypass CF (Bearer-token agents, direct
-    # origin probes). Toggle-gated via storefront PluginConfig
-    # gzip_enabled — when off, GZipMiddleware sees an env var hint and
-    # skips. Brotli is not in Django's stdlib; CF handles br at the edge.
+    # Gzip-compresses responses > 200 bytes, always: no setting turns it off.
+    # Cloudflare also compresses at the edge but origin compression saves bytes
+    # on the CF↔origin hop AND for clients that bypass CF (Bearer-token agents,
+    # direct origin probes). Brotli is not in Django's stdlib; CF handles br at
+    # the edge.
     'django.middleware.gzip.GZipMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

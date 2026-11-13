@@ -67,20 +67,71 @@ class StorefrontPlugin(Plugin):
         value.disallow('/*?*facet_panel=')
         return value
 
+    def contribute_settings_panel(self):
+        from plugins.contributions import SettingsPanel
+
+        # Only the shop-closing switch is a General-page control. The rest of this
+        # app's keys are the Caching page's (Settings -> Caching), which saves them
+        # itself; they are listed in the schema so a reader's key is declared, but a
+        # panel built from the whole schema would offer them twice.
+        schema = self.get_config_schema()
+        keep = ('maintenance_mode', 'maintenance_message')
+        return SettingsPanel(
+            label='Maintenance',
+            description='Close the shop to shoppers while you work on it. Staff still see everything.',
+            category='general',
+            schema={
+                'type': 'object',
+                'properties': {k: schema['properties'][k] for k in keep},
+            },
+        )
+
     def get_config_schema(self):
+        # Every key here has a reader: the maintenance middleware, or the cache
+        # and speed settings on Settings -> Caching. Defaults are what the readers
+        # fall back to; html_cache_control is the exception, where the reader sends
+        # no header for a blank value and the Caching page shows the 2026 baseline.
         return {
             'type': 'object',
             'properties': {
-                'enable_guest_checkout': {'type': 'boolean', 'default': True},
-                'products_per_page': {'type': 'integer', 'default': 24},
-                'show_out_of_stock': {'type': 'boolean', 'default': True},
-                'enable_live_search': {'type': 'boolean', 'default': True},
-                'enable_ai_chat': {'type': 'boolean', 'default': True},
-                'maintenance_mode': {'type': 'boolean', 'default': False},
+                'maintenance_mode': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Close the shop for maintenance',
+                    'description': (
+                        'Shoppers see a "back shortly" page. Staff, the dashboard, '
+                        'payment webhooks and health checks stay open.'
+                    ),
+                },
                 'maintenance_message': {
                     'type': 'string',
                     'default': "We're upgrading the store. Back soon!",
+                    'title': 'Message shoppers see',
+                    'description': 'Shown on the "back shortly" page while the shop is closed.',
                 },
+                'html_cache_control': {
+                    'type': 'string',
+                    'default': (
+                        'public, max-age=0, s-maxage=300, must-revalidate, '
+                        'stale-while-revalidate=86400, stale-if-error=86400'
+                    ),
+                },
+                'graphql_edge_cache_ttl': {'type': 'integer', 'default': 0},
+                'lazy_load_images': {'type': 'boolean', 'default': True},
+                'preload_lcp': {'type': 'boolean', 'default': True},
+                'preconnect_origins': {'type': 'string', 'default': ''},
+                'dns_prefetch_origins': {'type': 'string', 'default': ''},
+                'service_worker_enabled': {'type': 'boolean', 'default': False},
+                'offline_page_path': {'type': 'string', 'default': '/offline/'},
+                'defer_non_critical_js': {'type': 'boolean', 'default': True},
+                'font_display': {'type': 'string', 'default': 'swap'},
+                'preload_fonts': {'type': 'string', 'default': ''},
+                'home_cache_ttl': {'type': 'integer', 'default': 600},
+                'product_cache_ttl': {'type': 'integer', 'default': 300},
+                'category_cache_ttl': {'type': 'integer', 'default': 180},
+                'search_cache_ttl': {'type': 'integer', 'default': 0},
+                'post_deploy_warmup': {'type': 'boolean', 'default': False},
+                'warmup_top_n': {'type': 'integer', 'default': 20},
             },
         }
 

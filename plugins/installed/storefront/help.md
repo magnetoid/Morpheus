@@ -12,7 +12,8 @@ There is nothing to turn on — it runs as soon as your store has active product
 - Browse your storefront as a shopper would before a sale or a new theme goes live.
 - Write your own Shipping and Returns page from [Pages](app:cms) — it replaces the generic one shown at those addresses.
 - Write an introduction for the Products, Vendors or Journal pages, also from Pages.
-- Point a customer to their account page for their order history, a return, or to cancel an order before it ships.
+- Close the shop to shoppers with the Maintenance card in Settings, General.
+- Point a customer to their account page for orders, returns and cancellations.
 
 ## Good to know
 Home, Cart, Checkout, My account and Contact are built into this app, not pages you create yourself — they're listed for reference in Pages. A message sent through the Contact page is saved as a lead when you have [the CRM app](app:crm) turned on. A customer can cancel their own order themselves only before it is dispatched, and a paid order is refunded the same way any other refund is.
