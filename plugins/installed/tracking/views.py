@@ -121,6 +121,15 @@ def settings_page(request):
             flash = 'Connection saved.'
             tab = 'connection'
 
+        elif action == 'ads':
+            from plugins.registry import app_registry  # noqa: PLC0415
+
+            plugin = app_registry.get('tracking')
+            for key in ('google_ads_conversion_id', 'google_ads_purchase_label'):
+                plugin.set_config(key, (request.POST.get(key) or '').strip()[:64])
+            flash = 'Google Ads conversion saved.'
+            tab = 'connection'
+
         elif action == 'events':
             s.server_side_enabled = request.POST.get('server_side_enabled') == 'on'
             s.client_side_enabled = request.POST.get('client_side_enabled') == 'on'
@@ -200,12 +209,17 @@ def settings_page(request):
         {'signal': name, 'value': (s.consent_default or {}).get(name, default)}
         for name, default in DEFAULT_CONSENT_DEFAULT.items()
     ]
+    from plugins.registry import app_registry  # noqa: PLC0415
+
+    ads_plugin = app_registry.get('tracking')
     return render(
         request,
         'tracking/settings.html',
         {
             'active_nav': 'tracking',
             's': s,
+            'ads_conversion_id': ads_plugin.get_config_value('google_ads_conversion_id', ''),
+            'ads_purchase_label': ads_plugin.get_config_value('google_ads_purchase_label', ''),
             'tab': tab,
             'flash': flash,
             'event_rows': event_rows,

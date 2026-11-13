@@ -72,13 +72,4 @@ class MarketingPlugin(Plugin):
                 order=10,
                 url='/dashboard/marketing/coupons/',
             ),
-            DashboardPage(
-                label='Campaigns',
-                slug='campaigns',
-                view='plugins.installed.marketing.dashboard.campaigns_list',
-                icon='megaphone',
-                section='marketing',
-                order=20,
-                nav='hidden',
-            ),
         ]
