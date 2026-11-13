@@ -56,8 +56,10 @@ def _product(ref: str):
 
 
 def _number(value, what: str) -> Decimal:
+    from plugins.installed.markets.rates import parse_decimal  # noqa: PLC0415
+
     try:
-        number = Decimal(str(value).strip())
+        number = parse_decimal(value)
     except (InvalidOperation, ValueError):
         raise ToolError(f'The {what} must be a number.') from None
     return number
@@ -213,12 +215,19 @@ def markets_delete_tool(*, code: str) -> ToolResult:
     return ToolResult(output={'deleted': code}, display=f'Deleted market {label}')
 
 
+def _number_or_clear(value, clear, what: str) -> Decimal | None:
+    """The number given, or None when ``clear`` is true; exactly one of the two."""
+    if (value is None) == (not clear):
+        raise ToolError(f'Give either the {what} or clear: true, not both and not neither.')
+    return None if clear else _number(value, what)
+
+
 @tool(
     name='markets.set_product_price',
     description=(
-        "Fix one product's price in a market, in the market's currency, or pass amount null to "
-        'remove it so the converted price applies again. A fixed price is never rounded or '
-        'adjusted. Not for a market in the store currency: change the product price instead.'
+        "Fix one product's price in a market, in the market's currency, or pass clear: true "
+        'to remove it so the converted price applies again. A fixed price is never rounded '
+        'or adjusted. Not for a market in the store currency: change the product price instead.'
     ),
     scopes=['markets.write'],
     schema={
@@ -226,16 +235,16 @@ def markets_delete_tool(*, code: str) -> ToolResult:
         'properties': {
             'code': {'type': 'string', 'description': 'The market code'},
             'product': {'type': 'string', 'description': 'Product id or slug'},
-            'amount': {
-                'type': ['number', 'null'],
-                'description': "Price in the market's currency; null removes the fixed price",
-            },
+            'amount': {'type': 'number', 'description': "Price in the market's currency"},
+            'clear': {'type': 'boolean', 'description': 'true removes the fixed price'},
         },
-        'required': ['code', 'product', 'amount'],
+        'required': ['code', 'product'],
     },
     requires_approval=True,
 )
-def markets_set_product_price_tool(*, code: str, product: str, amount=None) -> ToolResult:
+def markets_set_product_price_tool(
+    *, code: str, product: str, amount=None, clear: bool = False
+) -> ToolResult:
     from djmoney.money import Money  # noqa: PLC0415
 
     from core.pricing import quantize, store_currency  # noqa: PLC0415
@@ -249,14 +258,14 @@ def markets_set_product_price_tool(*, code: str, product: str, amount=None) -> T
             f'This market uses {currency}, the store currency, so it shows the product price. '
             'Change the product price instead.'
         )
-    if amount is None:
+    value = _number_or_clear(amount, clear, 'price')
+    if value is None:
         ProductMarketPrice.objects.filter(market=market, product=item).delete()
         return ToolResult(
             output={'market': market.code, 'product': item.slug, 'fixed_price': None},
             display=f'Removed the fixed price of {item.name} in {market.label}',
         )
-    value = _number(amount, 'price')
-    if not value.is_finite() or value <= 0:
+    if not value.is_finite() or quantize(value, currency) <= 0:
         raise ToolError('The price must be more than zero.')
     price = Money(quantize(value, currency), currency)
     ProductMarketPrice.objects.update_or_create(
@@ -272,32 +281,40 @@ def markets_set_product_price_tool(*, code: str, product: str, amount=None) -> T
     name='markets.set_rate',
     description=(
         'Set your own exchange rate: how many units of the currency one unit of the store '
-        'currency buys. A rate you set is never replaced by the daily fetch. Pass rate null '
-        'to remove yours and use the daily rate again. Affects prices shoppers will see.'
+        'currency buys. A rate you set is never replaced by the daily fetch. Pass clear: true '
+        'to remove yours: the daily rate takes its place, or, when no daily rate can be had '
+        'for a currency an active market uses, the removal is refused. Affects prices '
+        'shoppers will see.'
     ),
     scopes=['markets.write'],
     schema={
         'type': 'object',
         'properties': {
             'currency': {'type': 'string', 'description': 'ISO 4217 code, like EUR'},
-            'rate': {'type': ['number', 'null'], 'description': 'Units per store-currency unit'},
+            'rate': {'type': 'number', 'description': 'Units per store-currency unit'},
+            'clear': {'type': 'boolean', 'description': 'true removes your rate'},
         },
-        'required': ['currency', 'rate'],
+        'required': ['currency'],
     },
     requires_approval=True,
 )
-def markets_set_rate_tool(*, currency: str, rate=None) -> ToolResult:
+def markets_set_rate_tool(*, currency: str, rate=None, clear: bool = False) -> ToolResult:
     from plugins.installed.markets import rates  # noqa: PLC0415
 
-    value = None if rate is None else _number(rate, 'rate')
+    value = _number_or_clear(rate, clear, 'rate')
+    code = currency.strip().upper()
     try:
-        rates.set_manual_rate(currency, value)
+        outcome = rates.set_manual_rate(code, value)
     except ValidationError as e:
         raise ToolError(_text(e)) from e
-    code = currency.strip().upper()
+    display = {
+        'set': f'Set {code} to {value}',
+        'daily': f'Removed your rate for {code}; the daily rate applies again',
+        'cleared': f'Removed your rate for {code}; no market uses it, so there is no rate for it now',
+    }[outcome]
     return ToolResult(
-        output={'currency': code, 'rate': None if value is None else str(value)},
-        display=f'Removed your rate for {code}' if value is None else f'Set {code} to {value}',
+        output={'currency': code, 'rate': None if value is None else str(value), 'result': outcome},
+        display=display,
     )
 
 
@@ -312,6 +329,13 @@ def markets_set_rate_tool(*, currency: str, rate=None) -> ToolResult:
 )
 def markets_refresh_rates_tool() -> ToolResult:
     from plugins.installed.markets import rates  # noqa: PLC0415
+    from plugins.installed.markets.tasks import rate_source  # noqa: PLC0415
+
+    if rate_source() == 'manual':
+        raise ToolError(
+            'Rates are set by hand in this store (the Markets app setting says so), so there '
+            'is nothing to fetch. Set one with markets.set_rate.'
+        )
 
     try:
         result = rates.fetch_ecb()

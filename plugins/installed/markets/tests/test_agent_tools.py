@@ -140,7 +140,7 @@ class WriteToolTests(TestCase):
         )
         _run('markets.set_product_price', code='eu', product=str(self.product.pk), amount=8)
         self.assertEqual(ProductMarketPrice.objects.get().price, Money(Decimal('8.00'), 'EUR'))
-        _run('markets.set_product_price', code='eu', product='mug', amount=None)
+        _run('markets.set_product_price', code='eu', product='mug', clear=True)
         self.assertFalse(ProductMarketPrice.objects.exists())
 
     def test_fixed_price_refusals(self):
@@ -150,6 +150,9 @@ class WriteToolTests(TestCase):
             (dict(code='eu', product='nope', amount=5), 'no product'),
             (dict(code='nope', product='mug', amount=5), 'no market'),
             (dict(code='eu', product='mug', amount=0), 'more than zero'),
+            (dict(code='eu', product='mug', amount=0.001), 'more than zero'),
+            (dict(code='eu', product='mug'), 'clear: true'),
+            (dict(code='eu', product='mug', amount=5, clear=True), 'clear: true'),
             (dict(code='eu', product='mug', amount='abc'), 'must be a number'),
             (dict(code='us', product='mug', amount=5), 'store currency'),
         ):
@@ -161,7 +164,7 @@ class WriteToolTests(TestCase):
         _run('markets.set_rate', currency='chf', rate=0.88)
         row = ExchangeRate.objects.get(quote_currency='CHF')
         self.assertEqual((row.rate, row.source), (Decimal('0.88000000'), 'manual'))
-        _run('markets.set_rate', currency='CHF', rate=None)
+        _run('markets.set_rate', currency='CHF', clear=True)
         self.assertFalse(ExchangeRate.objects.filter(quote_currency='CHF').exists())
 
     def test_set_rate_refusals(self):
@@ -169,9 +172,37 @@ class WriteToolTests(TestCase):
             (dict(currency='EUR', rate=-1), 'more than zero'),
             (dict(currency='USD', rate=1), 'other than USD'),
             (dict(currency='EUR', rate='x'), 'must be a number'),
+            (dict(currency='EUR'), 'clear: true'),
         ):
             with self.subTest(args), self.assertRaisesMessage(ToolError, text):
                 _run('markets.set_rate', **args)
+
+    def test_a_comma_rate_is_accepted(self):
+        _run('markets.set_rate', currency='CHF', rate='0,88')
+        self.assertEqual(ExchangeRate.objects.get(quote_currency='CHF').rate, Decimal('0.88'))
+
+    def test_a_yen_price_that_rounds_to_zero_is_refused(self):
+        Market.objects.create(code='jp', label='Japan', currency='JPY')
+        with self.assertRaisesMessage(ToolError, 'more than zero'):
+            _run('markets.set_product_price', code='jp', product='mug', amount=0.4)
+
+    def test_clearing_a_rate_an_active_market_needs_is_refused_when_nothing_replaces_it(self):
+        Market.objects.create(code='ch', label='Swiss', currency='CHF')
+        ExchangeRate.objects.create(
+            base_currency='USD', quote_currency='CHF', rate=Decimal('0.9'), source='manual'
+        )
+        with (
+            mock.patch('plugins.installed.markets.rates.fetch_ecb', side_effect=OSError('x')),
+            self.assertRaisesMessage(ToolError, 'Your rate stays'),
+        ):
+            _run('markets.set_rate', currency='CHF', clear=True)
+
+    def test_refresh_rates_refuses_when_rates_are_typed_by_hand(self):
+        with (
+            mock.patch('plugins.installed.markets.tasks.rate_source', return_value='manual'),
+            self.assertRaisesMessage(ToolError, 'set by hand'),
+        ):
+            _run('markets.refresh_rates')
 
     def test_refresh_rates(self):
         with mock.patch(
@@ -185,3 +216,28 @@ class WriteToolTests(TestCase):
             self.assertRaisesMessage(ToolError, 'Could not fetch the rates just now: down'),
         ):
             _run('markets.refresh_rates')
+
+
+class ModeReachTests(TestCase):
+    """markets.list left system.read; every mode that reached it by that scope keeps it."""
+
+    def test_markets_list_survives_the_modes_that_hold_catalog_read(self):
+        from core.assistant.modes import filter_tools_by_mode
+
+        tool = agent_registry.get_tool('markets.list')
+        for mode in ('sales', 'support', 'ops', 'general'):
+            with self.subTest(mode):
+                self.assertIn(tool, filter_tools_by_mode([tool], mode))
+
+    def test_only_ops_may_write_markets(self):
+        from core.assistant.modes import filter_tools_by_mode
+
+        tool = agent_registry.get_tool('markets.save')
+        self.assertIn(tool, filter_tools_by_mode([tool], 'ops'))
+        for mode in ('sales', 'support'):
+            self.assertNotIn(tool, filter_tools_by_mode([tool], mode))
+
+    def test_the_worker_holds_both_scopes(self):
+        from core.agents.builtin.worker import Worker
+
+        self.assertLessEqual({'markets.read', 'markets.write'}, set(Worker.scopes))
