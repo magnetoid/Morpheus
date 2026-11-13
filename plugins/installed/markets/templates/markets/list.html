@@ -8,9 +8,10 @@
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Markets</h1>
       <p class="text-sm text-[color:var(--text-muted)]">
-        One market per region you sell to — currency, locale, price
-        adjustment. Visitors are routed automatically by their
-        country (Cloudflare CF-IPCountry header by default).
+        One market per region you sell to: currency, locale, price
+        adjustment and rounding. Prices convert from {{ store_currency }}
+        at the exchange rate. Shoppers still see {{ store_currency }}
+        for now.
       </p>
     </div>
     <a href="{% url 'markets:create' %}" class="btn btn-primary">
@@ -29,6 +30,7 @@
           <th>Locale</th>
           <th>Countries</th>
           <th class="text-right">Adjustment</th>
+          <th>Exchange rate</th>
           <th>Status</th>
           <th></th>
         </tr>
@@ -50,6 +52,12 @@
             {% if m.base_price_adjustment_pct %}
             {{ m.base_price_adjustment_pct|floatformat:0 }}%
             {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if not m.rate_status %}<span class="text-[color:var(--text-muted)]">Store currency</span>
+            {% elif not m.rate_status.rate %}<span class="pill pill-danger">No rate</span>
+            {% elif m.rate_status.stale %}<span class="pill pill-warn">Out of date</span>
+            {% else %}<span class="pill pill-success">1 {{ store_currency }} = {{ m.rate_status.rate_text }}</span>{% endif %}
           </td>
           <td>
             {% if m.is_active %}

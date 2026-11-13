@@ -117,8 +117,8 @@ def foreign_currencies() -> list[str]:
     )
 
 
-def rate_rows() -> list[dict]:
-    """One row per currency an active market needs: rate, source, age, stale.
+def rate_row(code: str) -> dict:
+    """The rate for ``store currency -> code``: rate, source, age, stale.
 
     A rate is stale when the ECB's is older than three days, or when there is
     none. A manual rate never goes stale: it is the merchant's word.
@@ -127,28 +127,21 @@ def rate_rows() -> list[dict]:
     from core.pricing import exchange_rate, store_currency
 
     store = store_currency()
-    now = timezone.now()
-    rows = []
-    for code in foreign_currencies():
-        rate = exchange_rate(store, code)
-        row = (
-            ExchangeRate.objects.filter(base_currency=store, quote_currency=code).first()
-            or ExchangeRate.objects.filter(base_currency=code, quote_currency=store).first()
-        )
-        if rate is None:
-            stale, source, fetched = True, '', None
-        elif row is None:
-            stale, source, fetched = False, 'cross', None
-        else:
-            source, fetched = row.source, row.fetched_at
-            stale = source != 'manual' and now - fetched > STALE_AFTER
-        rows.append(
-            {
-                'currency': code,
-                'rate': rate,
-                'source': source,
-                'fetched_at': fetched,
-                'stale': stale,
-            }
-        )
-    return rows
+    rate = exchange_rate(store, code)
+    row = (
+        ExchangeRate.objects.filter(base_currency=store, quote_currency=code).first()
+        or ExchangeRate.objects.filter(base_currency=code, quote_currency=store).first()
+    )
+    if rate is None:
+        stale, source, fetched = True, '', None
+    elif row is None:
+        stale, source, fetched = False, 'cross', None
+    else:
+        source, fetched = row.source, row.fetched_at
+        stale = source != 'manual' and timezone.now() - fetched > STALE_AFTER
+    return {'currency': code, 'rate': rate, 'source': source, 'fetched_at': fetched, 'stale': stale}
+
+
+def rate_rows() -> list[dict]:
+    """One row per currency an active market needs (see ``rate_row``)."""
+    return [rate_row(code) for code in foreign_currencies()]

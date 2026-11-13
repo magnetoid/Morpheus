@@ -83,3 +83,19 @@ def market_price(product, market, variant=None) -> Money | None:
     adjustment = Decimal(market.base_price_adjustment_pct or 0)
     exact = Decimal(store_price.amount) * (Decimal(100) + adjustment) / Decimal(100) * rate
     return Money(_round(exact, currency, market.rounding), currency)
+
+
+def preview(market, count: int = 10) -> list[dict]:
+    """The first ``count`` active shoppable products: store price and the market's."""
+    from plugins.installed.catalog.models import Product
+
+    products = Product.objects.shoppable().filter(status='active').order_by('name')[:count]
+    return [
+        {
+            'name': product.name,
+            'slug': product.slug,
+            'store_price': product.price,
+            'market_price': market_price(product, market),
+        }
+        for product in products
+    ]

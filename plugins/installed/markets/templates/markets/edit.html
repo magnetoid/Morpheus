@@ -21,7 +21,7 @@
       <div>
         <label class="block text-sm font-medium mb-1">Label <span style="color:var(--danger);">*</span></label>
         <input type="text" name="label" class="input" maxlength="120" required
-               value="{{ market.label|default:'' }}"
+               value="{{ values.label }}"
                placeholder="European Union">
       </div>
       <div>
@@ -39,24 +39,38 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
       <div>
         <label class="block text-sm font-medium mb-1">Currency <span style="color:var(--danger);">*</span></label>
-        <input type="text" name="currency" class="input" maxlength="3" required
-               value="{{ market.currency|default:'USD' }}"
-               placeholder="EUR" style="text-transform:uppercase;">
-        <p class="text-xs text-[color:var(--text-muted)] mt-1">ISO 4217.</p>
+        <select name="currency" class="input" required>
+          {% for code, name in currency_choices %}
+          <option value="{{ code }}"{% if code == selected_currency %} selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Prices in this market are quoted in this currency.</p>
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Default locale</label>
         <input type="text" name="default_locale" class="input" maxlength="10"
-               value="{{ market.default_locale|default:'en' }}"
+               value="{{ values.default_locale }}"
                placeholder="en">
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Price adjustment %</label>
         <input type="number" name="base_price_adjustment_pct" class="input" step="0.01"
-               value="{{ market.base_price_adjustment_pct|default:0 }}"
+               value="{{ values.base_price_adjustment_pct }}"
                placeholder="10">
         <p class="text-xs text-[color:var(--text-muted)] mt-1">+10% bumps every product 10% in this market.</p>
       </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Rounding</label>
+      <select name="rounding" class="input">
+        {% for value, label in rounding_choices %}
+        <option value="{{ value }}"{% if value == values.rounding %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">
+        How a price converted from {{ store_currency }} is rounded. A price you fix yourself is never rounded.
+      </p>
     </div>
 
     <div>
@@ -87,6 +101,82 @@
       <button type="submit" class="btn btn-primary">Save market</button>
     </div>
   </form>
+
+  {% if market %}
+  <div class="card card-padded space-y-3">
+    <h2 class="text-base font-semibold">Exchange rate</h2>
+    {% if not rate %}
+    <p class="text-sm text-[color:var(--text-muted)]">
+      This market uses {{ store_currency }}, the currency your products are priced in, so no rate is needed.
+    </p>
+    {% else %}
+    <p class="text-sm">
+      {% if rate.rate %}
+      <strong>1 {{ store_currency }} = {{ rate.rate_text }} {{ rate.currency }}</strong>
+      {% if rate.source == "manual" %}<span class="pill pill-info">Your rate</span>
+      {% elif rate.source == "ecb" %}<span class="pill pill-neutral">European Central Bank</span>
+      {% elif rate.source == "cross" %}<span class="pill pill-neutral">Worked out from the opposite rate</span>{% endif %}
+      {% if rate.age_days is not None and rate.source != "manual" %}
+      <span class="text-[color:var(--text-muted)]">fetched {% if rate.age_days == 0 %}today{% else %}{{ rate.age_days }} day{{ rate.age_days|pluralize }} ago{% endif %}</span>
+      {% endif %}
+      {% else %}
+      <strong>No rate for {{ rate.currency }} yet.</strong>
+      {% endif %}
+    </p>
+    {% if rate.stale %}
+    <p class="text-sm" style="color:var(--warn);">
+      {% if rate.rate %}This rate is out of date. Fetch the rates again or enter your own.{% else %}Shoppers cannot be quoted prices in {{ rate.currency }} until there is a rate. Fetch the rates or enter your own.{% endif %}
+    </p>
+    {% endif %}
+
+    <div class="flex flex-wrap items-end gap-3">
+      <form method="post" action="{% url 'markets:rate' market.id %}" class="flex items-end gap-2">
+        {% csrf_token %}
+        <div>
+          <label class="block text-sm font-medium mb-1">Your own rate</label>
+          <input type="text" name="rate" class="input" inputmode="decimal"
+                 value="{% if rate.source == 'manual' %}{{ rate.rate_text }}{% endif %}"
+                 placeholder="0.92">
+        </div>
+        <button type="submit" class="btn">Save rate</button>
+      </form>
+      <form method="post" action="{% url 'markets:rates_refresh' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'markets:edit' market.id %}">
+        <button type="submit" class="btn">Fetch rates now</button>
+      </form>
+    </div>
+    <p class="text-xs text-[color:var(--text-muted)]">
+      How many {{ rate.currency }} one {{ store_currency }} buys. A rate you enter is never replaced by the daily fetch; leave the box empty and save to remove it.
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="card card-padded space-y-3">
+    <h2 class="text-base font-semibold">Price preview</h2>
+    {% if preview %}
+    <table class="morph-table">
+      <thead>
+        <tr><th>Product</th><th class="text-right">Store price</th><th class="text-right">In {{ market.currency }}</th></tr>
+      </thead>
+      <tbody>
+        {% for row in preview %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td class="text-right tabular-nums">{{ row.store_price }}</td>
+          <td class="text-right tabular-nums">{% if row.market_price %}{{ row.market_price }}{% else %}<span class="text-[color:var(--text-muted)]">No rate</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-sm text-[color:var(--text-muted)]">No products on sale yet.</p>
+    {% endif %}
+    <p class="text-xs text-[color:var(--text-muted)]">
+      Shoppers still see prices in {{ store_currency }}; showing and charging this market's prices comes in a later update.
+    </p>
+  </div>
+  {% endif %}
 
 </div>
 {% endblock %}
