@@ -6,6 +6,19 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.165.0 — `markets.list` reads with `markets.read`
+
+Markets get their own scopes, `markets.read` and `markets.write`.
+- **The agent tool `markets.list`** now declares `markets.read` instead of `system.read`. An API
+  token that holds `system.read` but not `markets.read` no longer sees it: grant `markets.read` on
+  such tokens, and `markets.write` for the new write tools (`markets.save`, `markets.delete`,
+  `markets.set_product_price`, `markets.set_rate`, `markets.refresh_rates`, each needing the
+  merchant's tick on a token).
+- **hreflang:** a market no longer publishes a `?market=` alternate in the head; alternates are per
+  language only. Nothing to change unless you parsed them.
+
+---
+
 ## v0.164.0 — the legacy SEO head tags are gone
 
 The per-tag head helpers deprecated in [v0.46.0](#v0460--the-head-is-rendered-by-one-core-tag)

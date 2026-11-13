@@ -1656,6 +1656,24 @@ fastest | preferred carrier/service, `SHIPPING_LABEL_RATE` filter); orders' `par
 `payments/tests/test_manual_capture.py`, `test_saved_card_intent.py`, `test_payment_failed_event.py`,
 `orders/tests/test_offline_refund.py`, `test_parcel_settings.py` and `shipping/tests/test_label_rate.py`.
 
+**Convention — a market prices in its own currency from one function, and a rate the merchant typed wins (v0.165.0).**
+`markets/pricing.py:market_price(product, market, variant=None)` answers what a product costs in a market: the store
+price when the market uses the store currency; else a price fixed for that market (`ProductMarketPrice`), else one typed
+in the product's `localized_prices` (a 0 there is no price), else the store price adjusted by the market's percentage,
+converted with `core.pricing.convert` and rounded as the market says (exact, whole, .99; a positive price never rounds
+to 0 and a free one stays free). It returns None without a rate, and a market whose currency has no rate cannot be
+switched on: `markets.services.save_market` is the one write path for the page and Linda. Rates live in core's
+`ExchangeRate` as store currency → X. The ECB's daily table (`markets.fetch_exchange_rates`, 15:30 UTC, skipped when
+`rate_source` is manual) never overwrites a `source='manual'` row, and clearing a manual rate refetches or is refused
+while a market needs it, because there is one row per pair. Shoppers still see the store currency: showing and charging
+market prices is the next release (`docs/plans/markets-currency-language-2026-11.md`), and markup and feeds keep the
+store price. hreflang is per language only: a `?market=` URL is not a page. The language bar (localization's
+`suggest_language`, off by default) decides in the browser from `link[rel=alternate][hreflang]`, `navigator.languages`
+and the `morpheus_lang_choice` cookie, because pages are edge-cached and the same for every visitor; it floats over the
+page (an in-flow bar added after paint is a layout shift) and skips crawlers that run scripts. Guarded by
+`markets/tests/test_market_price.py`, `test_rates.py`, `test_save_market.py`, `test_dashboard.py`, `test_agent_tools.py`,
+`core/tests/test_currency_convert.py` and `localization/tests/test_language_bar.py`.
+
 **Convention — one sales figure (v0.157.0).** Every sales number a merchant or Linda reads comes
 from `orders/reports.py`: `counted()` is an order placed and not cancelled (paid, its card held, or an
 offline method paid later; a paid order whatever its status, since Stripe's webhook left older ones
