@@ -119,6 +119,11 @@ class SeoPlugin(Plugin):
             'seo:search_console_pull',
             {'task': 'seo.search_console_pull', 'schedule': crontab(hour=4, minute=40)},
         )
+        # Field Core Web Vitals older than Google's 28 days (web_vitals.py).
+        self.register_celery_beat(
+            'seo:prune_web_vitals',
+            {'task': 'seo.prune_web_vitals', 'schedule': crontab(hour=4, minute=50)},
+        )
         # /ai/products.json, rebuilt inside its 20-minute cache so no crawler waits.
         self.register_celery_beat(
             'seo:warm_ai_feed',
@@ -381,6 +386,16 @@ class SeoPlugin(Plugin):
                 slot='global_head',
                 template='seo/blocks/feed_links.html',
                 priority=20,
+            ),
+            StorefrontBlock(
+                slot='global_head',
+                template='seo/blocks/image_box.html',
+                priority=21,
+            ),
+            StorefrontBlock(
+                slot='global_below_body',
+                template='seo/blocks/web_vitals.html',
+                priority=80,
             ),
         ]
 

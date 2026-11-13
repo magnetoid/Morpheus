@@ -8,6 +8,8 @@ and writes a cached WebP / AVIF variant.
 # Pillow; avoid import-time Django settings access); the Pillow in-place reassigns are fine.
 from __future__ import annotations
 
+import functools
+
 
 #: Whitelisted image variant widths. Restricted to a small set so the
 # cache doesn't explode with arbitrary widths from crawlers.
@@ -65,9 +67,12 @@ def generate_image_variant(src_abs: str, cache_abs: str, *, width: int, fmt: str
     if os.path.isfile(cache_abs):
         return cache_abs
     os.makedirs(os.path.dirname(cache_abs), exist_ok=True)
-    from PIL import Image
+    from PIL import Image, ImageOps
 
     with Image.open(src_abs) as im:
+        # A phone photo stores its rotation in EXIF, which a browser applies to the
+        # original but WebP/AVIF re-encoding drops: turn the pixels upright first.
+        im = ImageOps.exif_transpose(im)
         # Keep aspect ratio; only downscale.
         if im.width > width:
             ratio = width / im.width
@@ -82,3 +87,67 @@ def generate_image_variant(src_abs: str, cache_abs: str, *, width: int, fmt: str
         else:  # avif
             im.save(cache_abs, 'AVIF', quality=68)
     return cache_abs
+
+
+def _local_image_path(url: str) -> str:
+    """The file on disk behind a media or static URL of this store, or ''.
+
+    Only the store's own files: an off-site address, a path with ``..`` or a
+    file that is not there gives ''."""
+    import os
+    from urllib.parse import unquote, urlsplit
+
+    from django.conf import settings
+
+    path = unquote(urlsplit(str(url or '')).path or '')
+    if not path or '..' in path.split('/'):
+        return ''
+    media_url = str(getattr(settings, 'MEDIA_URL', '/media/') or '/media/')
+    static_url = str(getattr(settings, 'STATIC_URL', '/static/') or '/static/')
+    found = ''
+    if path.startswith(media_url):
+        found = os.path.join(str(settings.MEDIA_ROOT), path[len(media_url) :])
+    elif path.startswith(static_url):
+        name = path[len(static_url) :]
+        try:
+            from django.contrib.staticfiles import finders
+            from django.contrib.staticfiles.storage import staticfiles_storage
+
+            found = staticfiles_storage.path(name)
+            if not os.path.isfile(found):
+                found = finders.find(name) or ''
+        except Exception:  # noqa: BLE001 — a storage without paths, or no such file
+            found = ''
+    return found if found and os.path.isfile(found) else ''
+
+
+@functools.lru_cache(maxsize=4096)
+def _measure(path: str, mtime_ns: int, size: int) -> tuple[int, int] | None:
+    from PIL import Image
+
+    try:
+        with Image.open(path) as im:  # reads the header only
+            w, h = im.size
+            orientation = im.getexif().get(0x0112)  # EXIF Orientation
+    except Exception:  # noqa: BLE001 — not an image Pillow can read
+        return None
+    if orientation in (5, 6, 7, 8):  # turned a quarter: shown (and re-encoded) on its side
+        w, h = h, w
+    return (int(w), int(h)) if w > 0 and h > 0 else None
+
+
+def image_size(url: str) -> tuple[int, int] | None:
+    """Width and height of one of the store's own images, read from its file.
+
+    Cached per file and its modification time, so a replaced file is measured
+    again. ``None`` for anything that is not a local image."""
+    import os
+
+    path = _local_image_path(url)
+    if not path:
+        return None
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return _measure(path, st.st_mtime_ns, st.st_size)

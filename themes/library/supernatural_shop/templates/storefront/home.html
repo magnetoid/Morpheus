@@ -256,6 +256,30 @@ unstyled and then moved when a later <style> arrives (CLAUDE.md, CLS landmine).{
     .window__cover.is-active:hover { transform: none; }
   }
 </style>
+<style>
+@media (min-width: 900px) { .journal-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 2.5rem !important; } }
+/* Journal teaser cards — the grey top rule "inks in" with accent red on
+   hover, sweeping left to right like a pen stroke; the headline follows. */
+.journal-card { position: relative; border-top: 1px solid var(--rule); padding-top: 1.25rem; }
+.journal-card::before {
+  content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
+  background: var(--accent);
+  transform: scaleX(0); transform-origin: 0 50%;
+  transition: transform var(--motion-slow) var(--ease-out);
+}
+.journal-card:hover::before { transform: scaleX(1); }
+.journal-card h3 a { transition: color var(--motion-fast) var(--ease-out); }
+.journal-card:hover h3 a { color: var(--accent-ink); }
+/* Icon strip — four lines of the shop's standards between the first carousels. */
+.home-strip { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); background: var(--paper-2); }
+.home-strip__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.75rem 1.5rem; }
+@media (min-width: 900px) { .home-strip__list { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2rem; } }
+.home-strip__icon { width: 30px; height: 30px; fill: none; stroke: var(--accent-ink); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.home-strip__title { font-family: var(--serif); font-size: 1.25rem; font-weight: 500; line-height: 1.2; margin: .7rem 0 .3rem; }
+.home-strip__text { color: var(--muted); font-size: .92rem; line-height: 1.45; margin: 0; }
+/* Guides — a large serif number above each card. */
+.guide-card__no { display: block; font-family: var(--serif); font-size: 2.6rem; line-height: 1; color: var(--accent-ink); margin-bottom: .6rem; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -636,29 +660,5 @@ imported aromatherapy catalogue alone has two dozen of those.{% endcomment %}
 </section>
 {% endif %}
 
-<style>
-@media (min-width: 900px) { .journal-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 2.5rem !important; } }
-/* Journal teaser cards — the grey top rule "inks in" with accent red on
-   hover, sweeping left to right like a pen stroke; the headline follows. */
-.journal-card { position: relative; border-top: 1px solid var(--rule); padding-top: 1.25rem; }
-.journal-card::before {
-  content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
-  background: var(--accent);
-  transform: scaleX(0); transform-origin: 0 50%;
-  transition: transform var(--motion-slow) var(--ease-out);
-}
-.journal-card:hover::before { transform: scaleX(1); }
-.journal-card h3 a { transition: color var(--motion-fast) var(--ease-out); }
-.journal-card:hover h3 a { color: var(--accent-ink); }
-/* Icon strip — four lines of the shop's standards between the first carousels. */
-.home-strip { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); background: var(--paper-2); }
-.home-strip__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.75rem 1.5rem; }
-@media (min-width: 900px) { .home-strip__list { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2rem; } }
-.home-strip__icon { width: 30px; height: 30px; fill: none; stroke: var(--accent-ink); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-.home-strip__title { font-family: var(--serif); font-size: 1.25rem; font-weight: 500; line-height: 1.2; margin: .7rem 0 .3rem; }
-.home-strip__text { color: var(--muted); font-size: .92rem; line-height: 1.45; margin: 0; }
-/* Guides — a large serif number above each card. */
-.guide-card__no { display: block; font-family: var(--serif); font-size: 2.6rem; line-height: 1; color: var(--accent-ink); margin-bottom: .6rem; }
-</style>
 
 {% endblock %}

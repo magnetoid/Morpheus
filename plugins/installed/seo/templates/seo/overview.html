@@ -167,29 +167,29 @@
 <div class="card card-padded mb-6">
   <h3 class="font-semibold mb-1">Core Web Vitals (p75)</h3>
   <p class="text-xs text-[color:var(--text-muted)] mb-3">
-    Real-User-Metrics captured from storefront visitors.
+    From shoppers' own browsers: the 75th percentile over the last 28 days, the measure Google uses.
   </p>
-  <div class="grid grid-cols-3 gap-3">
+  <div class="grid grid-cols-3 gap-3" data-cwv-card>
     <div>
       <span class="kpi__label">LCP</span>
-      <p class="text-xl font-semibold mt-0.5" {% if cwv.lcp and cwv.lcp > 2.5 %}style="color:var(--danger);"{% elif cwv.lcp %}style="color:var(--success);"{% endif %}>
-        {% if cwv.lcp %}{{ cwv.lcp|floatformat:2 }}s{% else %}—{% endif %}
+      <p class="text-xl font-semibold mt-0.5" {% if cwv.lcp is not None %}style="color:var({% if cwv.lcp > 2.5 %}--danger{% else %}--success{% endif %});"{% endif %}>
+        {% if cwv.lcp is not None %}{{ cwv.lcp|floatformat:2 }}s{% else %}—{% endif %}
       </p>
     </div>
     <div>
       <span class="kpi__label">INP</span>
-      <p class="text-xl font-semibold mt-0.5" {% if cwv.inp and cwv.inp > 200 %}style="color:var(--danger);"{% elif cwv.inp %}style="color:var(--success);"{% endif %}>
-        {% if cwv.inp %}{{ cwv.inp|floatformat:0 }}ms{% else %}—{% endif %}
+      <p class="text-xl font-semibold mt-0.5" {% if cwv.inp is not None %}style="color:var({% if cwv.inp > 200 %}--danger{% else %}--success{% endif %});"{% endif %}>
+        {% if cwv.inp is not None %}{{ cwv.inp|floatformat:0 }}ms{% else %}—{% endif %}
       </p>
     </div>
     <div>
       <span class="kpi__label">CLS</span>
-      <p class="text-xl font-semibold mt-0.5" {% if cwv.cls and cwv.cls > 0.1 %}style="color:var(--danger);"{% elif cwv.cls %}style="color:var(--success);"{% endif %}>
-        {% if cwv.cls %}{{ cwv.cls|floatformat:3 }}{% else %}—{% endif %}
+      <p class="text-xl font-semibold mt-0.5" {% if cwv.cls is not None %}style="color:var({% if cwv.cls > 0.1 %}--danger{% else %}--success{% endif %});"{% endif %}>
+        {% if cwv.cls is not None %}{{ cwv.cls|floatformat:3 }}{% else %}—{% endif %}
       </p>
     </div>
   </div>
-  <p class="text-xs text-[color:var(--text-muted)] mt-2">{{ cwv.samples }} samples</p>
+  <p class="text-xs text-[color:var(--text-muted)] mt-2">{{ cwv.samples }} reading{{ cwv.samples|pluralize }} in 28 days. Google's thresholds: LCP 2.5 s, INP 200 ms, CLS 0.1.</p>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">

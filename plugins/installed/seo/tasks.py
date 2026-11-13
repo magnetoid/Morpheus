@@ -108,3 +108,14 @@ def search_console_pull_task() -> None:
         pull()
     except Exception:  # noqa: BLE001 — the next night tries again
         logger.error('seo.search_console_pull failed', exc_info=True)
+
+
+@app.task(name='seo.prune_web_vitals', ignore_result=True)
+def prune_web_vitals_task() -> None:
+    """Delete field Core Web Vitals readings older than Google's 28-day window."""
+    from plugins.installed.seo.web_vitals import prune
+
+    try:
+        prune()
+    except Exception:  # noqa: BLE001 — the next night tries again
+        logger.warning('seo.prune_web_vitals failed', exc_info=True)

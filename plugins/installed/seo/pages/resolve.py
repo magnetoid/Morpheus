@@ -238,6 +238,7 @@ def _builtin(request, context) -> SeoPage:
         page.title = gettext(_TITLE_BY_VIEW_NAME[view_name])
     page.description = _clean(context.get('seo_description'))
     page.image = _clean(context.get('seo_image'))
+    page.fallback_image = _first_item_image(context)
     page.og_type = _clean(context.get('seo_og_type')) or _og_type_for(kind)
     page.breadcrumbs = context.get('breadcrumb_items') or []
     # `is None`, not `or`: a Django paginator Page defines `__len__`, so an EMPTY
@@ -382,6 +383,66 @@ def _og_type_for(kind: str) -> str:
     if kind == KIND_ARTICLE:
         return 'article'
     return 'website'
+
+
+#: Context keys a page lists its items under, most specific first.
+_ITEM_KEYS = ('hero_products', 'featured_products', 'page_obj', 'products', 'entries', 'posts')
+
+
+def _url_of(value) -> str:
+    """One candidate as a URL: a string, a ``{'url': …}`` dict, a FieldFile or a ProductImage row."""
+    if isinstance(value, dict):
+        value = value.get('url') or value.get('image')
+    if value is not None and not isinstance(value, str):
+        value = getattr(value, 'image', value)  # a ProductImage row
+        try:
+            value = value.url  # a FieldFile; an empty one raises
+        except Exception:  # noqa: BLE001
+            return ''
+    return value.strip() if isinstance(value, str) else ''
+
+
+def _item_image_url(item) -> str:
+    """The image URL of one listed item: a GraphQL dict, a snake-case dict or a model."""
+    if isinstance(item, dict):
+        candidates = (item.get('primaryImage'), item.get('primary_image'), item.get('image'))
+    else:
+        candidates = (getattr(item, 'primary_image', None), getattr(item, 'image', None))
+    for candidate in candidates:
+        url = _url_of(candidate)
+        if url:
+            return url
+    return ''
+
+
+def _first_listed_items(context, key) -> list:
+    """Up to six items a page lists under ``key``. A queryset is read with LIMIT,
+    never evaluated whole: the head renders before the body, and a view may hand
+    over an unsliced queryset (``not qs`` would fetch every row)."""
+    try:
+        items = context.get(key)
+        if items is None or isinstance(items, (str, bytes, dict)):
+            return []
+        if hasattr(items, 'query') and hasattr(items, 'model'):
+            items = items[:6]
+        found = []
+        for item in items:
+            found.append(item)
+            if len(found) == 6:
+                break
+        return found
+    except Exception:  # noqa: BLE001 — a share image never breaks a page
+        return []
+
+
+def _first_item_image(context) -> str:
+    """The first listed item's image, as the share image of last resort."""
+    for key in _ITEM_KEYS:
+        for item in _first_listed_items(context, key):
+            url = _item_image_url(item)
+            if url:
+                return url
+    return ''
 
 
 def _clean(value) -> str:

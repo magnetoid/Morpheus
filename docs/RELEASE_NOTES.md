@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.159.1 — 2026-11-12
+
+**Images and speed**
+
+- Photos from the responsive image tag carry their own width and height, so pages keep their layout while images load; every theme keeps its own sizing.
+- Montenegro and Croatia serve listing photos in sized AVIF and WebP versions, lazy below the fold, and load the map only when a visitor scrolls near it.
+- Share images state their real size, and a page without one uses its first product's photo after the store's own defaults.
+- dotbooks' and Supernatural's home pages no longer jump while loading: their styles moved into the page head.
+- The Core Web Vitals card on the SEO page reads real shoppers' browsers on all five stores: crawlers and test tools are left out, readings older than 28 days are deleted, and the card shows Google's 75th percentile (a CLS of 0 now shows as 0.000).
+
 ## v0.159.0 — 2026-11-12
 
 **Search Console in the dashboard**

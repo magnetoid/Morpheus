@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load i18n %}{% load l10n %}{% load booking_tags %}{% load catalog_prices %}{% load tracking %}
+{% load seo %}{% load morph %}{% load i18n %}{% load l10n %}{% load booking_tags %}{% load catalog_prices %}{% load tracking %}
 {% comment %}1:1 port of pages/ExperienceDetail.tsx — 2-col layout (content left,
 sticky enquiry/booking card right). Branches on listing_mode (enquiry vs booking).
 Context: service, listing_mode, dates ([{date, remaining}]), max_guests,
@@ -73,9 +73,9 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
   {% with imgs=service.images.all %}
   {% if imgs|length >= 2 %}
   <div class="relative grid grid-cols-1 md:grid-cols-2 gap-2 rounded-2xl overflow-hidden aspect-[16/10] sm:aspect-[2/1] bg-muted">
-    <div class="overflow-hidden"><img src="{{ imgs.0.image.url }}" alt="{{ imgs.0.alt|default:service.name }}" class="w-full h-full object-cover"></div>
+    <div class="overflow-hidden">{% seo_responsive_image imgs.0.image alt=imgs.0.alt|default:service.name widths="800,1200,1600" sizes="(min-width: 1024px) 66vw, 100vw" css_class="w-full h-full object-cover" priority=True %}</div>
     <div class="hidden md:grid grid-cols-2 gap-2">
-      {% for im in imgs|slice:"1:5" %}<div class="overflow-hidden"><img src="{{ im.image.url }}" alt="{{ im.alt|default:service.name }}" class="w-full h-full object-cover" loading="lazy"></div>{% endfor %}
+      {% for im in imgs|slice:"1:5" %}<div class="overflow-hidden">{% seo_responsive_image im.image alt=im.alt|default:service.name widths="800,1200,1600" sizes="(min-width: 1024px) 66vw, 100vw" css_class="w-full h-full object-cover" %}</div>{% endfor %}
     </div>
     <button type="button" class="absolute bottom-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/90 shadow-sm text-sm font-medium text-foreground hover:bg-background transition-colors">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
@@ -84,7 +84,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
   </div>
   {% elif service.image %}
   <div class="rounded-2xl overflow-hidden aspect-[16/9] sm:aspect-[2/1] bg-muted">
-    <img src="{{ service.image.url }}" alt="{{ service.name }}" class="w-full h-full object-cover">
+    {% seo_responsive_image service.image alt=service.name widths="800,1200,1600" sizes="(min-width: 1024px) 66vw, 100vw" css_class="w-full h-full object-cover" priority=True %}
   </div>
   {% endif %}
   {% endwith %}
@@ -194,8 +194,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
         <p class="flex items-center gap-2 text-foreground mb-4"><svg class="w-5 h-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{% if service.location %}{{ service.location }}, Montenegro{% else %}{{ service.get_region_display }}{% endif %}</p>
         {% if has_map %}
         <div id="exp-map" data-lat="{{ service.latitude|unlocalize }}" data-lng="{{ service.longitude|unlocalize }}" class="relative rounded-2xl overflow-hidden h-56 border border-border"></div>
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+        {% include "booking_marketplace/_leaflet_map.html" with map_id="exp-map" zoom=14 %}
         {% else %}
         <div class="relative rounded-2xl overflow-hidden h-56 bg-gradient-to-br from-primary/15 via-muted to-background border border-border flex items-center justify-center">
           <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/90 shadow-sm text-sm font-medium text-foreground"><svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{% if service.location %}{{ service.location }}{% else %}{{ service.get_region_display }}{% endif %}</span>
@@ -394,7 +393,7 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
       {% for pl in nearby_places %}
       <a href="/places/{{ pl.slug }}/" class="group rounded-2xl overflow-hidden border border-border bg-card shadow-card">
-        <div class="aspect-[4/3] bg-muted overflow-hidden">{% if pl.image %}<img src="{{ pl.image.url }}" alt="{{ pl.name }}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">{% endif %}</div>
+        <div class="aspect-[4/3] bg-muted overflow-hidden">{% if pl.image %}{% seo_responsive_image pl.image alt=pl.name widths="400,600,800" sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" css_class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" %}{% endif %}</div>
         <div class="p-3"><h3 class="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">{{ pl.name }}</h3>{% if pl.summary %}<p class="text-xs text-muted-foreground line-clamp-2 mt-1">{{ pl.summary }}</p>{% endif %}</div>
       </a>
       {% endfor %}
@@ -402,7 +401,6 @@ review_summary, reviews, can_review. Same POST actions as the plugin default.{% 
   </section>
   {% endif %}
 </div>
-<script>(function(){var m=document.getElementById('exp-map');if(!m)return;var f=function(){if(!window.L)return setTimeout(f,120);var map=L.map(m).setView([+m.dataset.lat,+m.dataset.lng],14);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);L.marker([+m.dataset.lat,+m.dataset.lng]).addTo(map);};f();})();</script>
 <script>
 (function(){
   var f=document.getElementById('booking-form'); if(!f)return;

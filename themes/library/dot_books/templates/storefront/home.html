@@ -7,139 +7,7 @@ passes only the fallbacks — a merchant who fills in Settings → SEO overrides
 
 {% block extra_head %}
 {# No <link rel=preload> of the raw original — the first hero pick renders through the proxy with priority=True. #}
-{% endblock %}
-
-{% block content %}
-{% comment %}
-The home_above_grid slot (a dynamics "Recommended for you" block) used to sit
-ABOVE the hero — removed so the editor's-picks hero leads the page. Personalised
-recommendations still render lower via the home_after_rails / home_below_grid slots.
-{% endcomment %}
-
-{% if hero_products %}
-{% comment %}
-Editor's picks — "the bookshop window". One book stands face-out and still;
-the rest of the window's display sits beside it on a hairline shelf, as real
-covers rather than abstract dots, so a shopper sees the whole selection at a
-glance and every pick is one click away. Choosing a cover promotes it.
-
-Deliberately NOT here, and not to be re-added: an auto-advancing timer (three
-of four books were only ever seen by a visitor who waited), TWO display
-headlines competing in one column, and the
-per-letter decode scramble — that effect forced `contain: layout`, a JS font
-fitter, a reserved tallest-title box and a top-anchored grid just to absorb the
-jitter it caused. No JS measures anything.
-
-v0.61.1 restored the shop's ORIGINAL editorial opening — "The book that
-moved this month." — as the column's lead (merchant preference; it was the
-very first hero's voice). v0.61.2 restores the rest of the remembered
-composition: copy on the LEFT, one large cover on the RIGHT, and dot
-navigation under the copy in place of the small-cover rail — the "two big
-texts" arrangement, with the book title back at display-xl as the dominant
-line. What stays deleted stays deleted: no autoplay, no decode, no JS
-measurement — the stacked-panel stage still gives every slide the same
-geometry, so the dots and cover never move between books.
-{% endcomment %}
-<section id="editors-pick" class="window" data-home-hero aria-label="Editor's picks">
-  <div class="wrap">
-    {% comment %}The home page has no other h1 — the hero used to open with an h2
-    and nothing above it. The shop name is the page's heading; the visible
-    hierarchy starts at the book title.{% endcomment %}
-    <h1 class="sr-only">Dot Books — an independent bookshop</h1>
-
-    <div class="window__shell">
-      <div class="window__copy">
-        <header class="window__lead">
-          <p class="eyebrow">Editor's pick</p>
-          <h2 class="display display-l window__headline">The book that<br>moved this month<span class="text-accent">.</span></h2>
-        </header>
-        <div class="window__copy-stage">
-          {% for pick in hero_products %}
-          {# A div, not an article: `article` does not permit role="tabpanel" (axe: aria-allowed-role). #}
-          <div
-            class="window__panel{% if forloop.first %} is-active{% endif %}"
-            id="hero-panel-{{ forloop.counter0 }}"
-            data-home-hero-copy
-            data-index="{{ forloop.counter0 }}"
-            {% if hero_products|length > 1 %}role="tabpanel"{% endif %}
-            aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
-          >
-            {% comment %}The title's size band is chosen from its own length, in
-            the template — these are public-domain books and a title can run 120
-            characters ("Christmas: Its Origin and Associations: Together with…").
-            At display-xl that one title was 892px tall and set the height of the
-            whole stacked stage, so every OTHER book showed against ~700px of
-            dead space. Server-side banding keeps the display-xl treatment for the
-            short titles it was designed for and steps long ones down the existing
-            scale — no JS fitter, the thing this hero deleted.{% endcomment %}
-            <h3
-              class="display window__book {% if pick.name|length > 70 %}window__book--xs{% elif pick.name|length > 26 %}display-l{% else %}display-xl{% endif %}"
-              style="--d: 60ms;"
-            ><em>{{ pick.name }}</em><span class="text-accent">.</span></h3>
-            <p class="window__meta" style="--d: 120ms;">
-              {% if pick.category %}
-              <span class="window__cat">{{ pick.category.name }}</span>
-              <span class="window__sep" aria-hidden="true">·</span>
-              {% endif %}
-              <span class="window__price">{% if pick.priceStartsFrom %}<span class="window__from">{% translate "From" %}</span> {% endif %}{{ pick.price|money }}</span>
-              {% if pick.isOnSale %}<span class="window__save">&minus;{{ pick.discountPercentage }}%</span>{% endif %}
-            </p>
-            <div class="window__actions" style="--d: 180ms;">
-              <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop now</a>
-              <a href="/products/" class="btn btn-ghost">Browse the shelf</a>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-
-        {% if hero_products|length > 1 %}
-        <div class="window__dots" role="tablist" aria-label="Choose a featured book">
-          {% for pick in hero_products %}
-          <button
-            type="button"
-            class="window__dot{% if forloop.first %} is-active{% endif %}"
-            data-home-hero-pick
-            data-index="{{ forloop.counter0 }}"
-            role="tab"
-            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
-            aria-controls="hero-panel-{{ forloop.counter0 }}"
-            tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
-          >
-            <span class="sr-only">{{ pick.name }}</span>
-          </button>
-          {% endfor %}
-        </div>
-        {% endif %}
-      </div>
-
-      <div class="window__stage">
-        {% for pick in hero_products %}
-        <a
-          href="/products/{{ pick.slug }}/"
-          class="window__cover{% if forloop.first %} is-active{% endif %}"
-          data-home-hero-media
-          data-index="{{ forloop.counter0 }}"
-          aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
-          tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
-        >
-          {% if pick.primaryImage and pick.primaryImage.url %}
-            {% if forloop.first %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 420px, 62vw" priority=True %}
-            {% else %}
-              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 420px, 62vw" %}
-            {% endif %}
-          {% elif PRODUCT_PLACEHOLDER_IMAGE %}
-            <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ pick.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
-          {% else %}
-            <span class="placeholder">{{ pick.name }}</span>
-          {% endif %}
-        </a>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-</section>
-
+{# The page CSS sits in the head: below the markup, the hero laid out unstyled and then jumped (CLAUDE.md, the PDP CLS landmine). #}
 <style>
   /* ── Editor's picks: the bookshop window ─────────────────────────────────
      Height is padding-driven, not `100svh`: the hero used to fill the viewport
@@ -404,6 +272,154 @@ geometry, so the dots and cover never move between books.
     .window__cover.is-active:hover { transform: none; }
   }
 </style>
+<style>
+@media (min-width: 900px) { .journal-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 2.5rem !important; } }
+/* Journal teaser cards — the grey top rule "inks in" with accent red on
+   hover, sweeping left to right like a pen stroke; the headline follows. */
+.journal-card { position: relative; border-top: 1px solid var(--rule); padding-top: 1.25rem; }
+.journal-card::before {
+  content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
+  background: var(--accent);
+  transform: scaleX(0); transform-origin: 0 50%;
+  transition: transform var(--motion-slow) var(--ease-out);
+}
+.journal-card:hover::before { transform: scaleX(1); }
+.journal-card h3 a { transition: color var(--motion-fast) var(--ease-out); }
+.journal-card:hover h3 a { color: var(--accent-ink); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% comment %}
+The home_above_grid slot (a dynamics "Recommended for you" block) used to sit
+ABOVE the hero — removed so the editor's-picks hero leads the page. Personalised
+recommendations still render lower via the home_after_rails / home_below_grid slots.
+{% endcomment %}
+
+{% if hero_products %}
+{% comment %}
+Editor's picks — "the bookshop window". One book stands face-out and still;
+the rest of the window's display sits beside it on a hairline shelf, as real
+covers rather than abstract dots, so a shopper sees the whole selection at a
+glance and every pick is one click away. Choosing a cover promotes it.
+
+Deliberately NOT here, and not to be re-added: an auto-advancing timer (three
+of four books were only ever seen by a visitor who waited), TWO display
+headlines competing in one column, and the
+per-letter decode scramble — that effect forced `contain: layout`, a JS font
+fitter, a reserved tallest-title box and a top-anchored grid just to absorb the
+jitter it caused. No JS measures anything.
+
+v0.61.1 restored the shop's ORIGINAL editorial opening — "The book that
+moved this month." — as the column's lead (merchant preference; it was the
+very first hero's voice). v0.61.2 restores the rest of the remembered
+composition: copy on the LEFT, one large cover on the RIGHT, and dot
+navigation under the copy in place of the small-cover rail — the "two big
+texts" arrangement, with the book title back at display-xl as the dominant
+line. What stays deleted stays deleted: no autoplay, no decode, no JS
+measurement — the stacked-panel stage still gives every slide the same
+geometry, so the dots and cover never move between books.
+{% endcomment %}
+<section id="editors-pick" class="window" data-home-hero aria-label="Editor's picks">
+  <div class="wrap">
+    {% comment %}The home page has no other h1 — the hero used to open with an h2
+    and nothing above it. The shop name is the page's heading; the visible
+    hierarchy starts at the book title.{% endcomment %}
+    <h1 class="sr-only">Dot Books — an independent bookshop</h1>
+
+    <div class="window__shell">
+      <div class="window__copy">
+        <header class="window__lead">
+          <p class="eyebrow">Editor's pick</p>
+          <h2 class="display display-l window__headline">The book that<br>moved this month<span class="text-accent">.</span></h2>
+        </header>
+        <div class="window__copy-stage">
+          {% for pick in hero_products %}
+          {# A div, not an article: `article` does not permit role="tabpanel" (axe: aria-allowed-role). #}
+          <div
+            class="window__panel{% if forloop.first %} is-active{% endif %}"
+            id="hero-panel-{{ forloop.counter0 }}"
+            data-home-hero-copy
+            data-index="{{ forloop.counter0 }}"
+            {% if hero_products|length > 1 %}role="tabpanel"{% endif %}
+            aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
+          >
+            {% comment %}The title's size band is chosen from its own length, in
+            the template — these are public-domain books and a title can run 120
+            characters ("Christmas: Its Origin and Associations: Together with…").
+            At display-xl that one title was 892px tall and set the height of the
+            whole stacked stage, so every OTHER book showed against ~700px of
+            dead space. Server-side banding keeps the display-xl treatment for the
+            short titles it was designed for and steps long ones down the existing
+            scale — no JS fitter, the thing this hero deleted.{% endcomment %}
+            <h3
+              class="display window__book {% if pick.name|length > 70 %}window__book--xs{% elif pick.name|length > 26 %}display-l{% else %}display-xl{% endif %}"
+              style="--d: 60ms;"
+            ><em>{{ pick.name }}</em><span class="text-accent">.</span></h3>
+            <p class="window__meta" style="--d: 120ms;">
+              {% if pick.category %}
+              <span class="window__cat">{{ pick.category.name }}</span>
+              <span class="window__sep" aria-hidden="true">·</span>
+              {% endif %}
+              <span class="window__price">{% if pick.priceStartsFrom %}<span class="window__from">{% translate "From" %}</span> {% endif %}{{ pick.price|money }}</span>
+              {% if pick.isOnSale %}<span class="window__save">&minus;{{ pick.discountPercentage }}%</span>{% endif %}
+            </p>
+            <div class="window__actions" style="--d: 180ms;">
+              <a href="/products/{{ pick.slug }}/" class="btn btn-primary">Shop now</a>
+              <a href="/products/" class="btn btn-ghost">Browse the shelf</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        {% if hero_products|length > 1 %}
+        <div class="window__dots" role="tablist" aria-label="Choose a featured book">
+          {% for pick in hero_products %}
+          <button
+            type="button"
+            class="window__dot{% if forloop.first %} is-active{% endif %}"
+            data-home-hero-pick
+            data-index="{{ forloop.counter0 }}"
+            role="tab"
+            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+            aria-controls="hero-panel-{{ forloop.counter0 }}"
+            tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+          >
+            <span class="sr-only">{{ pick.name }}</span>
+          </button>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="window__stage">
+        {% for pick in hero_products %}
+        <a
+          href="/products/{{ pick.slug }}/"
+          class="window__cover{% if forloop.first %} is-active{% endif %}"
+          data-home-hero-media
+          data-index="{{ forloop.counter0 }}"
+          aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}"
+          tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+        >
+          {% if pick.primaryImage and pick.primaryImage.url %}
+            {% if forloop.first %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 420px, 62vw" priority=True %}
+            {% else %}
+              {% seo_responsive_image pick.primaryImage.url alt=pick.primaryImage.altText|default:pick.name widths="400,600,800" sizes="(min-width: 900px) 420px, 62vw" %}
+            {% endif %}
+          {% elif PRODUCT_PLACEHOLDER_IMAGE %}
+            <img src="{{ PRODUCT_PLACEHOLDER_IMAGE }}" alt="{{ pick.name }}" loading="{% caching_img_loading_attr %}" decoding="async">
+          {% else %}
+            <span class="placeholder">{{ pick.name }}</span>
+          {% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
 
 <script>
   (function () {
@@ -607,21 +623,6 @@ geometry, so the dots and cover never move between books.
 </section>
 {% endif %}
 
-<style>
-@media (min-width: 900px) { .journal-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 2.5rem !important; } }
-/* Journal teaser cards — the grey top rule "inks in" with accent red on
-   hover, sweeping left to right like a pen stroke; the headline follows. */
-.journal-card { position: relative; border-top: 1px solid var(--rule); padding-top: 1.25rem; }
-.journal-card::before {
-  content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
-  background: var(--accent);
-  transform: scaleX(0); transform-origin: 0 50%;
-  transition: transform var(--motion-slow) var(--ease-out);
-}
-.journal-card:hover::before { transform: scaleX(1); }
-.journal-card h3 a { transition: color var(--motion-fast) var(--ease-out); }
-.journal-card:hover h3 a { color: var(--accent-ink); }
-</style>
 
 {% storefront_blocks "home_below_grid" %}
 

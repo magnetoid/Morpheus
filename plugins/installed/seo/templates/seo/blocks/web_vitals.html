@@ -1,0 +1,15 @@
+{% comment %}
+Field Core Web Vitals for the SEO page's speed card, on every theme (three shop themes used to
+carry their own copy, and the travel themes none). Contributed by seo, so the beacon
+goes with the app. The view drops crawlers and keeps 28 days, as Google measures.
+{% endcomment %}<script nonce="{{ csp_nonce }}" type="module">
+  import {onCLS, onINP, onLCP} from 'https://cdn.jsdelivr.net/npm/web-vitals@4.2.4/+esm';
+  function beacon(m) {
+    try {
+      navigator.sendBeacon('{% url "seo:web_vitals" %}', JSON.stringify({
+        name: m.name, value: m.value, rating: m.rating, url: location.pathname,
+      }));
+    } catch (e) { /* never block paint */ }
+  }
+  onLCP(beacon); onINP(beacon); onCLS(beacon);
+</script>

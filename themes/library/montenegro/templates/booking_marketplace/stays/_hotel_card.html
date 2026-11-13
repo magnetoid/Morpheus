@@ -1,7 +1,7 @@
-{% load i18n %}
+{% load seo %}{% load i18n %}
 <a href="/hotels/{{ p.slug }}/" class="group block rounded-2xl overflow-hidden border border-border bg-card shadow-card hover:shadow-lg transition-shadow">
   <div class="aspect-[4/3] bg-muted overflow-hidden">
-    {% if p.image %}<img src="{{ p.image.url }}" alt="{{ p.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+    {% if p.image %}{% seo_responsive_image p.image alt=p.name widths="400,600,800" sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" css_class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" %}
     {% else %}<div class="w-full h-full flex items-center justify-center text-muted-foreground">
       <svg class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
     </div>{% endif %}

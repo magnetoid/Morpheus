@@ -127,6 +127,7 @@ def _resolve_meta(page: SeoPage):
         fallback_title=page.title,
         fallback_description=page.description,
         fallback_image=page.image,
+        last_resort_image=page.fallback_image,
         og_type=page.og_type,
         page_kind=page.kind,
     )
@@ -280,6 +281,15 @@ def _apply_social(doc, page: SeoPage, meta) -> None:
     if meta.og_image:
         doc.meta(meta.og_image, property='og:image', source='seo')
         doc.meta(meta.og_image, property='og:image:secure_url', source='seo')
+        # The size only when the file says it: every og:image was declared
+        # 1200x630 until v0.83.6, square product photos included.
+        from plugins.installed.seo.services.images import image_size
+
+        if _same_site(meta.og_image):
+            size = image_size(meta.og_image)
+            if size:
+                doc.meta(str(size[0]), property='og:image:width', source='seo')
+                doc.meta(str(size[1]), property='og:image:height', source='seo')
         doc.meta(og_title, property='og:image:alt', source='seo')
 
     doc.meta(meta.twitter_card or 'summary_large_image', name='twitter:card', source='seo')
@@ -294,6 +304,14 @@ def _apply_social(doc, page: SeoPage, meta) -> None:
     # scrapers and several shopping surfaces read these before the JSON-LD.
     if page.kind == KIND_PRODUCT:
         _apply_product_og(doc, page)
+
+
+def _same_site(url: str) -> bool:
+    """True for a relative URL or one on this store's host (only those are ours to measure)."""
+    from core.utils.site import site_base_url
+
+    host = (urlsplit(url).hostname or '').lower()
+    return not host or host == (urlsplit(site_base_url()).hostname or '').lower()
 
 
 def _apply_product_og(doc, page: SeoPage) -> None:
