@@ -37,7 +37,7 @@ def _variant(slug, *, tracked=True, name='Default'):
 class _Base(TestCase):
     def setUp(self):
         self.client.force_login(_user('owner'))
-        self.main = Warehouse.objects.create(name='Main', code='MAIN', is_default=True)
+        self.main = Warehouse.objects.create(name='Depot North', code='MAIN', is_default=True)
         self.closed = Warehouse.objects.create(name='Closed', code='OLD', is_active=False)
 
     def level(self, slug, quantity, *, reserved=0, warehouse=None, tracked=True):
@@ -58,7 +58,7 @@ class StockListTests(_Base):
         self.assertIn('Lantern', page)
         self.assertIn('LANTERN', page)
         self.assertIn('value="14"', page)
-        self.assertIn('Main', page)
+        self.assertIn('Depot North', page)
         self.assertNotIn('Hidden', page)
         self.assertNotIn('Poster', page)
 
@@ -76,8 +76,19 @@ class StockListTests(_Base):
         self.assertIn('Few', low)
         self.assertNotIn('Many', low)
         page = self.client.get(URL).content.decode()
-        self.assertIn('>Out<', page)
-        self.assertIn('>Low<', page)
+        self.assertEqual(page.count('data-state="out"'), 1)
+        self.assertEqual(page.count('data-state="low"'), 1)
+        self.assertEqual(page.count('data-state="ok"'), 1)
+        for name, state in (('None', 'out'), ('Few', 'low'), ('Many', 'ok')):
+            row = [r for r in page.split('<tr ') if f'>{name}</a>' in r][0]
+            self.assertTrue(row.startswith(f'data-state="{state}"'), name)
+
+    def test_healthy_rows_carry_no_alarm_state(self):
+        self.level('many', 90)
+        page = self.client.get(URL).content.decode()
+        self.assertIn('data-state="ok"', page)
+        self.assertNotIn('data-state="out"', page)
+        self.assertNotIn('data-state="low"', page)
 
     def test_one_low_rule(self):
         self.level('none', 0)
@@ -97,15 +108,41 @@ class StockListTests(_Base):
         self.assertIn(f'href="{URL}?status=low"', home)
 
     def test_search(self):
-        self.level('lantern', 4)
+        lamp = StockLevel.objects.create(
+            variant=_variant('lantern'), warehouse=self.main, quantity=4
+        )
+        ProductVariant.objects.filter(pk=lamp.variant_id).update(sku='ZX-900')
+        Product.objects.filter(pk=lamp.variant.product_id).update(sku='ZX-900')
         self.level('rope', 4)
-        by_sku = self.client.get(URL, {'q': 'lanTERN'}).content.decode()
+        by_sku = self.client.get(URL, {'q': 'zx-9'}).content.decode()
         self.assertIn('Lantern', by_sku)
         self.assertNotIn('Rope', by_sku)
         by_name = self.client.get(URL, {'q': 'ant'}).content.decode()
         self.assertIn('Lantern', by_name)
         none = self.client.get(URL, {'q': 'zzz'}).content.decode()
         self.assertIn('data-empty="stock"', none)
+
+    def test_empty_under_filters_reads_plainly(self):
+        self.level('many', 90)
+        low = self.client.get(URL, {'status': 'low'}).content.decode()
+        self.assertIn('data-empty="stock"', low)
+        self.assertNotIn('&ldquo;low&rdquo;', low)
+        self.assertIn('low stock', low)
+        depot = Warehouse.objects.create(name='Depot South', code='S')
+        page = self.client.get(URL, {'warehouse': str(depot.pk)}).content.decode()
+        self.assertNotIn('No stock to show', page)
+        self.assertIn('Depot South', page)
+
+    def test_tabs_and_search_keep_the_other_filters(self):
+        self.level('many', 90)
+        page = self.client.get(
+            URL, {'q': 'man', 'warehouse': str(self.main.pk), 'sort': 'quantity', 'dir': 'desc'}
+        ).content.decode()
+        self.assertIn(
+            f'href="?q=man&amp;warehouse={self.main.pk}&amp;sort=quantity&amp;dir=desc&amp;status=low"',
+            page,
+        )
+        self.assertIn('name="sort" value="quantity"', page)
 
     def test_empty_store(self):
         response = self.client.get(URL)
@@ -168,13 +205,20 @@ class StockBoundaryTests(_Base):
         clerk.force_login(_user('clerk'))
         with (
             patch('core.authz.enforcement_mode', return_value='enforce'),
-            patch('core.authz.has_capability', return_value=False),
+            patch(
+                'core.authz.has_capability',
+                side_effect=lambda user, cap, **kw: cap == 'inventory.read',
+            ),
         ):
+            seen = clerk.get(URL)
+            self.assertEqual(seen.status_code, 200)
+            self.assertNotIn('name="quantity"', seen.content.decode())
             self.assertEqual(
                 clerk.post(URL, {'level': str(sl.pk), 'quantity': '99'}).status_code, 403
             )
         sl.refresh_from_db()
         self.assertEqual(sl.quantity, 4)
+        self.assertEqual(StockMovement.objects.count(), 0)
 
 
 class StockTabGroupTests(_Base):

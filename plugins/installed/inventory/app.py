@@ -164,12 +164,13 @@ class InventoryPlugin(Plugin):
         """Fold the low-stock list (+ threshold) into the home context: the six
         fewest of the list the Stock page's low filter shows."""
         from plugins.installed.inventory.services import (  # noqa: PLC0415
+            LOW_STOCK_URL,
             low_stock_levels,
             low_stock_threshold,
         )
 
         value['low_stock'] = low_stock_levels(limit=6)
-        value['low_stock_url'] = '/dashboard/apps/inventory/stock/?status=low'
+        value['low_stock_url'] = LOW_STOCK_URL
         value['low_stock_threshold'] = low_stock_threshold()
         return value
 

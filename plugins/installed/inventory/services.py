@@ -713,6 +713,10 @@ def low_stock_threshold() -> int:
         return 5
 
 
+#: The Stock page's low filter: the one link the home tile and Pulse use.
+LOW_STOCK_URL = '/dashboard/apps/inventory/stock/?status=low'
+
+
 def stock_rows():
     """Every stock row that counts: switched-on warehouses, products that count
     stock, each annotated ``free`` (on hand less held). The Stock page lists

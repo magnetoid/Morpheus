@@ -168,7 +168,11 @@ def _low_stock_signal() -> dict | None:
 
     if not app_registry.is_active('inventory'):
         return None
-    from plugins.installed.inventory.services import low_stock_levels, low_stock_threshold
+    from plugins.installed.inventory.services import (
+        LOW_STOCK_URL,
+        low_stock_levels,
+        low_stock_threshold,
+    )
 
     rows = low_stock_levels(limit=50)
     if not rows:
@@ -184,7 +188,7 @@ def _low_stock_signal() -> dict | None:
         'estimated_impact': 'Restock to avoid lost orders this week.',
         'suggested_action': {
             'kind': 'open_view',
-            'url': '/dashboard/apps/inventory/stock/?status=low',
+            'url': LOW_STOCK_URL,
             'label': 'See what is running low',
         },
     }

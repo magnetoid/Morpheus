@@ -12,7 +12,7 @@ Nothing to switch on. Stock is counted only for a product with **Track inventory
 
 ## Common tasks
 
-- See stock across all your products on the [Stock](page:stock) page (Products → Inventory): search, filter to what is low or out, and type a count next to a row. To change a count, type it on [Stock](page:stock) or on the product's Stock card.
+- See stock across all your products on the [Stock](page:stock) page (Products → Inventory): search, and filter to what is low or out. To change a count, type it on [Stock](page:stock) or on the product's Stock card.
 - Tick **Backorders** in a product's Stock card to keep selling a variant when none is left. While staff roles are enforced, changing stock takes its own permission: someone who may edit a product but not stock sees the numbers without boxes to change.
 - Add a warehouse, choose the default one, or switch one off on the [Warehouses](page:warehouses) page.
 - Move free units from one warehouse to another on the Warehouses page; its list shows the latest changes.

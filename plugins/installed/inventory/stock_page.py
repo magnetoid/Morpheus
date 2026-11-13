@@ -60,6 +60,7 @@ def _show(request):
     from plugins.installed.inventory.services import low_stock_threshold  # noqa: PLC0415
 
     rows, status, warehouse, search = _filtered(request)
+    warehouses = list(Warehouse.objects.filter(is_active=True).order_by('name'))
     page_obj, paging_ctx = paginate_and_sort(
         request,
         rows,
@@ -70,10 +71,24 @@ def _show(request):
     page_rows = list(page_obj.object_list)
     prefetch_related_objects(page_rows, 'variant__product__variants')
     threshold = low_stock_threshold()
+    from plugins.installed.inventory.stock_card import may_change_stock  # noqa: PLC0415
+
+    kept = request.GET.copy()
+    kept.pop('page', None)
+    kept.pop('status', None)
+
+    def _tab(value):
+        q = kept.copy()
+        if value:
+            q['status'] = value
+        return '?' + q.urlencode() if q else request.path
+
+    warehouse_name = next((w.name for w in warehouses if str(w.pk) == warehouse), '')
+    label = search or {'low': 'low stock', 'out': 'out of stock'}.get(status, '') or warehouse_name
     for row in page_rows:
         product = row.variant.product
         row.show_variant = not has_only_default_variant(product, product.variants.all())
-        row.state = 'out' if row.free <= 0 else 'low' if row.free <= threshold else ''
+        row.state = 'out' if row.free <= 0 else 'low' if row.free <= threshold else 'ok'
     return render(
         request,
         'inventory/dashboard/stock.html',
@@ -82,7 +97,12 @@ def _show(request):
             'status_filter': status,
             'warehouse_filter': warehouse,
             'search': search,
-            'warehouses': Warehouse.objects.filter(is_active=True).order_by('name'),
+            'warehouses': warehouses,
+            'can_write': may_change_stock(request.user),
+            'filter_label': label,
+            'tab_all': _tab(''),
+            'tab_low': _tab('low'),
+            'tab_out': _tab('out'),
             'low_stock_threshold': threshold,
             'active_nav': 'products',
             **paging_ctx,
@@ -104,7 +124,10 @@ def _save(request):
     except (ValueError, ValidationError):
         level = None
     if level is None:
-        messages.error(request, 'That stock row is not counted: its warehouse is switched off.')
+        messages.error(
+            request,
+            "That stock row is no longer listed here: its warehouse is off or the product doesn't count stock.",
+        )
         return back
     InventoryService.set_quantity(
         level.variant,
@@ -114,7 +137,7 @@ def _save(request):
         user=request.user,
     )
     messages.success(
-        request, f'{level.variant.product.name}: {raw} on hand in {level.warehouse.name}.'
+        request, f'{level.variant.product.name}: {int(raw)} on hand in {level.warehouse.name}.'
     )
     return back
 
