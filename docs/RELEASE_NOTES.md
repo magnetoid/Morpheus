@@ -25,6 +25,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - Shoppers still see the store currency: showing and charging market prices comes in a later release.
 - hreflang is per language only: a market no longer publishes a ?market= alternate.
 - An optional bar offers a visitor the page in the language their browser prefers (a switch on the Translations page, off by default). It is decided in the browser, so a cached page stays the same for everyone; crawlers never get it, and its stylesheet loads only when it shows.
+- OpenTelemetry packages 1.45.2 (CVE-2026-126360 in opentelemetry-api 1.45.1).
 
 ## v0.164.0 — 2026-11-12
 
