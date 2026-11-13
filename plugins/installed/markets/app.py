@@ -22,12 +22,58 @@ class MarketsPlugin(Plugin):
     has_models = True
 
     def ready(self) -> None:
+        from celery.schedules import crontab
+
+        self.register_celery_beat(
+            'markets:fetch_exchange_rates',
+            {
+                'task': 'markets.fetch_exchange_rates',
+                'schedule': crontab(hour=15, minute=30),
+            },
+        )
+        self.register_hook(events.HEALTH_CHECKS, self.on_health_checks, priority=60)
         self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
         self.register_urls(
             'plugins.installed.markets.urls',
             prefix='dashboard/markets/',
             namespace='markets',
         )
+
+    def get_config_schema(self):
+        return {
+            'type': 'object',
+            'properties': {
+                'rate_source': {
+                    'type': 'string',
+                    'enum': ['ecb', 'manual'],
+                    'default': 'ecb',
+                    'title': 'Where exchange rates come from',
+                    'description': (
+                        "'ecb' fetches the European Central Bank's daily rates for the "
+                        "currencies your markets use; 'manual' leaves every rate to you. "
+                        'A rate you type is never overwritten either way.'
+                    ),
+                },
+            },
+        }
+
+    def on_health_checks(self, value, **kwargs):
+        """HEALTH_CHECKS: every active market's currency has a current rate."""
+        from plugins.installed.markets import rates
+
+        bad = [
+            f'{r["currency"]} ({"no rate" if r["rate"] is None else "out of date"})'
+            for r in rates.rate_rows()
+            if r['stale']
+        ]
+        value.append(
+            {
+                'name': 'Exchange rates are current',
+                'ok': not bad,
+                'detail': ('Markets need a rate for: ' + ', '.join(bad)) if bad else '',
+            }
+        )
+        return value
 
     def on_dashboard_search(self, value, query='', words=None, **kwargs):
         """Markets (by code, name or currency) in the dashboard's search box."""
