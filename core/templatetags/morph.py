@@ -278,27 +278,17 @@ def convert_money(value, target_currency: str):
     """
     if not value or not target_currency:
         return value
-    try:
-        from djmoney.money import Money
-        from core.models import ExchangeRate
-    except ImportError:
-        return value
+    from djmoney.money import Money
+
+    from core.pricing import convert
+
     if not isinstance(value, Money):
         return value
-    src = str(value.currency)
-    tgt = (target_currency or '').upper()[:3]
-    if src == tgt:
-        return value
     try:
-        rate = ExchangeRate.objects.filter(base_currency=src, quote_currency=tgt).first()
+        converted = convert(value, (target_currency or '').upper()[:3])
     except Exception:  # noqa: BLE001
         return value
-    if rate is None:
-        return value
-    from decimal import Decimal
-
-    converted = (Decimal(value.amount) * Decimal(rate.rate)).quantize(Decimal('0.01'))
-    return Money(converted, tgt)
+    return value if converted is None else converted
 
 
 def markdown_to_html(value: str) -> str:
