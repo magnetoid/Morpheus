@@ -105,6 +105,10 @@ class BookingMarketplacePlugin(Plugin):
             events.STOREFRONT_VENDOR_SECTIONS, booking_seo.on_vendor_sections, priority=50
         )
         self.register_hook(events.STOREFRONT_SEARCH_PATH, booking_seo.on_search_path, priority=50)
+        # Places, hotels and events, for the store's other languages (core.i18n).
+        from plugins.installed.booking_marketplace.translations import on_translatable_content
+
+        self.register_hook(events.TRANSLATABLE_CONTENT, on_translatable_content, priority=20)
 
         # The search index rebuilds after a listing, a place or a category changes (search.py).
         from django.db.models.signals import post_delete, post_save

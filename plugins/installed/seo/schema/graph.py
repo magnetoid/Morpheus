@@ -144,7 +144,8 @@ def _webpage(page: SeoPage, url: str, website: dict | None, org: dict | None) ->
         'url': url,
         'name': page.title or '',
         'isPartOf': {'@id': website['@id']} if website else None,
-        'inLanguage': _language(),
+        # The language the main content is in: the default one for an untranslated object.
+        'inLanguage': page.language or _language(),
     }
     if page.description:
         node['description'] = page.description[:400]

@@ -634,6 +634,24 @@ def product_detail(request, slug):
     except Exception:  # noqa: BLE001, S110
         pass
 
+    # In the page's language (core.i18n): the row the head reads, and a copy of the
+    # GraphQL dict the template reads. After PRODUCT_VIEWED, whose subscribers report
+    # the product's own name.
+    if product_row is not None:
+        from core.i18n.services import overlay_translation
+
+        overlay_translation(product_row)
+        shown = product_row.__dict__.get('_morph_untranslated') or {}
+        keys = {
+            'name': 'name',
+            'short_description': 'shortDescription',
+            'description': 'description',
+        }
+        product = {
+            **product,
+            **{key: getattr(product_row, field) for field, key in keys.items() if field in shown},
+        }
+
     related = _related_products(slug, request=request)
     images = product.get('images') or []
     primary_images = sorted(

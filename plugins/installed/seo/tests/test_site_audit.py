@@ -90,9 +90,28 @@ class SiteAuditTests(TestCase):
             self.assertGreater(finding['count'], 0)
             self.assertIn('hreflang', finding['why'])
 
+    @override_settings(LANGUAGES=[('en', 'English'), ('sr', 'Srpski')], LANGUAGE_CODE='en')
+    def test_an_untranslated_page_is_work_to_do_not_a_missing_alternate(self):
+        # A product nobody translated names no alternates on purpose (v0.160.0): its
+        # /sr/ copy is the English page, which is a translation still to write.
+        report = site_audit.collect(limit=60)
+        info = _finding(report, 'not_translated_sr')
+        self.assertIsNotNone(info, _codes(report))
+        self.assertEqual(info['severity'], 'info')
+        self.assertIn('Not yet translated', info['title'])
+        # Every page without alternates here is an untranslated object page.
+        self.assertIsNone(_finding(report, 'hreflang_missing'), _codes(report))
+
+        from core.i18n.services import set_translation
+
+        set_translation(self.product, 'name', 'sr', 'Probna stavka')
+        set_translation(self.product, 'description', 'sr', 'Dovoljno dug opis. ' * 20)
+        after = _finding(site_audit.collect(limit=60), 'not_translated_sr')
+        self.assertEqual((after or {}).get('count', 0), info['count'] - 1)
+
     def test_findings_are_ordered_worst_first(self):
         report = site_audit.collect(limit=30)
-        rank = {'critical': 0, 'warning': 1, 'notice': 2}
+        rank = {'critical': 0, 'warning': 1, 'notice': 2, 'info': 3}
         severities = [rank[f['severity']] for f in report['findings']]
         self.assertEqual(severities, sorted(severities))
 

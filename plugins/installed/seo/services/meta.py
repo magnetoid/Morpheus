@@ -141,6 +141,16 @@ def _template_layer(
     return (t_out or title), (d_out or description)
 
 
+def _translated_fields(obj) -> set[str] | None:
+    """The fields shown in a translation on `obj`, or None when it is shown as stored."""
+    state = (
+        getattr(obj, '__dict__', None) if obj is not None and not isinstance(obj, dict) else None
+    )
+    if not state or not state.get('_morph_translated'):
+        return None
+    return set(state.get('_morph_untranslated') or ())
+
+
 def resolve_meta(
     *,
     obj: Any | None = None,
@@ -185,16 +195,22 @@ def resolve_meta(
     # typed beats one we invented, whichever table it happens to live in.
     autofilled = bool(meta and getattr(meta, 'auto_filled', False))
 
-    def stored(field: str, native_name: str, fallback: str = '') -> str:
+    # An object shown in its reviewed translation (core.i18n): the SeoMeta row, the
+    # title patterns and the untranslated social columns are all in the default
+    # language, so the page is named by the object's own translated fields, else by
+    # the page's (translated) copy.
+    def stored(field: str, native_name: str, fallback: str = '', *, text: bool = False) -> str:
+        if text and (translated := _translated_fields(obj)) is not None:
+            return native(native_name) if native_name in translated else ''
         own = (getattr(meta, field, '') or '') if meta else ''
         native_value = native(native_name)
         if autofilled and native_value:
             return native_value
         return own or native_value or fallback
 
-    title = stored('title', 'meta_title', '').strip()
-    description = strip_html(stored('description', 'meta_description', ''))
-    if page_kind:
+    title = stored('title', 'meta_title', text=True).strip()
+    description = strip_html(stored('description', 'meta_description', text=True))
+    if page_kind and _translated_fields(obj) is None:
         title, description = _template_layer(
             page_kind, obj, meta, autofilled, native, title, description
         )
@@ -265,10 +281,12 @@ def resolve_meta(
     twitter_card = (
         (meta.twitter_card if meta else '') or native('twitter_card') or 'summary_large_image'
     )
-    og_title = stored('og_title', 'og_title')
-    og_description = strip_html(stored('og_description', 'og_description'))
-    twitter_title = stored('twitter_title', 'twitter_title')
-    twitter_description = strip_html(stored('twitter_description', 'twitter_description'))
+    og_title = stored('og_title', 'og_title', text=True)
+    og_description = strip_html(stored('og_description', 'og_description', text=True))
+    twitter_title = stored('twitter_title', 'twitter_title', text=True)
+    twitter_description = strip_html(
+        stored('twitter_description', 'twitter_description', text=True)
+    )
     type_ = meta.og_type if meta and meta.og_type else og_type
 
     structured = _structured_data_for(obj, title=title, description=description, image=og_image)

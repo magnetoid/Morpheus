@@ -9,6 +9,7 @@ from django.utils.translation import gettext as _
 
 from core.utils.pagination import paginate_or_404
 from plugins.installed.booking_marketplace import country, seo_jsonld, stay_content, stays
+from plugins.installed.booking_marketplace import translations as shown
 from plugins.installed.booking_marketplace.models import (
     AMENITY_LABELS,
     POLICY_LABELS,
@@ -88,7 +89,7 @@ def stays_index(request):
         qs = qs.filter(property_type=ptype)
     # 100 hotels on one page was a 167 KB document; a page past the end is a 404.
     page_obj = paginate_or_404(qs.order_by('name'), 48, request)
-    properties = list(page_obj.object_list)
+    properties = shown.show(list(page_obj.object_list))
     return render(
         request,
         'booking_marketplace/stays/index.html',
@@ -122,7 +123,10 @@ def stay_detail(request, slug):
         is_active=True,
         vendor__is_active=True,
     )
-    nearby = stays.nearby_places(prop)
+    # In the page's language before anything reads its text (core.i18n).
+    shown.show(prop)
+    nearby = shown.show(stays.nearby_places(prop))
+    related = shown.show(stays.related_stays(prop))
     return render(
         request,
         'booking_marketplace/stays/detail.html',
@@ -136,7 +140,7 @@ def stay_detail(request, slug):
             'best_for': stay_content.best_for(prop),
             'location_intro': stay_content.location_intro(prop, nearby),
             'nearby_places': nearby,
-            'related_stays': stays.related_stays(prop),
+            'related_stays': related,
             'policy_items': _policies(prop.policies),
             'listing_mode': listing_mode(),
             # Per-page SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
