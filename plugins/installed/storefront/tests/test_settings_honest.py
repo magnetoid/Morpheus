@@ -87,6 +87,36 @@ class MaintenancePanelTests(_Base):
         self.assertEqual(self.staff.get('/dashboard/').status_code, 200)
         self.assertEqual(self.staff.get('/').status_code, 200)
 
+    def test_a_regular_post_reopens_the_shop(self):
+        # Without JavaScript the card posts a regular form, and an unticked box
+        # sends nothing: the form names the boxes it rendered (PR #164 review).
+        page = self.staff.get('/dashboard/settings/storefront/').content.decode()
+        self.assertIn('name="_booleans" value="maintenance_mode"', page)
+        self.staff.post(
+            '/dashboard/settings/storefront/',
+            {'_booleans': 'maintenance_mode', 'maintenance_mode': 'on'},
+        )
+        self.assertIs(self._stored()['maintenance_mode'], True)
+        self.assertEqual(Client().get('/').status_code, 503)
+        resp = self.staff.post(
+            '/dashboard/settings/storefront/',
+            {'_booleans': 'maintenance_mode', 'maintenance_message': ''},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertIs(self._stored()['maintenance_mode'], False)
+        self.assertEqual(Client().get('/').status_code, 200)
+
+    def test_a_post_that_names_no_box_leaves_the_switch_alone(self):
+        # A page that posts only some keys must not switch off a box it never showed.
+        self.staff.post(
+            '/dashboard/settings/storefront/',
+            {'_booleans': 'maintenance_mode', 'maintenance_mode': 'on'},
+        )
+        self.staff.post('/dashboard/settings/storefront/', {'maintenance_message': 'Back at noon.'})
+        stored = self._stored()
+        self.assertIs(stored['maintenance_mode'], True)
+        self.assertEqual(stored['maintenance_message'], 'Back at noon.')
+
     def test_panel_writes_only_its_own_keys(self):
         self.staff.post(
             '/dashboard/settings/storefront/',
