@@ -15,7 +15,7 @@ Nothing to connect: tracking starts when the app is on. On [Analytics](settings:
 - Watch the storefront live on [Real-time](page:realtime)
 - See where shoppers drop out on [Funnel](page:funnel), to an order or, on a travel store, a booking
 - Check what share of one week's customers still buy weeks later on [Cohorts](page:cohorts)
-- Compare ad spend to revenue under different attribution models on [Attribution](page:attribution)
+- Compare [channels](app:channels) ad spend with order revenue, ROAS and MER on [Attribution](page:attribution), blank without spend
 - Export the traffic summary and top products as CSV or JSON
 
 ## Good to know

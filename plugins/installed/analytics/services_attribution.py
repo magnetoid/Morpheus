@@ -62,7 +62,17 @@ def attribute(journey: list, revenue, model: str) -> dict:
 
 # Ad platforms whose traffic arrives under several utm_source spellings, keyed
 # to the channel their spend is reported under (ANALYTICS_AD_SPEND).
-_SOURCE_ALIASES = {'facebook': 'meta', 'fb': 'meta', 'instagram': 'meta', 'ig': 'meta'}
+_SOURCE_ALIASES = {
+    'googleads': 'google',
+    'google_ads': 'google',
+    'gads': 'google',
+    'facebook': 'meta',
+    'fb': 'meta',
+    'instagram': 'meta',
+    'ig': 'meta',
+    'bing': 'microsoft',
+    'snap': 'snapchat',
+}
 
 
 def _channel_of(session) -> str:
@@ -88,11 +98,13 @@ def collect_ad_spend() -> int:
     for today. Returns rows written."""
     from djmoney.money import Money
 
+    from core.pricing import store_currency
     from morpheus.core import MorpheusEvents, hook_registry
     from plugins.installed.analytics.models import AdSpendSnapshot
 
     rows = hook_registry.filter(MorpheusEvents.ANALYTICS_AD_SPEND, value=[]) or []
     today = timezone.now().date()
+    currency = store_currency()
     written = 0
     for row in rows:
         channel = (row.get('channel') or '').strip().lower()
@@ -102,7 +114,7 @@ def collect_ad_spend() -> int:
         AdSpendSnapshot.objects.update_or_create(
             day=today,
             channel=channel,
-            defaults={'spend': Money(Decimal(str(spend)), 'USD'), 'source_meta': row},
+            defaults={'spend': Money(Decimal(str(spend)), currency), 'source_meta': row},
         )
         written += 1
     return written
@@ -113,6 +125,7 @@ def attribute_revenue(days: int = 30) -> int:
     write per-model per-channel revenue to DailyMetric. Returns purchases processed."""
     from djmoney.money import Money
 
+    from core.pricing import store_currency
     from plugins.installed.analytics.models import AnalyticsEvent, DailyMetric
 
     since = timezone.now() - timedelta(days=days)
@@ -134,32 +147,39 @@ def attribute_revenue(days: int = 30) -> int:
         processed += 1
 
     today = timezone.now().date()
+    currency = store_currency()
     for (model, channel), amount in totals.items():
         DailyMetric.objects.update_or_create(
             day=today,
             metric='attribution',
             dimension=f'{model}:{channel}',
-            defaults={'value_money': Money(amount.quantize(Decimal('0.01')), 'USD')},
+            defaults={'value_money': Money(amount.quantize(Decimal('0.01')), currency)},
         )
     return processed
 
 
 def roas_by_channel(model: str = 'last_touch', days: int = 30) -> list:
     """Per-channel spend vs attributed revenue → ROAS, from the newest snapshot of
-    each (both are trailing-window totals)."""
+    each (both are trailing-window totals). A channel with no snapshot has spend
+    ``None`` (unknown, never 0); ``platform_revenue`` and ``conversions`` are what
+    the platform reported in that snapshot, ``None`` when it did not say."""
     from plugins.installed.analytics.models import AdSpendSnapshot, DailyMetric
 
     since = timezone.now().date() - timedelta(days=days)
     # Each snapshot is a trailing-window total already: read the newest one,
     # never the sum of every day (that counted each total up to 31 times). Spend
     # is per channel — a channel whose fetch failed today keeps yesterday's total.
-    spend: dict = defaultdict(Decimal)
+    spend: dict = {}
+    claimed: dict = {}
     for row in (
         AdSpendSnapshot.objects.filter(day__gte=since)
         .order_by('channel', '-day')
-        .values('channel', 'spend')
+        .values('channel', 'spend', 'source_meta')
     ):
-        spend.setdefault(row['channel'], Decimal(str(row['spend'] or 0)))
+        if row['channel'] in spend:
+            continue
+        spend[row['channel']] = Decimal(str(row['spend'] or 0))
+        claimed[row['channel']] = row['source_meta'] if isinstance(row['source_meta'], dict) else {}
 
     revenue: dict = defaultdict(Decimal)
     prefix = f'{model}:'
@@ -174,13 +194,19 @@ def roas_by_channel(model: str = 'last_touch', days: int = 30) -> list:
     channels = sorted(set(spend) | set(revenue))
     out = []
     for ch in channels:
-        s, r = spend[ch], revenue[ch]
+        s, r = spend.get(ch), revenue[ch]
+        meta = claimed.get(ch, {})
+        platform_revenue = meta.get('platform_revenue')
         out.append(
             {
                 'channel': ch,
                 'spend': s,
                 'revenue': r,
                 'roas': round(r / s, 2) if s else None,
+                'platform_revenue': (
+                    None if platform_revenue is None else Decimal(str(platform_revenue))
+                ),
+                'conversions': meta.get('conversions'),
             }
         )
     out.sort(key=lambda x: x['revenue'], reverse=True)

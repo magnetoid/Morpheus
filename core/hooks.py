@@ -886,9 +886,13 @@ class MorpheusEvents:
     #   row simply never appears. Fail-soft: the hook bus isolates a broken
     #   handler so one channel can't break the overview.
     CHANNELS_OVERVIEW = 'channels.overview'  # filter
-    # ANALYTICS_AD_SPEND — filter, value=list[dict], no kwargs. Each ad-channel
-    #   plugin appends its own {'channel': str, 'spend': number, 'days': int} for
-    #   the trailing window; analytics snapshots it into AdSpendSnapshot for ROAS.
+    # ANALYTICS_AD_SPEND — filter, value=list[dict], no kwargs. The channels app
+    #   answers it, from its daily CHANNELS_METRICS cache (no live API calls), with
+    #   one row per ad channel that has spent: {'channel': 'google'|'meta'|'tiktok'|
+    #   'pinterest'|'microsoft'|'amazon'|'reddit'|'snapchat', 'spend': number,
+    #   'conversions': int|None, 'platform_revenue': number|None, 'days': 30}.
+    #   Channel plugins do not answer it themselves (each channel would be counted
+    #   twice); analytics snapshots the rows into AdSpendSnapshot for ROAS.
     ANALYTICS_AD_SPEND = 'analytics.collect_ad_spend'  # filter
     # CHANNELS_METRICS — filter, value=list[dict], no kwargs. EXPENSIVE: each
     #   channel plugin appends ITS OWN 30-day ads totals — {'name': str,

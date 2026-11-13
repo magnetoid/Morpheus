@@ -138,10 +138,6 @@
       "target": "orders"
     },
     {
-      "importer": "channels",
-      "target": "analytics"
-    },
-    {
       "importer": "cms",
       "target": "catalog"
     },
