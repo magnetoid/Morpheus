@@ -12,6 +12,8 @@ A page in another language appears to shoppers and search engines only once ever
 
 The languages your store is offered in are chosen when the store is set up; a store with one language has nothing to translate here. The footer of the shop offers a language switcher whenever there is more than one.
 
+Turn on [](field:localization.suggest_language) in the [Language bar](settings:localization) settings and a visitor whose browser prefers another language your store has sees a bar at the top of the page: "This page is also in …", with Switch and Stay. Their choice is remembered for a year. It is off until you turn it on.
+
 ## Common tasks
 
 - Open an item, write its translation beside the original and save. Emptying a field removes its translation.

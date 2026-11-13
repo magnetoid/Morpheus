@@ -1,0 +1,3 @@
+{% load static language_bar %}{% language_bar_data as bar %}{% if bar %}<link rel="stylesheet" href="{% static 'localization/language-bar.css' %}">
+{{ bar|json_script:"morpheus-language-bar" }}
+<script nonce="{{ csp_nonce }}" src="{% static 'localization/language-bar.js' %}" defer></script>{% endif %}
