@@ -890,9 +890,10 @@ class MorpheusEvents:
     #   answers it, from its daily CHANNELS_METRICS cache (no live API calls), with
     #   one row per ad channel that has spent: {'channel': 'google'|'meta'|'tiktok'|
     #   'pinterest'|'microsoft'|'amazon'|'reddit'|'snapchat', 'spend': number,
-    #   'conversions': int|None, 'platform_revenue': number|None, 'days': 30}.
-    #   Channel plugins do not answer it themselves (each channel would be counted
-    #   twice); analytics snapshots the rows into AdSpendSnapshot for ROAS.
+    #   'conversions': number|None, 'platform_revenue': number|None, 'days': 30}.
+    #   Channel plugins do not answer it themselves: analytics keeps one snapshot
+    #   per (day, channel), so a second answer for the same channel would silently
+    #   overwrite the first. Analytics snapshots the rows into AdSpendSnapshot.
     ANALYTICS_AD_SPEND = 'analytics.collect_ad_spend'  # filter
     # CHANNELS_METRICS — filter, value=list[dict], no kwargs. EXPENSIVE: each
     #   channel plugin appends ITS OWN 30-day ads totals — {'name': str,

@@ -13,7 +13,7 @@ from django.utils import timezone
 from djmoney.money import Money
 
 from plugins.installed.admin_dashboard import navigation
-from plugins.installed.analytics.models import AnalyticsEvent, AnalyticsSession
+from plugins.installed.analytics.models import AdSpendSnapshot, AnalyticsEvent, AnalyticsSession
 from plugins.installed.analytics.services_attribution import attribute_revenue, collect_ad_spend
 from plugins.installed.channels.tasks import METRICS_CACHE_KEY
 from plugins.registry import app_registry
@@ -86,7 +86,7 @@ class AttributionPageTests(TestCase):
         self.assertIn('€130.00', _cell(html, 'google', 'revenue'))  # 100 + half of B's 60
 
     def test_spend_is_stored_in_the_store_currency(self):
-        from plugins.installed.analytics.models import AdSpendSnapshot, DailyMetric
+        from plugins.installed.analytics.models import DailyMetric
 
         self._run_jobs()
         self.assertEqual(str(AdSpendSnapshot.objects.get(channel='google').spend.currency), 'EUR')
@@ -97,6 +97,8 @@ class AttributionPageTests(TestCase):
         attribute_revenue()
         app_registry.deactivate('channels')
         self.addCleanup(app_registry.activate, 'channels')
+        self.assertEqual(collect_ad_spend(), 0)
+        self.assertFalse(AdSpendSnapshot.objects.exists())
         resp = self.client.get(URL)
         self.assertEqual(resp.status_code, 200)
         html = resp.content.decode()
@@ -124,3 +126,40 @@ class RoasPageIsGoneTests(TestCase):
         self.assertEqual(self.client.get('/dashboard/apps/channels/attribution/').status_code, 404)
         labels = [t.label for t in navigation.tabs(staff) if t.section == 'channels']
         self.assertNotIn('ROAS', labels)
+
+
+class RevenueBySourceTests(TestCase):
+    def _purchase(self, source, amount):
+        import uuid
+
+        sess = AnalyticsSession.objects.create(cookie_id=uuid.uuid4().hex, utm_source=source)
+        AnalyticsEvent.objects.create(
+            name='order.placed',
+            kind='purchase',
+            session=sess,
+            revenue=Money(Decimal(str(amount)), 'USD'),
+        )
+
+    def test_revenue_by_source(self):
+        from plugins.installed.analytics.services import revenue_by_source
+
+        self._purchase('google', 100)
+        self._purchase('tiktok', 40)
+        self._purchase('', 60)  # direct / untagged
+        rev = revenue_by_source(days=30)
+        self.assertEqual(rev['total'], 200.0)
+        self.assertEqual(rev['by_source'].get('google'), 100.0)
+        self.assertEqual(rev['direct'], 60.0)
+
+    def test_a_non_numeric_platform_revenue_renders_blank_not_500(self):
+        from plugins.installed.analytics.services_attribution import roas_by_channel
+
+        AdSpendSnapshot.objects.create(
+            day=timezone.now().date(),
+            channel='google',
+            spend=Money(Decimal('10'), 'USD'),
+            source_meta={'platform_revenue': 'n/a', 'conversions': 3.5},
+        )
+        [row] = roas_by_channel(model='last_touch')
+        self.assertIsNone(row['platform_revenue'])
+        self.assertEqual(row['conversions'], 3.5)

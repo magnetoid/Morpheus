@@ -4,7 +4,7 @@ The `attribute()` function is a pure, exhaustively-tested revenue splitter acros
 five industry-standard models. Journeys are reconstructed nightly from each
 purchaser's AnalyticsSession UTM sources; per-model per-channel revenue is written
 to DailyMetric (analytics owns that table, so no cross-plugin coupling). Ad spend
-is pulled from channel plugins via the ANALYTICS_AD_SPEND filter into AdSpendSnapshot.
+comes from the Channels app (its daily totals, via the ANALYTICS_AD_SPEND filter) into AdSpendSnapshot.
 """
 
 from __future__ import annotations
@@ -196,16 +196,17 @@ def roas_by_channel(model: str = 'last_touch', days: int = 30) -> list:
     for ch in channels:
         s, r = spend.get(ch), revenue[ch]
         meta = claimed.get(ch, {})
-        platform_revenue = meta.get('platform_revenue')
+        try:
+            platform_revenue = Decimal(str(meta['platform_revenue']))
+        except (KeyError, TypeError, ArithmeticError, ValueError):
+            platform_revenue = None
         out.append(
             {
                 'channel': ch,
                 'spend': s,
                 'revenue': r,
                 'roas': round(r / s, 2) if s else None,
-                'platform_revenue': (
-                    None if platform_revenue is None else Decimal(str(platform_revenue))
-                ),
+                'platform_revenue': platform_revenue,
                 'conversions': meta.get('conversions'),
             }
         )

@@ -6,7 +6,7 @@ summary: Tracks visits and where they came from, funnels, cohorts and ad attribu
 Analytics tracks what happens on your storefront (visits, pages, product views, searches, carts, checkouts and orders) and turns it into a traffic overview, a real-time view, where each visit came from, a conversion funnel, retention cohorts and ad attribution.
 
 ## Set it up
-Nothing to connect: tracking starts when the app is on. On [Analytics](settings:analytics) you can choose how many days of raw events to keep, how long to keep a visitor who hasn't come back (13 months by default), and whether to exclude staff visits (on by default) or all logged-in customers (off by default). You can also count visitors who decline cookies (off by default), with a daily key never stored with a customer or order; check with your privacy adviser first.
+Nothing to connect: tracking starts when the app is on. On [Analytics](settings:analytics) you can choose how many days of raw events to keep, how long to keep a visitor who hasn't come back (13 months by default), and whether to exclude staff visits (on by default) or all logged-in customers (off by default). You can also count visitors who decline cookies (off by default), using a daily key never stored with a customer or order.
 
 ## Common tasks
 - Check sessions, orders, revenue, a 7-day forecast and agent activity on [Traffic](page:overview)
@@ -15,7 +15,7 @@ Nothing to connect: tracking starts when the app is on. On [Analytics](settings:
 - Watch the storefront live on [Real-time](page:realtime)
 - See where shoppers drop out on [Funnel](page:funnel), to an order or, on a travel store, a booking
 - Check what share of one week's customers still buy weeks later on [Cohorts](page:cohorts)
-- Compare [channels](app:channels) ad spend with order revenue, ROAS and MER on [Attribution](page:attribution), blank without spend
+- See each channel's spend and platform-reported revenue (from the [channels](app:channels) app), your orders' revenue by the model you pick (Last touch, First touch, Linear, Time decay, Position-based), ROAS and blended MER on [Attribution](page:attribution)
 - Export the traffic summary and top products as CSV or JSON
 
 ## Good to know
@@ -26,4 +26,3 @@ Nothing to connect: tracking starts when the app is on. On [Analytics](settings:
 - Conversion rate is counted visitors' purchases over their visits, so it can't pass 100%; an order and its payment belong to the visit that placed it.
 - Orders and revenue are the store's sales: placed, not cancelled, after refunds. Enquiries and bookings are kept as leads and bookings, never sales.
 - Purchases, checkouts, sign-ups and logins come only from the store's own events, never the browser.
-- The dashboard home shows visits, conversion rate and AI referrals; a nightly check flags unusual swings.

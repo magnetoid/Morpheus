@@ -60,15 +60,16 @@ class ChannelsPlugin(Plugin):
         from plugins.installed.channels.tasks import METRICS_CACHE_KEY  # noqa: PLC0415
 
         for row in cache.get(METRICS_CACHE_KEY) or []:
+            if not isinstance(row, dict):
+                continue
             channel = _AD_CHANNEL_KEYS.get(row.get('name'))
             if not channel or not row.get('spend'):
                 continue
-            conversions = row.get('conversions')
             value.append(
                 {
                     'channel': channel,
                     'spend': row['spend'],
-                    'conversions': None if conversions is None else int(conversions),
+                    'conversions': row.get('conversions'),
                     'platform_revenue': row.get('revenue'),
                     'days': 30,
                 }

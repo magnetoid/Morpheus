@@ -830,7 +830,7 @@ def revenue_by_source(*, days: int = 30) -> dict:
 
     Returns ``{'by_source': {source: float}, 'direct': float, 'total': float,
     'days': int}``. ``direct`` = purchases with no utm_source (organic / direct /
-    untagged). Used by the channels plugin's blended-ROAS / attribution view.
+    untagged). Feeds the Attribution page's store revenue and the AI traffic summary.
     """
     from plugins.installed.analytics.models import AnalyticsEvent
 

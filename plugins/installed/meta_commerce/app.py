@@ -97,7 +97,7 @@ class MetaCommercePlugin(Plugin):
                         'name': 'meta_commerce',
                         'spend': t.get('spend'),
                         'clicks': t.get('clicks'),
-                        'conversions': t.get('conversions'),
+                        'conversions': t.get('purchases'),
                         'revenue': t.get('value') or t.get('revenue'),
                         'roas': t.get('roas'),
                     }

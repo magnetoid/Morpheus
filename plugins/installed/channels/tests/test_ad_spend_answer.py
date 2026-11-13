@@ -47,21 +47,36 @@ class AdSpendAnswerTests(TestCase):
             ],
         )
 
-    def test_google_and_meta_add_no_row_of_their_own(self):
+    def test_no_ad_channel_app_answers_the_hook_itself(self):
+        owners = {entry[3] for entry in hook_registry._handlers[MorpheusEvents.ANALYTICS_AD_SPEND]}
+        self.assertEqual(owners, {'channels'})
+
+    def test_conversions_are_the_platforms_number_and_absent_stays_none(self):
         cache.set(
             METRICS_CACHE_KEY,
             [
-                {'name': 'google_shopping', 'spend': 10.0},
+                'junk',
+                {'name': 'google_shopping', 'spend': 10.0, 'conversions': 3.5},
                 {'name': 'meta_commerce', 'spend': 20.0},
             ],
             600,
         )
-        rows = _ask()
-        self.assertEqual(sorted(r['channel'] for r in rows), ['google', 'meta'])
-        self.assertEqual(len(rows), 2)
-        # A value the platform did not report stays absent, never 0.
-        self.assertIsNone(rows[0]['conversions'])
-        self.assertIsNone(rows[0]['platform_revenue'])
+        rows = {r['channel']: r for r in _ask()}
+        self.assertEqual(rows['google']['conversions'], 3.5)
+        self.assertIsNone(rows['meta']['conversions'])
+        self.assertIsNone(rows['meta']['platform_revenue'])
+
+    def test_meta_reports_its_purchases_as_conversions(self):
+        from unittest.mock import patch
+
+        totals = {'spend': 50.0, 'clicks': 9, 'purchases': 2.5, 'value': 80.0, 'roas': 1.6}
+        with patch(
+            'plugins.installed.meta_commerce.services.ads_api.campaign_report',
+            return_value={'ok': True, 'totals': totals},
+        ):
+            rows = hook_registry.filter(MorpheusEvents.CHANNELS_METRICS, value=[])
+        meta = next(r for r in rows if r['name'] == 'meta_commerce')
+        self.assertEqual(meta['conversions'], 2.5)
 
     def test_empty_cache_answers_nothing(self):
         cache.delete(METRICS_CACHE_KEY)
