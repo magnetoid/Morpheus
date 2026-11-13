@@ -20,6 +20,7 @@ class MarketsPlugin(Plugin):
         'default) and applies optional per-product price overrides.'
     )
     has_models = True
+    requires = ['catalog']
 
     def ready(self) -> None:
         from celery.schedules import crontab
@@ -95,9 +96,17 @@ class MarketsPlugin(Plugin):
         )
 
     def contribute_agent_tools(self) -> list:
-        from plugins.installed.markets.agent_tools import markets_list_tool  # noqa: PLC0415
+        from plugins.installed.markets import agent_tools as t  # noqa: PLC0415
 
-        return [markets_list_tool]
+        return [
+            t.markets_list_tool,
+            t.markets_get_tool,
+            t.markets_save_tool,
+            t.markets_delete_tool,
+            t.markets_set_product_price_tool,
+            t.markets_set_rate_tool,
+            t.markets_refresh_rates_tool,
+        ]
 
     def contribute_dashboard_pages(self) -> list:
         return [

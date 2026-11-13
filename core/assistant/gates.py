@@ -52,6 +52,8 @@ LINDA_SCOPES: tuple[str, ...] = (
     'shipping.write',
     'tax.read',
     'tax.write',
+    'markets.read',
+    'markets.write',
     'affiliates.read',
     'affiliates.write',
     'b2b.read',
@@ -74,6 +76,8 @@ CAPABILITY_FOR_SCOPE: dict[str, str] = {
     'promotions.write': 'marketing.write',
     'i18n.read': 'system.read',
     'i18n.write': 'system.write',
+    'markets.read': 'catalog.read',
+    'markets.write': 'catalog.write',
 }
 
 
