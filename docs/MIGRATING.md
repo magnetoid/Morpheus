@@ -14,6 +14,8 @@ Markets get their own scopes, `markets.read` and `markets.write`.
   such tokens, and `markets.write` for the new write tools (`markets.save`, `markets.delete`,
   `markets.set_product_price`, `markets.set_rate`, `markets.refresh_rates`, each needing the
   merchant's tick on a token).
+- **Tokens that invoke the Worker agent:** the Worker now holds `markets.read` and `markets.write`,
+  and a token must hold every scope the agent holds to invoke it. Grant both on such tokens.
 - **hreflang:** a market no longer publishes a `?market=` alternate in the head; alternates are per
   language only. Nothing to change unless you parsed them.
 

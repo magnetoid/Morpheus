@@ -1,6 +1,6 @@
 # Markets, visitor currency and language suggestion (A6) — design
 
-Status: draft for the owner, 2026-11-13. Replaces the markets half of A6 in
+Status: approved by the owner 2026-11-13 (time zone as the country signal). Release 1 shipped as v0.165.0; see "What release 1 built" below. Replaces the markets half of A6 in
 `platform-gap-analysis-2026-11.md`; B2B price lists move to A9.
 
 ## Why
@@ -211,7 +211,7 @@ which after #157 name only the languages the content is translated into. When th
 visitor's first preferred store language is not the page's and the page exists in
 it, a small bar offers it, written in that language: "Ova stranica postoji na
 srpskom — Prebaci · Ostani". "Prebaci" goes to the alternate URL; either choice is
-remembered in the `morpheus_lang` cookie and the bar never comes back for it. The
+remembered in the `morpheus_lang_choice` cookie and the bar never comes back for it. The
 bar's strings for every store language are in the script's data, rendered the same
 for everyone. A market's `languages` limit what it offers; nothing is offered by
 location. Settings switch: `suggest_language`, default off.
@@ -265,6 +265,36 @@ stores nothing until that category is allowed.
 
 (My call: the first draft split "show" from "charge", which would have shown one
 currency and charged another, the anti-goal above.)
+
+## What release 1 built, and what moved to release 2
+
+Release 1 (v0.165.0, `docs/plans/markets-r1-plan-2026-11.md`) built §1 without
+`Market.languages` and without retiring `is_default`, §4, §6, §8–10. These moved to
+release 2, because nothing reads them before detection and the swap:
+- `Market.languages`, the zone table and its browser check (§2), and retiring
+  `is_default` (§1).
+- `detect_country` (§10): its reader is detection.
+
+Settled while building:
+- `suggest_language` lives in the localization app (it owns the bar); the cookie is
+  `morpheus_lang_choice`.
+- Linda's create and update are one tool, `markets.save`.
+- A fixed price applies only in the currency it was set in; changing a market's
+  currency removes its fixed prices.
+- Every ECB currency is stored while any active market needs a rate, so a new
+  market's rate is ready the day it is added.
+
+Release 2 must also decide:
+- **Variants:** a product-level `ProductMarketPrice` applies to every variant, and a
+  product-level `localized_prices` entry to a variant priced differently from the
+  product.
+- **Charging:** `orders._resolve_unit_price` goes through `market_price`. Today it
+  reads a typed `'0'` as a price and accepts lowercase currency keys.
+- **Speed:** memoize `exchange_rate` per request, since every price on a listing is
+  converted.
+- **The price-change guardrail:** `max_price_change_pct` applies to market prices and
+  adjustments once shoppers see them.
+- **Visibility:** what `ProductMarketPrice.is_visible=False` means.
 
 ## Left to the builder
 

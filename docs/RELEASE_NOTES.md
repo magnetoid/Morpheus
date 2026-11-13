@@ -20,11 +20,11 @@ surfaced in **Dashboard → Settings → Version & updates**.
 **Markets get real prices and exchange rates**
 
 - Markets get a currency from a list, a rounding rule (exact, whole or .99) and real prices: a price you fix for a market, else one typed on the product, else the store price adjusted and converted at the day's rate. A market cannot be switched on without a rate for its currency.
-- Exchange rates come from the European Central Bank every day at 15:30 UTC for the currencies your markets use. A rate you type is never overwritten; clearing it falls back to the daily rate, or is refused while a market needs it. A health check names a rate that is missing or more than three days old.
+- While a market uses another currency, the European Central Bank's daily rates are fetched every day at 15:30 UTC (Settings → General → Exchange rates). A rate you type is never overwritten; clearing it falls back to the daily rate, or is refused while a market needs it. A health check names a rate that is missing or more than three days old.
 - The markets page shows each rate with its source and age, sets or clears your own rate, fetches rates on demand and previews ten prices. Linda reads and changes markets, rates and fixed prices with your yes (scopes markets.read and markets.write).
 - Shoppers still see the store currency: showing and charging market prices comes in a later release.
 - hreflang is per language only: a market no longer publishes a ?market= alternate.
-- An optional bar offers a visitor the page in the language their browser prefers (Language bar, off by default). It is decided in the browser, so a cached page stays the same for everyone, and crawlers never get it.
+- An optional bar offers a visitor the page in the language their browser prefers (Language bar, off by default). It is decided in the browser, so a cached page stays the same for everyone; crawlers never get it, and its stylesheet loads only when it shows.
 
 ## v0.164.0 — 2026-11-12
 

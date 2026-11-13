@@ -226,3 +226,11 @@ CLAUDE.md gains a short convention entry (markets own prices in other currencies
 `core.pricing.convert`; manual rates win; the language bar reads hreflang);
 `scripts/check_plugin_standard.py --save` if the baseline shrinks. Full suite with
 all five opt-in apps before the PR.
+
+## Deferred to release 2
+
+- `Market.languages`, the time-zone table (spec §2) and retiring `is_default`: nothing
+  reads them before detection and the price swap.
+- Variant-level fixed prices, routing `orders._resolve_unit_price` through
+  `market_price`, a per-request memo for `exchange_rate`, and `max_price_change_pct`
+  for market prices (spec, "What release 1 built").
