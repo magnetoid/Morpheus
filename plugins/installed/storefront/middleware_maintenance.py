@@ -83,10 +83,10 @@ class MaintenanceModeMiddleware:
     def _config(key: str, default=None):
         """Read the storefront plugin's config, fail-soft.
 
-        NB the plugin `_config_cache` is per-process, so a worker can lag a
-        dashboard toggle until its cache is refreshed. Accepted here: the cost
-        of a late close/open is a page or two, and paying a DB read on every
-        storefront request to avoid it is the worse trade.
+        The config cache is per process and a save clears only the worker that
+        saved it, so storefront sets ``config_fresh_s``: every worker reads the
+        switch again at most 10 s after it last did, one query per worker per
+        window rather than one per request.
         """
         try:
             from plugins.registry import app_registry

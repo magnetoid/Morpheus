@@ -11,6 +11,8 @@ class StorefrontPlugin(Plugin):
     )
     has_models = False  # No models — purely views + templates
     requires = ['catalog', 'orders', 'customers']
+    # The maintenance switch closes the shop in every worker within 10 s.
+    config_fresh_s = 10.0
 
     def ready(self):
         from morpheus.core import MorpheusEvents

@@ -19,6 +19,9 @@ class PaymentsPlugin(Plugin):
     )
     has_models = True
     requires = ['orders']
+    # Keys, when cards are charged, saved cards and express checkout reach every
+    # web and Celery worker within 10 s of a save on the card.
+    config_fresh_s = 10.0
 
     def ready(self):
         # Register hooks for order payment

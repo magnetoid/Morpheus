@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
@@ -113,9 +114,17 @@ class MorpheusPlugin:
     # ── Capabilities ──────────────────────────────────────────────────────────
     has_models: bool = False  # True if plugin defines Django models
 
+    #: Seconds after which this process reads the app's settings from the
+    #: database again, or None to keep them until a save in this process. The
+    #: cache is per process and a save clears only the worker that saved it, so
+    #: an app whose settings must reach every web and Celery worker sets this
+    #: (storefront's maintenance switch, payments' card).
+    config_fresh_s: float | None = None
+
     # ── Internal ──────────────────────────────────────────────────────────────
     _registry: AppRegistry | None = None
     _config_cache: dict | None = None
+    _config_read_at: float = 0.0
 
     # ── Class-time validation ──────────────────────────────────────────────────
 
@@ -263,11 +272,19 @@ class MorpheusPlugin:
         return {}
 
     def get_config(self) -> dict:
-        """Read current config from DB (cached)."""
+        """Read current config from DB (cached per process; see ``config_fresh_s``)."""
         from django.db import DatabaseError, transaction
 
+        if (
+            self._config_cache is not None
+            and self.config_fresh_s is not None
+            and time.monotonic() - self._config_read_at >= self.config_fresh_s
+        ):
+            self._config_cache = None
         if self._config_cache is None:
             from plugins.models import PluginConfig
+
+            self._config_read_at = time.monotonic()
 
             try:
                 # Savepoint, not a bare query. On Postgres a failed statement

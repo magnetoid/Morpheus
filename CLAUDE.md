@@ -1575,7 +1575,8 @@ a related manager, iterating it raised, and the step's `except` skipped every pr
 
 **Convention — stock has one write path, and a product sold in one form counts it on a default variant
 (v0.152.0).** Units on hand change only through `InventoryService.set_quantity` / `adjust` / `transfer`
-(`inventory/services.py`): the product page's Stock card, the Warehouses page, Linda's `inventory.*`
+(`inventory/services.py`): the product page's Stock card, the Stock page (Products → Inventory, v0.166.0),
+the Warehouses page, Linda's `inventory.*`
 tools, GraphQL `setStock` / `adjustStock` and the CSV import's `stock` column (through the
 `INVENTORY_SET_STOCK` filter, so the importer imports no inventory code). Each write leaves a
 `StockMovement` and, after commit, fires `PRODUCT_LOW_STOCK` or `PRODUCT_OUT_OF_STOCK` once, when the
@@ -1589,7 +1590,7 @@ it (`hasOnlyDefaultVariant`), and a cart line that names no variant reserves fro
 `inventory_policy='continue'` sells past 0 and notes the shortfall on the order's timeline. Orders, the
 cart hold and `available()` read switched-on warehouses only, and a warehouse with stock records is
 switched off, never deleted (its movements would go with it). Guarded by
-`inventory/tests/test_stock_writes.py`, `test_backorder_policy.py`, `test_stock_card.py`,
+`inventory/tests/test_stock_writes.py`, `test_backorder_policy.py`, `test_stock_card.py`, `test_stock_page.py`,
 `test_warehouses_page.py`, `test_stock_tools.py`, `catalog/tests/test_default_variant.py`,
 `themes/test_default_variant_picker.py` and `importers/tests/test_csv_stock.py`.
 
