@@ -19,6 +19,8 @@
   }
 
   if (readChoice()) return;
+  // A crawler that runs scripts must not index the bar as page text.
+  if (/bot|crawl|spider|slurp|lighthouse|headless|facebookexternalhit/i.test(navigator.userAgent)) return;
   var pageLang = primary(document.documentElement.lang);
   var wanted = '';
   var prefs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
@@ -42,6 +44,7 @@
   bar.setAttribute('role', 'region');
   bar.setAttribute('aria-label', strings.name);
   bar.lang = wanted;
+  bar.setAttribute('data-nosnippet', '');
   var text = document.createElement('span');
   text.textContent = strings.also_in.replace('{name}', strings.name);
   var sw = document.createElement('button');
