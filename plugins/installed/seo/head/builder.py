@@ -5,7 +5,7 @@ the `HeadDocument` core seeded with the shell's fallback title, resolves which
 page is being rendered, and fills in: the branded `<title>`, the description,
 robots (with an explicit reason when a page is held back), the canonical, Open
 Graph + Twitter cards, search-engine verification metas, hreflang alternates
-(per language AND per market), pagination links, the LLM discovery hint, and one
+(per language), pagination links, the LLM discovery hint, and one
 JSON-LD `@graph`.
 
 Four rules run through all of it:
@@ -473,13 +473,13 @@ def _apply_site_links(doc, request) -> None:
 
 
 def _apply_alternates(doc, page: SeoPage, request) -> None:
-    """hreflang for languages and markets.
+    """hreflang for languages.
 
-    Two independent axes, and conflating them is a classic mistake: a language
-    alternate is a different URL of the same page (`/fr/products/x/`), while a
-    market alternate is the same content priced for another country. Both are
-    emitted with a single `x-default`, which names the default-language url for
-    the whole cluster — see `_x_default_href`.
+    A language alternate is a different URL of the same page (`/fr/products/x/`).
+    A market is not one: it changes the currency, never the page, so it declares
+    no alternate (markets release 1; the `?market=` alternates are gone). One
+    `x-default` names the default-language url for the whole cluster — see
+    `_x_default_href`.
 
     Every href is derived from the CANONICAL, never from the request. Built from
     `build_absolute_uri()`, each alternate echoed whatever the visitor arrived
@@ -491,10 +491,9 @@ def _apply_alternates(doc, page: SeoPage, request) -> None:
     if not canonical or not _same_path(canonical, request):
         return
     languages = _language_alternates(canonical, page)
-    markets = _market_alternates(canonical)
-    for code, href in (*languages, *markets):
+    for code, href in languages:
         doc.link('alternate', href, hreflang=code, source='seo')
-    if not (languages or markets):
+    if not languages:
         return
     default = _x_default_href(languages, _without_market(canonical))
     if default:
@@ -612,57 +611,6 @@ def _language_alternates(canonical: str, page: SeoPage | None = None) -> list[tu
                 seen.add(href)
                 out.append((code, href))
     return out if len(out) > 1 else []
-
-
-def _market_alternates(canonical: str) -> list[tuple[str, str]]:
-    """`?market=<code>` alternates, one per (locale, country) a market covers.
-
-    Two conditions, each of which a live store failed. The market must name its
-    countries: hreflang for a market is a REGION (`en-DE`), and a bare `en`
-    collides with the language axis — dotbooks' one market (locale en, no
-    countries) made every page say "the English version is `/?market=eu`". And
-    `?market=` must be an indexable parameter: if the index rules consolidate it,
-    `/?market=eu` canonicalises to `/` and the alternate names a URL that is
-    not a page. A default market lives at the clean URL.
-    """
-    if not canonical:
-        return []
-    try:
-        from plugins.installed.markets.models import Market
-
-        markets = list(Market.objects.filter(is_active=True))
-    except Exception:  # noqa: BLE001 — markets is optional and may be unmigrated
-        return []
-    if not markets:
-        return []
-    parts = urlsplit(canonical)
-    base = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != 'market']
-    clean = urlunsplit(parts._replace(query=urlencode(base)))
-
-    out: list[tuple[str, str]] = []
-    for market in markets:
-        locale = (getattr(market, 'default_locale', '') or '').strip()
-        countries = [str(c).strip().upper() for c in (market.country_codes or []) if c]
-        if not locale or not countries:
-            continue
-        if getattr(market, 'is_default', False):
-            href = clean
-        else:
-            query = urlencode([*base, ('market', market.code)])
-            if not _market_is_indexable(query, market.code):
-                continue
-            href = urlunsplit(parts._replace(query=query))
-        out.extend((f'{locale}-{country}', href) for country in countries)
-    # A cluster of one is not a cluster: only the clean URL means no alternates.
-    return out if any(href != clean for _, href in out) else []
-
-
-def _market_is_indexable(query: str, code: str) -> bool:
-    from plugins.installed.seo.rules import decide_params
-
-    decision = decide_params(query)
-    kept = parse_qsl(decision.query, keep_blank_values=True)
-    return ('market', code) in kept and 'market' not in decision.noindex_params
 
 
 def _product_price(product) -> tuple[str, str] | None:
