@@ -78,3 +78,46 @@ class LanguageBarTests(TestCase):
     def test_setting_is_in_the_schema_default_off(self):
         prop = self.plugin.get_config_schema()['properties']['suggest_language']
         self.assertIs(prop['default'], False)
+
+
+class LanguageBarSwitchTests(TestCase):
+    """The switch lives on the Translations page, beside the languages it offers."""
+
+    PAGE = '/dashboard/apps/localization/translations/'
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from django.urls import reverse
+
+        self.plugin = app_registry.get('localization')
+        self.addCleanup(self.plugin.invalidate_config_cache)
+        self.url = reverse('localization:language_bar')
+        self.user = get_user_model().objects.create_superuser('s', 's@x.test', 'pw')
+
+    def _value(self):
+        self.plugin.invalidate_config_cache()
+        return self.plugin.get_config_value('suggest_language', False)
+
+    def test_no_separate_settings_panel(self):
+        self.assertIsNone(self.plugin.contribute_settings_panel())
+
+    @override_settings(**BILINGUAL)
+    def test_the_page_turns_the_bar_on_and_off(self):
+        self.client.force_login(self.user)
+        page = self.client.get(self.PAGE).content.decode()
+        self.assertIn('name="suggest_language"', page)
+        self.client.post(self.url, {'suggest_language': 'on'})
+        self.assertTrue(self._value())
+        self.assertIn('checked', self.client.get(self.PAGE).content.decode())
+        self.client.post(self.url, {})
+        self.assertFalse(self._value())
+
+    @override_settings(**SINGLE)
+    def test_a_one_language_store_shows_no_switch(self):
+        self.client.force_login(self.user)
+        self.assertNotIn('name="suggest_language"', self.client.get(self.PAGE).content.decode())
+
+    def test_anonymous_cannot_switch_it(self):
+        r = self.client.post(self.url, {'suggest_language': 'on'})
+        self.assertEqual(r.status_code, 302)
+        self.assertFalse(self._value())

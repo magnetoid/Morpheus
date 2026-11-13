@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.app import DashboardPage, Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import DashboardPage, Plugin, StorefrontBlock
 
 logger = logging.getLogger('morpheus.localization')
 
@@ -70,14 +70,6 @@ class LocalizationPlugin(Plugin):
                 },
             },
         }
-
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='Language bar',
-            description='Offer a visitor the page in the language their browser prefers.',
-            category='storefront',
-            schema=self.get_config_schema(),
-        )
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.localization.agent_tools import (  # noqa: PLC0415

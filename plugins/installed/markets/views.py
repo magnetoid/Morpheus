@@ -62,6 +62,7 @@ def index(request: HttpRequest) -> HttpResponse:
         {
             'markets': markets,
             'store_currency': store_currency(),
+            'rates_by_hand': rate_source() == 'manual',
             'active_nav': 'markets',
         },
     )
@@ -173,6 +174,27 @@ def rate(request: HttpRequest, market_id) -> HttpResponse:
     except ValidationError as e:
         messages.error(request, ' '.join(e.messages))
     return redirect('markets:edit', market_id=market.pk)
+
+
+@staff_member_required
+@require_capability('catalog.write')
+@require_POST
+def rate_source_save(request: HttpRequest) -> HttpResponse:
+    """Where rates come from: the ECB's daily table, or only the rates you type."""
+    from plugins.registry import app_registry
+
+    source = request.POST.get('rate_source', '')
+    if source not in ('ecb', 'manual'):
+        messages.error(request, 'Choose where exchange rates come from.')
+        return redirect('markets:index')
+    app_registry.get('markets').set_config('rate_source', source)
+    messages.success(
+        request,
+        'Rates now come from the European Central Bank every day; a rate you type still wins.'
+        if source == 'ecb'
+        else 'Rates are now typed by hand: the daily fetch stops and your rates stay as they are.',
+    )
+    return redirect('markets:index')
 
 
 @staff_member_required

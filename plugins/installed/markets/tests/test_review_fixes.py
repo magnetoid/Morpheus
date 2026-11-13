@@ -35,15 +35,40 @@ def _rate(quote, rate, source='ecb'):
     )
 
 
-class SettingsPanelTests(TestCase):
-    def test_the_rate_source_has_a_panel(self):
-        panel = app_registry.get('markets').contribute_settings_panel()
-        self.assertIn('rate_source', panel.schema['properties'])
+class RateSourceOnTheMarketsPageTests(TestCase):
+    """One place for markets: the rate source is chosen on the Markets page."""
 
-    def test_the_settings_page_answers(self):
+    def setUp(self):
+        plugin = app_registry.get('markets')
+        self.addCleanup(plugin.invalidate_config_cache)
+        self.url = reverse('markets:rate_source')
+
+    def test_no_separate_settings_panel(self):
+        self.assertIsNone(app_registry.get('markets').contribute_settings_panel())
+
+    def test_the_page_offers_the_choice_and_saves_it(self):
         user = get_user_model().objects.create_superuser('s', 's@x.test', 'pw')
         self.client.force_login(user)
-        self.assertEqual(self.client.get('/dashboard/settings/markets/').status_code, 200)
+        page = self.client.get(reverse('markets:index')).content.decode()
+        self.assertIn('name="rate_source"', page)
+        self.client.post(self.url, {'rate_source': 'manual'})
+        self.assertEqual(tasks.rate_source(), 'manual')
+        page = self.client.get(reverse('markets:index')).content.decode()
+        self.assertNotIn('Fetch rates now', page)
+        self.client.post(self.url, {'rate_source': 'ecb'})
+        self.assertEqual(tasks.rate_source(), 'ecb')
+
+    def test_an_unknown_source_is_refused(self):
+        user = get_user_model().objects.create_superuser('s', 's@x.test', 'pw')
+        self.client.force_login(user)
+        r = self.client.post(self.url, {'rate_source': 'cloudflare'})
+        self.assertIn('Choose where', ' '.join(str(m) for m in get_messages(r.wsgi_request)))
+        self.assertEqual(tasks.rate_source(), 'ecb')
+
+    def test_anonymous_is_sent_to_sign_in(self):
+        r = self.client.post(self.url, {'rate_source': 'manual'})
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(tasks.rate_source(), 'ecb')
 
 
 class RateSourceFreshTests(TestCase):

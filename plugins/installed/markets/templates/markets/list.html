@@ -19,6 +19,31 @@
     </a>
   </div>
 
+  <div class="card" style="padding:1rem 1.25rem;">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <form method="post" action="{% url 'markets:rate_source' %}" class="flex flex-wrap items-end gap-2">
+        {% csrf_token %}
+        <label class="text-sm">
+          <span class="block font-medium">Exchange rates</span>
+          <select name="rate_source" class="input" style="margin-top:.25rem;">
+            <option value="ecb"{% if not rates_by_hand %} selected{% endif %}>European Central Bank, every day at 15:30 UTC</option>
+            <option value="manual"{% if rates_by_hand %} selected{% endif %}>Only the rates I type</option>
+          </select>
+        </label>
+        <button type="submit" class="btn">Save</button>
+      </form>
+      {% if not rates_by_hand %}
+      <form method="post" action="{% url 'markets:rates_refresh' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn">Fetch rates now</button>
+      </form>
+      {% endif %}
+    </div>
+    <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.5rem;">
+      A rate you type on a market's page always wins over the daily one.
+    </p>
+  </div>
+
   <div class="card overflow-hidden">
     {% if markets %}
     <table class="morph-table">

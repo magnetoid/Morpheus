@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.app import DashboardPage, Plugin, SettingsPanel
+from morpheus.app import DashboardPage, Plugin
 from morpheus.core import events
 
 logger = logging.getLogger('morpheus.markets')
@@ -57,14 +57,6 @@ class MarketsPlugin(Plugin):
                 },
             },
         }
-
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='Exchange rates',
-            description='Where the rates that convert your prices into each market come from.',
-            category='general',
-            schema=self.get_config_schema(),
-        )
 
     def on_health_checks(self, value, **kwargs):
         """HEALTH_CHECKS: every active market's currency has a current rate."""

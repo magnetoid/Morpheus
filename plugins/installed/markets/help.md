@@ -8,7 +8,7 @@ This app lets you define markets: groups of countries with their own currency an
 
 ## Set it up
 
-Add a market from the [Markets](page:index) page: a name, a code, its countries, a currency and a locale. Converted prices round exactly, to a whole number, or to end in .99. A market in a different currency from your store needs an exchange rate before you can switch it on. While an active market uses a currency other than your store's, the European Central Bank's daily rates are fetched. To use only your own, change [](field:markets.rate_source) in the [Exchange rates](settings:markets) settings.
+Add a market from the [Markets](page:index) page: a name, a code, its countries, a currency and a locale. Converted prices round exactly, to a whole number, or to end in .99. A market in a different currency from your store needs an exchange rate before you can switch it on. While an active market uses a currency other than your store's, the European Central Bank's daily rates are fetched. To use only your own, choose "Only the rates I type" under Exchange rates at the top of [Markets](page:index).
 
 ## Common tasks
 

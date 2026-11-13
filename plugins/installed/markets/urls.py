@@ -12,6 +12,7 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('new/', views.market_form, name='create'),
     path('rates/refresh/', views.rates_refresh, name='rates_refresh'),
+    path('rates/source/', views.rate_source_save, name='rate_source'),
     path('<uuid:market_id>/', views.market_form, name='edit'),
     path('<uuid:market_id>/rate/', views.rate, name='rate'),
     path('<uuid:market_id>/delete/', views.market_delete, name='delete'),
