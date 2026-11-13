@@ -12,13 +12,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from core.authz import _forbidden, check, require_capability
+from core.authz import enforce, require_capability
 from core.pricing import store_currency
 from morpheus.app.views import staff_member_required
 from plugins.installed.markets import rates
 from plugins.installed.markets.models import Market
 from plugins.installed.markets.pricing import preview
 from plugins.installed.markets.services import delete_market, save_market
+from plugins.installed.markets.tasks import rate_source
 
 logger = logging.getLogger('morpheus.markets.views')
 
@@ -86,37 +87,47 @@ def market_form(request: HttpRequest, market_id=None) -> HttpResponse:
     posted = None
 
     if request.method == 'POST':
-        if not check(request.user, 'catalog.write', target=request.path):
-            return _forbidden(request, 'catalog.write')
+        denied = enforce(request, 'catalog.write')
+        if denied is not None:
+            return denied
         posted = _form_data(request.POST)
         if market is not None:
             posted['code'] = market.code  # the code never changes
         try:
             saved = save_market(posted, market)
         except ValidationError as e:
-            messages.error(request, ' '.join(e.messages))
+            text = ' '.join(e.messages)
+            if market is None and 'exchange rate' in text:
+                text += (
+                    ' Save the market switched off first, then set its rate on its own page '
+                    'and switch it on.'
+                )
+            messages.error(request, text)
         else:
             messages.success(request, f'Saved market "{saved.label}".')
             return redirect('markets:edit', market_id=saved.pk)
 
-    currency = (posted or {}).get('currency') or (market.currency if market else 'USD')
-    currency = currency.strip().upper()
     values = posted or {
+        'code': market.code if market else '',
         'label': market.label if market else '',
+        'currency': market.currency if market else store_currency(),
         'default_locale': market.default_locale if market else 'en',
         'base_price_adjustment_pct': market.base_price_adjustment_pct if market else 0,
         'rounding': market.rounding if market else 'exact',
+        'is_active': market.is_active if market else True,
+        'is_default': market.is_default if market else False,
     }
     ctx = {
         'market': market,
         'values': values,
         'currency_choices': currency_choices(),
         'rounding_choices': Market.ROUNDING_CHOICES,
-        'selected_currency': currency,
+        'selected_currency': (values['currency'] or '').strip().upper(),
         'country_codes_str': (
             posted['country_codes'] if posted else ', '.join(market.country_codes) if market else ''
         ),
         'store_currency': store_currency(),
+        'rates_by_hand': rate_source() == 'manual',
         'active_nav': 'markets',
     }
     if market is not None:
@@ -143,19 +154,23 @@ def rate(request: HttpRequest, market_id) -> HttpResponse:
     """Set (or, with an empty box, clear) the manual rate for the market's currency."""
     market = get_object_or_404(Market, pk=market_id)
     raw = (request.POST.get('rate') or '').strip()
+    currency = market.currency.upper()
     try:
         if raw:
             try:
-                value = Decimal(raw)
+                value = rates.parse_decimal(raw)
             except InvalidOperation:
                 raise ValidationError('The rate must be a number.') from None
-            rates.set_manual_rate(market.currency, value)
-            messages.success(request, f'Saved your rate for {market.currency.upper()}.')
+            rates.set_manual_rate(currency, value)
+            messages.success(request, f'Saved your rate for {currency}.')
         else:
-            rates.set_manual_rate(market.currency, None)
+            outcome = rates.set_manual_rate(currency, None)
             messages.success(
                 request,
-                f'Removed your rate for {market.currency.upper()}; the daily rate applies again.',
+                f'Removed your rate for {currency}; the daily rate applies again.'
+                if outcome == 'daily'
+                else f'Removed your rate for {currency}. No active market uses it, '
+                'so there is no rate for it now.',
             )
     except ValidationError as e:
         messages.error(request, ' '.join(e.messages))
@@ -167,6 +182,9 @@ def rate(request: HttpRequest, market_id) -> HttpResponse:
 @require_POST
 def rates_refresh(request: HttpRequest) -> HttpResponse:
     """Fetch the ECB's rates now."""
+    if rate_source() == 'manual':
+        messages.error(request, 'Rates are set by hand in this store: nothing to fetch.')
+        return redirect('markets:index')
     try:
         result = rates.fetch_ecb()
     except Exception as e:  # noqa: BLE001 — shown to the merchant, not a crash

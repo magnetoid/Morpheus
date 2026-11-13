@@ -46,19 +46,45 @@ class BoundaryTests(TestCase):
             reverse('markets:rates_refresh'),
         ]
 
-    def test_anonymous_is_blocked(self):
+    def _refused(self, response):
+        self.assertIn(response.status_code, (302, 403))
+        if response.status_code == 302:
+            self.assertIn('login', response['Location'])
+
+    def test_anonymous_is_sent_to_sign_in(self):
         for url in self.gets:
-            self.assertNotEqual(self.client.get(url).status_code, 200, url)
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 302, url)
+            self.assertIn('login', r['Location'])
         for url in self.posts:
-            self.assertNotEqual(self.client.post(url, {}).status_code, 200, url)
+            r = self.client.post(url, {})
+            self.assertEqual(r.status_code, 302, url)
+            self.assertIn('login', r['Location'])
         self.assertTrue(Market.objects.filter(pk=self.market.pk).exists())
 
-    def test_signed_in_without_staff_is_blocked(self):
+    def test_signed_in_without_staff_is_refused(self):
         self.client.force_login(self.visitor)
         for url in self.gets:
-            self.assertNotEqual(self.client.get(url).status_code, 200, url)
+            self._refused(self.client.get(url))
         for url in self.posts:
-            self.assertNotEqual(self.client.post(url, {}).status_code, 200, url)
+            self._refused(self.client.post(url, {}))
+        self.assertTrue(Market.objects.filter(pk=self.market.pk).exists())
+
+    def test_staff_without_catalog_write_is_refused_a_post_when_roles_are_enforced(self):
+        from plugins.registry import app_registry
+
+        plugin = app_registry.get('rbac')
+        plugin.set_config('enforcement_mode', 'enforce')
+        plugin.invalidate_config_cache()
+
+        def restore():
+            plugin.set_config('enforcement_mode', 'log')
+            plugin.invalidate_config_cache()
+
+        self.addCleanup(restore)
+        self.client.force_login(self.staff)
+        for url in self.posts:
+            self.assertEqual(self.client.post(url, {}).status_code, 403, url)
         self.assertTrue(Market.objects.filter(pk=self.market.pk).exists())
 
     def test_staff_is_allowed(self):
@@ -107,12 +133,25 @@ class FormTests(TestCase):
     def test_a_refusal_is_shown_and_keeps_the_input(self):
         r = self._post(currency='JPY', label='Japan', code='jp')
         self.assertEqual(r.status_code, 200)
-        self.assertIn(
-            'Add an exchange rate for JPY first.',
-            ' '.join(str(m) for m in get_messages(r.wsgi_request)),
-        )
+        text = ' '.join(str(m) for m in get_messages(r.wsgi_request))
+        self.assertIn('Add an exchange rate for JPY first.', text)
+        self.assertIn('Save the market switched off first', text)
         self.assertContains(r, 'value="Japan"')
         self.assertFalse(Market.objects.filter(code='jp').exists())
+
+    def test_a_refused_create_keeps_every_field(self):
+        r = self._post(currency='JPY', code='jp', label='Japan', is_default='on')
+        self.assertContains(r, 'value="jp"')
+        self.assertRegex(r.content.decode(), r'name="is_default"\s+checked')
+        self.assertContains(r, '<option value="JPY" selected>')
+
+    def test_the_new_form_preselects_the_store_currency(self):
+        r = self.client.get(reverse('markets:create'))
+        self.assertContains(r, '<option value="USD" selected>')
+
+    def test_a_comma_adjustment_is_accepted(self):
+        self._post(base_price_adjustment_pct='7,5')
+        self.assertEqual(Market.objects.get(code='eu').base_price_adjustment_pct, Decimal('7.50'))
 
     def test_the_form_offers_currencies_and_roundings_as_selects(self):
         r = self.client.get(reverse('markets:create'))
@@ -183,6 +222,12 @@ class RateAndPreviewTests(TestCase):
         self.client.post(url, {'rate': '0.9'})
         row = ExchangeRate.objects.get(quote_currency='EUR')
         self.assertEqual((row.rate, row.source), (Decimal('0.90000000'), 'manual'))
+        # The EUR market is active and the daily rate cannot be fetched: yours stays.
+        with mock.patch('plugins.installed.markets.rates.fetch_ecb', side_effect=OSError('x')):
+            self.client.post(url, {'rate': ''})
+        self.assertEqual(ExchangeRate.objects.get(quote_currency='EUR').source, 'manual')
+        # Switched off, nothing needs it, so it is removed.
+        Market.objects.update(is_active=False)
         self.client.post(url, {'rate': ''})
         self.assertFalse(ExchangeRate.objects.filter(quote_currency='EUR').exists())
 
@@ -208,6 +253,38 @@ class RateAndPreviewTests(TestCase):
             r = self.client.post(url)
         text = ' '.join(str(m) for m in get_messages(r.wsgi_request))
         self.assertIn('Could not fetch the rates just now: boom', text)
+
+    def test_a_free_product_previews_zero_not_no_rate(self):
+        self._product('Freebie', price='0.00')
+        ExchangeRate.objects.create(
+            base_currency='USD', quote_currency='EUR', rate=Decimal('0.92'), source='ecb'
+        )
+        r = self.client.get(reverse('markets:edit', args=[self.market.pk]))
+        self.assertContains(r, 'Freebie')
+        self.assertNotContains(r, 'No rate</span>')
+
+    def test_clearing_a_rate_nothing_replaces_is_refused_and_says_so(self):
+        ExchangeRate.objects.create(
+            base_currency='USD', quote_currency='EUR', rate=Decimal('0.9'), source='manual'
+        )
+        with mock.patch('plugins.installed.markets.rates.fetch_ecb', side_effect=OSError('x')):
+            r = self.client.post(reverse('markets:rate', args=[self.market.pk]), {'rate': ''})
+        self.assertIn('Your rate stays', ' '.join(str(m) for m in get_messages(r.wsgi_request)))
+        self.assertTrue(ExchangeRate.objects.filter(source='manual').exists())
+
+    def test_a_comma_rate_is_accepted(self):
+        self.client.post(reverse('markets:rate', args=[self.market.pk]), {'rate': '0,9'})
+        self.assertEqual(ExchangeRate.objects.get().rate, Decimal('0.9'))
+
+    def test_rates_by_hand_hides_fetch_and_refuses_it(self):
+        with mock.patch('plugins.installed.markets.views.rate_source', return_value='manual'):
+            page = self.client.get(reverse('markets:edit', args=[self.market.pk]))
+            self.assertNotContains(page, 'Fetch rates now')
+            self.assertContains(page, 'typed by hand')
+            with mock.patch('plugins.installed.markets.rates.fetch_ecb') as fetch:
+                r = self.client.post(reverse('markets:rates_refresh'))
+        fetch.assert_not_called()
+        self.assertIn('set by hand', ' '.join(str(m) for m in get_messages(r.wsgi_request)))
 
     def test_the_list_shows_each_rate_status(self):
         Market.objects.create(code='us', label='US', currency='USD')

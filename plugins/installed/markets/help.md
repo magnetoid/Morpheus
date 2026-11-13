@@ -12,12 +12,13 @@ Add a market from the [Markets](page:index) page: a name, a code, its countries,
 
 ## Common tasks
 
-- Open a market to see its exchange rate, where it came from and how old it is, and a preview of the first ten products in your store currency and in the market's.
-- Type your own rate for a currency and save it. The daily fetch never replaces a rate you typed; empty the box and save to go back to the daily rate.
-- Press Fetch rates now to update the rates at once.
+- Open a market to see its exchange rate, its source and age, and a ten-product price preview.
+- Type your own rate for a currency and save it. The daily fetch never replaces a rate you typed; empty the box and save to go back to the daily rate. Without a daily rate to fall back on, your rate stays while an active market uses it.
+- Press Fetch rates now to update the rates at once (not offered when rates are typed by hand).
+- A currency with no rate yet: save the new market switched off, set its rate on its page, then switch it on.
 - Mark one market as the default, used for any visitor whose country doesn't match another market.
 - Switch a market off without deleting it.
-- Ask Linda to list your markets, show one with its rate and a few prices, add or change one, fix a product's price in a market, set an exchange rate or fetch the rates; she asks for your yes before anything changes.
+- Ask Linda to show markets and rates, change a market, fix a product's price in one or set a rate; she asks for your yes first.
 
 ## Good to know
 
