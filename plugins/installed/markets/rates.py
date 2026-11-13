@@ -88,6 +88,22 @@ def parse_decimal(raw) -> Decimal:
     return Decimal(str(raw).strip().replace(',', '.'))
 
 
+def removed_rate_text(currency: str, outcome: str) -> str:
+    """What the page and Linda say after removing a manual rate (see ``set_manual_rate``)."""
+    from plugins.installed.markets.tasks import rate_source
+
+    if outcome == 'none':
+        return f'There was no rate of yours for {currency} to remove.'
+    if outcome == 'cleared':
+        return (
+            f'Removed your rate for {currency}. No active market uses it, '
+            'so there is no rate for it now.'
+        )
+    if rate_source() == 'manual':
+        return f'Removed your rate for {currency}; another rate on file for it applies.'
+    return f'Removed your rate for {currency}; the daily rate applies again.'
+
+
 def set_manual_rate(currency: str, rate: Decimal | None) -> str:  # noqa: PLR0912
     """Fix the rate for ``store currency -> currency``; ``None`` removes the manual row.
 
@@ -114,10 +130,13 @@ def set_manual_rate(currency: str, rate: Decimal | None) -> str:  # noqa: PLR091
             rate = Decimal(str(rate))
         except InvalidOperation:
             raise ValidationError('The rate must be a number.') from None
-        if not rate.is_finite() or rate.quantize(_EIGHT) <= 0:
-            raise ValidationError('The rate must be more than zero.')
+        if not rate.is_finite():
+            raise ValidationError('The rate must be a number.')
+        # The bound comes first: quantizing a huge number raises InvalidOperation.
         if rate > MAX_RATE:
             raise ValidationError('The rate must be 1,000,000,000 or less.')
+        if rate.quantize(_EIGHT) <= 0:
+            raise ValidationError('The rate must be more than zero.')
         ExchangeRate.objects.update_or_create(
             base_currency=store,
             quote_currency=currency,

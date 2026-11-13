@@ -167,16 +167,8 @@ def rate(request: HttpRequest, market_id) -> HttpResponse:
             messages.success(request, f'Saved your rate for {currency}.')
         else:
             outcome = rates.set_manual_rate(currency, None)
-            if outcome == 'none':
-                messages.info(request, f'There was no rate of yours for {currency} to remove.')
-            else:
-                messages.success(
-                    request,
-                    f'Removed your rate for {currency}; the daily rate applies again.'
-                    if outcome == 'daily'
-                    else f'Removed your rate for {currency}. No active market uses it, '
-                    'so there is no rate for it now.',
-                )
+            say = messages.info if outcome == 'none' else messages.success
+            say(request, rates.removed_rate_text(currency, outcome))
     except ValidationError as e:
         messages.error(request, ' '.join(e.messages))
     return redirect('markets:edit', market_id=market.pk)

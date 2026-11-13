@@ -116,6 +116,20 @@ class OutcomeTests(TestCase):
         rates.set_manual_rate('EUR', Decimal('0.5'))
         self.assertEqual(rates.set_manual_rate('EUR', None), 'daily')
 
+    def test_rates_typed_by_hand_never_promise_a_daily_rate(self):
+        plugin = app_registry.get('markets')
+        self.addCleanup(plugin.invalidate_config_cache)
+        plugin.set_config('rate_source', 'manual')
+        ExchangeRate.objects.create(
+            base_currency='EUR', quote_currency='USD', rate=Decimal('1.1'), source='manual'
+        )
+        rates.set_manual_rate('EUR', Decimal('0.5'))
+        outcome = rates.set_manual_rate('EUR', None)
+        self.assertEqual(outcome, 'daily')
+        text = rates.removed_rate_text('EUR', outcome)
+        self.assertIn('another rate on file', text)
+        self.assertNotIn('daily', text)
+
     def test_page_says_nothing_was_removed(self):
         _rate('EUR', '0.9')
         market = Market.objects.create(code='eu', label='EU', currency='EUR')
@@ -224,6 +238,18 @@ class BoundsAndNamesTests(TestCase):
         with self.assertRaisesMessage(ValidationError, 'more than zero'):
             rates.set_manual_rate('EUR', Decimal('0.000000001'))
 
+    def test_a_huge_rate_is_refused_not_a_500(self):
+        with self.assertRaisesMessage(ValidationError, '1,000,000,000'):
+            rates.set_manual_rate('EUR', Decimal('1e30'))
+        market = Market.objects.create(code='eu', label='EU', currency='EUR')
+        user = get_user_model().objects.create_superuser('s', 's@x.test', 'pw')
+        self.client.force_login(user)
+        r = self.client.post(reverse('markets:rate', args=[market.pk]), {'rate': '1e30'})
+        self.assertEqual(r.status_code, 302)
+        text = ' '.join(str(m) for m in get_messages(r.wsgi_request))
+        self.assertIn('1,000,000,000', text)
+        self.assertFalse(ExchangeRate.objects.exists())
+
     def test_a_rate_needs_a_real_currency(self):
         with self.assertRaisesMessage(ValidationError, 'not a currency code'):
             rates.set_manual_rate('QQQ', Decimal(1))
@@ -238,6 +264,8 @@ class BoundsAndNamesTests(TestCase):
         tool = agent_registry.get_tool('markets.set_product_price')
         with self.assertRaisesMessage(ToolError, '1,000,000,000,000'):
             tool.handler(code='jp', product='mug', amount=10**12)
+        with self.assertRaisesMessage(ToolError, '1,000,000,000,000'):
+            tool.handler(code='jp', product='mug', amount=1e30)
         tool.handler(code='jp', product='mug', amount=10**12 - 1)
         self.assertEqual(ProductMarketPrice.objects.get().price.amount, Decimal(10**12 - 1))
 

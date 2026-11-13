@@ -279,7 +279,12 @@ def markets_set_product_price_tool(
             output={'market': market.code, 'product': item.slug, 'fixed_price': None},
             display=f'Removed the fixed price of {item.name} in {market.label}',
         )
-    if not value.is_finite() or quantize(value, currency) <= 0:
+    if not value.is_finite():
+        raise ToolError('The price must be a number.')
+    # The bound comes first: quantizing a huge number raises InvalidOperation.
+    if value >= MAX_FIXED_PRICE:
+        raise ToolError('The price must be less than 1,000,000,000,000.')
+    if quantize(value, currency) <= 0:
         raise ToolError('The price must be more than zero.')
     price = Money(quantize(value, currency), currency)
     if price.amount >= MAX_FIXED_PRICE:
@@ -323,12 +328,9 @@ def markets_set_rate_tool(*, currency: str, rate=None, clear: bool = False) -> T
         outcome = rates.set_manual_rate(code, value)
     except ValidationError as e:
         raise ToolError(_text(e)) from e
-    display = {
-        'set': f'Set {code} to {value}',
-        'daily': f'Removed your rate for {code}; the daily rate applies again',
-        'cleared': f'Removed your rate for {code}; no market uses it, so there is no rate for it now',
-        'none': f'There was no rate of yours for {code} to remove',
-    }[outcome]
+    display = (
+        f'Set {code} to {value}' if outcome == 'set' else rates.removed_rate_text(code, outcome)
+    )
     return ToolResult(
         output={'currency': code, 'rate': None if value is None else str(value), 'result': outcome},
         display=display,
