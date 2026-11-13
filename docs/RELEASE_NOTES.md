@@ -15,6 +15,19 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.166.0 — 2026-11-13
+
+**Every control in one place, and stock gets its own page**
+
+- Products → Inventory has a Stock page: every counted product in every switched-on warehouse, filters for low and out of stock, search by name or SKU, and a box to type the units on hand (each change is kept in the stock history). Staff who may only look at stock see the numbers without boxes. The Stockout forecast sits beside it as Forecast.
+- The running-low list moved from the Warehouses page to Stock; the dashboard home's Stock alerts (See all) and Pulse open it, and all three use one rule: free units at or below the low-stock threshold.
+- One attribution page, under Analytics: spend and the revenue each platform reports, per channel, come from the Channels app for every ad channel (Google, Meta, TikTok, Pinterest, Microsoft, Amazon, Reddit, Snapchat), in the store currency; revenue is split by the model you pick; ROAS per channel and the blended MER (all store revenue over all ad spend). The Channels app's own ROAS page is gone. Meta's conversions show for the first time. Spend already recorded keeps showing for up to 30 days after a channel stops reporting.
+- Settings → Storefront lists only what the store reads: maintenance mode (its own card, now under Storefront) and the caching controls that work; eight caching switches that did nothing and five unused settings are gone. A maintenance message is shown as text, never as markup.
+- The payments settings card saves again: since v0.42.0 its Save said Saved and kept nothing.
+- Cmd+K lands on the field it names for every app's settings, not only on the page.
+- Tracking: the Google Ads conversion ID and purchase label are on the Tracking settings page (Connection tab); their separate settings card is gone.
+- Marketing's read-only copy of the newsletter campaigns list is gone, with the newsletter page's Edit campaigns button that led to it.
+
 ## v0.165.0 — 2026-11-13
 
 **Markets get real prices and exchange rates**
