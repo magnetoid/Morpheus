@@ -70,7 +70,7 @@ class StorefrontPlugin(Plugin):
     def contribute_settings_panel(self):
         from plugins.contributions import SettingsPanel
 
-        # Only the shop-closing switch is a General-page control. The rest of this
+        # Only the shop-closing switch is a Storefront-page control. The rest of this
         # app's keys are the Caching page's (Settings -> Caching), which saves them
         # itself; they are listed in the schema so a reader's key is declared, but a
         # panel built from the whole schema would offer them twice.
@@ -79,7 +79,7 @@ class StorefrontPlugin(Plugin):
         return SettingsPanel(
             label='Maintenance',
             description='Close the shop to shoppers while you work on it. Staff still see everything.',
-            category='general',
+            category='storefront',
             schema={
                 'type': 'object',
                 'properties': {k: schema['properties'][k] for k in keep},
@@ -89,8 +89,11 @@ class StorefrontPlugin(Plugin):
     def get_config_schema(self):
         # Every key here has a reader: the maintenance middleware, or the cache
         # and speed settings on Settings -> Caching. Defaults are what the readers
-        # fall back to; html_cache_control is the exception, where the reader sends
-        # no header for a blank value and the Caching page shows the 2026 baseline.
+        # fall back to, except four where the schema holds the Caching page's
+        # displayed value and the reader falls back differently: html_cache_control
+        # (the reader sends no header when blank; the page shows the 2026 baseline),
+        # and home_cache_ttl, product_cache_ttl and category_cache_ttl (the reader
+        # adds no s-maxage override when unset; the page shows 600, 300 and 180).
         return {
             'type': 'object',
             'properties': {

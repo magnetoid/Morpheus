@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 
 from django.http import HttpResponse
+from django.utils.html import escape
 
 logger = logging.getLogger('morpheus.storefront')
 
@@ -58,7 +59,7 @@ class MaintenanceModeMiddleware:
                 f'<div style="font-family:system-ui;max-width:34rem;margin:14vh auto;'
                 f'padding:0 1.25rem;text-align:center;line-height:1.6">'
                 f'<h1 style="font-size:1.5rem;margin:0 0 .75rem">Back shortly</h1>'
-                f'<p style="color:#555;margin:0">{message}</p></div>',
+                f'<p style="color:#555;margin:0">{escape(message)}</p></div>',
                 content_type='text/html; charset=utf-8',
                 status=503,
             )

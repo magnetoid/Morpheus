@@ -12,7 +12,7 @@ There is nothing to turn on — it runs as soon as your store has active product
 - Browse your storefront as a shopper would before a sale or a new theme goes live.
 - Write your own Shipping and Returns page from [Pages](app:cms) — it replaces the generic one shown at those addresses.
 - Write an introduction for the Products, Vendors or Journal pages, also from Pages.
-- Close the shop to shoppers with the Maintenance card in Settings, General.
+- Close the shop to shoppers with the Maintenance card in Settings, Storefront.
 - Point a customer to their account page for orders, returns and cancellations.
 
 ## Good to know

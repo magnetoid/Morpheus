@@ -67,7 +67,7 @@ class SchemaTests(_Base):
 
     def test_maintenance_panel(self):
         panel = app_registry.settings_panel('storefront')
-        self.assertEqual(panel.category, 'general')
+        self.assertEqual(panel.category, 'storefront')
         self.assertEqual(
             set(panel.schema['properties']), {'maintenance_mode', 'maintenance_message'}
         )
@@ -100,10 +100,59 @@ class MaintenancePanelTests(_Base):
         self.assertEqual(stored['maintenance_message'], 'Back at noon.')
         self.assertNotIn('lazy_load_images', stored)
 
-    def test_general_page_shows_the_panel(self):
-        body = self.staff.get('/dashboard/settings/general/').content.decode()
+    def test_storefront_page_shows_the_panel_and_general_does_not(self):
+        body = self.staff.get('/dashboard/settings/storefront/').content.decode()
         self.assertIn('name="maintenance_mode"', body)
         self.assertIn('name="maintenance_message"', body)
+        general = self.staff.get('/dashboard/settings/general/').content.decode()
+        self.assertNotIn('name="maintenance_mode"', general)
+
+    def test_palette_anchor_lands_on_a_field_that_exists(self):
+        from plugins.installed.admin_dashboard.views_split.palette import _setting_hits
+
+        hits = _setting_hits(['close', 'shop', 'maintenance'], {})
+        urls = [h['url'] for h in hits if h['kind'] == 'setting']
+        url = next(u for u in urls if u.endswith('maintenance_mode'))
+        path, _, anchor = url.partition('#')
+        self.assertEqual(path, '/dashboard/settings/storefront/')
+        body = self.staff.get(path).content.decode()
+        self.assertIn(f'id="{anchor}"', body)
+
+    def test_ajax_panel_save_returns_json(self):
+        resp = self.staff.post(
+            '/dashboard/settings/storefront/',
+            {'maintenance_message': 'Back at noon.'},
+            headers={'X-Requested-With': 'XMLHttpRequest'},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'].split(';')[0], 'application/json')
+        self.assertTrue(resp.json()['ok'])
+        self.assertIn('maintenance_message', resp.json()['saved'])
+        self.assertEqual(self._stored()['maintenance_message'], 'Back at noon.')
+
+    def test_ajax_payments_panel_save_returns_json(self):
+        payments = app_registry.get('payments')
+        self.addCleanup(setattr, payments, '_config_cache', None)
+        resp = self.staff.post(
+            '/dashboard/settings/payments/',
+            {'high_value_threshold': '750'},
+            headers={'X-Requested-With': 'XMLHttpRequest'},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'].split(';')[0], 'application/json')
+        self.assertTrue(resp.json()['ok'])
+        self.assertIn('high_value_threshold', resp.json()['saved'])
+        payments._config_cache = None
+        self.assertEqual(
+            PluginConfig.objects.get(plugin_name='payments').config['high_value_threshold'], 750
+        )
+
+    def test_message_is_escaped_on_the_closed_page(self):
+        self.plugin.set_config('maintenance_mode', True)
+        self.plugin.set_config('maintenance_message', '<b>x</b>')
+        body = Client().get('/').content.decode()
+        self.assertIn('&lt;b&gt;x&lt;/b&gt;', body)
+        self.assertNotIn('<b>x</b>', body)
 
 
 class CachingPageTests(_Base):
@@ -149,7 +198,7 @@ class StaleKeysTests(_Base):
             defaults={'config': {'enable_ai_chat': False, 'serve_webp': False}},
         )
         self.plugin._config_cache = None
-        for url in ('/', CACHING, '/dashboard/settings/general/'):
+        for url in ('/', CACHING, '/dashboard/settings/storefront/'):
             self.assertEqual(self.staff.get(url).status_code, 200, url)
-        body = self.staff.get('/dashboard/settings/general/').content.decode()
+        body = self.staff.get('/dashboard/settings/storefront/').content.decode()
         self.assertNotIn('enable_ai_chat', body)

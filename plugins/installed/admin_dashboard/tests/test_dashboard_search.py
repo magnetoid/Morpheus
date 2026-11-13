@@ -51,16 +51,17 @@ class AppsSettingsAndGuidesTests(TestCase):
     def test_a_settings_field_by_its_label_opens_the_field(self):
         hits = _hits(self.client, 'elevenlabs api key')
         self.assertIn(
-            '/dashboard/settings/audiobooks/#f-elevenlabs_api_key', _urls(hits, 'Settings')
+            '/dashboard/settings/audiobooks/#f-audiobooks-elevenlabs_api_key',
+            _urls(hits, 'Settings'),
         )
 
     def test_an_apps_name_narrows_its_fields(self):
         urls = _urls(_hits(self.client, 'audiobooks voice'), 'Settings')
-        self.assertIn('/dashboard/settings/audiobooks/#f-qwen_voice', urls)
+        self.assertIn('/dashboard/settings/audiobooks/#f-audiobooks-qwen_voice', urls)
 
     def test_accents_and_case_do_not_matter(self):
         urls = _urls(_hits(self.client, 'ÉLEVENLABS model'), 'Settings')
-        self.assertIn('/dashboard/settings/audiobooks/#f-elevenlabs_model', urls)
+        self.assertIn('/dashboard/settings/audiobooks/#f-audiobooks-elevenlabs_model', urls)
 
     def test_one_typo_is_forgiven(self):
         self.assertIn('/dashboard/settings/audiobooks/', _urls(_hits(self.client, 'audiobok')))
