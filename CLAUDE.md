@@ -277,7 +277,7 @@ when nothing in scope would fill it. Guarded by `book_product/tests/test_listing
 **Convention — one dashboard search, and every app answers it (v0.151.0).** Cmd+K
 (`admin_dashboard/views_split/palette.py`) lists what the registry knows: every page and settings
 tool, every app (to its settings, its first page, or its card in Apps while it is off), every field
-of every settings panel (`#f-<key>`), every email, and every guide (release_notes). Records come from
+of every settings panel (`#f-<app>-<key>`, the id both settings pages render), every email, and every guide (release_notes). Records come from
 `DASHBOARD_SEARCH`: each app appends its own rows with `plugins/dashboard_search.py:add()`, so a
 switched-off app's records leave with it; the shell never queries another app's model. Text kept in
 Python folds case and accents and forgives one typo; a row matches each word as typed (the stores

@@ -55,6 +55,16 @@ class AppsSettingsAndGuidesTests(TestCase):
             _urls(hits, 'Settings'),
         )
 
+    def test_a_field_anchor_names_an_id_on_the_page_it_opens(self):
+        # The anchor must land on the field: an app whose name is no settings
+        # category is served by plugin_settings.html, a category by
+        # settings_category.html, and both must render the id the palette builds.
+        for query in ('elevenlabs api key', 'maintenance message'):
+            url = next(u for u in _urls(_hits(self.client, query), 'Settings') if '#' in u)
+            path, anchor = url.split('#')
+            body = self.client.get(path).content.decode()
+            self.assertIn(f'id="{anchor}"', body, url)
+
     def test_an_apps_name_narrows_its_fields(self):
         urls = _urls(_hits(self.client, 'audiobooks voice'), 'Settings')
         self.assertIn('/dashboard/settings/audiobooks/#f-audiobooks-qwen_voice', urls)

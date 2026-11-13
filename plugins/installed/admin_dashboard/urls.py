@@ -146,6 +146,7 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
         'admin_dashboard/plugin_settings.html',
         {
             'plugin': instance,
+            'plugin_name': plugin,
             'panel': panel,
             'fields': fields,
             'active_nav': 'settings',
