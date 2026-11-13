@@ -273,3 +273,38 @@ class BoundsAndNamesTests(TestCase):
         from plugins.installed.markets import services
 
         self.assertFalse(hasattr(services, 'price_for'))
+
+
+@override_settings(STORE_CURRENCY='USD')
+class StoredPrecisionTests(TestCase):
+    """What the page and Linda show is exactly what a save writes back."""
+
+    def test_a_three_decimal_price_is_stored_as_reported(self):
+        from core.agents.registry import agent_registry
+
+        _product(slug='mug')
+        Market.objects.create(code='kw', label='Kuwait', currency='KWD')
+        tool = agent_registry.get_tool('markets.set_product_price')
+        out = tool.handler(code='kw', product='mug', amount=1.234)
+        stored = ProductMarketPrice.objects.get().price
+        self.assertEqual(stored.amount, Decimal('1.23'))
+        self.assertEqual(out.output['fixed_price'], str(stored))
+        with self.assertRaisesMessage(ToolError, 'more than zero'):
+            tool.handler(code='kw', product='mug', amount=0.001)
+
+    def test_a_zero_fixed_price_is_not_a_price(self):
+        _rate('EUR', '0.9')
+        product = _product()
+        market = Market.objects.create(code='eu', label='EU', currency='EUR')
+        ProductMarketPrice.objects.create(market=market, product=product, price=Money('0', 'EUR'))
+        self.assertEqual(market_price(product, market), Money('9.00', 'EUR'))
+
+    def test_an_eight_decimal_rate_survives_the_edit_box(self):
+        rates.set_manual_rate('IDR', Decimal('0.00000149'))
+        market = Market.objects.create(code='id', label='ID', currency='IDR', is_active=False)
+        user = get_user_model().objects.create_superuser('s', 's@x.test', 'pw')
+        self.client.force_login(user)
+        page = self.client.get(reverse('markets:edit', args=[market.pk])).content.decode()
+        self.assertIn('value="0.00000149"', page)
+        self.client.post(reverse('markets:rate', args=[market.pk]), {'rate': '0.00000149'})
+        self.assertEqual(ExchangeRate.objects.get(quote_currency='IDR').rate, Decimal('0.00000149'))

@@ -8,7 +8,7 @@ rates.set_manual_rate / fetch_ecb), so a refusal reads the same in both.
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
 
@@ -284,9 +284,14 @@ def markets_set_product_price_tool(
     # The bound comes first: quantizing a huge number raises InvalidOperation.
     if value >= MAX_FIXED_PRICE:
         raise ToolError('The price must be less than 1,000,000,000,000.')
-    if quantize(value, currency) <= 0:
+    amount = quantize(value, currency)
+    # Stored with the column's places: a three-decimal currency (KWD) keeps two.
+    places = ProductMarketPrice._meta.get_field('price').decimal_places
+    if -amount.as_tuple().exponent > places:
+        amount = amount.quantize(Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP)
+    if amount <= 0:
         raise ToolError('The price must be more than zero.')
-    price = Money(quantize(value, currency), currency)
+    price = Money(amount, currency)
     if price.amount >= MAX_FIXED_PRICE:
         raise ToolError('The price must be less than 1,000,000,000,000.')
     ProductMarketPrice.objects.update_or_create(

@@ -75,7 +75,7 @@ def market_price(product, market, variant=None) -> Money | None:
 
     # A fixed price counts only in the currency it was entered in.
     fixed = ProductMarketPrice.objects.filter(
-        market=market, product=product, price_currency=currency
+        market=market, product=product, price_currency=currency, price__gt=0
     ).first()
     if fixed is not None:
         return apply_price_filter(

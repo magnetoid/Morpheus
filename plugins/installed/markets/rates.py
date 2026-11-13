@@ -36,7 +36,8 @@ def fetch_ecb() -> dict:  # noqa: PLR0912
 
     response = outbound_request('GET', ECB_URL, timeout=20)
     response.raise_for_status()
-    root = ET.fromstring(response.content)  # noqa: S314
+    # The URL is the ECB's own, fixed, over HTTPS; ElementTree resolves no external entities.
+    root = ET.fromstring(response.content)  # noqa: S314  # nosec B314
     per_eur: dict[str, Decimal] = {'EUR': Decimal(1)}
     date = ''
     for node in root.iter():

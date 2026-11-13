@@ -44,7 +44,8 @@ def _rate_status(currency: str) -> dict | None:
     rate, age = row['rate'], row['fetched_at']
     return {
         **row,
-        'rate_text': format(rate.quantize(Decimal('0.000001')).normalize(), 'f') if rate else '',
+        # Every stored digit: the box is posted back as is, and a rounded value would be saved.
+        'rate_text': format(rate.quantize(Decimal('0.00000001')).normalize(), 'f') if rate else '',
         'age_days': (timezone.now() - age).days if age else None,
     }
 
