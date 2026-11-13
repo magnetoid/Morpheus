@@ -20,7 +20,7 @@
 
   if (readChoice()) return;
   // A crawler that runs scripts must not index the bar as page text.
-  if (/bot|crawl|spider|slurp|lighthouse|headless|facebookexternalhit/i.test(navigator.userAgent)) return;
+  if (/(bot|crawler|spider)\/|bingpreview|slurp|lighthouse|headless|facebookexternalhit/i.test(navigator.userAgent)) return;
   var pageLang = primary(document.documentElement.lang);
   var wanted = '';
   var prefs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
@@ -42,11 +42,12 @@
   var bar = document.createElement('div');
   bar.className = 'morpheus-language-bar';
   bar.setAttribute('role', 'region');
-  bar.setAttribute('aria-label', strings.name);
+  var sentence = strings.also_in.replace('{name}', strings.name);
+  bar.setAttribute('aria-label', sentence);
   bar.lang = wanted;
   bar.setAttribute('data-nosnippet', '');
   var text = document.createElement('span');
-  text.textContent = strings.also_in.replace('{name}', strings.name);
+  text.textContent = sentence;
   var sw = document.createElement('button');
   sw.type = 'button';
   sw.setAttribute('data-action', 'switch');
@@ -60,5 +61,13 @@
   bar.appendChild(text);
   bar.appendChild(sw);
   bar.appendChild(stay);
-  document.body.insertBefore(bar, document.body.firstChild);
+  if (data.css) {
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = data.css;
+    document.head.appendChild(css);
+  }
+  // Last in the page so the theme's skip link stays first in tab order; the bar is
+  // position: fixed, so it still shows at the top.
+  document.body.appendChild(bar);
 })();

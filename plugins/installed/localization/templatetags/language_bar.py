@@ -7,11 +7,11 @@ visitor: the script decides in the browser whether to show the bar.
 from __future__ import annotations
 
 from django import template
-from django.conf import settings
+from django.templatetags.static import static
 from django.utils import translation
 from django.utils.translation import gettext
 
-from core.i18n.services import store_languages
+from core.i18n.services import language_name, store_languages
 
 register = template.Library()
 
@@ -26,18 +26,18 @@ def bar_data() -> dict | None:
     codes = store_languages()
     if len(codes) < 2:
         return None
-    own = {c.lower(): str(n) for c, n in (getattr(settings, 'LANGUAGES', None) or [])}
     languages = {}
     for code in codes:
         with translation.override(code):
             languages[code] = {
-                'name': own.get(code, code),
+                'name': language_name(code),
                 # "{name}" is filled in by the script, not by a template.
                 'also_in': gettext('This page is also in {name}.'),
                 'switch': gettext('Switch'),
                 'stay': gettext('Stay'),
             }
-    return {'languages': languages}
+    # The script adds the stylesheet only when it shows the bar, so no page waits for it.
+    return {'css': static('localization/language-bar.css'), 'languages': languages}
 
 
 @register.simple_tag

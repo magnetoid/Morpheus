@@ -49,12 +49,14 @@ class LanguageBarTests(TestCase):
         self._on()
         with override_settings(**BILINGUAL):
             html = _render()
-        self.assertIn('localization/language-bar.css', html)
+        self.assertNotIn('<link', html)  # the script adds the stylesheet when it shows the bar
         self.assertRegex(html, r'<script nonce="N0NCE" src="[^"]*language-bar[^"]*\.js" defer>')
         raw = re.search(
             r'<script id="morpheus-language-bar" type="application/json">(.*?)</script>', html, re.S
         )
-        data = json.loads(raw.group(1))['languages']
+        payload = json.loads(raw.group(1))
+        self.assertIn('localization/language-bar', payload['css'])
+        data = payload['languages']
         self.assertEqual(set(data), {'en', 'sr'})
         self.assertEqual(data['en']['also_in'], 'This page is also in {name}.')
         self.assertEqual(data['en']['switch'], 'Switch')
