@@ -196,7 +196,7 @@ def _countries(raw) -> list[str]:
     return out
 
 
-def save_market(data: dict, market=None):  # noqa: PLR0912
+def save_market(data: dict, market=None):  # noqa: PLR0912, PLR0915
     """Create a market, or update ``market``, from plain values.
 
     A key missing from ``data`` keeps the market's current value (a new market
@@ -208,6 +208,7 @@ def save_market(data: dict, market=None):  # noqa: PLR0912
 
     from core.pricing import exchange_rate, store_currency
     from plugins.installed.markets.models import Market
+    from plugins.installed.markets.rates import parse_decimal
 
     def pick(key, default):
         if key in data:
@@ -243,7 +244,7 @@ def save_market(data: dict, market=None):  # noqa: PLR0912
         raise ValidationError('The language code can be 10 characters at most.')
 
     try:
-        adjustment = Decimal(str(pick('base_price_adjustment_pct', 0) or 0).strip())
+        adjustment = parse_decimal(pick('base_price_adjustment_pct', 0) or 0)
     except (InvalidOperation, ValueError):
         raise ValidationError('The price adjustment must be a number.') from None
     if not adjustment.is_finite() or not Decimal(-90) <= adjustment <= Decimal(500):

@@ -81,6 +81,52 @@ class FetchEcbTests(TestCase):
             rates.fetch_ecb()
         self.assertEqual(_row('USD', 'EUR').source, 'ecb')
 
+    def _active_market(self, currency='EUR'):
+        return Market.objects.create(code=currency.lower(), label=currency, currency=currency)
+
+    def test_clearing_with_an_active_market_puts_the_daily_rate_in_its_place(self):
+        self._active_market()
+        rates.set_manual_rate('EUR', Decimal('0.5'))
+        with _patch_ecb():
+            self.assertEqual(rates.set_manual_rate('EUR', None), 'daily')
+        self.assertEqual(_row('USD', 'EUR').source, 'ecb')
+
+    def test_clearing_is_refused_when_rates_are_typed_by_hand(self):
+        self._active_market()
+        rates.set_manual_rate('EUR', Decimal('0.5'))
+        with (
+            mock.patch.object(tasks, 'rate_source', return_value='manual'),
+            self.assertRaisesMessage(ValidationError, 'set by hand'),
+        ):
+            rates.set_manual_rate('EUR', None)
+        self.assertEqual(_row('USD', 'EUR').rate, Decimal('0.5'))
+        self.assertEqual(_row('USD', 'EUR').source, 'manual')
+
+    def test_clearing_is_refused_when_the_fetch_fails(self):
+        self._active_market()
+        rates.set_manual_rate('EUR', Decimal('0.5'))
+        with (
+            mock.patch.object(rates, 'fetch_ecb', side_effect=OSError('down')),
+            self.assertRaisesMessage(ValidationError, 'could not be fetched'),
+        ):
+            rates.set_manual_rate('EUR', None)
+        self.assertEqual(_row('USD', 'EUR').source, 'manual')
+
+    def test_clearing_is_refused_when_the_ecb_publishes_no_such_currency(self):
+        self._active_market('CHF')
+        rates.set_manual_rate('CHF', Decimal('0.9'))
+        with _patch_ecb(), self.assertRaisesMessage(ValidationError, 'does not publish CHF'):
+            rates.set_manual_rate('CHF', None)
+        self.assertEqual(_row('USD', 'CHF').source, 'manual')
+
+    def test_clearing_for_a_currency_no_active_market_uses_just_clears(self):
+        rates.set_manual_rate('EUR', Decimal('0.5'))
+        self.assertEqual(rates.set_manual_rate('EUR', None), 'cleared')
+        self.assertFalse(ExchangeRate.objects.exists())
+
+    def test_a_comma_is_a_decimal_separator(self):
+        self.assertEqual(rates.parse_decimal(' 0,92 '), Decimal('0.92'))
+
     def test_clearing_never_deletes_an_ecb_row(self):
         with _patch_ecb():
             rates.fetch_ecb()

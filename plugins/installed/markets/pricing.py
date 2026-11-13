@@ -33,14 +33,15 @@ def _typed_price(prices, currency: str) -> Decimal | None:
 
 
 def _round(amount: Decimal, currency: str, rounding: str) -> Decimal:
+    if amount <= 0:
+        return quantize(amount, currency)
     if rounding == 'whole':
         # Never let a cheap item round down to free.
-        whole = amount.quantize(Decimal(1), rounding=ROUND_HALF_UP)
-        return whole if whole > 0 or amount <= 0 else Decimal(1)
+        return max(amount.quantize(Decimal(1), rounding=ROUND_HALF_UP), Decimal(1))
     if rounding == 'ninety_nine':
         base = amount.quantize(Decimal(1), rounding=ROUND_FLOOR)
         if get_currency_precision(currency) == 0:
-            return base  # a currency without cents has no .99
+            return max(base, Decimal(1))  # a currency without cents has no .99
         return base + Decimal('0.99')
     return quantize(amount, currency)
 
@@ -90,12 +91,16 @@ def preview(market, count: int = 10) -> list[dict]:
     from plugins.installed.catalog.models import Product
 
     products = Product.objects.shoppable().filter(status='active').order_by('name')[:count]
-    return [
-        {
-            'name': product.name,
-            'slug': product.slug,
-            'store_price': product.price,
-            'market_price': market_price(product, market),
-        }
-        for product in products
-    ]
+    rows = []
+    for product in products:
+        price = market_price(product, market)
+        rows.append(
+            {
+                'name': product.name,
+                'slug': product.slug,
+                'store_price': product.price,
+                'market_price': price,
+                'has_price': price is not None,
+            }
+        )
+    return rows

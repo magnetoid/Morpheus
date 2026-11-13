@@ -111,3 +111,19 @@ class MarketPriceTests(TestCase):
         m.rounding = 'exact'
         m.save()
         self.assertEqual(market_price(p, m).amount, Decimal(1515))
+
+    def test_ninety_nine_never_turns_free_into_99_cents(self):
+        _rate('EUR', '0.9')
+        m = _market(rounding='ninety_nine')
+        self.assertEqual(market_price(_product('0.00'), m).amount, Decimal('0.00'))
+
+    def test_yen_never_rounds_a_positive_price_to_zero(self):
+        _rate('JPY', '151.5')
+        for rounding in ('whole', 'ninety_nine'):
+            with self.subTest(rounding):
+                m = _market('JPY', rounding=rounding)
+                p = _product('0.001', slug=f'cheap-{rounding}')
+                self.assertEqual(market_price(p, m).amount, Decimal(1))
+                m.delete()
+        free = _product('0.00', slug='free-yen')
+        self.assertEqual(market_price(free, _market('JPY', rounding='ninety_nine')).amount, 0)

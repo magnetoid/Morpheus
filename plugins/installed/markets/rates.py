@@ -76,30 +76,65 @@ def fetch_ecb() -> dict:
     return {'written': written, 'kept_manual': kept, 'date': date}
 
 
-def set_manual_rate(currency: str, rate: Decimal | None) -> None:
-    """Fix the rate for ``store currency -> currency``; ``None`` removes the manual row."""
+def parse_decimal(raw) -> Decimal:
+    """A number a merchant typed; a comma is a decimal separator ("0,92")."""
+    return Decimal(str(raw).strip().replace(',', '.'))
+
+
+def set_manual_rate(currency: str, rate: Decimal | None) -> str:
+    """Fix the rate for ``store currency -> currency``; ``None`` removes the manual row.
+
+    Returns what happened: ``'set'``, ``'cleared'`` (nothing else replaces it, and
+    no active market needs it) or ``'daily'`` (the ECB's rate took its place).
+    There is one row per pair, so removing yours leaves nothing until the ECB's
+    is fetched; if an active market needs the currency and no daily rate can be
+    had, the removal is refused and your rate stays.
+    """
+    from django.db import transaction
+
     from core.models import ExchangeRate
-    from core.pricing import store_currency
+    from core.pricing import exchange_rate, store_currency
+    from plugins.installed.markets.tasks import rate_source
 
     currency, store = (currency or '').upper(), store_currency()
     if len(currency) != 3 or currency == store:
         raise ValidationError(f'Enter a currency other than {store}.')
-    if rate is None:
+    if rate is not None:
+        try:
+            rate = Decimal(str(rate))
+        except InvalidOperation:
+            raise ValidationError('The rate must be a number.') from None
+        if not rate.is_finite() or rate <= 0:
+            raise ValidationError('The rate must be more than zero.')
+        ExchangeRate.objects.update_or_create(
+            base_currency=store,
+            quote_currency=currency,
+            defaults={'rate': rate.quantize(_EIGHT), 'source': 'manual'},
+        )
+        return 'set'
+
+    with transaction.atomic():
         ExchangeRate.objects.filter(
             base_currency=store, quote_currency=currency, source='manual'
         ).delete()
-        return
-    try:
-        rate = Decimal(str(rate))
-    except InvalidOperation:
-        raise ValidationError('The rate must be a number.') from None
-    if not rate.is_finite() or rate <= 0:
-        raise ValidationError('The rate must be more than zero.')
-    ExchangeRate.objects.update_or_create(
-        base_currency=store,
-        quote_currency=currency,
-        defaults={'rate': rate.quantize(_EIGHT), 'source': 'manual'},
-    )
+        if currency not in foreign_currencies() or exchange_rate(store, currency) is not None:
+            return 'cleared'
+        why = ''
+        if rate_source() == 'manual':
+            why = 'rates are set by hand in this store'
+        else:
+            try:
+                fetch_ecb()
+            except Exception:  # noqa: BLE001 — told to the merchant below
+                logger.warning('rate fetch after clearing %s failed', currency, exc_info=True)
+                why = 'the daily rates could not be fetched just now'
+        if exchange_rate(store, currency) is not None:
+            return 'daily'
+        why = why or f'the European Central Bank does not publish {currency}'
+        raise ValidationError(
+            f'Your rate stays: switch the {currency} market off first, or type another rate. '
+            f'There is no daily rate for {currency} to fall back on ({why}).'
+        )
 
 
 def foreign_currencies() -> list[str]:
@@ -132,10 +167,8 @@ def rate_row(code: str) -> dict:
         ExchangeRate.objects.filter(base_currency=store, quote_currency=code).first()
         or ExchangeRate.objects.filter(base_currency=code, quote_currency=store).first()
     )
-    if rate is None:
-        stale, source, fetched = True, '', None
-    elif row is None:
-        stale, source, fetched = False, 'cross', None
+    if rate is None or row is None:
+        stale, source, fetched = rate is None, '', None
     else:
         source, fetched = row.source, row.fetched_at
         stale = source != 'manual' and timezone.now() - fetched > STALE_AFTER
