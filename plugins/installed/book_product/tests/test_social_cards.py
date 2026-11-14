@@ -605,10 +605,21 @@ class ProductPageTests(_Page):
         self.assertEqual(head['og:image:secure_url'], [url])
         self.assertEqual(head['og:image:width'], ['1200'])
         self.assertEqual(head['og:image:height'], ['630'])
-        self.assertEqual(head['og:image:alt'], ['Cover of Partners in Crime by Agatha Christie'])
+        self.assertEqual(
+            head['og:image:alt'],
+            ['Partners in Crime by Agatha Christie: the cover beside the title and author'],
+        )
         self.assertEqual(head['twitter:image'], [url])
         self.assertEqual(head['twitter:image:alt'], head['og:image:alt'])
         self.assertEqual(head['twitter:card'], ['summary_large_image'])
+
+    def test_the_alt_text_describes_the_card_without_an_author(self):
+        self.switch_on()
+        book = make_book(author='')
+        social_cards.render_and_store(book.pk)
+        head = self.head()
+        self.assertEqual(head['og:image:alt'], ['Partners in Crime: the cover beside the title'])
+        self.assertEqual(head['twitter:image:alt'], head['og:image:alt'])
 
     def test_the_first_view_shares_the_cover_and_asks_for_the_card(self):
         self.switch_on()

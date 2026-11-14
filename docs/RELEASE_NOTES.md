@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.167.4 — 2026-11-14
+
+**A book card's description says what the picture shows**
+
+- A book's social card is shared with a description of the card itself (the title and author, with the cover beside the title and author) instead of "Cover of …", which described the cover photo the card replaced. Screen readers on the social sites read it.
+
 ## v0.167.3 — 2026-11-14
 
 **The thank-you page no longer hands out the download**

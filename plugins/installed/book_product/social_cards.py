@@ -435,10 +435,12 @@ def apply_to_head(doc, request) -> None:
 
     url = absolutize(default_storage.url(book.social_card.name))
     content = inputs.content
+    # The picture is the card, not the cover alone: say what it shows.
     alt = (
-        _('Cover of %(title)s by %(author)s') % {'title': content.title, 'author': content.author}
+        _('%(title)s by %(author)s: the cover beside the title and author')
+        % {'title': content.title, 'author': content.author}
         if content.author
-        else _('Cover of %(title)s') % {'title': content.title}
+        else _('%(title)s: the cover beside the title') % {'title': content.title}
     )
     for prop, value in (
         ('og:image', url),
