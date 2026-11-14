@@ -1,0 +1,13 @@
+{% load i18n %}{% comment %}The page's breadcrumb trail, from `breadcrumb_items` — the list the head's
+BreadcrumbList is built from (`{% breadcrumb_trail %}`, storefront/templatetags/breadcrumbs.py).
+A theme restyles it by overriding this file under its own templates/storefront/, and
+always loops over `breadcrumb_items`: the last item is the page itself, marked
+aria-current and not linked. `item.href` is the item's url, site-relative.{% endcomment %}{% if breadcrumb_items %}
+<nav aria-label="{% translate 'Breadcrumb' %}" class="breadcrumb">
+  <ol style="list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:.25rem .5rem;">
+    {% for item in breadcrumb_items %}
+    <li>{% if not forloop.first %}<span aria-hidden="true">/</span> {% endif %}{% if forloop.last %}<span aria-current="page">{{ item.name }}</span>{% else %}<a href="{{ item.href }}">{{ item.name }}</a>{% endif %}</li>
+    {% endfor %}
+  </ol>
+</nav>
+{% endif %}

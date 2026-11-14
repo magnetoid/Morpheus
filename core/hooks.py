@@ -583,6 +583,16 @@ class MorpheusEvents:
     #   book app answers {'genre', 'author', 'formats', 'formats_line'}. Read by
     #   core's {% product_card_meta %} so a theme card never loads an app's tags.
     PRODUCT_CARD_META = 'product.card_meta'  # filter
+    # PRODUCT_BREADCRUMB_CATEGORY — filter, value=list of {'name', 'url'} (absolute
+    #   urls), kwargs: product (the PDP's catalog Product row, else its GraphQL dict;
+    #   None on the product list), category (the catalog Category the default was
+    #   built from, or None), request. The crumbs between the catalogue crumb and the
+    #   product in a product page's breadcrumb trail, and on /products/?category=. The
+    #   storefront's default is the product's primary category and its active
+    #   ancestors, root first, each at /category/<slug>/. An app that owns a better
+    #   parent page answers with its own (book_product: a book's genre page). The one
+    #   list is both the visible trail and the BreadcrumbList.
+    PRODUCT_BREADCRUMB_CATEGORY = 'product.breadcrumb_category'  # filter
     # SEARCH_SUGGESTIONS — filter, value=list of groups, kwargs: query (str, two
     #   characters at least), words (its lowercased words). The storefront's search
     #   dropdown (/api/quick-search/) lists products and the shop's own categories and

@@ -1,13 +1,10 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load booking_tags %}
+{% load morph %}{% load booking_tags %}{% load breadcrumbs %}
 
 {% block content %}
 <section style="padding: 4rem 0 2rem;">
   <div class="wrap" style="max-width: 720px;">
-    <nav aria-label="Breadcrumb" class="breadcrumb" style="margin-bottom: 1.25rem;">
-      <a href="/bookings/" style="border-bottom:1px dotted var(--rule);">Experiences</a> /
-      <span aria-current="page">{{ service.name }}</span>
-    </nav>
+    <div style="margin-bottom: 1.25rem;">{% breadcrumb_trail %}</div>
     <p class="eyebrow">Hosted by {{ service.vendor.name }}{% if service.region %} · {{ service.get_region_display }}{% endif %}</p>
     <h1 class="display display-l" style="margin: 1rem 0;">{{ service.name }}<span class="text-accent">.</span></h1>
     <p class="lede">{{ service.duration_minutes }} min{% if not listing_mode and service.price %} · {{ service.price|money }} per guest{% endif %}</p>

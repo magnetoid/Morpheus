@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.161.0 — 2026-11-12
+
+**Breadcrumbs and travel landing pages**
+
+- A product page's visible trail and its BreadcrumbList are one list: the category crumb links the category's own page (on dotbooks a book's genre), never a filter address, and the product is the last crumb.
+- Every theme draws the trail from that list. Supernatural, Irving and the travel listings show one for the first time, and the catalogue crumb has one name everywhere.
+- Montenegro and Croatia get region × activity pages (for example /regions/kotor/boat-tours/) with intro text, and a region's page now lists its hotels, places and upcoming events and links its activities.
+- /bookings/ filtered only by region and activity names that landing page as its canonical, and the sitemap lists every landing page that has experiences.
+
 ## v0.160.0 — 2026-11-12
 
 **Honest translations**

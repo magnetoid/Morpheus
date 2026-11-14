@@ -59,10 +59,12 @@ class ExperienceCardTitleTests(MontenegroThemeMixin, TestCase):
         self.assertIsNotNone(self._title(html, 'h2', self.walk))
         self.assertIsNone(self._title(html, 'h3', self.walk))
 
-    def test_a_region_pages_cards_are_h2(self):
-        # The region page's grid sits straight under its h1 too.
+    def test_a_region_pages_cards_are_h3(self):
+        # The region page is a landing page with sections (v0.161.0): its grid sits
+        # under the "Experiences" h2, beside the hotels, places and events sections.
         html = self._page('/regions/kotor/')
-        self.assertIsNotNone(self._title(html, 'h2', self.kayak))
+        self.assertIsNotNone(self._title(html, 'h3', self.kayak))
+        self.assertIsNone(self._title(html, 'h2', self.kayak))
 
     def test_cards_inside_a_section_are_h3(self):
         # "Similar experiences" is an h2 on the booking page; its cards sit below it.

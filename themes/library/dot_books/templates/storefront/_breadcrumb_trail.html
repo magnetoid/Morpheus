@@ -1,0 +1,11 @@
+{% load i18n %}{% comment %}dot books' look for the shared trail (storefront/_breadcrumb_trail.html):
+small muted links, "/" between them, the page itself last and unlinked. It loops over
+`breadcrumb_items`, the list the head's BreadcrumbList is built from; never add a crumb here.{% endcomment %}{% if breadcrumb_items %}
+<nav aria-label="{% translate 'Breadcrumb' %}" class="breadcrumb meta" style="margin-bottom: 1.25rem;">
+  <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: baseline;">
+    {% for item in breadcrumb_items %}
+    <li>{% if not forloop.first %}<span aria-hidden="true" style="margin: 0 0.5rem; color: var(--muted);">/</span>{% endif %}{% if forloop.last %}<span aria-current="page">{{ item.name }}</span>{% else %}<a href="{{ item.href }}" style="color: var(--muted);">{{ item.name }}</a>{% endif %}</li>
+    {% endfor %}
+  </ol>
+</nav>
+{% endif %}

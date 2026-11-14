@@ -274,6 +274,8 @@ def _finish(page: SeoPage, request, context) -> SeoPage:
         page.breadcrumbs = context.get('breadcrumb_items') or []
     if page.page_obj is None:
         page.page_obj = context.get('page_obj')
+    if not page.canonical:
+        page.canonical = _clean(context.get('seo_canonical'))
     if not page.title:
         page.title = _title_from_object(page) or _fallback_title(page)
     if not page.description:

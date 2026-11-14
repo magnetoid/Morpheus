@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}{% load booking_tags %}
+{% load morph %}{% load seo %}{% load tracking %}{% load cache %}{% load caching %}{% load i18n %}{% load breadcrumbs %}{% load booking_tags %}
 {% comment %}1:1 Adriatic port of pages/ProductDetail.tsx — 2-col layout (gallery left,
 details right), gallery thumbnails, variant picker, qty + Add-to-cart, reviews,
 related + recently-viewed. Branches on booking_listing_mode (price + cart hidden,
@@ -32,23 +32,7 @@ POST: /cart/add/{{ product.id }}/  ·  /back-in-stock/subscribe/{{ product.id }}
 {% booking_listing_mode as listing_mode %}
 <main class="container max-w-6xl mx-auto px-4 py-8">
 
-  <!-- Breadcrumb / back link -->
-  <nav class="flex flex-wrap items-center gap-1.5 text-sm mb-6" aria-label="{% trans 'Breadcrumb' %}">
-    <a href="/" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Home" %}</a>
-    <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-    <a href="/products/" class="text-muted-foreground hover:text-foreground transition-colors">{% trans "Shop" %}</a>
-    {% with genre=product.book.genres.first %}
-    {% if genre %}
-    <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-    <a href="/genre/{{ genre.slug }}/" class="text-muted-foreground hover:text-foreground transition-colors">{{ genre.name }}</a>
-    {% elif product.category %}
-    <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-    <a href="/products/?category={{ product.category.slug }}" class="text-muted-foreground hover:text-foreground transition-colors">{{ product.category.name }}</a>
-    {% endif %}
-    {% endwith %}
-    <svg class="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-    <span class="text-foreground font-medium truncate max-w-[220px]">{{ product.name }}</span>
-  </nav>
+  {% breadcrumb_trail %}
 
   {% if messages %}{% for m in messages %}
   <div class="mb-6 rounded-xl border px-4 py-3 text-sm {% if m.tags == 'error' %}border-destructive/40 bg-destructive/5 text-destructive{% else %}border-primary/30 bg-primary/5 text-foreground{% endif %}">{{ m }}</div>

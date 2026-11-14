@@ -5040,3 +5040,13 @@ msgstr "Novembar"
 msgctxt "alt. month"
 msgid "December"
 msgstr "Decembar"
+
+#, python-format
+msgid "%(category)s in %(region)s"
+msgstr "%(category)s — %(region)s"
+
+msgid "Experiences by activity"
+msgstr "Doživljaji po aktivnosti"
+
+msgid "Upcoming events"
+msgstr "Predstojeći događaji"

@@ -1,21 +1,42 @@
 {% extends "storefront/base.html" %}
-{% load morph %}
+{% load morph %}{% load i18n %}{% load breadcrumbs %}
+{% comment %}Fallback region landing page (a theme without its own): the region's text,
+its experiences, then — each only when it has rows — the experiences by activity, its
+hotels, places and upcoming events (views.region_detail).{% endcomment %}
 {% block content %}
 <section style="padding:3.5rem 0;">
   <div class="wrap">
-    <nav class="breadcrumb" style="margin-bottom:1rem;"><a href="/regions/">Regions</a> / <span>{{ region_label }}</span></nav>
-    <h1 class="display display-m" style="margin-bottom:1.5rem;">{{ region_label }}<span class="text-accent">.</span></h1>
+    <div style="margin-bottom:1rem;">{% breadcrumb_trail %}</div>
+    <h1 class="display display-m" style="margin-bottom:1rem;">{{ region_label }}<span class="text-accent">.</span></h1>
+    {% if region_intro %}<p class="lede" style="margin-bottom:1.5rem;">{{ region_intro }}</p>{% endif %}
+    {% if region_categories %}
+    <h2 style="font-family:var(--serif); font-size:1.3rem; margin:2rem 0 .75rem;">{% trans "Experiences by activity" %}</h2>
+    <p class="meta">{% for c in region_categories %}<a href="{{ c.url }}">{{ c.name }}</a> ({{ c.count }}){% if not forloop.last %} · {% endif %}{% endfor %}</p>
+    {% endif %}
+    <h2 style="font-family:var(--serif); font-size:1.3rem; margin:2rem 0 1rem;">{% trans "Experiences" %}</h2>
     {% if services %}
     <div style="display:grid; gap:1rem;">
       {% for s in services %}
       <a href="/bookings/{{ s.slug }}/" style="display:block; padding:1.25rem; border:1px solid var(--rule); border-radius:10px; color:inherit; text-decoration:none;">
-        <h2 style="font-family:var(--serif); font-size:1.25rem; margin:0;">{{ s.name }}</h2>
-        <p class="meta" style="margin:.25rem 0 0;">Hosted by {{ s.vendor.name }} · {% if listing_mode %}Contact for price{% else %}{{ s.price|money }}{% endif %}</p>
+        <h3 style="font-family:var(--serif); font-size:1.25rem; margin:0;">{{ s.name }}</h3>
+        <p class="meta" style="margin:.25rem 0 0;">{% trans "Hosted by" %} {{ s.vendor.name }} · {% if listing_mode %}{% trans "Contact for price" %}{% else %}{{ s.price|money }}{% endif %}</p>
       </a>
       {% endfor %}
     </div>
     {% else %}
-    <p class="lede">No experiences here yet. <a href="/bookings/">Browse all experiences</a>.</p>
+    <p class="lede">{% trans "No experiences here yet." %} <a href="/bookings/">{% trans "Browse all experiences" %}</a>.</p>
+    {% endif %}
+    {% if region_hotels %}
+    <h2 style="font-family:var(--serif); font-size:1.3rem; margin:2rem 0 .75rem;">{% trans "Hotels" %}</h2>
+    <ul>{% for p in region_hotels %}<li><a href="/hotels/{{ p.slug }}/">{{ p.name }}</a></li>{% endfor %}</ul>
+    {% endif %}
+    {% if region_places %}
+    <h2 style="font-family:var(--serif); font-size:1.3rem; margin:2rem 0 .75rem;">{% trans "Places to visit" %}</h2>
+    <ul>{% for p in region_places %}<li><a href="/places/{{ p.slug }}/">{{ p.name }}</a></li>{% endfor %}</ul>
+    {% endif %}
+    {% if region_events %}
+    <h2 style="font-family:var(--serif); font-size:1.3rem; margin:2rem 0 .75rem;">{% trans "Upcoming events" %}</h2>
+    <ul>{% for e in region_events %}<li><a href="/events/{{ e.slug }}/">{{ e.name }}</a>{% if e.when_display %} · {{ e.when_display }}{% endif %}</li>{% endfor %}</ul>
     {% endif %}
   </div>
 </section>

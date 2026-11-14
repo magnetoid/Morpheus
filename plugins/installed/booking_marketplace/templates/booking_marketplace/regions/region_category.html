@@ -1,0 +1,33 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load breadcrumbs %}
+{% comment %}Fallback region × category landing page (a theme without its own):
+views.region_category.{% endcomment %}
+{% block content %}
+<section style="padding:3.5rem 0;">
+  <div class="wrap">
+    <div style="margin-bottom:1rem;">{% breadcrumb_trail %}</div>
+    <h1 class="display display-m" style="margin-bottom:1rem;">{{ landing_title }}<span class="text-accent">.</span></h1>
+    {% if region_intro %}<p class="lede">{{ region_intro }}</p>{% endif %}
+    {% if category.description %}<p class="lede" style="margin-bottom:1.5rem;">{{ category.description|striptags }}</p>{% endif %}
+    {% if services %}
+    <div style="display:grid; gap:1rem;">
+      {% for s in services %}
+      <a href="/bookings/{{ s.slug }}/" style="display:block; padding:1.25rem; border:1px solid var(--rule); border-radius:10px; color:inherit; text-decoration:none;">
+        <h2 style="font-family:var(--serif); font-size:1.25rem; margin:0;">{{ s.name }}</h2>
+        <p class="meta" style="margin:.25rem 0 0;">{% trans "Hosted by" %} {{ s.vendor.name }} · {% if listing_mode %}{% trans "Contact for price" %}{% else %}{{ s.price|money }}{% endif %}</p>
+      </a>
+      {% endfor %}
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="{% trans 'Pages' %}" style="display:flex; gap:1rem; justify-content:center; margin-top:2rem;">
+      {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev">{% trans "Previous" %}</a>{% endif %}
+      <span class="meta">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+      {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next">{% trans "Next" %}</a>{% endif %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <p class="lede">{% trans "No experiences here yet." %} <a href="{{ region_url }}">{{ region_label }}</a> · <a href="/bookings/">{% trans "Browse all experiences" %}</a>.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -140,9 +140,6 @@ def _render(request, label, value, products, *, term=None, index_url=None):
             'active_edit_url': active_edit_url,
             'active_edit_label': f'Edit {label.lower()}' if active_edit_url else '',
             'facet_value': value,
-            # When this facet kind has an index page (publisher/series/imprint),
-            # link the breadcrumb label up to it (e.g. "Publisher" → /publishers/).
-            'facet_index_url': index_url,
             'products': shelf,
             'page_obj': page_obj,
             'jsonld_items': _jsonld_items(shelf),

@@ -1,0 +1,35 @@
+{% extends "storefront/base.html" %}
+{% load morph %}{% load i18n %}{% load booking_tags %}{% load breadcrumbs %}
+{% comment %}A region × category landing page (views.region_category): the region's live
+experiences in the category's subtree, introduced by the region's geography and the
+category's own description. The trail is the page's `breadcrumb_items`.{% endcomment %}
+{% block content %}
+{% booking_listing_mode as listing_mode %}
+<div class="container mx-auto px-4 py-10 sm:py-14">
+  {% breadcrumb_trail %}
+  <p class="text-xs font-semibold text-primary uppercase tracking-wider mb-2"><a href="{{ region_url }}" class="hover:underline">{{ region_label }}</a></p>
+  <h1 class="font-display text-3xl sm:text-4xl font-bold text-foreground tracking-tight mb-4">{{ landing_title }}</h1>
+  {% if region_intro or category.description %}
+  <div class="max-w-2xl mb-8 space-y-3">
+    {% if region_intro %}<p class="text-lg text-muted-foreground">{{ region_intro }}</p>{% endif %}
+    {% if category.description %}<p class="text-muted-foreground">{{ category.description|striptags }}</p>{% endif %}
+  </div>
+  {% endif %}
+  {% if services %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    {% for s in services %}
+    {% include "booking_marketplace/_experience_card.html" with s=s listing_mode=listing_mode heading="h2" %}
+    {% endfor %}
+  </div>
+  {% if page_obj.has_other_pages %}
+  <nav aria-label="{% trans 'Pages' %}" class="flex flex-wrap items-center justify-center gap-2 mt-10 pt-6 border-t border-border">
+    {% if page_obj.has_previous %}<a href="{% page_href page_obj.previous_page_number %}" rel="prev" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Previous" %}</a>{% endif %}
+    <span class="px-4 text-sm text-muted-foreground">{% blocktrans with n=page_obj.number total=page_obj.paginator.num_pages %}Page {{ n }} of {{ total }}{% endblocktrans %}</span>
+    {% if page_obj.has_next %}<a href="{% page_href page_obj.next_page_number %}" rel="next" class="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">{% trans "Next" %}</a>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <p class="text-muted-foreground">{% trans "No experiences here yet." %} <a href="{{ region_url }}" class="text-primary underline">{{ region_label }}</a> · <a href="/bookings/" class="text-primary underline">{% trans "Browse all experiences" %}</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

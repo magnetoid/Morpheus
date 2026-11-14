@@ -1,0 +1,11 @@
+{% load i18n %}{% comment %}Irving's look for the shared trail (storefront/_breadcrumb_trail.html): mono,
+"/" between the links, the page itself last and unlinked (styles: `.plp-crumbs` in base.html).
+It loops over `breadcrumb_items`, the list the head's BreadcrumbList is built from.{% endcomment %}{% if breadcrumb_items %}
+<nav aria-label="{% translate 'Breadcrumb' %}" class="plp-crumbs">
+  <ol>
+    {% for item in breadcrumb_items %}
+    <li>{% if not forloop.first %}<span aria-hidden="true">/</span>{% endif %}{% if forloop.last %}<span aria-current="page">{{ item.name }}</span>{% else %}<a href="{{ item.href }}">{{ item.name }}</a>{% endif %}</li>
+    {% endfor %}
+  </ol>
+</nav>
+{% endif %}
