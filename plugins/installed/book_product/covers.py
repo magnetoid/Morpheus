@@ -1,7 +1,8 @@
 """A book's cover file: a PDF, or a PNG or JPEG image (``BookProduct.cover_pdf``).
 
-The 3D preview draws it on the front of the book: page 1 of a PDF, or the image
-itself. The field keeps its name, and GraphQL its ``coverPdfUrl``, because both are
+The 3D preview draws page 1 of a PDF, or the image itself: on the front of the
+book when it is the front alone, across the back, spine and front when it is the
+whole wrap a printer takes (``_book_3d.html``). The field keeps its name, and GraphQL its ``coverPdfUrl``, because both are
 already read outside this app; ``cover_type`` says which kind a stored file is.
 
 An upload is checked here before it is stored: its name, its size and its first

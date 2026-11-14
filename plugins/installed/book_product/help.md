@@ -8,7 +8,7 @@ This app turns a regular product into a book. It adds book fields — author, se
 
 ## Common tasks
 
-- Fill in a book's author, series, format, page count and other details from the product page's Book details card, and drop its front cover there: a PDF, PNG or JPG of up to 50 MB.
+- Fill in a book's author, series, format, page count and other details from the product page's Book details card, and drop its cover there, the front alone or the whole wrap (back, spine and front): a PDF, PNG or JPG of up to 50 MB. Its width, height and spine split a wrap exactly.
 - Open the [Book taxonomies](page:book-taxonomies) page to see and manage every genre, topic, author, publisher, series and imprint.
 - Write or regenerate the introduction and search description for one of those pages, one at a time or in bulk.
 - Give a taxonomy page its own image so it reads well when a shopper lands on it.

@@ -3,7 +3,9 @@
 The Book details card had a bare file input that took PDFs only. It now uses the
 shared drag-and-drop uploader, takes PNG and JPG too, checks each file before it is
 stored (name, size and first bytes must agree; an image must open within a pixel
-limit), and the 3D preview draws an image cover as it is.
+limit), and the 3D preview draws an image cover as it is. A cover may be the whole
+wrap (back, spine and front); the preview splits it by the book's own sizes, which
+both previews hand it.
 """
 
 from __future__ import annotations
@@ -17,7 +19,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import RequestFactory, TestCase
+from django.template.loader import render_to_string
+from django.test import RequestFactory, TestCase, override_settings
+from django.utils import translation
 from django.utils.datastructures import MultiValueDict
 from djmoney.money import Money
 from PIL import Image
@@ -198,3 +202,70 @@ class CoverCardTests(TestCase):
 
         self.assertRegex(uploader, r'data-field-preview src="[^"]+front[^"]*\.png"')
         self.assertRegex(body, r'data-cover-url="[^"]+\.png" data-cover-type="image"')
+
+
+class PreviewSizeTests(TestCase):
+    """Both 3D previews carry the book's sizes, which split a whole-wrap cover."""
+
+    def setUp(self):
+        user = get_user_model().objects.create_user(
+            username='sizestaff', email='sizestaff@example.com', password='x', is_staff=True
+        )
+        self.client.force_login(user)
+        self.product = Product.objects.create(
+            name='Wrap cover',
+            slug='wrap-cover',
+            sku='COVER-3',
+            price=Money(Decimal('5.00'), 'USD'),
+        )
+
+    def _book(self, **sizes) -> BookProduct:
+        book = BookProduct.objects.create(product=self.product, **sizes)
+        book.cover_pdf.save('wrap.png', _upload('wrap.png', _image('PNG', (90, 40))))
+        return book
+
+    @staticmethod
+    def _mount(html: str) -> str:
+        start = html.index('class="book-3d')
+        return html[start : html.index('>', start)]
+
+    def _mounts(self) -> dict[str, str]:
+        response = self.client.get(f'/dashboard/products/{self.product.pk}/')
+        self.assertEqual(response.status_code, 200)
+        page = render_to_string(
+            'storefront/blocks/_book_pdp.html',
+            {'product': {'slug': self.product.slug, 'id': str(self.product.pk)}},
+        )
+        return {'dashboard': self._mount(response.content.decode()), 'shop': self._mount(page)}
+
+    def test_both_previews_carry_the_books_sizes(self):
+        self._book(width_mm=129, height_mm=198, spine_mm=20)
+
+        for where, mount in self._mounts().items():
+            with self.subTest(where):
+                self.assertIn('data-cover-type="image"', mount)
+                self.assertIn('data-width-mm="129"', mount)
+                self.assertIn('data-height-mm="198"', mount)
+                self.assertIn('data-spine-mm="20"', mount)
+
+    def test_sizes_not_filled_in_are_empty(self):
+        self._book(width_mm=129)
+
+        for where, mount in self._mounts().items():
+            with self.subTest(where):
+                self.assertIn('data-width-mm="129"', mount)
+                self.assertIn('data-height-mm=""', mount)
+                self.assertIn('data-spine-mm=""', mount)
+
+    @override_settings(USE_THOUSAND_SEPARATOR=True)
+    def test_a_size_is_never_localized(self):
+        # JavaScript parses it: "1.200" would read as 1.2.
+        self._book(width_mm=1200, height_mm=1500, spine_mm=40)
+
+        with translation.override('de'):
+            mounts = self._mounts()
+
+        for where, mount in mounts.items():
+            with self.subTest(where):
+                self.assertIn('data-width-mm="1200"', mount)
+                self.assertIn('data-height-mm="1500"', mount)

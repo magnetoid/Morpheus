@@ -132,7 +132,8 @@ class BookProduct(models.Model):
     weight_g = models.PositiveIntegerField(null=True, blank=True)
 
     # ── Cover (drives the three.js 3D preview) ─────────────────────────────
-    # A PDF, PNG or JPEG despite the name, which GraphQL's coverPdfUrl shares (covers.py).
+    # A PDF, PNG or JPEG despite the name, which GraphQL's coverPdfUrl shares (covers.py):
+    # the front alone or the whole wrap, which the preview splits by the sizes above.
     cover_pdf = models.FileField(upload_to='book_covers/', null=True, blank=True)
 
     # ── Social card (social_cards.py) ──────────────────────────────────────

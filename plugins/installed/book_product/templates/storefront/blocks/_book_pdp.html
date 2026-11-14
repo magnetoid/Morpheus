@@ -5,7 +5,7 @@ Book *details* (author, format, pages, …) are shown by the storefront's
 model-driven `book_specs` "About this edition" block; this block is just the
 interactive 3D cover. Self-gating: no BookProduct / no cover PDF → nothing.
 {% endcomment %}
-{% load book_extras %}
+{% load book_extras l10n %}
 {% book_for_product product as book %}
 {% book_language_editions product as lang_editions %}
 {% if lang_editions %}
@@ -30,6 +30,7 @@ their own language. Self-gates: fewer than 2 editions → nothing.{% endcomment 
 <section style="margin:2rem 0; border-top:1px solid var(--rule); padding-top:1.75rem;">
   <h2 style="font-family:var(--serif); font-size:1.3rem; margin:0 0 1rem;">Preview this edition</h2>
   <div class="book-3d" data-cover-url="{{ book.cover_pdf.url }}" data-cover-type="{{ book.cover_type }}"
+       data-width-mm="{{ book.width_mm|default_if_none:''|unlocalize }}" data-height-mm="{{ book.height_mm|default_if_none:''|unlocalize }}" data-spine-mm="{{ book.spine_mm|default_if_none:''|unlocalize }}"
        style="height:420px; border:1px solid var(--rule); border-radius:10px; background:var(--paper-2);"
        aria-label="Interactive 3D preview of the book — drag to rotate"></div>
   {% include "book_product/_book_3d.html" %}

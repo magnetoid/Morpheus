@@ -1,8 +1,12 @@
 {% comment %}
 Reusable 3D book viewer. Renders every `.book-3d[data-cover-url]` element on the
-page: the cover goes on the front face of a three.js book, an image as it is
-(`data-cover-type="image"`) and a PDF through PDF.js, which rasterises page 1 into a
-CanvasTexture; OrbitControls let the shopper drag to rotate.
+page as a three.js book: an image cover as it is (`data-cover-type="image"`), a PDF
+through PDF.js, which rasterises page 1 into a CanvasTexture. A cover is either the
+front alone or the whole wrap a printer takes (back | spine | front, left to right):
+a file wider than a front cover is a wrap, split across the back, spine and front
+faces, and the book's thickness is the spine's width. `data-width-mm`,
+`data-height-mm` and `data-spine-mm` (the book's own sizes) make the split exact;
+without them the spine is guessed. OrbitControls let the shopper drag to rotate.
 
 Loaded from CDN (unpkg) via an ES-module importmap — same no-build pattern as
 the bookstore_3d plugin. CSP: storefront is report-only; the dashboard CSP
@@ -29,7 +33,7 @@ Include this ONCE per page (it carries the importmap, which must be unique).
       const tex = await new THREE.TextureLoader().loadAsync(url);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
-      return { tex, aspect: tex.image.width / tex.image.height };
+      return { tex, w: tex.image.width, h: tex.image.height };
     }
     const pdfjs = await import(PDFJS);
     pdfjs.GlobalWorkerOptions.workerSrc = WORKER;
@@ -44,7 +48,46 @@ Include this ONCE per page (it carries the importmap, which must be unique).
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
-    return { tex, aspect: viewport.width / viewport.height };
+    return { tex, w: canvas.width, h: canvas.height };
+  }
+
+  // Which part of the cover file goes on which face, as [left, right] fractions of
+  // its width, and the front's aspect and the thickness, each relative to the height.
+  function coverLayout(px, mm) {
+    const aspect = px.w / px.h;
+    const depth = mm.spine && mm.height ? mm.spine / mm.height : 0.5 / 3.4;
+    // A wrap is about twice as wide as the front; a picture book's front is landscape.
+    const wrap = mm.width && mm.height ? aspect > 1.5 * mm.width / mm.height : aspect > 1;
+    if (!wrap) return { front: [0, 1], spine: null, back: null, aspect, depth };
+    let s = 0;
+    if (mm.width && mm.spine) s = px.w * mm.spine / (2 * mm.width + mm.spine);
+    else if (mm.width && mm.height) s = px.w - 2 * px.h * mm.width / mm.height;
+    else if (mm.spine && mm.height) s = px.h * mm.spine / mm.height;
+    if (!(s > 0 && s < px.w / 3)) s = px.w * 0.05;
+    const f = (px.w - s) / 2;
+    return {
+      back: [0, f / px.w],
+      spine: [f / px.w, (f + s) / px.w],
+      front: [(f + s) / px.w, 1],
+      aspect: f / px.h,
+      depth: s / px.h,
+    };
+  }
+
+  // One face's part of the cover: the same image, shifted and narrowed. Each face of
+  // a BoxGeometry is drawn unmirrored from outside, and the parts meet at the edges:
+  // the front's left edge and the back's right edge are the spine's two sides.
+  function part(tex, [x0, x1]) {
+    const t = tex.clone();
+    t.offset.set(x0, 0);
+    t.repeat.set(x1 - x0, 1);
+    t.needsUpdate = true;
+    return t;
+  }
+
+  function sizes(el) {
+    const mm = (key) => Math.max(parseInt(el.dataset[key], 10) || 0, 0);
+    return { width: mm('widthMm'), height: mm('heightMm'), spine: mm('spineMm') };
   }
 
   async function mount(el) {
@@ -74,12 +117,18 @@ Include this ONCE per page (it carries the importmap, which must be unique).
     rim.position.set(-4, 2, -3);
     scene.add(rim);
 
-    const h = 3.4, w = h * cover.aspect, d = 0.5;
+    const layout = coverLayout(cover, sizes(el));
+    const h = 3.4, w = h * layout.aspect, d = Math.max(h * layout.depth, 0.06);
     const cream = new THREE.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.9 });
-    const spine = new THREE.MeshStandardMaterial({ color: 0x8a5a44, roughness: 0.7 });
-    const back = new THREE.MeshStandardMaterial({ color: 0xe7ddca, roughness: 0.9 });
-    const front = new THREE.MeshStandardMaterial({ map: cover.tex, roughness: 0.55 });
-    // BoxGeometry face order: +x, -x, +y, -y, +z, -z
+    const spine = layout.spine
+      ? new THREE.MeshStandardMaterial({ map: part(cover.tex, layout.spine), roughness: 0.6 })
+      : new THREE.MeshStandardMaterial({ color: 0x8a5a44, roughness: 0.7 });
+    const back = layout.back
+      ? new THREE.MeshStandardMaterial({ map: part(cover.tex, layout.back), roughness: 0.55 })
+      : new THREE.MeshStandardMaterial({ color: 0xe7ddca, roughness: 0.9 });
+    const front = new THREE.MeshStandardMaterial({ map: part(cover.tex, layout.front), roughness: 0.55 });
+    // BoxGeometry face order: +x, -x, +y, -y, +z, -z. The front faces +z, so the
+    // spine (-x) is on its left and the back (-z) behind it.
     const book = new THREE.Mesh(
       new THREE.BoxGeometry(w, h, d),
       [cream, spine, cream, cream, front, back]
