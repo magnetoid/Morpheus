@@ -44,9 +44,12 @@
   function mount(opts) {
     var BY_KEY = {};
     (opts.types || []).forEach(function (t) { BY_KEY[t.key] = t; });
-    var blocks = (opts.blocks || [])
-      .filter(function (b) { return b && BY_KEY[b.type]; })
-      .map(function (b) { return { type: b.type, data: b.data || {} }; });
+    function editable(list) {
+      return (Array.isArray(list) ? list : [])
+        .filter(function (b) { return b && BY_KEY[b.type]; })
+        .map(function (b) { return { type: b.type, data: b.data || {} }; });
+    }
+    var blocks = editable(opts.blocks);
     var container = opts.container;
     var hidden = opts.hidden;
 
@@ -134,6 +137,18 @@
 
     opts.addButton.addEventListener('click', function () {
       blocks.push({ type: opts.select.value, data: {} });
+      render();
+    });
+
+    // The host put a value back into the input (the save bar's Discard sets
+    // every field to what the page loaded with, then fires `input`): load it,
+    // or the next sync would post the discarded blocks again. The editor's own
+    // writes fire `change`, never `input`.
+    hidden.addEventListener('input', function () {
+      if (hidden.value === JSON.stringify(blocks)) return;
+      var restored;
+      try { restored = JSON.parse(hidden.value || '[]'); } catch (e) { return; }
+      blocks = editable(restored);
       render();
     });
 

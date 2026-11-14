@@ -746,7 +746,7 @@ class MorpheusEvents:
     #   value=list[dict], kwargs: category= / collection= / page= (the object, or
     #   None while creating). CATEGORY_FORM_SAVED / COLLECTION_FORM_SAVED /
     #   PAGE_FORM_SAVED — fires, kwargs: the same object plus post=QueryDict,
-    #   files=MultiValueDict.
+    #   files=MultiValueDict, user=the staff member who saved.
     #
     #   The PRODUCT_FORM_CARDS pair, generalised to the other entities a
     #   merchant edits. Same contract ({'template', 'context', 'order'}), same
