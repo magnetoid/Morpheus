@@ -11,7 +11,7 @@ This app turns a regular product into a book. It adds book fields — author, se
 - Fill in a book's author, series, format, page count and other details from the product page's Book details card.
 - Open the [Book taxonomies](page:book-taxonomies) page to see and manage every genre, topic, author, publisher, series and imprint.
 - Write or regenerate the introduction and search description for one of those pages, one at a time or in bulk.
-- Give a taxonomy page its own image so it reads well when a shopper lands on it.
+- Give a taxonomy page its own image, and see each book's author and genres in the product list.
 - Switch on [Social cards for books](field:book_product.social_cards) so a shared book page shows a card with the whole cover, the title, the author and the start of the book's description. Its wording and colours are in the same [Books settings](settings:book_product).
 
 ## Good to know
