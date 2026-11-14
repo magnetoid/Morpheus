@@ -1287,7 +1287,11 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
       if (cards.length < 2) return rail.clientWidth;
       var pitch = cards[1].offsetLeft - cards[0].offsetLeft;
       if (pitch <= 0) return rail.clientWidth;
-      return Math.max(Math.floor((rail.clientWidth + 1) / pitch), 1) * pitch;
+      // Whole cards in view: the first starts after the rail's padding, and the
+      // last needs no gap after it.
+      var room = rail.clientWidth - (parseFloat(getComputedStyle(rail).paddingLeft) || 0)
+        + (pitch - cards[0].offsetWidth);
+      return Math.max(Math.floor((room + 1) / pitch), 1) * pitch;
     };
     var sync = function () {
       var max = rail.scrollWidth - rail.clientWidth - 2;

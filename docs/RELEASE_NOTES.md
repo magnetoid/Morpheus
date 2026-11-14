@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.170.2 — 2026-11-14
+
+**Supernatural and Irving book rails get bare arrows beside the covers**
+
+- Supernatural and Irving: the arrows on the home page's book rails lose their dark circle and sit on either side of the rail, centred on the covers, as on Dot Books since v0.170.1. Touch screens and narrow windows still swipe.
+- An arrow turns a page of whole books, and the previous arrow stays hidden at the start of a rail.
+- All three themes count the books in view correctly: the last one has no gap after it, so a rail showing exactly four books (Supernatural at 1100 px) turned only three per click.
+
 ## v0.170.1 — 2026-11-14
 
 **Book rail arrows sit beside the covers and page by whole books**
