@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.167.1 — 2026-11-14
+
+**Emails show the store's name as the sender**
+
+- Every email the store sends from its own address now carries the store's name beside it (Settings → General), so an inbox shows who wrote instead of "hello". A store that never set its name shows the site's address; a name written into the sender field on Settings → Notifications ("Name <address>") is kept, and any other sender stays as written.
+
 ## v0.167.0 — 2026-11-14
 
 **Book social cards**

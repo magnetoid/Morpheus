@@ -4,7 +4,7 @@ summary: The dashboard shell itself — the sidebar, Settings, the Apps catalogu
 
 ## What it's for
 
-This is the dashboard you sign in to and work in every day. It is the frame the rest of Morpheus runs inside: a sidebar down the left, a search box and your account menu across the top, and the page in the middle where each part of the store shows its own screens. Every app you install adds its screens into this same shell instead of building its own.
+This is the dashboard you sign in to and work in every day. It is the frame the rest of Morpheus runs inside: a sidebar down the left, a search box and your account menu across the top, and the page in the middle where each part of the store shows its own screens. Every app adds its screens to this same shell instead of building its own.
 
 The sidebar is organised into sections: [Home](section:home), [Linda](section:ai), [Orders](section:orders), [Products](section:products), [Customers](section:customers), [CRM](section:crm), [Vendors](section:vendors), [Affiliates](section:affiliates), [Marketing](section:marketing), [Channels](section:channels), [Content](section:content), [Analytics](section:analytics) and [SEO](section:seo). Home, Linda, Orders, Products, Customers and Analytics are always there; the rest appear only once an app that uses them is switched on. Open a section and its own pages show as tabs along the top — a section with only one page shows no tabs at all.
 
@@ -22,4 +22,4 @@ Settings, near the bottom of the sidebar, is where every app's configuration liv
 
 ## Good to know
 
-Settings categories work like sidebar sections: General and Notifications always show; the rest appear only once an app has something there. Search forgives a missing accent or a typo in page, app and setting names; records must match what you type. This app is the dashboard shell itself, so it cannot be switched off.
+General and Notifications always show in Settings. Search forgives a missing accent or a typo in page, app and setting names; records must match what you type. Emails go out under the store's name beside the sender address on Notifications; write "Name <address>" to show another. This app is the dashboard shell itself and cannot be switched off.
