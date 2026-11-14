@@ -152,3 +152,26 @@ class OrdersSearchTotalTests(TestCase):
         self.assertEqual(out['returned'], 2)
         self.assertEqual(len(out['orders']), 2)
         self.assertNotIn('count', out)  # the misleading count=len(rows) key is gone
+
+
+class OrdersGetCheckoutAnswersTests(TestCase):
+    def test_the_order_reports_what_the_shopper_wrote_at_checkout(self):
+        from djmoney.money import Money
+
+        from plugins.installed.orders.agent_tools import orders_get_tool
+        from plugins.installed.orders.models import Order
+
+        order = Order.objects.create(
+            email='buyer@example.com',
+            subtotal=Money(8, 'USD'),
+            total=Money(8, 'USD'),
+            customer_notes='Leave it at the door',
+            metadata={
+                'checkout_fields': {'gift_message': 'Happy birthday, Ana', 'terms_accepted': True},
+                'terms_accepted': {'url': '/pages/terms/', 'at': '2026-11-14T10:00:00+00:00'},
+            },
+        )
+        out = orders_get_tool.invoke({'order_number': order.order_number}).output
+        self.assertEqual(out['notes'], 'Leave it at the door')
+        self.assertEqual(out['gift_message'], 'Happy birthday, Ana')
+        self.assertTrue(out['terms_accepted'])

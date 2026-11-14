@@ -40,6 +40,11 @@ class NewsletterPlugin(Plugin):
         # Win-back: the nightly RFM rescore fires this on segment flips; we act
         # on the drop to at-risk (consent-gated + deduped inside send_winback).
         self.register_hook(events.CUSTOMER_SEGMENT_CHANGED, self.on_segment_changed, priority=50)
+        # The opt-in tick at checkout, and the subscription a ticked order starts.
+        from plugins.installed.newsletter import checkout  # noqa: PLC0415
+
+        self.register_hook(events.CHECKOUT_FIELDS, checkout.on_checkout_fields, priority=50)
+        self.register_hook(events.ORDER_PLACED, checkout.on_order_placed, priority=60)
 
     def on_dashboard_search(self, value, query='', words=None, **kwargs):
         """Sign-up popups (by name or headline) in the dashboard's search box."""
@@ -190,7 +195,7 @@ class NewsletterPlugin(Plugin):
     def contribute_settings_panel(self):
         return SettingsPanel(
             label='Newsletter',
-            description='Win-back automation for lapsed, subscribed customers.',
+            description='Sign-up at checkout, and win-back emails for lapsed subscribers.',
             schema=self.get_config_schema(),
             category='marketing',
         )
@@ -199,6 +204,16 @@ class NewsletterPlugin(Plugin):
         return {
             'type': 'object',
             'properties': {
+                'checkout_opt_in': {
+                    'type': 'boolean',
+                    'title': 'Ask for newsletter sign-up at checkout',
+                    'description': (
+                        'An unticked box at checkout: "Email me news and offers". A '
+                        'shopper who ticks it gets the confirmation email, and joins the '
+                        'list once they confirm.'
+                    ),
+                    'default': False,
+                },
                 'winback_enabled': {
                     'type': 'boolean',
                     'title': 'Send win-back emails',

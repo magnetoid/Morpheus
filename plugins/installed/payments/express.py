@@ -79,6 +79,18 @@ def needs_waiver(cart) -> bool:
     return any(not _item_ships(item) for item in cart.items.all())
 
 
+def form_only(cart, user=None) -> bool:
+    """Whether only the checkout form can place this order: the withdrawal waiver, a
+    required checkout field (the terms tick, core/checkout_fields.py), or a store that
+    takes no guest orders and a shopper who is not signed in."""
+    from core.checkout_fields import has_required  # noqa: PLC0415
+    from plugins.installed.orders.checkout_fields import guest_checkout_allowed  # noqa: PLC0415
+
+    if needs_waiver(cart) or has_required(user=user):
+        return True
+    return not guest_checkout_allowed() and not getattr(user, 'is_authenticated', False)
+
+
 def stripe_ready(user=None) -> bool:
     """Stripe is switched on and set up, the rule the checkout picker uses."""
     from plugins.installed.payments.gateway import gateway_registry  # noqa: PLC0415
@@ -195,7 +207,7 @@ def cart_offer(request) -> dict:
         return {}
     cart = session_cart(request)
     key = PaymentService.get_stripe_public_key()
-    if cart is None or needs_waiver(cart) or not key:
+    if cart is None or form_only(cart, getattr(request, 'user', None)) or not key:
         return {}
     try:
         offer = quote(cart, {'country': store_country()})
@@ -376,7 +388,8 @@ def express_order(request):
     cart = session_cart(request)
     if cart is None:
         return _refuse(_('Your cart is empty.'), status=404)
-    if not stripe_ready(user=getattr(request, 'user', None)) or needs_waiver(cart):
+    user = getattr(request, 'user', None)
+    if not stripe_ready(user=user) or form_only(cart, user):
         return _refuse(_('Please check out below.'))
     data = _json(request)
     email, address, problem = _shopper(cart, data)

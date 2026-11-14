@@ -455,6 +455,19 @@ def bot_check(context, form: str) -> str:
     return mark_safe(widget(context, form))
 
 
+@register.simple_tag(takes_context=True)
+def checkout_fields(context) -> str:
+    """The extra fields the apps ask for (core/checkout_fields.py), inside a checkout
+    <form>: a note, a gift message, the terms tick, an opt-in. Empty when none."""
+    from core.checkout_fields import render
+
+    try:
+        return render(context)
+    except Exception:  # noqa: BLE001 — never break the checkout page
+        logger.exception('checkout fields: render failed')
+        return ''
+
+
 @register.simple_tag
 def product_card_meta(product) -> dict:
     """Extra lines for a storefront product card, from the apps that own them

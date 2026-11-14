@@ -494,7 +494,9 @@ class MorpheusEvents:
     STRIPE_WEBHOOK_EVENT = 'payments.stripe_webhook_event'  # fire
 
     # ── Cart (fire) ────────────────────────────────────────────────────────
-    # CART_CREATED      — kwargs: cart=Cart.
+    # CART_CREATED      — kwargs: cart=Cart. Nothing fires it, nor CART_UPDATED:
+    #                     both stay because an app outside this tree may name
+    #                     them (docs/API_STABILITY.md: a minor never removes).
     # CART_UPDATED      — kwargs: cart=Cart.
     # CART_ABANDONED    — kwargs: cart=Cart, email=str|None. Fired by
     #                     cart_abandonment/tasks.py and inventory/tasks.py
@@ -646,6 +648,15 @@ class MorpheusEvents:
     #   (False when a cart line does not ship, which leaves cash on delivery
     #   out). Plugin disabled → [] and the picker renders no gateway choices.
     CHECKOUT_GATEWAYS = 'checkout.gateways'  # filter
+    # CHECKOUT_FIELDS — filter, value=list. The extra fields a checkout form asks
+    #   for (core/checkout_fields.py): each app appends dicts {'key', 'label',
+    #   'kind' ('checkbox'|'text'|'textarea'), 'required', 'help', 'link_url',
+    #   'link_text', 'max_length', 'order'} for the settings it has switched on
+    #   (orders: note, gift message, terms; newsletter: opt-in). kwargs: user.
+    #   completeOrder keeps only declared keys, refuses a missing required one,
+    #   and stores the answers in order.metadata['checkout_fields'], where each
+    #   owner acts on them (ORDER_PLACED).
+    CHECKOUT_FIELDS = 'checkout.fields'  # filter
     # SHIPPING_LABEL_RATE — filter, value=dict (the carrier rate shipping chose
     #   by its ``label_rate`` setting), kwargs: rates=list (every rate the
     #   carrier offered, in its own shape), provider=str ('shippo' |

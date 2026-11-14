@@ -483,7 +483,10 @@ class OrderService:
         *,
         visitor_id: str = '',
         consent: dict | None = None,
+        checkout_fields: dict | None = None,
     ) -> Order:
+        """``checkout_fields`` are the answers ``completeOrder`` kept after
+        ``core.checkout_fields.clean`` (a note, a gift message, the terms tick)."""
         if not cart.items.exists():
             raise ValueError('Cannot place an order from an empty cart.')
 
@@ -520,9 +523,16 @@ class OrderService:
         if affiliate_code:
             source = f'affiliate:{affiliate_code}'
 
+        from plugins.installed.orders.checkout_fields import order_fields  # noqa: PLC0415
+
+        customer_notes, answers_metadata = order_fields(checkout_fields)
+        metadata = _order_metadata(visitor_id, breakdown, consent)
+        metadata.update(answers_metadata)
+
         order = Order.objects.create(
             customer=cart.customer,
             email=email,
+            customer_notes=customer_notes,
             shipping_address=shipping_address,
             billing_address=billing_address,
             subtotal=subtotal,
@@ -536,7 +546,7 @@ class OrderService:
             # Anonymous attribution (autopilot-plan follow-up): experiments'
             # ORDER_PLACED handler reads metadata['visitor_id'] to credit
             # `v:` assignments — without it, anonymous conversions are lost.
-            metadata=_order_metadata(visitor_id, breakdown, consent),
+            metadata=metadata,
         )
 
         for cart_item in items:

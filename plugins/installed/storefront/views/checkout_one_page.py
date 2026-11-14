@@ -29,6 +29,7 @@ from typing import Any
 from django.shortcuts import redirect, render
 
 from api.client import internal_graphql
+from core import checkout_fields
 from core.security_headers import payment_page
 from core.utils.countries import normalise_country
 from plugins.installed.storefront.views._queries import CART_QUERY
@@ -39,6 +40,7 @@ from plugins.installed.storefront.views.checkout import (
     _checkout_base_context,
     _nothing_to_pay,
     _withdrawal_waiver,
+    guest_checkout_gate,
     record_waiver,
     waiver_gate,
 )
@@ -75,6 +77,7 @@ def _fire_begin_checkout(request) -> None:
 
 
 @payment_page
+@guest_checkout_gate
 def checkout_one_page(request):
     """Single-screen checkout — render or submit."""
     if request.method == 'GET':
@@ -257,6 +260,8 @@ def _submit_order(
                     # Server validates against enabled_gateways(); empty /
                     # unknown / disabled → default (stripe).
                     'paymentGateway': payment_method or None,
+                    # The extra fields' answers ({% checkout_fields %}).
+                    'checkoutFields': checkout_fields.from_post(request.POST),
                 },
             },
             request=request,

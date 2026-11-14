@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.168.0 — 2026-11-14
+
+**Checkout asks what the store needs: a note, a gift message, the terms**
+
+- Checkout can ask for an order note, a gift message and the store's terms, each switched on in Settings → Checkout, cart & invoices. The terms are a tick the shopper must give, linked to the page you name; the order keeps the link and the time they were accepted. The note shows on the order and to Linda, and the packing slip prints the note and the gift message.
+- The newsletter can ask at checkout too: an unticked box, off by default. A shopper who ticks it gets the same confirmation email as any other signup once the order goes through; a signed-in subscriber is not asked again.
+- A store can require sign-in before checkout (Allow guest checkout, on by default). With it off, a shopper who is not signed in signs in first and keeps their cart, and an order sent through the API without a signed-in shopper is refused. The storefront switch of the same name did nothing and went in v0.166.0; this one works.
+- The cart's Apple Pay and Google Pay buttons step aside while checkout asks for the terms or guests cannot order, since a wallet can neither tick a box nor sign anyone in.
+- For app authors: a new checkout question is a field the app adds to CHECKOUT_FIELDS; every theme's checkout forms show it through {% checkout_fields %}, and completeOrder takes the answers as checkoutFields and keeps them in the order's metadata. An agent's ACP order skips the fields and the guest rule.
+
 ## v0.167.4 — 2026-11-14
 
 **A book card's description says what the picture shows**

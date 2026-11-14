@@ -233,6 +233,13 @@
         <p class="mt-2 text-xs text-[color:var(--text-muted)]">From the customer</p>
         <p class="text-sm whitespace-pre-wrap">{{ order.customer_notes }}</p>
         {% endif %}
+        {% if order.gift_message %}
+        <p class="mt-2 text-xs text-[color:var(--text-muted)]">Gift message (printed on the packing slip)</p>
+        <p class="text-sm whitespace-pre-wrap">{{ order.gift_message }}</p>
+        {% endif %}
+        {% if order.metadata.terms_accepted %}
+        <p class="mt-2 text-xs text-[color:var(--text-muted)]">Accepted the terms ({{ order.metadata.terms_accepted.url }}) at checkout.</p>
+        {% endif %}
         <form method="post" action="{% url 'admin_dashboard:order_notes' order_number=order.order_number %}" class="mt-2 space-y-2">
           {% csrf_token %}
           <label for="staff-notes" class="text-xs text-[color:var(--text-muted)]">Staff notes (not shown to the customer)</label>

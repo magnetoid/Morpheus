@@ -98,6 +98,10 @@ class OrdersPlugin(Plugin):
             events.CUSTOMER_EMAIL_VERIFIED, self.on_customer_email_verified, priority=30
         )
         self.register_hook(events.PAYMENT_FAILED, self.on_payment_failed, priority=30)
+        # The checkout's note, gift message and terms tick (core/checkout_fields.py).
+        from plugins.installed.orders.checkout_fields import on_checkout_fields  # noqa: PLC0415
+
+        self.register_hook(events.CHECKOUT_FIELDS, on_checkout_fields, priority=10)
         # Nav-bar cart item count — contributed to every template (it reads
         # orders.Cart). The aggregator in plugins/context_processors.py runs it
         # only while orders is active, so the count vanishes on disable.
@@ -268,6 +272,48 @@ class OrdersPlugin(Plugin):
                         'content in my order, and I acknowledge that I thereby '
                         'lose my 14-day right of withdrawal once the download or '
                         'streaming begins.'
+                    ),
+                },
+                'allow_guest_checkout': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Shoppers can check out as guests',
+                    'description': (
+                        'When off, a shopper signs in or creates an account before '
+                        'checking out, and the wallet buttons on the cart show only to '
+                        'signed-in shoppers. An agent that buys with an API token you '
+                        'issued is not affected.'
+                    ),
+                },
+                'checkout_order_notes': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Ask for an order note',
+                    'description': (
+                        'An optional box at checkout for delivery instructions or '
+                        'anything else. The note shows on the order and its packing slip.'
+                    ),
+                },
+                'checkout_gift_message': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Ask for a gift message',
+                    'description': (
+                        'An optional box at checkout. The message is printed on the '
+                        'packing slip, which never shows prices.'
+                    ),
+                },
+                'checkout_terms_url': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Terms and conditions shoppers must accept',
+                    'description': (
+                        'A link to your terms: a page on this store such as '
+                        '/pages/terms/, or a full address. When set, a shopper ticks '
+                        '"I have read and accept the terms and conditions" to place an '
+                        'order, and the order records the link and the time. The wallet '
+                        'buttons on the cart are hidden, since they cannot ask. Leave it '
+                        'empty to ask for nothing.'
                     ),
                 },
                 'invoice_business_name': {

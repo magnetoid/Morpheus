@@ -949,6 +949,23 @@ leave it armed. `grep -rn EVENT_NAME | grep -c fire` is the cheap check.
 
 **Convention — a wallet charges what its sheet showed (v0.135.0).** The cart's express buttons (payments' `cart_summary_extra` block, Stripe's Express Checkout Element) never price anything in the browser: the sheet's amount comes from `/payments/express/quote/` for the address the wallet shares, computed by the same `calculate_cart_breakdown` call `create_from_cart` makes (billing = shipping), and `/payments/express/order/` places the order only while the shown amount and delivery choice still hold, then refuses to hand over the client secret if the order's total differs. A refusal names the new amount, which the next tap shows. The order empties the cart, so a declined wallet carries on at `/checkout/payment/` (the session keys the payment step reads). A cart that needs the digital-withdrawal tick goes through the form, since a wallet sheet cannot ask for it. Checkout forms ask for eight fields up front in every theme; a tucked-away field sits in a `<details>` that is open when it holds a value, and the country is a `<select>` of codes from `country_choices()`, because zones and tax regions compare codes. Guarded by `payments/tests/test_express_checkout.py` and `themes/test_checkout_short_form.py`.
 
+**Convention — a checkout asks what the apps declare (v0.168.0).** A question beyond the address is a
+field an app appends to `CHECKOUT_FIELDS` (`core/checkout_fields.py`: key, label, `checkbox` | `text` |
+`textarea`, required, an optional link) for a setting it has switched on: orders asks for a note, a gift
+message and the terms (`checkout_terms_url`, a required tick), newsletter for an unticked opt-in. Every
+theme's review and one-page forms render them with `{% checkout_fields %}` above the button, the views send
+the `cf_<key>` inputs as `completeOrder`'s `checkoutFields`, and the mutation keeps only declared keys,
+refuses a missing required one (`CHECKOUT_FIELDS`) and stores the answers in `metadata['checkout_fields']`,
+where each owner acts on its own after `ORDER_PLACED` (the note is `customer_notes`; the packing slip prints
+the gift message; the terms keep their link and time). A new question never edits a theme or a view.
+`allow_guest_checkout` off sends a guest to sign-in from every checkout step and `completeOrder` refuses
+one (`SIGN_IN_REQUIRED`). The cart's wallet buttons step aside while a field is required or a guest cannot
+order (`payments/express.py:form_only`), since a wallet sheet can neither tick a box nor sign anyone in.
+ACP orders call `create_from_cart` directly and skip both. Guarded by `core/tests/test_checkout_fields.py`,
+`orders/tests/test_checkout_fields.py`, `storefront/tests/test_checkout_fields.py`,
+`themes/test_checkout_fields.py`, `newsletter/tests/test_checkout_opt_in.py` and
+`payments/tests/test_express_form_only.py`.
+
 **Landmine — a price seam must fire on BOTH the displayed and charged price.**
 `PRODUCT_CALCULATE_PRICE` is applied in exactly two places — catalog's GraphQL
 `Product.price` (display) and orders' `_resolve_unit_price` (charge) — and both
