@@ -1146,7 +1146,9 @@ self.get_config_value("max_discount_pct", default=30)
 that saved, and no other. A setting that must reach every web and Celery worker soon after a save (a
 switch that closes the shop, when cards are charged) sets `config_fresh_s = 10.0` on the app class:
 each process then reads the app's row again at most that many seconds after it last did. storefront
-and payments do.
+and payments do (10 s), and book_product (30 s). A test that compares the queries of two requests
+calls `plugins.testing.hold_app_settings(self)` first, or a slow runner lets the window lapse
+between them and the second request counts the re-read.
 
 ---
 
