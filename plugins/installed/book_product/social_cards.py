@@ -40,9 +40,8 @@ import re
 import uuid
 from dataclasses import dataclass
 from functools import partial
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
-from django.conf import settings
 from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -370,15 +369,24 @@ def _is_product_photo(url: str, product, hosts=()) -> bool:
     # product was created, even after the photo is replaced. The product
     # form's own share images (products/og/, products/twitter/) were picked,
     # and so is a photo another product still has.
-    media = urlsplit(settings.MEDIA_URL).path.rstrip('/') + '/'
-    photos = f'{media}products/'
+    root = _storage_root()
+    photos = f'{root}products/'
     if not parts.path.startswith(photos) or parts.path.startswith(
         (f'{photos}og/', f'{photos}twitter/')
     ):
         return False
-    name = parts.path[len(media) :]
+    name = unquote(parts.path[len(root) :])
     others = model.objects.exclude(product_id=product.pk)
     return not any(others.filter(**{field: name}).exists() for field in fields)
+
+
+def _storage_root() -> str:
+    """The URL path the default storage puts before a file's name: /media/ on
+    disk, / on an S3 bucket with no location (where MEDIA_URL still says
+    /media/), so it is read from the storage, never from MEDIA_URL."""
+    probe = 'products/probe.jpg'
+    path = urlsplit(default_storage.url(probe)).path
+    return path[: -len(probe)] if path.endswith(probe) else '/'
 
 
 def _page_book(request):

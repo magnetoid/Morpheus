@@ -253,7 +253,9 @@ def _balanced(text: str, font, width: float) -> list[str]:
     )
     for cut in cuts:
         bounds = (0, *cut, n)
-        candidate = [' '.join(words[a:b]) for a, b in zip(bounds, bounds[1:], strict=False)]
+        # slice(), not the colon form: the dashboard's Tailwind build reads
+        # Python files and takes a bracketed name:name for a CSS property.
+        candidate = [' '.join(words[slice(a, b)]) for a, b in zip(bounds, bounds[1:], strict=False)]
         widest = max(font.getlength(ln) for ln in candidate)
         if widest <= width and widest < best_width - 0.5:
             best, best_width = candidate, widest

@@ -728,6 +728,31 @@ class ProductPageTests(_Page):
 # ── Settings, Linda, the command ─────────────────────────────────────────────
 
 
+class S3PathTests(_Clean):
+    """On an S3 bucket with no location, a file's URL is the bucket host plus
+    its name: no /media/, whatever MEDIA_URL says (settings.py, USE_S3)."""
+
+    def test_a_former_photo_is_recognised_by_the_storage_url(self):
+        from urllib.parse import quote
+
+        book = make_book()
+        boxed_set = make_book('the-complete-series', name='The Complete Series')
+        bucket = 'https://shop-media.s3.amazonaws.com/'
+        with mock.patch.object(
+            default_storage, 'url', side_effect=lambda name: bucket + quote(name)
+        ):
+            product = Product.objects.prefetch_related('images').get(pk=book.product_id)
+            for url, replaced in (
+                (bucket + quote(book.product.images.get().image.name), True),
+                (bucket + 'products/an-old-photo.png', True),
+                (bucket + 'products/og/og-partners-in-crime.jpg', False),
+                (bucket + quote(boxed_set.product.images.get().image.name), False),
+                ('https://shop-media.s3.amazonaws.com/campaigns/autumn.jpg', False),
+            ):
+                with self.subTest(url=url):
+                    self.assertIs(social_cards._is_product_photo(url, product), replaced)
+
+
 class SettingsTests(_Clean):
     def test_the_options_sit_in_the_book_apps_panel(self):
         panel = self.plugin.contribute_settings_panel()
