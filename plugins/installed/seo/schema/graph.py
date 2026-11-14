@@ -41,10 +41,10 @@ _ITEM_KEYS = (
     'search_items',
 )
 
-# The parts of a page a voice assistant may read aloud. Kept as a graph property
-# on WebPage rather than its own block — `speakable` is a property, and emitting
-# it as a standalone node was always a workaround for having no graph.
-_SPEAKABLE_SELECTORS = ['h1', '[data-speakable]', '.product-summary', '.entry-summary']
+# No `speakable`: Google reads it only to answer topical news queries, for users
+# in the U.S. whose Google Home devices are set to English, and calls it a beta
+# (Search Central, appearance/structured-data/speakable, read 2026-11-12). These
+# stores sell goods and trips; the property claimed a use no reader makes of it.
 
 # An article's `articleBody` is kept under 5,000 characters: the graph is in every
 # page's head, and the reader already has the whole text below it.
@@ -160,11 +160,6 @@ def _webpage(page: SeoPage, url: str, website: dict | None, org: dict | None) ->
         node['primaryImageOfPage'] = page.image
     if org:
         node['publisher'] = {'@id': org['@id']}
-    if page.kind in (KIND_PRODUCT, KIND_ARTICLE):
-        node['speakable'] = {
-            '@type': 'SpeakableSpecification',
-            'cssSelector': _SPEAKABLE_SELECTORS,
-        }
     return {k: v for k, v in node.items() if v not in (None, '', [])}
 
 
@@ -361,10 +356,10 @@ def _article_nodes(page: SeoPage, url: str) -> list[dict]:
         updated_at=get('updated_at'),
         image=str(get('image') or page.image or ''),
         # E-E-A-T + provenance. `journal_dict` has assembled these since v0.46
-        # and the themes' journal templates pass them to `seo_article_jsonld` —
-        # but under the head contract that tag is shimmed to '' and the GRAPH is
-        # what ships, so every author sameAs and citation the merchant entered
-        # was silently dropped on every live article.
+        # and the themes' journal templates passed them to `seo_article_jsonld`
+        # (removed in v0.164.0), which the head contract shimmed to '': the GRAPH
+        # is what ships, so every author sameAs and citation the merchant entered
+        # was silently dropped on every live article until it read them here.
         word_count=get('word_count') or None,
         author_same_as=get('author_same_as') or None,
         citations=get('citations') or None,

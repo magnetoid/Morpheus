@@ -138,10 +138,6 @@
       "target": "orders"
     },
     {
-      "importer": "channels",
-      "target": "analytics"
-    },
-    {
       "importer": "cms",
       "target": "catalog"
     },
@@ -336,10 +332,6 @@
     {
       "importer": "seo",
       "target": "inventory"
-    },
-    {
-      "importer": "seo",
-      "target": "markets"
     },
     {
       "importer": "seo",

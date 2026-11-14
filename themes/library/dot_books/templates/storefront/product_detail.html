@@ -6,17 +6,6 @@
 {% comment %}hreflang for a book's language editions is the head document's
 (book_product/head.py) — it was printed here, beside the seo app's, with the
 raw `language` value as the code and no check that the page was indexable.{% endcomment %}
-{% seo_product_jsonld product product_seo_extra %}
-{% if book_jsonld_data %}{% seo_book_jsonld book_jsonld_data %}{% endif %}
-{% if video_seo %}{% seo_video_jsonld video_seo %}{% endif %}
-{% seo_product_og product %}
-{% seo_product_md_link product.slug %}
-{% seo_speakable_jsonld %}
-{% if product.category %}
-  {% seo_breadcrumb_jsonld items=breadcrumb_items %}
-{% endif %}
-{% if pdp_faqs %}{% seo_faq_jsonld items=pdp_faqs %}{% endif %}
-{% if pdp_faqs %}{% seo_qa_jsonld qa=pdp_faqs name=product.name %}{% endif %}
 {% comment %}Web Stories are standalone + self-canonical (Google's current guidance),
 so the PDP must NOT declare them as its rel=amphtml pairing — that contradicts the
 story's self-canonical and triggers the GSC "amp-story canonical error". The story

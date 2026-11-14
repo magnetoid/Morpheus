@@ -121,6 +121,65 @@ class QueueTests(TestCase):
         self.assertEqual(self.ticket.status, FeedbackTicket.STATUS_CLOSED)
 
 
+def _set_rbac_mode(mode: str) -> None:
+    from plugins.registry import app_registry
+
+    plugin = app_registry.get('rbac')
+    plugin.set_config('enforcement_mode', mode)
+    plugin.invalidate_config_cache()
+
+
+class TicketStatusPermissionTests(TestCase):
+    """Changing a ticket's status needs `system.write`, while rbac enforces roles.
+
+    `ticket_detail` called `enforce(request, 'system.write')` and dropped its answer,
+    so a role holding only `system.read` closed tickets as freely as an admin
+    (fixed in v0.164.0). Enforcement defaults to `log`, where nothing is denied, so
+    these tests switch it to `enforce` and put the stored value back.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        from plugins.installed.rbac.models import Role
+
+        Role.ensure_system_roles()
+        Role.objects.create(
+            slug='ticket-reader', name='Ticket reader', capabilities=['system.read']
+        )
+        cls.reader = _staff('reader@example.com')
+        cls.admin = _staff('admin@example.com')
+
+    def setUp(self):
+        from plugins.installed.rbac.services import grant
+        from plugins.registry import app_registry
+
+        grant(self.reader, 'ticket-reader')
+        grant(self.admin, 'admin')
+        before = app_registry.get('rbac').get_config_value('enforcement_mode', 'log')
+        self.addCleanup(_set_rbac_mode, before or 'log')
+        _set_rbac_mode('enforce')
+        self.ticket = FeedbackTicket.objects.create(message='Broken thing', user=self.admin)
+        self.url = f'/dashboard/apps/feedback/tickets/{self.ticket.pk}/'
+
+    def _close_as(self, user):
+        self.client.force_login(user)
+        return self.client.post(self.url, {'status': FeedbackTicket.STATUS_CLOSED})
+
+    def test_a_read_only_role_reads_the_ticket_but_cannot_change_it(self):
+        self.client.force_login(self.reader)
+        self.assertContains(self.client.get(self.url), 'Broken thing')
+        response = self._close_as(self.reader)
+        self.assertEqual(response.status_code, 403)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, FeedbackTicket.STATUS_OPEN)
+
+    def test_a_role_that_may_change_the_system_can(self):
+        response = self._close_as(self.admin)
+        self.assertEqual(response.status_code, 302)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, FeedbackTicket.STATUS_CLOSED)
+
+
 class ContributionTests(TestCase):
     """The shell must carry the entry and the modal WITHOUT importing this app."""
 

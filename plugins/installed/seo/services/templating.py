@@ -248,6 +248,156 @@ def render_template(text: str, obj, kind: str = '') -> str:
     return out if any_matched else ''
 
 
+# ── Writing patterns (the dashboard's Templates page and Linda's tools) ──────
+
+
+class TemplateError(ValueError):
+    """A pattern that cannot be saved; the message is fit for the merchant."""
+
+
+#: Tokens every page kind offers, whatever the object (`_token_values`).
+_SITE_TOKENS = ('site_name', 'sep')
+
+
+def known_tokens(kind: str = '') -> list[str]:
+    """The token names a pattern may use: the site's, the object fields', every
+    metafield key the store holds, and what owners contribute through
+    SEO_TEMPLATE_TOKENS (asked with obj=None for their vocabulary)."""
+    from plugins.installed.seo.services.tokens import _FIELD_TOKENS, metafield_keys
+
+    names = [*_SITE_TOKENS, *(key for key, _label in _FIELD_TOKENS), *metafield_keys()]
+    try:
+        from morpheus.core import MorpheusEvents, hook_registry
+
+        extra = hook_registry.filter(MorpheusEvents.SEO_TEMPLATE_TOKENS, {}, obj=None, kind=kind)
+        names += [str(k) for k in (extra or {})]
+    except Exception:  # noqa: BLE001, S110 — a contributor's failure only narrows the list
+        logger.debug('seo: SEO_TEMPLATE_TOKENS vocabulary failed', exc_info=True)
+    return list(dict.fromkeys(names))
+
+
+def template_tokens(text: str) -> list[str]:
+    """The token names a pattern refers to, read the way `_eval_token` reads them:
+    a quoted segment is a literal and a filter-shaped one is a filter."""
+    names: list[str] = []
+    for body in _TOKEN_RE.findall(text or ''):
+        for segment in (s.strip() for s in body.split('|')):
+            if not segment or _FILTER_RE.match(segment):
+                continue
+            if len(segment) >= 2 and segment[0] == '"' and segment[-1] == '"':
+                continue
+            names.append(segment)
+    return list(dict.fromkeys(names))
+
+
+def _choice(value, choices, label: str) -> str:
+    keys = [c[0] for c in choices]
+    if value not in keys:
+        raise TemplateError(f'Unknown {label} “{value}”. Use one of: {", ".join(keys)}.')
+    return value
+
+
+def save_template(
+    *,
+    template: str,
+    kind: str = 'product',
+    field: str = 'title',
+    scope: str = '',
+    mode: str = '',
+    priority=100,
+    note: str = '',
+    is_active: bool = True,
+    template_id: str = '',
+):
+    """Create a pattern, or change the one ``template_id`` names. Returns the row.
+
+    Refused: a pattern without a `{token}`, a token the store cannot fill (the
+    message lists the ones it can), an unknown kind, field or mode, and a second
+    pattern for the same kind, field and scope. Saved on the instance, so
+    seo/signals.py drops the compiled cache and the next render uses it.
+    """
+    from django.core.exceptions import ValidationError
+    from django.db import IntegrityError, transaction
+
+    from plugins.installed.seo.models import SeoTemplate
+
+    text = (template or '').strip()
+    if not text or '{' not in text:
+        raise TemplateError('A pattern needs at least one {token}.')
+    kind = _choice(kind or 'product', SeoTemplate.KIND_CHOICES, 'page kind')
+    field = _choice(field or 'title', SeoTemplate.FIELD_CHOICES, 'field')
+    mode = _choice(mode or SeoTemplate.MODE_EMPTY_ONLY, SeoTemplate.MODE_CHOICES, 'mode')
+    known = known_tokens(kind)
+    unknown = [name for name in template_tokens(text) if name not in known]
+    if unknown:
+        raise TemplateError(
+            f'Unknown token{"s" if len(unknown) > 1 else ""} '
+            + ', '.join('{' + n + '}' for n in unknown)
+            + '. A pattern can use: '
+            + ', '.join('{' + n + '}' for n in known)
+            + ' (filters: truncate:N, title, lower, upper).'
+        )
+    try:
+        priority = int(priority if priority not in (None, '') else 100)
+    except (TypeError, ValueError) as e:
+        raise TemplateError('Priority is a whole number; lower wins.') from e
+    if priority < 0:
+        raise TemplateError('Priority is a whole number of 0 or more; lower wins.')
+
+    row = None
+    if str(template_id or '').strip():
+        try:
+            row = SeoTemplate.objects.filter(pk=str(template_id).strip()).first()
+        except (ValidationError, ValueError):
+            row = None
+        if row is None:
+            raise TemplateError('That pattern no longer exists.')
+    row = row or SeoTemplate()
+    row.kind, row.field, row.mode = kind, field, mode
+    row.scope = (scope or '').strip().lower()
+    row.template = text
+    row.priority = priority
+    row.note = (note or '').strip()[:300]
+    row.is_active = bool(is_active)
+    try:
+        with transaction.atomic():
+            row.save()
+    except IntegrityError as e:
+        raise TemplateError('A pattern for that kind, field and scope already exists.') from e
+    return row
+
+
+def delete_template(template_id: str) -> bool:
+    """Delete one pattern (an instance delete, so the compiled cache goes too)."""
+    from django.core.exceptions import ValidationError
+
+    from plugins.installed.seo.models import SeoTemplate
+
+    try:
+        row = SeoTemplate.objects.filter(pk=str(template_id or '').strip() or None).first()
+    except (ValidationError, ValueError):
+        row = None
+    if row is None:
+        return False
+    row.delete()
+    return True
+
+
+def template_row(row) -> dict:
+    """One pattern as plain data (Linda's tools)."""
+    return {
+        'id': str(row.pk),
+        'kind': row.kind,
+        'field': row.field,
+        'scope': row.scope or '',
+        'template': row.template,
+        'mode': row.mode,
+        'priority': row.priority,
+        'is_active': bool(row.is_active),
+        'note': row.note or '',
+    }
+
+
 # ── Resolution hook (called from resolve_meta) ───────────────────────────────
 
 

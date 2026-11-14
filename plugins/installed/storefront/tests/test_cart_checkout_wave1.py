@@ -119,16 +119,15 @@ class CheckoutEmailStampTests(_Base):
 class BeginCheckoutOnLivePathTests(_Base):
     def test_fires_once_per_session_on_quick_checkout(self):
         fired: list = []
+        # The registry has no unregister-by-handler, so put back the real
+        # subscribers (analytics, tracking, the ad channels) rather than clearing the event.
+        saved = list(hook_registry._handlers.get(MorpheusEvents.BEGIN_CHECKOUT, []))
+        self.addCleanup(hook_registry._handlers.__setitem__, MorpheusEvents.BEGIN_CHECKOUT, saved)
         hook_registry.register(
             MorpheusEvents.BEGIN_CHECKOUT, lambda **kw: fired.append(kw), plugin=None
         )
-        try:
-            self.c.get('/checkout/quick/')
-            self.c.get('/checkout/quick/')
-        finally:
-            # test-local subscriber; the registry has no unregister-by-handler,
-            # so drop the whole event key (nothing else subscribes in tests).
-            hook_registry._handlers.get(MorpheusEvents.BEGIN_CHECKOUT, []).clear()
+        self.c.get('/checkout/quick/')
+        self.c.get('/checkout/quick/')
         self.assertEqual(len(fired), 1)
         self.assertEqual(fired[0]['cart'].id, self.cart.id)
         self.assertEqual(fired[0]['customer'], self.customer)

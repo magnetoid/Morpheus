@@ -31,7 +31,6 @@ DYNAMIC_READERS = {
     'gdpr',
     'seo',
     'staff_sso',
-    'storefront',
 }
 
 

@@ -1,9 +1,6 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load caching %}{% load i18n %}
+{% load morph %}{% load caching %}{% load i18n %}
 
-{% block extra_head %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
-{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 2.5rem;">

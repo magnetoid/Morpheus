@@ -95,7 +95,7 @@ Served from the store itself, inline or from `/static/`:
   analytics (page-view beacon to the store), motion and immersive_pdp
   (`/static/` runtimes), pwa (service worker), newsletter (sign-up pop-up), crm
   (support chat), agent_mcp (WebMCP tools for AI browsers), localization
-  (language switcher), the tracking and pixel apps' loader snippets above.
+  (language switcher; the language bar, while its setting is on), the tracking and pixel apps' loader snippets above.
 
 ## Adding a script to a payment page
 

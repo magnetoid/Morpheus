@@ -185,7 +185,8 @@ Django middleware stack:
      page answers 503 "restoring" while a backup is being restored (core/restore.py)
    - request_id (uuid attached to every log line)
    - sentry / observability spans
-   - market resolution (per-country pricing/currency)
+   - market resolution (per-country pricing/currency; prices in a market
+     come from markets/pricing.py:market_price, converted by core/pricing.py)
    - TrustedAgentMiddleware (attaches request.trusted_agent)
    - auth / session
    - LocaleMiddleware → LocalizedLinksMiddleware (on a /sr/ page, internal

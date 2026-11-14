@@ -50,6 +50,20 @@
   <button class="btn btn-primary">Save connection</button>
 </form>
 
+<form method="post" class="card card-padded space-y-3 mt-4">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="ads">
+  <h3 class="font-semibold">Google Ads conversion</h3>
+  <p class="text-xs text-[color:var(--text-muted)]">Optional. Fires a Google Ads conversion on the order confirmation page when both fields are filled.</p>
+  <label class="block text-sm">Conversion ID
+    <input class="input w-full font-mono" name="google_ads_conversion_id" placeholder="AW-123456789" value="{{ ads_conversion_id }}">
+  </label>
+  <label class="block text-sm">Purchase conversion label
+    <input class="input w-full font-mono" name="google_ads_purchase_label" placeholder="abc123XYZ" value="{{ ads_purchase_label }}">
+  </label>
+  <button class="btn btn-primary">Save Google Ads conversion</button>
+</form>
+
 {% elif tab == 'events' %}
 <form method="post" class="card card-padded">
   {% csrf_token %}

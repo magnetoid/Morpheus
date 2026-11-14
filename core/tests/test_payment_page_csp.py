@@ -140,6 +140,7 @@ _APP_CONFIG = {
     'microsoft_commerce': {'uet_enabled': True, 'uet_tag_id': '123456789'},
     'google_shopping': {'remarketing_enabled': True, 'remarketing_id': 'AW-123456789'},
     'storefront': {'service_worker_enabled': True},
+    'localization': {'suggest_language': True},
     # Turnstile on the footer's newsletter form (the checkout itself asks for none).
     'cloudflare': {
         'turnstile_enabled': True,
@@ -160,6 +161,7 @@ _EXPECTED_ON_THE_CART = (
     'js.stripe.com',
     'serviceWorker',
     'challenges.cloudflare.com',
+    'morpheus-language-bar',
 )
 _TRACKING = {
     'gtm': {'gtm_container_id': 'GTM-ABC1234', 'measurement_id': ''},

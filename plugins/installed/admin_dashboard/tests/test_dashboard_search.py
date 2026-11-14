@@ -51,16 +51,27 @@ class AppsSettingsAndGuidesTests(TestCase):
     def test_a_settings_field_by_its_label_opens_the_field(self):
         hits = _hits(self.client, 'elevenlabs api key')
         self.assertIn(
-            '/dashboard/settings/audiobooks/#f-elevenlabs_api_key', _urls(hits, 'Settings')
+            '/dashboard/settings/audiobooks/#f-audiobooks-elevenlabs_api_key',
+            _urls(hits, 'Settings'),
         )
+
+    def test_a_field_anchor_names_an_id_on_the_page_it_opens(self):
+        # The anchor must land on the field: an app whose name is no settings
+        # category is served by plugin_settings.html, a category by
+        # settings_category.html, and both must render the id the palette builds.
+        for query in ('elevenlabs api key', 'maintenance message'):
+            url = next(u for u in _urls(_hits(self.client, query), 'Settings') if '#' in u)
+            path, anchor = url.split('#')
+            body = self.client.get(path).content.decode()
+            self.assertIn(f'id="{anchor}"', body, url)
 
     def test_an_apps_name_narrows_its_fields(self):
         urls = _urls(_hits(self.client, 'audiobooks voice'), 'Settings')
-        self.assertIn('/dashboard/settings/audiobooks/#f-qwen_voice', urls)
+        self.assertIn('/dashboard/settings/audiobooks/#f-audiobooks-qwen_voice', urls)
 
     def test_accents_and_case_do_not_matter(self):
         urls = _urls(_hits(self.client, 'ÉLEVENLABS model'), 'Settings')
-        self.assertIn('/dashboard/settings/audiobooks/#f-elevenlabs_model', urls)
+        self.assertIn('/dashboard/settings/audiobooks/#f-audiobooks-elevenlabs_model', urls)
 
     def test_one_typo_is_forgiven(self):
         self.assertIn('/dashboard/settings/audiobooks/', _urls(_hits(self.client, 'audiobok')))

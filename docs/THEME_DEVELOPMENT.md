@@ -543,17 +543,18 @@ store); the shell's vendor pages read them for titles and breadcrumbs.
 set (`--ink`/`--paper`/`--rule` or the HSL `--foreground`/`--background`/
 `--border`); override `account/*.html` only to change the markup.
 
-`themes/test_head_contract.py` enforces all of it for every theme that sets
-`head_contract = 1`: the 404 head under each theme, no raw JSON-LD / hreflang /
-`lang="en"` in its templates, and no `{% block %}` that no base renders.
+`themes/test_head_contract.py` enforces all of it for every theme, and every
+theme must set `head_contract = 1`: it renders each page kind under each theme and
+reads the output (one title, canonical, robots and `og:title`, and one JSON-LD
+block, the head's graph), checks the 404 head under each theme, and refuses raw
+JSON-LD / hreflang / `lang="en"` in templates, a call to a removed head tag, and a
+`{% block %}` that no base renders.
 
 ### Legacy themes
 
-The per-tag helpers (`{% seo_meta %}`, `{% seo_product_jsonld %}`,
-`{% seo_breadcrumb_jsonld %}`, …) still work for themes that have not migrated,
-and go silent automatically on a page that called `{% storefront_head %}`, so a
-half-migrated theme never double-emits. They are removed in a later release —
-see [`MIGRATING.md`](MIGRATING.md).
+The per-tag head helpers (`{% seo_meta %}`, `{% seo_product_jsonld %}`,
+`{% seo_breadcrumb_jsonld %}`, …) were removed in v0.164.0; a template that still
+loads one fails to compile. See [`MIGRATING.md`](MIGRATING.md).
 
 The dot books theme is the canonical example.
 

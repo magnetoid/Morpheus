@@ -560,22 +560,21 @@ def seo_site_audit_run(request):
 
     if request.method != 'POST':
         return redirect('seo_dashboard:overview')
-    try:
-        from plugins.installed.seo.tasks import site_audit_task
+    if (denied := enforce(request, 'seo.write')) is not None:
+        return denied
+    from plugins.installed.seo.services.site_audit import AuditRefused, queue_site_audit
 
-        site_audit_task.delay()
+    # One function queues a scan for this button and Linda's seo.run_site_audit:
+    # one at a time, and not again within ten minutes.
+    try:
+        queue_site_audit()
         messages.success(
             request,
             'Site audit queued. Findings appear here when the crawl finishes — '
             'usually a minute or two for a few hundred pages.',
         )
-    except Exception as e:  # noqa: BLE001
-        logger.warning('seo: could not queue the site audit: %s', e, exc_info=True)
-        messages.error(
-            request,
-            'Could not queue the site audit — no background worker is reachable. '
-            'Run `manage.py seo_site_audit` on the server instead.',
-        )
+    except AuditRefused as e:
+        (messages.info if e.busy else messages.error)(request, str(e))
     return redirect('seo_dashboard:overview')
 
 
@@ -1330,69 +1329,41 @@ def index_rules_page(request):
     always been invisible — you set one and hoped. Paste a URL, see the decision
     and the rule that produced it.
     """
-    from django.db import IntegrityError
-
     from plugins.installed.seo.models import IndexRule
-    from plugins.installed.seo.rules.params import RECOMMENDED_RULES, captures_reserved
+    from plugins.installed.seo.services.index_rules import (
+        RuleError,
+        delete_index_rule,
+        save_index_rule,
+        seed_recommended,
+    )
 
     if request.method == 'POST':
         if (denied := enforce(request, 'seo.write')) is not None:
             return denied
         action = (request.POST.get('action') or '').strip()
 
+        # The validation and the instance save live in services/index_rules.py,
+        # which Linda's seo.set_index_rule calls too: one set of refusals.
         if action in {'create', 'edit'}:
-            param = (request.POST.get('param') or '').strip().lower()
-            policy = (request.POST.get('policy') or IndexRule.POLICY_CONSOLIDATE).strip()
-            if not param:
-                messages.error(request, 'Give the rule a parameter name.')
-            elif captures_reserved(param):
-                # Rejects `page*` and `p*` as well as `page`. The wildcard forms
-                # matter more, not less: a `page*` rule set to "block" would put
-                # `Disallow: /*?*page` in robots.txt and stop crawlers reaching
-                # page 2 of every listing in the shop.
-                messages.error(
-                    request,
-                    f'“{param}” would apply to the page number, which has its own policy: '
-                    'page 2 stays indexable and canonical to itself, and a number past the '
-                    'end is a 404. A rule here could only break that.',
+            try:
+                row = save_index_rule(
+                    param=request.POST.get('param') or '',
+                    policy=request.POST.get('policy') or '',
+                    allowed_values=request.POST.get('allowed_values') or '',
+                    is_active=request.POST.get('is_active') == 'on',
+                    note=request.POST.get('note') or '',
+                    rule_id=request.POST.get('id') or '',
                 )
-            elif policy not in {c[0] for c in IndexRule.POLICY_CHOICES}:
-                messages.error(request, 'Unknown policy.')
-            else:
-                rid = (request.POST.get('id') or '').strip()
-                row = (IndexRule.objects.filter(pk=rid).first() if rid else None) or IndexRule()
-                row.param = param
-                row.policy = policy
-                row.allowed_values = [
-                    v.strip()
-                    for v in (request.POST.get('allowed_values') or '').split(',')
-                    if v.strip()
-                ]
-                row.is_active = request.POST.get('is_active') == 'on'
-                row.note = (request.POST.get('note') or '').strip()[:200]
-                try:
-                    row.save()
-                    messages.success(request, f'Saved the rule for {row.param}.')
-                except IntegrityError:
-                    messages.error(request, f'There is already a rule for “{param}”.')
+                messages.success(request, f'Saved the rule for {row.param}.')
+            except RuleError as e:
+                messages.error(request, str(e))
 
         elif action == 'delete':
-            rid = (request.POST.get('id') or '').strip()
-            # Instance delete, not a queryset delete: post_delete is what drops
-            # the compiled ruleset, and a rule that keeps being applied after
-            # you removed it is worse than one that never worked.
-            row = IndexRule.objects.filter(pk=rid).first() if rid else None
-            if row:
-                row.delete()
+            if delete_index_rule(rule_id=request.POST.get('id') or ''):
                 messages.success(request, 'Rule deleted.')
 
         elif action == 'seed':
-            created = 0
-            for param, policy, note in RECOMMENDED_RULES:
-                _, was_created = IndexRule.objects.get_or_create(
-                    param=param, defaults={'policy': policy, 'note': note}
-                )
-                created += int(was_created)
+            created = seed_recommended()
             messages.success(
                 request,
                 f'Added {created} rule(s). Nothing existing was changed — edit or '
@@ -1790,7 +1761,7 @@ def schema_editor(request: HttpRequest, app_label: str, model: str, pk: str) -> 
     from morpheus.views import Http404
     from plugins.installed.seo.models import SeoMeta
     from plugins.installed.seo.schema_types import (
-        build_block,
+        merge_editor_blocks,
         refusal,
         registry_json,
         retired_entries,
@@ -1827,23 +1798,14 @@ def schema_editor(request: HttpRequest, app_label: str, model: str, pk: str) -> 
             entries = json.loads(request.POST.get('blocks_json') or '[]')
         except (ValueError, TypeError):
             entries = []
-        clean, refused = [], []
-        for e in entries:
-            if not isinstance(e, dict):
-                continue
-            entry = {'type': e.get('type', ''), 'data': e.get('data') or {}}
-            if reason := refusal(entry):
-                refused.append(reason)
-            elif build_block(entry['type'], entry['data']):
-                clean.append(entry)
+        blocks, refused = merge_editor_blocks(entries, stored)
         meta, _ = SeoMeta.objects.get_or_create(content_type=ct, object_id=str(pk))
-        # The editor's form holds only the blocks it can edit: the retired ones
-        # stay stored (they render nowhere) until the merchant deletes them.
-        meta.schema_blocks = clean + [stored[r['index']] for r in retired]
+        meta.schema_blocks = blocks
         meta.save()
         for reason in dict.fromkeys(refused):
             messages.error(request, f'A block was not saved. {reason}')
-        messages.success(request, f'Structured data saved ({len(clean)} block(s)).')
+        saved = len(blocks) - len(retired)
+        messages.success(request, f'Structured data saved ({saved} block(s)).')
         return back
 
     try:
@@ -1886,49 +1848,40 @@ def templates_page(request):
     is what ships, and deleting a pattern restores the previous titles.
     """
     from plugins.installed.seo.models import SeoTemplate
-    from plugins.installed.seo.services.templating import render_template
+    from plugins.installed.seo.services.templating import (
+        TemplateError,
+        delete_template,
+        render_template,
+        save_template,
+    )
 
     preview = None
     if request.method == 'POST':
         if (denied := enforce(request, 'seo.write')) is not None:
             return denied
         action = request.POST.get('action') or ''
+        # Validation (the token grammar included) and the instance save live in
+        # services/templating.py, which Linda's seo.set_template calls too.
         if action == 'delete':
-            SeoTemplate.objects.filter(pk=request.POST.get('id') or None).delete()
+            delete_template(request.POST.get('id') or '')
             messages.success(request, 'Pattern removed — pages fall back to their own titles.')
             return redirect('seo_dashboard:templates')
         if action in ('create', 'edit'):
-            template_text = (request.POST.get('template') or '').strip()
-            kind = request.POST.get('kind') or 'product'
-            if not template_text or '{' not in template_text:
-                messages.error(request, 'A pattern needs at least one {token}.')
+            try:
+                save_template(
+                    template=request.POST.get('template') or '',
+                    kind=request.POST.get('kind') or 'product',
+                    field=request.POST.get('field') or 'title',
+                    scope=request.POST.get('scope') or '',
+                    mode=request.POST.get('mode') or SeoTemplate.MODE_EMPTY_ONLY,
+                    priority=request.POST.get('priority') or 100,
+                    note=request.POST.get('note') or '',
+                    is_active=bool(request.POST.get('is_active')),
+                    template_id=request.POST.get('id') if action == 'edit' else '',
+                )
+            except TemplateError as e:
+                messages.error(request, str(e))
                 return redirect('seo_dashboard:templates')
-            fields = {
-                'kind': kind,
-                'field': request.POST.get('field') or 'title',
-                'scope': (request.POST.get('scope') or '').strip().lower(),
-                'template': template_text,
-                'mode': request.POST.get('mode') or SeoTemplate.MODE_EMPTY_ONLY,
-                'priority': int(request.POST.get('priority') or 100),
-                'note': (request.POST.get('note') or '').strip()[:300],
-                'is_active': bool(request.POST.get('is_active')),
-            }
-            if action == 'edit' and request.POST.get('id'):
-                SeoTemplate.objects.filter(pk=request.POST['id']).update(**fields)
-                # QuerySet.update() skips save()/post_save — drop the compiled
-                # cache by hand or the edit serves stale until the TTL lapses
-                # (the redirects landmine, same shape).
-                from plugins.installed.seo.services.templating import invalidate_templates
-
-                invalidate_templates()
-            else:
-                try:
-                    SeoTemplate.objects.create(**fields)
-                except Exception:  # noqa: BLE001 — unique (kind, field, scope)
-                    messages.error(
-                        request, 'A pattern for that kind, field and scope already exists.'
-                    )
-                    return redirect('seo_dashboard:templates')
             messages.success(request, 'Pattern saved — live on the next page render.')
             return redirect('seo_dashboard:templates')
         if action == 'preview':

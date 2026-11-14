@@ -50,7 +50,6 @@ class CachingSettingsTests(TestCase):
             {
                 'action': 'save_storefront',
                 'html_cache_control': 'public, max-age=0',
-                'asset_max_age_seconds': '60',
                 'graphql_edge_cache_ttl': '0',
             },
         )

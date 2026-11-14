@@ -122,7 +122,7 @@ class SiteAuditTests(TestCase):
             self.assertTrue(finding['title'], finding)
             self.assertTrue(finding['why'], finding['code'])
             self.assertTrue(finding['examples'], finding['code'])
-            self.assertLessEqual(len(finding['examples']), 5)
+            self.assertLessEqual(len(finding['examples']), site_audit.MAX_EXAMPLES)
 
     def test_a_redirecting_sitemap_url_is_critical(self):
         # The exact defect the audit found live: `/categories/` was in the

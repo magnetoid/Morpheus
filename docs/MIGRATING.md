@@ -6,6 +6,52 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.165.0 — `markets.list` reads with `markets.read`
+
+Markets get their own scopes, `markets.read` and `markets.write`.
+- **The agent tool `markets.list`** now declares `markets.read` instead of `system.read`. An API
+  token that holds `system.read` but not `markets.read` no longer sees it: grant `markets.read` on
+  such tokens, and `markets.write` for the new write tools (`markets.save`, `markets.delete`,
+  `markets.set_product_price`, `markets.set_rate`, `markets.refresh_rates`, each needing the
+  merchant's tick on a token).
+- **Tokens that invoke the Worker agent:** the Worker now holds `markets.read` and `markets.write`,
+  and a token must hold every scope the agent holds to invoke it. Grant both on such tokens.
+- **hreflang:** a market no longer publishes a `?market=` alternate in the head; alternates are per
+  language only. Nothing to change unless you parsed them.
+
+---
+
+## v0.164.0 — the legacy SEO head tags are gone
+
+The per-tag head helpers deprecated in [v0.46.0](#v0460--the-head-is-rendered-by-one-core-tag)
+are deleted, and with them the `seo.speakable` graph node. Under the head contract they had
+rendered nothing since v0.46.0, so a page built only on `{% storefront_head %}` loses no tag:
+each fact they carried is in the head's graph (`seo/schema/graph.py`) or written by the head
+builder.
+- **A theme or app template that still calls one** fails to compile (`Invalid block tag`), and
+  every page using it answers 500. The removed tags: `seo_meta`, `seo_verification_metas`,
+  `seo_llms_link`, `seo_hreflang`, `seo_pagination_links`, `seo_preconnect`, `seo_product_og`,
+  `seo_article_og`, `seo_product_md_link`, and the JSON-LD tags `seo_website_jsonld`,
+  `seo_organization_jsonld`, `seo_product_jsonld`, `seo_book_jsonld`, `seo_breadcrumb_jsonld`,
+  `seo_collection_jsonld`, `seo_article_jsonld`, `seo_aboutpage_jsonld`,
+  `seo_contactpage_jsonld`, `seo_person_jsonld`, `seo_faq_jsonld`, `seo_qa_jsonld`,
+  `seo_video_jsonld`, `seo_search_results_jsonld`, `seo_speakable_jsonld`. Delete the call; the
+  page needs nothing in its place. Find them with
+  `grep -rnE "\{% *seo_[a-z_]*(jsonld|_og|meta|metas|link|links|hreflang|preconnect)\b" templates/`.
+- **A page that passed its own title to `{% seo_meta fallback_title=… %}`** names itself to the
+  head instead, as the affiliates, GDPR, eco-impact and lookbook pages now do:
+  `{% block seo %}{% with seo_title="…" seo_description="…" %}{{ block.super }}{% endwith %}{% endblock %}`.
+- **Kept, because they are not head tags:** `{% seo_title %}`, `{% seo_ai_answer_block %}`,
+  `{% seo_meta_panel %}` (the dashboard editor) and `{% seo_responsive_image %}`.
+- **A theme outside this repository** must declare `head_contract = 1`: the head guard
+  (`themes/test_head_contract.py`) now renders every page kind under every registered theme and
+  fails one that does not sign.
+- **Speakable:** the `speakable` property and its `SpeakableSpecification` node left the product
+  and article graphs. Google reads it only for topical news on English-language Google Home
+  devices in the U.S., as a beta; nothing to change unless you parsed it.
+
+---
+
 ## v0.152.0 — stock writes name one variant, and agent_core has no stock tool
 
 Every stock write goes through the inventory app's `InventoryService`, which records a

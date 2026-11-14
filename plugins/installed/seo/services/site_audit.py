@@ -17,14 +17,27 @@ That costs a full render per URL, so it **never runs in a request**. It runs
 from `manage.py seo_site_audit` or the nightly beat task, and the dashboard
 reads the cached result. Running it inline would also re-enter the middleware
 stack from inside a live request, which is its own kind of trouble.
+
+**It also checks what the markup claims (v0.164.0).** A Product node's offer is a
+public statement: its price must be printed on the page and be the price the
+store charges now (`core.pricing.apply_price_filter`, the seam GraphQL's price
+and the cart read), its availability must be inventory's answer (through
+`plugins.feed_mapping`, the function the graph uses), and every image it or
+`og:image` names must answer 200 with an image. Between pages it finds links to
+redirects, redirect chains and sitemap pages nothing links to. Each finding names
+the page and what was claimed against what was found.
 """
 
 from __future__ import annotations
 
+import html as _html
+import json
 import logging
 import re
+import time
 from dataclasses import asdict, dataclass, field
-from urllib.parse import urlsplit
+from decimal import Decimal, InvalidOperation
+from urllib.parse import unquote, urljoin, urlsplit
 
 from celery.exceptions import SoftTimeLimitExceeded
 from django.core.cache import cache
@@ -61,10 +74,53 @@ _ALTERNATE_RE = re.compile(
 )
 _JSONLD_RE = re.compile(r'application/ld\+json', re.I)
 _TAG_RE = re.compile(r'<[^>]+>')
+_JSONLD_BLOCK_RE = re.compile(
+    r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script\s*>', re.I | re.S
+)
+_META_TAG_RE = re.compile(r'<meta\b([^>]*)>', re.I)
+_LINK_TAG_RE = re.compile(r'<link\b([^>]*)>', re.I)
+_ANCHOR_RE = re.compile(r'<a\b([^>]*)>', re.I)
+_ATTR_RE = re.compile(r'([^\s=/>"\']+)(?:\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+)))?')
+_HTML_LANG_RE = re.compile(r'<html\b[^>]*\blang=["\']([^"\']+)', re.I)
+_INVISIBLE_RE = re.compile(r'<(script|style|template)\b.*?</\1\s*>', re.I | re.S)
+_COMMENT_RE = re.compile(r'<!--.*?-->', re.S)
 
 TITLE_MIN, TITLE_MAX = 30, 60
 DESC_MIN, DESC_MAX = 70, 160
 THIN_WORDS = 300
+
+#: Pages kept per finding: the dashboard shows five, Linda's seo.audit_results twenty.
+MAX_EXAMPLES = 20
+#: A redirect is followed this many hops at most, and never off the store's host.
+MAX_HOPS = 5
+#: Fetches beyond the sitemap crawl. Each link target not in the sitemap costs a
+#: render, so they are capped and the report says when a cap was reached.
+MAX_LINK_FETCHES = 400
+MAX_PAGINATION_FETCHES = 600
+MAX_IMAGE_FETCHES = 2000
+#: The extra checks stop starting fetches this long after the run began, so the
+#: whole run stays inside the task's 1,800 s soft limit with room to store it.
+EXTRA_DEADLINE_S = 1500
+
+# Link targets the crawl never follows: not pages, or not a crawler's to fetch.
+_SKIP_LINK_PREFIXES = (
+    '/dashboard/',
+    '/admin/',
+    '/api/',
+    '/graphql',
+    '/mcp/',
+    '/media/',
+    '/static/',
+    '/img/',
+    '/csrf/',
+)
+_SKIP_SCHEMES = ('#', 'mailto:', 'tel:', 'sms:', 'javascript:', 'data:')
+
+# Re-running the scan: one at a time, and not again within ten minutes.
+RUNNING_KEY = 'seo:site_audit:running'
+QUEUED_KEY = 'seo:site_audit:queued'
+RERUN_AFTER_S = 600
+_RUNNING_TTL = 1920  # the task's hard time limit
 
 
 @dataclass
@@ -98,6 +154,13 @@ class PageFacts:
     has_jsonld: bool = False
     words: int = 0
     redirect_to: str = ''
+    # What the page's Product nodes claim (`_claims`), and its og:image as declared.
+    claims: list[dict] = field(default_factory=list)
+    og_image: str = ''
+    og_size: tuple[int, int] | None = None
+    # Internal paths it links to (query dropped), and its rel=next page.
+    links: list[str] = field(default_factory=list)
+    next_href: str = ''
 
 
 @dataclass
@@ -149,8 +212,15 @@ def _facts(client, path: str, host: str) -> PageFacts:
         html = response.content.decode(response.charset or 'utf-8', errors='ignore')
     except Exception:  # noqa: BLE001
         return PageFacts(path=path, status=status)
+    return page_facts(path, status, html, host)
 
+
+def page_facts(path: str, status: int, html: str, host: str) -> PageFacts:
+    """Read one rendered page: its head, what its markup claims, and its links."""
+    head = html.split('</head>', 1)[0]
     body = html.split('</head>', 1)[-1]
+    hosts = _own_hosts(host)
+    og_image, og_size = _og_image(head)
     return PageFacts(
         path=path,
         status=status,
@@ -165,6 +235,246 @@ def _facts(client, path: str, host: str) -> PageFacts:
         ],
         has_jsonld=bool(_JSONLD_RE.search(html)),
         words=len(_TAG_RE.sub(' ', body).split()),
+        claims=_claims(html, _visible_text(body), _first(_HTML_LANG_RE, html)),
+        og_image=og_image,
+        og_size=og_size,
+        links=_links(body, path, host, hosts),
+        next_href=_next_href(head, path, host, hosts),
+    )
+
+
+# ── Reading a page: attributes, links, the graph's Product claims ────────────
+
+
+def _attrs(raw: str) -> dict[str, str]:
+    """A tag's attributes, names lower-cased and values unescaped."""
+    out: dict[str, str] = {}
+    for name, dq, sq, bare in _ATTR_RE.findall(raw or ''):
+        out.setdefault(name.lower(), _html.unescape(dq or sq or bare or ''))
+    return out
+
+
+def _own_hosts(host: str) -> set[str]:
+    from core.utils.site import site_base_url
+
+    return {h for h in (host, urlsplit(site_base_url() or '').netloc) if h}
+
+
+def _strip_language(path: str) -> str:
+    from django.conf import settings
+
+    codes = {c.lower() for c, _ in (getattr(settings, 'LANGUAGES', None) or [])}
+    parts = path.split('/', 2)
+    if len(parts) > 2 and parts[1].lower() in codes:
+        return '/' + parts[2]
+    return path
+
+
+def _skipped_path(path: str) -> bool:
+    from plugins.installed.seo.pages.resolve import _is_private
+
+    bare = _strip_language(path)
+    return (
+        _is_private(path)
+        or _is_private(bare)
+        or path.startswith(_SKIP_LINK_PREFIXES)
+        or bare.startswith(_SKIP_LINK_PREFIXES)
+    )
+
+
+def _internal_url(href: str, page_path: str, host: str, hosts: set[str], *, keep_query=False):
+    """The site-relative URL an href names on this store, or '' (another host, a
+    mailto, a private or machine path)."""
+    href = (href or '').strip()
+    if not href or href.lower().startswith(_SKIP_SCHEMES):
+        return ''
+    try:
+        parts = urlsplit(urljoin(f'https://{host}{page_path}', href))
+    except ValueError:  # href="http://[" in a page's own copy: skip it, scan the rest
+        return ''
+    if parts.scheme not in ('http', 'https') or (parts.netloc and parts.netloc not in hosts):
+        return ''
+    path = parts.path or '/'
+    if _skipped_path(path):
+        return ''
+    return path + (f'?{parts.query}' if keep_query and parts.query else '')
+
+
+def _links(body: str, page_path: str, host: str, hosts: set[str]) -> list[str]:
+    """Internal paths the page links to, the way a crawler follows them.
+
+    A language switcher (an anchor carrying hreflang or lang), a download and a
+    nofollow link are not followed; the query is dropped, so a listing's filter
+    and sort links count as links to the listing.
+    """
+    out: list[str] = []
+    for raw in _ANCHOR_RE.findall(body):
+        attrs = _attrs(raw)
+        if 'hreflang' in attrs or 'lang' in attrs or 'download' in attrs:
+            continue
+        if 'nofollow' in attrs.get('rel', '').lower().split():
+            continue
+        target = _internal_url(attrs.get('href', ''), page_path, host, hosts)
+        if target and target not in out:
+            out.append(target)
+    return out
+
+
+def _next_href(head: str, page_path: str, host: str, hosts: set[str]) -> str:
+    for raw in _LINK_TAG_RE.findall(head):
+        attrs = _attrs(raw)
+        if 'next' in attrs.get('rel', '').lower().split():
+            return _internal_url(attrs.get('href', ''), page_path, host, hosts, keep_query=True)
+    return ''
+
+
+def _og_image(head: str) -> tuple[str, tuple[int, int] | None]:
+    """og:image and the width and height the page declares for it."""
+    image, width, height = '', None, None
+    for raw in _META_TAG_RE.findall(head):
+        attrs = _attrs(raw)
+        prop, content = attrs.get('property', '').lower(), attrs.get('content', '')
+        if prop == 'og:image' and not image:
+            image = content
+        elif prop == 'og:image:width' and width is None:
+            width = _int(content)
+        elif prop == 'og:image:height' and height is None:
+            height = _int(content)
+    return image, ((width, height) if width and height else None)
+
+
+def _int(value) -> int | None:
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _norm(text: str) -> str:
+    for space in ('\xa0', '\u202f', '\u2009', '\u2007'):
+        text = text.replace(space, ' ')
+    return re.sub(r'\s+', ' ', text).strip()
+
+
+def _visible_text(body: str) -> str:
+    """What a visitor can read: no scripts, styles, templates, comments or tags."""
+    text = _INVISIBLE_RE.sub(' ', _COMMENT_RE.sub(' ', body))
+    return _norm(_html.unescape(_TAG_RE.sub(' ', text)))
+
+
+def _graph_nodes(html: str) -> list[dict]:
+    nodes: list[dict] = []
+    for raw in _JSONLD_BLOCK_RE.findall(html):
+        try:
+            data = json.loads(raw)
+        except (TypeError, ValueError):
+            continue
+        for item in data if isinstance(data, list) else [data]:
+            if not isinstance(item, dict):
+                continue
+            graph = item.get('@graph')
+            nodes.extend(
+                n for n in (graph if isinstance(graph, list) else [item]) if isinstance(n, dict)
+            )
+    return nodes
+
+
+def _types(node: dict) -> set[str]:
+    kind = node.get('@type')
+    if isinstance(kind, str):
+        return {kind}
+    return {k for k in kind if isinstance(k, str)} if isinstance(kind, list) else set()
+
+
+def _decimal(value) -> Decimal | None:
+    try:
+        number = Decimal(str(value).strip())
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    return number if number.is_finite() else None
+
+
+def _image_urls(value) -> list[str]:
+    items = value if isinstance(value, list) else [value]
+    out = []
+    for item in items:
+        url = item.get('contentUrl') or item.get('url') if isinstance(item, dict) else item
+        if isinstance(url, str) and url.strip() and url.strip() not in out:
+            out.append(url.strip())
+    return out
+
+
+def _claims(html: str, text: str, lang: str) -> list[dict]:
+    """What each Product node on the page claims: its offer and its images.
+
+    A ProductGroup's own node carries no offer (each variant has one); its
+    variants are claims too, matched to their owner by SKU. Only a page's own
+    product is checked against the visible text: a variant's price is often shown
+    only once it is picked.
+    """
+    out: list[dict] = []
+    for node in _graph_nodes(html):
+        if not _types(node) & {'Product', 'ProductGroup'}:
+            continue
+        out.append(_claim(node, text, lang, main=True))
+        for member in node.get('hasVariant') or []:
+            if isinstance(member, dict) and 'Product' in _types(member):
+                out.append(_claim(member, text, lang, main=False))
+    return out
+
+
+def _claim(node: dict, text: str, lang: str, *, main: bool) -> dict:
+    offers = node.get('offers')
+    offer = next(
+        (
+            o
+            for o in (offers if isinstance(offers, list) else [offers])
+            if isinstance(o, dict) and o.get('price') not in (None, '')
+        ),
+        {},
+    )
+    price = _decimal(offer.get('price'))
+    currency = str(offer.get('priceCurrency') or '').upper()
+    claim = {
+        'name': str(node.get('name') or ''),
+        'sku': str(node.get('sku') or ''),
+        'url': str(node.get('url') or '') if main else '',
+        'price': f'{price:.2f}' if price is not None else '',
+        'currency': currency,
+        'availability': str(offer.get('availability') or ''),
+        'images': _image_urls(node.get('image')),
+        'main': main,
+    }
+    if main and price is not None:
+        claim['shown'] = _price_shown(price, currency, text, lang)
+    return claim
+
+
+def _price_forms(amount: Decimal, currency: str, lang: str) -> set[str]:
+    """The ways the page may print ``amount``: through `|money` in the page's
+    language and the store's, and as a plain decimal (either separator)."""
+    from django.conf import settings
+    from django.utils import translation
+
+    from core.templatetags.morph import money_filter
+
+    plain = f'{amount:.2f}'
+    forms = {plain, plain.replace('.', ',')}
+    for code in dict.fromkeys(c for c in (lang, settings.LANGUAGE_CODE) if c):
+        try:
+            with translation.override(code):
+                forms.add(
+                    _norm(str(money_filter({'amount': plain, 'currency': currency or 'USD'})))
+                )
+        except Exception:  # noqa: BLE001, S112 — an odd language code: the other forms stand
+            continue
+    return {f for f in forms if f}
+
+
+def _price_shown(amount: Decimal, currency: str, text: str, lang: str) -> bool:
+    return any(
+        re.search(r'(?<![\d.,])' + re.escape(form) + r'(?!\d)', text)
+        for form in _price_forms(amount, currency, lang)
     )
 
 
@@ -268,7 +578,22 @@ def _paths(limit: int | None) -> list[str]:
     return seen
 
 
-def collect(*, limit: int | None = None) -> dict:
+def _get(client, path: str, host: str):
+    """One in-process request the way the crawl makes them (see `_facts`)."""
+    return client.get(
+        path,
+        HTTP_HOST=host,
+        HTTP_USER_AGENT=_AUDIT_USER_AGENT,
+        secure=True,
+        **{INTERNAL_REQUEST_ENVIRON_KEY: True},
+    )
+
+
+class _Capped(Exception):
+    """A fetch cap or the extra checks' deadline was reached."""
+
+
+def collect(*, limit: int | None = None) -> dict:  # noqa: PLR0915 — one run, its phases in order
     """Crawl the sitemap in-process and return findings + a score.
 
     Returns a plain dict so it can be cached and rendered without the models
@@ -282,6 +607,7 @@ def collect(*, limit: int | None = None) -> dict:
 
     from core.utils.site import site_base_url
 
+    started = time.monotonic()
     host = (site_base_url() or '').split('//')[-1].strip('/') or 'testserver'
     # The audit fetches its own site, so the host must be one ALLOWED_HOSTS
     # accepts or every page comes back 400 and the report reads as a dead store.
@@ -293,23 +619,58 @@ def collect(*, limit: int | None = None) -> dict:
     pages: list[PageFacts] = []
     partial = False
     probe = NotFoundFacts(path='', status=0)
+    # Every sitemap path, even under a limit: an orphan can only be named when
+    # the crawl read the whole sitemap.
+    all_paths = _paths(None)
+    paths = all_paths[:limit] if limit else all_paths
     try:
         probe = _probe_missing(client, host)
-        for path in _paths(limit):
+        for path in paths:
             pages.append(_facts(client, path, host))
     except SoftTimeLimitExceeded:
         # Report what was checked rather than lose the whole night's work.
         partial = True
         logger.warning('site_audit: time budget spent after %d pages', len(pages))
+    crawled = time.monotonic()
     untranslated: dict[str, list[str]] = {}
     if not partial:
         try:
             untranslated = _untranslated(client, host, pages)
         except SoftTimeLimitExceeded:
             partial = True
-    findings = _not_found_findings(probe) + _analyse(pages, untranslated)
+
+    extra = _Extra(client=Client(), host=host, deadline=started + EXTRA_DEADLINE_S)
+    extra_findings: list[Finding] = []
+    measured = {'crawl_s': round(crawled - started, 1)}
+    if partial:
+        # Past the soft limit the hard kill follows in two minutes: store what
+        # the crawl found, start nothing new.
+        extra.note('orphans', 'the scan stopped early at the time limit')
+    else:
+        try:
+            phase = time.monotonic()
+            extra_findings += _claim_findings(extra, pages)
+            measured['claims_s'] = round(time.monotonic() - phase, 1)
+            phase = time.monotonic()
+            link_sources = _link_sources(extra, pages)
+            measured['pagination_s'] = round(time.monotonic() - phase, 1)
+            phase = time.monotonic()
+            extra_findings += _link_findings(extra, pages, link_sources)
+            measured['links_s'] = round(time.monotonic() - phase, 1)
+            if limit and len(paths) < len(all_paths):
+                extra.note(
+                    'orphans', f'the scan read {len(paths)} of {len(all_paths)} sitemap URLs'
+                )
+            extra_findings += _orphan_findings(extra, pages, link_sources)
+        except SoftTimeLimitExceeded:
+            partial = True
+            extra.note('orphans', 'the scan stopped early at the time limit')
+    for page in pages:
+        page.links = []  # read; the cached report never carries them
+    findings = _not_found_findings(probe) + _analyse(pages, untranslated) + extra_findings
     findings.sort(key=lambda f: (_ORDER.get(f.severity, 9), -f.count))
     score = max(0, 100 - sum(_PENALTY.get(f.severity, 0) for f in findings))
+    measured['total_s'] = round(time.monotonic() - started, 1)
     return {
         'generated_at': timezone.now().isoformat(),
         'pages_checked': len(pages),
@@ -318,7 +679,482 @@ def collect(*, limit: int | None = None) -> dict:
         'findings': [f.as_dict() for f in findings],
         'coverage': _coverage(pages),
         'not_found_probe': {'path': probe.path, 'status': probe.status},
+        'checks': extra.summary(),
+        'measured': measured,
     }
+
+
+# ── What the markup claims, against the page and the claim's owner ───────────
+
+
+class _Extra:
+    """The fetches and counts of the checks that run after the sitemap crawl.
+
+    Its own client, so a link that sets something in the session (a currency
+    switch) cannot change what the crawl rendered; every fetch is cached for the
+    run, capped, and stops at the deadline.
+    """
+
+    def __init__(self, *, client, host: str, deadline: float):
+        self.client = client
+        self.host = host
+        self.hosts = _own_hosts(host)
+        self.deadline = deadline
+        self.counts = {
+            'products': 0,
+            'products_without_owner': 0,
+            'images': 0,  # distinct images checked
+            'image_fetches': 0,  # requests, a redirect's hops included
+            'images_off_host': 0,
+            'link_targets': 0,
+            'link_fetches': 0,
+            'pagination_fetches': 0,
+        }
+        self.capped: dict[str, bool] = {}
+        self.notes: dict[str, str] = {}
+        self.finals: dict[str, str] = {}  # link target → where its redirects end
+        self._responses: dict[str, tuple[int, str, str]] = {}
+
+    def note(self, check: str, reason: str) -> None:
+        self.notes.setdefault(check, reason)
+
+    def fetch(self, path: str, *, counter: str, cap: int) -> tuple[int, str, str]:
+        """(status, Location, Content-Type) for one same-host path, cached."""
+        if path in self._responses:
+            return self._responses[path]
+        if self.counts[counter] >= cap or time.monotonic() > self.deadline:
+            self.capped[counter] = True
+            raise _Capped(counter)
+        self.counts[counter] += 1
+        try:
+            response = _get(self.client, path, self.host)
+        except SoftTimeLimitExceeded:
+            raise
+        except Exception as e:  # noqa: BLE001 — one bad fetch must not end the audit
+            logger.warning('site_audit: %s raised %s', path, e)
+            self._responses[path] = (0, '', '')
+            return self._responses[path]
+        result = (
+            response.status_code,
+            response.get('Location', '') or '',
+            response.get('Content-Type', '') or '',
+        )
+        response.close()
+        self._responses[path] = result
+        return result
+
+    def local(self, url: str) -> str:
+        """The site-relative path of a URL on this store, or '' for another host
+        (or for one that does not parse, which nothing could fetch)."""
+        try:
+            parts = urlsplit(url or '')
+        except ValueError:
+            return ''
+        if parts.netloc and parts.netloc not in self.hosts:
+            return ''
+        if parts.scheme and parts.scheme not in ('http', 'https'):
+            return ''
+        return (parts.path or '/') + (f'?{parts.query}' if parts.query else '')
+
+    def summary(self) -> dict:
+        orphans = self.notes.get('orphans', '')
+        return {
+            **self.counts,
+            'capped': sorted(k for k, v in self.capped.items() if v),
+            'orphans_checked': not orphans,
+            'orphans_skipped_because': orphans,
+        }
+
+
+def _owner(claim: dict, page_path: str, owners: dict):
+    """(product, variant) a claim speaks for, or (None, None).
+
+    By SKU first; a page's own product also by its slug, from `/products/<slug>/`,
+    or from another page's last path segment when the product's name matches too
+    (a booking listing's product shares its slug and name). Nothing else: a
+    wrong owner would turn a correct claim into a finding.
+    """
+    from plugins.installed.catalog.models import Product, ProductVariant
+
+    key = (claim['sku'], claim['url'] or page_path, claim['name'], claim['main'])
+    if key in owners:
+        return owners[key]
+    product = variant = None
+    if claim['sku']:
+        if not claim['main']:
+            variant = (
+                ProductVariant.objects.filter(sku=claim['sku']).select_related('product').first()
+            )
+            product = variant.product if variant else None
+        else:
+            product = Product.objects.filter(sku=claim['sku']).first()
+    if product is None and claim['main']:
+        try:
+            claimed = urlsplit(claim['url']).path
+        except ValueError:
+            claimed = ''
+        path = _strip_language(claimed or page_path)
+        segments = [s for s in path.split('/') if s]
+        if segments:
+            candidate = Product.objects.filter(slug=unquote(segments[-1])).first()
+            if candidate is not None and (
+                path.startswith('/products/') or candidate.name == claim['name']
+            ):
+                product = candidate
+    owners[key] = (product, variant)
+    return owners[key]
+
+
+def _owner_price(product, variant):
+    """The price the store shows and charges now, through the one pricing seam."""
+    from core.pricing import apply_price_filter
+    from plugins.installed.catalog.models import cheapest_variant_price
+
+    if variant is not None:
+        base = variant.effective_price
+    elif product.product_type == 'variable':
+        base = cheapest_variant_price(v for v in product.variants.all() if v.is_active)
+        base = base if base is not None else product.price
+    else:
+        base = product.price
+    return apply_price_filter(base, product=product) if base is not None else None
+
+
+def _schema_token(value: str) -> str:
+    return str(value or '').rstrip('/').rsplit('/', 1)[-1].lower()
+
+
+def _price_mismatch(claim: dict, product, variant, currency: str) -> str:
+    """'claims X; the price is Y' when the offer's price is not the store's, else ''."""
+    owner = _owner_price(product, variant)
+    if owner is None:
+        return ''
+    same_amount = Decimal(claim['price']) == owner.amount.quantize(Decimal('0.01'))
+    same_currency = not claim['currency'] or claim['currency'] == str(owner.currency)
+    if same_amount and same_currency:
+        return ''
+    where = f' (the store sells in {currency})' if str(owner.currency) != currency else ''
+    claimed = f'{claim["price"]} {claim["currency"]}'.strip()
+    return (
+        f'{claim["name"] or claim["sku"]} claims {claimed}; '
+        f'the price is {owner.amount:.2f} {owner.currency}{where}'
+    )
+
+
+def _stock_mismatch(claim: dict, product) -> str:
+    """'claims X; inventory says Y' for a page's own product, else ''.
+
+    Not for a service: a booking's availability is its sessions, which the
+    booking app answers, not inventory.
+    """
+    from plugins.feed_mapping import availability_to_schema
+
+    if not claim['main'] or not claim['availability'] or product.product_type == 'service':
+        return ''
+    owner = _schema_token(availability_to_schema(product))
+    claimed = _schema_token(claim['availability'])
+    return '' if claimed == owner else f'claims {claimed}; inventory says {owner}'
+
+
+def _claim_findings(extra: _Extra, pages: list[PageFacts]) -> list[Finding]:
+    """Prices, availability and images the markup claims, against their owners."""
+    from plugins.dropshipping.importer import store_currency
+    from plugins.installed.seo.services.images import image_size
+
+    stale, wrong_stock, broken, sizes = [], [], [], []
+    owners: dict = {}
+    images: dict[str, str] = {}  # url → '' when fine, else what came back
+    currency = store_currency()
+    for page in (p for p in pages if p.status == 200):
+        for claim in page.claims:
+            extra.counts['products'] += 1
+            product, variant = _owner(claim, page.path, owners)
+            if product is None:
+                extra.counts['products_without_owner'] += 1
+                continue
+            if claim['price'] and (found := _price_mismatch(claim, product, variant, currency)):
+                stale.append(f'{page.path}: {found}')
+            if found := _stock_mismatch(claim, product):
+                wrong_stock.append(f'{page.path}: {found}')
+        named = [u for c in page.claims for u in c['images']]
+        if page.og_image:
+            named.append(page.og_image)
+        for url in dict.fromkeys(named):
+            problem = _image_problem(extra, url, images)
+            if problem:
+                broken.append(f'{page.path}: {url} {problem}')
+        if page.og_image and page.og_size and extra.local(page.og_image):
+            measured = image_size(page.og_image)
+            if measured and tuple(measured) != tuple(page.og_size):
+                sizes.append(
+                    f'{page.path}: declares {page.og_size[0]}×{page.og_size[1]}, '
+                    f'the file is {measured[0]}×{measured[1]}'
+                )
+    return [
+        f
+        for f in (
+            _finding(
+                'markup_price_stale',
+                CRITICAL,
+                'Structured data states a price the store no longer charges',
+                "The offer in the page's markup names a different price than the store "
+                'charges today. Google shows that price in results and Merchant Center '
+                'treats a mismatch as a policy violation; usually a cached page or a copy of '
+                'the price that missed an edit.',
+                stale,
+                'Products',
+                '/dashboard/products/',
+            ),
+            _finding(
+                'markup_availability_wrong',
+                CRITICAL,
+                'Structured data states stock the store does not have',
+                'The offer says in stock (or out of stock) while inventory says otherwise. '
+                'A shopper who clicks a result for an item that cannot be bought leaves, and '
+                'Merchant Center disapproves the listing.',
+                wrong_stock,
+                'Stock',
+                '/dashboard/products/',
+            ),
+            _finding(
+                'markup_image_broken',
+                CRITICAL,
+                'Structured data or og:image names an image that does not load',
+                'Google drops a product result whose image fails, and a shared link shows '
+                'an empty card.',
+                broken,
+            ),
+            _finding(
+                'og_image_size_wrong',
+                WARNING,
+                'og:image declares a size its file does not have',
+                'A share card is laid out from the declared size; the wrong one crops or '
+                'stretches the picture.',
+                sizes,
+            ),
+        )
+        if f
+    ]
+
+
+def _image_problem(extra: _Extra, url: str, seen: dict[str, str]) -> str:
+    """'' when the image answers 200 with an image, else what came back.
+
+    Another host's image (a CDN, Wikimedia) is counted and skipped: its answer
+    is not this store's to fix, and the audit sends no request off the host.
+    """
+    if url in seen:
+        return seen[url]
+    path = extra.local(url)
+    if not path:
+        extra.counts['images_off_host'] += 1
+        seen[url] = ''
+        return ''
+    extra.counts['images'] += 1
+    try:
+        status, location, kind = extra.fetch(path, counter='image_fetches', cap=MAX_IMAGE_FETCHES)
+        for _ in range(MAX_HOPS):
+            nxt = extra.local(urljoin(f'https://{extra.host}{path}', location)) if location else ''
+            if not (300 <= status < 400) or not nxt:
+                break
+            path = nxt
+            status, location, kind = extra.fetch(
+                path, counter='image_fetches', cap=MAX_IMAGE_FETCHES
+            )
+    except _Capped:
+        seen[url] = ''
+        return ''
+    ok = status == 200 and kind.split(';', 1)[0].strip().lower().startswith('image/')
+    if not ok and _ships_static_file(url):
+        # A theme's own file (the travel themes' og-default.jpg) may be served by
+        # whatever stands in front of the app (WhiteNoise here, nginx or a CDN
+        # elsewhere, nothing at all under the test runner), so an in-process 404
+        # proves nothing about it; the file being in the build does.
+        ok = True
+    seen[url] = '' if ok else f'answers {status or "nothing"} {kind.split(";", 1)[0]}'.strip()
+    return seen[url]
+
+
+def _ships_static_file(url: str) -> bool:
+    """Whether a /static/ URL names a file the store's build holds."""
+    from django.conf import settings
+
+    from plugins.installed.seo.services.images import _local_image_path
+
+    static_url = str(getattr(settings, 'STATIC_URL', '/static/') or '/static/')
+    return urlsplit(str(url or '')).path.startswith(static_url) and bool(_local_image_path(url))
+
+
+# ── Links between pages: redirects, chains, orphans ──────────────────────────
+
+
+def _link_sources(extra: _Extra, pages: list[PageFacts]) -> dict[str, list[str]]:
+    """{link target: [pages linking to it]}, the sitemap pages' links plus those of
+    the listing pages they paginate to (`rel=next`): a product only on page 7 of
+    a category is linked from page 7, and is not an orphan."""
+    sources: dict[str, list[str]] = {}
+
+    def add(page: PageFacts, label: str) -> None:
+        for target in page.links:
+            sources.setdefault(target, []).append(label)
+
+    queue = [p.next_href for p in pages if p.status == 200 and p.next_href]
+    for page in pages:
+        add(page, page.path)
+    seen: set[str] = set()
+    while queue:
+        nxt = queue.pop(0)
+        if nxt in seen:
+            continue
+        seen.add(nxt)
+        if (
+            extra.counts['pagination_fetches'] >= MAX_PAGINATION_FETCHES
+            or time.monotonic() > extra.deadline
+        ):
+            extra.capped['pagination_fetches'] = True
+            extra.note('orphans', 'not every listing page past the first was read')
+            break
+        extra.counts['pagination_fetches'] += 1
+        page = _facts(extra.client, nxt, extra.host)
+        add(page, nxt)
+        if page.status == 200 and page.next_href:
+            queue.append(page.next_href)
+    extra.counts['link_targets'] = len(sources)
+    return sources
+
+
+def _hops(extra: _Extra, start: str, known: dict[str, tuple[int, str]]) -> list[str]:
+    """Where a redirect from ``start`` leads, hop by hop ([] when it is not one).
+
+    At most MAX_HOPS, never fetched off the host: an off-host target ends the
+    chain as a full URL. A sitemap page's answer comes from the crawl.
+    """
+    out: list[str] = []
+    current, visited = start, {start}
+    for _ in range(MAX_HOPS):
+        if current in known:
+            status, location = known[current]
+        else:
+            status, location, _kind = extra.fetch(
+                current, counter='link_fetches', cap=MAX_LINK_FETCHES
+            )
+        if not (300 <= status < 400) or not location:
+            break
+        absolute = urljoin(f'https://{extra.host}{current}', location)
+        nxt = extra.local(absolute)
+        out.append(nxt or absolute)
+        if not nxt or nxt in visited:
+            break
+        visited.add(nxt)
+        current = nxt
+    return out
+
+
+def _link_findings(
+    extra: _Extra, pages: list[PageFacts], sources: dict[str, list[str]]
+) -> list[Finding]:
+    known = {p.path: (p.status, p.redirect_to) for p in pages}
+    one_hop, chains = [], []
+    try:
+        for target in sorted(sources):
+            hops = _hops(extra, target, known)
+            if not hops:
+                continue
+            extra.finals[target] = hops[-1]
+            if any(h.startswith('/') and _skipped_path(h) for h in hops):
+                # A page that needs an account sends a visitor to sign in (the
+                # affiliate and vendor sign-ups do): that is the door, not a
+                # detour, and linking to the sign-in page instead would lose the
+                # page they came for.
+                continue
+            for source in sorted(set(sources[target])):
+                if len(hops) == 1:
+                    one_hop.append(f'{source} links to {target} → {hops[0]}')
+                else:
+                    chains.append(
+                        f'{source} links to {target} → {" → ".join(hops)} ({len(hops)} hops)'
+                    )
+        for page in pages:
+            if 300 <= page.status < 400:
+                hops = _hops(extra, page.path, known)
+                if len(hops) > 1:
+                    chains.append(f'sitemap: {page.path} → {" → ".join(hops)} ({len(hops)} hops)')
+    except _Capped:
+        extra.note('orphans', 'not every redirect a link leads to was followed')
+    return [
+        f
+        for f in (
+            _finding(
+                'redirect_chain',
+                CRITICAL,
+                'Links and sitemap URLs that redirect more than once',
+                'Each hop costs a crawler a request and a visitor a round trip, and Google '
+                'stops following after a few. Point the first URL straight at the last.',
+                chains,
+                'Review redirects',
+                '/dashboard/seo/redirects/',
+            ),
+            _finding(
+                'link_to_redirect',
+                WARNING,
+                'Pages link to a URL that redirects',
+                'The link works, but every click and every crawl takes a detour. Link to '
+                'the page the redirect leads to.',
+                one_hop,
+                'Review redirects',
+                '/dashboard/seo/redirects/',
+            ),
+        )
+        if f
+    ]
+
+
+def _orphan_findings(
+    extra: _Extra, pages: list[PageFacts], sources: dict[str, list[str]]
+) -> list[Finding]:
+    """Sitemap pages no other page links to, named only after a whole-sitemap crawl."""
+    if extra.notes.get('orphans'):
+        return []
+    linked: set[str] = set()
+    for target, from_pages in sources.items():
+        if any(source != target for source in from_pages):
+            linked.add(unquote(target))
+            final = extra.finals.get(target, '')
+            if final.startswith('/'):
+                linked.add(unquote(final.split('?', 1)[0]))
+    orphans = [
+        p.path
+        for p in pages
+        if p.status == 200
+        and p.path != '/'
+        and 'noindex' not in p.robots.lower()
+        and unquote(p.path) not in linked
+    ]
+    found = _finding(
+        'orphan_page',
+        NOTICE,
+        'Sitemap pages no other page links to',
+        'A page only the sitemap knows about gets little weight from search engines and '
+        'no visitors from the rest of the shop. Link it from a category, a menu or a '
+        'related page.',
+        orphans,
+    )
+    return [found] if found else []
+
+
+def _finding(code, severity, title, why, matches, fix_label='', fix_url='') -> Finding | None:
+    if not matches:
+        return None
+    return Finding(
+        code=code,
+        severity=severity,
+        title=title,
+        why=why,
+        count=len(matches),
+        examples=sorted(matches)[:MAX_EXAMPLES],
+        fix_label=fix_label,
+        fix_url=fix_url,
+    )
 
 
 def _untranslated(client, host: str, pages: list[PageFacts]) -> dict[str, list[str]]:
@@ -369,20 +1205,25 @@ def _analyse(  # noqa: PLR0912 — a linear check list
     out: list[Finding] = []
 
     def add(code, severity, title, why, matches, fix_label='', fix_url=''):
-        if not matches:
-            return
-        out.append(
-            Finding(
-                code=code,
-                severity=severity,
-                title=title,
-                why=why,
-                count=len(matches),
-                examples=sorted(matches)[:5],
-                fix_label=fix_label,
-                fix_url=fix_url,
-            )
-        )
+        found = _finding(code, severity, title, why, matches, fix_label, fix_url)
+        if found:
+            out.append(found)
+
+    add(
+        'markup_price_not_on_page',
+        CRITICAL,
+        'Structured data states a price the page does not show',
+        "Google requires an offer's price to be the one a visitor sees on the page; a "
+        'price only the markup carries is a structured-data spam signal and can cost '
+        'the product its rich result.',
+        [
+            f'{p.path}: {c["name"] or c["sku"]} claims {c["price"]} {c["currency"]}; '
+            'the page shows no such price'
+            for p in ok
+            for c in p.claims
+            if c.get('main') and c.get('shown') is False
+        ],
+    )
 
     add(
         'sitemap_redirect',
@@ -621,9 +1462,93 @@ def cached() -> dict | None:
 
 
 def run_and_store(*, limit: int | None = None) -> dict:
-    report = collect(limit=limit)
+    from django.utils import timezone
+
+    try:
+        cache.set(RUNNING_KEY, timezone.now().isoformat(), _RUNNING_TTL)
+    except Exception:  # noqa: BLE001 — the marker only stops a second run
+        logger.debug('site_audit: could not mark the run', exc_info=True)
+    try:
+        report = collect(limit=limit)
+    finally:
+        try:
+            cache.delete(RUNNING_KEY)
+        except Exception:  # noqa: BLE001
+            logger.debug('site_audit: could not clear the run marker', exc_info=True)
     try:
         cache.set(CACHE_KEY, report, CACHE_TTL)
     except Exception:  # noqa: BLE001
         logger.warning('site_audit: could not cache the report', exc_info=True)
     return report
+
+
+class AuditRefused(Exception):
+    """A scan was not queued; the message says why, in the merchant's words."""
+
+    def __init__(self, message: str, *, busy: bool = True):
+        super().__init__(message)
+        self.busy = busy
+
+
+def _minutes_since(stamp) -> float | None:
+    from datetime import datetime
+
+    from django.utils import timezone
+
+    try:
+        when = datetime.fromisoformat(str(stamp))
+    except (TypeError, ValueError):
+        return None
+    if timezone.is_naive(when):
+        when = timezone.make_aware(when)
+    return (timezone.now() - when).total_seconds() / 60
+
+
+def queue_site_audit() -> str:
+    """Queue `seo.site_audit` once, for the dashboard's button and Linda's tool.
+
+    Refused while a scan is running, and for ten minutes after one finished or
+    was queued: a scan renders every page of the shop, and asking twice buys the
+    same report at twice the load.
+    """
+    from django.utils import timezone
+
+    try:
+        running = cache.get(RUNNING_KEY)
+    except Exception:  # noqa: BLE001
+        running = None
+    if running:
+        raise AuditRefused(
+            f'A site scan is already running (started {str(running)[11:16]} UTC). '
+            'Its findings replace these when it finishes.'
+        )
+    last = cached() or {}
+    age = _minutes_since(last.get('generated_at'))
+    if age is not None and age * 60 < RERUN_AFTER_S:
+        wait = max(1, int(RERUN_AFTER_S / 60 - age + 0.999))
+        raise AuditRefused(
+            f'The last scan finished {int(age)} minute(s) ago; a new one can start in '
+            f'{wait} minute(s).'
+        )
+    now = timezone.now().isoformat()
+    try:
+        claimed = cache.add(QUEUED_KEY, now, RERUN_AFTER_S)
+    except Exception:  # noqa: BLE001 — no cache: one more scan is the worst case
+        claimed = True
+    if not claimed:
+        raise AuditRefused(
+            'A site scan was queued less than ten minutes ago and has not finished yet.'
+        )
+    try:
+        from plugins.installed.seo.tasks import site_audit_task
+
+        site_audit_task.delay()
+    except Exception as e:
+        cache.delete(QUEUED_KEY)
+        logger.warning('seo: could not queue the site audit: %s', e, exc_info=True)
+        raise AuditRefused(
+            'Could not queue the site audit — no background worker is reachable. '
+            'Run `manage.py seo_site_audit` on the server instead.',
+            busy=False,
+        ) from e
+    return now

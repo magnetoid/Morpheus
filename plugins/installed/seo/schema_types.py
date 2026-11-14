@@ -5,7 +5,8 @@ list of ``{type, data}`` entries; :func:`build_block` turns each into a
 ready-to-emit JSON-LD dict. The dashboard JS consumes :func:`registry_json`.
 The page's graph (``seo/schema/graph.py``) adds the blocks to the object's page
 (v0.163.0): until then they reached no page, because only the legacy
-``{% seo_meta %}`` tag rendered them and the head contract silences it.
+``{% seo_meta %}`` tag rendered them and the head contract silenced it (the tag
+was deleted in v0.164.0).
 
 Adding a type = add an entry to ``SCHEMA_TYPES`` + a builder in ``_BUILDERS``.
 Keep it to types Google's Search Gallery lists or answer engines read
@@ -340,3 +341,25 @@ def retired_entries(entries: list[dict]) -> list[dict]:
         if reason:
             out.append({'index': index, 'type': block_type(entry), 'reason': reason})
     return out
+
+
+def merge_editor_blocks(entries: Any, stored: list[dict]) -> tuple[list[dict], list[str]]:
+    """`(blocks to store, refusals)` for what the editor posted.
+
+    One rule for both editors (the Structured data page and the SEO card's
+    dialog): an entry is kept when it may render and has content; a refused one
+    is dropped with its reason; the stored blocks that render nowhere stay until
+    the merchant deletes them, because the editor shows them only as a list.
+    """
+    clean: list[dict] = []
+    refused: list[str] = []
+    for e in entries if isinstance(entries, list) else []:
+        if not isinstance(e, dict):
+            continue
+        entry = {'type': e.get('type', ''), 'data': e.get('data') or {}}
+        if reason := refusal(entry):
+            refused.append(reason)
+        elif build_block(entry['type'], entry['data']):
+            clean.append(entry)
+    kept = [stored[r['index']] for r in retired_entries(stored)]
+    return clean + kept, refused

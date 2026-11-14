@@ -18,7 +18,9 @@ plugin would be a plugin→plugin import.
 from __future__ import annotations
 
 import logging
+from decimal import ROUND_HALF_UP, Decimal
 
+from django.conf import settings
 from djmoney.money import Money
 
 logger = logging.getLogger('morpheus.pricing')
@@ -65,3 +67,59 @@ def apply_price_filter(price: Money, *, product=None, customer=None) -> Money:
         )
         return price
     return adjusted
+
+
+def store_currency() -> str:
+    """The currency the catalogue is priced in."""
+    return str(getattr(settings, 'STORE_CURRENCY', 'USD') or 'USD').upper()
+
+
+def quantize(amount: Decimal, currency: str) -> Decimal:
+    """``amount`` rounded half up to ``currency``'s minor unit (JPY has none)."""
+    from babel.numbers import get_currency_precision
+
+    try:
+        digits = get_currency_precision((currency or '').upper())
+    except Exception:  # noqa: BLE001 — an unknown code is priced in cents
+        digits = 2
+    return Decimal(amount).quantize(Decimal(1).scaleb(-digits), rounding=ROUND_HALF_UP)
+
+
+def _pair(base: str, quote: str) -> Decimal | None:
+    """One stored rate, direct or inverted; ``None`` when neither row exists."""
+    from core.models import ExchangeRate
+
+    row = ExchangeRate.objects.filter(base_currency=base, quote_currency=quote).first()
+    if row is not None and row.rate:
+        return Decimal(row.rate)
+    row = ExchangeRate.objects.filter(base_currency=quote, quote_currency=base).first()
+    if row is not None and row.rate:
+        return Decimal(1) / Decimal(row.rate)
+    return None
+
+
+def exchange_rate(base: str, quote: str) -> Decimal | None:
+    """How many ``quote`` one ``base`` buys: the stored pair, its inverse, or the
+    two legs through the store currency; 1 for the same currency, else ``None``."""
+    base, quote = (base or '').upper(), (quote or '').upper()
+    if base == quote:
+        return Decimal(1)
+    rate = _pair(base, quote)
+    if rate is not None:
+        return rate
+    store = store_currency()
+    if store in (base, quote):
+        return None
+    first, second = _pair(base, store), _pair(store, quote)
+    if first is None or second is None:
+        return None
+    return first * second
+
+
+def convert(money: Money, currency: str) -> Money | None:
+    """``money`` in ``currency`` at the stored rate, or ``None`` without one."""
+    currency = (currency or '').upper()
+    rate = exchange_rate(str(money.currency), currency)
+    if rate is None:
+        return None
+    return Money(quantize(Decimal(money.amount) * rate, currency), currency)

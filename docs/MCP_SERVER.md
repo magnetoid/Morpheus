@@ -261,6 +261,7 @@ The MCP **admin** server (`/mcp/admin/v1/`) and GraphQL endpoint
 | `catalog.archive_category` / `archiveCategory` | Delete category | **yes** |
 | `catalog.create_variant` / `createVariant` | Add a new variant to a product | no |
 | `catalog.update_variant` / `updateVariant` | Update any variant field (matched by SKU) | no |
+| `books.render_social_card` (MCP only) | Draw a book's 1200×630 social card now; a page shares it only while the book app's `social_cards` setting is on | **yes** |
 
 **GraphQL scopes.** Every catalog mutation needs `catalog.write`;
 `deleteProduct` and `archiveCategory` need `catalog.delete`. A staff
@@ -345,6 +346,20 @@ as an error asking the merchant to check their carrier account (the label is kep
 All write operations enforce `info.context.request.user.is_staff` —
 the Bearer-resolved `mcp-service` user satisfies this; sessionless
 unauthenticated calls do not.
+
+### Markets
+
+Scopes `markets.read` ("Markets · read") and `markets.write` ("Markets · write", affects prices shoppers will see). They map to the `catalog.read` / `catalog.write` capabilities and are in Linda's profile and the Worker's scopes. `markets.list` used to declare `system.read`; a token that held `system.read` but not `markets.read` no longer sees it.
+
+| Tool | Purpose | Approval? |
+|---|---|---|
+| `markets.list` | Markets: code, currency, locale, countries, adjustment, rounding, active, default | no |
+| `markets.get` | One market by `code`: settings, its exchange rate (source, age, out of date) and five preview prices | no |
+| `markets.save` | Create a market, or change the one with that `code`; only the fields given change; a foreign currency needs a rate before the market is switched on | **yes** |
+| `markets.delete` | Delete a market and the prices fixed for its products | **yes** |
+| `markets.set_product_price` | Fix a product's price in a market (`amount`, in the market currency) or `clear: true` | **yes** |
+| `markets.set_rate` | Set your own exchange rate (`rate`) or `clear: true`; clearing is refused when an active market needs the currency and no daily rate can replace yours | **yes** |
+| `markets.refresh_rates` | Fetch the European Central Bank's rates now (refused when rates are typed by hand); your own rates are kept | **yes** |
 
 ### Translations (i18n)
 

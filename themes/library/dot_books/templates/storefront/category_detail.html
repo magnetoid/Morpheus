@@ -1,11 +1,8 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load breadcrumbs %}
-{% load seo %}
 {% load caching %}
 {% load i18n %}
 {% block extra_head %}
-  {% seo_breadcrumb_jsonld items=breadcrumb_items %}
-  {% seo_collection_jsonld items=collection_items name=category.name description=category.description %}
 <style>
   /* The category's long description: the guide below the products. */
   .category-guide__body { line-height: 1.75; font-size: 1.05rem; }
