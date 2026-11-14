@@ -198,7 +198,12 @@ class PermalinksForm(DashboardFormMixin, forms.Form):
 class StoreNotificationsForm(DashboardFormMixin, forms.Form):
     """SMTP / outbound email — under Settings → Notifications."""
 
-    default_from_email = forms.CharField(max_length=200, required=False)
+    default_from_email = forms.CharField(
+        max_length=200,
+        required=False,
+        help_text='Customers see the store name beside this address. '
+        'Write "Name <address>" to show another name.',
+    )
     smtp_host = forms.CharField(max_length=200, required=False)
     smtp_port = forms.IntegerField(min_value=1, required=False, initial=587)
     smtp_user = forms.CharField(max_length=200, required=False)

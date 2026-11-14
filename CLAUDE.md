@@ -2035,6 +2035,10 @@ swapped in by the backend's `send_messages`: callers build messages from
 `settings.DEFAULT_FROM_EMAIL` before any backend exists (async mail is built in
 the web process), so mutating that setting at backend construction sent live
 mail from a `noreply@` that doesn't exist (`core/tests/test_email_sender.py`).
+It also puts the store's name beside a bare store address (v0.167.1): a mail client
+shows a bare address by its local part, so every email read "hello". The name is
+the store name, never its "Morpheus Store" default, else the site's host; a name the
+merchant writes (`Shop <hello@…>`) is kept, and any other sender stays as written.
 And the templates must be reachable: `core.emails` is not an installed app, so
 until v0.75.23 no loader found `core/emails/templates` and every order email
 (placed, paid, shipped, cancelled, refund, downloads) was skipped as "template
