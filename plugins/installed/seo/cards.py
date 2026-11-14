@@ -51,11 +51,29 @@ def seo_form_card(kind: str, obj, request=None) -> dict | None:
             'seo_host_image_id': hosts.get('image', ''),
         }
     )
+    if kind == 'product':
+        # A product's extra JSON-LD lives in the Structured data dialog. The
+        # box posts as `structured_data`, a field of the product form, which
+        # validates it and stores Product.structured_data (and leaves the
+        # column alone when the box was not posted).
+        context.update({'seo_raw_jsonld': True, 'seo_raw_jsonld_value': _raw_jsonld(obj, request)})
     return {
         'template': 'seo/cards/_seo_form_card.html',
         'context': context,
         'order': 60,
     }
+
+
+def _raw_jsonld(product, request=None) -> str:
+    """The box's text: what was posted on a re-render, else the stored object."""
+    import json
+
+    if request is not None and getattr(request, 'method', '') == 'POST':
+        posted = request.POST.get('structured_data')
+        if posted is not None:
+            return posted
+    value = getattr(product, 'structured_data', None) if product is not None else None
+    return json.dumps(value, indent=2) if value else ''
 
 
 def annotate_seo_scores(products) -> None:

@@ -43,7 +43,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.165.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.167.3')
 
 # The release stage shown beside the version (the dashboard, the README badge, the
 # GitHub Release title) while Morpheus is not finalized; '' once it is. The version
@@ -344,12 +344,11 @@ MIDDLEWARE = [
     # SecurityHeadersMiddleware, which then leaves that page's policy alone.
     'django.middleware.csp.ContentSecurityPolicyMiddleware',
     'core.storefront_cache.StorefrontCacheMiddleware',
-    # Gzip-compresses responses > 200 bytes. Cloudflare also compresses
-    # at the edge but origin compression saves bytes on the CF↔origin
-    # hop AND for clients that bypass CF (Bearer-token agents, direct
-    # origin probes). Toggle-gated via storefront PluginConfig
-    # gzip_enabled — when off, GZipMiddleware sees an env var hint and
-    # skips. Brotli is not in Django's stdlib; CF handles br at the edge.
+    # Gzip-compresses responses > 200 bytes, always: no setting turns it off.
+    # Cloudflare also compresses at the edge but origin compression saves bytes
+    # on the CF↔origin hop AND for clients that bypass CF (Bearer-token agents,
+    # direct origin probes). Brotli is not in Django's stdlib; CF handles br at
+    # the edge.
     'django.middleware.gzip.GZipMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

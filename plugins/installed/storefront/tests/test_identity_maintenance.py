@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from core.models import StoreSettings
+from plugins.models import PluginConfig
 from plugins.registry import app_registry
 
 
@@ -77,3 +78,37 @@ class MaintenanceModeTests(TestCase):
     def test_dashboard_is_never_gated(self):
         self._close()
         self.assertNotEqual(self.client.get('/dashboard/').status_code, 503)
+
+
+class MaintenanceReachesEveryWorkerTests(TestCase):
+    """A save clears only the worker that made it (v0.166.0 review). Every other
+    worker reads the switch again once storefront's ``config_fresh_s`` passes."""
+
+    def setUp(self):
+        self.plugin = app_registry.get('storefront')
+        self.plugin.invalidate_config_cache()
+        self.addCleanup(self.plugin.invalidate_config_cache)
+        self.row, _ = PluginConfig.objects.get_or_create(plugin_name='storefront')
+
+    def _saved_in_another_worker(self, **values):
+        # A queryset update: the row changes and this process's cache does not.
+        config = {**(self.row.config or {}), **values}
+        PluginConfig.objects.filter(pk=self.row.pk).update(config=config)
+
+    def _window_passes(self):
+        self.plugin._config_read_at -= self.plugin.config_fresh_s
+
+    def test_a_switch_saved_elsewhere_closes_the_shop_once_the_window_passes(self):
+        self._saved_in_another_worker(maintenance_mode=False)
+        self.assertEqual(self.client.get('/').status_code, 200)
+        self._saved_in_another_worker(maintenance_mode=True)
+        self.assertEqual(self.client.get('/').status_code, 200)
+        self._window_passes()
+        self.assertEqual(self.client.get('/').status_code, 503)
+
+    def test_a_reopen_saved_elsewhere_opens_the_shop_once_the_window_passes(self):
+        self._saved_in_another_worker(maintenance_mode=True)
+        self.assertEqual(self.client.get('/').status_code, 503)
+        self._saved_in_another_worker(maintenance_mode=False)
+        self._window_passes()
+        self.assertEqual(self.client.get('/').status_code, 200)

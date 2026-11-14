@@ -22,32 +22,45 @@
   </div>
 
   {% if rows %}
-  <div class="reveal-stagger grid grid-cols-1 sm:grid-cols-3 gap-3">
+  <div class="reveal-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
     <div class="card card-padded">
       <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Ad spend (30d)</p>
-      <p class="text-2xl font-semibold mt-1">{{ total_spend|money }}</p>
+      <p class="text-2xl font-semibold mt-1" data-kpi="spend">{% if total_spend is not None %}{{ total_spend|money }}{% else %}—{% endif %}</p>
     </div>
     <div class="card card-padded">
       <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Attributed revenue</p>
-      <p class="text-2xl font-semibold mt-1">{{ total_revenue|money }}</p>
+      <p class="text-2xl font-semibold mt-1" data-kpi="attributed">{{ total_revenue|money }}</p>
     </div>
     <div class="card card-padded">
       <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Blended ROAS</p>
-      <p class="text-2xl font-semibold mt-1">{% if blended_roas is not None %}{{ blended_roas }}×{% else %}—{% endif %}</p>
+      <p class="text-2xl font-semibold mt-1" data-kpi="roas">{% if blended_roas is not None %}{{ blended_roas }}×{% else %}—{% endif %}</p>
+    </div>
+    <div class="card card-padded">
+      <p class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Blended MER</p>
+      <p class="text-2xl font-semibold mt-1" data-kpi="mer">{% if blended_mer is not None %}{{ blended_mer }}×{% else %}—{% endif %}</p>
+      <p class="text-xs text-[color:var(--text-muted)] mt-1">All store revenue ({{ total_revenue_store|money }}) ÷ ad spend</p>
     </div>
   </div>
+
+  {% if total_spend is None %}
+  <div class="card card-padded text-sm text-[color:var(--text-muted)]" data-note="spend-from-channels">
+    No ad spend on file. Spend and platform-reported revenue come from the Channels app (each ad channel's daily totals); until it reports some, those columns stay blank.
+  </div>
+  {% endif %}
 
   <div class="card overflow-hidden">
     <div class="px-4 py-3 border-b border-[color:var(--border)]"><h2 class="font-semibold">{{ model_label }} — by channel</h2></div>
     <table class="morph-table">
-      <thead><tr><th>Channel</th><th>Spend</th><th>Attributed revenue</th><th>ROAS</th><th></th></tr></thead>
+      <thead><tr><th>Channel</th><th>Spend</th><th>Platform-reported revenue</th><th>Conversions</th><th>Attributed revenue</th><th>ROAS</th><th></th></tr></thead>
       <tbody>
       {% for r in rows %}
-      <tr>
+      <tr data-channel="{{ r.channel }}">
         <td class="font-medium">{{ r.channel }}</td>
-        <td>{{ r.spend|money }}</td>
-        <td>{{ r.revenue|money }}</td>
-        <td>{% if r.roas is not None %}{% if r.roas >= 1 %}<span class="pill pill-success">{{ r.roas }}×</span>{% else %}<span class="pill pill-danger">{{ r.roas }}×</span>{% endif %}{% else %}<span class="pill pill-neutral">no spend</span>{% endif %}</td>
+        <td data-col="spend">{% if r.spend is not None %}{{ r.spend|money }}{% else %}—{% endif %}</td>
+        <td data-col="platform-revenue">{% if r.platform_revenue is not None %}{{ r.platform_revenue|money }}{% else %}—{% endif %}</td>
+        <td data-col="conversions">{% if r.conversions is not None %}{{ r.conversions }}{% else %}—{% endif %}</td>
+        <td data-col="revenue">{{ r.revenue|money }}</td>
+        <td data-col="roas">{% if r.roas is not None %}{% if r.roas >= 1 %}<span class="pill pill-success">{{ r.roas }}×</span>{% else %}<span class="pill pill-danger">{{ r.roas }}×</span>{% endif %}{% else %}<span class="pill pill-neutral">no spend</span>{% endif %}</td>
         <td><div style="background:var(--surface-2); height:8px; width:160px; border-radius:4px; overflow:hidden;"><div style="background:var(--brand); height:100%; width:{{ r.bar_pct }}%;"></div></div></td>
       </tr>
       {% endfor %}

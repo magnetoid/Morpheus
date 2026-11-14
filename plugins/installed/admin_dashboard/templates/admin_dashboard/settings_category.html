@@ -159,6 +159,7 @@
 
           {% if field.kind == 'boolean' %}
           <label class="inline-flex items-center gap-2">
+            <input type="hidden" name="_booleans" value="{{ field.key }}">
             <input type="checkbox" id="f-{{ c.plugin_name }}-{{ field.key }}" name="{{ field.key }}"
                    {% if field.value %}checked{% endif %}>
             <span class="text-sm">Enabled</span>

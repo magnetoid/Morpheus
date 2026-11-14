@@ -79,7 +79,7 @@ class DigitalProductsPlugin(Plugin):
         try:
             from plugins.installed.digital_products.library import line_delivery
 
-            return line_delivery(order_item) or value
+            return line_delivery(order_item, surface=kwargs.get('surface') or '') or value
         except Exception as exc:  # noqa: BLE001 — an order page must still render
             logger.warning('order line delivery failed: %s', exc, exc_info=True)
             return value

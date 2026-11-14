@@ -267,8 +267,8 @@ class AnalyticsExport(models.Model):
 
 
 class AdSpendSnapshot(models.Model):
-    """Ad spend per (day, channel), collected nightly from channel plugins via the
-    ANALYTICS_AD_SPEND filter. Divides attributed revenue to give per-channel ROAS."""
+    """Ad spend per (day, channel), taken nightly from the Channels app's
+    daily totals (ANALYTICS_AD_SPEND filter). Divides attributed revenue to give per-channel ROAS."""
 
     day = models.DateField(db_index=True)
     channel = models.CharField(max_length=40, db_index=True)

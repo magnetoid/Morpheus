@@ -31,19 +31,3 @@ def coupons_list(request):
             'active_nav': 'marketing',
         },
     )
-
-
-@staff_member_required
-@require_capability('marketing.read')
-def campaigns_list(request):
-    rows = _safe_list('marketing.EmailCampaign')
-    return render(
-        request,
-        'marketing/dashboard/list.html',
-        {
-            'rows': rows,
-            'title': 'Campaigns',
-            'columns': ['name', 'channel', 'state', 'created_at'],
-            'active_nav': 'marketing',
-        },
-    )

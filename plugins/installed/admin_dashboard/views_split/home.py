@@ -100,6 +100,7 @@ def dashboard_home(request: HttpRequest) -> HttpResponse:
             'ai_summary': ai_summary,
             'low_stock': panels.get('low_stock', []),
             'low_stock_threshold': panels.get('low_stock_threshold', 0),
+            'low_stock_url': panels.get('low_stock_url', ''),
             'setup_steps': setup_steps,
             'setup_done': setup_done,
             'setup_total': setup_total,

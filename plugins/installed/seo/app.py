@@ -176,12 +176,12 @@ class SeoPlugin(Plugin):
         return handler
 
     def _form_saved_handler(self, kind: str):
-        def handler(post=None, **kwargs):
+        def handler(post=None, user=None, **kwargs):
             from plugins.installed.seo.services.panel import save_object_seo  # noqa: PLC0415
 
             obj = kwargs.get(kind)
             if obj is not None and post is not None:
-                save_object_seo(obj, post)
+                save_object_seo(obj, post, user=user)
 
         handler.__name__ = f'on_{kind}_form_saved'
         return handler

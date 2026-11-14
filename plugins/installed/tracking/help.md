@@ -11,7 +11,7 @@ Open [Tracking](page:overview) and click Settings:
 - Add a GTM container ID if you run GA4 through Tag Manager. Leave it blank and GA4 loads directly.
 - The other tabs switch events, set Consent Mode defaults, send a hashed ID for signed-in shoppers, list other domains a visit can cross, and exclude paths or user agents.
 
-Add a Google Ads conversion ID and label on [](settings:tracking) to fire an Ads conversion on the order confirmation page.
+Fill in the Google Ads card on the Connection tab to fire a conversion on the order confirmation page.
 
 ## Common tasks
 - Check the last 24 hours' send rate and top events on the main Tracking page
