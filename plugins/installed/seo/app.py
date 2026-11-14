@@ -176,12 +176,12 @@ class SeoPlugin(Plugin):
         return handler
 
     def _form_saved_handler(self, kind: str):
-        def handler(post=None, **kwargs):
+        def handler(post=None, user=None, **kwargs):
             from plugins.installed.seo.services.panel import save_object_seo  # noqa: PLC0415
 
             obj = kwargs.get(kind)
             if obj is not None and post is not None:
-                save_object_seo(obj, post)
+                save_object_seo(obj, post, user=user)
 
         handler.__name__ = f'on_{kind}_form_saved'
         return handler
@@ -405,15 +405,26 @@ class SeoPlugin(Plugin):
             apply_internal_links_tool,
             audit_all_tool,
             audit_product_tool,
+            audit_results_tool,
             bulk_set_meta_tool,
             create_redirect_tool,
+            delete_index_rule_tool,
+            delete_schema_block_tool,
+            delete_template_tool,
             get_meta_tool,
+            index_rules_tool,
             inspect_url_tool,
             list_404s_tool,
+            run_site_audit_tool,
+            schema_blocks_tool,
             search_performance_tool,
             seo_regenerate_sitemap_tool,
+            set_index_rule_tool,
             set_meta_tool,
+            set_schema_block_tool,
             set_site_settings_tool,
+            set_template_tool,
+            templates_tool,
         )
 
         return [
@@ -430,6 +441,17 @@ class SeoPlugin(Plugin):
             seo_regenerate_sitemap_tool,
             search_performance_tool,
             inspect_url_tool,
+            schema_blocks_tool,
+            set_schema_block_tool,
+            delete_schema_block_tool,
+            index_rules_tool,
+            set_index_rule_tool,
+            delete_index_rule_tool,
+            templates_tool,
+            set_template_tool,
+            delete_template_tool,
+            audit_results_tool,
+            run_site_audit_tool,
         ]
 
     def contribute_skills(self) -> list:
@@ -444,14 +466,20 @@ class SeoPlugin(Plugin):
             apply_internal_links_tool,
             audit_all_tool,
             audit_product_tool,
+            audit_results_tool,
             bulk_set_meta_tool,
             create_redirect_tool,
             get_meta_tool,
+            index_rules_tool,
             inspect_url_tool,
             list_404s_tool,
+            run_site_audit_tool,
             search_performance_tool,
+            set_index_rule_tool,
             set_meta_tool,
             set_site_settings_tool,
+            set_template_tool,
+            templates_tool,
         )
 
         return [
@@ -472,11 +500,18 @@ class SeoPlugin(Plugin):
                     apply_external_links_tool,
                     search_performance_tool,
                     inspect_url_tool,
+                    audit_results_tool,
+                    run_site_audit_tool,
+                    index_rules_tool,
+                    set_index_rule_tool,
+                    templates_tool,
+                    set_template_tool,
                 ),
                 system_prompt_prelude=(
                     'You are working on SEO for this store. Standard workflow:\n'
                     '  1. Audit first — call seo.audit_product or seo.audit_all to '
-                    'find what is broken. Never assume.\n'
+                    'find what is broken, and seo.audit_results for what the last '
+                    'site-wide scan found between pages. Never assume.\n'
                     '  2. Propose specific edits with before/after values.\n'
                     '  3. Apply with confirmed=true only after the merchant agrees.\n'
                     'Avoid keyword stuffing; favour natural prose that matches the '

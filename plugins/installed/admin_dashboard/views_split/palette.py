@@ -207,7 +207,7 @@ def _setting_hits(words: list[str], labels: dict) -> list[dict]:
                             'kind': 'setting',
                             'label': field,
                             'hint': f'{title} settings',
-                            'url': f'{url}#f-{key}',
+                            'url': f'{url}#f-{name}-{key}',
                             'icon': 'sliders-horizontal',
                             'score': score,
                         }

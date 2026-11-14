@@ -2,29 +2,14 @@
 {% block title %}Structured data · {{ object_label }} · Morpheus{% endblock %}
 
 {% block content %}
-<style>
-  .sd-block { margin-bottom: 1rem; }
-  .sd-block-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .25rem; }
-  .sd-block-title { font-weight: 600; font-size: .95rem; }
-  .sd-help { font-size: .8rem; color: var(--text-muted); margin: 0 0 .75rem; }
-  .sd-field { margin-bottom: .75rem; }
-  .sd-label { display: block; font-size: .8rem; font-weight: 500; margin-bottom: .25rem; }
-  .sd-group { margin-bottom: .9rem; padding: .75rem; border: 1px solid var(--border); border-radius: 8px; }
-  .sd-rows { display: flex; flex-direction: column; gap: .5rem; margin: .4rem 0 .6rem; }
-  .sd-row { display: flex; gap: .5rem; align-items: end; }
-  .sd-cell { flex: 1; min-width: 0; }
-  .sd-sublabel { display: block; font-size: .7rem; color: var(--text-muted); margin-bottom: .15rem; }
-  .sd-rowrm { flex: none; }
-  .sd-empty { font-size: .85rem; color: var(--text-muted); padding: 1rem; text-align: center; border: 1px dashed var(--border); border-radius: 8px; }
-  .sd-addbar { display: flex; gap: .5rem; align-items: center; margin-top: .5rem; }
-</style>
+{% include "seo/_schema_blocks_editor.html" %}
 
 <div class="mx-auto space-y-4">
 
   <div class="flex items-start justify-between gap-3 flex-wrap">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Structured data</h1>
-      <p class="text-sm text-[color:var(--text-muted)]">{{ object_label }} — add rich-result schema (FAQ, How-to, Event, …) with no JSON. Product/Article schema is already generated automatically.</p>
+      <p class="text-sm text-[color:var(--text-muted)]">{{ object_label }} — add rich-result schema (FAQ, recipe, video, course, …) with no JSON. The store already writes its products, articles, events, hotels and breadcrumbs itself.</p>
     </div>
     {% if object_url %}
     <div class="flex items-center gap-2 whitespace-nowrap">
@@ -33,6 +18,22 @@
     </div>
     {% endif %}
   </div>
+
+  {% if retired_blocks %}
+  <div class="card card-padded space-y-2">
+    <h2 class="text-sm font-semibold">Blocks that no longer show</h2>
+    <p class="sd-help">These were saved before and appear on no page any more. Delete them when you no longer need them.</p>
+    {% for block in retired_blocks %}
+    <form method="post" class="flex items-center justify-between gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete_retired">
+      <input type="hidden" name="index" value="{{ block.index }}">
+      <span class="text-sm"><strong>{{ block.type }}</strong> — {{ block.reason }}</span>
+      <button type="submit" class="btn btn-ghost text-sm" data-confirm="Delete this {{ block.type }} block?"><i data-lucide="trash-2" class="h-4 w-4"></i> Delete</button>
+    </form>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   <form method="post" id="schema-form" class="space-y-3">
     {% csrf_token %}
@@ -59,113 +60,15 @@
 
 <script>
 (function () {
-  var TYPES = JSON.parse(document.getElementById('schema-types-data').textContent);
-  var BY_KEY = {};
-  TYPES.forEach(function (t) { BY_KEY[t.key] = t; });
-
-  var blocks = (JSON.parse(document.getElementById('existing-blocks-data').textContent) || [])
-    .filter(function (b) { return b && BY_KEY[b.type]; })
-    .map(function (b) { return { type: b.type, data: b.data || {} }; });
-
-  var container = document.getElementById('blocks');
-  var hidden = document.getElementById('blocks-json');
-
-  function el(tag, attrs) {
-    var e = document.createElement(tag);
-    if (attrs) for (var k in attrs) {
-      if (k === 'class') e.className = attrs[k];
-      else e.setAttribute(k, attrs[k]);
-    }
-    for (var i = 2; i < arguments.length; i++) {
-      var c = arguments[i];
-      if (c == null) continue;
-      e.append(c.nodeType ? c : document.createTextNode(c));
-    }
-    return e;
-  }
-
-  function input(field, value, onInput) {
-    var node;
-    if (field.kind === 'textarea') {
-      node = el('textarea', { class: 'input w-full', rows: '2' });
-    } else {
-      var map = { url: 'url', date: 'date', datetime: 'datetime-local', number: 'number', duration_min: 'number' };
-      node = el('input', { type: map[field.kind] || 'text', class: 'input w-full' });
-      if (field.kind === 'duration_min') node.setAttribute('min', '0');
-    }
-    node.value = value == null ? '' : value;
-    node.addEventListener('input', function () { onInput(node.value); });
-    return node;
-  }
-
-  function renderGroup(block, field) {
-    if (!Array.isArray(block.data[field.name])) block.data[field.name] = [];
-    var rows = block.data[field.name];
-    var wrap = el('div', { class: 'sd-group' });
-    wrap.append(el('label', { class: 'sd-label' }, field.label));
-    var list = el('div', { class: 'sd-rows' });
-    rows.forEach(function (row, ri) {
-      var rowEl = el('div', { class: 'sd-row' });
-      field.subfields.forEach(function (sf) {
-        var cell = el('div', { class: 'sd-cell' });
-        cell.append(el('span', { class: 'sd-sublabel' }, sf.label));
-        cell.append(input(sf, row[sf.name], function (v) { row[sf.name] = v; sync(); }));
-        rowEl.append(cell);
-      });
-      var rm = el('button', { type: 'button', class: 'btn btn-ghost btn-sm sd-rowrm', title: 'Remove' }, '✕');
-      rm.addEventListener('click', function () { rows.splice(ri, 1); render(); });
-      rowEl.append(rm);
-      list.append(rowEl);
-    });
-    wrap.append(list);
-    var add = el('button', { type: 'button', class: 'btn btn-ghost btn-sm' }, '+ Add ' + field.label.toLowerCase());
-    add.addEventListener('click', function () { rows.push({}); render(); });
-    wrap.append(add);
-    return wrap;
-  }
-
-  function renderField(block, field) {
-    if (field.kind === 'group') return renderGroup(block, field);
-    var wrap = el('div', { class: 'sd-field' });
-    wrap.append(el('label', { class: 'sd-label' }, field.label + (field.required ? ' *' : '')));
-    wrap.append(input(field, block.data[field.name], function (v) { block.data[field.name] = v; sync(); }));
-    if (field.help) wrap.append(el('p', { class: 'sd-help' }, field.help));
-    return wrap;
-  }
-
-  function renderBlock(block, idx) {
-    var spec = BY_KEY[block.type];
-    var card = el('div', { class: 'card card-padded sd-block' });
-    var head = el('div', { class: 'sd-block-head' });
-    head.append(el('h3', { class: 'sd-block-title' }, spec.label));
-    var rm = el('button', { type: 'button', class: 'btn btn-ghost btn-sm' }, 'Remove');
-    rm.addEventListener('click', function () { blocks.splice(idx, 1); render(); });
-    head.append(rm);
-    card.append(head);
-    if (spec.help) card.append(el('p', { class: 'sd-help' }, spec.help));
-    spec.fields.forEach(function (f) { card.append(renderField(block, f)); });
-    return card;
-  }
-
-  function sync() { hidden.value = JSON.stringify(blocks); }
-
-  function render() {
-    container.innerHTML = '';
-    if (!blocks.length) {
-      container.append(el('p', { class: 'sd-empty' }, 'No schema yet — pick a type below and click Add.'));
-    }
-    blocks.forEach(function (b, i) { container.append(renderBlock(b, i)); });
-    sync();
-    if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
-  }
-
-  document.getElementById('add-block').addEventListener('click', function () {
-    blocks.push({ type: document.getElementById('add-type').value, data: {} });
-    render();
+  var editor = window.MorphSchemaBlocks.mount({
+    container: document.getElementById('blocks'),
+    hidden: document.getElementById('blocks-json'),
+    select: document.getElementById('add-type'),
+    addButton: document.getElementById('add-block'),
+    types: JSON.parse(document.getElementById('schema-types-data').textContent),
+    blocks: JSON.parse(document.getElementById('existing-blocks-data').textContent) || [],
   });
-  document.getElementById('schema-form').addEventListener('submit', sync);
-
-  render();
+  document.getElementById('schema-form').addEventListener('submit', editor.sync);
 })();
 </script>
 {% endblock %}

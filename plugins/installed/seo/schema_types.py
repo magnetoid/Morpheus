@@ -3,17 +3,63 @@
 The editor renders a form from ``SCHEMA_TYPES`` (no JSON typing) and posts back a
 list of ``{type, data}`` entries; :func:`build_block` turns each into a
 ready-to-emit JSON-LD dict. The dashboard JS consumes :func:`registry_json`.
+The page's graph (``seo/schema/graph.py``) adds the blocks to the object's page
+(v0.163.0): until then they reached no page, because only the legacy
+``{% seo_meta %}`` tag rendered them and the head contract silenced it (the tag
+was deleted in v0.164.0).
 
 Adding a type = add an entry to ``SCHEMA_TYPES`` + a builder in ``_BUILDERS``.
-Keep it to types with real Google rich-result / AEO value — this is a friendly
-front end, not all of schema.org.
+Keep it to types Google's Search Gallery lists or answer engines read
+(https://developers.google.com/search/docs/appearance/structured-data/search-gallery),
+and never a type one of the store's apps writes itself (``OWNED_TYPES``): a second
+Product or Event node on a page contradicts the first.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 SCHEMA_CONTEXT = 'https://schema.org'
+
+# Types the store's own apps build into a page's graph (catalog and seo: Product,
+# ProductGroup, Book; seo: Organization, WebSite, WebPage, BreadcrumbList, the
+# listing's ItemList; cms: BlogPosting; booking_marketplace: Event, Hotel). The
+# editor refuses them when it saves and the graph skips them when it renders.
+OWNED_TYPES = frozenset(
+    {
+        'Product',
+        'ProductGroup',
+        'Book',
+        'Organization',
+        'OnlineStore',
+        'Store',
+        'WebSite',
+        'WebPage',
+        'CollectionPage',
+        'ItemList',
+        'BreadcrumbList',
+        'Article',
+        'BlogPosting',
+        'NewsArticle',
+        'Event',
+        'Hotel',
+        'LodgingBusiness',
+    }
+)
+
+# Types the editor offered before v0.163.0. A stored block of one renders nowhere;
+# the editor lists it with this reason and a button that deletes it.
+_NOT_USED_BY_GOOGLE = 'No longer used by Google.'
+_WRITTEN_BY_THE_STORE = 'The store writes this itself, so a second one would contradict it.'
+RETIRED_TYPES = {
+    'HowTo': _NOT_USED_BY_GOOGLE,
+    'Book': _NOT_USED_BY_GOOGLE,
+    'Event': _WRITTEN_BY_THE_STORE,
+    'Article': _WRITTEN_BY_THE_STORE,
+}
+
+_TYPE_NAME = re.compile(r'^[A-Z][A-Za-z0-9]{1,63}$')
 
 # Field ``kind`` vocabulary the editor JS understands:
 #   text | textarea | url | date | datetime | number | duration_min | group
@@ -38,57 +84,6 @@ SCHEMA_TYPES: list[dict[str, Any]] = [
                     {'name': 'answer', 'label': 'Answer', 'kind': 'textarea', 'required': True},
                 ],
             },
-        ],
-    },
-    {
-        'key': 'HowTo',
-        'type': 'HowTo',
-        'label': 'How-to',
-        'icon': 'list-ordered',
-        'help': 'Step-by-step instructions.',
-        'fields': [
-            {'name': 'name', 'label': 'Title', 'kind': 'text', 'required': True},
-            {'name': 'total_time_min', 'label': 'Total time (minutes)', 'kind': 'duration_min'},
-            {
-                'name': 'steps',
-                'label': 'Steps',
-                'kind': 'group',
-                'min': 1,
-                'subfields': [
-                    {'name': 'name', 'label': 'Step title', 'kind': 'text'},
-                    {'name': 'text', 'label': 'Instruction', 'kind': 'textarea', 'required': True},
-                ],
-            },
-            {
-                'name': 'tools',
-                'label': 'Tools',
-                'kind': 'group',
-                'subfields': [{'name': 'name', 'label': 'Tool', 'kind': 'text'}],
-            },
-            {
-                'name': 'supplies',
-                'label': 'Supplies',
-                'kind': 'group',
-                'subfields': [{'name': 'name', 'label': 'Supply', 'kind': 'text'}],
-            },
-        ],
-    },
-    {
-        'key': 'Event',
-        'type': 'Event',
-        'label': 'Event',
-        'icon': 'calendar',
-        'help': 'A scheduled event — launch, signing, workshop.',
-        'fields': [
-            {'name': 'name', 'label': 'Event name', 'kind': 'text', 'required': True},
-            {'name': 'start_date', 'label': 'Starts', 'kind': 'datetime', 'required': True},
-            {'name': 'end_date', 'label': 'Ends', 'kind': 'datetime'},
-            {'name': 'location_name', 'label': 'Location name', 'kind': 'text'},
-            {'name': 'location_address', 'label': 'Address', 'kind': 'text'},
-            {'name': 'url', 'label': 'Event URL', 'kind': 'url'},
-            {'name': 'offer_price', 'label': 'Ticket price', 'kind': 'number'},
-            {'name': 'offer_currency', 'label': 'Currency (e.g. USD)', 'kind': 'text'},
-            {'name': 'offer_url', 'label': 'Tickets URL', 'kind': 'url'},
         ],
     },
     {
@@ -117,47 +112,6 @@ SCHEMA_TYPES: list[dict[str, Any]] = [
                 'min': 1,
                 'subfields': [{'name': 'text', 'label': 'Instruction', 'kind': 'textarea'}],
             },
-        ],
-    },
-    {
-        'key': 'Article',
-        'type': 'Article',
-        'label': 'Article',
-        'icon': 'file-text',
-        'help': 'Editorial article / blog post (beyond the auto Article schema).',
-        'fields': [
-            {'name': 'headline', 'label': 'Headline', 'kind': 'text', 'required': True},
-            {'name': 'description', 'label': 'Summary', 'kind': 'textarea'},
-            {'name': 'author', 'label': 'Author name', 'kind': 'text'},
-            {'name': 'publisher', 'label': 'Publisher name', 'kind': 'text'},
-            {'name': 'date_published', 'label': 'Published', 'kind': 'date'},
-            {'name': 'date_modified', 'label': 'Last updated', 'kind': 'date'},
-            {'name': 'image', 'label': 'Image URL', 'kind': 'url'},
-            {'name': 'url', 'label': 'Canonical URL', 'kind': 'url'},
-        ],
-    },
-    {
-        'key': 'Book',
-        'type': 'Book',
-        'label': 'Book',
-        'icon': 'book-open',
-        'help': 'Describe a book for Google Book rich results. Format must be one '
-        'of: Hardcover, Paperback, EBook, AudiobookFormat. Language is a 2-letter '
-        'ISO 639-1 code (en, fr, de). ISBN-13 preferred.',
-        'fields': [
-            {'name': 'name', 'label': 'Title', 'kind': 'text', 'required': True},
-            {'name': 'author', 'label': 'Author', 'kind': 'text', 'required': True},
-            {'name': 'isbn', 'label': 'ISBN-13', 'kind': 'text'},
-            {
-                'name': 'book_format',
-                'label': 'Format (Hardcover/Paperback/EBook/AudiobookFormat)',
-                'kind': 'text',
-            },
-            {'name': 'in_language', 'label': 'Language (ISO 639-1, e.g. en)', 'kind': 'text'},
-            {'name': 'date_published', 'label': 'Published', 'kind': 'date'},
-            {'name': 'book_edition', 'label': 'Edition', 'kind': 'text'},
-            {'name': 'url', 'label': 'Book URL', 'kind': 'url'},
-            {'name': 'same_as', 'label': 'Reference URL (Wikipedia / Wikidata)', 'kind': 'url'},
         ],
     },
     {
@@ -192,7 +146,8 @@ SCHEMA_TYPES: list[dict[str, Any]] = [
         'type': 'Custom',
         'label': 'Custom type',
         'icon': 'braces',
-        'help': 'Any other schema.org type as labeled property/value rows — still no JSON.',
+        'help': 'Any other schema.org type as labeled property/value rows — still no JSON. '
+        'Not a type the store writes itself (Product, Organization, Article, Event, …).',
         'fields': [
             {'name': 'custom_type', 'label': 'schema.org @type', 'kind': 'text', 'required': True},
             {
@@ -268,50 +223,6 @@ def _build_faq(d: dict) -> dict:
     return {'@type': 'FAQPage', 'mainEntity': entities}
 
 
-def _build_howto(d: dict) -> dict:
-    return {
-        '@type': 'HowTo',
-        'name': _s(d, 'name'),
-        'totalTime': _iso_duration(d.get('total_time_min')),
-        'step': [
-            {'@type': 'HowToStep', 'name': _s(r, 'name'), 'text': _s(r, 'text')}
-            for r in _rows(d, 'steps')
-            if _s(r, 'text')
-        ],
-        'tool': [
-            {'@type': 'HowToTool', 'name': _s(r, 'name')}
-            for r in _rows(d, 'tools')
-            if _s(r, 'name')
-        ],
-        'supply': [
-            {'@type': 'HowToSupply', 'name': _s(r, 'name')}
-            for r in _rows(d, 'supplies')
-            if _s(r, 'name')
-        ],
-    }
-
-
-def _build_event(d: dict) -> dict:
-    return {
-        '@type': 'Event',
-        'name': _s(d, 'name'),
-        'startDate': _s(d, 'start_date'),
-        'endDate': _s(d, 'end_date'),
-        'url': _s(d, 'url'),
-        'location': {
-            '@type': 'Place',
-            'name': _s(d, 'location_name'),
-            'address': _s(d, 'location_address'),
-        },
-        'offers': {
-            '@type': 'Offer',
-            'price': _s(d, 'offer_price'),
-            'priceCurrency': _s(d, 'offer_currency'),
-            'url': _s(d, 'offer_url'),
-        },
-    }
-
-
 def _build_recipe(d: dict) -> dict:
     return {
         '@type': 'Recipe',
@@ -326,46 +237,6 @@ def _build_recipe(d: dict) -> dict:
             for r in _rows(d, 'steps')
             if _s(r, 'text')
         ],
-    }
-
-
-def _build_article(d: dict) -> dict:
-    author = _s(d, 'author')
-    publisher = _s(d, 'publisher')
-    return {
-        '@type': 'Article',
-        'headline': _s(d, 'headline'),
-        'description': _s(d, 'description'),
-        'author': {'@type': 'Person', 'name': author} if author else '',
-        'publisher': {'@type': 'Organization', 'name': publisher} if publisher else '',
-        'datePublished': _s(d, 'date_published'),
-        'dateModified': _s(d, 'date_modified'),
-        'image': _s(d, 'image'),
-        'url': _s(d, 'url'),
-    }
-
-
-def _build_book(d: dict) -> dict:
-    fmt = _s(d, 'book_format')
-    fmt_map = {
-        'hardcover': 'https://schema.org/Hardcover',
-        'paperback': 'https://schema.org/Paperback',
-        'ebook': 'https://schema.org/EBook',
-        'audiobook': 'https://schema.org/AudiobookFormat',
-        'audiobookformat': 'https://schema.org/AudiobookFormat',
-    }
-    author = _s(d, 'author')
-    return {
-        '@type': 'Book',
-        'name': _s(d, 'name'),
-        'author': {'@type': 'Person', 'name': author} if author else '',
-        'isbn': _s(d, 'isbn'),
-        'bookFormat': fmt_map.get(fmt.lower().replace(' ', ''), '') if fmt else '',
-        'inLanguage': _s(d, 'in_language'),
-        'datePublished': _s(d, 'date_published'),
-        'bookEdition': _s(d, 'book_edition'),
-        'url': _s(d, 'url'),
-        'sameAs': _s(d, 'same_as'),
     }
 
 
@@ -395,29 +266,53 @@ def _build_custom(d: dict) -> dict:
     block = {'@type': _s(d, 'custom_type') or 'Thing'}
     for r in _rows(d, 'props'):
         prop, val = _s(r, 'property'), _s(r, 'value')
-        if prop and val:
+        # '@id', '@type' and '@context' are the graph's, never a row's.
+        if prop and val and not prop.startswith('@'):
             block[prop] = val
     return block
 
 
 _BUILDERS = {
     'FAQPage': _build_faq,
-    'HowTo': _build_howto,
-    'Event': _build_event,
     'Recipe': _build_recipe,
-    'Article': _build_article,
-    'Book': _build_book,
     'VideoObject': _build_video,
     'Course': _build_course,
     'Custom': _build_custom,
 }
 
 
+def block_type(entry: dict) -> str:
+    """The schema.org type a stored entry would publish (a custom block's own)."""
+    if not isinstance(entry, dict):
+        return ''
+    kind = str(entry.get('type') or '')
+    if kind == 'Custom':
+        return _s(entry.get('data') or {}, 'custom_type') or 'Thing'
+    return kind
+
+
+def refusal(entry: dict) -> str:
+    """Why a stored entry may not render, or '' when it may."""
+    kind = str(entry.get('type') or '') if isinstance(entry, dict) else ''
+    if kind in RETIRED_TYPES:
+        return RETIRED_TYPES[kind]
+    if kind not in _BUILDERS:
+        return _NOT_USED_BY_GOOGLE
+    published = block_type(entry)
+    if published in OWNED_TYPES:
+        return _WRITTEN_BY_THE_STORE
+    if not _TYPE_NAME.match(published):
+        return 'Not a schema.org type name.'
+    return ''
+
+
 def build_block(type_key: str, data: dict) -> dict | None:
     """Turn one editor entry into a JSON-LD block (with @context), or None if the
-    type is unknown or the block has no meaningful content."""
+    type is unknown or refused, or the block has no meaningful content."""
     builder = _BUILDERS.get(type_key)
     if builder is None or not isinstance(data, dict):
+        return None
+    if refusal({'type': type_key, 'data': data}):
         return None
     block = _clean(builder(data))
     # A block is meaningful only if it has at least one property beyond @type.
@@ -427,12 +322,44 @@ def build_block(type_key: str, data: dict) -> dict | None:
 
 
 def build_blocks(entries: list[dict]) -> list[dict]:
-    """Map a posted ``[{type, data}, …]`` list to clean JSON-LD blocks."""
+    """The JSON-LD blocks of the stored entries that may render, in order."""
     out = []
-    for entry in entries:
+    for entry in entries or []:
         if not isinstance(entry, dict):
             continue
         block = build_block(entry.get('type', ''), entry.get('data') or {})
         if block:
             out.append(block)
     return out
+
+
+def retired_entries(entries: list[dict]) -> list[dict]:
+    """The stored entries that render nowhere, each with its place and the reason."""
+    out = []
+    for index, entry in enumerate(entries or []):
+        reason = refusal(entry)
+        if reason:
+            out.append({'index': index, 'type': block_type(entry), 'reason': reason})
+    return out
+
+
+def merge_editor_blocks(entries: Any, stored: list[dict]) -> tuple[list[dict], list[str]]:
+    """`(blocks to store, refusals)` for what the editor posted.
+
+    One rule for both editors (the Structured data page and the SEO card's
+    dialog): an entry is kept when it may render and has content; a refused one
+    is dropped with its reason; the stored blocks that render nowhere stay until
+    the merchant deletes them, because the editor shows them only as a list.
+    """
+    clean: list[dict] = []
+    refused: list[str] = []
+    for e in entries if isinstance(entries, list) else []:
+        if not isinstance(e, dict):
+            continue
+        entry = {'type': e.get('type', ''), 'data': e.get('data') or {}}
+        if reason := refusal(entry):
+            refused.append(reason)
+        elif build_block(entry['type'], entry['data']):
+            clean.append(entry)
+    kept = [stored[r['index']] for r in retired_entries(stored)]
+    return clean + kept, refused

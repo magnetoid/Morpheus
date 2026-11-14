@@ -528,3 +528,459 @@ def inspect_url_tool(*, url: str) -> ToolResult:
         return ToolResult(output=search_console.inspect_url(url))
     except search_console.SearchConsoleError as e:
         raise ToolError(str(e)) from e
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Structured-data editor (SEO → Structured data): the blocks a merchant adds to
+# one page's graph — FAQ, recipe, video, course or a custom type (v0.163.0).
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SCHEMA_TARGET = {
+    'model': {
+        'type': 'string',
+        'description': "The object's kind as app.model, e.g. catalog.product or cms.page.",
+    },
+    'object_id': {'type': 'string', 'description': "The object's id, or its slug."},
+}
+
+
+def _schema_target(model: str, object_id: str):
+    from django.contrib.contenttypes.models import ContentType
+
+    app_label, _, name = (model or '').lower().partition('.')
+    ct = ContentType.objects.filter(app_label=app_label, model=name).first()
+    if ct is None or ct.model_class() is None:
+        raise ToolError(f'Unknown kind of object: {model}')
+    cls = ct.model_class()
+    obj = None
+    try:
+        obj = cls.objects.filter(pk=object_id).first()
+    except Exception:  # noqa: BLE001 — a slug is not a valid pk (UUID, int)
+        obj = None
+    if obj is None and any(f.name == 'slug' for f in cls._meta.get_fields()):
+        obj = cls.objects.filter(slug=object_id).first()
+    if obj is None:
+        raise ToolError(f'No {model} {object_id}.')
+    return ct, obj
+
+
+def _schema_rows(entries: list) -> list[dict]:
+    from plugins.installed.seo.schema_types import block_type, refusal
+
+    return [
+        {
+            'index': index,
+            'type': block_type(entry),
+            'data': (entry.get('data') if isinstance(entry, dict) else None) or {},
+            'shows': not refusal(entry),
+            **({'why_not': refusal(entry)} if refusal(entry) else {}),
+        }
+        for index, entry in enumerate(entries or [])
+    ]
+
+
+@tool(
+    name='seo.schema_blocks',
+    description=(
+        'The structured-data blocks the merchant added to pages (SEO → Structured data): '
+        'FAQ, recipe, video, course or a custom schema.org type. With model and object_id, '
+        "one object's blocks (with each block's index and whether it shows) and the types "
+        'that can be added; without, every object that has blocks.'
+    ),
+    scopes=['seo.read'],
+    schema={'type': 'object', 'properties': dict(_SCHEMA_TARGET)},
+)
+def schema_blocks_tool(*, model: str = '', object_id: str = '') -> ToolResult:
+    from plugins.installed.seo.models import SeoMeta
+    from plugins.installed.seo.schema_types import SCHEMA_TYPES
+
+    types = [{'type': t['key'], 'label': t['label'], 'fields': t['fields']} for t in SCHEMA_TYPES]
+    if model and object_id:
+        ct, obj = _schema_target(model, object_id)
+        meta = SeoMeta.objects.filter(content_type=ct, object_id=str(obj.pk)).first()
+        return ToolResult(
+            output={
+                'object': str(obj),
+                'blocks': _schema_rows(meta.schema_blocks if meta else []),
+                'types': types,
+            }
+        )
+    rows = []
+    for meta in SeoMeta.objects.exclude(schema_blocks=[]).select_related('content_type')[:50]:
+        if not meta.schema_blocks:
+            continue
+        ct = meta.content_type
+        rows.append(
+            {
+                'model': f'{ct.app_label}.{ct.model}',
+                'object_id': meta.object_id,
+                'blocks': _schema_rows(meta.schema_blocks),
+            }
+        )
+    return ToolResult(output={'objects': rows, 'types': types})
+
+
+@tool(
+    name='seo.set_schema_block',
+    description=(
+        "Add a structured-data block to one object's page, or replace the block at index. "
+        'type is FAQPage, Recipe, VideoObject, Course or Custom; data holds the fields '
+        'seo.schema_blocks lists for that type (an FAQ: {"items": [{"question", "answer"}]}). '
+        'A type the store writes itself (Product, Organization, Article, Event, …) is refused.'
+    ),
+    scopes=['seo.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            **_SCHEMA_TARGET,
+            'type': {'type': 'string'},
+            'data': {'type': 'object'},
+            'index': {'type': 'integer', 'description': 'Replace this block instead of adding.'},
+        },
+        'required': ['model', 'object_id', 'type', 'data'],
+    },
+    requires_approval=True,
+)
+def set_schema_block_tool(
+    *, model: str, object_id: str, type: str, data: dict, index: int | None = None
+) -> ToolResult:
+    from plugins.installed.seo.models import SeoMeta
+    from plugins.installed.seo.schema_types import build_block, refusal
+
+    entry = {'type': type, 'data': data if isinstance(data, dict) else {}}
+    if reason := refusal(entry):
+        raise ToolError(reason)
+    if not build_block(entry['type'], entry['data']):
+        raise ToolError('The block has nothing in it: fill its required fields.')
+    ct, obj = _schema_target(model, object_id)
+    meta, _ = SeoMeta.objects.get_or_create(content_type=ct, object_id=str(obj.pk))
+    blocks = list(meta.schema_blocks or [])
+    if index is None:
+        blocks.append(entry)
+    elif 0 <= index < len(blocks):
+        blocks[index] = entry
+    else:
+        raise ToolError(f'There is no block {index}.')
+    meta.schema_blocks = blocks
+    meta.save()
+    return ToolResult(
+        output={'object': str(obj), 'blocks': _schema_rows(blocks)},
+        display=f'Saved a {type} block on {obj}',
+    )
+
+
+@tool(
+    name='seo.delete_schema_block',
+    description="Delete the structured-data block at index from one object's page.",
+    scopes=['seo.write'],
+    schema={
+        'type': 'object',
+        'properties': {**_SCHEMA_TARGET, 'index': {'type': 'integer'}},
+        'required': ['model', 'object_id', 'index'],
+    },
+    requires_approval=True,
+)
+def delete_schema_block_tool(*, model: str, object_id: str, index: int) -> ToolResult:
+    from plugins.installed.seo.models import SeoMeta
+
+    ct, obj = _schema_target(model, object_id)
+    meta = SeoMeta.objects.filter(content_type=ct, object_id=str(obj.pk)).first()
+    blocks = list(meta.schema_blocks or []) if meta else []
+    if not 0 <= index < len(blocks):
+        raise ToolError(f'There is no block {index}.')
+    removed = blocks.pop(index)
+    meta.schema_blocks = blocks
+    meta.save()
+    return ToolResult(
+        output={'object': str(obj), 'blocks': _schema_rows(blocks)},
+        display=f'Deleted a {removed.get("type", "")} block from {obj}',
+    )
+
+
+# ── Index rules, title patterns and the site audit (v0.164.0) ────────────────
+# Each write goes through the same service function as its dashboard page
+# (services/index_rules.py, services/templating.py, services/site_audit.py), so
+# Linda's change is refused for the same reasons a merchant's is and drops the
+# same caches.
+
+_POLICIES = ['consolidate', 'noindex', 'allowlist', 'block']
+
+
+@tool(
+    name='seo.index_rules',
+    description=(
+        "The store's index rules (SEO → Index rules): what each query parameter does to a "
+        'listing URL. consolidate = the canonical drops it and the page stays indexable; '
+        'noindex = noindex, follow and self-canonical; allowlist = only the listed values '
+        'are indexable; block = Disallow in robots.txt.'
+    ),
+    scopes=['seo.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def index_rules_tool() -> ToolResult:
+    from plugins.installed.seo.models import IndexRule
+    from plugins.installed.seo.services.index_rules import rule_row
+
+    return ToolResult(output={'rules': [rule_row(r) for r in IndexRule.objects.all()]})
+
+
+@tool(
+    name='seo.set_index_rule',
+    description=(
+        'Create or change the index rule for one query parameter (a trailing * matches a '
+        'family, e.g. utm_*). policy is consolidate, noindex, allowlist or block; '
+        'allowed_values are the values that stay indexable under allowlist. The page '
+        'number (page, page*, p*) has its own policy and is refused.'
+    ),
+    scopes=['seo.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'param': {'type': 'string'},
+            'policy': {'type': 'string', 'enum': _POLICIES},
+            'allowed_values': {'type': 'array', 'items': {'type': 'string'}},
+            'is_active': {'type': 'boolean'},
+            'note': {'type': 'string'},
+        },
+        'required': ['param', 'policy'],
+    },
+    requires_approval=True,
+)
+def set_index_rule_tool(
+    *,
+    param: str,
+    policy: str,
+    allowed_values: list | None = None,
+    is_active: bool = True,
+    note: str = '',
+) -> ToolResult:
+    from plugins.installed.seo.models import IndexRule
+    from plugins.installed.seo.services.index_rules import RuleError, rule_row, save_index_rule
+
+    existing = IndexRule.objects.filter(param=(param or '').strip().lower()).first()
+    try:
+        row = save_index_rule(
+            param=param,
+            policy=policy,
+            allowed_values=allowed_values or [],
+            is_active=is_active,
+            note=note,
+            rule_id=str(existing.pk) if existing else '',
+        )
+    except RuleError as e:
+        raise ToolError(str(e)) from e
+    return ToolResult(
+        output={'rule': rule_row(row), 'created': existing is None},
+        display=f'Index rule for {row.param}: {row.policy}',
+    )
+
+
+@tool(
+    name='seo.delete_index_rule',
+    description='Delete the index rule for one query parameter.',
+    scopes=['seo.write'],
+    schema={
+        'type': 'object',
+        'properties': {'param': {'type': 'string'}},
+        'required': ['param'],
+    },
+    requires_approval=True,
+)
+def delete_index_rule_tool(*, param: str) -> ToolResult:
+    from plugins.installed.seo.services.index_rules import delete_index_rule
+
+    if not delete_index_rule(param=param):
+        raise ToolError(f'There is no index rule for “{param}”.')
+    return ToolResult(output={'deleted': param}, display=f'Deleted the index rule for {param}')
+
+
+@tool(
+    name='seo.templates',
+    description=(
+        'Title and description patterns per page kind (SEO → Templates), and the tokens a '
+        'pattern can use. A pattern fills the pages of its kind (in one category when it has '
+        'a scope) at render time; empty_only leaves a typed title alone, all overrides it.'
+    ),
+    scopes=['seo.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def templates_tool() -> ToolResult:
+    from plugins.installed.seo.models import SeoTemplate
+    from plugins.installed.seo.services.templating import known_tokens, template_row
+
+    return ToolResult(
+        output={
+            'templates': [template_row(r) for r in SeoTemplate.objects.all()],
+            'tokens': [f'{{{name}}}' for name in known_tokens()],
+            'filters': ['truncate:N', 'title', 'lower', 'upper'],
+            'kinds': [c[0] for c in SeoTemplate.KIND_CHOICES],
+        }
+    )
+
+
+@tool(
+    name='seo.set_template',
+    description=(
+        'Create or change the title or description pattern for one page kind (product, '
+        'listing, article, page, static), optionally in one category (scope = its slug). '
+        'Grammar: {name}, {category|"Shop"} (first non-empty wins), '
+        '{name|truncate:40|title}, [ in {category}] (dropped when nothing in it resolves). '
+        'A token the store cannot fill is refused with the list of the ones it can; '
+        'seo.templates lists them.'
+    ),
+    scopes=['seo.write'],
+    schema={
+        'type': 'object',
+        'properties': {
+            'template': {'type': 'string'},
+            'kind': {
+                'type': 'string',
+                'enum': ['product', 'listing', 'article', 'page', 'static'],
+            },
+            'field': {'type': 'string', 'enum': ['title', 'description']},
+            'scope': {'type': 'string', 'description': 'A category slug, or empty for all.'},
+            'mode': {'type': 'string', 'enum': ['empty_only', 'all']},
+            'priority': {'type': 'integer', 'description': 'Lower wins. Default 100.'},
+            'is_active': {'type': 'boolean'},
+            'note': {'type': 'string'},
+        },
+        'required': ['template', 'kind'],
+    },
+    requires_approval=True,
+)
+def set_template_tool(
+    *,
+    template: str,
+    kind: str,
+    field: str = 'title',
+    scope: str = '',
+    mode: str = 'empty_only',
+    priority: int = 100,
+    is_active: bool = True,
+    note: str = '',
+) -> ToolResult:
+    from plugins.installed.seo.models import SeoTemplate
+    from plugins.installed.seo.services.templating import (
+        TemplateError,
+        save_template,
+        template_row,
+    )
+
+    existing = SeoTemplate.objects.filter(
+        kind=kind, field=field or 'title', scope=(scope or '').strip().lower()
+    ).first()
+    try:
+        row = save_template(
+            template=template,
+            kind=kind,
+            field=field,
+            scope=scope,
+            mode=mode,
+            priority=priority,
+            note=note,
+            is_active=is_active,
+            template_id=str(existing.pk) if existing else '',
+        )
+    except TemplateError as e:
+        raise ToolError(str(e)) from e
+    return ToolResult(
+        output={'template': template_row(row), 'created': existing is None},
+        display=f'{row.get_kind_display()} {row.field} pattern: {row.template}',
+    )
+
+
+@tool(
+    name='seo.delete_template',
+    description='Delete one title or description pattern by its id (from seo.templates).',
+    scopes=['seo.write'],
+    schema={
+        'type': 'object',
+        'properties': {'template_id': {'type': 'string'}},
+        'required': ['template_id'],
+    },
+    requires_approval=True,
+)
+def delete_template_tool(*, template_id: str) -> ToolResult:
+    from plugins.installed.seo.services.templating import delete_template
+
+    if not delete_template(template_id):
+        raise ToolError(f'There is no pattern {template_id}.')
+    return ToolResult(output={'deleted': template_id}, display='Deleted a title pattern')
+
+
+@tool(
+    name='seo.audit_results',
+    description=(
+        'The last site-wide SEO scan: when it ran, whether it stopped early, its score, and '
+        'each finding (code, severity, how many) with up to 20 of the pages it names. It '
+        'reads what each page rendered, including whether the markup states the price, '
+        'stock and images the store actually has.'
+    ),
+    scopes=['seo.read'],
+    schema={'type': 'object', 'properties': {}},
+)
+def audit_results_tool() -> ToolResult:
+    from django.core.cache import cache
+
+    from plugins.installed.seo.services import site_audit
+
+    report = site_audit.cached()
+    try:
+        running = bool(cache.get(site_audit.RUNNING_KEY))
+    except Exception:  # noqa: BLE001
+        running = False
+    if not report:
+        return ToolResult(
+            output={'ran_at': None, 'running': running, 'findings': []},
+            display='No site scan has run yet; seo.run_site_audit starts one.',
+        )
+    findings = report.get('findings') or []
+    summary: dict[str, int] = {}
+    for f in findings:
+        summary[f['severity']] = summary.get(f['severity'], 0) + 1
+    return ToolResult(
+        output={
+            'ran_at': report.get('generated_at'),
+            'partial': bool(report.get('partial')),
+            'running': running,
+            'pages_checked': report.get('pages_checked'),
+            'score': report.get('score'),
+            'summary': summary,
+            'findings': [
+                {
+                    'code': f['code'],
+                    'severity': f['severity'],
+                    'title': f['title'],
+                    'count': f['count'],
+                    'pages': list(f.get('examples') or [])[:20],
+                    **({'fix_url': f['fix_url']} if f.get('fix_url') else {}),
+                }
+                for f in findings
+            ],
+            'checks': report.get('checks') or {},
+            'measured': report.get('measured') or {},
+        }
+    )
+
+
+@tool(
+    name='seo.run_site_audit',
+    description=(
+        'Queue a fresh site-wide SEO scan (it renders every sitemap page in the '
+        'background, minutes for a large shop). Refused while one is running and for ten '
+        'minutes after the last one; read the findings with seo.audit_results.'
+    ),
+    # It changes no data, but it puts the whole shop through a render: the
+    # merchant says yes first, as on the dashboard's button (seo.write).
+    scopes=['seo.write'],
+    schema={'type': 'object', 'properties': {}},
+    requires_approval=True,
+)
+def run_site_audit_tool() -> ToolResult:
+    from plugins.installed.seo.services.site_audit import AuditRefused, queue_site_audit
+
+    try:
+        queued_at = queue_site_audit()
+    except AuditRefused as e:
+        raise ToolError(str(e)) from e
+    return ToolResult(output={'queued_at': queued_at}, display='Site scan queued')

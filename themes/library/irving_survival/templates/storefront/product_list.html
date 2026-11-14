@@ -1,6 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}{% load breadcrumbs %}
-{% load i18n %}{% load seo %}{% load tracking %}
+{% load i18n %}{% load tracking %}
 {% comment %}
 The shop and its filtered views, on the direction-1a category design: a large
 title with its description beside it, then one row of filters above a
@@ -12,9 +12,6 @@ change keeps it, and shows as a removable chip.
 {% endcomment %}
 
 {% block extra_head %}
-{% seo_collection_jsonld items=plp_items name=plp_name description=seo_description %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
-{% seo_pagination_links page_obj=page_obj %}
 {% dl_view_item_list products list_id=selected_category|default:'all' list_name=plp_name %}
 <style>
   .plp-head { padding: clamp(2.5rem, 5vw, 3.5rem) 0 clamp(1.5rem, 3vw, 2.5rem); }

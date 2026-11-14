@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 
-from morpheus.app import DashboardPage, Plugin, SettingsPanel, StorefrontBlock
+from morpheus.app import DashboardPage, Plugin, StorefrontBlock
 from morpheus.core import events
 
 logger = logging.getLogger('morpheus.tracking')
@@ -448,18 +448,6 @@ class TrackingPlugin(Plugin):
                 hint='GA4 and GTM, event firing, consent',
             )
         ]
-
-    def contribute_settings_panel(self) -> SettingsPanel:
-        return SettingsPanel(
-            label='Google Ads conversions',
-            description=(
-                'Optional. Fires a Google Ads conversion event on the order '
-                'confirmation page. GA4 + GTM main settings live at '
-                '/dashboard/tracking/ — these knobs are the Ads-specific bolt-on.'
-            ),
-            schema=self.get_config_schema(),
-            category='channels',
-        )
 
     def get_config_schema(self) -> dict:
         return {

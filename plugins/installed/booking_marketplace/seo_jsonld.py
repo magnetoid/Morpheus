@@ -17,7 +17,13 @@ every node is anchored to the page's canonical URL.
 
 from __future__ import annotations
 
+from core.text import clip, plain_text
 from plugins.installed.booking_marketplace import country
+
+
+def _clip_text(text, limit: int) -> str:
+    """Plain text cut at a sentence or a word, never mid-word (v0.163.0)."""
+    return clip(plain_text(text or ''), limit)
 
 
 def _abs(request, path: str) -> str:
@@ -55,7 +61,7 @@ def _destination_node(place, *, url: str, request=None) -> dict:
         '@type': 'TouristDestination',
         '@id': f'{url}#destination',
         'name': place.name,
-        'description': place.summary or (place.overview or '')[:300] or place.name,
+        'description': place.summary or _clip_text(place.overview, 300) or place.name,
         'url': url,
     }
     if place.image:
@@ -135,7 +141,9 @@ def _product_node(service, *, url: str, request=None, offer=None) -> dict:
         '@type': 'Product',
         '@id': f'{url}#product',
         'name': service.name,
-        'description': service.short_description or service.description[:300] or service.name,
+        'description': service.short_description
+        or _clip_text(service.description, 300)
+        or service.name,
         'url': url,
     }
     if service.image:
@@ -177,7 +185,9 @@ def _trip_node(service, *, url: str, request=None, offer=None) -> dict:
         '@type': 'TouristTrip',
         '@id': f'{url}#trip',
         'name': service.name,
-        'description': service.short_description or service.description[:300] or service.name,
+        'description': service.short_description
+        or _clip_text(service.description, 300)
+        or service.name,
         'url': url,
         'provider': {'@type': 'Organization', 'name': service.vendor.name},
     }
@@ -238,11 +248,12 @@ def _hotel_node(prop, *, url: str, request=None, with_prices=True) -> dict:
         '@type': 'Hotel',
         '@id': f'{url}#hotel',
         'name': prop.name,
-        'description': prop.short_description or (prop.description or '')[:300] or prop.name,
+        'description': prop.short_description or _clip_text(prop.description, 300) or prop.name,
         'url': url,
     }
-    if prop.image:
-        node['image'] = _abs(request, prop.image.url)
+    image = _hotel_image(prop)
+    if image:
+        node['image'] = _abs(request, image)
     address = {'@type': 'PostalAddress', 'addressCountry': country.current().code}
     if prop.address:
         address['streetAddress'] = prop.address
@@ -294,6 +305,17 @@ def _hotel_node(prop, *, url: str, request=None, with_prices=True) -> dict:
     return node
 
 
+def _hotel_image(prop) -> str:
+    """The hotel's cover, else the first photo of its gallery (v0.163.0): a hotel
+    seeded with gallery photos only had no image in its node."""
+    if prop.image:
+        return prop.image.url
+    for photo in prop.images.all():
+        if photo.image:
+            return photo.image.url
+    return ''
+
+
 def property_nodes(prop, *, url: str, request=None, with_prices=True) -> list[dict]:
     """Hotel (+ geo, address, amenities, star rating, room Offers)."""
     return [_hotel_node(prop, url=url, request=request, with_prices=with_prices)]
@@ -308,9 +330,13 @@ def event_nodes(event, *, url: str, request=None) -> list[dict]:
     ahead — so the honest options are a dated node or no node, never a guessed
     date. Undated events still ship their FAQ (and the head's breadcrumbs), and
     the page still tells a human "Early February" via `when_display`.
+
+    Nor once the stored edition is over (v0.163.0): the node would say
+    `EventScheduled` for a date that has passed. An annual event's stored date is
+    that edition's, so it loses its node too until someone enters the next one.
     """
     nodes: list[dict] = []
-    if event.start_date:
+    if event.start_date and not event.edition_over():
         node = {
             '@type': 'Event',
             '@id': f'{url}#event',

@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load i18n seo static %}
+{% load i18n static %}
 
 {% comment %}
 The investor page (booking_marketplace/investors.py). Every market figure is public
@@ -10,7 +10,6 @@ flow are switched on (owner, 2026-11-06). Keep it that way when editing the copy
 {% endcomment %}
 
 {% block extra_head %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
 <style>
   {% comment %}base.html redefines --accent, --accent-warm and --muted as bare HSL triplets
   (the shadcn tokens the Tailwind build reads), so legacy.css's colour variables of the same

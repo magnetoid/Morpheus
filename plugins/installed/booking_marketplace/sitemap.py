@@ -14,15 +14,19 @@ The rows obey the same rule as the detail views: an inactive host's listings
 altogether, although the nav links both. A region × category page
 (`/regions/<key>/<category>/`, v0.161.0) is listed when an experience is on it.
 
-None of the models here carry an `updated_at` field (only `created_at`), so
-every contributed entry's `lastmod` is `None` — nothing to report.
+Each detail page carries its `lastmod` and up to six photos (`images`, for the
+image sitemap; v0.163.0). An experience's date is its catalog Product's
+`updated_at`, which every listing save touches; a place, a stay or an event has
+its own `updated_at` from v0.163.0, null on a row nobody has saved since, and
+then it claims no date. List pages carry none. A one-off event whose last day
+has passed leaves the sitemap; an annual one, or one with no date yet, stays.
 """
 
 from __future__ import annotations
 
 from urllib.parse import urljoin
 
-from core.utils.site import site_base_url
+from core.utils.site import site_base_url, store_today
 
 
 def contribute_sitemap_urls(value, **kwargs):
@@ -41,15 +45,24 @@ def contribute_sitemap_urls(value, **kwargs):
     base = site_base_url()
     entries = list(value or [])
 
-    def add(path: str, *, changefreq: str = 'weekly', priority: str = '0.7') -> None:
-        entries.append(
-            {
-                'loc': urljoin(base, path),
-                'lastmod': None,
-                'changefreq': changefreq,
-                'priority': priority,
-            }
-        )
+    def add(
+        path: str,
+        *,
+        changefreq: str = 'weekly',
+        priority: str = '0.7',
+        lastmod=None,
+        images=(),
+    ) -> None:
+        entry = {
+            'loc': urljoin(base, path),
+            'lastmod': lastmod,
+            'changefreq': changefreq,
+            'priority': priority,
+        }
+        photos = _photos(images)
+        if photos:
+            entry['images'] = [urljoin(base, url) for url in photos]
+        entries.append(entry)
 
     live = BookableService.objects.filter(is_active=True, vendor__is_active=True)
     experiences = live.filter(listing_kind='experience')
@@ -86,12 +99,53 @@ def contribute_sitemap_urls(value, **kwargs):
         for category, _count in rows:
             add(f'/regions/{region}/{category.slug}/', priority='0.5')
 
-    for svc in live.only('slug'):
-        add(f'/bookings/{svc.slug}/')
-    for place in places.only('slug'):
-        add(f'/places/{place.slug}/', changefreq='monthly', priority='0.6')
-    for prop in stays.only('slug'):
-        add(f'/hotels/{prop.slug}/')
-    for event in events.only('slug'):
-        add(f'/events/{event.slug}/', changefreq='monthly', priority='0.6')
+    for svc in live.select_related('product').prefetch_related('images', 'product__images'):
+        product = svc.product
+        add(
+            f'/bookings/{svc.slug}/',
+            lastmod=getattr(product, 'updated_at', None),
+            images=[
+                *(i.image for i in (product.images.all() if product else [])),
+                svc.image,
+                *(i.image for i in svc.images.all()),
+            ],
+        )
+    for place in places.only('slug', 'image', 'updated_at'):
+        add(
+            f'/places/{place.slug}/',
+            changefreq='monthly',
+            priority='0.6',
+            lastmod=place.updated_at,
+            images=[place.image],
+        )
+    for prop in stays.prefetch_related('images'):
+        add(
+            f'/hotels/{prop.slug}/',
+            lastmod=prop.updated_at,
+            images=[prop.image, *(i.image for i in prop.images.all())],
+        )
+    today = store_today()
+    for event in events:
+        if event.has_ended(today):
+            continue
+        add(
+            f'/events/{event.slug}/',
+            changefreq='monthly',
+            priority='0.6',
+            lastmod=event.updated_at,
+            images=[event.image],
+        )
     return entries
+
+
+def _photos(files) -> list[str]:
+    """Up to six distinct addresses of the files that exist, in order."""
+    urls: list[str] = []
+    for file in files:
+        try:
+            url = file.url if file else ''
+        except Exception:  # noqa: BLE001 — a row whose file is gone
+            url = ''
+        if url and url not in urls:
+            urls.append(url)
+    return urls[:6]

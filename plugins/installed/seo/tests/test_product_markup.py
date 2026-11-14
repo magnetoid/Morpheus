@@ -250,6 +250,40 @@ class VariantMarkupTests(TestCase):
         self.digital.save(update_fields=['size'])
         self.assertEqual(self._node()['variesBy'], 'https://schema.org/size')
 
+    def test_each_differing_axis_is_listed_and_on_its_member(self):
+        """v0.163.0: colour from a variant attribute and size from the size
+        field, both differing, are both claimed, and each member says its own
+        value (https://developers.google.com/search/docs/appearance/structured-data/product-variants)."""
+        from plugins.installed.catalog.models import Attribute, AttributeValue
+
+        colour = Attribute.objects.create(name='Color', slug='color-vp', is_variant=True)
+        red = AttributeValue.objects.create(attribute=colour, name='Red', slug='red')
+        blue = AttributeValue.objects.create(attribute=colour, name='Blue', slug='blue')
+        self.print_variant.size = 'A5'
+        self.print_variant.save(update_fields=['size'])
+        self.print_variant.attribute_values.set([red])
+        self.digital.size = 'A4'
+        self.digital.save(update_fields=['size'])
+        self.digital.attribute_values.set([blue])
+        node = self._node()
+        self.assertEqual(node['variesBy'], ['https://schema.org/size', 'https://schema.org/color'])
+        members = {v['sku']: v for v in node['hasVariant']}
+        self.assertEqual((members['VP-1-P']['size'], members['VP-1-P']['color']), ('A5', 'Red'))
+        self.assertEqual((members['VP-1-D']['size'], members['VP-1-D']['color']), ('A4', 'Blue'))
+
+    def test_a_shared_value_is_no_axis(self):
+        """Both editions red: colour does not tell them apart, so nothing is
+        claimed and no member carries it, as before v0.163.0."""
+        from plugins.installed.catalog.models import Attribute, AttributeValue
+
+        colour = Attribute.objects.create(name='Color', slug='color-same', is_variant=True)
+        red = AttributeValue.objects.create(attribute=colour, name='Red', slug='red')
+        self.print_variant.attribute_values.set([red])
+        self.digital.attribute_values.set([red])
+        node = self._node()
+        self.assertNotIn('variesBy', node)
+        self.assertFalse(any('color' in v for v in node['hasVariant']))
+
     def test_a_single_variant_is_not_a_group(self):
         """A chooser for one option is a chooser the shopper does not have."""
         self.digital.delete()

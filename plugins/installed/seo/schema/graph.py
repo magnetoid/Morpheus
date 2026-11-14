@@ -41,10 +41,14 @@ _ITEM_KEYS = (
     'search_items',
 )
 
-# The parts of a page a voice assistant may read aloud. Kept as a graph property
-# on WebPage rather than its own block — `speakable` is a property, and emitting
-# it as a standalone node was always a workaround for having no graph.
-_SPEAKABLE_SELECTORS = ['h1', '[data-speakable]', '.product-summary', '.entry-summary']
+# No `speakable`: Google reads it only to answer topical news queries, for users
+# in the U.S. whose Google Home devices are set to English, and calls it a beta
+# (Search Central, appearance/structured-data/speakable, read 2026-11-12). These
+# stores sell goods and trips; the property claimed a use no reader makes of it.
+
+# An article's `articleBody` is kept under 5,000 characters: the graph is in every
+# page's head, and the reader already has the whole text below it.
+_ARTICLE_BODY_LIMIT = 4999
 
 
 def build_graph(page: SeoPage, *, request=None, url: str = '') -> dict | None:
@@ -90,6 +94,9 @@ def build_graph(page: SeoPage, *, request=None, url: str = '') -> dict | None:
 
     graph = {'@context': 'https://schema.org', '@graph': [n for n in nodes if n]}
     graph = _fire_filter(graph, page, request)
+    # After every app's nodes, so a merchant's block never doubles one of them.
+    _safe(_add_editor_blocks, graph, page, url)
+    _safe(_absolute_list_urls, graph, base)
     return graph if graph.get('@graph') else None
 
 
@@ -153,11 +160,6 @@ def _webpage(page: SeoPage, url: str, website: dict | None, org: dict | None) ->
         node['primaryImageOfPage'] = page.image
     if org:
         node['publisher'] = {'@id': org['@id']}
-    if page.kind in (KIND_PRODUCT, KIND_ARTICLE):
-        node['speakable'] = {
-            '@type': 'SpeakableSpecification',
-            'cssSelector': _SPEAKABLE_SELECTORS,
-        }
     return {k: v for k, v in node.items() if v not in (None, '', [])}
 
 
@@ -333,8 +335,8 @@ def _list_nodes(page: SeoPage, url: str) -> list[dict]:
 
 
 def _article_nodes(page: SeoPage, url: str) -> list[dict]:
+    from core.text import clip, plain_text
     from plugins.installed.seo.services import article_jsonld
-    from plugins.installed.seo.services._helpers import strip_html
 
     entry = page.context.get('entry') or page.obj
     if not entry:
@@ -343,7 +345,9 @@ def _article_nodes(page: SeoPage, url: str) -> list[dict]:
     node = _safe(
         article_jsonld,
         headline=str(get('title') or page.title or ''),
-        body=strip_html(get('body') or '')[:5000],
+        # The text a reader sees: markdown's markers and the tags gone, entities
+        # read, one space between words, cut at a sentence or word (v0.163.0).
+        body=clip(plain_text(get('body') or ''), _ARTICLE_BODY_LIMIT),
         url=url,
         kind='BlogPosting',
         description=str(get('excerpt') or page.description or ''),
@@ -352,10 +356,10 @@ def _article_nodes(page: SeoPage, url: str) -> list[dict]:
         updated_at=get('updated_at'),
         image=str(get('image') or page.image or ''),
         # E-E-A-T + provenance. `journal_dict` has assembled these since v0.46
-        # and the themes' journal templates pass them to `seo_article_jsonld` —
-        # but under the head contract that tag is shimmed to '' and the GRAPH is
-        # what ships, so every author sameAs and citation the merchant entered
-        # was silently dropped on every live article.
+        # and the themes' journal templates passed them to `seo_article_jsonld`
+        # (removed in v0.164.0), which the head contract shimmed to '': the GRAPH
+        # is what ships, so every author sameAs and citation the merchant entered
+        # was silently dropped on every live article until it read them here.
         word_count=get('word_count') or None,
         author_same_as=get('author_same_as') or None,
         citations=get('citations') or None,
@@ -365,6 +369,84 @@ def _article_nodes(page: SeoPage, url: str) -> list[dict]:
         return []
     node['@id'] = f'{url}#article'
     return [node]
+
+
+def _add_editor_blocks(graph: dict, page: SeoPage, url: str) -> None:
+    """The schema editor's blocks for the page's object (``SeoMeta.schema_blocks``).
+
+    A block whose type the graph already holds is skipped, whoever wrote it:
+    one page, one FAQPage or VideoObject. Types the store's apps own are refused
+    by ``schema_types.build_blocks`` before they get here.
+    """
+    if page.obj is None:
+        return
+    from plugins.installed.seo.models import SeoMeta
+    from plugins.installed.seo.schema_types import build_blocks
+
+    meta = SeoMeta.for_obj(page.obj)
+    if meta is None or not meta.schema_blocks:
+        return
+    nodes = graph.setdefault('@graph', [])
+    present = set()
+    for node in nodes:
+        present.update(_types_of(node))
+    for number, block in enumerate(build_blocks(meta.schema_blocks), start=1):
+        kinds = _types_of(block)
+        if not kinds or kinds & present:
+            continue
+        node = _strip_context(block)
+        node['@id'] = f'{url}#schema-{number}'
+        nodes.append(node)
+        present.update(kinds)
+
+
+def _types_of(node) -> set[str]:
+    kind = node.get('@type') if isinstance(node, dict) else None
+    if isinstance(kind, str):
+        return {kind}
+    if isinstance(kind, list):
+        return {k for k in kind if isinstance(k, str)}
+    return set()
+
+
+def _absolute_list_urls(graph: dict, base: str) -> None:
+    """Every ItemList entry's ``url`` and ``image`` (and its item's) absolute,
+    whoever built the list.
+
+    Themes and apps hand the graph site-relative paths (``/products/x/``); a
+    crawler reading the list out of context cannot resolve them.
+    """
+
+    def walk(node):
+        if isinstance(node, list):
+            for child in node:
+                walk(child)
+        elif isinstance(node, dict):
+            if node.get('@type') == 'ItemList':
+                for entry in node.get('itemListElement') or []:
+                    _absolute_entry(entry, base)
+            for value in node.values():
+                walk(value)
+
+    walk(graph.get('@graph'))
+
+
+def _absolute_entry(entry, base: str) -> None:
+    if not isinstance(entry, dict):
+        return
+    item = entry.get('item')
+    if isinstance(item, str):
+        entry['item'] = _absolute_path(item, base)
+    for holder in (entry, item if isinstance(item, dict) else {}):
+        for key in ('url', 'image'):
+            if key in holder:
+                holder[key] = _absolute_path(holder[key], base)
+
+
+def _absolute_path(value, base: str):
+    if isinstance(value, str) and value.startswith('/') and not value.startswith('//'):
+        return f'{base}{value}'
+    return value
 
 
 # -- plumbing ------------------------------------------------------------

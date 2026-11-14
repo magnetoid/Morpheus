@@ -12,6 +12,7 @@ fallbacks. ``autofill_meta_for`` writes sensible defaults onto a fresh
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from django.conf import settings
@@ -73,12 +74,11 @@ def format_document_title(page_title: str, *, category: str = '', settings_row=N
     """
     page_title = (page_title or '').strip()
     brand = brand_name(settings_row).strip()
-    # Don't double-brand a title that already carries the suffix.
+    # Don't double-brand a title that already carries the suffix, however it was
+    # written: copy a model wrote ends "…Magic|dot books" on a store whose brand
+    # reads "Dot Books." (v0.163.0).
     if brand:
-        for sep in (' — ', ' – ', ' | ', ' - '):
-            if page_title.endswith(sep + brand):
-                page_title = page_title[: -len(sep + brand)].rstrip()
-                break
+        page_title = _without_brand_suffix(page_title, brand)
 
     template_str = '{title} — {site_name}'
     max_len = 60
@@ -111,12 +111,47 @@ def format_document_title(page_title: str, *, category: str = '', settings_row=N
     return _clamp_on_word(page_title, max_len)
 
 
+# What a title's parts are joined with: "Post — Journal", "Genre | Shop".
+_TITLE_SEPARATORS = (' — ', ' – ', '—', '–', '|', ' - ', ' · ')
+_TITLE_TAIL = ' —–|-·:,;'
+
+
+def _brand_key(text: str) -> str:
+    return ' '.join(re.sub(r'[\W_]+', ' ', (text or '').casefold()).split())
+
+
+def _without_brand_suffix(title: str, brand: str) -> str:
+    """``title`` without a trailing brand, in any case and punctuation, after any
+    separator, with or without the spaces around it."""
+    key = _brand_key(brand)
+    for sep in _TITLE_SEPARATORS:
+        head, found, tail = title.rpartition(sep)
+        if key and found and head.strip() and _brand_key(tail) == key:
+            return head.rstrip(_TITLE_TAIL)
+    return title
+
+
 def _clamp_on_word(text: str, max_len: int) -> str:
-    """Clamp ``text`` to ``max_len`` without cutting inside a word."""
+    """Clamp ``text`` to ``max_len`` without cutting inside a word.
+
+    A title made of parts ("A long post — Journal") drops its last parts whole
+    first, while at least half the room stays used ("Dune - <a long subtitle>"
+    keeps words of its subtitle rather than shrink to "Dune"), and a cut never
+    ends on a separator: the journal's long titles read "Borrowed Time: …
+    Examples —" in every tab until v0.163.0.
+    """
     if len(text) <= max_len:
         return text
-    idx = text.rfind(' ', 0, max_len + 1)
-    return text[:idx] if idx > 0 else text[:max_len]
+    head = text
+    while len(head) > max_len:
+        cut = max(head.rfind(sep) for sep in _TITLE_SEPARATORS)
+        if cut < max_len // 2:
+            break
+        head = head[:cut].rstrip(_TITLE_TAIL)
+    if len(head) <= max_len:
+        return head
+    idx = head.rfind(' ', 0, max_len + 1)
+    return (head[:idx] if idx > 0 else head[:max_len]).rstrip(_TITLE_TAIL)
 
 
 def _template_layer(
@@ -322,27 +357,14 @@ def resolve_meta(
         site_name=brand_name(site),
         twitter_site=(getattr(site, 'twitter_handle', '') or '').strip(),
         structured_data=structured,
-        # schema_blocks stores raw editor entries [{type, data}, …]; build the
-        # emit-ready JSON-LD here so the editor round-trips its own format.
-        extra_blocks=_visual_schema_blocks(meta),
     )
-
-
-def _visual_schema_blocks(meta) -> list | None:
-    """JSON-LD blocks from the visual schema editor's stored entries, or None."""
-    entries = getattr(meta, 'schema_blocks', None) if meta else None
-    if not entries:
-        return None
-    from plugins.installed.seo.schema_types import build_blocks  # noqa: PLC0415
-
-    return build_blocks(entries) or None
 
 
 def _structured_data_for(obj: Any, *, title: str, description: str, image: str) -> dict:
     """Generate sensible JSON-LD for known model types. Empty dict if unknown.
 
-    No Organization fallback here — base.html emits the canonical
-    Organization graph via `{% seo_organization_jsonld %}`, so emitting
+    No Organization fallback here — the head graph carries the canonical
+    Organization node (`schema/graph.py`), so emitting
     a stripped-down second one (only `name`) would just duplicate every
     page's <head> with two `@type: Organization` scripts.
     """
@@ -351,7 +373,7 @@ def _structured_data_for(obj: Any, *, title: str, description: str, image: str) 
     cls_name = type(obj).__name__
     if cls_name == 'Product':
         # No Product block here by design: the PDP emits the single canonical
-        # Product graph via `{% seo_product_jsonld %}` → `product_jsonld()`
+        # Product node through the head graph → `product_jsonld()`
         # (gallery images, brand, Book subtype, offer with shipping/return/
         # aggregateRating). Emitting a stripped-down second Product here just
         # duplicated every PDP's <head> with two `@type: Product` scripts —
@@ -367,8 +389,8 @@ def _structured_data_for(obj: Any, *, title: str, description: str, image: str) 
             'description': description or strip_html(getattr(obj, 'description', '')),
         }
     if cls_name == 'Page':
-        # Journal posts already emit Article (+ a WebPage/speakable node) from
-        # the storefront journal template, so returning a WebPage here would
+        # Journal posts already carry a BlogPosting in the head graph
+        # (`schema/graph.py:_article_nodes`), so returning a WebPage here would
         # duplicate the node — only give NON-journal single pages a default
         # WebPage so they stop shipping bare Organization/WebSite graphs.
         page_meta = getattr(obj, 'metadata', None) or {}

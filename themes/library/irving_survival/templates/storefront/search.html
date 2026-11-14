@@ -1,11 +1,7 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load caching %}
+{% load morph %}{% load caching %}
 
 
-{% block extra_head %}
-{% if search_items %}{% seo_search_results_jsonld items=search_items query=query %}{% endif %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
-{% endblock %}
 
 {% block content %}
 <section style="padding: 3rem 0 2rem;">

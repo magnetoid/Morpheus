@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import contextlib
 
+from core.text import clip
+
 from ._helpers import (
     _seo_plugin,
     _seo_plugin_cfg,
@@ -232,21 +234,33 @@ def _compare_at(rendered, orm):
     return None
 
 
-def _variant_axis(variants) -> list[str]:
+def _variant_axes(variants) -> tuple[list[str], list[dict[str, str]]]:
     """What actually differs between these variants, in Google's words.
 
     `variesBy` tells Google why the group has more than one member. Guessing it
     would be worse than omitting it, so only axes that genuinely differ across
-    the set are claimed, and only the six Google reads (color, size,
-    suggestedAge, suggestedGender, material, pattern). Print vs digital is a
-    real difference, but `bookFormat` is not one of the six, so every edition
-    group on dotbooks claimed an axis Google does not read. The editions still
-    say what they are by name.
+    the set are claimed, and only those Google reads that catalog can state
+    (size, color, material, pattern: `catalog.variants.variant_axes`). Print vs
+    digital is a real difference, but `bookFormat` is not one of the six, so
+    every edition group on dotbooks claimed an axis Google does not read. The
+    editions still say what they are by name.
+
+    Returns the differing axes and each variant's values, in the same order.
     """
-    axes = []
-    if len({(getattr(v, 'size', '') or '').strip() for v in variants} - {''}) > 1:
-        axes.append('https://schema.org/size')
-    return axes
+    from plugins.installed.catalog.variants import VARIANT_AXES, variant_axes
+
+    values = []
+    for variant in variants:
+        try:
+            values.append(variant_axes(variant))
+        except Exception:  # noqa: BLE001 — an unmigrated attribute table
+            values.append(
+                {'size': (getattr(variant, 'size', '') or '').strip()}
+                if getattr(variant, 'size', '')
+                else {}
+            )
+    differing = [axis for axis in VARIANT_AXES if len({v.get(axis, '') for v in values} - {''}) > 1]
+    return differing, values
 
 
 def _variant_gtin(barcode) -> dict:
@@ -328,6 +342,7 @@ def _apply_variants(out: dict, orm, *, slug: str, currency: str, abs_url=lambda 
         variants = list(
             orm.variants.filter(is_active=True)
             .select_related('image')
+            .prefetch_related('attribute_values__attribute')
             .order_by('sort_order', 'name')[:20]
         )
     except Exception:  # noqa: BLE001 — an unmigrated variant table
@@ -344,13 +359,14 @@ def _apply_variants(out: dict, orm, *, slug: str, currency: str, abs_url=lambda 
         else 'ProductGroup'
     )
     out['productGroupID'] = str(getattr(orm, 'id', '') or slug)
-    axes = _variant_axis(variants)
-    if axes:
+    differing, axis_values = _variant_axes(variants)
+    if differing:
+        axes = [f'https://schema.org/{axis}' for axis in differing]
         out['variesBy'] = axes if len(axes) > 1 else axes[0]
 
     parent_price = _money(_safe_field(orm, 'price'))
     members = []
-    for variant in variants:
+    for variant, values in zip(variants, axis_values, strict=True):
         own = _safe_field(variant, 'price')
         # The price charged (ProductVariant.effective_price): a free download
         # is offered at 0; a 0 on a variant that ships means the product's.
@@ -389,8 +405,13 @@ def _apply_variants(out: dict, orm, *, slug: str, currency: str, abs_url=lambda 
         if image:
             member['image'] = image
         member.update(_variant_gtin(getattr(variant, 'barcode', '')))
+        # The member says what it is on each axis the group varies by; its own
+        # size field is stated as it always was.
         if (getattr(variant, 'size', '') or '').strip():
             member['size'] = variant.size.strip()
+        for axis in differing:
+            if values.get(axis):
+                member[axis] = values[axis]
         members.append(member)
     if members:
         out['hasVariant'] = members
@@ -712,19 +733,27 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
         except Exception:  # noqa: BLE001
             pass
 
-    # GTIN / brand via 'book' metafield namespace (used by dotbooks)
-    # AND via ProductVariant.barcode (Phase 1 of variant Shopify
-    # parity — every variant carries an optional UPC / EAN / ISBN).
+    # GTIN via the 'book' metafield namespace (used by dotbooks) AND via
+    # ProductVariant.barcode (Phase 1 of variant Shopify parity — every
+    # variant carries an optional UPC / EAN / ISBN). The brand comes from
+    # catalog's one brand source (a book's publisher, else the store's
+    # default brand); with neither, none is claimed.
     if orm is not None:
         candidate_barcode = ''
+        try:
+            from plugins.installed.catalog.brand import product_brand
+
+            brand = product_brand(orm)
+            if brand:
+                out['brand'] = {'@type': 'Brand', 'name': brand}
+        except Exception:  # noqa: BLE001
+            pass
         try:
             from plugins.installed.book_product.compat import book_attrs
 
             book_meta = book_attrs(orm)
             if book_meta.get('isbn'):
                 candidate_barcode = str(book_meta['isbn']).strip()
-            if book_meta.get('publisher'):
-                out['brand'] = {'@type': 'Brand', 'name': str(book_meta['publisher'])}
             if book_meta.get('author'):
                 out['author'] = {'@type': 'Person', 'name': str(book_meta['author'])}
         except Exception:  # noqa: BLE001
@@ -792,7 +821,7 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
 
     # Caller-supplied enrichments (PDP view) — fill what the dict path can't
     # reach on its own. Only set when absent so an ORM run keeps its richer
-    # values. Google review-snippet + image + brand recommendations.
+    # values. Google review-snippet + image recommendations.
     if extra:
         if extra.get('image') and 'image' not in out:
             out['image'] = _abs(extra['image'])
@@ -803,8 +832,6 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
                 'ratingValue': str(rating.get('value')),
                 'reviewCount': int(rating['count']),
             }
-        if extra.get('brand') and 'brand' not in out:
-            out['brand'] = {'@type': 'Brand', 'name': str(extra['brand'])}
         reviews = []
         for r in extra.get('reviews') or []:
             if not r.get('rating'):
@@ -836,26 +863,6 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
             member.setdefault('image', group_image)
 
     return out
-
-
-def speakable_jsonld(selectors: list[str] | None = None) -> dict:
-    """SpeakableSpecification — tells voice assistants which CSS selectors
-    contain text suitable for spoken reading.
-
-    Defaults target the page's headline, the lede paragraph, AND the
-    article body — journal/article templates wrap their copy in
-    ``[itemprop="articleBody"]`` (with no ``.lede``), so without that
-    selector voice assistants only got the H1 on editorial pages.
-    """
-    css = selectors or ['h1', '.lede', '[itemprop="articleBody"]', '[itemprop="description"]']
-    return {
-        '@context': 'https://schema.org',
-        '@type': 'WebPage',
-        'speakable': {
-            '@type': 'SpeakableSpecification',
-            'cssSelector': css,
-        },
-    }
 
 
 def collection_page_jsonld(
@@ -1000,7 +1007,7 @@ def article_jsonld(
         '@type': kind or 'Article',
         'headline': headline[:110],
         'url': url,
-        'articleBody': body[:5000],
+        'articleBody': clip(body, 5000),
         'mainEntityOfPage': {'@type': 'WebPage', '@id': url},
     }
     if description:

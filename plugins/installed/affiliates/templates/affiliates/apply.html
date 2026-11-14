@@ -1,7 +1,6 @@
 {% extends "storefront/base.html" %}
-{% load seo %}
 
-{% block seo %}{% seo_meta fallback_title="Become an affiliate" fallback_description="Earn a commission on every order that arrives through your links. Apply in two minutes; we read every application before approving it." %}{% endblock %}
+{% block seo %}{% with seo_title="Become an affiliate" seo_description="Earn a commission on every order that arrives through your links. Apply in two minutes; we read every application before approving it." %}{{ block.super }}{% endwith %}{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 2rem;">

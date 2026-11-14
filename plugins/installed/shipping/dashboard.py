@@ -115,6 +115,19 @@ def _save_config(request) -> None:
             messages.error(request, f'{field.replace("_", " ")}: must be a JSON object.')
             return
         addresses[field] = parsed
+    # How long an order waits before it leaves (shipping.seo_graph publishes it
+    # to Google). Blank = not stated: no handling time is claimed anywhere.
+    from plugins.installed.shipping.seo_graph import clean_handling  # noqa: PLC0415
+
+    try:
+        handling = clean_handling(
+            request.POST.get('handling_days_min'),
+            request.POST.get('handling_days_max'),
+            request.POST.get('handling_cutoff_time'),
+        )
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return
     # The keys are write-only: the page never shows them, so a blank field
     # keeps the saved key and only a ticked box removes it.
     for key in ('shippo_api_key', 'easypost_api_key'):
@@ -132,6 +145,8 @@ def _save_config(request) -> None:
     )
     for key in ('label_carrier', 'label_service'):
         instance.set_config(key, (request.POST.get(key) or '').strip()[:100])
+    for key, val in handling.items():
+        instance.set_config(key, val)
     messages.success(request, 'Carrier settings saved.')
 
 

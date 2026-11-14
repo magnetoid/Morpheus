@@ -208,18 +208,62 @@ def _iter_cms_page_entries(base: str) -> Iterable[dict]:
 
         now = timezone.now()
         for p in Page.objects.filter(state='published').only(
-            'slug', 'updated_at', 'publish_at', 'metadata'
+            'slug', 'updated_at', 'publish_at', 'metadata', 'body'
         ):
             if p.publish_at and p.publish_at > now:
                 continue
-            yield {
+            entry = {
                 'loc': urljoin(base, cms_page_path(p)),
                 'lastmod': p.updated_at.isoformat() if p.updated_at else '',
                 'changefreq': 'monthly',
                 'priority': '0.5',
             }
+            images = _cms_page_images(p, base)
+            if images:
+                entry['images'] = images
+            yield entry
     except Exception as e:  # noqa: BLE001 — cms plugin optional
         logger.debug('seo: sitemap cms pages skipped: %s', e)
+
+
+def _cms_page_images(page, base: str) -> list[str]:
+    """A CMS page's pictures for the image sitemap: the cover its metadata names
+    (the one the journal shows), then the images in its body, HTML or markdown."""
+    from core.text import body_images
+
+    meta = page.metadata if isinstance(page.metadata, dict) else {}
+    cover = [str(meta.get(k) or '').strip() for k in ('cover', 'image', 'og_image')]
+    return [urljoin(base, u) for u in [*filter(None, cover), *body_images(page.body)]]
+
+
+def _public_images(images, base: str) -> list[str]:
+    """An entry's ``images`` as at most six distinct absolute public addresses.
+
+    A file under a private media prefix (``digital/``: what a buyer pays for) is
+    never listed, wherever an app found it; nor is anything that is not http(s).
+    """
+    from urllib.parse import urlsplit
+
+    from django.conf import settings
+
+    from core.media import PRIVATE_PREFIXES, is_private
+
+    media = '/' + (getattr(settings, 'MEDIA_URL', '/media/') or '/media/').strip('/') + '/'
+    out: list[str] = []
+    for raw in images if isinstance(images, (list, tuple)) else []:
+        url = urljoin(base, str(raw or '').strip()) if raw else ''
+        parts = urlsplit(url)
+        if parts.scheme not in ('http', 'https') or not parts.netloc:
+            continue
+        path = parts.path
+        rel = path[len(media) :] if path.startswith(media) else ''
+        if (rel and is_private(rel)) or any(f'/{p}' in path for p in PRIVATE_PREFIXES):
+            continue
+        if url not in out:
+            out.append(url)
+        if len(out) == 6:
+            break
+    return out
 
 
 def _seo_overrides(model) -> dict:
@@ -375,15 +419,20 @@ def _normalize_contributed_entry(e: dict) -> dict:
     lastmod values and numeric priorities (the filter's documented payload
     shape); the renderer below expects the same string-only shape
     ``iter_sitemap_entries()`` already yields. Native entries pass through
-    unchanged (already strings)."""
+    unchanged (already strings). ``images`` (v0.163.0) leaves as at most six
+    absolute public addresses, or not at all."""
     lastmod = e.get('lastmod')
     priority = e.get('priority')
-    if hasattr(lastmod, 'isoformat') or isinstance(priority, (int, float)):
+    if hasattr(lastmod, 'isoformat') or isinstance(priority, (int, float)) or 'images' in e:
         e = dict(e)
         if hasattr(lastmod, 'isoformat'):
             e['lastmod'] = lastmod.isoformat()
         if isinstance(priority, (int, float)):
             e['priority'] = str(priority)
+        if 'images' in e:
+            images = _public_images(e.pop('images'), _site_base_url().rstrip('/') + '/')
+            if images:
+                e['images'] = images
     return e
 
 
@@ -771,11 +820,12 @@ def render_news_sitemap_xml() -> str:
 
 
 def render_image_sitemap_xml() -> str:
-    """Image-only sitemap. Lists every product's primary image with its
-    caption/alt so AI image-search engines (Google AI Overviews, Bing
-    image grounding) can discover them.
+    """Image-only sitemap: every shoppable product's photos, then the pictures of
+    every other page the sitemap lists that names some (``images`` on an entry:
+    a CMS page's cover and body images, an experience's or a hotel's photos —
+    v0.163.0; it was products only, so a travel store's sitemap had no image).
 
-    Spec: https://www.sitemaps.org/schemas/sitemap-image/1.1/sitemap-image.xsd
+    Spec: https://developers.google.com/search/docs/crawling-indexing/sitemaps/image-sitemaps
     """
     base = _site_base_url().rstrip('/')
     parts = [
@@ -783,36 +833,48 @@ def render_image_sitemap_xml() -> str:
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
         'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
     ]
+    cap = _sitemap_max_urls()
+    count = 0
+    listed: set[str] = set()
+
+    def add(page_url: str, images: list[str]) -> None:
+        nonlocal count
+        if not images or page_url in listed or count >= cap:
+            return
+        listed.add(page_url)
+        count += 1
+        parts.append('<url>')
+        parts.append(f'<loc>{escape(page_url)}</loc>')
+        for src in images:
+            # Only <image:loc> is still meaningful — Google deprecated
+            # <image:caption>/<image:title>/<image:geo_location>/<image:license>
+            # (they're ignored now), so we emit just the location.
+            parts.append('<image:image>')
+            parts.append(f'<image:loc>{escape(src)}</image:loc>')
+            parts.append('</image:image>')
+        parts.append('</url>')
+
     try:
         from plugins.installed.catalog.models import Product
 
-        cap = _sitemap_max_urls()
         qs = Product.objects.shoppable()
-        total = qs.count()
-        if total > cap:
+        if qs.count() > cap:
             logger.warning('seo: image sitemap truncated at %d entries', cap)
         for p in qs.prefetch_related('images')[:cap]:
-            page_url = f'{base}/products/{p.slug}/'
-            imgs = list(p.images.all())
-            if not imgs:
-                continue
-            parts.append('<url>')
-            parts.append(f'<loc>{escape(page_url)}</loc>')
-            for img in imgs[:6]:
+            srcs = []
+            for img in list(p.images.all())[:6]:
                 src = getattr(img.image, 'url', None) if getattr(img, 'image', None) else None
-                if not src:
-                    continue
-                if not src.startswith('http'):
-                    src = base + src
-                # Only <image:loc> is still meaningful — Google deprecated
-                # <image:caption>/<image:title>/<image:geo_location>/<image:license>
-                # (they're ignored now), so we emit just the location.
-                parts.append('<image:image>')
-                parts.append(f'<image:loc>{escape(src)}</image:loc>')
-                parts.append('</image:image>')
-            parts.append('</url>')
+                if src:
+                    srcs.append(src)
+            add(f'{base}/products/{p.slug}/', _public_images(srcs, base + '/'))
     except Exception:  # noqa: BLE001
         pass
+    try:
+        for entry in _merged_sitemap_entries():
+            # Every entry's pictures pass the same check, native ones too.
+            add(entry.get('loc') or '', _public_images(entry.get('images') or [], base + '/'))
+    except Exception as e:  # noqa: BLE001
+        logger.debug('seo: image sitemap entries skipped: %s', e)
     parts.append('</urlset>')
     return _join(parts)
 

@@ -9,6 +9,8 @@ house voice and the prompt has exactly one place to be tuned.
 # ruff: noqa: PLC0415
 from __future__ import annotations
 
+import re
+
 # Curated kinds are real models (Genre/Topic); the rest derive from BookProduct
 # string fields. Kept local so this module doesn't import the dashboard.
 _CURATED_LABELS = {'genre': 'Genre', 'topic': 'Topic'}
@@ -81,24 +83,45 @@ def _subject_for(taxonomy: str, slug: str) -> tuple[str, str]:
     )
 
 
+def _shop_name() -> str:
+    from core.utils.site import store_name
+
+    return store_name() or 'the shop'
+
+
+def _name_key(text: str) -> str:
+    return ' '.join(re.sub(r'[\W_]+', ' ', (text or '').casefold()).split())
+
+
+def _without_shop_name(title: str, shop: str) -> str:
+    """A meta title without the shop's name on its end ("…Magic|dot books"): the
+    store adds its brand to every title itself (v0.163.0)."""
+    m = re.match(r'(?s)(.*\S)\s*[|—–·:-]\s*(\S.*)$', title)
+    if m and _name_key(shop) and _name_key(m.group(2)) == _name_key(shop):
+        return m.group(1).strip()
+    return title
+
+
 def build_prompt(
     subject: str, context_line: str, *, mode: str = 'generate', existing: str = ''
 ) -> str:
+    shop = _shop_name()
     if mode == 'rewrite' and existing:
         # Rewrite just the intro the merchant already has — keep their facts,
         # improve the prose. Returns only {description}.
         return (
-            f'Rewrite and improve this intro for {subject} on dot books, an '
+            f'Rewrite and improve this intro for {subject} on {shop}, an '
             'independent online bookshop. Keep it warm, concise (2-3 sentences) '
             'and specific; preserve the facts. Return STRICT JSON {"description": '
             '"..."} and nothing else.\n\nCurrent text:\n' + existing
         )
     return (
         f'Write storefront copy for {subject} on an independent online bookshop '
-        f'called dot books.\n{context_line}\n\n'
+        f'called {shop}.\n{context_line}\n\n'
         'Return STRICT JSON (no markdown, nothing outside the JSON) with keys:\n'
         '  "description": a warm, specific 2-3 sentence editorial intro (plain text),\n'
-        '  "meta_title": an SEO title, max 60 characters,\n'
+        '  "meta_title": an SEO title, max 60 characters, without the shop\'s name '
+        '(the shop adds it to every title itself),\n'
         '  "meta_description": an SEO meta description, max 155 characters.'
     )
 
@@ -138,8 +161,9 @@ def generate_copy(
         if not text or text.startswith(('{', '[', '```')):
             raise CopyGenerationError(f'unparseable response: {text[:80]!r}')
         data = {'description': text[:600]}
+    title = _without_shop_name((data.get('meta_title') or '').strip(), _shop_name())
     return {
         'description': (data.get('description') or '').strip()[:600],
-        'meta_title': (data.get('meta_title') or '').strip()[:200],
+        'meta_title': title[:200],
         'meta_description': (data.get('meta_description') or '').strip()[:320],
     }

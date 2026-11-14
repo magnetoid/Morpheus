@@ -53,7 +53,15 @@ class _Base(TestCase):
 
 
 class FeedRowTests(_Base):
+    def _brand(self, value):
+        from plugins.registry import app_registry
+
+        catalog = app_registry.get('catalog')
+        catalog.set_config('default_brand', value)
+        self.addCleanup(catalog.invalidate_config_cache)
+
     def test_a_simple_product_has_every_required_field(self):
+        self._brand('Clearwater')
         Product.objects.create(
             name='Water filter',
             slug='water-filter',
@@ -69,6 +77,7 @@ class FeedRowTests(_Base):
             with self.subTest(key=key):
                 self.assertTrue(row.get(key), key)
         self.assertEqual(row['item_id'], 'WF-1')
+        self.assertEqual(row['brand'], 'Clearwater')
         self.assertEqual(row['price'], '19.99 USD')
         self.assertEqual(row['availability'], 'in_stock')
         self.assertTrue(row['url'].endswith('/products/water-filter/'))
@@ -78,6 +87,19 @@ class FeedRowTests(_Base):
         # Nobody set a return policy, so the feed makes no claim about one.
         self.assertNotIn('accepts_returns', row)
         self.assertNotIn('return_deadline_in_days', row)
+
+    def test_no_brand_is_left_out_never_the_sellers_name(self):
+        # catalog/brand.py: no publisher and no default brand means no brand.
+        Product.objects.create(
+            name='Lamp',
+            slug='lamp-no-brand',
+            sku='LP-1',
+            status='active',
+            price=Money(Decimal('9.00'), 'USD'),
+        )
+        row = build_rows()[0]
+        self.assertNotIn('brand', row)
+        self.assertTrue(row['seller_name'])
 
     def test_a_return_policy_the_merchant_set_is_published(self):
         from plugins.registry import app_registry

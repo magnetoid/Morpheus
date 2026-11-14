@@ -22,11 +22,17 @@ logger = logging.getLogger('morpheus.book_product')
 
 
 def on_storefront_head(value, request=None, context=None, **kwargs):
-    """STOREFRONT_HEAD — runs after seo; adds edition alternates to a product page."""
+    """STOREFRONT_HEAD — runs after seo: edition alternates and the social card."""
     try:
         _add_edition_alternates(value, request)
     except Exception as e:  # noqa: BLE001 — the head must survive a bad edition graph
         logger.warning('book_product: edition hreflang failed: %s', e, exc_info=True)
+    try:
+        from plugins.installed.book_product.social_cards import apply_to_head
+
+        apply_to_head(value, request)
+    except Exception as e:  # noqa: BLE001 — a card problem must not break the page
+        logger.warning('book_product: social card failed: %s', e, exc_info=True)
     return value
 
 

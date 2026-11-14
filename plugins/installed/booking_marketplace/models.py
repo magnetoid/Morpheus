@@ -379,6 +379,8 @@ class Place(models.Model):
     is_active = models.BooleanField(default=True, db_index=True)
     sort_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Null on rows saved before v0.163.0, and then the sitemap claims no lastmod.
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
         app_label = 'booking_marketplace'
@@ -544,6 +546,8 @@ class Property(models.Model):
     is_featured = models.BooleanField(default=False, db_index=True)
     is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Null on rows saved before v0.163.0, and then the sitemap claims no lastmod.
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
         app_label = 'booking_marketplace'
@@ -765,6 +769,8 @@ class Event(models.Model):
     is_active = models.BooleanField(default=True, db_index=True)
     sort_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Null on rows saved before v0.163.0, and then the sitemap claims no lastmod.
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
         app_label = 'booking_marketplace'
@@ -776,6 +782,24 @@ class Event(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    @property
+    def last_day(self):
+        """The stored edition's last day: its end date, else its start date."""
+        return self.end_date or self.start_date
+
+    def edition_over(self, today=None) -> bool:
+        """Whether the stored edition's last day is before today on the store clock.
+        An annual event's stored date is that edition's date like any other."""
+        from core.utils.site import store_today
+
+        last = self.last_day
+        return last is not None and last < (today or store_today())
+
+    def has_ended(self, today=None) -> bool:
+        """Over for good: a one-off whose edition is over. An annual event comes
+        round again, and an undated one is still to be announced."""
+        return not self.is_annual and self.edition_over(today)
 
     @property
     def when_display(self) -> str:

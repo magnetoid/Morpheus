@@ -18,6 +18,9 @@ class BookProductPlugin(Plugin):
     )
     has_models = True
     requires = ['catalog']
+    # The social-card switch and look are read by the web process (product
+    # pages) and the worker (drawing); 30 s keeps the two in step after a save.
+    config_fresh_s = 30.0
 
     def ready(self) -> None:
         self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
@@ -39,6 +42,8 @@ class BookProductPlugin(Plugin):
         self.register_hook(events.LISTING_FACETS, self.on_listing_facets, priority=40)
         # A storefront book card's genre, author and formats (cards.py).
         self.register_hook(events.PRODUCT_CARD_META, self.on_product_card_meta, priority=40)
+        # A book's brand is its publisher (catalog/brand.py: structured data, feeds).
+        self.register_hook(events.PRODUCT_BRAND, self.on_product_brand, priority=40)
         # Genres and authors in the storefront's search dropdown (search_suggestions.py).
         self.register_hook(events.SEARCH_SUGGESTIONS, self.on_search_suggestions, priority=40)
         # A book's genre page as its product page's parent crumb (breadcrumbs.py).
@@ -158,6 +163,13 @@ class BookProductPlugin(Plugin):
         'imprints': 'imprints',
     }
 
+    def on_product_brand(self, value, product=None, **_):
+        from plugins.installed.book_product.compat import book_attrs
+
+        if value or product is None or isinstance(product, dict):
+            return value
+        return str((book_attrs(product) or {}).get('publisher') or '').strip() or value
+
     def on_product_card_meta(self, value, product=None, **_):
         from plugins.installed.book_product.cards import card_meta
 
@@ -228,6 +240,75 @@ class BookProductPlugin(Plugin):
         from plugins.installed.book_product.dashboard import save_book_fields
 
         save_book_fields(product, post, files)
+        # A saved book gets its social card drawn now rather than on the next
+        # page view (nothing is drawn when its inputs did not change).
+        from django.db import transaction
+
+        from plugins.installed.book_product import social_cards
+        from plugins.installed.book_product.models import BookProduct
+
+        book_id = BookProduct.objects.filter(product=product).values_list('pk', flat=True).first()
+        if book_id and social_cards.enabled():
+            transaction.on_commit(lambda: social_cards.request_card(book_id))
+
+    def get_config_schema(self) -> dict:
+        from plugins.installed.book_product.social_cards import DEFAULT_ACCENT, DEFAULT_BACKGROUND
+
+        return {
+            'type': 'object',
+            'properties': {
+                'social_cards': {
+                    'type': 'boolean',
+                    'title': 'Social cards for books',
+                    'description': (
+                        'A shared book page shows a 1200×630 card: the whole cover, the title, '
+                        'the author and the start of the description, drawn from what the book '
+                        'already holds. Off, it shows the cover photo. A share image picked for '
+                        'a product in its SEO card always wins.'
+                    ),
+                    'default': False,
+                },
+                'social_card_eyebrow': {
+                    'type': 'string',
+                    'title': 'Line above the title',
+                    'description': 'Small capitals above the title, e.g. a collection name. Empty, none.',
+                    'default': '',
+                },
+                'social_card_wordmark': {
+                    'type': 'string',
+                    'title': 'Name at the bottom',
+                    'description': 'Printed small under the text. Empty, the store name.',
+                    'default': '',
+                },
+                'social_card_background': {
+                    'type': 'string',
+                    'title': 'Card background colour',
+                    'description': f'A hex colour such as {DEFAULT_BACKGROUND}.',
+                    'default': DEFAULT_BACKGROUND,
+                },
+                'social_card_accent': {
+                    'type': 'string',
+                    'title': 'Card accent colour',
+                    'description': f'Frame, lines, author and the line above the title, e.g. {DEFAULT_ACCENT}.',
+                    'default': DEFAULT_ACCENT,
+                },
+            },
+        }
+
+    def contribute_settings_panel(self):
+        from morpheus.app import SettingsPanel
+
+        return SettingsPanel(
+            label='Books',
+            description="The book app's features and options.",
+            schema=self.get_config_schema(),
+            category='storefront',
+        )
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.book_product.agent_tools import render_social_card_tool
+
+        return [render_social_card_tool]
 
     def contribute_dashboard_pages(self) -> list:
         from morpheus.app import DashboardPage  # noqa: PLC0415

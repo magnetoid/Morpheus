@@ -41,7 +41,6 @@
     "product_videos:tests.missing",
     "pwa:models.has_models_flag",
     "rbac:tests.missing",
-    "returns_portal:tests.missing",
     "storefront:structure.apps",
     "webstories:models.has_models_flag",
     "workflows:structure.apps",

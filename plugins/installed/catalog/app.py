@@ -265,6 +265,18 @@ class CatalogPlugin(Plugin):
                     'title': 'Generate AVIF alongside WebP',
                     'description': 'AVIF is smaller but takes longer to encode and has spottier browser support. Off by default.',
                 },
+                # Read by catalog/brand.py:product_brand for the product page's
+                # structured data and every channel feed (v0.163.0).
+                'default_brand': {
+                    'type': 'string',
+                    'default': '',
+                    'title': 'Default brand',
+                    'description': (
+                        'The brand of products that name none of their own (a book names its '
+                        'publisher). Set it only if you make or label what you sell; left '
+                        'empty, no brand is claimed.'
+                    ),
+                },
             },
         }
 

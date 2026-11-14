@@ -163,6 +163,11 @@ def journal_dict(page) -> dict:
         m = re.search(r"""<img[^>]+src=["']([^"']+)["']""", page.body)
         if m:
             image = m.group(1)
+    if not image and page.body:
+        # A model-written post can carry its picture as markdown (v0.163.0).
+        from core.text import first_markdown_image
+
+        image = first_markdown_image(page.body)
     from morpheus.core import absolutize
 
     image = absolutize(image)

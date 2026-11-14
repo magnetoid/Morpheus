@@ -7,13 +7,20 @@ from morpheus.core import ToolError, ToolResult, tool
 
 @tool(
     name='shipping.list_zones',
-    description='List shipping zones (geographic groups + their rates).',
+    description=(
+        'List shipping zones (geographic groups + their rates), and the handling time the '
+        'store states to search engines (days before a parcel leaves, and the same-day '
+        "cut-off). Change the handling time with settings.set on the 'shipping' app: "
+        'handling_days_min, handling_days_max (whole days, 0-30) and handling_cutoff_time '
+        '(HH:MM); blank states none.'
+    ),
     scopes=['shipping.read'],
     schema={'type': 'object', 'properties': {}},
 )
 def list_zones_tool() -> ToolResult:
     from plugins.installed.shipping.models import ShippingZone
     from plugins.installed.shipping.rates import describe
+    from plugins.installed.shipping.services import _shipping_config
 
     out = []
     for zone in ShippingZone.objects.prefetch_related('rates').all()[:50]:
@@ -34,7 +41,12 @@ def list_zones_tool() -> ToolResult:
                 ],
             }
         )
-    return ToolResult(output={'zones': out})
+    cfg = _shipping_config()
+    handling = {
+        key: cfg.get(key, '')
+        for key in ('handling_days_min', 'handling_days_max', 'handling_cutoff_time')
+    }
+    return ToolResult(output={'zones': out, 'handling_time': handling})
 
 
 @tool(

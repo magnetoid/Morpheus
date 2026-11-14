@@ -583,6 +583,14 @@ class MorpheusEvents:
     #   book app answers {'genre', 'author', 'formats', 'formats_line'}. Read by
     #   core's {% product_card_meta %} so a theme card never loads an app's tags.
     PRODUCT_CARD_META = 'product.card_meta'  # filter
+    # PRODUCT_BRAND — filter, value=str (the brand name, '' when none), kwargs:
+    #   product (a catalog Product row). Fired by catalog's
+    #   `catalog/brand.py:product_brand`, the one place a product's brand is read:
+    #   the product page's structured data and every channel feed. An app that
+    #   knows a product's brand answers with it (book_product: the publisher);
+    #   with no answer the helper falls back to catalog's `default_brand` setting,
+    #   and with neither nothing claims a brand (v0.163.0).
+    PRODUCT_BRAND = 'product.brand'  # filter
     # PRODUCT_BREADCRUMB_CATEGORY — filter, value=list of {'name', 'url'} (absolute
     #   urls), kwargs: product (the PDP's catalog Product row, else its GraphQL dict;
     #   None on the product list), category (the catalog Category the default was
@@ -676,11 +684,14 @@ class MorpheusEvents:
     #   (audiobooks returns the narration). The library page, the emailed links and
     #   the file view all read it, so a disabled app's edition delivers nothing.
     DIGITAL_DELIVERY_FILE = 'digital.delivery_file'  # filter
-    # ORDER_LINE_DELIVERY — filter, value=None, kwargs: order_item. How one order
-    #   line reaches its buyer when nothing is shipped, for the order pages
+    # ORDER_LINE_DELIVERY — filter, value=None, kwargs: order_item, surface. How one
+    #   order line reaches its buyer when nothing is shipped, for the order pages
     #   ({% order_line_delivery %}): a dict with state ('ready' | 'waiting' |
     #   'preparing'), state_label, kind ('audio' | 'file'), file_url and listen_url.
-    #   digital_products answers for digital lines; None for goods that ship.
+    #   digital_products answers for digital lines; None for goods that ship. On the
+    #   thank-you page surface is 'receipt' and the answer carries no file_url or
+    #   listen_url, only where the buyer finds the file: a download is taken from
+    #   the emailed link or the account's Library (owner, 2026-11-14).
     ORDER_LINE_DELIVERY = 'order.line_delivery'  # filter
     CUSTOMER_DETAIL_PANELS = 'customer.detail_panels'  # filter
     # CONTACTS_LEADS — filter, value=None, kwargs: search (str), request. The
@@ -738,7 +749,7 @@ class MorpheusEvents:
     #   value=list[dict], kwargs: category= / collection= / page= (the object, or
     #   None while creating). CATEGORY_FORM_SAVED / COLLECTION_FORM_SAVED /
     #   PAGE_FORM_SAVED — fires, kwargs: the same object plus post=QueryDict,
-    #   files=MultiValueDict.
+    #   files=MultiValueDict, user=the staff member who saved.
     #
     #   The PRODUCT_FORM_CARDS pair, generalised to the other entities a
     #   merchant edits. Same contract ({'template', 'context', 'order'}), same
@@ -878,9 +889,14 @@ class MorpheusEvents:
     #   row simply never appears. Fail-soft: the hook bus isolates a broken
     #   handler so one channel can't break the overview.
     CHANNELS_OVERVIEW = 'channels.overview'  # filter
-    # ANALYTICS_AD_SPEND — filter, value=list[dict], no kwargs. Each ad-channel
-    #   plugin appends its own {'channel': str, 'spend': number, 'days': int} for
-    #   the trailing window; analytics snapshots it into AdSpendSnapshot for ROAS.
+    # ANALYTICS_AD_SPEND — filter, value=list[dict], no kwargs. The channels app
+    #   answers it, from its daily CHANNELS_METRICS cache (no live API calls), with
+    #   one row per ad channel that has spent: {'channel': 'google'|'meta'|'tiktok'|
+    #   'pinterest'|'microsoft'|'amazon'|'reddit'|'snapchat', 'spend': number,
+    #   'conversions': number|None, 'platform_revenue': number|None, 'days': 30}.
+    #   Channel plugins do not answer it themselves: analytics keeps one snapshot
+    #   per (day, channel), so a second answer for the same channel would silently
+    #   overwrite the first. Analytics snapshots the rows into AdSpendSnapshot.
     ANALYTICS_AD_SPEND = 'analytics.collect_ad_spend'  # filter
     # CHANNELS_METRICS — filter, value=list[dict], no kwargs. EXPENSIVE: each
     #   channel plugin appends ITS OWN 30-day ads totals — {'name': str,
@@ -1006,12 +1022,15 @@ class MorpheusEvents:
     #   sitemap renderer builds its own native URL list (catalog, CMS pages,
     #   book facets, …) then fires this filter so any OTHER plugin can fold
     #   in URLs it owns — {'loc': str (absolute, required), 'lastmod':
-    #   date|datetime|None, 'changefreq': str, 'priority': float|str} —
-    #   without seo importing that plugin's models. Each subscriber appends
-    #   its own dicts and returns the list; seo dedupes by `loc` (first
-    #   wins) and normalises lastmod/priority to strings at the merge point.
-    #   A disabled plugin's URLs simply never appear (bus skips inactive
-    #   owners).
+    #   date|datetime|None, 'changefreq': str, 'priority': float|str,
+    #   'images': [str] (optional, v0.163.0)} — without seo importing that
+    #   plugin's models. Each subscriber appends its own dicts and returns the
+    #   list; seo dedupes by `loc` (first wins) and normalises lastmod/priority
+    #   to strings at the merge point. `images` are the page's pictures for the
+    #   image sitemap: seo keeps at most six absolute public addresses and drops
+    #   any file under a private media prefix (`digital/`). `lastmod` is when
+    #   the row last changed, or None when its owner cannot say. A disabled
+    #   plugin's URLs simply never appear (bus skips inactive owners).
     SITEMAP_URLS = 'seo.sitemap_urls'  # filter
 
     # AI_FEED_ITEMS — filter, value=list[dict], no kwargs. The AI-shopping

@@ -15,6 +15,91 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.167.3 — 2026-11-14
+
+**The thank-you page no longer hands out the download**
+
+- A digital purchase is taken from the emailed link or the account's Library, never from the thank-you page (owner, 2026-11-14). The page showed a Download button, and an audiobook's player, beside each digital line under every theme; it now says where the file is: in the email for a guest, in the Library and the email for a buyer with an account, or that the link follows once the payment goes through. The account's order page and the Library keep their downloads.
+
+## v0.167.2 — 2026-11-14
+
+**The Tracking page says which half of tracking runs**
+
+- The Tracking page said "Tracking is not configured yet" unless both the GA4 measurement ID and the API secret were set, while the Google tag runs in the browser on the measurement ID alone or on a GTM container: a store whose tag was live was told nothing was set up. It now warns only when neither half runs, and otherwise says which half is missing: events from the server need the API secret, page views need a tag in the browser.
+
+## v0.167.1 — 2026-11-14
+
+**Emails show the store's name as the sender**
+
+- Every email the store sends from its own address now carries the store's name beside it (Settings → General), so an inbox shows who wrote instead of "hello". A store that never set its name shows the site's address; a name written into the sender field on Settings → Notifications ("Name <address>") is kept, and any other sender stays as written.
+
+## v0.167.0 — 2026-11-14
+
+**Book social cards**
+
+- A book can share a social card instead of its plain cover: a 1200×630 picture with the whole cover on the left and the title, author and the start of the book's own description on the right, under a line you choose and over the store's name. It is off until a store switches it on in the book app's settings (Settings → Storefront → Books), where the line above the title, the name at the bottom and the two colours are set too.
+- A book's card is drawn by the worker the first time its page is opened after a change (or when the book is saved), kept in the store's file storage, and never drawn twice for the same title, author, description, cover and settings. Until it exists, the page shares the cover as before.
+- A share image picked for the page in the SEO card, or uploaded on the product, wins over the card; switching the cards off shares the cover again at once. The card names its size (1200×630) and says whose cover it is for screen readers.
+- The card is drawn on the server from the book as it is stored: no AI, no outside service, and the book's text, cover and SEO are left as they are. A cover that cannot be read is skipped, and a page never breaks over a card.
+- Linda can draw one book's card on your yes (books.render_social_card), and manage.py book_social_cards draws one book, writes a local preview, or fills in the missing cards in small batches.
+
+## v0.166.1 — 2026-11-14
+
+**Structured data opens from the SEO card**
+
+- Structured data is now a button in the SEO card of products, categories, collections and pages. It opens a dialog with the FAQ, recipe, video and course editor (and, on a product, the extra JSON-LD box); everything saves with the page's Save, and the separate Structured data card on the product page is gone.
+- The Structured data page and the dialog share one editor and one save rule, and both keep the saved blocks Google no longer shows until you delete them on that page.
+- The extra JSON-LD is written only when the form sends it, so saving a product while the SEO app is off keeps it.
+- The button no longer promises How-to or Event blocks, which Google stopped showing.
+- While roles are enforced, changing structured data in the dialog needs the permission to edit SEO, as it does on the Structured data page; staff without it see how many blocks the page has, and their saves leave the blocks alone. Discard in the save bar now puts the dialog's blocks back too, so the next Save no longer stores the discarded ones.
+
+## v0.166.0 — 2026-11-13
+
+**Every control in one place, and stock gets its own page**
+
+- Products → Inventory has a Stock page: every counted product in every switched-on warehouse, filters for low and out of stock, search by name or SKU, and a box to type the units on hand (each change is kept in the stock history). Staff who may only look at stock see the numbers without boxes. The Stockout forecast sits beside it as Forecast.
+- The running-low list moved from the Warehouses page to Stock; the dashboard home's Stock alerts (See all) and Pulse open it, and all three use one rule: free units at or below the low-stock threshold.
+- One attribution page, under Analytics: spend and the revenue each platform reports, per channel, come from the Channels app for every ad channel (Google, Meta, TikTok, Pinterest, Microsoft, Amazon, Reddit, Snapchat), shown in the store currency as each ad account reports it (nothing is converted); revenue is split by the model you pick; ROAS per channel and the blended MER (all store revenue over all ad spend). It covers the last 30 days and needs `analytics.read`. The Channels app's own ROAS page (which offered 7 to 90 days and asked for `marketing.write`) is gone, and its overview's Blended ROAS, which divides the revenue platforms report, is now Platform ROAS. Meta's conversions show for the first time. Spend already recorded keeps showing for up to 30 days after a channel stops reporting. Visits tagged `googleads`, `google_ads`, `gads`, `bing` or `snap` now count toward Google, Microsoft or Snapchat, so those channels' numbers shift at the next nightly run.
+- Maintenance mode gets its own card under Settings → Storefront (it had none), and closing or reopening the shop reaches every worker within 10 seconds. Settings → Developer → Caching loses eight controls that did nothing, and five unused storefront settings are gone. A maintenance message is shown as text, never as markup.
+- The payments settings card saves again: since v0.42.0 its Save said Saved and kept nothing. What it holds (keys, when cards are charged, saved cards, express checkout) reaches every web and Celery worker within 10 seconds.
+- Cmd+K lands on the field it names on every settings card, not only on the page (the AI settings page still opens at the top).
+- Tracking: the Google Ads conversion ID and purchase label are on the Tracking settings page (Connection tab); their separate settings card is gone.
+- Marketing's read-only copy of the newsletter campaigns list is gone, with the newsletter page's Edit campaigns button that led to it.
+
+## v0.165.0 — 2026-11-13
+
+**Markets get real prices and exchange rates**
+
+- Markets get a currency from a list, a rounding rule (exact, whole or .99) and real prices: a price you fix for a market, else one typed on the product, else the store price adjusted and converted at the day's rate. A market cannot be switched on without a rate for its currency.
+- While a market uses another currency, the European Central Bank's daily rates are fetched every day at 15:30 UTC (or only the rates you type: a choice at the top of the Markets page). A rate you type is never overwritten; clearing it falls back to the daily rate, or is refused while a market needs it. A health check names a rate that is missing or more than three days old.
+- The markets page shows each rate with its source and age, sets or clears your own rate, fetches rates on demand and previews ten prices. Linda reads and changes markets, rates and fixed prices with your yes (scopes markets.read and markets.write).
+- Shoppers still see the store currency: showing and charging market prices comes in a later release.
+- hreflang is per language only: a market no longer publishes a ?market= alternate.
+- An optional bar offers a visitor the page in the language their browser prefers (a switch on the Translations page, off by default). It is decided in the browser, so a cached page stays the same for everyone; crawlers never get it, and its stylesheet loads only when it shows.
+- OpenTelemetry packages 1.45.2 (CVE-2026-126360 in opentelemetry-api 1.45.1).
+
+## v0.164.0 — 2026-11-12
+
+**Linda and the audit**
+
+- The nightly site scan checks what the markup claims: a price the page does not show or the store no longer charges, availability inventory contradicts, an image that does not load, a declared share-image size the file does not have.
+- Internal links and sitemap URLs that redirect are reported, a chain of two or more hops as critical; a redirect that ends at sign-in is not a finding.
+- Pages nothing links to are reported once a whole-sitemap crawl has run, with listings followed through to their later pages.
+- Linda reads the scan, the index rules and the title patterns, and with the merchant's yes changes rules and patterns and starts a scan; a pattern naming a token the store cannot fill is refused with the list it can.
+- The 24 legacy SEO head tags, which rendered nothing under the head contract, are deleted, and the head guard renders every page under every theme; Speakable leaves the graph.
+- A feedback ticket a staff member may not open answers 403, and a guard fails any permission check whose answer is ignored.
+
+## v0.163.0 — 2026-11-12
+
+**Richer merchant listings**
+
+- Store-level shipping on the Organization (hasShippingService) from the shipping app's flat and free-over rates, plus a handling time and cut-off on the Shipping page, unset by default and claimed nowhere while unset.
+- Return terms as settings (fees, method, refund type), each left out of the markup until set, on the Organization and on every offer.
+- Product variants vary by colour, material and pattern as well as size, from catalog's variant attributes.
+- One brand source for the product page and every channel feed: the PRODUCT_BRAND filter (book publisher), then catalog's default brand, moved from the channel settings; Meta's made-up 'Generic' brand is gone.
+- The schema editor's blocks now reach the page graph, never duplicating a type the store writes itself; types Google no longer shows are listed for deletion, and Linda can read, set and delete blocks with the merchant's yes.
+- Articles state their plain text and their markdown image, ItemList URLs are absolute, sitemaps list every app's images and real lastmod dates, and events that have ended leave the sitemap and lose their Event node.
+
 ## v0.162.0 — 2026-11-12
 
 **Travel conversions**

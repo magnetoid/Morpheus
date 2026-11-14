@@ -111,11 +111,11 @@
   mention swallows the endcomment and the page 500s anyway.{% endcomment %}
   {% verbatim %}
   <dl style="margin:0; display:grid; grid-template-columns: minmax(190px, auto) 1fr; gap:.4rem 1.25rem; font-size:.85rem;">
-    <dt><code>{name} {sku} {category} {price}</code></dt><dd style="margin:0;">the page's own fields; bare metafield keys work too (<code>{author}</code>, <code>{isbn13}</code>)</dd>
+    <dt><code>{name} {sku} {category} {price}</code></dt><dd style="margin:0;">the page's own fields; the key of any metafield the shop holds works too (<code>{author}</code> once products carry an <code>author</code> metafield). A token the shop cannot fill is refused on save, with the list of the ones it can</dd>
     <dt><code>{site_name} {sep}</code></dt><dd style="margin:0;">the shop name from Settings, and a — separator</dd>
-    <dt><code>{author|"Anonymous"}</code></dt><dd style="margin:0;">alternatives — first non-empty wins; quotes make a literal</dd>
+    <dt><code>{category|"Shop"}</code></dt><dd style="margin:0;">alternatives — first non-empty wins; quotes make a literal</dd>
     <dt><code>{name|truncate:40|title}</code></dt><dd style="margin:0;">filters: <code>truncate:N</code>, <code>title</code>, <code>lower</code>, <code>upper</code></dd>
-    <dt><code>[ by {author}]</code></dt><dd style="margin:0;">bracket block vanishes whole when nothing inside it resolves — separators never dangle</dd>
+    <dt><code>[ in {category}]</code></dt><dd style="margin:0;">bracket block vanishes whole when nothing inside it resolves — separators never dangle</dd>
   </dl>
   {% endverbatim %}
   <p style="margin:.75rem 0 0; font-size:.78rem; color: var(--text-subtle); max-width: 64ch;">

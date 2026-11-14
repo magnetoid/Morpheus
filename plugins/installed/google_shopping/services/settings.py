@@ -17,7 +17,6 @@ class FeedSettings:
     country: str
     language: str
     currency: str
-    default_brand: str
     default_google_product_category: str
     default_condition: str
     free_shipping_over: str
@@ -34,7 +33,6 @@ _DEFAULTS = {
     'country': 'US',
     'language': 'en',
     'currency': '',  # '' → fall back to the product's own currency
-    'default_brand': '',
     'default_google_product_category': '',
     'default_condition': 'new',
     'free_shipping_over': '',

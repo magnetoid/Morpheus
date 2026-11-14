@@ -226,7 +226,7 @@
         <label class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">{{ field.title }}</label>
         {% if field.description %}<p class="text-xs text-[color:var(--text-muted)]">{{ field.description }}</p>{% endif %}
         {% if field.kind == 'boolean' %}
-        <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" name="{{ field.key }}" {% if field.value %}checked{% endif %}> Enabled</label>
+        <label class="inline-flex items-center gap-2 text-sm"><input type="hidden" name="_booleans" value="{{ field.key }}"><input type="checkbox" name="{{ field.key }}" {% if field.value %}checked{% endif %}> Enabled</label>
         {% elif field.kind == 'enum' %}
         <select name="{{ field.key }}" class="input">{% for option in field.enum %}<option value="{{ option }}" {% if option == field.value %}selected{% endif %}>{{ option }}</option>{% endfor %}</select>
         {% elif field.kind == 'password' %}

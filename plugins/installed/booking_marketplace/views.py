@@ -20,6 +20,7 @@ from django.utils.dates import MONTHS
 from django.utils.translation import gettext as _
 from django.utils.translation import ngettext
 
+from core.text import clip, plain_text
 from core.utils.i18n import localized_path
 from core.utils.pagination import paginate_or_404
 from morpheus.core import MorpheusEvents, hook_registry
@@ -360,7 +361,7 @@ def _place_meta_description(place) -> str:
     desc = (place.summary or '').strip()
     if len(desc) < 130 and (place.overview or '').strip():
         desc = f'{desc} {place.overview.strip()}'.strip()
-    return desc[:158].rstrip(' ,.;—-')
+    return clip(plain_text(desc), 158)
 
 
 def place_detail(request, slug):
@@ -654,7 +655,7 @@ def service_detail(request, slug):
         # Per-page SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
         'seo_object': service,
         'seo_title': f'{service.name} · {service.location or country.current().name}',
-        'seo_description': (service.short_description or service.description)[:155],
+        'seo_description': clip(plain_text(service.short_description or service.description), 155),
         'seo_image': service.image.url if service.image else '',
         'seo_og_type': 'product',
         'breadcrumb_items': (
@@ -909,9 +910,12 @@ def event_detail(request, slug):
             'seo_title': (
                 f'{event.name} — {event.when_display or country.current().name}'.strip(' —')
             ),
-            'seo_description': (
-                event.summary or str(country.text('event_description')) % {'name': event.name}
-            )[:300],
+            'seo_description': clip(
+                plain_text(
+                    event.summary or str(country.text('event_description')) % {'name': event.name}
+                ),
+                300,
+            ),
             'seo_image': event.image.url if event.image else '',
             'seo_og_type': 'article',
             'breadcrumb_items': _crumbs(

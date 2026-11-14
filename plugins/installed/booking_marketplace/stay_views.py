@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 
+from core.text import clip, plain_text
 from core.utils.pagination import paginate_or_404
 from plugins.installed.booking_marketplace import country, seo_jsonld, stay_content, stays
 from plugins.installed.booking_marketplace import translations as shown
@@ -146,7 +147,7 @@ def stay_detail(request, slug):
             # Per-page SEO/AEO: feeds the shared seo_meta fallbacks + og:image.
             'seo_object': prop,
             'seo_title': f'{prop.name} · {prop.location or country.current().name}',
-            'seo_description': (prop.short_description or prop.description)[:155],
+            'seo_description': clip(plain_text(prop.short_description or prop.description), 155),
             'seo_image': prop.image.url if prop.image else '',
             'seo_og_type': 'product',
             # The Hotel node joins the head's graph through SEO_JSONLD_GRAPH

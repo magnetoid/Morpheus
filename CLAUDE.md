@@ -277,7 +277,7 @@ when nothing in scope would fill it. Guarded by `book_product/tests/test_listing
 **Convention — one dashboard search, and every app answers it (v0.151.0).** Cmd+K
 (`admin_dashboard/views_split/palette.py`) lists what the registry knows: every page and settings
 tool, every app (to its settings, its first page, or its card in Apps while it is off), every field
-of every settings panel (`#f-<key>`), every email, and every guide (release_notes). Records come from
+of every settings panel (`#f-<app>-<key>`, the id both settings pages render), every email, and every guide (release_notes). Records come from
 `DASHBOARD_SEARCH`: each app appends its own rows with `plugins/dashboard_search.py:add()`, so a
 switched-off app's records leave with it; the shell never queries another app's model. Text kept in
 Python folds case and accents and forgives one typo; a row matches each word as typed (the stores
@@ -972,10 +972,19 @@ per-tag arrangement shipped two `og:type` tags on every PDP, two `WebSite` nodes
 on most pages, the brand appended twice on category/collection/journal titles,
 and `/search/` with **no `<title>` at all** (the theme's title lived inside the
 `{% block seo %}` that page overrode to force `noindex`). None of that is visible
-in a browser. Guards: `themes/test_head_contract.py` (one title/canonical/robots/
-JSON-LD per page kind, no hardcoded brand, survives a seo disable) and
-`seo/tests/test_head_parity.py` (a recorded profile of every page type; re-record
-deliberately and review the diff — a shrinking profile is the bug). Corollaries:
+in a browser. Guards: `themes/test_head_contract.py` renders every page kind under
+EVERY registered theme and reads the output (one title/canonical/robots/og:title, one
+JSON-LD block in the whole document and it is the head's graph, none on a noindex or
+non-self-canonical page, no hardcoded brand, survives a seo disable, a theme without
+`head_contract` fails); until v0.164.0 it rendered only the active theme and grepped
+the others for `application/ld+json`, which a `{% seo_*_jsonld %}` tag writing the
+block at render time passed, and the travel themes' journal, about and contact pages
+carried three such tags with "Montenegro Experience" typed in. Those 24 legacy head
+tags are deleted (`docs/MIGRATING.md`, v0.164.0), and a template calling one fails the
+guard; booking_marketplace's `test_head_contract_travel.py` covers the travel page
+kinds under montenegro and croatia. Also `seo/tests/test_head_parity.py` (a recorded
+profile of every page type; re-record deliberately and review the diff — a shrinking
+profile is the bug). Corollaries:
 a page title is the **clean page name**, the brand is applied at render from
 settings (ADR 0007) — never append the shop name in a view; and machine endpoints
 (`robots.txt`, `sitemap*.xml`, `llms.txt`, `.well-known/*`) must register with
@@ -1367,7 +1376,9 @@ offered for a cart with a line that does not ship (owner, 2026-11-11, v0.152.1):
 (`orders.services.line_ships`, the one rule checkout's address step reads). The file comes from
 `DIGITAL_DELIVERY_FILE` (variant, product, then the app that owns the edition: audiobooks answers
 with its narration) and the order pages show it through `{% order_line_delivery %}`
-(`ORDER_LINE_DELIVERY`), so a theme imports no app. `/account/downloads/` is the Library;
+(`ORDER_LINE_DELIVERY`), so a theme imports no app. The thank-you page links no file (owner,
+2026-11-14): its view sets `delivery_surface='receipt'` and the answer names where the file is (the
+email, the Library), so no theme can print the link there. `/account/downloads/` is the Library;
 `/account/library/<line>/file/` serves the buyer's own file through its storage, never a disk
 path (tests run on InMemoryStorage), with byte ranges for the player. Audiobook narration
 (`audiobooks/services.py`) runs in resumable slices under the 5-minute task limit, each slice
@@ -1375,7 +1386,7 @@ narrating at least one piece, and reads only the book's PDF: it used to fall bac
 copy, which a buyer would have paid for as the audiobook. Found on the way: the order history sorted
 on a `created_at` an Order never had, and the swallowed FieldError showed every customer an empty
 history; an order is dated by `placed_at`. Guarded by `digital_products/tests/test_library.py`,
-`audiobooks/tests/test_narration.py`, `storefront/tests/test_account_order_history.py` and
+`test_receipt_page.py`, `audiobooks/tests/test_narration.py`, `storefront/tests/test_account_order_history.py` and
 `admin_dashboard/tests/test_order_nothing_to_ship.py`.
 
 **Convention — the dashboard has ONE media uploader.** `admin_dashboard/static/
@@ -1566,7 +1577,8 @@ a related manager, iterating it raised, and the step's `except` skipped every pr
 
 **Convention — stock has one write path, and a product sold in one form counts it on a default variant
 (v0.152.0).** Units on hand change only through `InventoryService.set_quantity` / `adjust` / `transfer`
-(`inventory/services.py`): the product page's Stock card, the Warehouses page, Linda's `inventory.*`
+(`inventory/services.py`): the product page's Stock card, the Stock page (Products → Inventory, v0.166.0),
+the Warehouses page, Linda's `inventory.*`
 tools, GraphQL `setStock` / `adjustStock` and the CSV import's `stock` column (through the
 `INVENTORY_SET_STOCK` filter, so the importer imports no inventory code). Each write leaves a
 `StockMovement` and, after commit, fires `PRODUCT_LOW_STOCK` or `PRODUCT_OUT_OF_STOCK` once, when the
@@ -1580,7 +1592,7 @@ it (`hasOnlyDefaultVariant`), and a cart line that names no variant reserves fro
 `inventory_policy='continue'` sells past 0 and notes the shortfall on the order's timeline. Orders, the
 cart hold and `available()` read switched-on warehouses only, and a warehouse with stock records is
 switched off, never deleted (its movements would go with it). Guarded by
-`inventory/tests/test_stock_writes.py`, `test_backorder_policy.py`, `test_stock_card.py`,
+`inventory/tests/test_stock_writes.py`, `test_backorder_policy.py`, `test_stock_card.py`, `test_stock_page.py`,
 `test_warehouses_page.py`, `test_stock_tools.py`, `catalog/tests/test_default_variant.py`,
 `themes/test_default_variant_picker.py` and `importers/tests/test_csv_stock.py`.
 
@@ -1646,6 +1658,24 @@ fastest | preferred carrier/service, `SHIPPING_LABEL_RATE` filter); orders' `par
 `fulfil_marks_shipped` set the parcel emails and whether the last parcel ships the order. Guarded by
 `payments/tests/test_manual_capture.py`, `test_saved_card_intent.py`, `test_payment_failed_event.py`,
 `orders/tests/test_offline_refund.py`, `test_parcel_settings.py` and `shipping/tests/test_label_rate.py`.
+
+**Convention — a market prices in its own currency from one function, and a rate the merchant typed wins (v0.165.0).**
+`markets/pricing.py:market_price(product, market, variant=None)` answers what a product costs in a market: the store
+price when the market uses the store currency; else a price fixed for that market (`ProductMarketPrice`), else one typed
+in the product's `localized_prices` (a 0 there is no price), else the store price adjusted by the market's percentage,
+converted with `core.pricing.convert` and rounded as the market says (exact, whole, .99; a positive price never rounds
+to 0 and a free one stays free). It returns None without a rate, and a market whose currency has no rate cannot be
+switched on: `markets.services.save_market` is the one write path for the page and Linda. Rates live in core's
+`ExchangeRate` as store currency → X. The ECB's daily table (`markets.fetch_exchange_rates`, 15:30 UTC, skipped when
+`rate_source` is manual) never overwrites a `source='manual'` row, and clearing a manual rate refetches or is refused
+while a market needs it, because there is one row per pair. Shoppers still see the store currency: showing and charging
+market prices is the next release (`docs/plans/markets-currency-language-2026-11.md`), and markup and feeds keep the
+store price. hreflang is per language only: a `?market=` URL is not a page. The language bar (localization's
+`suggest_language`, off by default) decides in the browser from `link[rel=alternate][hreflang]`, `navigator.languages`
+and the `morpheus_lang_choice` cookie, because pages are edge-cached and the same for every visitor; it floats over the
+page (an in-flow bar added after paint is a layout shift) and skips crawlers that run scripts. Guarded by
+`markets/tests/test_market_price.py`, `test_rates.py`, `test_save_market.py`, `test_dashboard.py`, `test_agent_tools.py`,
+`core/tests/test_currency_convert.py` and `localization/tests/test_language_bar.py`.
 
 **Convention — one sales figure (v0.157.0).** Every sales number a merchant or Linda reads comes
 from `orders/reports.py`: `counted()` is an order placed and not cancelled (paid, its card held, or an
@@ -1774,6 +1804,70 @@ Funnel page's presets come from `ANALYTICS_FUNNELS` (analytics' `shop`, booking_
 default on a store that sells no goods). Meta CAPI and Ads conversions are not sent for bookings. Guarded by
 `booking_marketplace/tests/test_conversions.py`, `analytics/tests/test_conversion_events.py` and
 `tracking/tests/test_conversions.py`.
+
+**Convention — a listing's claims come from their owners (v0.163.0).** Every claim a product page,
+feed or sitemap makes has one source, and while the source is empty the claim is omitted:
+- Shipping: the store's `hasShippingService` on the Organization comes from the shipping app's flat and
+  free-over rates, and only while the store ships goods. The handling time is the merchant's
+  (`handling_days_min`/`max`, `handling_cutoff_time` on the Shipping page, unset by default) and goes on that
+  service and on every offer's `deliveryTime`; transit is the rate's `estimated_days`.
+- Returns: returns_portal's `return_fees` (with `return_shipping_fee` for a fixed fee) and the method and
+  refund ticks. One policy object goes on the Organization and on every offer.
+- Brand: `catalog/brand.py:product_brand` fires `PRODUCT_BRAND` (book_product answers with the
+  publisher), else catalog's `default_brand`. It never uses product_safety's manufacturer or the seller's
+  name, and there is no "Generic". The channels' own `default_brand` is gone (plugins 0007 copied the value).
+- Variants: `catalog.variants.variant_axes` (the size field and variant attributes named size, colour,
+  material or pattern). `variesBy` lists the axes that differ, and each member states its own values.
+- Articles: `articleBody` is `core.text.plain_text`, clipped under 5,000 characters. The image is the
+  article's own (metadata cover, then the body's first `<img>` or markdown image), or none.
+- Sitemap: an entry may carry `images` (at most six, absolute, never under a private media prefix), which
+  the image sitemap lists for every entry, not only products. Its `lastmod` is the owner's `updated_at`
+  (Place, Property and Event have one since v0.163.0; null means none is claimed). A one-off event leaves the
+  sitemap once its last day has passed.
+- Events: no Event node once the stored edition is over, annual or not.
+
+The schema editor's blocks (`SeoMeta.schema_blocks`) join the page's graph (`schema/graph.py`). They never
+did before, because `{% seo_meta %}` is shimmed under the head contract. A type the store writes itself
+(`schema_types.OWNED_TYPES`) is refused at save and skipped at render, as is a type Google dropped
+(`RETIRED_TYPES`: listed for deletion). Linda edits blocks through `seo.schema_blocks` and
+`seo.set_schema_block` / `seo.delete_schema_block` (approval). Cut text with `core.text.clip`, never a raw
+slice. A title never carries the brand twice (`meta._without_brand_suffix`), and a long one drops its last
+part whole. Guarded by `shipping/tests/test_organization_shipping.py`,
+`returns_portal/tests/test_return_terms.py`, `catalog/tests/test_brand.py`, `test_variant_axes.py`,
+`seo/tests/test_schema_editor.py`, `test_article_markup.py`, `test_sitemap_images.py` and
+`booking_marketplace/tests/test_listing_claims.py`.
+
+**Convention — the audit checks what the markup claims (v0.164.0).** The site audit
+(`seo/services/site_audit.py`, nightly and on demand) renders every sitemap URL and reads each
+Product node's offer back against the page and its owners:
+- the price is in the page's visible text, as `|money` prints it in the page's language or as a
+  plain decimal (`markup_price_not_on_page`);
+- it is the price `core.pricing.apply_price_filter` gives now, variants matched by SKU
+  (`markup_price_stale`: a page cached before an edit);
+- the availability is `plugins/feed_mapping.availability_to_schema`'s (`markup_availability_wrong`);
+  never for a service, whose sessions answer;
+- every image answers 200 with `image/*` (`markup_image_broken`); another host's is counted, never
+  fetched;
+- og:image's declared size is its file's (`og_image_size_wrong`, `seo.services.images.image_size`).
+
+A claim it cannot match to a row (no SKU, no product slug) is counted
+(`checks.products_without_owner`), never guessed: a wrong owner turns a true claim into a finding.
+Links: one hop to a redirect is `link_to_redirect`, two or more `redirect_chain` (at most 5 hops,
+never off the host). A redirect that ends at sign-in is the door to an account page, not a detour.
+`orphan_page` (a sitemap page nothing links to) is named only after a whole-sitemap scan, with
+listing pages followed through rel=next; a partial scan says why in
+`checks.orphans_skipped_because`. Its extra requests use their own client, are cached per run and
+capped, and stop 300 s before the task's 1,800 s soft limit; `checks` and `measured` say what ran.
+A scan is queued once (`queue_site_audit`: refused while one runs and for ten minutes after the
+last), from the Overview button (`seo.write`) or Linda's `seo.run_site_audit`; she reads it with
+`seo.audit_results`. Index rules and title patterns save through one function each
+(`services/index_rules.save_index_rule`, `services/templating.save_template`), called by the page
+and by `seo.set_index_rule` / `seo.set_template` (approval). A pattern naming a token the store
+cannot fill (its fields, the site's, a metafield key it holds, `SEO_TEMPLATE_TOKENS`) is refused
+with the list; it used to render empty. And `core.authz.enforce()` returns the 403 to send: a bare
+call denies nothing (feedback's ticket status until v0.164.0). Guarded by
+`seo/tests/test_site_audit_claims.py`, `test_audit_tools.py`, `core/tests/test_enforce_return_used.py`
+and `feedback/tests/test_feedback.py::TicketStatusPermissionTests`.
 
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
@@ -1943,6 +2037,10 @@ swapped in by the backend's `send_messages`: callers build messages from
 `settings.DEFAULT_FROM_EMAIL` before any backend exists (async mail is built in
 the web process), so mutating that setting at backend construction sent live
 mail from a `noreply@` that doesn't exist (`core/tests/test_email_sender.py`).
+It also puts the store's name beside a bare store address (v0.167.1): a mail client
+shows a bare address by its local part, so every email read "hello". The name is
+the store name, never its "Morpheus Store" default, else the site's host; a name the
+merchant writes (`Shop <hello@…>`) is kept, and any other sender stays as written.
 And the templates must be reachable: `core.emails` is not an installed app, so
 until v0.75.23 no loader found `core/emails/templates` and every order email
 (placed, paid, shipped, cancelled, refund, downloads) was skipped as "template

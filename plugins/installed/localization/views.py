@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.http import Http404
+from django.views.decorators.http import require_POST
 
 from core.authz import enforce, require_capability
 from morpheus.app import dashboard_trail
@@ -125,6 +126,7 @@ def translations_index(request):
             'rows': rows,
             'batch_limit': BATCH_LIMIT,
             'default_name': i18n.language_name(i18n.default_language()),
+            'suggest_language': _suggest_language(),
             'breadcrumb_trail': trail,
         },
     )
@@ -227,3 +229,29 @@ def translation_edit(request, kind: str, pk: str, language: str):
             ),
         },
     )
+
+
+def _suggest_language() -> bool:
+    from plugins.registry import app_registry
+
+    plugin = app_registry.get('localization')
+    plugin.invalidate_config_cache()
+    return bool(plugin.get_config_value('suggest_language', False))
+
+
+@staff_member_required
+@require_capability('system.write')
+@require_POST
+def language_bar_save(request):
+    """The language bar switch, kept on the Translations page."""
+    from plugins.registry import app_registry
+
+    on = request.POST.get('suggest_language') == 'on'
+    app_registry.get('localization').set_config('suggest_language', on)
+    messages.success(
+        request,
+        'The language bar is on: a visitor whose browser prefers another of your languages is offered it.'
+        if on
+        else 'The language bar is off.',
+    )
+    return redirect('/dashboard/apps/localization/translations/')

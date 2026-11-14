@@ -1,11 +1,6 @@
 {% extends "storefront/base.html" %}
 {% load morph %}
-{% load seo %}
 
-{% block extra_head %}
-{% seo_contactpage_jsonld name="Contact Supernatural Shop" description="Get in touch with Supernatural Shop — recommendations, suggestions, order help." %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
-{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 5rem;">

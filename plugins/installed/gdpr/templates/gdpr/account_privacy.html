@@ -1,7 +1,6 @@
 {% extends "storefront/base.html" %}
-{% load seo %}
 
-{% block seo %}{% seo_meta robots="noindex, nofollow" fallback_title="Privacy & data" %}{% endblock %}
+{% block seo %}{% with seo_title="Privacy & data" %}{{ block.super }}{% endwith %}{% endblock %}
 
 {% block content %}
 <section style="padding: 4rem 0 2rem;">

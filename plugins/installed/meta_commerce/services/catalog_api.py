@@ -32,8 +32,11 @@ def _catalog_item(item: dict) -> dict:
         'price': item['price'],  # "9.00 USD"
         'link': item['link'],
         'image_link': item['image_link'],
-        'brand': item.get('brand', '') or 'Generic',
     }
+    # Meta needs one of brand, gtin or mpn; an unknown brand is left out, never
+    # invented ("Generic" named a brand no product had).
+    if item.get('brand'):
+        res['brand'] = item['brand']
     if item.get('sale_price'):
         res['sale_price'] = item['sale_price']
     if item.get('gtin'):

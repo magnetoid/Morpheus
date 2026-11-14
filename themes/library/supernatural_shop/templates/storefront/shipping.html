@@ -1,5 +1,5 @@
 {% extends "storefront/base.html" %}
-{% load morph %}{% load seo %}{% load i18n %}
+{% load morph %}{% load i18n %}
 {% comment %}
 The theme's fallback shipping page — shown only while the merchant has no CMS
 page with the slug "shipping". Rates, thresholds, carriers and cut-off times
@@ -8,7 +8,6 @@ promised "$5 flat, free over $40", USPS and same-day dispatch on a store whose
 checkout said none of that.
 {% endcomment %}
 {% block extra_head %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
 <style>
 .faq-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; }
 @media (min-width: 700px) { .faq-grid { grid-template-columns: repeat(2, 1fr); } }

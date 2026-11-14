@@ -16,8 +16,7 @@ The rules:
 * a `noindex` page never names another URL: no hreflang, no prev/next, no
   graph, and a canonical only when the canonical IS the page;
 * hreflang is derived from the canonical, never from the request;
-* a market alternate exists only for a market that names its countries and
-  whose `?market=` is an indexable parameter.
+* hreflang is per language: a market declares none.
 """
 
 from __future__ import annotations
@@ -212,7 +211,7 @@ class AlternatesFollowTheCanonicalTests(TestCase):
 
 
 class MarketAlternateTests(TestCase):
-    """A market is a region; its alternate must name a page that exists on its own."""
+    """A market changes the currency, not the page: it publishes no hreflang."""
 
     def setUp(self):
         cache.clear()
@@ -226,36 +225,28 @@ class MarketAlternateTests(TestCase):
             'label': 'Europe',
             'currency': 'EUR',
             'default_locale': 'en',
-            'country_codes': [],
+            'country_codes': ['DE', 'FR'],
             'is_active': True,
         }
         defaults.update(extra)
         return Market.objects.create(**defaults)
 
-    def test_a_market_without_countries_publishes_no_alternate(self):
-        # dotbooks: market "eu", locale en, no countries → every page said
-        # `hreflang="en" → /?market=eu`, a URL whose canonical is `/`.
-        self._market()
-        self.assertEqual(_alternates(_head(self.client.get('/'))), {})
-
-    def test_a_market_whose_parameter_is_consolidated_publishes_no_alternate(self):
-        self._market(country_codes=['DE', 'FR'])
-        self.assertEqual(_alternates(_head(self.client.get('/'))), {})
-
-    def test_an_indexable_market_publishes_regional_alternates_and_one_default(self):
+    def test_a_market_publishes_no_alternate_even_when_its_parameter_is_indexable(self):
         from plugins.installed.seo.models import IndexRule
         from plugins.installed.seo.rules import invalidate_index_rules_cache
 
-        self._market(country_codes=['DE', 'FR'])
+        self._market()
         IndexRule.objects.create(param='market', policy='allowlist', allowed_values=['eu'])
         invalidate_index_rules_cache()
-        clean = _alternates(_head(self.client.get('/')))
-        regional = _alternates(_head(self.client.get('/?market=eu')))
-        self.assertEqual(clean['en-DE'], 'http://testserver/?market=eu')
-        self.assertEqual(clean['en-FR'], 'http://testserver/?market=eu')
-        # One x-default for the whole cluster: the clean URL, from both members.
-        self.assertEqual(clean['x-default'], 'http://testserver/')
-        self.assertEqual(regional['x-default'], 'http://testserver/')
+        for url in ('/', '/?market=eu'):
+            with self.subTest(url=url):
+                head = _head(self.client.get(url))
+                self.assertEqual(_alternates(head), {})
+                self.assertNotIn('hreflang', head)
+
+    def test_a_market_without_countries_publishes_no_alternate_either(self):
+        self._market(country_codes=[])
+        self.assertEqual(_alternates(_head(self.client.get('/'))), {})
 
 
 class PageKindTableTests(TestCase):

@@ -3,9 +3,11 @@
 The SEO app used to publish a complete `MerchantReturnPolicy` — 30 days, free
 returns, by mail, US — on every product page of every store, assembled from
 constants in its own source. Only the window was ever real. This app owns the
-return window, so it states the window; it says nothing about fees or methods,
-because it does not know them and a guess about who pays for a return is the
-kind of guess that ends in a chargeback.
+return window, so it states the window. Fees, the way a return is sent and the
+refund type are stated only once the merchant sets them in this app's settings
+(v0.163.0): a guess about who pays for a return is the kind of guess that ends
+in a chargeback. The values are Google's
+(developers.google.com/search/docs/appearance/structured-data/return-policy).
 """
 
 from __future__ import annotations
@@ -16,6 +18,27 @@ logger = logging.getLogger('morpheus.returns_portal')
 
 # Mirrors the schema default in app.py:get_config_schema.
 _DEFAULT_WINDOW_DAYS = 30
+
+_SCHEMA = 'https://schema.org/'
+#: `return_fees` setting → schema.org `returnFees`. 'not_stated' publishes none.
+RETURN_FEES = {
+    'not_stated': '',
+    'free': f'{_SCHEMA}FreeReturn',
+    'customer_pays': f'{_SCHEMA}ReturnFeesCustomerResponsibility',
+    'fixed_fee': f'{_SCHEMA}ReturnShippingFees',
+}
+#: Ticked settings → schema.org `returnMethod` values, in this order.
+RETURN_METHODS = (
+    ('return_by_mail', f'{_SCHEMA}ReturnByMail'),
+    ('return_in_store', f'{_SCHEMA}ReturnInStore'),
+    ('return_at_kiosk', f'{_SCHEMA}ReturnAtKiosk'),
+)
+#: Ticked settings → schema.org `refundType` values, in this order.
+REFUND_TYPES = (
+    ('refund_full', f'{_SCHEMA}FullRefund'),
+    ('refund_exchange', f'{_SCHEMA}ExchangeRefund'),
+    ('refund_store_credit', f'{_SCHEMA}StoreCreditRefund'),
+)
 
 
 def on_seo_jsonld_graph(value, page=None, request=None, **kwargs):
@@ -66,12 +89,69 @@ def return_policy() -> dict | None:
             'applicableCountry': country,
             'returnPolicyCategory': 'https://schema.org/MerchantReturnNotPermitted',
         }
-    return {
+    policy = {
         '@type': 'MerchantReturnPolicy',
         'applicableCountry': country,
         'returnPolicyCategory': 'https://schema.org/MerchantReturnFiniteReturnWindow',
         'merchantReturnDays': days,
     }
+    policy.update(return_terms())
+    return policy
+
+
+def _config() -> dict:
+    from plugins.registry import app_registry
+
+    plugin = app_registry.get('returns_portal')
+    return (plugin.get_config() if plugin else {}) or {}
+
+
+def _ticked(value) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in ('true', '1', 'yes', 'on')
+    return bool(value)
+
+
+def return_terms() -> dict:
+    """`returnFees`, `returnMethod` and `refundType` as the merchant set them; {} when unset.
+
+    A fee is claimed as `ReturnShippingFees` only with its amount: Google
+    reads that value as "the customer pays this", and it must be above 0.
+    """
+    config = _config()
+    terms: dict = {}
+    fees = RETURN_FEES.get(str(config.get('return_fees') or 'not_stated'), '')
+    if fees == RETURN_FEES['fixed_fee']:
+        amount = _amount(config.get('return_shipping_fee'))
+        if amount:
+            terms['returnFees'] = fees
+            terms['returnShippingFeesAmount'] = {
+                '@type': 'MonetaryAmount',
+                'value': f'{amount:.2f}',
+                'currency': _store_currency(),
+            }
+    elif fees:
+        terms['returnFees'] = fees
+    for key, field in (('returnMethod', RETURN_METHODS), ('refundType', REFUND_TYPES)):
+        chosen = [value for setting, value in field if _ticked(config.get(setting))]
+        if chosen:
+            terms[key] = chosen if len(chosen) > 1 else chosen[0]
+    return terms
+
+
+def _amount(raw) -> float:
+    try:
+        value = float(raw or 0)
+    except (TypeError, ValueError):
+        return 0.0
+    return value if value > 0 else 0.0
+
+
+def _store_currency() -> str:
+    """What the store sells in (the shared supplier helper reads the catalogue)."""
+    from plugins.dropshipping.importer import store_currency
+
+    return store_currency()
 
 
 def window_days() -> int:
@@ -82,10 +162,7 @@ def window_days() -> int:
     30 days, which is what the returns portal itself honours. An explicit 0 is
     a different statement ("no returns") and is preserved.
     """
-    from plugins.registry import app_registry
-
-    plugin = app_registry.get('returns_portal')
-    config = (plugin.get_config() if plugin else {}) or {}
+    config = _config()
     try:
         return max(
             int(

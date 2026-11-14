@@ -65,9 +65,11 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
     if request.method == 'POST':
         # Naive merchant-form save: pull declared keys out of POST and
         # persist them via plugin.set_config. Type coercion is best-effort.
-        # Boolean checkboxes need explicit absence handling — an unchecked
-        # box doesn't submit a key at all — but only for AJAX posts where
-        # we know the form sent every declared boolean intentionally.
+        # An unticked box submits nothing, so an absent boolean is saved as off
+        # only when the form rendered it: every AJAX panel form renders all of
+        # its booleans, and a regular post names its boxes in `_booleans` (the
+        # panel templates write one per checkbox). A page that posts only some
+        # keys names none, so it never switches off a box it did not show.
         from django.http import JsonResponse
 
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -75,7 +77,7 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
         for key, prop in (panel.schema.get('properties') or {}).items():
             ptype = prop.get('type')
             if key not in request.POST:
-                if is_ajax and ptype == 'boolean':
+                if ptype == 'boolean' and (is_ajax or key in request.POST.getlist('_booleans')):
                     instance.set_config(key, False)
                     saved.append(key)
                 continue
@@ -146,6 +148,7 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
         'admin_dashboard/plugin_settings.html',
         {
             'plugin': instance,
+            'plugin_name': plugin,
             'panel': panel,
             'fields': fields,
             'active_nav': 'settings',

@@ -1,9 +1,7 @@
 {% extends "storefront/base.html" %}
-{% load seo %}{% load i18n %}
+{% load i18n %}
 
 {% block extra_head %}
-{% seo_aboutpage_jsonld name="About Irving Survival" description="Irving Survival helps households around the world prepare for emergencies, with practical survival information, useful supplies and planning tools based on official guidance." %}
-{% seo_breadcrumb_jsonld items=breadcrumb_items %}
 <style>
   .about { padding: clamp(3rem, 6vw, 4.5rem) 0 4rem; }
   .about .wrap { max-width: 860px; display: flex; flex-direction: column; gap: 1.25rem; }

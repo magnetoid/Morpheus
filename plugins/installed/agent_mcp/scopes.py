@@ -131,6 +131,11 @@ AVAILABLE_SCOPES: dict[str, tuple[str, str]] = {
         'Shipping · write',
         'Add + edit shipping zones and rates. Affects money charged.',
     ),
+    'markets.read': ('Markets · read', 'View markets, exchange rates and market prices.'),
+    'markets.write': (
+        'Markets · write',
+        'Add + edit markets, exchange rates and fixed market prices. Affects prices shoppers will see.',
+    ),
     # B2B
     'b2b.read': ('B2B · read', 'View B2B quotes + accounts.'),
     'b2b.write': ('B2B · write', 'Set net terms, manage B2B quotes.'),

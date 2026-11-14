@@ -52,6 +52,18 @@ class Market(models.Model):
             'ProductMarketPrice take precedence.'
         ),
     )
+    ROUNDING_CHOICES = [
+        ('exact', 'Exact'),
+        ('whole', 'Whole number'),
+        ('ninety_nine', 'Ends in .99'),
+    ]
+    rounding = models.CharField(
+        max_length=12,
+        choices=ROUNDING_CHOICES,
+        default='exact',
+        db_default='exact',
+        help_text='How a converted price is rounded.',
+    )
     is_active = models.BooleanField(default=True)
     is_default = models.BooleanField(
         default=False,

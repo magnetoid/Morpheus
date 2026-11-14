@@ -398,7 +398,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
 
     POST actions:
       action=clear_default  — flush the Django default cache
-      action=save_storefront — persist storefront.page_cache_ttl + asset_max_age
+      action=save_storefront — persist the Cache-Control headers
     """
     from django.conf import settings as dj_settings
     from django.core.cache import cache
@@ -421,9 +421,6 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
                     'html_cache_control', (request.POST.get('html_cache_control') or '').strip()
                 )
                 sf.set_config(
-                    'asset_max_age_seconds', int(request.POST.get('asset_max_age_seconds') or 0)
-                )
-                sf.set_config(
                     'graphql_edge_cache_ttl', int(request.POST.get('graphql_edge_cache_ttl') or 0)
                 )
                 messages.success(request, 'Cache-Control headers saved.')
@@ -431,9 +428,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
                 messages.error(request, 'TTL fields must be integers.')
         elif action == 'save_assets' and sf is not None:
             sf.set_config('lazy_load_images', request.POST.get('lazy_load_images') == 'on')
-            sf.set_config('serve_webp', request.POST.get('serve_webp') == 'on')
             sf.set_config('preload_lcp', request.POST.get('preload_lcp') == 'on')
-            sf.set_config('responsive_srcset', request.POST.get('responsive_srcset') == 'on')
             messages.success(request, 'Image optimization settings saved.')
         elif action == 'save_hints' and sf is not None:
             sf.set_config(
@@ -451,13 +446,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
                 'offline_page_path', (request.POST.get('offline_page_path') or '/offline/').strip()
             )
             messages.success(request, 'PWA settings saved.')
-        elif action == 'save_compression' and sf is not None:
-            sf.set_config('brotli_enabled', request.POST.get('brotli_enabled') == 'on')
-            sf.set_config('gzip_enabled', request.POST.get('gzip_enabled') == 'on')
-            sf.set_config('min_compress_bytes', int(request.POST.get('min_compress_bytes') or 1024))
-            messages.success(request, 'Compression settings saved.')
         elif action == 'save_critical' and sf is not None:
-            sf.set_config('inline_critical_css', request.POST.get('inline_critical_css') == 'on')
             sf.set_config(
                 'defer_non_critical_js', request.POST.get('defer_non_critical_js') == 'on'
             )
@@ -478,9 +467,6 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
         elif action == 'save_warmup' and sf is not None:
             sf.set_config('post_deploy_warmup', request.POST.get('post_deploy_warmup') == 'on')
             sf.set_config('warmup_top_n', int(request.POST.get('warmup_top_n') or 20))
-            sf.set_config(
-                'warmup_extra_urls', (request.POST.get('warmup_extra_urls') or '').strip()
-            )
             messages.success(request, 'Cache-warmup settings saved.')
         elif action == 'optimize_images' and app_registry.is_active('seo'):
             # Re-warm WebP/AVIF image variants in the background. Lives here
@@ -594,9 +580,6 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     storefront_plugin = app_registry.get('storefront')
     sf_cfg = storefront_plugin.get_config() if storefront_plugin else {}
     storefront = {
-        'asset_max_age_seconds': int(
-            sf_cfg.get('asset_max_age_seconds') or 31536000
-        ),  # 1 year default
         'html_cache_control': (
             sf_cfg.get('html_cache_control')
             or 'public, max-age=0, s-maxage=300, must-revalidate, stale-while-revalidate=86400, stale-if-error=86400'
@@ -605,9 +588,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     }
     assets = {
         'lazy_load_images': bool(sf_cfg.get('lazy_load_images', True)),
-        'serve_webp': bool(sf_cfg.get('serve_webp', True)),
         'preload_lcp': bool(sf_cfg.get('preload_lcp', True)),
-        'responsive_srcset': bool(sf_cfg.get('responsive_srcset', True)),
     }
     hints = {
         'preconnect_origins': sf_cfg.get('preconnect_origins') or '',
@@ -617,13 +598,7 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
         'service_worker_enabled': bool(sf_cfg.get('service_worker_enabled', False)),
         'offline_page_path': sf_cfg.get('offline_page_path') or '/offline/',
     }
-    compression = {
-        'brotli_enabled': bool(sf_cfg.get('brotli_enabled', True)),
-        'gzip_enabled': bool(sf_cfg.get('gzip_enabled', True)),
-        'min_compress_bytes': int(sf_cfg.get('min_compress_bytes') or 1024),
-    }
     critical = {
-        'inline_critical_css': bool(sf_cfg.get('inline_critical_css', False)),
         'defer_non_critical_js': bool(sf_cfg.get('defer_non_critical_js', True)),
         'font_display': sf_cfg.get('font_display') or 'swap',
         'preload_fonts': sf_cfg.get('preload_fonts') or '',
@@ -637,7 +612,6 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
     warmup = {
         'post_deploy_warmup': bool(sf_cfg.get('post_deploy_warmup', False)),
         'warmup_top_n': int(sf_cfg.get('warmup_top_n') or 20),
-        'warmup_extra_urls': sf_cfg.get('warmup_extra_urls') or '',
     }
 
     # ── Recent cache activity (across all CF zones) — last 10 purges ───────
@@ -725,7 +699,6 @@ def settings_caching(request: HttpRequest) -> HttpResponse:
             'assets': assets,
             'hints': hints,
             'pwa': pwa,
-            'compression': compression,
             'critical': critical,
             'route_ttls': route_ttls,
             'warmup': warmup,
@@ -1052,6 +1025,18 @@ def settings_category(request: HttpRequest, category: str) -> HttpResponse:  # n
         return settings_ai(request)
     if category == 'caching':
         return settings_caching(request)
+    # A panel's form posts to /dashboard/settings/<app>/. When the app shares its
+    # name with a category (storefront, payments) that URL is the category page,
+    # which saves only its core form (_form=core|permalinks): send the rest to
+    # the panel's own save.
+    if (
+        request.method == 'POST'
+        and not request.POST.get('_form')
+        and app_registry.settings_panel(category) is not None
+    ):
+        from plugins.installed.admin_dashboard.urls import plugin_settings_view
+
+        return plugin_settings_view(request, plugin=category)
 
     cat = get_category(category)
     from plugins.installed.admin_dashboard.settings_categories import CATEGORY_ALIASES
