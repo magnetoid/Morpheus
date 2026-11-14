@@ -160,12 +160,13 @@
   (function () {
     var KEY = 'morph.products.hidden-columns';
     var menu = document.querySelector('[data-column-chooser]');
-    var table = document.querySelector('[data-product-table]');
-    if (!menu || !table) return;
+    // Not named table: Tailwind scans this file, and the name negated is a class it would build.
+    var listing = document.querySelector('[data-product-table]');
+    if (!menu || !listing) return;
     var hidden = [];
     try { hidden = JSON.parse(localStorage.getItem(KEY) || '[]') || []; } catch (e) { hidden = []; }
     function apply() {
-      table.querySelectorAll('[data-col]').forEach(function (cell) {
+      listing.querySelectorAll('[data-col]').forEach(function (cell) {
         cell.hidden = hidden.indexOf(cell.getAttribute('data-col')) !== -1;
       });
     }
