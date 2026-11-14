@@ -1412,7 +1412,9 @@ two modes: the product gallery (`_media_uploader.html`, instant uploads, reorder
 video) and form-bound (`_media_field.html`, `data-mode="field"`) for any other
 image field — the file rides along with the form's Save, X ticks Django's
 `<name>-clear`. A new image field includes `_media_field.html`, never a bare file
-input. Anything the dashboard binds in JS must also bind on `htmx:afterSwap`: the
+input; a field outside a Django form passes `name`, and one that also takes other files
+passes `accept` and `current_document` (book_product's cover: PDF, PNG or JPG, checked
+in `covers.py` before it is stored). Anything the dashboard binds in JS must also bind on `htmx:afterSwap`: the
 body is `hx-boost`, so a page reached by a link, or re-rendered after a Save, never
 fires DOMContentLoaded (the uploader stayed inert that way until v0.93.0). Guarded
 by `admin_dashboard/tests/test_media_field_uploader.py`.

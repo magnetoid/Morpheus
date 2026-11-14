@@ -12,9 +12,14 @@ nothing beyond `Form(request.POST, request.FILES)`.
 Usage:
 
   {% include "admin_dashboard/_media_field.html" with field=form.image current=category.image label="Image" help="Shown on the category tile." %}
+
+A field outside a Django form passes `name` (and leaves `field` out); a file that is not
+only an image passes `accept`, `max_mb`, `note`, `add_text` / `replace_text`, and
+`current_document=True` when the stored file is not an image (it shows as a named file,
+linked, instead of a picture). `bare=True` drops the card frame inside another card.
 {% endcomment %}
 {% load i18n %}
-<div class="muploader muploader--field card card-padded" data-media-uploader data-mode="field">
+<div class="muploader muploader--field{% if not bare %} card card-padded{% endif %}" data-media-uploader data-mode="field"{% if max_mb %} data-max-mb="{{ max_mb }}"{% endif %}>
   <div class="flex items-center justify-between mb-3">
     <div>
       <h2 class="font-semibold text-sm">{{ label|default:_("Image") }}</h2>
@@ -25,7 +30,11 @@ Usage:
   <div class="muploader-grid" data-media-grid>
     <div class="muploader-tile is-cover" data-field-tile{% if not current %} hidden{% endif %}>
       <div class="muploader-tile__media">
-        <img data-field-preview src="{% if current %}{{ current.url }}{% endif %}" alt="">
+        <img data-field-preview src="{% if current and not current_document %}{{ current.url }}{% endif %}" alt=""{% if current_document %} hidden{% endif %}>
+        <a class="muploader-tile__videoph" data-field-doc href="{% if current_document %}{{ current.url }}{% endif %}" target="_blank" rel="noopener"{% if not current_document %} hidden{% endif %}>
+          <i data-lucide="file-text" class="h-6 w-6"></i>
+          <span class="text-xs truncate" style="max-width:100%" data-field-doc-name>{% if current_document %}{{ current_name|default:current.name }}{% endif %}</span>
+        </a>
       </div>
       <button type="button" class="muploader-tile__quick-x" data-field-remove aria-label="{% translate 'Remove image' %}" title="{% translate 'Remove' %}">
         <i data-lucide="x" class="h-3 w-3"></i>
@@ -33,19 +42,22 @@ Usage:
       <span class="muploader-tile__cover-pill" data-field-pill>{% translate "Current" %}</span>
     </div>
 
-    <button type="button" class="muploader-tile muploader-tile--add" data-add-tile aria-label="{% if current %}{% translate 'Replace image' %}{% else %}{% translate 'Add image' %}{% endif %}">
+    {% translate "Add image" as default_add %}{% translate "Replace image" as default_replace %}
+    {% firstof add_text default_add as add_label %}{% firstof replace_text default_replace as replace_label %}
+    <button type="button" class="muploader-tile muploader-tile--add" data-add-tile aria-label="{% if current %}{{ replace_label }}{% else %}{{ add_label }}{% endif %}">
       <div class="muploader-tile__add-stack">
         <i data-lucide="plus" class="h-6 w-6"></i>
-        <span class="muploader-tile__add-label" data-add-label>{% if current %}{% translate "Replace image" %}{% else %}{% translate "Add image" %}{% endif %}</span>
+        <span class="muploader-tile__add-label" data-add-label data-add-text="{{ add_label }}" data-replace-text="{{ replace_label }}">{% if current %}{{ replace_label }}{% else %}{{ add_label }}{% endif %}</span>
       </div>
     </button>
   </div>
 
   {% comment %}Not `hidden`/display:none — Safari refuses to open the file dialog when .click() is called on a display:none input. Visually-hidden-but-rendered works in every browser.{% endcomment %}
-  <input type="file" name="{{ field.html_name }}" id="{{ field.id_for_label }}" accept="image/*" data-file-input
+  {% firstof name field.html_name as input_name %}
+  <input type="file" name="{{ input_name }}"{% if field %} id="{{ field.id_for_label }}"{% endif %} accept="{{ accept|default:'image/*' }}" data-file-input
          style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;">
-  {% if not field.field.required %}<input type="checkbox" name="{{ field.html_name }}-clear" data-field-clear hidden>{% endif %}
+  {% if not field.field.required %}<input type="checkbox" name="{{ input_name }}-clear" data-field-clear hidden>{% endif %}
 
-  <p class="muploader-field__note" data-field-note>{% translate "Drag an image anywhere here or click the tile. JPEG · PNG · WebP · AVIF · GIF · up to 10 MB. Saved with the form." %}</p>
+  <p class="muploader-field__note" data-field-note>{% if note %}{{ note }}{% else %}{% translate "Drag an image anywhere here or click the tile. JPEG · PNG · WebP · AVIF · GIF · up to 10 MB. Saved with the form." %}{% endif %}</p>
   {% if field.errors %}<p class="field-error">{{ field.errors.0 }}</p>{% endif %}
 </div>
