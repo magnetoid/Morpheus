@@ -21,6 +21,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 - A digital purchase is taken from the emailed link or the account's Library, never from the thank-you page (owner, 2026-11-14). The page showed a Download button, and an audiobook's player, beside each digital line under every theme; it now says where the file is: in the email for a guest, in the Library and the email for a buyer with an account, or that the link follows once the payment goes through. The account's order page and the Library keep their downloads.
 
+## v0.167.1 — 2026-11-14
+
+**Emails show the store's name as the sender**
+
+- Every email the store sends from its own address now carries the store's name beside it (Settings → General), so an inbox shows who wrote instead of "hello". A store that never set its name shows the site's address; a name written into the sender field on Settings → Notifications ("Name <address>") is kept, and any other sender stays as written.
+
 ## v0.167.0 — 2026-11-14
 
 **Book social cards**
