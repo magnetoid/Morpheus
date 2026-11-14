@@ -239,7 +239,7 @@ class BookProductPlugin(Plugin):
             return
         from plugins.installed.book_product.dashboard import save_book_fields
 
-        save_book_fields(product, post, files)
+        save_book_fields(product, post, files, request=kwargs.get('request'))
         # A saved book gets its social card drawn now rather than on the next
         # page view (nothing is drawn when its inputs did not change).
         from django.db import transaction
