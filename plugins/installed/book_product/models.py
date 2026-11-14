@@ -131,7 +131,8 @@ class BookProduct(models.Model):
     spine_mm = models.PositiveIntegerField(null=True, blank=True)
     weight_g = models.PositiveIntegerField(null=True, blank=True)
 
-    # ── Cover PDF (drives the three.js 3D preview) ─────────────────────────
+    # ── Cover (drives the three.js 3D preview) ─────────────────────────────
+    # A PDF, PNG or JPEG despite the name, which GraphQL's coverPdfUrl shares (covers.py).
     cover_pdf = models.FileField(upload_to='book_covers/', null=True, blank=True)
 
     # ── Social card (social_cards.py) ──────────────────────────────────────
@@ -159,6 +160,13 @@ class BookProduct(models.Model):
 
     def __str__(self) -> str:
         return f'{self.author} — {self.product_id}' if self.author else str(self.product_id)
+
+    @property
+    def cover_type(self) -> str:
+        """'pdf' or 'image' for the cover file, '' without one (covers.py)."""
+        from plugins.installed.book_product.covers import cover_type  # noqa: PLC0415
+
+        return cover_type(self.cover_pdf) if self.cover_pdf else ''
 
     def language_editions(self) -> list[BookProduct]:
         """Every edition of this work (the original + all translations),

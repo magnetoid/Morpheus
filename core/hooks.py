@@ -727,7 +727,8 @@ class MorpheusEvents:
     #   book/bookvault cards). The view renders each template with the product.
     PRODUCT_FORM_CARDS = 'product.form_cards'  # filter
     # PRODUCT_FORM_SAVED — fire, kwargs: product=Product, post=QueryDict,
-    #   files=MultiValueDict, user=the staff member who saved. Fired after a
+    #   files=MultiValueDict, user=the staff member who saved, request (for a
+    #   message to the merchant, e.g. a file the card refused). Fired after a
     #   product is saved in the dashboard so a plugin can persist its own
     #   product-form fields (its card's inputs).
     PRODUCT_FORM_SAVED = 'product.form_saved'  # fire

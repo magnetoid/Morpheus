@@ -1,7 +1,8 @@
 {% comment %}
-Reusable 3D book viewer. Renders every `.book-3d[data-pdf-url]` element on the
-page: PDF.js rasterises page 1 of the cover PDF → a CanvasTexture on the front
-face of a three.js book; OrbitControls let the shopper drag to rotate.
+Reusable 3D book viewer. Renders every `.book-3d[data-cover-url]` element on the
+page: the cover goes on the front face of a three.js book, an image as it is
+(`data-cover-type="image"`) and a PDF through PDF.js, which rasterises page 1 into a
+CanvasTexture; OrbitControls let the shopper drag to rotate.
 
 Loaded from CDN (unpkg) via an ES-module importmap — same no-build pattern as
 the bookstore_3d plugin. CSP: storefront is report-only; the dashboard CSP
@@ -23,11 +24,17 @@ Include this ONCE per page (it carries the importmap, which must be unique).
   const PDFJS = 'https://unpkg.com/pdfjs-dist@4.7.76/build/pdf.min.mjs';
   const WORKER = 'https://unpkg.com/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs';
 
-  async function coverTexture(pdfUrl) {
+  async function coverTexture(url, type) {
+    if (type === 'image') {
+      const tex = await new THREE.TextureLoader().loadAsync(url);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      return { tex, aspect: tex.image.width / tex.image.height };
+    }
     const pdfjs = await import(PDFJS);
     pdfjs.GlobalWorkerOptions.workerSrc = WORKER;
     // No eval: the dashboard's CSP refuses it, and the cover renders without.
-    const pdf = await pdfjs.getDocument({ url: pdfUrl, isEvalSupported: false }).promise;
+    const pdf = await pdfjs.getDocument({ url, isEvalSupported: false }).promise;
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale: 2 });
     const canvas = document.createElement('canvas');
@@ -44,10 +51,10 @@ Include this ONCE per page (it carries the importmap, which must be unique).
     el.textContent = '';
     let cover;
     try {
-      cover = await coverTexture(el.dataset.pdfUrl);
+      cover = await coverTexture(el.dataset.coverUrl, el.dataset.coverType);
     } catch (err) {
       el.innerHTML = '<p style="padding:1rem;font:14px system-ui;color:#6b6b66;">' +
-        'Couldn’t render the cover PDF preview.</p>';
+        'Couldn’t render the cover preview.</p>';
       return;
     }
     const W = el.clientWidth || 360, H = el.clientHeight || 320;
@@ -106,7 +113,7 @@ Include this ONCE per page (it carries the importmap, which must be unique).
   }
 
   function init() {
-    document.querySelectorAll('.book-3d[data-pdf-url]').forEach((el) => {
+    document.querySelectorAll('.book-3d[data-cover-url]').forEach((el) => {
       if (!el.dataset.mounted) { el.dataset.mounted = '1'; mount(el); }
     });
   }

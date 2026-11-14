@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.169.0 — 2026-11-14
+
+**Book covers take PNG and JPG, dropped on the dashboard uploader**
+
+- The Book details card's cover is now the dashboard's drag-and-drop uploader, like product photos, and takes a PDF, PNG or JPG of up to 50 MB.
+- The 3D preview, on the product page and in the dashboard, draws an image cover as it is and a PDF from its first page.
+- Each file is checked before it is stored: its name, size and first bytes must agree and an image must open within 40 megapixels; a refused file keeps the old cover and the dashboard says why.
+- GraphQL's book type gains coverType (pdf or image) beside coverPdfUrl.
+
 ## v0.168.0 — 2026-11-14
 
 **Checkout asks what the store needs: a note, a gift message, the terms**

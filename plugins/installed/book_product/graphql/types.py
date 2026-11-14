@@ -30,7 +30,9 @@ class BookProductType:
     height_mm: int | None
     spine_mm: int | None
     weight_g: int | None
+    # The cover file, a PDF or a PNG/JPEG image: cover_type says which.
     cover_pdf_url: str | None
+    cover_type: str | None
 
     @classmethod
     def from_model(cls, book) -> BookProductType:
@@ -56,4 +58,5 @@ class BookProductType:
             spine_mm=book.spine_mm,
             weight_g=book.weight_g,
             cover_pdf_url=cover,
+            cover_type=book.cover_type or None,
         )

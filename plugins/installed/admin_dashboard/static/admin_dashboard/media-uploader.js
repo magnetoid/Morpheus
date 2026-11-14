@@ -49,17 +49,31 @@
     }, opts));
   }
 
-  const MAX_BYTES = 10 * 1024 * 1024;
-
   /*
    * Form-bound mode (data-mode="field", admin_dashboard/_media_field.html):
    * one image field of an ordinary form. Same look as the gallery, but the
    * chosen file goes into the form's own file input and is saved with the
    * form, so it works on a create form and never reloads over unsaved edits.
-   * The X ticks Django's clear checkbox (<name>-clear).
+   * The X ticks Django's clear checkbox (<name>-clear). The file input's `accept`
+   * says which files it takes (images by default; a book cover also takes a PDF,
+   * shown as a named file), and data-max-mb its size limit (10 MB by default).
    */
   function initField(root) {
     const input = root.querySelector('[data-file-input]');
+    const doc = root.querySelector('[data-field-doc]');
+    const docName = root.querySelector('[data-field-doc-name]');
+    const maxBytes = (Number(root.dataset.maxMb) || 10) * 1024 * 1024;
+    const accepted = (input && input.accept ? input.accept : 'image/*')
+      .split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+    const accepts = file => {
+      const type = (file.type || '').toLowerCase();
+      const name = (file.name || '').toLowerCase();
+      return accepted.some(t => (t.startsWith('.') ? name.endsWith(t)
+        : t.endsWith('/*') ? type.startsWith(t.slice(0, -1)) : type === t));
+    };
+    // By type, or by name when the system sends none.
+    const isImage = file => (file.type || '').startsWith('image/')
+      || /\.(png|jpe?g|gif|webp|avif)$/i.test(file.name || '');
     const clear = root.querySelector('[data-field-clear]');
     const tile = root.querySelector('[data-field-tile]');
     const preview = root.querySelector('[data-field-preview]');
@@ -78,21 +92,28 @@
       if (tone) note.dataset.tone = tone; else delete note.dataset.tone;
     }
 
-    function show(url, pillText) {
+    // A named file (a PDF) shows its name and links to it; an image shows itself.
+    function show(url, pillText, fileName) {
       if (tile) tile.hidden = !url;
-      if (preview) preview.src = url || '';
+      if (preview) { preview.hidden = Boolean(fileName); preview.src = url && !fileName ? url : ''; }
+      if (doc) { doc.hidden = !fileName; doc.href = fileName ? url : ''; }
+      if (docName) docName.textContent = fileName || '';
       if (pill) pill.textContent = pillText || '';
-      if (addLabel) addLabel.textContent = url ? 'Replace image' : 'Add image';
+      if (addLabel) {
+        addLabel.textContent = url
+          ? (addLabel.dataset.replaceText || 'Replace image')
+          : (addLabel.dataset.addText || 'Add image');
+      }
     }
 
     function choose(file) {
       if (!file) return;
-      if (!(file.type || '').startsWith('image/')) {
-        flashMessage(`${file.name} is not an image.`);
+      if (!accepts(file)) {
+        flashMessage(`${file.name} can't be used here.`);
         return;
       }
-      if (file.size > MAX_BYTES) {
-        flashMessage(`${file.name} is over 10 MB.`);
+      if (file.size > maxBytes) {
+        flashMessage(`${file.name} is over ${maxBytes / (1024 * 1024)} MB.`);
         return;
       }
       if (!(input.files && input.files[0] === file)) {
@@ -103,7 +124,7 @@
       if (clear) clear.checked = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       objectUrl = URL.createObjectURL(file);
-      show(objectUrl, 'New');
+      show(objectUrl, 'New', isImage(file) ? '' : file.name);
       say(`${file.name} will be saved with the form.`, 'pending');
     }
 
@@ -116,7 +137,7 @@
         if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = ''; }
         if (clear) clear.checked = true;
         show('', '');
-        say(clear ? 'The image will be removed when you save.' : '', clear ? 'pending' : '');
+        say(clear ? 'It will be removed when you save.' : '', clear ? 'pending' : '');
       });
     }
 
@@ -128,8 +149,9 @@
       if (!isFileDrag(e)) return;
       e.preventDefault();
       root.classList.remove('is-dragover');
-      const file = Array.from(e.dataTransfer.files || []).find(f => (f.type || '').startsWith('image/'));
-      if (file) choose(file); else flashMessage('Drop an image file.');
+      const files = Array.from(e.dataTransfer.files || []);
+      const file = files.find(accepts);
+      if (file) choose(file); else flashMessage(`${(files[0] || {}).name || 'That file'} can't be used here.`);
     });
   }
 
