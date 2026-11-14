@@ -15,6 +15,7 @@ from django.test.utils import CaptureQueriesContext
 from djmoney.money import Money
 
 from plugins.installed.catalog.models import Product, ProductVariant
+from plugins.testing import hold_app_settings
 
 
 def _variable(slug):
@@ -46,6 +47,7 @@ class ListingPriceQueryTests(TestCase):
 
         mode.forget()
         self.addCleanup(mode.forget)
+        hold_app_settings(self)
         _variable('atlas')
         self._queries()  # warm the nav, settings and capture-switch caches
         one, html = self._queries()

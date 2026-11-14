@@ -513,5 +513,7 @@ def order_confirmation(request, order_number):
         {
             'order': order,
             'payment_status': redirect_status,
+            # Downloads are taken from the email or the Library, never from here.
+            'delivery_surface': 'receipt',
         },
     )

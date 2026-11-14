@@ -684,11 +684,14 @@ class MorpheusEvents:
     #   (audiobooks returns the narration). The library page, the emailed links and
     #   the file view all read it, so a disabled app's edition delivers nothing.
     DIGITAL_DELIVERY_FILE = 'digital.delivery_file'  # filter
-    # ORDER_LINE_DELIVERY — filter, value=None, kwargs: order_item. How one order
-    #   line reaches its buyer when nothing is shipped, for the order pages
+    # ORDER_LINE_DELIVERY — filter, value=None, kwargs: order_item, surface. How one
+    #   order line reaches its buyer when nothing is shipped, for the order pages
     #   ({% order_line_delivery %}): a dict with state ('ready' | 'waiting' |
     #   'preparing'), state_label, kind ('audio' | 'file'), file_url and listen_url.
-    #   digital_products answers for digital lines; None for goods that ship.
+    #   digital_products answers for digital lines; None for goods that ship. On the
+    #   thank-you page surface is 'receipt' and the answer carries no file_url or
+    #   listen_url, only where the buyer finds the file: a download is taken from
+    #   the emailed link or the account's Library (owner, 2026-11-14).
     ORDER_LINE_DELIVERY = 'order.line_delivery'  # filter
     CUSTOMER_DETAIL_PANELS = 'customer.detail_panels'  # filter
     # CONTACTS_LEADS — filter, value=None, kwargs: search (str), request. The
@@ -746,7 +749,7 @@ class MorpheusEvents:
     #   value=list[dict], kwargs: category= / collection= / page= (the object, or
     #   None while creating). CATEGORY_FORM_SAVED / COLLECTION_FORM_SAVED /
     #   PAGE_FORM_SAVED — fires, kwargs: the same object plus post=QueryDict,
-    #   files=MultiValueDict.
+    #   files=MultiValueDict, user=the staff member who saved.
     #
     #   The PRODUCT_FORM_CARDS pair, generalised to the other entities a
     #   merchant edits. Same contract ({'template', 'context', 'order'}), same

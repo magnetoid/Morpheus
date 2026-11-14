@@ -1761,7 +1761,7 @@ def schema_editor(request: HttpRequest, app_label: str, model: str, pk: str) -> 
     from morpheus.views import Http404
     from plugins.installed.seo.models import SeoMeta
     from plugins.installed.seo.schema_types import (
-        build_block,
+        merge_editor_blocks,
         refusal,
         registry_json,
         retired_entries,
@@ -1798,23 +1798,14 @@ def schema_editor(request: HttpRequest, app_label: str, model: str, pk: str) -> 
             entries = json.loads(request.POST.get('blocks_json') or '[]')
         except (ValueError, TypeError):
             entries = []
-        clean, refused = [], []
-        for e in entries:
-            if not isinstance(e, dict):
-                continue
-            entry = {'type': e.get('type', ''), 'data': e.get('data') or {}}
-            if reason := refusal(entry):
-                refused.append(reason)
-            elif build_block(entry['type'], entry['data']):
-                clean.append(entry)
+        blocks, refused = merge_editor_blocks(entries, stored)
         meta, _ = SeoMeta.objects.get_or_create(content_type=ct, object_id=str(pk))
-        # The editor's form holds only the blocks it can edit: the retired ones
-        # stay stored (they render nowhere) until the merchant deletes them.
-        meta.schema_blocks = clean + [stored[r['index']] for r in retired]
+        meta.schema_blocks = blocks
         meta.save()
         for reason in dict.fromkeys(refused):
             messages.error(request, f'A block was not saved. {reason}')
-        messages.success(request, f'Structured data saved ({len(clean)} block(s)).')
+        saved = len(blocks) - len(retired)
+        messages.success(request, f'Structured data saved ({saved} block(s)).')
         return back
 
     try:

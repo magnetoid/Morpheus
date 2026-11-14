@@ -109,8 +109,11 @@ class ProductForm(forms.Form):
     # leaving the fields while dropping the template block would have blanked
     # every product's SEO on the next save. The two go together, always.
     # ── SEO — extra structured data (JSON; loose-typed for flexibility) ─
-    # Stays for now: it is the one SEO field with real validation, and the
-    # structured-data work that gives it a proper home is the next phase.
+    # The box is in the seo app's Structured data dialog (inside the SEO card),
+    # which posts it under this name; the form keeps the validation, so a bad
+    # JSON object stops the save. save() writes the column only when the box was
+    # posted: with seo switched off there is no box, and an unconditional write
+    # would blank every product's JSON-LD on its next save.
     structured_data = forms.CharField(
         widget=forms.Textarea,
         required=False,
@@ -123,8 +126,6 @@ class ProductForm(forms.Form):
     def __init__(self, *args, instance=None, **kwargs):
         self.instance = instance
         if instance is not None and 'initial' not in kwargs:
-            import json
-
             kwargs['initial'] = {
                 'name': instance.name,
                 'slug': instance.slug,
@@ -152,11 +153,6 @@ class ProductForm(forms.Form):
                 'weight': instance.weight,
                 'weight_unit': instance.weight_unit,
                 # SEO lives in the contributed SEO card now — see above.
-                'structured_data': (
-                    json.dumps(instance.structured_data, indent=2)
-                    if getattr(instance, 'structured_data', None)
-                    else ''
-                ),
             }
         super().__init__(*args, **kwargs)
         if self._is_service():
@@ -257,7 +253,7 @@ class ProductForm(forms.Form):
         # did not carry them — and after the SEO card moved into the seo app,
         # that is every POST — blanked them. They are now read-only fallbacks;
         # the SEO card writes SeoMeta via PRODUCT_FORM_SAVED.
-        if hasattr(product, 'structured_data'):
+        if hasattr(product, 'structured_data') and 'structured_data' in self.data:
             product.structured_data = cd.get('structured_data') or {}
 
         if cd.get('category'):

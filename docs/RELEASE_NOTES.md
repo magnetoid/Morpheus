@@ -15,6 +15,44 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.167.3 — 2026-11-14
+
+**The thank-you page no longer hands out the download**
+
+- A digital purchase is taken from the emailed link or the account's Library, never from the thank-you page (owner, 2026-11-14). The page showed a Download button, and an audiobook's player, beside each digital line under every theme; it now says where the file is: in the email for a guest, in the Library and the email for a buyer with an account, or that the link follows once the payment goes through. The account's order page and the Library keep their downloads.
+
+## v0.167.2 — 2026-11-14
+
+**The Tracking page says which half of tracking runs**
+
+- The Tracking page said "Tracking is not configured yet" unless both the GA4 measurement ID and the API secret were set, while the Google tag runs in the browser on the measurement ID alone or on a GTM container: a store whose tag was live was told nothing was set up. It now warns only when neither half runs, and otherwise says which half is missing: events from the server need the API secret, page views need a tag in the browser.
+
+## v0.167.1 — 2026-11-14
+
+**Emails show the store's name as the sender**
+
+- Every email the store sends from its own address now carries the store's name beside it (Settings → General), so an inbox shows who wrote instead of "hello". A store that never set its name shows the site's address; a name written into the sender field on Settings → Notifications ("Name <address>") is kept, and any other sender stays as written.
+
+## v0.167.0 — 2026-11-14
+
+**Book social cards**
+
+- A book can share a social card instead of its plain cover: a 1200×630 picture with the whole cover on the left and the title, author and the start of the book's own description on the right, under a line you choose and over the store's name. It is off until a store switches it on in the book app's settings (Settings → Storefront → Books), where the line above the title, the name at the bottom and the two colours are set too.
+- A book's card is drawn by the worker the first time its page is opened after a change (or when the book is saved), kept in the store's file storage, and never drawn twice for the same title, author, description, cover and settings. Until it exists, the page shares the cover as before.
+- A share image picked for the page in the SEO card, or uploaded on the product, wins over the card; switching the cards off shares the cover again at once. The card names its size (1200×630) and says whose cover it is for screen readers.
+- The card is drawn on the server from the book as it is stored: no AI, no outside service, and the book's text, cover and SEO are left as they are. A cover that cannot be read is skipped, and a page never breaks over a card.
+- Linda can draw one book's card on your yes (books.render_social_card), and manage.py book_social_cards draws one book, writes a local preview, or fills in the missing cards in small batches.
+
+## v0.166.1 — 2026-11-14
+
+**Structured data opens from the SEO card**
+
+- Structured data is now a button in the SEO card of products, categories, collections and pages. It opens a dialog with the FAQ, recipe, video and course editor (and, on a product, the extra JSON-LD box); everything saves with the page's Save, and the separate Structured data card on the product page is gone.
+- The Structured data page and the dialog share one editor and one save rule, and both keep the saved blocks Google no longer shows until you delete them on that page.
+- The extra JSON-LD is written only when the form sends it, so saving a product while the SEO app is off keeps it.
+- The button no longer promises How-to or Event blocks, which Google stopped showing.
+- While roles are enforced, changing structured data in the dialog needs the permission to edit SEO, as it does on the Structured data page; staff without it see how many blocks the page has, and their saves leave the blocks alone. Discard in the save bar now puts the dialog's blocks back too, so the next Save no longer stores the discarded ones.
+
 ## v0.166.0 — 2026-11-13
 
 **Every control in one place, and stock gets its own page**
