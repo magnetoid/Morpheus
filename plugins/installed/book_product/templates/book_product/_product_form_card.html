@@ -2,9 +2,10 @@
 the PRODUCT_FORM_CARDS hook (book_product.plugin.on_product_form_cards). Owned by
 this plugin, so disabling book_product removes it entirely (ADR 0023). Inputs
 submit with the product form; persisted by on_product_form_saved.{% endcomment %}
+{% load l10n %}
     <div class="card card-padded space-y-3" id="book-details-card">
       <h2 class="font-semibold text-sm flex items-center gap-2"><i data-lucide="book-open" class="h-4 w-4"></i> Book details</h2>
-      <p class="text-xs text-[color:var(--text-muted)]">Author, edition, physical attributes, and the cover PDF that drives the 3D preview. Stored on the book record, not as meta tags.</p>
+      <p class="text-xs text-[color:var(--text-muted)]">Author, edition, physical attributes, and the cover that drives the 3D preview. Stored on the book record, not as meta tags.</p>
       <input type="hidden" name="book_submitted" value="1">
       {% if book_widget.all_genres or book_widget.all_topics %}
       {% comment %}Genres/Topics are curated M2M vocabularies that grow large, so each is a
@@ -201,14 +202,11 @@ submit with the product form; persisted by on_product_form_saved.{% endcomment %
         <label class="block text-sm font-medium mb-1">Synopsis</label>
         <textarea name="synopsis" rows="3" class="input">{{ book_widget.book.synopsis|default:'' }}</textarea>
       </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Cover PDF <span class="text-xs text-[color:var(--text-muted)]">(drives the 3D preview)</span></label>
-        <input type="file" name="cover_pdf" accept="application/pdf" class="input">
-        {% if book_widget.book.cover_pdf %}<p class="text-xs text-[color:var(--text-muted)] mt-1">Current: <a href="{{ book_widget.book.cover_pdf.url }}" class="underline" target="_blank" rel="noopener">{{ book_widget.book.cover_pdf.name }}</a></p>{% endif %}
-      </div>
-      {# 3D cover preview (three.js + PDF.js) — book_product/_book_3d.html. #}
+      {# The cover: the dashboard's one uploader (drag and drop), a PDF, PNG or JPG (covers.py). #}
+      {% include "admin_dashboard/_media_field.html" with name="cover_pdf" current=book_widget.book.cover_pdf current_document=book_widget.cover_is_document current_name=book_widget.cover_name label="Cover" help="The cover as a PDF, PNG or JPG: the front alone, or the whole wrap (back, spine and front). Fill in the width, height and spine for an exact 3D preview." accept=book_widget.cover_accept max_mb=book_widget.cover_max_mb note=book_widget.cover_note add_text="Add cover" replace_text="Replace cover" bare=True %}
+      {# 3D cover preview (three.js; PDF.js for a PDF) — book_product/_book_3d.html. #}
       {% if book_widget.book.cover_pdf %}
-      <div class="book-3d rounded border border-[color:var(--border)] bg-[color:var(--surface,#faf8f3)]" data-pdf-url="{{ book_widget.book.cover_pdf.url }}" style="height:340px;"></div>
+      <div class="book-3d rounded border border-[color:var(--border)] bg-[color:var(--surface,#faf8f3)]" data-cover-url="{{ book_widget.book.cover_pdf.url }}" data-cover-type="{{ book_widget.book.cover_type }}" data-width-mm="{{ book_widget.book.width_mm|default_if_none:''|unlocalize }}" data-height-mm="{{ book_widget.book.height_mm|default_if_none:''|unlocalize }}" data-spine-mm="{{ book_widget.book.spine_mm|default_if_none:''|unlocalize }}" style="height:340px;"></div>
       {% include "book_product/_book_3d.html" %}
       {% endif %}
       {# Facet pages this book appears on — each attribute is a browsable category page. #}

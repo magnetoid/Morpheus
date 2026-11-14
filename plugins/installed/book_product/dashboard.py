@@ -34,6 +34,7 @@ def book_widget_context(product) -> dict[str, Any]:
     """Context for the 'Book details' card on the product-edit page."""
     from django.utils.text import slugify  # noqa: PLC0415
 
+    from plugins.installed.book_product import covers  # noqa: PLC0415
     from plugins.installed.book_product.models import (  # noqa: PLC0415
         BookProduct,
         Genre,
@@ -43,6 +44,7 @@ def book_widget_context(product) -> dict[str, Any]:
     )
 
     book = BookProduct.objects.filter(product=product).first()
+    cover = book.cover_pdf if book and book.cover_pdf else None
     selected_genres = {str(i) for i in book.genres.values_list('id', flat=True)} if book else set()
     selected_topics = {str(i) for i in book.topics.values_list('id', flat=True)} if book else set()
     return {
@@ -55,6 +57,15 @@ def book_widget_context(product) -> dict[str, Any]:
         'selected_genre_ids': selected_genres,
         'selected_topic_ids': selected_topics,
         'identifiers': _book_identifiers(product),
+        # The cover uploader (admin_dashboard/_media_field.html): a PDF shows as a named file.
+        'cover_accept': covers.ACCEPT,
+        'cover_max_mb': covers.MAX_BYTES // (1024 * 1024),
+        'cover_note': (
+            'Drag a PDF, PNG or JPG anywhere here or click the tile. '
+            f'Up to {covers.MAX_BYTES // (1024 * 1024)} MB. Saved with the form.'
+        ),
+        'cover_is_document': bool(cover) and book.cover_type == 'pdf',
+        'cover_name': cover.name.rsplit('/', 1)[-1] if cover else '',
     }
 
 
@@ -158,7 +169,7 @@ def _apply_translation_of(book, raw) -> None:
         book.translation_of = target.translation_of or target
 
 
-def save_book_fields(product, post, files=None) -> None:
+def save_book_fields(product, post, files=None, request=None) -> None:
     """Upsert the BookProduct from the product form's book.* inputs.
 
     Only touches the DB when the book card was submitted (a `book_submitted`
@@ -186,8 +197,7 @@ def save_book_fields(product, post, files=None) -> None:
         raw = (post.get('publication_date') or '').strip()
         book.publication_date = _parse_date(raw)
 
-    if files and files.get('cover_pdf'):
-        book.cover_pdf = files['cover_pdf']
+    _save_cover(book, post, files, request)
 
     if 'translation_of' in post:
         _apply_translation_of(book, post.get('translation_of'))
@@ -204,6 +214,27 @@ def save_book_fields(product, post, files=None) -> None:
     if post.get('book_submitted') and hasattr(post, 'getlist'):
         book.genres.set(post.getlist('genres'))
         book.topics.set(post.getlist('topics'))
+
+
+def _save_cover(book, post, files, request) -> None:
+    """The cover upload (a PDF, PNG or JPG), checked first; the uploader's X clears it.
+
+    A file that fails the check is not stored, the cover it would have replaced
+    stays, and the merchant is told why (the browser refuses most such files first).
+    """
+    from plugins.installed.book_product.covers import check_upload  # noqa: PLC0415
+
+    upload = files.get('cover_pdf') if files else None
+    if upload:
+        problem = check_upload(upload)
+        if not problem:
+            book.cover_pdf = upload
+        elif request is not None:
+            from django.contrib import messages  # noqa: PLC0415
+
+            messages.warning(request, f'The cover was not saved: {problem}')
+    elif post.get('cover_pdf-clear'):
+        book.cover_pdf = None
 
 
 def _parse_date(raw: str):
