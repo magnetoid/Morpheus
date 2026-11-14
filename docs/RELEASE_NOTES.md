@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.167.3 — 2026-11-14
+
+**The thank-you page no longer hands out the download**
+
+- A digital purchase is taken from the emailed link or the account's Library, never from the thank-you page (owner, 2026-11-14). The page showed a Download button, and an audiobook's player, beside each digital line under every theme; it now says where the file is: in the email for a guest, in the Library and the email for a buyer with an account, or that the link follows once the payment goes through. The account's order page and the Library keep their downloads.
+
 ## v0.167.0 — 2026-11-14
 
 **Book social cards**

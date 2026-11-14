@@ -469,16 +469,23 @@ def product_card_meta(product) -> dict:
     return meta if isinstance(meta, dict) else {}
 
 
-@register.simple_tag
-def order_line_delivery(item) -> dict | None:
+@register.simple_tag(takes_context=True)
+def order_line_delivery(context, item) -> dict | None:
     """How an order line is delivered when nothing ships (ORDER_LINE_DELIVERY; the
     digital_products app answers for downloads and audiobooks): a dict with state,
     state_label, kind, file_url and listen_url. None for goods, or when no app
-    answers, so a page shows a download only while the app that serves it is on."""
+    answers, so a page shows a download only while the app that serves it is on.
+    A view that puts ``delivery_surface`` in its context (the thank-you page:
+    ``'receipt'``) is told where the file is instead of being handed it."""
     try:
         from core.hooks import MorpheusEvents, hook_registry
 
-        answer = hook_registry.filter(MorpheusEvents.ORDER_LINE_DELIVERY, None, order_item=item)
+        answer = hook_registry.filter(
+            MorpheusEvents.ORDER_LINE_DELIVERY,
+            None,
+            order_item=item,
+            surface=str(context.get('delivery_surface') or ''),
+        )
     except Exception:  # noqa: BLE001 — never break an order page
         return None
     return answer if isinstance(answer, dict) else None

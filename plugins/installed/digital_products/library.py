@@ -158,11 +158,23 @@ def _item(line) -> LibraryItem:
     )
 
 
-def line_delivery(item) -> dict | None:
+# The thank-you page names where the file is, never links it (owner, 2026-11-14):
+# a buyer takes a download from the emailed link or the account's Library.
+_RECEIPT_LABELS = {
+    (READY, True): 'In your Library and your email',
+    (WAITING, True): 'In your Library and your email once the payment goes through',
+    (READY, False): 'Download link sent to your email',
+    (WAITING, False): 'Download link emailed once the payment goes through',
+}
+_RECEIPT_PREPARING = 'Being prepared; we will email you once it is ready'
+
+
+def line_delivery(item, surface: str = '') -> dict | None:
     """How one order line reaches its buyer, for the order pages; None for goods.
 
     A signed-in buyer's links go through their library; a guest's through the
-    emailed download link, the only door a guest has.
+    emailed download link, the only door a guest has. On the thank-you page
+    (``surface='receipt'``) the answer says where the file is and links nothing.
     """
     if not is_digital(item):
         return None
@@ -171,6 +183,15 @@ def line_delivery(item) -> dict | None:
     if is_closed(item.order):
         return None
     entry = _item(item)
+    if surface == 'receipt':
+        account = item.order.customer_id is not None
+        return {
+            'state': entry.state,
+            'state_label': _RECEIPT_LABELS.get((entry.state, account), _RECEIPT_PREPARING),
+            'kind': entry.kind,
+            'file_url': '',
+            'listen_url': '',
+        }
     if entry.state == READY and item.order.customer_id is None:
         from plugins.installed.digital_products.models import DownloadToken
 
