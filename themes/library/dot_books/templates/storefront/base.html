@@ -389,7 +389,8 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   /* Book rail — a horizontal scroll-snap carousel variant of .grid-books.
      Keeps the .grid-books class so the reveal engine still hooks it, but flips
      the grid to a snapping flex scroller. Touch users swipe; desktop gets
-     progressively-enhanced prev/next buttons. */
+     progressively-enhanced prev/next arrows, beside the rail rather than over
+     the covers (owner, 2026-11-14). */
   .book-rail-wrap { position: relative; }
   .grid-books--rail {
     display: flex;
@@ -401,6 +402,9 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     padding: 0.5rem 0.25rem 1.25rem;  /* room for the card lift-shadow + snap edge */
+    /* The first card snaps to 0, not to the padding: the rail starts at its
+       start, so the previous arrow stays hidden there. */
+    scroll-padding-inline: 0.25rem;
     margin: 0 -0.25rem;
     /* fade the trailing edge to hint there's more to scroll */
     -webkit-mask-image: linear-gradient(90deg, #000 0, #000 96%, transparent 100%);
@@ -415,22 +419,28 @@ this template never needs to know what kind of page it is rendering. Do NOT add 
   @media (min-width: 640px)  { .grid-books--rail > .book { width: 220px; } }
   @media (min-width: 1024px) { .grid-books--rail > .book { width: 232px; } }
 
+  /* A bare arrow on each side of the rail, centred on the covers: the rail's top
+     padding plus half a cover 210px wide (the rail's card from 1024px up). */
   .book-rail-nav {
-    position: absolute; top: 34%; z-index: 3;
-    width: 46px; height: 46px; border-radius: 999px;
+    flex: 0 0 auto; width: 2.5rem; height: 2.5rem; padding: 0;
+    margin-top: calc(0.5rem + 105px / (var(--img-ratio, 2 / 3)) - 1.25rem);
     display: none; align-items: center; justify-content: center;
-    background: var(--ink); color: var(--paper);
-    border: none; cursor: pointer; font-size: 1.15rem; line-height: 1;
-    box-shadow: 0 10px 26px -10px rgba(14,14,14,0.5);
-    transition: transform 0.18s var(--ease-out), opacity 0.2s;
+    background: none; color: var(--ink); border: none;
+    cursor: pointer; font-size: 1.75rem; line-height: 1;
+    transition: color 0.18s, transform 0.18s var(--ease-out), opacity 0.2s;
   }
-  .book-rail-nav:hover { transform: scale(1.09); }
+  .book-rail-nav:hover { color: var(--accent); }
+  .book-rail-nav--prev:hover { transform: translateX(-3px); }
+  .book-rail-nav--next:hover { transform: translateX(3px); }
   .book-rail-nav:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-  .book-rail-nav--prev { left: -12px; }
-  .book-rail-nav--next { right: -12px; }
+  /* Hidden at either end, keeping its place so the rail does not move. */
   .book-rail-nav[disabled] { opacity: 0; pointer-events: none; }
   /* Arrows only where there's a real pointer + room; touch = swipe. */
-  @media (min-width: 1024px) and (hover: hover) { .book-rail-nav { display: flex; } }
+  @media (min-width: 1024px) and (hover: hover) {
+    .book-rail-wrap { display: flex; align-items: flex-start; gap: 0.75rem; }
+    .book-rail-wrap > [data-book-rail] { flex: 1 1 auto; min-width: 0; }
+    .book-rail-nav { display: flex; }
+  }
   @media (prefers-reduced-motion: reduce) { .grid-books--rail { scroll-behavior: auto; } }
 
   /* Footer */
@@ -1264,13 +1274,21 @@ mis-measured under the staff admin bar and opened a gap.{% endcomment %}
     });
   }
 
-  /* Book-rail carousels — prev/next scroll + fade the arrow at each end. */
+  /* Book-rail carousels — prev/next turn a page of whole cards (as many as the
+     rail shows), so a page never starts on a cut-off cover; each arrow hides at
+     its end. */
   document.querySelectorAll('[data-book-rail]').forEach(function (rail) {
     var wrap = rail.closest('.book-rail-wrap');
     if (!wrap) return;
     var prev = wrap.querySelector('[data-rail-prev]');
     var next = wrap.querySelector('[data-rail-next]');
-    var step = function () { return Math.max(rail.clientWidth * 0.8, 240); };
+    var step = function () {
+      var cards = rail.children;
+      if (cards.length < 2) return rail.clientWidth;
+      var pitch = cards[1].offsetLeft - cards[0].offsetLeft;
+      if (pitch <= 0) return rail.clientWidth;
+      return Math.max(Math.floor((rail.clientWidth + 1) / pitch), 1) * pitch;
+    };
     var sync = function () {
       var max = rail.scrollWidth - rail.clientWidth - 2;
       if (prev) prev.disabled = rail.scrollLeft <= 2;
