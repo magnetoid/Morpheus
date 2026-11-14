@@ -72,7 +72,9 @@ def products_list(request: HttpRequest) -> HttpResponse:
         status_counts = {
             row['status']: row['c'] for row in unfiltered.values('status').annotate(c=Count('id'))
         }
-        qs = Product.objects.select_related('category', 'vendor').prefetch_related('images')
+        qs = Product.objects.select_related('category', 'vendor').prefetch_related(
+            'images', 'additional_categories', 'collections'
+        )
         if status:
             qs = qs.filter(status=status)
         if search:
@@ -84,6 +86,8 @@ def products_list(request: HttpRequest) -> HttpResponse:
             allowed_sorts=('name', 'created_at', 'status', 'price'),
         )
         products = list(page_obj.object_list)
+        for p in products:
+            _annotate_list_row(p)
         load_error = False
     except Exception:  # noqa: BLE001
         # An honest failure state — NOT the first-run empty state. A DB
@@ -111,6 +115,7 @@ def products_list(request: HttpRequest) -> HttpResponse:
             'search': search,
             'extra_product_columns': extra_product_columns,
             'extra_bulk_actions': extra_bulk_actions,
+            'list_columns': _list_columns(extra_product_columns),
             'active_nav': 'products',
             'breadcrumb_trail': [
                 {'label': 'Dashboard', 'url': '/dashboard/'},
@@ -119,6 +124,37 @@ def products_list(request: HttpRequest) -> HttpResponse:
             **paging_ctx,
         },
     )
+
+
+# The list's own columns the Columns menu can hide, in table order; contributed ones
+# go before Added. Product, Status and Price always show.
+_OWN_COLUMNS = (
+    ('sku', 'SKU'),
+    ('category', 'Category'),
+    ('collections', 'Collections'),
+    ('type', 'Type'),
+    ('vendor', 'Vendor'),
+)
+
+
+def _list_columns(extra_columns) -> list[tuple[str, str]]:
+    """(key, label) for every column the Columns menu lists, in table order."""
+    return [*_OWN_COLUMNS, *((c['key'], c['label']) for c in extra_columns), ('added', 'Added')]
+
+
+def _annotate_list_row(product) -> None:
+    """The names the list's Category and Collections cells print, from prefetched rows.
+
+    Category lists the primary category first, then the ones the product is
+    cross-listed in (``additional_categories``): a book store that files books only
+    by cross-listing showed a dash for every product.
+    """
+    names = [product.category.name] if product.category_id else []
+    for c in product.additional_categories.all():
+        if c.name not in names:
+            names.append(c.name)
+    product.category_names = names
+    product.collection_names = [c.name for c in product.collections.all()]
 
 
 def _storefront_base() -> str:
@@ -333,12 +369,13 @@ def _collect_product_list_columns(products, request) -> list:
     """Render plugin-contributed product-list columns (PRODUCT_LIST_COLUMNS filter).
 
     Same contract as _collect_product_form_cards: a plugin appends
-    {'label', 'cell_template', 'order', optional 'bulk_action'} and may
+    {'label', 'cell_template', 'order', optional 'key' and 'bulk_action'} and may
     annotate `products` in place; cells are pre-rendered here (one per
     product) onto ``p.extra_cells`` so the template needs no dict-lookup
     filter. Fail-soft per column — one broken column can't break the list.
     """
-    from django.template.loader import render_to_string
+    from django.template.loader import get_template
+    from django.utils.text import slugify
 
     from morpheus.core import MorpheusEvents, hook_registry
 
@@ -352,14 +389,22 @@ def _collect_product_list_columns(products, request) -> list:
         if not tpl:
             continue
         try:
-            cells = [render_to_string(tpl, {'product': p}, request=request) for p in products]
+            # One template, rendered per row without the request: a request makes
+            # every context processor run once per cell (CLAUDE.md), and a cell
+            # needs only its product.
+            template = get_template(tpl)
+            cells = [template.render({'product': p}) for p in products]
         except Exception as e:  # noqa: BLE001 — one bad column can't break the list
             logger.warning('product_list_column render failed (%s): %s', tpl, e, exc_info=True)
             continue
+        # The Columns menu remembers a column by this key.
+        col.setdefault('key', slugify(col.get('label') or tpl))
         out.append(col)
         rendered.append(cells)
     for i, p in enumerate(products):
-        p.extra_cells = [cells[i] for cells in rendered]
+        p.extra_cells = [
+            {'key': col['key'], 'html': cells[i]} for col, cells in zip(out, rendered, strict=True)
+        ]
     return out
 
 

@@ -733,12 +733,14 @@ class MorpheusEvents:
     PRODUCT_FORM_SAVED = 'product.form_saved'  # fire
     # PRODUCT_LIST_COLUMNS — filter, value=list[dict], kwargs:
     #   products=list[Product], request=HttpRequest. A plugin appends
-    #   {'label': str, 'cell_template': '<path>', 'order': int, optional
-    #   'bulk_action': {'label', 'url', 'field', 'icon'}} to add a column to
-    #   the dashboard product list without admin_dashboard importing it
-    #   (ADR 0023 — the disable-safe replacement for the hardcoded bookvault
+    #   {'label': str, 'cell_template': '<path>', 'order': int, optional 'key'
+    #   (what the list's Columns menu remembers it by; the label slugified when
+    #   absent) and 'bulk_action': {'label', 'url', 'field', 'icon'}} to add a
+    #   column to the dashboard product list without admin_dashboard importing
+    #   it (ADR 0023 — the disable-safe replacement for the hardcoded bookvault
     #   column). The subscriber may annotate `products` in place for its cell
-    #   template to read; the view pre-renders one cell per product.
+    #   template to read; the view renders one cell per product with the
+    #   product alone in the context (no request).
     PRODUCT_LIST_COLUMNS = 'product.list_columns'  # filter
     # PRODUCT_STOCK_SUMMARY — filter, value=dict, kwargs: product_ids=list.
     #   Fired by a surface that shows stock for products it does not own (the

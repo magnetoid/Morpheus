@@ -42,6 +42,8 @@ class BookProductPlugin(Plugin):
         self.register_hook(events.LISTING_FACETS, self.on_listing_facets, priority=40)
         # A storefront book card's genre, author and formats (cards.py).
         self.register_hook(events.PRODUCT_CARD_META, self.on_product_card_meta, priority=40)
+        # The dashboard product list's Author and Genres columns (list_columns.py).
+        self.register_hook(events.PRODUCT_LIST_COLUMNS, self.on_product_list_columns, priority=40)
         # A book's brand is its publisher (catalog/brand.py: structured data, feeds).
         self.register_hook(events.PRODUCT_BRAND, self.on_product_brand, priority=40)
         # Genres and authors in the storefront's search dropdown (search_suggestions.py).
@@ -169,6 +171,11 @@ class BookProductPlugin(Plugin):
         if value or product is None or isinstance(product, dict):
             return value
         return str((book_attrs(product) or {}).get('publisher') or '').strip() or value
+
+    def on_product_list_columns(self, value, products=None, **kwargs):
+        from plugins.installed.book_product.list_columns import on_product_list_columns
+
+        return on_product_list_columns(value, products=products, **kwargs)
 
     def on_product_card_meta(self, value, product=None, **_):
         from plugins.installed.book_product.cards import card_meta

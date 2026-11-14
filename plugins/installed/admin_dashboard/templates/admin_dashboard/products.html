@@ -36,6 +36,17 @@
       <input name="q" value="{{ search }}" placeholder="Name or SKU" class="input input-search">
     </div>
     <button class="btn btn-primary">Search</button>
+    {% if products %}
+    {% comment %}Which columns this browser shows (data-col cells); remembered in this browser only.{% endcomment %}
+    <details class="relative" data-column-chooser>
+      <summary class="btn"><i data-lucide="sliders-horizontal" class="h-4 w-4"></i> Columns</summary>
+      <div class="card card-padded absolute right-0 z-20 mt-1 w-56 space-y-1 text-sm">
+        {% for key, label in list_columns %}
+        <label class="flex items-center gap-2"><input type="checkbox" value="{{ key }}" checked class="rounded border-[color:var(--border)]"> {{ label }}</label>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
   </form>
 
   {% filter_chips q="Search" %}
@@ -70,15 +81,19 @@
 
   <div class="card overflow-hidden">
     {% if products %}
-    <table class="morph-table">
+    <div class="overflow-x-auto">
+    <table class="morph-table" data-product-table>
       <thead>
         <tr>
           <th class="w-8"><input type="checkbox" data-bulk-all class="rounded border-[color:var(--border)]"></th>
           <th>{% sort_link "name" "Product" %}</th>
-          <th class="hide-sm">SKU</th>
-          <th class="hide-sm">Category</th>
-          <th class="hide-sm">Vendor</th>
-          {% for col in extra_product_columns %}<th class="hide-sm">{{ col.label }}</th>{% endfor %}
+          <th class="hide-sm" data-col="sku">SKU</th>
+          <th class="hide-sm" data-col="category">Category</th>
+          <th class="hide-sm" data-col="collections">Collections</th>
+          <th class="hide-sm" data-col="type">Type</th>
+          <th class="hide-sm" data-col="vendor">Vendor</th>
+          {% for col in extra_product_columns %}<th class="hide-sm" data-col="{{ col.key }}">{{ col.label }}</th>{% endfor %}
+          <th class="hide-sm" data-col="added">{% sort_link "created_at" "Added" %}</th>
           <th>{% sort_link "status" "Status" %}</th>
           <th class="text-right">{% sort_link "price" "Price" %}</th>
           <th></th>
@@ -107,10 +122,13 @@
               </div>
             </a>
           </td>
-          <td class="hide-sm text-[color:var(--text-muted)]"><span class="block max-w-[10rem] truncate" title="{{ p.sku }}">{{ p.sku|default:"—" }}</span></td>
-          <td class="hide-sm text-[color:var(--text-muted)]">{{ p.category.name|default:"—" }}</td>
-          <td class="hide-sm text-[color:var(--text-muted)]">{{ p.vendor.name|default:"—" }}</td>
-          {% for cell in p.extra_cells %}<td class="hide-sm">{{ cell|safe }}</td>{% endfor %}
+          <td class="hide-sm text-[color:var(--text-muted)]" data-col="sku"><span class="block max-w-[10rem] truncate" title="{{ p.sku }}">{{ p.sku|default:"—" }}</span></td>
+          <td class="hide-sm text-[color:var(--text-muted)]" data-col="category">{% include "admin_dashboard/_name_list_cell.html" with names=p.category_names %}</td>
+          <td class="hide-sm text-[color:var(--text-muted)]" data-col="collections">{% include "admin_dashboard/_name_list_cell.html" with names=p.collection_names %}</td>
+          <td class="hide-sm text-[color:var(--text-muted)]" data-col="type">{{ p.get_product_type_display }}</td>
+          <td class="hide-sm text-[color:var(--text-muted)]" data-col="vendor">{{ p.vendor.name|default:"—" }}</td>
+          {% for cell in p.extra_cells %}<td class="hide-sm" data-col="{{ cell.key }}">{{ cell.html|safe }}</td>{% endfor %}
+          <td class="hide-sm whitespace-nowrap text-[color:var(--text-muted)]" data-col="added" title="{{ p.created_at|date:'j M Y, H:i' }}">{{ p.created_at|date:"j M Y" }}</td>
           <td>
             {% if p.status == 'active' %}<span class="pill pill-success">Active</span>
             {% elif p.status == 'draft' %}<span class="pill pill-warn">Draft</span>
@@ -122,6 +140,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% elif load_error %}
     {% include "admin_dashboard/_load_error.html" with entity="products" %}
     {% else %}
@@ -133,6 +152,36 @@
 
 </div>
 
+{% if products %}
+<script>
+  // The Columns menu: hides the cells of each unticked column (data-col) and
+  // remembers the choice in this browser. Bound on the elements themselves, so a
+  // boosted navigation (htmx runs this again) never adds a second listener.
+  (function () {
+    var KEY = 'morph.products.hidden-columns';
+    var menu = document.querySelector('[data-column-chooser]');
+    var table = document.querySelector('[data-product-table]');
+    if (!menu || !table) return;
+    var hidden = [];
+    try { hidden = JSON.parse(localStorage.getItem(KEY) || '[]') || []; } catch (e) { hidden = []; }
+    function apply() {
+      table.querySelectorAll('[data-col]').forEach(function (cell) {
+        cell.hidden = hidden.indexOf(cell.getAttribute('data-col')) !== -1;
+      });
+    }
+    menu.querySelectorAll('input[type=checkbox]').forEach(function (box) {
+      box.checked = hidden.indexOf(box.value) === -1;
+      box.addEventListener('change', function () {
+        hidden = hidden.filter(function (k) { return k !== box.value; });
+        if (!box.checked) hidden.push(box.value);
+        try { localStorage.setItem(KEY, JSON.stringify(hidden)); } catch (e) { /* private window: this page only */ }
+        apply();
+      });
+    });
+    apply();
+  })();
+</script>
+{% endif %}
 {% if extra_bulk_actions %}
 <script>
   // Plugin-contributed bulk actions (PRODUCT_LIST_COLUMNS) — e.g. bookvault's
