@@ -263,10 +263,14 @@ class LazyPanelTests(FacetFixture):
         from django.db import connection
         from django.test.utils import CaptureQueriesContext
 
+        from plugins.testing import hold_app_settings
+
         def queries(query):
             with CaptureQueriesContext(connection) as ctx:
                 self._answer(query)
             return len(ctx.captured_queries)
 
+        hold_app_settings(self)
+        queries('author=a1')  # warm the settings the measured answers read
         one = queries('author=a1')
         self.assertEqual(queries('author=a1&author=a2&author=a3&author=a4&author=a5'), one)

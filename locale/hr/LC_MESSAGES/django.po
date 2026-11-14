@@ -5112,3 +5112,12 @@ msgstr "Doživljaji po aktivnosti"
 
 msgid "Upcoming events"
 msgstr "Nadolazeći događaji"
+
+msgid "This page is also in {name}."
+msgstr "Ova je stranica dostupna i na jeziku: {name}."
+
+msgid "Switch"
+msgstr "Prebaci"
+
+msgid "Stay"
+msgstr "Ostani"

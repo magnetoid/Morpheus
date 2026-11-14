@@ -277,7 +277,7 @@ when nothing in scope would fill it. Guarded by `book_product/tests/test_listing
 **Convention — one dashboard search, and every app answers it (v0.151.0).** Cmd+K
 (`admin_dashboard/views_split/palette.py`) lists what the registry knows: every page and settings
 tool, every app (to its settings, its first page, or its card in Apps while it is off), every field
-of every settings panel (`#f-<key>`), every email, and every guide (release_notes). Records come from
+of every settings panel (`#f-<app>-<key>`, the id both settings pages render), every email, and every guide (release_notes). Records come from
 `DASHBOARD_SEARCH`: each app appends its own rows with `plugins/dashboard_search.py:add()`, so a
 switched-off app's records leave with it; the shell never queries another app's model. Text kept in
 Python folds case and accents and forgives one typo; a row matches each word as typed (the stores
@@ -1376,7 +1376,9 @@ offered for a cart with a line that does not ship (owner, 2026-11-11, v0.152.1):
 (`orders.services.line_ships`, the one rule checkout's address step reads). The file comes from
 `DIGITAL_DELIVERY_FILE` (variant, product, then the app that owns the edition: audiobooks answers
 with its narration) and the order pages show it through `{% order_line_delivery %}`
-(`ORDER_LINE_DELIVERY`), so a theme imports no app. `/account/downloads/` is the Library;
+(`ORDER_LINE_DELIVERY`), so a theme imports no app. The thank-you page links no file (owner,
+2026-11-14): its view sets `delivery_surface='receipt'` and the answer names where the file is (the
+email, the Library), so no theme can print the link there. `/account/downloads/` is the Library;
 `/account/library/<line>/file/` serves the buyer's own file through its storage, never a disk
 path (tests run on InMemoryStorage), with byte ranges for the player. Audiobook narration
 (`audiobooks/services.py`) runs in resumable slices under the 5-minute task limit, each slice
@@ -1384,7 +1386,7 @@ narrating at least one piece, and reads only the book's PDF: it used to fall bac
 copy, which a buyer would have paid for as the audiobook. Found on the way: the order history sorted
 on a `created_at` an Order never had, and the swallowed FieldError showed every customer an empty
 history; an order is dated by `placed_at`. Guarded by `digital_products/tests/test_library.py`,
-`audiobooks/tests/test_narration.py`, `storefront/tests/test_account_order_history.py` and
+`test_receipt_page.py`, `audiobooks/tests/test_narration.py`, `storefront/tests/test_account_order_history.py` and
 `admin_dashboard/tests/test_order_nothing_to_ship.py`.
 
 **Convention — the dashboard has ONE media uploader.** `admin_dashboard/static/
@@ -1575,7 +1577,8 @@ a related manager, iterating it raised, and the step's `except` skipped every pr
 
 **Convention — stock has one write path, and a product sold in one form counts it on a default variant
 (v0.152.0).** Units on hand change only through `InventoryService.set_quantity` / `adjust` / `transfer`
-(`inventory/services.py`): the product page's Stock card, the Warehouses page, Linda's `inventory.*`
+(`inventory/services.py`): the product page's Stock card, the Stock page (Products → Inventory, v0.166.0),
+the Warehouses page, Linda's `inventory.*`
 tools, GraphQL `setStock` / `adjustStock` and the CSV import's `stock` column (through the
 `INVENTORY_SET_STOCK` filter, so the importer imports no inventory code). Each write leaves a
 `StockMovement` and, after commit, fires `PRODUCT_LOW_STOCK` or `PRODUCT_OUT_OF_STOCK` once, when the
@@ -1589,7 +1592,7 @@ it (`hasOnlyDefaultVariant`), and a cart line that names no variant reserves fro
 `inventory_policy='continue'` sells past 0 and notes the shortfall on the order's timeline. Orders, the
 cart hold and `available()` read switched-on warehouses only, and a warehouse with stock records is
 switched off, never deleted (its movements would go with it). Guarded by
-`inventory/tests/test_stock_writes.py`, `test_backorder_policy.py`, `test_stock_card.py`,
+`inventory/tests/test_stock_writes.py`, `test_backorder_policy.py`, `test_stock_card.py`, `test_stock_page.py`,
 `test_warehouses_page.py`, `test_stock_tools.py`, `catalog/tests/test_default_variant.py`,
 `themes/test_default_variant_picker.py` and `importers/tests/test_csv_stock.py`.
 
@@ -1655,6 +1658,24 @@ fastest | preferred carrier/service, `SHIPPING_LABEL_RATE` filter); orders' `par
 `fulfil_marks_shipped` set the parcel emails and whether the last parcel ships the order. Guarded by
 `payments/tests/test_manual_capture.py`, `test_saved_card_intent.py`, `test_payment_failed_event.py`,
 `orders/tests/test_offline_refund.py`, `test_parcel_settings.py` and `shipping/tests/test_label_rate.py`.
+
+**Convention — a market prices in its own currency from one function, and a rate the merchant typed wins (v0.165.0).**
+`markets/pricing.py:market_price(product, market, variant=None)` answers what a product costs in a market: the store
+price when the market uses the store currency; else a price fixed for that market (`ProductMarketPrice`), else one typed
+in the product's `localized_prices` (a 0 there is no price), else the store price adjusted by the market's percentage,
+converted with `core.pricing.convert` and rounded as the market says (exact, whole, .99; a positive price never rounds
+to 0 and a free one stays free). It returns None without a rate, and a market whose currency has no rate cannot be
+switched on: `markets.services.save_market` is the one write path for the page and Linda. Rates live in core's
+`ExchangeRate` as store currency → X. The ECB's daily table (`markets.fetch_exchange_rates`, 15:30 UTC, skipped when
+`rate_source` is manual) never overwrites a `source='manual'` row, and clearing a manual rate refetches or is refused
+while a market needs it, because there is one row per pair. Shoppers still see the store currency: showing and charging
+market prices is the next release (`docs/plans/markets-currency-language-2026-11.md`), and markup and feeds keep the
+store price. hreflang is per language only: a `?market=` URL is not a page. The language bar (localization's
+`suggest_language`, off by default) decides in the browser from `link[rel=alternate][hreflang]`, `navigator.languages`
+and the `morpheus_lang_choice` cookie, because pages are edge-cached and the same for every visitor; it floats over the
+page (an in-flow bar added after paint is a layout shift) and skips crawlers that run scripts. Guarded by
+`markets/tests/test_market_price.py`, `test_rates.py`, `test_save_market.py`, `test_dashboard.py`, `test_agent_tools.py`,
+`core/tests/test_currency_convert.py` and `localization/tests/test_language_bar.py`.
 
 **Convention — one sales figure (v0.157.0).** Every sales number a merchant or Linda reads comes
 from `orders/reports.py`: `counted()` is an order placed and not cancelled (paid, its card held, or an
@@ -2016,6 +2037,10 @@ swapped in by the backend's `send_messages`: callers build messages from
 `settings.DEFAULT_FROM_EMAIL` before any backend exists (async mail is built in
 the web process), so mutating that setting at backend construction sent live
 mail from a `noreply@` that doesn't exist (`core/tests/test_email_sender.py`).
+It also puts the store's name beside a bare store address (v0.167.1): a mail client
+shows a bare address by its local part, so every email read "hello". The name is
+the store name, never its "Morpheus Store" default, else the site's host; a name the
+merchant writes (`Shop <hello@…>`) is kept, and any other sender stays as written.
 And the templates must be reachable: `core.emails` is not an installed app, so
 until v0.75.23 no loader found `core/emails/templates` and every order email
 (placed, paid, shipped, cancelled, refund, downloads) was skipped as "template

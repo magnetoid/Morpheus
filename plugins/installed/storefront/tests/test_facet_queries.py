@@ -15,6 +15,7 @@ from django.test.utils import CaptureQueriesContext
 from djmoney.money import Money
 
 from plugins.installed.catalog.models import Attribute, AttributeValue, Product, ProductAttribute
+from plugins.testing import hold_app_settings
 
 
 class FacetQueryTests(TestCase):
@@ -41,6 +42,7 @@ class FacetQueryTests(TestCase):
 
         mode.forget()
         self.addCleanup(mode.forget)
+        hold_app_settings(self)
         self._add_filter(1)
         self._queries()  # the first page warms the nav, settings and capture-switch caches
         one, html = self._queries()

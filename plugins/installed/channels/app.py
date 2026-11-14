@@ -9,6 +9,19 @@ it and only the overview page disappears — each channel keeps its own pages.
 from __future__ import annotations
 
 from morpheus.app import DashboardPage, Plugin
+from morpheus.core import events
+
+# Channel app name -> the channel key Analytics' journeys use.
+_AD_CHANNEL_KEYS = {
+    'google_shopping': 'google',
+    'meta_commerce': 'meta',
+    'tiktok_commerce': 'tiktok',
+    'pinterest_commerce': 'pinterest',
+    'microsoft_commerce': 'microsoft',
+    'amazon_ads': 'amazon',
+    'reddit_ads': 'reddit',
+    'snapchat_commerce': 'snapchat',
+}
 
 
 class ChannelsPlugin(Plugin):
@@ -36,6 +49,32 @@ class ChannelsPlugin(Plugin):
             'channels:refresh_overview',
             {'task': 'channels.refresh_overview', 'schedule': 60 * 30},
         )
+        # Every ad channel's spend reaches Analytics' Attribution page through here.
+        self.register_hook(events.ANALYTICS_AD_SPEND, self._ad_spend, priority=10)
+
+    def _ad_spend(self, value, **_):
+        """Answer ANALYTICS_AD_SPEND from the daily metrics cache (no live calls):
+        one row per channel that has spent money."""
+        from django.core.cache import cache  # noqa: PLC0415
+
+        from plugins.installed.channels.tasks import METRICS_CACHE_KEY  # noqa: PLC0415
+
+        for row in cache.get(METRICS_CACHE_KEY) or []:
+            if not isinstance(row, dict):
+                continue
+            channel = _AD_CHANNEL_KEYS.get(row.get('name'))
+            if not channel or not row.get('spend'):
+                continue
+            value.append(
+                {
+                    'channel': channel,
+                    'spend': row['spend'],
+                    'conversions': row.get('conversions'),
+                    'platform_revenue': row.get('revenue'),
+                    'days': 30,
+                }
+            )
+        return value
 
     def contribute_dashboard_pages(self) -> list:
         return [
@@ -46,15 +85,6 @@ class ChannelsPlugin(Plugin):
                 icon='radio-tower',
                 section='channels',
                 order=10,
-                nav='main',
-            ),
-            DashboardPage(
-                label='ROAS',
-                slug='attribution',
-                view='plugins.installed.channels.views.attribution_view',
-                icon='trending-up',
-                section='channels',
-                order=15,
                 nav='main',
             ),
         ]

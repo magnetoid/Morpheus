@@ -163,12 +163,16 @@ def _sig(payload: dict) -> str:
 
 
 def _low_stock_signal() -> dict | None:
-    """The list the Warehouses page shows under "Running low", and a link to it."""
+    """The list the Stock page shows under its low filter, and a link to it."""
     from plugins.registry import app_registry
 
     if not app_registry.is_active('inventory'):
         return None
-    from plugins.installed.inventory.services import low_stock_levels, low_stock_threshold
+    from plugins.installed.inventory.services import (
+        LOW_STOCK_URL,
+        low_stock_levels,
+        low_stock_threshold,
+    )
 
     rows = low_stock_levels(limit=50)
     if not rows:
@@ -184,7 +188,7 @@ def _low_stock_signal() -> dict | None:
         'estimated_impact': 'Restock to avoid lost orders this week.',
         'suggested_action': {
             'kind': 'open_view',
-            'url': '/dashboard/inventory/warehouses/#low-stock',
+            'url': LOW_STOCK_URL,
             'label': 'See what is running low',
         },
     }

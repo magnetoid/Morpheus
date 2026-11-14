@@ -76,7 +76,13 @@ def _stats() -> dict:
 @staff_member_required
 @require_capability('system.read')
 def overview(request):
+    from plugins.installed.tracking.templatetags.tracking import browser_tagging
+
     s = TrackingSettings.get_solo()
+    # Each half runs on its own: the browser tag on a GTM container or the GA4
+    # measurement ID alone, the server's events on the measurement ID + API secret.
+    browser_on = browser_tagging(s)
+    server_on = bool(s.server_side_enabled and s.measurement_id and s.api_secret)
     stats = _stats()
     recent = list(GA4EventLog.objects.all().order_by('-fired_at')[:10])
     last_sent = (
@@ -91,7 +97,9 @@ def overview(request):
             'stats': stats,
             'recent': recent,
             'last_sent_at': getattr(last_sent, 'fired_at', None),
-            'configured': bool(s.measurement_id and s.api_secret),
+            'configured': browser_on or server_on,
+            'browser_on': browser_on,
+            'server_on': server_on,
         },
     )
 
@@ -119,6 +127,15 @@ def settings_page(request):
             s.region = (request.POST.get('region') or 'global').strip()
             s.save()
             flash = 'Connection saved.'
+            tab = 'connection'
+
+        elif action == 'ads':
+            from plugins.registry import app_registry  # noqa: PLC0415
+
+            plugin = app_registry.get('tracking')
+            for key in ('google_ads_conversion_id', 'google_ads_purchase_label'):
+                plugin.set_config(key, (request.POST.get(key) or '').strip()[:64])
+            flash = 'Google Ads conversion saved.'
             tab = 'connection'
 
         elif action == 'events':
@@ -200,12 +217,17 @@ def settings_page(request):
         {'signal': name, 'value': (s.consent_default or {}).get(name, default)}
         for name, default in DEFAULT_CONSENT_DEFAULT.items()
     ]
+    from plugins.registry import app_registry  # noqa: PLC0415
+
+    ads_plugin = app_registry.get('tracking')
     return render(
         request,
         'tracking/settings.html',
         {
             'active_nav': 'tracking',
             's': s,
+            'ads_conversion_id': ads_plugin.get_config_value('google_ads_conversion_id', ''),
+            'ads_purchase_label': ads_plugin.get_config_value('google_ads_purchase_label', ''),
             'tab': tab,
             'flash': flash,
             'event_rows': event_rows,

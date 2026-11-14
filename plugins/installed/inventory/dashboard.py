@@ -185,11 +185,6 @@ def warehouses(request):
     )
     edit_id = (request.GET.get('edit') or '').strip()
     editing = next((w for w in rows if str(w.pk) == edit_id), None)
-    from plugins.installed.inventory.services import (  # noqa: PLC0415
-        low_stock_levels,
-        low_stock_threshold,
-    )
-
     movements = list(
         StockMovement.objects.filter(movement_type__in=_SHOWN_MOVEMENTS)
         .select_related('stock_level__variant__product', 'stock_level__warehouse', 'created_by')
@@ -203,8 +198,6 @@ def warehouses(request):
             'active_warehouses': [w for w in rows if w.is_active],
             'editing': editing,
             'movements': movements,
-            'low_stock': low_stock_levels(),
-            'low_stock_threshold': low_stock_threshold(),
             'active_nav': 'shipping',
             'breadcrumb_trail': dashboard_trail(
                 'Shipping', '/dashboard/shipping/zones/', {'label': 'Warehouses'}

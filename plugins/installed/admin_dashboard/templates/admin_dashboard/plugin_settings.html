@@ -13,19 +13,20 @@
     {% csrf_token %}
     {% for field in fields %}
     <div class="space-y-1.5">
-      <label for="f-{{ field.key }}" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">
+      <label for="f-{{ plugin_name }}-{{ field.key }}" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">
         {{ field.title }}
       </label>
       {% if field.description %}<p class="text-xs text-[color:var(--text-muted)]">{{ field.description }}</p>{% endif %}
 
       {% if field.kind == 'boolean' %}
       <label class="inline-flex items-center gap-2 mt-1">
-        <input type="checkbox" id="f-{{ field.key }}" name="{{ field.key }}"
+        <input type="hidden" name="_booleans" value="{{ field.key }}">
+        <input type="checkbox" id="f-{{ plugin_name }}-{{ field.key }}" name="{{ field.key }}"
                {% if field.value %}checked{% endif %}>
         <span class="text-sm">Enabled</span>
       </label>
       {% elif field.kind == 'enum' %}
-      <select id="f-{{ field.key }}" name="{{ field.key }}" class="input">
+      <select id="f-{{ plugin_name }}-{{ field.key }}" name="{{ field.key }}" class="input">
         {% for option in field.enum %}
           <option value="{{ option }}" {% if option == field.value %}selected{% endif %}>{{ option }}</option>
         {% endfor %}
@@ -33,11 +34,11 @@
       {% elif field.kind == 'password' %}
       {# Write-only secret: no pre-filled value; blank submit keeps the stored secret. #}
       <input type="password" autocomplete="new-password"
-             id="f-{{ field.key }}" name="{{ field.key }}" class="input"
+             id="f-{{ plugin_name }}-{{ field.key }}" name="{{ field.key }}" class="input"
              placeholder="{% if field.has_value %}••••••• (unchanged){% endif %}">
       {% else %}
       <input type="{% if field.kind == 'number' or field.kind == 'integer' %}number{% else %}text{% endif %}"
-             id="f-{{ field.key }}" name="{{ field.key }}" class="input"
+             id="f-{{ plugin_name }}-{{ field.key }}" name="{{ field.key }}" class="input"
              value="{{ field.value }}">
       {% endif %}
     </div>

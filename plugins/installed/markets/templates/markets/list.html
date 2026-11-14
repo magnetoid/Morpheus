@@ -8,14 +8,40 @@
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Markets</h1>
       <p class="text-sm text-[color:var(--text-muted)]">
-        One market per region you sell to — currency, locale, price
-        adjustment. Visitors are routed automatically by their
-        country (Cloudflare CF-IPCountry header by default).
+        One market per region you sell to: currency, locale, price
+        adjustment and rounding. Prices convert from {{ store_currency }}
+        at the exchange rate. Shoppers still see {{ store_currency }}
+        for now.
       </p>
     </div>
     <a href="{% url 'markets:create' %}" class="btn btn-primary">
       <i data-lucide="plus" class="h-4 w-4"></i> Add market
     </a>
+  </div>
+
+  <div class="card" style="padding:1rem 1.25rem;">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <form method="post" action="{% url 'markets:rate_source' %}" class="flex flex-wrap items-end gap-2">
+        {% csrf_token %}
+        <label class="text-sm">
+          <span class="block font-medium">Exchange rates</span>
+          <select name="rate_source" class="input" style="margin-top:.25rem;">
+            <option value="ecb"{% if not rates_by_hand %} selected{% endif %}>European Central Bank, every day at 15:30 UTC</option>
+            <option value="manual"{% if rates_by_hand %} selected{% endif %}>Only the rates I type</option>
+          </select>
+        </label>
+        <button type="submit" class="btn">Save</button>
+      </form>
+      {% if not rates_by_hand %}
+      <form method="post" action="{% url 'markets:rates_refresh' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn">Fetch rates now</button>
+      </form>
+      {% endif %}
+    </div>
+    <p class="text-xs text-[color:var(--text-muted)]" style="margin-top:.5rem;">
+      A rate you type on a market's page always wins over the daily one.
+    </p>
   </div>
 
   <div class="card overflow-hidden">
@@ -29,6 +55,7 @@
           <th>Locale</th>
           <th>Countries</th>
           <th class="text-right">Adjustment</th>
+          <th>Exchange rate</th>
           <th>Status</th>
           <th></th>
         </tr>
@@ -50,6 +77,12 @@
             {% if m.base_price_adjustment_pct %}
             {{ m.base_price_adjustment_pct|floatformat:0 }}%
             {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if not m.rate_status %}<span class="text-[color:var(--text-muted)]">Store currency</span>
+            {% elif not m.rate_status.rate %}<span class="pill pill-danger">No rate</span>
+            {% elif m.rate_status.stale %}<span class="pill pill-warn">Out of date</span>
+            {% else %}<span class="pill pill-success">1 {{ store_currency }} = {{ m.rate_status.rate_text }}</span>{% endif %}
           </td>
           <td>
             {% if m.is_active %}

@@ -105,6 +105,8 @@ class Worker(MorpheusAgent):
         'i18n.write',
         'inventory.read',
         'inventory.write',
+        'markets.read',
+        'markets.write',
         'orders.cancel',
         'orders.read',
         'orders.write',

@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 
 from django.http import HttpResponse
+from django.utils.html import escape
 
 logger = logging.getLogger('morpheus.storefront')
 
@@ -58,7 +59,7 @@ class MaintenanceModeMiddleware:
                 f'<div style="font-family:system-ui;max-width:34rem;margin:14vh auto;'
                 f'padding:0 1.25rem;text-align:center;line-height:1.6">'
                 f'<h1 style="font-size:1.5rem;margin:0 0 .75rem">Back shortly</h1>'
-                f'<p style="color:#555;margin:0">{message}</p></div>',
+                f'<p style="color:#555;margin:0">{escape(message)}</p></div>',
                 content_type='text/html; charset=utf-8',
                 status=503,
             )
@@ -82,10 +83,10 @@ class MaintenanceModeMiddleware:
     def _config(key: str, default=None):
         """Read the storefront plugin's config, fail-soft.
 
-        NB the plugin `_config_cache` is per-process, so a worker can lag a
-        dashboard toggle until its cache is refreshed. Accepted here: the cost
-        of a late close/open is a page or two, and paying a DB read on every
-        storefront request to avoid it is the worse trade.
+        The config cache is per process and a save clears only the worker that
+        saved it, so storefront sets ``config_fresh_s``: every worker reads the
+        switch again at most 10 s after it last did, one query per worker per
+        window rather than one per request.
         """
         try:
             from plugins.registry import app_registry

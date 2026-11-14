@@ -14,6 +14,15 @@
 </div>
 
 {% if not single_language %}
+<form method="post" action="{% url 'localization:language_bar' %}" class="card" style="padding:.85rem 1.1rem; margin-bottom:1rem; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem;">
+  {% csrf_token %}
+  <label style="display:flex; align-items:flex-start; gap:.6rem; font-size:.85rem;">
+    <input type="checkbox" name="suggest_language"{% if suggest_language %} checked{% endif %} style="margin-top:.2rem;">
+    <span><strong>Language bar</strong><span style="display:block; color: var(--text-subtle); font-size:.78rem;">Offer a visitor the page in another of your languages when their browser prefers it. Their choice is remembered for a year.</span></span>
+  </label>
+  <button type="submit" class="btn">Save</button>
+</form>
+
 <div class="card" style="padding:0; overflow:hidden;">
   <table class="morph-table" style="width:100%;">
     <thead>

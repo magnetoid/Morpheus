@@ -269,6 +269,7 @@ def page_edit(request, page_id=None):  # noqa: PLR0912, PLR0915 — flat validat
             page=page,
             post=request.POST,
             files=request.FILES,
+            user=getattr(request, 'user', None),
         )
         messages.success(request, f'Saved “{page.title}”.')
         return redirect(_PAGES_LIST_URL)

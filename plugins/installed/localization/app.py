@@ -49,8 +49,27 @@ class LocalizationPlugin(Plugin):
                 slot='footer_extra',
                 template='localization/blocks/language_switcher.html',
                 priority=40,
-            )
+            ),
+            # The bar that offers the page in the visitor's language; the block
+            # renders nothing unless the setting is on and the store has 2+ languages.
+            StorefrontBlock(
+                slot='global_head',
+                template='localization/blocks/language_bar.html',
+                priority=60,
+            ),
         ]
+
+    def get_config_schema(self) -> dict:
+        return {
+            'type': 'object',
+            'properties': {
+                'suggest_language': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': "Offer a page in the visitor's language",
+                },
+            },
+        }
 
     def contribute_agent_tools(self) -> list:
         from plugins.installed.localization.agent_tools import (  # noqa: PLC0415

@@ -10,7 +10,7 @@ class InventoryPlugin(Plugin):
     version = '1.0.0'
     description = 'Warehouses, stock levels, movements, low-stock alerts; atomic reservations.'
     has_models = True
-    requires = ['catalog']
+    requires = ['catalog', 'admin_dashboard']
 
     def ready(self):
         self.register_urls(
@@ -162,13 +162,15 @@ class InventoryPlugin(Plugin):
 
     def on_dashboard_panels(self, value, date_range=None, **kwargs):
         """Fold the low-stock list (+ threshold) into the home context: the six
-        fewest of the list the Warehouses page shows."""
+        fewest of the list the Stock page's low filter shows."""
         from plugins.installed.inventory.services import (  # noqa: PLC0415
+            LOW_STOCK_URL,
             low_stock_levels,
             low_stock_threshold,
         )
 
         value['low_stock'] = low_stock_levels(limit=6)
+        value['low_stock_url'] = LOW_STOCK_URL
         value['low_stock_threshold'] = low_stock_threshold()
         return value
 
@@ -260,13 +262,24 @@ class InventoryPlugin(Plugin):
                 hint='Where stock is kept, and moving it between them',
             ),
             DashboardPage(
-                label='Stockout forecast',
+                label='Stock',
+                slug='stock',
+                view='plugins.installed.inventory.stock_page.stock_view',
+                icon='layers',
+                section='products',
+                group='Inventory',
+                order=70,
+                hint='Units on hand across products: find what is low and set a count',
+            ),
+            DashboardPage(
+                label='Forecast',
                 slug='stockout-forecast',
                 view='plugins.installed.inventory.views.stockout_forecast_view',
                 icon='trending-down',
                 section='products',
-                nav='hidden',
-                order=80,
+                group='Inventory',
+                order=71,
+                hint='What is projected to run out soon, and what looks overstocked',
             ),
         ]
 

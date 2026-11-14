@@ -1,0 +1,82 @@
+{% extends "admin_dashboard/base.html" %}
+{% load morph_dashboard %}
+{% block title %}Stock · Morpheus{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">Stock</h1>
+    <p class="text-sm text-[color:var(--text-muted)]">Units on hand for every product that counts stock, in the switched-on warehouses. Low means free units (on hand, less those held for open orders) at or below {{ low_stock_threshold }}.</p>
+  </div>
+
+  <nav class="tab-list overflow-x-auto" aria-label="Stock status">
+    <a href="{{ tab_all }}" class="tab{% if not status_filter %} is-active{% endif %} whitespace-nowrap">All</a>
+    <a href="{{ tab_low }}" class="tab{% if status_filter == 'low' %} is-active{% endif %} whitespace-nowrap">Low</a>
+    <a href="{{ tab_out }}" class="tab{% if status_filter == 'out' %} is-active{% endif %} whitespace-nowrap">Out</a>
+  </nav>
+
+  <form method="get" class="card card-padded flex flex-wrap gap-2 items-center">
+    {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+    {% if sort %}<input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="dir" value="{{ dir }}">{% endif %}
+    <div class="relative flex-1 min-w-[200px]">
+      <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-subtle)]"></i>
+      <input name="q" value="{{ search }}" placeholder="Product name or SKU" aria-label="Search stock" class="input input-search">
+    </div>
+    {% if warehouses|length > 1 %}
+    <select name="warehouse" class="input" aria-label="Warehouse">
+      <option value="">All warehouses</option>
+      {% for w in warehouses %}<option value="{{ w.pk }}"{% if warehouse_filter == w.pk|stringformat:"s" %} selected{% endif %}>{{ w.name }}</option>{% endfor %}
+    </select>
+    {% endif %}
+    <button class="btn btn-primary">Search</button>
+  </form>
+
+  <div class="card overflow-x-auto">
+    {% if rows %}
+    <table class="morph-table">
+      <thead>
+        <tr>
+          <th>{% sort_link "variant__product__name" "Product" %}</th>
+          <th>Warehouse</th>
+          <th class="text-right">{% sort_link "quantity" "On hand" %}</th>
+          <th class="text-right">Reserved</th>
+          <th class="text-right">{% sort_link "free" "Available" %}</th>
+          <th class="text-right">Reorder at</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for sl in rows %}
+        <tr data-state="{{ sl.state }}">
+          <td>
+            <a class="font-medium underline" href="{% url 'admin_dashboard:product_edit' sl.variant.product_id %}#stock-card">{{ sl.variant.product.name }}</a>
+            <span class="block text-xs text-[color:var(--text-muted)]">{% if sl.show_variant %}{{ sl.variant.name }} · {% endif %}<span class="font-mono">{{ sl.variant.sku }}</span></span>
+          </td>
+          <td>{{ sl.warehouse.name }}</td>
+          <td class="text-right">
+            {% if can_write %}
+            <form method="post" action="{{ request.get_full_path }}" class="inline-flex items-center gap-1 justify-end">
+              {% csrf_token %}
+              <input type="hidden" name="level" value="{{ sl.pk }}">
+              <input type="number" name="quantity" value="{{ sl.quantity }}" min="0" step="1" required aria-label="Units on hand for {{ sl.variant.product.name }}" class="input w-24 text-right tabular-nums">
+              <button class="btn btn-ghost text-xs">Save</button>
+            </form>
+            {% else %}<span class="tabular-nums">{{ sl.quantity }}</span>{% endif %}
+          </td>
+          <td class="text-right tabular-nums">{{ sl.reserved_quantity }}</td>
+          <td class="text-right tabular-nums">{{ sl.free }}</td>
+          <td class="text-right tabular-nums">{{ sl.reorder_point }}</td>
+          <td>{% if sl.state == 'out' %}<span class="pill pill-danger">Out</span>{% elif sl.state == 'low' %}<span class="pill pill-warn">Low</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% include "admin_dashboard/_pagination.html" %}
+    {% else %}
+    <div data-empty="stock">
+      {% include "admin_dashboard/_empty_state.html" with icon="layers" title="No stock to show" hint="Enter units on hand in a product's Stock card, or here once a product has a count." search=filter_label %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
