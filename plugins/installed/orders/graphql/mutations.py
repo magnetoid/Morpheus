@@ -62,6 +62,10 @@ class CompleteOrderInput:
     # test). Optional + validated server-side: empty/unknown/disabled →
     # the default gateway (stripe). The client never picks a disabled one.
     payment_gateway: str | None = None
+    # Answers to the checkout's extra fields, by key (core/checkout_fields.py): a
+    # note, a gift message, the terms tick. Keys no app declared are dropped, and a
+    # missing required answer refuses the order with CHECKOUT_FIELDS.
+    checkout_fields: strawberry.scalars.JSON | None = None
 
 
 @strawberry.input
@@ -308,16 +312,15 @@ class OrdersMutationExtension:
         if not cart.items.exists():
             return OrderPayload(errors=[ErrorType(code='EMPTY_CART', message='Cart is empty.')])
 
-        if not input.email or '@' not in input.email:
-            return OrderPayload(
-                errors=[ErrorType(code='INVALID_EMAIL', message='A valid email is required.')]
-            )
-
         request = (
             info.context.get('request')
             if isinstance(info.context, dict)
             else getattr(info.context, 'request', None)
         )
+        answers, refusal = _shopper_answers(request, input)
+        if refusal is not None:
+            return OrderPayload(errors=[refusal])
+
         ship = _address_dict(input.shipping_address)
         bill = _address_dict(input.billing_address) if input.billing_address else ship
 
@@ -368,6 +371,7 @@ class OrdersMutationExtension:
                     billing_address=bill,
                     visitor_id=visitor_id,
                     consent=consent_stamp(request),
+                    checkout_fields=answers,
                 )
                 # (create_from_cart raises GiftCardRedeemFailed / CouponNoLongerValid
                 # / InsufficientStockError directly on a bad checkout, rolling this
@@ -400,6 +404,24 @@ class OrdersMutationExtension:
             )
         except Exception as e:  # noqa: BLE001
             return OrderPayload(errors=[ErrorType(code='CHECKOUT_FAILED', message=str(e)[:300])])
+
+
+def _shopper_answers(request, input: CompleteOrderInput) -> tuple[dict, ErrorType | None]:
+    """The checkout-field answers to keep (core/checkout_fields.py), or why this
+    shopper cannot place the order: no valid email, a guest while the store takes
+    none (orders' ``allow_guest_checkout``), or a required answer missing."""
+    from core import checkout_fields  # noqa: PLC0415
+    from plugins.installed.orders.checkout_fields import guest_checkout_allowed  # noqa: PLC0415
+
+    if not input.email or '@' not in input.email:
+        return {}, ErrorType(code='INVALID_EMAIL', message='A valid email is required.')
+    user = getattr(request, 'user', None)
+    if not guest_checkout_allowed() and not getattr(user, 'is_authenticated', False):
+        return {}, ErrorType(code='SIGN_IN_REQUIRED', message='Please sign in to check out.')
+    answers, problems = checkout_fields.clean(input.checkout_fields or {}, user=user)
+    if problems:
+        return {}, ErrorType(code='CHECKOUT_FIELDS', message=' '.join(problems))
+    return answers, None
 
 
 # ── Staff-only order admin mutations ──────────────────────────────────────────

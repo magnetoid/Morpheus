@@ -185,7 +185,11 @@ def orders_get_tool(*, order_number: str) -> ToolResult:
             'email': o.email or (o.customer.email if o.customer_id else ''),
             'customer_id': str(o.customer_id) if o.customer_id else '',
             'placed_at': o.placed_at.isoformat() if o.placed_at else '',
-            'notes': getattr(o, 'notes', '') or '',
+            # What the shopper wrote at checkout (core/checkout_fields.py); an Order
+            # has no ``notes`` field, so this was always empty before v0.168.0.
+            'notes': o.customer_notes or '',
+            'gift_message': o.gift_message,
+            'terms_accepted': bool((o.metadata or {}).get('terms_accepted')),
             'items': items,
             'items_total': len(_all_items),
             'refunds': refunds,

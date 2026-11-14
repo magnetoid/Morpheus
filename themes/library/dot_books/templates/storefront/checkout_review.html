@@ -31,6 +31,8 @@
           {% if nothing_to_pay %}<p class="meta">There is nothing to pay: place the order and it goes straight through.</p>{% else %}<p class="meta">After you place the order we'll redirect to a secure payment page (Stripe). Your card never touches our server.</p>{% endif %}
         </div>
 
+        {% checkout_fields %}
+
         {% if show_withdrawal_waiver %}
         <label style="display:flex; align-items:flex-start; gap:.6rem; padding:.85rem 1rem; border:1px solid var(--rule); border-radius:8px; font-size:.88rem; line-height:1.4;">
           <input type="checkbox" name="digital_withdrawal_waiver" value="1" required style="margin-top:.2rem;">

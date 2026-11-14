@@ -48,8 +48,8 @@ self.register_hook(events.CART_CALCULATE_TOTAL, self.add_shipping)  # filter
 
 Available events: `ORDER_PLACED`, `ORDER_CONFIRMED`, `ORDER_PAID`,
 `ORDER_CANCELLED`, `ORDER_FULFILLED`, `PAYMENT_CAPTURED`,
-`PAYMENT_FAILED`, `PAYMENT_REFUNDED`, `CART_CREATED`, `CART_UPDATED`,
-`CART_ABANDONED`, `CART_CALCULATE_TOTAL` (filter),
+`PAYMENT_FAILED`, `PAYMENT_REFUNDED`, `CART_ABANDONED`,
+`CART_CALCULATE_TOTAL` (filter), `CHECKOUT_FIELDS` (filter),
 `PRODUCT_CALCULATE_PRICE` (filter), `PRODUCT_LIST_REORDER` (filter),
 `PRODUCT_VIEWED`, `PRODUCT_CREATED`,
 `PRODUCT_UPDATED`, `CATEGORY_UPDATED`, `CUSTOMER_REGISTERED`,
@@ -276,6 +276,12 @@ safe to retry on the **same** session (the Stripe idempotency key is
 session-scoped, so a replay can never double-charge); hard declines return
 `422 payment_declined` with `param='payment_data.token'` and the Stripe
 decline code folded into the message content.
+
+An ACP order skips the store's own checkout questions: the extra fields the
+apps declare through `CHECKOUT_FIELDS` (a note, a gift message, the terms
+tick, the newsletter box) and the "guests cannot check out" setting. Both are
+checked by `completeOrder`, which the storefront's checkout forms and the
+cart's wallet buttons call; ACP places its order without it.
 
 ## Janus for external agents (MCP and GraphQL)
 

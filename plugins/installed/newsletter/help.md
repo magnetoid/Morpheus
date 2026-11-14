@@ -8,7 +8,7 @@ This app captures email addresses with popups on the storefront and keeps a conf
 
 ## Set it up
 
-Create and turn on a signup popup from [Popups](page:popups) — nothing shows on the storefront until one is active. Win-back email is on by default; turn it off, or add a coupon code to include, from [Newsletter](settings:newsletter) settings: [](field:newsletter.winback_enabled), [](field:newsletter.winback_coupon_code).
+Create and turn on a signup popup from [Popups](page:popups) — nothing shows on the storefront until one is active. Win-back email is on by default; turn it off, or add a coupon code to include, from [Newsletter](settings:newsletter) settings: [](field:newsletter.winback_enabled), [](field:newsletter.winback_coupon_code). To ask at checkout too, switch on [](field:newsletter.checkout_opt_in): an unticked box, and a shopper who ticks it gets the confirmation email like any other signup.
 
 ## Common tasks
 

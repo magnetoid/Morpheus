@@ -251,6 +251,12 @@ class Order(models.Model):
         return lines
 
     @property
+    def gift_message(self) -> str:
+        """The gift message the shopper wrote at checkout (orders/checkout_fields.py)."""
+        answers = (self.metadata or {}).get('checkout_fields') or {}
+        return str(answers.get('gift_message') or '') if isinstance(answers, dict) else ''
+
+    @property
     def tax_included_lines(self) -> list[dict]:
         """The tax inside the prices of an order placed with tax-inclusive
         prices, as ``[{'label', 'amount': Money}]``; it is part of ``total``,

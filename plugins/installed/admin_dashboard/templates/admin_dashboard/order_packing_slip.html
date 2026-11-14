@@ -68,6 +68,13 @@
   </section>
   {% endif %}
 
+  {% if order.gift_message %}
+  <section class="note" data-gift-message>
+    <h2>Gift message</h2>
+    <p>{{ order.gift_message|linebreaksbr }}</p>
+  </section>
+  {% endif %}
+
   <div class="actions"><button type="button" onclick="window.print()">Print</button></div>
 </main>
 </body>

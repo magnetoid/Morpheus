@@ -9,9 +9,11 @@ review → Stripe payment. Plus gift card apply/remove side-trips.
 
 from __future__ import annotations
 
+import functools
 import logging
 
 from api.client import internal_graphql
+from core import checkout_fields
 from core.utils.countries import country_choices, normalise_country, store_country
 from morpheus.app.views import redirect, render
 from core.security_headers import payment_page
@@ -274,7 +276,29 @@ def _available_shipping_rates(request, addr):
     return rates
 
 
+def guest_checkout_gate(view):
+    """Send a shopper who is not signed in to sign-in first while the store takes no
+    guest orders (orders' ``allow_guest_checkout``). Signing in keeps the cart: it is
+    merged into the customer's on login."""
+
+    @functools.wraps(view)
+    def gated(request, *args, **kwargs):
+        if not getattr(request.user, 'is_authenticated', False):
+            from plugins.installed.orders.checkout_fields import (  # noqa: PLC0415
+                guest_checkout_allowed,
+            )
+
+            if not guest_checkout_allowed():
+                from django.contrib.auth.views import redirect_to_login  # noqa: PLC0415
+
+                return redirect_to_login(request.get_full_path())
+        return view(request, *args, **kwargs)
+
+    return gated
+
+
 @payment_page
+@guest_checkout_gate
 def checkout(request):
     """Step 1: contact + shipping address."""
     no_shipping = not _cart_requires_shipping(request)
@@ -429,6 +453,7 @@ def checkout_remove_gift_card(request):
 
 
 @payment_page
+@guest_checkout_gate
 def checkout_shipping(request):
     """Step 2: pick a shipping rate."""
     addr = request.session.get('checkout_address')
@@ -467,6 +492,7 @@ def checkout_shipping(request):
 
 
 @payment_page
+@guest_checkout_gate
 def checkout_review(request):
     """Step 3: final review + place order. POST creates the Order +
     captures Stripe client_secret, then redirects to /checkout/payment/."""
@@ -512,6 +538,8 @@ def checkout_review(request):
                             'email': addr.get('email', ''),
                             'shippingAddress': shipping_input,
                             'shippingRateId': rate_id or None,
+                            # The extra fields' answers ({% checkout_fields %}).
+                            'checkoutFields': checkout_fields.from_post(request.POST),
                         },
                     },
                     request=request,
