@@ -124,3 +124,26 @@ def _write_copy(kind: str, targets: list) -> tuple[int, int]:
         obj.save(update_fields=['description', 'meta_title', 'meta_description', 'updated_at'])
         written += 1
     return (written, skipped)
+
+
+# Social cards (social_cards.py): drawn on the worker, at most one queued run
+# per book (the page view that asks holds a lock until the run ends; a run that
+# ends in an error leaves it to run out, so a failing store retries slowly).
+@shared_task(
+    name='book_product.render_social_card',
+    bind=True,
+    max_retries=3,
+    default_retry_delay=120,
+)
+def render_social_card(self, book_id: str, token: str = '') -> str:
+    from plugins.installed.book_product.social_cards import release, render_and_store
+
+    try:
+        outcome = render_and_store(book_id)
+    except Exception as e:  # storage or database: try again later
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e) from e
+        logger.error('book_product: social card for %s failed: %s', book_id, e, exc_info=True)
+        return 'error'
+    release(book_id, token)
+    return outcome

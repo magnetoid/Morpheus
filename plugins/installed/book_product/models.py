@@ -134,6 +134,22 @@ class BookProduct(models.Model):
     # ── Cover PDF (drives the three.js 3D preview) ─────────────────────────
     cover_pdf = models.FileField(upload_to='book_covers/', null=True, blank=True)
 
+    # ── Social card (social_cards.py) ──────────────────────────────────────
+    # The 1200x630 share image drawn from the cover, and the fingerprint of
+    # what it was drawn from. A fingerprint with no file: that cover could not
+    # be used, so nothing is tried again until the book changes.
+    social_card = models.FileField(
+        upload_to='book_social_cards/',
+        max_length=255,
+        blank=True,
+        default='',
+        db_default='',
+        editable=False,
+    )
+    social_card_key = models.CharField(
+        max_length=64, blank=True, default='', db_default='', editable=False
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -76,7 +76,13 @@ def _stats() -> dict:
 @staff_member_required
 @require_capability('system.read')
 def overview(request):
+    from plugins.installed.tracking.templatetags.tracking import browser_tagging
+
     s = TrackingSettings.get_solo()
+    # Each half runs on its own: the browser tag on a GTM container or the GA4
+    # measurement ID alone, the server's events on the measurement ID + API secret.
+    browser_on = browser_tagging(s)
+    server_on = bool(s.server_side_enabled and s.measurement_id and s.api_secret)
     stats = _stats()
     recent = list(GA4EventLog.objects.all().order_by('-fired_at')[:10])
     last_sent = (
@@ -91,7 +97,9 @@ def overview(request):
             'stats': stats,
             'recent': recent,
             'last_sent_at': getattr(last_sent, 'fired_at', None),
-            'configured': bool(s.measurement_id and s.api_secret),
+            'configured': browser_on or server_on,
+            'browser_on': browser_on,
+            'server_on': server_on,
         },
     )
 
