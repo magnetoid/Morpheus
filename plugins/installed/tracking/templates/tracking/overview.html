@@ -18,9 +18,28 @@
   <i data-lucide="alert-triangle" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
   <div class="callout__body">
     <p class="callout__title">Tracking is not configured yet</p>
-    Add your <strong>GA4 measurement ID</strong> + <strong>API secret</strong> + <strong>GTM container ID</strong> in <a href="/dashboard/tracking/settings/?tab=connection" class="underline">Settings → Connection</a>. Server-side firing needs the measurement ID + API secret; GTM script needs the container ID.
+    Add your <strong>GA4 measurement ID</strong> (or a <strong>GTM container ID</strong>) in <a href="/dashboard/tracking/settings/?tab=connection" class="underline">Settings → Connection</a>. Either one loads the Google tag in the shopper's browser; events from the server also need the <strong>API secret</strong>.
   </div>
 </div>
+{% else %}
+{% if s.server_side_enabled and not server_on %}
+<div class="callout callout-info mb-4" data-tracking-server-missing>
+  <i data-lucide="info" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">The Google tag runs in the browser; the server sends nothing</p>
+    Refunds, sign-ups, and purchases a payment confirms after the shopper has left reach GA4 only from the server, which needs the <strong>GA4 measurement ID</strong> + <strong>API secret</strong> in <a href="/dashboard/tracking/settings/?tab=connection" class="underline">Settings → Connection</a>.
+  </div>
+</div>
+{% endif %}
+{% if not browser_on %}
+<div class="callout callout-info mb-4" data-tracking-browser-missing>
+  <i data-lucide="info" class="h-4 w-4 callout__icon" aria-hidden="true"></i>
+  <div class="callout__body">
+    <p class="callout__title">Server events are sent; no Google tag loads in the browser</p>
+    Switch on client firing and set a <strong>GTM container ID</strong> or a <strong>GA4 measurement ID</strong> in <a href="/dashboard/tracking/settings/?tab=connection" class="underline">Settings → Connection</a> to measure page views.
+  </div>
+</div>
+{% endif %}
 {% endif %}
 
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">

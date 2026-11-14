@@ -21,6 +21,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 - A digital purchase is taken from the emailed link or the account's Library, never from the thank-you page (owner, 2026-11-14). The page showed a Download button, and an audiobook's player, beside each digital line under every theme; it now says where the file is: in the email for a guest, in the Library and the email for a buyer with an account, or that the link follows once the payment goes through. The account's order page and the Library keep their downloads.
 
+## v0.167.2 — 2026-11-14
+
+**The Tracking page says which half of tracking runs**
+
+- The Tracking page said "Tracking is not configured yet" unless both the GA4 measurement ID and the API secret were set, while the Google tag runs in the browser on the measurement ID alone or on a GTM container: a store whose tag was live was told nothing was set up. It now warns only when neither half runs, and otherwise says which half is missing: events from the server need the API secret, page views need a tag in the browser.
+
 ## v0.167.1 — 2026-11-14
 
 **Emails show the store's name as the sender**
