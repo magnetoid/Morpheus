@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.166.1 — 2026-11-14
+
+**Structured data opens from the SEO card**
+
+- Structured data is now a button in the SEO card of products, categories, collections and pages. It opens a dialog with the FAQ, recipe, video and course editor (and, on a product, the extra JSON-LD box); everything saves with the page's Save, and the separate Structured data card on the product page is gone.
+- The Structured data page and the dialog share one editor and one save rule, and both keep the saved blocks Google no longer shows until you delete them on that page.
+- The extra JSON-LD is written only when the form sends it, so saving a product while the SEO app is off keeps it.
+- The button no longer promises How-to or Event blocks, which Google stopped showing.
+
 ## v0.166.0 — 2026-11-13
 
 **Every control in one place, and stock gets its own page**

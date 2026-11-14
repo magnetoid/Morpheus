@@ -176,14 +176,105 @@
         <input type="text" id="seo-focus-keyword" name="seo_focus_keyword" maxlength="120" class="input" value="{{ seo.focus_keyword }}">
         <p class="text-xs text-[color:var(--text-muted)] mt-1">The search this page is written for. Used by SEO checks and the score.</p>
       </div>
-      {% if seo_schema_editor_url %}
       <div class="pt-1">
-        <a href="{{ seo_schema_editor_url }}" class="btn btn-secondary btn-sm">✦ Structured data editor — FAQ, How-to, Event…</a>
-        <p class="text-xs text-[color:var(--text-muted)] mt-1">Add rich-result schema with no JSON. Product, price and review markup is automatic.</p>
+        <button type="button" class="btn btn-secondary btn-sm" data-seo-sd-open aria-haspopup="dialog">
+          <i data-lucide="braces" class="h-4 w-4" aria-hidden="true"></i>
+          Structured data{% if seo_schema_count %} · {{ seo_schema_count }}{% endif %}
+        </button>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">FAQ, recipe, video and course rich results, with no JSON. The store writes its own product, article and breadcrumb markup.</p>
       </div>
-      {% endif %}
     </div>
   </div>
+
+  {% comment %}
+  Structured data, opened from the button above. The dialog is inside the host
+  form, so its fields post with the page's own Save: the blocks as JSON in
+  seo_schema_blocks (save_object_seo keeps the blocks that render nowhere) and,
+  on a product, the extra JSON-LD as structured_data, which the product form
+  validates and stores. Without JavaScript the dialog never opens and both
+  fields post what was stored, so a save changes neither.
+  {% endcomment %}
+  <dialog class="morph-modal" data-seo-sd-dialog aria-labelledby="seo-sd-title">
+    <div class="morph-modal__head">
+      <div>
+        <h3 id="seo-sd-title" class="font-semibold text-sm">Structured data</h3>
+        <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Saved with the rest of this page when you press Save.</p>
+      </div>
+      <button type="button" class="btn btn-ghost p-1" aria-label="Close" data-seo-sd-close>
+        <i data-lucide="x" class="h-4 w-4" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="morph-modal__body space-y-3">
+      {% include "seo/_schema_blocks_editor.html" %}
+      <input type="hidden" name="seo_schema_blocks" value="{{ seo_schema_blocks_json }}" data-seo-sd-value>
+      <div data-seo-sd-blocks></div>
+      <div class="sd-addbar">
+        <label class="text-sm font-medium" for="seo-sd-type">Add schema:</label>
+        <select id="seo-sd-type" class="input" style="max-width: 16rem;" data-seo-sd-type>
+          {% for t in seo_schema_types %}<option value="{{ t.key }}">{{ t.label }}</option>{% endfor %}
+        </select>
+        <button type="button" class="btn btn-ghost text-sm" data-seo-sd-add>+ Add</button>
+      </div>
+      {% if seo_schema_retired and seo_schema_editor_url %}
+      <p class="sd-help">{% if seo_schema_retired|length == 1 %}1 saved block no longer shows{% else %}{{ seo_schema_retired|length }} saved blocks no longer show{% endif %} on any page. <a href="{{ seo_schema_editor_url }}" class="underline">Delete {% if seo_schema_retired|length == 1 %}it{% else %}them{% endif %} on the Structured data page</a>.</p>
+      {% endif %}
+      {% if seo_raw_jsonld %}
+      <div class="pt-3 border-t border-[color:var(--border)]">
+        <label class="block text-sm font-medium mb-1" for="seo-sd-raw">Extra JSON-LD (advanced)</label>
+        <textarea id="seo-sd-raw" name="structured_data" rows="6" class="input font-mono text-xs" placeholder='{"brand": "Acme", "gtin": "0123456789012"}'>{{ seo_raw_jsonld_value }}</textarea>
+        <p class="field-error" data-seo-sd-raw-error hidden></p>
+        <p class="text-xs text-[color:var(--text-muted)] mt-1">Merged into the product's own JSON-LD. Use schema.org property names.</p>
+      </div>
+      {% endif %}
+      <div class="morph-modal__foot">
+        <button type="button" class="btn btn-primary btn-sm" data-seo-sd-close>Done</button>
+      </div>
+    </div>
+  </dialog>
+  {{ seo_schema_types|json_script:"seo-sd-types" }}
+  <script>
+  (function () {
+    var root = document.currentScript.closest('[data-seo-panel]');
+    if (!root || root.dataset.seoSdWired || !window.MorphSchemaBlocks) return;
+    var dialog = root.querySelector('[data-seo-sd-dialog]');
+    var opener = root.querySelector('[data-seo-sd-open]');
+    if (!dialog || !opener) return;
+    root.dataset.seoSdWired = '1';
+    var hidden = dialog.querySelector('[data-seo-sd-value]');
+    var stored = [];
+    try { stored = JSON.parse(hidden.value || '[]'); } catch (e) { stored = []; }
+    var editor = window.MorphSchemaBlocks.mount({
+      container: dialog.querySelector('[data-seo-sd-blocks]'),
+      hidden: hidden,
+      select: dialog.querySelector('[data-seo-sd-type]'),
+      addButton: dialog.querySelector('[data-seo-sd-add]'),
+      types: JSON.parse(document.getElementById('seo-sd-types').textContent),
+      blocks: stored,
+    });
+    opener.addEventListener('click', function () { dialog.showModal(); });
+    dialog.querySelectorAll('[data-seo-sd-close]').forEach(function (b) {
+      b.addEventListener('click', function () { dialog.close(); });
+    });
+    var form = root.closest('form');
+    if (!form) return;
+    form.addEventListener('submit', editor.sync, true);
+    // An AJAX save the product form refused because of the extra JSON-LD:
+    // open the dialog on the box and say why, since the box is out of sight.
+    form.addEventListener('morph:save-failed', function (ev) {
+      var errors = ev.detail && ev.detail.data && ev.detail.data.errors;
+      var raw = errors && errors.structured_data;
+      var box = dialog.querySelector('[data-seo-sd-raw-error]');
+      if (!raw || !box) return;
+      box.textContent = (raw[0] && (raw[0].message || raw[0])) || '';
+      box.hidden = false;
+      if (!dialog.open) dialog.showModal();
+    });
+    form.addEventListener('morph:saved', function () {
+      var box = dialog.querySelector('[data-seo-sd-raw-error]');
+      if (box) box.hidden = true;
+    });
+  })();
+  </script>
 
   <script>
   (function () {

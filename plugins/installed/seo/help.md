@@ -18,7 +18,7 @@ Fill in your organisation name, social profile links and search-engine verificat
 - Track a [keyword](page:keywords)'s Google position, clicks and impressions, updated nightly
 - See which searches bring visitors from Google on [Search performance](page:search-performance)
 - Fill in a title or description pattern once on [Templates](page:templates) instead of editing every product
-- Add a FAQ, recipe, video or course to a page from its schema editor, which also lists blocks Google no longer shows, to delete
+- Add a FAQ, recipe, video or course with Structured data in the SEO card; the [Structured data](page:schema) page lists blocks Google no longer shows
 
 ## Good to know
 A title you typed always wins over a generated one. An empty organisation name, logo or e-mail falls back to your general store settings, and each edition of a product is described with its name, a photo and its barcode. Hidden until launch, the store stays out of search and AI crawlers; shoppers still browse it. Linda reads your SEO details, the last site scan, your [Index rules](page:rules) and title patterns freely; changing a title, a redirect, a schema block, a rule, a pattern or a setting, or starting a scan (one per ten minutes), needs your go-ahead first.

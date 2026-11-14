@@ -37,6 +37,12 @@
     {{ form.non_field_errors }}
   </div>
   {% endif %}
+  {% if form.structured_data.errors %}
+  {# The box is in the SEO card's Structured data dialog, out of sight. #}
+  <div class="card card-padded form-error-banner">
+    Extra JSON-LD (SEO → Structured data): {{ form.structured_data.errors.0 }}
+  </div>
+  {% endif %}
 
   {% comment %}
     Two-column layout: wider form on the left, narrow sidebar (Status /
@@ -553,37 +559,6 @@
     {# Plugin-contributed product-form cards (PRODUCT_FORM_CARDS) — incl. book_product's Book details; each vanishes when its plugin is disabled. #}
     {% for card in extra_product_cards %}{{ card|safe }}{% endfor %}
 
-    {% comment %}
-    Structured data (raw JSON-LD) is the one SEO field still edited here: it is
-    loose-typed and validated by ProductForm.clean_structured_data, and the
-    structured-data work that gives it a proper home is the next phase.
-    Everything else — title, description, focus keyword, canonical, Open Graph,
-    Twitter, robots — is in the SEO card the seo app contributes above
-    (PRODUCT_FORM_CARDS), stored on SeoMeta, and shared with categories,
-    collections and CMS pages.
-    {% endcomment %}
-    <details class="card" id="product-schema-details" data-pt-show="simple,variable,digital,bundle">
-      <summary class="card-padded cursor-pointer flex items-center justify-between border-b border-[color:var(--border)]" style="list-style:none;">
-        <div>
-          <h2 class="font-semibold text-sm">Structured data</h2>
-          <p class="text-xs text-[color:var(--text-muted)] mt-0.5">Rich-result schema. Product, price and review markup is generated for you.</p>
-        </div>
-        <i data-lucide="chevron-down" class="h-4 w-4 text-[color:var(--text-muted)]"></i>
-      </summary>
-      <div class="card-padded space-y-3">
-        {% plugin_enabled "seo" as seo_enabled %}
-        {% if seo_enabled and product.id %}
-        <a href="/dashboard/seo/schema/catalog/product/{{ product.id }}/" class="btn btn-secondary btn-sm">✦ Structured data editor — FAQ, How-to, Event…</a>
-        <p class="text-xs text-[color:var(--text-muted)]">Add rich-result schema with no JSON.</p>
-        {% endif %}
-        <div>
-          <label class="block text-sm font-medium mb-1">Extra JSON-LD (advanced)</label>
-          <textarea name="structured_data" rows="6" class="input font-mono text-xs" placeholder='{"brand": "Acme", "gtin": "0123456789012"}'>{{ form.structured_data.value|default:'' }}</textarea>
-          {% if form.structured_data.errors %}<p class="field-error">{{ form.structured_data.errors.0 }}</p>{% endif %}
-          <p class="text-xs text-[color:var(--text-muted)] mt-1">Merged into the auto-generated Product JSON-LD. Use schema.org property names.</p>
-        </div>
-      </div>
-    </details>
 
   </form>
 

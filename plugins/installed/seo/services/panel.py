@@ -22,6 +22,8 @@ from the panel's `seo_*` POST fields. Two rules run through both:
 
 from __future__ import annotations
 
+import json
+
 # ruff: noqa: PLC0415, S110 — inline imports keep the optional seo/metafields
 # plugins soft so a disabled plugin can't break a dashboard form; the broad
 # try/except/pass guards make every read/write fail-soft on a disabled plugin.
@@ -249,6 +251,11 @@ def panel_context(obj, request=None) -> dict:
         pass
 
     robots = vals['robots'] or 'index, follow'
+    blocks, retired = _schema_blocks(obj)
+    if request is not None and getattr(request, 'method', '') == 'POST':
+        posted = _posted_schema_blocks(request.POST)
+        if posted is not None:
+            blocks = posted
     return {
         'seo': vals,
         'seo_ai_answer': ai_answer,
@@ -263,6 +270,10 @@ def panel_context(obj, request=None) -> dict:
         'seo_object_path': _object_path(obj),
         'seo_cover_image': _cover_url(obj),
         'seo_schema_editor_url': _schema_editor_url(obj),
+        'seo_schema_types': _schema_types(),
+        'seo_schema_blocks_json': json.dumps(blocks, separators=(',', ':'), ensure_ascii=False),
+        'seo_schema_count': len(blocks),
+        'seo_schema_retired': retired,
         'seo_card_open': card_open,
         'seo_twitter_choices': [
             ('summary_large_image', 'Summary (large image)'),
@@ -296,6 +307,40 @@ def _schema_editor_url(obj) -> str:
         return f'/dashboard/seo/schema/{meta.app_label}/{meta.model_name}/{obj.pk}/'
     except Exception:  # noqa: BLE001
         return ''
+
+
+def _schema_types() -> list:
+    from plugins.installed.seo.schema_types import registry_json
+
+    return registry_json()
+
+
+def _schema_blocks(obj) -> tuple[list, list]:
+    """`(editable blocks, blocks that render nowhere)` stored for ``obj``."""
+    if obj is None or not getattr(obj, 'pk', None):
+        return [], []
+    try:
+        from plugins.installed.seo.models import SeoMeta
+        from plugins.installed.seo.schema_types import refusal, retired_entries
+
+        meta = SeoMeta.for_obj(obj)
+        stored = list(meta.schema_blocks or []) if meta else []
+    except Exception:  # noqa: BLE001 — seo plugin optional
+        return [], []
+    editable = [b for b in stored if isinstance(b, dict) and not refusal(b)]
+    return editable, retired_entries(stored)
+
+
+def _posted_schema_blocks(post) -> list | None:
+    """The dialog's blocks as posted, or None when they were not (or not a list)."""
+    raw = post.get('seo_schema_blocks')
+    if raw is None:
+        return None
+    try:
+        entries = json.loads(raw or '[]')
+    except (ValueError, TypeError):
+        return None
+    return entries if isinstance(entries, list) else None
 
 
 def _cover_url(obj) -> str:
@@ -378,12 +423,22 @@ def save_object_seo(obj, post) -> None:
 
         ct = ContentType.objects.get_for_model(type(obj))
         qs = SeoMeta.objects.filter(content_type=ct, object_id=str(obj.pk))
+        # The Structured data dialog's blocks, only when it posted them: a form
+        # without the dialog leaves the stored blocks alone.
+        entries = _posted_schema_blocks(post)
+        if entries is not None:
+            from plugins.installed.seo.schema_types import merge_editor_blocks
+
+            existing = qs.first()
+            stored = list(existing.schema_blocks or []) if existing else []
+            fields['schema_blocks'], _refused = merge_editor_blocks(entries, stored)
         text_set = any(fields[k] for k in _text_fields)
         if not (
             text_set
             or robots != 'index, follow'
             or fields['robots_extra']
             or fields['sitemap_include'] is not None
+            or fields.get('schema_blocks')
             or qs.exists()
         ):
             return
