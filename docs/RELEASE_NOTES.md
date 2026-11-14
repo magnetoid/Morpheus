@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.170.1 — 2026-11-14
+
+**Book rail arrows sit beside the covers and page by whole books**
+
+- The home page's book rails on Dot Books show a bare arrow on each side of the rail, outside the covers, where a dark circle sat over the first and last cover.
+- An arrow turns a page of whole books, as many as the rail shows, so a page never starts on a cut-off cover; each arrow hides at its end.
+- The previous arrow no longer shows when the rail is at its start: the first book used to settle a few pixels in, which counted as scrolled.
+
 ## v0.170.0 — 2026-11-14
 
 **The product list shows categories, collections, type and date added**
