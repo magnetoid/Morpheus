@@ -15,6 +15,12 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.167.2 — 2026-11-14
+
+**The Tracking page says which half of tracking runs**
+
+- The Tracking page said "Tracking is not configured yet" unless both the GA4 measurement ID and the API secret were set, while the Google tag runs in the browser on the measurement ID alone or on a GTM container: a store whose tag was live was told nothing was set up. It now warns only when neither half runs, and otherwise says which half is missing: events from the server need the API secret, page views need a tag in the browser.
+
 ## v0.167.1 — 2026-11-14
 
 **Emails show the store's name as the sender**
