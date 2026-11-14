@@ -13,6 +13,7 @@ Open [](settings:catalog) to choose the frame every product photo is shown in ([
 ## Common tasks
 
 - Add, edit, archive or delete a product, its photos and its variants, from [](section:products).
+- See each product's categories, collections, type and date added in the product list, sort by date added, and hide columns with Columns (your browser remembers).
 - Build a category tree; opening a category also lists every product in the categories beneath it.
 - Group products into a collection to feature together on the storefront or in a homepage rail.
 - Ask Linda to find a product, check its price or stock, or change its status or price.

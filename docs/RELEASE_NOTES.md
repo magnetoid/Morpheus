@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.170.0 — 2026-11-14
+
+**The product list shows categories, collections, type and date added**
+
+- The dashboard's product list shows each product's categories (the primary first, then the ones it is cross-listed in), its collections, its type and the date it was added, and sorts by date added.
+- A Columns menu above the list hides any column but the product, its status and its price; the browser remembers the choice.
+- On a book store the list also shows each book's author and genres, which leave with the book app when it is switched off.
+- The list reads a page's categories and collections in the same number of queries however many products it shows, and an app's column is drawn without running the page's context processors once per row.
+
 ## v0.169.0 — 2026-11-14
 
 **Book covers take PNG and JPG, dropped on the dashboard uploader**
