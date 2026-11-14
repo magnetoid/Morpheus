@@ -1,0 +1,1 @@
+{% if pct is None %}{% if now %}<span class="pill pill-neutral">new</span>{% endif %}{% elif pct >= 0 %}<span class="pill pill-success">▲ {{ pct }}%</span>{% else %}<span class="pill pill-danger">▼ {{ pct }}%</span>{% endif %}

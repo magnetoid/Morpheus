@@ -173,16 +173,25 @@ class ExperienceResultsTests(SearchFixture, TestCase):
         self.assertLessEqual(len(response.context['q']), 200)
 
     def test_a_search_is_reported(self):
+        """Any input is a search, a region alone too (v0.162.0: it used to fire
+        nothing), and it says what it was filtered by. No input is no search."""
         with mock.patch.object(hook_registry, 'fire', wraps=hook_registry.fire) as fire:
             self._get('/bookings/?q=kayak+kotor')
             self._get('/bookings/?q=kayak+ulcinj')
             self._get('/bookings/?region=kotor')
+            self._get('/bookings/')
         searches = [
-            (call.kwargs['query'], call.kwargs['result_count'])
+            (
+                call.kwargs['query'],
+                call.kwargs['result_count'],
+                [f['key'] for f in call.kwargs['filters']],
+            )
             for call in fire.call_args_list
             if call.args and call.args[0] == MorpheusEvents.SEARCH_PERFORMED
         ]
-        self.assertEqual(searches, [('kayak kotor', 2), ('kayak ulcinj', 0)])
+        self.assertEqual(
+            searches, [('kayak kotor', 2, []), ('kayak ulcinj', 0, []), ('', 2, ['region'])]
+        )
 
 
 @override_settings(BOOKING_LISTING_MODE=False)

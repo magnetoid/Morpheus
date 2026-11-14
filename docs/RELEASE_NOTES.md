@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.162.0 — 2026-11-12
+
+**Travel conversions**
+
+- Enquiries and bookings are events (ENQUIRY_CREATED, BOOKING_CREATED, BOOKING_CONFIRMED), fired once after they commit, with one shape analytics and tracking read without touching the travel app's models.
+- Experience pages count as product views, and a booking search counts with any input, with its region, date, category and guests filters; empty queries stay out of the search reports.
+- Analytics records leads and bookings (never as revenue), offers a bookings funnel (searched, viewed, enquired or booked) as the default on a store that sells no goods, and lists searches that found nothing by filter.
+- GA4 gets generate_lead for an enquiry and purchase for a confirmed booking, from one sender each: the visitor's browser tag on the next page (kept out of every cache), else Measurement Protocol with consent; a later confirmation uses the ids and consent stamped on the booking.
+- A Conversions page under Orders: 7, 30 and 90 days against the period before, lead time, top experiences and hotels, by region; Linda reads it with bookings.conversions and picks a funnel preset with analytics.funnel.
+
 ## v0.161.0 — 2026-11-12
 
 **Breadcrumbs and travel landing pages**

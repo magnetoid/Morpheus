@@ -229,6 +229,10 @@ class Booking(models.Model):
     status = models.CharField(max_length=12, choices=STATUS, default='pending', db_index=True)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # What a later confirmation reports with: the shopper's consent, written at
+    # creation, and the visit (analytics) and GA ids (tracking) their apps add
+    # on BOOKING_CREATED. Nullable, so the release before keeps inserting.
+    metadata = models.JSONField(null=True, blank=True)
 
     class Meta:
         app_label = 'booking_marketplace'

@@ -146,13 +146,16 @@ def create_stay_booking(
     adults=2,
     children=0,
     notes='',
+    request=None,
 ):
     """Create a confirmed stay booking with server-derived totals.
 
     Locks the room-type row so concurrent bookings can't oversell: the
     availability check + insert run while holding the lock. Raises BookingError
-    on any validation failure.
+    on any validation failure. BOOKING_CREATED and BOOKING_CONFIRMED carry `request`
+    (the shopper's) once it commits.
     """
+    from plugins.installed.booking_marketplace import conversions
     from plugins.installed.booking_marketplace.models import RoomType, StayBooking
 
     rt = RoomType.objects.select_for_update().get(pk=room_type.pk)
@@ -201,6 +204,7 @@ def create_stay_booking(
     from plugins.installed.booking_marketplace.email import notify_stay_booking
 
     transaction.on_commit(lambda: notify_stay_booking(booking))
+    conversions.announce_booking(booking, request=request)
     return booking
 
 
@@ -218,8 +222,13 @@ def submit_stay_enquiry(
     adults=None,
     children=None,
     message='',
+    request=None,
 ):
-    """Capture a 'Contact for price' accommodation lead (listing mode; anon-allowed)."""
+    """Capture a 'Contact for price' accommodation lead (listing mode; anon-allowed).
+
+    ENQUIRY_CREATED carries `request` (the shopper's) once the enquiry commits.
+    """
+    from plugins.installed.booking_marketplace import conversions
     from plugins.installed.booking_marketplace.models import StayEnquiry
 
     if not email:
@@ -261,6 +270,7 @@ def submit_stay_enquiry(
         notify_stay_enquiry(enquiry)
     except Exception:  # noqa: BLE001, S110 — best-effort notify; never block the enquiry
         pass
+    conversions.announce_enquiry(enquiry, request=request)
     return enquiry
 
 

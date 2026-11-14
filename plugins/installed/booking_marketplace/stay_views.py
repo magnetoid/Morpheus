@@ -223,6 +223,7 @@ def stay_book(request, slug):
                 email=request.POST.get('email', ''),
                 phone=request.POST.get('phone', ''),
                 message=request.POST.get('message', ''),
+                request=request,
                 **common,
             )
             messages.success(
@@ -236,6 +237,7 @@ def stay_book(request, slug):
                 customer_email=request.POST.get('email', ''),
                 customer_phone=request.POST.get('phone', ''),
                 notes=request.POST.get('message', ''),
+                request=request,
                 **common,
             )
             messages.success(request, _('Your stay is booked! A confirmation is on its way.'))
@@ -263,6 +265,7 @@ def _enquire_without_rooms(request, prop):
             rooms=request.POST.get('rooms'),
             adults=request.POST.get('adults'),
             children=request.POST.get('children'),
+            request=request,
         )
         messages.success(request, _("Thanks — we'll be in touch about availability and pricing."))
     except BookingError as e:

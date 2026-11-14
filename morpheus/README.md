@@ -128,11 +128,12 @@ That's the whole minimum. The plugin contract spec lives in [`CHARTER.md` §5](.
 | `CART_ABANDONED` | Cart inactive 60+ min after last interaction | `cart=` |
 | `ADD_TO_CART` / `REMOVE_FROM_CART` | Live cart edits | `cart=`, `item=`, `product=`, `quantity=` |
 | `BEGIN_CHECKOUT` | Customer entered the checkout funnel | `cart=` |
-| `PRODUCT_VIEWED` | PDP rendered | `product=`, `customer=` (optional), `session_key=` (optional) |
+| `PRODUCT_VIEWED` | PDP or experience page rendered | `product=`, `customer=`, `request=` |
 | `PRODUCT_CREATED` / `PRODUCT_UPDATED` | Catalog mutation | `product=` |
 | `PRODUCT_LOW_STOCK` / `PRODUCT_BACK_IN_STOCK` | Inventory crossing thresholds | `product=`, `variant=` |
 | `CUSTOMER_REGISTERED` / `CUSTOMER_LOGIN` | Account events | `customer=` |
-| `SEARCH_PERFORMED` | Storefront search ran | `query=`, `results_count=`, `customer=` (optional) |
+| `SEARCH_PERFORMED` | Storefront search ran (first page) | `query=` (may be empty), `result_count=`, `request=`, `filters=` (optional) |
+| `ENQUIRY_CREATED` / `BOOKING_CREATED` / `BOOKING_CONFIRMED` | A travel lead or booking committed (once per row) | `enquiry=` or `booking=`, `kind=`, `reference=`, `value=`, `items=`, `product=`, `customer=`, `service_date=`, `request=` |
 | `CART_CALCULATE_TOTAL` / `CART_CALCULATE_BREAKDOWN` | **Filter** events — handlers transform the running total | `value=` (chain through) |
 | `PRODUCT_CALCULATE_PRICE` | **Filter** event — adjust per-product price (dynamic pricing) | `value=`, `product=`, `customer=` |
 
