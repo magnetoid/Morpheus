@@ -15,7 +15,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
-## v0.168.1 — 2026-11-14
+## v0.170.1 — 2026-11-14
 
 **Book rail arrows sit beside the covers and page by whole books**
 
