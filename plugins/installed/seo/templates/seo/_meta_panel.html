@@ -206,6 +206,7 @@
     </div>
     <div class="morph-modal__body space-y-3">
       {% include "seo/_schema_blocks_editor.html" %}
+      {% if seo_schema_editable %}
       <input type="hidden" name="seo_schema_blocks" value="{{ seo_schema_blocks_json }}" data-seo-sd-value>
       <div data-seo-sd-blocks></div>
       <div class="sd-addbar">
@@ -215,7 +216,10 @@
         </select>
         <button type="button" class="btn btn-ghost text-sm" data-seo-sd-add>+ Add</button>
       </div>
-      {% if seo_schema_retired and seo_schema_editor_url %}
+      {% else %}
+      <p class="sd-help" data-seo-sd-locked>{% if seo_schema_count == 1 %}This page has 1 structured data block{% elif seo_schema_count %}This page has {{ seo_schema_count }} structured data blocks{% else %}This page has no structured data blocks{% endif %}. Changing them needs the permission to edit SEO; ask an owner to add it to your role.</p>
+      {% endif %}
+      {% if seo_schema_retired and seo_schema_editor_url and seo_schema_editable %}
       <p class="sd-help">{% if seo_schema_retired|length == 1 %}1 saved block no longer shows{% else %}{{ seo_schema_retired|length }} saved blocks no longer show{% endif %} on any page. <a href="{{ seo_schema_editor_url }}" class="underline">Delete {% if seo_schema_retired|length == 1 %}it{% else %}them{% endif %} on the Structured data page</a>.</p>
       {% endif %}
       {% if seo_raw_jsonld %}
@@ -240,24 +244,28 @@
     var opener = root.querySelector('[data-seo-sd-open]');
     if (!dialog || !opener) return;
     root.dataset.seoSdWired = '1';
+    // No hidden input: this person may not change the blocks (see the note).
     var hidden = dialog.querySelector('[data-seo-sd-value]');
-    var stored = [];
-    try { stored = JSON.parse(hidden.value || '[]'); } catch (e) { stored = []; }
-    var editor = window.MorphSchemaBlocks.mount({
-      container: dialog.querySelector('[data-seo-sd-blocks]'),
-      hidden: hidden,
-      select: dialog.querySelector('[data-seo-sd-type]'),
-      addButton: dialog.querySelector('[data-seo-sd-add]'),
-      types: JSON.parse(document.getElementById('seo-sd-types').textContent),
-      blocks: stored,
-    });
+    var editor = null;
+    if (hidden) {
+      var stored = [];
+      try { stored = JSON.parse(hidden.value || '[]'); } catch (e) { stored = []; }
+      editor = window.MorphSchemaBlocks.mount({
+        container: dialog.querySelector('[data-seo-sd-blocks]'),
+        hidden: hidden,
+        select: dialog.querySelector('[data-seo-sd-type]'),
+        addButton: dialog.querySelector('[data-seo-sd-add]'),
+        types: JSON.parse(document.getElementById('seo-sd-types').textContent),
+        blocks: stored,
+      });
+    }
     opener.addEventListener('click', function () { dialog.showModal(); });
     dialog.querySelectorAll('[data-seo-sd-close]').forEach(function (b) {
       b.addEventListener('click', function () { dialog.close(); });
     });
     var form = root.closest('form');
     if (!form) return;
-    form.addEventListener('submit', editor.sync, true);
+    if (editor) form.addEventListener('submit', editor.sync, true);
     // An AJAX save the product form refused because of the extra JSON-LD:
     // open the dialog on the box and say why, since the box is out of sight.
     form.addEventListener('morph:save-failed', function (ev) {

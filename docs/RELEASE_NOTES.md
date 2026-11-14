@@ -23,6 +23,7 @@ surfaced in **Dashboard → Settings → Version & updates**.
 - The Structured data page and the dialog share one editor and one save rule, and both keep the saved blocks Google no longer shows until you delete them on that page.
 - The extra JSON-LD is written only when the form sends it, so saving a product while the SEO app is off keeps it.
 - The button no longer promises How-to or Event blocks, which Google stopped showing.
+- While roles are enforced, changing structured data in the dialog needs the permission to edit SEO, as it does on the Structured data page; staff without it see how many blocks the page has, and their saves leave the blocks alone. Discard in the save bar now puts the dialog's blocks back too, so the next Save no longer stores the discarded ones.
 
 ## v0.166.0 — 2026-11-13
 

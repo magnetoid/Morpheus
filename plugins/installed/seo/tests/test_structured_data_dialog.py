@@ -182,6 +182,108 @@ class OtherFormsTests(_Base):
         self.assertNotIn('name="structured_data"', html)
 
 
+def _rbac_mode(mode: str) -> None:
+    from plugins.registry import app_registry
+
+    plugin = app_registry.get('rbac')
+    plugin.set_config('enforcement_mode', mode)
+    plugin.invalidate_config_cache()
+
+
+class RoleTests(_Base):
+    """While roles are enforced, the dialog's blocks need seo.write, as the
+    Structured data page does: catalog.write, the product form's own, is not it."""
+
+    def setUp(self):
+        from plugins.installed.rbac.models import Role
+        from plugins.installed.rbac.services import grant
+        from plugins.registry import app_registry
+
+        super().setUp()
+        self.staff = get_user_model().objects.get(username='sd-dialog')
+        Role.objects.create(
+            slug='sd-catalog', name='Catalog', capabilities=['catalog.read', 'catalog.write']
+        )
+        Role.objects.create(
+            slug='sd-seo', name='SEO', capabilities=['catalog.write', 'seo.read', 'seo.write']
+        )
+        grant(self.staff, 'sd-catalog')
+        before = app_registry.get('rbac').get_config_value('enforcement_mode', 'log')
+        self.addCleanup(_rbac_mode, before or 'log')
+        _rbac_mode('enforce')
+        self._store_blocks([_FAQ])
+
+    def _post_blocks(self, html, blocks):
+        data = browser_form_data(html, 'product-form')
+        data['seo_schema_blocks'] = [json.dumps(blocks)]
+        data['seo_title'] = ['Typed title']
+        self._save(data)
+
+    def test_without_seo_write_the_dialog_shows_no_editor(self):
+        html = self._page()
+        self.assertIn('data-seo-sd-dialog', html)
+        self.assertIn('data-seo-sd-locked', html)
+        self.assertIn('This page has 1 structured data block.', html)
+        self.assertNotIn('name="seo_schema_blocks"', html)
+        # The extra JSON-LD box is the product form's, which catalog.write covers.
+        self.assertIn('name="structured_data"', html)
+
+    def test_without_seo_write_a_posted_change_is_not_stored(self):
+        # A hand-built post (the page sends no blocks): the rest of the SEO
+        # card still saves, the blocks stay as they were.
+        self._post_blocks(self._page(), [])
+        meta = self._meta()
+        self.assertEqual(meta.schema_blocks, [_FAQ])
+        self.assertEqual(meta.title, 'Typed title')
+
+    def test_with_seo_write_the_change_is_stored(self):
+        from plugins.installed.rbac.services import grant
+
+        grant(self.staff, 'sd-seo')
+        html = self._page()
+        self.assertIn('name="seo_schema_blocks"', html)
+        self.assertNotIn('data-seo-sd-locked', html)
+        self._post_blocks(html, [])
+        self.assertEqual(self._meta().schema_blocks, [])
+
+    def test_in_log_mode_the_change_is_stored(self):
+        _rbac_mode('log')
+        html = self._page()
+        self.assertIn('name="seo_schema_blocks"', html)
+        self._post_blocks(html, [])
+        self.assertEqual(self._meta().schema_blocks, [])
+
+    def test_a_category_save_checks_the_same(self):
+        cat = Category.objects.create(name='Mysteries', slug='mysteries', is_active=True)
+        ct = ContentType.objects.get_for_model(Category)
+        SeoMeta.objects.update_or_create(
+            content_type=ct, object_id=str(cat.pk), defaults={'schema_blocks': [_FAQ]}
+        )
+        url = reverse('admin_dashboard:category_edit', kwargs={'category_id': cat.id})
+        html = self.client.get(url).content.decode()
+        self.assertNotIn('name="seo_schema_blocks"', html)
+        data = {
+            'name': 'Mysteries, renamed',
+            'slug': 'mysteries',
+            'is_active': 'on',
+            'sort_order': '0',
+            'seo_schema_blocks': '[]',
+        }
+        resp = self.client.post(url, data)
+        self.assertEqual(resp.status_code, 302, resp.content[:500])
+        self.assertEqual(Category.objects.get(pk=cat.pk).name, 'Mysteries, renamed')
+        self.assertEqual(self._meta(cat).schema_blocks, [_FAQ])
+
+
+class EditorScriptTests(_Base):
+    def test_discard_reloads_the_editor(self):
+        # The save bar's Discard puts the loaded value back into the hidden
+        # input and fires `input`; the editor reloads from it, or the next
+        # save would post the discarded blocks.
+        html = self._page()
+        self.assertIn("hidden.addEventListener('input'", html)
+
+
 class SchemaPageTests(_Base):
     def test_the_page_still_saves_through_the_shared_editor(self):
         self._store_blocks([_RETIRED])

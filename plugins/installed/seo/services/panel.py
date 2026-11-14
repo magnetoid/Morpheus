@@ -273,6 +273,7 @@ def panel_context(obj, request=None) -> dict:
         'seo_schema_types': _schema_types(),
         'seo_schema_blocks_json': json.dumps(blocks, separators=(',', ':'), ensure_ascii=False),
         'seo_schema_count': len(blocks),
+        'seo_schema_editable': can_edit_schema(getattr(request, 'user', None)),
         'seo_schema_retired': retired,
         'seo_card_open': card_open,
         'seo_twitter_choices': [
@@ -366,7 +367,24 @@ def _object_path(obj) -> str:
         return ''
 
 
-def save_object_seo(obj, post) -> None:
+def can_edit_schema(user) -> bool:
+    """Whether the dialog lets `user` change structured data: what the
+    Structured data page asks (seo.write), counted only while roles are enforced."""
+    from core.authz import MODE_ENFORCE, enforcement_mode, has_capability
+
+    return enforcement_mode() != MODE_ENFORCE or has_capability(user, 'seo.write')
+
+
+def _may_change_schema(user, obj) -> bool:
+    """seo.write under the store's enforcement mode, as the Structured data page
+    checks it (a would-be denial is logged in log mode). The host form's own
+    capability (catalog.write on a product) does not cover it."""
+    from core.authz import check
+
+    return check(user, 'seo.write', target=f'seo:schema_blocks:{_object_path(obj) or obj.pk}')
+
+
+def save_object_seo(obj, post, user=None) -> None:
     """Upsert ``obj``'s SeoMeta override from the panel's ``seo_*`` POST fields.
 
     Fail-soft, and deliberately conservative about *when* it writes: only when
@@ -423,15 +441,18 @@ def save_object_seo(obj, post) -> None:
 
         ct = ContentType.objects.get_for_model(type(obj))
         qs = SeoMeta.objects.filter(content_type=ct, object_id=str(obj.pk))
-        # The Structured data dialog's blocks, only when it posted them: a form
-        # without the dialog leaves the stored blocks alone.
+        # The Structured data dialog's blocks, only when it posted them (a form
+        # without the dialog leaves the stored blocks alone) and only when they
+        # changed and the person may change them.
         entries = _posted_schema_blocks(post)
         if entries is not None:
             from plugins.installed.seo.schema_types import merge_editor_blocks
 
             existing = qs.first()
             stored = list(existing.schema_blocks or []) if existing else []
-            fields['schema_blocks'], _refused = merge_editor_blocks(entries, stored)
+            merged, _refused = merge_editor_blocks(entries, stored)
+            if merged != stored and _may_change_schema(user, obj):
+                fields['schema_blocks'] = merged
         text_set = any(fields[k] for k in _text_fields)
         if not (
             text_set

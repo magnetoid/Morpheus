@@ -448,4 +448,10 @@ def fire_entity_form_saved(kind: str, obj, request) -> None:
     from morpheus.core import MorpheusEvents, hook_registry
 
     event = getattr(MorpheusEvents, _ENTITY_EVENTS[kind][1])
-    hook_registry.fire(event, post=request.POST, files=request.FILES, **{kind: obj})
+    hook_registry.fire(
+        event,
+        post=request.POST,
+        files=request.FILES,
+        user=getattr(request, 'user', None),
+        **{kind: obj},
+    )
