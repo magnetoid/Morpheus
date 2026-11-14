@@ -87,13 +87,13 @@
         <tr>
           <th class="w-8"><input type="checkbox" data-bulk-all class="rounded border-[color:var(--border)]"></th>
           <th>{% sort_link "name" "Product" %}</th>
-          <th class="hide-sm" data-col="sku">SKU</th>
-          <th class="hide-sm" data-col="category">Category</th>
-          <th class="hide-sm" data-col="collections">Collections</th>
-          <th class="hide-sm" data-col="type">Type</th>
-          <th class="hide-sm" data-col="vendor">Vendor</th>
-          {% for col in extra_product_columns %}<th class="hide-sm" data-col="{{ col.key }}">{{ col.label }}</th>{% endfor %}
-          <th class="hide-sm" data-col="added">{% sort_link "created_at" "Added" %}</th>
+          <th data-col="sku">SKU</th>
+          <th data-col="category">Category</th>
+          <th data-col="collections">Collections</th>
+          <th data-col="type">Type</th>
+          <th data-col="vendor">Vendor</th>
+          {% for col in extra_product_columns %}<th data-col="{{ col.key }}">{{ col.label }}</th>{% endfor %}
+          <th data-col="added">{% sort_link "created_at" "Added" %}</th>
           <th>{% sort_link "status" "Status" %}</th>
           <th class="text-right">{% sort_link "price" "Price" %}</th>
           <th></th>
@@ -122,13 +122,13 @@
               </div>
             </a>
           </td>
-          <td class="hide-sm text-[color:var(--text-muted)]" data-col="sku"><span class="block max-w-[10rem] truncate" title="{{ p.sku }}">{{ p.sku|default:"—" }}</span></td>
-          <td class="hide-sm text-[color:var(--text-muted)]" data-col="category">{% include "admin_dashboard/_name_list_cell.html" with names=p.category_names %}</td>
-          <td class="hide-sm text-[color:var(--text-muted)]" data-col="collections">{% include "admin_dashboard/_name_list_cell.html" with names=p.collection_names %}</td>
-          <td class="hide-sm text-[color:var(--text-muted)]" data-col="type">{{ p.get_product_type_display }}</td>
-          <td class="hide-sm text-[color:var(--text-muted)]" data-col="vendor">{{ p.vendor.name|default:"—" }}</td>
-          {% for cell in p.extra_cells %}<td class="hide-sm" data-col="{{ cell.key }}">{{ cell.html|safe }}</td>{% endfor %}
-          <td class="hide-sm whitespace-nowrap text-[color:var(--text-muted)]" data-col="added" title="{{ p.created_at|date:'j M Y, H:i' }}">{{ p.created_at|date:"j M Y" }}</td>
+          <td class="text-[color:var(--text-muted)]" data-col="sku"><span class="block max-w-[10rem] truncate" title="{{ p.sku }}">{{ p.sku|default:"—" }}</span></td>
+          <td class="text-[color:var(--text-muted)]" data-col="category">{% include "admin_dashboard/_name_list_cell.html" with names=p.category_names %}</td>
+          <td class="text-[color:var(--text-muted)]" data-col="collections">{% include "admin_dashboard/_name_list_cell.html" with names=p.collection_names %}</td>
+          <td class="text-[color:var(--text-muted)]" data-col="type">{{ p.get_product_type_display }}</td>
+          <td class="text-[color:var(--text-muted)]" data-col="vendor">{{ p.vendor.name|default:"—" }}</td>
+          {% for cell in p.extra_cells %}<td data-col="{{ cell.key }}">{{ cell.html|safe }}</td>{% endfor %}
+          <td class="whitespace-nowrap text-[color:var(--text-muted)]" data-col="added" title="{{ p.created_at|date:'j M Y, H:i' }}">{{ p.created_at|date:"j M Y" }}</td>
           <td>
             {% if p.status == 'active' %}<span class="pill pill-success">Active</span>
             {% elif p.status == 'draft' %}<span class="pill pill-warn">Draft</span>
@@ -163,14 +163,21 @@
     // Not named table: Tailwind scans this file, and the name negated is a class it would build.
     var listing = document.querySelector('[data-product-table]');
     if (!menu || !listing) return;
-    var hidden = [];
-    try { hidden = JSON.parse(localStorage.getItem(KEY) || '[]') || []; } catch (e) { hidden = []; }
+    var boxes = menu.querySelectorAll('input[type=checkbox]');
+    var hidden = null;
+    try { hidden = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { hidden = null; }
+    if (!Array.isArray(hidden)) {
+      // No choice made in this browser yet: a phone starts with every optional
+      // column off, as the list always did; ticking one there shows it.
+      var phone = window.matchMedia && window.matchMedia('(max-width: 639px)').matches;
+      hidden = phone ? Array.prototype.map.call(boxes, function (box) { return box.value; }) : [];
+    }
     function apply() {
       listing.querySelectorAll('[data-col]').forEach(function (cell) {
         cell.hidden = hidden.indexOf(cell.getAttribute('data-col')) !== -1;
       });
     }
-    menu.querySelectorAll('input[type=checkbox]').forEach(function (box) {
+    Array.prototype.forEach.call(boxes, function (box) {
       box.checked = hidden.indexOf(box.value) === -1;
       box.addEventListener('change', function () {
         hidden = hidden.filter(function (k) { return k !== box.value; });

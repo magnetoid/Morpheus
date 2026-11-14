@@ -129,6 +129,18 @@ class ProductListColumnTests(TestCase):
         # Every cell of a row carries one of the menu's keys, so hiding works per column.
         self.assertEqual(re.findall(r'data-col="([^"]+)"', _row(body, 'menu')), drawn)
 
+    def test_the_columns_menu_decides_on_a_phone_too(self):
+        # base.html hides `.hide-sm` cells under 640px whatever the menu says, so a
+        # column the menu controls must not carry it (the script starts a phone with
+        # the optional columns off instead, until the merchant ticks one).
+        _product('phone')
+        body = self._body()
+
+        cells = re.findall(r'<t[hd]\b[^>]*data-col="[^"]+"[^>]*>', body)
+        self.assertTrue(cells)
+        self.assertEqual([c for c in cells if 'hide-sm' in c], [])
+        self.assertIn("matchMedia('(max-width: 639px)')", body)
+
     def test_rows_cost_no_extra_queries(self):
         hold_app_settings(self)
         category = Category.objects.create(name='Qzcount', slug='qzcount')
