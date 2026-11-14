@@ -261,6 +261,7 @@ The MCP **admin** server (`/mcp/admin/v1/`) and GraphQL endpoint
 | `catalog.archive_category` / `archiveCategory` | Delete category | **yes** |
 | `catalog.create_variant` / `createVariant` | Add a new variant to a product | no |
 | `catalog.update_variant` / `updateVariant` | Update any variant field (matched by SKU) | no |
+| `books.render_social_card` (MCP only) | Draw a book's 1200×630 social card now; a page shares it only while the book app's `social_cards` setting is on | **yes** |
 
 **GraphQL scopes.** Every catalog mutation needs `catalog.write`;
 `deleteProduct` and `archiveCategory` need `catalog.delete`. A staff

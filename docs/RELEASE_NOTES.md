@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.167.0 — 2026-11-14
+
+**Book social cards**
+
+- A book can share a social card instead of its plain cover: a 1200×630 picture with the whole cover on the left and the title, author and the start of the book's own description on the right, under a line you choose and over the store's name. It is off until a store switches it on in the book app's settings (Settings → Storefront → Books), where the line above the title, the name at the bottom and the two colours are set too.
+- A book's card is drawn by the worker the first time its page is opened after a change (or when the book is saved), kept in the store's file storage, and never drawn twice for the same title, author, description, cover and settings. Until it exists, the page shares the cover as before.
+- A share image picked for the page in the SEO card, or uploaded on the product, wins over the card; switching the cards off shares the cover again at once. The card names its size (1200×630) and says whose cover it is for screen readers.
+- The card is drawn on the server from the book as it is stored: no AI, no outside service, and the book's text, cover and SEO are left as they are. A cover that cannot be read is skipped, and a page never breaks over a card.
+- Linda can draw one book's card on your yes (books.render_social_card), and manage.py book_social_cards draws one book, writes a local preview, or fills in the missing cards in small batches.
+
 ## v0.166.1 — 2026-11-14
 
 **Structured data opens from the SEO card**

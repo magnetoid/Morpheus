@@ -12,7 +12,8 @@ This app turns a regular product into a book. It adds book fields — author, se
 - Open the [Book taxonomies](page:book-taxonomies) page to see and manage every genre, topic, author, publisher, series and imprint.
 - Write or regenerate the introduction and search description for one of those pages, one at a time or in bulk.
 - Give a taxonomy page its own image so it reads well when a shopper lands on it.
+- Switch on [Social cards for books](field:book_product.social_cards) so a shared book page shows a card with the whole cover, the title, the author and the start of the book's description. Its wording and colours are in the same [Books settings](settings:book_product).
 
 ## Good to know
 
-Turning this app off removes the Book details card from the product page and takes down the author, genre, series and other book pages. The audiobook app and the carbon-footprint badge both depend on this one. Review any text this app writes for you before you publish it — treat it as a starting draft, not final copy.
+Turning this app off removes the Book details card from the product page and takes down the author, genre, series and other book pages. The audiobook app and the carbon-footprint badge both depend on this one. A book's card is drawn the first time its page is opened after a change, and Linda can draw one when you ask. A share image you picked for the page wins over the card, and switching the cards off shares the cover again at once. Review any text this app writes for you before you publish it — treat it as a starting draft, not final copy.
