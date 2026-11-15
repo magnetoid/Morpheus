@@ -428,9 +428,10 @@ class Assistant:
             from django.utils import timezone
 
             from core.agents.models import AgentRun
-            from core.assistant.janus_engine import running_build
 
-            build = running_build()
+            # The build the turn ran, carried with its result (iter_janus_turn):
+            # record_turn may already have rolled the active one back.
+            build = turn.get('build') or {}
             user = turn.get('user')
             AgentRun.objects.create(
                 agent_name='linda',
@@ -450,8 +451,8 @@ class Assistant:
                 metadata={
                     'engine': 'janus',
                     'conversation': conversation_key,
-                    'janus_version': build['version'],
-                    'janus_commit': build['commit'],
+                    'janus_version': str(build.get('version') or ''),
+                    'janus_commit': str(build.get('commit') or ''),
                     'reasoning_tokens': int(usage.get('reasoning_tokens') or 0),
                     'api_calls': int(usage.get('api_call_count') or 0),
                     'cost_usd': round(float(usage.get('estimated_cost_usd') or 0), 6),
@@ -579,6 +580,7 @@ class Assistant:
             # An external agent's turn (ADR 0039): which door and which token.
             'via': str(ctx.get('via') or ''),
             'principal_label': str(ctx.get('principal_label') or ''),
+            'build': payload.get('build') or {},
         }
         if payload.get('error'):
             error = str(payload['error'])

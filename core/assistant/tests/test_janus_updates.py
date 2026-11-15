@@ -75,10 +75,8 @@ class InstalledBuildTests(SimpleTestCase):
         janus = _venv(self.root / 'image', OLD)
         eng._build_of.cache_clear()
         self.addCleanup(eng._build_of.cache_clear)
-        with mock.patch.object(eng, 'janus_cmd', return_value=[str(janus)]):
-            self.assertEqual(eng.running_build(), {'version': '0.18.0', 'commit': OLD})
-        with mock.patch.object(eng, 'janus_cmd', return_value=None):
-            self.assertEqual(eng.running_build(), {'version': '', 'commit': ''})
+        self.assertEqual(eng.build_of([str(janus)]), {'version': '0.18.0', 'commit': OLD})
+        self.assertEqual(eng.build_of(None), {'version': '', 'commit': ''})
 
     def test_an_auto_installed_build_is_read_from_the_archive_url_and_marker(self):
         url = f'https://github.com/magnetoid/Janus-Agent/archive/{NEW}.tar.gz'

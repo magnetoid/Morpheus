@@ -190,9 +190,8 @@ def _build_of(path: str) -> tuple[str, str]:
     return build['version'], build['commit']
 
 
-def running_build() -> dict[str, str]:
-    """Version and commit of the Janus a turn runs now ('' where unknown)."""
-    cmd = janus_cmd()
+def build_of(cmd: list[str] | None) -> dict[str, str]:
+    """Version and commit of the Janus ``cmd`` runs ('' where unknown)."""
     version, commit = _build_of(cmd[0]) if cmd else ('', '')
     return {'version': version, 'commit': commit}
 
@@ -851,8 +850,8 @@ def iter_janus_turn(
 
     Each tick yields the steps Janus reported since the last one (``step`` and
     ``plan`` events, see :mod:`core.assistant.activity`), or ``None`` when there
-    were none. The last item is the result: ``{text, error, duration_ms, usage}``,
-    the only item without a ``type``. The ticks let a streaming caller show what
+    were none. The last item is the result: ``{text, error, duration_ms, usage,
+    build}``, the only item without a ``type``. The ticks let a streaming caller show what
     Linda is doing and keep proxies from closing an idle connection.
 
     ``system_prompt`` should be stable from turn to turn: Janus appends it to the
@@ -868,6 +867,10 @@ def iter_janus_turn(
     if not cmd:
         yield {'text': '', 'error': 'janus_unavailable', 'duration_ms': 0}
         return
+    # Named from the command this turn runs, never looked up again after it: a
+    # rollback once the turn has failed (janus_runtime.record_turn) or an update
+    # finishing meanwhile changes what janus_cmd() returns.
+    build = build_of(cmd)
 
     timeout = turn_timeout_s() if timeout_s is None else max(5, int(timeout_s))
     started = time.monotonic()
@@ -879,7 +882,12 @@ def iter_janus_turn(
         # Reported like any engine failure, so the merchant gets the friendly
         # error and the self-improvement loop gets a signal, not a stack trace.
         logger.error('janus engine home unavailable: %s', e)
-        yield {'text': '', 'error': f'janus home unavailable: {e}', 'duration_ms': 0}
+        yield {
+            'text': '',
+            'error': f'janus home unavailable: {e}',
+            'duration_ms': 0,
+            'build': build,
+        }
         return
     mcp_url, mcp_headers = _mcp_endpoint(context)
     # The model picked for this message (validated in _provider_wiring), and the
@@ -938,7 +946,7 @@ def iter_janus_turn(
                 logger.info(
                     'janus: turn abandoned; learning not harvested key=%s', conversation_key
                 )
-    yield payload
+    yield {**payload, 'build': build}
 
 
 def _relay_steps(ticks, progress: activity.ProgressReader):

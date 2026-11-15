@@ -322,6 +322,12 @@ class TurnInvocationTests(SimpleTestCase):
             out = run_janus_turn(message='hi', conversation_key='conv-1', system_prompt='p')
         return out, [c.args[0] for c in spawn.call_args_list]
 
+    def test_the_result_names_the_janus_this_turn_ran(self):
+        with mock.patch.object(eng, '_build_of', return_value=('0.18.0', 'e' * 40)) as read:
+            out, _ = self._turn(_FakeProc(stdout='ok'))
+        read.assert_called_once_with('/opt/janus/bin/janus')
+        self.assertEqual(out['build'], {'version': '0.18.0', 'commit': 'e' * 40})
+
     def test_default_toolset_never_loads(self):
         # Without -t, `janus chat` loads 56 tools including terminal,
         # write_file and execute_code, running as the user that owns /app.
