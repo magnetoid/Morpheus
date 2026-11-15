@@ -224,6 +224,33 @@ class StripeRowPerIntentTests(TestCase):
         self.assertEqual(first['transaction_id'], second['transaction_id'])
         self.assertEqual(PaymentTransaction.objects.filter(order=order).count(), 1)
 
+    def test_a_released_hold_gets_a_fresh_intent(self):
+        """Stripe cancels a released hold's intent; the same key would hand it back."""
+        order = _order()
+        intents = [
+            SimpleNamespace(id='pi_first', client_secret='pi_first_secret'),
+            SimpleNamespace(id='pi_fresh', client_secret='pi_fresh_secret'),
+        ]
+        with (
+            mock.patch.object(PaymentService, 'get_stripe_api_key', return_value='sk_test_x'),
+            mock.patch('stripe.PaymentIntent.create', side_effect=intents) as create,
+        ):
+            PaymentService.create_payment_intent(order)
+            PaymentTransaction.objects.filter(provider_transaction_id='pi_first').update(
+                status=PaymentTransaction.Status.RELEASED
+            )
+            retry = PaymentService.create_payment_intent(order)
+        first_key = create.call_args_list[0].kwargs['idempotency_key']
+        retry_key = create.call_args_list[1].kwargs['idempotency_key']
+        self.assertNotEqual(first_key, retry_key)
+        self.assertTrue(retry_key.endswith('-r1'), retry_key)
+        self.assertEqual(retry['client_secret'], 'pi_fresh_secret')
+        self.assertTrue(
+            PaymentTransaction.objects.filter(
+                provider_transaction_id='pi_fresh', status=PaymentTransaction.Status.PENDING
+            ).exists()
+        )
+
 
 @override_settings(DEFAULT_FROM_EMAIL='shop@example.com')
 class SendLinkTests(TestCase):

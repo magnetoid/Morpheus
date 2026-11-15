@@ -198,6 +198,13 @@ class PaymentService:
             # The shopper's saved cards, and the card they choose to save.
             params['customer'] = customer_id
             idempotency_key += f'-{customer_id}'
+        # A released hold's intent is cancelled and can never be paid, so each
+        # release starts a fresh intent (the payment link after a release).
+        released = PaymentTransaction.objects.filter(
+            order=order, provider='stripe', status=PaymentTransaction.Status.RELEASED
+        ).count()
+        if released:
+            idempotency_key += f'-r{released}'
 
         try:
             intent = stripe.PaymentIntent.create(**params, idempotency_key=idempotency_key)

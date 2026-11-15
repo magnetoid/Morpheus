@@ -9,6 +9,7 @@ its stock released, before any customer could pay it. An order carrying
 from __future__ import annotations
 
 from datetime import timedelta
+from unittest import mock
 
 from django.test import TestCase
 from django.utils import timezone
@@ -59,6 +60,17 @@ class SweepKeepsHeldOrdersTests(TestCase):
         order = _stale_order()
         self.assertEqual(expire_pending_orders(), 1)
         self.assertEqual(_status(order), 'cancelled')
+
+    def test_held_orders_at_the_front_never_hide_an_abandoned_one(self):
+        ahead = (timezone.now() + timedelta(days=2)).isoformat()
+        held = [_stale_order(pay_by=ahead) for _ in range(3)]
+        held.append(_stale_order(pay_by=None))
+        abandoned = _stale_order()
+        Order.objects.filter(pk=abandoned.pk).update(placed_at=timezone.now() - timedelta(hours=2))
+        with mock.patch('plugins.installed.orders.tasks._SWEEP_PAGE', 2):
+            self.assertEqual(expire_pending_orders(), 1)
+        self.assertEqual(_status(abandoned), 'cancelled')
+        self.assertEqual({_status(o) for o in held}, {'pending'})
 
 
 class HoldForPaymentTests(TestCase):

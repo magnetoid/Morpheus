@@ -52,6 +52,11 @@ def _expiry_minutes() -> int:
         return DEFAULT_EXPIRY_MINUTES
 
 
+#: Orders the sweep cancels per run, and how many rows it reads at a time.
+_SWEEP_BATCH = 500
+_SWEEP_PAGE = 1000
+
+
 def _expiry_reason(order, minutes: int) -> str:
     from plugins.installed.orders.payment_deadline import KEY
 
@@ -88,12 +93,22 @@ def expire_pending_orders() -> int:
         Order.objects.filter(status='pending', placed_at__lt=cutoff)
         .exclude(payment_status__in=PAID_OR_HELD)
         .exclude(payment_gateway__in=OFFLINE_GATEWAYS)
-        .order_by('placed_at')
-        .values_list('id', 'metadata')[:2000]
+        .order_by('placed_at', 'id')
+        .values_list('id', 'metadata')
     )
     # An order waiting for its payment link (a converted draft, a link the
     # customer was emailed) keeps until its deadline: orders.payment_deadline.
-    candidates = [pk for pk, metadata in rows if not held(metadata, now)][:500]
+    # The deadline is read in Python, page by page, so a run of held orders at
+    # the front of the queue never hides the abandoned checkouts behind it.
+    candidates: list = []
+    offset = 0
+    while len(candidates) < _SWEEP_BATCH:
+        page = list(rows[offset : offset + _SWEEP_PAGE])
+        if not page:
+            break
+        candidates += [pk for pk, metadata in page if not held(metadata, now)]
+        offset += len(page)
+    candidates = candidates[:_SWEEP_BATCH]
 
     cancelled = 0
     for order_id in candidates:
