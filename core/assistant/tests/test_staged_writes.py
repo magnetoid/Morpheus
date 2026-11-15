@@ -175,18 +175,22 @@ class StagedOrderToolTests(TestCase):
         self.assertIn('customer asked to cancel', proposal.summary)
         self.assertEqual(proposal.changes[0]['new'], 'cancelled')
 
-    def test_staged_add_note_refuses_without_notes_field(self):
-        # orders.Order has no `notes` field today — staging must refuse
-        # cleanly instead of recording an un-appliable proposal (the
-        # unstaged path fails at save() the same way).
+    def test_staged_add_note_proposes_a_staff_note(self):
+        # The note goes to Order.staff_notes (v0.171.0). Until then the tool
+        # wrote a `notes` field Order never had, so staging always refused.
         from plugins.installed.orders.agent_tools import orders_add_note_tool
 
         o = _order()
-        with self.assertRaises(ToolError):
-            orders_add_note_tool.invoke(
-                {'order_number': o.order_number, 'note': 'VIP customer'}, context=dict(STAGED)
-            )
-        self.assertEqual(OpsProposal.objects.count(), 0)
+        orders_add_note_tool.invoke(
+            {'order_number': o.order_number, 'note': 'VIP customer'}, context=dict(STAGED)
+        )
+        proposal = OpsProposal.objects.get()
+        self.assertEqual(proposal.kind, 'order.note')
+        self.assertEqual(proposal.changes[0]['field'], 'staff_notes')
+        self.assertEqual(type(o).objects.get(pk=o.pk).staff_notes, '')
+        result = proposal.apply()
+        self.assertEqual(result['applied'], 1, result)
+        self.assertEqual(type(o).objects.get(pk=o.pk).staff_notes, 'VIP customer')
 
 
 class UnstagedOrderToolTests(TestCase):

@@ -9,6 +9,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest import mock
 
+from django.apps import apps
 from django.core import mail
 from django.test import TestCase, override_settings
 from djmoney.money import Money
@@ -18,6 +19,11 @@ from plugins.installed.orders.payment_deadline import KEY
 from plugins.installed.payments import pay_link
 from plugins.installed.payments.models import PaymentGatewayConfig, PaymentTransaction
 from plugins.installed.payments.services.stripe import PaymentService
+from themes.registry import theme_registry
+
+THEMES = ['dot_books', 'supernatural_shop', 'irving_survival']
+if apps.is_installed('plugins.installed.booking_marketplace'):
+    THEMES += ['montenegro', 'croatia']
 
 BANK_DETAILS = {'instructions': 'Pay to IBAN ME25 0000 1111 2222 3333 44'}
 ROUTING = 'plugins.installed.payments.services.routing'
@@ -175,6 +181,30 @@ class PayPageTests(TestCase):
         body = self.client.get(self.url).content.decode()
         self.assertIn('Nothing to pay', body)
         self.assertNotIn('value="manual"', body)
+
+
+class PayPageEveryThemeTests(TestCase):
+    """The page extends the active theme's base, so it must render under each."""
+
+    def use_theme(self, name):
+        override = override_settings(MORPHEUS_ACTIVE_THEME=name)
+        override.enable()
+        self.addCleanup(override.disable)
+        previous = theme_registry._active_name
+        self.addCleanup(setattr, theme_registry, '_active_name', previous)
+        theme_registry.set_active(name)
+
+    def test_the_page_renders_under_every_theme(self):
+        _bank_transfer_only()
+        order = _order()
+        for theme in THEMES:
+            with self.subTest(theme=theme):
+                self.use_theme(theme)
+                response = self.client.get(f'/pay/{order.public_token}/')
+                self.assertEqual(response.status_code, 200)
+                body = response.content.decode()
+                self.assertIn(f'Order #{order.order_number}', body)
+                self.assertIn('name="payment_method" value="manual"', body)
 
 
 class StripeRowPerIntentTests(TestCase):
