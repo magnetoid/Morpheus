@@ -41,6 +41,19 @@ class ShopMemoryReachTests(TestCase):
 
 
 class ShopMemoryInjectionTests(TestCase):
+    def test_an_external_agents_turn_carries_no_shop_memory(self):
+        from core.assistant.runtime import Assistant
+
+        LindaMemory.objects.create(scope='merchant', key='refunds', value='within 30 days')
+        mine = Assistant()._turn_context(
+            message='refunds', context={}, conversation_key='user:1:chat:a'
+        )
+        theirs = Assistant()._turn_context(
+            message='refunds', context={}, conversation_key='ext:7:chat:a'
+        )
+        self.assertIn('within 30 days', mine)
+        self.assertNotIn('within 30 days', theirs)
+
     def test_the_turn_is_told_these_are_facts_about_this_store(self):
         from core.assistant.runtime import _format_recent_memories
 

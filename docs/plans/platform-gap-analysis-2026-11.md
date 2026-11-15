@@ -2,6 +2,8 @@
 
 **Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0, A3 (inventory) v0.152.0 and A4 (fulfilment and shipping rates) v0.154.0 are live on all five stores; A5 (payments, with the A4 choices as settings) is v0.155.0. A7 (checkout fields) is v0.168.0. From A5 on, each commerce choice is a merchant setting whose default is the earlier behaviour (owner, 2026-11-12). Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
 
+**Paused for the platform work (owner, 2026-11-15):** Janus alignment, the app lifecycle and agent coverage run first, in [janus-alignment-and-app-platform-2026-11.md](janus-alignment-and-app-platform-2026-11.md); the remaining rows here (A10 order editing first) follow it.
+
 ## Context
 
 The owner's read is "partly unfinished, but heading the right way". This report tests that against the tree (v0.148.2, 98 apps, 5,762 tests, 343 releases since June) and against three reference points: **Medusa v2** (v2.22.6, 2026-11-09), **Saleor** (3.23, Apr 2026; 3.24 on main) and **Shopify's 2026 direction** (Winter '26 "Renaissance", Spring '26 "Everywhere", Fall '26 "Exponential"). Platform-as-infrastructure (SaaS vs self-hosted, Node vs Python) is deliberately ignored; the comparison is feature depth.

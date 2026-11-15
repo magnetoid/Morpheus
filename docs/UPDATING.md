@@ -181,17 +181,27 @@ faster than Morpheus deploys. The owner asked for it to follow upstream closely 
 stay compatible (2026-10-09), so it has its own path, separate from the core and
 per-app channels above:
 
-1. **At build.** The Dockerfile installs `JANUS_REPO@JANUS_REF` (`main` by default)
-   into `/opt/janus`, then runs `core/assistant/janus_contract.py` with that venv's
-   Python. If the newest Janus breaks the contract, the build installs
-   `JANUS_KNOWN_GOOD` instead. The report is kept at `/opt/janus/morpheus-contract.json`.
-2. **While running.** Every 3 hours a Linda turn (or a visit to Settings → AI → Janus)
+1. **At build.** The Dockerfile installs `JANUS_REPO@JANUS_REF` into `/opt/janus`, then
+   runs `core/assistant/janus_contract.py` with that venv's Python. If that Janus breaks
+   the contract, the build installs `JANUS_KNOWN_GOOD` instead and the report names the
+   ref it fell back from (the Janus page shows it); when both ARGs name the same commit
+   there is nothing to fall back to and the build fails. The report is kept at
+   `/opt/janus/morpheus-contract.json`.
+
+Release images pin `JANUS_REF` to a reviewed commit, so on every store Janus changes only
+when a Morpheus release moves the pin, and each Linda turn records the Janus version and
+commit that answered it (`AgentRun.metadata`). Steps 2 and 3 run only on an image built
+with `JANUS_REF` naming a branch; moving the pin by a pull request that has run Janus
+against the store first is planned in
+[janus-alignment-and-app-platform-2026-11.md](plans/janus-alignment-and-app-platform-2026-11.md).
+
+2. **While running (branch builds only).** Every 3 hours a Linda turn (or a visit to Settings → AI → Janus)
    starts `core/assistant/janus_updater.py` in the background. It asks GitHub for the
    branch's newest commit, pip-installs GitHub's archive of exactly that commit into
    `<janus home>/engine/venvs/<sha12>/`, runs the contract with it, and only then
    records it in `engine/state.json` as the Janus to use. The image's copy stays as the
    fallback; the replaced copy is kept for a rollback, older ones are deleted.
-3. **After switching.** Three engine failures in a row on an auto-installed Janus
+3. **After switching (branch builds only).** Three engine failures in a row on an auto-installed Janus
    (provider errors and timeouts do not count) put the previous one back and mark that
    commit failed, so it is not retried until a newer commit appears.
 
@@ -207,8 +217,8 @@ box on the Janus page (merchant) keep the image's Janus until the next deploy. A
 with `JANUS_REF` pinned to a commit is never auto-updated. The repository and branch
 always come from the image's build record, never from a setting, because Linda can
 change settings through her tools. Nothing here needs a volume: the engine dir lives in
-the container and a redeploy starts again from the image, which installs the newest
-commit anyway. Raise `JANUS_KNOWN_GOOD` to a commit the stores have run without trouble.
+the container and a redeploy starts again from the image. Raise `JANUS_KNOWN_GOOD` to a
+commit the stores have run without trouble.
 
 This is unattended, unlike the core rule below, because Janus is not this tree's code:
 an update cannot change a Morpheus file, it is checked before use, and it rolls back.

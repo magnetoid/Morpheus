@@ -203,15 +203,24 @@ class ChildEnvTests(SimpleTestCase):
         for leaked in ('DATABASE_URL', 'SECRET_KEY', 'STRIPE_SECRET_KEY', 'AWS_SECRET_ACCESS_KEY'):
             self.assertNotIn(leaked, env)
 
-    def test_reserved_janus_vars_are_not_inherited(self):
+    def test_no_janus_var_is_inherited(self):
+        # The turn decides Janus's settings; a container's JANUS_MODEL or
+        # JANUS_PROVIDER would override the pinned (and priced) provider and model.
         with mock.patch.dict(
             eng.os.environ,
-            {'PATH': '/usr/bin', 'JANUS_YOLO_MODE': '1', 'JANUS_MODEL': 'x'},
+            {
+                'PATH': '/usr/bin',
+                'JANUS_YOLO_MODE': '1',
+                'JANUS_MODEL': 'x',
+                'JANUS_PROVIDER': 'y',
+                'JANUS_SIGNING_SECRET': 'z',
+            },
             clear=True,
         ):
             env = _child_env({'JANUS_YOLO_MODE': '0'})
         self.assertEqual(env['JANUS_YOLO_MODE'], '0')
-        self.assertEqual(env['JANUS_MODEL'], 'x')
+        for name in ('JANUS_MODEL', 'JANUS_PROVIDER', 'JANUS_SIGNING_SECRET'):
+            self.assertNotIn(name, env)
 
 
 class _FakeProc:

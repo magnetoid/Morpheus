@@ -31,8 +31,6 @@ _NOT_PROVED = {
     'mcp_servers.*.url',
     'mcp_servers.*.headers',
     'mcp_servers.*.timeout',
-    'mcp_servers.*.tools.resources',
-    'mcp_servers.*.tools.prompts',
     # Hook events are proved by _check_hooks (HOOK_EVENTS), not by a source pattern.
     'hooks.pre_tool_call',
     'hooks.post_tool_call',
@@ -83,11 +81,10 @@ class ContractInStepTests(SimpleTestCase):
         )
         written = _config_keys(text)
         self.assertIn('skills.inline_shell', written)  # the parser works
-        unproved = written - set(contract.CONFIG_KEYS) - _NOT_PROVED
+        proved = set(contract.CONFIG_KEYS) | set(contract.SOFT_CONFIG_KEYS)
+        unproved = written - proved - _NOT_PROVED
         self.assertEqual(unproved, set(), 'add each to CONFIG_KEYS with a source pattern')
-        self.assertEqual(
-            set(contract.CONFIG_KEYS) - written, set(), 'the contract checks a key nobody writes'
-        )
+        self.assertEqual(proved - written, set(), 'the contract checks a key nobody writes')
 
     def test_the_env_vars_a_turn_sets_are_in_the_contract(self):
         with TemporaryDirectory() as tmp:
@@ -127,12 +124,20 @@ class ContractInStepTests(SimpleTestCase):
             self.assertTrue(any(words in key for key in contract.SOFT_NAMES), prefix)
 
 
-def _fake_janus(root: Path, *, search_tools=('web_search',), drop: str = '') -> Path:
+def _fake_janus(
+    root: Path,
+    *,
+    search_tools=('web_search',),
+    drop: str = '',
+    lose_memory_tool: str = '',
+    help_exit: int = 0,
+) -> Path:
     """A minimal Janus tree with just what the contract reads."""
     toolsets = dict.fromkeys(contract.TOOLSETS)
     for name, tools in contract.TOOLSETS.items():
         toolsets[name] = {'tools': sorted(tools), 'includes': []}
     toolsets['search'] = {'tools': list(search_tools), 'includes': []}
+    toolsets['memory']['tools'].remove(lose_memory_tool) if lose_memory_tool else None
     (root / 'toolsets.py').write_text(f'TOOLSETS = {toolsets!r}\n', encoding='utf-8')
     needles = [
         'tirith_enabled max_turns reasoning_effort api_max_retries supports_parallel_tool_calls',
@@ -140,6 +145,7 @@ def _fake_janus(root: Path, *, search_tools=('web_search',), drop: str = '') -> 
         'memory_enabled user_profile_enabled cfg.nudge_interval hooks_auto_accept',
         'fallback_providers',
         'cfg.get("curator") web.get("backend")',
+        'tools_filter.get("resources") tools_filter.get("prompts")',
         'JANUS_HOME JANUS_EPHEMERAL_SYSTEM_PROMPT JANUS_YOLO_MODE SOUL.md .no-bundled-skills',
         'print(f"\\nsession_id: {cli.session_id}", file=sys.stderr)',
         'Session not found',
@@ -186,11 +192,12 @@ def _fake_janus(root: Path, *, search_tools=('web_search',), drop: str = '') -> 
         ('janus_cli', ''),
         ('mcp', ''),
         ('ddgs', ''),
+        ('primp', ''),
     ):
         (root / package).mkdir()
         (root / package / '__init__.py').write_text(init, encoding='utf-8')
     (root / 'janus_cli' / 'plugins.py').write_text(
-        "VALID_HOOKS = {'pre_tool_call', 'post_tool_call'}\n", encoding='utf-8'
+        f'VALID_HOOKS = {set(contract.HOOK_EVENTS)!r}\n', encoding='utf-8'
     )
     (root / 'agent' / 'shell_hooks.py').write_text(
         'class _S:\n    def __init__(self, e):\n        self.event = e\n'
@@ -200,7 +207,7 @@ def _fake_janus(root: Path, *, search_tools=('web_search',), drop: str = '') -> 
     janus = root / 'janus'
     janus.write_text(
         '#!/bin/sh\necho "usage: janus chat [-q QUERY] [-Q] [-t TOOLSETS] [--resume ID]'
-        ' [--source SOURCE] [--provider P] [-m MODEL]"\n',
+        f' [--source SOURCE] [--provider P] [-m MODEL]"\nexit {help_exit}\n',
         encoding='utf-8',
     )
     janus.chmod(0o755)
@@ -210,13 +217,13 @@ def _fake_janus(root: Path, *, search_tools=('web_search',), drop: str = '') -> 
 class ContractScriptTests(SimpleTestCase):
     """The script itself, run the way the build and the updater run it."""
 
-    def _run(self, **fake) -> dict:
+    def _run(self, *extra: str, **fake) -> dict:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             janus = _fake_janus(root, **fake)
             env = {'PATH': os.environ.get('PATH', ''), 'PYTHONPATH': str(root)}
             proc = subprocess.run(  # noqa: S603
-                [sys.executable, str(Path(contract.__file__)), '--janus', str(janus)],
+                [sys.executable, str(Path(contract.__file__)), '--janus', str(janus), *extra],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -230,6 +237,10 @@ class ContractScriptTests(SimpleTestCase):
     @staticmethod
     def _failing(report):
         return sorted(c['name'] for c in report['checks'] if c['required'] and not c['ok'])
+
+    @staticmethod
+    def _warned(report):
+        return sorted(c['name'] for c in report['checks'] if not c['required'] and not c['ok'])
 
     def test_a_compatible_janus_passes(self):
         report = self._run()
@@ -248,6 +259,30 @@ class ContractScriptTests(SimpleTestCase):
     def test_a_renamed_system_prompt_variable_fails(self):
         report = self._run(drop='JANUS_EPHEMERAL_SYSTEM_PROMPT')
         self.assertEqual(self._failing(report), ['env JANUS_EPHEMERAL_SYSTEM_PROMPT'])
+
+    def test_a_compatible_janus_raises_no_warning(self):
+        self.assertEqual(self._warned(self._run()), [])
+
+    def test_a_toolset_that_loses_a_tool_is_reported(self):
+        # Linda's skills name the reviewed tools; one that is gone is reported
+        # (required once the conformance job has run it against the pin).
+        report = self._run(lose_memory_tool='propose_plan')
+        self.assertEqual(self._failing(report), [])
+        self.assertEqual(self._warned(report), ['toolset memory keeps its tools'])
+
+    def test_help_that_exits_non_zero_is_reported(self):
+        report = self._run(help_exit=1)
+        self.assertEqual(self._warned(report), ['janus chat --help exits 0'])
+
+    def test_the_mcp_resource_and_prompt_switches_are_watched(self):
+        report = self._run(drop='tools_filter.get("prompts")')
+        self.assertEqual(self._warned(report), ['config mcp_servers.*.tools.prompts'])
+
+    def test_the_report_says_which_ref_a_fallback_replaced(self):
+        report = self._run('--fallback-from', 'f' * 40)
+        self.assertEqual(report['fallback'], 'f' * 40)
+        self.assertEqual(self._run()['fallback'], '')
+        self.assertIn('commit', report)  # '' here: the fake tree is not pip-installed
 
     def test_it_imports_nothing_from_morpheus(self):
         source = Path(contract.__file__).read_text(encoding='utf-8')

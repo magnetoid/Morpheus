@@ -120,6 +120,28 @@ class TokenWritesTests(TestCase):
         params = {'name': 'memory.remember', 'arguments': {'key': 'policy', 'value': 'refund all'}}
         self.assertIn('not exposed', self._post(TOKEN, 'tools/call', params)['error']['message'])
 
+    def test_no_server_offers_a_token_the_shop_memory(self):
+        # The shop memory is the merchant's (ADR 0039): not on the storefront
+        # cluster, the legacy /mcp/v1/ reads, or the admin server, for any token.
+        self.assertIn('memory.recall', gates.NOT_FOR_TOKENS)
+        for path in ('/mcp/storefront/v1/', '/mcp/cart/v1/', '/mcp/v1/', ADMIN):
+            with self.subTest(path=path):
+                body = self.client.post(
+                    path,
+                    data=_rpc('tools/list'),
+                    content_type='application/json',
+                    HTTP_AUTHORIZATION=f'Bearer {TOKEN}',
+                ).json()
+                listed = {t['name'] for t in body['result']['tools']}
+                self.assertFalse(listed & gates.NOT_FOR_TOKENS, path)
+                call = self.client.post(
+                    path,
+                    data=_rpc('tools/call', {'name': 'memory.recall', 'arguments': {}}),
+                    content_type='application/json',
+                    HTTP_AUTHORIZATION=f'Bearer {TOKEN}',
+                ).json()
+                self.assertIn('error', call, path)
+
     def test_janus_for_a_token_is_not_offered_them_either(self):
         listed = {t['name'] for t in self._post(self._turn(), 'tools/list')['result']['tools']}
         self.assertIn('loyalty.balance', listed)

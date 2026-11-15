@@ -168,3 +168,26 @@ class JanusPageBuildTests(TestCase):
         self.assertContains(response, '1 of 2 checks pass')
         self.assertContains(response, 'Display only: tool hook events')
         self.assertContains(response, 'subagents stay off')
+
+    def test_a_pinned_build_says_updates_come_with_morpheus_releases(self):
+        from core.assistant import janus_runtime
+
+        with mock.patch.object(janus_runtime, 'source', return_value=None):
+            response = self.client.get('/dashboard/apps/janus/engine/')
+        self.assertContains(response, 'pinned in its Morpheus release')
+        self.assertNotContains(response, 'name="action" value="check_updates"')
+        self.assertNotContains(response, 'Keep Janus up to date from GitHub')
+        self.assertNotContains(response, 'data-janus-last-check')
+
+    def test_a_fallback_build_says_which_commit_failed(self):
+        from core.assistant import janus_runtime
+
+        report = {
+            'ok': True,
+            'fallback': 'a' * 40,
+            'checks': [{'name': 'toolset search', 'ok': True, 'required': True}],
+        }
+        with mock.patch.object(janus_runtime, 'contract_report', return_value=report):
+            response = self.client.get('/dashboard/apps/janus/engine/')
+        self.assertContains(response, 'data-janus-fallback')
+        self.assertContains(response, '<code class="text-xs">aaaaaaa</code> failed the check')

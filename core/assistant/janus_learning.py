@@ -79,9 +79,10 @@ MAX_FILE_CHARS = 100_000
 MAX_FILES = 400
 MAX_JOURNAL_DAYS = 90
 MAX_LESSONS = 300
-# A turn has at most 10 tool steps, so it cannot author this many files. More
-# than this appearing at once means the home was misread (for example bundled
-# skills without their manifest), and those files are not kept.
+# Each file a turn writes costs a tool step (30 by default, 60 at most), and a
+# real turn writes a handful. More than this appearing at once means the home
+# was misread (for example bundled skills without their manifest), and those
+# files are not kept.
 MAX_NEW_FILES_PER_TURN = 25
 
 

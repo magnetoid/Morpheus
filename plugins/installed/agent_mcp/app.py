@@ -69,10 +69,10 @@ class AgentMcpPlugin(Plugin):
             'This store speaks MCP (JSON-RPC 2.0), the Universal Commerce '
             'Protocol, and the Trusted Agent Protocol.\n\n'
             '**MCP servers**\n'
-            f'- Storefront (catalog reads, no auth): `POST {base}/mcp/storefront/v1/`\n'
-            f'- Cart (no auth): `POST {base}/mcp/cart/v1/`\n'
-            f'- Checkout (no auth): `POST {base}/mcp/checkout/v1/`\n'
-            f'- Admin (full tool catalog, Bearer auth): `POST {base}/mcp/admin/v1/`\n'
+            f'- Storefront (catalog reads): `POST {base}/mcp/storefront/v1/`\n'
+            f'- Cart (the storefront reads plus a cart): `POST {base}/mcp/cart/v1/`\n'
+            f'- Checkout (the cart plus a checkout quote): `POST {base}/mcp/checkout/v1/`\n'
+            f'- Admin (the merchant tool catalog): `POST {base}/mcp/admin/v1/`\n'
             f'- Manifest: `{base}/mcp/v1/manifest.json` · Health: `{base}/mcp/v1/health/`\n\n'
             "**Ask the store's own agent (Janus)**\n"
             '- MCP tools `janus.ask` / `janus.reply` on the admin server, or GraphQL '
@@ -82,8 +82,10 @@ class AgentMcpPlugin(Plugin):
             f'- Universal Commerce Protocol profile: `{base}/.well-known/ucp`\n'
             f'- Legacy UCP manifest (pre-spec): `{base}/.well-known/ucp.json`\n'
             f'- Trusted Agent Protocol: `{base}/.well-known/agent.json`\n\n'
-            '**Auth**: admin calls need a Bearer token (Dashboard → Developer → '
-            'API tokens), scoped per token. Storefront/cart/checkout are public.'
+            "**Auth**: any client may list a server's tools (`initialize`, `tools/list`). "
+            'Calling one (`tools/call`) needs a Bearer token the merchant issued '
+            '(Dashboard → Developer → API tokens) on every server, and a token reaches '
+            'only the scopes it was given.'
         )
         if isinstance(value, list):
             value.append({'heading': 'Agent commerce endpoints', 'body': body, 'priority': 10})

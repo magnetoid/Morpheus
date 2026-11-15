@@ -15,6 +15,18 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.171.1 — 2026-11-15
+
+**Each Linda turn records the Janus that answered it**
+
+- Every Linda turn now records which Janus build answered it (version and commit) and what Janus counted for it: reasoning tokens, model calls and cost. They are on the run in Observability, so a change in her answers can be tied to a Janus update.
+- Settings → AI → Janus tells the truth about updates: each store runs the Janus build pinned in its Morpheus release, and a newer Janus arrives with a Morpheus update once it passes the compatibility check. Check now and the GitHub switch appear only on a server built to follow a branch, and the page says when a build fell back because the pinned one failed its check.
+- The compatibility check also notices a tool missing from a toolset, a Janus command that fails, and the MCP prompt and resource switches; these show as display-only for now. An image whose pinned Janus fails the check and has no other build to fall back to no longer builds.
+- Janus inherits no JANUS_ setting from the server's environment: each one it gets is the value Morpheus sets for that turn.
+- An external agent's turn no longer carries the shop memory, and no API token can read it on any MCP server: it is the merchant's, for Linda in their own chats.
+- The Customers write scope can be granted to an API token on the tokens page (it was missing, so only a token with full access could use the customer-note tool).
+- /agents.md says what each MCP server needs: any client may list its tools, and calling one needs a token the merchant issued.
+
 ## v0.171.0 — 2026-11-15
 
 **Customers pay a placed order from a link**

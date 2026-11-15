@@ -118,10 +118,12 @@ plugins/installed/ai_assistant/       ← Pulse insights, embeddings, search
   tools over MCP, where [gates.py](../core/assistant/gates.py) enforces scope,
   mode and the merchant's consent. Janus's own tools give her a plan, web search
   and recall of earlier sessions; the chat shows each step as it happens
-  ([activity.py](../core/assistant/activity.py)), and Janus keeps itself current
-  from GitHub, switching only to a build that passes Morpheus's contract
-  ([janus_runtime.py](../core/assistant/janus_runtime.py),
-  [janus_contract.py](../core/assistant/janus_contract.py)). For jobs bigger than
+  ([activity.py](../core/assistant/activity.py)). The image pins one reviewed
+  Janus commit and checks it against Morpheus's contract at build time
+  ([janus_contract.py](../core/assistant/janus_contract.py)); a newer Janus
+  arrives with the Morpheus release that moves the pin, and each turn records
+  which Janus build answered it
+  ([janus_runtime.py](../core/assistant/janus_runtime.py)). For jobs bigger than
   one message she spawns copies of the generic **Worker** through the agents
   kernel (`delegate.spawn_workers`) — not named specialist sub-agents.
 - **The kernel** ([core/agents/](../core/agents/)) ships exactly **one**

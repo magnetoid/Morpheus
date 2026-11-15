@@ -36,7 +36,6 @@ STOREFRONT_TOOLS = {
     'products.get',
     'cms.pages',
     'analytics.top_products',
-    'memory.recall',
 }
 
 # Cart / checkout add the buyer-agent build+quote tools on top of the
