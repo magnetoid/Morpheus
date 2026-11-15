@@ -1,0 +1,15 @@
+Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},
+
+The payment for order #{{ order.order_number }} didn't go through, so the
+order is not paid yet. You can try again with the same card or another way
+to pay:
+
+{{ pay_url }}
+
+{% for it in order.items.all %}{{ it.quantity }}x {{ it.product_name }}{% if it.variant_name %} ({{ it.variant_name }}){% endif %} — {{ it.total_price }}
+{% endfor %}
+Total to pay: {{ order.total }}
+{% if pay_by %}
+The link works until {{ pay_by|date:"F j, Y" }}. After that the order is cancelled.
+{% endif %}
+— The team

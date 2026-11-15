@@ -100,3 +100,33 @@ def release_stale_authorizations() -> int:
                 'payments: could not settle hold on order %s', tx.order_id, exc_info=True
             )
     return done
+
+
+#: Set on the order once the "try again" email has gone, so it goes once.
+FAILED_EMAIL_KEY = 'failed_payment_email_at'
+
+
+@shared_task(name='payments.send_failed_payment_email')
+def send_failed_payment_email(order_id: str) -> bool:
+    """Email the customer a link to pay after a declined card (the
+    failed_payment_email_minutes setting): once per order, and only while the
+    order is still open and unpaid."""
+    from django.db import transaction  # noqa: PLC0415
+
+    from plugins.installed.orders.models import Order  # noqa: PLC0415
+    from plugins.installed.payments import pay_link  # noqa: PLC0415
+
+    with transaction.atomic():
+        order = Order.objects.select_for_update().filter(pk=order_id).first()
+        if order is None or pay_link.state(order) != 'payable':
+            return False
+        md = dict(order.metadata) if isinstance(order.metadata, dict) else {}
+        if md.get(FAILED_EMAIL_KEY):
+            return False
+        md[FAILED_EMAIL_KEY] = timezone.now().isoformat()
+        order.metadata = md
+        order.save(update_fields=['metadata'])
+        sent, reason = pay_link.send(order, kind='failed')
+    if not sent:
+        logger.info('payments: no try-again email for order %s: %s', order.order_number, reason)
+    return sent

@@ -23,8 +23,16 @@
       </form>
       <form method="post" action="/dashboard/draft-orders/{{ draft.number }}/convert/">
         {% csrf_token %}
-        <button class="btn btn-primary" {% if not draft.lines.all %}disabled title="Add at least one line first"{% endif %}>
+        <button class="btn" {% if not draft.lines.all %}disabled title="Add at least one line first"{% endif %}>
           <i data-lucide="check-circle" class="h-4 w-4"></i> Convert to order
+        </button>
+      </form>
+      <form method="post" action="/dashboard/draft-orders/{{ draft.number }}/send-link/"
+            data-confirm="Create the order and email {{ draft.customer_email|default:draft.customer.email }} a link to pay it?" data-confirm-cta="Yes, send it">
+        {% csrf_token %}
+        <button class="btn btn-primary"
+                {% if not draft.lines.all %}disabled title="Add at least one line first"{% elif not draft.customer_email and not draft.customer.email %}disabled title="Add the customer's email address first"{% endif %}>
+          <i data-lucide="send" class="h-4 w-4"></i> Send payment link
         </button>
       </form>
       {% else %}
@@ -146,11 +154,26 @@
         <p class="mt-2 text-sm whitespace-pre-wrap">{{ draft.note }}</p>
       </div>
       {% endif %}
-      {% if draft.status == 'converted' and draft.converted_order_id %}
-      <div class="card card-padded">
+      {% if order %}
+      <div class="card card-padded space-y-3">
         <p class="text-sm">
-          Converted — <a class="hover:underline font-medium" href="/dashboard/orders/">view orders</a>
+          Converted to <a class="hover:underline font-medium" href="/dashboard/orders/{{ order.order_number }}/">order #{{ order.order_number }}</a>
         </p>
+        {% if pay.state == 'payable' %}
+        <div>
+          <label for="pay-link" class="text-xs text-[color:var(--text-muted)]">Link to pay it</label>
+          <input id="pay-link" type="text" readonly value="{{ pay.url }}" class="mt-1 w-full rounded border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1.5 text-sm">
+        </div>
+        <form method="post" action="/dashboard/draft-orders/{{ draft.number }}/send-link/"
+              data-confirm="Email {{ order.email }} the link to pay order #{{ order.order_number }}?" data-confirm-cta="Yes, send it">
+          {% csrf_token %}
+          <button class="btn" {% if not order.email %}disabled title="The order has no email address"{% endif %}>
+            <i data-lucide="send" class="h-4 w-4"></i> Email the payment link
+          </button>
+        </form>
+        {% elif pay.state == 'paid' %}
+        <p class="text-sm text-[color:var(--text-muted)]">The order is paid.</p>
+        {% endif %}
       </div>
       {% endif %}
     </aside>

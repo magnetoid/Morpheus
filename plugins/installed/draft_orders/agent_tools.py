@@ -50,3 +50,36 @@ def convert_draft_tool(*, number: str) -> ToolResult:
         output={'order_number': order.order_number, 'order_id': str(order.id)},
         display=f'Converted draft {number} → order {order.order_number}',
     )
+
+
+@tool(
+    name='draft_orders.send_payment_link',
+    description=(
+        'Email the customer a link to pay a draft order. An open draft is converted to an '
+        "order first, at the draft's prices; a converted one re-sends the link for its order."
+    ),
+    scopes=['orders.write'],
+    schema={'type': 'object', 'properties': {'number': {'type': 'string'}}, 'required': ['number']},
+    requires_approval=True,
+)
+def send_payment_link_tool(*, number: str) -> ToolResult:
+    from plugins.installed.draft_orders import services
+    from plugins.installed.draft_orders.models import DraftOrder
+    from plugins.installed.payments import pay_link
+
+    try:
+        draft = DraftOrder.objects.get(number=number)
+    except DraftOrder.DoesNotExist as e:
+        raise ToolError(f'No draft with number {number}') from e
+    try:
+        order = services.send_payment_link(draft)
+    except services.PaymentLinkError as e:
+        raise ToolError(str(e)) from e
+    return ToolResult(
+        output={
+            'order_number': order.order_number,
+            'email': order.email,
+            'pay_url': pay_link.pay_url(order),
+        },
+        display=f'Payment link for order {order.order_number} sent to {order.email}',
+    )

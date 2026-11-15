@@ -198,18 +198,32 @@ class PaymentService:
             # The shopper's saved cards, and the card they choose to save.
             params['customer'] = customer_id
             idempotency_key += f'-{customer_id}'
+        # A released hold's intent is cancelled and can never be paid, so each
+        # release starts a fresh intent (the payment link after a release).
+        released = PaymentTransaction.objects.filter(
+            order=order, provider='stripe', status=PaymentTransaction.Status.RELEASED
+        ).count()
+        if released:
+            idempotency_key += f'-r{released}'
 
         try:
             intent = stripe.PaymentIntent.create(**params, idempotency_key=idempotency_key)
 
-            # Record the pending transaction
-            tx = PaymentTransaction.objects.create(
-                order=order,
-                amount=order.total,
-                status=PaymentTransaction.Status.PENDING,
-                provider='stripe',
-                provider_transaction_id=intent.id,
-            )
+            # Record the pending transaction. A second attempt at the same order
+            # (the payment step reloaded, the payment link) gets the same intent
+            # back from the idempotency key, and keeps its one row (older
+            # attempts may have left several: any one of them stands).
+            tx = PaymentTransaction.objects.filter(
+                order=order, provider='stripe', provider_transaction_id=intent.id
+            ).first()
+            if tx is None:
+                tx = PaymentTransaction.objects.create(
+                    order=order,
+                    amount=order.total,
+                    status=PaymentTransaction.Status.PENDING,
+                    provider='stripe',
+                    provider_transaction_id=intent.id,
+                )
 
             return {'success': True, 'client_secret': intent.client_secret, 'transaction_id': tx.id}
         except stripe.error.StripeError as e:

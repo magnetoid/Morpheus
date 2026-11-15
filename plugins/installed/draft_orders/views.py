@@ -44,6 +44,12 @@ def detail(request, number: str):
         )
     except Exception:  # noqa: BLE001 — catalog is a plugin too
         variants = []
+    order = services.converted_order(draft)
+    pay = {}
+    if order is not None:
+        from plugins.installed.payments import pay_link
+
+        pay = {'state': pay_link.state(order), 'url': pay_link.pay_url(order)}
     return render(
         request,
         'draft_orders/detail.html',
@@ -51,6 +57,8 @@ def detail(request, number: str):
             'draft': draft,
             'variants': variants,
             'editable': _editable(draft),
+            'order': order,
+            'pay': pay,
         },
     )
 
@@ -160,4 +168,23 @@ def convert(request, number: str):
             messages.error(request, f'Could not create the order: {exc}')
             return redirect(f'/dashboard/draft-orders/{draft.number}/')
         return redirect(f'/dashboard/orders/{order.order_number}/')
+    return redirect(f'/dashboard/draft-orders/{draft.number}/')
+
+
+@staff_member_required
+@require_capability('orders.write')
+def send_link(request, number: str):
+    """Email the customer the link to pay: converts an open draft first."""
+    draft = get_object_or_404(DraftOrder, number=number)
+    if request.method == 'POST':
+        try:
+            order = services.send_payment_link(draft)
+        except services.PaymentLinkError as exc:
+            messages.error(request, str(exc))
+        except Exception as exc:  # noqa: BLE001 — e.g. not enough stock; nothing was created
+            messages.error(request, f'Could not create the order: {exc}')
+        else:
+            messages.success(
+                request, f'Payment link for order #{order.order_number} sent to {order.email}.'
+            )
     return redirect(f'/dashboard/draft-orders/{draft.number}/')

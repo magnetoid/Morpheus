@@ -1678,6 +1678,23 @@ fastest | preferred carrier/service, `SHIPPING_LABEL_RATE` filter); orders' `par
 `payments/tests/test_manual_capture.py`, `test_saved_card_intent.py`, `test_payment_failed_event.py`,
 `orders/tests/test_offline_refund.py`, `test_parcel_settings.py` and `shipping/tests/test_label_rate.py`.
 
+**Convention — a placed order is paid from its link, and a link holds it open (v0.171.0).** payments
+owns `/pay/<public_token>/` (`payments/views_pay.py`): a GET only shows the order and the ways to pay
+(email link scanners open every link), and a POST starts the payment through
+`routing.create_payment_intent_for`, the checkout's own path. Only an open order (`pending`,
+`confirmed`, `processing`) whose `payment_status` is `unpaid` or `released` can be paid
+(`payments/pay_link.py:state`). Sending a link (`pay_link.send`: a draft's Send payment link, Linda's
+`draft_orders.send_payment_link`, the declined-card email) and converting a draft write
+`metadata['pay_by']` (`orders/payment_deadline.py:hold_for_payment`, orders' `payment_link_hours`,
+the `PAYMENT_LINK_DEADLINE` filter, never shortened), and the unpaid-order sweep leaves the order alone
+until then: it used to cancel a converted draft an hour later and release its stock. An email names a
+deadline only when the sweep would keep it (`cancels_at`). The declined-card email
+(`failed_payment_email_minutes`, 0 = off) is sent once per order, and only while the order can still
+be paid. Stripe hands a second attempt the same intent through its idempotency key, so
+`create_payment_intent` reuses that intent's row. `Order` has `staff_notes` and `customer_notes`, no
+`notes`. Guarded by `payments/tests/test_pay_link.py`, `test_failed_payment_email.py`,
+`orders/tests/test_payment_deadline.py` and `draft_orders/tests/test_payment_link.py`.
+
 **Convention — a market prices in its own currency from one function, and a rate the merchant typed wins (v0.165.0).**
 `markets/pricing.py:market_price(product, market, variant=None)` answers what a product costs in a market: the store
 price when the market uses the store currency; else a price fixed for that market (`ProductMarketPrice`), else one typed

@@ -1,5 +1,5 @@
 ---
-summary: Lets staff build a custom quote with its own prices, then turn it into a real order once the customer is ready to buy.
+summary: Lets staff build a custom quote with its own prices, email the customer a link to pay it, or turn it into a real order by hand.
 ---
 
 ## What it's for
@@ -15,9 +15,10 @@ Nothing to switch on. Anyone with permission to manage orders can open [Drafts](
 - Start a draft and add lines by picking a product, or by typing a custom name, price, and quantity.
 - Remove a line from a draft that is still open.
 - Cancel a draft that is no longer needed.
-- Convert a draft into a real order at the prices on the draft.
-- Ask Linda to list open drafts or convert one — she still needs your yes.
+- Send the customer a payment link: the draft becomes an order at its prices, and the customer gets an email with a link to pay it online. A converted draft shows the link to copy, and can send it again.
+- Convert a draft into a real order at the prices on the draft, to take payment another way.
+- Ask Linda to list open drafts, convert one or send its payment link — she still needs your yes.
 
 ## Good to know
 
-There is no page a customer can open to see or pay a draft themselves, so sharing the quote and taking payment both happen outside this app — by phone, email, or however the store normally takes payment. Converting fails and changes nothing if there is not enough stock left for a line. Converting creates the order at the exact prices on the draft; it does not charge a card on its own. Once converted or cancelled, a draft can no longer be edited.
+The payment link opens a page where the customer sees the order and pays it with any way to pay the shop offers at checkout. An order made from a draft is not cancelled as unpaid until the hours set in [Checkout, cart & invoices](settings:orders) have passed (three days unless you change it), and the email names that date. Converting fails and changes nothing if there is not enough stock left for a line. Converting creates the order at the exact prices on the draft; it does not charge a card on its own. Sending a link needs the customer's email address. Once converted or cancelled, a draft can no longer be edited.

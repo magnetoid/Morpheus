@@ -1,0 +1,8 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Pay for order #{{ order.order_number }}{% endblock %}
+{% block preheader %}Order #{{ order.order_number }} — {{ order.total }}, ready to pay.{% endblock %}
+{% block body %}
+  <p>Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},</p>
+  <p>Your order <strong>#{{ order.order_number }}</strong> is ready. Pay for it securely online with the button below.</p>
+{% include "emails/_pay_order_summary.html" %}
+{% endblock %}

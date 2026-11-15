@@ -512,14 +512,11 @@ def orders_add_note_tool(
         o = Order.objects.get(order_number=order_number)
     except Order.DoesNotExist:
         raise ToolError(f'order not found: {order_number}')  # noqa: B904
-    old_raw = getattr(o, 'notes', '') or ''
+    # Staff notes: Order has no `notes` field, and writing one failed every call.
+    old_raw = o.staff_notes or ''
     existing = old_raw.strip()
     sep = '\n\n' if existing else ''
     if staged:
-        if not hasattr(o, 'notes'):
-            # Without the field the change could never apply — refuse at staging
-            # time (the unstaged path fails at save() the same way).
-            raise ToolError('order model has no `notes` field — cannot stage a note')
         return _stage(
             context=context,
             tool_name='orders.add_note',
@@ -529,15 +526,15 @@ def orders_add_note_tool(
             changes=[
                 {
                     'object': _obj_ref(o),
-                    'field': 'notes',
+                    'field': 'staff_notes',
                     'old': old_raw,
                     'new': f'{existing}{sep}{note.strip()}',
                 }
             ],
             target=o,
         )
-    o.notes = f'{existing}{sep}{note.strip()}'
-    o.save(update_fields=['notes', 'updated_at'])
+    o.staff_notes = f'{existing}{sep}{note.strip()}'
+    o.save(update_fields=['staff_notes', 'updated_at'])
     return ToolResult(
         output={'order_number': order_number, 'appended': True},
         display=f'note added to #{order_number}',

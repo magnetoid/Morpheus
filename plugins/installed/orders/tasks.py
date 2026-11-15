@@ -52,6 +52,20 @@ def _expiry_minutes() -> int:
         return DEFAULT_EXPIRY_MINUTES
 
 
+#: Orders the sweep cancels per run, and how many rows it reads at a time.
+_SWEEP_BATCH = 500
+_SWEEP_PAGE = 1000
+
+
+def _expiry_reason(order, minutes: int) -> str:
+    from plugins.installed.orders.payment_deadline import KEY
+
+    md = order.metadata if isinstance(order.metadata, dict) else {}
+    if md.get(KEY):
+        return 'The payment link expired unpaid — cancelled automatically.'
+    return f'Unpaid for over {minutes} minutes — expired automatically.'
+
+
 @shared_task(name='orders.expire_pending_orders')
 def expire_pending_orders() -> int:
     """Cancel unpaid orders left ``pending`` past the expiry window.
@@ -71,13 +85,30 @@ def expire_pending_orders() -> int:
     if minutes <= 0:
         return 0
 
-    cutoff = timezone.now() - timezone.timedelta(minutes=minutes)
-    candidates = list(
+    from plugins.installed.orders.payment_deadline import held, waiting_for_payment
+
+    now = timezone.now()
+    cutoff = now - timezone.timedelta(minutes=minutes)
+    rows = (
         Order.objects.filter(status='pending', placed_at__lt=cutoff)
         .exclude(payment_status__in=PAID_OR_HELD)
         .exclude(payment_gateway__in=OFFLINE_GATEWAYS)
-        .values_list('id', flat=True)[:500]
+        .order_by('placed_at', 'id')
+        .values_list('id', 'metadata')
     )
+    # An order waiting for its payment link (a converted draft, a link the
+    # customer was emailed) keeps until its deadline: orders.payment_deadline.
+    # The deadline is read in Python, page by page, so a run of held orders at
+    # the front of the queue never hides the abandoned checkouts behind it.
+    candidates: list = []
+    offset = 0
+    while len(candidates) < _SWEEP_BATCH:
+        page = list(rows[offset : offset + _SWEEP_PAGE])
+        if not page:
+            break
+        candidates += [pk for pk, metadata in page if not held(metadata, now)]
+        offset += len(page)
+    candidates = candidates[:_SWEEP_BATCH]
 
     cancelled = 0
     for order_id in candidates:
@@ -86,7 +117,9 @@ def expire_pending_orders() -> int:
                 order = Order.objects.select_for_update().get(pk=order_id)
                 if order.status != 'pending' or order.payment_status in PAID_OR_HELD:
                     continue  # paid, held or advanced between select and lock
-                order.cancel(reason=f'Unpaid for over {minutes} minutes — expired automatically.')
+                if waiting_for_payment(order):
+                    continue  # a payment link was sent between select and lock
+                order.cancel(reason=_expiry_reason(order, minutes))
                 order.save(update_fields=['status', 'cancelled_at', 'staff_notes'])
             cancelled += 1
         except Exception:  # noqa: BLE001 — one bad order must not stop the sweep

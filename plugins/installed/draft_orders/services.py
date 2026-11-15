@@ -45,6 +45,7 @@ def convert_to_order(draft) -> Any:
     """
     from morpheus.core import MorpheusEvents, hook_registry
     from plugins.installed.orders.models import Order, OrderItem
+    from plugins.installed.orders.payment_deadline import hold_for_payment
 
     # Lock the draft so two clicks on "Convert" can't make two orders.
     draft = type(draft).objects.select_for_update().get(pk=draft.pk)
@@ -80,8 +81,49 @@ def convert_to_order(draft) -> Any:
     hook_registry.filter(
         MorpheusEvents.ORDER_RESERVE_STOCK, value=0, order=order, raise_errors=True
     )
+    # Paid later (by link, by phone, by hand): keep it out of the unpaid-order
+    # sweep, which cancelled every converted draft after an hour.
+    hold_for_payment(order, reason='draft')
     draft.status = 'converted'
     draft.converted_order_id = str(order.id)
     draft.save(update_fields=['status', 'converted_order_id', 'updated_at'])
     hook_registry.fire(MorpheusEvents.ORDER_PLACED, order=order)
+    return order
+
+
+class PaymentLinkError(Exception):
+    """The payment link could not be sent; the message says why, for staff."""
+
+
+def converted_order(draft):
+    """The order a converted draft became, or None."""
+    from plugins.installed.orders.models import Order
+
+    if not draft.converted_order_id:
+        return None
+    return Order.objects.filter(pk=draft.converted_order_id).first()
+
+
+def send_payment_link(draft):
+    """Email the customer a link to pay ``draft``: an open draft is converted to
+    an order first (at the draft's prices), a converted one reuses its order.
+    Returns the order; raises PaymentLinkError, changing nothing, when there is
+    no email address, no line, or the order cannot be paid."""
+    from plugins.installed.payments import pay_link
+
+    if draft.status == 'cancelled':
+        raise PaymentLinkError('This draft is cancelled.')
+    order = converted_order(draft)
+    if order is None:
+        if not draft.lines.exists():
+            raise PaymentLinkError('Add at least one line first.')
+        if not (draft.customer_email or getattr(draft.customer, 'email', '')):
+            raise PaymentLinkError("Add the customer's email address first.")
+        recalc(draft)
+        if draft.total.amount <= 0:
+            raise PaymentLinkError('This draft has nothing to pay.')
+        order = convert_to_order(draft)
+    sent, reason = pay_link.send(order, kind='link')
+    if not sent:
+        raise PaymentLinkError(reason)
     return order

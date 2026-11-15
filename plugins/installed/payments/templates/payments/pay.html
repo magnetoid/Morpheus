@@ -1,0 +1,74 @@
+{% extends "storefront/base.html" %}
+{% load i18n morph %}
+{% comment %}
+The payment link's page (/pay/<token>/, payments.views_pay). It uses the
+classes every theme's base defines, so it needs no copy per theme. A GET shows;
+only the form's POST starts a payment.
+{% endcomment %}
+
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 560px;">
+    <p class="eyebrow">{% blocktrans with number=order.order_number %}Order #{{ number }}{% endblocktrans %}</p>
+
+    {% if pay_state == 'payable' %}
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">{% trans "Pay for your order" %}</h1>
+    {% elif pay_state == 'paid' %}
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">{% trans "This order is paid" %}</h1>
+    <p class="meta">{% trans "Thank you. There is nothing more to pay." %}</p>
+    {% elif pay_state == 'nothing' %}
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">{% trans "Nothing to pay" %}</h1>
+    <p class="meta">{% trans "This order has nothing to pay." %}</p>
+    {% else %}
+    <h1 class="display display-l" style="margin: 1rem 0 1.5rem;">{% trans "This order is closed" %}</h1>
+    <p class="meta">{% trans "It can't be paid any more. If you think that's a mistake, please contact us." %}</p>
+    {% endif %}
+
+    <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem; margin: 1.5rem 0;">
+      {% for item in order.items.all %}
+      <div style="display: flex; justify-content: space-between; gap: 1rem; padding: .6rem 0; border-bottom: 1px solid var(--rule);">
+        <div>
+          <p>{{ item.product_name }}{% if item.variant_name %} <span class="meta">· {{ item.variant_name }}</span>{% endif %}</p>
+          <p class="meta">{{ item.quantity }} × {{ item.unit_price|money }}</p>
+        </div>
+        <p style="font-weight: 600; white-space: nowrap;">{{ item.total_price|money }}</p>
+      </div>
+      {% endfor %}
+      <div style="display: flex; justify-content: space-between; padding-top: 1rem;">
+        <p>{% trans "Total" %}</p>
+        <p style="font-size: 1.35rem; font-weight: 600;">{{ order.total|money }}</p>
+      </div>
+    </div>
+
+    {% if pay_state == 'payable' %}
+      {% if error %}
+      <p role="alert" style="border: 1px solid var(--rule); border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1.25rem;">{{ error }}</p>
+      {% endif %}
+      {% if payment_methods %}
+      <form method="post" action="">
+        {% csrf_token %}
+        <fieldset style="border: 0; padding: 0; margin: 0 0 1.5rem;">
+          <legend style="font-size: 1.15rem; margin-bottom: .75rem;">{% trans "How would you like to pay?" %}</legend>
+          {% for m in payment_methods %}
+          <label style="display: flex; align-items: flex-start; gap: .75rem; padding: .75rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: .5rem; cursor: pointer;">
+            <input type="radio" name="payment_method" value="{{ m.slug }}" style="margin-top: .25rem;"
+                   {% if m.slug == selected_payment_method %}checked{% endif %} required>
+            <span style="flex: 1;">
+              <span style="display: block;">{{ m.label }}</span>
+              <span class="meta">{{ m.capability }}</span>
+              {% if m.instructions %}<span class="meta" style="display: block; margin-top: .35rem;">{{ m.instructions }}</span>{% endif %}
+            </span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          {% blocktrans with total=order.total|money %}Pay {{ total }}{% endblocktrans %}
+        </button>
+      </form>
+      {% else %}
+      <p class="meta">{% trans "This shop can't take payments online right now. Please contact us to pay for this order." %}</p>
+      {% endif %}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

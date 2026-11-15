@@ -278,12 +278,11 @@ def _action_add_order_note(spec: dict, payload: dict) -> tuple[bool, str]:
     if order is None:
         return False, 'no order in payload'
     try:
-        existing = (getattr(order, 'notes', '') or '').strip()
+        # Staff notes: Order has no `notes` field, and writing one failed every run.
+        existing = (order.staff_notes or '').strip()
         sep = '\n\n' if existing else ''
-        order.notes = f'{existing}{sep}{note}'
-        order.save(
-            update_fields=['notes', 'updated_at'] if hasattr(order, 'updated_at') else ['notes']
-        )
+        order.staff_notes = f'{existing}{sep}{note}'
+        order.save(update_fields=['staff_notes', 'updated_at'])
         return True, 'note appended'
     except Exception as e:  # noqa: BLE001
         return False, str(e)
