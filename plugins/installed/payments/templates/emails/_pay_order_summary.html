@@ -1,0 +1,20 @@
+  <table class="items" role="presentation" cellspacing="0" cellpadding="0" border="0">
+    {% for it in order.items.all %}
+    <tr>
+      <td>
+        {{ it.quantity }}× {{ it.product_name }}{% if it.variant_name %}<br><span class="muted">{{ it.variant_name }}</span>{% endif %}
+      </td>
+      <td class="right">{{ it.total_price }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <table class="totals" role="presentation" cellspacing="0" cellpadding="0" border="0">
+    <tr class="grand"><td>Total to pay</td><td class="right">{{ order.total }}</td></tr>
+  </table>
+
+  <p style="margin-top:18px;">
+    <a href="{{ pay_url }}" style="display:inline-block;background:#0e0e0e;color:#f6f1e7;text-decoration:none;padding:12px 22px;border-radius:9999px;font-size:14px;font-weight:600;">Pay now</a>
+  </p>
+  <p class="muted">Or open this link: {{ pay_url }}</p>
+  {% if pay_by %}<p class="muted">The link works until {{ pay_by|date:"F j, Y" }}. After that the order is cancelled.</p>{% endif %}

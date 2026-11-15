@@ -19,6 +19,7 @@ Cards are charged at checkout, or held and charged with the first parcel, with t
 - Turn the cart's wallet buttons on or off.
 - Mark a cash-on-delivery or bank-transfer order paid once the money arrives.
 - Charge a held card from the Payment panel on its order.
+- Send a customer a link to pay an order that is already placed, from its draft in [Drafts](page:drafts).
 - Refund an order from its page.
 - Read an order's fraud score and its reasons.
 - Ask Linda to do any of these.
@@ -31,6 +32,8 @@ Cash on delivery is offered only when everything in the cart ships.
 
 Only Stripe and PayPal refunds move money; for other orders the refund form adds the amount to store credit, records it as paid back, or leaves it to settle by hand.
 
-A held payment cannot be marked paid or refunded until it is charged; cancelling the order gives it back. An order with a download is charged at checkout. A declined card is noted on the order's timeline.
+A held payment cannot be marked paid or refunded until it is charged; cancelling the order gives it back. An order with a download is charged at checkout. A declined card is noted on the order's timeline. [Payment gateways](settings:payments) can also email the customer a link to try again a set number of minutes after a declined card, once per order and only while it is unpaid; keep that shorter than the time after which unpaid orders are cancelled. It is off unless you set it.
+
+A payment link's page shows the order and asks how to pay; nothing is charged until the customer chooses. It refuses an order that is paid, held, cancelled or already shipped.
 
 The fraud score only informs you: no order is held or cancelled because of it.

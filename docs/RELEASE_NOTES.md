@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.171.0 — 2026-11-15
+
+**Customers pay a placed order from a link**
+
+- A draft order's page has a Send payment link button: it turns the draft into an order and emails the customer a link to a page where they choose a way to pay and pay. Linda can send it too (draft_orders.send_payment_link), with your yes.
+- The pay page offers the checkout's own ways to pay. Opening it starts nothing, so a mail scanner that opens the link takes no payment; a paid, held or closed order says so and offers no form.
+- An order waiting for its payment link stays open for 72 hours (Orders settings: Hours an order waits for its payment link; 0 keeps it open) instead of being cancelled after an hour unpaid. A converted draft used to be cancelled that way, and its stock released.
+- Payments can email a customer whose card was declined a link to try again (Payments settings: Email a payment link after a declined card; off by default).
+- Linda's add-note tool and the workflow action Add order note save the staff note; both failed on every call before.
+- A second card attempt at the same order no longer adds a second pending payment row.
+
 ## v0.170.2 — 2026-11-14
 
 **Supernatural and Irving book rails get bare arrows beside the covers**

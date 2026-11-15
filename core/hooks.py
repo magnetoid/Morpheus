@@ -470,6 +470,14 @@ class MorpheusEvents:
     #                     The value comes in as the payments setting; an app may
     #                     answer per order. An unknown answer counts as
     #                     'immediate'.
+    # PAYMENT_LINK_DEADLINE — filter, value=datetime|None, kwargs: order=Order,
+    #                     reason=str ('draft' | 'link' | 'failed'). How long an
+    #                     order waits for a payment link to be used before the
+    #                     unpaid-order sweep cancels it (orders.payment_deadline).
+    #                     The value comes in as now + the orders setting
+    #                     payment_link_hours, or None (no deadline) when it is 0;
+    #                     an app may answer per order. An answer that is not a
+    #                     datetime or None keeps the setting's.
     # PAYMENT_REFUNDED  — kwargs: refund=Refund, order=Order, amount=Money,
     #                     actor=User|None. Fired by RefundService.process()
     #                     for every refund (admin-initiated OR return-driven).
@@ -490,6 +498,7 @@ class MorpheusEvents:
     PAYMENT_CAPTURED = 'payment.captured'
     PAYMENT_FAILED = 'payment.failed'
     PAYMENT_CAPTURE_MODE = 'payment.capture_mode'  # filter
+    PAYMENT_LINK_DEADLINE = 'payment.link_deadline'  # filter
     PAYMENT_REFUNDED = 'payment.refunded'
     STRIPE_WEBHOOK_EVENT = 'payments.stripe_webhook_event'  # fire
 

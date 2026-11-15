@@ -185,6 +185,18 @@ class OrdersPlugin(Plugin):
                         'tender. Set 0 to disable and reconcile by hand.'
                     ),
                 },
+                'payment_link_hours': {
+                    'type': 'integer',
+                    'default': 72,
+                    'minimum': 0,
+                    'title': 'Hours an order waits for its payment link',
+                    'description': (
+                        'An order made from a draft, or one the customer was '
+                        'emailed a payment link for, is not cancelled as unpaid '
+                        'until this many hours have passed. Set 0 to keep such '
+                        'orders open until someone cancels them.'
+                    ),
+                },
                 'offline_refund_default': {
                     'type': 'string',
                     'enum': ['later', 'store_credit', 'external'],

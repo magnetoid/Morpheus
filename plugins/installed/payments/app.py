@@ -68,6 +68,16 @@ class PaymentsPlugin(Plugin):
 
         # Mount /payments/webhooks/stripe/ for Stripe to POST events to.
         self.register_urls('plugins.installed.payments.urls', prefix='payments/')
+        # The payment link a customer pays a placed order from (/pay/<token>/).
+        self.register_urls(
+            'plugins.installed.payments.urls_pay',
+            prefix='pay/',
+            namespace='payments_pay',
+            surface='storefront',
+        )
+        # A declined card: email the customer a payment link a little later,
+        # when the failed_payment_email_minutes setting is on.
+        self.register_hook(events.PAYMENT_FAILED, self.on_payment_failed, priority=40)
         # Apple Pay domain verification for the Payment Element wallets.
         self.register_urls(
             'plugins.installed.payments.urls_well_known',
@@ -221,6 +231,48 @@ class PaymentsPlugin(Plugin):
                 'look unpaid and are cancelled after the pending-order window.',
             }
         )
+
+    def on_payment_failed(self, order=None, **kwargs):
+        """PAYMENT_FAILED: after ``failed_payment_email_minutes`` (0 = off), email
+        the customer a link to try again, once per order, if it is still unpaid."""
+        if order is None or getattr(order, 'pk', None) is None:
+            return
+        try:
+            minutes = max(0, int(self.get_config_value('failed_payment_email_minutes', 0) or 0))
+        except (TypeError, ValueError):
+            minutes = 0
+        if not minutes:
+            return
+        from django.db import transaction
+
+        from plugins.installed.payments.tasks import send_failed_payment_email
+
+        order_id = str(order.pk)
+        transaction.on_commit(
+            lambda: send_failed_payment_email.apply_async(args=[order_id], countdown=minutes * 60)
+        )
+
+    def contribute_email_templates(self) -> list:
+        from morpheus.app import EmailTemplateDef
+
+        return [
+            EmailTemplateDef(
+                key='payment_link',
+                label='Payment link',
+                default_subject='Pay for order #{{ order.order_number }}',
+                group='Orders',
+                description='Sent when staff email a customer the link to pay an order, '
+                'such as one made from a draft.',
+            ),
+            EmailTemplateDef(
+                key='payment_failed',
+                label='Payment failed — try again',
+                default_subject="Your payment for order #{{ order.order_number }} didn't go through",
+                group='Orders',
+                description='Sent a little after a declined card payment, with a link to try '
+                'again, when the payment settings switch it on.',
+            ),
+        ]
 
     def on_checkout_gateways(self, value, user=None, ships=True, **kwargs):
         """CHECKOUT_GATEWAYS: enabled-gateway dicts for the checkout picker
@@ -407,6 +459,14 @@ class PaymentsPlugin(Plugin):
                     'default': False,
                     'title': 'Offer to save the card at checkout',
                     'description': 'Signed-in shoppers can tick "save this card" for their next order (Stripe).',
+                },
+                'failed_payment_email_minutes': {
+                    'type': 'integer',
+                    'default': 0,
+                    'minimum': 0,
+                    'maximum': 1440,
+                    'title': 'Email a payment link after a declined card (minutes)',
+                    'description': 'This many minutes after a card payment fails, a customer whose order is still unpaid gets one email with a link to try again. Keep it shorter than the time after which unpaid orders are cancelled (Orders settings), or the order is cancelled first. 0 sends nothing.',
                 },
                 'high_value_threshold': {
                     'type': 'number',

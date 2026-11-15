@@ -1,0 +1,8 @@
+{% extends "emails/_layout.html" %}
+{% block title %}Your payment didn't go through{% endblock %}
+{% block preheader %}Order #{{ order.order_number }} is not paid yet — you can try again.{% endblock %}
+{% block body %}
+  <p>Hi{% if order.customer.first_name %} {{ order.customer.first_name }}{% endif %},</p>
+  <p>The payment for order <strong>#{{ order.order_number }}</strong> didn't go through, so the order is not paid yet. You can try again with the same card or another way to pay.</p>
+{% include "emails/_pay_order_summary.html" %}
+{% endblock %}

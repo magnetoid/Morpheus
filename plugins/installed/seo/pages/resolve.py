@@ -120,6 +120,7 @@ _PRIVATE_PREFIXES = (
     '/account/',
     '/auth/',
     '/order/',
+    '/pay/',
     '/wishlist/',
     '/returns/portal/',
 )

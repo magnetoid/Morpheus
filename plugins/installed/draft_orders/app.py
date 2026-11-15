@@ -15,12 +15,12 @@ class DraftOrdersPlugin(Plugin):
     label = 'Draft Orders'
     version = '1.1.0'
     description = (
-        'Staff-built draft orders / quotes that can be priced, shared with '
-        'the customer, then converted to a real order on payment. '
+        'Staff-built draft orders / quotes that can be priced, sent to the '
+        'customer as a link to pay, or converted to a real order. '
         'A Drafts tab in the Orders section — drafts live next to real orders.'
     )
     has_models = True
-    requires = ['orders']
+    requires = ['orders', 'payments']
 
     def ready(self) -> None:
         self.register_hook(events.DASHBOARD_SEARCH, self.on_dashboard_search)
@@ -54,9 +54,10 @@ class DraftOrdersPlugin(Plugin):
         from plugins.installed.draft_orders.agent_tools import (
             convert_draft_tool,
             list_drafts_tool,
+            send_payment_link_tool,
         )
 
-        return [list_drafts_tool, convert_draft_tool]
+        return [list_drafts_tool, convert_draft_tool, send_payment_link_tool]
 
     def contribute_dashboard_pages(self) -> list:
         # The Drafts tab of the Orders section. The shell used to hardcode
