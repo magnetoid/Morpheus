@@ -327,11 +327,15 @@ class SetEnabledTests(ReconcileTestCase):
         self.assertRefused(PROBE, False, 'part of the platform')
 
     def test_what_it_needs_and_what_needs_it(self):
-        install_probe(self, requires=['seo'])
+        # wishlist: nothing installed needs it, with or without the opt-in apps
+        # (booking_marketplace needs seo, so the refusal would name it too).
+        install_probe(self, requires=['wishlist'])
         self.switch(PROBE, True)
-        self.assertRefused('seo', False, 'Reconcile probe needs')
+        self.assertRefused(
+            'wishlist', False, 'Reconcile probe needs Wishlist; switch it off first.'
+        )
         self.switch(PROBE, False)
-        self.switch('seo', False)
+        self.switch('wishlist', False)
         self.assertRefused(PROBE, True, 'switch that on first')
 
     def test_an_app_it_conflicts_with(self):
