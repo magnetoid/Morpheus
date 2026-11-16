@@ -87,8 +87,13 @@ class HookRegistry:
         """
         if mode not in ('sync', 'async'):
             raise ValueError(f"Invalid hook mode {mode!r} — must be 'sync' or 'async'.")
-        self._handlers[event].append((priority, handler, mode, plugin))
-        self._handlers[event].sort(key=lambda x: x[0])
+        # A new sorted list, never a sort in place: `list.sort` empties the list
+        # while it runs, and an app's ready() can run at request time in any
+        # worker (`AppRegistry.reconcile`), so a thread firing this event then
+        # would find no handlers at all (tax, stock, the second factor).
+        self._handlers[event] = sorted(
+            [*self._handlers[event], (priority, handler, mode, plugin)], key=lambda x: x[0]
+        )
         logger.debug(
             'Hook registered: %s → %s (priority=%d, mode=%s)',
             event,
@@ -371,7 +376,7 @@ class HookRegistry:
         technical details). Empty for an app whose ready() has not run."""
         return sorted(
             event
-            for event, entries in self._handlers.items()
+            for event, entries in list(self._handlers.items())
             if any(entry[3] == plugin for entry in entries)
         )
 

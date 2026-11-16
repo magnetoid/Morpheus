@@ -6,6 +6,31 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.172.0 — an app switch reaches every process
+
+Switching an app on or off now applies in every web and Celery worker, before its next request
+or task (`AppRegistry.reconcile`), instead of only in the worker that took the click.
+- **`ready()` can run at request time**, in a worker that started with the app off. Don't assume
+  it runs at boot. When it raises, the app stays off in that worker and the error is logged.
+- **`on_disable()` runs once**, in the process that took the click (also when the app's
+  `ready()` failed there), never in the workers that follow. Store-wide tear-down belongs there; per-process state (a setting, a module flag) belongs
+  behind `app_registry.is_active("<name>")`, which every worker answers for itself.
+- **`app_registry.activate()` / `deactivate()` raise `DatabaseError`** when the switch cannot be
+  stored, and leave the process as it was; they used to log the error and report the switch as
+  done. `set_enabled` turns it into a refusal.
+- **Switch an app with `plugins.services.set_enabled(name, enabled, actor)`**, never by writing
+  `PluginConfig.is_enabled`: a stored switch without the token bump reaches the other workers only
+  at their next timed re-read, within a minute.
+- **The switch tools refuse more:** `plugins.toggle`, `plugins.enable`, `plugins.disable` and
+  `manage.py morpheus enable|disable` refuse an app another app that is on needs, an app whose
+  requirements are off, an app that conflicts with one that is on, and a system app. The tool
+  error says why. Switch the dependants off first.
+- **A beat schedule** an app adds in `ready()` still changes at the next restart, and so does
+  the GraphQL schema, which each process builds once: a resolver of an app that can be switched
+  off asks `is_active` first.
+
+---
+
 ## v0.165.0 — `markets.list` reads with `markets.read`
 
 Markets get their own scopes, `markets.read` and `markets.write`.

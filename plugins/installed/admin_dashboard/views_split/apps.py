@@ -24,13 +24,9 @@ def apps_view(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         return _toggle_plugin(request)
 
-    # Read the intended-enabled state from the DB (PluginConfig) — that's
-    # the source of truth a merchant just edited. The in-memory
-    # `app_registry.is_active()` only reflects boot-time state, so it
-    # lags behind by one container restart for newly-enabled plugins.
-    # For disables, _toggle_plugin calls .deactivate() which tears down
-    # contributions in-place, so the runtime DOES match. The "needs
-    # restart to take effect" hint shows up only on plugins flipped ON.
+    # The stored switch (PluginConfig) is what the merchant set; every process
+    # follows it before its next request or task (`AppRegistry.reconcile`), so
+    # this worker already runs on it.
     db_enabled: dict[str, bool] = {}
     try:
         from plugins.models import PluginConfig
@@ -59,7 +55,6 @@ def apps_view(request: HttpRequest) -> HttpResponse:
             # to a higher-level concept the merchant edits elsewhere
             # (Linda for agent_core, etc.).
             continue
-        runtime_active = app_registry.is_active(name)
         db_intends_on = db_enabled.get(name, True)
         instance = app_registry.get(name)
         # Where the app lives and what it adds, in the menu's own words —
@@ -69,8 +64,7 @@ def apps_view(request: HttpRequest) -> HttpResponse:
             if instance is not None
             else {'area': 'platform', 'area_label': 'Platform', 'adds': []}
         )
-        # "Active" is what the merchant sees in the button label.
-        # We prefer the DB intent (matches what they just clicked).
+        # "Active" is what the merchant sees in the button label: the stored switch.
         plugins.append(
             {
                 'name': name,
@@ -82,11 +76,9 @@ def apps_view(request: HttpRequest) -> HttpResponse:
                 'help': help_link(name),
                 'version': getattr(cls, 'version', ''),
                 'active': db_intends_on,
-                # When the DB says "on" but the runtime didn't pick it up at
-                # boot, we show a "Restart to take effect" hint so the
-                # merchant isn't confused why their just-enabled plugin
-                # doesn't surface its dashboard pages yet.
-                'needs_restart': db_intends_on and not runtime_active,
+                # On for the store, but its start-up failed in the worker serving
+                # this page; reconcile never retries it there, a restart does.
+                'start_failed': db_intends_on and name in app_registry._failed,
                 'pages': [
                     {'label': p.label, 'icon': p.icon, 'url': navigation.page_url(p)}
                     for p in app_registry.dashboard_pages()
@@ -234,64 +226,27 @@ def is_system(name: str) -> bool:
 
 
 def _toggle_plugin(request: HttpRequest):
-    """POST handler on the apps page: flip a plugin's enabled state.
+    """POST handler on the apps page: switch an app on or off for the whole store.
 
-    On DISABLE — writes PluginConfig.is_enabled=False AND immediately
-    calls app_registry.deactivate() so URLs / hooks / dashboard
-    pages drop out of the running process. The merchant sees the
-    change instantly without a container restart.
-
-    On ENABLE — writes PluginConfig.is_enabled=True AND immediately calls
-    app_registry.activate() so ready() runs, URLs re-mount, and the
-    settings panel / storefront blocks / nav entries appear without a
-    restart. Only if runtime activation fails (e.g. a plugin needing
-    boot-level config like middleware) does the apps view keep the
-    "Restart to take effect" pill.
-
-    Refuses to disable protected plugins — the dashboard plugin's own
-    UI lives in admin_dashboard, so disabling it would lock the
-    merchant out of every dashboard page (including this one).
+    `plugins.services.set_enabled` decides (the app exists, what it needs is on,
+    nothing that needs it is on, the store can run without it: a protected app,
+    such as this dashboard's own, is refused) and carries it out. The change
+    applies here at once and in every other web and Celery worker at its next
+    request or task, so nothing waits for a restart.
     """
-    from core.safety import protection_reason
+    from plugins.services import AppSwitchRefused, set_enabled
 
     name = request.POST.get('plugin', '').strip()
     desired = request.POST.get('enabled') == '1'
-    if not desired and is_protected(name):
-        messages.error(request, f'{name!r} cannot be disabled: {protection_reason(name)}.')
-        return redirect('admin_dashboard:apps')
     try:
-        from plugins.models import PluginConfig
-
-        row, _ = PluginConfig.objects.get_or_create(plugin_name=name)
-        row.is_enabled = desired
-        row.save(update_fields=['is_enabled', 'updated_at'])
-    except Exception as e:  # noqa: BLE001 — DB outage shouldn't crash the page
+        switch = set_enabled(name, desired, actor=request.user)
+    except AppSwitchRefused as e:
+        messages.error(request, str(e))
+    except Exception as e:  # noqa: BLE001 — a failed switch must not crash the page
         logger.warning('admin_dashboard: toggle %s failed: %s', name, e, exc_info=True)
-        return redirect('admin_dashboard:apps')
-
-    # Apply the runtime side of the change.
-    try:
-        from plugins.registry import app_registry
-
-        if not desired:
-            # registry.deactivate runs on_disable + drops contributions +
-            # removes the plugin from _active. Idempotent — safe to call
-            # on a plugin that's already inactive.
-            app_registry.deactivate(name)
-            messages.success(request, f'{name!r} disabled.')
-        elif app_registry.activate(name):
-            # registry.activate runs ready() (first time), re-mounts URLs and
-            # re-collects contributions so the plugin lights up immediately.
-            messages.success(request, f'{name!r} enabled.')
-        else:
-            # Activation failed (e.g. a plugin needing boot-level config). The
-            # DB write stands; the apps view keeps the "restart" pill.
-            messages.warning(
-                request,
-                f'{name!r} enabled, but it needs a web-container restart to fully load.',
-            )
-    except Exception as e:  # noqa: BLE001 — never let a runtime hiccup hide the DB write
-        logger.warning('admin_dashboard: runtime toggle for %s failed: %s', name, e, exc_info=True)
+        messages.error(request, f'{name!r} could not be switched. The error log has the details.')
+    else:
+        messages.success(request, f'{switch.label} {"is on" if desired else "is off"}.')
     return redirect('admin_dashboard:apps')
 
 

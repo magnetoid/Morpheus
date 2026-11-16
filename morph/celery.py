@@ -17,7 +17,7 @@ import logging
 import os
 
 from celery import Celery
-from celery.signals import task_failure, task_retry
+from celery.signals import task_failure, task_prerun, task_retry
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'morph.settings')
 
@@ -117,6 +117,24 @@ try:
     init_sentry()
 except Exception as e:  # noqa: BLE001
     logger.debug('celery: sentry init skipped: %s', e)
+
+
+@task_prerun.connect
+def _follow_app_switches(**_kwargs):
+    """Every task runs on the apps the store has switched on.
+
+    A switch flipped on the dashboard bumps a token; this worker re-reads the
+    stored switches before its next task (`AppRegistry.reconcile`, one cache read
+    while nothing changed), so a task for an app switched off finds its hooks
+    silent, and one for an app switched on finds them wired. Beat is not a task
+    runner: a schedule an app adds starts or stops at the next restart.
+    """
+    try:
+        from plugins.registry import app_registry
+
+        app_registry.reconcile()
+    except Exception as e:  # noqa: BLE001 — a task runs on the apps it has
+        logger.warning('celery: could not follow the stored app switches: %s', e)
 
 
 @task_failure.connect

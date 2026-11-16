@@ -1,4 +1,4 @@
-"""Plugin management tools — list / enable / disable plugins."""
+"""App tools — list apps, switch one on or off (through `plugins.services.set_enabled`)."""
 
 from __future__ import annotations
 
@@ -36,7 +36,11 @@ def list_plugins_tool() -> ToolResult:
 
 @tool(
     name='plugins.enable',
-    description='Enable a plugin (writes PluginConfig.is_enabled=True). Restart needed for full effect.',
+    description=(
+        'Switch an app on for the whole store: every web and background worker follows '
+        'at its next request or task; its scheduled jobs and GraphQL fields change at the '
+        'next restart. Refuses an app whose requirements are off.'
+    ),
     scopes=['system.write'],
     schema={
         'type': 'object',
@@ -46,25 +50,31 @@ def list_plugins_tool() -> ToolResult:
     requires_approval=True,
 )
 def enable_plugin_tool(*, name: str) -> ToolResult:
-    try:
-        from plugins.models import PluginConfig
-    except Exception as e:  # noqa: BLE001
-        raise ToolError(f'plugins.models unavailable: {e}') from e
-    cfg, _ = PluginConfig.objects.update_or_create(
-        plugin_name=name,
-        defaults={'is_enabled': True},
-    )
+    switch = _switch(name, enabled=True)
     return ToolResult(
         output={'plugin': name, 'enabled': True},
-        display=f'enabled {name} (restart for full effect)',
+        display=f'{switch.label} is on across the store',
     )
+
+
+def _switch(name: str, *, enabled: bool):
+    """Both tools go through the one writer every surface uses."""
+    from plugins.services import AppSwitchRefused, set_enabled
+
+    try:
+        return set_enabled(name, enabled, actor='linda')
+    except AppSwitchRefused as e:
+        raise ToolError(f'refused: {e}') from e
 
 
 @tool(
     name='plugins.disable',
     description=(
-        'Disable a plugin (writes PluginConfig.is_enabled=False). HARD-GATED — '
-        'pass `hard_gate_ack="YES"` AND `echo` (user types plugin name back).'
+        'Switch an app off for the whole store: every web and background worker follows '
+        'at its next request or task; its scheduled jobs and GraphQL fields change at the '
+        'next restart. Refuses a protected app and an app another app that '
+        'is on needs. HARD-GATED — pass `hard_gate_ack="YES"` AND `echo` (user types the '
+        'app name back).'
     ),
     scopes=['system.write'],
     schema={
@@ -92,17 +102,7 @@ def disable_plugin_tool(*, name: str, hard_gate_ack: str = '', echo: str = '') -
     if reason:
         raise ToolError(f'refused: {name} is protected and cannot be disabled ({reason})')
     _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=name, echo=echo)
-    try:
-        from plugins.models import PluginConfig
-        from plugins.registry import app_registry
-    except Exception as e:  # noqa: BLE001
-        raise ToolError(f'plugins.models unavailable: {e}') from e
-    PluginConfig.objects.update_or_create(
-        plugin_name=name,
-        defaults={'is_enabled': False},
+    switch = _switch(name, enabled=False)
+    return ToolResult(
+        output={'plugin': name, 'enabled': False}, display=f'{switch.label} is off across the store'
     )
-    try:  # noqa: SIM105
-        app_registry.deactivate(name)
-    except Exception:  # noqa: BLE001, S110
-        pass
-    return ToolResult(output={'plugin': name, 'enabled': False}, display=f'disabled {name}')

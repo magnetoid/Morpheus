@@ -575,6 +575,29 @@ Toggled from `/dashboard/apps/`. Enable and disable are exact mirrors —
 Nothing the app added survives the toggle — provided the app followed the
 contract and didn't smuggle a surface into core/theme code.
 
+**Every process follows the switch** (v0.172.0). The toggle runs in one web
+worker; the others, and the Celery workers, follow before their next request or
+task (`AppRegistry.reconcile`). Three things follow from that:
+
+- `on_disable()` runs **once**, in the process that took the click, also when the
+  app's `ready()` failed there. Put store-wide
+  tear-down there (removing a provider row, say). Anything per process (a setting,
+  a module-level flag) belongs behind `app_registry.is_active("<name>")`, which
+  every process answers for itself.
+- `ready()` can run at request time, in a worker that started with the app off.
+  It must not assume it runs at boot. When it raises, the app stays off in that
+  worker and the error is logged.
+- A beat schedule entry the app adds in `ready()` (`register_celery_beat`) starts
+  or stops at the next restart, because beat runs no tasks to follow the switch.
+- The GraphQL schema is built once per process: an app that started off gets its
+  GraphQL fields at the next restart, and an app switched off keeps its fields in
+  the schema until then, so a resolver of an app that can be switched off asks
+  `is_active` first.
+
+Switch an app from code with `plugins.services.set_enabled(name, enabled,
+actor)`, never by writing `PluginConfig.is_enabled`: a stored switch with no token
+bump reaches the other workers only at their next timed re-read.
+
 **`PROTECTED_PLUGINS`.** A short tuple in
 [`core/safety.py`](../core/safety.py) (`admin_dashboard`, `agent_core`,
 `rbac`, `customers`) that the dashboard refuses to let you disable. These

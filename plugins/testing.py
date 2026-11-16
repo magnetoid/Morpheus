@@ -1,4 +1,4 @@
-"""Helpers for tests that compare an app's work across several requests."""
+"""Helpers for tests that compare an app's work across several requests, or follow app switches."""
 
 from __future__ import annotations
 
@@ -38,3 +38,32 @@ def set_app_settings(test, app: str, **values) -> None:
         before = plugin.get_config_value(key, (defaults.get(key) or {}).get('default'))
         plugin.set_config(key, value)
         test.addCleanup(plugin.set_config, key, before)
+
+
+def follow_app_switches(test) -> None:
+    """Let this process follow the stored app switches for the rest of ``test``.
+
+    Under tests `AppRegistry.reconcile()` does nothing unless a test asks (see
+    `AppRegistry.follow_switches`). This starts in step with the current token, so
+    only what the test itself flips is followed, and the cleanup puts back every
+    app the test switched in this process (its stored rows roll back with it).
+    """
+    from plugins.registry import app_registry
+
+    active = set(app_registry._active)
+    app_registry.follow_switches = True
+    app_registry._seen_version = app_registry._version()
+
+    def restore():
+        app_registry.follow_switches = None
+        changed = False
+        for name in sorted(app_registry._active - active):
+            app_registry._apply_inactive(name)
+            changed = True
+        for name in app_registry._topo_sort(sorted(active & set(app_registry._classes))):
+            if name not in app_registry._active:
+                changed |= app_registry._apply_active(name)
+        if changed:
+            app_registry._refresh_urlconf()
+
+    test.addCleanup(restore)

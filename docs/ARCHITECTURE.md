@@ -166,6 +166,15 @@ scaffolds the whole thing.
 **Plugin crashes are isolated** — a broken `ready()` is logged and
 that plugin is excluded; siblings keep loading.
 
+**Switching an app on or off reaches every process** (v0.172.0). Each web and
+Celery worker keeps the apps that are on in memory. Every surface that offers a
+switch calls `plugins/services.py:set_enabled`, which stores it and bumps a cache
+token; each worker's `AppRegistry.reconcile()` (from `PluginMiddleware` before a
+request is resolved, and Celery's `task_prerun`) re-reads the stored switches
+when the token moved and applies them in dependency order, one switch at a time
+per process. A schedule an app adds to beat, and the GraphQL schema, still change
+at the next restart.
+
 **Plugin topology (non-obvious):**
 
 - Three hubs almost everything depends on: **`catalog`**, **`orders`**,
@@ -187,6 +196,8 @@ Plesk vhost → Coolify Traefik → web container
 Django middleware stack:
    - RestoreGateMiddleware (first, before anything reads the database): every
      page answers 503 "restoring" while a backup is being restored (core/restore.py)
+   - PluginMiddleware (follows the stored app switches: one cache read while
+     nothing changed, plugins/registry.py:reconcile)
    - request_id (uuid attached to every log line)
    - sentry / observability spans
    - market resolution (per-country pricing/currency; prices in a market

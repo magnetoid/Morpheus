@@ -173,10 +173,12 @@ def settings_set_tool(*, plugin: str, key: str, value: str, confirmed: bool = Fa
 @tool(
     name='plugins.toggle',
     description=(
-        'Enable or disable a plugin (writes PluginConfig.is_enabled; a restart '
-        'applies it fully). HARD-GATED + refuses protected plugins. Pass '
-        '`plugin`, `enabled` (bool), confirmed=True, hard_gate_ack="YES", and '
-        'echo=<the plugin name typed back>.'
+        'Switch an app on or off for the whole store: every web and background '
+        'worker follows at its next request or task; its scheduled jobs and GraphQL '
+        'fields change at the next restart. HARD-GATED; '
+        'refuses a protected app, an app another app that is on needs, and an app '
+        'whose own requirements are off. Pass `plugin`, `enabled` (bool), '
+        'confirmed=True, hard_gate_ack="YES", and echo=<the app name typed back>.'
     ),
     scopes=['system.write'],
     schema={
@@ -208,15 +210,16 @@ def plugins_toggle_tool(
         if reason:
             raise ToolError(f'{plugin!r} is protected and cannot be disabled ({reason}). Refused.')
     _require_hard_gate(hard_gate_ack=hard_gate_ack, target_name=plugin, echo=echo)
-    from plugins.models import PluginConfig  # noqa: PLC0415
+    from plugins.services import AppSwitchRefused, set_enabled  # noqa: PLC0415
 
-    row, _ = PluginConfig.objects.get_or_create(plugin_name=plugin)
-    row.is_enabled = bool(enabled)
-    row.save(update_fields=['is_enabled', 'updated_at'])
-    state = 'enabled' if enabled else 'disabled'
+    try:
+        switch = set_enabled(plugin, bool(enabled), actor='linda')
+    except AppSwitchRefused as e:
+        raise ToolError(f'{e} Refused.') from e
+    state = 'on' if enabled else 'off'
     return ToolResult(
         output={'plugin': plugin, 'enabled': bool(enabled)},
-        display=f'{plugin} {state} (restart to apply fully).',
+        display=f'{switch.label} is {state} across the store.',
     )
 
 

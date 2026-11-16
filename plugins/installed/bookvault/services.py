@@ -71,10 +71,9 @@ def _config() -> dict[str, Any]:
 def _save_config(updates: dict[str, Any]) -> None:
     from plugins.models import PluginConfig
 
-    cfg, _ = PluginConfig.objects.update_or_create(
-        plugin_name='bookvault',
-        defaults={'is_enabled': True},
-    )
+    # Saving a setting never moves the app's switch: every process follows the
+    # stored switch (plugins.services.set_enabled is its one writer).
+    cfg, _ = PluginConfig.objects.get_or_create(plugin_name='bookvault')
     merged = dict(cfg.config or {})
     merged.update(updates)
     cfg.config = merged

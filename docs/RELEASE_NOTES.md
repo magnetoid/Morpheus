@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.172.0 — 2026-11-16
+
+**Switching an app on or off reaches every worker at once**
+
+- An app switched on or off on the Apps page, by Linda (plugins.toggle, plugins.enable, plugins.disable) or with manage.py morpheus enable|disable now applies across the store: every web and background worker follows before its next request or task. Until now only the web worker that took the click changed, the others kept the old set until a restart, and Linda's tools changed no worker at all.
+- One writer for every surface, plugins.services.set_enabled: it refuses an app another app that is on needs (and names it), an app whose requirements are off, an app that conflicts with one that is on, and a protected or platform app, and records each switch in the audit log. An app that fails to start stays off and nothing is stored, and a switch the database did not save is refused and changes nothing (the old pages reported it as done).
+- Each worker re-reads the stored switches when a cache token moves, and at least every minute in case a bump was lost. It never writes a switch, never runs an app's tear-down a second time and never switches off an app the store needs. Within one worker, one switch runs at a time, so an app's start-up never runs twice.
+- The Apps page no longer shows a Restart needed pill; it says that an app's scheduled jobs and its API fields change at the next restart, and marks an app that did not start in the worker that served the page.
+- Fixed: an event handler registered while a request was firing that event could leave the request with no handlers at all, for a moment.
+- Fixed: saving bookvault's settings switched the app back on.
+
 ## v0.171.2 — 2026-11-16
 
 **Linda's answers are checked against the real Janus before each release**
