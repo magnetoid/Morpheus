@@ -34,7 +34,11 @@ class ScopeVocabularyTests(TestCase):
     def test_every_tool_scope_is_in_the_catalog(self):
         catalog = set(AVAILABLE_SCOPES)
         used: dict[str, str] = {}
-        for tool in agent_registry.platform_tools():
+        # Every tool a token can reach: Linda's built-ins as well as the apps'.
+        from plugins.installed.agent_mcp.linda_turn import _all_tools
+
+        tools = [*_all_tools(), *agent_registry.platform_tools()]
+        for tool in tools:
             for scope in getattr(tool, 'scopes', None) or []:
                 used.setdefault(scope, tool.name)
         missing = {s: used[s] for s in used if s not in catalog}

@@ -50,10 +50,10 @@
   <div class="card card-padded space-y-3" data-janus-updates>
     <div class="flex items-start justify-between gap-3 flex-wrap">
       <div>
-        <h2 class="font-semibold">Updates from GitHub</h2>
+        <h2 class="font-semibold">Updates</h2>
         <p class="text-xs text-[color:var(--text-muted)] mt-1">
           {% if u.source %}Every {{ u.every_hours }} hours Janus looks for a newer commit on <code class="text-xs">{{ u.source.repo }}</code> ({{ u.source.ref }}). A newer one is installed beside the current Janus and used only after it passes Morpheus's compatibility check; if real messages then keep failing, Linda goes back to the previous one.
-          {% else %}This server's Janus is pinned to one commit, or its source is unknown, so it changes only when the server is rebuilt.{% endif %}
+          {% else %}This server runs the Janus build pinned in its Morpheus release. A newer Janus reaches the store with a Morpheus update that moves the pin, once it has passed the compatibility check.{% endif %}
         </p>
       </div>
       {% if u.source %}
@@ -64,9 +64,11 @@
       <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">In use</dt>
         <dd data-janus-in-use>{% if u.using == 'auto' and u.active %}Installed by the updater: <code class="text-xs">{{ u.active.commit|slice:":7" }}</code>{% if u.active.title %}, “{{ u.active.title }}”{% endif %}{% if u.active.installed %} ({{ u.active.installed|timesince }} ago){% endif %}{% else %}The Janus the server was built with{% endif %}</dd></div>
       <div><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Compatibility</dt>
-        <dd data-janus-contract>{% if u.contract %}{% if u.contract.failing %}<span class="text-[color:var(--danger)]">Fails: {{ u.contract.failing|join:", " }}</span>{% else %}{{ u.contract.passed }} of {{ u.contract.total }} checks pass{% endif %}{% if u.contract.warnings %}<span class="block text-xs text-[color:var(--text-muted)]">Display only: {{ u.contract.warnings|join:", " }}</span>{% endif %}{% else %}Not recorded for this Janus{% endif %}</dd></div>
+        <dd data-janus-contract>{% if u.contract %}{% if u.contract.failing %}<span class="text-[color:var(--danger)]">Fails: {{ u.contract.failing|join:", " }}</span>{% else %}{{ u.contract.passed }} of {{ u.contract.total }} checks pass{% endif %}{% if u.contract.fallback %}<span class="block text-xs text-[color:var(--warn)]" data-janus-fallback>Built with the fallback Janus: <code class="text-xs">{{ u.contract.fallback|slice:":7" }}</code> failed the check.</span>{% endif %}{% if u.contract.warnings %}<span class="block text-xs text-[color:var(--text-muted)]">Display only: {{ u.contract.warnings|join:", " }}</span>{% endif %}{% else %}Not recorded for this Janus{% endif %}</dd></div>
+      {% if u.source or u.last %}
       <div class="md:col-span-2"><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Last check</dt>
         <dd data-janus-last-check>{% if u.last %}{{ u.last.text|default:u.last.result }}{% if u.last.detail %} <span class="text-[color:var(--text-muted)]">{{ u.last.detail|truncatechars:200 }}</span>{% endif %}{% if u.last.when %} <span class="text-[color:var(--text-muted)]">({{ u.last.when|timesince }} ago)</span>{% endif %}{% else %}Not yet{% if not u.enabled %}: updates are off{% endif %}.{% endif %}</dd></div>
+      {% endif %}
       {% if u.failed %}
       <div class="md:col-span-2"><dt class="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Commits it would not use</dt>
         <dd><ul class="space-y-1">{% for f in u.failed %}<li><code class="text-xs">{{ f.commit|slice:":7" }}</code> <span class="text-[color:var(--text-muted)]">{{ f.reason|truncatechars:160 }}</span></li>{% endfor %}</ul></dd></div>
@@ -199,6 +201,7 @@
         </label>
         <p class="text-xs text-[color:var(--text-muted)] mt-1">For facts from outside the store, such as market prices, trends or regulations. Her searches go to DuckDuckGo; she is told never to put customer details in one. She cannot open web pages.</p>
       </div>
+      {% if status.updates.source %}
       <div>
         <label class="inline-flex items-center gap-2">
           <input type="checkbox" name="auto_update" {% if form.auto_update.value %}checked{% endif %}>
@@ -206,6 +209,10 @@
         </label>
         <p class="text-xs text-[color:var(--text-muted)] mt-1">Off keeps the Janus this server was built with until the next deploy. Either way a Janus that fails the compatibility check is never used.</p>
       </div>
+      {% elif form.auto_update.value %}
+      {# A pinned build never updates itself; keep the stored choice as it is. #}
+      <input type="hidden" name="auto_update" value="on">
+      {% endif %}
     </section>
 
     <div class="pt-3 border-t border-[color:var(--border)] flex justify-end">

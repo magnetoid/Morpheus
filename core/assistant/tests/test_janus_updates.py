@@ -69,6 +69,15 @@ class InstalledBuildTests(SimpleTestCase):
             (OLD, 'main', 'magnetoid/Janus-Agent', 'image'),
         )
 
+    def test_a_turn_names_the_build_it_runs(self):
+        from core.assistant import janus_engine as eng
+
+        janus = _venv(self.root / 'image', OLD)
+        eng._build_of.cache_clear()
+        self.addCleanup(eng._build_of.cache_clear)
+        self.assertEqual(eng.build_of([str(janus)]), {'version': '0.18.0', 'commit': OLD})
+        self.assertEqual(eng.build_of(None), {'version': '', 'commit': ''})
+
     def test_an_auto_installed_build_is_read_from_the_archive_url_and_marker(self):
         url = f'https://github.com/magnetoid/Janus-Agent/archive/{NEW}.tar.gz'
         janus = _venv(self.root / 'auto', NEW, marker={'commit': NEW, 'ref': 'main'}, url=url)

@@ -568,7 +568,8 @@ defaults); the timeout never exceeds 300s whatever is stored, and the unset defa
 `/dashboard/apps/<app>/settings/` is the legacy settings deep link and silently
 wins the route. Remaining fences: tests point `JANUS_BIN` at a path that does not exist (`morph/settings.py`) and must never spawn a real model;
 YOLO/`LINDA_JANUS_AUTO_APPROVE` stays **off**; the child gets an env
-**allowlist** (`_child_env`), never `os.environ.copy()`. A non-zero exit is a failure even when stdout carried
+**allowlist** (`_child_env`), never `os.environ.copy()`, and inherits no `JANUS_*` variable
+(`JANUS_MODEL`/`JANUS_PROVIDER` would override the pinned, priced model; v0.171.1). A non-zero exit is a failure even when stdout carried
 partial text. **The turn limit may exceed `GUNICORN_TIMEOUT` (60s) only because the
 chat streams** (v0.68.0): the subprocess waits in a thread (`iter_janus_turn`) while
 the SSE generator sends `progress` every 5s and tool events from the rows the MCP
@@ -666,7 +667,8 @@ Approve / Decline card built from the refused call's recorded arguments, never f
 text, and Approve sends plain "Yes, go ahead." (a label like "cancel" would trip the
 kernel's negation). Real mid-turn `clarify` needs a callback inside the Janus process,
 so it waits for a Janus change (`docs/plans/janus-interactive-chat-2026-10.md`). **Janus also updates itself** while the image tracks a
-branch (`core/assistant/janus_runtime.py`): every 3 hours a turn or the Janus page
+branch (`core/assistant/janus_runtime.py`; release images pin a commit, so no store does, and each
+turn's `AgentRun.metadata` names the `janus_version` and `janus_commit` that answered): every 3 hours a turn or the Janus page
 starts the detached `janus_updater.py`, which installs GitHub's archive of the newest
 commit beside the current Janus (the image has no git) and switches only when
 `core/assistant/janus_contract.py` passes — the contract checks that each toolset
@@ -711,7 +713,10 @@ a fact with `memory.remember`, whose write scope makes the edge save it only on 
 yes; a superadmin curates it on the dashboard. The old post-run reflection that filled it with
 generic lessons and `tool_gap.*` rows is deleted, with the old learned-skills loop (`LearnedSkill`,
 `skills.distill/list/record_outcome`, v0.104.0): Janus has its own skills toolset and its own
-learning. The Worker is not told to write the shop memory. External agents never see it. Never move a
+learning. The Worker is not told to write the shop memory. External agents never see it: `gates.NOT_FOR_TOKENS`
+holds `memory.recall` with the writes, so no MCP server offers it to a token, and an external turn
+carries none of it (until v0.171.1 the storefront cluster, `/mcp/v1/` and the admin server offered
+it to any token with `system.read`, and an external turn carried the facts). Never move a
 Morpheus-specific fact into Janus's store, and never fork Janus for it
 (`docs/plans/janus-core-brain-2026-10.md`). **Reports and tiers (v0.105.0):** Janus records a
 defect in Morpheus's own code with `reports.file` (`CodeProposal`: words, never code; no consent,

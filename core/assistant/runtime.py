@@ -324,16 +324,20 @@ class Assistant:
             'unless the merchant asks how you work.'
         )
 
-    def _turn_context(self, *, message: str, context) -> str:
+    def _turn_context(self, *, message: str, context, conversation_key: str = '') -> str:
         """What belongs to this message only: the page it came from, and what the
-        store remembers or knows that is relevant to it."""
+        store remembers or knows that is relevant to it. The shop memory is the
+        merchant's: an external agent's turn never carries it (ADR 0039)."""
         bits = []
         if isinstance(context, dict):
             page_url = (context.get('page_url') or '')[:512]
             page_title = (context.get('page_title') or '')[:200]
             if page_url or page_title:
                 bits.append(f'The merchant opened Linda from: {page_title} {page_url}'.strip())
-        for part in (_format_recent_memories(message), _format_knowledge(message)):
+        from core.assistant.gates import is_external_key
+
+        memories = '' if is_external_key(conversation_key) else _format_recent_memories(message)
+        for part in (memories, _format_knowledge(message)):
             if part:
                 bits.append(part)
         return '\n\n'.join(bits)
@@ -394,6 +398,7 @@ class Assistant:
                 completion_tokens=completion_tokens,
                 tool_calls=tool_calls,
                 duration_ms=duration_ms,
+                usage=usage,
             )
         return {'type': 'error' if error else 'final', 'result': result}
 
@@ -409,18 +414,24 @@ class Assistant:
         completion_tokens: int,
         tool_calls: int,
         duration_ms: int,
+        usage: dict,
     ) -> None:
         """One ``AgentRun`` per Janus turn, ``agent_name='linda'``.
 
         Her tokens already count toward the daily spend cap from her replies, so
         ``core.agents.guardrails`` skips these rows. Fail-soft: a reporting row
-        must never cost the merchant the reply.
+        must never cost the merchant the reply. The metadata names the Janus
+        build that answered, so a regression can be tied to the release that
+        moved the pin, and keeps the numbers Janus reports beside the tokens.
         """
         try:
             from django.utils import timezone
 
             from core.agents.models import AgentRun
 
+            # The build the turn ran, carried with its result (iter_janus_turn):
+            # record_turn may already have rolled the active one back.
+            build = turn.get('build') or {}
             user = turn.get('user')
             AgentRun.objects.create(
                 agent_name='linda',
@@ -440,6 +451,11 @@ class Assistant:
                 metadata={
                     'engine': 'janus',
                     'conversation': conversation_key,
+                    'janus_version': str(build.get('version') or ''),
+                    'janus_commit': str(build.get('commit') or ''),
+                    'reasoning_tokens': int(usage.get('reasoning_tokens') or 0),
+                    'api_calls': int(usage.get('api_call_count') or 0),
+                    'cost_usd': round(float(usage.get('estimated_cost_usd') or 0), 6),
                     **({'via': turn['via']} if turn.get('via') else {}),
                     **({'token': turn['principal_label']} if turn.get('principal_label') else {}),
                 },
@@ -534,7 +550,9 @@ class Assistant:
             message=message,
             conversation_key=conversation_key,
             system_prompt=self._system_prompt(context=context),
-            turn_context=self._turn_context(message=message, context=context),
+            turn_context=self._turn_context(
+                message=message, context=context, conversation_key=conversation_key
+            ),
             history=_format_janus_history(history),
             context=context if isinstance(context, dict) else None,
             turn_token=self._mint_turn_token(context, conversation_key),
@@ -562,6 +580,7 @@ class Assistant:
             # An external agent's turn (ADR 0039): which door and which token.
             'via': str(ctx.get('via') or ''),
             'principal_label': str(ctx.get('principal_label') or ''),
+            'build': payload.get('build') or {},
         }
         if payload.get('error'):
             error = str(payload['error'])

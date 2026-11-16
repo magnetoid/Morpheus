@@ -80,3 +80,16 @@ class McpAdminServerTests(TestCase):
         tools = r.json()['result']['tools']
         self.assertTrue(tools)
         self.assertTrue(all(t.get('_auth_required') for t in tools))
+
+
+class AgentsMdAuthTests(TestCase):
+    """/agents.md tells an agent what each server needs (servers.py's contract)."""
+
+    def test_it_says_every_tool_call_needs_a_token(self):
+        from plugins.installed.agent_mcp.app import AgentMcpPlugin
+
+        section = AgentMcpPlugin().on_agent_readiness_sections([])[0]['body']
+        self.assertNotIn('no auth', section)
+        self.assertNotIn('are public', section)
+        self.assertIn('`tools/call`', section)
+        self.assertIn('Bearer token', section)

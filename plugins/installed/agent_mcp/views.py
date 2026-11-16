@@ -73,11 +73,17 @@ _PUBLIC_TOOL_NAMES = {
     # Linda's memory layer is read-safe — external agents can recall the
     # store's stable preferences (e.g. "ships from EU"). Writes
     # (memory.remember / memory.forget) stay internal to Linda.
-    'memory.recall',
 }
 
 
 def _public_tools() -> list:
+    """The tools an API token may see and call here: never one in NOT_FOR_TOKENS."""
+    from core.assistant.gates import NOT_FOR_TOKENS
+
+    return [t for t in _cluster_tools() if t.name not in NOT_FOR_TOKENS]
+
+
+def _cluster_tools() -> list:
     """Resolve the curated tool whitelist into actual tool objects.
 
     Three modes:
@@ -100,10 +106,9 @@ def _public_tools() -> list:
         if cluster is not None:
             names = cluster.get('names')
             if names is None:  # admin — all tools, plus the door to Janus (janus.ask/reply)
-                from core.assistant.gates import NOT_FOR_TOKENS
                 from plugins.installed.agent_mcp.janus_door import door_tools
 
-                return [*(t for t in all_tools if t.name not in NOT_FOR_TOKENS), *door_tools()]
+                return [*all_tools, *door_tools()]
             # Resolve each whitelisted name from Linda's catalog first, then fall
             # back to the plugin registry. Buyer-agent cart/checkout tools live
             # in agentic_checkout (registered via contribute_agent_tools) and are

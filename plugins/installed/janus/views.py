@@ -213,6 +213,8 @@ def _updates(cmd: list[str] | None) -> dict:
                 c.get('name') for c in checks if not c.get('required') and not c.get('ok')
             ],
             'notes': report.get('notes') or [],
+            # The ref the build wanted when it installed JANUS_KNOWN_GOOD instead.
+            'fallback': str(report.get('fallback') or ''),
         }
         if checks
         else None,

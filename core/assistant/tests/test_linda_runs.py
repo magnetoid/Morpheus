@@ -61,6 +61,45 @@ class LindaRunTests(TestCase):
         self.assertEqual(run.customer_id, self.user.pk)
         self.assertIsNotNone(run.ended_at)
 
+    def test_a_run_names_the_janus_build_and_what_janus_counted(self):
+        self._turn(
+            {
+                'text': 'Fine.',
+                'error': '',
+                'duration_ms': 5,
+                'build': {'version': '0.18.0', 'commit': 'e' * 40},
+                'usage': {
+                    'model': 'deepseek-chat',
+                    'input_tokens': 10,
+                    'output_tokens': 5,
+                    'reasoning_tokens': 7,
+                    'api_call_count': 3,
+                    'estimated_cost_usd': 0.0012345678,
+                },
+            }
+        )
+        meta = AgentRun.objects.get().metadata
+        self.assertEqual((meta['janus_version'], meta['janus_commit']), ('0.18.0', 'e' * 40))
+        self.assertEqual((meta['reasoning_tokens'], meta['api_calls']), (7, 3))
+        self.assertEqual(meta['cost_usd'], 0.001235)
+
+    def test_a_failed_run_names_the_build_that_failed_not_the_one_put_back(self):
+        # On a branch build the third failure in a row rolls Janus back
+        # (janus_runtime.record_turn) before the run is recorded, so the run reads
+        # the build the turn carried, never the one active afterwards.
+        failed = {'version': '0.19.0', 'commit': 'f' * 40}
+        with mock.patch('core.assistant.janus_engine._build_of', return_value=('0.18.0', 'e' * 40)):
+            self._turn({'text': '', 'error': 'janus exited 1', 'duration_ms': 5, 'build': failed})
+        meta = AgentRun.objects.get().metadata
+        self.assertEqual((meta['janus_version'], meta['janus_commit']), ('0.19.0', 'f' * 40))
+
+    def test_an_unknown_build_still_records_the_run(self):
+        # Tests point JANUS_BIN at a path that does not exist: nothing to read.
+        self._turn({'text': 'ok', 'error': '', 'duration_ms': 5, 'usage': {}})
+        meta = AgentRun.objects.get().metadata
+        self.assertEqual((meta['janus_version'], meta['janus_commit']), ('', ''))
+        self.assertEqual((meta['api_calls'], meta['cost_usd']), (0, 0.0))
+
     def test_a_failed_turn_is_a_failed_run(self):
         self._turn({'text': '', 'error': 'janus timed out', 'duration_ms': 5, 'usage': {}})
         run = AgentRun.objects.get()

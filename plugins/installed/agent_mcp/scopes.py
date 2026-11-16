@@ -112,6 +112,7 @@ AVAILABLE_SCOPES: dict[str, tuple[str, str]] = {
         'CRM · write',
         'Create leads, advance deals, log interactions, reply to support.',
     ),
+    'customers.write': ('Customers · write', 'Add internal notes to customer records.'),
     # Marketing surfaces
     'promotions.read': ('Promotions · read', 'List promotions and discount rules.'),
     'promotions.write': ('Promotions · write', 'Create + edit promotions and discounts.'),

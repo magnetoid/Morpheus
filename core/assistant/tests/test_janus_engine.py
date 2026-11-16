@@ -203,15 +203,24 @@ class ChildEnvTests(SimpleTestCase):
         for leaked in ('DATABASE_URL', 'SECRET_KEY', 'STRIPE_SECRET_KEY', 'AWS_SECRET_ACCESS_KEY'):
             self.assertNotIn(leaked, env)
 
-    def test_reserved_janus_vars_are_not_inherited(self):
+    def test_no_janus_var_is_inherited(self):
+        # The turn decides Janus's settings; a container's JANUS_MODEL or
+        # JANUS_PROVIDER would override the pinned (and priced) provider and model.
         with mock.patch.dict(
             eng.os.environ,
-            {'PATH': '/usr/bin', 'JANUS_YOLO_MODE': '1', 'JANUS_MODEL': 'x'},
+            {
+                'PATH': '/usr/bin',
+                'JANUS_YOLO_MODE': '1',
+                'JANUS_MODEL': 'x',
+                'JANUS_PROVIDER': 'y',
+                'JANUS_SIGNING_SECRET': 'z',
+            },
             clear=True,
         ):
             env = _child_env({'JANUS_YOLO_MODE': '0'})
         self.assertEqual(env['JANUS_YOLO_MODE'], '0')
-        self.assertEqual(env['JANUS_MODEL'], 'x')
+        for name in ('JANUS_MODEL', 'JANUS_PROVIDER', 'JANUS_SIGNING_SECRET'):
+            self.assertNotIn(name, env)
 
 
 class _FakeProc:
@@ -312,6 +321,12 @@ class TurnInvocationTests(SimpleTestCase):
         ):
             out = run_janus_turn(message='hi', conversation_key='conv-1', system_prompt='p')
         return out, [c.args[0] for c in spawn.call_args_list]
+
+    def test_the_result_names_the_janus_this_turn_ran(self):
+        with mock.patch.object(eng, '_build_of', return_value=('0.18.0', 'e' * 40)) as read:
+            out, _ = self._turn(_FakeProc(stdout='ok'))
+        read.assert_called_once_with('/opt/janus/bin/janus')
+        self.assertEqual(out['build'], {'version': '0.18.0', 'commit': 'e' * 40})
 
     def test_default_toolset_never_loads(self):
         # Without -t, `janus chat` loads 56 tools including terminal,

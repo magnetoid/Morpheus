@@ -7,8 +7,10 @@ Run it with the Python of the Janus install being checked::
 It imports that install's modules and reads its source, prints a JSON report and
 exits 1 when a required check fails. Three callers:
 
-* the Docker build, which falls back to the last known-good Janus when ``main``
-  fails it, so an image never ships an incompatible engine;
+* the Docker build, which fails when the pinned Janus breaks it, or installs
+  ``JANUS_KNOWN_GOOD`` instead when that names another commit (the report then
+  says which ref it fell back from), so an image never ships an incompatible
+  engine;
 * the auto-updater (core/assistant/janus_updater.py), which installs a newer
   Janus beside the current one and switches Linda to it only when it passes;
 * the Janus settings page, which shows the report for the Janus in use.
@@ -70,6 +72,15 @@ CONFIG_KEYS = {
     'web.backend': r'get\(\s*["\']backend["\']',
     'hooks_auto_accept': r'hooks_auto_accept',
     'fallback_providers': r'fallback_providers',
+}
+
+# Proved but not yet required. A check starts here and becomes required once the
+# conformance job has run it against the pinned Janus
+# (docs/plans/janus-alignment-and-app-platform-2026-11.md, P2).
+SOFT_CONFIG_KEYS = {
+    # Morpheus switches MCP resources and prompts off: the store serves tools only.
+    'mcp_servers.*.tools.resources': r'get\(\s*["\']resources["\']',
+    'mcp_servers.*.tools.prompts': r'get\(\s*["\']prompts["\']',
 }
 
 # Environment variables and home files janus_engine relies on.
@@ -181,6 +192,14 @@ def _check_toolsets(report: Report) -> None:
             'includes ' + ', '.join(nested) if nested else ''
         )
         report.check(f'toolset {name}', bool(tools) and not extra and not nested, detail)
+        # A reviewed tool that is gone breaks the skills and prompt lines naming it.
+        lost = sorted(allowed - tools)
+        report.check(
+            f'toolset {name} keeps its tools',
+            not lost,
+            ', '.join(f'-{t}' for t in lost),
+            required=False,
+        )
 
 
 def _check_hooks(report: Report) -> None:
@@ -191,7 +210,8 @@ def _check_hooks(report: Report) -> None:
         report.check('tool hooks', False, str(e)[:200], required=False)
         return
     events = set(HOOK_EVENTS)
-    report.check('tool hook events', events <= set(VALID_HOOKS), required=False)
+    unknown = sorted(events - set(VALID_HOOKS))
+    report.check('tool hook events', not unknown, ', '.join(unknown), required=False)
     cfg = {
         'hooks': {e: [{'command': 'python hook.py progress.jsonl', 'timeout': 5}] for e in events}
     }
@@ -236,6 +256,13 @@ def _check_cli(report: Report, janus: Path) -> None:
         except (OSError, subprocess.SubprocessError) as e:
             report.check('janus chat options', False, str(e)[:200])
             return
+    # Help that prints and then fails means the CLI cannot start a turn either.
+    report.check(
+        'janus chat --help exits 0',
+        proc.returncode == 0,
+        f'exit {proc.returncode}' if proc.returncode else '',
+        required=False,
+    )
     missing = [
         f
         for f in CHAT_FLAGS
@@ -244,14 +271,21 @@ def _check_cli(report: Report, janus: Path) -> None:
     report.check('janus chat options', not missing, ', '.join(missing))
 
 
+_IMPORTS = (
+    ('mcp', 'store tools over MCP', True),
+    ('ddgs', 'web search', True),
+    ('primp', "web search's HTTP client (pinned beside ddgs)", False),
+)
+
+
 def _check_imports(report: Report) -> None:
-    for module, why in (('mcp', 'store tools over MCP'), ('ddgs', 'web search')):
+    for module, why, required in _IMPORTS:
         try:
             __import__(module)
         except Exception as e:  # noqa: BLE001
-            report.check(f'import {module}', False, f'{why}: {str(e)[:150]}')
+            report.check(f'import {module}', False, f'{why}: {str(e)[:150]}', required=required)
         else:
-            report.check(f'import {module}', True, why)
+            report.check(f'import {module}', True, why, required=required)
 
 
 def _notes(report: Report, root: Path) -> None:
@@ -278,6 +312,21 @@ def _version() -> str:
         return ''
 
 
+def _commit() -> str:
+    """The commit this install came from, from pip's record of the git or archive install."""
+    try:
+        from importlib.metadata import distribution  # noqa: PLC0415
+
+        origin = json.loads(distribution('janus-agent').read_text('direct_url.json') or '{}')
+    except Exception:  # noqa: BLE001
+        return ''
+    commit = str((origin.get('vcs_info') or {}).get('commit_id') or '')
+    if not commit:
+        archive = re.search(r'/archive/([0-9a-f]{40})\.tar\.gz$', str(origin.get('url') or ''))
+        commit = archive.group(1) if archive else ''
+    return commit if re.fullmatch(r'[0-9a-f]{40}', commit) else ''
+
+
 def run(janus: Path | None = None) -> Report:
     """Check the install this Python belongs to; ``janus`` defaults to its entry point."""
     report = Report()
@@ -291,6 +340,8 @@ def run(janus: Path | None = None) -> Report:
         report.check(f'config {key}', _found(texts, pattern))
     for name, pattern in NAMES.items():
         report.check(name, _found(texts, pattern))
+    for key, pattern in SOFT_CONFIG_KEYS.items():
+        report.check(f'config {key}', _found(texts, pattern), required=False)
     for name, pattern in SOFT_NAMES.items():
         report.check(name, _found(texts, pattern), required=False)
     _check_state(report, texts)
@@ -301,14 +352,21 @@ def run(janus: Path | None = None) -> Report:
     return report
 
 
+def _arg(argv: list[str], flag: str) -> str:
+    return argv[argv.index(flag) + 1] if flag in argv[:-1] else ''
+
+
 def main(argv: list[str]) -> int:
-    janus = Path(argv[argv.index('--janus') + 1]) if '--janus' in argv[:-1] else None
-    report = run(janus)
+    janus = _arg(argv, '--janus')
+    report = run(Path(janus) if janus else None)
     print(
         json.dumps(
             {
                 'ok': report.ok,
                 'version': _version(),
+                'commit': _commit(),
+                # The ref the build wanted when this install is its fallback, else ''.
+                'fallback': _arg(argv, '--fallback-from'),
                 'checks': report.checks,
                 'notes': report.notes,
             },

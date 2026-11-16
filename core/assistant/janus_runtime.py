@@ -1,9 +1,10 @@
 """Which Janus Linda runs, and keeping it current from its GitHub repository.
 
-The image installs Janus from git at build time (Dockerfile: ``JANUS_REF``,
-``main`` by default) and checks it against Morpheus's contract
-(:mod:`core.assistant.janus_contract`). Janus moves faster than Morpheus deploys,
-so while the image tracks a branch, the store also keeps up by itself:
+The image installs Janus from git at build time (Dockerfile: ``JANUS_REF``) and
+checks it against Morpheus's contract (:mod:`core.assistant.janus_contract`).
+Release images pin ``JANUS_REF`` to a reviewed commit, and :func:`source` is None
+for a commit, so on them nothing below ever runs: Janus moves when a release moves
+the pin. Only an image built to track a branch keeps up by itself:
 
 * every :data:`CHECK_EVERY_S`, a Linda turn or a visit to the Janus page starts
   :mod:`core.assistant.janus_updater` as a detached process. It asks GitHub for

@@ -30,6 +30,7 @@ load-bearing:
 from __future__ import annotations
 
 import contextlib
+import functools
 import hashlib
 import json
 import logging
@@ -110,8 +111,11 @@ SESSION_IDLE_S = 6 * 3600
 
 # Base environment handed to the subprocess. Everything not listed here (and not
 # matching the inference-key allowlist below) is withheld — see the module
-# docstring. ``JANUS_HOME`` / the ephemeral prompt / the yolo flag are set
-# explicitly by :func:`run_janus_turn` and deliberately NOT inherited.
+# docstring. No ``JANUS_*`` variable is inherited either: Janus takes its
+# settings from the config each turn writes and its provider and model from the
+# command line, and a container's ``JANUS_MODEL`` / ``JANUS_PROVIDER`` would
+# override both (with a model the spend cap cannot price). ``JANUS_HOME``, the
+# ephemeral prompt and the yolo flag are set by :func:`run_janus_turn` itself.
 _ENV_BASE_ALLOW = (
     'PATH',
     'HOME',
@@ -129,12 +133,6 @@ _ENV_BASE_ALLOW = (
     'http_proxy',
     'https_proxy',
     'no_proxy',
-)
-
-# Janus env vars the parent sets itself; inheriting them would let a container
-# env override a decision this module is supposed to own.
-_ENV_JANUS_RESERVED = frozenset(
-    {'JANUS_HOME', 'JANUS_YOLO_MODE', 'JANUS_EPHEMERAL_SYSTEM_PROMPT', 'JANUS_INTERACTIVE'}
 )
 
 
@@ -177,6 +175,25 @@ def janus_cmd() -> list[str] | None:
     if found:
         return [found]
     return _source_checkout_cmd()
+
+
+@functools.lru_cache(maxsize=8)
+def _build_of(path: str) -> tuple[str, str]:
+    # A venv's Janus never changes in place (an update is a fresh venv), so the
+    # answer per path holds for the life of the process.
+    from core.assistant import janus_runtime
+
+    try:
+        build = janus_runtime.installed_build(path)
+    except Exception:  # noqa: BLE001 — a reporting detail must never cost a turn
+        return '', ''
+    return build['version'], build['commit']
+
+
+def build_of(cmd: list[str] | None) -> dict[str, str]:
+    """Version and commit of the Janus ``cmd`` runs ('' where unknown)."""
+    version, commit = _build_of(cmd[0]) if cmd else ('', '')
+    return {'version': version, 'commit': commit}
 
 
 def _source_checkout_cmd() -> list[str] | None:
@@ -338,11 +355,7 @@ def _inference_env_names() -> set[str]:
 def _child_env(overrides: dict[str, str]) -> dict[str, str]:
     """Allowlisted environment for the Janus subprocess."""
     allow = set(_ENV_BASE_ALLOW) | _inference_env_names()
-    env = {
-        k: v
-        for k, v in os.environ.items()
-        if (k in allow or k.startswith('JANUS_')) and k not in _ENV_JANUS_RESERVED
-    }
+    env = {k: v for k, v in os.environ.items() if k in allow}
     env.update(overrides)
     return env
 
@@ -837,8 +850,8 @@ def iter_janus_turn(
 
     Each tick yields the steps Janus reported since the last one (``step`` and
     ``plan`` events, see :mod:`core.assistant.activity`), or ``None`` when there
-    were none. The last item is the result: ``{text, error, duration_ms, usage}``,
-    the only item without a ``type``. The ticks let a streaming caller show what
+    were none. The last item is the result: ``{text, error, duration_ms, usage,
+    build}``, the only item without a ``type``. The ticks let a streaming caller show what
     Linda is doing and keep proxies from closing an idle connection.
 
     ``system_prompt`` should be stable from turn to turn: Janus appends it to the
@@ -854,6 +867,10 @@ def iter_janus_turn(
     if not cmd:
         yield {'text': '', 'error': 'janus_unavailable', 'duration_ms': 0}
         return
+    # Named from the command this turn runs, never looked up again after it: a
+    # rollback once the turn has failed (janus_runtime.record_turn) or an update
+    # finishing meanwhile changes what janus_cmd() returns.
+    build = build_of(cmd)
 
     timeout = turn_timeout_s() if timeout_s is None else max(5, int(timeout_s))
     started = time.monotonic()
@@ -865,7 +882,12 @@ def iter_janus_turn(
         # Reported like any engine failure, so the merchant gets the friendly
         # error and the self-improvement loop gets a signal, not a stack trace.
         logger.error('janus engine home unavailable: %s', e)
-        yield {'text': '', 'error': f'janus home unavailable: {e}', 'duration_ms': 0}
+        yield {
+            'text': '',
+            'error': f'janus home unavailable: {e}',
+            'duration_ms': 0,
+            'build': build,
+        }
         return
     mcp_url, mcp_headers = _mcp_endpoint(context)
     # The model picked for this message (validated in _provider_wiring), and the
@@ -924,7 +946,7 @@ def iter_janus_turn(
                 logger.info(
                     'janus: turn abandoned; learning not harvested key=%s', conversation_key
                 )
-    yield payload
+    yield {**payload, 'build': build}
 
 
 def _relay_steps(ticks, progress: activity.ProgressReader):

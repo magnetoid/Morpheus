@@ -72,8 +72,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # occasionally; bump the ARG to move) — and because this layer runs before
 # `COPY . /app`, it is cached across pushes instead of rebuilt (216 MB) on
 # every deploy. Only the contract file is copied in first: it runs standalone
-# under Janus's own interpreter. A running store keeps up between deploys by
-# itself when the merchant turns that on (core/assistant/janus_runtime.py).
+# under Janus's own interpreter. A build pinned to a commit never updates
+# itself between deploys (janus_runtime.source() is None for a sha): Janus moves
+# when this ARG moves, in a release like any other.
 # ddgs + primp are Linda's free web search backend (pinned in
 # janus_runtime.PINS too). The [mcp] extra is load-bearing: without the `mcp`
 # package Janus's MCP client silently does nothing and Linda has no store
@@ -81,8 +82,10 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Every build checks Janus against Morpheus's contract
 # (core/assistant/janus_contract.py: the toolsets, config keys, env vars, CLI
 # options and state columns the integration relies on, mcp included). When the
-# pinned Janus breaks it, the build installs JANUS_KNOWN_GOOD instead, so an
-# image never ships an engine Linda cannot use. The report stays at
+# pinned Janus breaks it, the build installs JANUS_KNOWN_GOOD instead and the
+# report names the ref it fell back from; when both ARGs name the same commit
+# there is nothing to fall back to, so the build fails. Either way an image
+# never ships an engine Linda cannot use. The report stays at
 # /opt/janus/morpheus-contract.json for Settings → AI → Janus.
 ARG LINDA_JANUS=1
 ARG JANUS_REF=eafb7aba34db8645401ce285edf987054c5d37d5
@@ -96,11 +99,16 @@ RUN apt-get update \
  && /opt/janus/bin/pip install --no-cache-dir \
       "janus-agent[mcp] @ git+${JANUS_REPO}@${JANUS_REF}" ddgs==9.16.0 primp==2.0.1 \
  && if ! /opt/janus/bin/python -I /app/core/assistant/janus_contract.py > /opt/janus/morpheus-contract.json; then \
-      echo "Janus ${JANUS_REF} breaks the Morpheus contract; installing ${JANUS_KNOWN_GOOD}" >&2; \
       cat /opt/janus/morpheus-contract.json >&2; \
+      if [ "${JANUS_REF}" = "${JANUS_KNOWN_GOOD}" ]; then \
+        echo "Janus ${JANUS_REF} breaks the Morpheus contract and is also JANUS_KNOWN_GOOD" >&2; \
+        exit 1; \
+      fi; \
+      echo "Janus ${JANUS_REF} breaks the Morpheus contract; installing ${JANUS_KNOWN_GOOD}" >&2; \
       /opt/janus/bin/pip install --no-cache-dir --force-reinstall \
         "janus-agent[mcp] @ git+${JANUS_REPO}@${JANUS_KNOWN_GOOD}" ddgs==9.16.0 primp==2.0.1 \
-      && /opt/janus/bin/python -I /app/core/assistant/janus_contract.py > /opt/janus/morpheus-contract.json; \
+      && /opt/janus/bin/python -I /app/core/assistant/janus_contract.py \
+           --fallback-from "${JANUS_REF}" > /opt/janus/morpheus-contract.json; \
     fi \
  && ln -sf /opt/janus/bin/janus /usr/local/bin/janus \
  && apt-get purge -y git \
