@@ -600,6 +600,15 @@ class SessionAndProgressTests(SimpleTestCase):
         self.assertIn('nudge_interval: 0', body)
         self.assertIn('creation_nudge_interval: 0', body)
 
+    def test_an_empty_reply_prints_empty_not_an_explainer(self):
+        # The explainer ("⚠️ No reply: …") exits 0 and reached the merchant as
+        # Linda's answer; "(empty)" is a failed turn (found by the conformance suite).
+        body = eng._config_text('https://s/mcp/')
+        self.assertIn('display:\n  turn_completion_explainer: false', body)
+
+    # The rows below say source 'cli', which is what `janus chat -q` records whatever
+    # --source says; a fake 'linda' row hid that both lookups never matched (v0.171.2).
+
     def test_a_reply_lost_from_stdout_is_recovered_from_state_db(self):
         import sqlite3
         import time as _time
@@ -618,7 +627,7 @@ class SessionAndProgressTests(SimpleTestCase):
                     'role TEXT, content TEXT, timestamp REAL)'
                 )
                 db.execute(
-                    "INSERT INTO sessions VALUES ('s9', 'linda', ?, 'deepseek-v4-pro', 500, 20, 0, 0, 0, 3, 0)",
+                    "INSERT INTO sessions VALUES ('s9', 'cli', ?, 'deepseek-v4-pro', 500, 20, 0, 0, 0, 3, 0)",
                     (now,),
                 )
                 db.execute(
@@ -647,7 +656,7 @@ class SessionAndProgressTests(SimpleTestCase):
                     'reasoning_tokens INT, api_call_count INT, estimated_cost_usd REAL)'
                 )
                 db.execute(
-                    "INSERT INTO sessions VALUES ('s7', 'linda', ?, 'grok-4', 90000, 1200, 0, 0, 0, 14, 0)",
+                    "INSERT INTO sessions VALUES ('s7', 'cli', ?, 'grok-4', 90000, 1200, 0, 0, 0, 14, 0)",
                     (_time.time(),),
                 )
             raise subprocess.TimeoutExpired(cmd='janus', timeout=240)

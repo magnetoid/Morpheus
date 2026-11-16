@@ -120,7 +120,9 @@ plugins/installed/ai_assistant/       ← Pulse insights, embeddings, search
   and recall of earlier sessions; the chat shows each step as it happens
   ([activity.py](../core/assistant/activity.py)). The image pins one reviewed
   Janus commit and checks it against Morpheus's contract at build time
-  ([janus_contract.py](../core/assistant/janus_contract.py)); a newer Janus
+  ([janus_contract.py](../core/assistant/janus_contract.py)), and CI runs that
+  commit end to end against a stub model and the store's real MCP edge
+  ([tests/conformance](../core/assistant/tests/conformance/)); a newer Janus
   arrives with the Morpheus release that moves the pin, and each turn records
   which Janus build answered it
   ([janus_runtime.py](../core/assistant/janus_runtime.py)). For jobs bigger than

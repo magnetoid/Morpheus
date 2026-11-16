@@ -217,6 +217,74 @@ jobs:
           name: coverage-xml
           path: coverage.xml
 
+  janus-conformance:
+    # The real Janus, installed exactly as the image installs it, against a stub
+    # model on loopback and the store's real MCP edge in a live test server
+    # (core/assistant/tests/conformance). The contract proves names in Janus's
+    # source; this proves what a turn does: the tools offered, the turn token,
+    # sessions, usage, the progress hooks, consent and memory.
+    # Postgres, as on the stores: the live server and the test each get their own
+    # connection (an in-memory sqlite database is one connection both threads share).
+    runs-on: ubuntu-latest
+    env:
+      JANUS_PINS: ddgs==9.16.0 primp==2.0.1
+      DATABASE_URL: "postgres://postgres:postgres@localhost:5432/morph_ci?sslmode=disable"
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: morph_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install the pinned Janus as the image does
+        # Never cached: Janus's own dependencies float, and an image build resolves
+        # them afresh, so a cached venv would test versions no new image installs.
+        run: |
+          ref=$(sed -n 's/^ARG JANUS_REF=//p' Dockerfile | head -1)
+          python -m venv /tmp/janus
+          /tmp/janus/bin/pip install --quiet --upgrade pip
+          /tmp/janus/bin/pip install --quiet --no-cache-dir "janus-agent[mcp] @ git+https://github.com/magnetoid/Janus-Agent.git@${ref}" $JANUS_PINS
+      - name: Contract (every check required)
+        run: /tmp/janus/bin/python -I core/assistant/janus_contract.py
+      - run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes -r requirements.lock.txt
+      - name: Conformance suite
+        env:
+          JANUS_CONFORMANCE_BIN: /tmp/janus/bin/janus
+          JANUS_CONFORMANCE_REPORT: /tmp/janus-conformance.json
+        run: |
+          set -o pipefail
+          python manage.py test core.assistant.tests.conformance -v 2 --noinput 2>&1 | tee /tmp/conformance.txt
+          # A skip is not a pass: this job exists to run these.
+          grep -Eq '^Ran [1-9][0-9]* tests? ' /tmp/conformance.txt
+          if grep -q 'skipped=' /tmp/conformance.txt; then echo 'conformance tests were skipped' >&2; exit 1; fi
+      - name: What the model was offered
+        if: always()
+        run: |
+          { echo '## Janus conformance'; echo; echo '```json'; cat /tmp/janus-conformance.json 2>/dev/null || echo '{}'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
   api-stability:
     # Gates docs/API_STABILITY.md — diff the Python SDK public surface
     # against docs/sdk-baseline.json. Removals block; additions pass.

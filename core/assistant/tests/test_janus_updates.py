@@ -450,3 +450,18 @@ class DockerfileTests(SimpleTestCase):
             text.index('/opt/janus/bin/pip install'),
             text.index('COPY --chown=morpheus:morpheus . /app'),
         )
+
+    def test_ci_runs_the_conformance_suite_on_the_janus_the_image_pins(self):
+        from django.conf import settings
+
+        ci = (Path(settings.BASE_DIR) / '.github' / 'workflows' / 'ci.yml').read_text(
+            encoding='utf-8'
+        )
+        job = ci[ci.index('  janus-conformance:') :]
+        job = job[: job.index('\n  api-stability:')]
+        self.assertIn("sed -n 's/^ARG JANUS_REF=//p' Dockerfile", job)
+        self.assertIn('janus-agent[mcp] @ git+https://github.com/magnetoid/Janus-Agent.git@', job)
+        for pin in rt.PINS:
+            self.assertIn(pin, job)
+        self.assertIn('JANUS_CONFORMANCE_BIN: /tmp/janus/bin/janus', job)
+        self.assertIn("grep -q 'skipped='", job)

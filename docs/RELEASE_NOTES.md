@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.171.2 — 2026-11-16
+
+**Linda's answers are checked against the real Janus before each release**
+
+- When the model returns nothing, Linda's turn now counts as failed and says so, instead of showing a Janus notice ("No reply: …") as her answer.
+- A Linda turn that hits the time limit now counts its tokens toward the daily spend cap, and a reply lost to Janus's own output handling is found again in its records. Both lookups had never matched the sessions Janus records.
+- Every change to Morpheus now runs the Janus build the stores use, end to end, against a stand-in model and the store's own agent connection: the tools Linda is offered, a store tool call, a change held until the merchant says yes, a conversation that continues, Janus's notes kept between turns, and a failed model call. The compatibility check's display-only items are required now.
+
 ## v0.171.1 — 2026-11-15
 
 **Each Linda turn records the Janus that answered it**
