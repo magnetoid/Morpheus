@@ -14,4 +14,4 @@ Choose how many backups to keep in [](field:backups.retention_count), whether to
 - Point backups at a different directory in [](field:backups.backup_dir).
 
 ## Good to know
-Backups run once a night; there is no page here to browse past backups or restore one — that is a developer's job on the server itself. A failed backup is written to the error log, so it does not fail silently. A backup location outside the server's permanent storage is lost the next time the store is deployed, so leave the directory setting blank unless you know exactly where it should go.
+Backups run once a night; there is no page here to browse past backups or restore one — that is a developer's job on the server itself. A failed backup is written to the error log, so it does not fail silently. A backup location outside the server's permanent storage is lost the next time the store is deployed, so leave the directory setting blank unless you know exactly where it should go. Only you can change it: Linda can't.

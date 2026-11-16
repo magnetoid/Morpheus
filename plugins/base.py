@@ -310,9 +310,15 @@ class MorpheusPlugin:
         return schema.get('properties', {}).get(key, {}).get('default', default)
 
     def set_config(self, key: str, value: Any) -> None:
-        """Persist one config value (and invalidate the cache)."""
+        """Persist one config value (and invalidate the cache).
+
+        A value its declared setting would refuse is logged (see
+        `plugins.config_schema.report`) and still stored, for now.
+        """
+        from plugins import config_schema
         from plugins.models import PluginConfig
 
+        config_schema.report(self, key, value)
         row, _ = PluginConfig.objects.get_or_create(plugin_name=self.name)
         row.config[key] = value
         row.save(update_fields=['config', 'updated_at'])

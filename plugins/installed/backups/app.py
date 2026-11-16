@@ -65,6 +65,8 @@ class BackupsPlugin(Plugin):
                     'type': 'string',
                     'title': 'Backup directory',
                     'default': '',
+                    # A whole database dump lands here: only the merchant moves it.
+                    'x-agent-writable': False,
                     'description': (
                         'Where dumps land. Blank uses MORPHEUS_BACKUP_DIR, else /app/backups '
                         "— the worker's persistent backup volume. A path outside a mounted "

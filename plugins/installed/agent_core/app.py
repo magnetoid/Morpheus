@@ -30,8 +30,11 @@ logger = logging.getLogger('morpheus.agent_core')
 # the price/refund caps gate the catalog/orders money tools. The compliance
 # report (compliance.py:_guardrail_config) reads the SAME keys — keep the two in
 # sync (there is no shared constant; they are coupled by string match).
+# They are the merchant's limits on agents, so no agent changes them
+# (`x-agent-writable`, v0.173.0).
 _GUARDRAIL_PROPS = {
     'agents_paused': {
+        'x-agent-writable': False,
         'type': 'boolean',
         'default': False,
         'title': 'Pause all agents (kill switch)',
@@ -41,6 +44,7 @@ _GUARDRAIL_PROPS = {
         ),
     },
     'max_agent_runs_daily': {
+        'x-agent-writable': False,
         'type': 'integer',
         'minimum': 0,
         'default': 0,
@@ -51,6 +55,7 @@ _GUARDRAIL_PROPS = {
         ),
     },
     'spend_cap_daily': {
+        'x-agent-writable': False,
         'type': 'number',
         'minimum': 0,
         'default': 0,
@@ -62,6 +67,7 @@ _GUARDRAIL_PROPS = {
         ),
     },
     'max_price_change_pct': {
+        'x-agent-writable': False,
         'type': 'number',
         'minimum': 0,
         'default': 0,
@@ -69,6 +75,7 @@ _GUARDRAIL_PROPS = {
         'description': '0 = no cap. An agent price edit larger than this (up or down) is refused.',
     },
     'max_refund_value': {
+        'x-agent-writable': False,
         'type': 'number',
         'minimum': 0,
         'default': 0,

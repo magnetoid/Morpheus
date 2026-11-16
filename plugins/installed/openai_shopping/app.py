@@ -179,6 +179,7 @@ class OpenAIShoppingPlugin(Plugin):
                 },
                 'push_endpoint': {
                     'type': 'string',
+                    'x-agent-writable': False,
                     'title': 'Push endpoint URL',
                     'description': 'The HTTPS endpoint OpenAI allow-listed for this store. Blank = no push; the feed is still served at /feeds/openai-products.jsonl.',
                     'default': '',

@@ -9,8 +9,12 @@ delegated (Linda spawns a skilled Worker) to keep core free of plugin imports.
 
 from __future__ import annotations
 
+import logging
+
 from core.assistant.tools.ecommerce_writes import _require_confirmed, _require_hard_gate
 from core.assistant.tools.filesystem import ToolError, ToolResult, tool
+
+logger = logging.getLogger(__name__)
 
 
 @tool(
@@ -130,9 +134,12 @@ def updates_apply_tool(
 @tool(
     name='settings.set',
     description=(
-        'Set a store/plugin config value: pass `plugin` (the plugin name, e.g. '
-        "'storefront'), `key`, and `value`. 'true'/'false'/integers are coerced "
-        'to their types. confirmed=True after the user approves.'
+        'Set a store/app setting: pass `plugin` (the app name, e.g. '
+        "'storefront'), `key`, and `value` as text (a list as JSON or "
+        "comma-separated, a boolean as 'true'/'false'). The value is read and "
+        "checked against the setting's type; settings.describe shows each "
+        'setting and whether you may change it. confirmed=True after the user '
+        'approves.'
     ),
     scopes=['system.write'],
     schema={
@@ -149,25 +156,52 @@ def updates_apply_tool(
 )
 def settings_set_tool(*, plugin: str, key: str, value: str, confirmed: bool = False) -> ToolResult:
     _require_confirmed(confirmed)
+    from plugins import config_schema  # noqa: PLC0415
     from plugins.registry import app_registry  # noqa: PLC0415
 
     instance = app_registry.get(plugin)
     if instance is None:
         raise ToolError(f'no such plugin: {plugin!r}')
-    coerced: object = value
-    low = value.strip().lower()
-    if low in ('true', 'false'):
-        coerced = low == 'true'
-    elif value.strip().lstrip('-').isdigit():
-        coerced = int(value.strip())
+    prop = config_schema.properties(instance).get(key)
+    if not config_schema.agent_writable(key, prop):
+        raise ToolError(
+            f'Only the merchant can change {plugin}.{key}, on the dashboard. Nothing was changed.'
+        )
+    warnings: list[str] = []
+    if prop is None or not config_schema.known_type(prop):
+        # Not a setting the app declares (or of a type the schema does not
+        # name): stored as before, with a warning, so nothing accepted before
+        # v0.173.0 is refused.
+        coerced = _legacy_coerce(value)
+        warnings.append(
+            f'{plugin} does not declare {key!r} as a setting of a known type; stored as given.'
+        )
+        logger.warning(
+            'settings.set: %s.%s is not a declared setting; stored as given', plugin, key
+        )
+    else:
+        try:
+            coerced = config_schema.clean(key, prop, value)
+        except config_schema.SettingError as e:
+            raise ToolError(f'{plugin}: {e}. Nothing was changed.') from e
     try:
         instance.set_config(key, coerced)
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'could not set {plugin}.{key}: {e}') from e
     return ToolResult(
-        output={'plugin': plugin, 'key': key, 'value': coerced},
+        output={'plugin': plugin, 'key': key, 'value': coerced, 'warnings': warnings},
         display=f'Set {plugin}.{key} = {coerced!r}.',
     )
+
+
+def _legacy_coerce(value: str) -> object:
+    """The pre-v0.173.0 reading of an undeclared setting: true/false, digits."""
+    low = value.strip().lower()
+    if low in ('true', 'false'):
+        return low == 'true'
+    if value.strip().lstrip('-').isdigit():
+        return int(value.strip())
+    return value
 
 
 @tool(

@@ -318,39 +318,12 @@ def _enforce_rate_limit(tool_name: str) -> None:
         )
 
 
-_JSON_TYPES = {
-    'string': str,
-    'integer': int,
-    'number': (int, float),
-    'boolean': bool,
-    'array': list,
-    'object': dict,
-}
-
-
-def _validate_one_arg(name: str, val, spec: dict) -> str:  # noqa: PLR0911
+def _validate_one_arg(name: str, val, spec: dict) -> str:
     """Validate a single argument against its property spec. '' when valid."""
-    t = spec.get('type')
-    py = _JSON_TYPES.get(t)
-    if py is not None:
-        # bool is a subclass of int — a boolean is not a valid number.
-        if t in ('integer', 'number') and isinstance(val, bool):
-            return f'argument {name!r} must be {t}'
-        if not isinstance(val, py):
-            return f'argument {name!r} must be {t}'
-    if 'enum' in spec and val not in spec['enum']:
-        return f'argument {name!r} must be one of {spec["enum"]}'
-    if isinstance(val, (int, float)) and not isinstance(val, bool):
-        if 'minimum' in spec and val < spec['minimum']:
-            return f'argument {name!r} must be >= {spec["minimum"]}'
-        if 'maximum' in spec and val > spec['maximum']:
-            return f'argument {name!r} must be <= {spec["maximum"]}'
-    if isinstance(val, str):
-        if 'minLength' in spec and len(val) < spec['minLength']:
-            return f'argument {name!r} is too short'
-        if 'maxLength' in spec and len(val) > spec['maxLength']:
-            return f'argument {name!r} is too long'
-    return ''
+    from plugins.config_schema import validate
+
+    problem = validate(name, val, spec)
+    return f'argument {problem}' if problem else ''
 
 
 def _validate_tool_args(tool, args: dict) -> str:

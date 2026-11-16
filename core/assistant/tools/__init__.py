@@ -24,6 +24,7 @@ from core.assistant.tools.delegate import (
 )
 from core.assistant.tools.ecommerce import (
     db_describe_model_tool,
+    settings_describe_tool,
     settings_list_tool,
 )
 from core.assistant.tools.ecommerce_writes import (
@@ -74,6 +75,7 @@ def get_default_tools() -> list:
         # name from the registry via _migrated_names below.)
         # Configuration
         settings_list_tool,
+        settings_describe_tool,
         # Memory — cross-session preferences
         memory_recall_tool,
         memory_remember_tool,

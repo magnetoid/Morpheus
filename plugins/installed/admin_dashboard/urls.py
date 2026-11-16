@@ -63,14 +63,16 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
         raise Http404('Plugin settings panel not found.')
 
     if request.method == 'POST':
-        # Naive merchant-form save: pull declared keys out of POST and
-        # persist them via plugin.set_config. Type coercion is best-effort.
+        # Merchant-form save: pull declared keys out of POST, read each as its
+        # schema type (plugins.config_schema) and persist via plugin.set_config.
         # An unticked box submits nothing, so an absent boolean is saved as off
         # only when the form rendered it: every AJAX panel form renders all of
         # its booleans, and a regular post names its boxes in `_booleans` (the
         # panel templates write one per checkbox). A page that posts only some
         # keys names none, so it never switches off a box it did not show.
         from django.http import JsonResponse
+
+        from plugins import config_schema
 
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         saved: list[str] = []
@@ -83,28 +85,18 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
                 continue
             raw = request.POST[key]
             # Write-only secret: a blank OR masked ("********") submit means
-            # "leave it unchanged" — never wipe the stored secret. Covers
-            # `format: password` AND `*_api_key` fields (the AI settings page
-            # masks a saved key as "********" and tells the user to leave it as
-            # such to keep it). Mirrors the SMTP-password handling in
-            # admin_dashboard/forms/settings.py (skip clobbering on empty).
-            if (
-                prop.get('format') == 'password' or key.endswith('_api_key') or key == 'api_key'
-            ) and (raw or '').strip() in ('', '********'):
+            # "leave it unchanged", never wipe the stored secret. The AI
+            # settings page masks a saved key that way and says to leave it.
+            if config_schema.is_secret(key, prop) and (raw or '').strip() in (
+                '',
+                config_schema.PASSWORD_MASK,
+            ):
                 continue
-            value: Any = raw
-            if ptype == 'boolean':
-                value = raw in ('on', 'true', '1', 'yes')
-            elif ptype == 'integer':
-                try:
-                    value = int(raw)
-                except (TypeError, ValueError):
-                    continue
-            elif ptype == 'number':
-                try:
-                    value = float(raw)
-                except (TypeError, ValueError):
-                    continue
+            # A value the field's type cannot be read as is skipped, as before.
+            try:
+                value: Any = config_schema.coerce(prop, raw)
+            except config_schema.SettingError:
+                continue
             instance.set_config(key, value)
             saved.append(key)
         if is_ajax:
@@ -117,32 +109,9 @@ def plugin_settings_view(request: HttpRequest, plugin: str) -> HttpResponse:
             return redirect(next_url)
         return redirect(request.path)
 
-    config = instance.get_config()
-    fields = []
-    for key, prop in (panel.schema.get('properties') or {}).items():
-        ptype = prop.get('type', 'string')
-        # `format: password` → write-only field: never echo the stored secret,
-        # blank submit preserves it (handled in the POST branch above).
-        if prop.get('format') == 'password':
-            kind = 'password'
-        else:
-            kind = 'enum' if 'enum' in prop else ptype
-        value = config.get(key, prop.get('default', ''))
-        if kind == 'boolean':
-            value = bool(value)
-        elif kind == 'password':
-            value = ''
-        fields.append(
-            {
-                'key': key,
-                'title': prop.get('title') or key.replace('_', ' ').title(),
-                'description': prop.get('description', ''),
-                'kind': kind,
-                'enum': prop.get('enum') or [],
-                'value': value,
-                'has_value': bool(config.get(key)),
-            }
-        )
+    from plugins.installed.admin_dashboard.views_split.settings import _build_panel_fields
+
+    fields = _build_panel_fields(instance, panel.schema)
     return render(
         request,
         'admin_dashboard/plugin_settings.html',

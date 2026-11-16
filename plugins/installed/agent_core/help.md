@@ -22,4 +22,4 @@ Nothing here needs setting up before Linda will talk to you — she already uses
 - Switch on the kill switch or set spend and change limits in the guardrails settings.
 
 ## Good to know
-Approving a change only ever comes from your own next message — nothing Linda merely reads, such as a product description or a note, can approve anything for you, and a decline always wins over an approval. Editing or clearing what Linda has learned, and sending a code defect she found, both need the store owner's account. The guardrails all start at 0, meaning unlimited, until you set them. The kill switch pauses every scheduled run and every chat reply at once.
+Approving a change only ever comes from your own next message — nothing Linda merely reads, such as a product description or a note, can approve anything for you, and a decline always wins over an approval. Editing or clearing what Linda has learned, and sending a code defect she found, both need the store owner's account. The guardrails start at 0, meaning unlimited; only you can change them, never Linda. The kill switch pauses every scheduled run and every chat reply at once.

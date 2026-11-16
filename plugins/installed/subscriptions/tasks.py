@@ -52,13 +52,18 @@ def _config() -> dict:
     """Read plugin config with sensible defaults if the DB row is absent."""
     cfg = dict(_DEFAULTS)
     try:
+        from plugins import config_schema
         from plugins.registry import app_registry
 
         plugin = app_registry.get('subscriptions')
         if plugin is not None:
             raw = plugin.get_config()
             cfg['prerenewal_days'] = int(raw.get('prerenewal_days', 3))
-            steps = raw.get('dunning_step_days') or _DEFAULTS['dunning_step_days']
+            # A list a panel save stored as text before v0.173.0 reads too.
+            steps = (
+                config_schema.coerce({'type': 'array'}, raw.get('dunning_step_days'))
+                or _DEFAULTS['dunning_step_days']
+            )
             cfg['dunning_step_days'] = [int(d) for d in steps]
             cfg['require_marketing_consent'] = bool(raw.get('require_marketing_consent', True))
     except Exception:  # noqa: BLE001, S110 — config unavailable → defaults

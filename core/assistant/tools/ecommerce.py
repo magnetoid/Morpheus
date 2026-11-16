@@ -12,7 +12,7 @@ The tools are organised by domain:
   * analytics.summary / analytics.top_products
   * cms.pages
   * email.templates
-  * settings.list
+  * settings.list / settings.describe
   * db.describe_model
 
 Every tool uses lazy plugin imports so a missing plugin returns a clean
@@ -41,45 +41,12 @@ def _money_amount(value: Any) -> Decimal:
 # ── Settings / configuration ────────────────────────────────────────────
 
 
-_SECRET_NAMES = ('api_key', 'secret', 'password', 'token', 'webhook_secret')
-
-
-def _password_fields(plugin_name: str) -> set[str]:
-    """The settings an app's schema marks ``format: password``: the dashboard
-    never shows them again, so neither does an agent tool."""
+def _plugin_settings(plugin_name: str) -> dict[str, dict]:
+    from plugins import config_schema  # noqa: PLC0415
     from plugins.registry import app_registry  # noqa: PLC0415
 
-    schemas = []
     plugin = app_registry.get(plugin_name)
-    if plugin is not None:
-        schemas.append(plugin.get_config_schema() or {})
-    panel = app_registry.settings_panel(plugin_name)
-    if panel is not None:
-        schemas.append(panel.schema or {})
-    return {
-        key
-        for schema in schemas
-        for key, prop in (schema.get('properties') or {}).items()
-        if isinstance(prop, dict) and prop.get('format') == 'password'
-    }
-
-
-def _secret_name(key: Any) -> bool:
-    return any(s in str(key).lower() for s in _SECRET_NAMES)
-
-
-def _redacted(value: Any, secret: bool = False) -> Any:
-    """``value`` with every secret inside it redacted, nested ones too (an API
-    token is a ``token`` inside a list of dicts)."""
-    if isinstance(value, dict):
-        return {k: _redacted(v, secret or _secret_name(k)) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_redacted(v, secret) for v in value]
-    if not secret:
-        return value
-    if isinstance(value, str) and len(value) > 4:
-        return value[:2] + '…(redacted)…' + value[-2:]
-    return '(redacted)'
+    return config_schema.properties(plugin) if plugin is not None else {}
 
 
 @tool(
@@ -99,17 +66,83 @@ def settings_list_tool() -> ToolResult:
     except Exception as e:  # noqa: BLE001
         raise ToolError(f'plugins.models unavailable: {e}') from e
     out: dict[str, Any] = {}
+    from plugins import config_schema  # noqa: PLC0415
+
     for cfg in PluginConfig.objects.all():
-        hidden = _password_fields(cfg.plugin_name)
+        props = _plugin_settings(cfg.plugin_name)
         out[cfg.plugin_name] = {
             'is_enabled': cfg.is_enabled,
             'config': {
-                k: _redacted(v, k in hidden or _secret_name(k))
+                k: config_schema.redact(v, config_schema.is_secret(k, props.get(k)))
                 for k, v in (cfg.config or {}).items()
             },
         }
     return ToolResult(
         output={'plugins': out, 'count': len(out)}, display=f'{len(out)} plugin config(s)'
+    )
+
+
+_DESCRIBED_KEYWORDS = {
+    'enum': 'enum',
+    'minimum': 'minimum',
+    'maximum': 'maximum',
+    'minLength': 'min_length',
+    'maxLength': 'max_length',
+    'items': 'items',
+}
+
+
+@tool(
+    name='settings.describe',
+    description=(
+        "Describe an app's settings (read-only): for each, its type, allowed "
+        'values, default, current value (secrets redacted) and whether you may '
+        'change it with settings.set. Pass `plugin` (the app name, e.g. '
+        "'storefront'); without it, lists the apps that have settings."
+    ),
+    scopes=['system.read'],
+    schema={
+        'type': 'object',
+        'properties': {'plugin': {'type': 'string', 'default': ''}},
+    },
+)
+def settings_describe_tool(*, plugin: str = '') -> ToolResult:
+    from plugins import config_schema  # noqa: PLC0415
+    from plugins.registry import app_registry  # noqa: PLC0415
+
+    if not plugin:
+        apps = [
+            {'plugin': p.name, 'label': p.label, 'settings': len(props)}
+            for p in sorted(app_registry.active_plugins(), key=lambda p: p.name)
+            if (props := config_schema.properties(p))
+        ]
+        return ToolResult(
+            output={'apps': apps, 'count': len(apps)},
+            display=f'{len(apps)} app(s) with settings',
+        )
+    instance = app_registry.get(plugin)
+    if instance is None:
+        raise ToolError(f'no such plugin: {plugin!r}')
+    config = instance.get_config()
+    entries = []
+    for key, prop in config_schema.properties(instance).items():
+        secret = config_schema.is_secret(key, prop)
+        entry = {
+            'key': key,
+            'title': prop.get('title') or key.replace('_', ' ').capitalize(),
+            'description': prop.get('description', ''),
+            'type': prop.get('type', 'string'),
+            'default': config_schema.redact(prop.get('default'), secret),
+            'value': config_schema.redact(config.get(key, prop.get('default')), secret),
+            'stored': key in config,
+            'secret': secret,
+            'agent_writable': config_schema.agent_writable(key, prop),
+        }
+        entry.update({out: prop[kw] for kw, out in _DESCRIBED_KEYWORDS.items() if kw in prop})
+        entries.append(entry)
+    return ToolResult(
+        output={'plugin': plugin, 'label': instance.label, 'settings': entries},
+        display=f'{len(entries)} setting(s) for {instance.label or plugin}',
     )
 
 

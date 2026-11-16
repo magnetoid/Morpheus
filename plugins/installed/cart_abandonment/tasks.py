@@ -37,6 +37,7 @@ def _config() -> dict:
     """Read plugin config with sensible defaults if the DB row is absent."""
     cfg = dict(_DEFAULTS)
     try:
+        from plugins import config_schema
         from plugins.registry import app_registry
 
         plugin = app_registry.get('cart_abandonment')
@@ -45,7 +46,11 @@ def _config() -> dict:
             cfg['abandon_after_minutes'] = int(raw.get('abandon_after_minutes', 60))
             cfg['require_email'] = bool(raw.get('require_email', True))
             cfg['recovery_enabled'] = bool(raw.get('recovery_enabled', True))
-            delays = raw.get('step_delays_minutes') or _DEFAULTS['step_delays_minutes']
+            # A list a panel save stored as text before v0.173.0 reads too.
+            delays = (
+                config_schema.coerce({'type': 'array'}, raw.get('step_delays_minutes'))
+                or _DEFAULTS['step_delays_minutes']
+            )
             cfg['step_delays_minutes'] = [int(d) for d in delays]
             cfg['require_marketing_consent'] = bool(raw.get('require_marketing_consent', True))
     except Exception:  # noqa: BLE001, S110
