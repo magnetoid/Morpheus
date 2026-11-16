@@ -5,8 +5,11 @@ Run it with the Python of the Janus install being checked::
     /opt/janus/bin/python -I core/assistant/janus_contract.py
 
 It imports that install's modules and reads its source, prints a JSON report and
-exits 1 when a required check fails. Three callers:
+exits 1 when a required check fails. It proves names, not behaviour: the
+conformance suite (core/assistant/tests/conformance) runs the real Janus. Four
+callers:
 
+* CI's ``janus-conformance`` job, on the pinned Janus, before that suite;
 * the Docker build, which fails when the pinned Janus breaks it, or installs
   ``JANUS_KNOWN_GOOD`` instead when that names another commit (the report then
   says which ref it fell back from), so an image never ships an incompatible
@@ -70,14 +73,10 @@ CONFIG_KEYS = {
     'memory.user_profile_enabled': r'user_profile_enabled',
     'memory.nudge_interval': r'[^_]nudge_interval',
     'web.backend': r'get\(\s*["\']backend["\']',
+    # Off, an empty reply prints "(empty)" instead of an explainer that exits 0.
+    'display.turn_completion_explainer': r'turn_completion_explainer',
     'hooks_auto_accept': r'hooks_auto_accept',
     'fallback_providers': r'fallback_providers',
-}
-
-# Proved but not yet required. A check starts here and becomes required once the
-# conformance job has run it against the pinned Janus
-# (docs/plans/janus-alignment-and-app-platform-2026-11.md, P2).
-SOFT_CONFIG_KEYS = {
     # Morpheus switches MCP resources and prompts off: the store serves tools only.
     'mcp_servers.*.tools.resources': r'get\(\s*["\']resources["\']',
     'mcp_servers.*.tools.prompts': r'get\(\s*["\']prompts["\']',
@@ -194,12 +193,7 @@ def _check_toolsets(report: Report) -> None:
         report.check(f'toolset {name}', bool(tools) and not extra and not nested, detail)
         # A reviewed tool that is gone breaks the skills and prompt lines naming it.
         lost = sorted(allowed - tools)
-        report.check(
-            f'toolset {name} keeps its tools',
-            not lost,
-            ', '.join(f'-{t}' for t in lost),
-            required=False,
-        )
+        report.check(f'toolset {name} keeps its tools', not lost, ', '.join(f'-{t}' for t in lost))
 
 
 def _check_hooks(report: Report) -> None:
@@ -207,11 +201,11 @@ def _check_hooks(report: Report) -> None:
         from agent.shell_hooks import iter_configured_hooks  # noqa: PLC0415
         from janus_cli.plugins import VALID_HOOKS  # noqa: PLC0415
     except Exception as e:  # noqa: BLE001
-        report.check('tool hooks', False, str(e)[:200], required=False)
+        report.check('tool hooks', False, str(e)[:200])
         return
     events = set(HOOK_EVENTS)
     unknown = sorted(events - set(VALID_HOOKS))
-    report.check('tool hook events', not unknown, ', '.join(unknown), required=False)
+    report.check('tool hook events', not unknown, ', '.join(unknown))
     cfg = {
         'hooks': {e: [{'command': 'python hook.py progress.jsonl', 'timeout': 5}] for e in events}
     }
@@ -222,7 +216,7 @@ def _check_hooks(report: Report) -> None:
         parsed, detail = set(), str(e)[:200]
     else:
         detail = ''
-    report.check('tool hooks parse from config', parsed == events, detail, required=False)
+    report.check('tool hooks parse from config', parsed == events, detail)
 
 
 def _check_state(report: Report, texts: list[str]) -> None:
@@ -261,7 +255,6 @@ def _check_cli(report: Report, janus: Path) -> None:
         'janus chat --help exits 0',
         proc.returncode == 0,
         f'exit {proc.returncode}' if proc.returncode else '',
-        required=False,
     )
     missing = [
         f
@@ -272,20 +265,20 @@ def _check_cli(report: Report, janus: Path) -> None:
 
 
 _IMPORTS = (
-    ('mcp', 'store tools over MCP', True),
-    ('ddgs', 'web search', True),
-    ('primp', "web search's HTTP client (pinned beside ddgs)", False),
+    ('mcp', 'store tools over MCP'),
+    ('ddgs', 'web search'),
+    ('primp', "web search's HTTP client (pinned beside ddgs)"),
 )
 
 
 def _check_imports(report: Report) -> None:
-    for module, why, required in _IMPORTS:
+    for module, why in _IMPORTS:
         try:
             __import__(module)
         except Exception as e:  # noqa: BLE001
-            report.check(f'import {module}', False, f'{why}: {str(e)[:150]}', required=required)
+            report.check(f'import {module}', False, f'{why}: {str(e)[:150]}')
         else:
-            report.check(f'import {module}', True, why, required=required)
+            report.check(f'import {module}', True, why)
 
 
 def _notes(report: Report, root: Path) -> None:
@@ -340,8 +333,6 @@ def run(janus: Path | None = None) -> Report:
         report.check(f'config {key}', _found(texts, pattern))
     for name, pattern in NAMES.items():
         report.check(name, _found(texts, pattern))
-    for key, pattern in SOFT_CONFIG_KEYS.items():
-        report.check(f'config {key}', _found(texts, pattern), required=False)
     for name, pattern in SOFT_NAMES.items():
         report.check(name, _found(texts, pattern), required=False)
     _check_state(report, texts)

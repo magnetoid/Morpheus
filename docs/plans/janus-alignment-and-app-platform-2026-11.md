@@ -6,7 +6,7 @@
 
 **Method.** Three read-only explorations (the Janus seam inside Morpheus; the Janus repository, read over the GitHub API; the app system and agent coverage), one design pass, and spot-checks of the strongest claims in the code on `origin/main` (0b433b93).
 
-**Status:** approved by the owner on 2026-11-15. P1 (Janus truth patch) is v0.171.1. Update this line as each release ships.
+**Status:** approved by the owner on 2026-11-15. P1 (Janus truth patch) is v0.171.1, live on all five stores since 2026-11-16. P2 (conformance suite) is v0.171.2. Update this line as each release ships.
 
 **Owner's decisions (2026-11-15).**
 1. Janus updates arrive as a **pull request with a test**: CI takes the newest Janus, runs the contract and a real `janus chat` against a stub model, and opens a PR that moves the pin. The owner merges; all five stores get the same verified version through a normal deploy. The runtime self-updater is retired.
@@ -100,6 +100,19 @@ One release in flight at a time, each from a fresh worktree off `origin/main`, e
 - CLAUDE.md: the sentence "tests must never spawn a real model" names this one exception (real Janus, stub model on loopback, env-gated).
 - Promote P1's new contract checks to required.
 
+*As shipped (v0.171.2):*
+- Seven tests in `core/assistant/tests/conformance/test_janus_conformance.py`, driven through `Assistant().stream` (turn token, edge, harvest and `AgentRun` are the production ones), against the pinned Janus `eafb7aba`. The stub (`stub_model.py`) streams only, because Janus always streams; every other path answers 404, `/v1/models` included, so Janus falls back to its default context length.
+- No path filter and no weekly run: the pin moves only in a PR, which runs the job, and P3's bump workflow runs the suite on a schedule. With no path filter the owner can make the job required without it sitting pending.
+- The job runs on Postgres, as the stores do, so the live server and the test each have their own connection. The suite also takes the stores' loopback path to the edge: the store's host and the https scheme travel as configured MCP headers, under `SECURE_SSL_REDIRECT`.
+- Janus is installed fresh on every run, never from a cache: its own dependencies float, an image build resolves them afresh, and a cached venv would keep testing the versions of its first install.
+- Every P1 check is required now, except the two notice strings (`SOFT_NAMES`), which only affect what the chat strips.
+- The first run found two defects, fixed in the same release:
+  - an empty model reply ended in Janus's explainer ("⚠️ No reply: …") with exit 0, and the merchant got that line as Linda's answer. The config now sets `display.turn_completion_explainer: false`, so Janus prints `(empty)`, which the engine already treats as a failure;
+  - `janus chat -q` records its sessions with source `cli` whatever `--source` says, so `_session_started_since` and `_recover_reply` (filtering on `linda`) never matched: a timed-out turn's tokens were never counted toward the spend cap, and the v0.68.0 recovery of a reply lost to swapped streams could not work. Both accept `cli` and `linda` now.
+- Also proved: Janus fences every store tool result as `<untrusted_tool_result source="…">` data; MCP discovery finishes before the first model call; the 500 from the model reaches the chat as a `retry` event carrying only the status.
+- Measured for P4 (written to the job's step summary): 11 Janus tools beside 238 store tools, about 140 KB of tool schemas per model call, no deferral at the stub's context length. A turn takes about 20 s locally before the model answers, most of it Janus starting up.
+- The full serial suite with the five opt-in apps ran in CI's `test` job, not locally: the laptop had under 1 GB free and the suite fills `media/`.
+
 ### P5 — App toggle reaches every process
 
 - `plugins/registry.py`: split `activate`/`deactivate` into in-memory `_apply_active`/`_apply_inactive` and the persisted pair (which also writes the database, bumps a version token and, on disable, runs `on_disable()`). New `reconcile()`: one cache read of the token; unchanged → return; otherwise, under a lock, diff `_get_enabled_from_db()` against `_active`, apply in `_topo_sort` order and call `_refresh_urlconf()` once. It never writes the database, never bumps the token, never runs `on_disable()` and never deactivates a protected or system app.
@@ -127,6 +140,9 @@ One release in flight at a time, each from a fresh worktree off `origin/main`, e
 ### P4 — Deferred tool schemas
 
 - Measure first: the `tools` array P2 records, and P1's per-turn tokens and API calls from live turns.
+- The stub's context length (Janus's 256K fallback) is not what a store's model reports, so the tool-search gate must be measured against the real provider, not the suite.
+- Two outbound calls per turn found by P2, both Janus's: an update check (PyPI or git, in a background thread, on every chat) and, when Janus cannot size the context, a fetch of OpenRouter's model list with a 10 s timeout. Decide here whether the config switches them off.
+- About 20 s of every turn is Janus starting up (plugin discovery, MCP connect, config load) before the first model call. Measure it on a store before choosing what to cut.
 - `janus_engine._config_text` writes `tools.tool_search.enabled` and `threshold_pct` from a new janus setting `tool_search` (`off` / `auto` / `on`), default = what was measured as today's behaviour; reader `janus_settings.tool_search_mode()` in the same change; both keys and the bridge tools (`tool_search`, `tool_describe`, `tool_call`) join the contract.
 - Follow-ups in the same release: labels for the bridge steps in `core/assistant/activity.py` (they produce no hook steps); one prompt line when deferral is on (skills name `orders.search`, the model must look for `mcp_morpheus_admin_orders_search`); a conformance scenario with `enabled: on` proving every call still crosses `gates.py`.
 - Success: input tokens per live turn before and after (baseline about 180k).
@@ -166,6 +182,9 @@ Each item is its own PR there, arrives through the bump PR, and only then may Mo
 6. Release discipline: changelog, tags, a version bump on every interface change, `SCHEMA_VERSION` bumped with new tables.
 7. Declare `memory.nudge_interval` and `skills.creation_nudge_interval` in `DEFAULT_CONFIG`.
 8. A generic embedder-contract test in Janus CI.
+9. `reasoning_tokens` read from Chat Completions' `usage.completion_tokens_details` too (today only `output_tokens_details`, so it is 0 for most providers).
+10. `janus chat -q` honouring `--source` when it records the session (today always `cli`).
+11. A switch for the "You run on Janus Agent… load the `janus-agent` skill" guidance that is appended after `SOUL.md` on every turn (`agent/system_prompt.py`), so an embedding product can drop it.
 
 Later, unscheduled: keep one subprocess per turn but speak the TUI-gateway JSON-RPC, which would give token streaming and a real mid-turn `clarify`.
 

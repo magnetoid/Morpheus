@@ -205,12 +205,26 @@ against the store first is planned in
    (provider errors and timeouts do not count) put the previous one back and mark that
    commit failed, so it is not retried until a newer commit appears.
 
-The contract is what "compatible" means: each toolset Linda loads holds only the tools
-reviewed for her boundary, Janus still reads every config key Morpheus writes (several
-are safety settings), and the env vars, `janus chat` options and `state.db` columns the
-integration uses still exist. When Morpheus starts relying on something new in Janus,
-add it to the contract in the same change; `core/assistant/tests/test_janus_contract.py`
-fails until you do.
+"Compatible" is proved in three layers:
+
+- **The contract** (`core/assistant/janus_contract.py`) reads Janus's source: each toolset
+  Linda loads holds only the tools reviewed for her boundary, Janus still reads every
+  config key Morpheus writes (several are safety settings), and the env vars,
+  `janus chat` options, hook events and `state.db` columns the integration uses still
+  exist. Every check is required since v0.171.2, except the two notice strings. When
+  Morpheus starts relying on something new in Janus, add it to the contract in the same
+  change; `core/assistant/tests/test_janus_contract.py` fails until you do.
+- **The conformance suite** (`core/assistant/tests/conformance`, v0.171.2) runs the pinned
+  Janus the way a turn runs on a store, against a stub model on loopback and the store's
+  real MCP edge in a live test server. It proves what the contract cannot: what the model
+  is offered, that the turn token reaches the edge, that a write is refused until the
+  merchant's yes, that sessions resume, the usage in `state.db`, the progress hooks, that
+  empty replies and model errors are failed turns, and that Janus's memory survives the
+  round trip through the database. CI's `janus-conformance` job installs Janus exactly as
+  the Dockerfile does and fails when a test is skipped; locally,
+  `JANUS_CONFORMANCE_BIN=<venv>/bin/janus manage.py test core.assistant.tests.conformance`.
+- **The bump pull request** (planned, P3 in the platform plan) will move `JANUS_REF` with
+  both of the above run against the new commit.
 
 Switches: `LINDA_JANUS_AUTO_UPDATE=False` (deployment) or the "Keep Janus up to date"
 box on the Janus page (merchant) keep the image's Janus until the next deploy. A build

@@ -567,6 +567,8 @@ defaults); the timeout never exceeds 300s whatever is stored, and the unset defa
 (240s) is `LINDA_JANUS_TIMEOUT_S` in `morph/settings.py`, not the engine constant. The page's slug is `engine`, not `settings`:
 `/dashboard/apps/<app>/settings/` is the legacy settings deep link and silently
 wins the route. Remaining fences: tests point `JANUS_BIN` at a path that does not exist (`morph/settings.py`) and must never spawn a real model;
+the one exception is `core/assistant/tests/conformance` (v0.171.2): the pinned Janus against a stub model on loopback and the
+store's real MCP edge, run only when `JANUS_CONFORMANCE_BIN` names a Janus, by CI's `janus-conformance` job, which fails on a skip;
 YOLO/`LINDA_JANUS_AUTO_APPROVE` stays **off**; the child gets an env
 **allowlist** (`_child_env`), never `os.environ.copy()`, and inherits no `JANUS_*` variable
 (`JANUS_MODEL`/`JANUS_PROVIDER` would override the pinned, priced model; v0.171.1). A non-zero exit is a failure even when stdout carried
@@ -632,15 +634,20 @@ home and its prompt says she MUST load a relevant one first); the config pins
 `agent.reasoning_effort` (merchant setting, default `low` — a reasoning model's
 provider default is `high`) and `api_max_retries: 1`. Janus prints status lines to
 stdout even under `-Q` and exits 0 on an empty reply, so `_strip_notices` removes
-them and an empty or `(empty)` answer is a failure, not a blank bubble. **Janus's
+them and an empty or `(empty)` answer is a failure, not a blank bubble. On an empty
+reply Janus prints an explainer ("⚠️ No reply: …") unless `display.turn_completion_explainer`
+is off, and until v0.171.2 the merchant got that line as her answer. `janus chat -q` records
+its sessions with source `cli` whatever `--source` says, so the `state.db` lookups that
+filtered on `linda` never matched: a timed-out turn's tokens never reached the spend cap and
+`_recover_reply` could not work (both found by the conformance suite, v0.171.2). **Janus's
 background review thread silences itself with `contextlib.redirect_stdout/stderr`,
 which swaps the streams for the whole process**: every 10th message or tool step
 the reply and `session_id` went to /dev/null and the merchant got "no reply"
 (v0.68.0, live). The config sets `memory.nudge_interval` and
 `skills.creation_nudge_interval` to 0, and a clean exit with no output recovers the
 reply from the home's `state.db` (`_recover_reply`).
-Guarded by `core/assistant/tests/test_janus_engine.py`, `test_turn_identity.py`
-and `agent_mcp/tests/test_linda_turn.py`.
+Guarded by `core/assistant/tests/test_janus_engine.py`, `test_turn_identity.py`,
+`agent_mcp/tests/test_linda_turn.py` and the conformance suite.
 
 **Landmine — a Janus toolset is a bundle, and one argument of one tool can be a
 shell.** Before adding a toolset to a turn, read every tool in it down to what its

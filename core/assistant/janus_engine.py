@@ -413,6 +413,9 @@ mcp_servers:
     #   budget on a provider that is down.
     # web.backend: DuckDuckGo through the free ddgs package, named so a key that
     #   reaches the engine some other way can never switch Linda to a paid backend.
+    # display.turn_completion_explainer: on, an empty reply ends in a printed
+    #   "⚠️ No reply: …" explainer and exit 0, which reached the merchant as her
+    #   answer; off, Janus prints "(empty)", which _turn_result treats as a failure.
     # hooks: one line per step into the home's progress file, for the chat
     #   (core/assistant/activity.py). A display only: Janus ignores a failed hook.
     hooks = activity.hooks_config(progress_path) if progress_path is not None else ''
@@ -447,6 +450,8 @@ memory:
   nudge_interval: 0
 web:
   backend: ddgs
+display:
+  turn_completion_explainer: false
 {fallback_block}{hooks}"""
 
 
@@ -767,6 +772,11 @@ def _session_usage(conv_home: Path, session_id: str) -> dict[str, Any]:
     return {'model': row[0] or '', **{k: row[i + 1] or 0 for i, k in enumerate(_USAGE_COLUMNS)}}
 
 
+# `janus chat -q` records its sessions with source 'cli' whatever --source says;
+# 'linda' stays for a build that honours it. Each home's state.db holds one
+# conversation, so the source never has to tell sessions apart.
+
+
 def _session_started_since(conv_home: Path, since: float) -> str:
     """The Linda session Janus started at or after `since`, or ''."""
     db = conv_home / 'state.db'
@@ -775,7 +785,7 @@ def _session_started_since(conv_home: Path, since: float) -> str:
     try:
         with contextlib.closing(sqlite3.connect(f'file:{db}?mode=ro', uri=True, timeout=2)) as conn:
             row = conn.execute(
-                "SELECT id FROM sessions WHERE source = 'linda' AND started_at >= ? "
+                "SELECT id FROM sessions WHERE source IN ('cli', 'linda') AND started_at >= ? "
                 'ORDER BY started_at DESC LIMIT 1',
                 (since,),
             ).fetchone()
@@ -794,7 +804,8 @@ def _recover_reply(conv_home: Path, resume_id: str, since: float) -> tuple[str, 
         with contextlib.closing(sqlite3.connect(f'file:{db}?mode=ro', uri=True, timeout=2)) as conn:
             row = conn.execute(
                 'SELECT m.session_id, m.content FROM messages m JOIN sessions s ON s.id = m.session_id '
-                "WHERE s.source = 'linda' AND m.role = 'assistant' AND m.timestamp >= ? "
+                "WHERE s.source IN ('cli', 'linda') AND m.role = 'assistant' "
+                'AND m.timestamp >= ? '
                 "AND COALESCE(m.content, '') != '' AND (s.id = ? OR s.started_at >= ?) "
                 'ORDER BY m.id DESC LIMIT 1',
                 (since, resume_id, since),

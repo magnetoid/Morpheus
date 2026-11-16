@@ -81,7 +81,7 @@ class ContractInStepTests(SimpleTestCase):
         )
         written = _config_keys(text)
         self.assertIn('skills.inline_shell', written)  # the parser works
-        proved = set(contract.CONFIG_KEYS) | set(contract.SOFT_CONFIG_KEYS)
+        proved = set(contract.CONFIG_KEYS)
         unproved = written - proved - _NOT_PROVED
         self.assertEqual(unproved, set(), 'add each to CONFIG_KEYS with a source pattern')
         self.assertEqual(proved - written, set(), 'the contract checks a key nobody writes')
@@ -144,7 +144,7 @@ def _fake_janus(
         'guard_agent_created inline_shell creation_nudge_interval external_dirs',
         'memory_enabled user_profile_enabled cfg.nudge_interval hooks_auto_accept',
         'fallback_providers',
-        'cfg.get("curator") web.get("backend")',
+        'cfg.get("curator") web.get("backend") turn_completion_explainer',
         'tools_filter.get("resources") tools_filter.get("prompts")',
         'JANUS_HOME JANUS_EPHEMERAL_SYSTEM_PROMPT JANUS_YOLO_MODE SOUL.md .no-bundled-skills',
         'print(f"\\nsession_id: {cli.session_id}", file=sys.stderr)',
@@ -263,20 +263,22 @@ class ContractScriptTests(SimpleTestCase):
     def test_a_compatible_janus_raises_no_warning(self):
         self.assertEqual(self._warned(self._run()), [])
 
-    def test_a_toolset_that_loses_a_tool_is_reported(self):
-        # Linda's skills name the reviewed tools; one that is gone is reported
-        # (required once the conformance job has run it against the pin).
+    def test_a_toolset_that_loses_a_tool_fails(self):
+        # Linda's skills and prompt name the reviewed tools; one that is gone breaks them.
         report = self._run(lose_memory_tool='propose_plan')
-        self.assertEqual(self._failing(report), [])
-        self.assertEqual(self._warned(report), ['toolset memory keeps its tools'])
+        self.assertEqual(self._failing(report), ['toolset memory keeps its tools'])
 
-    def test_help_that_exits_non_zero_is_reported(self):
+    def test_help_that_exits_non_zero_fails(self):
         report = self._run(help_exit=1)
-        self.assertEqual(self._warned(report), ['janus chat --help exits 0'])
+        self.assertEqual(self._failing(report), ['janus chat --help exits 0'])
 
-    def test_the_mcp_resource_and_prompt_switches_are_watched(self):
+    def test_the_mcp_resource_and_prompt_switches_are_required(self):
         report = self._run(drop='tools_filter.get("prompts")')
-        self.assertEqual(self._warned(report), ['config mcp_servers.*.tools.prompts'])
+        self.assertEqual(self._failing(report), ['config mcp_servers.*.tools.prompts'])
+
+    def test_the_empty_reply_explainer_switch_is_required(self):
+        report = self._run(drop='turn_completion_explainer')
+        self.assertEqual(self._failing(report), ['config display.turn_completion_explainer'])
 
     def test_the_report_says_which_ref_a_fallback_replaced(self):
         report = self._run('--fallback-from', 'f' * 40)
