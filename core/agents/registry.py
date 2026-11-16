@@ -128,9 +128,9 @@ class AgentRegistry:
 
     def tools_for_scopes(self, scopes: list[str]) -> list[Tool]:
         scope_set = set(scopes)
-        return [
-            t for t in self._tools.values() if not t.scopes or set(t.scopes).issubset(scope_set)
-        ]
+        # A copy first: an app's ready() can register tools on another thread.
+        tools = list(self._tools.values())
+        return [t for t in tools if not t.scopes or set(t.scopes).issubset(scope_set)]
 
     def __repr__(self) -> str:
         return f'<AgentRegistry: {len(self._agents)} agents, {len(self._tools)} tools>'

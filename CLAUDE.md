@@ -437,6 +437,40 @@ a disabled plugin is still importable). Guarded by
 example — is repaid: its list column + fulfilment card + bulk action arrive
 via `PRODUCT_LIST_COLUMNS` / `PRODUCT_FORM_CARDS`, guarded by
 `test_disable_guards.py::ProductShellContributionGuards`.)
+**Since v0.172.0 a toggle reaches every process.** Each web and Celery worker
+keeps its own active set, and a toggle used to change only the worker that took
+the click (Linda's tools changed none). Now every surface (the Apps page,
+`plugins.toggle` / `plugins.enable` / `plugins.disable`, `manage.py morpheus
+enable|disable`) calls the one writer, `plugins/services.py:set_enabled` (refuses an
+unknown app; switching off a protected or system app or one something that is on
+needs; switching on one whose requirements are off or that conflicts with one that is
+on; and a switch the database did not save, which `activate`/`deactivate` raise
+rather than log, or this worker's next reconcile undid the click it had reported). The persisted `activate`/`deactivate` store the
+switch and bump `plugins:active:version`; every process's `reconcile()` (from
+`PluginMiddleware` before a request is resolved, Celery's `task_prerun`, and a
+60 s re-read outside tests for a lost bump) applies the stored switches with the
+in-memory `_apply_active`/`_apply_inactive`, reading the switches from the primary
+(a lagging replica would undo a click). Reconcile never writes a switch, never
+bumps, never switches off a protected or system app, and never runs `on_disable()`:
+that runs once, where the switch was flipped (also when the app's start-up failed
+there: `set_enabled` passes whether the store had it on), so per-process state
+belongs behind `is_active` (staff_sso's adapter asks it). One re-entrant lock per
+process covers `activate`, `deactivate` and `reconcile`, and the token is marked
+read only once applied: two threads starting one app would run its `ready()` twice
+and its hooks would answer twice for the life of the worker. For the same reason
+`hook_registry.register` swaps in a new sorted list: `list.sort` empties a list
+while it runs, so a request firing that event saw no handlers. `ready()` may now run at
+request time in a worker that never activated the app; when it raises, the app
+stays off there, logged at ERROR, and reconcile does not retry it. A schedule an
+app adds (beat) and the GraphQL schema (built once per process) still change at
+the next restart; the Apps page says so, and marks an app that did not start in
+the worker serving it ("Did not start").
+Anything else that writes `is_enabled` flips the app store-wide within a minute:
+bookvault's settings save set it to True until v0.172.0. Under tests a process
+follows only when the test asks (`plugins.testing.follow_app_switches`): about
+twenty tests fake a disabled app with `_active.discard` while its stored row says
+on, and a request or an eager task would put it back depending on test order.
+Guarded by `core/tests/test_registry_reconcile.py`.
 
 **Landmine — a runtime toggle that refreshes the WRONG URL module is a no-op
 that only misbehaves after the next restart.** `registry._refresh_urlconf`
@@ -455,7 +489,9 @@ plugin's namespace — contribute the markup from the owner (seo's feed links ar
 a `global_head` block now) or wrap it in `{% plugin_enabled %}`. Guarded by
 `core/tests/test_registry_url_disable.py::LiveResolverDisableTests` (asserts on
 the LIVE resolver, not `get_urlpatterns()` output — the earlier test proved
-nothing about the resolver) and `storefront/tests/test_disable_safety.py`.
+nothing about the resolver), `OtherWorkerDisableTests` (a worker that did not take
+the click rebuilds at its next request, v0.172.0) and
+`storefront/tests/test_disable_safety.py`.
 
 **Landmine — an update channel that verifies the manifest but not the bytes
 is theatre.** The per-app/theme channel (`core/component_updates.py`) trusts

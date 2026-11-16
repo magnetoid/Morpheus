@@ -178,14 +178,15 @@ class Command(BaseCommand):
         if not rest:
             raise CommandError('usage: morpheus enable|disable <plugin>')
         name = rest[0]
-        from plugins.models import PluginConfig
-        from plugins.registry import app_registry
+        from plugins.services import AppSwitchRefused, set_enabled
 
-        if name not in app_registry._classes:
-            raise CommandError(f'No such plugin: {name!r}')
-        row, _ = PluginConfig.objects.get_or_create(plugin_name=name)
-        row.is_enabled = enabled
-        row.save(update_fields=['is_enabled', 'updated_at'])
-        verb = 'Enabled' if enabled else 'Disabled'
-        self.stdout.write(self.style.SUCCESS(f'{verb} plugin {name!r}.'))
-        self.stdout.write('Restart the server for the change to take effect.')
+        try:
+            switch = set_enabled(name, enabled, actor='manage.py morpheus')
+        except AppSwitchRefused as e:
+            raise CommandError(str(e)) from e
+        verb = 'on' if enabled else 'off'
+        self.stdout.write(self.style.SUCCESS(f'{switch.label} is {verb}.'))
+        self.stdout.write(
+            'Running web and background workers follow at their next request or task; '
+            "an app's scheduled jobs and GraphQL fields change at the next restart."
+        )

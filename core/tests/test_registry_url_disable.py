@@ -76,3 +76,42 @@ class LiveResolverDisableTests(TestCase):
 
         self.assertEqual(reverse('seo:journal_rss'), '/journal/feed.xml')
         self.assertEqual(self.client.get('/journal/feed.xml').status_code, 200)
+
+
+class OtherWorkerDisableTests(TestCase):
+    """The same, for a worker that did not take the click (v0.172.0).
+
+    Every web worker has its own resolver. A toggle stores the switch and bumps a
+    token; any other worker rebuilds its URLs at its next request, before the
+    request is resolved (`PluginMiddleware` → `AppRegistry.reconcile`). Before,
+    the other workers kept serving a disabled app's routes until a restart.
+    """
+
+    def flipped_elsewhere(self, enabled: bool) -> None:
+        import uuid
+
+        from django.core.cache import cache
+
+        from plugins.models import PluginConfig
+        from plugins.registry import _VERSION_KEY
+
+        PluginConfig.objects.update_or_create(plugin_name='seo', defaults={'is_enabled': enabled})
+        cache.set(_VERSION_KEY, uuid.uuid4().hex, None)
+
+    def test_a_switch_flipped_in_another_worker_reaches_this_resolver_at_the_next_request(self):
+        from django.urls import NoReverseMatch, reverse
+
+        from plugins.registry import app_registry
+        from plugins.testing import follow_app_switches
+
+        follow_app_switches(self)
+
+        self.flipped_elsewhere(False)
+        self.assertTrue(app_registry.is_active('seo'), 'nothing has run in this worker yet')
+        self.assertEqual(self.client.get('/journal/feed.xml').status_code, 404)
+        with self.assertRaises(NoReverseMatch):
+            reverse('seo:journal_rss')
+
+        self.flipped_elsewhere(True)
+        self.assertEqual(self.client.get('/journal/feed.xml').status_code, 200)
+        self.assertEqual(reverse('seo:journal_rss'), '/journal/feed.xml')

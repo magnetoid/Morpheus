@@ -7,10 +7,24 @@ from __future__ import annotations
 
 import importlib
 import logging
+import threading
+import time
+import uuid
 
 from plugins.base import MorpheusPlugin
 
 logger = logging.getLogger('morpheus.plugins')
+
+# Every process keeps the apps that are on in memory, so a switch flipped in
+# one web worker reaches the others through this token: the persisted
+# `activate`/`deactivate` bump it, and each process's `reconcile()` (on every
+# request and before every task) re-reads the stored switches when it changed.
+# Same pattern as booking_marketplace's search index version.
+_VERSION_KEY = 'plugins:active:version'
+# A cache outage loses the bump, so a process re-reads the switches at most
+# this often anyway (never under tests, where it would make results depend on
+# timing).
+DB_REREAD_S = 60
 
 
 class AppRegistry:
@@ -38,6 +52,28 @@ class AppRegistry:
         # URLs, which disable does NOT unwind, so re-enabling must not run it
         # twice. activate() uses this to skip re-wiring on a re-enable.
         self._wired: set[str] = set()
+        # Apps whose ready() raised in this process. `reconcile()` never tries
+        # them again (a half-run ready() may have wired some hooks already);
+        # an explicit `activate()` still may.
+        self._failed: set[str] = set()
+        # The switches token this process last read the database for. None until
+        # the first `reconcile()`, which therefore always reads once: boot reads
+        # the switches before the cache is reachable, and a switch flipped while
+        # this process started must not be missed.
+        self._seen_version: str | None = None
+        self._last_db_read = 0.0
+        # One switch at a time in this process: `activate`, `deactivate` and
+        # `reconcile` all take it, so two threads never run an app's ready()
+        # twice (its hooks would answer twice for the life of the worker). It is
+        # re-entrant because an eager task inside ready() reconciles too.
+        self._switch_lock = threading.RLock()
+        # Whether `reconcile()` follows the stored switches. None means yes,
+        # except under tests: hundreds of tests set an app's in-memory state by
+        # hand (`_active.discard`) while its stored row says otherwise, and a
+        # request or an eager task would then put it back, in an order that
+        # depends on which test ran first. A test of the following itself turns
+        # it on (`plugins.testing.follow_app_switches`).
+        self.follow_switches: bool | None = None
         self._graphql_extensions: list[str] = []
         self._plugin_urls: list[dict] = []
         self._task_modules: list[str] = []
@@ -192,49 +228,22 @@ class AppRegistry:
         )
 
     def _activate(self, plugin: MorpheusPlugin) -> None:
-        try:
-            plugin.ready()
-        except Exception as e:  # noqa: BLE001 — bad plugin must not bring down the app
-            logger.error('Failed to activate plugin %s: %s', plugin.name, e, exc_info=True)
-            return
-        self._wired.add(plugin.name)
-        self._active.add(plugin.name)
-        self._collect_contributions(plugin)
-        # Per-plugin success is DEBUG (still surfaces in dev / tracing);
-        # the boot summary at the end of activate_all() carries the
-        # human-readable count + names list at INFO.
-        logger.debug('Plugin activated: %s v%s', plugin.name, plugin.version)
+        if self._apply_active(plugin.name):
+            # Per-plugin success is DEBUG (still surfaces in dev / tracing);
+            # the boot summary at the end of activate_all() carries the
+            # human-readable count + names list at INFO.
+            logger.debug('Plugin activated: %s v%s', plugin.name, plugin.version)
 
-    def deactivate(self, name: str) -> None:
-        if name in self._plugins and name in self._active:
-            self._plugins[name].on_disable()
-            self._active.discard(name)
-            self._drop_contributions(name)
-            # Rebuild the live URLconf so this plugin's register_urls routes stop
-            # resolving (get_urlpatterns now skips inactive owners). Mirror of
-            # activate()'s _refresh_urlconf; without it a disabled plugin's
-            # endpoints keep serving (hunt #13).
-            self._refresh_urlconf()
-            self._update_db_status(name, enabled=False)
-            logger.info('Plugin deactivated: %s', name)
+    # In-memory pair: this process only. No URL refresh (the caller does it
+    # once), no database write, no token bump, no on_disable().
 
-    def activate(self, name: str) -> bool:
-        """Enable a plugin at runtime — the mirror of `deactivate()`.
+    def _apply_active(self, name: str) -> bool:
+        """Switch an app on in this process. True if it is on afterwards.
 
-        Returns True if the plugin is active afterwards. Used by the dashboard
-        apps toggle so enabling a plugin lights up its hooks, URLs, settings
-        panel and other contributions immediately, without a server restart.
-
-        Idempotency: `ready()` wires hooks + URLs, which `deactivate()` does
-        NOT unwind, so running it twice would double-register them. We track
-        wired plugins in `self._wired` and only run `ready()` (and re-mount
-        URLs) on the first activation this process; a re-enable after a disable
-        just re-collects the contributions that `_drop_contributions` removed.
-
-        Caveat: a plugin that contributes process-level config fixed at boot
-        (middleware, settings) still needs a restart for those parts — the
-        apps view keeps surfacing the "restart" pill while `name not in
-        _active`, which stays true if activation here fails.
+        `ready()` wires hooks + URLs, which a disable does NOT unwind, so it runs
+        once per process (`_wired`); a re-enable after a disable just re-collects
+        the contributions `_drop_contributions` removed. A `ready()` that raises
+        leaves the app off here, logged at ERROR.
         """
         instance = self._plugins.get(name)
         if instance is None:
@@ -244,21 +253,214 @@ class AppRegistry:
         if name not in self._wired:
             try:
                 instance.ready()
-            except Exception as e:  # noqa: BLE001 — a bad plugin must not break the toggle
+            except Exception as e:  # noqa: BLE001 — a bad plugin must not bring down the app
+                self._failed.add(name)
                 logger.error('Failed to activate plugin %s: %s', name, e, exc_info=True)
                 return False
             self._wired.add(name)
+        self._failed.discard(name)
         self._active.add(name)
         self._collect_contributions(instance)
-        # Re-mount URLs *after* marking active and on *every* enable:
-        # `get_urlpatterns` skips inactive owners, so a refresh before
-        # `_active.add` filtered out the very routes being enabled, and a
-        # re-enable after a disable (already wired) got no refresh at all —
-        # both left the plugin's endpoints 404ing until a restart.
-        self._refresh_urlconf()
-        self._update_db_status(name, enabled=True)
+        return True
+
+    def _apply_inactive(self, name: str) -> None:
+        """Switch an app off in this process: its hooks stop answering (the bus
+        asks `is_active`) and its contributions leave."""
+        if name in self._active:
+            self._active.discard(name)
+            self._drop_contributions(name)
+
+    # Persisted pair: the switch for the whole store. Stores it, bumps the
+    # token every other process reconciles on, and (on disable) runs the app's
+    # on_disable() — once, here, never in the processes that follow. A switch
+    # the database did not save raises and leaves this process as it was:
+    # reporting it as done would let this worker's next reconcile undo it.
+
+    def deactivate(self, name: str, *, tear_down: bool | None = None) -> None:
+        """Switch an app off for the store. Callers decide whether it may go
+        (`plugins.services.set_enabled`); this only carries it out.
+
+        `tear_down` says whether `on_disable()` runs; by default, when the app
+        runs here. `set_enabled` passes whether the store had it on, so the
+        tear-down still runs when the app's start-up failed in this process.
+        Raises `DatabaseError` when the switch cannot be stored.
+        """
+        if name not in self._plugins:
+            return
+        with self._switch_lock:
+            self._store_switch(name, enabled=False)
+            if tear_down is None:
+                tear_down = name in self._active
+            if tear_down:
+                try:
+                    self._plugins[name].on_disable()
+                except Exception as e:  # noqa: BLE001 — a failed tear-down never keeps an app on
+                    logger.error('plugins: %s.on_disable failed: %s', name, e, exc_info=True)
+            if name in self._active:
+                self._apply_inactive(name)
+                # Rebuild the live URLconf so this plugin's register_urls routes
+                # stop resolving (get_urlpatterns now skips inactive owners);
+                # without it a disabled plugin's endpoints keep serving (hunt #13).
+                self._refresh_urlconf()
+            self._bump_version()
+        logger.info('Plugin deactivated: %s', name)
+
+    def activate(self, name: str) -> bool:
+        """Switch an app on for the store — the mirror of `deactivate()`.
+
+        Returns True if the app is on afterwards. Its hooks, URLs, settings
+        panel and other contributions light up here at once and in every other
+        process at its next request or task (`reconcile`). When `ready()`
+        raises here, nothing is stored: the app stays off everywhere. Raises
+        `DatabaseError` when the switch cannot be stored, after switching the
+        app back off here.
+        """
+        if name not in self._plugins:
+            return False
+        with self._switch_lock:
+            started_here = name not in self._active
+            if started_here:
+                if not self._apply_active(name):
+                    return False
+                # Re-mount URLs *after* marking active and on *every* enable:
+                # `get_urlpatterns` skips inactive owners, so a refresh before
+                # `_active.add` filtered out the very routes being enabled.
+                self._refresh_urlconf()
+            try:
+                self._store_switch(name, enabled=True)
+            except Exception:
+                if started_here:
+                    self._apply_inactive(name)
+                    self._refresh_urlconf()
+                raise
+            self._bump_version()
         logger.info('Plugin activated at runtime: %s', name)
         return True
+
+    # ── Every process follows the stored switches ─────────────────────────────
+
+    def _version(self) -> str:
+        from django.core.cache import cache
+
+        try:
+            current = cache.get(_VERSION_KEY)
+            if current is None:
+                cache.add(_VERSION_KEY, uuid.uuid4().hex, None)
+                current = cache.get(_VERSION_KEY)
+        except Exception:  # noqa: BLE001 — without the cache the timed re-read still runs
+            return ''
+        return current or ''
+
+    def _bump_version(self) -> None:
+        """Tell every other process to re-read the switches. This process does
+        not mark the new token as read: another switch flipped elsewhere a
+        moment before would otherwise hide behind it, so its next reconcile
+        reads the database once more."""
+        from django.core.cache import cache
+
+        try:
+            cache.set(_VERSION_KEY, uuid.uuid4().hex, None)
+        except Exception:  # noqa: BLE001 — the timed re-read covers a cache outage
+            logger.warning('plugins: could not bump the switches version', exc_info=True)
+
+    def _following(self) -> bool:
+        if self.follow_switches is not None:
+            return self.follow_switches
+        from django.conf import settings
+
+        return not getattr(settings, '_RUNNING_TESTS', False)
+
+    def _reread_due(self) -> bool:
+        from django.conf import settings
+
+        if getattr(settings, '_RUNNING_TESTS', False):
+            return False
+        return time.monotonic() - self._last_db_read > DB_REREAD_S
+
+    def _stored_switches(self) -> dict[str, bool] | None:
+        """``{app: is_enabled}`` as stored, read only; None when the database
+        cannot answer. An app with no row has no stored switch (boot writes one
+        for every app it finds, so on a store that means it was never there)."""
+        from django.db import DEFAULT_DB_ALIAS, DatabaseError
+
+        try:
+            from plugins.models import PluginConfig
+
+            # From the primary: a lagging replica would mark the new token read
+            # with the old switches, and undo this worker's own click.
+            rows = PluginConfig.objects.using(DEFAULT_DB_ALIAS)
+            return dict(rows.values_list('plugin_name', 'is_enabled'))
+        except (DatabaseError, ImportError, LookupError):
+            return None
+
+    def _keeps_running(self, name: str) -> bool:
+        """An app reconcile never switches off: a system app, or one the store
+        cannot run without (`core.safety.protection_reason`, the same gate every
+        disable asks). A stored "off" for it is a mistake, not an instruction."""
+        cls = self._classes.get(name)
+        if cls is not None and getattr(cls, 'system', False):
+            return True
+        try:
+            from core.safety import is_plugin_protected
+
+            return is_plugin_protected(name)
+        except Exception:  # noqa: BLE001 — when in doubt, leave it running
+            return True
+
+    def reconcile(self) -> None:
+        """Bring this process in line with the stored switches.
+
+        Called before every request (`PluginMiddleware`) and every Celery task.
+        Costs one cache read while nothing changed. When the token moved (or,
+        outside tests, every `DB_REREAD_S`), it reads the switches under a lock
+        and applies the difference in dependency order, then refreshes the URLs
+        once. It never writes a switch, never bumps the token, never runs
+        `on_disable()` (that ran once, where the switch was flipped) and never
+        switches off a system or protected app. An app it switches on runs its
+        `ready()` here, which may do the app's own start-up work.
+        """
+        if not self._ready or not self._following():
+            return
+        version = self._version()
+        if version == self._seen_version and not self._reread_due():
+            return
+        with self._switch_lock:
+            version = self._version()
+            if version == self._seen_version and not self._reread_due():
+                return  # another thread did it while this one waited
+            stored = self._stored_switches()
+            self._last_db_read = time.monotonic()
+            if stored is None:
+                return  # the token stays unread, so the next call tries again
+            try:
+                self._apply_switches(stored)
+            finally:
+                # Marked read only once applied: a thread that arrives meanwhile
+                # waits on the lock instead of serving on a half-applied set.
+                self._seen_version = version
+
+    def _apply_switches(self, stored: dict[str, bool]) -> None:
+        try:
+            order = self._topo_sort(list(self._classes))
+        except ValueError:
+            order = sorted(self._classes)
+        known = [n for n in order if n in self._plugins and n in stored]
+        off = [
+            n
+            for n in reversed(known)
+            if not stored[n] and n in self._active and not self._keeps_running(n)
+        ]
+        on = [n for n in known if stored[n] and n not in self._active and n not in self._failed]
+        for name in off:
+            self._apply_inactive(name)
+        switched_on = [name for name in on if self._apply_active(name)]
+        if off or switched_on:
+            self._refresh_urlconf()
+            logger.info(
+                'plugins: followed the stored switches (on: %s; off: %s)',
+                ', '.join(switched_on) or '-',
+                ', '.join(off) or '-',
+            )
 
     # The URL modules the root urlconf actually includes, with the surface
     # filter each one applies. `morph/urls.py` mounts `plugins.chrome_urls`
@@ -325,7 +527,8 @@ class AppRegistry:
             panel = plugin.contribute_settings_panel()
             if panel is not None:
                 panel.plugin = plugin.name
-                self._settings_panels[plugin.name] = panel
+                # A new dict, like the lists below: other threads may be iterating it.
+                self._settings_panels = {**self._settings_panels, plugin.name: panel}
         except Exception as e:  # noqa: BLE001
             logger.warning(
                 'plugins: %s.contribute_settings_panel failed: %s', plugin.name, e, exc_info=True
@@ -350,16 +553,27 @@ class AppRegistry:
                 'plugins: %s agent contributions failed: %s', plugin.name, e, exc_info=True
             )
         # Sort blocks and pages once per activation so render-time stays cheap.
-        self._storefront_blocks.sort(key=lambda b: (b.slot, b.priority, b.plugin))
-        self._dashboard_pages.sort(key=lambda p: (p.section, p.order, p.label))
-        self._dashboard_cards.sort(key=lambda c: (c.section, c.order, c.title))
+        # Into new lists: an app now also switches on while other threads of the
+        # same worker render (`reconcile`), and a list being sorted in place
+        # reads as empty to them.
+        self._storefront_blocks = sorted(
+            self._storefront_blocks, key=lambda b: (b.slot, b.priority, b.plugin)
+        )
+        self._dashboard_pages = sorted(
+            self._dashboard_pages, key=lambda p: (p.section, p.order, p.label)
+        )
+        self._dashboard_cards = sorted(
+            self._dashboard_cards, key=lambda c: (c.section, c.order, c.title)
+        )
 
     def _drop_contributions(self, plugin_name: str) -> None:
         self._storefront_blocks = [b for b in self._storefront_blocks if b.plugin != plugin_name]
         self._dashboard_pages = [p for p in self._dashboard_pages if p.plugin != plugin_name]
         self._dashboard_cards = [c for c in self._dashboard_cards if c.plugin != plugin_name]
         self._email_templates = [t for t in self._email_templates if t.plugin != plugin_name]
-        self._settings_panels.pop(plugin_name, None)
+        self._settings_panels = {
+            name: panel for name, panel in self._settings_panels.items() if name != plugin_name
+        }
         try:
             from core.agents.registry import agent_registry
             from core.agents.skills import skill_registry
@@ -470,18 +684,12 @@ class AppRegistry:
 
         return enabled
 
-    def _update_db_status(self, name: str, enabled: bool) -> None:
-        from django.db import DatabaseError
+    def _store_switch(self, name: str, enabled: bool) -> None:
+        """Store an app's switch. Raises `DatabaseError` when it cannot: a switch
+        the store did not save must never be reported as switched."""
+        from plugins.models import PluginConfig
 
-        try:
-            from plugins.models import PluginConfig
-
-            PluginConfig.objects.update_or_create(
-                plugin_name=name,
-                defaults={'is_enabled': enabled},
-            )
-        except (DatabaseError, ImportError) as e:
-            logger.error('Failed to update DB status for plugin %s: %s', name, e)
+        PluginConfig.objects.update_or_create(plugin_name=name, defaults={'is_enabled': enabled})
 
     # ── Registration (called by plugin.ready()) ────────────────────────────────
 

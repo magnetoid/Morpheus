@@ -321,3 +321,82 @@ class ThemeRequirementGuardTests(TestCase):
         with self.assertRaises(ToolError):
             plugins_toggle_tool.invoke({'plugin': 'wishlist', 'enabled': False, 'confirmed': True})
         self.assertTrue(app_registry.is_active('wishlist'))
+
+
+class AppsPageSwitchTests(TestCase):
+    """The Apps page switches an app for the whole store (v0.172.0).
+
+    It used to write the switch and change only the web worker that took the
+    click, with a "Restart needed" pill for an app that did not load there; the
+    other workers kept the old set until a restart. It now goes through
+    `plugins.services.set_enabled`, which stores the switch and bumps the token
+    every worker follows (`core/tests/test_registry_reconcile.py`).
+    """
+
+    APP = 'wishlist'  # not protected, and nothing installed needs it
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        staff = get_user_model().objects.create_user(
+            username='owner@example.com', email='owner@example.com', password='x', is_staff=True
+        )
+        self.client.force_login(staff)
+        self.addCleanup(lambda: app_registry.is_active(self.APP) or app_registry.activate(self.APP))
+
+    def post(self, name, enabled):
+        from django.contrib.messages import get_messages
+        from django.urls import reverse
+
+        resp = self.client.post(
+            reverse('admin_dashboard:apps'), {'plugin': name, 'enabled': '1' if enabled else '0'}
+        )
+        return ' '.join(str(m) for m in get_messages(resp.wsgi_request))
+
+    def test_the_page_promises_no_restart_but_names_the_schedule(self):
+        from django.urls import reverse
+
+        resp = self.client.get(reverse('admin_dashboard:apps'))
+        self.assertNotContains(resp, 'Restart needed')
+        self.assertContains(resp, 'data-apps-switch-note')
+        self.assertContains(resp, 'scheduled jobs and its API fields change at the next restart')
+
+    def test_a_switch_is_stored_and_every_worker_is_told(self):
+        from django.core.cache import cache
+
+        from plugins.models import PluginConfig
+        from plugins.registry import _VERSION_KEY
+
+        token = app_registry._version()
+        self.assertIn('is off', self.post(self.APP, False))
+        self.assertFalse(app_registry.is_active(self.APP))
+        self.assertFalse(PluginConfig.objects.get(plugin_name=self.APP).is_enabled)
+        self.assertNotEqual(cache.get(_VERSION_KEY), token)
+
+        self.assertIn('is on', self.post(self.APP, True))
+        self.assertTrue(app_registry.is_active(self.APP))
+        self.assertTrue(PluginConfig.objects.get(plugin_name=self.APP).is_enabled)
+
+    def test_an_app_another_app_needs_stays_on_and_the_page_names_it(self):
+        from core.tests.test_registry_reconcile import PROBE, install_probe
+
+        install_probe(self, requires=[self.APP])
+        self.assertTrue(app_registry.activate(PROBE))
+
+        notes = self.post(self.APP, False)
+        self.assertIn('Reconcile probe needs', notes)
+        self.assertTrue(app_registry.is_active(self.APP))
+
+    def test_an_app_that_did_not_start_here_says_so(self):
+        from django.urls import reverse
+
+        from core.tests.test_registry_reconcile import PROBE, install_probe
+        from plugins.models import PluginConfig
+
+        install_probe(self, fail=True)
+        with self.assertLogs('morpheus.plugins', 'ERROR'):
+            app_registry._apply_active(PROBE)  # another worker switched it on; here it failed
+        PluginConfig.objects.create(plugin_name=PROBE, is_enabled=True)
+
+        resp = self.client.get(reverse('admin_dashboard:apps'))
+        self.assertContains(resp, 'Did not start')

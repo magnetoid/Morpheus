@@ -167,7 +167,7 @@ Then enable it:
 
 ```bash
 ./bin/morpheus enable loyalty
-# Restart the server.
+# Running web and background workers follow at their next request or task.
 ```
 
 ### Lifecycle
