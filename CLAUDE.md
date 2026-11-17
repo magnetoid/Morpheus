@@ -711,22 +711,23 @@ choices are the model's words. A write the edge held with `approval_required` ge
 Approve / Decline card built from the refused call's recorded arguments, never from her
 text, and Approve sends plain "Yes, go ahead." (a label like "cancel" would trip the
 kernel's negation). Real mid-turn `clarify` needs a callback inside the Janus process,
-so it waits for a Janus change (`docs/plans/janus-interactive-chat-2026-10.md`). **Janus also updates itself** while the image tracks a
-branch (`core/assistant/janus_runtime.py`; release images pin a commit, so no store does, and each
-turn's `AgentRun.metadata` names the `janus_version` and `janus_commit` that answered): every 3 hours a turn or the Janus page
-starts the detached `janus_updater.py`, which installs GitHub's archive of the newest
-commit beside the current Janus (the image has no git) and switches only when
-`core/assistant/janus_contract.py` passes — the contract checks that each toolset
-holds only the reviewed tools, that Janus still reads every config key Morpheus writes,
-and the env vars, CLI options and state.db columns the integration uses; three engine
-failures in a row on an auto-installed Janus roll back. The Docker build runs the same
-contract and falls back to `JANUS_KNOWN_GOOD`. The repository and branch come from the
-image's build record, **never from a setting**: Linda can write settings through her
-tools, and a setting that names the code to install is remote code execution. When
-Morpheus starts relying on a new Janus surface, add it to the contract in the same
-change (`test_janus_contract.py` fails until you do). Guarded by
-`core/assistant/tests/test_janus_engine.py::AgentToolsetTests`, `test_janus_contract.py`,
-`test_janus_updates.py` and `test_janus_activity.py`.
+so it waits for a Janus change (`docs/plans/janus-interactive-chat-2026-10.md`). **Janus moves only with a Morpheus release** (v0.175.1): the Dockerfile pins one
+reviewed commit (`ARG JANUS_REF`, with `JANUS_KNOWN_GOOD` as the build's fallback), the
+`janus-bump` workflow proposes a new pin as a draft pull request after running the
+contract and the conformance suite on it (`scripts/bump_janus.py`), and each turn's
+`AgentRun.metadata` names the `janus_version` and `janus_commit` that answered
+(`core/assistant/janus_runtime.py`). The store-side self-updater (a runtime install from
+GitHub every 3 hours, with rollback) never ran on a release image, which pins a commit,
+and is gone: nothing a turn, the dashboard or a setting can write chooses the program a
+turn runs. `core/assistant/janus_contract.py` checks that each toolset holds only the
+reviewed tools, that Janus still reads every config key Morpheus writes, and the env
+vars, CLI options and state.db columns the integration uses; the Docker build runs it and
+falls back to `JANUS_KNOWN_GOOD`. The repository comes from the Dockerfile, **never from
+a setting**: Linda can write settings through her tools, and a setting that names the
+code to install is remote code execution. When Morpheus starts relying on a new Janus
+surface, add it to the contract in the same change (`test_janus_contract.py` fails until
+you do). Guarded by `core/assistant/tests/test_janus_engine.py::AgentToolsetTests`,
+`test_janus_contract.py`, `test_janus_updates.py` and `test_janus_activity.py`.
 
 **Landmine — what Janus learns lives in files a redeploy deletes, and "add a disk
 volume" only fixes it on one host.** Janus writes its memory notes, the skills it

@@ -10,13 +10,13 @@ conformance suite (core/assistant/tests/conformance) runs the real Janus. Four
 callers:
 
 * CI's ``janus-conformance`` job, on the pinned Janus, before that suite;
+* the ``janus-bump`` workflow, on the newest Janus, before it proposes moving
+  the pin (.github/workflows/janus-bump.yml);
 * the Docker build, which fails when the pinned Janus breaks it, or installs
   ``JANUS_KNOWN_GOOD`` instead when that names another commit (the report then
   says which ref it fell back from), so an image never ships an incompatible
   engine;
-* the auto-updater (core/assistant/janus_updater.py), which installs a newer
-  Janus beside the current one and switches Linda to it only when it passes;
-* the Janus settings page, which shows the report for the Janus in use.
+* the Janus settings page, which shows the report the build recorded.
 
 Standard library only, and no Morpheus imports: it runs inside Janus's venv.
 Every expectation mirrors core/assistant/janus_engine.py, and

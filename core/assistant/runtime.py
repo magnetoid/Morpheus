@@ -536,12 +536,6 @@ class Assistant:
 
         from django.utils import timezone
 
-        from core.assistant import janus_runtime
-
-        # Keeps Janus current from GitHub: starts a background check when one is
-        # due and returns at once. This turn runs on the Janus already verified.
-        janus_runtime.maybe_update()
-
         yield {'type': 'progress', 'elapsed_s': 0}
         since, seen, tool_calls = timezone.now(), set(), 0
         last_progress = time.monotonic()
@@ -570,8 +564,6 @@ class Assistant:
                 yield {'type': 'progress', 'elapsed_s': int(last_progress - started)}
 
         usage = payload.get('usage') or {}
-        # An auto-installed Janus that keeps failing real turns is rolled back.
-        janus_runtime.record_turn(error=str(payload.get('error') or ''))
         ctx = context if isinstance(context, dict) else {}
         turn = {
             'message': message,

@@ -1,11 +1,11 @@
 """Which Janus this server runs, and whether GitHub has a newer one.
 
 What is installed comes from :func:`core.assistant.janus_runtime.installed_build`
-(pip's record of the image's git install, or the marker the auto-updater writes).
+(pip's record of the image's git install).
 
 The newest commit on GitHub comes from the public API, at most once a day per
-repository and ref (an hour after a failure), for the page. Installing it is the
-auto-updater's job (core/assistant/janus_runtime.py), which keeps its own clock.
+repository and ref (an hour after a failure), for the page. Nothing installs it
+here: Janus moves when a Morpheus release moves the Dockerfile's pin.
 """
 
 from __future__ import annotations

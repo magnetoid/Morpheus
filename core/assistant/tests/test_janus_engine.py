@@ -905,12 +905,6 @@ class AssistantEngineTests(SimpleTestCase):
 
         self.assertFalse(Path(settings.JANUS_BIN).exists())
 
-    def test_tests_can_never_install_a_janus(self):
-        # With `janus` on a developer's PATH, a turn would start the updater.
-        from django.conf import settings
-
-        self.assertFalse(settings.LINDA_JANUS_AUTO_UPDATE)
-
     def test_no_engine_switch_remains(self):
         from django.conf import settings
 

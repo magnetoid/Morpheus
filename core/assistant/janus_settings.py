@@ -89,13 +89,6 @@ def web_search_enabled() -> bool:
     return bool(_read('web_search', True))
 
 
-def auto_update_enabled() -> bool:
-    """Whether Janus installs newer commits from its GitHub branch by itself
-    (core/assistant/janus_runtime.py). Never chooses WHICH repository: that comes
-    from the image's build record, out of reach of any setting."""
-    return bool(_read('auto_update', True))
-
-
 def fallback_providers() -> list[str]:
     """Backup providers, in order, for when the main one fails (provider names).
 

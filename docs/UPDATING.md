@@ -174,7 +174,7 @@ artifact is a `.tar.gz` with **one** top-level directory (`my_app/` or
 
 ---
 
-## Janus, the engine behind Linda (v0.83.0)
+## Janus, the engine behind Linda (v0.83.0; by pull request since v0.174.0)
 
 Janus is installed from its own repository, not shipped in this tree, and it moves
 faster than Morpheus deploys. The owner asked for it to follow upstream closely and
@@ -188,21 +188,17 @@ per-app channels above:
    there is nothing to fall back to and the build fails. The report is kept at
    `/opt/janus/morpheus-contract.json`.
 
-Release images pin `JANUS_REF` to a reviewed commit, so on every store Janus changes only
-when a Morpheus release moves the pin, and each Linda turn records the Janus version and
-commit that answered it (`AgentRun.metadata`). Steps 2 and 3 run only on an image built
-with `JANUS_REF` naming a branch. The pin moves by the pull request described under
-"The bump pull request" below.
+2. **In a release.** `JANUS_REF` names a reviewed commit, so on every store Janus changes
+   only when a Morpheus release moves the pin, by the pull request described under "The
+   bump pull request" below. Each Linda turn records the Janus version and commit that
+   answered it (`AgentRun.metadata`), and Settings → AI → Janus shows the build, its
+   contract report and whether GitHub has a newer commit.
 
-2. **While running (branch builds only).** Every 3 hours a Linda turn (or a visit to Settings → AI → Janus)
-   starts `core/assistant/janus_updater.py` in the background. It asks GitHub for the
-   branch's newest commit, pip-installs GitHub's archive of exactly that commit into
-   `<janus home>/engine/venvs/<sha12>/`, runs the contract with it, and only then
-   records it in `engine/state.json` as the Janus to use. The image's copy stays as the
-   fallback; the replaced copy is kept for a rollback, older ones are deleted.
-3. **After switching (branch builds only).** Three engine failures in a row on an auto-installed Janus
-   (provider errors and timeouts do not count) put the previous one back and mark that
-   commit failed, so it is not retried until a newer commit appears.
+Until v0.175.1 an image built with `JANUS_REF` naming a branch also installed newer
+commits at runtime (`janus_updater.py`, with a rollback after three failed turns). No
+release image ever ran it, because they all pin a commit, so it was removed together with
+its `LINDA_JANUS_AUTO_UPDATE` switch and the page's "Keep Janus up to date" box. A stored
+`auto_update` value is ignored.
 
 "Compatible" is proved in three layers:
 
@@ -242,16 +238,10 @@ with `JANUS_REF` naming a branch. The pin moves by the pull request described un
   Actions → General → Workflow permissions); without it the run pushes the branch and
   stops with a link to open the pull request by hand.
 
-Switches: `LINDA_JANUS_AUTO_UPDATE=False` (deployment) or the "Keep Janus up to date"
-box on the Janus page (merchant) keep the image's Janus until the next deploy. A build
-with `JANUS_REF` pinned to a commit is never auto-updated. The repository and branch
-always come from the image's build record, never from a setting, because Linda can
-change settings through her tools. Nothing here needs a volume: the engine dir lives in
-the container and a redeploy starts again from the image. Raise `JANUS_KNOWN_GOOD` to a
-commit the stores have run without trouble.
-
-This is unattended, unlike the core rule below, because Janus is not this tree's code:
-an update cannot change a Morpheus file, it is checked before use, and it rolls back.
+The repository comes from the Dockerfile's `ARG JANUS_REPO`, never from a setting,
+because Linda can change settings through her tools. Nothing here needs a volume. A bump
+keeps the old pin as `JANUS_KNOWN_GOOD`, so the build's fallback is always a commit the
+stores have run.
 
 ---
 

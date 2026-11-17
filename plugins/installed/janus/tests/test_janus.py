@@ -34,7 +34,6 @@ _VALID = {
     'bundled_skills': 'on',
     'learning': 'on',
     'web_search': 'on',
-    'auto_update': 'on',
     'reasoning_effort': 'low',
 }
 
@@ -105,13 +104,11 @@ class JanusPageSaveTests(TestCase):
             bundled_skills='',
             learning='',
             web_search='',
-            auto_update='',
         )
         self.assertEqual(response.status_code, 302)
         stored = _stored()
         self.assertFalse(stored['learning'])
         self.assertFalse(stored['web_search'])
-        self.assertFalse(stored['auto_update'])
         self.assertEqual(stored['max_tool_turns'], 4)
         self.assertEqual(stored['turn_timeout_s'], 30)
         self.assertEqual(stored['extra_instructions'], 'Prices include VAT.')
