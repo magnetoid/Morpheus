@@ -459,9 +459,12 @@ class DockerfileTests(SimpleTestCase):
         )
         job = ci[ci.index('  janus-conformance:') :]
         job = job[: job.index('\n  api-stability:')]
-        self.assertIn("sed -n 's/^ARG JANUS_REF=//p' Dockerfile", job)
-        self.assertIn('janus-agent[mcp] @ git+https://github.com/magnetoid/Janus-Agent.git@', job)
+        # The repository, ref and companion pins come from the Dockerfile and
+        # janus_runtime.PINS through scripts/bump_janus.py, never a second copy.
+        self.assertIn('python3 scripts/bump_janus.py env >> "$GITHUB_ENV"', job)
+        self.assertIn('"janus-agent[mcp] @ git+${JANUS_REPO}@${JANUS_REF}" $JANUS_PINS', job)
         for pin in rt.PINS:
-            self.assertIn(pin, job)
+            self.assertNotIn(pin, job)
+        self.assertNotIn('github.com/magnetoid/Janus-Agent', job)
         self.assertIn('JANUS_CONFORMANCE_BIN: /tmp/janus/bin/janus', job)
         self.assertIn("grep -q 'skipped='", job)

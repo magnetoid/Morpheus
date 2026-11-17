@@ -114,6 +114,11 @@ class VersionedChangesTests(TestCase):
         )
         self.assertEqual(len(changed), 4)
 
+    def test_the_dockerfile_is_versioned(self) -> None:
+        # The janus-bump pull request changes only the Dockerfile's Janus pin.
+        self.assertEqual(versioned_changes(['Dockerfile']), ['Dockerfile'])
+        self.assertEqual(versioned_changes(['docs/Dockerfile.md', 'x/Dockerfile']), [])
+
     def test_non_shipping_and_tests_are_excluded(self) -> None:
         self.assertEqual(
             versioned_changes(

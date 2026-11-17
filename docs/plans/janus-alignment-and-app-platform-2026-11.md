@@ -148,6 +148,17 @@ One release in flight at a time, each from a fresh worktree off `origin/main`, e
 - **P3b**, its own yes, after the first bump is live: delete `janus_updater.py`, the `maybe_update` calls, `LINDA_JANUS_AUTO_UPDATE`, the rollback machinery and the `auto_update` setting (a setting with no reader is a lie). Keep `installed_build`, `contract_report` and `upstream.py` (the page shows "N commits behind"). Rewrite CLAUDE.md's "Janus also updates itself" paragraph and close phases 5–6 of `janus-replaces-linda` as not needed.
 - Tests: `core/tests/test_janus_bump_script.py`, `test_janus_updates.py`.
 
+*As shipped (v0.174.0):*
+- `scripts/bump_janus.py` (standard library only): `env` prints the pin for `$GITHUB_ENV` (repository, slug, ref, fallback, and `janus_runtime.PINS` read without importing it); `bump <sha>` rewrites only the two ARG lines; `title` and `body` write the pull request. CI's conformance job and the weekly audit read the pin through it, so no workflow keeps its own copy of the repository URL or the companion pins.
+- `.github/workflows/janus-bump.yml`, Tuesdays and by hand, in three jobs:
+  - `resolve` (read-only) takes the newest commit of the Janus repository's main with `git ls-remote`, or, by hand, a `commit` input that must be 40 hex, on that main and newer than the pin (GitHub serves any commit of a fork network by its sha). It is the only input; the repository comes from the Dockerfile.
+  - `candidate` runs the new Janus, so it has a read-only token that is not left in `.git/config`. It installs the commit as the image does, then runs the contract, the conformance suite, pip-audit (after the suite, so the auditor's packages cannot change what was tested) and the contract on the current pin, for the diff. The description goes to the step summary and an artifact.
+  - `pull-request` runs no Janus and is the only job with `contents` and `pull-requests` write. It runs only when the candidate passed, and never for a pull request event. It commits the bump as `github-actions[bot]` on `janus/bump` with `--force-with-lease`, and opens or updates one draft pull request. A branch carrying a commit a person pushed is left alone. Nothing merges.
+- A change to the workflow or the script runs it on its pull request as a dry run: nothing is opened, and a failing candidate is a warning there.
+- `release --check` counts the `Dockerfile` as versioned, so a bump pull request cannot merge without the release commit a person pushes onto it (which is also what starts CI on it).
+- The `morpheus-known-good` tag in the Janus repository no longer matters.
+- Not done here: the GitHub setting that lets Actions create pull requests was off on 2026-11-17 (`can_approve_pull_request_reviews: false`). Until the owner turns it on, a run pushes the branch and stops with a link to open the pull request by hand.
+
 ### P4 — Deferred tool schemas
 
 - Measure first: the `tools` array P2 records, and P1's per-turn tokens and API calls from live turns.

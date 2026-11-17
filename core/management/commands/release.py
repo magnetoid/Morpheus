@@ -39,6 +39,9 @@ from django.core.management.base import BaseCommand, CommandError
 # theme code. Tests and non-shipping trees (docs, scripts, CI, .torsor) don't
 # themselves require a bump.
 VERSIONED_PREFIXES = ('core/', 'plugins/installed/', 'morph/', 'themes/')
+# The image itself: the janus-bump workflow's pull request changes only the
+# Dockerfile's pin, and moving Janus on five stores is a release like any other.
+VERSIONED_FILES = ('Dockerfile',)
 _EXCLUDED_SUBSTRINGS = ('/tests/',)
 
 _SETTINGS_RE = re.compile(
@@ -189,7 +192,7 @@ def versioned_changes(changed_paths: list[str]) -> list[str]:
     for p in changed_paths:
         if any(sub in p for sub in _EXCLUDED_SUBSTRINGS):
             continue
-        if p.startswith(VERSIONED_PREFIXES):
+        if p.startswith(VERSIONED_PREFIXES) or p in VERSIONED_FILES:
             out.append(p)
     return out
 
