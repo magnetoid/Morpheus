@@ -15,6 +15,16 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.173.0 — 2026-11-16
+
+**Settings an agent changes are checked against the app's schema**
+
+- One module reads every app's settings schema: the dashboard's form and save, Plugin.set_config, Linda's settings tools and the MCP argument check use it.
+- settings.set reads a value as its setting's type and refuses one that does not fit (type, allowed values, range, length, list items); set_config logs such a value and still stores it.
+- Linda can't change secrets, where her model runs (model, provider, base URL, key, fallbacks), AI provider and push addresses, single sign-on, role enforcement, the agent guardrails, the backup folder or Janus's standing instructions.
+- New read tool settings.describe: each setting's type, allowed values, default, current value (secrets redacted) and whether an agent may change it.
+- Fixed: the settings panel saved a list as text, so cart recovery and subscription dunning ignored their delays and the consent setting after them.
+
 ## v0.172.0 — 2026-11-16
 
 **Switching an app on or off reaches every worker at once**

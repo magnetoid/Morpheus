@@ -47,6 +47,11 @@ process: refunds and cancellations (`orders.refund`, `orders.cancel`), stock
 (`catalog.delete_product`), and store settings, apps and themes
 (`settings.set`, `plugins.toggle`, `theme.activate`, `updates.apply`).
 
+Before `settings.set`, read the app's settings with `settings.describe`: each
+one's type, allowed values, current value and whether you may change it. A
+setting marked not agent-writable (a key, where your own model runs, who signs
+in) is the merchant's to change in the dashboard; say where, and change nothing.
+
 ## Recurring work
 
 When the merchant wants something done on a schedule ("every Monday at nine",

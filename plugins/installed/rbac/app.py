@@ -89,6 +89,8 @@ class RbacPlugin(Plugin):
                     'type': 'string',
                     'enum': ['off', 'log', 'enforce'],
                     'default': 'log',
+                    # Whether roles deny anything is the merchant's to change.
+                    'x-agent-writable': False,
                     'title': 'Enforcement',
                     'description': (
                         'How role capabilities are applied. '

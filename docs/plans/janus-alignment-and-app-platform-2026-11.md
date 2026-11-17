@@ -6,7 +6,7 @@
 
 **Method.** Three read-only explorations (the Janus seam inside Morpheus; the Janus repository, read over the GitHub API; the app system and agent coverage), one design pass, and spot-checks of the strongest claims in the code on `origin/main` (0b433b93).
 
-**Status:** approved by the owner on 2026-11-15. P1 (Janus truth patch) is v0.171.1, live on all five stores since 2026-11-16. P2 (conformance suite) is v0.171.2, live on all five since 2026-11-16. P5 (app toggle reaches every process) is v0.172.0, in review. Update this line as each release ships.
+**Status:** approved by the owner on 2026-11-15. P1 (Janus truth patch) is v0.171.1, live on all five stores since 2026-11-16. P2 (conformance suite) is v0.171.2, live on all five since 2026-11-16. P5 (app toggle reaches every process) is v0.172.0, live on all five since 2026-11-16. P7 (one settings coercer) is v0.173.0, in review. Update this line as each release ships.
 
 **Owner's decisions (2026-11-15).**
 1. Janus updates arrive as a **pull request with a test**: CI takes the newest Janus, runs the contract and a real `janus chat` against a stub model, and opens a PR that moves the pin. The owner merges; all five stores get the same verified version through a normal deploy. The runtime self-updater is retired.
@@ -129,6 +129,16 @@ One release in flight at a time, each from a fresh worktree off `origin/main`, e
 - Schema flag `x-agent-writable: false`, honoured by `settings.set`; default false for `format: password`; set on janus `api_key`, `base_url`, `model_source`, `provider` (otherwise Linda can point her own inference at any host).
 - First release: an unknown key or type passes with a warning, so nothing accepted yesterday is refused. Validation on write only; no migration.
 - Tests: `plugins/tests/test_config_schema.py`, settings-tool tests, the dashboard POST tests as the golden reference.
+
+*As shipped (v0.173.0):*
+- `plugins/config_schema.py`: `properties`, `coerce`, `validate`, `errors`, `clean`, `is_secret`, `looks_secret`, `redact`, `agent_writable`, `field_kind`, `report`. `validate` keeps the MCP edge's messages exactly; it does not check list items, so tool arguments are refused for nothing new. Tests sit in `plugins/tests_config_schema.py`, the shape of the other package-root tests.
+- Ruling: `set_config` only logs (`settings: <app>.<key>: …`) for a value its declared setting would refuse, and is silent for an undeclared key, because apps keep internal state there (AliExpress's `_access_token`, the setup guide's dismissal, an AI provider's fetched model list). `settings.set` refuses a declared value that does not fit; an undeclared key keeps the old true/false/digits reading and comes back with a warning, unless its name reads like a secret.
+- Ruling: `x-agent-writable: false` also on every ai_assistant `*_base_url` (the store's key for that provider goes there), openai_shopping's `push_endpoint` (its push token goes there) and the whole staff_sso schema (who signs in); the flag can sit on a whole schema.
+- Found on the way: the settings panel rendered a list as Python's `[60, 1440, 4320]` and saved that text, so cart recovery and subscription dunning failed to read their delays, kept their defaults and ignored `require_marketing_consent` after them. The panel now edits a list as comma-separated text (JSON when an item has a comma in it or is not plain) and saves a list; both readers also read the old text.
+- From the independent review: ai_assistant reads `<provider>_base_url` for every provider but declares ten, so `gemini_base_url` and `anthropic_base_url` were still writable and an agent could send the store's key to any server (reproduced). An undeclared key ending in `_url`, `_endpoint` or `_host` is now the merchant's, tested over every provider in `provider_registry._DEFAULT_BASE_URLS`. Also made the merchant's: agent_core's guardrails (an agent could loosen its own limits), `rbac.enforcement_mode`, `backups.backup_dir` (a folder under `/app/media` would publish the nightly dump) and janus's `model`, `fallback_providers` and `extra_instructions`. When both schemas declare a key, either can now make it secret or the merchant's. The AI page's Disconnect clears `ai_provider` with None instead of `''`, which its enum lacks.
+- Left as it is (review): the merchant may approve a `settings.set` that the tool then refuses, because the flag is read inside the tool after the edge's consent; the skill tells Linda to read `settings.describe` first. Moving the check into `gates.py` would special-case one tool in the one gate chain.
+- Found, not fixed (separate bug): the subscribe-and-save block reads `settings.allowed_cadences_days`, and nothing passes a `settings` variable to a storefront block, so the picker lists no cadences whatever the app's setting says.
+- Not done: the local full serial suite (the disk had 300 MB free). A broad local run (4,053 tests) passed; CI's full suite with all five opt-in apps is the gate for this release.
 
 ### P3 — Pin bump by pull request, and P3b — retire the updater
 

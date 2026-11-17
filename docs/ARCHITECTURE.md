@@ -175,6 +175,12 @@ when the token moved and applies them in dependency order, one switch at a time
 per process. A schedule an app adds to beat, and the GraphQL schema, still change
 at the next restart.
 
+**An app's settings schema has one reader** (v0.173.0), `plugins/config_schema.py`:
+how typed-in text becomes the declared type, what fits, which settings are secret and
+which an agent may change (`x-agent-writable`). The dashboard's settings forms and save,
+`Plugin.set_config`, Linda's `settings.set` / `settings.describe` / `settings.list` and the
+MCP edge's argument check all go through it.
+
 **Plugin topology (non-obvious):**
 
 - Three hubs almost everything depends on: **`catalog`**, **`orders`**,

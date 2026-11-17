@@ -110,6 +110,9 @@ class StaffSsoPlugin(Plugin):
     def get_config_schema(self) -> dict:
         return {
             'type': 'object',
+            # Who may sign in to the dashboard is the merchant's to change,
+            # never an agent's (plugins/config_schema.py).
+            'x-agent-writable': False,
             'properties': {
                 'oidc_issuer': {
                     'type': 'string',

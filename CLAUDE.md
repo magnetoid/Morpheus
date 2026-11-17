@@ -1978,16 +1978,33 @@ amounts travel in `meta['tax_included']` to the order's `metadata`, and the invo
 and email print "Includes VAT". Guarded by `gift_cards/tests/test_breakdown_tender.py`
 and `tax/tests/test_cart_tax.py`.
 
-**Convention — `format: password` settings fields are write-only.** In the
-shared dashboard settings-panel renderer
-(`admin_dashboard/views_split/settings.py` + `urls.py`), a JSON-schema
-`format: password` property renders masked, is never pre-filled with the stored
-value, and a blank submit preserves the existing secret. Never echo a stored
-secret (API key, SSO client secret) back as cleartext; mark secret fields
-`format: password` (guarded by `test_settings_secret_masking.py`). Linda's
-`settings.list` redacts the same fields, read from each app's schema, besides
-secret-sounding names at any depth: a key named `search_console_key` matched no
-name rule, and the MCP tokens sat inside a list (`core/assistant/tests/test_settings_list_redaction.py`).
+**Convention — one reading of a settings schema, and `format: password` fields are
+write-only (v0.173.0).** `plugins/config_schema.py` is the only code that reads an app's
+settings schema (its config schema plus its panel's): `coerce` (typed-in text to the
+declared type, a list as JSON or comma-separated), `validate`/`errors` (type, enum, range,
+length, list items), `is_secret`, `redact`, `agent_writable`. The dashboard's settings
+save and panel fields, `Plugin.set_config`, Linda's `settings.set` / `settings.describe` /
+`settings.list` and the MCP edge's argument check all call it; four partial copies had
+drifted, and the panel saved a list as the text `[60, 1440, 4320]`, so cart recovery read
+its defaults and ignored the settings after the list. `settings.set` refuses a value that
+does not fit its declared setting; `set_config` still stores one and logs a warning, and an
+undeclared key (apps keep internal state in their config) is stored as before. A secret
+renders masked, is never pre-filled, a blank or `********` submit keeps it, and an agent
+cannot set it. `x-agent-writable: false` on a property, or on a whole schema, keeps any
+setting from `settings.set`; when both schemas declare a key, either one can make it secret
+or the merchant's. Put it on anything that decides where the store sends a credential or
+its model traffic (janus's model, provider, base URL, key, fallbacks; ai_assistant's
+`*_base_url`; openai_shopping's `push_endpoint`), who signs in (staff_sso), whether roles
+deny (rbac), the limits on agents (agent_core's guardrails), where database dumps land
+(backups) and Janus's standing instructions. **A key no schema declares is judged by its
+name:** one that reads like a secret or ends in `_url`/`_endpoint`/`_host` is the
+merchant's, because ai_assistant reads `<provider>_base_url` for every provider and
+declares only ten: until the review of v0.173.0, `gemini_base_url` and
+`anthropic_base_url` were writable, so an agent could send the store's key to any server.
+Guarded by `plugins/tests_config_schema.py` (every schema in the tree reads, its default
+fits, every provider's address is the merchant's, a text setting named like a secret is a
+password field), `test_settings_secret_masking.py`, `test_settings_save_by_schema.py` and
+`core/assistant/tests/test_settings_list_redaction.py`.
 
 **Interim disable-safety (v0.45.0): every remaining shell→optional-plugin
 read is gated on `app_registry.is_active(<name>)`** — the ADR 0013 shape from

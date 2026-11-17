@@ -6,6 +6,33 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.173.0 — one reading of a settings schema
+
+`plugins/config_schema.py` now reads every app's settings schema, and the agent's write is checked
+against it.
+- **`settings.set` refuses a value that does not fit its declared setting** (wrong type, outside
+  `enum`, `minimum`/`maximum`, `maxLength`, a list item that does not fit `items`) and changes
+  nothing; it used to store it. The value is still text: a list is JSON or comma-separated, a
+  boolean `true`/`false`. A key the app does not declare is stored as before, with a warning in
+  the tool's output.
+- **`settings.set` refuses a secret** (`format: password`, an API key, or an undeclared key named
+  like a token or secret), an undeclared key ending in `_url`, `_endpoint` or `_host`, and any
+  setting marked `"x-agent-writable": false`. Mark a setting of yours that decides where the
+  store sends a credential, its model traffic or its data, who can sign in, or a limit on agents;
+  the flag on the whole schema covers every property that sets none, and on either your config
+  schema or your panel's it wins for a key both declare. Declare a key an agent should be able to
+  change.
+- **`Plugin.set_config` logs a warning** (`settings: <app>.<key>: …`) when the value does not fit
+  its declared setting, and still stores it. Fix the writer, or the schema, when you see one: a
+  later release may refuse it.
+- **The dashboard saves a list setting as a list**, typed as comma-separated text (it saved the
+  text it rendered, `[60, 1440, 4320]`). A reader of a list setting should accept text stored
+  before (`config_schema.coerce({'type': 'array'}, value)`) until the panel is saved again.
+- **New read tool `settings.describe`** (`system.read`): an app's settings, with type, allowed
+  values, default, current value (secrets redacted) and whether an agent may change it.
+
+---
+
 ## v0.172.0 — an app switch reaches every process
 
 Switching an app on or off now applies in every web and Celery worker, before its next request

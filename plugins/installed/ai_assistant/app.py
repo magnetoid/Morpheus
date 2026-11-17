@@ -324,6 +324,7 @@ class AIAssistantPlugin(Plugin):
                 },
                 'openai_base_url': {
                     'type': 'string',
+                    'x-agent-writable': False,
                     'title': 'OpenAI · Base URL',
                     'description': 'Override only if proxying. Default: https://api.openai.com/v1',
                 },
@@ -365,6 +366,7 @@ class AIAssistantPlugin(Plugin):
                 },
                 'openrouter_base_url': {
                     'type': 'string',
+                    'x-agent-writable': False,
                     'title': 'OpenRouter · Base URL',
                     'default': 'https://openrouter.ai/api/v1',
                 },
@@ -382,6 +384,7 @@ class AIAssistantPlugin(Plugin):
                 },
                 'grok_base_url': {
                     'type': 'string',
+                    'x-agent-writable': False,
                     'title': 'Grok · Base URL',
                     'default': 'https://api.x.ai/v1',
                 },
@@ -400,6 +403,7 @@ class AIAssistantPlugin(Plugin):
                 },
                 'apikey_base_url': {
                     'type': 'string',
+                    'x-agent-writable': False,
                     'title': 'apikey.fun · Base URL',
                     'default': 'https://api.apikey.fun/v1',
                 },
@@ -418,6 +422,7 @@ class AIAssistantPlugin(Plugin):
                 },
                 'deepseek_base_url': {
                     'type': 'string',
+                    'x-agent-writable': False,
                     'title': 'DeepSeek · Base URL',
                     'default': 'https://api.deepseek.com',
                 },
@@ -436,6 +441,7 @@ class AIAssistantPlugin(Plugin):
                 },
                 'packy_base_url': {
                     'type': 'string',
+                    'x-agent-writable': False,
                     'title': 'Packy · Base URL',
                     'default': 'https://www.packyapi.com/v1',
                 },
@@ -454,6 +460,7 @@ class AIAssistantPlugin(Plugin):
                 },
                 'hermes_base_url': {
                     'type': 'string',
+                    'x-agent-writable': False,
                     'title': 'Hermes · Base URL',
                     'default': 'https://openrouter.ai/api/v1',
                 },
@@ -472,6 +479,7 @@ class AIAssistantPlugin(Plugin):
                 },
                 'moonshot_base_url': {
                     'type': 'string',
+                    'x-agent-writable': False,
                     'title': 'Moonshot (Kimi) · Base URL',
                     'default': 'https://api.moonshot.ai/v1',
                     'description': 'Use https://api.moonshot.cn/v1 for the China endpoint.',
@@ -491,6 +499,7 @@ class AIAssistantPlugin(Plugin):
                 },
                 'qwen_base_url': {
                     'type': 'string',
+                    'x-agent-writable': False,
                     'title': 'Qwen Cloud · Base URL',
                     'default': 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
                     'description': 'Use https://dashscope.aliyuncs.com/compatible-mode/v1 for the China (Beijing) region.',
@@ -504,6 +513,7 @@ class AIAssistantPlugin(Plugin):
                 # ── Ollama (cloud or self-hosted) ─────────────────────
                 'ollama_base_url': {
                     'type': 'string',
+                    'x-agent-writable': False,
                     'title': 'Ollama · Base URL',
                     'description': 'Self-hosted: http://localhost:11434 · Cloud: https://ollama.com',
                     'default': 'http://localhost:11434',

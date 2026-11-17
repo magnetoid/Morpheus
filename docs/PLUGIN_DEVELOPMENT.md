@@ -1173,6 +1173,29 @@ and payments do (10 s), and book_product (30 s). A test that compares the querie
 calls `plugins.testing.hold_app_settings(self)` first, or a slow runner lets the window lapse
 between them and the second request counts the re-read.
 
+**What the schema means (v0.173.0).** One module reads every app's schema,
+`plugins/config_schema.py`: the dashboard's form, its save, Linda's `settings.set` and
+`settings.describe`, and `set_config` itself. It understands `type` (`string`, `boolean`,
+`integer`, `number`, `array` with `items`, `object`), `enum`, `minimum`/`maximum`,
+`minLength`/`maxLength`, `format: password` and `x-agent-writable`, and nothing else; a
+property of any other type is stored as given. The dashboard edits a list as comma-separated
+text and saves it as a list.
+
+* A value that does not fit its declared setting is refused by `settings.set` and logged as a
+  warning by `set_config`, which still stores it in this release. Keep each `default` inside
+  its own setting: `plugins/tests_config_schema.py` fails on one that is not.
+* `format: password` marks a secret: masked, never pre-filled, kept on a blank submit,
+  redacted from agents, and not settable by an agent.
+* `"x-agent-writable": false` on a property keeps an agent's `settings.set` off it; on the
+  whole schema it covers every property that does not set its own. Use it for a setting that
+  decides where the store sends a credential, its model traffic or its data (a base URL, a
+  push endpoint, a provider, a backup folder), who can sign in, or a limit on agents. When
+  your config schema and your panel's both declare a key, either one can make it secret or
+  the merchant's.
+* A key your app reads but declares nowhere is judged by its name: `settings.set` refuses one
+  that reads like a secret or ends in `_url`, `_endpoint` or `_host`. Declare every setting
+  an agent should be able to change, with its type.
+
 ---
 
 ## 12. Multi-tenancy / channel scoping
