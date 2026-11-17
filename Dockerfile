@@ -90,7 +90,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # never ships an engine Linda cannot use. The report stays at
 # /opt/janus/morpheus-contract.json for Settings → AI → Janus.
 ARG LINDA_JANUS=1
-ARG JANUS_REF=eafb7aba34db8645401ce285edf987054c5d37d5
+ARG JANUS_REF=cc4620c02995ea64e153771d8ef80bbf18632fc3
 ARG JANUS_KNOWN_GOOD=eafb7aba34db8645401ce285edf987054c5d37d5
 ARG JANUS_REPO=https://github.com/magnetoid/Janus-Agent.git
 COPY core/assistant/janus_contract.py /app/core/assistant/janus_contract.py
