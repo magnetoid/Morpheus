@@ -113,6 +113,7 @@ class BodyTests(SimpleTestCase):
         'log': 'conformance.txt',
         'offered': 'conformance.json',
         'audit': 'audit.txt',
+        'install': 'install.txt',
     }
 
     def _write(self, tmp: Path, **files):
@@ -187,7 +188,7 @@ class BodyTests(SimpleTestCase):
         self.assertIn('- added: `new note`', text)
         self.assertIn('- gone: `old note`', text)
         self.assertIn('| result | passes | fails |', text)
-        self.assertIn('Ran 7 tests in 140 s: OK.', text)
+        self.assertIn('Ran 7 tests in 140 s: `OK`.', text)
         self.assertIn('"tools_offered": 249', text)
         self.assertIn('No known vulnerabilities found', text)
         self.assertIn('Files changed: 3; in the files the contract reads: 2.', text)
@@ -222,7 +223,7 @@ class BodyTests(SimpleTestCase):
             tmp = Path(directory)
             self._write(tmp, log=log)
             text = self._body(tmp)
-        self.assertIn('Ran 7 tests in 90 s: FAILED (failures=1, errors=1).', text)
+        self.assertIn('Ran 7 tests in 90 s: `FAILED (failures=1, errors=1)`.', text)
         self.assertIn('- `test_empty_reply_is_an_error (core.assistant', text)
         self.assertIn('- `test_memory (core.assistant.tests.conformance.x.T.test_memory)`', text)
 
@@ -243,6 +244,48 @@ class BodyTests(SimpleTestCase):
         self.assertEqual(text.count('```') % 2, 0)
         self.assertIn('Commits (100 of 300)', text)
 
+    def test_says_the_results_are_the_candidates_own_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            text = self._body(Path(tmp))
+        self.assertIn('so they are its own report', text)
+        self.assertIn('CI on the release commit runs the contract and the conformance suite', text)
+
+    def test_an_install_that_failed_shows_its_last_lines(self):
+        install = '\n'.join(f'line {i}' for i in range(100)) + '\nERROR: `bad` @owner #1\n'
+        with tempfile.TemporaryDirectory() as directory:
+            tmp = Path(directory)
+            self._write(tmp, install=install)
+            text = self._body(tmp)
+        self.assertIn('The contract did not run on the candidate.', text)
+        self.assertIn('The install said:', text)
+        self.assertIn("ERROR: 'bad' @owner #1", text)
+        self.assertIn('line 99', text)
+        self.assertNotIn('line 60\n', text)
+        self.assertEqual(text.count('```') % 2, 0)
+
+    def test_the_last_summary_line_is_the_result(self):
+        # A test that prints a nested run's summary must not stand in for the suite's.
+        log = 'Ran 2 tests in 1.0s\n\nOK\nRan 7 tests in 90.0s\n\nFAILED (failures=1)\n'
+        with tempfile.TemporaryDirectory() as directory:
+            tmp = Path(directory)
+            self._write(tmp, log=log)
+            text = self._body(tmp)
+        self.assertIn('Ran 7 tests in 90 s: `FAILED (failures=1)`.', text)
+
+    def test_says_when_github_listed_only_part_of_the_range(self):
+        compare = {
+            'ahead_by': 400,
+            'commits': [{'sha': f'{i:040x}', 'commit': {'message': 'x'}} for i in range(250)],
+            'files': [{'filename': f'agent/f{i}.py'} for i in range(300)],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            tmp = Path(directory)
+            self._write(tmp, compare=compare)
+            text = self._body(tmp)
+        self.assertIn('GitHub listed 250 of the 400 commits (it lists at most 250)', text)
+        self.assertIn('Files changed: at least 300;', text)
+        self.assertIn('GitHub lists at most 300 files', text)
+
     def test_title(self):
         self.assertEqual(
             bj.title(PINNED, NEW, {'ahead_by': 3}), f'Janus: move the pin to {NEW[:12]} (3 commits)'
@@ -251,6 +294,59 @@ class BodyTests(SimpleTestCase):
             bj.title(PINNED, NEW, {'ahead_by': 1}), f'Janus: move the pin to {NEW[:12]} (1 commit)'
         )
         self.assertEqual(bj.title(PINNED, NEW, None), f'Janus: move the pin to {NEW[:12]}')
+
+
+class VerdictTests(SimpleTestCase):
+    """What lets the describe job open a pull request: both checks ran and passed."""
+
+    _OK_LOG = 'test_a ... ok\n\nRan 7 tests in 140.2s\n\nOK\n'
+
+    def _verdict(self, contract=None, log=None):
+        with tempfile.TemporaryDirectory() as directory:
+            tmp = Path(directory)
+            if contract is not None:
+                text = contract if isinstance(contract, str) else json.dumps(contract)
+                (tmp / 'contract-new.json').write_text(text, encoding='utf-8')
+            if log is not None:
+                (tmp / 'conformance.txt').write_text(log, encoding='utf-8')
+            return bj.verdict(tmp)
+
+    def test_passes_when_both_ran_and_passed(self):
+        self.assertEqual(self._verdict({'ok': True}, self._OK_LOG), (True, []))
+
+    def test_fails_on_anything_less(self):
+        cases = {
+            'nothing ran': (None, None),
+            'contract unreadable': ('{not json', self._OK_LOG),
+            'contract not a report': ([True], self._OK_LOG),
+            'contract fails': ({'ok': False}, self._OK_LOG),
+            'ok is not true': ({'ok': 'true'}, self._OK_LOG),
+            'no suite': ({'ok': True}, None),
+            'empty log': ({'ok': True}, ''),
+            'no tests': ({'ok': True}, 'Ran 0 tests in 0.000s\n\nOK\n'),
+            'no summary': ({'ok': True}, 'Traceback (most recent call last):\n'),
+            'failed': ({'ok': True}, 'Ran 7 tests in 1.0s\n\nFAILED (failures=1)\n'),
+            'skipped': ({'ok': True}, 'Ran 7 tests in 1.0s\n\nOK (skipped=7)\n'),
+            'last line failed': (
+                {'ok': True},
+                'Ran 2 tests in 1.0s\n\nOK\nRan 7 tests in 1.0s\n\nFAILED (errors=1)\n',
+            ),
+        }
+        for name, (contract, log) in cases.items():
+            with self.subTest(name):
+                passed, reasons = self._verdict(contract, log)
+                self.assertFalse(passed)
+                self.assertTrue(reasons)
+                for reason in reasons:
+                    self.assertNotIn('\n', reason)
+
+    def test_the_command_exits_by_the_verdict(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tmp = Path(directory)
+            self.assertEqual(bj.main(['verdict', '--dir', str(tmp)]), 3)
+            (tmp / 'contract-new.json').write_text('{"ok": true}', encoding='utf-8')
+            (tmp / 'conformance.txt').write_text(self._OK_LOG, encoding='utf-8')
+            self.assertEqual(bj.main(['verdict', '--dir', str(tmp)]), 0)
 
 
 class WorkflowTests(SimpleTestCase):
@@ -278,10 +374,10 @@ class WorkflowTests(SimpleTestCase):
             'gh pr review',
         ):
             self.assertNotIn(banned, self.text)
-        self.assertEqual(set(self.jobs), {'resolve', 'candidate', 'pull-request'})
+        self.assertEqual(set(self.jobs), {'resolve', 'candidate', 'describe', 'pull-request'})
 
     def test_only_the_job_that_runs_no_janus_can_write(self):
-        for name in ('resolve', 'candidate'):
+        for name in ('resolve', 'candidate', 'describe'):
             job = self.jobs[name]
             self.assertIn('      contents: read\n', job, name)
             self.assertNotRegex(job, r':\s*write\b', name)
@@ -289,9 +385,10 @@ class WorkflowTests(SimpleTestCase):
         job = self.jobs['pull-request']
         self.assertIn('      contents: write\n      pull-requests: write\n', job)
         self.assertIn(
-            "if: github.event_name != 'pull_request' && needs.candidate.outputs.move == 'true'", job
+            "if: github.event_name != 'pull_request' && needs.describe.outputs.move == 'true'", job
         )
-        self.assertNotIn('/tmp/janus/bin', job)
+        self.assertNotIn('/tmp/janus', job)
+        self.assertNotIn('janus-agent', job)
         self.assertIn('gh pr create --draft --base main', job)
 
     def test_the_repository_comes_from_the_dockerfile(self):
@@ -301,6 +398,7 @@ class WorkflowTests(SimpleTestCase):
         self.assertIn('git ls-remote "$JANUS_REPO" refs/heads/main', self.jobs['resolve'])
         self.assertIn('=~ ^[0-9a-f]{40}$', self.jobs['resolve'])
         self.assertIn('compare/${new}...main', self.jobs['resolve'])
+        self.assertIn('pinned: ${{ steps.resolve.outputs.pinned }}', self.jobs['resolve'])
         self.assertNotIn('github.com/magnetoid', self.text)
         # Inputs and outputs reach a shell only through env, never inline.
         for line in self.text.splitlines():
@@ -310,21 +408,56 @@ class WorkflowTests(SimpleTestCase):
     def test_the_candidate_is_tested_in_the_same_run(self):
         job = self.jobs['candidate']
         self.assertIn('"janus-agent[mcp] @ git+${JANUS_REPO}@${NEW}" $JANUS_PINS', job)
+        self.assertIn('> /tmp/bump/install.txt', job)
+        self.assertIn("if: steps.install.outputs.ok == 'true'", job)
         self.assertIn('core/assistant/janus_contract.py > /tmp/bump/contract-new.json', job)
         self.assertIn('manage.py test core.assistant.tests.conformance', job)
-        self.assertIn("grep -q 'skipped='", job)
         self.assertIn('pip-audit --local', job)
         self.assertLess(job.index('tests.conformance'), job.index('pip-audit --local'))
+        upload = job[job.index('actions/upload-artifact') :]
+        self.assertIn('if: always()', upload[:80])
+
+    def test_the_candidate_holds_no_cache_token_or_description(self):
+        job = self.jobs['candidate']
+        # A cache saved on a scheduled run is main's, which every branch restores.
+        self.assertNotRegex(job, r'(?m)^\s+cache:')
+        self.assertNotIn('actions/cache', job)
+        self.assertNotIn('github.token', job)
+        self.assertNotIn('GH_TOKEN', job)
+        for command in ('bump_janus.py verdict', 'bump_janus.py body', 'bump_janus.py title'):
+            self.assertNotIn(command, job)
+
+    def test_the_describe_job_judges_with_this_repositorys_script(self):
+        job = self.jobs['describe']
+        self.assertIn('needs: [resolve, candidate]', job)
+        self.assertIn("if: always() && needs.resolve.result == 'success'", job)
+        self.assertNotIn('janus-agent', job)
+        self.assertNotIn('/tmp/janus/', job)
+        self.assertIn('compare/${JANUS_REF}...${NEW}', job)
+        self.assertIn('python3 scripts/bump_janus.py verdict --dir /tmp/bump', job)
+        self.assertIn('python3 scripts/bump_janus.py body', job)
         self.assertIn('if [ "$EVENT" = pull_request ]', job)
+        self.assertIn('name: janus-bump-description', job)
 
     def test_a_branch_a_person_pushed_to_is_left_alone(self):
         job = self.jobs['pull-request']
+        self.assertIn('needs: [resolve, describe]', job)
+        self.assertIn('PINNED: ${{ needs.resolve.outputs.pinned }}', job)
+        self.assertIn('if [ "$current" != "$PINNED" ]', job)
         self.assertIn("bot='41898282+github-actions[bot]@users.noreply.github.com'", job)
+        self.assertIn("git log --format='%ae%n%ce'", job)
         self.assertIn('grep -vxF "$bot"', job)
         self.assertIn('--force-with-lease="refs/heads/${BRANCH}:${observed}"', job)
         self.assertIn('python3 scripts/bump_janus.py bump "$NEW"', job)
+        self.assertIn('name: janus-bump-description', job)
+        self.assertNotIn('janus-bump-results', job)
         # grep -q under pipefail would read a match as a miss.
         commit_step = job[
             job.index('- name: Commit the new pin') : job.index('- name: Open or update')
         ]
-        self.assertNotIn('grep -q', commit_step.replace('# No `grep -q`', ''))
+        self.assertNotIn('grep -q', commit_step.replace('No `grep -q`', ''))
+
+    def test_a_forks_pull_request_of_the_same_branch_name_is_never_edited(self):
+        job = self.jobs['pull-request']
+        self.assertIn('--json number,isCrossRepository', job)
+        self.assertIn('select(.isCrossRepository | not)', job)

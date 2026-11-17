@@ -7,15 +7,20 @@ audit and the janus-bump workflow, which moves it by a draft pull request.
 
     python3 scripts/bump_janus.py env            # KEY=value lines for $GITHUB_ENV
     python3 scripts/bump_janus.py bump <sha>     # JANUS_KNOWN_GOOD <- JANUS_REF, JANUS_REF <- sha
+    python3 scripts/bump_janus.py verdict --dir <results>   # exit 0 when the candidate passed
     python3 scripts/bump_janus.py title --new <sha> --dir <results>
     python3 scripts/bump_janus.py body --new <sha> --dir <results> --run-url <url>
 
 ``bump`` changes those two lines and nothing else: the old pin becomes the build's
 fallback, so an image whose new Janus breaks the contract installs the commit the
-stores ran before. ``body`` reads what the bump workflow left in ``--dir``
-(``compare.json``, ``contract-pinned.json``, ``contract-new.json``,
-``conformance.txt``, ``conformance.json``, ``audit.txt``); a missing file reads as
-a step that did not run.
+stores ran before. ``verdict``, ``title`` and ``body`` read what the bump workflow
+left in ``--dir`` (``compare.json``, ``install.txt``, ``contract-pinned.json``,
+``contract-new.json``, ``conformance.txt``, ``conformance.json``, ``audit.txt``); a
+missing file reads as a step that did not run. The workflow runs them in a job of
+their own, with this repository's copy of the script, because the job that ran the
+candidate could have rewritten anything on its disk. The results themselves still
+come from that job: they are the candidate's own report, which CI on the release
+commit and the image build check again.
 
 Standard library only: the workflow runs it before anything is installed.
 """
@@ -41,6 +46,10 @@ _REPO = re.compile(r'https://github\.com/([\w.-]+/[\w.-]+?)\.git')
 BODY_LIMIT = 60_000
 COMMITS_SHOWN = 100
 AUDIT_LINES = 60
+INSTALL_LINES = 30
+# What GitHub's compare call lists at most; a longer range is cut without a word.
+COMPARE_COMMITS_MAX = 250
+COMPARE_FILES_MAX = 300
 
 
 class BumpError(Exception):
@@ -179,7 +188,39 @@ def _result(report: dict | None) -> str:
     return 'passes' if report.get('ok') else 'fails'
 
 
-def _contract_section(pinned: dict | None, new: dict | None) -> list[str]:
+def _conformance_result(log: str | None) -> tuple[int, float, str]:
+    """Tests run, seconds and the result line: unittest's summary is the last one."""
+    if not log:
+        return 0, 0.0, ''
+    ran = re.findall(r'^Ran (\d+) tests? in ([\d.]+)s$', log, re.M)
+    outcome = re.findall(r'^(OK\b.*|FAILED\b.*)$', log, re.M)
+    if not ran:
+        return 0, 0.0, outcome[-1] if outcome else ''
+    return int(ran[-1][0]), float(ran[-1][1]), outcome[-1] if outcome else ''
+
+
+def verdict(directory: Path) -> tuple[bool, list[str]]:
+    """Whether the candidate passed the contract and the conformance suite, and why not."""
+    reasons = []
+    contract = _load(directory, 'contract-new.json')
+    if not isinstance(contract, dict):
+        reasons.append('the contract did not run on the candidate')
+    elif contract.get('ok') is not True:
+        reasons.append('the candidate fails the contract')
+    log = _load(directory, 'conformance.txt')
+    ran, _, outcome = _conformance_result(log)
+    if log is None:
+        reasons.append('the conformance suite did not run')
+    elif not ran:
+        reasons.append('the conformance suite ran no tests')
+    elif not outcome.startswith('OK'):
+        reasons.append(f'the conformance suite ended {_plain(outcome)[:160] or "without a result"}')
+    elif 'skipped=' in log:
+        reasons.append('conformance tests were skipped')
+    return not reasons, reasons
+
+
+def _contract_section(pinned: dict | None, new: dict | None, install: str | None) -> list[str]:
     lines = ['### Contract', '']
     lines += [
         '| | pinned | candidate |',
@@ -192,7 +233,11 @@ def _contract_section(pinned: dict | None, new: dict | None) -> list[str]:
         '',
     ]
     if new is None:
-        return lines + ['The contract did not run on the candidate.', '']
+        lines.append('The contract did not run on the candidate.')
+        rows = [_plain(line) for line in (install or '').splitlines() if line.strip()]
+        if rows:
+            lines += ['', 'The install said:', '', '```text', *rows[-INSTALL_LINES:], '```']
+        return lines + ['']
     before = {c.get('name'): c for c in (pinned or {}).get('checks') or []}
     rows = []
     for check in new.get('checks') or []:
@@ -228,13 +273,9 @@ def _conformance_section(log: str | None, report: dict | None) -> list[str]:
     lines = ['### Conformance', '']
     if log is None:
         return lines + ['The conformance suite did not run on the candidate.', '']
-    ran = re.search(r'^Ran (\d+) tests? in ([\d.]+)s', log, re.M)
-    outcome = re.findall(r'^(OK\b.*|FAILED\b.*)$', log, re.M)
+    ran, seconds, outcome = _conformance_result(log)
     if ran:
-        lines.append(
-            f'Ran {ran.group(1)} tests in {float(ran.group(2)):.0f} s: '
-            f'{_plain(outcome[-1]) if outcome else "no result line"}.'
-        )
+        lines.append(f'Ran {ran} tests in {seconds:.0f} s: {_cell(outcome) or "no result line"}.')
     else:
         lines.append('The suite ran no tests.')
     failing = re.findall(r'^(?:FAIL|ERROR): (\S+) \(([^)]+)\)', log, re.M)
@@ -265,13 +306,29 @@ def _commits_section(compare: dict | None) -> list[str]:
         return ['### Commits', '', 'The compare call failed; read the range on GitHub.', '']
     commits = compare.get('commits') or []
     count = _commit_count(compare)
-    lines = [f'### Commits ({min(len(commits), COMMITS_SHOWN)} of {count})', '', '```text']
+    lines = [f'### Commits ({min(len(commits), COMMITS_SHOWN)} of {count})', '']
+    if count is not None and len(commits) < count:
+        lines += [
+            f'GitHub listed {len(commits)} of the {count} commits (it lists at most '
+            f'{COMPARE_COMMITS_MAX}); the compare page has them all.',
+            '',
+        ]
+    lines.append('```text')
     for commit in commits[-COMMITS_SHOWN:]:
         lines.append(f'{str(commit.get("sha", ""))[:12]}  {_subject(commit)}')
     lines.append('```')
     files = [str(f.get('filename', '')) for f in compare.get('files') or []]
     touched = sorted(f for f in files if _read_by_contract(f))
-    lines += ['', f'Files changed: {len(files)}; in the files the contract reads: {len(touched)}.']
+    at_least = 'at least ' if len(files) >= COMPARE_FILES_MAX else ''
+    lines += [
+        '',
+        f'Files changed: {at_least}{len(files)}; in the files the contract reads: '
+        f'{at_least}{len(touched)}.',
+    ]
+    if at_least:
+        lines.append(
+            f'GitHub lists at most {COMPARE_FILES_MAX} files; the compare page has them all.'
+        )
     if touched:
         lines += ['', '```text', *[_plain(f) for f in touched], '```']
     return lines + ['']
@@ -292,6 +349,10 @@ def body(*, pinned: str, new: str, slug: str, directory: Path, run_url: str) -> 
         'The Dockerfile keeps the commit pinned now as `JANUS_KNOWN_GOOD`, so a build whose '
         'new Janus breaks the contract installs that one instead.',
         '',
+        'The results below were written in the job that ran the candidate, so they are its '
+        'own report. CI on the release commit runs the contract and the conformance suite '
+        'again, and the image build runs the contract.',
+        '',
         '### Before merging',
         '',
         '- Merging deploys the five stores. Push the release commit onto this branch '
@@ -306,7 +367,9 @@ def body(*, pinned: str, new: str, slug: str, directory: Path, run_url: str) -> 
     ]
     sections = (
         _contract_section(
-            _load(directory, 'contract-pinned.json'), _load(directory, 'contract-new.json')
+            _load(directory, 'contract-pinned.json'),
+            _load(directory, 'contract-new.json'),
+            _load(directory, 'install.txt'),
         )
         + _conformance_section(
             _load(directory, 'conformance.txt'), _load(directory, 'conformance.json')
@@ -329,6 +392,8 @@ def main(argv: list[str]) -> int:
     sub.add_parser('env', help='the pin as KEY=value lines')
     moving = sub.add_parser('bump', help='pin a new commit, keeping the old one as fallback')
     moving.add_argument('sha')
+    judged = sub.add_parser('verdict', help='exit 0 when the candidate passed')
+    judged.add_argument('--dir', type=Path, required=True)
     for name in ('title', 'body'):
         described = sub.add_parser(name)
         described.add_argument('--new', required=True)
@@ -340,6 +405,10 @@ def main(argv: list[str]) -> int:
         text = args.dockerfile.read_text(encoding='utf-8')
         if args.command == 'env':
             print('\n'.join(env_lines(text)))
+        elif args.command == 'verdict':
+            passed, reasons = verdict(args.dir)
+            print('passes' if passed else 'fails: ' + '; '.join(reasons))
+            return 0 if passed else 3
         elif args.command == 'bump':
             old = read(text)['ref']
             args.dockerfile.write_text(bump(text, args.sha), encoding='utf-8')

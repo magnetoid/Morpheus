@@ -229,7 +229,10 @@ with `JANUS_REF` naming a branch. The pin moves by the pull request described un
   pull request opened with the workflow's token starts no workflows. When both pass it
   opens one draft pull request, `janus/bump`, which moves `JANUS_REF` and keeps the old
   pin as `JANUS_KNOWN_GOOD` (`scripts/bump_janus.py bump`); its description is the
-  contract diff, the conformance result, the audit and the commit list. A later run
+  contract diff, the conformance result, the audit and the commit list. The new Janus
+  runs in a job with no write access and no cache, and another job, which never runs
+  it, judges its results and writes the description; those results are still the
+  candidate's own report, so CI on the release commit runs both checks again. A later run
   replaces it while only the workflow has pushed to the branch, and leaves it alone once
   a person has. To ship it, push the release commit onto the branch
   (`python manage.py release --minor "Janus …"`; `release --check` counts the
