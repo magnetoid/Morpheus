@@ -131,6 +131,7 @@ def _fake_janus(
     drop: str = '',
     lose_memory_tool: str = '',
     help_exit: int = 0,
+    hook_failure: str = '',
 ) -> Path:
     """A minimal Janus tree with just what the contract reads."""
     toolsets = dict.fromkeys(contract.TOOLSETS)
@@ -199,8 +200,11 @@ def _fake_janus(
     (root / 'janus_cli' / 'plugins.py').write_text(
         f'VALID_HOOKS = {set(contract.HOOK_EVENTS)!r}\n', encoding='utf-8'
     )
+    # Without hook_failure the spec has no on_failure, like a Janus older than the
+    # policy; with it, every hook fails that way whatever the config says.
+    policy = f'        self.on_failure = {hook_failure!r}\n' if hook_failure else ''
     (root / 'agent' / 'shell_hooks.py').write_text(
-        'class _S:\n    def __init__(self, e):\n        self.event = e\n'
+        f'class _S:\n    def __init__(self, e):\n        self.event = e\n{policy}'
         "def iter_configured_hooks(cfg):\n    return [_S(e) for e in (cfg.get('hooks') or {})]\n",
         encoding='utf-8',
     )
@@ -267,6 +271,12 @@ class ContractScriptTests(SimpleTestCase):
         # Linda's skills and prompt name the reviewed tools; one that is gone breaks them.
         report = self._run(lose_memory_tool='propose_plan')
         self.assertEqual(self._failing(report), ['toolset memory keeps its tools'])
+
+    def test_hooks_that_fail_closed_fail(self):
+        # The progress hooks are a display: a crashed one must not refuse a step.
+        report = self._run(hook_failure='block')
+        self.assertEqual(self._failing(report), ['tool hooks fail open'])
+        self.assertEqual(self._failing(self._run(hook_failure='warn')), [])
 
     def test_help_that_exits_non_zero_fails(self):
         report = self._run(help_exit=1)

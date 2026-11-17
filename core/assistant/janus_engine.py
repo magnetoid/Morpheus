@@ -417,7 +417,8 @@ mcp_servers:
     #   "⚠️ No reply: …" explainer and exit 0, which reached the merchant as her
     #   answer; off, Janus prints "(empty)", which _turn_result treats as a failure.
     # hooks: one line per step into the home's progress file, for the chat
-    #   (core/assistant/activity.py). A display only: Janus ignores a failed hook.
+    #   (core/assistant/activity.py). A display only: each says on_failure: warn,
+    #   so a failed hook is logged and the step goes ahead.
     hooks = activity.hooks_config(progress_path) if progress_path is not None else ''
     # fallback_providers: backups Janus switches to when the main provider fails
     #   a call (see _fallback_wiring); their keys come with the turn's env.

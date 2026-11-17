@@ -20,7 +20,8 @@ events:
 * ``{type: 'retry', status, retrying}`` — a model call failed (HTTP status only)
   and whether Janus may try again, from ``api_request_error``.
 
-Hooks fail open in Janus, so nothing here may matter to safety: it is a display.
+Each hook is written with ``on_failure: warn``, so a failed one is logged and the
+step goes ahead: nothing here may matter to safety, it is a display.
 The store tool's arguments and output still reach the chat from the rows the
 MCP edge records (:func:`core.assistant.runtime._tool_events`).
 """
@@ -97,9 +98,12 @@ def hooks_config(progress_path: Path) -> str:
 
     ``hooks_auto_accept`` stands in for the consent prompt Janus shows at a TTY
     the first time it sees a hook; the command is written here, never by the model.
+    ``on_failure: warn`` keeps a crashed or slow hook from refusing the step: Janus
+    can make a ``pre_tool_call`` hook fail closed (``block``), and its defaults move
+    between commits.
     """
     command = shlex.join([sys.executable, '-I', '-S', str(HOOK_SCRIPT), str(progress_path)])
-    entry = f'    - command: {json.dumps(command)}\n      timeout: 5\n'
+    entry = f'    - command: {json.dumps(command)}\n      timeout: 5\n      on_failure: warn\n'
     events = ''.join(f'  {event}:\n{entry}' for event in HOOK_EVENTS)
     return f'hooks_auto_accept: true\nhooks:\n{events}'
 

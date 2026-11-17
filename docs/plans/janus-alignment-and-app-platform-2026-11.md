@@ -160,6 +160,15 @@ One release in flight at a time, each from a fresh worktree off `origin/main`, e
 - The `morpheus-known-good` tag in the Janus repository no longer matters.
 - Not done here: the GitHub setting that lets Actions create pull requests was off on 2026-11-17 (`can_approve_pull_request_reviews: false`). Until the owner turns it on, a run pushes the branch and stops with a link to open the pull request by hand.
 
+*First bump (v0.175.0):* `eafb7aba` → `cc4620c0` (78 commits, still 0.18.0), opened by hand from the run's branch because of the setting above. The contract and the conformance suite pass on it. What the review of the commits found:
+- `approvals.mode` now defaults to `smart`, but approvals only guard `terminal` and `execute_code` commands, and no turn loads either. Nothing written.
+- Hooks gained `on_failure` (`warn`, the default, or `block`, which turns a failed `pre_tool_call` into a refused call). Linda's hooks are a display, so `activity.hooks_config` writes `warn` on each, and the contract fails a Janus whose parsed hooks would block. The release before reads only `command`, `matcher` and `timeout`, so the key is harmless on the fallback.
+- `config.yaml.last-good` is used only when `config.yaml` fails to parse. The store tools and the `(empty)` reply in the conformance suite come from the generated config, so it is the one in effect. Harvest never reads the file.
+- `state.db` gained `delivery_obligations` and `delegations` (the gateway's ledger and background delegation). `sessions` and `messages` are unchanged.
+- Off by default and left off: memory provenance (`memories/provenance.db`), memory flush before compaction, skill versions (`skills/.versions/`, a dot-dir harvest skips), background and worktree delegation. First-run setup and the learning offer skip a scripted query.
+- `clarify` takes several questions now; no turn loads it. MCP progress notifications reach the CLI spinner only; the store sends none.
+- Janus's `mcp` extra moves from mcp 1.26.0 / starlette 1.0.1 to 1.28.1 / 1.3.1. pip-audit still reports mcp (fixed in 1.30.0) and pillow (12.3.0); reported, not blocking.
+
 ### P4 — Deferred tool schemas
 
 - Measure first: the `tools` array P2 records, and P1's per-turn tokens and API calls from live turns.
