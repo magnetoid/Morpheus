@@ -106,6 +106,12 @@ jobs:
       contents: read
     env:
       NEW: ${{ needs.resolve.outputs.new }}
+      # The settings CI's own jobs run with (ci.yml); without a SECRET_KEY the
+      # suite cannot start.
+      DEBUG: "1"
+      SECRET_KEY: "ci-test-secret-key-not-for-production"
+      ALLOWED_HOSTS: "localhost,127.0.0.1"
+      REDIS_URL: "redis://localhost:6379/0"
       DATABASE_URL: "postgres://postgres:postgres@localhost:5432/morph_ci?sslmode=disable"
     services:
       postgres:

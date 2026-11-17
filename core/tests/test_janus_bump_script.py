@@ -417,6 +417,16 @@ class WorkflowTests(SimpleTestCase):
         upload = job[job.index('actions/upload-artifact') :]
         self.assertIn('if: always()', upload[:80])
 
+    def test_the_candidate_starts_django_as_ci_does(self):
+        # Without these, settings refuse to load (DEBUG off needs a SECRET_KEY), the
+        # suite never runs, and every candidate is refused for the workflow's fault.
+        ci = (_ROOT / '.github' / 'workflows' / 'ci.yml').read_text(encoding='utf-8')
+        top = ci[ci.index('\nenv:\n') : ci.index('\njobs:')]
+        job = self.jobs['candidate']
+        for key in ('DEBUG', 'SECRET_KEY', 'ALLOWED_HOSTS', 'REDIS_URL'):
+            line = re.search(rf'(?m)^  {key}: .+$', top).group(0)
+            self.assertIn(f'\n    {line}\n', job, key)
+
     def test_the_candidate_holds_no_cache_token_or_description(self):
         job = self.jobs['candidate']
         # A cache saved on a scheduled run is main's, which every branch restores.
