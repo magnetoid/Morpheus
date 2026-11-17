@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.175.0 — 2026-11-17
+
+**Linda runs on a newer Janus**
+
+- Janus moves from eafb7aba to cc4620c0 (78 commits, still 0.18.0). The bump workflow opened it after the contract and the conformance suite passed on the new commit; the commit Janus ran before stays the build's fallback.
+- Linda's step hooks now say on_failure: warn, so a hook that fails is logged and the step goes ahead. Janus can make a pre-tool hook refuse the call when it fails, and the contract now fails a Janus whose hooks would.
+- Nothing else in the 78 commits changes a turn: approvals only guard terminal commands, which Linda has none of; the new memory, skill-history and delegation features are off by default; the two new state.db tables belong to Janus's gateway.
+- Janus's MCP client moves from mcp 1.26.0 to 1.28.1.
+
 ## v0.174.0 — 2026-11-17
 
 **Janus moves by pull request, tested first**

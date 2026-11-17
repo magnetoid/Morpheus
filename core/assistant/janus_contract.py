@@ -206,17 +206,20 @@ def _check_hooks(report: Report) -> None:
     events = set(HOOK_EVENTS)
     unknown = sorted(events - set(VALID_HOOKS))
     report.check('tool hook events', not unknown, ', '.join(unknown))
-    cfg = {
-        'hooks': {e: [{'command': 'python hook.py progress.jsonl', 'timeout': 5}] for e in events}
-    }
+    entry = {'command': 'python hook.py progress.jsonl', 'timeout': 5, 'on_failure': 'warn'}
+    cfg = {'hooks': {e: [entry] for e in events}}
     try:
-        specs = iter_configured_hooks(cfg)
+        specs = list(iter_configured_hooks(cfg))
         parsed = {s.event for s in specs}
     except Exception as e:  # noqa: BLE001
-        parsed, detail = set(), str(e)[:200]
+        specs, parsed, detail = [], set(), str(e)[:200]
     else:
         detail = ''
     report.check('tool hooks parse from config', parsed == events, detail)
+    # The hooks are a display (core.assistant.activity): a failed one must never veto
+    # a step. A Janus without the on_failure policy lets every call through.
+    blocking = sorted(s.event for s in specs if getattr(s, 'on_failure', 'warn') == 'block')
+    report.check('tool hooks fail open', not blocking, ', '.join(blocking))
 
 
 def _check_state(report: Report, texts: list[str]) -> None:

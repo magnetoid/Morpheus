@@ -119,6 +119,13 @@ class HooksConfigTests(SimpleTestCase):
         self.assertEqual(argv[-1], '/tmp/linda janus/conv/x/progress.jsonl')
         self.assertIn('timeout: 5', block)
 
+    def test_a_failed_hook_never_vetoes_the_step(self):
+        # A display: Janus's on_failure: block would turn a crashed hook into a
+        # refused tool call, so every entry says warn, whatever Janus's default.
+        block = activity.hooks_config(Path('/tmp/progress.jsonl'))
+        self.assertEqual(block.count('      on_failure: warn\n'), len(activity.HOOK_EVENTS))
+        self.assertNotIn('block', block)
+
 
 class ReaderTests(SimpleTestCase):
     def setUp(self):

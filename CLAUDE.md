@@ -691,8 +691,10 @@ arguments reach. `delegation` looks like "subagents", but `delegate_task` passes
 model-supplied `acp_command` + `acp_args` to `subprocess.Popen`
 (`agent/copilot_acp_client.py`), so anything Linda reads could start a program as the
 app user, who can read the web process's environment through `/proc`; it stays off
-until Janus can drop those arguments. A Janus pre-tool hook cannot guard it: hooks
-**fail open** (a crashed or slow hook lets the call through). `web` and `vision`
+until Janus can drop those arguments. A Janus pre-tool hook is no guard for it: hooks
+**fail open** by default (a crashed or slow hook lets the call through; Janus has
+`on_failure: block` since cc4620c0, and Linda's display hooks say `warn`, checked by
+the contract). `web` and `vision`
 stay off too (a URL the model picks is an outbound channel); `search` is web_search
 only. The hooks are still useful as a **display**: `pre_tool_call`/`post_tool_call`
 run `core/assistant/janus_progress_hook.py`, which appends a line per step to the
