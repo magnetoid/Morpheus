@@ -1,0 +1,329 @@
+name: janus-bump
+
+# Janus moves only when a pull request moves ARG JANUS_REF in the Dockerfile
+# (docs/plans/janus-alignment-and-app-platform-2026-11.md, P3). Every week this
+# resolves the newest commit on the Janus repository's main, installs it as the
+# image does, and runs the contract, the conformance suite and pip-audit against it
+# in this run: a pull request opened with the workflow's token starts no workflows,
+# so nothing else would test it. When the candidate passes, one draft pull request
+# moves the pin. A later run replaces it while only this workflow has pushed to its
+# branch. A person pushes the release commit onto it and merges, which deploys the
+# stores; nothing here merges.
+#
+# Four jobs, so the candidate's code never shares a job with a write token or with
+# what is said about it: resolve (read-only) picks the commit; candidate (read-only,
+# no cache, no stored credentials) installs and tests it and uploads the raw
+# results; describe (read-only, this repository's script) judges and words them;
+# pull-request (write, runs no Janus) moves the pin.
+#
+# The repository is read from the Dockerfile, never from an input. A dispatch may
+# name an older commit of its main, to bisect a move that fails.
+on:
+  schedule:
+    - cron: "41 5 * * 2" # Tuesdays 05:41 UTC
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "A commit on the Janus repository's main, 40 hex (empty: its newest)"
+        required: false
+        default: ""
+  pull_request:
+    # A change to this workflow or its script runs it as a dry run: it opens nothing,
+    # and the candidate failing is a warning there, not this check's failure.
+    paths:
+      - .github/workflows/janus-bump.yml
+      - scripts/bump_janus.py
+
+permissions: {}
+
+concurrency:
+  group: janus-bump-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.12"
+  BRANCH: janus/bump
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      new: ${{ steps.resolve.outputs.new }}
+      same: ${{ steps.resolve.outputs.same }}
+      pinned: ${{ steps.resolve.outputs.pinned }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Read the pin
+        run: python3 scripts/bump_janus.py env >> "$GITHUB_ENV"
+      - name: Resolve the candidate
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          if [ -n "${REQUESTED:-}" ]; then
+            new="$REQUESTED"
+          else
+            new=$(git ls-remote "$JANUS_REPO" refs/heads/main | cut -f1)
+          fi
+          if ! [[ "$new" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::not a commit (40 lowercase hex): ${new}"
+            exit 1
+          fi
+          echo "new=${new}" >> "$GITHUB_OUTPUT"
+          echo "pinned=${JANUS_REF}" >> "$GITHUB_OUTPUT"
+          if [ "$new" = "$JANUS_REF" ]; then
+            echo "same=true" >> "$GITHUB_OUTPUT"
+            echo "Janus is pinned to ${new}, the newest commit on ${JANUS_SLUG}'s main." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # Only a commit on the repository's own main, and newer than the pin:
+          # GitHub serves any commit of a fork network by its sha.
+          on_main=$(gh api "repos/${JANUS_SLUG}/compare/${new}...main" --jq .status)
+          after_pin=$(gh api "repos/${JANUS_SLUG}/compare/${JANUS_REF}...${new}" --jq .status)
+          if [ "$on_main" != ahead ] && [ "$on_main" != identical ]; then
+            echo "::error::${new} is not on ${JANUS_SLUG}'s main (${on_main})"
+            exit 1
+          fi
+          if [ "$after_pin" != ahead ]; then
+            echo "::error::${new} is not newer than the pinned ${JANUS_REF} (${after_pin})"
+            exit 1
+          fi
+
+  candidate:
+    # Runs the candidate Janus, so it holds a read-only token that is not left in
+    # .git/config, and restores and saves no cache: on a scheduled run this is
+    # main's cache scope, which every branch reads.
+    needs: resolve
+    if: needs.resolve.outputs.same != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      NEW: ${{ needs.resolve.outputs.new }}
+      # The settings CI's own jobs run with (ci.yml); without a SECRET_KEY the
+      # suite cannot start.
+      DEBUG: "1"
+      SECRET_KEY: "ci-test-secret-key-not-for-production"
+      ALLOWED_HOSTS: "localhost,127.0.0.1"
+      REDIS_URL: "redis://localhost:6379/0"
+      DATABASE_URL: "postgres://postgres:postgres@localhost:5432/morph_ci?sslmode=disable"
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: morph_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Read the pin
+        run: |
+          python3 scripts/bump_janus.py env >> "$GITHUB_ENV"
+          mkdir -p /tmp/bump
+      - name: Install the candidate as the image does
+        id: install
+        # A candidate that does not install is a result to report, not a broken run.
+        run: |
+          python -m venv /tmp/janus
+          /tmp/janus/bin/pip install --quiet --upgrade pip
+          if /tmp/janus/bin/pip install --quiet --no-cache-dir "janus-agent[mcp] @ git+${JANUS_REPO}@${NEW}" $JANUS_PINS > /tmp/bump/install.txt 2>&1; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Contract on the candidate
+        if: steps.install.outputs.ok == 'true'
+        run: /tmp/janus/bin/python -I core/assistant/janus_contract.py > /tmp/bump/contract-new.json || true
+      - name: Install Morpheus
+        if: steps.install.outputs.ok == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes -r requirements.lock.txt
+      - name: Conformance suite on the candidate
+        if: steps.install.outputs.ok == 'true'
+        env:
+          JANUS_CONFORMANCE_BIN: /tmp/janus/bin/janus
+          JANUS_CONFORMANCE_REPORT: /tmp/bump/conformance.json
+        # Judged by the describe job from this log: tests must run, end OK and skip none.
+        run: python manage.py test core.assistant.tests.conformance -v 2 --noinput 2>&1 | tee /tmp/bump/conformance.txt || true
+      - name: pip-audit of the candidate venv (reported)
+        if: steps.install.outputs.ok == 'true'
+        # After the suite, so the auditor's own packages cannot change what it tested.
+        run: |
+          /tmp/janus/bin/pip install --quiet pip-audit
+          /tmp/janus/bin/pip-audit --local > /tmp/bump/audit.txt 2>&1 || true
+      - name: Contract on the pinned commit, for the diff
+        run: |
+          python -m venv /tmp/janus-pinned
+          /tmp/janus-pinned/bin/pip install --quiet --upgrade pip
+          /tmp/janus-pinned/bin/pip install --quiet --no-cache-dir "janus-agent[mcp] @ git+${JANUS_REPO}@${JANUS_REF}" $JANUS_PINS \
+            && /tmp/janus-pinned/bin/python -I core/assistant/janus_contract.py > /tmp/bump/contract-pinned.json \
+            || echo "::warning::the contract did not run on the pinned commit"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: janus-bump-results
+          path: /tmp/bump/
+          retention-days: 14
+
+  describe:
+    # Judges and words the candidate's results with this repository's script, in a
+    # job the candidate never ran in.
+    needs: [resolve, candidate]
+    if: always() && needs.resolve.result == 'success' && needs.resolve.outputs.same != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      move: ${{ steps.verdict.outputs.move }}
+      title: ${{ steps.describe.outputs.title }}
+    env:
+      NEW: ${{ needs.resolve.outputs.new }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Read the pin
+        run: |
+          python3 scripts/bump_janus.py env >> "$GITHUB_ENV"
+          mkdir -p /tmp/bump
+      - uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          name: janus-bump-results
+          path: /tmp/bump
+      - name: The commits between the pin and the candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/${JANUS_SLUG}/compare/${JANUS_REF}...${NEW}" > /tmp/bump/compare.json || rm -f /tmp/bump/compare.json
+      - name: Describe the move
+        id: describe
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/describe
+          python3 scripts/bump_janus.py body --new "$NEW" --dir /tmp/bump --run-url "$RUN_URL" > /tmp/describe/body.md
+          title=$(python3 scripts/bump_janus.py title --new "$NEW" --dir /tmp/bump)
+          echo "title=${title}" >> "$GITHUB_OUTPUT"
+          cat /tmp/describe/body.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: janus-bump-description
+          path: /tmp/describe/body.md
+          retention-days: 14
+      - name: Verdict
+        id: verdict
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set +e
+          said=$(python3 scripts/bump_janus.py verdict --dir /tmp/bump)
+          code=$?
+          if [ "$code" = 0 ]; then
+            echo "move=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          msg="Janus ${NEW:0:12} ${said}"
+          if [ "$EVENT" = pull_request ]; then
+            echo "::warning title=Janus candidate::${msg}. Dry run: nothing is opened."
+            exit 0
+          fi
+          echo "::error title=Janus candidate::${msg}"
+          exit 1
+
+  pull-request:
+    # Runs only this repository's script, never Janus.
+    needs: [resolve, describe]
+    if: github.event_name != 'pull_request' && needs.describe.outputs.move == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NEW: ${{ needs.resolve.outputs.new }}
+      PINNED: ${{ needs.resolve.outputs.pinned }}
+      TITLE: ${{ needs.describe.outputs.title }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/download-artifact@v7
+        with:
+          name: janus-bump-description
+          path: /tmp/describe
+      - name: Commit the new pin
+        id: commit
+        run: |
+          set -euo pipefail
+          current=$(python3 scripts/bump_janus.py env | sed -n 's/^JANUS_REF=//p')
+          if [ "$current" != "$PINNED" ]; then
+            echo "::warning::main's pin moved during this run (${PINNED:0:12} to ${current:0:12}); the next run starts from it."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          bot='41898282+github-actions[bot]@users.noreply.github.com'
+          observed=''
+          if git fetch --quiet origin "+refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}" 2>/dev/null; then
+            observed=$(git rev-parse "refs/remotes/origin/${BRANCH}")
+          fi
+          if [ -n "$observed" ]; then
+            # Author and committer: a person who amends or rebases the bot's commit
+            # keeps it authored by the bot. No `grep -q` in these pipes: it stops
+            # reading early, and under pipefail the writer's broken pipe would turn a
+            # match into a miss.
+            people=$(git log --format='%ae%n%ce' "origin/main..${observed}" | grep -vxF "$bot" || true)
+            if [ -n "$people" ]; then
+              echo "::warning::${BRANCH} carries a commit a person made, so this run leaves it alone. Merge or close its pull request and delete the branch to let the next run open a new one."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if git show "${observed}:Dockerfile" | grep -xF "ARG JANUS_REF=${NEW}" > /dev/null; then
+              echo "${BRANCH} already pins ${NEW}; refreshing the description only."
+              exit 0
+            fi
+          fi
+          git switch --quiet -c "$BRANCH"
+          python3 scripts/bump_janus.py bump "$NEW"
+          git -c user.name='github-actions[bot]' -c user.email="$bot" commit --quiet -am "Janus: move the pin to ${NEW:0:12}"
+          git push --quiet --force-with-lease="refs/heads/${BRANCH}:${observed}" origin "HEAD:refs/heads/${BRANCH}"
+      - name: Open or update the draft pull request
+        if: steps.commit.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          # This repository's own branch only: a fork's pull request from a branch of
+          # the same name must never get this description.
+          number=$(gh pr list --head "$BRANCH" --base main --state open --json number,isCrossRepository \
+            --jq '[.[] | select(.isCrossRepository | not)][0].number // empty')
+          if [ -n "$number" ]; then
+            gh pr edit "$number" --title "$TITLE" --body-file /tmp/describe/body.md
+          elif ! gh pr create --draft --base main --head "$BRANCH" --title "$TITLE" --body-file /tmp/describe/body.md; then
+            echo "::error::GitHub refused the pull request. If this repository does not let GitHub Actions create pull requests (Settings, Actions, General, Workflow permissions), open it by hand from ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${BRANCH}; the description is in the describe job's summary."
+            exit 1
+          fi

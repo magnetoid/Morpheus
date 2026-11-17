@@ -25,7 +25,7 @@ jobs:
 
   janus:
     # Janus pins its dependencies exactly in its own pyproject, so a finding
-    # here is fixed in the Janus repo (then bump JANUS_REF in the Dockerfile),
+    # here is fixed in the Janus repo (then janus-bump.yml moves JANUS_REF),
     # not in Morpheus. Reported, not blocking, until that repo is clean —
     # the step summary carries the list.
     runs-on: ubuntu-latest
@@ -34,12 +34,13 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - name: Read the Janus pin (Dockerfile and janus_runtime.PINS)
+        run: python3 scripts/bump_janus.py env >> "$GITHUB_ENV"
       - name: Install the pinned Janus into its own venv
         run: |
-          ref=$(sed -n 's/^ARG JANUS_REF=//p' Dockerfile | head -1)
           python -m venv /tmp/janus
           /tmp/janus/bin/pip install --quiet --upgrade pip pip-audit
-          /tmp/janus/bin/pip install --quiet "janus-agent[mcp] @ git+https://github.com/magnetoid/Janus-Agent.git@${ref}" ddgs==9.16.0 primp==2.0.1
+          /tmp/janus/bin/pip install --quiet "janus-agent[mcp] @ git+${JANUS_REPO}@${JANUS_REF}" $JANUS_PINS
       - name: pip-audit — the Janus venv (reported)
         continue-on-error: true
         run: |

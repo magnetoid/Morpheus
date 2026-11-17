@@ -68,8 +68,10 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Janus is the store agent (Linda is brand only). Always install into an
 # isolated venv so Django and Janus do not share `plugins/` / `tools/` on
 # sys.path. ARG LINDA_JANUS is ignored (kept so old Coolify build-args still
-# parse). JANUS_REF is PINNED to a reviewed commit (the owner updates Janus
-# occasionally; bump the ARG to move) — and because this layer runs before
+# parse). JANUS_REF is PINNED to a reviewed commit, moved only by the draft pull
+# request .github/workflows/janus-bump.yml opens after testing the new commit
+# (scripts/bump_janus.py, which every workflow that installs Janus reads the pin
+# through, keeps the old one as JANUS_KNOWN_GOOD) — and because this layer runs before
 # `COPY . /app`, it is cached across pushes instead of rebuilt (216 MB) on
 # every deploy. Only the contract file is copied in first: it runs standalone
 # under Janus's own interpreter. A build pinned to a commit never updates

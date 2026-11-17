@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.174.0 — 2026-11-17
+
+**Janus moves by pull request, tested first**
+
+- A weekly workflow, janus-bump, takes the newest Janus commit, installs it as the image does and runs the contract, the conformance suite and pip-audit on it in the same run.
+- When both pass, it opens one draft pull request that moves the Dockerfile's pin and keeps the old one as the build's fallback; its description shows what the contract says before and after, the test result, the audit and the commits. Nothing merges by itself.
+- The repository always comes from the Dockerfile. A run by hand may name an older commit of that repository's main, to find which commit breaks a move.
+- The new Janus runs in a job with no write access and no cache; a separate job, which never runs it, judges its results and writes the description. A later run replaces the pull request only while the workflow alone has pushed to its branch.
+- CI and the weekly audit read the pin through scripts/bump_janus.py, so the repository and the companion pins live in one place.
+- release --check now counts the Dockerfile, so a pin change cannot merge without a version.
+
 ## v0.173.0 — 2026-11-16
 
 **Settings an agent changes are checked against the app's schema**

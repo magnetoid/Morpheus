@@ -227,7 +227,6 @@ jobs:
     # connection (an in-memory sqlite database is one connection both threads share).
     runs-on: ubuntu-latest
     env:
-      JANUS_PINS: ddgs==9.16.0 primp==2.0.1
       DATABASE_URL: "postgres://postgres:postgres@localhost:5432/morph_ci?sslmode=disable"
     services:
       postgres:
@@ -257,14 +256,15 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
+      - name: Read the Janus pin (Dockerfile and janus_runtime.PINS)
+        run: python3 scripts/bump_janus.py env >> "$GITHUB_ENV"
       - name: Install the pinned Janus as the image does
         # Never cached: Janus's own dependencies float, and an image build resolves
         # them afresh, so a cached venv would test versions no new image installs.
         run: |
-          ref=$(sed -n 's/^ARG JANUS_REF=//p' Dockerfile | head -1)
           python -m venv /tmp/janus
           /tmp/janus/bin/pip install --quiet --upgrade pip
-          /tmp/janus/bin/pip install --quiet --no-cache-dir "janus-agent[mcp] @ git+https://github.com/magnetoid/Janus-Agent.git@${ref}" $JANUS_PINS
+          /tmp/janus/bin/pip install --quiet --no-cache-dir "janus-agent[mcp] @ git+${JANUS_REPO}@${JANUS_REF}" $JANUS_PINS
       - name: Contract (every check required)
         run: /tmp/janus/bin/python -I core/assistant/janus_contract.py
       - run: |

@@ -191,9 +191,8 @@ per-app channels above:
 Release images pin `JANUS_REF` to a reviewed commit, so on every store Janus changes only
 when a Morpheus release moves the pin, and each Linda turn records the Janus version and
 commit that answered it (`AgentRun.metadata`). Steps 2 and 3 run only on an image built
-with `JANUS_REF` naming a branch; moving the pin by a pull request that has run Janus
-against the store first is planned in
-[janus-alignment-and-app-platform-2026-11.md](plans/janus-alignment-and-app-platform-2026-11.md).
+with `JANUS_REF` naming a branch. The pin moves by the pull request described under
+"The bump pull request" below.
 
 2. **While running (branch builds only).** Every 3 hours a Linda turn (or a visit to Settings → AI → Janus)
    starts `core/assistant/janus_updater.py` in the background. It asks GitHub for the
@@ -223,8 +222,25 @@ against the store first is planned in
   round trip through the database. CI's `janus-conformance` job installs Janus exactly as
   the Dockerfile does and fails when a test is skipped; locally,
   `JANUS_CONFORMANCE_BIN=<venv>/bin/janus manage.py test core.assistant.tests.conformance`.
-- **The bump pull request** (planned, P3 in the platform plan) will move `JANUS_REF` with
-  both of the above run against the new commit.
+- **The bump pull request** (`.github/workflows/janus-bump.yml`, v0.174.0). Every Tuesday
+  it resolves the newest commit on the Janus repository's main (the repository is read
+  from the Dockerfile, never from an input), installs it as the image does and runs the
+  contract, the conformance suite and pip-audit against it in the same run, because a
+  pull request opened with the workflow's token starts no workflows. When both pass it
+  opens one draft pull request, `janus/bump`, which moves `JANUS_REF` and keeps the old
+  pin as `JANUS_KNOWN_GOOD` (`scripts/bump_janus.py bump`); its description is the
+  contract diff, the conformance result, the audit and the commit list. The new Janus
+  runs in a job with no write access and no cache, and another job, which never runs
+  it, judges its results and writes the description; those results are still the
+  candidate's own report, so CI on the release commit runs both checks again. A later run
+  replaces it while only the workflow has pushed to the branch, and leaves it alone once
+  a person has. To ship it, push the release commit onto the branch
+  (`python manage.py release --minor "Janus …"`; `release --check` counts the
+  Dockerfile), let CI run on that push, then merge. A run by hand may name an older
+  commit of that main (Actions → janus-bump → Run workflow, `commit`), to bisect a move
+  that fails. The repository must let GitHub Actions create pull requests (Settings →
+  Actions → General → Workflow permissions); without it the run pushes the branch and
+  stops with a link to open the pull request by hand.
 
 Switches: `LINDA_JANUS_AUTO_UPDATE=False` (deployment) or the "Keep Janus up to date"
 box on the Janus page (merchant) keep the image's Janus until the next deploy. A build

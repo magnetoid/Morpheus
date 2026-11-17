@@ -123,7 +123,9 @@ plugins/installed/ai_assistant/       ← Pulse insights, embeddings, search
   ([janus_contract.py](../core/assistant/janus_contract.py)), and CI runs that
   commit end to end against a stub model and the store's real MCP edge
   ([tests/conformance](../core/assistant/tests/conformance/)); a newer Janus
-  arrives with the Morpheus release that moves the pin, and each turn records
+  arrives with the Morpheus release that moves the pin, proposed as a draft pull
+  request by the `janus-bump` workflow after both ran against it
+  ([bump_janus.py](../scripts/bump_janus.py)), and each turn records
   which Janus build answered it
   ([janus_runtime.py](../core/assistant/janus_runtime.py)). For jobs bigger than
   one message she spawns copies of the generic **Worker** through the agents

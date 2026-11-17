@@ -2532,8 +2532,14 @@ regenerated in the same commit (`uv pip compile requirements.txt -o
 requirements.lock.txt --generate-hashes --universal --upgrade`; without
 `--upgrade`, uv keeps every version the old lock had), or the build fails on
 the missing hash. Janus is pinned the same way: `ARG JANUS_REF` in the
-Dockerfile names a reviewed commit (tagged `morpheus-known-good` in the Janus
-repo), and its layer runs before `COPY . /app`, so it is cached across deploys.
+Dockerfile names a reviewed commit, and its layer runs before `COPY . /app`, so it
+is cached across deploys. The pin moves only by the draft pull request the weekly
+`janus-bump` workflow opens (v0.174.0) after running the contract, the conformance
+suite and pip-audit on the new commit in the same run (a pull request opened with the
+workflow's token starts no workflows); `scripts/bump_janus.py` keeps the old pin as
+`JANUS_KNOWN_GOOD`, and every workflow that installs Janus reads the pin through it.
+A person pushes the release commit onto that branch before merging (`release --check`
+counts the Dockerfile), and a branch a person has pushed to is never replaced.
 
 **Landmine — a named volume takes the ownership of the image directory it is
 first mounted on, and a directory the image lacks is created as root's.** The app
