@@ -39,7 +39,7 @@ from morpheus.views import HttpResponse, render, staff_member_required
 | `StorefrontBlock` | Contribution dataclass — declares a block slot the active theme can render via `{% storefront_blocks "slot_name" %}`. |
 | `SettingsPanel` | Contribution dataclass — adds a configuration form to `/dashboard/settings/<category>/`. |
 | `PluginConfigurationError` | Raise from `ready()` to refuse activation with a clear message; the registry isolates the failure so siblings keep loading. |
-| `__version__` | The currently-installed Morpheus version. Use to gate `requires` in your plugin manifest. |
+| `__version__` | The running Morpheus release without the `v` (`'0.179.0'`), read from `MORPHEUS_VERSION` (it said `'0.1.0'` until v0.179.0). To say which releases an app supports, set `min_morpheus` / `max_morpheus` on its manifest instead of checking this at run time. |
 
 ### Submodules
 

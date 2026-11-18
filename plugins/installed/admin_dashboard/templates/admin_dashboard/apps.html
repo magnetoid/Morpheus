@@ -36,9 +36,10 @@
           </div>
           <div class="flex items-center gap-1.5 flex-shrink-0">
             {% if p.active %}<span class="pill pill-success">Active</span>{% else %}<span class="pill pill-neutral">Inactive</span>{% endif %}
-            {% if p.start_failed %}<span class="pill pill-warn" title="This app did not start in the part of the store that served this page. The error log has the details; a restart tries again.">Did not start</span>{% endif %}
+            {% if p.not_running %}<span class="pill pill-warn" data-app-not-running>Not running</span>{% elif p.start_failed %}<span class="pill pill-warn" title="This app did not start in the part of the store that served this page. The error log has the details; a restart tries again.">Did not start</span>{% endif %}
           </div>
         </div>
+        {% if p.not_running %}<p class="text-xs text-[color:var(--text-subtle)]">{{ p.not_running }}</p>{% endif %}
         {% if p.summary %}<p class="text-sm text-[color:var(--text-muted)] line-clamp-3">{{ p.summary }}</p>{% endif %}
         {% if p.adds %}<p class="text-xs text-[color:var(--text-subtle)]">Adds {{ p.adds|join:", " }}.</p>{% endif %}
 

@@ -472,6 +472,35 @@ twenty tests fake a disabled app with `_active.discard` while its stored row say
 on, and a request or an eager task would put it back depending on test order.
 Guarded by `core/tests/test_registry_reconcile.py`.
 
+**Convention — an app that cannot run is not started, and says why (v0.179.0).** An app's
+manifest may name the Morpheus releases it runs on (`min_morpheus` / `max_morpheus`, inclusive,
+a bound compares as many parts as it names, so `'0.179'` is every 0.179.x; `plugins/compat.py`).
+`AppRegistry._apply_active`, the one place an app starts in a process, refuses one outside its
+range or whose `requires` names an app that is missing, off or skipped itself (a requirement
+whose `ready()` raised does not count: one app's crash must not take the storefront down with
+it), and keeps the reason in
+`app_registry.skipped` (the Apps page's "Not running", `plugins.list`'s `not_running`,
+`set_enabled`'s refusal); boot and reconcile start apps through `_start_in_order`, which gives
+an app waiting for its requirement another pass. Protected and system apps
+(`_keeps_running`) always start, with an ERROR: the store does not work without them. Themes
+load after the apps, so at boot an app the theme requires counts as protected only from the
+first request's reconcile on (the deploy's migrate and beat never reconcile). An app's
+`on_upgrade(previous)` runs after the deploy's migrations (`post_migrate`; `safe_migrate` boots
+Django before it migrates, so never at boot), once across every process: the compare-and-swap on
+`PluginConfig.installed_version` and the step share one transaction, so a raising step, or a
+container killed mid-step, leaves the old version for the next deploy (writing the version first
+and putting it back on failure lost the step when the put-back failed too). It reads the
+recorded versions from the primary, where the swap writes (a lagging replica would hold a step
+back a whole deploy), and on a new store, whose boot found no table and wrote no rows, it writes
+the rows of the apps that start on, as boot would, so the first deploy runs their steps. Versions compare
+with `plugins.compat.is_newer_app_version` ('1.0' is '1.0.0', '2.0.0b1' comes before '2.0.0');
+a release put back records the lower version and runs nothing. A switch-off runs no
+`on_disable()` for an app the registry skipped. Every
+store's first v0.179.0 deploy calls it with `previous=''`. Before shipping a manifest bound,
+check the live stores: an app the store needs to sell that refuses to start is an outage, and
+nothing fails the boot. Guarded by `core/tests/test_plugin_manifest.py`, which also asserts
+every app in the tree runs on the release it ships in.
+
 **Landmine — a runtime toggle that refreshes the WRONG URL module is a no-op
 that only misbehaves after the next restart.** `registry._refresh_urlconf`
 rebuilt `plugins.urls`, but since the ADR 0022 split the root urlconf includes
@@ -933,10 +962,11 @@ listed in `settings.TEMPLATES`** — Django resolves that list at settings-impor
 before the disable is known, so a hardcoded `plugins.installed.book_product.
 context_processors.nav_genres` runs a removed app's code against unloaded models
 on every request (the aggregator `plugins.context_processors.plugin_context`
-skips inactive owners; a `settings.TEMPLATES` entry cannot); (2) **an unmet
-`requires` logs at ERROR on every boot but does not fail it** (`registry.validate`
-is non-fatal), so disable a required app *together with its requirers* — here all
-three go as one bundle — or the store logs a permanent error. Note `eco_impact`
+skips inactive owners; a `settings.TEMPLATES` entry cannot); (2) **an app whose
+`requires` is unmet is not started** (since v0.179.0; until then it logged at ERROR
+on every boot and started anyway), so disable a required app *together with its
+requirers* — here all three go as one bundle — or the Apps page shows the requirers
+as "Not running" for good. Note `eco_impact`
 is a "general" plugin that hard-`requires` a vertical although its whole feature
 returns `None` for anything that isn't a book: a general plugin requiring a
 vertical is the coupling to avoid. Guarded by

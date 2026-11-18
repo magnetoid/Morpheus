@@ -133,13 +133,17 @@ class Command(BaseCommand):
             with_tasks=with_tasks,
         )
         out['app.py'] = plugin_body
+        out['help.md'] = self._help_md(label=label)
+        out['agent_tools.py'] = self._agent_tools_py(name=name, label=label)
+        # Always a package: a migrations/ directory without __init__.py is
+        # invisible to Django, and its tables never reach production (CLAUDE.md).
+        out['migrations/__init__.py'] = ''
 
         out['tests/__init__.py'] = ''
         out['tests/test_smoke.py'] = self._smoke_test(name=name, cls_prefix=cls_prefix)
 
         if with_models:
             out['models.py'] = self._models_py(name=name)
-            out['migrations/__init__.py'] = ''
 
         if with_graphql:
             out['graphql/__init__.py'] = ''
@@ -200,6 +204,11 @@ class Command(BaseCommand):
                 def ready(self) -> None:
             {chr(10).join(ready_lines)}
 
+                def contribute_agent_tools(self) -> list:
+                    from plugins.installed.{name}.agent_tools import TOOLS
+
+                    return list(TOOLS)
+
                 # Example hook (uncomment when you wire it):
                 # def ready(self) -> None:
                 #     self.register_hook(events.ORDER_PLACED, self.on_order)
@@ -219,8 +228,63 @@ class Command(BaseCommand):
 
             class {cls_prefix}SmokeTests(TestCase):
                 def test_plugin_class_imports(self):
-                    from plugins.installed.{name}.plugin import {cls_prefix}Plugin
+                    from plugins.installed.{name}.app import {cls_prefix}Plugin
                     self.assertEqual({cls_prefix}Plugin.name, "{name}")
+        ''').lstrip()
+
+    @staticmethod
+    def _help_md(*, label) -> str:
+        """A guide in the shape the Help page and CI accept (plugins/app_help.py).
+        Every line asks to be replaced, so a draft is easy to spot in review."""
+        return (
+            dedent(f"""
+            ---
+            summary: Replace this line with one sentence on what {label} does for the store.
+            ---
+
+            ## What it's for
+            Replace this paragraph with what {label} does for the store, in the words staff \\
+            see on its screens. Say which pages it adds to the dashboard or the shop, and what \\
+            changes for shoppers once it is on. Describe only what it does today.
+
+            ## Good to know
+            Replace this paragraph with what staff should know before they rely on {label}: \\
+            what it does not do, what happens when it is switched off, and what Linda can do \\
+            with it. The Help page shows this guide next to the details the running code reports.
+        """)
+            .lstrip()
+            .replace(' \\\n', ' ')
+        )
+
+    @staticmethod
+    def _agent_tools_py(*, name, label) -> str:
+        return dedent(f'''
+            """{label}: the tools Linda and the agents can use.
+
+            Every action staff can take in this app ships with its tool in the same
+            change. A tool that writes sets `requires_approval=True`, so Linda asks the
+            merchant first; every scope a tool names must be listed in
+            `plugins/installed/agent_mcp/scopes.py:AVAILABLE_SCOPES`.
+
+            Example:
+
+                from morpheus.core import ToolResult, tool
+
+                @tool(
+                    name='{name}.summary',
+                    description='What {label} holds right now.',
+                    scopes=['{name}.read'],
+                    schema={{'type': 'object', 'properties': {{}}}},
+                )
+                def summary_tool() -> ToolResult:
+                    return ToolResult(output={{}}, display='Nothing yet.')
+
+                TOOLS = [summary_tool]
+            """
+
+            from __future__ import annotations
+
+            TOOLS: list = []
         ''').lstrip()
 
     @staticmethod

@@ -286,11 +286,13 @@ jobs:
           { echo '## Janus conformance'; echo; echo '```json'; cat /tmp/janus-conformance.json 2>/dev/null || echo '{}'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
   api-stability:
-    # Gates docs/API_STABILITY.md — diff the Python SDK public surface
-    # against docs/sdk-baseline.json. Removals block; additions pass.
-    # To refresh the baseline after a deliberate breaking change + major
-    # version bump: `python scripts/check_api_stability.py --save` and
-    # commit the updated baseline in the SAME PR that ships the break.
+    # Gates docs/API_STABILITY.md — diff the SDK doors, MorpheusEvents, agent
+    # tool names, contribution fields and the app base class against
+    # docs/sdk-baseline.json (v0.179.0). Removals block; additions pass.
+    # To refresh the baseline after a deliberate removal (a breaking change,
+    # or a release that deletes an app and its tools):
+    # `python scripts/check_api_stability.py --save` and commit the updated
+    # baseline in the SAME PR that ships it.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

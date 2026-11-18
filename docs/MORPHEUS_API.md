@@ -28,7 +28,7 @@ The top-level package re-exports the things every plugin needs:
 | `SettingsPanel`       | JSON-Schema-driven config form for a plugin.           |
 | `StorefrontBlock`     | Template fragment rendered into a theme slot.          |
 | `PluginConfigurationError` | Raised when plugin metadata fails validation.     |
-| `__version__`         | Framework version string.                              |
+| `__version__`         | The running Morpheus release, e.g. `'0.179.0'`.        |
 
 ```python
 from morpheus import Plugin, DashboardPage, SettingsPanel, StorefrontBlock

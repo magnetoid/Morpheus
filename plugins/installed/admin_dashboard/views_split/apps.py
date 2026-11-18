@@ -79,6 +79,9 @@ def apps_view(request: HttpRequest) -> HttpResponse:
                 # On for the store, but its start-up failed in the worker serving
                 # this page; reconcile never retries it there, a restart does.
                 'start_failed': db_intends_on and name in app_registry._failed,
+                # On for the store, but it cannot run here: an unsupported
+                # Morpheus version, or a requirement that is missing or off.
+                'not_running': app_registry.skipped.get(name, '') if db_intends_on else '',
                 'pages': [
                     {'label': p.label, 'icon': p.icon, 'url': navigation.page_url(p)}
                     for p in app_registry.dashboard_pages()

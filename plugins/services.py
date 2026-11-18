@@ -59,14 +59,26 @@ def set_enabled(name: str, enabled: bool, actor: Any = None) -> AppSwitch:
     try:
         if enabled:
             if not app_registry.activate(name):
+                # The app stays as stored: a reason is kept only for one that
+                # is switched on (the Apps page and `plugins.list` show it).
+                reason = (
+                    app_registry.skipped.get(name)
+                    if was_on
+                    else app_registry.skipped.pop(name, None)
+                )
                 raise AppSwitchRefused(
-                    f'{switches.label(name)} could not start, so it stays off. '
-                    'The error log has the details.'
+                    reason
+                    or (
+                        f'{switches.label(name)} could not start, so it stays off. '
+                        'The error log has the details.'
+                    )
                 )
         else:
             # The tear-down follows the store's switch, not this worker: it still
-            # runs when the app's start-up failed here.
-            app_registry.deactivate(name, tear_down=was_on)
+            # runs when the app's start-up failed here. An app the registry did
+            # not start (`skipped`: its Morpheus version or a requirement, the
+            # same in every worker) never set anything up to tear down.
+            app_registry.deactivate(name, tear_down=was_on and name not in app_registry.skipped)
     except DatabaseError as e:
         logger.error('plugins: could not store the switch for %s: %s', name, e, exc_info=True)
         raise AppSwitchRefused(
@@ -106,7 +118,11 @@ class _Switches:
         return self.stored.get(app, self.registry.is_active(app))
 
     def why_not_on(self, name: str) -> str:
+        from plugins.compat import incompatibility
+
         cls = self.classes[name]
+        if (reason := incompatibility(cls)) and not self.registry._keeps_running(name):
+            return reason
         for dep in cls.requires:
             if dep.startswith('core.'):
                 continue  # a core Django app, always installed

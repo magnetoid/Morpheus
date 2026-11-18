@@ -30,6 +30,7 @@ logger = logging.getLogger('morpheus.plugins')
 
 _NAME_RE = re.compile(r'^[a-z][a-z0-9_]*$')
 _VERSION_RE = re.compile(r'^\d+(\.\d+)*([a-z][0-9]*)?$')
+_PLATFORM_RE = re.compile(r'^v?\d+(\.\d+){0,2}$')
 
 
 class PluginConfigurationError(TypeError):
@@ -91,6 +92,14 @@ class MorpheusPlugin:
     # ── Dependency graph ───────────────────────────────────────────────────────
     requires: list[str] = []  # plugin names this depends on
     conflicts: list[str] = []  # plugins this cannot coexist with
+
+    # ── Platform compatibility ────────────────────────────────────────────────
+    # The oldest and newest Morpheus this app runs on, inclusive, or '' for any
+    # ('0.179.0', or 'v0.179' for every 0.179.x). An app outside its range is
+    # not started on that store, and the Apps page says why
+    # (`plugins/compat.py`). Protected and system apps always start.
+    min_morpheus: str = ''
+    max_morpheus: str = ''
 
     # First-run activation: True (default) auto-enables the plugin the first
     # time it's discovered; False ships it installed-but-OFF so the merchant
@@ -162,6 +171,13 @@ class MorpheusPlugin:
             )
         if not isinstance(cls.has_models, bool):
             raise PluginConfigurationError(f'{cls.__name__}.has_models must be True or False.')
+        for field in ('min_morpheus', 'max_morpheus'):
+            value = getattr(cls, field)
+            if not isinstance(value, str) or (value and not _PLATFORM_RE.match(value)):
+                raise PluginConfigurationError(
+                    f'{cls.__name__}.{field} must be empty or look like 0.179.0 or v0.179. '
+                    f'Got {value!r}.'
+                )
 
     # ── Lifecycle (override these) ─────────────────────────────────────────────
 
@@ -170,6 +186,17 @@ class MorpheusPlugin:
 
     def on_disable(self) -> None:
         """Tear-down hook. Called when a merchant disables the plugin."""
+
+    def on_upgrade(self, previous: str) -> None:
+        """Run once on a store when this app's `version` moves up.
+
+        Called after the deploy's migrations, for an app that is on, with the
+        version the store last ran ('' when none was recorded: a new store, or
+        one that ran a release before v0.179.0). It runs in its own transaction;
+        if it raises, its writes roll back, the error is logged and the next
+        deploy tries again, so it must be safe to run twice. A release put back
+        records the lower version and runs nothing (`plugins/compat.py`).
+        """
 
     # ── Registration helpers ───────────────────────────────────────────────────
 

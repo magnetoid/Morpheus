@@ -67,4 +67,16 @@ __all__ = [
     '__version__',
 ]
 
-__version__ = '0.1.0'
+
+def __getattr__(name: str) -> str:
+    """`morpheus.__version__`: the running platform's version, '0.179.0'.
+
+    Read when asked (settings are not configured when this package is first
+    imported), from `MORPHEUS_VERSION`, the one place a release names it. It
+    said '0.1.0' until v0.179.0, whatever the store ran.
+    """
+    if name == '__version__':
+        from plugins.compat import platform_version
+
+        return platform_version().removeprefix('v') or 'unknown'
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
