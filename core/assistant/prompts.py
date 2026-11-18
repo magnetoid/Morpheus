@@ -10,6 +10,20 @@ than the raw constant.
 
 from __future__ import annotations
 
+# Where her tools are. Every store tool goes with each model call unless the
+# merchant switched tool search on (Settings → AI → Janus); then only Janus's
+# search bridge does, and a tool these instructions or a skill name
+# (`orders.search`) has to be found before it can run.
+TOOLS_LISTED = (
+    'Your tools are already listed; never browse for more, and if none fits, say what is missing.'
+)
+TOOLS_ON_REQUEST = (
+    'Store tools load on request: find one with `tool_search` (describe the job, for '
+    'example "search orders"), read its arguments with `tool_describe` when you need them, '
+    'then run it with `tool_call`. A name like `orders.search` in these instructions or a '
+    'skill is a store tool to search for. If none fits, say what is missing.'
+)
+
 LINDA_BASE_PROMPT = (
     "You are Linda, the merchant's AI assistant for running their store on "
     'Morpheus. Warm, direct and precise.\n'
@@ -18,8 +32,7 @@ LINDA_BASE_PROMPT = (
     '  • Facts come from tools. Never guess a number, status or name.\n'
     '  • Take the job all the way. Work out what the merchant needs, gather what it '
     'takes, check the result, then answer. One tool call is rarely the whole job.\n'
-    '  • Use the most specific tool for each step. Your tools are already listed; '
-    'never browse for more, and if none fits, say what is missing.\n'
+    f'  • Use the most specific tool for each step. {TOOLS_LISTED}\n'
     '  • Run independent reads together, and prefer one filtered search over many '
     'lookups.\n'
     '  • When a number looks wrong or surprising, check it another way before you '
@@ -59,24 +72,29 @@ LINDA_BASE_PROMPT = (
 )
 
 
-def build_system_prompt() -> str:
+def build_system_prompt(*, tools_on_request: bool = False) -> str:
     """Return the full system prompt with brand-voice injected when available.
 
     Layering (top → bottom):
       1. Brand voice — per-store name / audience / tone / guidelines
          from ``ai_content`` plugin config.
       2. LINDA_BASE_PROMPT — how Linda works, makes changes and answers.
-         Always present even when plugins are absent.
+         Always present even when plugins are absent. With
+         ``tools_on_request`` (tool search on), it says how to find a tool
+         instead of saying every tool is listed.
 
     LindaMemory facts are NOT injected here — the runtime adds a single
     query-aware ``REMEMBERED FACTS`` system message per turn
     (``runtime._format_recent_memories``), ranked by semantic similarity
     to the merchant's current message.
     """
+    base = LINDA_BASE_PROMPT
+    if tools_on_request:
+        base = base.replace(TOOLS_LISTED, TOOLS_ON_REQUEST)
     # AGENT_SYSTEM_PROMPT filter — ai_content prepends the brand voice while
     # enabled; the bus isolates handler errors and skips inactive owners, so
     # the prompt is always available (replaces the old direct import).
     from core.hooks import MorpheusEvents, hook_registry
 
-    prompt = hook_registry.filter(MorpheusEvents.AGENT_SYSTEM_PROMPT, value=LINDA_BASE_PROMPT)
-    return prompt if isinstance(prompt, str) else LINDA_BASE_PROMPT
+    prompt = hook_registry.filter(MorpheusEvents.AGENT_SYSTEM_PROMPT, value=base)
+    return prompt if isinstance(prompt, str) else base

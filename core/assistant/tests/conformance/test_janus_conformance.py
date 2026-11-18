@@ -27,7 +27,7 @@ from django.contrib.auth import get_user_model
 from django.test import LiveServerTestCase, override_settings
 
 from core.agents.models import AgentRun
-from core.assistant import janus_contract, janus_engine, janus_learning
+from core.assistant import janus_contract, janus_engine, janus_learning, prompts
 from core.assistant.runtime import Assistant
 from core.assistant.tests.conformance import stub_model
 from plugins.testing import set_app_settings
@@ -36,6 +36,8 @@ JANUS = os.environ.get('JANUS_CONFORMANCE_BIN', '')
 REPORT = os.environ.get('JANUS_CONFORMANCE_REPORT', '')
 LOOPBACK = '127.0.0.1,localhost'
 STORE_HOST = 'shop.conformance.test'
+# Janus's tool-search bridge (tools/tool_search.py), named in Linda's prompt.
+BRIDGE = {'tool_search', 'tool_describe', 'tool_call'}
 
 
 @unittest.skipUnless(JANUS, 'JANUS_CONFORMANCE_BIN names no Janus to test')
@@ -206,6 +208,81 @@ class JanusConformanceTests(LiveServerTestCase):
         events = self._turn(
             'Make an About page.',
             stub_model.tool_call('cms.create_page', {'title': 'About', 'body': '<p>Hi</p>'}),
+            stub_model.text('Shall I create it?'),
+        )
+        self.assertEqual(self._result(events)[0], 'final')
+        (answer,) = self._tool_results(self.model.requests[1])
+        self.assertIn('approval_required', answer)
+        self.assertFalse(Page.objects.filter(title='About').exists())
+
+    # ── tool search on (Settings → AI → Janus) ───────────────────────────────
+
+    def _bridged(self, dotted: str, args: dict) -> stub_model.Answer:
+        return stub_model.tool_call(
+            'tool_call', {'name': stub_model.store_tool(dotted), 'arguments': args}
+        )
+
+    def test_with_tool_search_on_only_the_bridge_goes_with_each_call(self):
+        set_app_settings(self, 'janus', tool_search='on')
+        kind, _ = self._result(self._turn('How is the shop?', stub_model.text('Fine.')))
+        self.assertEqual(kind, 'final')
+
+        first = self.model.requests[0]
+        names = {t['function']['name'] for t in first.get('tools') or []}
+        self.assertEqual({n for n in names if n.startswith(stub_model.SERVER_PREFIX)}, set())
+        self.assertLessEqual(BRIDGE, names)
+        reviewed = set().union(
+            *(janus_contract.TOOLSETS.get(t, set()) for t in janus_engine.turn_toolsets())
+        )
+        self.assertEqual(names - reviewed - BRIDGE, set())
+        # Her prompt says how to find a tool instead of "your tools are listed".
+        system = str(first['messages'][0].get('content') or '')
+        self.assertIn(prompts.TOOLS_ON_REQUEST, system)
+        self.assertNotIn(prompts.TOOLS_LISTED, system)
+        type(self).report['tool_search_on'] = {
+            'tools_offered': len(names),
+            'tool_schema_bytes': len(json.dumps(first.get('tools') or [])),
+        }
+
+    def test_with_tool_search_on_a_store_tool_still_goes_through_the_edge(self):
+        set_app_settings(self, 'janus', tool_search='on')
+        events = self._turn(
+            'Any orders?',
+            stub_model.tool_call('tool_search', {'query': 'search orders'}),
+            self._bridged('orders.search', {}),
+            stub_model.text('No orders yet.'),
+        )
+        kind, result = self._result(events)
+        self.assertEqual((kind, result.text), ('final', 'No orders yet.'))
+
+        found = self._tool_results(self.model.requests[1])[-1]
+        self.assertIn(stub_model.store_tool('orders.search'), found)
+        answer = self._tool_results(self.model.requests[2])[-1]
+        payload = json.loads(answer[answer.index('{') : answer.rindex('}') + 1])
+        self.assertEqual(json.loads(payload['result'])['orders'], [])
+
+        # The edge recorded the store tool under its own name, and the hooks
+        # reported it so: the lookup is a finished step, the call a full one.
+        started = [e['name'] for e in events if e['type'] == 'tool_call_started']
+        self.assertEqual(started, ['orders.search'])
+        steps = [e for e in events if e['type'] == 'step']
+        self.assertEqual(
+            [(s['tool'], s['state']) for s in steps],
+            [
+                ('tool_search', 'done'),
+                (stub_model.store_tool('orders.search'), 'running'),
+                (stub_model.store_tool('orders.search'), 'done'),
+            ],
+        )
+        self.assertEqual(steps[-1]['store_tool'], 'orders.search')
+
+    def test_with_tool_search_on_a_write_still_needs_the_merchants_yes(self):
+        from plugins.installed.cms.models import Page
+
+        set_app_settings(self, 'janus', tool_search='on')
+        events = self._turn(
+            'Make an About page.',
+            self._bridged('cms.create_page', {'title': 'About', 'body': '<p>Hi</p>'}),
             stub_model.text('Shall I create it?'),
         )
         self.assertEqual(self._result(events)[0], 'final')

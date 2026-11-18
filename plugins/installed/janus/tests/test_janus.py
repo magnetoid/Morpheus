@@ -35,6 +35,7 @@ _VALID = {
     'learning': 'on',
     'web_search': 'on',
     'reasoning_effort': 'low',
+    'tool_search': 'off',
 }
 
 
@@ -113,6 +114,15 @@ class JanusPageSaveTests(TestCase):
         self.assertEqual(stored['turn_timeout_s'], 30)
         self.assertEqual(stored['extra_instructions'], 'Prices include VAT.')
         self.assertFalse(stored['bundled_skills'])
+
+    def test_tool_search_is_saved_and_shown(self):
+        self.assertIn('value="off" selected', self.client.get(URL).content.decode())
+        self.assertEqual(self._post(tool_search='on').status_code, 302)
+        self.assertEqual(_stored()['tool_search'], 'on')
+        self.assertIn('value="on" selected', self.client.get(URL).content.decode())
+        # Janus's auto is not offered: it changed with whether openrouter.ai answered.
+        self.assertEqual(self._post(tool_search='auto').status_code, 200)
+        self.assertEqual(_stored()['tool_search'], 'on')
 
     def test_limits_are_enforced(self):
         self.assertEqual(self._post(turn_timeout_s='301').status_code, 200)
@@ -259,6 +269,18 @@ class JanusSettingConsumerTests(TestCase):
         _set(web_search=False)
         self.assertNotIn('search', eng.turn_toolsets())
         self.assertNotIn('web_search', Assistant()._system_prompt(context={}))
+
+    def test_tool_search_reaches_the_engine_and_the_prompt(self):
+        from core.assistant import prompts
+
+        self.assertIn('enabled: "off"', eng._config_text('https://s/mcp/'))
+        self.assertIn(prompts.TOOLS_LISTED, Assistant()._system_prompt(context={}))
+        _set(tool_search='on')
+        self.assertIn('enabled: "on"', eng._config_text('https://s/mcp/'))
+        self.assertIn(prompts.TOOLS_ON_REQUEST, Assistant()._system_prompt(context={}))
+        # A stored value Morpheus never offered reads as off.
+        _set(tool_search='auto')
+        self.assertIn('enabled: "off"', eng._config_text('https://s/mcp/'))
 
     def test_learning_toggle_reaches_the_engine(self):
         self.assertIn('memory', eng.turn_toolsets())

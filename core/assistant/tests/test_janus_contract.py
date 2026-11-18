@@ -151,6 +151,12 @@ def _fake_janus(
         'print(f"\\nsession_id: {cli.session_id}", file=sys.stderr)',
         'Session not found',
         'Reached maximum iterations All API retries exhausted',
+        'tools_cfg.get("tool_search")',
+        'TOOL_SEARCH_NAME = "tool_search"',
+        'TOOL_DESCRIBE_NAME = "tool_describe"',
+        'TOOL_CALL_NAME = "tool_call"',
+        'stamp = home / ".install_method"',
+        'if detect_install_method() == "docker": return None',
     ]
     body = '\n'.join(f'# {n}' for n in needles)
     if drop:
@@ -289,6 +295,22 @@ class ContractScriptTests(SimpleTestCase):
     def test_the_empty_reply_explainer_switch_is_required(self):
         report = self._run(drop='turn_completion_explainer')
         self.assertEqual(self._failing(report), ['config display.turn_completion_explainer'])
+
+    def test_the_tool_search_switch_and_its_bridge_are_required(self):
+        # Morpheus writes the switch on every turn, and with it on her prompt
+        # names the bridge tools: a rename would leave her calling tools that
+        # do not exist.
+        report = self._run(drop='tools_cfg.get("tool_search")')
+        self.assertEqual(self._failing(report), ['config tools.tool_search.enabled'])
+        report = self._run(drop='TOOL_CALL_NAME = "tool_call"')
+        self.assertEqual(self._failing(report), ['bridge tool tool_call'])
+
+    def test_a_lost_install_stamp_only_warns(self):
+        # Without it Janus checks PyPI for updates again: an outbound call whose
+        # answer nothing shows, not a broken turn.
+        report = self._run(drop='if detect_install_method() == "docker": return None')
+        self.assertEqual(self._failing(report), [])
+        self.assertEqual(self._warned(report), ['a docker install skips the update check'])
 
     def test_the_report_says_which_ref_a_fallback_replaced(self):
         report = self._run('--fallback-from', 'f' * 40)

@@ -58,6 +58,8 @@ class JanusPlugin(Plugin):
                 'bundled_skills': {'type': 'boolean', 'default': True},
                 'learning': {'type': 'boolean', 'default': True},
                 'web_search': {'type': 'boolean', 'default': True},
+                # 'on': store tools load on request (Janus's tool search).
+                'tool_search': {'type': 'string', 'enum': ['off', 'on'], 'default': 'off'},
                 'fallback_providers': {
                     'type': 'array',
                     'items': {'type': 'string'},

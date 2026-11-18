@@ -726,8 +726,19 @@ falls back to `JANUS_KNOWN_GOOD`. The repository comes from the Dockerfile, **ne
 a setting**: Linda can write settings through her tools, and a setting that names the
 code to install is remote code execution. When Morpheus starts relying on a new Janus
 surface, add it to the contract in the same change (`test_janus_contract.py` fails until
-you do). Guarded by `core/assistant/tests/test_janus_engine.py::AgentToolsetTests`,
-`test_janus_contract.py`, `test_janus_updates.py` and `test_janus_activity.py`.
+you do). **Every turn writes `tools.tool_search.enabled`** (v0.176.0, the janus setting
+`tool_search`, `off` by default): Janus's own default, `auto`, sizes the context from
+OpenRouter's catalogue (a fetch of up to 10 s every turn), so a turn sent all 250 tool
+schemas (~140 KB) or only the search bridge depending on whether openrouter.ai answered.
+`on` sends 14 (~18 KB): store tools load through `tool_search` / `tool_describe` /
+`tool_call`, which reach the same edge and gates, and the hooks name the real tool; nothing
+found stays loaded, and bridged calls run one after another. With it on, the prompt swaps
+"your tools are already listed" for how to find one (`prompts.TOOLS_ON_REQUEST`), and the
+chat shows the lookups as done steps, because Janus writes no end line for them. Each home
+also says `.install_method` `docker`, which skips Janus's PyPI update check. Guarded by
+`core/assistant/tests/test_janus_engine.py::AgentToolsetTests`, `test_janus_contract.py`,
+`test_janus_updates.py`, `test_janus_activity.py` and the conformance suite's tool-search
+tests.
 
 **Landmine — what Janus learns lives in files a redeploy deletes, and "add a disk
 volume" only fixes it on one host.** Janus writes its memory notes, the skills it

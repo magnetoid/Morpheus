@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.176.0 — 2026-11-18
+
+**Linda can look up store tools when she needs them**
+
+- Settings → AI → Janus has a new choice, How Linda gets her store tools: all at once, as before, or when needed. When needed, each step carries three lookup tools instead of the description of every store tool (about 18 KB instead of 140 KB), and Linda finds and reads the one she needs. Every store tool still goes through the same permissions, and a change still waits for your yes.
+- Every turn now tells Janus which way to work. It used to decide by fetching OpenRouter's model list, waiting up to 10 seconds, so the tools a turn got depended on whether openrouter.ai answered. Janus also no longer checks PyPI for an update a store cannot install.
+- While Linda works, each lookup shows as a finished step (Looked for the right tool).
+
 ## v0.175.1 — 2026-11-17
 
 **Janus moves only with a Morpheus release**

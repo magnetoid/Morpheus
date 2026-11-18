@@ -413,6 +413,13 @@ mcp_servers:
     # hooks: one line per step into the home's progress file, for the chat
     #   (core/assistant/activity.py). A display only: each says on_failure: warn,
     #   so a failed hook is logged and the step goes ahead.
+    # tools.tool_search: always written. Janus's default, auto, sizes the model's
+    #   context from OpenRouter's catalogue (a fetch of up to 10 s every turn), so
+    #   whether a turn sent every store tool or only the search bridge changed with
+    #   whether openrouter.ai answered. Off: every store tool goes with each call
+    #   and nothing is fetched. On: store tools load on request through Janus's
+    #   tool_search / tool_describe / tool_call, which reach the same MCP edge.
+    tool_search = 'on' if janus_settings.tool_search_enabled() else 'off'
     hooks = activity.hooks_config(progress_path) if progress_path is not None else ''
     # fallback_providers: backups Janus switches to when the main provider fails
     #   a call (see _fallback_wiring); their keys come with the turn's env.
@@ -447,6 +454,9 @@ web:
   backend: ddgs
 display:
   turn_completion_explainer: false
+tools:
+  tool_search:
+    enabled: "{tool_search}"
 {fallback_block}{hooks}"""
 
 
@@ -458,10 +468,15 @@ _SOUL = (
 )
 # Stops Janus copying its ~70 general-purpose skills into the home.
 _NO_BUNDLED_SKILLS = '.no-bundled-skills'
+# How Janus says it was installed. "docker" (true of the image) makes `janus chat`
+# skip its update check, a PyPI fetch every six hours per home whose answer
+# nothing shows: Janus moves only when a Morpheus release moves the pin.
+_INSTALL_METHOD = ('.install_method', 'docker\n')
 
 
 def _prepare_home(home: Path) -> None:
-    """Linda's identity, and no general-purpose Janus skills in her prompt."""
+    """Linda's identity, no general-purpose Janus skills in her prompt, and no
+    update check."""
     from core.assistant import janus_learning
 
     with contextlib.suppress(OSError):
@@ -469,6 +484,10 @@ def _prepare_home(home: Path) -> None:
         if not soul.is_file() or soul.read_text(encoding='utf-8') != _SOUL:
             soul.write_text(_SOUL, encoding='utf-8')
         (home / _NO_BUNDLED_SKILLS).touch(exist_ok=True)
+        name, method = _INSTALL_METHOD
+        stamp = home / name
+        if not stamp.is_file() or stamp.read_text(encoding='utf-8') != method:
+            stamp.write_text(method, encoding='utf-8')
     try:
         janus_learning.remove_bundled_skills(home)
     except Exception:  # noqa: BLE001 — a leftover skill costs tokens, not the turn

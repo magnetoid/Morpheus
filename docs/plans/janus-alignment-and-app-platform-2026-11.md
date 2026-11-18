@@ -6,7 +6,7 @@
 
 **Method.** Three read-only explorations (the Janus seam inside Morpheus; the Janus repository, read over the GitHub API; the app system and agent coverage), one design pass, and spot-checks of the strongest claims in the code on `origin/main` (0b433b93).
 
-**Status:** approved by the owner on 2026-11-15. P1 (Janus truth patch) is v0.171.1, live on all five stores since 2026-11-16. P2 (conformance suite) is v0.171.2, live on all five since 2026-11-16. P5 (app toggle reaches every process) is v0.172.0, live on all five since 2026-11-16. P7 (one settings coercer) is v0.173.0, live on all five since 2026-11-17. P3 (pin bump by pull request) is v0.174.0 and the first bump v0.175.0, both live on all five since 2026-11-17. P3b (the self-updater retired) is v0.175.1, in review. Update this line as each release ships.
+**Status:** approved by the owner on 2026-11-15. P1 (Janus truth patch) is v0.171.1, live on all five stores since 2026-11-16. P2 (conformance suite) is v0.171.2, live on all five since 2026-11-16. P5 (app toggle reaches every process) is v0.172.0, live on all five since 2026-11-16. P7 (one settings coercer) is v0.173.0, live on all five since 2026-11-17. P3 (pin bump by pull request) is v0.174.0 and the first bump v0.175.0, both live on all five since 2026-11-17. P3b (the self-updater retired) is v0.175.1, live on all five since 2026-11-18. P4 (tool search) is v0.176.0, in review. Update this line as each release ships.
 
 **Owner's decisions (2026-11-15).**
 1. Janus updates arrive as a **pull request with a test**: CI takes the newest Janus, runs the contract and a real `janus chat` against a stub model, and opens a PR that moves the pin. The owner merges; all five stores get the same verified version through a normal deploy. The runtime self-updater is retired.
@@ -185,6 +185,17 @@ One release in flight at a time, each from a fresh worktree off `origin/main`, e
 - Follow-ups in the same release: labels for the bridge steps in `core/assistant/activity.py` (they produce no hook steps); one prompt line when deferral is on (skills name `orders.search`, the model must look for `mcp_morpheus_admin_orders_search`); a conformance scenario with `enabled: on` proving every call still crosses `gates.py`.
 - Success: input tokens per live turn before and after (baseline about 180k).
 
+*P4 as shipped (v0.176.0):*
+- Read in the pinned Janus (cc4620c0, `tools/tool_search.py`): with tool search on, every MCP tool is deferred and the model gets three bridge tools, `tool_search`, `tool_describe` and `tool_call`; Janus's own tools (skills, todo, memory, session_search) stay loaded. `tool_call` is unwrapped before the hooks, so `pre_tool_call`/`post_tool_call` carry the real `mcp_morpheus_admin_*` name and the call goes through the same MCP session and the same `gates.py` chain. `tool_search` and `tool_describe` fire a pre hook only. A found tool is never added to `tools`, so each new tool costs two or three model round trips, and a batch holding a bridge call runs one call at a time.
+- Ruling: the janus setting `tool_search` offers `off` and `on` only, default `off`, and every turn writes `tools.tool_search.enabled`. Janus's own default `auto` sizes the context from the config's `model.default`, which Morpheus writes as `auto`, so it fetched OpenRouter's catalogue (10 s timeout) on every turn: when openrouter.ai answered, the model reported 2M and every schema went; when it did not, Janus fell back to 256K and deferred them. A turn's tool list depended on a third party answering. `off` is what an answered fetch gave, so the default keeps today's normal behaviour and drops the fetch. No `threshold_pct` (it only matters for `auto`). Reader `janus_settings.tool_search_enabled()`; a stored value other than `on` reads as off.
+- Measured in the conformance suite against the real pin (stub model): off, 250 tools (239 of them the store's), 140,271 bytes of schema per model call; on, 14 tools, 18,503 bytes.
+- With it on, the system prompt's tool line becomes `prompts.TOOLS_ON_REQUEST` (search, describe, call; a dotted name in a skill is a store tool to search for), and the activity reader shows each lookup as a finished step (`activity._NO_END`), since no end line follows.
+- Each home gets `.install_method` reading `docker`, which makes Janus skip its PyPI update check (every 6 hours per home). A soft contract check: losing it only brings back a check whose result nobody reads.
+- Contract: `tools.tool_search.enabled` joins `CONFIG_KEYS`; the three bridge names join `NAMES`; the install stamp and the docker skip join `SOFT_NAMES`.
+- Conformance: three scenarios with tool search on (only the bridge is offered; a bridged `orders.search` reaches the edge and shows as its own step; a bridged write still returns `approval_required`).
+- Not measured: live input tokens per turn before and after, and Janus's start-up time on a store. Both need a read of live `AgentRun` rows, which waits for the owner's yes. Until then `on` is a per-store choice the merchant makes on Settings → AI → Janus, worth trying with a model whose input is expensive or whose context is small.
+- Left for later, read but unchanged: Janus waits 0.75 s for MCP discovery before the first call; it probes the model server (`/api/show` and friends) every turn, and downloads models.dev's 6.7 MB catalogue hourly per home (`model.context_length` would skip both, but Morpheus has no reliable value to give it); a cost estimate fetches `GET /models` after the first response; per-server `tools.include`/`exclude` filters and `plugins.disabled` exist and are unused.
+
 ### P6 — Manifest compatibility and upgrades
 
 - `plugins/base.py`: optional `min_morpheus` / `max_morpheus` (tuple compare, no dependency; missing = compatible; protected and system apps ignore it) and a no-op `on_upgrade(previous)`.
@@ -223,6 +234,10 @@ Each item is its own PR there, arrives through the bump PR, and only then may Mo
 9. `reasoning_tokens` read from Chat Completions' `usage.completion_tokens_details` too (today only `output_tokens_details`, so it is 0 for most providers).
 10. `janus chat -q` honouring `--source` when it records the session (today always `cli`).
 11. A switch for the "You run on Janus Agent… load the `janus-agent` skill" guidance that is appended after `SOUL.md` on every turn (`agent/system_prompt.py`), so an embedding product can drop it.
+12. A `post_tool_call` hook for `tool_search` and `tool_describe`, like every other tool.
+13. Promote a tool found by `tool_search` into `tools` for the rest of the turn, so a second call costs no lookup.
+14. A config switch for the update check (today only the `.install_method` stamp skips it).
+15. A configurable MCP discovery wait before the first model call (today a fixed 0.75 s).
 
 Later, unscheduled: keep one subprocess per turn but speak the TUI-gateway JSON-RPC, which would give token streaming and a real mid-turn `clarify`.
 
@@ -253,6 +268,7 @@ Back to `docs/plans/platform-gap-analysis-2026-11.md`: A10 order editing, C4 ret
 - Whether an agent can edit a skill in an external directory is inferred from Janus's code, not observed; P9 removes the exposure either way.
 - P6 and P8 were designed without reading `core/component_updates.py` and the scaffold command in full; both get read before their release starts.
 - The first bump crosses 78 commits at once; if it fails, bisect by resolving older shas with the same workflow.
+- Janus starts the first model call after waiting 0.75 s for MCP discovery (read in its code, not observed live). With tool search on, a store tool that is not discovered in time would simply not be found; the conformance suite has not seen it miss.
 
 ## Flags for the owner (no action is taken on these without you)
 

@@ -80,6 +80,8 @@ CONFIG_KEYS = {
     # Morpheus switches MCP resources and prompts off: the store serves tools only.
     'mcp_servers.*.tools.resources': r'get\(\s*["\']resources["\']',
     'mcp_servers.*.tools.prompts': r'get\(\s*["\']prompts["\']',
+    # Always written, so no turn sizes the context from OpenRouter (Janus's auto).
+    'tools.tool_search.enabled': r'get\(\s*["\']tool_search["\']\s*\)',
 }
 
 # Environment variables and home files janus_engine relies on.
@@ -91,6 +93,11 @@ NAMES = {
     'home .no-bundled-skills': r'\.no-bundled-skills',
     'quiet mode prints session_id to stderr': r'session_id: \{[^}]*\}["\'],\s*file=sys\.stderr',
     'a lost session says "Session not found"': r'Session not found',
+    # With tool search on, Linda's prompt names these bridge tools (prompts.py)
+    # and the chat labels them (activity.py).
+    'bridge tool tool_search': r'TOOL_SEARCH_NAME\s*=\s*["\']tool_search["\']',
+    'bridge tool tool_describe': r'TOOL_DESCRIBE_NAME\s*=\s*["\']tool_describe["\']',
+    'bridge tool tool_call': r'TOOL_CALL_NAME\s*=\s*["\']tool_call["\']',
 }
 
 # `janus chat` options every turn passes.
@@ -115,10 +122,15 @@ STATE_COLUMNS = {
     'messages': ('id', 'session_id', 'role', 'content', 'timestamp'),
 }
 
-# Shown, never required: the step display and notice stripping degrade quietly.
+# Shown, never required: the step display and notice stripping degrade quietly,
+# and a lost install stamp only brings back an update check nothing shows.
 SOFT_NAMES = {
     'notice "Reached maximum iterations"': r'Reached maximum iterations',
     'notice "All API retries exhausted"': r'All API retries exhausted',
+    'home .install_method': r'["\']\.install_method["\']',
+    'a docker install skips the update check': (
+        r'detect_install_method\(\)\s*==\s*["\']docker["\']'
+    ),
 }
 
 _SOURCE_PACKAGES = ('agent', 'tools', 'janus_cli')

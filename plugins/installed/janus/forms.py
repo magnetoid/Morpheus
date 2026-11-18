@@ -59,6 +59,12 @@ class JanusSettingsForm(forms.Form):
             ('high', 'Thorough — slower, for tricky analysis'),
         ]
     )
+    tool_search = forms.ChoiceField(
+        choices=[
+            ('off', 'All at once — every store tool goes with each step'),
+            ('on', 'When needed — Linda looks up the tool she needs'),
+        ]
+    )
 
     def __init__(self, *args, has_stored_key: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
