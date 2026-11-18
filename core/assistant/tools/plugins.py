@@ -7,7 +7,12 @@ from core.assistant.tools.filesystem import ToolError, ToolResult, tool
 
 @tool(
     name='plugins.list',
-    description='List every Morpheus plugin with its active state and version.',
+    description=(
+        'List every app with whether it is running, its version, what it requires, the '
+        'Morpheus versions it supports, and, for an app that is switched on but not '
+        'running, why (`not_running`: an unsupported Morpheus version, or a requirement '
+        'that is missing or off).'
+    ),
     scopes=['system.read'],
     schema={'type': 'object', 'properties': {}},
 )
@@ -25,13 +30,16 @@ def list_plugins_tool() -> ToolResult:
                 'version': p.version,
                 'active': app_registry.is_active(p.name),
                 'requires': list(p.requires),
+                'min_morpheus': p.min_morpheus,
+                'max_morpheus': p.max_morpheus,
+                'not_running': app_registry.skipped.get(p.name, ''),
             }
         )
     rows.sort(key=lambda r: r['name'])
-    return ToolResult(
-        output={'plugins': rows, 'count': len(rows)},
-        display=f'{sum(1 for r in rows if r["active"])} of {len(rows)} active',
-    )
+    display = f'{sum(1 for r in rows if r["active"])} of {len(rows)} active'
+    if stuck := sum(1 for r in rows if r['not_running']):
+        display += f'; {stuck} switched on but not running'
+    return ToolResult(output={'plugins': rows, 'count': len(rows)}, display=display)
 
 
 @tool(

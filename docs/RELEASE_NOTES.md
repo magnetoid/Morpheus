@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.179.0 — 2026-11-18
+
+**Apps say which Morpheus they run on, and upgrade themselves once**
+
+- An app that needs another app that is off or missing, or a Morpheus release it does not support, is no longer started. The Apps page marks it Not running and says why, switching it on is refused with the same sentence, and Linda reads the reason in plugins.list. Apps the store cannot run without always start. None of our stores has such an app today, so nothing changes on them.
+- For app authors: a manifest may name the oldest and newest Morpheus it runs on (min_morpheus, max_morpheus), and on_upgrade(previous) runs once per store after a deploy's migrations when the app's version moves up; a step that fails is rolled back and tried again on the next deploy. morpheus.__version__ reports the running release (it said 0.1.0).
+- manage.py morph_create_plugin also writes the app's help guide, a file for its Linda tools and its migrations folder, so a new app passes the checks every app in the tree passes.
+- The API stability check in CI also guards the SDK doors, every event name, every Linda tool name, the fields of every app contribution and the app base class: removing one fails the build.
+
 ## v0.178.0 — 2026-11-18
 
 **Environmental claims, the legal guarantee notice and the accessibility statement**

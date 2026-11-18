@@ -128,7 +128,7 @@ The **required files** are `app.py` and `help.md` (CI fails on an app without a 
                                       ▼
                 ┌──────────────────────────────────────────────┐
                 │ app_registry.discover(paths)              │
-                │   imports each <plugin>.plugin module        │
+                │   imports each <plugin>.app module           │
                 │   discovers MorpheusPlugin subclass          │
                 └─────────────────────┬────────────────────────┘
                                       ▼
@@ -136,7 +136,8 @@ The **required files** are `app.py` and `help.md` (CI fails on an app without a 
                 │ app_registry.activate_all()  (AppReady)   │
                 │   1. validate dependency graph               │
                 │   2. topological sort by `requires`          │
-                │   3. for each plugin in order: call ready()  │
+                │   3. for each plugin in order: call ready(), │
+                │      unless it cannot run here (skipped)     │
                 └─────────────────────┬────────────────────────┘
                                       ▼
                 ┌──────────────────────────────────────────────┐
@@ -146,7 +147,18 @@ The **required files** are `app.py` and `help.md` (CI fails on an app without a 
 ```
 
 If `ready()` raises, **only that plugin** is deactivated — siblings keep loading.
-The exception is logged with a full traceback (see `plugins/registry.py:_activate`).
+The exception is logged with a full traceback (see `plugins/registry.py:_apply_active`).
+
+**An app that cannot run is not started (v0.179.0).** The registry skips an app
+whose `min_morpheus` / `max_morpheus` leaves out the running release, or whose
+`requires` names an app that is missing or not running, and records why in
+`app_registry.skipped`. The Apps page shows the reason under the app ("Not
+running"), Linda's `plugins.list` returns it as `not_running`, and the merchant's
+switch refuses it with the same sentence. Each switch-on tries again, so an app
+waiting for a requirement starts as soon as that one does. Protected and system
+apps always start, with an ERROR in the log: the store does not work without
+them. Before v0.179.0 an unmet `requires` only logged at ERROR and the app
+started anyway.
 
 ---
 
@@ -160,7 +172,9 @@ The exception is logged with a full traceback (see `plugins/registry.py:_activat
 | `description` | `str` | recommended | One-line what-it-does. |
 | `author` | `str` | optional | Default `"Morph Team"`. |
 | `url` | `str` | optional | Plugin homepage / docs. |
-| `requires` | `list[str]` | optional | Plugin names this depends on (topological order). |
+| `requires` | `list[str]` | optional | Plugin names this depends on (topological order). An app whose requirement is missing or not running is not started (§3). |
+| `min_morpheus` | `str` | optional (default `''`) | The oldest Morpheus this app runs on, inclusive: `'0.179.0'`, or `'v0.179'` for every 0.179.x. Compared part by part as far as it names. |
+| `max_morpheus` | `str` | optional (default `''`) | The newest Morpheus this app runs on, inclusive; `'0.180'` allows every 0.180.x. Empty means any. Protected and system apps ignore both bounds. |
 | `conflicts` | `list[str]` | optional | Plugins this cannot coexist with. |
 | `enabled_by_default` | `bool` | optional (default `True`) | `False` ships the plugin **installed-but-OFF** — the merchant opts in from Dashboard → Apps. Only affects the first run (when no `PluginConfig` row exists); after that the DB flag wins. Use it for anything that's inert without operator setup — an external integration that needs credentials/an IdP (`staff_sso`), or a protocol surface a merchant opts into (`agentic_checkout`) — as well as merchant-specific features (`booking_marketplace`). |
 | `has_models` | `bool` | ✅ if you have models | If True, the plugin needs to be in `INSTALLED_APPS`. |
@@ -169,6 +183,32 @@ The exception is logged with a full traceback (see `plugins/registry.py:_activat
 
 The base class **validates** all metadata at class-definition time — typos
 fail fast at import, not at runtime.
+
+### Upgrading an app's stored data: `on_upgrade(previous)`
+
+Bump `version` and override `on_upgrade` when a new version needs to change
+what the store already holds (rename a setting key, backfill a field a
+migration cannot fill):
+
+```python
+def on_upgrade(self, previous: str) -> None:
+    # 2.0.0 renamed the `greeting` setting to `welcome_text`. Safe to run twice:
+    # a value already moved is left as it is.
+    config = self.get_config()
+    if 'greeting' in config and 'welcome_text' not in config:
+        self.set_config('welcome_text', config['greeting'])
+```
+
+It runs after the deploy's migrations, once per store, for an app that is on:
+`PluginConfig.installed_version` records the version the store last ran, and a
+compare-and-swap on that column lets exactly one web or Celery process run the
+step (`plugins/compat.py:run_upgrades`). `previous` is `''` when nothing was
+recorded (a new store, or one that ran a release before v0.179.0). The step runs
+in one transaction with the version write; if it raises (or the process is
+killed while it runs), its writes and the new version roll back and the next deploy
+tries again, so write it to be safe twice. A
+release put back records the lower version and runs nothing. Schema changes stay
+in migrations.
 
 ### `protected` is one-way, on purpose
 
@@ -503,15 +543,14 @@ Conventions:
 - For a related set of tools + a prompt prelude, bundle them with
   `contribute_skills()` so Linda opts into them as a unit.
 
-**Linda also learns plugins she has *no* tools for.** She ships with
-introspection tools — `plugins.describe(name)` (manifest + models + commands +
-code path), `platform.capabilities` (her whole grouped toolset), the `db.*`
-schema/row tools, and the `fs.*` file/doc readers. So even a plugin that
-contributes nothing is operable: Linda reads its models with `db.*` and its
-code/docs with `fs.*`. **But prefer `contribute_agent_tools`** — a declared,
-scoped command is safer and more reliable than Linda reverse-engineering your
-plugin from its schema. Expose the actions you want her to take; let
-introspection be the fallback.
+**An app with no tools is invisible to Linda in everyday use.** Her
+introspection tools — `plugins.describe(name)`, `platform.capabilities`, the
+`db.*` schema and row tools and the `fs.*` file readers — are offered only in
+Developer mode (`core/assistant/gates.py:DEVELOPER_TOOLS`), so a merchant's
+Linda cannot read your models or code to work out what the app does. Ship
+`contribute_agent_tools` with every action staff can take (`manage.py
+morph_create_plugin` scaffolds `agent_tools.py` for it): a merchant action
+without its tool is half-built (ADR 0039).
 
 ### 5.4 Help for store staff (`help.md`)
 
@@ -598,14 +637,15 @@ Switch an app from code with `plugins.services.set_enabled(name, enabled,
 actor)`, never by writing `PluginConfig.is_enabled`: a stored switch with no token
 bump reaches the other workers only at their next timed re-read.
 
-**`PROTECTED_PLUGINS`.** A short tuple in
-[`core/safety.py`](../core/safety.py) (`admin_dashboard`, `agent_core`,
-`rbac`, `customers`) that the dashboard refuses to let you disable. These
-*are* shipped as plugins (the engine is plugin-native all the way down), but
-disabling one would soft-brick the install — e.g. turning off
-`admin_dashboard` 404s the whole `/dashboard/`. The guard exists precisely
-*because* disable genuinely removes surfaces; for these four that's
-catastrophic, so they're pinned on. Everything else is freely toggleable.
+**Protected apps.** `core.safety.is_plugin_protected(name)` is the one gate
+the dashboard and Linda's disable tools ask. It covers the floor in
+[`core/safety.py:PROTECTED_PLUGINS`](../core/safety.py) (read the tuple for the
+current list), any app whose manifest says `protected = True`, and any app the
+active theme lists in `requires_plugins`. These *are* shipped as plugins (the
+engine is plugin-native all the way down), but disabling one would soft-brick
+the install — e.g. turning off `admin_dashboard` 404s the whole `/dashboard/`.
+The guard exists precisely *because* disable genuinely removes surfaces.
+Everything else is freely toggleable.
 
 > To check enabled state in code, use `app_registry.is_active("<name>")`
 > (Python) or the `active_plugins` context list in templates
@@ -1298,7 +1338,9 @@ pip install my-morph-plugin
 ```
 
 …and add `my_morph_plugin` to `MORPHEUS_EXTRA_APPS`. The discovery
-loop imports `<path>.plugin` regardless of where the package lives on disk.
+loop imports `<path>.app` regardless of where the package lives on disk.
+Name the Morpheus releases it supports with `min_morpheus` / `max_morpheus`, so
+a store on another release skips it and says why instead of breaking.
 
 **Naming convention:** prefix package names with `morph-` so they're
 discoverable on PyPI.

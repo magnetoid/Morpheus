@@ -56,6 +56,12 @@ class AppRegistry:
         # them again (a half-run ready() may have wired some hooks already);
         # an explicit `activate()` still may.
         self._failed: set[str] = set()
+        # Apps this process did not start because they cannot run here, with
+        # why in the merchant's words: a Morpheus version outside the app's
+        # range, or something in its `requires` that is missing or not running
+        # (`_skip_reason`). Each switch-on tries again, so one comes up as soon
+        # as what it needs does.
+        self.skipped: dict[str, str] = {}
         # The switches token this process last read the database for. None until
         # the first `reconcile()`, which therefore always reads once: boot reads
         # the switches before the cache is reachable, and a switch flipped while
@@ -213,8 +219,8 @@ class AppRegistry:
             instance._registry = self
             self._plugins[name] = instance
 
-            if name in enabled_names:
-                self._activate(instance)
+        for name in self._start_in_order([n for n in order if n in enabled_names]):
+            logger.debug('Plugin activated: %s v%s', name, self._plugins[name].version)
 
         self._ready = True
         # One summary line at INFO. Per-plugin lines stay at DEBUG so
@@ -227,12 +233,20 @@ class AppRegistry:
             ', '.join(active),
         )
 
-    def _activate(self, plugin: MorpheusPlugin) -> None:
-        if self._apply_active(plugin.name):
-            # Per-plugin success is DEBUG (still surfaces in dev / tracing);
-            # the boot summary at the end of activate_all() carries the
-            # human-readable count + names list at INFO.
-            logger.debug('Plugin activated: %s v%s', plugin.name, plugin.version)
+    def _start_in_order(self, names: list[str]) -> list[str]:
+        """Switch `names` on in this process, in the order given, and return the
+        ones that started. An app skipped because something it needs was not
+        running yet gets another pass once that has started (the order is
+        alphabetical when the dependency graph has a cycle)."""
+        started: list[str] = []
+        pending = list(names)
+        while pending:
+            left = [name for name in pending if not self._apply_active(name)]
+            started.extend(name for name in pending if name not in left)
+            if len(left) == len(pending):
+                break
+            pending = [name for name in left if name in self.skipped]
+        return started
 
     # In-memory pair: this process only. No URL refresh (the caller does it
     # once), no database write, no token bump, no on_disable().
@@ -250,6 +264,13 @@ class AppRegistry:
             return False
         if name in self._active:
             return True
+        reason = self._skip_reason(name)
+        if reason:
+            if self.skipped.get(name) != reason:
+                logger.warning('plugins: %s not started: %s', name, reason)
+            self.skipped[name] = reason
+            return False
+        self.skipped.pop(name, None)
         if name not in self._wired:
             try:
                 instance.ready()
@@ -262,6 +283,40 @@ class AppRegistry:
         self._active.add(name)
         self._collect_contributions(instance)
         return True
+
+    def _skip_reason(self, name: str) -> str:
+        """Why `name` cannot start in this process, or ''. Apps start in
+        dependency order, so a requirement that is not running by now is off
+        or skipped itself (one whose ready() failed is not counted). A
+        protected or system app always starts."""
+        cls = self._classes.get(name)
+        if cls is None:
+            return ''
+        from plugins.compat import incompatibility
+
+        label = cls.label or name
+        reason = incompatibility(cls)
+        if not reason:
+            for dep in cls.requires:
+                if dep.startswith('core.'):
+                    from django.apps import apps as django_apps
+
+                    if not django_apps.is_installed(dep):
+                        reason = f'{label} needs {dep}, which this store does not have.'
+                elif dep not in self._classes:
+                    reason = f'{label} needs {dep}, which this store does not have.'
+                elif dep not in self._active and dep not in self._failed:
+                    # A requirement whose ready() raised here is not a reason:
+                    # one app's crash stays its own (the storefront would 404
+                    # in this worker because orders failed to start).
+                    dep_label = self._classes[dep].label or dep
+                    reason = f'{label} needs {dep_label}, which is not running.'
+                if reason:
+                    break
+        if reason and self._keeps_running(name):
+            logger.error('plugins: %s starts anyway, the store needs it: %s', name, reason)
+            return ''
+        return reason
 
     def _apply_inactive(self, name: str) -> None:
         """Switch an app off in this process: its hooks stop answering (the bus
@@ -289,6 +344,7 @@ class AppRegistry:
             return
         with self._switch_lock:
             self._store_switch(name, enabled=False)
+            self.skipped.pop(name, None)
             if tear_down is None:
                 tear_down = name in self._active
             if tear_down:
@@ -453,7 +509,10 @@ class AppRegistry:
         on = [n for n in known if stored[n] and n not in self._active and n not in self._failed]
         for name in off:
             self._apply_inactive(name)
-        switched_on = [name for name in on if self._apply_active(name)]
+        for name in known:
+            if not stored[name]:
+                self.skipped.pop(name, None)  # switched off: nothing to explain
+        switched_on = self._start_in_order(on)
         if off or switched_on:
             self._refresh_urlconf()
             logger.info(

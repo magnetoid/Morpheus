@@ -23,9 +23,15 @@ class PluginsConfig(AppConfig):
             yield model
 
     def ready(self):
+        from django.db.models.signals import post_migrate
+
+        from plugins.compat import after_migrate
         from plugins.registry import app_registry
 
         app_registry.activate_all()
+        # Each app's upgrade step runs after the deploy's migrations, never at
+        # boot: `safe_migrate` starts Django before it migrates.
+        post_migrate.connect(after_migrate, sender=self, dispatch_uid='plugins.run_upgrades')
 
         # Populate plugin URLs after all plugins are active
         import plugins.urls

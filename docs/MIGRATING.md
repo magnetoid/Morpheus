@@ -6,6 +6,39 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.179.0 — an app that cannot run is not started
+
+- **An app whose `requires` names an app that is missing, switched off or not started itself is
+  not started** (a requirement whose `ready()` raised does not count). Until
+  v0.179.0 the boot logged an ERROR and started it anyway. It is now left off in that process, the
+  reason is kept in `app_registry.skipped[name]`, the Apps page shows it under the app and
+  `plugins.list` returns it as `not_running`. Switch its requirement on, or ship it, and the app
+  starts at the next switch-on. Protected and system apps still start, with the ERROR.
+- **New manifest fields `min_morpheus` and `max_morpheus`** (optional, inclusive, `'0.179.0'` or
+  `'v0.179'` for every 0.179.x). An app outside its range is not started and the merchant's switch
+  refuses it with the reason. A value that is not a version fails at import with
+  `PluginConfigurationError`.
+- **New method `on_upgrade(previous)`.** It runs once per store after the deploy's migrations,
+  when the app's `version` moved up since the store last ran it (`PluginConfig.installed_version`,
+  which the platform now writes). `previous` is `''` for a store that never recorded one, which is
+  every store on its first deploy of v0.179.0: an override must treat `''` as "unknown", not as
+  "new install". It shares a transaction with the version write, so a step that raises (or a
+  process killed while it runs) is tried again on the next deploy; it must be safe to run twice.
+  A switch-off runs no `on_disable()` for an app the registry never started.
+- **`morpheus.__version__` is the running release** (`'0.179.0'`), read from `MORPHEUS_VERSION`;
+  it said `'0.1.0'` on every store.
+- **`manage.py morph_create_plugin` scaffolds more**: `help.md` (the Help page and CI need one per
+  app), `agent_tools.py` with `contribute_agent_tools`, and `migrations/__init__.py` even without
+  models. Its smoke test imports `<app>.app`; the old one imported `<app>.plugin`, which does not
+  exist since v0.42.0.
+- **`scripts/check_api_stability.py` gates more surfaces**: the SDK doors (`morpheus.app` and its
+  submodules, `morpheus.core`, `morpheus.theme`), every `MorpheusEvents` constant with its value,
+  every agent tool name, the fields of every contribution class and the app base class's public
+  names. Removing one fails CI; a release that removes one on purpose refreshes
+  `docs/sdk-baseline.json` with `--save`.
+
+---
+
 ## v0.173.0 — one reading of a settings schema
 
 `plugins/config_schema.py` now reads every app's settings schema, and the agent's write is checked

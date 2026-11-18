@@ -5,20 +5,32 @@ Turns ``docs/API_STABILITY.md`` from documentation into a CI check. Run in CI on
 every PR; non-zero exit blocks merge when a stable surface changed without an
 explicit baseline refresh.
 
-Two surfaces are gated today:
+The surfaces gated (a removal or a rename of any entry is a hard block):
 
-  1. The Python SDK's public symbols (``morpheus.*``). Anything exported from
-     the top-level package or its public submodules (``morpheus.events``,
-     ``morpheus.hooks``, ``morpheus.models``, ``morpheus.forms``,
-     ``morpheus.views``). Removal of a symbol is a hard block.
+  1. The Python SDK's public symbols: the top-level ``morpheus`` package, its
+     submodules (``morpheus.events``, ``.hooks``, ``.models``, ``.forms``,
+     ``.views``) and the SDK doors an app author imports from
+     (``morpheus.app`` and its submodules, ``morpheus.core``,
+     ``morpheus.theme``).
+  2. ``events``: every ``core.hooks.MorpheusEvents`` constant with its value,
+     since an app subscribes by the string (v0.179.0; ``morpheus.events`` only
+     re-exports some of them).
+  3. ``agent_tools``: every tool name Linda and the agents can be offered.
+     Tool names are a stable API: external agents and stored automations call
+     them by name (CLAUDE.md, "two plugins registering the same agent-tool
+     NAME").
+  4. ``contribution_fields``: the fields of each contribution an app returns
+     (``StorefrontBlock``, ``DashboardPage``, …).
+  5. ``app_manifest``: the public attributes and methods of the app base
+     class (``requires``, ``min_morpheus``, ``register_hook``, …).
 
-  2. The hook event catalogue (``morpheus.events`` module constants).
-     Removing or renaming an event is a hard block — third-party plugins
-     subscribe by name.
+The snapshot is taken with the default app list only (CI sets no
+``MORPHEUS_EXTRA_APPS``), so it does not depend on the store. A release that
+deletes an app removes its tools on purpose: refresh the baseline in that
+release with ``--save``.
 
 GraphQL schema stability deserves its own diff tool (Strawberry's schema
-printer); that's a separate follow-up. This script handles the Python surface
-which is the first contract third-party plugin authors build against.
+printer); that's a separate follow-up.
 
 Usage:
     python scripts/check_api_stability.py                  # diff against baseline
@@ -51,7 +63,16 @@ SDK_MODULES = [
     'morpheus.models',
     'morpheus.forms',
     'morpheus.views',
+    'morpheus.app',
+    'morpheus.app.forms',
+    'morpheus.app.models',
+    'morpheus.app.views',
+    'morpheus.core',
+    'morpheus.theme',
 ]
+
+#: The surfaces beyond module symbols, each a function returning sorted names.
+EXTRA_SURFACES = ('events', 'agent_tools', 'contribution_fields', 'app_manifest')
 
 DEFAULT_BASELINE = Path(__file__).resolve().parent.parent / 'docs' / 'sdk-baseline.json'
 
@@ -95,8 +116,54 @@ def _public_symbols(module_name: str) -> list[str]:
     return sorted(set(out))
 
 
+def _events() -> list[str]:
+    """`NAME=value` for every event constant: a new value is a rename."""
+    from core.hooks import MorpheusEvents
+
+    return sorted(
+        f'{name}={value}'
+        for name, value in vars(MorpheusEvents).items()
+        if name.isupper() and isinstance(value, str)
+    )
+
+
+def _agent_tools() -> list[str]:
+    """Every tool name: Linda's built-in tools and every tool an app registers."""
+    from core.agents import agent_registry
+    from core.assistant.tools import get_default_tools
+
+    return sorted({t.name for t in [*get_default_tools(), *agent_registry.platform_tools()]})
+
+
+def _contribution_fields() -> list[str]:
+    import dataclasses
+
+    from plugins import contributions
+
+    return sorted(
+        f'{cls.__name__}.{field.name}'
+        for cls in vars(contributions).values()
+        if dataclasses.is_dataclass(cls)
+        and isinstance(cls, type)
+        and cls.__module__ == contributions.__name__
+        for field in dataclasses.fields(cls)
+        if not field.name.startswith('_')
+    )
+
+
+def _app_manifest() -> list[str]:
+    from plugins.base import MorpheusPlugin
+
+    return sorted(name for name in vars(MorpheusPlugin) if not name.startswith('_'))
+
+
 def snapshot() -> dict[str, list[str]]:
-    return {m: _public_symbols(m) for m in SDK_MODULES}
+    current = {m: _public_symbols(m) for m in SDK_MODULES}
+    current['events'] = _events()
+    current['agent_tools'] = _agent_tools()
+    current['contribution_fields'] = _contribution_fields()
+    current['app_manifest'] = _app_manifest()
+    return current
 
 
 def compare(
@@ -105,13 +172,13 @@ def compare(
     """Return (removals, additions). Empty removals = green."""
     removals: list[str] = []
     additions: list[str] = []
-    for module in SDK_MODULES:
-        base = set(baseline.get(module, []))
-        curr = set(current.get(module, []))
+    for surface in [*SDK_MODULES, *EXTRA_SURFACES]:
+        base = set(baseline.get(surface, []))
+        curr = set(current.get(surface, []))
         for sym in sorted(base - curr):
-            removals.append(f'{module}.{sym}')
+            removals.append(f'{surface}: {sym}')
         for sym in sorted(curr - base):
-            additions.append(f'{module}.{sym}')
+            additions.append(f'{surface}: {sym}')
     return removals, additions
 
 

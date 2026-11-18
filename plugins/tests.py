@@ -95,9 +95,60 @@ class MorphCreatePluginTests(SimpleTestCase):
         self.assertTrue((out / '__init__.py').exists())
         self.assertTrue((out / 'apps.py').exists())
         self.assertTrue((out / 'app.py').exists())
+        self.assertTrue((out / 'help.md').exists())
+        self.assertTrue((out / 'agent_tools.py').exists())
+        # Always a package, models or not: a migrations/ directory without
+        # __init__.py is invisible to Django (CLAUDE.md).
+        self.assertTrue((out / 'migrations/__init__.py').exists())
         self.assertTrue((out / 'tests/test_smoke.py').exists())
         self.assertFalse((out / 'models.py').exists())
         self.assertFalse((out / 'urls.py').exists())
+
+    def test_scaffold_meets_the_app_standard(self):
+        """A new app passes the checks CI runs on every app in the tree."""
+        import importlib.util
+
+        from django.conf import settings
+
+        out = self._scaffold('standard_scaffold')
+        path = Path(settings.BASE_DIR) / 'scripts' / 'check_plugin_standard.py'
+        spec = importlib.util.spec_from_file_location('_plugin_standard', path)
+        standard = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(standard)
+        found = standard.audit_plugin(
+            out, known={'standard_scaffold'}, registered={'standard_scaffold'}
+        )
+        self.assertEqual(found, [])
+
+    def test_scaffold_guide_follows_the_help_rules(self):
+        import re
+
+        from plugins import app_help
+
+        out = self._scaffold('guide_scaffold', label='Gift notes')
+        g = app_help.parse('guide_scaffold', (out / 'help.md').read_text())
+        self.assertEqual(g.keys, ('summary',))
+        self.assertIn('Gift notes', g.summary)
+        self.assertLessEqual(len(g.summary), app_help.SUMMARY_MAX)
+        self.assertEqual(g.headings[0], app_help.HEADINGS[0])
+        self.assertLessEqual(set(g.headings), set(app_help.HEADINGS))
+        low, high = app_help.BODY_WORDS
+        words = len(re.findall(r"[A-Za-z][A-Za-z'’-]*", g.body))
+        self.assertGreaterEqual(words, low)
+        self.assertLessEqual(words, high)
+        jargon = re.compile(r'\b(' + '|'.join(app_help.JARGON) + r')\b', re.I)
+        self.assertEqual(jargon.findall(g.body), [])
+
+    def test_scaffold_offers_its_tools_to_linda(self):
+        out = self._scaffold('tools_scaffold')
+        app_py = (out / 'app.py').read_text()
+        self.assertIn('def contribute_agent_tools', app_py)
+        self.assertIn('plugins.installed.tools_scaffold.agent_tools import TOOLS', app_py)
+        import runpy
+
+        self.assertEqual(runpy.run_path(str(out / 'agent_tools.py'))['TOOLS'], [])
+        smoke = (out / 'tests/test_smoke.py').read_text()
+        self.assertIn('plugins.installed.tools_scaffold.app import', smoke)
 
     def test_scaffold_with_models(self):
         out = self._scaffold('with_models_scaffold', with_models=True)

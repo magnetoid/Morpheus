@@ -179,6 +179,13 @@ when the token moved and applies them in dependency order, one switch at a time
 per process. A schedule an app adds to beat, and the GraphQL schema, still change
 at the next restart.
 
+**An app that cannot run is not started** (v0.179.0). The registry skips an app
+outside its manifest's `min_morpheus` / `max_morpheus`, or one whose `requires`
+is missing or not running, and keeps why in `app_registry.skipped` for the Apps
+page and `plugins.list`; protected and system apps always start. After every
+migrate, `plugins/compat.py:run_upgrades` runs each app's `on_upgrade(previous)`
+once per version move (a compare-and-swap on `PluginConfig.installed_version`).
+
 **An app's settings schema has one reader** (v0.173.0), `plugins/config_schema.py`:
 how typed-in text becomes the declared type, what fits, which settings are secret and
 which an agent may change (`x-agent-writable`). The dashboard's settings forms and save,
