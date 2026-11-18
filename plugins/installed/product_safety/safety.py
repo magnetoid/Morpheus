@@ -110,6 +110,30 @@ def sells_goods(product) -> bool:
     return bool(product.requires_shipping) and product.product_type not in _NOT_GOODS
 
 
+# The EU legal guarantee notice (Commission Implementing Regulation (EU) 2025/1960,
+# from 27 September 2026): the official artwork, which may not be edited, shown on
+# the page of every product sold as goods while the store switches it on. Only the
+# English version ships; the regulation publishes one per EU language.
+GUARANTEE_NOTICE = 'legal_guarantee_notice'
+GUARANTEE_NOTICE_FILES = {
+    'en': (
+        'product_safety/legal-guarantee-notice-en-500.jpg',
+        'product_safety/legal-guarantee-notice-en-1000.jpg',
+    ),
+}
+
+
+def shows_guarantee_notice(product) -> bool:
+    """Whether the product's page shows the EU legal guarantee notice."""
+    from plugins.registry import app_registry
+
+    plugin = app_registry.get('product_safety')
+    if plugin is None or product is None or not sells_goods(product):
+        return False
+    value = plugin.get_config_value(GUARANTEE_NOTICE, False)
+    return value is True or str(value).strip().lower() in ('true', '1', 'yes', 'on')
+
+
 def _party(details: dict, fields) -> dict | None:
     name, address, contact = (details.get(key, '') for key, _label, _limit in fields)
     if not (name or address or contact):

@@ -1,6 +1,6 @@
-"""A tree-planting offset shows up everywhere the order's total does.
+"""A tree-planting pledge shows up everywhere the order's total does.
 
-The offset was added to the total and to nothing else, so the order email and
+The pledge was added to the total and to nothing else, so the order email and
 the dashboard listed a subtotal, shipping and tax that fell $1.50 short of the
 total. The breakdown now names the charge, the order keeps it, and the order
 email lists it (plus the discount line it never had).
@@ -37,9 +37,9 @@ class OrderExtrasTests(TestCase):
         address = {'country': 'US'}
         return OrderService.create_from_cart(self.cart, 'shopper@example.com', address, address)
 
-    def test_the_offset_is_a_named_line_on_the_order(self):
+    def test_the_pledge_is_a_named_line_on_the_order(self):
         lines = [(e['label'], e['amount'].amount) for e in self._order().extra_lines]
-        self.assertEqual(lines, [('Plant a tree', Decimal('1.50'))])
+        self.assertEqual(lines, [('Tree-planting pledge', Decimal('1.50'))])
 
     def test_the_order_lines_add_up_to_the_total(self):
         order = self._order()
@@ -53,6 +53,6 @@ class OrderExtrasTests(TestCase):
         self.assertEqual(lines, order.total.amount)
         self.assertEqual(order.total.amount, Decimal('9.50'))
 
-    def test_the_order_email_lists_the_offset(self):
+    def test_the_order_email_lists_the_pledge(self):
         body = render_to_string('emails/order_placed.txt', {'order': self._order()})
-        self.assertIn('Plant a tree: $1.50', body)
+        self.assertIn('Tree-planting pledge: $1.50', body)

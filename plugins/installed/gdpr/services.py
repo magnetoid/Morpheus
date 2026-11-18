@@ -172,28 +172,119 @@ does not affect the essential cookies the store needs to function.</p>
 <a href="/p/privacy/">privacy policy</a>.</p>
 </div>"""
 
+# The European Accessibility Act (Directive (EU) 2019/882, Annex V) asks a store to
+# describe its service, how it works and how it meets the accessibility requirements,
+# and to keep that information available while the service runs (Art. 13(2)). Contact
+# and date come from the store's settings when the page is seeded; the merchant edits
+# the page itself afterwards, so no setting pretends to change it later.
 _ACCESSIBILITY_BODY = """\
 <div class="wrap" style="max-width: 760px;">
 <p class="eyebrow">Accessibility</p>
+<p><em>Placeholder statement — check it against your store, and fill in what is
+missing, before you rely on it.</em></p>
 
-<h3>Our commitment</h3>
-<p>We want everyone to be able to browse and buy here, whatever device or
-assistive technology you use. We aim to meet the Web Content Accessibility
-Guidelines (WCAG) 2.2 at level AA as a target across the storefront.</p>
+<h3>The service</h3>
+<p>{name} is an online store. Here you can browse and search the
+catalogue, read about each product, add products to a cart and check out as a guest
+or with an account. You pay with one of the methods offered at checkout, receive
+emails about your order and can follow it from your account.</p>
 
-<h3>What we do</h3>
+<h3>How it works</h3>
+<p>Every page has the same header, with the menu, the search and the cart, and the
+same footer, with our policies and how to reach us. A product's page shows its price,
+its description and its photos. Checkout asks, in order, for your contact details, a
+delivery address when something is shipped, a delivery option and a payment method;
+each field says what it needs, and a mistake is named next to the field it concerns.
+The total, with taxes and delivery, is shown before you pay.</p>
+
+<h3>How we meet the accessibility requirements</h3>
+<p>The European Accessibility Act (Directive (EU) 2019/882) asks online stores to be
+accessible. We aim to meet the European standard EN 301 549, which includes the Web
+Content Accessibility Guidelines (WCAG) 2.2 at level AA.</p>
 <ul style="padding-left:1.5rem; line-height:1.8;">
-  <li>Keyboard-navigable menus, dialogs and the cart drawer.</li>
-  <li>Visible focus states and labelled form fields.</li>
-  <li>Text alternatives for meaningful images and clear colour contrast.</li>
-  <li>Respect for your "reduce motion" system setting.</li>
+  <li>Pages are built from headings, lists and labelled form fields, so a screen
+      reader can move through them, and each page declares its language.</li>
+  <li>Menus, dialogs, the cart and checkout work with a keyboard, with a visible
+      focus.</li>
+  <li>Images that carry meaning have a text alternative, and text has clear colour
+      contrast.</li>
+  <li>Pages respect your "reduce motion" system setting.</li>
 </ul>
 
-<h3>Found a barrier?</h3>
-<p>Accessibility is ongoing and we don't always get it right. If something is
-hard to use, please tell us at <a href="mailto:{email}">{email}</a> or through our
-<a href="/contact/">contact page</a> and we'll fix it as a priority.</p>
+<h3>How we check it</h3>
+<p>We test our pages with automated accessibility checks against WCAG 2.2 AA, and by
+hand with a keyboard. Automated checks find only some problems, so what you tell us
+matters.</p>
+
+<h3>Known limitations</h3>
+<p>Some product descriptions, images and documents, such as PDF manuals, come from
+manufacturers and may not be fully accessible. Ask us and we will give you the
+information another way.</p>
+
+<h3>Contact us</h3>
+<p>If something is hard to use, or you need any of this information in another
+format, tell us {contact} or through our <a href="/contact/">contact page</a>, and
+we'll fix it as a priority.</p>
+
+<h3>If you are not satisfied</h3>
+<p>You can also contact the authority that checks the accessibility of products and
+services in your country.</p>
+
+<p><em>This statement was prepared on {date}.</em></p>
 </div>"""
+
+ACCESSIBILITY_EXCERPT = (
+    'How this store meets accessibility requirements, and how to report a barrier.'
+)
+
+
+def _store(key: str) -> str:
+    from core.models import StoreSettings
+
+    try:
+        return str(StoreSettings.get(key, '') or '').strip()
+    except Exception:  # noqa: BLE001 — seeding never fails on a settings read.
+        logger.debug('gdpr: StoreSettings.%s unreadable', key, exc_info=True)
+        return ''
+
+
+def _accessibility_contact(email: str) -> str:
+    """How to reach the store, in writing and by phone when it has one (EAA Art. 13(2))."""
+    from django.utils.html import escape
+
+    email = _store('contact_email') or email
+    contact = f'at <a href="mailto:{escape(email)}">{escape(email)}</a>'
+    phone = _store('support_phone')
+    if phone:
+        # Plain text: a page body keeps only http(s) and mailto links (cms sanitiser).
+        contact += f', by phone on {escape(phone)}'
+    return contact
+
+
+def _store_name() -> str:
+    """The store's own name, never the field's default ("This" when it has none)."""
+    from django.utils.html import escape
+
+    from core.models import StoreSettings
+
+    name = _store('store_name')
+    if name and name != StoreSettings._meta.get_field('store_name').default:
+        return escape(name)
+    controller = _cfg('data_controller_name', '')
+    return escape(controller) if controller and controller != 'This store' else 'This'
+
+
+def accessibility_body() -> str:
+    """The accessibility statement as the seed writes it today."""
+    from datetime import date
+
+    today = date.today()
+    return _ACCESSIBILITY_BODY.format(
+        name=_store_name(),
+        contact=_accessibility_contact(_cfg('data_controller_email', 'privacy@example.com')),
+        date=f'{today.day} {today:%B %Y}',
+    )
+
 
 _FAQ_BODY = """\
 <div class="wrap" style="max-width: 760px;">
@@ -246,12 +337,7 @@ def _pages() -> list[tuple[str, str, str, str]]:
             'The cookies we use and how to manage your consent.',
             _COOKIES_BODY.format(**fmt),
         ),
-        (
-            'accessibility',
-            'Accessibility Statement',
-            'Our commitment to an accessible store, and how to report a barrier.',
-            _ACCESSIBILITY_BODY.format(**fmt),
-        ),
+        ('accessibility', 'Accessibility Statement', ACCESSIBILITY_EXCERPT, accessibility_body()),
         (
             'faq',
             'Frequently Asked Questions',

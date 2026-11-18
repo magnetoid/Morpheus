@@ -17,6 +17,6 @@ def eco_impact_card(request) -> dict:
         'caption': 'trees pledged by shoppers — you fulfil the planting',
         'rows': [
             ('Contributing orders', totals['contributors']),
-            ('CO₂ offset', f'{totals["co2_offset_kg"]:,.0f} kg'),
+            ('CO₂ the trees may absorb a year (estimate)', f'{totals["co2_offset_kg"]:,.0f} kg'),
         ],
     }

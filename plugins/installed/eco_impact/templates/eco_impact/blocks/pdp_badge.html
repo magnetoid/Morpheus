@@ -1,10 +1,12 @@
 {% load eco_impact %}
+{% comment %}An estimate, labelled as one, with its method one click away; no offer to
+"offset" it (Directive 2024/825; eco_impact/tests/test_claims_copy.py).{% endcomment %}
 {% eco_impact_for product as eco %}
 {% if eco %}
 <div class="eco-pdp" style="margin:.9rem 0; padding:.7rem .85rem; border:1px solid var(--rule); border-radius:10px; font-family:var(--sans); font-size:.8rem; line-height:1.5; color:var(--ink-2);">
   <div style="display:flex; align-items:center; gap:.45rem; margin-bottom:.35rem; color:var(--ink); font-weight:600;">
     <span aria-hidden="true">🌱</span>
-    <span>This book&rsquo;s footprint</span>
+    <span>This book&rsquo;s estimated footprint</span>
   </div>
   <div style="display:flex; flex-wrap:wrap; gap:.35rem .9rem;">
     <span>~{{ eco.wood_g }}&thinsp;g wood</span>
@@ -14,8 +16,9 @@
     <span>~{{ eco.sheets|floatformat:0 }} sheets of paper</span>
   </div>
   <div style="margin-top:.4rem; font-size:.72rem; color:var(--ink-2);">
-    Estimated from paper weight &amp; size. You can offset it at checkout &mdash;
-    <a href="/save-the-planet/" style="color:var(--accent-ink); text-decoration:underline;">plant a tree</a>.
+    An estimate from the book&rsquo;s paper weight and size, using published paper-industry
+    averages; not a measurement of this copy.
+    <a href="/save-the-planet/#method" style="color:var(--accent-ink); text-decoration:underline;">How we estimate it</a>
   </div>
 </div>
 {% endif %}

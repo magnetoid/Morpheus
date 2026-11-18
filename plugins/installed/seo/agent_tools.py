@@ -914,7 +914,9 @@ def delete_template_tool(*, template_id: str) -> ToolResult:
         'The last site-wide SEO scan: when it ran, whether it stopped early, its score, and '
         'each finding (code, severity, how many) with up to 20 of the pages it names. It '
         'reads what each page rendered, including whether the markup states the price, '
-        'stock and images the store actually has.'
+        'stock and images the store actually has, and the environmental claims its copy '
+        'makes (environmental_claim_generic, environmental_claim_offset), banned in EU '
+        'consumer sales since 27 September 2026.'
     ),
     scopes=['seo.read'],
     schema={'type': 'object', 'properties': {}},

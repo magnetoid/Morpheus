@@ -6,7 +6,7 @@
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">Eco impact</h1>
-      <p class="meta mt-1">Trees pledged by shoppers who opted into the checkout offset. You fulfil the planting.</p>
+      <p class="meta mt-1">Trees pledged by shoppers at checkout. You fulfil the planting.</p>
     </div>
     <a href="/save-the-planet/" target="_blank" rel="noopener" class="btn text-sm">
       <i data-lucide="external-link" class="h-4 w-4"></i> View public page
@@ -19,7 +19,7 @@
       <span class="kpi__value">{{ totals.trees }}</span>
     </div>
     <div class="card card-padded kpi">
-      <span class="kpi__label">CO₂ offset (kg)</span>
+      <span class="kpi__label">CO₂ the trees may absorb a year, when grown (kg, estimate)</span>
       <span class="kpi__value">{{ totals.co2_offset_kg|floatformat:0 }}</span>
     </div>
     <div class="card card-padded kpi">
@@ -46,7 +46,7 @@
       </tbody>
     </table>
     {% else %}
-    {% include "admin_dashboard/_empty_state.html" with icon="leaf" title="No tree pledges yet" hint="They appear here once a shopper opts into the plant-a-tree offset at checkout." %}
+    {% include "admin_dashboard/_empty_state.html" with icon="leaf" title="No tree pledges yet" hint="They appear here once a shopper adds a tree-planting pledge at checkout." %}
     {% endif %}
   </div>
 </div>

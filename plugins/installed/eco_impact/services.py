@@ -193,6 +193,7 @@ def store_totals() -> dict:
     return {
         'trees': trees,
         'contributors': contributors,
-        # Trees pledged × the offset each is sized to sequester.
+        # Trees pledged × what a grown tree may absorb a year: an estimate the
+        # dashboard shows, never the shop (a pledge is not an offset).
         'co2_offset_kg': round(trees * kg_co2_per_tree(), 1),
     }

@@ -850,6 +850,28 @@ class SeoPlugin(Plugin):
                         'https://www.example.com/.'
                     ),
                 },
+                # ── Environmental claims (v0.178.0) ───────────────────
+                'claims_check': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Look for environmental claims',
+                    'description': (
+                        'The nightly site scan lists pages whose copy makes a generic '
+                        'environmental claim ("eco-friendly") or a climate claim based on '
+                        'offsetting ("climate neutral"), which EU consumer law bans since '
+                        '27 September 2026. It only reports; nothing is changed.'
+                    ),
+                },
+                'claims_extra_words': {
+                    'type': 'array',
+                    'items': {'type': 'string'},
+                    'default': [],
+                    'title': 'More claims to look for',
+                    'description': (
+                        'Words or phrases of your own, separated by commas, in any of your '
+                        "store's languages."
+                    ),
+                },
                 # ── Performance + UX signals ──────────────────────────
                 'lazy_load_below_fold_images': {
                     'type': 'boolean',

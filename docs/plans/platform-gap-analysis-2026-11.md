@@ -1,6 +1,6 @@
 # Morpheus as an e-commerce platform — gap analysis and completion plan (Nov 2026)
 
-**Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0, A3 (inventory) v0.152.0, A4 (fulfilment and shipping rates) v0.154.0, A5 (payments, with the A4 choices as settings) v0.155.0, A7 (checkout fields) v0.168.0 and A8 (payment link) v0.171.0 are live on all five stores. F1 (AI marks on translations and images) is v0.177.0, waiting for the owner's merge. From A5 on, each commerce choice is a merchant setting whose default is the earlier behaviour (owner, 2026-11-12). Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
+**Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0, A3 (inventory) v0.152.0, A4 (fulfilment and shipping rates) v0.154.0, A5 (payments, with the A4 choices as settings) v0.155.0, A7 (checkout fields) v0.168.0 and A8 (payment link) v0.171.0 are live on all five stores. F1 (AI marks on translations and images) v0.177.0 is live on all five stores (2026-11-18). F2 (claims and legal copy) is v0.178.0, waiting for the owner's merge. From A5 on, each commerce choice is a merchant setting whose default is the earlier behaviour (owner, 2026-11-12). Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
 
 **Order of work:** from 2026-11-18 the remaining rows here and in [janus-alignment-and-app-platform-2026-11.md](janus-alignment-and-app-platform-2026-11.md) run in one merged order, set out in the next section. It replaces "platform first, then commerce" (owner, 2026-11-15).
 
@@ -278,8 +278,8 @@ Each row is an option inside Morpheus for any store. Its owner app is named belo
 
 | # | Release | Goal | Size | Depends on | Status |
 |---|---|---|---|---|---|
-| F1 | AI marks on translations and images | the Art. 50 mark on AI-drafted translations; an image's AI tag survives the image proxy | S 1–2 | — | v0.177.0, waiting for merge |
-| F2 | Claims and legal copy check | generic green-claim check in the site audit; eco_impact copy; legal-guarantee notice; accessibility statement | M 2 | — | planned, order #2 |
+| F1 | AI marks on translations and images | the Art. 50 mark on AI-drafted translations; an image's AI tag survives the image proxy | S 1–2 | — | v0.177.0, live 2026-11-18 |
+| F2 | Claims and legal copy check | generic green-claim check in the site audit; eco_impact copy; legal-guarantee notice; accessibility statement | M 2 | — | v0.178.0, waiting for merge |
 | F3 | Online withdrawal function | an order-keyed, guest-reachable "Withdraw from contract here" with a timestamped acknowledgement | M 3 | A10a | planned, order #5 |
 | F4 | Regional card gateway app | cards for stores whose entity Stripe does not serve; Monri first | M 3–4 | — | planned, order #11 |
 | F5 | Delivery estimate at checkout | the rate's estimated days at checkout and in the order email | S 1 | — | planned, order #12 |
@@ -337,6 +337,47 @@ Each row is an option inside Morpheus for any store. Its owner app is named belo
 - **Accessibility statement.** Compare gdpr's seeded accessibility page with the statement content the European Accessibility Act asks for (Directive 2019/882, Annex V). Fill the missing parts from store settings and the latest axe run; as every seed does, fill only empty fields.
 - **Linda:** she reads the issues through the site audit's tools; check at execution and add them if missing.
 - **Tests:** `seo/tests/test_claims_check.py` (each language, a hit per phrase, a clean page silent) and `eco_impact/tests/test_claims_copy.py`.
+- **help.md:** seo, eco_impact, product_safety, gdpr.
+
+**F2 as built (v0.178.0).**
+- **Claims check** (`seo/services/green_claims.py`, read by `site_audit.collect`).
+  - It reads the rendered visible text of every sitemap page (scripts and styles left out), plus each translated copy a page names in hreflang (at most 600 fetches, inside the audit's deadline). It does not query the database. Whatever a page shows is read: templates, app blocks, CMS pages and product text.
+  - The text is folded before matching (case, accents, Serbian Cyrillic to Latin, `đ`, curly quotes, dashes), so one list covers English, Croatian and Serbian in both scripts. The list starts from the examples in recitals 9 and 12 of Directive 2024/825.
+  - The audit has two findings:
+    - `environmental_claim_offset` (warning): climate claims based on offsetting;
+    - `environmental_claim_generic` (notice): generic claims.
+  - Each finding names the page, the phrase and the words around it. A phrase on more than three pages is one line ("on 12 pages, e.g. /x/").
+  - Settings: `seo.claims_check` (default on; it only reports) and `seo.claims_extra_words`. A merchant's own phrase matches in any script.
+  - Linda reads the findings with `seo.audit_results`, whose description now names them.
+- **eco_impact's copy.**
+  - The badge reads "estimated footprint", with its method and a link to `/save-the-planet/#method`.
+  - The add-on is a "tree-planting pledge" that "does not cancel out this order's footprint", and its order line is named so.
+  - The public page lost its "kg CO2 offset" figure and the words "Save the planet". What the trees may absorb shows only on the dashboard, as an estimate.
+  - The internal key `co2_offset_kg` and the `/save-the-planet/` address stay as they were.
+- **Legal-guarantee notice** (product_safety).
+  - Setting `legal_guarantee_notice`, default off. When on, every goods page (`sells_goods`) shows the Official Journal's colour artwork from Implementing Regulation (EU) 2025/1960, at 500 and 1000 px.
+  - The artwork is shown whole, never folded away, and it links to the large copy. Its text follows in a fold for screen readers, with a link to Your Europe.
+  - Linda reads whether a page shows it through `products.safety_info` (`shown.legal_guarantee_notice`), and switches it with `settings.set`.
+- **Accessibility statement** (gdpr).
+  - The seed now covers Annex V:
+    - (a) the service;
+    - (b) how it works;
+    - (c) how it meets the requirements (EN 301 549 / WCAG 2.2 AA);
+    - plus how it is checked, known limitations, contact and the authority.
+  - It names the store's own name (never the "Morpheus Store" default), its contact email and its support phone (Art. 13(2): by voice too), with the date it was written. The phone is plain text, because cms's sanitiser keeps only http(s) and mailto links.
+  - Migration `gdpr/0003` replaces a page that still holds either old seed text, whatever email it names. Both sides are compared as cms's sanitiser leaves them. A page the merchant changed is never touched.
+- **Rulings:**
+  - **The check reads rendered pages, not stored text.** A text no sitemap page shows is not read. Cost if wrong: a scan of product and CMS rows too.
+  - **Bare "green", "eco" and "sustainable" are not in the list.** They match too much ("The Green Mile", "eco" as a prefix). A merchant adds them as extra words. Cost if wrong: claims written only with those words go unreported.
+  - **Offset claims are warnings, generic claims notices.** A book about ecology is not a claim about the book, and the check cannot tell the two apart. Cost if wrong: a lower score for stores with real generic claims.
+  - **The notice ships in English only.** The regulation publishes one per EU language, and the other files need downloading. Cost if wrong: a Croatian or Serbian store shows the English notice until its version ships.
+  - **The accessibility statement has no setting for the authority or the limitations.** The seed writes the page once, so a later change to such a setting would change nothing (the settings-without-a-consumer landmine). The merchant edits the page in CMS. Cost if wrong: two settings and a re-seed.
+  - **The migration writes live content on deploy**, the accessibility page of each store whose page is still the old seed. The merge is the yes for it.
+- **Tests:**
+  - `seo/tests/test_claims_check.py`: each language, once per page, offset before generic, extra words, the settings, the audit's findings, translated copies, switched off;
+  - `eco_impact/tests/test_claims_copy.py`;
+  - `product_safety/tests/test_legal_guarantee.py`;
+  - `gdpr/tests/test_accessibility_statement.py`.
 - **help.md:** seo, eco_impact, product_safety, gdpr.
 
 **F3 · Online withdrawal function (minor, M; after A10a).**
@@ -408,7 +449,7 @@ Multi-store in one process (ADR 0018) — needs a tenant seam through settings, 
 
 Per release: `ruff check . && ruff format --check .` (0.15.8); `DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<touched> plugins.installed.admin_dashboard.tests.test_disable_guards core.tests.test_settings_keys_have_readers`; `python manage.py check && makemigrations --check --dry-run`; the three boundary/standard scripts; `release --check`; Postgres rehearsal for every release with a migration (memory `releases-2026-10-22`); full serial suite before A1, A2, A6, B3, D2 and E6. After merge: watch all five stores to the new commit (`/readyz` ok + home 200), then the live probe named in each release (A1: a reduced-rate book's cart tax on dotbooks; A2: a scoped coupon on an out-of-scope cart refuses; B3: register + `me` over `/graphql/` with `enforce_csrf_checks`; D2: `/.well-known/ucp` lists capabilities and a checkout session round-trips on a staging token). Croatia is part of every deploy (owner, 2026-11-10): it builds from the same `main` and is in the smoke and accessibility checks. Phase F probes:
 - F1: read-only, a `/sr/` or `/hr/` page shows `data-ai-generated` only where a published translation began as an AI draft. A tagged image's `/img/` copy carrying its XMP needs a tagged upload, so it needs the owner's yes; the suite covers it.
-- F2: the next nightly audit lists claims issues, or none.
+- F2: the next nightly audit lists claims issues, or none. Read-only: each store's `/p/accessibility/` shows the new statement unless its page was edited, and a goods page carries no `data-legal-guarantee` (the notice is off by default).
 - F3: on a store that switches it on, with the owner's yes, a guest withdrawal round-trips and the acknowledgement email arrives.
 - F4: one sandbox payment with the owner's test credentials.
 

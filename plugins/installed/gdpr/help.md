@@ -13,7 +13,8 @@ Fill in [](field:gdpr.data_controller_name) and [](field:gdpr.data_controller_em
 ## Common tasks
 
 - Edit the wording of a seeded legal page like your Privacy Policy from [Pages](page:cms/pages), the same way you'd edit any other page.
+- Check the Accessibility Statement against your store before you rely on it. The European Accessibility Act asks an online store to describe its service, how it works and how it meets the accessibility requirements, and to say how to reach it; the seeded page has a section for each, with your store's name, contact email and support phone from the general store settings at the time it was written. Fill in what you check and what is still hard to use, and update its date when you review it. A very small business (fewer than 10 people and at most €2 million a year) is exempt for its services, but the page still helps your shoppers.
 
 ## Good to know
 
-This whole area can be switched off from the general store settings, in which case it answers "not found" everywhere a shopper would reach it. A deletion request scrubs the shopper's name, email and addresses and signs them out; it cannot be undone. Every export and deletion request is recorded, but there is currently no dashboard screen to review that record.
+This whole area can be switched off from the general store settings, in which case it answers "not found" everywhere a shopper would reach it. A deletion request scrubs the shopper's name, email and addresses and signs them out; it cannot be undone. Every export and deletion request is recorded, but there is currently no dashboard screen to review that record. An Accessibility page that still holds the older seeded text is replaced with the new statement once; a page you changed is never touched.

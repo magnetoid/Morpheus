@@ -12,7 +12,8 @@ class ProductSafetyPlugin(Plugin):
     description = (
         "Shows each product's manufacturer, EU responsible person and warnings on its "
         'page and in its structured data (EU General Product Safety Regulation), from '
-        "the product's own details or the store's."
+        "the product's own details or the store's, and, when switched on, the EU legal "
+        'guarantee notice on the page of every product sold as goods.'
     )
     has_models = False
     # The details are metafields on catalog Products (safety.py).
@@ -54,6 +55,14 @@ class ProductSafetyPlugin(Plugin):
                 priority=30,
                 context_keys=['product'],
             ),
+            # The EU legal guarantee notice, after the safety details (goods only,
+            # while the store switches it on).
+            StorefrontBlock(
+                slot='pdp_below_long_description',
+                template='product_safety/blocks/legal_guarantee.html',
+                priority=35,
+                context_keys=['product'],
+            ),
         ]
 
     def contribute_agent_tools(self) -> list:
@@ -65,8 +74,10 @@ class ProductSafetyPlugin(Plugin):
         return [products_safety_info_tool, products_set_safety_info_tool]
 
     def get_config_schema(self):
-        """The store's own details, shown for goods that name none of their own."""
+        """The store's own details, shown for goods that name none of their own, and the
+        switch for the EU legal guarantee notice."""
         from plugins.installed.product_safety.safety import (  # noqa: PLC0415
+            GUARANTEE_NOTICE,
             MANUFACTURER,
             RESPONSIBLE,
         )
@@ -82,19 +93,28 @@ class ProductSafetyPlugin(Plugin):
             'responsible_address': 'One line: street, postcode, city, country.',
             'responsible_contact': 'An email address or a web address (https://…).',
         }
-        return {
-            'type': 'object',
-            'properties': {
-                key: {
-                    'type': 'string',
-                    'default': '',
-                    'title': label,
-                    'description': hints[key],
-                    'maxLength': limit,
-                }
-                for key, label, limit in MANUFACTURER + RESPONSIBLE
-            },
+        properties = {
+            key: {
+                'type': 'string',
+                'default': '',
+                'title': label,
+                'description': hints[key],
+                'maxLength': limit,
+            }
+            for key, label, limit in MANUFACTURER + RESPONSIBLE
         }
+        properties[GUARANTEE_NOTICE] = {
+            'type': 'boolean',
+            'default': False,
+            'title': 'Show the EU legal guarantee notice',
+            'description': (
+                'The official notice (Implementing Regulation (EU) 2025/1960) under the '
+                'description of every product sold as goods. EU law asks a store selling '
+                'goods to consumers in the EU to show it from 27 September 2026. In '
+                'English for now.'
+            ),
+        }
+        return {'type': 'object', 'properties': properties}
 
     def contribute_settings_panel(self):
         return SettingsPanel(
@@ -102,7 +122,8 @@ class ProductSafetyPlugin(Plugin):
             description=(
                 "Your store's details as manufacturer and EU responsible person, shown "
                 'on the page of every product sold as goods that names none of its own '
-                '(EU General Product Safety Regulation).'
+                '(EU General Product Safety Regulation), and the EU legal guarantee '
+                'notice.'
             ),
             schema=self.get_config_schema(),
             category='general',

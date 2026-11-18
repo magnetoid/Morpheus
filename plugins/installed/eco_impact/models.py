@@ -1,6 +1,6 @@
 """Tree-planting pledge ledger.
 
-One row per order whose shopper opted into the plant-a-tree offset. The store
+One row per order whose shopper opted into the tree-planting pledge. The store
 total shown on the storefront + dashboard is ``SUM(trees)``. The plugin only
 *records* what was collected — the merchant fulfils the planting (v1 has no
 external reforestation provider). The ``OneToOne`` to Order makes recording

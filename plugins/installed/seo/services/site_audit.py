@@ -26,6 +26,12 @@ and the cart read), its availability must be inventory's answer (through
 `og:image` names must answer 200 with an image. Between pages it finds links to
 redirects, redirect chains and sitemap pages nothing links to. Each finding names
 the page and what was claimed against what was found.
+
+**And what its copy claims about the environment (v0.178.0).** Every rendered page,
+and each translated copy a page names in hreflang, is read for generic environmental
+claims and offset-based climate claims (`green_claims`), banned in EU consumer sales
+since 27 September 2026. A hit names the page and the phrase in its context; the
+merchant decides, since a word about what a product is ABOUT is no claim about it.
 """
 
 from __future__ import annotations
@@ -98,6 +104,10 @@ MAX_HOPS = 5
 MAX_LINK_FETCHES = 400
 MAX_PAGINATION_FETCHES = 600
 MAX_IMAGE_FETCHES = 2000
+# Translated copies read for environmental claims (the sitemap lists one language).
+MAX_TRANSLATION_FETCHES = 600
+# A claim on more pages than this is shared copy (a footer, a banner): one line.
+SHARED_COPY_PAGES = 3
 #: The extra checks stop starting fetches this long after the run began, so the
 #: whole run stays inside the task's 1,800 s soft limit with room to store it.
 EXTRA_DEADLINE_S = 1500
@@ -161,6 +171,10 @@ class PageFacts:
     # Internal paths it links to (query dropped), and its rel=next page.
     links: list[str] = field(default_factory=list)
     next_href: str = ''
+    # Environmental claims in its visible text (`green_claims.Hit`), read from `text`,
+    # which the crawl empties once read: a whole shop's text is not kept in memory.
+    env_claims: list = field(default_factory=list)
+    text: str = ''
 
 
 @dataclass
@@ -221,6 +235,7 @@ def page_facts(path: str, status: int, html: str, host: str) -> PageFacts:
     body = html.split('</head>', 1)[-1]
     hosts = _own_hosts(host)
     og_image, og_size = _og_image(head)
+    text = _visible_text(body)
     return PageFacts(
         path=path,
         status=status,
@@ -235,11 +250,12 @@ def page_facts(path: str, status: int, html: str, host: str) -> PageFacts:
         ],
         has_jsonld=bool(_JSONLD_RE.search(html)),
         words=len(_TAG_RE.sub(' ', body).split()),
-        claims=_claims(html, _visible_text(body), _first(_HTML_LANG_RE, html)),
+        claims=_claims(html, text, _first(_HTML_LANG_RE, html)),
         og_image=og_image,
         og_size=og_size,
         links=_links(body, path, host, hosts),
         next_href=_next_href(head, path, host, hosts),
+        text=text,
     )
 
 
@@ -606,6 +622,7 @@ def collect(*, limit: int | None = None) -> dict:  # noqa: PLR0915 — one run, 
     from django.utils import timezone
 
     from core.utils.site import site_base_url
+    from plugins.installed.seo.services import green_claims
 
     started = time.monotonic()
     host = (site_base_url() or '').split('//')[-1].strip('/') or 'testserver'
@@ -616,7 +633,9 @@ def collect(*, limit: int | None = None) -> dict:  # noqa: PLR0915 — one run, 
         host = next((h for h in allowed if h and not h.startswith('.')), 'testserver')
 
     client = Client()
+    matcher = green_claims.matcher()
     pages: list[PageFacts] = []
+    copies: list[PageFacts] = []
     partial = False
     probe = NotFoundFacts(path='', status=0)
     # Every sitemap path, even under a limit: an orphan can only be named when
@@ -626,7 +645,11 @@ def collect(*, limit: int | None = None) -> dict:  # noqa: PLR0915 — one run, 
     try:
         probe = _probe_missing(client, host)
         for path in paths:
-            pages.append(_facts(client, path, host))
+            page = _facts(client, path, host)
+            if matcher is not None:
+                page.env_claims = matcher.find(page.text)
+            page.text = ''
+            pages.append(page)
     except SoftTimeLimitExceeded:
         # Report what was checked rather than lose the whole night's work.
         partial = True
@@ -662,12 +685,15 @@ def collect(*, limit: int | None = None) -> dict:  # noqa: PLR0915 — one run, 
                     'orphans', f'the scan read {len(paths)} of {len(all_paths)} sitemap URLs'
                 )
             extra_findings += _orphan_findings(extra, pages, link_sources)
+            phase = time.monotonic()
+            copies = _translated_copies(extra, pages, matcher)
+            measured['translations_s'] = round(time.monotonic() - phase, 1)
         except SoftTimeLimitExceeded:
             partial = True
             extra.note('orphans', 'the scan stopped early at the time limit')
     for page in pages:
         page.links = []  # read; the cached report never carries them
-    findings = _not_found_findings(probe) + _analyse(pages, untranslated) + extra_findings
+    findings = _not_found_findings(probe) + _analyse(pages, untranslated, copies) + extra_findings
     findings.sort(key=lambda f: (_ORDER.get(f.severity, 9), -f.count))
     score = max(0, 100 - sum(_PENALTY.get(f.severity, 0) for f in findings))
     measured['total_s'] = round(time.monotonic() - started, 1)
@@ -709,6 +735,7 @@ class _Extra:
             'link_targets': 0,
             'link_fetches': 0,
             'pagination_fetches': 0,
+            'translation_fetches': 0,
         }
         self.capped: dict[str, bool] = {}
         self.notes: dict[str, str] = {}
@@ -743,6 +770,28 @@ class _Extra:
         self._responses[path] = result
         return result
 
+    def body(self, path: str, *, counter: str, cap: int) -> tuple[int, str]:
+        """(status, HTML) for one same-host page; the HTML only when it answered 200."""
+        if self.counts[counter] >= cap or time.monotonic() > self.deadline:
+            self.capped[counter] = True
+            raise _Capped(counter)
+        self.counts[counter] += 1
+        try:
+            response = _get(self.client, path, self.host)
+        except SoftTimeLimitExceeded:
+            raise
+        except Exception as e:  # noqa: BLE001 — one bad fetch must not end the audit
+            logger.warning('site_audit: %s raised %s', path, e)
+            return 0, ''
+        try:
+            if response.status_code != 200:
+                return response.status_code, ''
+            return 200, response.content.decode(response.charset or 'utf-8', errors='ignore')
+        except Exception:  # noqa: BLE001 — a streamed or undecodable body reads as empty
+            return response.status_code, ''
+        finally:
+            response.close()
+
     def local(self, url: str) -> str:
         """The site-relative path of a URL on this store, or '' for another host
         (or for one that does not parse, which nothing could fetch)."""
@@ -763,6 +812,7 @@ class _Extra:
             'capped': sorted(k for k, v in self.capped.items() if v),
             'orphans_checked': not orphans,
             'orphans_skipped_because': orphans,
+            'translations_skipped_because': self.notes.get('claims', ''),
         }
 
 
@@ -1142,6 +1192,57 @@ def _orphan_findings(
     return [found] if found else []
 
 
+def _translated_copies(extra: _Extra, pages: list[PageFacts], matcher) -> list[PageFacts]:
+    """Each crawled page's copies in the store's other languages, read for claims only.
+
+    The sitemap lists one language. A page whose object is translated names its other
+    copies in hreflang, and their words are words the crawl never read; a page nobody
+    translated names none, since its copy shows the same text, so it costs no fetch.
+    """
+    if matcher is None:
+        return []
+    crawled = {p.path for p in pages}
+    seen: set[str] = set()
+    copies: list[PageFacts] = []
+    try:
+        for page in pages:
+            if page.status != 200:
+                continue
+            for code, href in page.hreflang_hrefs:
+                if code.lower() == 'x-default':
+                    continue
+                path = extra.local(href)
+                if not path or path in crawled or path in seen:
+                    continue
+                seen.add(path)
+                status, html = extra.body(
+                    path, counter='translation_fetches', cap=MAX_TRANSLATION_FETCHES
+                )
+                if status == 200:
+                    text = _visible_text(html.split('</head>', 1)[-1])
+                    copies.append(PageFacts(path=path, status=200, env_claims=matcher.find(text)))
+    except _Capped:
+        extra.note('claims', 'the scan reached its limit before every translated page was read')
+    return copies
+
+
+def _claim_lines(pages: list[PageFacts], kind: str) -> list[str]:
+    """One line per page and phrase; a phrase on many pages (a footer, a banner) is one."""
+    groups: dict[str, list[tuple[str, object]]] = {}
+    for page in pages:
+        for hit in page.env_claims:
+            if hit.kind == kind:
+                groups.setdefault(hit.key, []).append((page.path, hit))
+    lines: list[str] = []
+    for found in groups.values():
+        if len(found) > SHARED_COPY_PAGES:
+            path, hit = found[0]
+            lines.append(f'“{hit.phrase}” on {len(found)} pages (e.g. {path}): “{hit.snippet}”')
+        else:
+            lines.extend(f'{path}: “{hit.phrase}” in “{hit.snippet}”' for path, hit in found)
+    return lines
+
+
 def _finding(code, severity, title, why, matches, fix_label='', fix_url='') -> Finding | None:
     if not matches:
         return None
@@ -1192,7 +1293,9 @@ def _untranslated(client, host: str, pages: list[PageFacts]) -> dict[str, list[s
 
 
 def _analyse(  # noqa: PLR0912 — a linear check list
-    pages: list[PageFacts], untranslated: dict[str, list[str]] | None = None
+    pages: list[PageFacts],
+    untranslated: dict[str, list[str]] | None = None,
+    copies: list[PageFacts] | None = None,
 ) -> list[Finding]:
     """Turn page facts into findings, most severe first."""
     from django.conf import settings
@@ -1424,6 +1527,32 @@ def _analyse(  # noqa: PLR0912 — a linear check list
         ],
         'Bulk-edit meta',
         '/dashboard/seo/bulk-meta/',
+    )
+
+    # Directive (EU) 2024/825, from 27 September 2026 (green_claims).
+    from plugins.installed.seo.services.green_claims import GENERIC, OFFSET
+
+    read = ok + [c for c in (copies or []) if c.status == 200]
+    add(
+        'environmental_claim_offset',
+        WARNING,
+        'Climate claims based on offsetting',
+        'EU consumer law bans claiming, on the strength of offset emissions, that a '
+        'product has a neutral, reduced or positive climate impact (Directive 2024/825, '
+        "from 27 September 2026). Remove the claim, or say only what the product's own "
+        'lifecycle shows.',
+        _claim_lines(read, OFFSET),
+    )
+    add(
+        'environmental_claim_generic',
+        NOTICE,
+        'Generic environmental claims',
+        'EU consumer law bans a generic environmental claim such as "eco-friendly" or '
+        '"ecological" unless you can show recognised excellent environmental performance '
+        '(Directive 2024/825, from 27 September 2026). Name the specific benefit and its '
+        'proof, or remove the word. A word about what something is about, not about the '
+        'product itself, needs no change.',
+        _claim_lines(read, GENERIC),
     )
 
     out.sort(key=lambda f: (_ORDER.get(f.severity, 9), -f.count))
