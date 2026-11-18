@@ -391,6 +391,14 @@ class _Registry:
         return self.plugins
 
 
+class _ReadsFromAReplica:
+    """A router that sends every read to a replica this test database lacks, so
+    a read that follows the router fails."""
+
+    def db_for_read(self, model, **hints):
+        return 'replica'
+
+
 def upgrading(version='2.0.0', fail=False):
     calls = []
 
@@ -525,13 +533,38 @@ class UpgradeStepTests(TestCase):
             self.assertEqual(run_upgrades(_Registry(plugin)), [])
         self.assertEqual(self.recorded(), '1.0.0')
 
-    def test_an_app_with_no_row_is_left_alone(self):
+    def test_a_fresh_database_gets_its_rows_and_runs_the_steps(self):
+        """Boot found no table, so it wrote no rows: the first deploy writes
+        them as the next boot would, records the version and runs the step."""
         from plugins.models import PluginConfig
 
         plugin, calls = upgrading('2.0.0')
-        self.assertEqual(run_upgrades(_Registry(plugin)), [])
+        self.assertEqual(run_upgrades(_Registry(plugin)), [FIRST])
+        self.assertEqual(calls, [''])
+        row = PluginConfig.objects.get(plugin_name=FIRST)
+        self.assertTrue(row.is_enabled)
+        self.assertEqual(row.installed_version, '2.0.0')
+
+        self.assertEqual(run_upgrades(_Registry(plugin)), [], 'the next deploy does nothing')
+
+    def test_an_app_that_starts_off_waits_for_boot_to_write_its_row(self):
+        from plugins.models import PluginConfig
+
+        plugin, calls = upgrading('2.0.0')
+        with patch.object(type(plugin), 'enabled_by_default', False):
+            self.assertEqual(run_upgrades(_Registry(plugin)), [])
         self.assertEqual(calls, [])
         self.assertFalse(PluginConfig.objects.filter(plugin_name=FIRST).exists())
+
+    def test_the_versions_are_read_from_the_primary(self):
+        """With a replica, the router sends reads there; the compare-and-swap
+        writes to the primary, so a lagging replica would hold the step back."""
+        self.row('1.0.0')
+        plugin, calls = upgrading('2.0.0')
+        with self.settings(DATABASE_ROUTERS=[_ReadsFromAReplica()]):
+            self.assertEqual(run_upgrades(_Registry(plugin)), [FIRST])
+        self.assertEqual(calls, ['1.0.0'])
+        self.assertEqual(self.recorded(), '2.0.0')
 
     def test_only_the_default_database_runs_upgrades(self):
         with patch('plugins.compat.run_upgrades') as run:

@@ -93,25 +93,41 @@ def run_upgrades(registry=None) -> list[str]:
     """Record the version of every app that is on, and run each moved app's
     `on_upgrade(previous)` once. Returns the names whose step ran.
 
-    Only rows that exist are touched (boot writes one for every app it finds),
-    in dependency order. Fail-soft: a database that cannot answer, or an app
-    whose step raises, never stops the migrate that called this.
+    Boot writes a row for every app it finds; on a fresh database it found no
+    table, so the apps that start on get theirs here, as the next boot would
+    write them, and this first deploy records them. An app that starts off waits
+    for boot to write its row. Apps run in dependency order. Fail-soft: a
+    database that cannot answer, or an app whose step raises, never stops the
+    migrate that called this.
     """
-    from django.db import DatabaseError, transaction
+    from django.db import DEFAULT_DB_ALIAS, DatabaseError, transaction
 
     from plugins.models import PluginConfig
 
     if registry is None:
         from plugins.registry import app_registry as registry
 
+    # From the primary, where the compare-and-swap writes: a lagging replica
+    # would show an old version, or no row at all, and the step would wait a
+    # whole deploy.
+    rows = PluginConfig.objects.using(DEFAULT_DB_ALIAS)
     try:
-        recorded = dict(PluginConfig.objects.values_list('plugin_name', 'installed_version'))
+        recorded = dict(rows.values_list('plugin_name', 'installed_version'))
+        active = list(registry.active_plugins())
+        missing = [
+            PluginConfig(plugin_name=plugin.name, is_enabled=True)
+            for plugin in active
+            if plugin.name not in recorded and getattr(plugin, 'enabled_by_default', True)
+        ]
+        if missing:
+            rows.bulk_create(missing, ignore_conflicts=True)
+            recorded = dict(rows.values_list('plugin_name', 'installed_version'))
     except DatabaseError:
         logger.warning('plugins: could not read the recorded app versions', exc_info=True)
         return []
 
     upgraded: list[str] = []
-    for plugin in registry.active_plugins():
+    for plugin in active:
         name, current = plugin.name, str(plugin.version)
         if name not in recorded:
             continue
@@ -125,9 +141,9 @@ def run_upgrades(registry=None) -> list[str]:
             with transaction.atomic():
                 # Compare-and-swap, in the step's own transaction: the row
                 # holds the new version only once the step has committed.
-                moved = PluginConfig.objects.filter(
-                    plugin_name=name, installed_version=previous
-                ).update(installed_version=current)
+                moved = rows.filter(plugin_name=name, installed_version=previous).update(
+                    installed_version=current
+                )
                 runs = bool(moved) and (not previous or is_newer_app_version(current, previous))
                 if runs:
                     plugin.on_upgrade(previous)

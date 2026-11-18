@@ -489,7 +489,10 @@ first request's reconcile on (the deploy's migrate and beat never reconcile). An
 Django before it migrates, so never at boot), once across every process: the compare-and-swap on
 `PluginConfig.installed_version` and the step share one transaction, so a raising step, or a
 container killed mid-step, leaves the old version for the next deploy (writing the version first
-and putting it back on failure lost the step when the put-back failed too). Versions compare
+and putting it back on failure lost the step when the put-back failed too). It reads the
+recorded versions from the primary, where the swap writes (a lagging replica would hold a step
+back a whole deploy), and on a new store, whose boot found no table and wrote no rows, it writes
+the rows of the apps that start on, as boot would, so the first deploy runs their steps. Versions compare
 with `plugins.compat.is_newer_app_version` ('1.0' is '1.0.0', '2.0.0b1' comes before '2.0.0');
 a release put back records the lower version and runs nothing. A switch-off runs no
 `on_disable()` for an app the registry skipped. Every
