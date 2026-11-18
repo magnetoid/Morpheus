@@ -4287,6 +4287,9 @@ msgstr[2] "posljednjih %(n)d sedmica"
 msgid "This product's description was written with the help of AI."
 msgstr "Opis ovog proizvoda napisan je uz pomoć vještačke inteligencije."
 
+msgid "This product's text was translated with the help of AI."
+msgstr "Tekst ovog proizvoda preveden je uz pomoć vještačke inteligencije."
+
 msgid "Product safety information"
 msgstr "Informacije o bezbjednosti proizvoda"
 

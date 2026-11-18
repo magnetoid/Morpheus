@@ -99,7 +99,7 @@ def show_listing(service):
 
 def _copy_to_listing(product, service, language: str) -> None:
     """The Product's translated text onto the listing: only the fields it translated."""
-    from core.i18n.services import overlay
+    from core.i18n.services import ai_translated, overlay
     from plugins.installed.booking_marketplace.products import _listing_copy
 
     translated = product.__dict__.get('_morph_untranslated') or {}
@@ -111,4 +111,6 @@ def _copy_to_listing(product, service, language: str) -> None:
             if field in translated
         },
         language,
+        # The listing shows the Product's text, so it carries the Product's AI marks.
+        ai_fields=ai_translated(product),
     )

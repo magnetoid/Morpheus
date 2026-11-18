@@ -6,7 +6,14 @@
 
 **Method.** Three read-only explorations (the Janus seam inside Morpheus; the Janus repository, read over the GitHub API; the app system and agent coverage), one design pass, and spot-checks of the strongest claims in the code on `origin/main` (0b433b93).
 
-**Status:** approved by the owner on 2026-11-15. P1 (Janus truth patch) is v0.171.1, live on all five stores since 2026-11-16. P2 (conformance suite) is v0.171.2, live on all five since 2026-11-16. P5 (app toggle reaches every process) is v0.172.0, live on all five since 2026-11-16. P7 (one settings coercer) is v0.173.0, live on all five since 2026-11-17. P3 (pin bump by pull request) is v0.174.0 and the first bump v0.175.0, both live on all five since 2026-11-17. P3b (the self-updater retired) is v0.175.1, live on all five since 2026-11-18. P4 (tool search) is v0.176.0, in review. Update this line as each release ships.
+**Status:** approved by the owner on 2026-11-15. P1 (Janus truth patch) is v0.171.1, live on all five stores since 2026-11-16. P2 (conformance suite) is v0.171.2, live on all five since 2026-11-16. P5 (app toggle reaches every process) is v0.172.0, live on all five since 2026-11-16. P7 (one settings coercer) is v0.173.0, live on all five since 2026-11-17. P3 (pin bump by pull request) is v0.174.0 and the first bump v0.175.0, both live on all five since 2026-11-17. P3b (the self-updater retired) is v0.175.1, live on all five since 2026-11-18. P4 (tool search) is v0.176.0, live on all five since 2026-11-18. Update this line as each release ships.
+
+**Order from 2026-11-18 (owner).** P6, P8, P9 and P10 now run interleaved with the obligation and commerce releases, in the merged order in [platform-gap-analysis-2026-11.md](platform-gap-analysis-2026-11.md#order-of-work-from-2026-11-18):
+- two obligation releases (AI marks, claims check) come before P6;
+- the cancel-and-refund rules and the withdrawal function come between P6 and P8;
+- P10's batches follow the features they serve.
+
+"Platform first" no longer holds.
 
 **Owner's decisions (2026-11-15).**
 1. Janus updates arrive as a **pull request with a test**: CI takes the newest Janus, runs the contract and a real `janus chat` against a stub model, and opens a PR that moves the pin. The owner merges; all five stores get the same verified version through a normal deploy. The runtime self-updater is retired.
@@ -79,6 +86,8 @@ One release in flight at a time, each from a fresh worktree off `origin/main`, e
 | P8 | Agent-coverage ratchet | minor | M, 3 d | needs P7 |
 | P9 | App skills for Linda | minor | S, 2 d | needs P5 (the active set is true everywhere) |
 | P10+ | Tool batches | minor each | M each | shrink the P8 baseline |
+
+From 2026-11-18 the rows left (P6, P8, P9, P10+) take their places in the merged order (see the status note above).
 
 ### P1 — Janus truth patch
 
@@ -217,7 +226,7 @@ One release in flight at a time, each from a fresh worktree off `origin/main`, e
 
 ### P10+ — Tool batches
 
-Each batch removes entries from the P8 baseline, ordered by merchant value: store operations (returns_portal, post_purchase, digital_products, cart_abandonment), compliance (consent, gdpr), channels and suppliers, developer (webhooks_ui, importers, cloudflare, tracking). Security surfaces (staff_mfa, Janus keys) and apps with no write surface are exempt with a stated reason.
+Each batch removes entries from the P8 baseline, ordered by merchant value: store operations (returns_portal, post_purchase, digital_products, cart_abandonment), compliance (consent, gdpr), channels and suppliers, developer (webhooks_ui, importers, cloudflare, tracking). From 2026-11-18, the returns_portal and post_purchase tools ship with C4 and C1, consent and gdpr come next, then the rest. Security surfaces (staff_mfa, Janus keys) and apps with no write surface are exempt with a stated reason.
 
 ## Optional upstream track (Janus repository, general only)
 
@@ -247,7 +256,7 @@ Installing apps that are not in the image, the app catalogue and licensing (morp
 
 ## Afterwards: commerce
 
-Back to `docs/plans/platform-gap-analysis-2026-11.md`: A10 order editing, C4 returns and exchanges, C1 post-purchase, A11 marketplace money, A9 B2B, the rest of A6, then phases B (headless contract), C (half-built apps), D (shopper-side agents: public storefront MCP, UCP) and E (hygiene). From P8 on, each of those ships its agent tools under the ratchet.
+Superseded on 2026-11-18. Commerce no longer waits for this plan: the merged order in `docs/plans/platform-gap-analysis-2026-11.md` interleaves both, and Phase F adds the obligation and reach rows. From P8 on, each commerce row ships its agent tools under the ratchet.
 
 ## Critical files
 
@@ -276,3 +285,4 @@ Back to `docs/plans/platform-gap-analysis-2026-11.md`: A10 order editing, C4 ret
 - **Two Morpheus/Linda comments in the Janus repo** break the "Janus stays general" rule.
 - **GitHub setting** "Allow GitHub Actions to create and approve pull requests" must be on for P3.
 - The Janus repo has 13 open PRs and no version bump since the pin; item 6 of the upstream track is what makes future bumps readable.
+- **P4's live effect is unmeasured.** Input tokens per turn before and after tool search need a read of live `AgentRun` rows, which waits for your yes. Until then `tool_search` stays each store's choice, off by default.

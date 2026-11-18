@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.177.0 — 2026-11-18
+
+**AI marks on translations and images**
+
+- A translation an AI drafted keeps its mark after the merchant saves it: every page that shows it (a product, an experience, a place, a hotel, an event, a CMS page) carries data-ai-generated and a CreativeWork with digitalSourceType, until a person changes its text (EU AI Act Art. 50).
+- Linda and Workers always mark the translations they write (i18n.set_translation, i18n.translate_product); an API token's call says what it says.
+- The translation editor shows "Translated with AI" beside such a field; the merchant can say it in words too (Serbian and Croatian sentences).
+- An uploaded image whose XMP declares IPTC trainedAlgorithmicMedia or compositeWithTrainedAlgorithmicMedia keeps that statement, and nothing else of its metadata, in every WebP and AVIF copy /img/ makes, under its own cache name and address; the Product graph names it as an ImageObject with digitalSourceType.
+
 ## v0.176.0 — 2026-11-18
 
 **Linda can look up store tools when she needs them**

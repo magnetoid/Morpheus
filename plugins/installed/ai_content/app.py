@@ -105,6 +105,14 @@ class AIContentPlugin(Plugin):
                 priority=20,
                 context_keys=['product'],
             ),
+            # Any other page about one object (a CMS page, a place, a hotel, an
+            # event): the fields it shows in a translation an AI drafted.
+            StorefrontBlock(
+                slot='global_below_body',
+                template='ai_content/blocks/ai_page_mark.html',
+                priority=90,
+                context_keys=['seo_content_object', 'seo_object'],
+            ),
         ]
 
     def contribute_agent_tools(self) -> list:

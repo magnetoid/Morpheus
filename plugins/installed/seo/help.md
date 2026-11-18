@@ -21,6 +21,6 @@ Fill in your organisation name, social profile links and search-engine verificat
 - Add a FAQ, recipe, video or course with Structured data in the SEO card (changing them needs SEO edit permission); the [Structured data](page:schema) page lists blocks Google no longer shows
 
 ## Good to know
-A title you typed always wins over a generated one. An empty organisation name, logo or e-mail falls back to your general store settings, and each edition of a product is described with its name, a photo and its barcode. Hidden until launch, the store stays out of search and AI crawlers; shoppers still browse it. Linda reads your SEO details, the last site scan, your [Index rules](page:rules) and title patterns freely; changing a title, a redirect, a schema block, a rule, a pattern or a setting, or starting a scan (one per ten minutes), needs your go-ahead first.
+A title you typed always wins over a generated one. An empty organisation name, logo or e-mail falls back to your general store settings, and each edition of a product is described with its name, a photo and its barcode. Hidden until launch, the store stays out of search and AI crawlers; shoppers still browse it. Linda reads your SEO details, the last site scan, your [Index rules](page:rules) and title patterns freely; any change, or a new scan (one per ten minutes), needs your go-ahead.
 
-Files for AI crawlers list only categories with products and quote only approved reviews. The speed card shows real shoppers' page speed over 28 days.
+Files for AI crawlers list only categories with products and quote only approved reviews. A photo an AI made stays marked in its copies and structured data. The speed card shows real shoppers' page speed over 28 days.

@@ -115,7 +115,10 @@ def get_translations_tool(
             'value': {'type': 'string'},
             'machine_translated': {
                 'type': 'boolean',
-                'description': 'Mark as machine output (default false).',
+                'description': (
+                    'Mark as machine output (default false). Text a store agent writes'
+                    ' is always marked.'
+                ),
             },
         },
         'required': ['content_type', 'object_id', 'field', 'language_code', 'value'],
@@ -130,11 +133,16 @@ def set_translation_tool(
     language_code: str,
     value: str,
     machine_translated: bool = False,
+    agent=None,
+    context=None,
 ) -> ToolResult:
+    from core.agents.provenance import ai_author
     from core.i18n import set_translation
 
     obj = _resolve(content_type, object_id)
-    set_translation(obj, field, language_code, value, machine_translated=machine_translated)
+    # A translation a store agent writes is AI-written, whatever the model says (Art. 50).
+    machine = bool(machine_translated) or bool(ai_author(agent, context))
+    set_translation(obj, field, language_code, value, machine_translated=machine)
     return ToolResult(
         output={
             'content_type': content_type,

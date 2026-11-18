@@ -280,11 +280,17 @@ def seo_responsive_image(
     if not requested:
         requested = [400, 800, 1200]
 
+    # A copy of an image a trained model made carries that statement, and has an
+    # address of its own: one cached before copies carried it is never served again.
+    from plugins.installed.seo.services.images import image_source_type
+
+    tag = '?ai=1' if image_source_type(url) else ''
+
     def srcset_for(fmt: str) -> str:
-        return ', '.join(f'/img/{fmt}/{w}/{rel} {w}w' for w in requested)
+        return ', '.join(f'/img/{fmt}/{w}/{rel}{tag} {w}w' for w in requested)
 
     fallback_w = max(requested)
-    fallback = f'/img/webp/{fallback_w}/{rel}'
+    fallback = f'/img/webp/{fallback_w}/{rel}{tag}'
     loading = _loading_for(priority)
     fp = ' fetchpriority="high"' if priority else ''
     sizes_attr = f' sizes="{escape(sizes)}"' if sizes else ''

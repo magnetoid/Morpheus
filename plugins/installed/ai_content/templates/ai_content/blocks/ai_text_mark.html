@@ -1,7 +1,8 @@
 {% comment %}Under the product's description (slot `pdp_below_long_description`, and
 `listing_below_description` on a booking page): marks text an AI wrote, EU AI Act
-Art. 50. The data-ai-generated attribute is always there for a marked product; the
-sentence only when the merchant turns on "Say so on the product page".{% endcomment %}
+Art. 50, its own text or the translation the page shows. The data-ai-generated
+attribute is always there for a marked product; the sentence only when the merchant
+turns on "Say so on the product page".{% endcomment %}
 {% load i18n ai_text %}{% ai_text_mark product as mark %}{% if mark %}
-{% if mark.label %}<p class="ai-text-note" data-ai-generated="{{ mark.fields|join:' ' }}" style="margin:.75rem 0 0; font-size:.8em; opacity:.75;">{% translate "This product's description was written with the help of AI." %}</p>{% else %}<span data-ai-generated="{{ mark.fields|join:' ' }}" hidden></span>{% endif %}
+{% if mark.label %}<p class="ai-text-note" data-ai-generated="{{ mark.fields|join:' ' }}" style="margin:.75rem 0 0; font-size:.8em; opacity:.75;">{% if mark.translated %}{% translate "This product's text was translated with the help of AI." %}{% else %}{% translate "This product's description was written with the help of AI." %}{% endif %}</p>{% else %}<span data-ai-generated="{{ mark.fields|join:' ' }}" hidden></span>{% endif %}
 {% endif %}

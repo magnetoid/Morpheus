@@ -363,7 +363,10 @@ def translate_product_tool(
     name: str = '',
     short_description: str = '',
     description: str = '',
+    agent=None,
+    context=None,
 ) -> ToolResult:
+    from core.agents.provenance import ai_author
     from core.i18n import bulk_set_translations
     from plugins.installed.catalog.models import Product
 
@@ -375,6 +378,8 @@ def translate_product_tool(
         product,
         language_code,
         {'name': name, 'short_description': short_description, 'description': description},
+        # A translation a store agent writes is AI-written (EU AI Act Art. 50).
+        machine_translated=bool(ai_author(agent, context)),
     )
     return ToolResult(
         output={'product': slug, 'language': language_code, 'fields': n},

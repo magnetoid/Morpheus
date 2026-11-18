@@ -205,6 +205,8 @@ def translation_edit(request, kind: str, pk: str, language: str):
             'source': source.get(field, ''),
             'value': rows[field].value if field in rows else '',
             'draft': field in rows and not rows[field].reviewed,
+            # Published as the AI wrote it: the shop's pages mark it (EU AI Act Art. 50).
+            'ai': field in rows and rows[field].reviewed and rows[field].is_machine_translated,
         }
         for field, field_kind in spec['fields'].items()
     ]
