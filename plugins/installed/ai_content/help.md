@@ -21,6 +21,8 @@ Turn on [](field:ai_content.label_ai_text) if you also want a sentence under an 
 - Ask Linda which texts of a product are marked as written with AI.
 
 ## Good to know
-A product's description, short description, meta title and meta description are marked when Linda or an AI worker writes them, when you use Draft with AI or Rewrite on the product page and save, and when a bulk AI rewrite changes them. Text sent by another system through an access token is not marked, because nothing says a model wrote it. A marked description or short description is said in the product page's structured data and on the page itself. Only you can clear a mark; Linda can read the marks but not remove them. Translations are not marked yet.
+A product's description, short description, meta title and meta description are marked when Linda or an AI worker writes them, when you use Draft with AI or Rewrite on the product page and save, and when a bulk AI rewrite changes them. Text sent by another system through an access token is not marked, because nothing says a model wrote it. A marked description or short description is said in the product page's structured data and on the page itself. Only you can clear a mark; Linda can read the marks but not remove them.
 
-Nothing in the brand voice is required. Leave every field blank and AI-written text uses its own default voice; fill any of them in and every AI generation in the store — product descriptions, email rewrites, SEO drafts, Linda's own replies — picks it up automatically.
+A translation an AI drafted, Linda's included, is marked too wherever it is shown, until you change its text; one you wrote yourself is not.
+
+Nothing in the brand voice is required: leave every field blank and AI-written text uses its own default voice.

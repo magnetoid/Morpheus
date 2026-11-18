@@ -199,6 +199,28 @@ def _availability(rendered, orm) -> str:
     return 'https://schema.org/InStock'
 
 
+def _image_value(url):
+    """A Product's image: its address, or an ImageObject when a trained model made it.
+
+    The file's own XMP says so (IPTC ``DigitalSourceType``, ``images.ai_source_type``),
+    and the statement goes on the ImageObject: ``digitalSourceType`` is a
+    CreativeWork property, never the Product's.
+    """
+    if not isinstance(url, str) or not url:
+        return url
+    from .images import SCHEMA_SOURCE_TYPES, image_source_type
+
+    source_type = image_source_type(url)
+    if not source_type:
+        return url
+    return {
+        '@type': 'ImageObject',
+        'contentUrl': url,
+        'url': url,
+        'digitalSourceType': SCHEMA_SOURCE_TYPES[source_type],
+    }
+
+
 def _safe_field(source, name):
     """Read a field without letting a DEFERRED one take the page down.
 
@@ -574,7 +596,8 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
         except Exception:  # noqa: BLE001
             images = []
     if images:
-        out['image'] = images if len(images) > 1 else images[0]
+        shown = [_image_value(u) for u in images]
+        out['image'] = shown if len(shown) > 1 else shown[0]
     else:
         primary = g('primary_image')
         if primary:
@@ -584,6 +607,8 @@ def product_jsonld(product, *, base_url: str = '', extra: dict | None = None, mo
                 out['image'] = _abs(primary.image.url)
         elif g('primary_image_url'):
             out['image'] = _abs(g('primary_image_url'))
+        if out.get('image'):
+            out['image'] = _image_value(out['image'])
 
     # Category: model has .category.name; dict has .category as nested.
     cat = g('category')

@@ -12,6 +12,10 @@ language always counts. A view showing the object in another language overlays t
 reviewed text on the instance (`overlay_translation`), and a `pre_save` receiver
 puts the original text back before any save, so a translated instance can never
 write its translation into the default-language columns.
+
+A reviewed translation that began as an AI draft keeps `is_machine_translated`
+until a person changes its text, and the instance remembers which shown fields
+those are (`ai_translated`), so the page can mark them (EU AI Act Art. 50).
 """
 
 from __future__ import annotations
@@ -194,6 +198,14 @@ def reviewed_values(obj_or_objs, language: str) -> dict[str, dict[str, str]]:
 
     One query for a list of objects of one model. Drafts are left out.
     """
+    return {
+        pk: {field: value for field, (value, _ai) in fields.items()}
+        for pk, fields in _reviewed_rows(obj_or_objs, language).items()
+    }
+
+
+def _reviewed_rows(obj_or_objs, language: str) -> dict[str, dict[str, tuple[str, bool]]]:
+    """`{pk: {field: (value, began_as_an_ai_draft)}}`, as `reviewed_values` selects them."""
     from core.i18n.models import Translation
 
     objs = list(obj_or_objs) if isinstance(obj_or_objs, (list, tuple, set)) else [obj_or_objs]
@@ -209,10 +221,11 @@ def reviewed_values(obj_or_objs, language: str) -> dict[str, dict[str, str]]:
     )
     if spec is not None:
         qs = qs.filter(field__in=list(spec['fields']))
-    out: dict[str, dict[str, str]] = defaultdict(dict)
-    for object_id, field, value in qs.values_list('object_id', 'field', 'value'):
+    out: dict[str, dict[str, tuple[str, bool]]] = defaultdict(dict)
+    rows = qs.values_list('object_id', 'field', 'value', 'is_machine_translated')
+    for object_id, field, value, machine in rows:
         if (value or '').strip():
-            out[object_id][field] = value
+            out[object_id][field] = (value, bool(machine))
     return dict(out)
 
 
@@ -260,8 +273,12 @@ def content_languages(obj) -> set[str] | None:
 
 
 # -- showing a translation ----------------------------------------------------
-def overlay(obj, values: dict[str, str], language: str) -> None:
-    """Show `values` on the in-memory instance; the originals go to `_morph_untranslated`."""
+def overlay(obj, values: dict[str, str], language: str, *, ai_fields=()) -> None:
+    """Show `values` on the in-memory instance; the originals go to `_morph_untranslated`.
+
+    `ai_fields` names the fields among `values` whose translation began as an AI
+    draft; they are remembered for `ai_translated`.
+    """
     if not values:
         return
     originals = obj.__dict__.get('_morph_untranslated') or {}
@@ -273,6 +290,27 @@ def overlay(obj, values: dict[str, str], language: str) -> None:
         setattr(obj, field, value)
     obj.__dict__['_morph_untranslated'] = originals
     obj.__dict__['_morph_translated'] = language
+    shown_ai = set(obj.__dict__.get('_morph_ai_translated') or ())
+    shown_ai.difference_update(values)
+    shown_ai.update(f for f in ai_fields or () if f in values)
+    obj.__dict__['_morph_ai_translated'] = shown_ai
+
+
+def ai_translated(obj) -> list[str]:
+    """The fields `obj` shows in a translation that began as an AI draft, in its spec's order.
+
+    Empty for an object shown in its own language, a dict or None. The page that
+    shows the object marks these fields as written with AI (EU AI Act Art. 50).
+    """
+    state = getattr(obj, '__dict__', None)
+    if not isinstance(state, dict) or isinstance(obj, dict):
+        return []
+    fields = state.get('_morph_ai_translated') or set()
+    if not fields:
+        return []
+    spec = spec_for(obj)
+    order = list(spec['fields']) if spec is not None else []
+    return [f for f in order if f in fields] + sorted(f for f in fields if f not in order)
 
 
 def overlay_translation(obj_or_objs, language: str = ''):
@@ -292,16 +330,21 @@ def overlay_translation(obj_or_objs, language: str = ''):
             by_model[type(obj)._meta.concrete_model].append(obj)
     for group in by_model.values():
         spec = spec_for(group[0])
-        values = reviewed_values(group, language)
+        rows = _reviewed_rows(group, language)
         for obj in group:
-            got = values.get(str(obj.pk)) or {}
+            got = rows.get(str(obj.pk)) or {}
             if not got or not _applies(spec, obj):
                 continue
             source = source_values(obj, spec)
             needed = filled_fields(source)
             if not needed or not needed <= set(got):
                 continue
-            overlay(obj, {field: got[field] for field in needed}, language)
+            overlay(
+                obj,
+                {field: got[field][0] for field in needed},
+                language,
+                ai_fields=[field for field in needed if got[field][1]],
+            )
     return obj_or_objs
 
 
@@ -317,6 +360,7 @@ def restore_untranslated(sender, instance, **kwargs) -> None:
         return
     originals = state.pop('_morph_untranslated') or {}
     state.pop('_morph_translated', None)
+    state.pop('_morph_ai_translated', None)
     for field, value in originals.items():
         setattr(instance, field, value)
 
@@ -427,13 +471,15 @@ def translations_for(obj, *, language_code: str = '') -> dict[str, str]:
     return {f'{r.field}@{r.language_code}': r.value for r in qs}
 
 
-def bulk_set_translations(obj, language_code: str, mapping: dict) -> int:
+def bulk_set_translations(
+    obj, language_code: str, mapping: dict, *, machine_translated: bool = False
+) -> int:
     """Set multiple reviewed field translations at once: `mapping = {field: value}`."""
     n = 0
     for field, val in (mapping or {}).items():
         if val is None or val == '':
             continue
-        set_translation(obj, field, language_code, str(val))
+        set_translation(obj, field, language_code, str(val), machine_translated=machine_translated)
         n += 1
     return n
 

@@ -40,18 +40,31 @@ compliant-by-construction the moment it is mounted. The live `crm`
 "Chat with us" widget routes to **human staff**, not AI, so 50(1) does
 not apply to it today.
 
-**50(2)/(4) — AI-generated content marking.** Morpheus auto-writes
-product descriptions via an agent workflow
-(`ai_assistant.tasks.generate_product_description`). Every such write
-already produces an `agents.decision` provenance row
-(`record_ai_decision`, art. 12/13). We do **not** yet stamp a
-per-object, render-time "AI-generated" marker on the product: the write
-is agent-mediated (no single write-point) and commercial product copy
-is not "text published to inform the public on matters of public
-interest" under 50(4), so it is outside the hard bright line. A
-visible "AI-assisted" affordance is tracked as a good-practice
-follow-up (see `docs/plans/ai-commerce-strategy-2026-2031.md`,
-Horizon 2 — C2PA content provenance).
+**50(2)/(4) — AI-generated content marking.** Text and images a model made
+carry a machine-readable mark wherever the shop shows them. The mark is the
+`data-ai-generated` attribute on the page, plus a CreativeWork with
+`digitalSourceType` in its structured data. It never goes on the Product node.
+
+- **Product text (v0.133.0).** A store agent's write is marked through
+  `core.agents.provenance.mark_ai_written`. ai_content stores the mark and
+  publishes it. The merchant clears it in the product editor.
+- **Translations (v0.177.0).** A reviewed translation that began as an AI
+  draft, or that a store agent wrote, keeps `Translation.is_machine_translated`
+  until a person changes its text. Every page that shows one marks those
+  fields: products, experiences, places, hotels, events, CMS pages and journal
+  posts.
+- **Images (v0.177.0).** Morpheus generates no images. An uploaded image whose
+  XMP declares an IPTC AI `DigitalSourceType` keeps that statement in every
+  `/img/` copy, and the product graph names it as an ImageObject with
+  `digitalSourceType`.
+- **Not marked:** text an API token sends, because nothing says a model wrote
+  it.
+
+Product-text marks also appear in the AI Act report. Commercial product copy is not
+"text published to inform the public on matters of public interest" under
+50(4), so these marks are the 50(2)-style duty Morpheus takes on as the
+provider of the writing tools. Rules: `CLAUDE.md`, "text a model wrote carries
+a mark".
 
 ## The AI Act evidence export (one click)
 

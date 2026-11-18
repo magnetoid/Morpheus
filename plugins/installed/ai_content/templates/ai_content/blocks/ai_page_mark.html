@@ -1,0 +1,4 @@
+{% comment %}At the end of a page about one object other than a product (slot
+`global_below_body`): the fields it shows in a translation an AI drafted, EU AI Act
+Art. 50. A product's page marks them under its description instead.{% endcomment %}
+{% load ai_text %}{% ai_page_mark as fields %}{% if fields %}<span data-ai-generated="{{ fields|join:' ' }}" hidden></span>{% endif %}

@@ -36,7 +36,7 @@
   <div class="card" style="margin-bottom:1rem;">
     <div style="display:flex; justify-content:space-between; gap:.5rem; margin-bottom:.5rem;">
       <label for="f-{{ field.name }}" style="font-weight:600; font-size:.9rem;">{{ field.label }}</label>
-      {% if field.draft %}<span class="pill">Draft</span>{% endif %}
+      {% if field.draft %}<span class="pill">Draft</span>{% elif field.ai %}<span class="pill" title="The shop marks this text as written with AI on its pages until you change it.">Translated with AI</span>{% endif %}
     </div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(16rem, 1fr)); gap:.75rem;">
       <div>

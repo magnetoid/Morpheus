@@ -22,4 +22,4 @@ Tick "Language bar" at the top of [Translations](page:translations) and a visito
 
 ## Good to know
 
-AI drafting uses your store's AI provider and obeys the switch and the daily spending limit in your AI settings; when either stops it, nothing is written and the page says why. A draft never replaces a translation you saved. Once you save or publish a draft it is your text, reviewed and published by you, so it carries no "written with AI" label on the shop; the record still notes that an AI wrote the first version.
+AI drafting uses your store's AI provider and obeys the switch and the daily spending limit in your AI settings; when either stops it, nothing is written and the page says why. A draft never replaces a translation you saved. Once you save or publish a draft, shoppers see it, and the shop marks it as written with AI in a form search engines and other machines read (EU AI Act Article 50); the editor shows "Translated with AI" beside it. Change its text and save, and it is your translation: the mark goes.

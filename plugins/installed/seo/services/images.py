@@ -2,6 +2,13 @@
 
 Backs ``/img/<fmt>/<width>/<path>`` — Pillow resizes the source image
 and writes a cached WebP / AVIF variant.
+
+A copy keeps no metadata of its source but one: when the source's XMP says a
+trained model made or changed the image (IPTC ``DigitalSourceType``), the copy
+carries that statement in an XMP packet of its own (EU AI Act Art. 50; Google
+Merchant Center asks for it). Such a copy is cached under its own name, and the
+storefront's image tag adds ``?ai=1`` to its address, so a copy cached before the
+statement was carried is never served again.
 """
 
 # ruff: noqa: PLC0415, E402, I001, PLW2901 — imports are deliberately local (optional
@@ -9,6 +16,7 @@ and writes a cached WebP / AVIF variant.
 from __future__ import annotations
 
 import functools
+import re
 
 
 #: Whitelisted image variant widths. Restricted to a small set so the
@@ -18,18 +26,102 @@ ALLOWED_IMAGE_WIDTHS = (200, 240, 400, 600, 800, 1200, 1600, 2000)
 ALLOWED_IMAGE_FORMATS = ('webp', 'avif')
 
 
+#: The IPTC digital source types that say a trained model made or changed an image.
+AI_SOURCE_TYPES = ('trainedAlgorithmicMedia', 'compositeWithTrainedAlgorithmicMedia')
+
+#: schema.org's name for each, for an ImageObject's ``digitalSourceType``.
+SCHEMA_SOURCE_TYPES = {
+    'trainedAlgorithmicMedia': 'https://schema.org/TrainedAlgorithmicMediaDigitalSource',
+    'compositeWithTrainedAlgorithmicMedia': (
+        'https://schema.org/CompositeWithTrainedAlgorithmicMediaDigitalSource'
+    ),
+}
+
+_NEWSCODES = 'http://cv.iptc.org/newscodes/digitalsourcetype/'
+_SOURCE_TYPE_RE = re.compile(
+    rb'digitalsourcetype/(' + b'|'.join(t.encode() for t in AI_SOURCE_TYPES) + rb')(?![A-Za-z])'
+)
+
+
+def source_type_of(packet: bytes | str) -> str:
+    """The AI source type an XMP packet declares (one of ``AI_SOURCE_TYPES``), or ''."""
+    if isinstance(packet, str):
+        packet = packet.encode('utf-8', 'replace')
+    if not packet or b'DigitalSourceType' not in packet:
+        return ''
+    found = _SOURCE_TYPE_RE.search(packet)
+    return found.group(1).decode() if found else ''
+
+
+def _xmp_of(im) -> bytes:
+    """The XMP packet Pillow read from an opened image (every format it reads), or b''."""
+    for key in ('xmp', 'XML:com.adobe.xmp'):
+        raw = im.info.get(key)
+        if raw:
+            return raw.encode('utf-8', 'replace') if isinstance(raw, str) else bytes(raw)
+    return b''
+
+
+def xmp_packet(source_type: str) -> bytes:
+    """An XMP packet saying only that the image's digital source type is ``source_type``."""
+    return (
+        '<?xpacket begin="\ufeff" id="W5M0MpCehiHzreSzNTczkc9d"?>'
+        '<x:xmpmeta xmlns:x="adobe:ns:meta/">'
+        '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+        '<rdf:Description rdf:about="" '
+        'xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/" '
+        f'Iptc4xmpExt:DigitalSourceType="{_NEWSCODES}{source_type}"/>'
+        '</rdf:RDF></x:xmpmeta><?xpacket end="w"?>'
+    ).encode()
+
+
+@functools.lru_cache(maxsize=4096)
+def _read_source_type(path: str, mtime_ns: int, size: int) -> str:
+    from PIL import Image
+
+    try:
+        with Image.open(path) as im:  # reads the header and its metadata only
+            return source_type_of(_xmp_of(im))
+    except Exception:  # noqa: BLE001 — not an image Pillow can read
+        return ''
+
+
+def ai_source_type(path: str) -> str:
+    """The AI source type the image file at ``path`` declares, or ''.
+
+    Cached per file and its modification time, like ``image_size``."""
+    import os
+
+    try:
+        st = os.stat(path)
+    except (OSError, TypeError, ValueError):
+        return ''
+    return _read_source_type(str(path), st.st_mtime_ns, st.st_size)
+
+
+def image_source_type(url: str) -> str:
+    """The AI source type one of the store's own images declares, or ''."""
+    path = _local_image_path(url)
+    return ai_source_type(path) if path else ''
+
+
 def variant_cache_abs(rel: str, width: int, fmt: str) -> str:
     """Absolute path of the cached variant for ``(rel, width, fmt)``.
 
     The same on-disk layout ``parse_image_variant_path`` resolves —
     exposed so the ``optimize_images`` batch warmer writes to exactly the
-    paths the ``/img/`` view later reads.
+    paths the ``/img/`` view later reads. A source that declares an AI source type
+    gets a name of its own (``….ai.webp``), so a copy cached before the copies
+    carried the statement is never reused.
     """
     import os
 
     from django.conf import settings
 
-    cache_rel = os.path.join('seo_img_cache', f'w{width}', fmt, rel.lstrip('/') + f'.{fmt}')
+    rel = rel.lstrip('/')
+    tagged = ai_source_type(os.path.join(str(settings.MEDIA_ROOT), rel))
+    suffix = f'.ai.{fmt}' if tagged else f'.{fmt}'
+    cache_rel = os.path.join('seo_img_cache', f'w{width}', fmt, rel + suffix)
     return os.path.join(str(settings.MEDIA_ROOT), cache_rel)
 
 
@@ -70,6 +162,9 @@ def generate_image_variant(src_abs: str, cache_abs: str, *, width: int, fmt: str
     from PIL import Image, ImageOps
 
     with Image.open(src_abs) as im:
+        # The one statement a copy keeps: that a trained model made the image.
+        source_type = source_type_of(_xmp_of(im))
+        extra = {'xmp': xmp_packet(source_type)} if source_type else {}
         # A phone photo stores its rotation in EXIF, which a browser applies to the
         # original but WebP/AVIF re-encoding drops: turn the pixels upright first.
         im = ImageOps.exif_transpose(im)
@@ -83,9 +178,9 @@ def generate_image_variant(src_abs: str, cache_abs: str, *, width: int, fmt: str
         if fmt == 'avif' and im.mode in ('P', 'RGBA'):
             im = im.convert('RGB')
         if fmt == 'webp':
-            im.save(cache_abs, 'WEBP', quality=80, method=4)
+            im.save(cache_abs, 'WEBP', quality=80, method=4, **extra)
         else:  # avif
-            im.save(cache_abs, 'AVIF', quality=68)
+            im.save(cache_abs, 'AVIF', quality=68, **extra)
     return cache_abs
 
 

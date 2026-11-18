@@ -1,6 +1,6 @@
 # Morpheus as an e-commerce platform — gap analysis and completion plan (Nov 2026)
 
-**Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0, A3 (inventory) v0.152.0, A4 (fulfilment and shipping rates) v0.154.0, A5 (payments, with the A4 choices as settings) v0.155.0, A7 (checkout fields) v0.168.0 and A8 (payment link) v0.171.0 are live on all five stores. From A5 on, each commerce choice is a merchant setting whose default is the earlier behaviour (owner, 2026-11-12). Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
+**Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0, A3 (inventory) v0.152.0, A4 (fulfilment and shipping rates) v0.154.0, A5 (payments, with the A4 choices as settings) v0.155.0, A7 (checkout fields) v0.168.0 and A8 (payment link) v0.171.0 are live on all five stores. F1 (AI marks on translations and images) is v0.177.0, waiting for the owner's merge. From A5 on, each commerce choice is a merchant setting whose default is the earlier behaviour (owner, 2026-11-12). Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
 
 **Order of work:** from 2026-11-18 the remaining rows here and in [janus-alignment-and-app-platform-2026-11.md](janus-alignment-and-app-platform-2026-11.md) run in one merged order, set out in the next section. It replaces "platform first, then commerce" (owner, 2026-11-15).
 
@@ -278,7 +278,7 @@ Each row is an option inside Morpheus for any store. Its owner app is named belo
 
 | # | Release | Goal | Size | Depends on | Status |
 |---|---|---|---|---|---|
-| F1 | AI marks on translations and images | the Art. 50 mark on AI-drafted translations; an image's AI tag survives the image proxy | S 1–2 | — | planned, order #1, before 2 Dec 2026 |
+| F1 | AI marks on translations and images | the Art. 50 mark on AI-drafted translations; an image's AI tag survives the image proxy | S 1–2 | — | v0.177.0, waiting for merge |
 | F2 | Claims and legal copy check | generic green-claim check in the site audit; eco_impact copy; legal-guarantee notice; accessibility statement | M 2 | — | planned, order #2 |
 | F3 | Online withdrawal function | an order-keyed, guest-reachable "Withdraw from contract here" with a timestamped acknowledgement | M 3 | A10a | planned, order #5 |
 | F4 | Regional card gateway app | cards for stores whose entity Stripe does not serve; Monri first | M 3–4 | — | planned, order #11 |
@@ -286,11 +286,12 @@ Each row is an option inside Morpheus for any store. Its owner app is named belo
 | F6 | Subscription cancel and pause by the customer | self-serve in the account | S–M 2 | — | planned, order #14 |
 | F7 | Origin and HS code | customs data on products; an import-charges notice | S–M 2 | — | later |
 
-**F1 · AI marks on translations and images (patch, S).**
+**F1 · AI marks on translations and images (minor, S).**
 - **Translations.** `localization/drafting.py` writes AI drafts with `is_machine_translated=True, reviewed=False`, and a person approves them. Once shown, nothing marks them.
   - Wherever a translation that began as a machine draft is shown, it carries the same mark as AI-written product text (`ai_content` through `core.agents.provenance`): `data-ai-generated` for that language and the graph's `digitalSourceType`.
   - As with product text, only the merchant clears the mark.
   - The storefront does not render content translations yet (C3). This release marks every place that shows one today; C3 inherits the rule.
+  - *Correction found while building (v0.177.0):* the storefront has shown reviewed translations since v0.160.0, on product pages, experiences, places, hotels, events, CMS pages and journal posts. v0.177.0 marks all of them.
 - **Images.**
   - Morpheus generates no images; no image generation was found in v0.176.0.
   - An uploaded image whose IPTC/XMP metadata declares `digitalSourceType` `trainedAlgorithmicMedia` (or `compositeWithTrainedAlgorithmicMedia`) loses it in every copy the proxy derives. `seo/services/images.py:86-88` saves WebP and AVIF without metadata. Google Merchant Center requires the tag on AI images.
@@ -298,6 +299,25 @@ Each row is an option inside Morpheus for any store. Its owner app is named belo
   - Change the derived-file cache key, or copies cached before the fix stay untagged for a year.
   - The product graph's `ImageObject` (a CreativeWork; never the Product node) gets `digitalSourceType`.
 - **No setting:** the mark is a duty, as it is for text.
+
+**F1 as built (v0.177.0).**
+- **Translations.**
+  - `Translation.is_machine_translated` is the provenance: no second store. A store agent's write always sets it (`i18n.set_translation`, `i18n.translate_product`), whatever the model passes. An API token's write says what the caller says.
+  - Changing the text in the translation editor clears it; the editor shows "Translated with AI" beside a published AI translation.
+  - `core.i18n.services.overlay_translation` remembers which shown fields began as AI drafts (`ai_translated(obj)`).
+  - ai_content marks them:
+    - under a product's description, in the same `data-ai-generated` attribute as its own marks;
+    - at `global_below_body` on any other page about one object;
+    - in the graph, as one CreativeWork per field with `digitalSourceType`, which the main node points at through `subjectOf`.
+  - The opt-in sentence has a translation wording, in Serbian and Croatian too.
+- **Images.**
+  - A copy carries a minimal XMP packet holding only the source's `DigitalSourceType`; the source's other metadata (creator, location) stays off the copies.
+  - A tagged source's copies are cached as `….ai.<fmt>`, and `{% seo_responsive_image %}` addresses them with `?ai=1`.
+  - The Product graph's image is an ImageObject with `digitalSourceType`.
+- **Rulings:**
+  - **Grid cards (lists of products, places, posts) carry no mark of their own;** the page each card links to carries it. Cost if wrong: a per-card mark, which C3 can add.
+  - **The product carousel's thumbnails and the web stories keep their `/img/` addresses** (they build them outside seo). The server regenerates their copies with the tag, but a CDN copy cached before v0.177.0 may stay untagged until it expires.
+  - **Art. 50(2) exempts output that does not substantially alter the input or its semantics,** and a translation may arguably fall under that. Marking follows the plan the owner accepted. Cost if wrong: a mark the law did not require.
 - **Tests:** `localization/tests/test_translation_marks.py` and `seo/tests/test_image_ai_tag.py` (a fixture image with the tag keeps it in WebP and AVIF; one without gets none).
 - **help.md:** localization, ai_content.
 - **Live probe:** fetch a tagged image's `/img/` AVIF on one store and read its XMP.
@@ -386,7 +406,7 @@ Multi-store in one process (ADR 0018) — needs a tenant seam through settings, 
 ## Verification
 
 Per release: `ruff check . && ruff format --check .` (0.15.8); `DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<touched> plugins.installed.admin_dashboard.tests.test_disable_guards core.tests.test_settings_keys_have_readers`; `python manage.py check && makemigrations --check --dry-run`; the three boundary/standard scripts; `release --check`; Postgres rehearsal for every release with a migration (memory `releases-2026-10-22`); full serial suite before A1, A2, A6, B3, D2 and E6. After merge: watch all five stores to the new commit (`/readyz` ok + home 200), then the live probe named in each release (A1: a reduced-rate book's cart tax on dotbooks; A2: a scoped coupon on an out-of-scope cart refuses; B3: register + `me` over `/graphql/` with `enforce_csrf_checks`; D2: `/.well-known/ucp` lists capabilities and a checkout session round-trips on a staging token). Croatia is part of every deploy (owner, 2026-11-10): it builds from the same `main` and is in the smoke and accessibility checks. Phase F probes:
-- F1: a tagged image's `/img/` AVIF still carries its XMP.
+- F1: read-only, a `/sr/` or `/hr/` page shows `data-ai-generated` only where a published translation began as an AI draft. A tagged image's `/img/` copy carrying its XMP needs a tagged upload, so it needs the owner's yes; the suite covers it.
 - F2: the next nightly audit lists claims issues, or none.
 - F3: on a store that switches it on, with the owner's yes, a guest withdrawal round-trips and the acknowledgement email arrives.
 - F4: one sandbox payment with the owner's test credentials.
