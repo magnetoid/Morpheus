@@ -99,7 +99,6 @@ class JanusPageBuildTests(TestCase):
         )
         self.client.force_login(user)
 
-    @override_settings(LINDA_JANUS_AUTO_UPDATE=True)
     def test_page_shows_the_installed_commit_and_a_newer_one_on_github(self):
         status = {
             'version': '0.18.0',
@@ -111,45 +110,29 @@ class JanusPageBuildTests(TestCase):
             'tracks_branch': True,
             'latest': {'sha': NEWER, 'title': 'feat: something new', 'date': '2026-10-10'},
         }
-        from core.assistant import janus_runtime
-
-        with (
-            mock.patch.object(upstream, 'build_status', return_value=status),
-            mock.patch.object(janus_runtime, 'maybe_update', return_value=False),
-        ):
+        with mock.patch.object(upstream, 'build_status', return_value=status):
             response = self.client.get('/dashboard/apps/janus/engine/')
         self.assertContains(response, 'eafb7ab')
         self.assertContains(response, '0123456')
         self.assertContains(response, 'feat: something new')
-        self.assertContains(response, 'Linda moves to it once it passes the compatibility check')
+        # Nothing installs it on the store (v0.175.1): a branch build gets it
+        # from the next deploy, like a pinned one gets it from a release.
+        self.assertContains(response, 'The next deploy installs it')
 
-    def test_with_updates_off_the_page_says_the_next_deploy_brings_it(self):
-        from plugins.models import PluginConfig
-
-        PluginConfig.objects.update_or_create(
-            plugin_name='janus', defaults={'config': {'auto_update': False}}
-        )
+    def test_a_pinned_build_behind_github_names_the_pin(self):
         status = {
             'commit': COMMIT,
             'repo': 'magnetoid/Janus-Agent',
-            'ref': 'main',
+            'ref': COMMIT,
             'state': 'behind',
-            'tracks_branch': True,
+            'tracks_branch': False,
             'latest': {'sha': NEWER, 'title': 't', 'date': ''},
         }
         with mock.patch.object(upstream, 'build_status', return_value=status):
             response = self.client.get('/dashboard/apps/janus/engine/')
-        self.assertContains(response, 'The next deploy installs it')
-
-    def test_check_now_starts_the_updater(self):
-        from core.assistant import janus_runtime
-
-        with mock.patch.object(janus_runtime, 'maybe_update', return_value=True) as run:
-            response = self.client.post(
-                '/dashboard/apps/janus/engine/', {'action': 'check_updates'}
-            )
-        self.assertEqual(response.status_code, 302)
-        run.assert_called_once_with(force=True)
+        self.assertContains(
+            response, 'This server is pinned to <code class="text-xs">eafb7ab</code>'
+        )
 
     def test_page_shows_the_janus_in_use_and_its_contract(self):
         from core.assistant import janus_runtime
@@ -169,11 +152,8 @@ class JanusPageBuildTests(TestCase):
         self.assertContains(response, 'Display only: tool hook events')
         self.assertContains(response, 'subagents stay off')
 
-    def test_a_pinned_build_says_updates_come_with_morpheus_releases(self):
-        from core.assistant import janus_runtime
-
-        with mock.patch.object(janus_runtime, 'source', return_value=None):
-            response = self.client.get('/dashboard/apps/janus/engine/')
+    def test_the_page_says_updates_come_with_morpheus_releases(self):
+        response = self.client.get('/dashboard/apps/janus/engine/')
         self.assertContains(response, 'pinned in its Morpheus release')
         self.assertNotContains(response, 'name="action" value="check_updates"')
         self.assertNotContains(response, 'Keep Janus up to date from GitHub')

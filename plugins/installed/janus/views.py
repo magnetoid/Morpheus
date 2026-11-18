@@ -11,7 +11,6 @@ import logging
 import shutil
 import subprocess
 import uuid
-from datetime import UTC, datetime
 from pathlib import Path
 
 from django.contrib import messages
@@ -39,7 +38,6 @@ _SETTINGS_KEYS = (
     'bundled_skills',
     'learning',
     'web_search',
-    'auto_update',
     'fallback_providers',
     'reasoning_effort',
 )
@@ -95,7 +93,6 @@ def _initial(config: dict) -> dict:
         'bundled_skills': config.get('bundled_skills', True),
         'learning': config.get('learning', True),
         'web_search': config.get('web_search', True),
-        'auto_update': config.get('auto_update', True),
         'fallback_providers': list(config.get('fallback_providers') or []),
         'reasoning_effort': config.get('reasoning_effort', 'low'),
     }
@@ -162,49 +159,12 @@ def _status() -> dict:
     }
 
 
-_CHECK_RESULTS = {
-    'current': 'Up to date with GitHub.',
-    'installed': 'Installed a newer Janus; Linda uses it from her next message.',
-    'failed': 'Found a newer Janus but kept the current one: it did not pass.',
-    'skipped': 'The newest commit failed before, so it was not tried again.',
-    'error': "Couldn't reach GitHub.",
-    'rolled_back': 'Went back to the previous Janus after repeated failures.',
-}
-
-
-def _when(epoch) -> datetime | None:
-    try:
-        return datetime.fromtimestamp(float(epoch), tz=UTC)
-    except (TypeError, ValueError, OverflowError, OSError):
-        return None
-
-
 def _updates(cmd: list[str] | None) -> dict:
-    """What the page shows about keeping Janus current (core/assistant/janus_runtime.py)."""
-    summary = janus_runtime.summary()
+    """The contract report the build recorded for the Janus in use. Janus moves
+    only with a Morpheus release (core/assistant/janus_runtime.py)."""
     report = janus_runtime.contract_report(cmd[0] if cmd else None)
     checks = report.get('checks') or []
-    last = summary.get('last_check') or {}
-    active = summary.get('active') or {}
-    failed = sorted(
-        (
-            {'commit': sha, 'reason': str(v.get('reason') or ''), 'at': _when(v.get('at'))}
-            for sha, v in (summary.get('failed') or {}).items()
-        ),
-        key=lambda f: f['at'] or datetime.min.replace(tzinfo=UTC),
-        reverse=True,
-    )[:3]
     return {
-        **summary,
-        'active': {**active, 'installed': _when(active.get('installed_at'))} if active else None,
-        'last': {
-            **last,
-            'when': _when(last.get('at')),
-            'text': _CHECK_RESULTS.get(str(last.get('result') or ''), ''),
-        }
-        if last
-        else None,
-        'failed': failed,
         'contract': {
             'total': len(checks),
             'passed': sum(1 for c in checks if c.get('ok')),
@@ -298,24 +258,6 @@ def settings_view(request):
     if request.method == 'POST' and request.POST.get('action') in _REVIEW_ACTIONS:
         _review(request, request.POST['action'])
         return redirect(request.path)
-    if request.method == 'POST' and request.POST.get('action') == 'check_updates':
-        if janus_runtime.maybe_update(force=True):
-            messages.success(
-                request,
-                'Checking GitHub for a newer Janus. Installing and checking one takes about '
-                'a minute; reload this page to see the result.',
-            )
-        else:
-            messages.error(
-                request,
-                'Updates are off here: switched off below or by the server, or this '
-                'server is pinned to one Janus commit.',
-            )
-        return redirect(request.path)
-    if request.method == 'GET':
-        # The periodic check also runs from Linda's turns; this keeps it going
-        # on a store where the page is visited but Linda is not.
-        janus_runtime.maybe_update()
     if request.method == 'POST' and request.POST.get('action') == 'test':
         test_result = _run_test(request.user)
         form = JanusSettingsForm(initial=_initial(config), has_stored_key=has_stored_key)

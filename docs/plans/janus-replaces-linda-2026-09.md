@@ -3,9 +3,8 @@
 Status: **Phases 1–3 SHIPPED and verified live** (v0.63.1 → v0.65.0, 2026-09-14).
 **Phase 4 built without a volume** (owner, 2026-09-15: "leave all learnings in
 Janus, but no Coolify persistent storage — it must work on Coolify and without
-it"): learnings live in the database. **Phases 5–6 remain**; Phase 6 needs a
-signing decision and, with no volume, a new install location (see below).
-Update this file as phases land.
+it"): learnings live in the database. **Phases 5–6 are closed** (2026-11-17): phase 5
+is done, phase 6 is not needed (see each below).
 
 ## Goal
 
@@ -208,7 +207,10 @@ database is the one store all of those share.
 
 ## Phase 5 — Track upstream Janus
 
-Partly done in v0.65.0: the Janus page shows the installed version (`janus --version`, cached 10 min).
+**Status: DONE.** The Janus page shows the installed version (v0.65.0), the exact build and
+whether GitHub has a newer commit (v0.83.0, `plugins/installed/janus/upstream.py`), and
+every Linda run records the Janus version and commit that answered it (v0.171.1). The
+original items, for the record:
 
 - Record installed Janus version and git ref at image build (build arg → env).
 - Show both on Settings → Version & updates and the Janus page.
@@ -216,6 +218,12 @@ Partly done in v0.65.0: the Janus page shows the installed version (`janus --ver
   a self-improvement drift signal when upstream is ahead.
 
 ## Phase 6 — Update Janus in-app
+
+**Status: NOT NEEDED (closed 2026-11-17).** Janus moves by a pull request that bumps the
+Dockerfile's pin after the contract and the conformance suite pass on the new commit
+(v0.174.0, `docs/plans/janus-alignment-and-app-platform-2026-11.md`, P3), and every store
+gets it through a normal deploy. A runtime updater built in v0.83.0 never ran on a release
+image and was removed in v0.175.1. The original design, for the record:
 
 - No volume (owner, 2026-09-15). A venv installed at runtime lives only as long
   as the container, so the approved engine version must be recorded in the

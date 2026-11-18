@@ -6,7 +6,7 @@
 
 **Method.** Three read-only explorations (the Janus seam inside Morpheus; the Janus repository, read over the GitHub API; the app system and agent coverage), one design pass, and spot-checks of the strongest claims in the code on `origin/main` (0b433b93).
 
-**Status:** approved by the owner on 2026-11-15. P1 (Janus truth patch) is v0.171.1, live on all five stores since 2026-11-16. P2 (conformance suite) is v0.171.2, live on all five since 2026-11-16. P5 (app toggle reaches every process) is v0.172.0, live on all five since 2026-11-16. P7 (one settings coercer) is v0.173.0, in review. Update this line as each release ships.
+**Status:** approved by the owner on 2026-11-15. P1 (Janus truth patch) is v0.171.1, live on all five stores since 2026-11-16. P2 (conformance suite) is v0.171.2, live on all five since 2026-11-16. P5 (app toggle reaches every process) is v0.172.0, live on all five since 2026-11-16. P7 (one settings coercer) is v0.173.0, live on all five since 2026-11-17. P3 (pin bump by pull request) is v0.174.0 and the first bump v0.175.0, both live on all five since 2026-11-17. P3b (the self-updater retired) is v0.175.1, in review. Update this line as each release ships.
 
 **Owner's decisions (2026-11-15).**
 1. Janus updates arrive as a **pull request with a test**: CI takes the newest Janus, runs the contract and a real `janus chat` against a stub model, and opens a PR that moves the pin. The owner merges; all five stores get the same verified version through a normal deploy. The runtime self-updater is retired.
@@ -168,6 +168,12 @@ One release in flight at a time, each from a fresh worktree off `origin/main`, e
 - Off by default and left off: memory provenance (`memories/provenance.db`), memory flush before compaction, skill versions (`skills/.versions/`, a dot-dir harvest skips), background and worktree delegation. First-run setup and the learning offer skip a scripted query.
 - `clarify` takes several questions now; no turn loads it. MCP progress notifications reach the CLI spinner only; the store sends none.
 - Janus's `mcp` extra moves from mcp 1.26.0 / starlette 1.0.1 to 1.28.1 / 1.3.1. pip-audit still reports mcp (fixed in 1.30.0) and pillow (12.3.0); reported, not blocking.
+
+*P3b as shipped (v0.175.1):*
+- Deleted `core/assistant/janus_updater.py`, `janus_runtime`'s `maybe_update`, `record_turn` (the rollback after three failed turns), `active_bin`, `source`, `summary` and the engine dir, the `LINDA_JANUS_AUTO_UPDATE` setting, the Janus app's `auto_update` setting with its checkbox, and the page's "Check now", "In use", "Last check" and "Commits it would not use". `janus_engine.janus_cmd()` runs `JANUS_BIN`, else the `janus` on PATH, else a source checkout; no file a turn can write chooses it (`test_janus_updates.py::EngineBinaryTests`).
+- Kept `janus_runtime.installed_build` (no longer reads the updater's marker), `contract_report`, `PINS` (read by `scripts/bump_janus.py`) and `plugins/installed/janus/upstream.py`: the page still shows the build, its contract report and whether GitHub has a newer commit, and says a newer Janus arrives with a Morpheus release.
+- A stored `auto_update` value stays in the janus app's row and is ignored, as v0.76.4 did with the settings it removed. No migration.
+- `docs/plans/janus-replaces-linda-2026-09.md`: phase 5 is done (build and GitHub state on the page, the build on every run) and phase 6 is not needed (Janus moves by pull request, P3).
 
 ### P4 — Deferred tool schemas
 

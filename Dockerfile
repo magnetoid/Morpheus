@@ -74,9 +74,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # through, keeps the old one as JANUS_KNOWN_GOOD) — and because this layer runs before
 # `COPY . /app`, it is cached across pushes instead of rebuilt (216 MB) on
 # every deploy. Only the contract file is copied in first: it runs standalone
-# under Janus's own interpreter. A build pinned to a commit never updates
-# itself between deploys (janus_runtime.source() is None for a sha): Janus moves
-# when this ARG moves, in a release like any other.
+# under Janus's own interpreter. Janus moves only when this ARG moves, in a
+# release like any other (the store-side self-updater went in v0.175.1).
 # ddgs + primp are Linda's free web search backend (pinned in
 # janus_runtime.PINS too). The [mcp] extra is load-bearing: without the `mcp`
 # package Janus's MCP client silently does nothing and Linda has no store

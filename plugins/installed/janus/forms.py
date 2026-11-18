@@ -50,7 +50,6 @@ class JanusSettingsForm(forms.Form):
     bundled_skills = forms.BooleanField(required=False)
     learning = forms.BooleanField(required=False)
     web_search = forms.BooleanField(required=False)
-    auto_update = forms.BooleanField(required=False)
     # Backups for when the main provider fails a call, in provider-list order.
     fallback_providers = forms.MultipleChoiceField(required=False)
     reasoning_effort = forms.ChoiceField(

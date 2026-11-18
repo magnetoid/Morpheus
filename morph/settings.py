@@ -43,7 +43,7 @@ MORPHEUS_THEMES_DIR = BASE_DIR / 'themes' / 'library'
 MORPHEUS_ACTIVE_THEME = config('MORPHEUS_ACTIVE_THEME', default='dot_books')
 
 # Display version next to the logo in the admin sidebar.
-MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.175.0')
+MORPHEUS_VERSION = config('MORPHEUS_VERSION', default='v0.175.1')
 
 # The release stage shown beside the version (the dashboard, the README badge, the
 # GitHub Release title) while Morpheus is not finalized; '' once it is. The version
@@ -770,10 +770,6 @@ LINDA_JANUS_AUTO_APPROVE = config('LINDA_JANUS_AUTO_APPROVE', default=False, cas
 # this may exceed GUNICORN_TIMEOUT under gthread workers; capped at 300s by
 # core/assistant/janus_settings.py. Settings → AI → Janus overrides it.
 LINDA_JANUS_TIMEOUT_S = config('LINDA_JANUS_TIMEOUT_S', default=240, cast=int)
-# Janus installs newer commits of the branch the image was built from, beside the
-# image's copy, and switches only after Morpheus's contract passes
-# (core/assistant/janus_runtime.py). False keeps the image's Janus until redeploy.
-LINDA_JANUS_AUTO_UPDATE = config('LINDA_JANUS_AUTO_UPDATE', default=True, cast=bool)
 # No LINDA_MCP_TOKEN: each Janus turn carries a signed per-turn identity instead
 # (core/assistant/turn_identity.py). A standing token was the consent hole.
 LINDA_MCP_URL = config('LINDA_MCP_URL', default='')
@@ -795,9 +791,6 @@ if _RUNNING_TESTS:
     # No test may spawn a real Janus (a model call). A missing binary makes every
     # unmocked turn a reported spawn failure; tests that need a turn mock it.
     JANUS_BIN = '/nonexistent/janus-disabled-under-tests'
-    # Nor install one: with `janus` on a developer's PATH, a turn would start the
-    # updater (pip, GitHub). Updater tests switch it on with override_settings.
-    LINDA_JANUS_AUTO_UPDATE = False
 
 # ── Email ──────────────────────────────────────────────────────────────────────
 # Always use the Morpheus Custom backend so admins can configure via dashboard

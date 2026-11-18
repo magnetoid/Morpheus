@@ -7,11 +7,9 @@ with bundled Morpheus ecommerce skills (``core/assistant/janus_skills``).
 
 Discovery order for the binary:
   1. ``settings.JANUS_BIN`` / ``JANUS_BIN``
-  2. a newer Janus the store installed itself from GitHub, after it passed the
-     contract (:mod:`core.assistant.janus_runtime`)
-  3. ``janus`` on PATH (the image's)
-  4. ``<JANUS_ENGINE_ROOT>/.venv/bin/janus`` then ``venv/bin/janus``
-  5. ``~/.janus/janus-agent`` source checkout (``python cli.py``)
+  2. ``janus`` on PATH (the image's, pinned in the Dockerfile)
+  3. ``<JANUS_ENGINE_ROOT>/.venv/bin/janus`` then ``venv/bin/janus``
+  4. ``~/.janus/janus-agent`` source checkout (``python cli.py``)
 
 SAFETY — read this before widening anything below. Janus runs its own tool loop
 in a subprocess and reaches Morpheus over MCP, so NONE of the in-process gates in
@@ -167,11 +165,7 @@ def janus_cmd() -> list[str] | None:
     explicit = (getattr(s, 'JANUS_BIN', '') if s else '') or os.environ.get('JANUS_BIN', '')
     if explicit:
         return [explicit]
-    # A newer Janus the store installed from GitHub and checked against the
-    # contract (core/assistant/janus_runtime.py); else the image's.
-    from core.assistant import janus_runtime
-
-    found = janus_runtime.active_bin() or shutil.which('janus')
+    found = shutil.which('janus')
     if found:
         return [found]
     return _source_checkout_cmd()
@@ -179,8 +173,8 @@ def janus_cmd() -> list[str] | None:
 
 @functools.lru_cache(maxsize=8)
 def _build_of(path: str) -> tuple[str, str]:
-    # A venv's Janus never changes in place (an update is a fresh venv), so the
-    # answer per path holds for the life of the process.
+    # A venv's Janus changes only with a new image, so the answer per path holds
+    # for the life of the process.
     from core.assistant import janus_runtime
 
     try:
@@ -879,9 +873,8 @@ def iter_janus_turn(
     if not cmd:
         yield {'text': '', 'error': 'janus_unavailable', 'duration_ms': 0}
         return
-    # Named from the command this turn runs, never looked up again after it: a
-    # rollback once the turn has failed (janus_runtime.record_turn) or an update
-    # finishing meanwhile changes what janus_cmd() returns.
+    # Named from the command this turn runs, so the run records the Janus that
+    # answered it (AgentRun.metadata).
     build = build_of(cmd)
 
     timeout = turn_timeout_s() if timeout_s is None else max(5, int(timeout_s))

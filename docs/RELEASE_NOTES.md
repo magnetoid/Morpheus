@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.175.1 — 2026-11-17
+
+**Janus moves only with a Morpheus release**
+
+- The store-side Janus updater is gone. It installed newer Janus commits from GitHub while a store ran, but only on a server built to follow a branch, and every release image pins a commit, so it never ran on a store. Janus now moves only by the pull request that bumps its pin, after the contract and the conformance suite pass on the new commit.
+- Settings → AI → Janus keeps the build, its compatibility report and whether GitHub has a newer commit, and no longer offers Check now or the Keep Janus up to date box, which did nothing on a pinned build. A stored choice for that box is ignored.
+- The LINDA_JANUS_AUTO_UPDATE setting is removed. Nothing a turn, the dashboard or a setting can write chooses which Janus program a turn runs.
+
 ## v0.175.0 — 2026-11-17
 
 **Linda runs on a newer Janus**

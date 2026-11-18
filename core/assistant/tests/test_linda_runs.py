@@ -83,10 +83,9 @@ class LindaRunTests(TestCase):
         self.assertEqual((meta['reasoning_tokens'], meta['api_calls']), (7, 3))
         self.assertEqual(meta['cost_usd'], 0.001235)
 
-    def test_a_failed_run_names_the_build_that_failed_not_the_one_put_back(self):
-        # On a branch build the third failure in a row rolls Janus back
-        # (janus_runtime.record_turn) before the run is recorded, so the run reads
-        # the build the turn carried, never the one active afterwards.
+    def test_a_failed_run_names_the_build_the_turn_carried(self):
+        # The run reads the build the turn ran (janus_engine.build_of on its own
+        # command), never one looked up again after it.
         failed = {'version': '0.19.0', 'commit': 'f' * 40}
         with mock.patch('core.assistant.janus_engine._build_of', return_value=('0.18.0', 'e' * 40)):
             self._turn({'text': '', 'error': 'janus exited 1', 'duration_ms': 5, 'build': failed})
