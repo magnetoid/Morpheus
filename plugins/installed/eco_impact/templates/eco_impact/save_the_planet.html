@@ -1,15 +1,20 @@
 {% extends "storefront/base.html" %}
 {% load morph %}
-{% block seo %}{% with seo_title="Save the planet" seo_description="How we measure the footprint of every book, and how you can plant a tree at checkout to offset your order." %}{{ block.super }}{% endwith %}{% endblock %}
+{% comment %}Estimates labelled as estimates, with their method, and tree pledges never
+described as offsetting an order: EU law bans offset-based climate claims and generic
+environmental claims (Directive 2024/825, from 27 September 2026).
+eco_impact/tests/test_claims_copy.py.{% endcomment %}
+{% block seo %}{% with seo_title="Book footprint" seo_description="How we estimate the paper, wood and carbon footprint of every book, and how a tree-planting pledge at checkout works." %}{{ block.super }}{% endwith %}{% endblock %}
 {% block content %}
 <section style="max-width:52rem; margin:0 auto; padding:2.5rem 1.25rem; font-family:var(--serif, Georgia, serif);">
 
   <header style="text-align:center; margin-bottom:2.25rem;">
     <div style="font-size:2rem;" aria-hidden="true">🌍</div>
-    <h1 style="font-family:var(--display, var(--serif)); font-size:clamp(1.8rem, 4vw, 2.6rem); margin:.4rem 0 .6rem; color:var(--ink);">Save the planet, one book at a time</h1>
+    <h1 style="font-family:var(--display, var(--serif)); font-size:clamp(1.8rem, 4vw, 2.6rem); margin:.4rem 0 .6rem; color:var(--ink);">Our books&rsquo; footprint</h1>
     <p style="font-family:var(--sans); color:var(--ink-2); font-size:1rem; line-height:1.6; max-width:38rem; margin:0 auto;">
       Every printed book has a footprint &mdash; paper, wood, and the carbon of making it.
-      We estimate it for each title, and at checkout you can plant a tree to offset your order.
+      We estimate it for each title. At checkout you can also pledge a tree; a pledge plants
+      trees, and it does not cancel out an order&rsquo;s footprint.
     </p>
   </header>
 
@@ -20,22 +25,18 @@
       <div style="font-size:.8rem; color:var(--ink-2); margin-top:.25rem;">trees pledged</div>
     </div>
     <div style="text-align:center; padding:1.25rem 1rem; border:1px solid var(--rule); border-radius:12px;">
-      <div style="font-size:2rem; font-weight:700; color:var(--ink);">{{ totals.co2_offset_kg|floatformat:0 }}</div>
-      <div style="font-size:.8rem; color:var(--ink-2); margin-top:.25rem;">kg CO<sub>2</sub> offset</div>
-    </div>
-    <div style="text-align:center; padding:1.25rem 1rem; border:1px solid var(--rule); border-radius:12px;">
       <div style="font-size:2rem; font-weight:700; color:var(--ink);">{{ totals.contributors }}</div>
-      <div style="font-size:.8rem; color:var(--ink-2); margin-top:.25rem;">readers planting with us</div>
+      <div style="font-size:.8rem; color:var(--ink-2); margin-top:.25rem;">orders with a pledge</div>
     </div>
   </div>
   {% else %}
   <div style="text-align:center; font-family:var(--sans); color:var(--ink-2); margin-bottom:2.5rem; padding:1.5rem; border:1px dashed var(--rule); border-radius:12px;">
-    Be the first &mdash; add &ldquo;plant a tree&rdquo; to your next order and start our forest.
+    No tree pledges yet &mdash; you can add one to your next order at checkout.
   </div>
   {% endif %}
 
   <div style="font-family:var(--sans); color:var(--ink-2); line-height:1.7; font-size:.95rem;">
-    <h2 style="font-family:var(--display, var(--serif)); font-size:1.3rem; color:var(--ink); margin:0 0 .6rem;">How we measure it</h2>
+    <h2 id="method" style="font-family:var(--display, var(--serif)); font-size:1.3rem; color:var(--ink); margin:0 0 .6rem;">How we estimate it</h2>
     <p style="margin:0 0 1rem;">
       For each book we estimate the paper mass from its recorded weight and size, then derive
       the wood used (about {{ wood_factor }}&thinsp;kg of wood per kg of paper) and the carbon
@@ -43,13 +44,12 @@
       printing and binding). These are <em>estimates</em>, sourced from published paper-industry
       figures &mdash; not a precise per-copy measurement.
     </p>
-    <h2 style="font-family:var(--display, var(--serif)); font-size:1.3rem; color:var(--ink); margin:1.5rem 0 .6rem;">Planting a tree</h2>
+    <h2 id="pledge" style="font-family:var(--display, var(--serif)); font-size:1.3rem; color:var(--ink); margin:1.5rem 0 .6rem;">Pledging a tree</h2>
     <p style="margin:0 0 1rem;">
-      At checkout you can add <strong>{{ tree_price|money }}</strong> to plant a tree. A maturing
-      tree sequesters roughly {{ kg_co2_per_tree|floatformat:0 }}&thinsp;kg of CO<sub>2</sub> a
-      year &mdash; comfortably more than a typical book order&rsquo;s footprint. We pool these
-      contributions and direct them to reforestation. It&rsquo;s always optional, and never
-      added without your choice.
+      At checkout you can add <strong>{{ tree_price|money }}</strong> as a pledge to plant a
+      tree. We pool the pledges and use them to plant trees. A pledge is not an offset: it
+      does not cancel out an order&rsquo;s footprint. It&rsquo;s always
+      optional, and never added without your choice.
     </p>
     <p style="text-align:center; margin-top:2rem;">
       <a href="/products/" class="btn btn-primary" style="display:inline-block; padding:.6rem 1.4rem; text-decoration:none;">Browse books</a>

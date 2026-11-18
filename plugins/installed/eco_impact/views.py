@@ -19,7 +19,7 @@ def _back(request, default='/cart/'):
 
 
 def apply_optin(request):
-    """POST /checkout/plant-a-tree/apply/ — opt the current cart into the offset."""
+    """POST /checkout/plant-a-tree/apply/ — add a tree-planting pledge to the cart."""
     if request.method != 'POST':
         return redirect('/cart/')
     try:
@@ -30,7 +30,7 @@ def apply_optin(request):
 
 
 def remove_optin(request):
-    """POST /checkout/plant-a-tree/remove/ — drop the offset from the cart."""
+    """POST /checkout/plant-a-tree/remove/ — drop the pledge from the cart."""
     if request.method != 'POST':
         return redirect('/cart/')
     try:
@@ -41,7 +41,7 @@ def remove_optin(request):
 
 
 def save_the_planet(request):
-    """GET /save-the-planet/ — public impact page: store totals + methodology."""
+    """GET /save-the-planet/ — the public page: pledge totals and how the footprint is estimated."""
     totals = services.store_totals()
     d = footprint.DEFAULTS
     return render(
@@ -50,7 +50,6 @@ def save_the_planet(request):
         {
             'totals': totals,
             'tree_price': services.surcharge_amount(),
-            'kg_co2_per_tree': services.kg_co2_per_tree(),
             'wood_factor': d['wood_factor'],
             'co2_per_kg_paper': d['co2_per_kg_paper'],
         },

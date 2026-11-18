@@ -1,0 +1,27 @@
+{% comment %}Under the product's description (slot `pdp_below_long_description`), after the
+safety details: the EU legal guarantee notice, Commission Implementing Regulation (EU)
+2025/1960, from 27 September 2026. Goods only, while the store switches it on
+(product_safety.safety.shows_guarantee_notice). The artwork is the Official Journal's own
+and may not be edited, so it is shown whole and in colour, never folded away; the text
+below it is the same notice for a screen reader. English only until the other language
+versions ship. product_safety/tests/test_legal_guarantee.py.{% endcomment %}
+{% load product_safety %}{% legal_guarantee_notice product as notice %}{% if notice %}
+<figure class="legal-guarantee" data-legal-guarantee lang="{{ notice.lang }}" style="margin:1.25rem 0 0; max-width:26rem;">
+  <a href="{{ notice.large }}" target="_blank" rel="noopener">
+    <img src="{{ notice.small }}" srcset="{{ notice.small }} 500w, {{ notice.large }} 1000w" sizes="(max-width: 30rem) 100vw, 26rem" width="500" height="706" loading="lazy" decoding="async" alt="Legal guarantee: minimum two-year legal guarantee protection for goods sold in the European Union. The full text follows." style="display:block; width:100%; height:auto;">
+  </a>
+  <figcaption style="font-size:.85em; margin:.5rem 0 0;">
+    <details>
+      <summary style="cursor:pointer;">Read the legal guarantee notice as text</summary>
+      <div style="margin:.5rem 0 0; line-height:1.5;">
+        <p style="margin:0 0 .5rem;"><strong>Legal guarantee.</strong> Minimum two-year legal guarantee protection for goods sold in the European Union.</p>
+        <p style="margin:0 0 .5rem;">Consumers can claim their rights under the legal guarantee of conformity, for example if goods: do not match the description; do not function as intended.</p>
+        <p style="margin:0 0 .5rem;">Sellers are liable for any lack of conformity which existed when the goods were delivered, and which becomes apparent within the legal guarantee period. Sellers in such a situation are required to offer: free repair or free replacement; in some cases, a price reduction or full reimbursement.</p>
+        <p style="margin:0 0 .5rem;">Some countries have a longer legal guarantee period. For second-hand goods, a shorter period may apply, but not less than one year. For more information on your rights in a specific country, scan the QR code or ask the seller: <a href="https://europa.eu/youreurope/guarantees" rel="noopener" target="_blank">europa.eu/youreurope/guarantees</a>.</p>
+        <p style="margin:0 0 .5rem;">What to do if you receive non-conforming goods: 1. Contact the seller as soon as possible to report the issue. 2. Provide proof of purchase, such as a receipt, invoice, or bank statement.</p>
+        <p style="margin:0;">Sellers and producers may also offer commercial guarantees, which apply independently from the legal guarantee. For example, you may see the GARAN label representing a commercial guarantee of durability offered by the producer at no additional cost and covering the entire good.</p>
+      </div>
+    </details>
+  </figcaption>
+</figure>
+{% endif %}

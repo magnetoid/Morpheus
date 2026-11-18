@@ -42,11 +42,13 @@ def _summary(product) -> tuple[dict, str]:
         MANUFACTURER,
         RESPONSIBLE,
         effective,
+        shows_guarantee_notice,
         stored,
     )
 
     own = stored(product)
     shown = effective(product, own)
+    shown['legal_guarantee_notice'] = shows_guarantee_notice(product)
     parts = []
     for party, label, fields in (
         ('manufacturer', 'manufacturer', MANUFACTURER),
@@ -60,6 +62,8 @@ def _summary(product) -> tuple[dict, str]:
         parts.append('warnings')
     if shown['safety_url']:
         parts.append('a safety sheet link')
+    if shown['legal_guarantee_notice']:
+        parts.append('the EU legal guarantee notice')
     output = {'product': product.slug, 'own': own, 'shown': shown}
     display = f'{product.name}: ' + (
         ', '.join(parts) if parts else 'no product safety information on its page'
@@ -75,7 +79,9 @@ def _summary(product) -> tuple[dict, str]:
         'safety sheet. `own` is what the product stores; `shown` is what its page '
         'shows, where a product that sells goods and names no manufacturer or '
         "responsible person shows the store's own details from the Product safety "
-        'settings. Pass `id`, `sku` or `slug`.'
+        'settings, and `shown.legal_guarantee_notice` says whether the page shows the '
+        'EU legal guarantee notice (goods only, switched on with the '
+        '`product_safety.legal_guarantee_notice` setting). Pass `id`, `sku` or `slug`.'
     ),
     scopes=['catalog.read'],
     schema={'type': 'object', 'properties': dict(_FIND)},

@@ -1,14 +1,16 @@
 """Eco impact plugin manifest.
 
 Shows each book's *production* footprint (paper → wood, embodied CO₂ from its
-physical attributes) on the storefront product page, and lets shoppers opt in
-at checkout to a flat "plant a tree" offset. The offset money is a tracked fund
-the merchant fulfils — no external reforestation provider in v1; copy stays
-honest ("we direct this to reforestation"), never a fabricated per-order claim.
+physical attributes) on the storefront product page, as an estimate that names its
+method, and lets shoppers add a flat tree-planting pledge at checkout. The pledge
+money is a tracked fund the merchant fulfils — no external reforestation provider in
+v1. The copy never calls a pledge an offset of the order, nor the store "climate
+neutral": EU law bans offset-based climate claims and generic environmental claims
+(Directive 2024/825, from 27 September 2026; tests/test_claims_copy.py).
 
 Boundary: shipping-lane carbon is owned by ``smart_shipping`` (CarrierEmission).
 This plugin does NOT recompute shipping carbon — it owns the address-independent
-production footprint + the tree offset. The offset rides the canonical
+production footprint + the tree pledge. The pledge rides the canonical
 ``CART_CALCULATE_BREAKDOWN`` filter (like loyalty/coupons/gift cards), so the
 orders plugin fires and we answer — no storefront/theme edits.
 """
@@ -26,20 +28,20 @@ class EcoImpactPlugin(Plugin):
     label = 'Eco impact'
     version = '0.1.0'
     description = (
-        "Show a book's paper/wood/CO₂ production footprint on its product page, "
-        'and let shoppers plant a tree at checkout to offset the order. Tree '
-        'pledges are tracked as a fund the merchant fulfils.'
+        "Show a book's estimated paper, wood and CO₂ production footprint on its "
+        'product page, and let shoppers add a tree-planting pledge at checkout. '
+        'Pledges are tracked as a fund the merchant uses to plant trees.'
     )
     has_models = True
     requires = ['orders', 'book_product']
 
     def ready(self) -> None:
         # Add the flat opt-in surcharge to the cart total. High priority number
-        # → runs last, so the tree offset sits on top of tax/shipping/discount.
+        # → runs last, so the tree pledge sits on top of tax/shipping/discount.
         self.register_hook(events.CART_CALCULATE_BREAKDOWN, self.on_cart_breakdown, priority=60)
         # Void the pledge if the order is cancelled (keeps store totals honest).
         self.register_hook(events.ORDER_CANCELLED, self.on_order_cancelled, priority=50)
-        # Own the storefront opt-in endpoints + the public "Save the planet"
+        # Own the storefront opt-in endpoints + the public "Book footprint"
         # page. Registry-gated: routes exist only while the plugin is enabled.
         self.register_urls(
             'plugins.installed.eco_impact.urls',
@@ -50,7 +52,7 @@ class EcoImpactPlugin(Plugin):
     # ── checkout surcharge ─────────────────────────────────────────────────
 
     def on_cart_breakdown(self, value, cart=None, **kwargs):
-        """Add the flat tree-offset amount when the cart opted in.
+        """Add the flat tree-pledge amount when the cart opted in.
 
         Mutates ``total`` and records the intent in ``meta['eco_impact']`` so
         order creation can write the pledge ledger row. Fail-soft.
@@ -76,8 +78,10 @@ class EcoImpactPlugin(Plugin):
             value['meta'] = meta
             # Named so the order, its email and the dashboard can show the line;
             # otherwise the total is $1.50 more than the lines that make it up.
-            value.setdefault('extras', []).append({'label': 'Plant a tree', 'amount': str(amt)})
-        except Exception:  # noqa: BLE001 — never break the cart over the offset
+            value.setdefault('extras', []).append(
+                {'label': 'Tree-planting pledge', 'amount': str(amt)}
+            )
+        except Exception:  # noqa: BLE001 — never break the cart over the pledge
             return value
         return value
 
@@ -107,7 +111,7 @@ class EcoImpactPlugin(Plugin):
                 template='eco_impact/blocks/pdp_badge.html',
                 priority=50,
             ),
-            # "Plant a tree" opt-in in the cart summary (the slot the theme
+            # Tree-pledge opt-in in the cart summary (the slot the theme
             # actually renders — checkout_extra is not emitted by dot_books).
             StorefrontBlock(
                 slot='cart_summary_extra',
@@ -133,15 +137,18 @@ class EcoImpactPlugin(Plugin):
                 },
                 'tree_price': {
                     'type': 'number',
-                    'title': 'Plant-a-tree offset amount',
+                    'title': 'Tree-planting pledge amount',
                     'description': 'Flat amount added when a shopper opts in at checkout.',
                     'minimum': 0.01,
                     'default': 1.50,
                 },
                 'kg_co2_per_tree': {
                     'type': 'number',
-                    'title': 'CO₂ offset per tree (kg)',
-                    'description': 'Used to size the offset claim. ~21 kg/yr is the common figure.',
+                    'title': 'CO₂ a grown tree absorbs a year (kg)',
+                    'description': (
+                        'Shown on your dashboard as an estimate of what the pledged trees may '
+                        'absorb; never shown to shoppers. ~21 kg/yr is the common figure.'
+                    ),
                     'minimum': 1,
                     'default': 21.0,
                 },
@@ -165,7 +172,7 @@ class EcoImpactPlugin(Plugin):
     def contribute_settings_panel(self):
         return SettingsPanel(
             label='Eco impact',
-            description='Footprint badge + plant-a-tree checkout offset.',
+            description='Footprint badge + tree-planting pledge at checkout.',
             schema=self.get_config_schema(),
             category='marketing',
         )

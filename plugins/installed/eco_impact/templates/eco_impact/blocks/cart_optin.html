@@ -1,11 +1,14 @@
 {% load eco_impact %}{% load morph %}
+{% comment %}A pledge to plant a tree, never an offset of the order: EU law bans claiming,
+on the strength of offsetting, that a purchase has a neutral or reduced climate impact
+(Directive 2024/825, from 27 September 2026). eco_impact/tests/test_claims_copy.py.{% endcomment %}
 {% eco_optin_state as eco %}
 {% if eco %}
 <div style="margin:.85rem 0; padding:.75rem .9rem; border:1px solid var(--rule); border-radius:8px; font-family:var(--sans); font-size:.85rem;">
   {% if eco.applied %}
     <p style="margin:0 0 .5rem; color:var(--ink); display:flex; align-items:center; gap:.4rem;">
       <span aria-hidden="true">🌳</span>
-      <span>Planting a tree with this order &mdash; <strong>+{{ eco.amount|money }}</strong></span>
+      <span>Tree-planting pledge with this order &mdash; <strong>+{{ eco.amount|money }}</strong></span>
     </p>
     <form method="post" action="/checkout/plant-a-tree/remove/" style="margin:0;">
       {% csrf_token %}
@@ -14,11 +17,11 @@
   {% else %}
     <p style="margin:0 0 .55rem; color:var(--ink-2); display:flex; align-items:center; gap:.4rem;">
       <span aria-hidden="true">🌱</span>
-      <span>Offset this order&rsquo;s footprint &mdash; we&rsquo;ll direct <strong>{{ eco.amount|money }}</strong> to planting a tree.</span>
+      <span>Add a tree-planting pledge: we put <strong>{{ eco.amount|money }}</strong> toward planting a tree. It does not cancel out this order&rsquo;s footprint. <a href="/save-the-planet/#pledge" style="color:inherit;">How it works</a></span>
     </p>
     <form method="post" action="/checkout/plant-a-tree/apply/" style="margin:0;">
       {% csrf_token %}
-      <button type="submit" class="btn btn-primary" style="padding:.4rem .9rem;">Plant a tree (+{{ eco.amount|money }})</button>
+      <button type="submit" class="btn btn-primary" style="padding:.4rem .9rem;">Pledge a tree (+{{ eco.amount|money }})</button>
     </form>
   {% endif %}
 </div>

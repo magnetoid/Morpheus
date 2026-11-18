@@ -15,6 +15,15 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.178.0 — 2026-11-18
+
+**Environmental claims, the legal guarantee notice and the accessibility statement**
+
+- The SEO site scan reads every page, and each translated copy a page names, for the environmental claims EU consumer law has banned since 27 September 2026: generic ones such as "eco-friendly" or "ekološki prihvatljiv", and climate claims based on offsetting such as "climate neutral", in English, Croatian and Serbian (both scripts). It names the page and the words around the phrase and changes nothing. Settings: Look for environmental claims (on) and More claims to look for; Linda reads the findings with seo.audit_results.
+- Eco impact: the footprint badge reads as an estimate and links to how it is made; the checkout add-on is a tree-planting pledge that does not cancel out the order's footprint, and its order line says so; the public page no longer counts "kg CO2 offset" (what the trees may absorb stays on the dashboard, as an estimate).
+- Product safety: a new setting, Show the EU legal guarantee notice (off), puts the official notice from Implementing Regulation (EU) 2025/1960 on the page of every product sold as goods, whole and in colour, with its text for screen readers. English only for now. Linda sees it in products.safety_info and switches it with settings.set.
+- GDPR: the seeded Accessibility Statement covers what the European Accessibility Act asks (the service, how it works, how it meets EN 301 549 / WCAG 2.2 AA, how it is checked, known limitations, contact by email and phone, the date). A store whose page still holds the older seeded text gets the new statement once, on deploy; a page the merchant changed is never touched.
+
 ## v0.177.0 — 2026-11-18
 
 **AI marks on translations and images**
