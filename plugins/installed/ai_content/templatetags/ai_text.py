@@ -15,13 +15,13 @@ def ai_text_mark(context, product) -> dict:
     """``{'fields': [...], 'label': bool, 'translated': bool}`` for a product page.
 
     Empty when nothing is marked. ``fields`` lists the marked text the page shows
-    that has words in it: the description and short description an AI wrote, and
-    any field the page shows in a translation that began as an AI draft
-    (``core.i18n.services.ai_translated``). ``label`` is the merchant's choice to
+    that has words in it: the description and short description an AI wrote, unless
+    the page shows them in a translation, and any field the page shows in a
+    translation that began as an AI draft (``core.i18n.services.ai_translated``). ``label`` is the merchant's choice to
     say so in words as well; ``translated`` says only the translation is the AI's,
     so the sentence says that.
     """
-    from core.i18n.services import ai_translated
+    from core.i18n.services import ai_translated, shown_in_translation
     from plugins.installed.ai_content.marks import marks_for, plain_text
     from plugins.installed.catalog.models import Product
     from plugins.registry import app_registry
@@ -38,7 +38,10 @@ def ai_text_mark(context, product) -> dict:
             product = Product(pk=pk) if pk else None
     if not isinstance(product, Product):
         return {}
-    marked = [f for f in _SHOWN if f in marks_for(product)]
+    # The product's own marks claim its own text. A field shown in a translation
+    # is the translator's: a person's translation of an AI's text is the person's.
+    translated = shown_in_translation(product)
+    marked = [f for f in _SHOWN if f in marks_for(product) and f not in translated]
     fields: list[str] = []
     if marked:
         # A mark claims the product's own text, so a marked field that is empty

@@ -17,6 +17,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from djmoney.money import Money
 
+from core.agents.provenance import mark_ai_written
 from core.i18n.services import set_translation
 from plugins.installed.ai_content.seo_graph import GENERATED
 from plugins.installed.catalog.models import Product
@@ -94,6 +95,17 @@ class ProductPageTests(TestCase):
         self.assertIn('Vodič kroz zvezde.', body)
         self.assertNotIn('data-ai-generated', body)
         self.assertNotIn(GENERATED, body)
+
+    def test_a_persons_translation_of_ai_text_is_the_persons(self):
+        mark_ai_written(self.product, ['description', 'short_description'], 'linda')
+        self._translate(machine=False)
+        body = self._body('/sr/products/night-sky-atlas/')
+        self.assertIn('Vodič kroz zvezde.', body)
+        self.assertNotIn('data-ai-generated', body)
+        self.assertNotIn(GENERATED, body)
+        # The English page still shows the AI's own text, so it keeps the mark.
+        body = self._body('/products/night-sky-atlas/')
+        self.assertIn('data-ai-generated="description short_description"', body)
 
     def test_a_partial_translation_is_not_shown_and_not_marked(self):
         set_translation(self.product, 'name', 'sr', 'Atlas noćnog neba', machine_translated=True)

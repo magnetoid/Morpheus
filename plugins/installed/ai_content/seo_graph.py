@@ -78,13 +78,18 @@ def _page_object(page):
 
 
 def _marked_fields(obj) -> list[tuple[str, str]]:
-    """``[(field, name)]`` of the shown text an AI wrote: its own marks, then translations."""
-    from core.i18n.services import ai_translated
+    """``[(field, name)]`` of the shown text an AI wrote: its own marks, then translations.
+
+    An own mark covers the object's own text only: a field shown in a translation
+    is marked when that translation began as an AI draft, never because of it.
+    """
+    from core.i18n.services import ai_translated, shown_in_translation
     from plugins.installed.ai_content.marks import marks_for
 
     own = marks_for(obj)
+    translated = shown_in_translation(obj)
     names = dict(_VISIBLE)
-    fields = [field for field, _name in _VISIBLE if field in own]
+    fields = [field for field, _name in _VISIBLE if field in own and field not in translated]
     fields += [f for f in ai_translated(obj) if f not in fields]
     return [(f, names.get(f) or f.replace('_', ' ').capitalize()) for f in fields]
 

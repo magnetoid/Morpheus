@@ -317,10 +317,11 @@ Each row is an option inside Morpheus for any store. Its owner app is named belo
 - **Rulings:**
   - **Grid cards (lists of products, places, posts) carry no mark of their own;** the page each card links to carries it. Cost if wrong: a per-card mark, which C3 can add.
   - **The product carousel's thumbnails and the web stories keep their `/img/` addresses** (they build them outside seo). The server regenerates their copies with the tag, but a CDN copy cached before v0.177.0 may stay untagged until it expires.
+  - **A product's own mark covers its own text only.** A field the page shows in a person's translation of AI-written text carries no mark; the person wrote that text (review of v0.177.0). Cost if wrong: one more mark on those pages.
   - **Art. 50(2) exempts output that does not substantially alter the input or its semantics,** and a translation may arguably fall under that. Marking follows the plan the owner accepted. Cost if wrong: a mark the law did not require.
-- **Tests:** `localization/tests/test_translation_marks.py` and `seo/tests/test_image_ai_tag.py` (a fixture image with the tag keeps it in WebP and AVIF; one without gets none).
-- **help.md:** localization, ai_content.
-- **Live probe:** fetch a tagged image's `/img/` AVIF on one store and read its XMP.
+- **Tests:** `core/i18n/tests/test_ai_translated.py`, `ai_content/tests/test_translation_marks.py`, `booking_marketplace/tests/test_translation_ai_marks.py` and `seo/tests/test_image_ai_tag.py` (a fixture image with the tag keeps it in WebP and AVIF; one without gets none).
+- **help.md:** localization, ai_content, seo.
+- **Live probe:** the read-only check in the probes list below.
 
 **F2 · Claims and legal copy check (minor, M).**
 - **Claims check.** seo's nightly site audit (`seo/services/site_audit.py`) reads product text, CMS pages and the rendered home, about and listing pages.

@@ -296,6 +296,14 @@ def overlay(obj, values: dict[str, str], language: str, *, ai_fields=()) -> None
     obj.__dict__['_morph_ai_translated'] = shown_ai
 
 
+def shown_in_translation(obj) -> set[str]:
+    """The fields `obj` shows in a translation instead of its own text; empty for anything else."""
+    state = getattr(obj, '__dict__', None)
+    if not isinstance(state, dict) or isinstance(obj, dict):
+        return set()
+    return set(state.get('_morph_untranslated') or ())
+
+
 def ai_translated(obj) -> list[str]:
     """The fields `obj` shows in a translation that began as an AI draft, in its spec's order.
 
