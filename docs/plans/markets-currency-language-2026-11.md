@@ -296,6 +296,8 @@ Release 2 must also decide:
   adjustments once shoppers see them.
 - **Visibility:** what `ProductMarketPrice.is_visible=False` means.
 
+**Order (2026-11-18).** Release 2 is order #21 in `platform-gap-analysis-2026-11.md`. It comes after a card rail exists (F4, or Stripe live on the store), because charging in the visitor's currency needs a gateway that settles it.
+
 ## Left to the builder
 
 Template names, the exact zone table format, the selector's markup per theme,

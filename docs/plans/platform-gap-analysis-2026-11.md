@@ -1,8 +1,81 @@
 # Morpheus as an e-commerce platform — gap analysis and completion plan (Nov 2026)
 
-**Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0, A3 (inventory) v0.152.0 and A4 (fulfilment and shipping rates) v0.154.0 are live on all five stores; A5 (payments, with the A4 choices as settings) is v0.155.0. A7 (checkout fields) is v0.168.0. From A5 on, each commerce choice is a merchant setting whose default is the earlier behaviour (owner, 2026-11-12). Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
+**Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0, A3 (inventory) v0.152.0, A4 (fulfilment and shipping rates) v0.154.0, A5 (payments, with the A4 choices as settings) v0.155.0, A7 (checkout fields) v0.168.0 and A8 (payment link) v0.171.0 are live on all five stores. From A5 on, each commerce choice is a merchant setting whose default is the earlier behaviour (owner, 2026-11-12). Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
 
-**Paused for the platform work (owner, 2026-11-15):** Janus alignment, the app lifecycle and agent coverage run first, in [janus-alignment-and-app-platform-2026-11.md](janus-alignment-and-app-platform-2026-11.md); the remaining rows here (A10 order editing first) follow it.
+**Order of work:** from 2026-11-18 the remaining rows here and in [janus-alignment-and-app-platform-2026-11.md](janus-alignment-and-app-platform-2026-11.md) run in one merged order, set out in the next section. It replaces "platform first, then commerce" (owner, 2026-11-15).
+
+## Order of work from 2026-11-18
+
+**Owner's decision (2026-11-18).** The trends research of 2026-11-18 is accepted, and its order is the plan. Morpheus is a product any store runs, so every row ships inside Morpheus as an app or a setting, for any store. Nothing is built for one of the five stores or fixed by hand on one: they switch a feature on the way any other store would. The rule of 2026-11-12 still holds for each choice:
+- a setting in the owning app's schema, with today's behaviour as the default;
+- its reader and its Linda tool in the same change.
+
+Where that default leaves a store outside a rule that may bind it, the setup checklist and the nightly health check say so. The platform never switches the feature on behind the merchant.
+
+**What the research found.** The specifications and statutes were read. Every conversion or traffic number came from a vendor. The rules are a register drawn from law-firm commentary, not legal advice; dated rules are kept in [obligations-register.md](obligations-register.md).
+- **Assistants send shoppers; the merchant takes the payment.**
+  - ChatGPT Instant Checkout was reported withdrawn in March 2026.
+  - Google admits merchants to UCP checkout from a US waitlist.
+  - Shopify's Fall '26 edition makes WebMCP tools, a store-facts file and UCP checkout the default on its stores.
+  - Morpheus's agent side (feeds, llms.txt, the UCP profile, ACP sessions, Web Bot Auth, WebMCP tools, the consent kernel) is in place. Its exposure is the selling side.
+- **Three EU rules carry dates:**
+  - the online withdrawal function (Consumer Rights Directive Art. 11a, from Directive 2023/2673), since 19 June 2026;
+  - the ban on generic environmental claims (Directive 2024/825), since 27 September 2026;
+  - machine-readable marks on AI-generated content (AI Act Art. 50), whose grace period for systems already on the market ends on 2 December 2026.
+- **Card reach.** Stripe lists Croatia as a business location; it does not list Serbia or Montenegro. Monri, which absorbed WSPay, lists all three, on its own pages. Wallets, capture on shipment, the visitor's currency and agent checkout all assume a card rail.
+- **Already in v0.176.0** (checked while planning, so not rows):
+  - one-click unsubscribe headers (RFC 8058) on newsletter, cart-abandonment and core marketing mail;
+  - an accessibility page among gdpr's legal pages;
+  - a shipping rate's estimated days (a dashboard field, read by structured data). Checkout does not show them; that is F5.
+
+**The order.** One release in flight. Each starts from a fresh worktree off `origin/main`, is versioned with `manage.py release`, and merges only on the owner's yes.
+
+| # | Release | Row | Why here |
+|---|---|---|---|
+| 1 | AI marks on translations and images | F1 | the grace period ends on 2 December 2026 |
+| 2 | Claims and legal copy check | F2 | in force since 27 September 2026 |
+| 3 | Manifest compatibility and upgrades | P6 | the next platform row |
+| 4 | Cancel and refund rules | A10a | a withdrawal or a return that ends in a wrong refund is worse than none |
+| 5 | Online withdrawal function | F3 | in force since 19 June 2026; needs 4 |
+| 6 | Agent-coverage ratchet | P8 | every later row ships its tools under it |
+| 7 | App skills for Linda | P9 | |
+| 8 | Customer returns and exchanges | C4 | on the page 5 builds; its tools are P10's returns batch |
+| 9 | Post-purchase emails | C1 | nearly built; mail is the channel the store owns |
+| 10 | "Email customer" action and newsletter composer | C2 | |
+| 11 | Regional card gateway app | F4 | card reach for stores Stripe does not serve |
+| 12 | Delivery estimate at checkout | F5 | small; the data is already stored |
+| 13 | Order editing and payment delta | A10b | after returns |
+| 14 | Subscription cancel and pause by the customer | F6 | the same account surface |
+| 15 | Store facts for agents | D3, widened | the first row of the agent door |
+| 16 | API contract repair; webhook hardening | B1, B5 | UCP's minimums |
+| 17 | Role grants and an enforce dry-run | E1, moved up | it bounds each staff member's Linda |
+| 18 | Tool batches: consent, GDPR, then the rest | P10 | |
+| 19 | Marketplace money | A11 | before any vendor payout |
+| 20 | B2B, without VAT ID and reverse charge in the first cut | A9 | tax is not a priority (owner, 2026-11-11) |
+| 21 | Checkout in the visitor's currency | markets release 2 | needs a card rail (11, or Stripe live) |
+| 22 | UCP cart transfer | D2, narrowed | after 15 and 16 |
+| 23 | Anonymous read-only storefront MCP | D1 | after 15 |
+| then | A6's rest, B2–B4, C3, C5–C7, E2–E6, F7 | | as planned |
+
+**Held or not done.**
+- D4 (ACP on by default) is held until OpenAI's feed or ACP checkout opens to European sellers.
+- Not done:
+  - per-shopper personalised pricing;
+  - a tax, OSS or duties engine (owner, 2026-11-11);
+  - a fork or patch of Janus;
+  - a hosted search engine at this catalogue size.
+- Still parked: marketplace and TikTok Shop order sync, SMS, WhatsApp.
+
+**Owner actions, not releases.**
+- Run one live card payment on a store whose legal entity Stripe supports, and enter shipping rates on the selling stores. Both have been open since the October plan.
+- Say which legal entity sells on each store. That decides which stores switch on F4 instead of Stripe.
+- Croatia's base-price display and machine-readable price lists (reported for 17 November 2026; the sources conflict): confirm with counsel.
+- Allow the read of live `AgentRun` rows that measures P4's tool search on real turns.
+
+**Triggers that move a row.**
+- Google admits self-hosted merchants to UCP checkout outside the US, or OpenAI's feed opens to EU sellers: widen D2 to native checkout and revisit D4.
+- Each revision of the Web Bot Auth draft: re-test the verifier.
+- The Digital Fairness Act proposal of 11 November 2026 (a termination button for digital subscriptions) and the UK subscription regime (January or spring 2027): both shape F6.
 
 ## Context
 
@@ -121,9 +194,10 @@ Order follows the owner's lens (general engine first) and dependencies. One rele
 | A5 | Payments | Stripe manual capture, saved cards at checkout, `PAYMENT_FAILED`, `ORDER_CONFIRMED` subscriber, offline refunds | M 3 | A4 | v0.155.0: `capture_mode` (immediate, first/last parcel, manual), hold sweep, Charge now + `payments.capture`, saved cards by two settings, `PAYMENT_FAILED` on the timeline, refunds `settle` (store credit, external); A4 settings `label_rate`, `parcel_emails`, `fulfil_marks_shipped`. No `ORDER_CONFIRMED` email (nothing to say before the charge; the placed email already went) and no failed-payment email (A8, it needs the pay link); `save_card` at checkout is the Element's own box, not an A7 field |
 | A6 | Pricing seam | one resolution order, `quantity`/`request` kwargs, b2b + markets subscribers, ECB FX, minor-unit rounding | M 3 | — | planned |
 | A7 | Checkout fields | `CHECKOUT_FIELDS` hook + notes / gift / T&C / opt-in / save-card; dead cart events removed | M 2 | — | v0.168.0: one filter (`core/checkout_fields.py`, kwargs `user`), checked by `completeOrder` (no separate validate filter); orders' note / gift message / terms and newsletter's opt-in (newsletter owns the list, so not customers' `accepts_marketing`); `allow_guest_checkout` read again (sign-in first, `SIGN_IN_REQUIRED`); wallets step aside for a required field. `save_card` stays the Element's own box (A5). `CART_CREATED`/`CART_UPDATED` kept: removing an SDK event name is a break (`check_api_stability.py`). ACP skips both checks |
-| A8 | Payment link | `/pay/<token>/`, draft-order email + Linda tool, failed-payment retry email | S 2 | — | planned |
+| A8 | Payment link | `/pay/<token>/`, draft-order email + Linda tool, failed-payment retry email | S 2 | — | v0.171.0 live |
 | A9 | B2B | price lists live, quote email → accept → order, net-terms gateway, VAT-ID + reverse charge | L 4 | A1 A6 A7 A8 | planned |
-| A10 | Order editing | `orders/editing.py`, payment delta, `ORDER_EDITED`, dashboard screen, cancel refunds | L 5 | A3 A5 A8 | planned |
+| A10a | Cancel and refund rules | `cancel_with_refund`, FSM narrowed (the "Cancel gap" part of A10 below) | S 1–2 | A5 | planned, order #4 |
+| A10b | Order editing | `orders/editing.py`, payment delta, `ORDER_EDITED`, dashboard screen | L 4 | A3 A5 A8 A10a C4 | planned, order #13 |
 | A11 | Marketplace money | vendor credit on `ORDER_PAID`, reversal on cancel/refund, atomic balance | S 1 | — | planned |
 
 Cross-cutting facts from the architecture pass: `CART_CALCULATE_BREAKDOWN` runs promotions 10 → tax 20 → shipping 30 → subscriptions 40 → loyalty 45 → store_credit 46 → gift_cards 50 → eco 60, which is why shipping can never be taxed (A1 moved tax to 42, after shipping and the member discount, and updated the CLAUDE.md order paragraph in the same commit). `rbac/models.py:44-51` already holds `b2b.read/write` and `marketing.read/write` (the CLAUDE.md sentence "there is no `marketing.*` capability" is stale and is corrected in A2).
@@ -146,7 +220,11 @@ Cross-cutting facts from the architecture pass: `CART_CALCULATE_BREAKDOWN` runs 
 
 **A9 · B2B (minor, L; after A1 A6 A7 A8).** `Quote.public_token` (CharField `db_default=''`, set on save like `orders/models.py:_gen_public_token`); `b2b/services.py:send_quote` emails `emails/quote_sent.html` with `/b2b/quote/<token>/`; storefront view `b2b/views_quote.py` (lines, Accept/Decline). `accept_quote` builds a `DraftOrder` and calls `draft_orders.services.convert_to_order` (declare `draft_orders` in b2b's `requires`), fires `QUOTE_ACCEPTED` (subscriber core/emails notifies `quote.owner`); then an active `NetTermsAgreement` within `credit_limit` → order placed with `payment_gateway='net_terms'` and `metadata['due_at']`, else the A8 payment link. `b2b/gateways.py:NetTermsGateway` registered in `ready()`, offered only to customers whose account has terms; `orders/tasks.py:OFFLINE_GATEWAYS` += `'net_terms'`; beat `b2b.net_terms_reminders`. VAT ID: tax contributes a `CHECKOUT_FIELDS` field `vat_number` (tax setting `collect_vat_id`), validated by `tax/vies.py` (`outbound_request`, 24 h cache), copied into `billing_address['vat_number']`; `tax/services.py` zero-rates an intra-EU B2B cart with a validated ID and sets `meta['reverse_charge']`; the invoice prints the clause. Migration: b2b 0002 AddField (db_default). Tests `test_quote_flow.py`, `test_net_terms_gateway.py`, `tax/tests/test_reverse_charge.py` (VIES mocked); b2b goes from 2 tests to 20+. Linda `b2b.create_quote`, `b2b.send_quote`, `b2b.record_acceptance` (approval). help.md b2b rewritten (the "none of these change what a customer is charged" paragraph goes).
 
-**A10 · Order editing (minor, L; after A3 A5 A8).** `orders/editing.py`: `add_line / remove_line / set_quantity / recalculate` on orders with no `Fulfillment` and status in pending/confirmed/processing. `recalculate` builds a temporary `Cart` (`session_key=f'edit:{order.id}'`, lines, coupon by code, customer) and calls `calculate_cart_breakdown(..., address=order.shipping_address, shipping_rate_id=metadata['shipping_rate_id'])` — `_order_metadata` starts storing `shipping_rate_id`; new filter kwarg `editing=True` makes loyalty@45, store_credit@46 and gift_cards@50 return early (tenders are already on the order); totals copied back, temp cart deleted. Stock: `InventoryService.reserve_delta / release_line(order, variant, qty, reference=f'{order_number}#e{n}')` — inventory's `release_reservation` is keyed on `order_number` exactly, so release/commit must match the suffix scheme (test: cancel after an edit). Payment delta: unpaid → new total + payment link; paid & up → `payment_status='partially_paid'` + link for the difference; paid & down → `RefundService.process(amount=diff)`; authorized (A5) → capture ≤ auth, remainder by link. `ORDER_EDITED` (order, changes) with subscriber core/emails "your order was updated" (+ pay link when due). Cancel gap: `orders/services.py:cancel_with_refund(order, reason, actor)` used by `storefront/views/account.py:account_order_cancel`, `admin_dashboard/views_split/orders.py:order_action` (:333), `orders_bulk` (:699) and Linda `orders.cancel`; FSM narrowed: `cancel` excludes shipped/delivered/refunded/cancelled, `mark_refunded` excludes cancelled/refunded (`orders/models.py:315-322`, `test_state_machine.py` updated). Dashboard `order_edit` view + template (qty inputs, add by SKU like `draft_orders/views.py:line_add`), gate `orders.write`, link from `order_detail.html`. No migrations. Tests `orders/tests/test_editing.py` (totals with tenders excluded, stock delta, three payment states), `test_cancel_refunds.py`, FSM, boundary trio, email. Linda `orders.edit_lines` (approval). help.md orders.
+**A10 · Order editing (minor, L; after A3 A5 A8). Split on 2026-11-18:**
+- **A10a** is the "Cancel gap" sentences below, released first and alone, with each new choice a setting under the rule of 2026-11-12: whether a staff cancel refunds, and what a customer cancel does with a paid order. A delivered order cannot be cancelled; that is a safety rule, not a setting.
+- **A10b** is the rest, after C4.
+
+`orders/editing.py`: `add_line / remove_line / set_quantity / recalculate` on orders with no `Fulfillment` and status in pending/confirmed/processing. `recalculate` builds a temporary `Cart` (`session_key=f'edit:{order.id}'`, lines, coupon by code, customer) and calls `calculate_cart_breakdown(..., address=order.shipping_address, shipping_rate_id=metadata['shipping_rate_id'])` — `_order_metadata` starts storing `shipping_rate_id`; new filter kwarg `editing=True` makes loyalty@45, store_credit@46 and gift_cards@50 return early (tenders are already on the order); totals copied back, temp cart deleted. Stock: `InventoryService.reserve_delta / release_line(order, variant, qty, reference=f'{order_number}#e{n}')` — inventory's `release_reservation` is keyed on `order_number` exactly, so release/commit must match the suffix scheme (test: cancel after an edit). Payment delta: unpaid → new total + payment link; paid & up → `payment_status='partially_paid'` + link for the difference; paid & down → `RefundService.process(amount=diff)`; authorized (A5) → capture ≤ auth, remainder by link. `ORDER_EDITED` (order, changes) with subscriber core/emails "your order was updated" (+ pay link when due). Cancel gap: `orders/services.py:cancel_with_refund(order, reason, actor)` used by `storefront/views/account.py:account_order_cancel`, `admin_dashboard/views_split/orders.py:order_action` (:333), `orders_bulk` (:699) and Linda `orders.cancel`; FSM narrowed: `cancel` excludes shipped/delivered/refunded/cancelled, `mark_refunded` excludes cancelled/refunded (`orders/models.py:315-322`, `test_state_machine.py` updated). Dashboard `order_edit` view + template (qty inputs, add by SKU like `draft_orders/views.py:line_add`), gate `orders.write`, link from `order_detail.html`. No migrations. Tests `orders/tests/test_editing.py` (totals with tenders excluded, stock delta, three payment states), `test_cancel_refunds.py`, FSM, boundary trio, email. Linda `orders.edit_lines` (approval). help.md orders.
 
 **A11 · Marketplace money (patch, S).** `marketplace/services.split_order` credits vendors on `ORDER_PAID` (not `ORDER_PLACED`), debits pro rata on `PAYMENT_REFUNDED` and in full on `ORDER_CANCELLED` (idempotent per order/refund like `gift_cards/tests/test_refund_recredit.py`), balance updates with `F()` under `select_for_update`. Tests `marketplace/tests/test_vendor_credit_timing.py`. help.md marketplace.
 
@@ -164,10 +242,10 @@ Deliberately not added in Phase A: a `PRICE_CHANGED` event (`PriceHistory` + `pr
 
 One release per app, each with a storefront or dashboard surface that proves the setting does something (`test_settings_keys_have_readers` stays green by construction):
 
-- **C1 · post_purchase (patch).** Register `post_purchase.process_due_steps` in `CELERY_BEAT_SCHEDULE` by its registered name (every 15 min), make the four email templates real `core.emails` templates, consent-gate marketing steps, a test that boots the beat schedule and asserts the name (pattern `core/tests/test_beat_schedule.py`).
+- **C1 · post_purchase (patch).** Register `post_purchase.process_due_steps` in `CELERY_BEAT_SCHEDULE` by its registered name (every 15 min), make the four email templates real `core.emails` templates, consent-gate marketing steps, a test that boots the beat schedule and asserts the name (pattern `core/tests/test_beat_schedule.py`). Marketing steps carry the one-click unsubscribe pair that `core/emails/tasks.py` already sets. Report clicks and orders, not opens.
 - **C2 · workflows "email customer" + newsletter composer (minor).** New workflow action `email_customer(template, subject)` using cms `EmailTemplate`; newsletter gets a campaign composer (subject, richtext body, segment = RFM segment or "all opted-in", schedule) sending through `core.emails` with the existing double-opt-in list; Linda `newsletter.campaign_create` (approval). Provider APIs (SendGrid/SES/Resend) come as `EMAIL_TRANSPORT` providers in a later patch if SMTP relay limits bite.
-- **C3 · localization (minor).** The storefront reads `core.i18n.Translation` (`core/i18n/models.py:12`) for product name/description/short_description and category/collection names on `/<lang>/` pages (one `translated()` helper used by the PDP, listing and the GraphQL dict builder); the language list stays the `MORPHEUS_LANGUAGES` env (`morph/settings.py:662`, resolved at import, so it cannot be a per-request setting) and the dashboard Languages page becomes a coverage report per language (how many products/pages carry a translation, links to the editor and to the AI bulk-translate) instead of a switch that does nothing; hreflang already follows. Localization gets its first tests.
-- **C4 · returns_portal customer flow + exchanges (minor).** `/account/orders/<n>/return/` (reason, lines, resolution: refund / store credit / exchange), status page, emails on approve/reject (wire the orphan `return.approved/rejected` events), exchange = new draft order linked to the return with a zero-payment path when values match; Linda `returns.approve/reject/receive` already or added.
+- **C3 · localization (minor).** The storefront reads `core.i18n.Translation` (`core/i18n/models.py:12`) for product name/description/short_description and category/collection names on `/<lang>/` pages (one `translated()` helper used by the PDP, listing and the GraphQL dict builder); the language list stays the `MORPHEUS_LANGUAGES` env (`morph/settings.py:662`, resolved at import, so it cannot be a per-request setting) and the dashboard Languages page becomes a coverage report per language (how many products/pages carry a translation, links to the editor and to the AI bulk-translate) instead of a switch that does nothing; hreflang already follows. A shown translation that began as a machine draft carries F1's mark. Localization gets its first tests.
+- **C4 · returns_portal customer flow + exchanges (minor).** `/account/orders/<n>/return/` (reason, lines, resolution: refund / store credit / exchange), status page, emails on approve/reject (wire the orphan `return.approved/rejected` events), exchange = new draft order linked to the return with a zero-payment path when values match; Linda `returns.approve/reject/receive` already or added. From 2026-11-18 (order #8), the customer side is built on F3's page, so a guest reaches it by order number and email as well. The return window, who pays the return shipping and whether exchanges are offered are settings (defaults: today's behaviour). Its tools are P10's returns batch.
 - **C5 · lookbook + discovery_quiz + drops (minor).** Lookbook: dashboard editor (image, hotspots → products) + the PDP "worn with" block reading it; discovery_quiz: a quiz editor (questions → tag/collection weights) + the storefront quiz page that lands on a filtered listing; drops: `publish_at` on Product (one nullable field, `db_default` NULL) + a countdown block + the Drops page listing scheduled products. Each app gets ≥5 tests.
 - **C6 · ai_stylist + rails + media_3d + motion (minor).** ai_stylist: the shopper chat widget on the storefront, through the Janus storefront agent with shopper tools only (scope-less tools never reach a storefront agent — `core/agents/base.py`), consent-gated; rails: render the configured rails in `home_after_rails` from the `dynamics` engine; media_3d: `<model-viewer>` block on `pdp_below_gallery` when a variant has a GLB upload (one FileField on ProductImage or a `Media3D` row), AR via Scene Viewer / Quick Look links; motion: the settings drive the theme's `prefers-reduced-motion` and reveal classes through a `global_head` style block. Each proves its settings.
 - **C7 · personalisation + inventory + wishlist dashboard screens (patch).** Personalisation gets its tab (what it reorders, on/off); inventory's stock screen is A3; wishlist gets a read-only "most wished" tab.
@@ -179,14 +257,127 @@ One release per app, each with a storefront or dashboard surface that proves the
 - **D3 · Agent knowledge base (patch).** Structured store facts for agents (return window from returns_portal settings, shipping destinations from shipping zones, payment methods from payments, delivery times, contact) published in `llms.txt`, `/.well-known/ucp` and `/ai/products.json` metadata — all read from the owning apps, never typed twice (soft-404/claims rule: omit what no app can source).
 - **D4 · ACP on by default when Stripe is configured (patch).** `agentic_checkout.enabled_by_default` follows `payments.is_configured('stripe')`; the manifest advertises `complete` only then.
 
+**Changes of 2026-11-18:**
+- **D3 comes first and is widened.** It adds UCP profile hygiene (claim only what is live), a check of the OpenAI feed's required fields, a re-push when a product changes, a crawler-class setting (search, assistant fetch, training; each allowed or refused in `robots.txt`) and two more WebMCP tools.
+- **D2 is narrowed** to UCP cart transfer: the agent builds the cart, and the buyer pays on the store's own checkout. Native UCP checkout waits for the trigger in the order section.
+- **D1 follows D3.**
+- **D4 is held.**
+
 ### Phase E — platform hygiene (interleaved, patch each)
 
-- **E1** RBAC: a grant UI (role → users, per channel) and an "enforce" switch with a dry-run report page listing what would be denied in the last 7 days from the log rows; rbac tests ≥ 20. 
+- **E1** RBAC: a grant UI (role → users, per channel) and an "enforce" switch with a dry-run report page listing what would be denied in the last 7 days from the log rows; rbac tests ≥ 20. Moved up to order #17 on 2026-11-18: a merchant's turn already narrows Linda to the staff member's role (`gates.person_scopes`) while the store enforces roles, so grants are what make that real.
 - **E2** Search: Postgres FTS as the default backend for the storefront too (`SearchVector` with `unaccent`, prefix matching, rank) with facets from the DB; Typesense either added to `requirements.txt` + a setting or its code removed.
 - **E3** Wave-2 merges still open (promotions ← marketing first, now that promotions has a UI from A2; then channels, dropshipping, AI 9 → 1) by the two-release removal recipe.
 - **E4** Docs: README numbers measured by a committed script (`scripts/measure_readme.py`, new — the v0.76 measurement was ad hoc and is not in `scripts/`), importer claims corrected (CSV, Shopify, WooCommerce only), stale plan status lines fixed, `CHANGELOG.md` retired in favour of RELEASE_NOTES; the gap-analysis report itself lands in `docs/plans/` in this release.
 - **E5** Off-site backups: `morph_backup --upload` to an S3-compatible bucket (`STORAGES['backups']`), encrypted with `age` or the bucket's SSE, nightly; health check "Last off-site backup < 36 h".
 - **E6** psycopg 3 (own release, deploy-critical), `requirements.lock.txt` regenerated with `--upgrade`.
+
+### Phase F — obligations and reach (added 2026-11-18)
+
+Each row is an option inside Morpheus for any store. Its owner app is named below, along with its setting (today's behaviour as the default), its Linda tool and its `help.md` lines.
+
+| # | Release | Goal | Size | Depends on | Status |
+|---|---|---|---|---|---|
+| F1 | AI marks on translations and images | the Art. 50 mark on AI-drafted translations; an image's AI tag survives the image proxy | S 1–2 | — | planned, order #1, before 2 Dec 2026 |
+| F2 | Claims and legal copy check | generic green-claim check in the site audit; eco_impact copy; legal-guarantee notice; accessibility statement | M 2 | — | planned, order #2 |
+| F3 | Online withdrawal function | an order-keyed, guest-reachable "Withdraw from contract here" with a timestamped acknowledgement | M 3 | A10a | planned, order #5 |
+| F4 | Regional card gateway app | cards for stores whose entity Stripe does not serve; Monri first | M 3–4 | — | planned, order #11 |
+| F5 | Delivery estimate at checkout | the rate's estimated days at checkout and in the order email | S 1 | — | planned, order #12 |
+| F6 | Subscription cancel and pause by the customer | self-serve in the account | S–M 2 | — | planned, order #14 |
+| F7 | Origin and HS code | customs data on products; an import-charges notice | S–M 2 | — | later |
+
+**F1 · AI marks on translations and images (patch, S).**
+- **Translations.** `localization/drafting.py` writes AI drafts with `is_machine_translated=True, reviewed=False`, and a person approves them. Once shown, nothing marks them.
+  - Wherever a translation that began as a machine draft is shown, it carries the same mark as AI-written product text (`ai_content` through `core.agents.provenance`): `data-ai-generated` for that language and the graph's `digitalSourceType`.
+  - As with product text, only the merchant clears the mark.
+  - The storefront does not render content translations yet (C3). This release marks every place that shows one today; C3 inherits the rule.
+- **Images.**
+  - Morpheus generates no images; no image generation was found in v0.176.0.
+  - An uploaded image whose IPTC/XMP metadata declares `digitalSourceType` `trainedAlgorithmicMedia` (or `compositeWithTrainedAlgorithmicMedia`) loses it in every copy the proxy derives. `seo/services/images.py:86-88` saves WebP and AVIF without metadata. Google Merchant Center requires the tag on AI images.
+  - Carry the source's XMP packet onto derived copies when it declares a digital source type (Pillow 13; confirm that its WebP and AVIF writers take `xmp=`).
+  - Change the derived-file cache key, or copies cached before the fix stay untagged for a year.
+  - The product graph's `ImageObject` (a CreativeWork; never the Product node) gets `digitalSourceType`.
+- **No setting:** the mark is a duty, as it is for text.
+- **Tests:** `localization/tests/test_translation_marks.py` and `seo/tests/test_image_ai_tag.py` (a fixture image with the tag keeps it in WebP and AVIF; one without gets none).
+- **help.md:** localization, ai_content.
+- **Live probe:** fetch a tagged image's `/img/` AVIF on one store and read its XMP.
+
+**F2 · Claims and legal copy check (minor, M).**
+- **Claims check.** seo's nightly site audit (`seo/services/site_audit.py`) reads product text, CMS pages and the rendered home, about and listing pages.
+  - It looks for generic environmental claims and offset-based climate claims from a word list per language: English, Croatian, and Serbian in Latin and Cyrillic.
+  - Each hit is a site-audit issue that names the page and the phrase, for the merchant to substantiate or remove.
+  - It only reports, so it is on by default. Settings: an off switch and extra words.
+  - Booking listings are Products (v0.109.0), so product text covers hosts' copy.
+- **eco_impact's own copy** (the footprint badge, the tree add-on, the public totals page):
+  - the footprint reads as an estimate and names its method;
+  - no "climate neutral" or "carbon neutral" wording;
+  - the add-on is described as a planting pledge, not as offsetting the order.
+- **Legal-guarantee notice.** product_safety shows the harmonised legal-guarantee notice on goods pages (`pdp_below_long_description`; setting default off). This waits until the implementing regulation's text and layout have been read. If that text is not out, this part moves to the register.
+- **Accessibility statement.** Compare gdpr's seeded accessibility page with the statement content the European Accessibility Act asks for (Directive 2019/882, Annex V). Fill the missing parts from store settings and the latest axe run; as every seed does, fill only empty fields.
+- **Linda:** she reads the issues through the site audit's tools; check at execution and add them if missing.
+- **Tests:** `seo/tests/test_claims_check.py` (each language, a hit per phrase, a clean page silent) and `eco_impact/tests/test_claims_copy.py`.
+- **help.md:** seo, eco_impact, product_safety, gdpr.
+
+**F3 · Online withdrawal function (minor, M; after A10a).**
+- **Owners.** orders owns the record: a withdrawal is a notice on an order, and the returns record (`orders.ReturnRequest`) is reused if it fits (one concept, one owner). returns_portal owns the customer page, which C4 extends to returns and exchanges.
+- **Where the link appears.** A link labelled "Withdraw from contract here" sits:
+  - in the order email;
+  - on the account order page;
+  - on a public page linked from `footer_legal`.
+- **Guests** identify the order by number and email:
+  - the answer is the same whether or not they match;
+  - lookups are rate-limited;
+  - the form carries `{% bot_check "withdrawal" %}`, a new kind that the Cloudflare app answers.
+- **The flow.** A form asks for the name, the order and where the acknowledgement goes. A second control, "Confirm withdrawal", submits it. An acknowledgement goes by email with the date and time of submission (a durable medium) and is stored with the record.
+- **Lines with no right.** Lines whose right was waived (the digital-content waiver recorded at checkout) or that have none (a dated service) are listed with the reason, not offered.
+- **What follows.** An unshipped order goes through A10a's cancel-with-refund. A shipped one becomes a return awaiting the goods: the staff flow today, with the customer side from C4.
+- **Settings (returns_portal):** `withdrawal_function` (off | on, default off) and `withdrawal_days` (14, counted from delivery for goods; the merchant may lengthen it). The setup checklist and the nightly health check say when a store in an EU member state has it off.
+- **Event:** `ORDER_WITHDRAWAL_REQUESTED`, wired at both ends (core.emails sends the acknowledgement; orders writes the timeline).
+- **Linda:** `returns.list_withdrawals` (read) and `returns.process_withdrawal` (approval).
+- **Translations:** labels in the hr and sr catalogues; Croatia transposed the article in June 2026.
+- **Tests:**
+  - `returns_portal/tests/test_withdrawal.py`: the two steps, the acknowledgement, guest lookup giving the same answer, lines without a right, the window;
+  - the boundary trio;
+  - `themes/test_withdrawal_link.py` (every theme).
+- **help.md:** returns_portal, orders.
+
+**F4 · Regional card gateway app (minor, M; owner's test credentials needed).**
+- **The app.** A new opt-in app registers a `MonriGateway(PaymentGateway)` in `ready()`, as A9's `NetTermsGateway` is planned to. Monri is first because it lists Croatia, Serbia and Montenegro; read its current API documentation before the design.
+- **Rules every gateway follows:**
+  - offered only while switched on and configured;
+  - callbacks verified by the acquirer's signature;
+  - refunds through `RefundService`;
+  - pre-authorisation for `capture_mode` where the acquirer offers it, else immediate capture;
+  - the store or settlement currency the acquirer supports.
+- **Payment page.** A new script or form origin goes into `PAYMENT_PAGE_SCRIPT_ORIGINS` and `docs/CHECKOUT_SCRIPTS.md` (PCI DSS 6.4.3) in the same change.
+- **Live or test.** Read what the payments page and health checks already say. Add only a "live or test" line per card gateway, if missing.
+- **Linda:** settings through `settings.set` (P7); refunds through `orders.refund`.
+- **Tests:** the gateway contract (HTTP mocked), the signature check, refunds, and the gateway not offered while unconfigured.
+- **help.md:** the new app and payments.
+
+**F5 · Delivery estimate at checkout (patch, S).**
+- **What shows.** When a rate has `estimated_days_min`/`max`, three places show them plus shipping's handling days as a business-day range:
+  - the checkout's shipping choices;
+  - the order page;
+  - the placed email.
+  When a rate has none, nothing shows.
+- **Same numbers as the graph.** Read the same values as `shipping/seo_graph.py:_transit_days`, so the page and the structured data never disagree. The rate dict already carries them (`shipping/services.py:405`).
+- **Setting:** `show_delivery_estimate` (shipping, default off).
+- **Tests:** `themes/test_delivery_estimate.py` (every theme, both checkout forms) and a shipping unit test.
+- **help.md:** shipping.
+
+**F6 · Subscription cancel and pause by the customer (minor, S–M).**
+- **The page.** `/account/subscriptions/` (subscriptions' storefront URLs; an account tile through `ACCOUNT_SUMMARY_FIELDS`) lists the customer's subscriptions. Today the storefront has only the membership and subscribe pages.
+- **Cancel and pause** go through the services the merchant's actions use (Stripe Billing). The cancel is one labelled button and a confirmation, with no retention steps. Emails confirm both.
+- **Settings:** `customer_cancel` (off | at period end | at once, default off) and `customer_pause` (off | on, default off).
+- **Linda:** the existing subscriptions tools; any gap closes in this release.
+- **Tests:** the boundary trio, cancel and pause through Stripe (mocked), the settings.
+- **help.md:** subscriptions.
+
+**F7 · Origin and HS code (minor, later).**
+- `origin_country` and `hs_code` live as metafields owned by shipping, whose carrier labels (A4) fill customs forms from them.
+- An import-charges notice shows at checkout for destinations outside the store's customs area (setting default off; the merchant's text). This is for a store outside the EU selling into it, where the EU's €3 duty per item has applied since 1 July 2026.
+- No duty calculation: tax and duties engines are not done.
 
 ### Parked (decided, not scheduled)
 
@@ -194,7 +385,11 @@ Multi-store in one process (ADR 0018) — needs a tenant seam through settings, 
 
 ## Verification
 
-Per release: `ruff check . && ruff format --check .` (0.15.8); `DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<touched> plugins.installed.admin_dashboard.tests.test_disable_guards core.tests.test_settings_keys_have_readers`; `python manage.py check && makemigrations --check --dry-run`; the three boundary/standard scripts; `release --check`; Postgres rehearsal for every release with a migration (memory `releases-2026-10-22`); full serial suite before A1, A2, A6, B3, D2 and E6. After merge: watch all five stores to the new commit (`/readyz` ok + home 200), then the live probe named in each release (A1: a reduced-rate book's cart tax on dotbooks; A2: a scoped coupon on an out-of-scope cart refuses; B3: register + `me` over `/graphql/` with `enforce_csrf_checks`; D2: `/.well-known/ucp` lists capabilities and a checkout session round-trips on a staging token). Croatia is part of every deploy (owner, 2026-11-10): it builds from the same `main` and is in the smoke and accessibility checks.
+Per release: `ruff check . && ruff format --check .` (0.15.8); `DATABASE_URL='sqlite:///:memory:' python manage.py test plugins.installed.<touched> plugins.installed.admin_dashboard.tests.test_disable_guards core.tests.test_settings_keys_have_readers`; `python manage.py check && makemigrations --check --dry-run`; the three boundary/standard scripts; `release --check`; Postgres rehearsal for every release with a migration (memory `releases-2026-10-22`); full serial suite before A1, A2, A6, B3, D2 and E6. After merge: watch all five stores to the new commit (`/readyz` ok + home 200), then the live probe named in each release (A1: a reduced-rate book's cart tax on dotbooks; A2: a scoped coupon on an out-of-scope cart refuses; B3: register + `me` over `/graphql/` with `enforce_csrf_checks`; D2: `/.well-known/ucp` lists capabilities and a checkout session round-trips on a staging token). Croatia is part of every deploy (owner, 2026-11-10): it builds from the same `main` and is in the smoke and accessibility checks. Phase F probes:
+- F1: a tagged image's `/img/` AVIF still carries its XMP.
+- F2: the next nightly audit lists claims issues, or none.
+- F3: on a store that switches it on, with the owner's yes, a guest withdrawal round-trips and the acknowledgement email arrives.
+- F4: one sandbox payment with the owner's test credentials.
 
 ## Sources
 
