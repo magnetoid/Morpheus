@@ -116,7 +116,9 @@ plugins/installed/ai_assistant/       ← Pulse insights, embeddings, search
   them. Her engine is **Janus**, run as a subprocess per message
   ([janus_engine.py](../core/assistant/janus_engine.py)) that reaches the store's
   tools over MCP, where [gates.py](../core/assistant/gates.py) enforces scope,
-  mode and the merchant's consent. Janus's own tools give her a plan, web search
+  mode and the merchant's consent. The store's tools go with every model call,
+  or, when the merchant picks it on the Janus page, load on request through
+  Janus's tool search, crossing the same edge. Janus's own tools give her a plan, web search
   and recall of earlier sessions; the chat shows each step as it happens
   ([activity.py](../core/assistant/activity.py)). The image pins one reviewed
   Janus commit and checks it against Morpheus's contract at build time

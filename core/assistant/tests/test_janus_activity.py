@@ -258,3 +258,22 @@ class ReaderTests(SimpleTestCase):
         )
         started, done = self.reader.read()
         self.assertEqual(started['id'], done['id'])
+
+    def test_tool_search_lookups_show_as_done_steps(self):
+        # Janus writes a start line and never an end line for its search bridge's
+        # lookups, so a running step would spin until the turn ended.
+        self._write(
+            {'ev': 'start', 'tool': 'tool_search', 'id': 'a', 'args': {'query': 'search orders'}},
+            {'ev': 'start', 'tool': 'tool_describe', 'id': 'b', 'args': {'name': 'x'}},
+        )
+        search, describe = self.reader.read()
+        self.assertEqual(
+            (search['state'], search['done_label']), ('done', 'Looked for the right tool')
+        )
+        self.assertEqual(search['detail'], 'search orders')
+        self.assertEqual(
+            (describe['state'], describe['done_label']), ('done', 'Read how a tool works')
+        )
+        # Nothing is left open for a later end line to close.
+        self._write({'ev': 'end', 'tool': 'tool_search', 'id': 'a', 'status': 'ok'})
+        self.assertEqual(self.reader.read(), [])

@@ -312,7 +312,7 @@ class Assistant:
         extra = janus_settings.extra_instructions()
         if extra:
             bits.append(f'MERCHANT INSTRUCTIONS (from Settings → AI → Janus):\n{extra}')
-        system = build_system_prompt()
+        system = build_system_prompt(tools_on_request=janus_settings.tool_search_enabled())
         own_tools = _own_tools_prompt()
         if own_tools:
             system = system + '\n' + own_tools

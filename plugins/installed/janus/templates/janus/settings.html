@@ -143,6 +143,16 @@
         <p class="text-xs text-[color:var(--text-muted)]">More thinking makes each step slower, so fewer steps fit in the time limit. Applies to models that reason, such as DeepSeek.</p>
         {{ form.reasoning_effort.errors }}
       </div>
+      <div class="space-y-1.5 md:col-span-2">
+        <label for="f-tool_search" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">How Linda gets her store tools</label>
+        <select id="f-tool_search" name="tool_search" class="input">
+          {% for value, label in form.fields.tool_search.choices %}
+          <option value="{{ value }}" {% if form.tool_search.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <p class="text-xs text-[color:var(--text-muted)]">The descriptions of her store tools are most of what the model reads at every step. Looked up when needed, each step is much smaller, but finding a tool takes extra steps and her lookups run one after another, so answers can take longer. Worth trying with a model that charges a lot for input or has a small context.</p>
+        {{ form.tool_search.errors }}
+      </div>
       <div class="space-y-1.5">
         <label for="f-max_tool_turns" class="block text-xs uppercase tracking-wide font-medium text-[color:var(--text-muted)]">Tool steps per message</label>
         <input id="f-max_tool_turns" name="max_tool_turns" type="number" min="1" max="{{ limits.max_steps }}" class="input" value="{{ form.max_tool_turns.value }}">

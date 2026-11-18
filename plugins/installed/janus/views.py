@@ -40,6 +40,7 @@ _SETTINGS_KEYS = (
     'web_search',
     'fallback_providers',
     'reasoning_effort',
+    'tool_search',
 )
 _REVIEW_ACTIONS = ('forget_note', 'delete_skill', 'clear_lessons')
 _VERSION_CACHE_KEY = 'janus:installed-version'
@@ -95,6 +96,7 @@ def _initial(config: dict) -> dict:
         'web_search': config.get('web_search', True),
         'fallback_providers': list(config.get('fallback_providers') or []),
         'reasoning_effort': config.get('reasoning_effort', 'low'),
+        'tool_search': config.get('tool_search', 'off'),
     }
 
 

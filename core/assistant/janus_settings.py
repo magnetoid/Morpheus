@@ -89,6 +89,19 @@ def web_search_enabled() -> bool:
     return bool(_read('web_search', True))
 
 
+#: Janus ``tools.tool_search.enabled`` values offered to the merchant. Janus's own
+#: ``auto`` is not one: it sizes the model's context from OpenRouter's catalogue,
+#: so the tool list a turn got changed with whether openrouter.ai answered.
+TOOL_SEARCH_MODES = ('off', 'on')
+DEFAULT_TOOL_SEARCH = 'off'
+
+
+def tool_search_enabled() -> bool:
+    """Whether store tools load on request (Janus's tool search) instead of being
+    sent with every model call."""
+    return str(_read('tool_search', DEFAULT_TOOL_SEARCH) or '') == 'on'
+
+
 def fallback_providers() -> list[str]:
     """Backup providers, in order, for when the main one fails (provider names).
 

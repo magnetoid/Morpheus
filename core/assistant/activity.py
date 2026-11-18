@@ -63,14 +63,26 @@ _NATIVE = {
     'pin_agreement': ('Noting what you agreed', 'Noted what you agreed'),
     'recall_agreements': ('Recalling what you agreed', 'Recalled what you agreed'),
     'propose_plan': ('Drafting a plan', 'Drafted a plan'),
+    # Tool search (Settings → AI → Janus). A store tool run through the bridge's
+    # tool_call reaches the hooks under its own name; these two only look tools up.
+    'tool_search': ('Looking for the right tool', 'Looked for the right tool'),
+    'tool_describe': ('Reading how a tool works', 'Read how a tool works'),
 }
+# Janus writes a start line and never an end line for these, so their step is
+# shown done when it starts instead of running until the turn ends.
+_NO_END = frozenset({'tool_search', 'tool_describe'})
 # Store tools that are not about a store area.
 _STORE_LABELS = {
     'assistant.ask': ('Asking you a question', 'Asked you a question'),
     'dashboard.navigate': ('Finding the page', 'Found the page'),
 }
 # Which argument says what a native step is about.
-_DETAIL_ARG = {'web_search': 'query', 'session_search': 'query', 'skill_view': 'name'}
+_DETAIL_ARG = {
+    'web_search': 'query',
+    'session_search': 'query',
+    'skill_view': 'name',
+    'tool_search': 'query',
+}
 
 # Store areas, in the merchant's words. Unlisted areas are humanised.
 _AREAS = {
@@ -173,11 +185,7 @@ class ProgressReader:
             plan = _plan(rec) if rec.get('ev') == 'end' else None
             return [{'type': 'plan', 'items': plan}] if plan is not None else []
         if rec.get('ev') == 'start':
-            self._seq += 1
-            step = {'type': 'step', 'id': f's{self._seq}', 'state': 'running', 'ms': None}
-            step.update(self._describe(tool, rec.get('args')))
-            self._open.append({'call': str(rec.get('id') or ''), 'step': step})
-            return [step]
+            return [self._start(tool, rec)]
         if rec.get('ev') == 'end':
             opened = self._close(tool, str(rec.get('id') or ''))
             if opened is None:
@@ -192,6 +200,15 @@ class ProgressReader:
                 }
             ]
         return []
+
+    def _start(self, tool: str, rec: dict) -> dict:
+        self._seq += 1
+        step = {'type': 'step', 'id': f's{self._seq}', 'state': 'running', 'ms': None}
+        step.update(self._describe(tool, rec.get('args')))
+        if tool in _NO_END:
+            return {**step, 'state': 'done'}
+        self._open.append({'call': str(rec.get('id') or ''), 'step': step})
+        return step
 
     def _model_events(self, rec: dict) -> list[dict]:
         """A model call (her words and the running token count) or a failed one."""

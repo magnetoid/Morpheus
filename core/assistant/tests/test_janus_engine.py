@@ -123,6 +123,16 @@ class ConfigTests(SimpleTestCase):
             self.assertEqual(first, cfg2.read_text(encoding='utf-8'))
             self.assertEqual(cfg.stat().st_mode & 0o777, 0o600)
 
+    def test_tool_search_is_always_written_and_off_unless_the_merchant_turns_it_on(self):
+        # Janus's own default, auto, sized the context from OpenRouter's catalogue,
+        # so a turn sent every store tool or only the bridge depending on whether
+        # openrouter.ai answered.
+        body = eng._config_text('https://s/mcp/')
+        self.assertIn('tools:\n  tool_search:\n    enabled: "off"', body)
+        with mock.patch.object(eng.janus_settings, 'tool_search_enabled', return_value=True):
+            body = eng._config_text('https://s/mcp/')
+        self.assertIn('tools:\n  tool_search:\n    enabled: "on"', body)
+
     def test_terminal_scanner_is_off(self):
         # tirith only scans terminal commands, which a turn cannot run. Left on,
         # it printed a warning into the merchant's first reply (live, v0.63.1)
@@ -482,6 +492,8 @@ class EngineHygieneTests(SimpleTestCase):
         self.assertTrue((home / '.no-bundled-skills').exists())
         self.assertFalse(bundled.exists())
         self.assertTrue(learned.exists())
+        # "docker" stops Janus checking PyPI for an update nothing would install.
+        self.assertEqual((home / '.install_method').read_text(encoding='utf-8'), 'docker\n')
 
     def test_config_keeps_turns_fast(self):
         body = eng._config_text('https://s/mcp/')
@@ -924,6 +936,26 @@ class AssistantEngineTests(SimpleTestCase):
         for rationing in ('a few tool steps', 'well under a minute', 'do a sample'):
             self.assertNotIn(rationing, LINDA_BASE_PROMPT)
         self.assertIn("Every change needs the merchant's yes", LINDA_BASE_PROMPT)
+
+    def test_with_tool_search_on_she_is_told_how_to_find_a_tool(self):
+        # Every tool is listed by default; with tool search on only the bridge
+        # is, and "never browse for more" would leave her unable to find any.
+        from core.assistant import janus_settings, prompts
+        from core.assistant.runtime import Assistant
+
+        self.assertIn(prompts.TOOLS_LISTED, prompts.LINDA_BASE_PROMPT)
+        on = prompts.build_system_prompt(tools_on_request=True)
+        self.assertIn(prompts.TOOLS_ON_REQUEST, on)
+        self.assertNotIn(prompts.TOOLS_LISTED, on)
+        for bridge in ('`tool_search`', '`tool_describe`', '`tool_call`'):
+            self.assertIn(bridge, on)
+
+        with mock.patch.object(janus_settings, 'tool_search_enabled', return_value=False):
+            self.assertIn(prompts.TOOLS_LISTED, Assistant()._system_prompt(context={}))
+        with mock.patch.object(janus_settings, 'tool_search_enabled', return_value=True):
+            system = Assistant()._system_prompt(context={})
+        self.assertIn(prompts.TOOLS_ON_REQUEST, system)
+        self.assertNotIn(prompts.TOOLS_LISTED, system)
 
 
 class BundledEcommerceSkillsTests(SimpleTestCase):

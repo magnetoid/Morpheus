@@ -13,6 +13,7 @@ Switch Linda on, and decide where her model comes from: the store's own AI provi
 - Pin a specific provider and model for Linda, instead of the store's default.
 - Add standing instructions Linda should always follow.
 - Set how many tool steps and how many seconds she gets for one message.
+- Choose whether Linda gets every store tool with each step or looks up the one she needs.
 - Pick backup providers to use if the main one fails partway through an answer.
 - Run the connection test to confirm Linda can reach her model.
 - Delete a note, a skill, or all of Linda's lessons you don't want her using any more.
