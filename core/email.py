@@ -58,6 +58,15 @@ def smtp_configured() -> bool:
     return bool(row and row.smtp_host)
 
 
+def real_transport() -> bool:
+    """Whether a message the email backend accepts reaches an inbox: any backend
+    but the composite one, or the composite with SMTP set (without it, the
+    message is printed to the log)."""
+    if getattr(settings, 'EMAIL_BACKEND', '') != 'core.email.MorpheusEmailBackend':
+        return True
+    return smtp_configured()
+
+
 class MorpheusEmailBackend:
     """Composite email backend.
 

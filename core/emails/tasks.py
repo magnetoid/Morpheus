@@ -28,13 +28,17 @@ logger = logging.getLogger('morpheus.emails')
     max_retries=3,
     acks_late=True,
 )
-def deliver_email(self, *, subject, text_body, html_body, from_email, to, headers=None):
+def deliver_email(self, *, subject, text_body, html_body, from_email, to, headers=None, tag=''):
     """Send one pre-rendered email. Retries on transient SMTP failure.
 
     ``headers`` (optional dict) is passed straight to
     ``EmailMultiAlternatives`` — marketing sends use it for the RFC 8058
     one-click-unsubscribe pair (``List-Unsubscribe`` +
     ``List-Unsubscribe-Post``), which Gmail/Yahoo require of bulk senders.
+
+    ``tag`` (optional): the sender's own name for this message. Once it is sent,
+    EMAIL_DELIVERED fires with it, so a sender records a delivery only when one
+    happened (returns_portal's withdrawal acknowledgement).
     """
     msg = EmailMultiAlternatives(subject, text_body, from_email, [to], headers=headers or None)
     if html_body:
@@ -49,3 +53,17 @@ def deliver_email(self, *, subject, text_body, html_body, from_email, to, header
             e,
         )
         raise
+    if tag:
+        _announce(tag)
+
+
+def _announce(tag: str) -> None:
+    """EMAIL_DELIVERED for a tagged message just sent. A subscriber's failure is
+    logged, never raised: raising would retry the task and send the email again."""
+    from core.email import real_transport  # noqa: PLC0415
+    from core.hooks import MorpheusEvents, hook_registry  # noqa: PLC0415
+
+    try:
+        hook_registry.fire(MorpheusEvents.EMAIL_DELIVERED, tag=tag, reached_inbox=real_transport())
+    except Exception as e:  # noqa: BLE001 — the email is sent; only the record is missing
+        logger.error('emails: EMAIL_DELIVERED for %s failed: %s', tag, e)

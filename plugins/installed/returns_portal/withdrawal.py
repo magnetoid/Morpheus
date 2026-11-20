@@ -28,6 +28,8 @@ EEA_COUNTRIES = frozenset(
     }
 )
 LINK_LABEL = 'Withdraw from contract here'
+#: The acknowledgement email's tag (core.emails), followed by the notice's id.
+_TAG = 'withdrawal:'
 
 
 def enabled() -> bool:
@@ -89,24 +91,34 @@ def on_setup_steps(value, **kwargs):
 
 
 def on_health_checks(value, **kwargs):
-    """HEALTH_CHECKS: the same, every night, for a store in the EU or the EEA."""
+    """HEALTH_CHECKS: the same, every night, for a store in the EU or the EEA, and
+    whether the acknowledgement the law asks for can reach the customer."""
+    from core.email import real_transport  # noqa: PLC0415
+
     if store_in_eea():
         on = enabled()
+        mails = real_transport()
+        detail = ''
+        if not on:
+            detail = (
+                'The withdrawal function is off; EU law has asked for it since 19 June '
+                '2026. Switch it on in the Returns portal settings.'
+            )
+        elif not mails:
+            detail = (
+                'The store has no sending email, so withdrawal acknowledgements go to the '
+                'log instead of the customer. Set one in Settings, Email.'
+            )
         value.append(
-            {
-                'name': 'Customers can withdraw online',
-                'ok': on,
-                'detail': ''
-                if on
-                else 'The withdrawal function is off; EU law has asked for it since 19 June '
-                '2026. Switch it on in the Returns portal settings.',
-            }
+            {'name': 'Customers can withdraw online', 'ok': on and mails, 'detail': detail}
         )
     return value
 
 
 def on_withdrawal_requested(order=None, withdrawal=None, **kwargs):
-    """ORDER_WITHDRAWAL_REQUESTED: email the acknowledgement and stamp it on the notice."""
+    """ORDER_WITHDRAWAL_REQUESTED: email the acknowledgement. The notice is stamped
+    only once the email is sent (``on_email_delivered``): sending is fail-soft and
+    queued, so returning from it proves nothing."""
     from core.emails.handlers import send_templated_email  # noqa: PLC0415
 
     if order is None or withdrawal is None:
@@ -117,9 +129,23 @@ def on_withdrawal_requested(order=None, withdrawal=None, **kwargs):
             to=withdrawal.email,
             subject=f'We received your withdrawal from order #{order.order_number}',
             ctx={'order': order, 'withdrawal': withdrawal},
+            tag=f'{_TAG}{withdrawal.pk}',
         )
     except Exception as e:  # noqa: BLE001 — logged; the notice stays without a stamp
         logger.error('returns_portal: acknowledgement for %s failed: %s', order.order_number, e)
+
+
+def on_email_delivered(tag='', reached_inbox=False, **kwargs):
+    """EMAIL_DELIVERED: stamp a withdrawal's acknowledgement once it reached an inbox.
+    A store with no sending email leaves it unstamped, since nobody received it."""
+    from plugins.installed.orders.models import WithdrawalNotice  # noqa: PLC0415
+
+    if not str(tag).startswith(_TAG):
         return
-    withdrawal.acknowledged_at = timezone.now()
-    withdrawal.save(update_fields=['acknowledged_at'])
+    pk = str(tag)[len(_TAG) :]
+    if not reached_inbox:
+        logger.warning('returns_portal: acknowledgement %s went to the log: no sending email', pk)
+        return
+    WithdrawalNotice.objects.filter(pk=pk, acknowledged_at__isnull=True).update(
+        acknowledged_at=timezone.now()
+    )

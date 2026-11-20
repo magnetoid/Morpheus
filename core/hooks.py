@@ -811,6 +811,14 @@ class MorpheusEvents:
     #   element stays None). cms subscribes with its EmailTemplate rows;
     #   first subscriber to fill the tuple wins.
     EMAIL_TEMPLATE_OVERRIDE = 'email.template_override'  # filter
+    # EMAIL_DELIVERED — fire, kwargs: tag=str, reached_inbox=bool. Fired by
+    #   core.emails.tasks.deliver_email once a message its sender tagged
+    #   (send_templated_email(tag=...)) was handed to the transport; never for an
+    #   untagged one, a failed send or one dropped before it was queued.
+    #   ``reached_inbox`` is False when the store has no SMTP and the message went
+    #   to the log (core.email.real_transport). returns_portal stamps a
+    #   withdrawal's acknowledgement from it.
+    EMAIL_DELIVERED = 'email.delivered'  # fire
     # ORDER_EMAIL_LINKS — filter, value=list of {'label': str, 'url': str},
     #   kwargs: order=Order, key=str (the email: 'order_placed'). Links an app
     #   adds under an order email's own (returns_portal: "Withdraw from contract

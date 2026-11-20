@@ -59,6 +59,7 @@ class ReturnsPortalPlugin(Plugin):
         self.register_hook(
             events.ORDER_WITHDRAWAL_REQUESTED, withdrawal.on_withdrawal_requested, priority=50
         )
+        self.register_hook(events.EMAIL_DELIVERED, withdrawal.on_email_delivered, priority=50)
         self.register_hook(events.DASHBOARD_SETUP_STEPS, withdrawal.on_setup_steps, priority=60)
         self.register_hook(events.HEALTH_CHECKS, withdrawal.on_health_checks, priority=60)
 

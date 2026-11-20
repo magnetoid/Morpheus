@@ -20,11 +20,11 @@ surfaced in **Dashboard → Settings → Version & updates**.
 **Customers can withdraw from an order online**
 
 - The Returns portal adds the "Withdraw from contract here" function EU law has asked for since 19 June 2026: a two-step page at /withdraw/ (the customer's name, the order number and their email, then "Confirm withdrawal"), linked from the order email, the customer's order page and the footer. It is off until you switch it on in the Returns portal settings; the period is 14 days, or longer if you choose.
-- The customer gets an email with the date and time their withdrawal was received, and the order's timeline records it. An order none of which has left is cancelled and paid back in full, whatever the cancel settings say; otherwise a return opens for the goods, once.
+- The customer gets an email with the date and time their withdrawal was received, and the order's timeline records it. A withdrawal shows as acknowledged only once that email has gone out. An order none of which has left is cancelled and paid back in full, whatever the cancel settings say; otherwise a return opens for the goods, once.
 - Lines with no right are listed with the reason: a service, or a download whose buyer waived the right at checkout. Goods count from delivery (or from dispatch plus 30 days when no delivery date is known), downloads from the order.
 - A guest's details are looked up only once they confirm, by order number and email together, and the last page reads the same whether or not they named an order. Both steps are rate-limited, and the form asks the bot check when the Cloudflare app protects it.
 - Linda can list withdrawals (returns.list_withdrawals) and record one a customer sent by email, letter or phone (returns.process_withdrawal, with your yes and under the per-refund cap).
-- The setup checklist and the nightly health check say so while a store in the EU or the EEA has the function off. The page's labels are in Croatian and Serbian.
+- The setup checklist and the nightly health check say so while a store in the EU or the EEA has the function off, and the health check also says when the store has no sending email, since the acknowledgement would then reach nobody. The page's labels are in Croatian and Serbian.
 
 ## v0.180.0 — 2026-11-20
 

@@ -374,13 +374,16 @@ class ReturnService:
         try:
             from plugins.installed.notifications_center.services import notify_all_staff
 
-            notify_all_staff(
-                kind='returns.requested',
-                title=f'Return requested — {rr.rma_number}',
-                body=f'Order #{order.order_number} · reason: {rr.get_reason_display()}',
-                action_url=f'/dashboard/returns/{rr.id}/',
-                icon='undo-2',
-            )
+            # Its own savepoint: a failed insert caught here would otherwise abort
+            # a caller's transaction on Postgres (orders.withdrawal holds one).
+            with transaction.atomic():
+                notify_all_staff(
+                    kind='returns.requested',
+                    title=f'Return requested — {rr.rma_number}',
+                    body=f'Order #{order.order_number} · reason: {rr.get_reason_display()}',
+                    action_url=f'/dashboard/returns/{rr.id}/',
+                    icon='undo-2',
+                )
         except Exception:  # noqa: BLE001, S110
             pass
         return rr

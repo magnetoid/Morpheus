@@ -238,16 +238,20 @@ def _plan(order, rights, *, earlier: bool) -> tuple[str, str, Any]:
     eligible = [r for r in rights if r.right]
     if not eligible:
         return 'nothing', 'No line of this order carries the right of withdrawal now.', None
-    open_return = (
-        order.return_requests.filter(reason='withdrawal')
-        .exclude(state__in=('rejected', 'cancelled'))
-        .first()
-    )
+    open_return = _open_withdrawal_return(order)
     if open_return is not None:
         return 'already', f'Return {open_return.rma_number} is already open for it.', open_return
     if len(eligible) == len(rights) and can_cancel(order):
         return 'cancel', '', None
     return 'return', '', None
+
+
+def _open_withdrawal_return(order):
+    return (
+        order.return_requests.filter(reason='withdrawal')
+        .exclude(state__in=('rejected', 'cancelled'))
+        .first()
+    )
 
 
 def preview(order, *, days: int) -> dict:
@@ -280,21 +284,35 @@ def _act(order, rights, *, earlier: bool, actor, statement: str):
                 order, reason='Withdrawal from the contract', actor=actor, withdrawal=True
             )
         except CancelRefused:
-            # Cancelled meanwhile (by staff): nothing more to do. Otherwise a parcel
-            # left meanwhile, and the goods come back as a return.
-            status = type(order).objects.filter(pk=order.pk).values_list('status', flat=True)
-            if status.first() in ('cancelled', 'refunded'):
-                return 'already', f'The order is already {status.first()}.', None, None
+            pass  # a parcel left, or staff cancelled it, meanwhile: read again below
         else:
             return 'cancelled', f'The order is cancelled. {done.note}'.strip(), done.refund, None
     eligible = [r for r in rights if r.right]
-    rr = ReturnService.create_request(
-        order=order,
-        items=[{'order_item_id': str(r.item.pk), 'quantity': r.item.quantity} for r in eligible],
-        reason='withdrawal',
-        customer_note=statement,
-        requested_by=actor,
-    )
+    with transaction.atomic():
+        # The plan was made from a copy read before the lock was let go: staff may
+        # have cancelled the order since, or another withdrawal opened its return.
+        current = type(order).objects.select_for_update().filter(pk=order.pk).first()
+        if current is None:
+            return 'nothing', 'This order no longer exists.', None, None
+        if current.status in ('cancelled', 'refunded'):
+            return 'already', f'The order is already {current.status}.', None, None
+        open_return = _open_withdrawal_return(current)
+        if open_return is not None:
+            return (
+                'already',
+                f'Return {open_return.rma_number} is already open for it.',
+                None,
+                open_return,
+            )
+        rr = ReturnService.create_request(
+            order=current,
+            items=[
+                {'order_item_id': str(r.item.pk), 'quantity': r.item.quantity} for r in eligible
+            ],
+            reason='withdrawal',
+            customer_note=statement,
+            requested_by=actor,
+        )
     return (
         'return_requested',
         f'Return {rr.rma_number} is open: once the goods are back, the store pays back what '

@@ -135,6 +135,20 @@ class TwoStepTests(_Base):
         event = self.order.events.filter(event_type='ORDER_WITHDRAWAL').get()
         self.assertIn('Ana Kovač withdrew from the contract', event.message)
 
+    @override_settings(EMAIL_BACKEND='core.email.MorpheusEmailBackend', EMAIL_HOST='')
+    def test_an_acknowledgement_no_inbox_received_is_not_stamped(self):
+        # No sending email: the message goes to the log, so nobody was acknowledged.
+        with mock.patch('core.email.MorpheusEmailBackend.send_messages', return_value=1):
+            self.submit(self.order.order_number, 'buyer@example.com')
+        self.assertIsNone(WithdrawalNotice.objects.get(order=self.order).acknowledged_at)
+
+    def test_an_acknowledgement_that_failed_to_send_is_not_stamped(self):
+        with mock.patch(
+            'django.core.mail.EmailMultiAlternatives.send', side_effect=OSError('mail host down')
+        ):
+            self.submit(self.order.order_number, 'buyer@example.com')
+        self.assertIsNone(WithdrawalNotice.objects.get(order=self.order).acknowledged_at)
+
     def test_a_missing_field_or_a_bad_email_stays_on_the_form(self):
         for data in (
             {'name': '', 'order_number': self.order.order_number, 'email': 'buyer@example.com'},
@@ -378,6 +392,27 @@ class OutcomeTests(_Base):
         self.assertEqual(order.return_requests.count(), 0)
         self.assertEqual(WithdrawalNotice.objects.get(order=order).outcome, 'already')
 
+    def test_a_mixed_order_cancelled_by_staff_meanwhile_opens_no_return(self):
+        # Goods plus a waived download take the return branch; staff cancel the
+        # order between the plan and the return.
+        waiver = {'digital_withdrawal_waiver': {'accepted': True, 'text': 'x', 'at': 'now'}}
+        order = _order(
+            self.book, self.ebook, status='processing', payment_status='paid', metadata=waiver
+        )
+        real_plan = rule._plan
+
+        def plan_then_staff_cancel(o, rights, *, earlier):
+            planned = real_plan(o, rights, earlier=earlier)
+            Order.objects.filter(pk=o.pk).update(status='cancelled')
+            return planned
+
+        with mock.patch.object(rule, '_plan', side_effect=plan_then_staff_cancel):
+            self.submit(order.order_number, 'buyer@example.com')
+        self.assertEqual(order.return_requests.count(), 0)
+        notice = WithdrawalNotice.objects.get(order=order)
+        self.assertEqual(notice.outcome, 'already')
+        self.assertIn('already cancelled', notice.note)
+
     def test_a_second_withdrawal_opens_no_second_return(self):
         order = _order(self.book, status='shipped', payment_status='paid')
         Fulfillment.objects.create(order=order, status='shipped', shipped_at=timezone.now())
@@ -431,6 +466,16 @@ class StoreChecksTests(_Base):
         self.switch_on()
         self.assertTrue(withdrawal.on_setup_steps([])[0]['done'])
         self.assertTrue(withdrawal.on_health_checks([])[0]['ok'])
+
+    def test_the_check_fails_while_acknowledgements_reach_no_inbox(self):
+        from plugins.installed.returns_portal import withdrawal
+
+        self._country('HR')
+        self.switch_on()
+        with override_settings(EMAIL_BACKEND='core.email.MorpheusEmailBackend', EMAIL_HOST=''):
+            check = withdrawal.on_health_checks([])[0]
+        self.assertFalse(check['ok'])
+        self.assertIn('no sending email', check['detail'])
 
     def test_a_store_outside_the_eea_is_not_asked(self):
         from plugins.installed.returns_portal import withdrawal

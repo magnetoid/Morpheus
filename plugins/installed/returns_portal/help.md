@@ -21,6 +21,6 @@ Set how many days a customer has to return something there too. Leaving it at ze
 
 A withdrawal takes two steps: the customer fills in their name, the order number and their email, then confirms. They get an email with the date and time it was received. An order none of which has left is cancelled and paid back in full; otherwise a return opens for the goods. A service, or a download whose buyer waived the right at checkout, cannot be withdrawn from. The period counts from delivery, or from the order for a download.
 
-A guest's details are checked only once they confirm, and the last page reads the same whether or not they named an order, so nobody learns about someone else's order. While a store in the EU has the function off, the setup checklist and the nightly health check say so.
+A guest's details are checked only once they confirm, and the last page reads the same whether or not they named an order, so nobody learns about someone else's order. While a store in the EU has the function off, the setup checklist and the nightly health check say so. The check also fails while the store has no sending email, since the acknowledgement would reach nobody.
 
 The return window is published only for goods you ship, and left out if your store's country is not set.

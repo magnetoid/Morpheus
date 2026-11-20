@@ -289,6 +289,7 @@ def send_templated_email(
     subject: str,
     ctx: dict | None = None,
     headers: dict | None = None,
+    tag: str = '',
 ) -> None:
     """Send a transactional email by its registry ``key``.
 
@@ -300,13 +301,27 @@ def send_templated_email(
     transactional emails. ``subject`` is the fallback used when no override
     supplies one. ``headers`` (optional) rides through to the SMTP message —
     marketing sends pass the RFC 8058 one-click-unsubscribe pair. Failures
-    are logged, never raised.
+    are logged, never raised, so a sender that must know the email went out
+    passes ``tag`` and listens for EMAIL_DELIVERED, which fires only then.
     """
-    _send(template_base=f'emails/{key}', subject=subject, to=to, ctx=ctx or {}, headers=headers)
+    _send(
+        template_base=f'emails/{key}',
+        subject=subject,
+        to=to,
+        ctx=ctx or {},
+        headers=headers,
+        tag=tag,
+    )
 
 
 def _send(
-    *, template_base: str, subject: str, to: str | None, ctx: dict, headers: dict | None = None
+    *,
+    template_base: str,
+    subject: str,
+    to: str | None,
+    ctx: dict,
+    headers: dict | None = None,
+    tag: str = '',
 ) -> None:
     if not to:
         return
@@ -361,6 +376,8 @@ def _send(
                 from_email=from_email,
                 to=to,
                 headers=headers,
+                # Only when set, so a message an older worker takes still fits it.
+                **({'tag': tag} if tag else {}),
             )
         except Exception as e:  # noqa: BLE001 — broker down must never break the caller
             logger.warning(
