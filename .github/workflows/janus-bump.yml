@@ -211,7 +211,7 @@ jobs:
         run: |
           python3 scripts/bump_janus.py env >> "$GITHUB_ENV"
           mkdir -p /tmp/bump
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: janus-bump-results
@@ -274,7 +274,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: janus-bump-description
           path: /tmp/describe
