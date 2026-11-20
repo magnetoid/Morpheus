@@ -5124,3 +5124,61 @@ msgstr "Prebaci"
 
 msgid "Stay"
 msgstr "Ostani"
+
+# ── Withdrawal function (returns_portal, v0.181.0) ──
+msgid "Right of withdrawal"
+msgstr "Pravo na odustanak od ugovora"
+
+msgid "Withdraw from contract here"
+msgstr "Odustanite od ugovora ovdje"
+
+msgid "Tell us who you are and which order you are withdrawing from. On the next page you confirm it, and we email you an acknowledgement with the date and time."
+msgstr "Recite nam tko ste i od koje narudžbe odustajete. Na sljedećoj stranici to potvrđujete, a mi vam e-poštom šaljemo potvrdu primitka s datumom i vremenom."
+
+msgid "Order number"
+msgstr "Broj narudžbe"
+
+msgid "Email for the acknowledgement"
+msgstr "E-pošta za potvrdu primitka"
+
+msgid "The email you placed the order with."
+msgstr "E-pošta s kojom ste naručili."
+
+msgid "Continue"
+msgstr "Nastavi"
+
+msgid "Confirm your withdrawal"
+msgstr "Potvrdite odustanak"
+
+msgid "I, %(name)s, withdraw from my contract for order %(number)s."
+msgstr "Ja, %(name)s, odustajem od ugovora za narudžbu %(number)s."
+
+msgid "The acknowledgement goes to %(email)s."
+msgstr "Potvrda primitka ide na %(email)s."
+
+msgid "Can be withdrawn until %(ends)s."
+msgstr "Može se odustati do %(ends)s."
+
+msgid "Can be withdrawn."
+msgstr "Može se odustati."
+
+msgid "Confirm withdrawal"
+msgstr "Potvrdi odustanak"
+
+msgid "Change the details"
+msgstr "Promijeni podatke"
+
+msgid "Withdrawal sent"
+msgstr "Odustanak je poslan"
+
+msgid "We received your withdrawal from order %(number)s on %(at)s."
+msgstr "Primili smo vaš odustanak od narudžbe %(number)s %(at)s."
+
+msgid "The acknowledgement is on its way to %(email)s."
+msgstr "Potvrda primitka stiže na %(email)s."
+
+msgid "If the order number and email match an order, the acknowledgement is on its way to that email, with the date and time we received your withdrawal."
+msgstr "Ako se broj narudžbe i e-pošta podudaraju s narudžbom, potvrda primitka stiže na tu adresu, s datumom i vremenom kada smo primili vaš odustanak."
+
+msgid "No email within an hour? Check the order number and email and send it again, or contact us."
+msgstr "Nema e-pošte unutar sat vremena? Provjerite broj narudžbe i e-poštu i pošaljite ponovno ili nam se javite."

@@ -40,4 +40,7 @@
     <a href="{{ track_url }}" style="display:inline-block;background:#0e0e0e;color:#f6f1e7;text-decoration:none;padding:12px 22px;border-radius:9999px;font-size:14px;font-weight:600;">Track your order</a>
   </p>
   {% endif %}
+  {% for link in order_links %}
+  <p style="margin-top:12px;font-size:13px;"><a href="{{ link.url }}" style="color:#0e0e0e;">{{ link.label }}</a></p>
+  {% endfor %}
 {% endblock %}

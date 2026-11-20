@@ -2021,6 +2021,26 @@ other orders' holds. Never call `order.cancel()` from a door. Guarded by
 `orders/tests/test_cancel_refunds.py`, `admin_dashboard/tests/test_order_cancel.py`,
 `storefront/tests/test_order_cancel.py` and `inventory/tests/test_release_idempotent.py`.
 
+**Convention — a withdrawal from the contract is one rule, and a guest learns nothing from it (v0.181.0).**
+EU CRD Art. 11a (in force since 19 June 2026): a "Withdraw from contract here" function for the whole
+period, two steps ("Confirm withdrawal" submits) and an acknowledgement on a durable medium with the date
+and time. orders owns the rule and the record (`orders/withdrawal.py`, `WithdrawalNotice`); returns_portal
+owns the page (`/withdraw/`), its two settings (`withdrawal_function`, off by default; `withdrawal_days`,
+never under 14), the links (the order email through `ORDER_EMAIL_LINKS`, the order page's
+`account_order_actions` slot, `footer_legal`), the acknowledgement email (on `ORDER_WITHDRAWAL_REQUESTED`,
+after commit, stamped `acknowledged_at`) and Linda's `returns.list_withdrawals` / `returns.process_withdrawal`
+(approval, under the per-refund cap). A line has no right when it is a service, or a download whose
+waiver was accepted at checkout once the order is paid or placed offline; goods count from delivery (a
+parcel's `delivered_at`, else ORDER_DELIVERED, else dispatch plus 30 days) and are open while any is still
+to leave, downloads from `placed_at`. The notice is stored first, under the order's lock; then an order
+whose every line may be withdrawn and that `can_cancel` goes through `cancel_with_refund(withdrawal=True)`
+(a full refund through the payment method, whatever either cancel setting says), and anything else opens
+a return (`reason='withdrawal'`), once. A guest's details are looked up only on "Confirm withdrawal",
+by order number AND email, the last page reads the same whether or not they matched, and both steps are
+rate-limited and bot-checked (`withdrawal`); only a visitor who holds the order (their account, or the
+email's token link) sees its lines. The checklist and the nightly health check say when a store in the
+EEA has it off. Guarded by `returns_portal/tests/test_withdrawal.py` and `themes/test_withdrawal_link.py`.
+
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a

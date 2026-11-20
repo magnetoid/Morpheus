@@ -10,7 +10,9 @@ from __future__ import annotations
 
 
 def return_window(request) -> dict:
-    """`return_window_days`: the merchant's window in days, 0 when it takes no returns."""
+    """`return_window_days`: the merchant's window in days, 0 when it takes no returns.
+    `withdrawal_function`: whether "Withdraw from contract here" is switched on."""
     from plugins.installed.returns_portal.seo_graph import window_days
+    from plugins.installed.returns_portal.withdrawal import enabled
 
-    return {'return_window_days': window_days()}
+    return {'return_window_days': window_days(), 'withdrawal_function': enabled()}

@@ -686,6 +686,7 @@ TURNSTILE_FORMS = {
     'newsletter': 'turnstile_newsletter',
     'sign_in': 'turnstile_sign_in',
     'affiliates': 'turnstile_affiliates',
+    'withdrawal': 'turnstile_withdrawal',
 }
 
 

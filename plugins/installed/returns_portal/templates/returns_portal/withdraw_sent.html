@@ -1,0 +1,23 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% comment %}
+The last page of the withdrawal function. It reads the same whether or not the
+details named an order; a visitor who holds the order also sees what happened.
+{% endcomment %}
+
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 560px;">
+    <p class="eyebrow">{% trans "Right of withdrawal" %}</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1rem;">{% trans "Withdrawal sent" %}</h1>
+    {% if notice %}
+    <p>{% blocktrans with number=notice.order.order_number at=notice.submitted_at|date:"j F Y, H:i" %}We received your withdrawal from order {{ number }} on {{ at }}.{% endblocktrans %}</p>
+    <p class="meta" style="margin-top: .75rem;">{{ notice.note }}</p>
+    <p class="meta" style="margin-top: .75rem;">{% blocktrans with email=notice.email %}The acknowledgement is on its way to {{ email }}.{% endblocktrans %}</p>
+    {% else %}
+    <p>{% trans "If the order number and email match an order, the acknowledgement is on its way to that email, with the date and time we received your withdrawal." %}</p>
+    <p class="meta" style="margin-top: .75rem;">{% trans "No email within an hour? Check the order number and email and send it again, or contact us." %}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

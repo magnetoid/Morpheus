@@ -1,0 +1,42 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% comment %}
+Step 2 of the withdrawal function: the details typed, and the "Confirm
+withdrawal" button. A visitor who holds the order (their account, or the order
+email's link) also sees each line and whether it can be withdrawn.
+{% endcomment %}
+
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 560px;">
+    <p class="eyebrow">{% trans "Right of withdrawal" %}</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1rem;">{% trans "Confirm your withdrawal" %}</h1>
+
+    <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem; margin: 1.5rem 0;">
+      <p>{% blocktrans with name=draft.name number=draft.number %}I, {{ name }}, withdraw from my contract for order {{ number }}.{% endblocktrans %}</p>
+      <p class="meta" style="margin-top: .5rem;">{% blocktrans with email=draft.email %}The acknowledgement goes to {{ email }}.{% endblocktrans %}</p>
+    </div>
+
+    {% if known_order %}
+    <div style="border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem; margin-bottom: 1.5rem;">
+      {% for r in rights %}
+      <div style="padding: .6rem 0; border-bottom: 1px solid var(--rule);">
+        <p>{{ r.item.product_name }}{% if r.item.variant_name %} <span class="meta">· {{ r.item.variant_name }}</span>{% endif %} <span class="meta">× {{ r.item.quantity }}</span></p>
+        {% if r.right %}
+        <p class="meta">{% if r.ends %}{% blocktrans with ends=r.ends|date:"j F Y" %}Can be withdrawn until {{ ends }}.{% endblocktrans %}{% else %}{% trans "Can be withdrawn." %}{% endif %}</p>
+        {% else %}
+        <p class="meta">{{ r.reason }}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/withdraw/confirm/">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary" style="width: 100%;">{% trans "Confirm withdrawal" %}</button>
+    </form>
+    <p class="meta" style="margin-top: 1rem;"><a href="/withdraw/" class="btn-link">{% trans "Change the details" %}</a></p>
+  </div>
+</section>
+{% endblock %}

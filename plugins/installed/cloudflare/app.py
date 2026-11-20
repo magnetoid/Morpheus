@@ -198,6 +198,13 @@ class CloudflarePlugin(Plugin):
                     'title': 'Protect the affiliate application',
                     'description': 'The form people use to apply to the affiliate programme.',
                 },
+                'turnstile_withdrawal': {
+                    'type': 'boolean',
+                    'default': True,
+                    'title': 'Protect the withdrawal form',
+                    'description': 'The "Withdraw from contract here" form, where anyone can '
+                    'type an order number.',
+                },
             },
         }
 

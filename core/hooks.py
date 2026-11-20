@@ -440,6 +440,11 @@ class MorpheusEvents:
     #                      A parcel recorded without tracking got it later, after
     #                      commit (shipping: a label bought for the parcel).
     #                      core.emails sends the buyer the parcel's tracking.
+    # ORDER_WITHDRAWAL_REQUESTED — kwargs: order=Order, withdrawal=WithdrawalNotice.
+    #                      A customer withdrew from the contract (orders.withdrawal,
+    #                      EU CRD Art. 11a), after commit; the order is cancelled
+    #                      or a return requested by then. returns_portal emails
+    #                      the acknowledgement and stamps ``acknowledged_at``.
     ORDER_PLACED = 'order.placed'
     ORDER_CONFIRMED = 'order.confirmed'
     ORDER_PAID = 'order.paid'
@@ -448,6 +453,7 @@ class MorpheusEvents:
     ORDER_DELIVERED = 'order.delivered'
     FULFILLMENT_CREATED = 'fulfillment.created'
     FULFILLMENT_TRACKING_ADDED = 'fulfillment.tracking_added'
+    ORDER_WITHDRAWAL_REQUESTED = 'order.withdrawal_requested'
 
     # ── Stock gate (filter, fail-closed) ───────────────────────────────────
     # ORDER_RESERVE_STOCK — value=int, kwargs: order=Order. Fired via
@@ -805,6 +811,12 @@ class MorpheusEvents:
     #   element stays None). cms subscribes with its EmailTemplate rows;
     #   first subscriber to fill the tuple wins.
     EMAIL_TEMPLATE_OVERRIDE = 'email.template_override'  # filter
+    # ORDER_EMAIL_LINKS — filter, value=list of {'label': str, 'url': str},
+    #   kwargs: order=Order, key=str (the email: 'order_placed'). Links an app
+    #   adds under an order email's own (returns_portal: "Withdraw from contract
+    #   here" while its withdrawal function is on). core.emails renders them as
+    #   ``order_links``; an absolute URL, built from the site's base URL.
+    ORDER_EMAIL_LINKS = 'order.email_links'  # filter
     # STOREFRONT_PAGE_INTRO — filter, value=dict {'body': '', 'meta_description':
     #   ''}, kwargs: page=str (a stable key: 'products' | 'vendors' | 'journal').
     #   Supplies merchant-edited intro copy + meta for the built-in storefront
@@ -1248,7 +1260,7 @@ class MorpheusEvents:
 
     # ── Bot check on public forms (filter) ────────────────────────────────
     # BOT_CHECK_WIDGET — filter, value='' (HTML), kwargs: form=str (the form's
-    #   kind: 'contact', 'newsletter', 'sign_in', 'affiliates'), context=the
+    #   kind: 'contact', 'newsletter', 'sign_in', 'affiliates', 'withdrawal'), context=the
     #   template Context. The `{% bot_check %}` tag fires it inside a form; an
     #   app that protects that kind (cloudflare's Turnstile) returns its widget.
     # BOT_CHECK_PASSES — filter, value=True, kwargs: request=HttpRequest,

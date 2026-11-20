@@ -47,6 +47,21 @@ class ReturnsPortalPlugin(Plugin):
 
         self.register_context_processor(return_window)
 
+        # The withdrawal function (EU CRD Art. 11a, v0.181.0): its pages, the
+        # order email's link, the acknowledgement, and the checklist step and
+        # nightly check that say when a store in the EU has it off.
+        from plugins.installed.returns_portal import withdrawal  # noqa: PLC0415
+
+        self.register_urls(
+            'plugins.installed.returns_portal.urls', prefix='', namespace='returns_portal'
+        )
+        self.register_hook(events.ORDER_EMAIL_LINKS, withdrawal.on_order_email_links, priority=50)
+        self.register_hook(
+            events.ORDER_WITHDRAWAL_REQUESTED, withdrawal.on_withdrawal_requested, priority=50
+        )
+        self.register_hook(events.DASHBOARD_SETUP_STEPS, withdrawal.on_setup_steps, priority=60)
+        self.register_hook(events.HEALTH_CHECKS, withdrawal.on_health_checks, priority=60)
+
     def on_seo_jsonld_graph(self, value, page=None, request=None, **kwargs):
         from plugins.installed.returns_portal.seo_graph import (  # noqa: PLC0415
             on_seo_jsonld_graph,
@@ -61,12 +76,47 @@ class ReturnsPortalPlugin(Plugin):
                 template='returns_portal/blocks/cta.html',
                 priority=10,
             ),
+            StorefrontBlock(
+                slot='footer_legal',
+                template='returns_portal/blocks/footer_withdraw.html',
+                priority=80,
+            ),
+            StorefrontBlock(
+                slot='account_order_actions',
+                template='returns_portal/blocks/order_withdraw.html',
+                priority=50,
+            ),
         ]
+
+    def contribute_email_templates(self) -> list:
+        from morpheus.app import EmailTemplateDef  # noqa: PLC0415
+
+        return [
+            EmailTemplateDef(
+                key='withdrawal_received',
+                label='Withdrawal received',
+                default_subject='We received your withdrawal from order #{{ order.order_number }}',
+                group='Orders',
+                description='The acknowledgement a customer gets when they withdraw from the '
+                'contract for an order, with the date and time it was received.',
+            ),
+        ]
+
+    def contribute_agent_tools(self) -> list:
+        from plugins.installed.returns_portal.agent_tools import (  # noqa: PLC0415
+            list_withdrawals_tool,
+            process_withdrawal_tool,
+        )
+
+        return [list_withdrawals_tool, process_withdrawal_tool]
 
     def contribute_settings_panel(self) -> SettingsPanel:
         return SettingsPanel(
             label='Returns portal',
-            description='Return window, and who pays for a return, how and for what refund.',
+            description=(
+                'Return window, who pays for a return, how and for what refund, and the '
+                'online withdrawal function.'
+            ),
             category='payments',
             schema=self.get_config_schema(),
         )
@@ -128,6 +178,27 @@ class ReturnsPortalPlugin(Plugin):
                     'type': 'boolean',
                     'default': False,
                     'title': 'Offers store credit',
+                },
+                # EU CRD Art. 11a: "Withdraw from contract here" on every order
+                # (returns_portal/withdrawal.py). Off until the merchant chooses.
+                'withdrawal_function': {
+                    'type': 'boolean',
+                    'default': False,
+                    'title': 'Online withdrawal function',
+                    'description': (
+                        'Shows "Withdraw from contract here" in the order email, on the '
+                        "customer's order page and in the footer. EU law asks for it."
+                    ),
+                },
+                'withdrawal_days': {
+                    'type': 'integer',
+                    'default': 14,
+                    'minimum': 14,
+                    'title': 'Withdrawal period (days)',
+                    'description': (
+                        'From delivery for goods, from the order for downloads. The law '
+                        'gives 14; you may give more.'
+                    ),
                 },
             },
         }

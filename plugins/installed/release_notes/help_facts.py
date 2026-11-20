@@ -13,6 +13,7 @@ from plugins.installed.release_notes import help_markers
 #: here shows its raw name, and tests/test_help_facts.py fails.
 SLOT_WORDS: dict[str, str] = {
     'account_nav': "the shopper's account menu",
+    'account_order_actions': "the shopper's order page",
     'account_summary_extra': "the shopper's account overview",
     'auth_login_extra': 'the sign-in page',
     'cart_summary_extra': 'the cart summary',

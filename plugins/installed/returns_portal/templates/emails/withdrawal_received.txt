@@ -1,0 +1,16 @@
+{% autoescape off %}We received your withdrawal.
+
+{{ withdrawal.statement }}
+
+Received on {{ withdrawal.submitted_at|date:"j F Y, H:i T" }}.
+Name: {{ withdrawal.name }}
+Order: #{{ order.order_number }}
+
+{% for line in withdrawal.lines %}- {{ line.quantity }}× {{ line.product_name }}{% if line.variant_name %} ({{ line.variant_name }}){% endif %}{% if not line.right %} — not withdrawn: {{ line.reason }}{% endif %}
+{% endfor %}
+{{ withdrawal.note }}
+
+Keep this email: it is your record of the withdrawal.
+
+— The team
+{% endautoescape %}

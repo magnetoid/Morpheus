@@ -1,0 +1,39 @@
+{% extends "storefront/base.html" %}
+{% load i18n morph %}
+{% comment %}
+Step 1 of the withdrawal function (returns_portal.views.withdraw). Nothing is
+looked up here: the second step repeats what was typed and submits it.
+{% endcomment %}
+
+{% block content %}
+<section style="padding: 3rem 0 5rem;">
+  <div class="wrap" style="max-width: 560px;">
+    <p class="eyebrow">{% trans "Right of withdrawal" %}</p>
+    <h1 class="display display-l" style="margin: 1rem 0 1rem;">{% trans "Withdraw from contract here" %}</h1>
+    <p class="meta" style="margin-bottom: 1.5rem;">{% trans "Tell us who you are and which order you are withdrawing from. On the next page you confirm it, and we email you an acknowledgement with the date and time." %}</p>
+
+    {% if error %}
+    <p role="alert" style="border: 1px solid var(--rule); border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1.25rem;">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="/withdraw/">
+      {% csrf_token %}
+      <p style="margin-bottom: 1rem;">
+        <label for="wd-name" style="display: block; margin-bottom: .35rem;">{% trans "Your name" %}</label>
+        <input id="wd-name" name="name" type="text" autocomplete="name" required maxlength="200" value="{{ draft.name }}" style="width: 100%;">
+      </p>
+      <p style="margin-bottom: 1rem;">
+        <label for="wd-order" style="display: block; margin-bottom: .35rem;">{% trans "Order number" %}</label>
+        <input id="wd-order" name="order_number" type="text" required maxlength="20" value="{{ draft.number }}" style="width: 100%;">
+      </p>
+      <p style="margin-bottom: 1.5rem;">
+        <label for="wd-email" style="display: block; margin-bottom: .35rem;">{% trans "Email for the acknowledgement" %}</label>
+        <input id="wd-email" name="email" type="email" autocomplete="email" required maxlength="254" value="{{ draft.email }}" style="width: 100%;">
+        <span class="meta" style="display: block; margin-top: .35rem;">{% trans "The email you placed the order with." %}</span>
+      </p>
+      {% bot_check "withdrawal" %}
+      <button type="submit" class="btn btn-primary" style="width: 100%;">{% trans "Continue" %}</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

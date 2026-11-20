@@ -63,7 +63,11 @@ def on_order_placed(order: Any, **kwargs: Any) -> None:
         template_base='emails/order_placed',
         subject=f'Order #{order.order_number} received',
         to=_order_recipient(order),
-        ctx={'order': order, 'track_url': track_url},
+        ctx={
+            'order': order,
+            'track_url': track_url,
+            'order_links': _order_links(order, 'order_placed'),
+        },
     )
 
 
@@ -255,6 +259,23 @@ def _parcel_emails() -> str:
     except Exception:  # noqa: BLE001 — a config problem keeps the default
         mode = ''
     return mode if mode in ('each_parcel', 'when_complete') else 'each_parcel'
+
+
+def _order_links(order: Any, key: str) -> list[dict]:
+    """Links apps add under an order email (ORDER_EMAIL_LINKS), each a
+    ``{'label', 'url'}`` with an http(s) URL; anything else is left out."""
+    try:
+        links = hook_registry.filter(events.ORDER_EMAIL_LINKS, [], order=order, key=key)
+    except Exception:  # noqa: BLE001 — a link never stops the email
+        return []
+    out = []
+    for link in links if isinstance(links, list) else []:
+        if not isinstance(link, dict):
+            continue
+        label, url = str(link.get('label') or ''), str(link.get('url') or '')
+        if label and url.startswith(('https://', 'http://')):
+            out.append({'label': label, 'url': url})
+    return out
 
 
 def _order_recipient(order: Any) -> str | None:

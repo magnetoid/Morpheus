@@ -47,6 +47,7 @@ class ReturnRequest(models.Model):
         ('not_as_described', 'Not as described'),
         ('changed_mind', 'Changed mind'),
         ('damaged_in_transit', 'Damaged in transit'),
+        ('withdrawal', 'Withdrawal from the contract'),
         ('other', 'Other'),
     ]
 
