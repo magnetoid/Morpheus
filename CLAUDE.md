@@ -93,7 +93,10 @@ and GraphQL) is the same engine behind the same gate chain, `core/assistant/gate
 Consent only comes from the merchant: their own message in a chat, or a grant made in
 advance on an API token. An external agent's message, like an automation's prompt, never
 approves anything, so Janus does for an external agent exactly what its token could do
-itself. A capability Janus cannot reach is half-built.
+itself. A capability Janus cannot reach is half-built, and since v0.182.0 CI says so:
+`scripts/check_agent_coverage.py` finds every staff view that accepts a POST and fails
+on one its module's `AGENT_TOOLS` does not map to a registered tool or to
+`'none: <reason>'` (the convention below).
 
 Examples (this is what's already shipped — mirror the pattern):
 
@@ -1711,8 +1714,11 @@ switched off, never deleted (its movements would go with it). Guarded by
 
 **Convention — an order ships in parcels, through one path (v0.154.0).** Every parcel goes
 through `orders/fulfilment.py:create_fulfillment(order, {item id: units} | None, tracking…)`: the
-fulfil form (one quantity per open line), Linda's `orders.fulfill_lines` and the supplier apps
-(`plugins/dropshipping/orders.py`). Only lines that ship count (`orders.services.line_ships`), so a
+fulfil form (one quantity per open line), Linda's `orders.fulfill_lines`, the supplier apps
+(`plugins/dropshipping/orders.py`) and, since v0.182.0, `orders.mark_fulfilled` / `mark_shipped` and
+GraphQL `markOrderFulfilled` / `markOrderShipped` (through `mark_order`, which puts every open unit in
+one parcel and keeps each transition's own source statuses, so an unpaid order is never walked
+forward; until then they moved the status alone). Only lines that ship count (`orders.services.line_ships`), so a
 download never goes in a parcel and an order is complete when every unit that ships is in one. A
 parcel that leaves units open moves the order to `partially_fulfilled` (`fulfill_partially`); the one
 that completes it ships it. It locks the order and works on the caller's own instance (the FSM field
@@ -2043,6 +2049,22 @@ rate-limited and bot-checked (`withdrawal`); only a visitor who holds the order 
 email's token link) sees its lines. The return branch reads the order again under its lock, so a
 staff cancel or another withdrawal in between opens no return. The checklist and the nightly health
 check say when a store in the EEA has it off, or has no sending email. Guarded by `returns_portal/tests/test_withdrawal.py` and `themes/test_withdrawal_link.py`.
+
+**Convention — a merchant action names Linda's tool next to the view (v0.182.0).** ADR 0039's rule
+(every merchant action ships with its agent tool, or says why not) is checked by
+`scripts/check_agent_coverage.py` (stdlib `ast`, in CI's lint job, the count in the step summary). It
+finds every module-level view under `plugins/`, `core/` and `api/` that is staff-gated
+(`@staff_member_required`, `@staff_required`, `@require_capability`, `@superuser_required`, or a `DashboardPage(view='dotted.path')`
+the dashboard router serves to staff) and accepts a POST (`@require_POST`, `@require_http_methods` with
+POST, or a body that reads `request.POST` / `FILES` / `body` or compares `request.method` with
+`'POST'`). Each must be in its module's literal `AGENT_TOOLS = {'view': 'tool.name' | 'none: <reason>'}`,
+the tool registered by name somewhere (`@tool`, `Tool(...)`, `register_tool`), or it fails; so does a
+key that names no such view. The settings panel's save is `settings.set`. The 230 views without a tool
+when it shipped are in `scripts/agent_coverage_baseline.json`, which only shrinks (`--save` in the same
+change); P10's batches repay it. Map a view only to a tool that does the same thing: a tool that does
+part of a big form (the product editor and `catalog.update_product`) leaves the view in the baseline.
+`none:` is for what an agent must never do (a person's own sign-in, a second factor, API tokens), never
+for "not built yet". Guarded by `core/tests/test_agent_coverage_check.py`.
 
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
@@ -2666,7 +2688,9 @@ and the **disable-test gate** (runs
 directions: a new contract violation, and a baseline entry that no longer
 reproduces — give a thin app its first tests or migrations and CI goes red
 until `--save` shrinks `scripts/plugin_standard_baseline.json` in the same
-commit (v0.91.0 gave `consent` tests and lint went red for one release).
+commit (v0.91.0 gave `consent` tests and lint went red for one release). The
+**agent-coverage ratchet** (`scripts/check_agent_coverage.py`, v0.182.0) works the same way
+over `scripts/agent_coverage_baseline.json`.
 
 ---
 

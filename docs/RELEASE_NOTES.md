@@ -15,6 +15,14 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.182.0 — 2026-11-20
+
+**Every staff action names Linda's tool, and CI checks it**
+
+- A new CI check, scripts/check_agent_coverage.py, finds every staff page that changes something (237 in 58 apps) and asks for the agent tool that does the same, or a written reason an agent must not have one. Each module says so in an AGENT_TOOLS map next to its views. The 230 pages without one today are listed in a baseline that can only shrink: a new page without a tool fails CI.
+- Settings pages, the order refund, fulfil and notes forms name their tools; the staff member's own account, the second-factor setup and the API tokens page say why an agent never gets them.
+- Linda's orders.mark_fulfilled and orders.mark_shipped, and GraphQL markOrderFulfilled and markOrderShipped, now record a parcel with every unit still to send, as the fulfil form does. They used to change the status alone, so the order's lines said nothing had left. An order with only downloads is refused, since a download reaches the buyer by itself.
+
 ## v0.181.0 — 2026-11-20
 
 **Customers can withdraw from an order online**

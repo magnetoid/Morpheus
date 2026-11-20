@@ -317,8 +317,8 @@ its name; none = the default one. A product with several variants needs the vari
 | Tool / Mutation | Purpose | Approval? |
 |---|---|---|
 | `orders.fulfill_lines` | Ship a parcel: lines by SKU and quantity (none = every open unit), tracking number, URL, carrier; partial parcels leave the order partially fulfilled, the last one ships it; downloads never go in a parcel | **yes** |
-| `orders.mark_fulfilled` / `markOrderFulfilled` | FSM fulfill(), no parcel recorded | no |
-| `orders.mark_shipped` / `markOrderShipped` | FSM ship() + tracking number, no parcel recorded | no |
+| `orders.mark_fulfilled` / `markOrderFulfilled` | Mark a processing order fulfilled, recording one parcel with every unit still to send (v0.182.0); an order with nothing that ships is refused | no |
+| `orders.mark_shipped` / `markOrderShipped` | Mark an order shipped with an optional tracking number, recording one parcel with every unit still to send (none when every unit is in a parcel already) | no |
 | `orders.cancel` / `cancelOrder` | Cancel an order none of which has been sent (one with a parcel recorded, shipped or delivered is refused: it is a return); its payment follows orders' `staff_cancel_refund` (`keep` leaves it for `orders.refund`, `refund` pays back what is left), a held card payment is released; Linda's cancel is refused when its refund is over the per-refund cap; the result says what happened to the money (`refund_state`) | **yes** |
 | `orders.mark_refunded` / `markOrderRefunded` | Record a refund made outside the store: the rest of the total as a processed refund, `PAYMENT_REFUNDED` fired, tenders re-credited | **yes** |
 | `orders.refund` | Refund all or part of an order; `settle` pays it back through the payment method (''), into store credit (`store_credit`) or as already paid back (`external`); left out, an order paid offline follows orders' `offline_refund_default` | **yes** |

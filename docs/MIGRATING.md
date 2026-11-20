@@ -6,6 +6,19 @@ first. If a version isn't listed, it shipped no breaking change to a surface in
 
 ---
 
+## v0.182.0 — marking an order fulfilled or shipped records its parcel
+
+- **GraphQL `markOrderFulfilled` / `markOrderShipped` and MCP `orders.mark_fulfilled` /
+  `orders.mark_shipped` record a parcel** with every unit still to send, through the same
+  `orders/fulfilment.py:create_fulfillment` the dashboard's fulfil form uses. Until v0.182.0 they
+  moved the order's status alone, so its lines said nothing had left. The parcel fires
+  `FULFILLMENT_CREATED` after commit, like any other.
+- **An order with nothing that ships is refused** (a download reaches the buyer by itself), with
+  an error instead of a status change. Shipping an order whose units are all in parcels already
+  ships it without a new parcel.
+- The source statuses are unchanged: fulfilled from processing or partially fulfilled; shipped
+  from those or fulfilled. An unpaid order is still not walked forward.
+
 ## v0.179.0 — an app that cannot run is not started
 
 - **An app whose `requires` names an app that is missing, switched off or not started itself is

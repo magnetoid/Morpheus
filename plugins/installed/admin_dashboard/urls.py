@@ -26,6 +26,10 @@ from plugins.installed.admin_dashboard import views
 app_name = 'admin_dashboard'
 
 
+#: What Linda uses for the same change (scripts/check_agent_coverage.py).
+AGENT_TOOLS = {'plugin_settings_view': 'settings.set'}
+
+
 def _resolve_view(view_or_path: Any):
     if callable(view_or_path):
         return view_or_path

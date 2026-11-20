@@ -30,6 +30,10 @@ _CHALLENGE_MAX_ATTEMPTS = 5
 _CHALLENGE_WINDOW_SECONDS = 15 * 60
 
 
+#: What Linda uses for the same change (scripts/check_agent_coverage.py).
+AGENT_TOOLS = {'enroll': 'none: a second factor is set up by its owner, never by an agent'}
+
+
 def _safe_next(nxt: str | None) -> str:
     nxt = (nxt or '').strip()
     if nxt.startswith('/') and not nxt.startswith('//'):
