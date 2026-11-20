@@ -323,6 +323,8 @@ its name; none = the default one. A product with several variants needs the vari
 | `orders.mark_refunded` / `markOrderRefunded` | Record a refund made outside the store: the rest of the total as a processed refund, `PAYMENT_REFUNDED` fired, tenders re-credited | **yes** |
 | `orders.refund` | Refund all or part of an order; `settle` pays it back through the payment method (''), into store credit (`store_credit`) or as already paid back (`external`); left out, an order paid offline follows orders' `offline_refund_default` | **yes** |
 | `payments.capture` | Charge a card payment held on an order (payments' `capture_mode`: charged when a parcel ships or when the merchant says) | **yes** |
+| `returns.list_withdrawals` | Withdrawals from the contract customers sent (the "Withdraw from contract here" page), newest first: who, when, the acknowledgement, each line's right and what followed (cancelled, a return opened) | no |
+| `returns.process_withdrawal` | Record a withdrawal a customer sent another way (email, letter, call) and act on it as the page does: an order none of which has left is cancelled and paid back in full, otherwise a return opens; refused when the refund is over the per-refund cap; the customer gets the acknowledgement email | **yes** |
 
 Every parcel goes through `orders/fulfilment.py:create_fulfillment` (the dashboard's
 fulfil form, `orders.fulfill_lines`, the supplier apps), which fires

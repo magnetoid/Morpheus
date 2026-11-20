@@ -53,6 +53,7 @@
       <a href="/account/orders/{{ order.order_number }}/return/" class="btn btn-ghost">Request a return</a>
       <a href="/account/orders/" class="btn-link">All orders</a>
     </div>
+    {% storefront_blocks "account_order_actions" %}
 
     {% if can_cancel %}
     {% comment %}JS-free confirm: the summary is the trigger, expanding to the

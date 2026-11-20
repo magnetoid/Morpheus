@@ -4,8 +4,9 @@ A public form carries `{% bot_check "<form>" %}` (core/templatetags/morph.py) an
 asks `passes(request, "<form>")` before it acts. The Cloudflare app answers with Turnstile
 for the kinds its settings switch on; with no answer the tag renders nothing and every form
 passes, so a store without that app keeps working. Kinds: 'contact' (contact, CMS forms, Do
-not sell), 'newsletter', 'sign_in' (sign-in, sign-up, password reset, the emailed code) and
-'affiliates' (the affiliate application).
+not sell), 'newsletter', 'sign_in' (sign-in, sign-up, password reset, the emailed code),
+'affiliates' (the affiliate application) and 'withdrawal' (returns_portal's "Withdraw from
+contract here").
 """
 
 from __future__ import annotations

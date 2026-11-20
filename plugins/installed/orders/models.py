@@ -554,3 +554,65 @@ class StoreCreditTxn(models.Model):
     def __str__(self):
         sign = '+' if self.kind == 'credit' else '-'
         return f'{sign}{self.amount} ({self.reference or self.note})'
+
+
+class WithdrawalNotice(models.Model):
+    """A customer's withdrawal from the contract for an order (EU Consumer Rights
+    Directive, Art. 11a; orders/withdrawal.py), kept as it was submitted.
+
+    The statement, the lines it covered and the date and time of submission are
+    the record the acknowledgement quotes. What followed is ``outcome``: an order
+    none of which had left is cancelled and paid back (A10a's
+    ``cancel_with_refund``); otherwise a return is requested for the goods.
+    """
+
+    OUTCOME_CHOICES = [
+        ('received', 'Received'),
+        ('cancelled', 'Order cancelled'),
+        ('return_requested', 'Return requested'),
+        ('nothing', 'Nothing left to withdraw'),
+        ('already', 'Already withdrawn'),
+    ]
+    SOURCE_CHOICES = [
+        ('customer', 'Customer'),
+        ('staff', 'Staff'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='withdrawals')
+    name = models.CharField(max_length=200)
+    email = models.EmailField(help_text='Where the acknowledgement went.')
+    statement = models.TextField()
+    lines = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Each line of the order: what it is, whether it carried the right, and why not.',
+    )
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default='customer')
+    submitted_by = models.ForeignKey(
+        'customers.Customer',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+    submitted_at = models.DateTimeField(default=timezone.now, db_index=True)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    outcome = models.CharField(max_length=20, choices=OUTCOME_CHOICES, default='received')
+    note = models.TextField(blank=True)
+    refund = models.ForeignKey(
+        Refund, on_delete=models.SET_NULL, null=True, blank=True, related_name='+'
+    )
+    return_request = models.ForeignKey(
+        'orders.ReturnRequest',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='withdrawals',
+    )
+
+    class Meta:
+        ordering = ['-submitted_at']
+
+    def __str__(self):
+        return f'Withdrawal from order #{self.order.order_number} ({self.outcome})'

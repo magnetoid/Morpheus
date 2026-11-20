@@ -1,6 +1,6 @@
 # Morpheus as an e-commerce platform — gap analysis and completion plan (Nov 2026)
 
-**Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0, A3 (inventory) v0.152.0, A4 (fulfilment and shipping rates) v0.154.0, A5 (payments, with the A4 choices as settings) v0.155.0, A7 (checkout fields) v0.168.0 and A8 (payment link) v0.171.0 are live on all five stores. F1 (AI marks on translations and images) v0.177.0 is live on all five stores (2026-11-18). F2 (claims and legal copy) v0.178.0 is live on all five stores (2026-11-18). P6 (manifest compatibility, third in the merged order) v0.179.0 is live on all five stores (2026-11-19). A10a (cancel and refund rules, fourth) is v0.180.0, in review. From A5 on, each commerce choice is a merchant setting whose default is the earlier behaviour (owner, 2026-11-12). Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
+**Status:** approved by the owner on 2026-11-09. A1 (tax) v0.149.0, A2 (promotions) v0.150.0, A3 (inventory) v0.152.0, A4 (fulfilment and shipping rates) v0.154.0, A5 (payments, with the A4 choices as settings) v0.155.0, A7 (checkout fields) v0.168.0 and A8 (payment link) v0.171.0 are live on all five stores. F1 (AI marks on translations and images) v0.177.0 is live on all five stores (2026-11-18). F2 (claims and legal copy) v0.178.0 is live on all five stores (2026-11-18). P6 (manifest compatibility, third in the merged order) v0.179.0 is live on all five stores (2026-11-19). A10a (cancel and refund rules, fourth) v0.180.0 is live on all five stores (2026-11-20). F3 (the online withdrawal function, fifth) is v0.181.0, in review. From A5 on, each commerce choice is a merchant setting whose default is the earlier behaviour (owner, 2026-11-12). Update the status column of the release tables as each release ships; this file is the plan of record (a plan in a chat does not survive `/clear`).
 
 **Order of work:** from 2026-11-18 the remaining rows here and in [janus-alignment-and-app-platform-2026-11.md](janus-alignment-and-app-platform-2026-11.md) run in one merged order, set out in the next section. It replaces "platform first, then commerce" (owner, 2026-11-15).
 
@@ -196,7 +196,7 @@ Order follows the owner's lens (general engine first) and dependencies. One rele
 | A7 | Checkout fields | `CHECKOUT_FIELDS` hook + notes / gift / T&C / opt-in / save-card; dead cart events removed | M 2 | — | v0.168.0: one filter (`core/checkout_fields.py`, kwargs `user`), checked by `completeOrder` (no separate validate filter); orders' note / gift message / terms and newsletter's opt-in (newsletter owns the list, so not customers' `accepts_marketing`); `allow_guest_checkout` read again (sign-in first, `SIGN_IN_REQUIRED`); wallets step aside for a required field. `save_card` stays the Element's own box (A5). `CART_CREATED`/`CART_UPDATED` kept: removing an SDK event name is a break (`check_api_stability.py`). ACP skips both checks |
 | A8 | Payment link | `/pay/<token>/`, draft-order email + Linda tool, failed-payment retry email | S 2 | — | v0.171.0 live |
 | A9 | B2B | price lists live, quote email → accept → order, net-terms gateway, VAT-ID + reverse charge | L 4 | A1 A6 A7 A8 | planned |
-| A10a | Cancel and refund rules | `cancel_with_refund`, FSM narrowed (the "Cancel gap" part of A10 below) | S 1–2 | A5 | v0.180.0, in review |
+| A10a | Cancel and refund rules | `cancel_with_refund`, FSM narrowed (the "Cancel gap" part of A10 below) | S 1–2 | A5 | v0.180.0, live |
 | A10b | Order editing | `orders/editing.py`, payment delta, `ORDER_EDITED`, dashboard screen | L 4 | A3 A5 A8 A10a C4 | planned, order #13 |
 | A11 | Marketplace money | vendor credit on `ORDER_PAID`, reversal on cancel/refund, atomic balance | S 1 | — | planned |
 
@@ -280,7 +280,7 @@ Each row is an option inside Morpheus for any store. Its owner app is named belo
 |---|---|---|---|---|---|
 | F1 | AI marks on translations and images | the Art. 50 mark on AI-drafted translations; an image's AI tag survives the image proxy | S 1–2 | — | v0.177.0, live 2026-11-18 |
 | F2 | Claims and legal copy check | generic green-claim check in the site audit; eco_impact copy; legal-guarantee notice; accessibility statement | M 2 | — | v0.178.0, live 2026-11-18 |
-| F3 | Online withdrawal function | an order-keyed, guest-reachable "Withdraw from contract here" with a timestamped acknowledgement | M 3 | A10a | planned, order #5 |
+| F3 | Online withdrawal function | an order-keyed, guest-reachable "Withdraw from contract here" with a timestamped acknowledgement | M 3 | A10a | v0.181.0, in review |
 | F4 | Regional card gateway app | cards for stores whose entity Stripe does not serve; Monri first | M 3–4 | — | planned, order #11 |
 | F5 | Delivery estimate at checkout | the rate's estimated days at checkout and in the order email | S 1 | — | planned, order #12 |
 | F6 | Subscription cancel and pause by the customer | self-serve in the account | S–M 2 | — | planned, order #14 |
@@ -394,7 +394,13 @@ Each row is an option inside Morpheus for any store. Its owner app is named belo
 - **Lines with no right.** Lines whose right was waived (the digital-content waiver recorded at checkout) or that have none (a dated service) are listed with the reason, not offered.
 - **What follows.** An unshipped order goes through A10a's cancel-with-refund. A shipped one becomes a return awaiting the goods: the staff flow today, with the customer side from C4.
 - **Settings (returns_portal):** `withdrawal_function` (off | on, default off) and `withdrawal_days` (14, counted from delivery for goods; the merchant may lengthen it). The setup checklist and the nightly health check say when a store in an EU member state has it off.
-- **Event:** `ORDER_WITHDRAWAL_REQUESTED`, wired at both ends (core.emails sends the acknowledgement; orders writes the timeline).
+- **Event:** `ORDER_WITHDRAWAL_REQUESTED`, wired at both ends (orders writes the timeline and fires it after commit; returns_portal sends the acknowledgement as its own email template and stamps it on the notice).
+- **As built (v0.181.0).** Rulings made while building:
+  - the acknowledgement is returns_portal's email template, not a core.emails key, so cms's template list needs no migration;
+  - when no delivery date is known, goods count from dispatch plus 30 days;
+  - the checklist and health check cover the EEA, not only EU member states;
+  - an unshipped order with a line that may not be withdrawn becomes a return (cancelling part of an order is A10b);
+  - the page's labels are translated (hr, sr); its error messages are not yet.
 - **Linda:** `returns.list_withdrawals` (read) and `returns.process_withdrawal` (approval).
 - **Translations:** labels in the hr and sr catalogues; Croatia transposed the article in June 2026.
 - **Tests:**

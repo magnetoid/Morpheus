@@ -131,7 +131,9 @@ def preview(order) -> dict:
     return {'allowed': True, 'refund': amount, 'note': note}
 
 
-def cancel_with_refund(order, *, reason: str = '', actor=None, by_customer: bool = False):
+def cancel_with_refund(
+    order, *, reason: str = '', actor=None, by_customer: bool = False, withdrawal: bool = False
+):
     """Cancel ``order`` and pay back what the settings say. Returns a ``Cancellation``.
 
     Raises ``CancelRefused`` when the order cannot be cancelled through this door.
@@ -139,6 +141,11 @@ def cancel_with_refund(order, *, reason: str = '', actor=None, by_customer: bool
     and the failure in ``note``; a refund the gateway has not completed stays on
     the order to settle, as from the refund form. ``order`` is read again under
     a lock, so a copy that went stale (the order shipped meanwhile) is refused.
+
+    ``withdrawal``: the customer withdrew from the contract (orders/withdrawal.py,
+    v0.181.0). The law gives the right whatever the settings say, so neither
+    setting applies: an order none of which has left is cancelled and everything
+    paid goes back, as a customer's own cancel does.
     """
     from plugins.installed.orders.models import Order  # noqa: PLC0415
 
@@ -146,7 +153,10 @@ def cancel_with_refund(order, *, reason: str = '', actor=None, by_customer: bool
         locked = Order.objects.select_for_update().filter(pk=order.pk).first()
         if locked is None:
             raise CancelRefused('This order no longer exists.')
-        if by_customer:
+        if withdrawal:
+            if not can_cancel(locked):
+                raise CancelRefused(_refusal(locked))
+        elif by_customer:
             if locked.status not in CUSTOMER_CANCELLABLE:
                 raise CancelRefused(
                     f'Order {locked.order_number} is already being sent, so it cannot be '
@@ -158,6 +168,9 @@ def cancel_with_refund(order, *, reason: str = '', actor=None, by_customer: bool
                 )
         elif not can_cancel(locked):
             raise CancelRefused(_refusal(locked))
+        # A withdrawal pays back like a customer's own cancel: in full, through
+        # the payment method.
+        by_customer = by_customer or withdrawal
         amount, note = _refund_plan(locked, by_customer=by_customer)
         locked.cancel(reason=reason)
         locked.save()

@@ -22,6 +22,7 @@ metadata:
 | `orders.get` | One order: lines, money, fulfilment, notes |
 | `orders.summary` | A one-order overview by number |
 | `returns.list` | Return requests |
+| `returns.list_withdrawals` | Withdrawals from the contract customers sent, and what followed |
 | `draft_orders.list` | Draft orders |
 | `subscriptions.list` | Subscriptions |
 
@@ -37,7 +38,9 @@ If a search finds nothing, say so.
    already sent; downloads never go in a parcel.
 3. A carrier is set up (Shippo or EasyPost): offer `shipping.buy_label` for a
    parcel, or for everything left on the order. It spends money.
-4. Refund or cancel requests: name the order number and amount.
+4. Refund or cancel requests: name the order number and amount. A customer
+   who says they withdraw from the contract is a withdrawal
+   (`returns.process_withdrawal`), not a cancel: the law sets what follows.
 
 ## Changes (each needs the merchant's yes)
 
@@ -53,6 +56,7 @@ If a search finds nothing, say so.
 | `orders.refund` | Refund through the payment provider — real money |
 | `orders.mark_refunded` | Record a refund made outside the store |
 | `returns.approve` | Approve a return and quote the refund |
+| `returns.process_withdrawal` | Record a withdrawal a customer sent by email, letter or phone: cancels and pays back an order none of which has left, otherwise opens a return; emails the acknowledgement |
 
 Describe it first: "Refund order #1042, $42.00, reason: damaged." If the tool
 asks for `confirmed` or an echoed order number, supply them in the call you make

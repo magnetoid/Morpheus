@@ -63,7 +63,11 @@ def on_order_placed(order: Any, **kwargs: Any) -> None:
         template_base='emails/order_placed',
         subject=f'Order #{order.order_number} received',
         to=_order_recipient(order),
-        ctx={'order': order, 'track_url': track_url},
+        ctx={
+            'order': order,
+            'track_url': track_url,
+            'order_links': _order_links(order, 'order_placed'),
+        },
     )
 
 
@@ -257,6 +261,23 @@ def _parcel_emails() -> str:
     return mode if mode in ('each_parcel', 'when_complete') else 'each_parcel'
 
 
+def _order_links(order: Any, key: str) -> list[dict]:
+    """Links apps add under an order email (ORDER_EMAIL_LINKS), each a
+    ``{'label', 'url'}`` with an http(s) URL; anything else is left out."""
+    try:
+        links = hook_registry.filter(events.ORDER_EMAIL_LINKS, [], order=order, key=key)
+    except Exception:  # noqa: BLE001 — a link never stops the email
+        return []
+    out = []
+    for link in links if isinstance(links, list) else []:
+        if not isinstance(link, dict):
+            continue
+        label, url = str(link.get('label') or ''), str(link.get('url') or '')
+        if label and url.startswith(('https://', 'http://')):
+            out.append({'label': label, 'url': url})
+    return out
+
+
 def _order_recipient(order: Any) -> str | None:
     return getattr(order, 'email', None) or getattr(getattr(order, 'customer', None), 'email', None)
 
@@ -268,6 +289,7 @@ def send_templated_email(
     subject: str,
     ctx: dict | None = None,
     headers: dict | None = None,
+    tag: str = '',
 ) -> None:
     """Send a transactional email by its registry ``key``.
 
@@ -279,13 +301,27 @@ def send_templated_email(
     transactional emails. ``subject`` is the fallback used when no override
     supplies one. ``headers`` (optional) rides through to the SMTP message —
     marketing sends pass the RFC 8058 one-click-unsubscribe pair. Failures
-    are logged, never raised.
+    are logged, never raised, so a sender that must know the email went out
+    passes ``tag`` and listens for EMAIL_DELIVERED, which fires only then.
     """
-    _send(template_base=f'emails/{key}', subject=subject, to=to, ctx=ctx or {}, headers=headers)
+    _send(
+        template_base=f'emails/{key}',
+        subject=subject,
+        to=to,
+        ctx=ctx or {},
+        headers=headers,
+        tag=tag,
+    )
 
 
 def _send(
-    *, template_base: str, subject: str, to: str | None, ctx: dict, headers: dict | None = None
+    *,
+    template_base: str,
+    subject: str,
+    to: str | None,
+    ctx: dict,
+    headers: dict | None = None,
+    tag: str = '',
 ) -> None:
     if not to:
         return
@@ -340,6 +376,8 @@ def _send(
                 from_email=from_email,
                 to=to,
                 headers=headers,
+                # Only when set, so a message an older worker takes still fits it.
+                **({'tag': tag} if tag else {}),
             )
         except Exception as e:  # noqa: BLE001 — broker down must never break the caller
             logger.warning(

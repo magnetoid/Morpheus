@@ -20,5 +20,8 @@ You'll get another email once payment is confirmed and your order ships.
 {% if track_url %}
 Track your order any time:
 {{ track_url }}
-{% endif %}
+{% endif %}{% autoescape off %}{% for link in order_links %}
+{{ link.label }}:
+{{ link.url }}
+{% endfor %}{% endautoescape %}
 — The team

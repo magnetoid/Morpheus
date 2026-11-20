@@ -1,0 +1,14 @@
+{% extends "emails/_layout.html" %}
+{% block title %}We received your withdrawal{% endblock %}
+{% block preheader %}Your withdrawal from order #{{ order.order_number }}, received {{ withdrawal.submitted_at|date:"j F Y, H:i" }}.{% endblock %}
+{% block body %}
+  <p>{{ withdrawal.statement }}</p>
+  <p class="muted">Received on {{ withdrawal.submitted_at|date:"j F Y, H:i T" }}<br>Name: {{ withdrawal.name }}<br>Order: #{{ order.order_number }}</p>
+  <table class="items" role="presentation" cellspacing="0" cellpadding="0" border="0">
+    {% for line in withdrawal.lines %}
+    <tr><td>{{ line.quantity }}× {{ line.product_name }}{% if line.variant_name %} ({{ line.variant_name }}){% endif %}{% if not line.right %}<br><span class="muted">Not withdrawn: {{ line.reason }}</span>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  <p style="margin-top:18px;">{{ withdrawal.note }}</p>
+  <p class="muted" style="margin-top:18px;">Keep this email: it is your record of the withdrawal.</p>
+{% endblock %}

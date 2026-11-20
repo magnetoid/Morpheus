@@ -1,0 +1,3 @@
+{% load i18n %}{# The account order page's withdrawal link, while the function is on (returns_portal). #}{% if withdrawal_function and order and order.status != 'cancelled' and order.status != 'refunded' %}
+<p class="morpheus-withdraw" style="margin-top: 1rem;"><a href="/withdraw/?order={{ order.order_number }}">{% trans "Withdraw from contract here" %}</a></p>
+{% endif %}

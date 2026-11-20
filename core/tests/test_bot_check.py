@@ -36,6 +36,8 @@ def _kind(path: str, tag: str) -> str | None:
         return 'sign_in'
     if path.endswith('affiliates/_apply_form.html'):
         return 'affiliates'
+    if 'action="/withdraw/"' in tag:
+        return 'withdrawal'
     return None
 
 
@@ -85,4 +87,9 @@ class ProtectedFormTemplateTests(SimpleTestCase):
         self.assertIn('themes/library/dot_books/templates/storefront/contact.html', seen)
         self.assertIn('templates/account/login.html', seen)
         self.assertIn('core/auth/templates/account/otp_request.html', seen)
-        self.assertEqual(set(seen.values()), {'contact', 'newsletter', 'sign_in', 'affiliates'})
+        self.assertIn(
+            'plugins/installed/returns_portal/templates/returns_portal/withdraw.html', seen
+        )
+        self.assertEqual(
+            set(seen.values()), {'contact', 'newsletter', 'sign_in', 'affiliates', 'withdrawal'}
+        )
