@@ -487,7 +487,10 @@ class OrdersAdminMutationExtension:
     """
 
     @strawberry.mutation(
-        description='Mark a paid/processing order as fulfilled. Staff-only.',
+        description=(
+            'Mark a processing order as fulfilled, recording one parcel with every unit '
+            'still to send. Staff-only.'
+        ),
     )
     def mark_order_fulfilled(
         self,
@@ -497,22 +500,23 @@ class OrdersAdminMutationExtension:
         err = _check_scope(info, ['orders.write'])
         if err:
             return _err_admin(err)
-        from django_fsm import TransitionNotAllowed
-
+        from plugins.installed.orders.fulfilment import FulfilmentError, mark_order
         from plugins.installed.orders.models import Order
 
         order = Order.objects.filter(order_number=input.order_number).first()
         if order is None:
             return _err_admin(f'order {input.order_number!r} not found')
         try:
-            order.fulfill()
-            order.save()
-        except TransitionNotAllowed as e:
-            return _err_admin(f'cannot fulfill from status={order.status}: {e}')
+            mark_order(order, ship=False)
+        except FulfilmentError as e:
+            return _err_admin(str(e))
         return _serialize_order_admin(order)
 
     @strawberry.mutation(
-        description='Mark a fulfilled order as shipped (optionally with tracking number). Staff-only.',
+        description=(
+            'Mark an order as shipped (optionally with a tracking number), recording one '
+            'parcel with every unit still to send. Staff-only.'
+        ),
     )
     def mark_order_shipped(
         self,
@@ -522,18 +526,16 @@ class OrdersAdminMutationExtension:
         err = _check_scope(info, ['orders.write'])
         if err:
             return _err_admin(err)
-        from django_fsm import TransitionNotAllowed
-
+        from plugins.installed.orders.fulfilment import FulfilmentError, mark_order
         from plugins.installed.orders.models import Order
 
         order = Order.objects.filter(order_number=input.order_number).first()
         if order is None:
             return _err_admin(f'order {input.order_number!r} not found')
         try:
-            order.ship(tracking_number=input.tracking_number)
-            order.save()
-        except TransitionNotAllowed as e:
-            return _err_admin(f'cannot ship from status={order.status}: {e}')
+            mark_order(order, ship=True, tracking_number=input.tracking_number or '')
+        except FulfilmentError as e:
+            return _err_admin(str(e))
         return _serialize_order_admin(order)
 
     @strawberry.mutation(

@@ -51,6 +51,11 @@ jobs:
         # docstring said "CI" since it was written, but nothing ran it until
         # v0.87.4. A NEW contract violation fails; stale baseline entries fail.
         run: python scripts/check_plugin_standard.py
+      - name: agent coverage (every staff write view has Linda's tool, or says why not)
+        # ADR 0039 ratchet (scripts/agent_coverage_baseline.json): a NEW staff view
+        # that accepts POST with no entry in its module's AGENT_TOOLS fails, and so
+        # does a stale baseline entry. The count goes to the step summary.
+        run: python scripts/check_agent_coverage.py
       - name: mypy (core kernel — baseline report, non-blocking)
         # mypy is configured (pyproject.toml) + installed above but was never run
         # in CI. Report-only over the core/ kernel for now; tighten to enforcing
