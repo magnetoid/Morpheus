@@ -536,7 +536,13 @@ class OrdersAdminMutationExtension:
             return _err_admin(f'cannot ship from status={order.status}: {e}')
         return _serialize_order_admin(order)
 
-    @strawberry.mutation(description='Cancel an order from any status. Staff-only.')
+    @strawberry.mutation(
+        description=(
+            'Cancel an order that has not shipped. Its payment follows the store '
+            'setting orders.staff_cancel_refund (kept, or paid back); a held card '
+            'payment is released. Staff-only.'
+        ),
+    )
     def cancel_order(
         self,
         info: strawberry.Info,
@@ -545,19 +551,17 @@ class OrdersAdminMutationExtension:
         err = _check_scope(info, ['orders.cancel'])
         if err:
             return _err_admin(err)
-        from django_fsm import TransitionNotAllowed
-
+        from plugins.installed.orders.cancellation import CancelRefused, cancel_with_refund
         from plugins.installed.orders.models import Order
 
         order = Order.objects.filter(order_number=input.order_number).first()
         if order is None:
             return _err_admin(f'order {input.order_number!r} not found')
         try:
-            order.cancel(reason=input.reason)
-            order.save()
-        except TransitionNotAllowed as e:
-            return _err_admin(f'cannot cancel from status={order.status}: {e}')
-        return _serialize_order_admin(order)
+            result = cancel_with_refund(order, reason=input.reason)
+        except CancelRefused as e:
+            return _err_admin(str(e))
+        return _serialize_order_admin(result.order)
 
     @strawberry.mutation(
         description='Flag an order as refunded — manual, for refunds processed outside Morpheus. Staff-only.',

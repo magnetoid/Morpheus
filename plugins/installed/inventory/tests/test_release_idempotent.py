@@ -1,11 +1,12 @@
 """Releasing an order's reservation must happen once, however often it is cancelled.
 
-`Order.cancel` is an FSM transition with ``source='*'``, so an order that is
-already cancelled can be cancelled again — the dashboard bulk action does
-exactly that to every selected row, and GraphQL ``cancelOrder`` is documented
-as "from any status". Each transition fires ``ORDER_CANCELLED``, and inventory
-answered every one of them by subtracting the order's quantities from
-``reserved_quantity`` again. ``reserve_for_order`` and ``commit_for_order`` are
+Until v0.180.0 ``Order.cancel`` was an FSM transition with ``source='*'``, so an
+order that was already cancelled could be cancelled again — the dashboard bulk
+action did exactly that to every selected row, and GraphQL ``cancelOrder`` was
+documented as "from any status". Each transition fired ``ORDER_CANCELLED``, and
+inventory answered every one of them by subtracting the order's quantities from
+``reserved_quantity`` again. The FSM now refuses a second cancel, and the event
+can still arrive twice (a retried hook), so the release stays idempotent. ``reserve_for_order`` and ``commit_for_order`` are
 idempotent on the order number; ``release_reservation`` was not, so the second
 release ate units another, still-pending order was holding — the shelf then
 advertised stock that was already promised, and the next buyer oversold it.
@@ -16,10 +17,13 @@ from __future__ import annotations
 from decimal import Decimal
 
 from django.test import TestCase
+from django_fsm import TransitionNotAllowed
 from djmoney.money import Money
 
+from morpheus.core import MorpheusEvents, hook_registry
 from plugins.installed.catalog.models import Product, ProductVariant
 from plugins.installed.inventory.models import StockLevel, Warehouse
+from plugins.installed.orders.models import Order
 from plugins.installed.orders.services import CartService, OrderService
 
 _ADDR = {
@@ -65,9 +69,11 @@ class ReleaseReservationIdempotencyTests(TestCase):
         first.save()
         self.assertEqual(self._reserved(), 3)
 
-        # e.g. a bulk "Cancel" over a selection that includes this order
-        first.cancel(reason='Bulk cancel from dashboard')
-        first.save()
+        # A second cancel is refused now; the event arriving again must still
+        # leave the pending order's hold alone.
+        with self.assertRaises(TransitionNotAllowed):
+            first.cancel(reason='Bulk cancel from dashboard')
+        hook_registry.fire(MorpheusEvents.ORDER_CANCELLED, order=Order.objects.get(pk=first.pk))
         self.assertEqual(
             self._reserved(),
             3,

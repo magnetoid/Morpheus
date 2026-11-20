@@ -275,7 +275,8 @@ class CancelOutsideTransactionTests(TransactionTestCase):
         buyer = get_user_model().objects.create_user(
             username='co', email='co@example.com', password='x'
         )
-        order = _order(80, customer=buyer)
+        # Confirmed, not delivered: a delivered order cannot be cancelled (v0.180.0).
+        order = _order(80, customer=buyer, status='confirmed')
         _order(20, customer=buyer)
         from plugins.installed.orders.customer_totals import refresh
 

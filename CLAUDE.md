@@ -1999,6 +1999,21 @@ call denies nothing (feedback's ticket status until v0.164.0). Guarded by
 `seo/tests/test_site_audit_claims.py`, `test_audit_tools.py`, `core/tests/test_enforce_return_used.py`
 and `feedback/tests/test_feedback.py::TicketStatusPermissionTests`.
 
+**Convention — an order is cancelled through one rule, and only before it ships (v0.180.0).** Every
+door cancels through `orders/cancellation.py:cancel_with_refund`: the customer's account, the order
+page, the bulk action, Linda's `orders.cancel` and `orders.update_status`, and GraphQL `cancelOrder`.
+Until v0.180.0 the account refunded a paid order in full and the other doors cancelled from any status
+(a delivered order too) and left the money as it was. The FSM's `cancel` now leaves only an order that
+has not shipped, and `mark_refunded` never moves a cancelled or refunded one (`record_external` keeps a
+cancelled order cancelled; the narrowed transition would otherwise roll the recorded refund back). The
+money follows two orders settings: `staff_cancel_refund` (`keep` | `refund`) and `customer_cancel_paid`
+(`refund` | `contact`). What is paid back is the total less every refund recorded on the order, paid
+back or still waiting; nothing is paid back once a parcel has left, and a held card is released by the
+payments app on ORDER_CANCELLED, never refunded. The cancel commits before the refund, so a failed
+refund leaves the order cancelled and says so. Never call `order.cancel()` from a door. Guarded by
+`orders/tests/test_cancel_refunds.py`, `admin_dashboard/tests/test_order_cancel.py` and
+`storefront/tests/test_order_cancel.py`.
+
 **Landmine — `CART_CALCULATE_BREAKDOWN` priority IS the money order; a *tender*
 must run after tax+shipping.** The filter runs handlers lowest-priority-first
 (`core/hooks.py`). Each handler sees only the fields earlier ones have set, so a

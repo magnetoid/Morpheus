@@ -211,6 +211,33 @@ class OrdersPlugin(Plugin):
                         'can choose otherwise each time.'
                     ),
                 },
+                'staff_cancel_refund': {
+                    'type': 'string',
+                    'enum': ['keep', 'refund'],
+                    'default': 'keep',
+                    'title': 'Cancelling a paid order from the dashboard',
+                    'description': (
+                        "'keep': cancelling an order (on its page, in bulk, by Linda or "
+                        'over the API) leaves its payment as it is, and you refund it from '
+                        "Issue refund. 'refund': cancelling an order nothing has shipped "
+                        'from also pays back what is left of its payment, through the '
+                        'payment method (an order paid offline follows the setting above). '
+                        'A held card payment is released either way, and an order that '
+                        'has shipped cannot be cancelled.'
+                    ),
+                },
+                'customer_cancel_paid': {
+                    'type': 'string',
+                    'enum': ['refund', 'contact'],
+                    'default': 'refund',
+                    'title': 'Customers cancelling a paid order',
+                    'description': (
+                        'A customer can cancel an order from their account until it is '
+                        "packed. 'refund': a paid order is cancelled and paid back in "
+                        "full. 'contact': only an order that has not been paid can be "
+                        'cancelled there; a paid one has to be cancelled by the store.'
+                    ),
+                },
                 'parcel_emails': {
                     'type': 'string',
                     'enum': ['each_parcel', 'when_complete'],

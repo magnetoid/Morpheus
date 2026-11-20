@@ -121,3 +121,22 @@ class OrderCancelTests(TestCase):
         shipped = _make_order(self.buyer, status='shipped')
         resp = self.client.get(f'/account/orders/{shipped.order_number}/')
         self.assertNotContains(resp, 'Cancel this order')
+
+    def test_contact_setting_keeps_a_paid_order_for_the_store(self):
+        # orders' customer_cancel_paid (v0.180.0): 'contact' lets a customer
+        # cancel only an order that has not been paid.
+        from plugins.testing import set_app_settings
+
+        set_app_settings(self, 'orders', customer_cancel_paid='contact')
+        self.client.force_login(self.buyer)
+        paid = _make_order(self.buyer, status='confirmed', payment_status='paid')
+        resp = self.client.get(f'/account/orders/{paid.order_number}/')
+        self.assertNotContains(resp, 'Cancel this order')
+        with patch(_REFUND) as mock_process:
+            self.client.post(self._url(paid))
+        mock_process.assert_not_called()
+        self.assertEqual(_status(paid), 'confirmed')
+
+        unpaid = _make_order(self.buyer, status='pending')
+        self.client.post(self._url(unpaid))
+        self.assertEqual(_status(unpaid), 'cancelled')

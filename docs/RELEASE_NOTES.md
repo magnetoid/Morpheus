@@ -15,6 +15,17 @@ surfaced in **Dashboard → Settings → Version & updates**.
 
 ---
 
+## v0.180.0 — 2026-11-20
+
+**An order is cancelled through one rule, and only before it ships**
+
+- Every door cancels the same way: the customer's account, the order page, the bulk action, Linda (orders.cancel, and orders.update_status to cancelled) and GraphQL cancelOrder. Until now the dashboard, Linda and the API could cancel an order that had shipped or been delivered.
+- New setting, Cancelling a paid order from the dashboard (orders staff_cancel_refund): 'keep' (the default, as before) leaves the payment to refund from Issue refund; 'refund' pays back what is left of it.
+- New setting, Customers cancelling a paid order (orders customer_cancel_paid): 'refund' (the default, as before) cancels and pays back in full; 'contact' lets customers cancel only orders that are not paid.
+- Nothing is paid back automatically once a parcel has left, a held card payment is released rather than refunded, and a refund still waiting is never paid twice. A refund that fails leaves the order cancelled, and the page says so.
+- The order page offers Cancel only while the order can be cancelled, and its confirmation says what happens to the money; the bulk cancel says how many orders it skipped.
+- Recording a refund made outside the store keeps a cancelled order cancelled.
+
 ## v0.179.0 — 2026-11-18
 
 **Apps say which Morpheus they run on, and upgrade themselves once**

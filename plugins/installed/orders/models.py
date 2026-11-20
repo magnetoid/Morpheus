@@ -362,13 +362,33 @@ class Order(models.Model):
     def deliver(self):
         self.log_event('ORDER_DELIVERED', prev_state='shipped', new_state='delivered')
 
-    @transition(field=status, source='*', target='refunded')
+    @transition(
+        field=status,
+        source=[
+            'pending',
+            'confirmed',
+            'processing',
+            'partially_fulfilled',
+            'fulfilled',
+            'shipped',
+            'delivered',
+        ],
+        target='refunded',
+    )
     def mark_refunded(self, reason=''):
-        """The whole order is refunded (RefundService.record_external)."""
+        """The whole order is refunded (RefundService.record_external). A
+        cancelled order stays cancelled when its refund is recorded."""
         prev = self.status
         self.log_event('ORDER_REFUNDED', message=reason, prev_state=prev, new_state='refunded')
 
-    @transition(field=status, source='*', target='cancelled')
+    # Only an order that has not shipped (orders.cancellation, v0.180.0): until
+    # then any status could be cancelled, a delivered order too. Call
+    # cancellation.cancel_with_refund, which also settles the money.
+    @transition(
+        field=status,
+        source=['pending', 'confirmed', 'processing', 'partially_fulfilled', 'fulfilled'],
+        target='cancelled',
+    )
     def cancel(self, reason=''):
         prev = self.status
         self.cancelled_at = timezone.now()
