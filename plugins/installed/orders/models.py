@@ -381,12 +381,13 @@ class Order(models.Model):
         prev = self.status
         self.log_event('ORDER_REFUNDED', message=reason, prev_state=prev, new_state='refunded')
 
-    # Only an order that has not shipped (orders.cancellation, v0.180.0): until
+    # Only an order none of which has left (orders.cancellation, v0.180.0): until
     # then any status could be cancelled, a delivered order too. Call
-    # cancellation.cancel_with_refund, which also settles the money.
+    # cancellation.cancel_with_refund, which also refuses a ``fulfilled`` order
+    # with a recorded parcel and settles the money.
     @transition(
         field=status,
-        source=['pending', 'confirmed', 'processing', 'partially_fulfilled', 'fulfilled'],
+        source=['pending', 'confirmed', 'processing', 'fulfilled'],
         target='cancelled',
     )
     def cancel(self, reason=''):

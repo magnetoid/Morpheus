@@ -82,7 +82,7 @@ class DashboardCancelTests(TestCase):
         response = self.client.get(f'/dashboard/orders/{order.order_number}/')
         self.assertContains(response, 'pays back $20.00')
 
-    def test_bulk_cancel_skips_shipped_orders_and_says_how_many(self):
+    def test_bulk_cancel_skips_shipped_orders_and_names_them(self):
         open_order = _order('confirmed')
         shipped = _order('shipped')
         response = self.client.post(
@@ -93,4 +93,44 @@ class DashboardCancelTests(TestCase):
         self.assertEqual(_status(shipped), 'shipped')
         text = ' '.join(str(m) for m in get_messages(response.wsgi_request))
         self.assertIn('Cancelled 1 order', text)
-        self.assertIn('1 could not be cancelled', text)
+        self.assertIn(
+            f'Not cancelled (shipped, a parcel on its way, or closed): #{shipped.order_number}',
+            text,
+        )
+
+    def test_bulk_cancel_names_each_refund_outcome(self):
+        set_app_settings(self, 'orders', staff_cancel_refund='refund')
+        paid_back = _order('confirmed', payment_status='paid')
+        waiting = _order('confirmed', payment_status='paid')
+        failed = _order('confirmed', payment_status='paid')
+
+        def process(*, order, amount, **kwargs):
+            if order.pk == failed.pk:
+                raise RuntimeError('gateway down')
+            return mock.Mock(amount=amount, is_processed=order.pk == paid_back.pk)
+
+        with mock.patch(_PROCESS, side_effect=process):
+            response = self.client.post(
+                '/dashboard/orders/bulk/',
+                {'action': 'cancel', 'ids': [str(o.pk) for o in (paid_back, waiting, failed)]},
+            )
+        text = ' '.join(str(m) for m in get_messages(response.wsgi_request))
+        self.assertIn('Cancelled 3 order', text)
+        self.assertIn(f'Paid back: #{paid_back.order_number}.', text)
+        self.assertIn(
+            f'not paid back yet (settle it on the order page): #{waiting.order_number}', text
+        )
+        self.assertIn(f'Refund failed (refund it from Issue refund): #{failed.order_number}', text)
+
+    def test_a_row_offers_cancel_only_while_the_order_can_be_cancelled(self):
+        from plugins.installed.admin_dashboard.templatetags.morph_dashboard import (
+            order_row_actions,
+        )
+
+        def labels(order):
+            return [a['label'] for a in order_row_actions({}, order)['actions']]
+
+        self.assertIn('Cancel', labels(_order('confirmed')))
+        for status in ('partially_fulfilled', 'shipped', 'delivered', 'cancelled'):
+            with self.subTest(status=status):
+                self.assertNotIn('Cancel', labels(_order(status)))

@@ -164,6 +164,8 @@ def order_row_actions(context, order):
     """
     from django.urls import reverse
 
+    from plugins.installed.orders.cancellation import STAFF_CANCELLABLE
+
     detail_url = reverse('admin_dashboard:order_detail', args=[order.order_number])
     bulk_url = reverse('admin_dashboard:orders_bulk')
     actions = [
@@ -180,7 +182,9 @@ def order_row_actions(context, order):
                 'hidden_inputs': {'action': 'mark_paid', 'ids': str(order.id)},
             }
         )
-    if getattr(order, 'status', '') not in ('cancelled', 'refunded'):
+    # The status alone (no query per row): a fulfilled order with a parcel on its
+    # way is refused by the bulk action, which says so.
+    if getattr(order, 'status', '') in STAFF_CANCELLABLE:
         actions.append(
             {
                 'label': 'Cancel',

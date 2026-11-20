@@ -690,30 +690,53 @@ def orders_export(request: HttpRequest) -> HttpResponse:
 
 
 def _bulk_cancel(request: HttpRequest, qs) -> None:
-    """Cancel each selected order through orders' one cancel rule; an order
-    that has shipped or is closed is skipped and counted."""
+    """Cancel each selected order through orders' one cancel rule, and name the
+    orders paid back, those whose refund waits or failed, and those left alone
+    (shipped, a parcel on its way, or closed)."""
     from plugins.installed.orders.cancellation import CancelRefused, cancel_with_refund
 
-    cancelled = paid_back = refused = 0
+    cancelled = 0
+    by_state: dict[str, list[str]] = {'paid_back': [], 'waiting': [], 'failed': []}
+    refused: list[str] = []
     for o in qs:
         try:
             result = cancel_with_refund(o, reason='Bulk cancel from dashboard', actor=request.user)
         except CancelRefused:
-            refused += 1
+            refused.append(o.order_number)
             continue
         except Exception:  # noqa: BLE001 — one bad order must not abort the batch
             logger.warning('bulk cancel of %s failed', o.order_number, exc_info=True)
-            refused += 1
+            refused.append(o.order_number)
             continue
         cancelled += 1
-        if result.refund is not None:
-            paid_back += 1
-    text = f'Cancelled {cancelled} order(s).'
-    if paid_back:
-        text += f' A refund was made for {paid_back} of them.'
+        if result.refund_state in by_state:
+            by_state[result.refund_state].append(o.order_number)
+    parts = [f'Cancelled {cancelled} order(s).']
+    if by_state['paid_back']:
+        parts.append(f'Paid back: {_order_list(by_state["paid_back"])}.')
+    if by_state['waiting']:
+        parts.append(
+            f'Refund recorded, not paid back yet (settle it on the order page): '
+            f'{_order_list(by_state["waiting"])}.'
+        )
+    if by_state['failed']:
+        parts.append(
+            f'Refund failed (refund it from Issue refund): {_order_list(by_state["failed"])}.'
+        )
     if refused:
-        text += f' {refused} could not be cancelled: they have shipped or are closed.'
-    (messages.success if cancelled else messages.warning)(request, text)
+        parts.append(
+            f'Not cancelled (shipped, a parcel on its way, or closed): {_order_list(refused)}.'
+        )
+    ok = cancelled and not refused and not by_state['failed']
+    (messages.success if ok else messages.warning)(request, ' '.join(parts))
+
+
+def _order_list(numbers: list[str], shown: int = 10) -> str:
+    """'#1001, #1002 and 3 more' for a bulk action's message."""
+    text = ', '.join(f'#{n}' for n in numbers[:shown])
+    if len(numbers) > shown:
+        text += f' and {len(numbers) - shown} more'
+    return text
 
 
 @staff_member_required

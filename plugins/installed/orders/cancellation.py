@@ -15,10 +15,10 @@ did before:
 - ``customer_cancel_paid``: 'refund' lets a customer cancel a paid order and
   pays it back in full; 'contact' lets them cancel only an unpaid one.
 
-Safety rules that are not settings: an order that has shipped cannot be
-cancelled (the order FSM refuses it), nothing is paid back automatically once a
-parcel has left (what did not ship is refunded by hand), and a held card
-payment is released by the payments app on ORDER_CANCELLED, never refunded.
+Safety rules that are not settings: an order cannot be cancelled once a parcel
+of it has been recorded or it has shipped (it comes back as a return; what did
+not ship is refunded from Issue refund), and a held card payment is released
+by the payments app on ORDER_CANCELLED, never refunded.
 """
 
 from __future__ import annotations
@@ -33,8 +33,10 @@ from djmoney.money import Money
 
 logger = logging.getLogger('morpheus.orders')
 
-#: The statuses the order FSM's ``cancel`` leaves (nothing has shipped).
-STAFF_CANCELLABLE = ('pending', 'confirmed', 'processing', 'partially_fulfilled', 'fulfilled')
+#: The statuses the order FSM's ``cancel`` leaves. ``fulfilled`` is cancellable
+#: only while no parcel is recorded: with orders' ``fulfil_marks_shipped`` off,
+#: an order whose parcels have all left stays ``fulfilled`` (``can_cancel``).
+STAFF_CANCELLABLE = ('pending', 'confirmed', 'processing', 'fulfilled')
 #: A customer cancels from their account only before the order is packed.
 CUSTOMER_CANCELLABLE = ('pending', 'confirmed', 'processing')
 #: Payment states in which money was taken and can be paid back.
@@ -51,11 +53,17 @@ class CancelRefused(ValueError):
 @dataclass
 class Cancellation:
     """The cancelled order, the refund made with it (if any), and one sentence
-    on what happened to the money, for the door to show."""
+    on what happened to the money, for the door to show.
+
+    ``refund_state``: 'none' (nothing to pay back), 'paid_back', 'waiting' (a
+    refund is recorded and the gateway has not paid it yet) or 'failed' (the
+    refund raised; the order stays cancelled and staff refund by hand).
+    """
 
     order: Any
     refund: Any = None
     note: str = ''
+    refund_state: str = 'none'
 
 
 def _setting(key: str, allowed: tuple[str, ...]) -> str:
@@ -88,8 +96,10 @@ def refundable(order) -> Money:
 
 
 def can_cancel(order) -> bool:
-    """Whether staff can cancel this order (it has not shipped and is open)."""
-    return order.status in STAFF_CANCELLABLE
+    """Whether staff can cancel this order: it is open and no parcel of it has
+    been recorded (cancelling one would re-credit gift cards and points in full
+    and release stock that has left)."""
+    return order.status in STAFF_CANCELLABLE and not order.fulfillments.exists()
 
 
 def customer_can_cancel(order) -> bool:
@@ -107,12 +117,7 @@ def _refund_plan(order, *, by_customer: bool) -> tuple[Money | None, str]:
         return None, 'Nothing was paid, so there is nothing to pay back.'
     amount = refundable(order)
     if amount.amount <= 0:
-        return None, 'Everything paid has already been refunded.'
-    if order.fulfillments.exists():
-        return None, (
-            'Some items have shipped, so nothing was paid back: '
-            'refund what did not ship from Issue refund.'
-        )
+        return None, 'Everything paid is already refunded or waiting to be.'
     if not by_customer and not staff_cancel_refunds():
         return None, 'The payment is left as it is: refund it from Issue refund.'
     return amount, ''
@@ -164,10 +169,13 @@ def cancel_with_refund(order, *, reason: str = '', actor=None, by_customer: bool
 
 
 def _refusal(order) -> str:
-    if order.status in ('shipped', 'delivered'):
+    sent = {'shipped': 'has shipped', 'delivered': 'was delivered'}.get(order.status)
+    if sent is None and order.status in STAFF_CANCELLABLE:
+        sent = 'has a parcel on its way'
+    if sent:
         return (
-            f'Order {order.order_number} has {order.status}, so it cannot be cancelled: '
-            'take it back as a return.'
+            f'Order {order.order_number} {sent}, so it cannot be cancelled: take it back '
+            'as a return, or refund what did not ship from Issue refund.'
         )
     return f'Order {order.order_number} is already {order.status}.'
 
@@ -183,7 +191,10 @@ def _pay_back(result: Cancellation, amount: Money, *, reason, actor, by_customer
             reason='customer_request' if by_customer else 'other',
             notes=f'Order cancelled: {reason}' if reason else 'Order cancelled',
             actor=actor,
-            settle=default_settle(order),
+            # A customer's click never records money as sent outside the store or
+            # turns it into store credit: the account page promises the original
+            # payment method, and staff settle what the gateway cannot.
+            settle='' if by_customer else default_settle(order),
         )
     except Exception as e:  # noqa: BLE001 — the order stays cancelled; staff refund by hand
         logger.error(
@@ -193,11 +204,14 @@ def _pay_back(result: Cancellation, amount: Money, *, reason, actor, by_customer
             e,
         )
         result.note = f'The refund of {amount} failed ({e}): refund it from Issue refund.'
+        result.refund_state = 'failed'
         return result
     result.refund = refund
     if refund.is_processed:
+        result.refund_state = 'paid_back'
         result.note = f'{refund.amount} was paid back.'
     else:
+        result.refund_state = 'waiting'
         result.note = (
             f'A refund of {refund.amount} is recorded; it has not been paid back yet. '
             'Settle it on the order page.'

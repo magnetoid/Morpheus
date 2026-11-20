@@ -13,13 +13,13 @@ This app runs the cart, checkout and the rest of an order's life: payment, shipp
 ## Common tasks
 
 - See, search, and update the status of orders.
-- Ship an order in one parcel or several, each with its tracking number, or cancel one that has not shipped.
+- Ship an order in one parcel or several, each with its tracking number, or cancel one before any parcel leaves.
 - Add a staff-only note to an order.
 - Print an order's invoice, or a packing slip for each shipment, with no prices.
 - Refund an order in full or in part, to the card, to store credit, or as already paid back.
 - Approve or reject a return request.
-- Ask Linda to search, ship, cancel or refund orders, or review a return; she asks for your yes before changing anything.
+- Ask Linda to search, ship, cancel or refund orders, or review a return; she asks for your yes before any change.
 
 ## Good to know
 
-An order with nothing to pay (a free download, a cart a gift card covers) is paid as it is placed. An unpaid order is cancelled after the time you set (a payment-link order: the link's hours), freeing its stock, gift card, points or store credit; zero turns this off. Cancelling releases a held card; once a parcel has gone, refund what did not ship yourself. A customer's past guest orders join their account once their email is verified, never just by registering. Sales are one figure everywhere: orders placed and not cancelled, after refunds; one left unpaid at checkout does not count, cash on delivery and a held card do. The shopper's note and gift message print on the packing slip; the order keeps when its terms were accepted. While guests cannot check out, a shopper signs in first and keeps their cart. Invoices list each tax rate separately.
+An order with nothing to pay (a free download, a cart a gift card covers) is paid as it is placed. An unpaid order is cancelled after the time you set (a payment-link order: the link's hours), freeing its stock, gift card, points or store credit; zero turns this off. Cancelling releases a held card and restocks; once a parcel has gone, refund what did not ship instead. A customer's past guest orders join their account once their email is verified, never just by registering. Sales are one figure everywhere: orders placed and not cancelled, after refunds; one left unpaid at checkout does not count, cash on delivery and a held card do. The shopper's note and gift message print on the packing slip; the order keeps when its terms were accepted. While guests cannot check out, a shopper signs in first and keeps their cart. Invoices list each tax rate separately.

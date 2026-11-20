@@ -79,3 +79,25 @@ class ReleaseReservationIdempotencyTests(TestCase):
             3,
             'a second ORDER_CANCELLED released units the pending order still holds',
         )
+
+    # A paid order's reservation became a sale (``commit_for_order``); until
+    # v0.180.0 its cancel took the units off ``reserved_quantity`` again, which
+    # released another order's hold, and never put the sold units back.
+    def _quantity(self):
+        self.level.refresh_from_db()
+        return self.level.quantity
+
+    def test_a_paid_order_cancelled_puts_its_units_back_and_keeps_other_holds(self):
+        from plugins.installed.inventory.services import InventoryService
+
+        paid = self._place('sold-a', 2)
+        self._place('sold-b', 3)  # still pending — its 3 units must stay held
+        InventoryService.commit_for_order(paid)
+        self.assertEqual((self._quantity(), self._reserved()), (8, 3))
+
+        paid.cancel(reason='customer changed their mind')
+        paid.save()
+        self.assertEqual((self._quantity(), self._reserved()), (10, 3))
+
+        hook_registry.fire(MorpheusEvents.ORDER_CANCELLED, order=Order.objects.get(pk=paid.pk))
+        self.assertEqual((self._quantity(), self._reserved()), (10, 3))

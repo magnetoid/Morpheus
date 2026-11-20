@@ -378,6 +378,8 @@ def orders_update_status_tool(
         raise ToolError(f'order not found: {order_number}')  # noqa: B904
     prev = o.status
     if staged:
+        if status == 'cancelled':
+            _check_cancel_refund_cap(o)
         return _stage(
             context=context,
             tool_name='orders.update_status',
@@ -419,11 +421,11 @@ def orders_update_status_tool(
 @tool(
     name='orders.cancel',
     description=(
-        'Cancel an order that has not shipped (a shipped one is a return) and record '
-        'the reason. What happens to its payment follows the store setting '
+        'Cancel an order before any parcel of it is sent (one sent is a return) and '
+        'record the reason. What happens to its payment follows the store setting '
         'orders.staff_cancel_refund: kept for a separate refund (orders.refund), or '
-        'paid back; a held card payment is released. The result says which. '
-        'Requires `confirmed=True`.'
+        'paid back, never over the per-refund cap; a held card payment is released. '
+        'The result says which. Requires `confirmed=True`.'
     ),
     scopes=['orders.write'],
     schema={
@@ -456,6 +458,7 @@ def orders_cancel_tool(
 
         if not preview(o)['allowed']:
             raise ToolError(f'cannot cancel order #{order_number} (status {prev})')
+        _check_cancel_refund_cap(o)
         return _stage(
             context=context,
             tool_name='orders.cancel',
@@ -470,6 +473,22 @@ def orders_cancel_tool(
     return _cancel_result(
         o, reason=f'Assistant: {reason}' if reason else 'Cancelled by Assistant', context=context
     )
+
+
+def _check_cancel_refund_cap(order) -> None:
+    """A cancel that pays money back is a refund: the agents' per-refund cap
+    (Settings → Agent guardrails) applies before anything is cancelled, as in
+    orders.refund. A cap of 0 means none."""
+    from plugins.installed.orders.cancellation import preview
+
+    refund = preview(order)['refund']
+    cap = max_refund_value()
+    if refund is not None and cap and refund.amount > Decimal(str(cap)):
+        raise ToolError(
+            f'cancelling order #{order.order_number} would pay back {refund}, over the '
+            f'{cap:g} {refund.currency} per-refund cap; cancel it from the order page '
+            f'or raise the cap in Settings → Agent guardrails'
+        )
 
 
 def _cancel_money_sentence(order) -> str:
@@ -488,6 +507,7 @@ def _cancel_result(order, *, reason: str, context: dict | None) -> ToolResult:
 
     prev = order.status
     user = (context or {}).get('user')
+    _check_cancel_refund_cap(order)
     try:
         result = cancel_with_refund(order, reason=reason, actor=user)
     except CancelRefused as e:
@@ -508,6 +528,7 @@ def _cancel_result(order, *, reason: str, context: dict | None) -> ToolResult:
                 if refund is not None
                 else None
             ),
+            'refund_state': result.refund_state,
             'money': result.note,
         },
         display=f'#{order.order_number} cancelled. {result.note}'.strip(),

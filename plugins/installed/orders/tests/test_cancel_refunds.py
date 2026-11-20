@@ -6,7 +6,8 @@ GraphQL cancelled from any status (a delivered order too) and left the money
 where it was. Every door now goes through ``orders.cancellation.cancel_with_refund``,
 with two settings: whether a staff cancel pays back what was paid
 (``staff_cancel_refund``) and whether a customer may cancel a paid order
-(``customer_cancel_paid``). An order that has shipped cannot be cancelled.
+(``customer_cancel_paid``). An order cannot be cancelled once a parcel of it
+is recorded or it has shipped.
 """
 
 # ruff: noqa: PLC0415
@@ -55,14 +56,15 @@ def _status(order):
 
 class CancelTransitionTests(TestCase):
     def test_an_order_that_has_not_shipped_can_be_cancelled(self):
-        for status in ('pending', 'confirmed', 'processing', 'partially_fulfilled', 'fulfilled'):
+        for status in ('pending', 'confirmed', 'processing', 'fulfilled'):
             with self.subTest(status=status):
                 order = _order(status)
                 order.cancel()
                 self.assertEqual(order.status, 'cancelled')
 
     def test_a_shipped_or_closed_order_cannot_be_cancelled(self):
-        for status in ('shipped', 'delivered', 'refunded', 'cancelled'):
+        # partially_fulfilled: a parcel has left by definition.
+        for status in ('partially_fulfilled', 'shipped', 'delivered', 'refunded', 'cancelled'):
             with self.subTest(status=status):
                 order = _order(status)
                 with self.assertRaises(TransitionNotAllowed):
@@ -135,17 +137,27 @@ class StaffCancelTests(TestCase):
         order = _order('confirmed', payment_status='paid')
         result = cancellation.cancel_with_refund(order)
         self.assertFalse(result.refund.is_processed)
+        self.assertEqual(result.refund_state, 'waiting')
         self.assertIn('not been paid back', result.note)
 
-    def test_nothing_is_paid_back_once_a_parcel_has_shipped(self):
+    def test_an_order_with_a_parcel_on_its_way_cannot_be_cancelled(self):
+        # With fulfil_marks_shipped off, an order whose parcels have left stays
+        # 'fulfilled'; cancelling it would re-credit gift cards and points in full.
         set_app_settings(self, 'orders', staff_cancel_refund='refund')
-        order = _order('partially_fulfilled', payment_status='paid')
+        order = _order('fulfilled', payment_status='paid')
         Fulfillment.objects.create(order=order, tracking_number='T1')
-        with mock.patch(_PROCESS) as process:
-            result = cancellation.cancel_with_refund(order)
+        self.assertFalse(cancellation.preview(order)['allowed'])
+        with mock.patch(_PROCESS) as process, self.assertRaises(cancellation.CancelRefused) as e:
+            cancellation.cancel_with_refund(order)
         process.assert_not_called()
+        self.assertEqual(_status(order), 'fulfilled')
+        self.assertIn('parcel on its way', str(e.exception))
+
+    def test_a_packed_order_with_no_parcel_can_still_be_cancelled(self):
+        order = _order('fulfilled')
+        self.assertTrue(cancellation.preview(order)['allowed'])
+        cancellation.cancel_with_refund(order)
         self.assertEqual(_status(order), 'cancelled')
-        self.assertIn('shipped', result.note)
 
     def test_a_held_card_payment_is_released_not_refunded(self):
         set_app_settings(self, 'orders', staff_cancel_refund='refund')
@@ -168,6 +180,7 @@ class StaffCancelTests(TestCase):
             result = cancellation.cancel_with_refund(order)
         self.assertEqual(_status(order), 'cancelled')
         self.assertIsNone(result.refund)
+        self.assertEqual(result.refund_state, 'failed')
         self.assertIn('failed', result.note)
 
     def test_a_shipped_order_is_refused_and_left_alone(self):
@@ -234,6 +247,19 @@ class CustomerCancelTests(TestCase):
             cancellation.cancel_with_refund(order, actor=self.buyer, by_customer=True)
         process.assert_called_once()
 
+    def test_a_customer_cancel_never_settles_outside_the_payment_method(self):
+        # 'external' would record money as sent that nobody sent, and store
+        # credit breaks the account page's promise of the original method.
+        for default in ('external', 'store_credit'):
+            with self.subTest(default=default):
+                set_app_settings(self, 'orders', offline_refund_default=default)
+                order = _order(
+                    'confirmed', payment_status='paid', gateway='manual', customer=self.buyer
+                )
+                with mock.patch(_PROCESS) as process:
+                    cancellation.cancel_with_refund(order, actor=self.buyer, by_customer=True)
+                self.assertEqual(process.call_args.kwargs['settle'], '')
+
 
 class LindaCancelToolTests(TestCase):
     def _cancel(self, order, **extra):
@@ -258,6 +284,32 @@ class LindaCancelToolTests(TestCase):
         self.assertEqual(_status(order), 'cancelled')
         self.assertEqual(result.output['refund']['amount'], '20.00')
         self.assertTrue(result.output['refund']['paid_back'])
+
+    def test_a_refund_over_the_agent_cap_is_refused_before_cancelling(self):
+        set_app_settings(self, 'orders', staff_cancel_refund='refund')
+        order = _order('confirmed', payment_status='paid')
+        with (
+            mock.patch('plugins.installed.orders.agent_tools.max_refund_value', return_value=10),
+            mock.patch(_PROCESS) as process,
+        ):
+            with self.assertRaises(ToolError) as e:
+                self._cancel(order)
+            self.assertIn('per-refund cap', str(e.exception))
+            from plugins.installed.orders.agent_tools import orders_update_status_tool
+
+            with self.assertRaises(ToolError):
+                orders_update_status_tool.invoke(
+                    {'order_number': order.order_number, 'status': 'cancelled', 'confirmed': True}
+                )
+        process.assert_not_called()
+        self.assertEqual(_status(order), 'confirmed')
+
+    def test_a_cancel_that_pays_nothing_back_ignores_the_cap(self):
+        order = _order('confirmed', payment_status='paid')  # setting 'keep'
+        with mock.patch('plugins.installed.orders.agent_tools.max_refund_value', return_value=10):
+            result = self._cancel(order)
+        self.assertEqual(_status(order), 'cancelled')
+        self.assertEqual(result.output['refund_state'], 'none')
 
     def test_a_staged_cancel_says_what_happens_to_the_money(self):
         from core.assistant.models import OpsProposal
