@@ -45,7 +45,6 @@ ORDER_STATUS_CHOICES = (
 AGENT_TOOLS = {
     'order_fulfill': 'orders.fulfill_lines',
     'order_refund': 'orders.refund',
-    'order_notes': 'orders.add_note',
 }
 
 

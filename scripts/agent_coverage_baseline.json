@@ -29,6 +29,7 @@
     "plugins.installed.admin_dashboard.views_split.marketing:coupon_new",
     "plugins.installed.admin_dashboard.views_split.orders:order_action",
     "plugins.installed.admin_dashboard.views_split.orders:order_new",
+    "plugins.installed.admin_dashboard.views_split.orders:order_notes",
     "plugins.installed.admin_dashboard.views_split.orders:orders_bulk",
     "plugins.installed.admin_dashboard.views_split.products:content_fill_one",
     "plugins.installed.admin_dashboard.views_split.products:image_delete",

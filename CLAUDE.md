@@ -2059,10 +2059,10 @@ the dashboard router serves to staff) and accepts a POST (`@require_POST`, `@req
 POST, or a body that reads `request.POST` / `FILES` / `body` or compares `request.method` with
 `'POST'`). Each must be in its module's literal `AGENT_TOOLS = {'view': 'tool.name' | 'none: <reason>'}`,
 the tool registered by name somewhere (`@tool`, `Tool(...)`, `register_tool`), or it fails; so does a
-key that names no such view. The settings panel's save is `settings.set`. The 230 views without a tool
+key that names no such view. The settings panel's save is `settings.set`. The 231 views without a tool
 when it shipped are in `scripts/agent_coverage_baseline.json`, which only shrinks (`--save` in the same
 change); P10's batches repay it. Map a view only to a tool that does the same thing: a tool that does
-part of a big form (the product editor and `catalog.update_product`) leaves the view in the baseline.
+part of a form (the product editor and `catalog.update_product`; the order notes form, which replaces or clears the notes, and the append-only `orders.add_note`) leaves the view in the baseline.
 `none:` is for what an agent must never do (a person's own sign-in, a second factor, API tokens), never
 for "not built yet". Guarded by `core/tests/test_agent_coverage_check.py`.
 
