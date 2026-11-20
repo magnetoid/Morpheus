@@ -41,6 +41,13 @@ ORDER_STATUS_CHOICES = (
 )
 
 
+#: What Linda uses for the same change (scripts/check_agent_coverage.py).
+AGENT_TOOLS = {
+    'order_fulfill': 'orders.fulfill_lines',
+    'order_refund': 'orders.refund',
+}
+
+
 def _awaiting_payment_q():
     """Shipped or delivered orders paid offline (cash on delivery, bank transfer)
     that nobody has marked paid — nothing but staff ever will."""

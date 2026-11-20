@@ -552,6 +552,27 @@ Linda cannot read your models or code to work out what the app does. Ship
 morph_create_plugin` scaffolds `agent_tools.py` for it): a merchant action
 without its tool is half-built (ADR 0039).
 
+**Name the tool next to the view (v0.182.0).** CI's `scripts/check_agent_coverage.py`
+finds every staff view that accepts a POST (one with `@staff_member_required`,
+`@staff_required` or `@require_capability`, or a `DashboardPage` view) and fails
+unless the module that defines it maps it:
+
+```python
+# views.py, next to the views
+AGENT_TOOLS = {
+    'coupon_edit': 'coupons.update',  # the tool that makes the same change
+    'mfa_enroll': 'none: a second factor is set up by its owner, never by an agent',
+}
+```
+
+The value is a tool some app registers, or `none:` with the reason an agent must
+never make that change. "Not built yet" is not a reason: build the tool. A
+`SettingsPanel` needs no entry, because `settings.set` saves the same schema; a settings
+page you wrote yourself does. Views without a tool
+when the check shipped are listed in `scripts/agent_coverage_baseline.json`. When you
+cover one of them, also remove its entry: run `python scripts/check_agent_coverage.py
+--save` in the same change.
+
 ### 5.4 Help for store staff (`help.md`)
 
 Every app ships `plugins/installed/<app>/help.md`, the page staff read at

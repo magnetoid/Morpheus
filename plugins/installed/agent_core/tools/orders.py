@@ -97,7 +97,10 @@ def _serialize_admin(order) -> dict:
 
 @tool(
     name='orders.mark_fulfilled',
-    description='Mark a paid/processing order as fulfilled (uses the Order FSM).',
+    description=(
+        'Mark a processing order as fulfilled, recording one parcel with every unit '
+        'still to send. An order with nothing that ships (only downloads) is refused.'
+    ),
     scopes=['orders.write'],
     schema={
         'type': 'object',
@@ -106,18 +109,16 @@ def _serialize_admin(order) -> dict:
     },
 )
 def mark_order_fulfilled_tool(*, order_number: str) -> ToolResult:
-    from django_fsm import TransitionNotAllowed
-
+    from plugins.installed.orders.fulfilment import FulfilmentError, mark_order
     from plugins.installed.orders.models import Order
 
     order = Order.objects.filter(order_number=order_number).first()
     if order is None:
         raise ToolError(f'order {order_number!r} not found')
     try:
-        order.fulfill()
-        order.save()
-    except TransitionNotAllowed as e:
-        raise ToolError(f'cannot fulfill from status={order.status}: {e}') from None
+        mark_order(order, ship=False)
+    except FulfilmentError as e:
+        raise ToolError(str(e)) from None
     return ToolResult(
         output=_serialize_admin(order), display=f'#{order.order_number} → {order.status}'
     )
@@ -125,7 +126,11 @@ def mark_order_fulfilled_tool(*, order_number: str) -> ToolResult:
 
 @tool(
     name='orders.mark_shipped',
-    description='Mark a fulfilled order as shipped, optionally with a tracking number.',
+    description=(
+        'Mark an order as shipped, optionally with a tracking number, recording one '
+        'parcel with every unit still to send (none when every unit is in a parcel '
+        'already). To send part of an order, use orders.fulfill_lines.'
+    ),
     scopes=['orders.write'],
     schema={
         'type': 'object',
@@ -137,18 +142,16 @@ def mark_order_fulfilled_tool(*, order_number: str) -> ToolResult:
     },
 )
 def mark_order_shipped_tool(*, order_number: str, tracking_number: str = '') -> ToolResult:
-    from django_fsm import TransitionNotAllowed
-
+    from plugins.installed.orders.fulfilment import FulfilmentError, mark_order
     from plugins.installed.orders.models import Order
 
     order = Order.objects.filter(order_number=order_number).first()
     if order is None:
         raise ToolError(f'order {order_number!r} not found')
     try:
-        order.ship(tracking_number=tracking_number)
-        order.save()
-    except TransitionNotAllowed as e:
-        raise ToolError(f'cannot ship from status={order.status}: {e}') from None
+        mark_order(order, ship=True, tracking_number=tracking_number)
+    except FulfilmentError as e:
+        raise ToolError(str(e)) from None
     return ToolResult(
         output=_serialize_admin(order),
         display=f'#{order.order_number} shipped'

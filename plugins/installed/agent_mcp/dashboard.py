@@ -46,6 +46,13 @@ _TOKEN_PREFIX = 'mph_'
 _TOKEN_BYTES = 32
 
 
+#: What Linda uses for the same change (scripts/check_agent_coverage.py).
+AGENT_TOOLS = {
+    'tokens_view': 'none: an API token grants access to the store; an agent must not '
+    'mint, widen or revoke one',
+}
+
+
 def _approval_tools() -> list[dict]:
     """Every protected tool a token can be granted: the admin server's own tools
     and the store tools Janus can call for an external agent (janus_door.py).

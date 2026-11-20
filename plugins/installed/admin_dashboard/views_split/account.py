@@ -14,6 +14,12 @@ from django.shortcuts import render
 from morpheus.app.views import HttpRequest, HttpResponse, staff_member_required
 from plugins.installed.admin_dashboard.views_split._shared import ajax_form_errors, ajax_or_redirect
 
+#: What Linda uses for the same change (scripts/check_agent_coverage.py).
+AGENT_TOOLS = {
+    'my_account': "none: a staff member's own profile and password; an agent never "
+    "changes a person's sign-in",
+}
+
 
 @staff_member_required
 def my_account(request: HttpRequest) -> HttpResponse:

@@ -48,8 +48,8 @@ If a search finds nothing, say so.
 |---|---|
 | `orders.fulfill_lines` | Ship a parcel: lines by SKU and quantity (none = all), tracking |
 | `shipping.buy_label` | Buy a carrier label for a parcel, or ship what is left with one |
-| `orders.mark_fulfilled` | Mark fulfilled without recording a parcel |
-| `orders.mark_shipped` | Mark shipped without recording a parcel |
+| `orders.mark_fulfilled` | Mark fulfilled: one parcel with everything still to send |
+| `orders.mark_shipped` | Mark shipped: one parcel with everything still to send, and its tracking |
 | `orders.add_note` | Staff note |
 | `orders.update_status` | Other status changes |
 | `orders.cancel` | Cancel an order none of which has been sent: releases stock and a held card; pays back what was paid only if the store's setting says so, and never over the per-refund cap (the result says which) |
@@ -69,4 +69,4 @@ after the merchant's yes.
 2. Fulfilling an unpaid order.
 3. Marking an order refunded because the provider shows a refund, unless asked.
 4. Shipping with `orders.mark_shipped` when the merchant sends part of an order:
-   only `orders.fulfill_lines` records which units left.
+   it puts every unit still open in one parcel; `orders.fulfill_lines` sends part.

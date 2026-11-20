@@ -22,7 +22,8 @@ logger = logging.getLogger('morpheus.orders')
 
 # A parcel can leave an order in any of these states; pending and confirmed are
 # walked forward first, as a supplier's shipment always did. 'fulfilled' is here
-# because GraphQL's markOrderFulfilled sets it without recording any parcel.
+# because markOrderFulfilled set it without recording any parcel until v0.182.0,
+# and those orders still have units to send.
 FULFILLABLE_STATUSES = ('pending', 'confirmed', 'processing', 'partially_fulfilled', 'fulfilled')
 
 FULFILLMENT_STATUSES = ('pending', 'in_transit', 'delivered', 'failed', 'returned')
@@ -199,3 +200,50 @@ def create_fulfillment(  # noqa: PLR0913
 
         transaction.on_commit(_announce)
     return fulfillment
+
+
+#: The statuses ``mark_order`` accepts, as the FSM transitions did before it
+#: recorded parcels: an unpaid order is never walked forward by marking it.
+_MARK_FROM = {
+    False: ('processing', 'partially_fulfilled'),
+    True: ('processing', 'partially_fulfilled', 'fulfilled'),
+}
+
+
+def mark_order(order, *, ship: bool, tracking_number: str = ''):
+    """Mark ``order`` fulfilled (``ship=False``) or shipped, with a parcel for
+    every unit still to send, so its lines say what left. Returns the
+    ``Fulfillment``, or None when no parcel was needed.
+
+    Linda's ``orders.mark_fulfilled`` / ``orders.mark_shipped`` and GraphQL
+    ``markOrderFulfilled`` / ``markOrderShipped`` (v0.182.0) go through it; until
+    then they moved the status alone and recorded no parcel. Shipping an order
+    whose units are all in parcels already (the last one marked it fulfilled)
+    records none. An order with nothing that ships is refused: a download
+    reaches the buyer by itself. Raises ``FulfilmentError``.
+    """
+    from plugins.installed.orders.models import Order  # noqa: PLC0415
+
+    if order.status not in _MARK_FROM[ship]:
+        state = order.get_status_display().lower()
+        raise FulfilmentError(
+            f'An order that is {state} cannot be marked {"shipped" if ship else "fulfilled"}.'
+        )
+    if open_lines(order):
+        return create_fulfillment(order, None, tracking_number=tracking_number, mark_shipped=ship)
+    if not (ship and order.status == 'fulfilled'):
+        raise FulfilmentError(
+            'Nothing in this order is left to ship; a download reaches the buyer by itself.'
+        )
+    with transaction.atomic():
+        current = (
+            Order.objects.select_for_update()
+            .filter(pk=order.pk)
+            .values_list('status', flat=True)
+            .first()
+        )
+        if current != order.status:
+            raise FulfilmentError('This order changed meanwhile; reload it and try again.')
+        order.ship(tracking_number=(tracking_number or '').strip()[:200])
+        order.save(update_fields=['status', 'tracking_number', 'updated_at'])
+    return None
