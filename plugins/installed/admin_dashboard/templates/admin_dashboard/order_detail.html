@@ -75,9 +75,9 @@
           <a href="{% url 'admin_dashboard:order_refund' order_number=order.order_number %}" class="dropdown-item">
             <i data-lucide="refresh-ccw" class="h-4 w-4"></i> Issue refund
           </a>
-          {% if order.status != 'cancelled' and order.status != 'refunded' %}
+          {% if cancel_preview.allowed %}
           <form method="post" action="{% url 'admin_dashboard:order_action' order_number=order.order_number %}"
-                data-confirm="Cancel this order? This will release any reserved inventory." data-confirm-title="Cancel order" data-confirm-cta="Cancel order" data-confirm-danger>
+                data-confirm="Cancel this order? This releases its reserved stock{% if cancel_preview.refund %} and pays back {{ cancel_preview.refund }}.{% else %}.{% if cancel_preview.note %} {{ cancel_preview.note }}{% endif %}{% endif %}" data-confirm-title="Cancel order" data-confirm-cta="Cancel order" data-confirm-danger>
             {% csrf_token %}<input type="hidden" name="action" value="cancel">
             <button class="dropdown-item dropdown-item-danger"><i data-lucide="x-circle" class="h-4 w-4"></i> Cancel order</button>
           </form>

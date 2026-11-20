@@ -310,8 +310,8 @@ class RefundService:
         No gateway is called. The refund is stored as processed and
         PAYMENT_REFUNDED fires, so gift cards, points and store credit spent on
         the order are re-credited and the refund email goes out, as for a refund
-        made here; then the order moves to ``refunded``. ValueError when nothing
-        is left to refund.
+        made here; then the order moves to ``refunded`` (a cancelled one stays
+        cancelled). ValueError when nothing is left to refund.
         """
         from plugins.installed.orders.models import Order, Refund
 
@@ -340,7 +340,8 @@ class RefundService:
             amount=refund.amount,
             settled_as='external',
         )
-        if locked.status != 'refunded':
+        # A cancelled order stays cancelled: the refund is recorded on it.
+        if locked.status not in ('refunded', 'cancelled'):
             locked.mark_refunded(reason=refund.notes)
             locked.save()
         return refund

@@ -225,11 +225,17 @@ def order_detail(request: HttpRequest, order_number: str) -> HttpResponse:
         }
         for i, k in enumerate(happy_path)
     ]
+    cancel_preview = None
+    if order is not None:
+        from plugins.installed.orders.cancellation import preview as cancel_preview_for
+
+        cancel_preview = cancel_preview_for(order)
     return render(
         request,
         'admin_dashboard/order_detail.html',
         {
             'order': order,
+            'cancel_preview': cancel_preview,
             'nothing_to_ship': nothing_to_ship,
             'order_detail_panels': detail_panels,
             'refunds': refunds,
@@ -331,6 +337,23 @@ def _mark_paid_action(request: HttpRequest, order) -> None:
     messages.success(request, f'Order #{order.order_number} marked paid.')
 
 
+def _cancel_action(request: HttpRequest, order) -> None:
+    """The order page's Cancel, through orders' one cancel rule: a shipped
+    order is refused, and staff_cancel_refund decides the money."""
+    from plugins.installed.orders.cancellation import CancelRefused, cancel_with_refund
+
+    try:
+        result = cancel_with_refund(
+            order,
+            reason=request.POST.get('reason', '') or 'Cancelled from dashboard',
+            actor=request.user,
+        )
+    except CancelRefused as e:
+        messages.error(request, str(e))
+        return
+    messages.success(request, f'Order #{order.order_number} cancelled. {result.note}'.strip())
+
+
 @staff_member_required
 @require_capability('orders.write')
 def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
@@ -345,9 +368,7 @@ def order_action(request: HttpRequest, order_number: str) -> HttpResponse:
 
     try:
         if action == 'cancel':
-            order.cancel(reason=request.POST.get('reason', '') or 'Cancelled from dashboard')
-            order.save()
-            messages.success(request, f'Order #{order.order_number} cancelled.')
+            _cancel_action(request, order)
         elif action == 'confirm':
             order.confirm()
             order.save()
@@ -668,6 +689,56 @@ def orders_export(request: HttpRequest) -> HttpResponse:
     return _orders_csv(qs)
 
 
+def _bulk_cancel(request: HttpRequest, qs) -> None:
+    """Cancel each selected order through orders' one cancel rule, and name the
+    orders paid back, those whose refund waits or failed, and those left alone
+    (shipped, a parcel on its way, or closed)."""
+    from plugins.installed.orders.cancellation import CancelRefused, cancel_with_refund
+
+    cancelled = 0
+    by_state: dict[str, list[str]] = {'paid_back': [], 'waiting': [], 'failed': []}
+    refused: list[str] = []
+    for o in qs:
+        try:
+            result = cancel_with_refund(o, reason='Bulk cancel from dashboard', actor=request.user)
+        except CancelRefused:
+            refused.append(o.order_number)
+            continue
+        except Exception:  # noqa: BLE001 — one bad order must not abort the batch
+            logger.warning('bulk cancel of %s failed', o.order_number, exc_info=True)
+            refused.append(o.order_number)
+            continue
+        cancelled += 1
+        if result.refund_state in by_state:
+            by_state[result.refund_state].append(o.order_number)
+    parts = [f'Cancelled {cancelled} order(s).']
+    if by_state['paid_back']:
+        parts.append(f'Paid back: {_order_list(by_state["paid_back"])}.')
+    if by_state['waiting']:
+        parts.append(
+            f'Refund recorded, not paid back yet (settle it on the order page): '
+            f'{_order_list(by_state["waiting"])}.'
+        )
+    if by_state['failed']:
+        parts.append(
+            f'Refund failed (refund it from Issue refund): {_order_list(by_state["failed"])}.'
+        )
+    if refused:
+        parts.append(
+            f'Not cancelled (shipped, a parcel on its way, or closed): {_order_list(refused)}.'
+        )
+    ok = cancelled and not refused and not by_state['failed']
+    (messages.success if ok else messages.warning)(request, ' '.join(parts))
+
+
+def _order_list(numbers: list[str], shown: int = 10) -> str:
+    """'#1001, #1002 and 3 more' for a bulk action's message."""
+    text = ', '.join(f'#{n}' for n in numbers[:shown])
+    if len(numbers) > shown:
+        text += f' and {len(numbers) - shown} more'
+    return text
+
+
 @staff_member_required
 @require_capability('orders.write')
 def orders_bulk(request: HttpRequest) -> HttpResponse:
@@ -705,18 +776,7 @@ def orders_bulk(request: HttpRequest) -> HttpResponse:
                 continue
         messages.success(request, f'Marked {paid} order(s) as paid.')
     elif action == 'cancel':
-        # Go through the FSM (order.cancel) — direct `o.status = 'cancelled'` on
-        # the protected FSMField raises and was silently swallowed, so nothing
-        # cancelled and no ORDER_CANCELLED (stock release / email) fired.
-        ok = 0
-        for o in qs:
-            try:
-                o.cancel(reason='Bulk cancel from dashboard')
-                o.save()
-                ok += 1
-            except Exception:  # noqa: BLE001, S112 — skip orders in a non-cancellable state
-                continue
-        messages.success(request, f'Cancelled {ok} order(s).')
+        _bulk_cancel(request, qs)
     elif action == 'export':
         return _orders_csv(qs, filename='orders-selected')
     else:

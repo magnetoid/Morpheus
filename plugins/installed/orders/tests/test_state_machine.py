@@ -117,13 +117,15 @@ class CancelTests(TestCase):
         self.assertEqual(event.previous_state, 'pending')
         self.assertEqual(event.message, 'customer changed mind')
 
-    def test_cancel_from_shipped(self):
+    def test_a_shipped_order_cannot_be_cancelled(self):
+        # Until v0.180.0 any status could be cancelled; a shipped order is a return.
         order = _order()
         order.confirm()
         order.process()
         order.ship()
-        order.cancel()
-        self.assertEqual(order.status, 'cancelled')
+        with self.assertRaises(TransitionNotAllowed):
+            order.cancel()
+        self.assertEqual(order.status, 'shipped')
 
     def test_transitions_blocked_after_cancel(self):
         order = _order()

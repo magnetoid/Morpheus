@@ -378,15 +378,21 @@ def orders_update_status_tool(
         raise ToolError(f'order not found: {order_number}')  # noqa: B904
     prev = o.status
     if staged:
+        if status == 'cancelled':
+            _check_cancel_refund_cap(o)
         return _stage(
             context=context,
             tool_name='orders.update_status',
             kind='order.update',
             title=f'Order #{order_number}: {prev} → {status}',
-            summary=f'Set order #{order_number} status from {prev!r} to {status!r}.',
+            summary=f'Set order #{order_number} status from {prev!r} to {status!r}.'
+            + (' ' + _cancel_money_sentence(o) if status == 'cancelled' else ''),
             changes=[{'object': _obj_ref(o), 'field': 'status', 'old': prev, 'new': status}],
             target=o,
         )
+    if status == 'cancelled':
+        # Cancelling settles the payment too: the same rule as orders.cancel.
+        return _cancel_result(o, reason='Cancelled by Assistant', context=context)
     # Order.status is a protected FSMField — direct assignment raises. Go through
     # the transition method, which validates the move and logs the OrderEvent /
     # runs side-effects a bare assign skips.
@@ -415,8 +421,11 @@ def orders_update_status_tool(
 @tool(
     name='orders.cancel',
     description=(
-        'Cancel an order. Sets status to `cancelled` and records the reason. '
-        'Requires `confirmed=True`.'
+        'Cancel an order before any parcel of it is sent (one sent is a return) and '
+        'record the reason. What happens to its payment follows the store setting '
+        'orders.staff_cancel_refund: kept for a separate refund (orders.refund), or '
+        'paid back, never over the per-refund cap; a held card payment is released. '
+        'The result says which. Requires `confirmed=True`.'
     ),
     scopes=['orders.write'],
     schema={
@@ -443,40 +452,86 @@ def orders_cancel_tool(
         o = Order.objects.get(order_number=order_number)
     except Order.DoesNotExist:
         raise ToolError(f'order not found: {order_number}')  # noqa: B904
-    if o.status in ('cancelled', 'refunded'):
-        raise ToolError(f'already {o.status}')
     prev = o.status
     if staged:
+        from plugins.installed.orders.cancellation import preview
+
+        if not preview(o)['allowed']:
+            raise ToolError(f'cannot cancel order #{order_number} (status {prev})')
+        _check_cancel_refund_cap(o)
         return _stage(
             context=context,
             tool_name='orders.cancel',
             kind='order.cancel',
             title=f'Cancel order #{order_number}',
-            summary=reason.strip() or f'Cancel order #{order_number} (status {prev!r}).',
+            summary=(reason.strip() or f'Cancel order #{order_number} (status {prev!r}).')
+            + ' '
+            + _cancel_money_sentence(o),
             changes=[{'object': _obj_ref(o), 'field': 'status', 'old': prev, 'new': 'cancelled'}],
             target=o,
         )
-    # FSM transition (source='*' → 'cancelled'): flips the protected status
-    # field, sets cancelled_at, and logs the OrderEvent.
+    return _cancel_result(
+        o, reason=f'Assistant: {reason}' if reason else 'Cancelled by Assistant', context=context
+    )
+
+
+def _check_cancel_refund_cap(order) -> None:
+    """A cancel that pays money back is a refund: the agents' per-refund cap
+    (Settings → Agent guardrails) applies before anything is cancelled, as in
+    orders.refund. A cap of 0 means none."""
+    from plugins.installed.orders.cancellation import preview
+
+    refund = preview(order)['refund']
+    cap = max_refund_value()
+    if refund is not None and cap and refund.amount > Decimal(str(cap)):
+        raise ToolError(
+            f'cancelling order #{order.order_number} would pay back {refund}, over the '
+            f'{cap:g} {refund.currency} per-refund cap; cancel it from the order page '
+            f'or raise the cap in Settings → Agent guardrails'
+        )
+
+
+def _cancel_money_sentence(order) -> str:
+    """What a cancel would do with the payment, for a staged proposal."""
+    from plugins.installed.orders.cancellation import preview
+
+    plan = preview(order)
+    if plan['refund'] is not None:
+        return f'It will pay back {plan["refund"]}.'
+    return plan['note']
+
+
+def _cancel_result(order, *, reason: str, context: dict | None) -> ToolResult:
+    """Cancel through orders' one cancel rule (orders.cancellation)."""
+    from plugins.installed.orders.cancellation import CancelRefused, cancel_with_refund
+
+    prev = order.status
+    user = (context or {}).get('user')
+    _check_cancel_refund_cap(order)
     try:
-        from django_fsm import TransitionNotAllowed
-    except Exception:  # noqa: BLE001 — degraded boot without django-fsm
-        TransitionNotAllowed = Exception  # type: ignore[assignment,misc]
-    try:
-        o.cancel(reason=f'Assistant: {reason}' if reason else 'Cancelled by Assistant')
-        o.save()
-    except TransitionNotAllowed as e:
-        raise ToolError(f'cannot cancel order #{order_number} (status {prev})') from e
-    except Exception as e:  # noqa: BLE001
-        raise ToolError(f'cancel failed: {e}') from e
+        result = cancel_with_refund(order, reason=reason, actor=user)
+    except CancelRefused as e:
+        raise ToolError(str(e)) from e
+    refund = result.refund
     return ToolResult(
         output={
-            'order_number': order_number,
+            'order_number': order.order_number,
             'previous_status': prev,
             'new_status': 'cancelled',
             'reason': reason,
+            'refund': (
+                {
+                    'amount': str(refund.amount.amount),
+                    'currency': str(refund.amount.currency),
+                    'paid_back': bool(refund.is_processed),
+                }
+                if refund is not None
+                else None
+            ),
+            'refund_state': result.refund_state,
+            'money': result.note,
         },
-        display=f'#{order_number} cancelled',
+        display=f'#{order.order_number} cancelled. {result.note}'.strip(),
     )
 
 

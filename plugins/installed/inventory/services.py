@@ -262,10 +262,16 @@ class InventoryService:
     def release_reservation(cls, order) -> int:
         """Undo the reservations made by `reserve_for_order`.
 
-        Idempotent, like its siblings: `Order.cancel` accepts any source state,
-        so a cancelled order can be cancelled (and ORDER_CANCELLED fired) again.
-        Releasing twice would subtract this order's units a second time and
-        free holds that belong to other orders.
+        Idempotent, like its siblings: ORDER_CANCELLED can arrive twice (a
+        replayed hook), and releasing twice would subtract this order's units a
+        second time and free holds that belong to other orders.
+
+        A level `commit_for_order` already sold (the order was paid) holds
+        nothing any more: its units go back on the shelf instead, since an order
+        is cancelled only before any of it has left (orders.cancellation).
+        Until v0.180.0 a paid order's cancel took its units off
+        `reserved_quantity` a second time, which released other orders' holds,
+        and never restocked the sold ones.
         """
         if StockMovement.objects.filter(
             movement_type='unreserve',
@@ -283,22 +289,35 @@ class InventoryService:
         by_level: dict[str, int] = defaultdict(int)
         for mv in reservations.select_related('stock_level'):
             by_level[str(mv.stock_level_id)] += _qty_from_note(mv.notes)
+        sold = {
+            str(level_id)
+            for level_id in StockMovement.objects.filter(
+                movement_type='sale', reference=order.order_number
+            ).values_list('stock_level_id', flat=True)
+        }
         for level_id, qty in by_level.items():
             if qty <= 0:
                 continue
             try:
                 with transaction.atomic():
                     sl = StockLevel.objects.select_for_update().get(pk=level_id)
-                    sl.reserved_quantity = max(0, (sl.reserved_quantity or 0) - qty)
-                    sl.save(update_fields=['reserved_quantity', 'updated_at'])
+                    before = sl.quantity
+                    if level_id in sold:
+                        sl.quantity = before + qty
+                        sl.save(update_fields=['quantity', 'updated_at'])
+                        note = f'Back on the shelf: {qty}× from cancelled {order.order_number}'
+                    else:
+                        sl.reserved_quantity = max(0, (sl.reserved_quantity or 0) - qty)
+                        sl.save(update_fields=['reserved_quantity', 'updated_at'])
+                        note = f'Released {qty}× from {order.order_number}'
                     StockMovement.objects.create(
                         stock_level=sl,
                         movement_type='unreserve',
-                        quantity_change=0,
-                        quantity_before=sl.quantity,
+                        quantity_change=sl.quantity - before,
+                        quantity_before=before,
                         quantity_after=sl.quantity,
                         reference=order.order_number,
-                        notes=f'Released {qty}× from {order.order_number}',
+                        notes=note,
                     )
                     movements += 1
             except DatabaseError as e:

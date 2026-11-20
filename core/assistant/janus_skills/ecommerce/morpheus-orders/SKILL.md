@@ -49,7 +49,7 @@ If a search finds nothing, say so.
 | `orders.mark_shipped` | Mark shipped without recording a parcel |
 | `orders.add_note` | Staff note |
 | `orders.update_status` | Other status changes |
-| `orders.cancel` | Cancel (releases stock) |
+| `orders.cancel` | Cancel an order none of which has been sent: releases stock and a held card; pays back what was paid only if the store's setting says so, and never over the per-refund cap (the result says which) |
 | `orders.refund` | Refund through the payment provider — real money |
 | `orders.mark_refunded` | Record a refund made outside the store |
 | `returns.approve` | Approve a return and quote the refund |
@@ -61,6 +61,7 @@ after the merchant's yes.
 ## Pitfalls
 
 1. Cancelling when they asked for a refund: different outcome, different money.
+   An order with a parcel sent cannot be cancelled; it comes back as a return.
 2. Fulfilling an unpaid order.
 3. Marking an order refunded because the provider shows a refund, unless asked.
 4. Shipping with `orders.mark_shipped` when the merchant sends part of an order:
